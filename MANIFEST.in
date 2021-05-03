@@ -1,0 +1,18 @@
+include MANIFEST.in
+include requirements.txt
+include *.json
+include *.md
+include *.py
+include *.txt
+recursive-include production_api *.css
+recursive-include production_api *.csv
+recursive-include production_api *.html
+recursive-include production_api *.ico
+recursive-include production_api *.js
+recursive-include production_api *.json
+recursive-include production_api *.md
+recursive-include production_api *.png
+recursive-include production_api *.py
+recursive-include production_api *.svg
+recursive-include production_api *.txt
+recursive-exclude production_api *.pyc
