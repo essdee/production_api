@@ -12,7 +12,7 @@ setup(
 	version=version,
 	description='Frappe application to manage manufacturing workflows',
 	author='Essdee',
-	author_email='essdee@gmail.com',
+	author_email='apps@essdee.dev',
 	packages=find_packages(),
 	zip_safe=False,
 	include_package_data=True,
