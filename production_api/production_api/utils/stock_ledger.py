@@ -3,6 +3,7 @@
 from __future__ import unicode_literals
 
 import frappe
+from frappe.utils import flt, now
 
 def get_previous_sle(args, for_update=False):
 	"""
@@ -52,3 +53,35 @@ def get_stock_ledger_entries(previous_sle, operator=None,
 			"for_update": for_update and "for update" or "",
 			"order": order
 		}, previous_sle, as_dict=1, debug=debug)
+
+def make_sl_entries(sl_entries):
+	if sl_entries:
+
+		cancel = sl_entries[0].get("is_cancelled")
+		if cancel:
+			set_as_cancel(sl_entries[0].get('voucher_type'), sl_entries[0].get('voucher_no'))
+
+		for sle in sl_entries:
+
+			if cancel:
+				sle['actual_qty'] = -flt(sle.get('actual_qty'))
+
+			if sle.get("actual_qty"):
+				sle_doc = make_entry(sle)
+
+			args = sle_doc.as_dict()
+			# Todo : Need to implement bin concept
+
+def set_as_cancel(voucher_type, voucher_no):
+	frappe.db.sql("""update `tabStock Ledger Entry` set is_cancelled=1,
+		modified=%s, modified_by=%s
+		where voucher_type=%s and voucher_no=%s and is_cancelled = 0""",
+		(now(), frappe.session.user, voucher_type, voucher_no))
+
+def make_entry(args):
+	args.update({"doctype": "Stock Ledger Entry"})
+	sle = frappe.get_doc(args)
+	sle.flags.ignore_permissions = 1
+	sle.insert()
+	sle.submit()
+	return sle
