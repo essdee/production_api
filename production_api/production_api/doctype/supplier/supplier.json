@@ -1,0 +1,96 @@
+{
+ "actions": [],
+ "autoname": "S-.####",
+ "creation": "2021-07-04 11:20:45.649081",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "disabled",
+  "supplier_name",
+  "pan",
+  "deparments",
+  "address_html",
+  "contact_html",
+  "item_price_html",
+  "item_lead_time_html",
+  "account_mappings"
+ ],
+ "fields": [
+  {
+   "default": "0",
+   "fieldname": "disabled",
+   "fieldtype": "Check",
+   "label": "Disabled"
+  },
+  {
+   "fieldname": "supplier_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Supplier Name",
+   "reqd": 1
+  },
+  {
+   "fieldname": "pan",
+   "fieldtype": "Data",
+   "label": "PAN"
+  },
+  {
+   "fieldname": "deparments",
+   "fieldtype": "Table MultiSelect",
+   "label": "Deparments",
+   "options": "Supplier Department",
+   "reqd": 1
+  },
+  {
+   "fieldname": "address_html",
+   "fieldtype": "HTML",
+   "label": "Address"
+  },
+  {
+   "fieldname": "contact_html",
+   "fieldtype": "HTML",
+   "label": "Contact"
+  },
+  {
+   "fieldname": "item_price_html",
+   "fieldtype": "HTML",
+   "label": "Item Price"
+  },
+  {
+   "fieldname": "item_lead_time_html",
+   "fieldtype": "HTML",
+   "label": "Item Lead Time"
+  },
+  {
+   "fieldname": "account_mappings",
+   "fieldtype": "Table",
+   "label": "Account Mappings",
+   "options": "Supplier Account Mapping"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2021-07-05 10:49:29.519934",
+ "modified_by": "Administrator",
+ "module": "Production Api",
+ "name": "Supplier",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "track_changes": 1
+}
