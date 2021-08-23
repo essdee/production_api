@@ -20,6 +20,7 @@
 </template>
 
 <script>
+// Used in Item Template to show list of attributes of the item
 export default {
     name: 'AttributeListTemplate',
     data: function(){

@@ -21,6 +21,7 @@
 </template>
 
 <script>
+// Used in Item Attribute to list all the values of an attribute
 export default {
     name: 'AttributeValueTemplate',
     data: function(){

@@ -17,7 +17,12 @@
   "attributes_section",
   "default_attribute",
   "attribute_list",
-  "attribute_list_html"
+  "attribute_list_html",
+  "bill_of_materials_section",
+  "bom_items",
+  "bom_item_attribute_mapping_html",
+  "item_price_list_section",
+  "item_price_list_html"
  ],
  "fields": [
   {
@@ -87,11 +92,38 @@
    "fieldname": "attributes_section",
    "fieldtype": "Section Break",
    "label": "Attributes"
+  },
+  {
+   "depends_on": "eval:!doc.__islocal",
+   "fieldname": "bill_of_materials_section",
+   "fieldtype": "Section Break",
+   "label": "Bill of Materials"
+  },
+  {
+   "fieldname": "bom_items",
+   "fieldtype": "Table",
+   "label": "BOM Items",
+   "options": "Item Template  BOM Item"
+  },
+  {
+   "fieldname": "bom_item_attribute_mapping_html",
+   "fieldtype": "HTML",
+   "label": "BOM Item Attribute Mapping"
+  },
+  {
+   "fieldname": "item_price_list_section",
+   "fieldtype": "Section Break",
+   "label": "Item Price List"
+  },
+  {
+   "fieldname": "item_price_list_html",
+   "fieldtype": "HTML",
+   "label": "Item Price List"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2021-07-10 12:58:00.729326",
+ "modified": "2021-08-22 12:59:10.156489",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Item Template",

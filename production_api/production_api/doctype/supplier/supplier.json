@@ -14,7 +14,9 @@
   "contact_html",
   "item_price_html",
   "item_lead_time_html",
-  "account_mappings"
+  "account_mappings",
+  "item_price_list_section",
+  "item_price_list_html"
  ],
  "fields": [
   {
@@ -67,11 +69,21 @@
    "fieldtype": "Table",
    "label": "Account Mappings",
    "options": "Supplier Account Mapping"
+  },
+  {
+   "fieldname": "item_price_list_section",
+   "fieldtype": "Section Break",
+   "label": "Item Price List"
+  },
+  {
+   "fieldname": "item_price_list_html",
+   "fieldtype": "HTML",
+   "label": "Item Price List"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2021-07-05 10:49:29.519934",
+ "modified": "2021-08-21 19:43:49.444310",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Supplier",

@@ -9,7 +9,7 @@ frappe.ui.form.on("Item Attribute", {
 			unhide_field(["section_break_8"]);
 			if (frm.fields_dict["item_attribute_values_html"]) {
 				$(frm.fields_dict['item_attribute_values_html'].wrapper).html("");
-				new frappe.ui.ItemAttributeValues({
+				new frappe.production.ui.ItemAttributeValues({
 					wrapper: frm.fields_dict["item_attribute_values_html"].wrapper,
 					attr_values: frm.doc.__onload["attr_values"],
 					attr_name: frm.doc.attribute_name
