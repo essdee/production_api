@@ -37,7 +37,7 @@ export default {
                 var new_doc = frappe.model.get_new_doc(doctype);
                 if(cur_frm.doctype == "Supplier")
                     new_doc.supplier = name;
-                else if(cur_frm.doctype == "Item Template")
+                else if(cur_frm.doctype == "Item")
                     new_doc.item_name = name;
                 frappe.ui.form.make_quick_entry(doctype, function(x){cur_frm && cur_frm.reload_doc();}, null, new_doc);
 		    });

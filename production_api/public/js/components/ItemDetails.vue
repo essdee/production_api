@@ -10,7 +10,7 @@
 </template>
 
 <script>
-// Used in Item Template and Supplier to list all price and lead time
+// Used in Item and Supplier to list all price and lead time
 export default {
     name: 'item-detail',
     props: ['type', 'data'],

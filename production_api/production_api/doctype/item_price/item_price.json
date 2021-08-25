@@ -18,7 +18,7 @@
    "fieldtype": "Link",
    "in_list_view": 1,
    "label": "Item Name",
-   "options": "Item Template",
+   "options": "Item",
    "reqd": 1
   },
   {
@@ -50,7 +50,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2021-08-21 19:37:38.840795",
+ "modified": "2021-08-23 17:05:00.109608",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Item Price",

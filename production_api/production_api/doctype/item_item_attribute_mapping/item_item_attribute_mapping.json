@@ -1,26 +1,26 @@
 {
  "actions": [],
- "creation": "2021-07-08 11:26:49.699247",
+ "creation": "2021-08-24 16:33:06.467630",
  "doctype": "DocType",
  "editable_grid": 1,
  "engine": "InnoDB",
  "field_order": [
-  "attribute_values"
+  "values"
  ],
  "fields": [
   {
-   "fieldname": "attribute_values",
+   "fieldname": "values",
    "fieldtype": "Table",
-   "label": "Attribute Values",
-   "options": "Item Attribute Value List"
+   "label": "Values",
+   "options": "Item Item Attribute Mapping Value"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2021-07-09 12:30:52.755266",
+ "modified": "2021-08-24 16:33:06.467630",
  "modified_by": "Administrator",
  "module": "Production Api",
- "name": "Item Attribute Value Mapping",
+ "name": "Item Item Attribute Mapping",
  "owner": "Administrator",
  "permissions": [
   {

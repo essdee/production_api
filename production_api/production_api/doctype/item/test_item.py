@@ -4,5 +4,5 @@
 # import frappe
 import unittest
 
-class TestITBOMItemAttrMapping(unittest.TestCase):
+class TestItem(unittest.TestCase):
 	pass

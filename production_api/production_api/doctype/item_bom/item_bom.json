@@ -1,6 +1,6 @@
 {
  "actions": [],
- "creation": "2021-08-21 11:55:13.734030",
+ "creation": "2021-08-23 17:27:36.715310",
  "doctype": "DocType",
  "editable_grid": 1,
  "engine": "InnoDB",
@@ -17,7 +17,7 @@
    "fieldtype": "Link",
    "in_list_view": 1,
    "label": "Item",
-   "options": "Item Template",
+   "options": "Item",
    "reqd": 1
   },
   {
@@ -45,16 +45,16 @@
    "fieldname": "attribute_mapping",
    "fieldtype": "Link",
    "label": "Attribute Mapping",
-   "options": "IT BOM Item Attr Mapping"
+   "options": "Item BOM Attribute Mapping"
   }
  ],
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2021-08-21 11:56:53.742515",
+ "modified": "2021-08-23 17:33:44.471069",
  "modified_by": "Administrator",
  "module": "Production Api",
- "name": "Item Template  BOM Item",
+ "name": "Item BOM",
  "owner": "Administrator",
  "permissions": [],
  "sort_field": "modified",

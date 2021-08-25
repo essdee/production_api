@@ -1,28 +1,29 @@
 {
  "actions": [],
  "autoname": "field:name1",
- "creation": "2021-07-07 13:38:44.927924",
+ "creation": "2021-08-23 16:59:13.935404",
  "doctype": "DocType",
  "editable_grid": 1,
  "engine": "InnoDB",
  "field_order": [
   "name1",
   "hsn_code",
-  "item_categories",
+  "categories",
   "column_break_4",
   "disabled",
   "uom_section",
   "default_unit_of_measure",
   "uom_conversion_details",
+  "secondary_unit_of_measure",
   "attributes_section",
   "default_attribute",
-  "attribute_list",
+  "attributes",
   "attribute_list_html",
   "bill_of_materials_section",
-  "bom_items",
-  "bom_item_attribute_mapping_html",
-  "item_price_list_section",
-  "item_price_list_html"
+  "bom",
+  "bom_attribute_mapping_html",
+  "price_section",
+  "price_html"
  ],
  "fields": [
   {
@@ -34,15 +35,30 @@
    "unique": 1
   },
   {
+   "fieldname": "hsn_code",
+   "fieldtype": "Data",
+   "label": "HSN Code"
+  },
+  {
+   "fieldname": "categories",
+   "fieldtype": "Table MultiSelect",
+   "label": "Categories",
+   "options": "Item Item Category"
+  },
+  {
+   "fieldname": "column_break_4",
+   "fieldtype": "Column Break"
+  },
+  {
    "default": "0",
    "fieldname": "disabled",
    "fieldtype": "Check",
    "label": "Disabled"
   },
   {
-   "fieldname": "hsn_code",
-   "fieldtype": "Data",
-   "label": "HSN Code"
+   "fieldname": "uom_section",
+   "fieldtype": "Section Break",
+   "label": "UOM"
   },
   {
    "fieldname": "default_unit_of_measure",
@@ -57,10 +73,9 @@
    "options": "UOM Conversion Detail"
   },
   {
-   "fieldname": "item_categories",
-   "fieldtype": "Table MultiSelect",
-   "label": "Item Categories",
-   "options": "Item Category List"
+   "fieldname": "attributes_section",
+   "fieldtype": "Section Break",
+   "label": "Attributes"
   },
   {
    "fieldname": "default_attribute",
@@ -69,29 +84,9 @@
    "options": "Item Attribute"
   },
   {
-   "fieldname": "attribute_list",
-   "fieldtype": "Table",
-   "label": "Attribute List",
-   "options": "Item Attribute List"
-  },
-  {
    "fieldname": "attribute_list_html",
    "fieldtype": "HTML",
    "label": "Attribute List Values"
-  },
-  {
-   "fieldname": "column_break_4",
-   "fieldtype": "Column Break"
-  },
-  {
-   "fieldname": "uom_section",
-   "fieldtype": "Section Break",
-   "label": "UOM"
-  },
-  {
-   "fieldname": "attributes_section",
-   "fieldtype": "Section Break",
-   "label": "Attributes"
   },
   {
    "depends_on": "eval:!doc.__islocal",
@@ -100,33 +95,45 @@
    "label": "Bill of Materials"
   },
   {
-   "fieldname": "bom_items",
+   "fieldname": "bom",
    "fieldtype": "Table",
-   "label": "BOM Items",
-   "options": "Item Template  BOM Item"
+   "label": "BOM",
+   "options": "Item BOM"
   },
   {
-   "fieldname": "bom_item_attribute_mapping_html",
+   "fieldname": "bom_attribute_mapping_html",
    "fieldtype": "HTML",
-   "label": "BOM Item Attribute Mapping"
+   "label": "BOM Attribute Mapping"
   },
   {
-   "fieldname": "item_price_list_section",
+   "fieldname": "price_section",
    "fieldtype": "Section Break",
-   "label": "Item Price List"
+   "label": "Price List"
   },
   {
-   "fieldname": "item_price_list_html",
+   "fieldname": "price_html",
    "fieldtype": "HTML",
-   "label": "Item Price List"
+   "label": "Price"
+  },
+  {
+   "fieldname": "attributes",
+   "fieldtype": "Table",
+   "label": "Attributes",
+   "options": "Item Item Attribute"
+  },
+  {
+   "fieldname": "secondary_unit_of_measure",
+   "fieldtype": "Link",
+   "label": "Secondary Unit of Measure",
+   "options": "UOM"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2021-08-22 12:59:10.156489",
+ "modified": "2021-08-24 19:39:47.620860",
  "modified_by": "Administrator",
  "module": "Production Api",
- "name": "Item Template",
+ "name": "Item",
  "owner": "Administrator",
  "permissions": [
   {

@@ -17,7 +17,7 @@
    "fieldtype": "Link",
    "in_list_view": 1,
    "label": "Item Name",
-   "options": "Item Template",
+   "options": "Item",
    "reqd": 1
   },
   {
@@ -42,7 +42,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2021-08-22 13:38:56.691009",
+ "modified": "2021-08-23 17:05:32.161594",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Item Lead Time",

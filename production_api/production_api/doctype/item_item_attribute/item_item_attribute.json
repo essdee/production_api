@@ -1,28 +1,35 @@
 {
  "actions": [],
- "creation": "2021-07-07 13:58:32.208006",
+ "creation": "2021-08-24 16:33:10.769716",
  "doctype": "DocType",
  "editable_grid": 1,
  "engine": "InnoDB",
  "field_order": [
-  "item_category"
+  "attribute",
+  "mapping"
  ],
  "fields": [
   {
-   "fieldname": "item_category",
+   "fieldname": "attribute",
    "fieldtype": "Link",
    "in_list_view": 1,
-   "label": "Item Category",
-   "options": "Item Category"
+   "label": "Attribute",
+   "options": "Item Attribute"
+  },
+  {
+   "fieldname": "mapping",
+   "fieldtype": "Link",
+   "label": "Mapping",
+   "options": "Item Item Attribute Mapping"
   }
  ],
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2021-07-08 11:58:36.177438",
+ "modified": "2021-08-24 16:33:10.769716",
  "modified_by": "Administrator",
  "module": "Production Api",
- "name": "Item Category List",
+ "name": "Item Item Attribute",
  "owner": "Administrator",
  "permissions": [],
  "sort_field": "modified",

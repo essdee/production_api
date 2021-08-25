@@ -27,7 +27,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2021-07-07 12:19:54.218367",
+ "modified": "2021-08-24 17:10:21.948559",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Item Category",
@@ -46,6 +46,7 @@
    "write": 1
   }
  ],
+ "quick_entry": 1,
  "sort_field": "modified",
  "sort_order": "DESC",
  "track_changes": 1

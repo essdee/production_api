@@ -1,26 +1,26 @@
 {
  "actions": [],
- "creation": "2021-08-21 11:53:42.776905",
+ "creation": "2021-08-23 17:32:28.112468",
  "doctype": "DocType",
  "editable_grid": 1,
  "engine": "InnoDB",
  "field_order": [
-  "it_bom_item_attr_mapping_list"
+  "values"
  ],
  "fields": [
   {
-   "fieldname": "it_bom_item_attr_mapping_list",
+   "fieldname": "values",
    "fieldtype": "Table",
-   "label": "IT BOM Item Attr Mapping List",
-   "options": "IT BOM Item Attr Mapping List"
+   "label": "values",
+   "options": "Item BOM Attribute Mapping Value"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2021-08-21 11:53:42.776905",
+ "modified": "2021-08-23 17:34:37.583531",
  "modified_by": "Administrator",
  "module": "Production Api",
- "name": "IT BOM Item Attr Mapping",
+ "name": "Item BOM Attribute Mapping",
  "owner": "Administrator",
  "permissions": [
   {
