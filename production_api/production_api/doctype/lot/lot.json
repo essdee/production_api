@@ -1,0 +1,119 @@
+{
+ "actions": [],
+ "autoname": "field:lot_name",
+ "creation": "2021-08-25 09:40:42.087544",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "lot_name",
+  "item",
+  "planned_qty",
+  "status",
+  "item_attributes_section",
+  "primary_item_attribute",
+  "item_attributes",
+  "item_attribute_list_html",
+  "bill_of_materials_section",
+  "bom",
+  "bom_attribute_mapping_html",
+  "bom_summary"
+ ],
+ "fields": [
+  {
+   "fieldname": "lot_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Lot Name",
+   "reqd": 1,
+   "unique": 1
+  },
+  {
+   "fieldname": "item",
+   "fieldtype": "Link",
+   "label": "Item",
+   "options": "Item",
+   "set_only_once": 1
+  },
+  {
+   "fieldname": "planned_qty",
+   "fieldtype": "Table",
+   "label": "Planned Qty",
+   "options": "Lot Planned Qty"
+  },
+  {
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "label": "Status",
+   "options": "Open\nClosed"
+  },
+  {
+   "fieldname": "item_attributes_section",
+   "fieldtype": "Section Break",
+   "label": "Item Attributes"
+  },
+  {
+   "fieldname": "item_attributes",
+   "fieldtype": "Table",
+   "label": "Item Attributes",
+   "options": "Item Item Attribute"
+  },
+  {
+   "fieldname": "item_attribute_list_html",
+   "fieldtype": "HTML",
+   "label": "Item Attribute List Values"
+  },
+  {
+   "fieldname": "bill_of_materials_section",
+   "fieldtype": "Section Break",
+   "label": "Bill of Materials"
+  },
+  {
+   "fieldname": "bom",
+   "fieldtype": "Table",
+   "label": "BOM",
+   "options": "Item BOM"
+  },
+  {
+   "fieldname": "bom_summary",
+   "fieldtype": "Table",
+   "label": "BOM Summary",
+   "options": "Lot BOM"
+  },
+  {
+   "fieldname": "primary_item_attribute",
+   "fieldtype": "Link",
+   "label": "Primary Item Attribute",
+   "options": "Item Attribute"
+  },
+  {
+   "fieldname": "bom_attribute_mapping_html",
+   "fieldtype": "HTML",
+   "label": "BOM Attribute Mapping"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2021-09-08 11:44:09.738628",
+ "modified_by": "Administrator",
+ "module": "Production Api",
+ "name": "Lot",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "track_changes": 1
+}

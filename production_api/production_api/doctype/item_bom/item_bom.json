@@ -1,0 +1,63 @@
+{
+ "actions": [],
+ "creation": "2021-08-23 17:27:36.715310",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "item",
+  "qty_of_product",
+  "qty_of_bom_item",
+  "attribute_mapping_based_on",
+  "attribute_mapping"
+ ],
+ "fields": [
+  {
+   "fieldname": "item",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Item",
+   "options": "Item",
+   "reqd": 1
+  },
+  {
+   "fieldname": "qty_of_product",
+   "fieldtype": "Float",
+   "in_list_view": 1,
+   "label": "Qty of Product",
+   "reqd": 1
+  },
+  {
+   "fieldname": "qty_of_bom_item",
+   "fieldtype": "Float",
+   "in_list_view": 1,
+   "label": "Qty of BOM Item",
+   "reqd": 1
+  },
+  {
+   "fieldname": "attribute_mapping_based_on",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Attribute mapping based on ",
+   "options": "Item Attribute"
+  },
+  {
+   "fieldname": "attribute_mapping",
+   "fieldtype": "Link",
+   "label": "Attribute Mapping",
+   "options": "Item BOM Attribute Mapping"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2021-08-23 17:33:44.471069",
+ "modified_by": "Administrator",
+ "module": "Production Api",
+ "name": "Item BOM",
+ "owner": "Administrator",
+ "permissions": [],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "track_changes": 1
+}

@@ -1,0 +1,61 @@
+{
+ "actions": [],
+ "creation": "2021-08-26 15:23:39.233428",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "item_name",
+  "required_qty",
+  "available_stock",
+  "po_generated_qty",
+  "pending_for_po_qty"
+ ],
+ "fields": [
+  {
+   "fieldname": "item_name",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Item Name",
+   "options": "Item",
+   "reqd": 1
+  },
+  {
+   "fieldname": "required_qty",
+   "fieldtype": "Float",
+   "in_list_view": 1,
+   "label": "Required Qty",
+   "reqd": 1
+  },
+  {
+   "fieldname": "available_stock",
+   "fieldtype": "Float",
+   "label": "Available Stock",
+   "read_only": 1
+  },
+  {
+   "fieldname": "po_generated_qty",
+   "fieldtype": "Float",
+   "label": "PO Generated Qty",
+   "read_only": 1
+  },
+  {
+   "fieldname": "pending_for_po_qty",
+   "fieldtype": "Float",
+   "label": "Pending for PO Qty",
+   "read_only": 1
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2021-08-26 15:23:39.233428",
+ "modified_by": "Administrator",
+ "module": "Production Api",
+ "name": "Lot BOM",
+ "owner": "Administrator",
+ "permissions": [],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "track_changes": 1
+}

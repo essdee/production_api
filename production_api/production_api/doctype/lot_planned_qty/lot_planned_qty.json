@@ -1,0 +1,38 @@
+{
+ "actions": [],
+ "creation": "2021-08-25 09:38:57.554867",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "size",
+  "qty"
+ ],
+ "fields": [
+  {
+   "fieldname": "size",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Size",
+   "options": "Item Attribute Value"
+  },
+  {
+   "fieldname": "qty",
+   "fieldtype": "Int",
+   "in_list_view": 1,
+   "label": "Qty"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2021-09-04 20:21:02.595837",
+ "modified_by": "Administrator",
+ "module": "Production Api",
+ "name": "Lot Planned Qty",
+ "owner": "Administrator",
+ "permissions": [],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "track_changes": 1
+}

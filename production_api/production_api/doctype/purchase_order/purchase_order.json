@@ -1,0 +1,104 @@
+{
+ "actions": [],
+ "autoname": "PO.#####",
+ "creation": "2021-08-26 16:59:17.200111",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "po_no",
+  "supplier",
+  "default_delivery_location",
+  "column_break_4",
+  "po_date",
+  "default_lot",
+  "comments",
+  "section_break_8",
+  "items",
+  "item_html"
+ ],
+ "fields": [
+  {
+   "fieldname": "po_no",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "PO No.",
+   "reqd": 1
+  },
+  {
+   "fieldname": "po_date",
+   "fieldtype": "Date",
+   "in_list_view": 1,
+   "label": "PO Date",
+   "reqd": 1
+  },
+  {
+   "fieldname": "supplier",
+   "fieldtype": "Link",
+   "label": "Supplier",
+   "options": "Supplier"
+  },
+  {
+   "fieldname": "comments",
+   "fieldtype": "Data",
+   "label": "Comments"
+  },
+  {
+   "fieldname": "column_break_4",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "section_break_8",
+   "fieldtype": "Section Break",
+   "label": "Items"
+  },
+  {
+   "fieldname": "items",
+   "fieldtype": "Table",
+   "hidden": 1,
+   "label": "Items",
+   "options": "Purchase Order Item"
+  },
+  {
+   "fieldname": "item_html",
+   "fieldtype": "HTML",
+   "label": "Item"
+  },
+  {
+   "fieldname": "default_delivery_location",
+   "fieldtype": "Link",
+   "label": "Default Delivery Location",
+   "options": "Location"
+  },
+  {
+   "fieldname": "default_lot",
+   "fieldtype": "Link",
+   "label": "Default Lot",
+   "options": "Lot"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2021-08-30 11:38:59.610809",
+ "modified_by": "Administrator",
+ "module": "Production Api",
+ "name": "Purchase Order",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "track_changes": 1
+}

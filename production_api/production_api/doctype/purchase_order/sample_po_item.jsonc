@@ -1,0 +1,128 @@
+[
+    {
+        "item": "Fusing Sticker",
+        "variants": [
+            {
+                "attributes": {
+                    "Size": "100 cm"
+                },
+                "values": {
+                    "default": {// If there is no primary attribute, then default is used as key for the value
+                        "qty": 20,
+                        "rate": 20,
+                        "lot_mapping": [
+                            {
+                                "idx": 1,
+                                "__islocal": true,
+                                "name": "row 1",
+                                "qty": 20
+                            }
+                        ],
+                        "delivery_mapping": [
+                            {
+                                "idx": 1,
+                                "__islocal": true,
+                                "name": "row 1",
+                                "location": "Location 1(Tirupur)",
+                                "date": "2021-09-02",
+                                "qty": 20
+                            }
+                        ]
+                    }
+                }
+            },
+            {
+                "attributes": {
+                    "Size": "45 cm"
+                },
+                "values": {
+                    "default": {
+                        "qty": 20,
+                        "rate": 20,
+                        "lot_mapping": [
+                            {
+                                "idx": 1,
+                                "__islocal": true,
+                                "name": "row 1",
+                                "qty": 20
+                            }
+                        ],
+                        "delivery_mapping": [
+                            {
+                                "idx": 1,
+                                "__islocal": true,
+                                "name": "row 1",
+                                "location": "Location 1(Tirupur)",
+                                "date": "2021-09-02",
+                                "qty": 20
+                            }
+                        ]
+                    }
+                }
+            }
+        ]
+    },
+    {
+        "item": "Gym Vest",
+        "variants": [
+            {
+                "attributes": {
+                    "Colour": "Meroon"
+                },
+                "values": {
+                    "45 cm": {
+                        "qty": 7,
+                        "rate": 7,
+                        "lot_mapping": [
+                            {
+                                "idx": 1,
+                                "__islocal": true,
+                                "name": "row 1",
+                                "qty": 7
+                            }
+                        ],
+                        "delivery_mapping": [
+                            {
+                                "idx": 1,
+                                "__islocal": true,
+                                "name": "row 1",
+                                "location": "Location 1(Tirupur)",
+                                "date": "2021-09-21",
+                                "qty": 7
+                            }
+                        ]
+                    },
+                    "50 cm": {
+                        "qty": 7,
+                        "rate": 7,
+                        "lot_mapping": [
+                            {
+                                "idx": 1,
+                                "__islocal": true,
+                                "name": "row 1",
+                                "qty": 7
+                            }
+                        ],
+                        "delivery_mapping": [
+                            {
+                                "idx": 1,
+                                "__islocal": true,
+                                "name": "row 1",
+                                "location": "Location 1(Tirupur)",
+                                "date": "2021-09-14",
+                                "qty": 7
+                            }
+                        ]
+                    },
+                    "55 cm": {
+                        "qty": "",
+                        "rate": ""
+                    },
+                    "60 cm": {
+                        "qty": ""
+                    }
+                }
+            }
+        ]
+    }
+]

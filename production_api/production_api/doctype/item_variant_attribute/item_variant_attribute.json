@@ -1,0 +1,41 @@
+{
+ "actions": [],
+ "creation": "2021-09-03 17:12:27.846188",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "attribute",
+  "attribute_value"
+ ],
+ "fields": [
+  {
+   "fieldname": "attribute",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Attribute",
+   "options": "Item Attribute",
+   "reqd": 1
+  },
+  {
+   "fieldname": "attribute_value",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Attribute Value",
+   "reqd": 1
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2021-09-03 17:33:16.749287",
+ "modified_by": "Administrator",
+ "module": "Production Api",
+ "name": "Item Variant Attribute",
+ "owner": "Administrator",
+ "permissions": [],
+ "quick_entry": 1,
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "track_changes": 1
+}

@@ -1,0 +1,41 @@
+{
+ "actions": [],
+ "creation": "2021-08-23 17:34:34.893989",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "product_attribute",
+  "bom_item_attribute"
+ ],
+ "fields": [
+  {
+   "fieldname": "product_attribute",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Product Attribute",
+   "options": "Item Attribute Value",
+   "reqd": 1
+  },
+  {
+   "fieldname": "bom_item_attribute",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "BOM Item Attribute",
+   "options": "Item Attribute Value",
+   "reqd": 1
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2021-08-23 17:34:34.893989",
+ "modified_by": "Administrator",
+ "module": "Production Api",
+ "name": "Item BOM Attribute Mapping Value",
+ "owner": "Administrator",
+ "permissions": [],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "track_changes": 1
+}

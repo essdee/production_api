@@ -1,0 +1,68 @@
+{
+ "actions": [],
+ "autoname": "ITL-.#####",
+ "creation": "2021-08-22 13:38:56.691009",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "item_name",
+  "lead_time",
+  "column_break_3",
+  "supplier"
+ ],
+ "fields": [
+  {
+   "fieldname": "item_name",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Item Name",
+   "options": "Item",
+   "reqd": 1
+  },
+  {
+   "fieldname": "lead_time",
+   "fieldtype": "Float",
+   "in_list_view": 1,
+   "label": "Lead Time(in days)",
+   "reqd": 1
+  },
+  {
+   "allow_in_quick_entry": 1,
+   "fieldname": "column_break_3",
+   "fieldtype": "Column Break"
+  },
+  {
+   "allow_in_quick_entry": 1,
+   "fieldname": "supplier",
+   "fieldtype": "Link",
+   "label": "Supplier",
+   "options": "Supplier"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2021-08-23 17:05:32.161594",
+ "modified_by": "Administrator",
+ "module": "Production Api",
+ "name": "Item Lead Time",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "quick_entry": 1,
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "track_changes": 1
+}
