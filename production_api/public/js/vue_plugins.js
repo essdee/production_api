@@ -4,6 +4,8 @@ import BomAttributeMapping from "./components/BomAttributeMapping.vue";
 import ItemPriceList from "./ItemPriceList";
 import ItemDetail from "./components/ItemDetails.vue";
 
+import PONewItem from "./PurchaseOrder/components/NewItem.vue"
+
 frappe.provide("frappe.production.ui");
 frappe.production.ui.ItemAttributeValues = class {
     constructor({ wrapper, attr_values, attr_name } = {}) {
@@ -69,6 +71,16 @@ frappe.production.ui.ItemDetail = function(wrapper, type, data) {
                 type,
                 data
             }
+        })
+    });
+};
+
+frappe.production.ui.PurchaseOrderItem = function(wrapper) {
+    let $wrapper = $(wrapper);
+    let $page_container = $('<div class="new-item frappe-control">').appendTo($wrapper);
+    return new Vue({
+        el: '.new-item',
+        render: h => h(PONewItem, {
         })
     });
 };

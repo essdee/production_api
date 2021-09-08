@@ -16,7 +16,7 @@
   "uom_conversion_details",
   "secondary_unit_of_measure",
   "attributes_section",
-  "default_attribute",
+  "primary_attribute",
   "attributes",
   "attribute_list_html",
   "bill_of_materials_section",
@@ -78,12 +78,6 @@
    "label": "Attributes"
   },
   {
-   "fieldname": "default_attribute",
-   "fieldtype": "Link",
-   "label": "Default Attribute",
-   "options": "Item Attribute"
-  },
-  {
    "fieldname": "attribute_list_html",
    "fieldtype": "HTML",
    "label": "Attribute List Values"
@@ -126,11 +120,17 @@
    "fieldtype": "Link",
    "label": "Secondary Unit of Measure",
    "options": "UOM"
+  },
+  {
+   "fieldname": "primary_attribute",
+   "fieldtype": "Link",
+   "label": "Primary Attribute",
+   "options": "Item Attribute"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2021-08-24 19:39:47.620860",
+ "modified": "2021-09-07 20:23:10.531128",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Item",

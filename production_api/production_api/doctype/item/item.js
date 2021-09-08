@@ -6,7 +6,7 @@ frappe.ui.form.on('Item', {
 		if (frm.doc.__islocal) {
 			hide_field(["attribute_list_html", "bom_attribute_mapping_html", "price_html"]);
 		} else {
-			unhide_field(["attribute_list_html", "bom_attribute_mapping_html", "price_html"]);
+			unhide_field(["attribute_list_html", "bom_attribute_mapping_html"]);
 
 			// Setting the HTML for the attribute list
 			$(frm.fields_dict['attribute_list_html'].wrapper).html("");
@@ -22,10 +22,10 @@ frappe.ui.form.on('Item', {
 			});
 
 			// Setting the HTML for Item Price List
-			$(frm.fields_dict['price_html'].wrapper).html("");
-			new frappe.production.ui.ItemPriceList({
-				wrapper: frm.fields_dict["price_html"].wrapper,
-			});
+			// $(frm.fields_dict['price_html'].wrapper).html("");
+			// new frappe.production.ui.ItemPriceList({
+			// 	wrapper: frm.fields_dict["price_html"].wrapper,
+			// });
 		}
 	}
 });
