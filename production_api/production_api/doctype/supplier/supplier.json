@@ -83,7 +83,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2021-08-21 19:43:49.444310",
+ "modified": "2021-09-10 20:28:04.327471",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Supplier",
@@ -104,5 +104,6 @@
  ],
  "sort_field": "modified",
  "sort_order": "DESC",
+ "title_field": "supplier_name",
  "track_changes": 1
 }

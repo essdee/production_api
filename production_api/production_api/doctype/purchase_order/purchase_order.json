@@ -1,12 +1,12 @@
 {
  "actions": [],
- "autoname": "PO.#####",
+ "autoname": "naming_series:",
  "creation": "2021-08-26 16:59:17.200111",
  "doctype": "DocType",
  "editable_grid": 1,
  "engine": "InnoDB",
  "field_order": [
-  "po_no",
+  "naming_series",
   "supplier",
   "default_delivery_location",
   "column_break_4",
@@ -19,13 +19,7 @@
  ],
  "fields": [
   {
-   "fieldname": "po_no",
-   "fieldtype": "Data",
-   "in_list_view": 1,
-   "label": "PO No.",
-   "reqd": 1
-  },
-  {
+   "default": "Today",
    "fieldname": "po_date",
    "fieldtype": "Date",
    "in_list_view": 1,
@@ -75,11 +69,19 @@
    "fieldtype": "Link",
    "label": "Default Lot",
    "options": "Lot"
+  },
+  {
+   "fieldname": "naming_series",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "PO Series",
+   "options": "PO-",
+   "reqd": 1
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2021-08-30 11:38:59.610809",
+ "modified": "2021-09-11 10:28:15.992756",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Purchase Order",

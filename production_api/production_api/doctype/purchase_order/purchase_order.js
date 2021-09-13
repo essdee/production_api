@@ -5,6 +5,9 @@ frappe.ui.form.on('Purchase Order', {
 	refresh: function(frm) {
 		$(frm.fields_dict['item_html'].wrapper).html("");
 		frm.newitemvm = frappe.production.ui.PurchaseOrderItem(frm.fields_dict["item_html"].wrapper);
+		if(frm.doc.__onload && frm.doc.__onload.item_details) {
+			frm.doc['item_details'] = JSON.stringify(frm.doc.__onload.item_details);
+		}
 	},
 
 	validate: function(frm) {

@@ -9,8 +9,9 @@
   "qty",
   "secondary_qty",
   "rate",
-  "lot_mapping",
-  "delivery_mapping",
+  "delivery_location",
+  "delivery_date",
+  "lot",
   "comments",
   "table_index",
   "row_index"
@@ -28,18 +29,6 @@
    "fieldtype": "Float",
    "in_list_view": 1,
    "label": "Rate"
-  },
-  {
-   "fieldname": "lot_mapping",
-   "fieldtype": "Link",
-   "label": "Lot Mapping",
-   "options": "Purchase Order Item Lot Mapping"
-  },
-  {
-   "fieldname": "delivery_mapping",
-   "fieldtype": "Link",
-   "label": "Delivery Mapping",
-   "options": "Purchase Order Item Delivery Mapping"
   },
   {
    "fieldname": "comments",
@@ -69,12 +58,29 @@
    "fieldname": "secondary_qty",
    "fieldtype": "Float",
    "label": "Secondary Qty"
+  },
+  {
+   "fieldname": "delivery_location",
+   "fieldtype": "Link",
+   "label": "Delivery Location",
+   "options": "Location"
+  },
+  {
+   "fieldname": "delivery_date",
+   "fieldtype": "Date",
+   "label": "Delivery Date"
+  },
+  {
+   "fieldname": "lot",
+   "fieldtype": "Link",
+   "label": "Lot",
+   "options": "Lot"
   }
  ],
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2021-09-07 20:17:54.130781",
+ "modified": "2021-09-10 19:36:58.489720",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Purchase Order Item",

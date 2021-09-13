@@ -4,31 +4,43 @@
         <table class="table table-sm table-bordered">
             <tr v-for="(i, index) in items" :key="index">
                 <td>
-                    {{i.item}}
-                </td>
-                <td>
+                    <div class="row">
+                        <div class="col">
+                            <span class="bold"> Item: </span>{{ i.item }}
+                        </div>
+                        <div class="col">
+                            <span class="bold"> Delivery Location: </span>{{ i.delivery_location }}
+                        </div>
+                        <div class="col">
+                            <span class="bold"> Expected Delivery Date: </span>{{ i.delivery_date }}
+                        </div>
+                    </div>
+                    <div v-if="is_local" class="pull-right cursor-pointer" @click="removeAt(index)" v-html="frappe.utils.icon('delete', 'md')"></div>
+                    <div v-if="is_local" class="pull-right cursor-pointer" @click="edit(index)" v-html="frappe.utils.icon('edit', 'md', 'mr-1')"></div>
                     <table class="table table-sm table-bordered" v-if="i.variants && i.variants.length > 0">
                         <tr>
                             <th>S.No.</th>
+                            <th>Lot</th>
                             <th v-for="attr in Object.keys(i.variants[0].attributes)" :key="attr">{{ attr }}</th>
-                            <th v-for="attr in Object.keys(i.variants[0].values)" :key="attr">{{ attr }}</th>
+                            <th v-for="attr in Object.keys(i.variants[0].values)" :key="attr">{{ attr == 'default' ? 'Quantity' : attr }}</th>
                         </tr>
                         <tr v-for="(variant, index) in i.variants" :key="index">
                             <td>{{ index + 1 }}</td>
-                            <td  v-for="attr in variant.attributes" :key="attr">{{ attr }}</td>
-                            <td class="cursor-pointer"  v-for="attr, attr_key in variant.values" :key="attr" @click.prevent="show_item_details_dialog(i.item, attr_key == 'default'?'':attr_key, attr)">
+                            <td>{{ variant.lot }}</td>
+                            <td v-for="attr in variant.attributes" :key="attr">{{ attr }}</td>
+                            <td v-for="attr in variant.values" :key="attr">
                                 <div v-if="attr.qty">
                                     {{ attr.qty + ' ' + i.default_uom}}
+                                    <span v-if="attr.secondary_qty">
+                                        <br>
+                                        ({{ attr.secondary_qty + ' ' + i.secondary_uom }})
+                                    </span>
                                     <br>
                                     Rate: {{ attr.rate }}
                                 </div>
                                 <div v-else class="text-center">
                                     ---
                                 </div>
-                            </td>
-                            <td class="">
-                                <button class="btn pull-right" @click="removeAt(index)" v-html="frappe.utils.icon('delete', 'xs')"></button>
-                                <button class="btn pull-right" @click="edit(index)" v-html="frappe.utils.icon('edit', 'xs')"></button>
                             </td>
                         </tr>
                     </table>
@@ -153,6 +165,7 @@ export default {
                 }
             });
         },
+
         addItem() {
             var me = this;
             if(!this.item_input.get_value()) return;
@@ -162,115 +175,7 @@ export default {
             }
             this.show_item_dialog(this.item);
         },
-        show_item_details_dialog: function(item_name, attr, data) {
-            var me = this;
-            let fields = [
-                {
-                    fieldtype: 'Data',
-                    fieldname: "qty",
-                    label: 'Qty',
-                    read_only: 1
-                },
-                {fieldtype:'Column Break'},
-                {
-                    fieldtype: 'Data',
-                    fieldname: "rate",
-                    label: 'Rate',
-                    read_only: 1
-                },
-                {fieldtype:'Section Break'},
-                {
-                    fieldtype: 'Table',
-                    fieldname: "lot_details",
-                    label: __("Lot Details"),
-                    in_place_edit: true,
-                    cannot_add_rows: true,
-                    cannot_delete_rows: true,
-                    data: data.lot_mapping,
-                    get_data: () => {
-                        if(!data.lot_mapping) return [];
-                        return data.lot_mapping;
-                    },
-                    fields: [
-                        {
-                            fieldtype: "Read Only",
-                            fieldname: "lot",
-                            options: "Lot",
-                            label: __("Lot"),
-                            read_only: 0,
-                            in_list_view: 1,
-                            reqd: 1,
-                            read_only: 1,
-                        },
-                        {
-                            fieldtype: "Read Only",
-                            fieldname: "qty",
-                            label: __("Qty"),
-                            read_only: 0,
-                            in_list_view: 1,
-                            reqd: 1,
-                            read_only: 1,
-                        },
-                    ],
-                },
-                {
-                    fieldtype: 'Table',
-                    fieldname: "delivery_details",
-                    label: __("Delivery Details"),
-                    in_place_edit: true,
-                    cannot_add_rows: true,
-                    cannot_delete_rows: true,
-                    data: data.delivery_mapping,
-                    get_data: () => {
-                        if(!data.delivery_mapping) return [];
-                        return data.delivery_mapping;
-                    },
-                    fields: [
-                        {
-                                fieldtype: 'Read Only',
-                                fieldname: 'location',
-                                default: 0,
-                                options: 'Location',
-                                read_only: 1,
-                                in_list_view: 1,
-                                reqd: 1,
-                                label: __('Location'),
-                            },
-                            {
-                                fieldtype: 'Read Only',
-                                fieldname: 'date',
-                                default: 0,
-                                read_only: 1,
-                                in_list_view: 1,
-                                reqd: 1,
-                                label: __('Date'),
-                            },
-                            {
-                                fieldtype: 'Read Only',
-                                fieldname: 'qty',
-                                default: 0,
-                                read_only: 1,
-                                in_list_view: 1,
-                                reqd: 1,
-                                label: __('Qty'),
-                            },
-                    ],
-                },
-            ];
-            var d = new frappe.ui.Dialog({
-                title: item_name + attr,
-                fields: fields,
-                secondary_action_label: 'Cancel',
-                secondary_action(values) {
-                    d.hide();
-                }
-            });
-            d.set_values({
-                'qty': data.qty,
-                'rate': data.rate,
-            });
-            d.show();
-        },
+        
         close_grid_and_dialog: function() {
             // close open grid row
             var open_row = $(".grid-row-open");
@@ -286,6 +191,7 @@ export default {
                 return false;
             }
         },
+
         removeAt(index) {
             if(this.is_edit){
                 if(this.edit_index > index){
@@ -297,11 +203,13 @@ export default {
             }
             this.items.splice(index, 1);
         },
+
         edit(index) {
             if(!this.is_edit) this.is_edit = !this.is_edit;
             this.edit_index = index;
             this.show_item_dialog(JSON.parse(JSON.stringify(this.items[index])));
         },
+
         cancel_edit() {
             this.is_edit = !this.is_edit;
             this.edit_index = -1;
