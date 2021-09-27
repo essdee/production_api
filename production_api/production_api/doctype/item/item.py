@@ -67,8 +67,25 @@ class Item(Document):
 
 	def validate(self):
 		"""Add a empty Mapping Table for each attribute"""
-		if self.primary_attribute not in [attribute.attribute for attribute in self.attributes]:
+		if self.primary_attribute and self.primary_attribute not in [attribute.attribute for attribute in self.attributes]:
 			frappe.throw("Default Attribute must be in Attribute List")
+		
+		if self.get('__islocal'):
+			for attribute in self.get('attributes'):
+				if attribute.mapping:
+					doc = frappe.get_doc("Item Item Attribute Mapping", attribute.mapping)
+					duplicate_doc = frappe.new_doc("Item Item Attribute Mapping")
+					duplicate_doc.values = doc.values
+					duplicate_doc.save()
+					attribute.mapping = duplicate_doc.name
+			
+			for bom in self.get('bom'):
+				if bom.attribute_mapping_based_on and bom.attribute_mapping:
+					doc = frappe.get_doc("Item BOM Attribute Mapping", bom.attribute_mapping)
+					duplicate_doc = frappe.new_doc("Item BOM Attribute Mapping")
+					duplicate_doc.values = doc.values
+					duplicate_doc.save()
+					bom.attribute_mapping = duplicate_doc.name
 		
 		for attribute in self.get('attributes'):
 			if attribute.mapping == None:
@@ -153,7 +170,7 @@ def get_variant(template, args):
 
 	if isinstance(args, string_types):
 		args = json.loads(args)
-	if not args:
+	if not args and item_template.attributes:
 		frappe.throw("Please specify at least one attribute in the Attributes table")
 	return find_variant(template, args)
 
@@ -228,6 +245,24 @@ def get_variants_by_attributes(args, template=None):
 			ORDER BY
 				NULL
 		'''.format(attribute_query=attribute_query, variant_of_query=variant_of_query)
+
+		item_codes = set([r[0] for r in frappe.db.sql(query, query_values)])
+		items.append(item_codes)
+
+	if not args:
+		attribute_query = ' item = %s '
+		query_values = [template]
+		query = '''
+			SELECT 
+				name
+			FROM
+				`tabItem Variant`
+			WHERE
+				1 = 1
+				AND (
+					{attribute_query}
+				)
+		'''.format(attribute_query=attribute_query)
 
 		item_codes = set([r[0] for r in frappe.db.sql(query, query_values)])
 		items.append(item_codes)

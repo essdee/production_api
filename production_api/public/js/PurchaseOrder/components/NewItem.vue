@@ -3,7 +3,7 @@
 
         <table class="table table-sm table-bordered">
             <tr v-for="(i, index) in items" :key="index">
-                <td>
+                <td v-if="i.variants[0].primary_attribute">
                     <div class="row">
                         <div class="col">
                             <span class="bold"> Item: </span>{{ i.item }}
@@ -12,7 +12,7 @@
                             <span class="bold"> Delivery Location: </span>{{ i.delivery_location }}
                         </div>
                         <div class="col">
-                            <span class="bold"> Expected Delivery Date: </span>{{ i.delivery_date }}
+                            <span class="bold"> Delivery Date: </span>{{ format(i.delivery_date, { fieldtype: 'Date' }) }}
                         </div>
                     </div>
                     <div v-if="is_local" class="pull-right cursor-pointer" @click="removeAt(index)" v-html="frappe.utils.icon('delete', 'md')"></div>
@@ -36,12 +36,42 @@
                                         ({{ attr.secondary_qty + ' ' + i.secondary_uom }})
                                     </span>
                                     <br>
-                                    Rate: {{ attr.rate }}
+                                    Rate: {{ format(attr.rate, { fieldtype: 'Currency', options: 'currency' }, { inline: true }) }}
                                 </div>
                                 <div v-else class="text-center">
                                     ---
                                 </div>
                             </td>
+                        </tr>
+                    </table>
+                </td>
+                <td v-else>
+                    <table class="table table-sm table-bordered" v-if="i.variants && i.variants.length > 0">
+                        <tr>
+                            <th>S.No.</th>
+                            <th>Item</th>
+                            <th>Lot</th>
+                            <th v-for="attr in Object.keys(i.variants[0].attributes)" :key="attr">{{ attr }}</th>
+                            <th>Quantity</th>
+                            <th>Rate</th>
+                            <th>Delivery Location</th>
+                            <th>Delivery Date</th>
+                        </tr>
+                        <tr v-for="(variant, index) in i.variants" :key="index">
+                            <td>{{ index + 1 }}</td>
+                            <td>{{ i.item }}</td>
+                            <td>{{ variant.lot }}</td>
+                            <td v-for="attr in variant.attributes" :key="attr">{{ attr }}</td>
+                            <td>
+                                {{ variant.values['default'].qty + ' ' + i.default_uom}}
+                                <span v-if="variant.values['default'].secondary_qty">
+                                    <br>
+                                    ({{ variant.values['default'].secondary_qty + ' ' + i.secondary_uom }})
+                                </span>
+                            </td>
+                            <td>{{ format(variant.values['default'].rate, { fieldtype: 'Currency', options: 'currency' }, { inline: true }) }}</td>
+                            <td>{{ i.delivery_location }}</td>
+                            <td>{{ format(i.delivery_date, { fieldtype: 'Date' }) }}</td>
                         </tr>
                     </table>
                 </td>
@@ -82,6 +112,9 @@ export default {
             this.create_item_input();
     },
     methods: {
+        format: function(value, df, options, doc){
+            return frappe.format(value, df, options, doc)
+        },
         create_item_input: function() {
             this.item_input = frappe.ui.form.make_control({
                 parent: $(this.$el).find('.item-control'),

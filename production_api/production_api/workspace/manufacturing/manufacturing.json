@@ -1,4 +1,5 @@
 {
+ "cards_label": "Masters",
  "category": "Modules",
  "charts": [],
  "creation": "2021-09-08 13:24:33.870152",
@@ -13,8 +14,35 @@
  "is_default": 0,
  "is_standard": 1,
  "label": "Manufacturing",
- "links": [],
- "modified": "2021-09-08 13:24:33.870152",
+ "links": [
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Item",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Item",
+   "link_to": "Item",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Item Attribute",
+   "link_to": "Item Attribute",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  }
+ ],
+ "modified": "2021-09-24 17:34:08.637535",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Manufacturing",
@@ -35,9 +63,18 @@
    "type": "DocType"
   },
   {
+   "color": "",
    "doc_view": "",
+   "format": "{} Active",
    "label": "Item",
    "link_to": "Item",
+   "stats_filter": "{\n    \"disabled\" : 0\n}",
+   "type": "DocType"
+  },
+  {
+   "doc_view": "",
+   "label": "Supplier",
+   "link_to": "Supplier",
    "type": "DocType"
   }
  ]

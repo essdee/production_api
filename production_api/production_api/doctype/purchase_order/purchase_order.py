@@ -2,8 +2,10 @@
 # For license information, please see license.txt
 
 import frappe
+from frappe import throw, _
 import json, copy
 from six import string_types
+from jinja2 import TemplateSyntaxError
 from frappe.model.document import Document
 from production_api.production_api.doctype.item.item import get_variant, create_variant, get_attribute_details
 
@@ -13,6 +15,7 @@ class PurchaseOrder(Document):
 		print('in onload')
 		item_details = fetch_item_details(self.get('items'))
 		print(item_details)
+		self.set('print_item_details', json.dumps(item_details))
 		self.set_onload('item_details', item_details)
 	
 	def before_validate(self):
@@ -101,7 +104,7 @@ def copy_item_details(variant, item, attribute_details):
 		if attr.attribute in attribute_details['attributes']:
 			variant['attributes'][attr.attribute] = attr.attribute_value
 	
-
+@frappe.whitelist()
 def fetch_item_details(items):
 	
 	item_purchase_details = []
@@ -124,7 +127,7 @@ def fetch_item_details(items):
 			current_row_index = 0
 			item_details['item'] = current_item.item
 			item_details['delivery_location'] = item.delivery_location
-			item_details['delivery_date'] = item.delivery_date
+			item_details['delivery_date'] = str(item.delivery_date)
 			current_item_attribute_details = get_attribute_details(current_item.item)
 			item_details['default_uom'] = current_item_attribute_details['default_uom']
 			item_details['secondary_uom'] = current_item_attribute_details['secondary_uom']
@@ -153,5 +156,22 @@ def fetch_item_details(items):
 	return item_purchase_details
 			
 
-		
+@frappe.whitelist()
+def get_address_display(address_dict):
+	if not address_dict:
+		return
+
+	if not isinstance(address_dict, dict):
+		address_dict = frappe.db.get_value("Address", address_dict, "*", as_dict=True, cache=True) or {}
+
+	# name, template = get_address_templates(address_dict)
+	template = '''
+		{{ address_line1 }}, {% if address_line2 %}{{ address_line2 }}{% endif -%}<br>
+		{{ city }}, {% if state %}{{ state }}{% endif -%}{% if pincode %} - {{ pincode }}{% endif -%}
+	'''
+
+	try:
+		return frappe.render_template(template, address_dict)
+	except TemplateSyntaxError:
+		frappe.throw(_("There is an error in your Address Template"))
 		
