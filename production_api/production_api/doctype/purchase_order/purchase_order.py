@@ -2,8 +2,10 @@
 # For license information, please see license.txt
 
 import frappe
+from frappe import throw, _
 import json, copy
 from six import string_types
+from jinja2 import TemplateSyntaxError
 from frappe.model.document import Document
 from production_api.production_api.doctype.item.item import get_variant, create_variant, get_attribute_details
 
@@ -13,6 +15,7 @@ class PurchaseOrder(Document):
 		print('in onload')
 		item_details = fetch_item_details(self.get('items'))
 		print(item_details)
+		self.set('print_item_details', json.dumps(item_details))
 		self.set_onload('item_details', item_details)
 	
 	def before_validate(self):
@@ -35,6 +38,8 @@ def save_item_details(item_details):
 	items = []
 	for table_index, item in enumerate(item_details):
 		item_name = item['item']
+		delivery_location = item['delivery_location']
+		delivery_date = item['delivery_date']
 		for row_index, variant in enumerate(item['variants']):
 			variant_attributes = variant['attributes']
 			if(variant.get('primary_attribute')):
@@ -52,19 +57,9 @@ def save_item_details(item_details):
 							variant1.insert()
 							variant_name = variant1.name
 						item['item_variant'] = variant_name
-
-						if values.get('lot_mapping'):
-							lot_mapping = frappe.new_doc("Purchase Order Item Lot Mapping")
-							lot_mapping.set("values", values.get('lot_mapping'))
-							lot_mapping.insert()
-							item['lot_mapping'] = lot_mapping.name
-						
-						if values.get('delivery_mapping'):
-							delivery_mapping = frappe.new_doc("Purchase Order Item Delivery Mapping")
-							delivery_mapping.set("values", values.get('delivery_mapping'))
-							delivery_mapping.insert()
-							item['delivery_mapping'] = delivery_mapping.name
-						
+						item['delivery_location'] = delivery_location
+						item['delivery_date'] = delivery_date
+						item['lot'] = variant.get('lot')
 						item['qty'] = values.get('qty')
 						item['secondary_qty'] = values.get('secondary_qty')
 						item['rate'] = values.get('rate')
@@ -82,19 +77,9 @@ def save_item_details(item_details):
 						variant1.insert()
 						variant_name = variant1.name
 					item['item_variant'] = variant_name
-
-					if variant['values']['default'].get('lot_mapping'):
-						lot_mapping = frappe.new_doc("Purchase Order Item Lot Mapping")
-						lot_mapping.set("values", variant['values']['default'].get('lot_mapping'))
-						lot_mapping.insert()
-						item['lot_mapping'] = lot_mapping.name
-					
-					if variant['values']['default'].get('delivery_mapping'):
-						delivery_mapping = frappe.new_doc("Purchase Order Item Delivery Mapping")
-						delivery_mapping.set("values", variant['values']['default'].get('delivery_mapping'))
-						delivery_mapping.insert()
-						item['delivery_mapping'] = delivery_mapping.name
-					
+					item['delivery_location'] = delivery_location
+					item['delivery_date'] = delivery_date
+					item['lot'] = variant.get('lot')
 					item['qty'] = variant['values']['default'].get('qty')
 					item['secondary_qty'] = variant['values']['default'].get('secondary_qty')
 					item['rate'] = variant['values']['default'].get('rate')
@@ -105,6 +90,7 @@ def save_item_details(item_details):
 	return items
 
 def copy_item_details(variant, item, attribute_details):
+	variant['lot'] = ''
 	variant['attributes'] = {}
 	variant['values'] = {}
 	if attribute_details['primary_attribute']:
@@ -118,7 +104,7 @@ def copy_item_details(variant, item, attribute_details):
 		if attr.attribute in attribute_details['attributes']:
 			variant['attributes'][attr.attribute] = attr.attribute_value
 	
-
+@frappe.whitelist()
 def fetch_item_details(items):
 	
 	item_purchase_details = []
@@ -127,7 +113,7 @@ def fetch_item_details(items):
 	current_table_index = -1
 	current_row_index = -1
 	current_item_attribute_details = {}
-	current_variant_details = {}
+	
 	variant = {}
 	for item in items:
 		current_item = frappe.get_doc("Item Variant", item.item_variant)
@@ -140,39 +126,28 @@ def fetch_item_details(items):
 			current_table_index = item.table_index
 			current_row_index = 0
 			item_details['item'] = current_item.item
+			item_details['delivery_location'] = item.delivery_location
+			item_details['delivery_date'] = str(item.delivery_date)
 			current_item_attribute_details = get_attribute_details(current_item.item)
 			item_details['default_uom'] = current_item_attribute_details['default_uom']
 			item_details['secondary_uom'] = current_item_attribute_details['secondary_uom']
 			item_details['variants'] = []
 			copy_item_details(variant, current_item, current_item_attribute_details)
-			# current_variant_details = copy.deepcopy(variant)
+			variant['lot'] = item.lot
 
 		if current_row_index != item.row_index:
 			item_details['variants'].append(variant)
 			variant = {}
 			copy_item_details(variant, current_item, current_item_attribute_details)
-			# variant = copy.deepcopy(current_variant_details)
+			variant['lot'] = item.lot
 		
 		if variant.get('primary_attribute'):
 			for attr in current_item.attributes:
 				if attr.attribute == variant.get('primary_attribute'):
-					print(attr.attribute_value)
 					variant['values'][attr.attribute_value] = {'qty': item.qty, 'secondary_qty': item.secondary_qty, 'rate': item.rate}
-					if item.get('lot_mapping'):
-						lot_mapping = frappe.get_doc("Purchase Order Item Lot Mapping", item.get('lot_mapping'))
-						variant['values'][attr.attribute_value]['lot_mapping'] = lot_mapping.values
-					if item.get('delivery_mapping'):
-						delivery_mapping = frappe.get_doc("Purchase Order Item Delivery Mapping", item.get('delivery_mapping'))
-						variant['values'][attr.attribute_value]['delivery_mapping'] = delivery_mapping.values
 					break
 		else:
 			variant['values']['default'] = {'qty': item.qty, 'secondary_qty': item.secondary_qty, 'rate': item.rate}
-			if item.get('lot_mapping'):
-				lot_mapping = frappe.get_doc("Purchase Order Item Lot Mapping", item.get('lot_mapping'))
-				variant['values']['default']['lot_mapping'] = lot_mapping.values
-			if item.get('delivery_mapping'):
-				delivery_mapping = frappe.get_doc("Purchase Order Item Delivery Mapping", item.get('delivery_mapping'))
-				variant['values']['default']['delivery_mapping'] = delivery_mapping.values
 	
 	if variant:
 		item_details['variants'].append(variant)
@@ -181,5 +156,22 @@ def fetch_item_details(items):
 	return item_purchase_details
 			
 
-		
+@frappe.whitelist()
+def get_address_display(address_dict):
+	if not address_dict:
+		return
+
+	if not isinstance(address_dict, dict):
+		address_dict = frappe.db.get_value("Address", address_dict, "*", as_dict=True, cache=True) or {}
+
+	# name, template = get_address_templates(address_dict)
+	template = '''
+		{{ address_line1 }}, {% if address_line2 %}{{ address_line2 }}{% endif -%}<br>
+		{{ city }}, {% if state %}{{ state }}{% endif -%}{% if pincode %} - {{ pincode }}{% endif -%}
+	'''
+
+	try:
+		return frappe.render_template(template, address_dict)
+	except TemplateSyntaxError:
+		frappe.throw(_("There is an error in your Address Template"))
 		

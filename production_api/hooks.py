@@ -127,3 +127,8 @@ app_include_js = "/assets/js/production_api.min.js"
 # 	"Task": "production_api.task.get_dashboard_data"
 # }
 
+jenv = {
+    "methods": [
+        "fetch_item_details:production_api.production_api.doctype.purchase_order.purchase_order.fetch_item_details"
+    ]
+}

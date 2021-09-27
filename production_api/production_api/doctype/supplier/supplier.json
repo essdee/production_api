@@ -6,17 +6,16 @@
  "editable_grid": 1,
  "engine": "InnoDB",
  "field_order": [
-  "disabled",
   "supplier_name",
   "pan",
-  "deparments",
   "address_html",
+  "column_break_4",
+  "disabled",
+  "deparments",
   "contact_html",
-  "item_price_html",
-  "item_lead_time_html",
+  "section_break_8",
   "account_mappings",
-  "item_price_list_section",
-  "item_price_list_html"
+  "section_break_10"
  ],
  "fields": [
   {
@@ -55,35 +54,27 @@
    "label": "Contact"
   },
   {
-   "fieldname": "item_price_html",
-   "fieldtype": "HTML",
-   "label": "Item Price"
-  },
-  {
-   "fieldname": "item_lead_time_html",
-   "fieldtype": "HTML",
-   "label": "Item Lead Time"
-  },
-  {
    "fieldname": "account_mappings",
    "fieldtype": "Table",
    "label": "Account Mappings",
    "options": "Supplier Account Mapping"
   },
   {
-   "fieldname": "item_price_list_section",
-   "fieldtype": "Section Break",
-   "label": "Item Price List"
+   "fieldname": "column_break_4",
+   "fieldtype": "Column Break"
   },
   {
-   "fieldname": "item_price_list_html",
-   "fieldtype": "HTML",
-   "label": "Item Price List"
+   "fieldname": "section_break_8",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "section_break_10",
+   "fieldtype": "Section Break"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2021-08-21 19:43:49.444310",
+ "modified": "2021-09-20 17:15:34.916664",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Supplier",
@@ -104,5 +95,6 @@
  ],
  "sort_field": "modified",
  "sort_order": "DESC",
+ "title_field": "supplier_name",
  "track_changes": 1
 }

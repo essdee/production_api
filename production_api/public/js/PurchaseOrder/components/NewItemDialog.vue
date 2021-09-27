@@ -8,12 +8,8 @@
                         <input class="form-control input-sm" id="item" type="text" v-model="item.item" placeholder="Enter Item" disabled>
                     </div>
                 </div>
-                <!-- <div class="default-lot-control col">
-                    <div><label for="lot" class="control-label">Default Lot:</label></div>
-                    <div>
-                        <input class="form-control input-sm" id="lot" type="text" v-model="default_lot" placeholder="Enter Lot">
-                    </div>
-                </div> -->
+                <div class="default-location-control col"></div>
+                <div class="default-date-control col"></div>
             </div>
             <div class="row" v-if="secondary_uom">
                 <div class="col checkbox">
@@ -29,16 +25,27 @@
             <table class="table table-sm table-bordered" v-if="item.variants && item.variants.length > 0">
                 <tr>
                     <th>S.No.</th>
-                    <th v-for="attribute in attributes" :key="attribute">{{ attribute }}</th>
-                    <th v-for="attr in primary_attribute_values" :key="attr.idx">{{ attr.attribute_value }}</th>
-                    <th v-if="!primary_attribute">Quantity</th>
+                    <th>Lot</th>
+                    <th v-for="attr in Object.keys(item.variants[0].attributes)" :key="attr">{{ attr }}</th>
+                    <th v-for="attr in Object.keys(item.variants[0].values)" :key="attr">{{ attr == 'default' ? 'Quantity' : attr }}</th>
                 </tr>
-                <tr v-for="(i, index) in item.variants" :key="index">
+                <tr v-for="(variant, index) in item.variants" :key="index">
                     <td>{{ index + 1 }}</td>
-                    <td v-for="attribute in attributes" :key="attribute">{{ i.attributes[attribute] }}</td>
-                    <td class="cursor-pointer" v-for="attr in primary_attribute_values" :key="attr" @click.prevent="show_item_details_dialog(item.item, attr, i.values[attr.attribute_value])">{{ i.values[attr.attribute_value]['qty'] }}</td>
-                    <td class="cursor-pointer" v-if="!primary_attribute" @click.prevent="show_item_details_dialog(item.item, '', i.values['default'])">{{ i.values['default']['qty'] }}</td>
-                    <td class="">
+                    <td>{{ variant.lot }}</td>
+                    <td v-for="attribute in variant.attributes" :key="attribute">{{ attribute }}</td>
+                    <td v-for="attr in variant.values" :key="attr">
+                        <div v-if="attr.qty">
+                            {{ attr.qty + ' ' + default_uom}}
+                            <span v-if="attr.secondary_qty">
+                                <br>
+                                ({{ attr.secondary_qty + ' ' + secondary_uom }})
+                            </span>
+                            <br>
+                            Rate: {{ attr.rate }}
+                        </div>
+                        <div v-else class="text-center">---</div>
+                    </td>
+                    <td>
                         <button class="btn pull-right" @click="removeAt(index)" v-html="frappe.utils.icon('delete', 'xs')"></button>
                         <button class="btn pull-right" @click="edit(index)" v-html="frappe.utils.icon('edit', 'xs')"></button>
                     </td>
@@ -47,6 +54,9 @@
         </div>
 
         <form class="form-section p-2" @submit.prevent="addVariant()">
+            <div class="row">
+                <div class="default-lot-control col-md-6"></div>
+            </div>
             <div class="row">
                 <div class="item-attribute-controls col-md-6"></div>
                 <div class="item-attribute-controls-right col-md-6"></div>
@@ -66,7 +76,7 @@
                         <label class="small text-muted">
                             {{ secondary_uom }}
                         </label>
-                        <input class="form-control" type="number" min="0.000" step="0.001" v-model.number="variant.values[attr.attribute_value]['sec_qty']">
+                        <input class="form-control" type="number" min="0.000" step="0.001" v-model.number="variant.values[attr.attribute_value]['secondary_qty']">
                     </div>
                     <div>
                         <label class="small text-muted">
@@ -74,11 +84,6 @@
                         </label>
                         <input class="form-control" type="number" min="0.000" step="0.001" v-model.number="variant.values[attr.attribute_value]['rate']">
                     </div>
-                    <button type="button" class="btn mt-2" 
-                    :class="variant.values[attr.attribute_value] && variant.values[attr.attribute_value].mapping_qty == variant.values[attr.attribute_value].qty?'btn-success':'btn-warning'" 
-                    @click.prevent="showlotdialog(attr.attribute_value)" tabindex="-1">
-                    Delivery and Lot Mapping
-                    </button>
                 </div>
             </div>
             <div class="row" v-else>
@@ -100,20 +105,12 @@
                     </label>
                     <input class="form-control" type="number" min="0.000" step="0.001" v-model.number="variant.values['default']['rate']">
                 </div>
-                <button type="button" class="btn mt-2" 
-                :class="variant.values['default'] && variant.values['default'].mapping_qty == variant.values['default'].qty?'btn-success':'btn-warning'" 
-                @click.prevent="showlotdialog('default')" tabindex="-1">Delivery and Lot Mapping</button>
             </div>
             <div>
-                <button v-if="!is_edit" type="submit" class="btn btn-success">Add</button>
+                <button v-if="!is_edit" type="submit" class="btn btn-success pull-right">Add</button>
                 <button v-if="is_edit" type="submit" class="btn btn-warning">Update</button>
                 <button v-if="is_edit" type="button" @click.prevent="cancel_edit()" class="btn ">Cancel</button>
             </div>
-        </form>
-        <form>
-            <div class="default-lot-control"></div>
-            <div class="default-location-control"></div>
-            <div class="default-date-control"></div>
         </form>
     </div>
 </template>
@@ -132,7 +129,9 @@ export default {
             secondary_quantity: Boolean(this.secondary_uom),
             default_lot: '',
             attribute_inputs: [],
-            default_value_inputs: [],
+            default_lot_input: null,
+            default_location_input: null,
+            default_date_input: null,
             is_edit: false,
             edit_index: -1
         };
@@ -146,11 +145,13 @@ export default {
     mounted() {
         console.log('Mounted Dialog');
         this.create_attribute_input();
+        this.create_default_inputs();
     },
     methods: {
         create_attribute_input: function(){
             this.attribute_inputs = [];
-            for(let i = 0; i < this.attributes.length; i++){
+            let i = 0;
+            for(i = 0; i < this.attributes.length; i++){
                 let attribute = this.attributes[i];
                 let attribute_name = attribute.charAt(0).toUpperCase() + attribute.slice(1);
                 let classname = '';
@@ -176,14 +177,34 @@ export default {
             }
             console.log(this.attribute_inputs[0]);
         },
+
         clear_attribute_input: function(){
             for(let i = 0; i < this.attribute_inputs.length; i++){
                 this.attribute_inputs[i].set_value('');
             }
         },
-        create_default_inputs: function(){
-            this.default_value_inputs = [];
-            this.default_value_inputs[0] = frappe.ui.form.make_control({
+
+        create_default_inputs: function() {
+            this.default_location_input = frappe.ui.form.make_control({
+                parent: $(this.$el).find('.default-location-control'),
+                df: {
+                    fieldtype: 'Link',
+                    options: 'Location',
+                    label: 'Default Delivery Location',
+                    reqd: 1
+                },
+                render_input: true,
+            });
+            this.default_date_input = frappe.ui.form.make_control({
+                parent: $(this.$el).find('.default-date-control'),
+                df: {
+                    fieldtype: 'Date',
+                    label: 'Default Delivery Date',
+                    reqd: 1
+                },
+                render_input: true,
+            });
+            this.default_lot_input = frappe.ui.form.make_control({
                 parent: $(this.$el).find('.default-lot-control'),
                 df: {
                     fieldtype: 'Link',
@@ -193,37 +214,17 @@ export default {
                 },
                 render_input: true,
             });
-            this.default_value_inputs[1] = frappe.ui.form.make_control({
-                parent: $(this.$el).find('.default-location-control'),
-                df: {
-                    fieldtype: 'Link',
-                    options: 'Location',
-                    label: 'Location',
-                    reqd: 1
-                },
-                render_input: true,
-            });
-            this.default_value_inputs[2] = frappe.ui.form.make_control({
-                parent: $(this.$el).find('.default-date-control'),
-                df: {
-                    fieldtype: 'Date',
-                    label: 'Date',
-                    reqd: 1
-                },
-                render_input: true,
-            });
-        },
-        clear_default_inputs: function(){
-            for(let i = 0; i < this.default_value_inputs.length; i++){
-                this.default_value_inputs[i].set_value('');
+            if(this.item.delivery_location){
+                this.default_location_input.set_value(this.item.delivery_location);
+            }
+            if(this.item.delivery_date){
+                this.default_date_input.set_value(this.item.delivery_date);
             }
         },
-        set_defaults: function(){
-            // Used to set lot and delivery details to current variant
 
-        },
         newVariant: function() {
             this.variant = {
+                lot: '',
                 attributes: {},
                 values: {}
             };
@@ -239,16 +240,25 @@ export default {
                 this.variant.values['default'] = {};
             }
         },
+
         addVariant: function(){
             for(let i = 0; i < this.attributes.length; i++){
                 let attribute = this.attributes[i];
                 let value = this.attribute_inputs[i].get_value();
                 if(!value) {
+                    this.attribute_inputs[i].$input.select();
                     frappe.msgprint(__('Attribute '+ attribute + ' does not have a value'));
                     return;
                 }
                 this.variant.attributes[attribute] = value;
             }
+            let value = this.default_lot_input.get_value();
+            if(!value) {
+                this.default_lot_input.$input.select();
+                frappe.msgprint(__('Enter Lot to continue'));
+                return;
+            }
+            this.variant.lot = value;
             if(this.is_edit){
                 this.update_variant();
                 return;
@@ -256,119 +266,17 @@ export default {
             this.item.variants.push(this.variant);
             this.newVariant();
             this.clear_attribute_input();
+            this.default_lot_input.$input.select();
         },
+
         update_variant: function() {
-            this.item.variants[this.edit_index] = this.variant;
+            this.item.variants[this.edit_index] = JSON.parse(JSON.stringify(this.variant));
             this.newVariant();
             this.clear_attribute_input();
             this.is_edit = false;
             this.edit_index = -1;
         },
-        showlotdialog: function(attr) {
-            var me = this;
-            this.lotdialog = new frappe.ui.Dialog({
-                title: __('Delivery and Lot Details'),
-                static: true,
-                primary_action_label: 'Save',
-                primary_action(values) {
-                    console.log(values);
-                    if(!me.validate_lot_details(attr, values.lot_details) || !me.validate_delivery_details(attr, values.delivery_details)) return;
-                    me.variant.values[attr]['lot_mapping'] = values.lot_details;
-                    me.variant.values[attr].delivery_mapping = values.delivery_details;
-                    me.variant.values[attr].mapping_qty = me.variant.values[attr].qty;
-                    me.lotdialog.hide();
-                },
-                secondary_action_label: 'Cancel',
-                secondary_action(values) {
-                    me.lotdialog.hide();
-                },
-                fields: [
-                    {
-                        fieldtype: "Section Break",
-                    },
-                    {
-                        fieldtype: "Table",
-                        fieldname: "lot_details",
-                        label: __("Lot Details"),
-                        in_place_edit: true,
-                        get_data: () => {
-                            if(!this.variant.values[attr].lot_mapping) return [];
-                            return JSON.parse(JSON.stringify(this.variant.values[attr].lot_mapping));
-                        },
-                        fields: [
-                            {
-                                fieldtype: "Link",
-                                fieldname: "lot",
-                                options: "Lot",
-                                label: __("Lot"),
-                                read_only: 0,
-                                in_list_view: 1,
-                                reqd: 1,
-                            },
-                            {
-                                fieldtype: "Float",
-                                fieldname: "qty",
-                                label: __("Qty"),
-                                read_only: 0,
-                                in_list_view: 1,
-                                reqd: 1,
-                            },
-                        ]
 
-                    },
-                    {
-                        fieldtype: "Section Break",
-                    },
-                    {
-                        fieldtype: 'Table',
-                        fieldname: 'delivery_details',
-                        label: "Delivery Details",
-                        in_place_edit: true,
-						get_data: () => {
-                            if(!this.variant.values[attr].delivery_mapping) return [];
-                            return JSON.parse(JSON.stringify(this.variant.values[attr].delivery_mapping));
-						},
-                        fields: [
-                            {
-                                fieldtype: 'Link',
-                                fieldname: 'location',
-                                default: 0,
-                                options: 'Location',
-                                read_only: 0,
-                                in_list_view: 1,
-                                reqd: 1,
-                                label: __('Location'),
-                            },
-                            {
-                                fieldtype: 'Date',
-                                fieldname: 'date',
-                                default: 0,
-                                read_only: 0,
-                                in_list_view: 1,
-                                reqd: 1,
-                                label: __('Date'),
-                            },
-                            {
-                                fieldtype: 'Float',
-                                fieldname: 'qty',
-                                default: 0,
-                                read_only: 0,
-                                in_list_view: 1,
-                                reqd: 1,
-                                label: __('Qty'),
-                            },
-                        ],
-                    }
-                ]
-            });
-            this.lotdialog.show();
-            this.lotdialog.$wrapper.find('.modal-dialog').css("max-width", "900px");
-        },
-        updatevariantlotdetails: function(lot_details) {
-            console.log(lot_details);
-            this.variant.values[lot_details.attr]['lot_mapping'] = lot_details.lot_mapping;
-            console.log(this.variant);
-        },
         removeAt(index) {
             if(this.is_edit){
                 if(this.edit_index > index){
@@ -380,6 +288,7 @@ export default {
             }
             this.item.variants.splice(index, 1);
         },
+
         edit(index) {
             if(!this.is_edit) this.is_edit = !this.is_edit;
             this.edit_index = index;
@@ -387,151 +296,37 @@ export default {
                 let attribute = this.attributes[i];
                 this.attribute_inputs[i].set_value(this.item.variants[index]['attributes'][attribute]);
             }
+            this.default_lot_input.set_value(this.item.variants[index]['lot']);
             this.variant = JSON.parse(JSON.stringify(this.item.variants[index]));
         },
+
         cancel_edit() {
             this.is_edit = !this.is_edit;
             this.edit_index = -1;
             this.newVariant();
             this.clear_attribute_input();
         },
+
         saveitem(){
             console.log(this.item);
+            let delivery_location = this.default_location_input.get_value();
+            if(!delivery_location) {
+                this.default_location_input.$input.select();
+                frappe.msgprint(__('Enter Delivery Location to continue'));
+                return;
+            }
+            this.item.delivery_location = delivery_location;
+            let delivery_date = this.default_date_input.get_value();
+            if(!delivery_date) {
+                this.default_date_input.$input.select();
+                frappe.msgprint(__('Enter Delivery date to continue'));
+                return;
+            }
+            this.item.delivery_date = delivery_date;
             if(this.item.variants.length > 0) {
                 return this.item;
             }
             return null;
-        },
-        show_item_details_dialog: function(item_name, attr, data) {
-            var me = this;
-            let fields = [
-                {
-                    fieldtype: 'Data',
-                    fieldname: "qty",
-                    label: 'Qty',
-                    read_only: 1
-                },
-                {fieldtype:'Column Break'},
-                {
-                    fieldtype: 'Data',
-                    fieldname: "rate",
-                    label: 'Rate',
-                    read_only: 1
-                },
-                {fieldtype:'Section Break'},
-                {
-                    fieldtype: 'Table',
-                    fieldname: "lot_details",
-                    label: __("Lot Details"),
-                    in_place_edit: true,
-                    cannot_add_rows: true,
-                    cannot_delete_rows: true,
-                    data: data.lot_mapping,
-                    get_data: () => {
-                        if(!data.lot_mapping) return [];
-                        return data.lot_mapping;
-                    },
-                    fields: [
-                        {
-                            fieldtype: "Read Only",
-                            fieldname: "lot",
-                            options: "Lot",
-                            label: __("Lot"),
-                            read_only: 0,
-                            in_list_view: 1,
-                            reqd: 1,
-                        },
-                        {
-                            fieldtype: "Read Only",
-                            fieldname: "qty",
-                            label: __("Qty"),
-                            read_only: 0,
-                            in_list_view: 1,
-                            reqd: 1,
-                        },
-                    ],
-                },
-                {
-                    fieldtype: 'Table',
-                    fieldname: "delivery_details",
-                    label: __("Delivery Details"),
-                    in_place_edit: true,
-                    cannot_add_rows: true,
-                    cannot_delete_rows: true,
-                    data: data.delivery_mapping,
-                    get_data: () => {
-                        if(!data.delivery_mapping) return [];
-                        return data.delivery_mapping;
-                    },
-                    fields: [
-                        {
-                                fieldtype: 'Read Only',
-                                fieldname: 'location',
-                                default: 0,
-                                options: 'Location',
-                                read_only: 1,
-                                in_list_view: 1,
-                                reqd: 1,
-                                label: __('Location'),
-                            },
-                            {
-                                fieldtype: 'Read Only',
-                                fieldname: 'date',
-                                default: 0,
-                                read_only: 1,
-                                in_list_view: 1,
-                                reqd: 1,
-                                label: __('Date'),
-                            },
-                            {
-                                fieldtype: 'Read Only',
-                                fieldname: 'qty',
-                                default: 0,
-                                read_only: 1,
-                                in_list_view: 1,
-                                reqd: 1,
-                                label: __('Qty'),
-                            },
-                    ],
-                },
-            ];
-            var d = new frappe.ui.Dialog({
-                title: item_name + attr,
-                fields: fields,
-                secondary_action_label: 'Cancel',
-                secondary_action(values) {
-                    d.hide();
-                }
-            });
-            d.set_values({
-                'qty': data.qty,
-                'rate': data.rate,
-            });
-            d.show();
-        },
-        validate_lot_details: function(attr, lot_details){
-            if(!lot_details || lot_details.length < 1) return false;
-            let total_qty = 0;
-            for(let i = 0; i < lot_details.length; i++){
-                total_qty += lot_details[i]['qty'];
-            }
-            if(total_qty != this.variant.values[attr]['qty']){
-                frappe.msgprint(__('Total Qty in Lot Details must be equal to Qty'));
-                return false;
-            }
-            return true;
-        },
-        validate_delivery_details: function(attr, delivery_details){
-            if(!delivery_details || delivery_details.length < 1) return false;
-            let total_qty = 0;
-            for(let i = 0; i < delivery_details.length; i++){
-                total_qty += delivery_details[i]['qty'];
-            }
-            if(total_qty != this.variant.values[attr]['qty']){
-                frappe.msgprint(__('Total Qty in Delivery Details must be equal to Qty'));
-                return false;
-            }
-            return true;
         },
     }
 }

@@ -4,5 +4,5 @@
 # import frappe
 import unittest
 
-class TestPurchaseOrderItemLotMapping(unittest.TestCase):
+class TestCompanySettings(unittest.TestCase):
 	pass
