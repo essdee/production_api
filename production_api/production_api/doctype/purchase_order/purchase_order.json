@@ -28,7 +28,9 @@
   "items",
   "item_html",
   "section_break_17",
-  "comments"
+  "comments",
+  "print_settings_section",
+  "show_delivery_details"
  ],
  "fields": [
   {
@@ -48,7 +50,7 @@
   },
   {
    "fieldname": "comments",
-   "fieldtype": "Data",
+   "fieldtype": "Small Text",
    "label": "Comments"
   },
   {
@@ -170,11 +172,22 @@
    "fieldtype": "Link",
    "label": "Supplier Contact",
    "options": "Contact"
+  },
+  {
+   "fieldname": "print_settings_section",
+   "fieldtype": "Section Break",
+   "label": "Print Settings"
+  },
+  {
+   "default": "0",
+   "fieldname": "show_delivery_details",
+   "fieldtype": "Check",
+   "label": "Show Delivery Details"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2021-09-23 15:42:20.214113",
+ "modified": "2021-09-28 17:51:00.526014",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Purchase Order",
