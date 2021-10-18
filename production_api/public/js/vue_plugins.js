@@ -5,6 +5,7 @@ import ItemPriceList from "./ItemPriceList";
 import ItemDetail from "./components/ItemDetails.vue";
 
 import PONewItem from "./PurchaseOrder/components/NewItem.vue"
+import POItem from "./PurchaseOrder/components/Item.vue"
 
 frappe.provide("frappe.production.ui");
 frappe.production.ui.ItemAttributeValues = class {
@@ -77,10 +78,10 @@ frappe.production.ui.ItemDetail = function(wrapper, type, data) {
 
 frappe.production.ui.PurchaseOrderItem = function(wrapper) {
     let $wrapper = $(wrapper);
-    let $page_container = $('<div class="new-item frappe-control">').appendTo($wrapper);
+    let $page_container = $('<div class="item frappe-control">').appendTo($wrapper);
     return new Vue({
-        el: '.new-item',
-        render: h => h(PONewItem, {
+        el: '.item',
+        render: h => h(POItem, {
         })
     });
 };

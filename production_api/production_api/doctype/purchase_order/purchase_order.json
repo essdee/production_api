@@ -13,6 +13,7 @@
   "column_break_4",
   "po_date",
   "default_lot",
+  "deliver_to_supplier",
   "section_addresses",
   "supplier_address",
   "supplier_address_display",
@@ -78,7 +79,7 @@
    "fieldname": "default_delivery_location",
    "fieldtype": "Link",
    "label": "Default Delivery Location",
-   "options": "Location",
+   "options": "Supplier",
    "reqd": 1
   },
   {
@@ -158,8 +159,7 @@
    "fieldname": "billing_address",
    "fieldtype": "Link",
    "label": "Billing Address",
-   "options": "Address",
-   "reqd": 1
+   "options": "Address"
   },
   {
    "fieldname": "billing_address_display",
@@ -183,11 +183,17 @@
    "fieldname": "show_delivery_details",
    "fieldtype": "Check",
    "label": "Show Delivery Details"
+  },
+  {
+   "default": "0",
+   "fieldname": "deliver_to_supplier",
+   "fieldtype": "Check",
+   "label": "Deliver to Supplier"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2021-09-28 17:51:00.526014",
+ "modified": "2021-10-18 11:51:01.960091",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Purchase Order",

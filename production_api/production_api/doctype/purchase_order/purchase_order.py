@@ -5,6 +5,7 @@ import frappe
 from frappe import throw, _
 import json, copy
 from six import string_types
+from itertools import groupby
 from jinja2 import TemplateSyntaxError
 from frappe.model.document import Document
 from production_api.production_api.doctype.item.item import get_variant, create_variant, get_attribute_details
@@ -14,7 +15,6 @@ class PurchaseOrder(Document):
 	def onload(self):
 		print('in onload')
 		item_details = fetch_item_details(self.get('items'))
-		print(item_details)
 		self.set('print_item_details', json.dumps(item_details))
 		self.set_onload('item_details', item_details)
 	
@@ -27,6 +27,7 @@ class PurchaseOrder(Document):
 		else:
 			frappe.throw('Add items to Purchase Order.', title='Purchase Order')
 
+
 def save_item_details(item_details):
 	"""
 		Save item details to purchase order
@@ -36,125 +37,123 @@ def save_item_details(item_details):
 	if isinstance(item_details, string_types):
 		item_details = json.loads(item_details)
 	items = []
-	for table_index, item in enumerate(item_details):
-		item_name = item['item']
-		delivery_location = item['delivery_location']
-		delivery_date = item['delivery_date']
-		for row_index, variant in enumerate(item['variants']):
-			variant_attributes = variant['attributes']
-			if(variant.get('primary_attribute')):
-				for attr, values in variant['values'].items():
+	row_index = 0
+	for table_index, group in enumerate(item_details):
+		for item in group['items']:
+			item_name = item['name']
+			item_attributes = item['attributes']
+			if(item.get('primary_attribute')):
+				for attr, values in item['values'].items():
 					if values.get('qty'):
-						print(item_name, attr)
-						variant_attributes[variant.get('primary_attribute')] = attr
-						item = {}
-						variant_name = get_variant(item_name, variant_attributes)
+						item_attributes[item.get('primary_attribute')] = attr
+						item1 = {}
+						variant_name = get_variant(item_name, item_attributes)
 						if not variant_name:
-							variant1 = create_variant(item_name, variant_attributes)
-							print(variant_name)
-							for print_attr in variant1.attributes:
-								print(print_attr.attribute, print_attr.attribute_value)
+							variant1 = create_variant(item_name, item_attributes)
 							variant1.insert()
 							variant_name = variant1.name
-						item['item_variant'] = variant_name
-						item['delivery_location'] = delivery_location
-						item['delivery_date'] = delivery_date
-						item['lot'] = variant.get('lot')
-						item['qty'] = values.get('qty')
-						item['secondary_qty'] = values.get('secondary_qty')
-						item['rate'] = values.get('rate')
-						item['table_index'] = table_index
-						item['row_index'] = row_index
-						items.append(item)
+						item1['item_variant'] = variant_name
+						item1['delivery_location'] = item['delivery_location']
+						item1['delivery_date'] = item['delivery_date']
+						item1['lot'] = item.get('lot')
+						item1['qty'] = values.get('qty')
+						item1['secondary_qty'] = values.get('secondary_qty')
+						item1['rate'] = values.get('rate')
+						item1['table_index'] = table_index
+						item1['row_index'] = row_index
+						item1['comments'] = item.get('comments')
+						items.append(item1)
 
 			else:
-				if variant['values'].get('default') and variant['values']['default'].get('qty'):
+				if item['values'].get('default') and item['values']['default'].get('qty'):
 					print(item_name)
-					item = {}
-					variant_name = get_variant(item_name, variant_attributes)
+					item1 = {}
+					variant_name = get_variant(item_name, item_attributes)
 					if not variant_name:
-						variant1 = create_variant(item_name, variant_attributes)
+						variant1 = create_variant(item_name, item_attributes)
 						variant1.insert()
 						variant_name = variant1.name
-					item['item_variant'] = variant_name
-					item['delivery_location'] = delivery_location
-					item['delivery_date'] = delivery_date
-					item['lot'] = variant.get('lot')
-					item['qty'] = variant['values']['default'].get('qty')
-					item['secondary_qty'] = variant['values']['default'].get('secondary_qty')
-					item['rate'] = variant['values']['default'].get('rate')
-					item['table_index'] = table_index
-					item['row_index'] = row_index
-					items.append(item)
+					item1['item_variant'] = variant_name
+					item1['delivery_location'] = item['delivery_location']
+					item1['delivery_date'] = item['delivery_date']
+					item1['lot'] = item.get('lot')
+					item1['qty'] = item['values']['default'].get('qty')
+					item1['secondary_qty'] = item['values']['default'].get('secondary_qty')
+					item1['rate'] = item['values']['default'].get('rate')
+					item1['table_index'] = table_index
+					item1['row_index'] = row_index
+					item1['comments'] = item.get('comments')
+					items.append(item1)
+			row_index += 1
 	
 	return items
 
-def copy_item_details(variant, item, attribute_details):
-	variant['lot'] = ''
-	variant['attributes'] = {}
-	variant['values'] = {}
-	if attribute_details['primary_attribute']:
-		variant['primary_attribute'] = attribute_details['primary_attribute']
-		for attr in attribute_details['primary_attribute_values']:
-			variant['values'][attr.attribute_value] = {'qty': 0, 'rate': 0}
-	else:
-		variant['values']['default'] = {'qty': 0, 'rate': 0}
-		
-	for attr in item.attributes:
-		if attr.attribute in attribute_details['attributes']:
-			variant['attributes'][attr.attribute] = attr.attribute_value
+def get_item_attribute_details(variant, item_attributes):
+	attribute_details = {}
 	
+	for attr in variant.attributes:
+		if attr.attribute in item_attributes['attributes']:
+			attribute_details[attr.attribute] = attr.attribute_value
+	return attribute_details
+
+def get_item_group_index(items, item_details):
+	index = -1
+	for i, item in enumerate(items):
+		if not item.get('attributes').sort() == item_details.get('attributes').sort():
+			continue
+		if not item.get('primary_attribute') == item_details.get('primary_attribute'):
+			continue
+		if not item.get('primary_attribute_values').sort() == item_details.get('primary_attribute_values').sort():
+			continue
+		index = i
+		break
+	return index
+
 @frappe.whitelist()
 def fetch_item_details(items):
-	
-	item_purchase_details = []
+	items = [item.as_dict() for item in items]
+	item_details = []
+	items = sorted(items, key = lambda i: i['row_index'])
+	for key, variants in groupby(items, lambda i: i['row_index']):
+		variants = list(variants)
+		current_variant = frappe.get_doc("Item Variant", variants[0]['item_variant'])
+		current_item_attribute_details = get_attribute_details(current_variant.item)
+		item = {
+			'name': current_variant.item,
+			'lot': variants[0]['lot'],
+			'delivery_location': variants[0]['delivery_location'],
+			'delivery_date': str(variants[0]['delivery_date']),
+			'attributes': get_item_attribute_details(current_variant, current_item_attribute_details),
+			'primary_attribute': current_item_attribute_details['primary_attribute'],
+			'values': {},
+			'default_uom': current_item_attribute_details['default_uom'],
+			'secondary_uom': current_item_attribute_details['secondary_uom'],
+			'comments': variants[0]['comments'],
+		}
 
-	item_details = {}
-	current_table_index = -1
-	current_row_index = -1
-	current_item_attribute_details = {}
-	
-	variant = {}
-	for item in items:
-		current_item = frappe.get_doc("Item Variant", item.item_variant)
-		if current_table_index != item.table_index:
-			if item_details:
-				item_details['variants'].append(variant)
-				item_purchase_details.append(item_details)
-				item_details = {}	
-			variant = {}
-			current_table_index = item.table_index
-			current_row_index = 0
-			item_details['item'] = current_item.item
-			item_details['delivery_location'] = item.delivery_location
-			item_details['delivery_date'] = str(item.delivery_date)
-			current_item_attribute_details = get_attribute_details(current_item.item)
-			item_details['default_uom'] = current_item_attribute_details['default_uom']
-			item_details['secondary_uom'] = current_item_attribute_details['secondary_uom']
-			item_details['variants'] = []
-			copy_item_details(variant, current_item, current_item_attribute_details)
-			variant['lot'] = item.lot
-
-		if current_row_index != item.row_index:
-			item_details['variants'].append(variant)
-			variant = {}
-			copy_item_details(variant, current_item, current_item_attribute_details)
-			variant['lot'] = item.lot
-		
-		if variant.get('primary_attribute'):
-			for attr in current_item.attributes:
-				if attr.attribute == variant.get('primary_attribute'):
-					variant['values'][attr.attribute_value] = {'qty': item.qty, 'secondary_qty': item.secondary_qty, 'rate': item.rate}
-					break
+		if item['primary_attribute']:
+			for attr in current_item_attribute_details['primary_attribute_values']:
+				item['values'][attr] = {'qty': 0, 'rate': 0}
+			for variant in variants:
+				current_variant = frappe.get_doc("Item Variant", variant['item_variant'])
+				for attr in current_variant.attributes:
+					if attr.attribute == item.get('primary_attribute'):
+						item['values'][attr.attribute_value] = {'qty': variant.qty, 'secondary_qty': variant.secondary_qty, 'rate': variant.rate}
+						break
 		else:
-			variant['values']['default'] = {'qty': item.qty, 'secondary_qty': item.secondary_qty, 'rate': item.rate}
-	
-	if variant:
-		item_details['variants'].append(variant)
-	if item_details:
-		item_purchase_details.append(item_details)
-	return item_purchase_details
-			
+			item['values']['default'] = {'qty': variants[0].qty, 'secondary_qty': variants[0].secondary_qty, 'rate': variants[0].rate}
+		index = get_item_group_index(item_details, current_item_attribute_details)
+
+		if index == -1:
+			item_details.append({
+				'attributes': current_item_attribute_details['attributes'],
+				'primary_attribute': current_item_attribute_details['primary_attribute'],
+				'primary_attribute_values': current_item_attribute_details['primary_attribute_values'],
+				'items': [item]
+			})
+		else:
+			item_details[index]['items'].append(item)
+	return item_details
 
 @frappe.whitelist()
 def get_address_display(address_dict):

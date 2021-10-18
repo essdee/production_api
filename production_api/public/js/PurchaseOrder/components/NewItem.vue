@@ -46,6 +46,8 @@
                     </table>
                 </td>
                 <td v-else>
+                    <div v-if="is_local" class="pull-right cursor-pointer" @click="removeAt(index)" v-html="frappe.utils.icon('delete', 'md')"></div>
+                    <div v-if="is_local" class="pull-right cursor-pointer" @click="edit(index)" v-html="frappe.utils.icon('edit', 'md', 'mr-1')"></div>
                     <table class="table table-sm table-bordered" v-if="i.variants && i.variants.length > 0">
                         <tr>
                             <th>S.No.</th>

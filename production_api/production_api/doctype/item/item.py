@@ -111,8 +111,9 @@ def get_attribute_details(item_name):
 		for attribute in item.attributes:
 			if attribute.attribute == item.primary_attribute:
 				doc = frappe.get_doc("Item Item Attribute Mapping", attribute.mapping)
-				primary_attribute_details = doc.values
+				primary_attribute_details = [value.attribute_value for value in doc.values]
 	return {
+		"item": item_name,
 		"primary_attribute": item.primary_attribute,
 		"attributes": attributes,
 		"primary_attribute_values": primary_attribute_details,

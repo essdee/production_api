@@ -11,6 +11,7 @@
   "address_html",
   "column_break_4",
   "disabled",
+  "is_company_location",
   "deparments",
   "contact_html",
   "section_break_8",
@@ -70,11 +71,17 @@
   {
    "fieldname": "section_break_10",
    "fieldtype": "Section Break"
+  },
+  {
+   "default": "0",
+   "fieldname": "is_company_location",
+   "fieldtype": "Check",
+   "label": "Is Company Location"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2021-09-20 17:15:34.916664",
+ "modified": "2021-10-18 11:48:27.283904",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Supplier",
