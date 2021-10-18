@@ -1,62 +1,20 @@
 [
     {
-        "item": "Fusing Sticker",
-        "delivery_location": "Location 1(Tirupur)",
-        "delivery_date": "2021-09-02",
-        "variants": [
+        "attributes":[],
+        "primary_attribute": "",
+        "primary_attribute_values": [],
+        "items": [
             {
+                "name": "",
                 "lot": "",
-                "attributes": {
-                    "Size": "100 cm"
-                },
-                "values": {
-                    "default": {// If there is no primary attribute, then default is used as key for the value
-                        "qty": 20,
-                        "rate": 20
-                    }
-                }
-            },
-            {
-                "lot": "",
-                "attributes": {
-                    "Size": "45 cm"
-                },
-                "values": {
-                    "default": {
-                        "qty": 20,
-                        "rate": 20
-                    }
-                }
-            }
-        ]
-    },
-    {
-        "item": "Gym Vest",
-        "deliveery_location": "Location 1(Tirupur)",
-        "deliveery_date": "2021-09-21",
-        "variants": [
-            {
-                "lot": "",
-                "attributes": {
-                    "Colour": "Meroon"
-                },
-                "values": {
-                    "45 cm": {
-                        "qty": 7,
-                        "rate": 7
-                    },
-                    "50 cm": {
-                        "qty": 7,
-                        "rate": 7
-                    },
-                    "55 cm": {
-                        "qty": "",
-                        "rate": ""
-                    },
-                    "60 cm": {
-                        "qty": ""
-                    }
-                }
+                "delivery_location": "",
+                "delivery_date": "",
+                "attributes": {},
+                "primary_attribute": "",
+                "values": {},
+                "default_uom": "",
+                "secondary_uom": "",
+                "comments": ""
             }
         ]
     }

@@ -3,6 +3,14 @@
 
 frappe.ui.form.on('Purchase Order', {
 	setup: function(frm) {
+		frm.set_query('default_delivery_location', function(doc) {
+			return{
+				filters: {
+					is_company_location: doc.deliver_to_supplier ? 0 : 1,
+				}
+			}
+		});
+
 		frm.set_query('supplier_address', function(doc) {
 			if(!doc.supplier) {
 				frappe.throw(__("Please set {0}",
@@ -19,7 +27,7 @@ frappe.ui.form.on('Purchase Order', {
 		});
 
 		frm.set_query('delivery_address', function(doc) {
-			if(!doc.supplier) {
+			if(!doc.default_delivery_location) {
 				frappe.throw(__("Please set {0}",
 					[__(frappe.meta.get_label(doc.doctype, 'default_delivery_location', doc.name))]));
 			}
@@ -27,14 +35,14 @@ frappe.ui.form.on('Purchase Order', {
 			return {
 				query: 'frappe.contacts.doctype.address.address.address_query',
 				filters: {
-					link_doctype: 'Location',
+					link_doctype: 'Supplier',
 					link_name: doc.default_delivery_location
 				}
 			};
 		});
 
 		frm.set_query('billing_address', function(doc) {
-			if(!doc.supplier) {
+			if(!doc.default_delivery_location) {
 				frappe.throw(__("Please set {0}",
 					[__(frappe.meta.get_label(doc.doctype, 'default_delivery_location', doc.name))]));
 			}
@@ -42,7 +50,7 @@ frappe.ui.form.on('Purchase Order', {
 			return {
 				query: 'frappe.contacts.doctype.address.address.address_query',
 				filters: {
-					link_doctype: 'Location',
+					link_doctype: 'Supplier',
 					link_name: doc.default_delivery_location
 				}
 			};
@@ -69,6 +77,7 @@ frappe.ui.form.on('Purchase Order', {
 		frm.newitemvm = frappe.production.ui.PurchaseOrderItem(frm.fields_dict["item_html"].wrapper);
 		if(frm.doc.__onload && frm.doc.__onload.item_details) {
 			frm.doc['item_details'] = JSON.stringify(frm.doc.__onload.item_details);
+			frm.newitemvm.$children[0].load_data(frm.doc.__onload.item_details);
 		}
 	},
 

@@ -63,7 +63,7 @@
    "fieldname": "delivery_location",
    "fieldtype": "Link",
    "label": "Delivery Location",
-   "options": "Location"
+   "options": "Supplier"
   },
   {
    "fieldname": "delivery_date",
@@ -80,7 +80,7 @@
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2021-09-20 21:50:25.080807",
+ "modified": "2021-10-18 12:15:46.633378",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Purchase Order Item",

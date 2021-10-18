@@ -4,6 +4,8 @@
 import frappe
 from frappe.model.document import Document
 from frappe.contacts.address_and_contact import load_address_and_contact, delete_contact_and_address
+from frappe.custom.doctype.custom_field.custom_field import create_custom_fields
+from frappe.custom.doctype.property_setter.property_setter import make_property_setter
 
 class Supplier(Document):
 
@@ -20,3 +22,13 @@ class Supplier(Document):
 
 	def on_trash(self):
 		delete_contact_and_address('Supplier', self.name)
+
+def make_gstin_custom_field():
+	custom_fields = {
+		'Address': [
+			dict(fieldname='gstin', label='GSTIN', fieldtype='Data',
+				insert_after='fax'),
+		]
+	}
+	create_custom_fields(custom_fields)
+	make_property_setter('Address', 'county', 'hidden', 1, 'Check')
