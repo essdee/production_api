@@ -22,10 +22,10 @@
                             <td v-for="attr in i.attributes" :key="attr">{{ j.attributes[attr] }}</td>
                             <td v-for="attr in j.values" :key="attr">
                                 <div v-if="attr.qty">
-                                    {{ attr.qty + ' ' + j.default_uom}}
+                                    {{ attr.qty }}<span v-if="j.default_uom">{{ ' ' + j.default_uom }}</span>
                                     <span v-if="attr.secondary_qty">
                                         <br>
-                                        ({{ attr.secondary_qty + ' ' + j.secondary_uom }})
+                                        ({{ attr.secondary_qty }}<span v-if="j.secondary_uom">{{ ' ' + j.secondary_uom }}</span>)
                                     </span>
                                     <br>
                                     Rate: {{ attr.rate }}
@@ -63,10 +63,10 @@
                             <td>{{ j.lot }}</td>
                             <td v-for="attr in i.attributes" :key="attr">{{ j.attributes[attr] }}</td>
                             <td>
-                                {{ j.values['default'].qty + ' ' + j.default_uom}}
+                                {{ j.values['default'].qty }}<span v-if="j.default_uom">{{ ' ' + j.default_uom}}</span>
                                 <span v-if="j.values['default'].secondary_qty">
                                     <br>
-                                    ({{ j.values['default'].secondary_qty + ' ' + j.secondary_uom }})
+                                    ({{ j.values['default'].secondary_qty }}<span v-if="j.secondary_uom">{{ ' ' + j.secondary_uom }}</span>)
                                 </span>
                             </td>
                             <td>{{ j.values['default'].rate }}</td>
@@ -502,7 +502,7 @@ export default {
         add_item: function() {
             if(!this.get_item_attributes()) return;
             if(!this.get_item_delivery_details()) return;
-            if(this.items.name != this.item_input.get_value()){
+            if(this.item.name != this.item_input.get_value()){
                 frappe.msgprint(__('Item does not match'));
                 this.clear_inputs(true);
                 return;
