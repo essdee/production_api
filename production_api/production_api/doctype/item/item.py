@@ -8,6 +8,14 @@ import json
 from frappe.model.document import Document
 
 class Item(Document):
+
+	def autoname(self):
+		if self.brand:
+			name = self.name1.split(' ')
+			self.name = self.name1 if name[0].lower() == self.brand.lower() else self.brand + ' ' + self.name1
+		else:
+			self.name = self.name1
+		print('Item Name: ', self.name)
 	
 	def load_attribute_list(self):
 		"""Load Attribute List into `__onload`"""

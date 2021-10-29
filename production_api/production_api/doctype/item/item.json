@@ -1,15 +1,15 @@
 {
  "actions": [],
- "autoname": "field:name1",
  "creation": "2021-08-23 16:59:13.935404",
  "doctype": "DocType",
  "editable_grid": 1,
  "engine": "InnoDB",
  "field_order": [
-  "name1",
+  "brand",
   "hsn_code",
   "categories",
   "column_break_4",
+  "name1",
   "disabled",
   "uom_section",
   "default_unit_of_measure",
@@ -32,7 +32,7 @@
    "in_list_view": 1,
    "label": "Name",
    "reqd": 1,
-   "unique": 1
+   "set_only_once": 1
   },
   {
    "fieldname": "hsn_code",
@@ -126,11 +126,18 @@
    "fieldtype": "Link",
    "label": "Primary Attribute",
    "options": "Item Attribute"
+  },
+  {
+   "fieldname": "brand",
+   "fieldtype": "Link",
+   "label": "Brand",
+   "options": "Brand",
+   "set_only_once": 1
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2021-09-07 20:23:10.531128",
+ "modified": "2021-10-29 12:58:23.782718",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Item",
