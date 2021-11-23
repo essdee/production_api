@@ -99,7 +99,11 @@ def get_item_attribute_details(variant, item_attributes):
 def get_item_group_index(items, item_details):
 	index = -1
 	for i, item in enumerate(items):
-		if not item.get('attributes').sort() == item_details.get('attributes').sort():
+		item_attr = item.get('attributes')
+		item_details_attr = item_details.get('attributes')
+		item_attr.sort()
+		item_details_attr.sort()
+		if not (len(item_attr) == len(item_details_attr) and len(item_attr) == sum([1 for i, j in zip(item_attr, item_details_attr) if i == j])):
 			continue
 		if not item.get('primary_attribute') == item_details.get('primary_attribute'):
 			continue

@@ -11,7 +11,7 @@
             </tr>
         </table>
         <p v-else>No available values for {{ attr_name }}</p>
-        <p>
+        <p v-if="!is_numeric">
             <button class="btn btn-xs btn-default btn-address" @click="addValue('Item Attribute Value', attr_name)">
                 {{ __("New ") + attr_name }}
             </button>
@@ -27,7 +27,8 @@ export default {
     data: function(){
         return {
             attr_values: this.getAttrValues(),
-            attr_name: cur_frm.doc.attribute_name
+            attr_name: cur_frm.doc.attribute_name,
+            is_numeric: cur_frm.doc.numeric_values
         };
     },
     methods: {
