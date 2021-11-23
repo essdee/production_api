@@ -56,7 +56,6 @@
    "label": "To Range"
   },
   {
-   "depends_on": "eval: !doc.numeric_values",
    "fieldname": "section_break_8",
    "fieldtype": "Section Break"
   },
@@ -68,7 +67,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2021-07-28 19:34:51.399249",
+ "modified": "2021-11-23 20:41:04.850927",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Item Attribute",
