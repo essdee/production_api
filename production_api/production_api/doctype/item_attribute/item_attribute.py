@@ -21,11 +21,11 @@ class ItemAttribute(Document):
 			# Generate values from range
 			cur_val = float(from_range)
 			while cur_val <= to_range:
-				if not frappe.db.exists("Item Attribute Value", str(cur_val).removesuffix('.0') + ' ' +  self.name):
+				if not frappe.db.exists("Item Attribute Value", remove_suffix(str(cur_val), '.0') + ' ' +  self.name):
 					frappe.get_doc({
 						"doctype": "Item Attribute Value",
 						"attribute_name": self.name,
-						"attribute_value": str(cur_val).removesuffix('.0') + ' ' +  self.name
+						"attribute_value": remove_suffix(str(cur_val), '.0') + ' ' +  self.name
 					}).insert()
 				cur_val += increment
 			
@@ -35,3 +35,8 @@ class ItemAttribute(Document):
 		filters = {"attribute_name": self.name}
 		attribute_values = frappe.get_all("Item Attribute Value", filters=filters, fields=["*"])
 		self.set_onload('attr_values', attribute_values)
+
+def remove_suffix(input_string, suffix):
+    if suffix and input_string.endswith(suffix):
+        return input_string[:-len(suffix)]
+    return input_string
