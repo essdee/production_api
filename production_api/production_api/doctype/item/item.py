@@ -83,7 +83,9 @@ class Item(Document):
 				if attribute.mapping:
 					doc = frappe.get_doc("Item Item Attribute Mapping", attribute.mapping)
 					duplicate_doc = frappe.new_doc("Item Item Attribute Mapping")
+			
 					duplicate_doc.values = doc.values
+					duplicate_doc.attribute_name= attribute.attribute 
 					duplicate_doc.save()
 					attribute.mapping = duplicate_doc.name
 			
@@ -98,6 +100,7 @@ class Item(Document):
 		for attribute in self.get('attributes'):
 			if attribute.mapping == None:
 				doc = frappe.new_doc("Item Item Attribute Mapping")
+				doc.attribute_name= attribute.attribute 
 				doc.save()
 				attribute.mapping = doc.name
 		
@@ -279,4 +282,14 @@ def get_variants_by_attributes(args, template=None):
 	res = list(set.intersection(*items))
 
 	return res
-
+def mapping_missing_attribute():
+	doc=frappe.db.get_list("Item")
+	for item in doc:
+		value=frappe.get_doc("Item",item.name)
+		no_of_attribute=len(value.attributes)
+		for i in range(no_of_attribute):
+			attribute=frappe.get_doc("Item Item Attribute Mapping",(value.attributes[i].mapping))
+			if(attribute.attribute_name==None):
+				attribute.attribute_name=value.attributes[i].attribute
+				attribute.save()
+				value.save()
