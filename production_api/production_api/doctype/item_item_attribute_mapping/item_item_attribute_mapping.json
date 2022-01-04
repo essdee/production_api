@@ -5,6 +5,7 @@
  "editable_grid": 1,
  "engine": "InnoDB",
  "field_order": [
+  "attribute_name",
   "values"
  ],
  "fields": [
@@ -13,11 +14,17 @@
    "fieldtype": "Table",
    "label": "Values",
    "options": "Item Item Attribute Mapping Value"
+  },
+  {
+   "fieldname": "attribute_name",
+   "fieldtype": "Link",
+   "label": "Attribute Name",
+   "options": "Item Attribute"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2021-08-24 16:33:06.467630",
+ "modified": "2021-12-28 10:41:01.615048",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Item Item Attribute Mapping",
