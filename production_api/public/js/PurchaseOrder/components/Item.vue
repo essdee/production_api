@@ -175,9 +175,9 @@
 </template>
 
 <script>
-export default {
+export default { 
     name: 'item',
-    data() {
+    data:function (){
         return {
             items: [],
             item: {
@@ -248,8 +248,8 @@ export default {
         },
 
         clear_lot_item_inputs: function() {
-            console.log('inside clear')
-            this.lot_input.set_value('');
+ console.log('inside clear')
+this.lot_input.set_value('');
             this.item_input.set_value('');
             this.cur_item = {
                 item: "",
@@ -286,6 +286,10 @@ export default {
                     }
                 }
             });
+           
+            
+                
+            
         },
 
         set_lot_item_details: function(item_details, item) {
@@ -322,6 +326,7 @@ export default {
         },
 
         create_item_attribute_inputs: function(){
+            var me=this;
             if(!this.cur_item.item || this.cur_item.item == '') return;
             this.attribute_inputs = [];
             $(this.$el).find('.item-attribute-controls').html("");
@@ -333,20 +338,18 @@ export default {
                 let classname = '';
                 if(i%2 == 0) classname = '.item-attribute-controls';
                 else classname = '.item-attribute-controls-right';
-                console.log($(this.$el).find(classname))
                 this.attribute_inputs[i] = frappe.ui.form.make_control({
                     parent: $(this.$el).find(classname),
                     df: {
                         fieldtype: 'Link',
                         options: 'Item Attribute Value',
                         label: attribute_name,
-                        get_query: function() {
-                            return {
-                                filters: [
-                                    ['Item Attribute Value', 'attribute_name', '=', attribute_name]
-                                ]
-                            };
-                        },
+                         get_query: function() {
+                             return {
+                                query: "production_api.production_api.doctype.purchase_order.purchase_order.set_attribute_value",
+                                filters:{"attribute":attribute_name,"item_name":me.item_input.get_value()},
+                             };
+                         },
                         reqd: 1
                     },
                     render_input: true,
@@ -433,7 +436,7 @@ export default {
 
             let location = this.delivery_location_input.get_value();
             if(!location) {
-                this.delivery_location_input.$input.select();
+                this.delivery_location_input.$input.select(); 
                 frappe.msgprint(__('Delivery Location does not have a value'));
                 return false;
             }
