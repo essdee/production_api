@@ -13,13 +13,11 @@ from production_api.production_api.doctype.item.item import get_variant, create_
 class PurchaseOrder(Document):
 
 	def onload(self):
-		print('in onload')
 		item_details = fetch_item_details(self.get('items'))
 		self.set('print_item_details', json.dumps(item_details))
 		self.set_onload('item_details', item_details)
 	
 	def before_validate(self):
-		print(self.item_details)
 		if(self.item_details):
 			items = save_item_details(self.item_details)
 			print(json.dumps(items, indent=3))
@@ -66,7 +64,6 @@ def save_item_details(item_details):
 
 			else:
 				if item['values'].get('default') and item['values']['default'].get('qty'):
-					print(item_name)
 					item1 = {}
 					variant_name = get_variant(item_name, item_attributes)
 					if not variant_name:
@@ -177,4 +174,14 @@ def get_address_display(address_dict):
 		return frappe.render_template(template, address_dict)
 	except TemplateSyntaxError:
 		frappe.throw(_("There is an error in your Address Template"))
-		
+@frappe.whitelist()
+def set_attribute_value(doctype, txt, searchfield, start, page_len, filters):
+	doc=frappe.get_doc("Item",filters["item_name"])
+	for i in range( len(doc.attributes)):
+		if(doc.attributes[i].attribute==filters["attribute"]):
+			attribute=frappe.get_doc("Item Item Attribute Mapping",(doc.attributes[i].mapping))
+			attribute_value_len=len(attribute.values)
+			attribute_value=[]
+			for j in range(attribute_value_len):
+				attribute_value.append([attribute.values[j].attribute_value])
+	return(attribute_value)
