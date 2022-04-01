@@ -93,7 +93,7 @@
    "fieldtype": "Select",
    "in_list_view": 1,
    "label": "PO Series",
-   "options": "PO-",
+   "options": "PO-2223-.####",
    "reqd": 1
   },
   {
@@ -193,7 +193,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2021-10-18 11:51:01.960091",
+ "modified": "2022-04-01 18:56:59.030636",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Purchase Order",
