@@ -179,7 +179,7 @@
    "label": "Print Settings"
   },
   {
-   "default": "0",
+   "default": "1",
    "fieldname": "show_delivery_details",
    "fieldtype": "Check",
    "label": "Show Delivery Details"
@@ -193,7 +193,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2022-04-01 18:56:59.030636",
+ "modified": "2023-02-20 19:30:57.369280",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Purchase Order",
