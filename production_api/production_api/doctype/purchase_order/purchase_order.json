@@ -250,10 +250,11 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2023-03-29 13:10:56.225451",
+ "modified": "2023-03-30 17:05:06.791279",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Purchase Order",
+ "naming_rule": "By \"Naming Series\" field",
  "owner": "Administrator",
  "permissions": [
   {
@@ -304,5 +305,6 @@
  ],
  "sort_field": "modified",
  "sort_order": "DESC",
+ "states": [],
  "track_changes": 1
 }

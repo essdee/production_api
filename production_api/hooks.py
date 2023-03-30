@@ -16,7 +16,7 @@ app_license = "MIT"
 
 # include js, css files in header of desk.html
 # app_include_css = "/assets/production_api/css/production_api.css"
-app_include_js = "/assets/js/production_api.min.js"
+app_include_js = ["vue_plugin.bundle.js"]
 
 # include js, css files in header of web template
 # web_include_css = "/assets/production_api/css/production_api.css"
@@ -127,9 +127,9 @@ app_include_js = "/assets/js/production_api.min.js"
 # 	"Task": "production_api.task.get_dashboard_data"
 # }
 
-jenv = {
+jinja = {
     "methods": [
-        "fetch_item_details:production_api.production_api.doctype.purchase_order.purchase_order.fetch_item_details",
-        "get_user_signature:production_api.production_api.doctype.signature.signature.get_signature"
+        "production_api.production_api.doctype.purchase_order.purchase_order.fetch_item_details",
+        "production_api.production_api.doctype.signature.signature.get_user_signature"
     ]
 }

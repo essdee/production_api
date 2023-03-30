@@ -1,5 +1,0 @@
-{
-    "js/production_api.min.js": [
-        "public/js/vue_plugins.js"
-    ]
-}

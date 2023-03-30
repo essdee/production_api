@@ -8,7 +8,7 @@ class Signature(Document):
 	pass
 
 @frappe.whitelist()
-def get_signature(user):
+def get_user_signature(user):
 	if user == None or not user:
 		return None
 	filters = {"user": user, "docstatus": 1}
