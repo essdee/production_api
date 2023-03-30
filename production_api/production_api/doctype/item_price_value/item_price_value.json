@@ -1,0 +1,50 @@
+{
+ "actions": [],
+ "creation": "2023-03-18 15:27:24.950828",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "moq",
+  "price",
+  "attribute_value"
+ ],
+ "fields": [
+  {
+   "default": "0",
+   "fieldname": "moq",
+   "fieldtype": "Float",
+   "in_list_view": 1,
+   "label": "Minimum Order Quantity",
+   "reqd": 1
+  },
+  {
+   "fieldname": "price",
+   "fieldtype": "Currency",
+   "in_list_view": 1,
+   "label": "Price(Excluding Tax)",
+   "options": "INR",
+   "reqd": 1
+  },
+  {
+   "fieldname": "attribute_value",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Attribute Value",
+   "options": "Item Attribute Value",
+   "read_only_depends_on": "eval:!parent.depends_on_attribute"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2023-03-27 15:23:16.097783",
+ "modified_by": "Administrator",
+ "module": "Production Api",
+ "name": "Item Price Value",
+ "owner": "Administrator",
+ "permissions": [],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "track_changes": 1
+}

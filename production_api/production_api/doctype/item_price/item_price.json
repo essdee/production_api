@@ -7,25 +7,26 @@
  "engine": "InnoDB",
  "field_order": [
   "item_name",
-  "price",
+  "uom",
   "column_break_3",
   "supplier",
-  "uom"
+  "supplier_name",
+  "from_date",
+  "section_break_7",
+  "depends_on_attribute",
+  "attribute",
+  "tax",
+  "item_price_values",
+  "amended_from"
  ],
  "fields": [
   {
    "fieldname": "item_name",
    "fieldtype": "Link",
    "in_list_view": 1,
+   "in_standard_filter": 1,
    "label": "Item Name",
    "options": "Item",
-   "reqd": 1
-  },
-  {
-   "fieldname": "price",
-   "fieldtype": "Float",
-   "in_list_view": 1,
-   "label": "Price",
    "reqd": 1
   },
   {
@@ -37,20 +38,81 @@
    "allow_in_quick_entry": 1,
    "fieldname": "supplier",
    "fieldtype": "Link",
+   "in_standard_filter": 1,
    "label": "Supplier",
    "options": "Supplier"
   },
   {
    "allow_in_quick_entry": 1,
+   "fetch_from": "item_name.default_unit_of_measure",
    "fieldname": "uom",
    "fieldtype": "Link",
    "label": "UOM",
-   "options": "UOM"
+   "options": "UOM",
+   "reqd": 1
+  },
+  {
+   "allow_in_quick_entry": 1,
+   "fetch_from": "supplier.supplier_name",
+   "fieldname": "supplier_name",
+   "fieldtype": "Data",
+   "label": "Supplier Name",
+   "read_only": 1
+  },
+  {
+   "default": "Today",
+   "fieldname": "from_date",
+   "fieldtype": "Date",
+   "in_list_view": 1,
+   "label": "From Date",
+   "reqd": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "depends_on_attribute",
+   "fieldtype": "Check",
+   "label": "Depends on Attribute"
+  },
+  {
+   "fieldname": "section_break_7",
+   "fieldtype": "Section Break"
+  },
+  {
+   "depends_on": "eval:doc.depends_on_attribute",
+   "fieldname": "attribute",
+   "fieldtype": "Link",
+   "label": "Attribute",
+   "mandatory_depends_on": "eval:doc.depends_on_attribute",
+   "options": "Item Attribute"
+  },
+  {
+   "fieldname": "item_price_values",
+   "fieldtype": "Table",
+   "label": "Item Price Values",
+   "options": "Item Price Value",
+   "reqd": 1
+  },
+  {
+   "fieldname": "tax",
+   "fieldtype": "Link",
+   "label": "Tax Slab",
+   "options": "Tax Slab",
+   "reqd": 1
+  },
+  {
+   "fieldname": "amended_from",
+   "fieldtype": "Link",
+   "label": "Amended From",
+   "no_copy": 1,
+   "options": "Item Price",
+   "print_hide": 1,
+   "read_only": 1
   }
  ],
  "index_web_pages_for_search": 1,
+ "is_submittable": 1,
  "links": [],
- "modified": "2021-08-23 17:05:00.109608",
+ "modified": "2023-03-29 12:20:38.271704",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Item Price",
@@ -69,7 +131,7 @@
    "write": 1
   }
  ],
- "quick_entry": 1,
+ "search_fields": "item_name,supplier",
  "sort_field": "modified",
  "sort_order": "DESC",
  "track_changes": 1

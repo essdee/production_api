@@ -3,12 +3,14 @@
 
 import frappe
 from frappe import throw, _
+from frappe.utils import money_in_words
 import json, copy
 from six import string_types
 from itertools import groupby
 from jinja2 import TemplateSyntaxError
 from frappe.model.document import Document
 from production_api.production_api.doctype.item.item import get_variant, create_variant, get_attribute_details
+from production_api.production_api.doctype.item_price.item_price import get_item_supplier_price, get_active_price
 
 class PurchaseOrder(Document):
 
@@ -17,15 +19,121 @@ class PurchaseOrder(Document):
 		item_details = fetch_item_details(self.get('items'))
 		self.set('print_item_details', json.dumps(item_details))
 		self.set_onload('item_details', item_details)
+
+	def before_submit(self):
+		# print(self.workflow_state)
+		print("before submit called")
+		price_validation = frappe.db.get_single_value('MRP Settings', 'enable_price_validation')
+		if price_validation:
+			items = validate_price_details([d.as_dict() for d in self.items], self.supplier)
+			print(json.dumps(items, indent=3))
+			self.set('items', items)
+		self.calculate_amount()
+		self.set('approved_by', frappe.get_user().doc.name)
+
+	# def on_update(self):
+	# 	# print(self.workflow_state)
+	# 	price_validation = frappe.db.get_single_value('MRP Settings', 'enable_price_validation')
+	# 	if price_validation:
+	# 		items = validate_price_details([d.as_dict() for d in self.items], self.supplier)
+	# 		print(json.dumps(items, indent=3))
+	# 		self.set('items', items)
+	# 	self.calculate_amount()
+
+	# def on_update_after_submit(self):
+	# 	# print(self.workflow_state)
+	# 	price_validation = frappe.db.get_single_value('MRP Settings', 'enable_price_validation')
+	# 	if price_validation:
+	# 		items = validate_price_details([d.as_dict() for d in self.items], self.supplier)
+	# 		print(json.dumps(items, indent=3))
+	# 		self.set('items', items)
+	# 	self.calculate_amount()
 	
 	def before_validate(self):
 		print(self.item_details)
 		if(self.item_details):
 			items = save_item_details(self.item_details)
+			# price_validation = frappe.db.get_single_value('MRP Settings', 'enable_price_validation')
+			# if price_validation:
+			# 	items = validate_price_details(items, self.supplier)
 			print(json.dumps(items, indent=3))
 			self.set('items', items)
+			self.calculate_amount()
 		else:
 			frappe.throw('Add items to Purchase Order.', title='Purchase Order')
+
+	def calculate_amount(self):
+		total_amount = 0
+		total_tax = 0
+		grand_total = 0
+		for item in self.items:
+			item_total = item.rate * item.qty
+			total_amount += item_total
+			tax = item_total * (float(item.tax or 0) / 100)
+			total_tax += tax
+			total = item_total + tax
+			grand_total += total
+		self.set('total', total_amount)
+		self.set('total_tax', total_tax)
+		self.set('grand_total', grand_total)
+		self.set('in_words', money_in_words(grand_total))
+
+def validate_price_details(items, supplier):
+	item_list = get_unique_items(items)
+	for item in item_list:
+		try:
+			item_price = get_active_price(item, supplier)
+		except:
+			frappe.throw('Please check again, some items do not have a defined price for this supplier')
+		if (item_price == None):
+			frappe.throw('Please check again, some items do not have a defined price for this supplier')
+		if item_price.depends_on_attribute:
+			attribute_qty_sum = {}
+			attribute_indexes = {}
+			for index, i in enumerate(items):
+				d = frappe.get_doc("Item Variant", i['item_variant'])
+				if d.item == item:
+					for attribute in d.attributes:
+						if attribute.attribute == item_price.attribute:
+							if attribute_indexes.get(attribute.attribute_value):
+								attribute_indexes[attribute.attribute_value].append(index)
+								attribute_qty_sum[attribute.attribute_value] += i['qty']
+							else:
+								attribute_indexes[attribute.attribute_value] = [index]
+								attribute_qty_sum[attribute.attribute_value] = i['qty']
+							break
+			for attr, value in attribute_indexes.items():
+				qty_sum = attribute_qty_sum[attr]
+				price = item_price.validate_attribute_values(qty=qty_sum, attribute=item_price.attribute, attribute_value=attr)
+				if price == None:
+					frappe.throw('Please check again, some items do not have a defined price for this supplier')
+				for index in value:
+					items[index]['rate'] = price
+					items[index]['tax'] = item_price.tax
+		else:
+			qty_sum = 0
+			indexes = []
+			for index, i in enumerate(items):
+				d = frappe.db.get_value("Item Variant", i['item_variant'], 'item')
+				if d == item:
+					qty_sum += i['qty']
+					indexes.append(index)
+			price = item_price.validate_attribute_values(qty=qty_sum)
+			if price == None:
+				frappe.throw('Please check again, some items do not have a defined price for this supplier')
+			for index in indexes:
+				items[index]['rate'] = price
+				items[index]['tax'] = item_price.tax
+	return items
+
+def get_unique_items(items):
+	unique_items = []
+	for item in items:
+		iv = item['item_variant']
+		i = frappe.db.get_value('Item Variant', iv, 'item')
+		if not i in unique_items:
+			unique_items.append(i)
+	return unique_items
 
 
 def save_item_details(item_details):
@@ -63,7 +171,6 @@ def save_item_details(item_details):
 						item1['row_index'] = row_index
 						item1['comments'] = item.get('comments')
 						items.append(item1)
-
 			else:
 				if item['values'].get('default') and item['values']['default'].get('qty'):
 					print(item_name)
@@ -85,7 +192,6 @@ def save_item_details(item_details):
 					item1['comments'] = item.get('comments')
 					items.append(item1)
 			row_index += 1
-	
 	return items
 
 def get_item_attribute_details(variant, item_attributes):

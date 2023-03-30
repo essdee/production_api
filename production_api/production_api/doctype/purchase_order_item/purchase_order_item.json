@@ -14,7 +14,8 @@
   "lot",
   "comments",
   "table_index",
-  "row_index"
+  "row_index",
+  "tax"
  ],
  "fields": [
   {
@@ -75,12 +76,18 @@
    "fieldtype": "Link",
    "label": "Lot",
    "options": "Lot"
+  },
+  {
+   "fieldname": "tax",
+   "fieldtype": "Link",
+   "label": "Tax Slab",
+   "options": "Tax Slab"
   }
  ],
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2021-10-18 12:15:46.633378",
+ "modified": "2023-03-27 20:39:00.134467",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Purchase Order Item",

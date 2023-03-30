@@ -6,8 +6,12 @@ import ItemDetail from "./components/ItemDetails.vue";
 
 import PONewItem from "./PurchaseOrder/components/NewItem.vue"
 import POItem from "./PurchaseOrder/components/Item.vue"
+import evntBus from "./bus.js";
 
 frappe.provide("frappe.production.ui");
+
+frappe.production.ui.eventBus = evntBus;
+
 frappe.production.ui.ItemAttributeValues = class {
     constructor({ wrapper, attr_values, attr_name } = {}) {
         this.$wrapper = $(wrapper);
@@ -76,12 +80,41 @@ frappe.production.ui.ItemDetail = function(wrapper, type, data) {
     });
 };
 
-frappe.production.ui.PurchaseOrderItem = function(wrapper) {
-    let $wrapper = $(wrapper);
-    let $page_container = $('<div class="item frappe-control">').appendTo($wrapper);
-    return new Vue({
-        el: '.item',
-        render: h => h(POItem, {
-        })
-    });
+// frappe.production.ui.PurchaseOrderItem = function(wrapper) {
+//     let $wrapper = $(wrapper);
+//     let $page_container = $('<div class="item frappe-control">').appendTo($wrapper);
+//     return new Vue({
+//         el: '.item',
+//         render: h => h(POItem, {
+//         })
+//     });
+// };
+
+frappe.production.ui.PurchaseOrderItem = class {
+    constructor(wrapper) {
+        this.$wrapper = $(wrapper);
+        this.make_body();
+    }
+
+    make_body() {
+        let $page_container = $('<div class="item frappe-control">').appendTo(this.$wrapper);
+        this.vue = new Vue({
+            el: '.item',
+            render: h => h(POItem, {
+            })
+        });
+    }
+
+    updateWrapper(wrapper) {
+        this.$wrapper = $(wrapper);
+        $(this.vue.$el).appendTo(this.$wrapper)
+    }
+
+    get_items() {
+        return this.vue.$children[0].items;
+    }
+
+    load_data(item_details) {
+        this.vue.$children[0].load_data(item_details);
+    }
 };

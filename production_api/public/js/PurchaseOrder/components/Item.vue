@@ -88,7 +88,7 @@
                 <div class="lot-control col-md-5"></div>
                 <div class="item-control col-md-5"></div>
                 <div class="col-md-2">
-                    <button type="submit" class="btn btn-success">Find Item</button>
+                    <button type="submit" class="btn btn-success">Fetch Item</button>
                 </div>
             </div>
             <div class="row">
@@ -100,7 +100,7 @@
                 </div>
             </div>
         </form>
-        <form name="formp" class="form-horizontal" autocomplete="off" @submit.prevent="add_item()" v-show="cur_item.item && cur_item.item != ''">
+        <form name="formp" class="form-horizontal new-item-form" autocomplete="off" @submit.prevent="add_item()" v-show="!cur_item_changed && cur_item.item && cur_item.item != ''">
             <div class="row">
                 <div class="item-attribute-controls col-md-6"></div>
                 <div class="item-attribute-controls-right col-md-6"></div>
@@ -131,33 +131,33 @@
                             </label>
                             <input class="form-control" type="number" min="0.000" step="0.001" v-model.number="item.values[attr]['secondary_qty']">
                         </div>
-                        <div>
+                        <!-- <div>
                             <label class="small text-muted">
                                 Rate
                             </label>
                             <input class="form-control" type="number" min="0.000" step="0.001" v-model.number="item.values[attr]['rate']">
-                        </div>
+                        </div> -->
                     </div>
                 </div>
                 <div class="row" v-else>
-                    <div class="col">
+                    <div class="col col-md-6">
                         <label class="small">
                             {{ item.default_uom || 'Qty' }}
                         </label>
                         <input class="form-control" type="number" min="0" v-model.number="item.values['default']['qty']" required>
                     </div>
-                    <div class="col" v-if="secondary_quantity">
+                    <div class="col col-md-6" v-if="secondary_quantity">
                         <label class="small text-muted">
                             {{ item.secondary_uom || '' }}
                         </label>
                         <input class="form-control" type="number" min="0.000" step="0.001" v-model.number="item.values['default']['secondary_qty']">
                     </div>
-                    <div class="col" >
+                    <!-- <div class="col" >
                         <label class="small text-muted">
                             Rate
                         </label>
                         <input class="form-control" type="number" min="0.000" step="0.001" v-model.number="item.values['default']['rate']">
-                    </div>
+                    </div> -->
                 </div>
             </div>
             <div class="row">
@@ -175,6 +175,8 @@
 </template>
 
 <script>
+import evntBus  from '../../bus';
+
 export default {
     name: 'item',
     data() {
@@ -204,12 +206,19 @@ export default {
             secondary_quantity: false,
             is_edit: false,
             edit_index: -1,
-            edit_index1: -1
+            edit_index1: -1,
+            cur_item_changed: false,
+            supplier: cur_frm.doc.supplier,
         }
     },
     mounted() {
         console.log('new-item mounted');
         this.create_lot_item_inputs();
+        evntBus.$on("supplier_updated", supplier => {
+            if (this.supplier !== supplier) {
+                this.supplier = supplier;
+            }
+        })
     },
     methods: {
         load_data: function(items) {
@@ -217,6 +226,7 @@ export default {
         },
 
         create_lot_item_inputs: function() {
+            let me = this;
             $(this.$el).find('.lot-control').html("");
             this.lot_input = frappe.ui.form.make_control({
                 parent: $(this.$el).find('.lot-control'),
@@ -224,11 +234,13 @@ export default {
                     fieldtype: 'Link',
                     options: 'Lot',
                     label: 'Lot',
-                    reqd: 1
+                    reqd: true,
+                    onchange: () => {
+                        me.onchange_lot_item();
+                    }
                 },
                 render_input: true,
             });
-            $(this.lot_input.input).change(this.onchange_lot_item)
             $(this.$el).find('.item-control').html("");
             this.item_input = frappe.ui.form.make_control({
                 parent: $(this.$el).find('.item-control'),
@@ -236,15 +248,24 @@ export default {
                     fieldtype: 'Link',
                     options: 'Item',
                     label: 'Item',
-                    reqd: 1
+                    reqd: true,
+                    onchange: () => {
+                        me.onchange_lot_item();
+                    }
                 },
                 render_input: true,
             });
-            $(this.item_input.input).change(this.onchange_lot_item)
         },
 
-        onchange_lot_item: function(e){
-            console.log(e);
+        onchange_lot_item: function(){
+            if(!this.cur_item.item || this.cur_item.item == '') return;
+            let cur_lot = this.lot_input.get_value();
+            let cur_item = this.item_input.get_value();
+            if (cur_lot != this.item.lot || (cur_item != this.item.name && cur_item != this.cur_item.item)) {
+                this.cur_item_changed = true;
+            } else {
+                this.cur_item_changed = false;
+            }
         },
 
         clear_lot_item_inputs: function() {
@@ -268,6 +289,12 @@ export default {
         },
 
         get_lot_item_details: function() {
+            if (!cur_frm.doc.supplier) {
+                frappe.throw('Please set Supplier before adding items.')
+            }
+            if (cur_frm.doc.supplier !== this.supplier) {
+                this.supplier = cur_frm.doc.supplier;
+            }
             if(!this.item_input.get_value()) return;
             if(!this.lot_input.get_value()) return;
             this.cur_item = {};
@@ -289,11 +316,12 @@ export default {
         },
 
         set_lot_item_details: function(item_details, item) {
+            this.cur_item_changed = false;
             if(!item || Object.keys(item).length < 1){
                 this.item = {
                     name: item_details.item,
                     lot: this.lot_input.get_value(),
-                    delivery_location: "",
+                    delivery_location: cur_frm.doc.default_delivery_location || "",
                     delivery_date: "",
                     attributes: {},
                     primary_attribute: item_details.primary_attribute,
@@ -334,20 +362,24 @@ export default {
                 if(i%2 == 0) classname = '.item-attribute-controls';
                 else classname = '.item-attribute-controls-right';
                 console.log($(this.$el).find(classname))
+                let me = this;
                 this.attribute_inputs[i] = frappe.ui.form.make_control({
                     parent: $(this.$el).find(classname),
                     df: {
                         fieldtype: 'Link',
                         options: 'Item Attribute Value',
                         label: attribute_name,
+                        only_select: true,
                         get_query: function() {
                             return {
-                                filters: [
-                                    ['Item Attribute Value', 'attribute_name', '=', attribute_name]
-                                ]
+                                query: "production_api.production_api.doctype.item.item.get_item_attribute_values",
+                                filters: {
+                                    "item": me.cur_item.item,
+                                    "attribute": attribute_name
+                                }
                             };
                         },
-                        reqd: 1
+                        reqd: true,
                     },
                     render_input: true,
                 });
@@ -377,7 +409,7 @@ export default {
                             }
                         }
                     },
-                    reqd: 1
+                    reqd: true,
                 },
                 render_input: true,
             });
@@ -510,6 +542,8 @@ export default {
             if(this.is_edit){
                 this.items[this.edit_index].items[this.edit_index1] = JSON.parse(JSON.stringify(this.item));
                 this.cancel_edit();
+                console.log("Updated PO Item")
+                evntBus.$emit("po_updated", true);
                 return;
             }
             let index = this.get_item_group_index();
@@ -523,6 +557,8 @@ export default {
             } else {
                 this.items[index].items.push(JSON.parse(JSON.stringify(this.item)));
             }
+            console.log("Added PO Item")
+            evntBus.$emit("po_updated", true);
             this.clear_inputs(false);
         },
 
@@ -550,14 +586,16 @@ export default {
             } else {
                 this.items[index].items.splice(index1, 1);
             }
+            console.log("Deleted PO Item")
+            evntBus.$emit("po_updated", true);
         },
 
         edit_item: function(index, index1) {
+            this.cur_item_changed = false
             if(!this.is_edit) this.is_edit = !this.is_edit;
             this.edit_index = index;
             this.edit_index1 = index1;
             let items = JSON.parse(JSON.stringify(this.items[index]))
-            console.log(items, index, index1)
             this.set_lot_item_details({
                 item: items.items[index1].name,
                 attributes: items.attributes,
@@ -566,6 +604,7 @@ export default {
                 default_uom: items.items[index1].default_uom,
 		        secondary_uom: items.items[index1].secondary_uom,
             }, items.items[index1])
+            console.log(items, index, index1)
             this.lot_input.df.read_only = 1;
             this.item_input.df.read_only = 1;
             this.item_input.refresh();
@@ -585,3 +624,14 @@ export default {
     },
 }
 </script>
+
+<style scoped>
+.new-item-form {
+    border-style: solid;
+    border-color: red;
+    border-width: thin;
+    border-radius: 10px;
+    padding: 10px 10px 46px 10px;
+    margin-top: 20px;
+}
+</style>

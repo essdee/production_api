@@ -1,0 +1,41 @@
+{
+ "actions": [],
+ "creation": "2023-03-27 20:28:56.386132",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "enable_price_validation"
+ ],
+ "fields": [
+  {
+   "default": "0",
+   "fieldname": "enable_price_validation",
+   "fieldtype": "Check",
+   "label": "Enable Price Validation"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "issingle": 1,
+ "links": [],
+ "modified": "2023-03-27 20:28:56.386132",
+ "modified_by": "Administrator",
+ "module": "Production Api",
+ "name": "MRP Settings",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "print": 1,
+   "read": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "track_changes": 1
+}

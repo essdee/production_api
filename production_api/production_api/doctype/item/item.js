@@ -22,10 +22,10 @@ frappe.ui.form.on('Item', {
 			});
 
 			// Setting the HTML for Item Price List
-			// $(frm.fields_dict['price_html'].wrapper).html("");
-			// new frappe.production.ui.ItemPriceList({
-			// 	wrapper: frm.fields_dict["price_html"].wrapper,
-			// });
+			$(frm.fields_dict['price_html'].wrapper).html("");
+			new frappe.production.ui.ItemPriceList({
+				wrapper: frm.fields_dict["price_html"].wrapper,
+			});
 		}
 	}
 });

@@ -40,9 +40,18 @@
    "link_type": "DocType",
    "onboard": 0,
    "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Item Supplier Price List ",
+   "link_to": "Item Price",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
   }
  ],
- "modified": "2021-09-24 17:34:08.637535",
+ "modified": "2023-03-30 11:16:22.092656",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Manufacturing",
@@ -75,6 +84,12 @@
    "doc_view": "",
    "label": "Supplier",
    "link_to": "Supplier",
+   "type": "DocType"
+  },
+  {
+   "doc_view": "",
+   "label": "Settings",
+   "link_to": "MRP Settings",
    "type": "DocType"
   }
  ]

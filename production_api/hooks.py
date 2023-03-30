@@ -129,6 +129,7 @@ app_include_js = "/assets/js/production_api.min.js"
 
 jenv = {
     "methods": [
-        "fetch_item_details:production_api.production_api.doctype.purchase_order.purchase_order.fetch_item_details"
+        "fetch_item_details:production_api.production_api.doctype.purchase_order.purchase_order.fetch_item_details",
+        "get_user_signature:production_api.production_api.doctype.signature.signature.get_signature"
     ]
 }

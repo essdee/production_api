@@ -29,9 +29,17 @@
   "items",
   "item_html",
   "section_break_17",
+  "column_break_24",
+  "total",
+  "total_tax",
+  "grand_total",
+  "in_words",
+  "section_break_28",
   "comments",
   "print_settings_section",
-  "show_delivery_details"
+  "show_delivery_details",
+  "approved_by",
+  "amended_from"
  ],
  "fields": [
   {
@@ -93,7 +101,7 @@
    "fieldtype": "Select",
    "in_list_view": 1,
    "label": "PO Series",
-   "options": "PO-2223-.####",
+   "options": "PO-",
    "reqd": 1
   },
   {
@@ -189,17 +197,67 @@
    "fieldname": "deliver_to_supplier",
    "fieldtype": "Check",
    "label": "Deliver to Supplier"
+  },
+  {
+   "fieldname": "column_break_24",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "section_break_28",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "approved_by",
+   "fieldtype": "Link",
+   "hidden": 1,
+   "label": "Approved By",
+   "options": "User"
+  },
+  {
+   "fieldname": "amended_from",
+   "fieldtype": "Link",
+   "label": "Amended From",
+   "no_copy": 1,
+   "options": "Purchase Order",
+   "print_hide": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "total",
+   "fieldtype": "Currency",
+   "label": "Total",
+   "read_only": 1
+  },
+  {
+   "fieldname": "total_tax",
+   "fieldtype": "Currency",
+   "label": "Total Tax",
+   "read_only": 1
+  },
+  {
+   "fieldname": "grand_total",
+   "fieldtype": "Currency",
+   "label": "Grand Total",
+   "read_only": 1
+  },
+  {
+   "fieldname": "in_words",
+   "fieldtype": "Data",
+   "label": "In Words",
+   "read_only": 1
   }
  ],
  "index_web_pages_for_search": 1,
+ "is_submittable": 1,
  "links": [],
- "modified": "2023-02-20 19:30:57.369280",
+ "modified": "2023-03-29 13:10:56.225451",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Purchase Order",
  "owner": "Administrator",
  "permissions": [
   {
+   "cancel": 1,
    "create": 1,
    "delete": 1,
    "email": 1,
@@ -208,7 +266,39 @@
    "read": 1,
    "report": 1,
    "role": "System Manager",
+   "select": 1,
    "share": 1,
+   "submit": 1,
+   "write": 1
+  },
+  {
+   "cancel": 1,
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Purchase User",
+   "select": 1,
+   "share": 1,
+   "submit": 1,
+   "write": 1
+  },
+  {
+   "cancel": 1,
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Purchase Manager",
+   "select": 1,
+   "share": 1,
+   "submit": 1,
    "write": 1
   }
  ],
