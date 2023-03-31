@@ -2,15 +2,49 @@
     <div class="item-price-list-template frappe-control">
         <table class="table table-sm table-bordered" v-if="item_price_list">
             <tr>
-                <th>S.No</th>
-                <th>Item Name</th>
-                <th>Item Price</th>
+                <th style="width:36px"> </th>
+                <th style="width:48px">S.No</th>
+                <th v-if='doctype=="Supplier"'>Item Name</th>
+                <th v-if='doctype=="Item"'>Supplier Name</th>
+                <!-- <th>Item Price</th>
+                <th>Minimum Order Quantity</th> -->
             </tr>
-            <tr v-for="(item, index) in item_price_list" :key="item">
-                <td>{{ index + 1 }}</td>
-                <td>{{ item.item_name }}</td>
-                <td>{{ item.price }}</td>
-            </tr>
+            <template v-for="(item, index) in item_price_list">
+                <tr :key="item" class="openable-row" :class="{ opened: opened.includes(index) }" @click="toggle(index)">
+                    <td>
+                        <i class="fa fa-md fa-fw pull-left" :class="{ 'fa-minus-square-o': opened.includes(index), 'fa-plus-square-o': !opened.includes(index) }"></i>
+                    </td>
+                    <td class="text-center">
+                         {{ index + 1 }}
+                    </td>
+                    <td v-if='doctype=="Supplier"'>{{ item.item_name }}</td>
+                    <td v-if='doctype=="Item"'>{{ item.supplier_name }}</td>
+                    <!-- <td>{{ item.price }}</td>
+                    <td>{{ item.moq }}</td> -->
+                </tr>
+                <tr v-if="opened.includes(index)" :key="'i-'+index">
+                    <td></td>
+                    <td colspan="2">
+                        <div class="sub-table">
+                            <div v-if="item.depends_on_attribute">Depends on {{item.attribute}}</div>
+                            <table class="table table-sm table-bordered" v-if="item.item_price_values">
+                                <tr>
+                                    <th>S.No</th>
+                                    <th>Minimum Order Quantity</th>
+                                    <th>Item Price</th>
+                                    <th v-if="item.depends_on_attribute">Attribute Value</th>
+                                </tr>
+                                <tr v-for="(price, j) in item.item_price_values" :key="price">
+                                    <td>{{ j + 1 }}</td>
+                                    <td>{{ price.moq }}</td>
+                                    <td>{{ price.price }}</td>
+                                    <td v-if="item.depends_on_attribute">{{ price.attribute_value }}</td>
+                                </tr>
+                            </table>
+                        </div>
+                    </td>
+                </tr>
+            </template>
         </table>
         <p v-else>Price not available.</p>
         <p>
@@ -18,7 +52,6 @@
                 {{ __("Add") + ' Price' }}
             </button>
         </p>
-        
     </div>
 </template>
 
@@ -28,7 +61,9 @@ export default {
     data: function(){
         return {
             item_price_list: this.getPriceList(),
-            doc_name: cur_frm.doc.name
+            doc_name: cur_frm.doc.name,
+            doctype: cur_frm.doctype,
+            opened: [],
         };
     },
     methods: {
@@ -46,7 +81,31 @@ export default {
             if(cur_frm.doc.__onload.item_price_list && cur_frm.doc.__onload.item_price_list.length != 0)
                 return cur_frm.doc.__onload["item_price_list"];
             else return null;
+        },
+        toggle(id) {
+            const index = this.opened.indexOf(id);
+            if (index > -1) {
+                this.opened.splice(index, 1)
+            } else {
+                this.opened.push(id)
+            }
         }
     }
 }
 </script>
+
+<style scoped>
+.opened {
+  background-color: white;
+}
+.sub-table {
+    padding: 8px 16px;
+    /* background-color: aliceblue; */
+}
+.openable-row {
+    cursor: pointer;
+}
+.fa-md {
+    font-size: 18px;
+}
+</style>

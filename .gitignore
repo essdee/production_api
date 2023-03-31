@@ -4,3 +4,4 @@
 *.swp
 tags
 production_api/docs/current
+.vscode

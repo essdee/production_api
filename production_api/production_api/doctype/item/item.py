@@ -6,6 +6,7 @@ from frappe.utils import cstr, flt
 from six import string_types
 import json
 from frappe.model.document import Document
+from frappe.desk.search import search_widget
 
 class Item(Document):
 
@@ -63,8 +64,12 @@ class Item(Document):
 		"""Load Item Price List into `__onload`"""
 
 		filters = {"item_name": self.name}
-		item_price_list = frappe.get_list("Item Price", filters=filters, fields=["*"])
-		self.set_onload('item_price_list', item_price_list)
+		item_price_list = frappe.get_list("Item Price", filters=filters)
+		item_prices = []
+		for price in item_price_list:
+			doc = frappe.get_doc("Item Price", price.name)
+			item_prices.append(doc)
+		self.set_onload('item_price_list', item_prices)
 
 	def onload(self):
 		"""Load Attribute List and BOM Item Attribute Mapping List into `__onload`"""
@@ -293,3 +298,52 @@ def mapping_missing_attribute():
 				attribute.attribute_name=value.attributes[i].attribute
 				attribute.save()
 				value.save()
+
+@frappe.whitelist()
+@frappe.validate_and_sanitize_search_inputs
+def get_item_attribute_values(doctype, txt, searchfield, start, page_len, filters):
+	if (doctype != 'Item Attribute Value' or filters['item'] == None or filters['attribute'] == None):
+		return []
+
+	item_name = filters['item']
+	attribute = filters['attribute']
+
+	attr = frappe.get_doc("Item Attribute", attribute)
+	if attr.numeric_values:
+		search_widget(doctype=doctype, txt=txt, page_length=page_len, searchfield=searchfield, filters=[['Item Attribute Value', 'attribute_name', '=', attribute]])
+		values = frappe.response['values']
+		del frappe.response['values']
+		return values
+
+	item = frappe.get_doc("Item", item_name)
+	attributes = [attribute.attribute for attribute in item.attributes]
+	if attribute not in attributes:
+		return []
+	for attr_obj in item.attributes:
+		if attribute == attr_obj.attribute:
+			mapping_doc = frappe.get_doc("Item Item Attribute Mapping", attr_obj.mapping)
+			attribute_values = [value.attribute_value for value in mapping_doc.values]
+			return [[value] for value in attribute_values if value.lower().startswith(txt.lower())]
+		
+@frappe.whitelist()
+@frappe.validate_and_sanitize_search_inputs
+def get_item_attributes(doctype, txt, searchfield, start, page_len, filters):
+	if (doctype != 'Item Attribute' or filters['item'] == None):
+		return []
+	
+	item_name = filters['item']
+	item = frappe.get_doc("Item", item_name)
+	attributes = [attribute.attribute for attribute in item.attributes]
+	return [[value] for value in attributes if value.lower().startswith(txt.lower())]
+
+@frappe.whitelist()
+@frappe.validate_and_sanitize_search_inputs
+def get_item_attributes(doctype, txt, searchfield, start, page_len, filters):
+	if (doctype != 'Item Attribute' or filters['item'] == None):
+		return []
+	
+	item_name = filters['item']
+	item = frappe.get_doc("Item", item_name)
+	attributes = [attribute.attribute for attribute in item.attributes]
+	return [[value] for value in attributes if value.lower().startswith(txt.lower())]
+

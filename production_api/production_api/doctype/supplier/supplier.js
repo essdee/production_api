@@ -8,8 +8,14 @@ frappe.ui.form.on('Supplier', {
 			hide_field(["address_html", "contact_html"]);
 			frappe.contacts.clear_address_and_contact(frm);
 		} else {
-			unhide_field(["address_html", "contact_html"]);
+			unhide_field(["address_html", "contact_html", "price_html"]);
 			frappe.contacts.render_address_and_contact(frm);
+			
+			// Setting the HTML for Item Price List
+			$(frm.fields_dict['price_html'].wrapper).html("");
+			new frappe.production.ui.ItemPriceList({
+				wrapper: frm.fields_dict["price_html"].wrapper,
+			});
 		}
 	}
 });

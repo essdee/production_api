@@ -1,19 +1,21 @@
 {
  "cards_label": "Masters",
- "category": "Modules",
  "charts": [],
  "creation": "2021-09-08 13:24:33.870152",
- "developer_mode_only": 0,
- "disable_user_customization": 0,
  "docstatus": 0,
  "doctype": "Workspace",
- "extends_another_page": 0,
  "hide_custom": 0,
  "icon": "home",
  "idx": 0,
  "is_default": 0,
- "is_standard": 1,
  "label": "Manufacturing",
+ "for_user": "",
+ "parent_page": "",
+ "public": 1,
+ "restrict_to_domain": "",
+ "roles": [],
+ "sequence_id": 31,
+ "title": "Build",
  "links": [
   {
    "hidden": 0,
@@ -21,6 +23,7 @@
    "label": "Item",
    "link_type": "DocType",
    "onboard": 0,
+   "link_count": 0,
    "type": "Card Break"
   },
   {
@@ -30,6 +33,7 @@
    "link_to": "Item",
    "link_type": "DocType",
    "onboard": 0,
+   "link_count": 0,
    "type": "Link"
   },
   {
@@ -39,16 +43,25 @@
    "link_to": "Item Attribute",
    "link_type": "DocType",
    "onboard": 0,
+   "link_count": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Item Supplier Price List ",
+   "link_to": "Item Price",
+   "link_type": "DocType",
+   "onboard": 0,
+   "link_count": 0,
    "type": "Link"
   }
  ],
- "modified": "2021-09-24 17:34:08.637535",
+ "modified": "2023-03-30 11:16:22.092656",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Manufacturing",
  "owner": "Administrator",
- "pin_to_bottom": 0,
- "pin_to_top": 1,
  "shortcuts": [
   {
    "doc_view": "",
@@ -75,6 +88,12 @@
    "doc_view": "",
    "label": "Supplier",
    "link_to": "Supplier",
+   "type": "DocType"
+  },
+  {
+   "doc_view": "",
+   "label": "Settings",
+   "link_to": "MRP Settings",
    "type": "DocType"
   }
  ]

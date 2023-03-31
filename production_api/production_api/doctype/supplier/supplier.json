@@ -16,7 +16,8 @@
   "contact_html",
   "section_break_8",
   "account_mappings",
-  "section_break_10"
+  "section_break_10",
+  "price_html"
  ],
  "fields": [
   {
@@ -70,18 +71,24 @@
   },
   {
    "fieldname": "section_break_10",
-   "fieldtype": "Section Break"
+   "fieldtype": "Section Break",
+   "label": "Price List"
   },
   {
    "default": "0",
    "fieldname": "is_company_location",
    "fieldtype": "Check",
    "label": "Is Company Location"
+  },
+  {
+   "fieldname": "price_html",
+   "fieldtype": "HTML Editor",
+   "label": "Price"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2021-10-18 11:48:27.283904",
+ "modified": "2023-03-14 10:58:54.145866",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Supplier",

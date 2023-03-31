@@ -74,31 +74,47 @@ frappe.ui.form.on('Purchase Order', {
 
 	refresh: function(frm) {
 		$(frm.fields_dict['item_html'].wrapper).html("");
-		frm.newitemvm = frappe.production.ui.PurchaseOrderItem(frm.fields_dict["item_html"].wrapper);
+		if (!frm.itemEditor) {
+			frm.itemEditor = new frappe.production.ui.PurchaseOrderItem(frm.fields_dict["item_html"].wrapper);
+		} else {
+			console.log(frm.itemEditor);
+			frm.itemEditor.updateWrapper(frm.fields_dict["item_html"].wrapper)
+		}
 		if(frm.doc.__onload && frm.doc.__onload.item_details) {
 			frm.doc['item_details'] = JSON.stringify(frm.doc.__onload.item_details);
-			frm.newitemvm.$children[0].load_data(frm.doc.__onload.item_details);
+			frm.itemEditor.load_data(frm.doc.__onload.item_details);
+		} else {
+			frm.itemEditor.load_data([]);
 		}
+		frappe.production.ui.eventBus.$on("po_updated", e => {
+			frm.dirty();
+		})
 	},
 
 	validate: function(frm) {
-		console.log(frm);
-		if(frm.newitemvm){
-			let items = frm.newitemvm.$children[0].items;
-			if(items && items.length > 0){
+		if(frm.itemEditor){
+			let items = frm.itemEditor.get_items();
+			if(items && items.length > 0) {
 				frm.doc['item_details'] = JSON.stringify(items);
 			}
-			else
+			else {
 				frappe.throw(__('Add Items to continue'));
+			}
 		}
-		else{
+		else {
 			frappe.throw(__('Please refresh and try again.'));
 		}
 	},
 
 	before_save: function(frm) {
-		if(frm.newitemvm) {
-			console.log(frm.newitemvm);
+		if(frm.itemEditor) {
+			console.log(frm.itemEditor);
+		}
+	},
+
+	supplier: function(frm) {
+		if (frm.doc.supplier) {
+			frappe.production.ui.eventBus.$emit("supplier_updated", frm.doc.supplier)
 		}
 	},
 
