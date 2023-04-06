@@ -24,7 +24,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2021-12-28 10:41:01.615048",
+ "modified": "2023-04-06 16:25:07.433654",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Item Item Attribute Mapping",
@@ -41,10 +41,33 @@
    "role": "System Manager",
    "share": 1,
    "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Item Master Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "All",
+   "select": 1,
+   "share": 1
   }
  ],
  "quick_entry": 1,
  "sort_field": "modified",
  "sort_order": "DESC",
+ "states": [],
  "track_changes": 1
 }
