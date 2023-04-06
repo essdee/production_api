@@ -5,6 +5,7 @@ import frappe
 import json
 from frappe.model.document import Document
 from frappe import utils
+from frappe.desk.form.save import cancel
 
 class ItemPrice(Document):
 	def before_validate(self):
@@ -24,7 +25,8 @@ def get_active_price(item: str, supplier: str = None):
 		return None
 	filters = {
 		"item_name": item,
-		"from_date": ['<=', utils.nowdate()]
+		"from_date": ['<=', utils.nowdate()],
+		"docstatus": 1
 	}
 	if (supplier != None):
 		filters['supplier'] = supplier
@@ -35,10 +37,8 @@ def get_active_price(item: str, supplier: str = None):
 	if len(lst) == 0:
 		frappe.throw("No Active Price List")
 	
-	if len(lst) > 1:
-		for l in lst[1:]:
-			d = frappe.get_doc('Item Price', l.name)
-			# Todo: Set status to disabled
+	if supplier != None and len(lst) > 1:
+		frappe.throw("Multiple Price list Found")
 	
 	d = frappe.get_doc('Item Price', lst[0].name)
 	return d
@@ -113,3 +113,21 @@ def get_item_supplier_price(item_detail, supplier: str = None):
 				qty_sum += item_detail["values"][qty_key]["qty"]
 			price = item_price.validate_attribute_values(qty=qty_sum)
 			return price
+		
+def get_all_active_price(item = None, supplier = None):
+	if item == None and supplier == None:
+		return []
+	filters = {
+		"from_date": ['<=', utils.nowdate()],
+		"docstatus": 1
+	}
+	if (item != None):
+		filters['item_name'] = item
+
+	if (supplier != None):
+		filters['supplier'] = supplier
+	lst = frappe.db.get_list(
+		'Item Price',
+		filters=filters,
+	)
+	return lst
