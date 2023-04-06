@@ -9,8 +9,8 @@
                 <!-- <th>Item Price</th>
                 <th>Minimum Order Quantity</th> -->
             </tr>
-            <template v-for="(item, index) in item_price_list">
-                <tr :key="item" class="openable-row" :class="{ opened: opened.includes(index) }" @click="toggle(index)">
+            <template v-for="(item, index) in item_price_list" :key="item">
+                <tr  class="openable-row" :class="{ opened: opened.includes(index) }" @click="toggle(index)">
                     <td>
                         <i class="fa fa-md fa-fw pull-left" :class="{ 'fa-minus-square-o': opened.includes(index), 'fa-plus-square-o': !opened.includes(index) }"></i>
                     </td>
