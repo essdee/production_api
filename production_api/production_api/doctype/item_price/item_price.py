@@ -11,6 +11,35 @@ class ItemPrice(Document):
 	def before_validate(self):
 		validate_price_values(self.item_price_values)
 
+	def before_submit(self):
+		filters = {
+			"item_name": self.item_name,
+			"from_date": ['<=', utils.nowdate()],
+			"docstatus": 1,
+			"supplier": self.supplier
+		}
+		if self.supplier == None:
+			filters["supplier"] = ["is", "Null"]
+		price_list = frappe.db.get_list(
+			'Item Price',
+			filters=filters,
+			pluck= "name",
+			order_by='from_date asc',
+		)
+		for price in price_list:
+			doc = frappe.get_doc("Item Price", price)
+			if doc.from_date == self.from_date:
+				frappe.throw("An Item Price was found with the same `From Date`. Please Expire it before submitting this one.")
+			elif doc.from_date > self.from_date:
+				if not self.to_date or self.to_date >= doc.from_date:
+					frappe.throw(f"An Updated Price list for the same Item and Supplier exists from {frappe.utils.format_date(doc.from_date)}. Please set `To Date` less than that date or cancel the next Price.")
+			else:
+				print(self.from_date)
+				to_date = utils.add_days(self.from_date, -1)
+				doc.to_date = to_date
+
+
+
 	def validate_attribute_values(self, qty = 0, attribute = None, attribute_value = None) :
 		if self.depends_on_attribute and (attribute == None or self.attribute != attribute or attribute_value == None):
 			return None

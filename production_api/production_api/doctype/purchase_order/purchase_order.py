@@ -53,9 +53,12 @@ class PurchaseOrder(Document):
 		print(self.item_details)
 		if(self.item_details):
 			items = save_item_details(self.item_details)
-			# price_validation = frappe.db.get_single_value('MRP Settings', 'enable_price_validation')
-			# if price_validation:
-			# 	items = validate_price_details(items, self.supplier)
+			price_validation = frappe.db.get_single_value('MRP Settings', 'enable_price_validation')
+			if price_validation:
+				try:
+					items = validate_price_details(items, self.supplier)
+				except:
+					pass
 			print(json.dumps(items, indent=3))
 			self.set('items', items)
 			self.calculate_amount()
