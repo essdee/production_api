@@ -18,7 +18,7 @@
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2023-03-27 20:28:56.386132",
+ "modified": "2023-04-06 11:23:55.855960",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "MRP Settings",
@@ -37,5 +37,6 @@
  ],
  "sort_field": "modified",
  "sort_order": "DESC",
+ "states": [],
  "track_changes": 1
 }

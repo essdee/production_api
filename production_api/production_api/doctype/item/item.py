@@ -7,6 +7,7 @@ from six import string_types
 import json
 from frappe.model.document import Document
 from frappe.desk.search import search_widget
+from production_api.production_api.doctype.item_price.item_price import get_all_active_price
 
 class Item(Document):
 
@@ -63,8 +64,7 @@ class Item(Document):
 	def load_price(self):
 		"""Load Item Price List into `__onload`"""
 
-		filters = {"item_name": self.name}
-		item_price_list = frappe.get_list("Item Price", filters=filters)
+		item_price_list = get_all_active_price(item = self.name)
 		item_prices = []
 		for price in item_price_list:
 			doc = frappe.get_doc("Item Price", price.name)

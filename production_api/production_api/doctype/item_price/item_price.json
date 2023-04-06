@@ -8,10 +8,11 @@
  "field_order": [
   "item_name",
   "uom",
+  "from_date",
   "column_break_3",
   "supplier",
   "supplier_name",
-  "from_date",
+  "to_date",
   "section_break_7",
   "depends_on_attribute",
   "attribute",
@@ -107,15 +108,21 @@
    "options": "Item Price",
    "print_hide": 1,
    "read_only": 1
+  },
+  {
+   "fieldname": "to_date",
+   "fieldtype": "Date",
+   "label": "To Date"
   }
  ],
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2023-03-29 12:20:38.271704",
+ "modified": "2023-04-03 18:39:13.375307",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Item Price",
+ "naming_rule": "Expression (old style)",
  "owner": "Administrator",
  "permissions": [
   {
@@ -126,13 +133,35 @@
    "print": 1,
    "read": 1,
    "report": 1,
-   "role": "System Manager",
+   "role": "Purchase Manager",
    "share": 1,
    "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Purchase User",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "All",
+   "share": 1
   }
  ],
  "search_fields": "item_name,supplier",
  "sort_field": "modified",
  "sort_order": "DESC",
+ "states": [],
  "track_changes": 1
 }

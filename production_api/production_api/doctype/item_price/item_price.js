@@ -32,6 +32,13 @@ frappe.ui.form.on('Item Price', {
 				}
 			};
         })
+        frm.set_query('tax', function(doc) {
+			return {
+				filters: {
+					enabled: 1,
+				}
+			};
+		});
     },
 
 	refresh: function(frm) {

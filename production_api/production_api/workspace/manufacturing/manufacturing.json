@@ -1,100 +1,87 @@
 {
- "cards_label": "Masters",
  "charts": [],
- "creation": "2021-09-08 13:24:33.870152",
+ "content": "[{\"id\":\"tcx875NdZN\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">Manufacturing</span>\",\"col\":12}},{\"id\":\"77aCRbFikj\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Purchase Order\",\"col\":3}},{\"id\":\"opf9TPh5-A\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Lot\",\"col\":3}},{\"id\":\"WIySpX3vQV\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Item\",\"col\":3}},{\"id\":\"VBX8mK0Z-3\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Supplier\",\"col\":3}},{\"id\":\"3LJP-0wFoI\",\"type\":\"spacer\",\"data\":{\"col\":12}},{\"id\":\"ZtwupzFsjZ\",\"type\":\"card\",\"data\":{\"card_name\":\"Item\",\"col\":3}}]",
+ "creation": "2023-03-30 15:17:33.105497",
  "docstatus": 0,
  "doctype": "Workspace",
- "hide_custom": 0,
- "icon": "home",
- "idx": 0,
- "is_default": 0,
- "label": "Manufacturing",
  "for_user": "",
- "parent_page": "",
- "public": 1,
- "restrict_to_domain": "",
- "roles": [],
- "sequence_id": 31,
- "title": "Build",
+ "hide_custom": 0,
+ "icon": "shortcut",
+ "idx": 0,
+ "is_hidden": 0,
+ "label": "Manufacturing",
  "links": [
   {
-   "hidden": 0,
+   "hidden": 1,
    "is_query_report": 0,
    "label": "Item",
-   "link_type": "DocType",
+   "link_count": 2,
    "onboard": 0,
-   "link_count": 0,
    "type": "Card Break"
   },
   {
    "hidden": 0,
    "is_query_report": 0,
    "label": "Item",
+   "link_count": 0,
    "link_to": "Item",
    "link_type": "DocType",
    "onboard": 0,
-   "link_count": 0,
    "type": "Link"
   },
   {
    "hidden": 0,
    "is_query_report": 0,
-   "label": "Item Attribute",
-   "link_to": "Item Attribute",
-   "link_type": "DocType",
-   "onboard": 0,
+   "label": "Item Supplier Price List",
    "link_count": 0,
-   "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Item Supplier Price List ",
    "link_to": "Item Price",
    "link_type": "DocType",
    "onboard": 0,
-   "link_count": 0,
    "type": "Link"
   }
  ],
- "modified": "2023-03-30 11:16:22.092656",
+ "modified": "2023-04-06 11:21:21.799495",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Manufacturing",
+ "number_cards": [],
  "owner": "Administrator",
+ "parent_page": "",
+ "public": 1,
+ "quick_lists": [],
+ "roles": [],
+ "sequence_id": 1.0,
  "shortcuts": [
   {
-   "doc_view": "",
-   "label": "Purchase Order",
-   "link_to": "Purchase Order",
-   "type": "DocType"
-  },
-  {
-   "doc_view": "",
-   "label": "Lot",
-   "link_to": "Lot",
-   "type": "DocType"
-  },
-  {
-   "color": "",
-   "doc_view": "",
-   "format": "{} Active",
-   "label": "Item",
-   "link_to": "Item",
-   "stats_filter": "{\n    \"disabled\" : 0\n}",
-   "type": "DocType"
-  },
-  {
-   "doc_view": "",
+   "color": "Grey",
+   "doc_view": "List",
    "label": "Supplier",
    "link_to": "Supplier",
    "type": "DocType"
   },
   {
-   "doc_view": "",
-   "label": "Settings",
-   "link_to": "MRP Settings",
+   "color": "Grey",
+   "doc_view": "List",
+   "label": "Lot",
+   "link_to": "Lot",
+   "type": "DocType"
+  },
+  {
+   "color": "Grey",
+   "doc_view": "List",
+   "label": "Purchase Order",
+   "link_to": "Purchase Order",
+   "type": "DocType"
+  },
+  {
+   "color": "Grey",
+   "doc_view": "List",
+   "format": "{} Active",
+   "label": "Item",
+   "link_to": "Item",
+   "stats_filter": "{\"disabled\":[\"=\",0]}",
    "type": "DocType"
   }
- ]
+ ],
+ "title": "Manufacturing"
 }
