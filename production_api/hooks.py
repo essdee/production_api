@@ -90,23 +90,28 @@ app_include_js = ["vue_plugin.bundle.js"]
 # Scheduled Tasks
 # ---------------
 
-# scheduler_events = {
-# 	"all": [
-# 		"production_api.tasks.all"
-# 	],
-# 	"daily": [
-# 		"production_api.tasks.daily"
-# 	],
-# 	"hourly": [
-# 		"production_api.tasks.hourly"
-# 	],
-# 	"weekly": [
-# 		"production_api.tasks.weekly"
-# 	]
-# 	"monthly": [
-# 		"production_api.tasks.monthly"
-# 	]
-# }
+scheduler_events = {
+	# "all": [
+	# 	"production_api.tasks.all"
+	# ],
+	# "daily": [
+	# 	"production_api.tasks.daily"
+	# ],
+	# "hourly": [
+	# 	"production_api.tasks.hourly"
+	# ],
+	# "weekly": [
+	# 	"production_api.tasks.weekly"
+	# ],
+	# "monthly": [
+	# 	"production_api.tasks.monthly"
+	# ]
+	"cron": {
+		"0 1 * * *": [
+			"production_api.tasks.daily"
+		]
+	}
+}
 
 # Testing
 # -------

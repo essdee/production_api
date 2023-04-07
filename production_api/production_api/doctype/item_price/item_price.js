@@ -46,7 +46,31 @@ frappe.ui.form.on('Item Price', {
         frm.fields_dict.from_date.datepicker.update({
             minDate: now,
         });
+        frm.fields_dict.to_date.datepicker.update({
+            minDate: now,
+        });
 	},
+
+    from_date:function(frm) {
+        frm.fields_dict.to_date.datepicker.update({
+            minDate: new Date(frm.doc.from_date)
+        });
+    },
+
+    to_date:function(frm) {
+        if (!frm.doc.to_date) {
+            frm.fields_dict.from_date.datepicker.update({
+                minDate: new Date(),
+                maxDate: null,
+            });
+        } else {
+            frm.fields_dict.from_date.datepicker.update({
+                minDate: new Date(),
+                maxDate: new Date(frm.doc.to_date),
+            });
+        }
+        
+    },
 
     onload_post_render: function(frm) {
         showOrHideColumns(frm, ['attribute_value'], 'item_price_values', frm.doc.depends_on_attribute ? 0 : 1)

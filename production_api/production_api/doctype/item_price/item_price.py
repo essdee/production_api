@@ -5,7 +5,8 @@ import frappe
 import json
 from frappe.model.document import Document
 from frappe import utils
-from frappe.desk.form.save import cancel
+from frappe.utils import cint
+from frappe import _
 
 class ItemPrice(Document):
 	def before_validate(self):
@@ -160,3 +161,72 @@ def get_all_active_price(item = None, supplier = None):
 		filters=filters,
 	)
 	return lst
+
+def update_all_expired_item_price():
+	filters = {
+		"to_date": ['<', utils.nowdate()],
+		"docstatus": 1
+	}
+	price_list = frappe.db.get_all(
+		'Item Price',
+		filters=filters,
+		pluck="name"
+	)
+	workflow_exists = frappe.db.exists("Workflow", {"document_type": "Item Price", "is_active": 1})
+	for price in price_list:
+		doc = frappe.get_doc("Item Price", price)
+		if workflow_exists:
+			cancel_item_price(doc)
+		else:
+			doc.cancel()
+		doc.add_comment("Info", "Cancelled Automatically due to expiry")
+
+
+def cancel_item_price(doc):
+	workflow_name = frappe.db.get_value("Workflow", {"document_type": "Item Price", "is_active": 1}, "name")
+	if workflow_name:
+		workflow = frappe.get_doc("Workflow", workflow_name)
+		cancel_states = []
+		for state in workflow.states:
+			if cint(state.doc_status) == 2:
+				cancel_states.append(state.state)
+		if "Expired" in cancel_states:
+			cancel_states = ["Expired"]
+
+		transition = get_cancel_transitions(doc, workflow, cancel_states)
+		if transition:
+			doc.set(workflow.workflow_state_field, transition.next_state)
+			next_state = [d for d in workflow.states if d.state == transition.next_state][0]
+			# update any additional field
+			if next_state.update_field:
+				doc.set(next_state.update_field, next_state.update_value)
+			doc.cancel()
+			doc.add_comment("Workflow", _(next_state.state))
+	else:
+		doc.cancel()
+
+def get_cancel_transitions(doc, workflow, cancel_states) -> dict:
+	"""Return list of possible transitions for the given doc"""
+	from frappe.model.document import Document
+
+	if not isinstance(doc, Document):
+		doc = frappe.get_doc(frappe.parse_json(doc))
+		doc.load_from_db()
+
+	if doc.is_new():
+		return []
+
+	current_state = doc.get(workflow.workflow_state_field)
+
+	if not current_state:	
+		frappe.throw("Workflow State not set")
+
+	transitions = []
+
+	for transition in workflow.transitions:
+		if transition.state == current_state and transition.next_state in cancel_states:
+			transitions.append(transition.as_dict())
+
+	if len(transitions) > 0:
+		return transitions[0]
+	return None
