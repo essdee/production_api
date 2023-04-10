@@ -13,14 +13,15 @@ class ItemPrice(Document):
 		validate_price_values(self.item_price_values)
 
 	def before_submit(self):
-		filters = {
-			"item_name": self.item_name,
-			"from_date": ['<=', utils.nowdate()],
-			"docstatus": 1,
-			"supplier": self.supplier
-		}
+		filters = [
+			["item_name", "=", self.item_name],
+			["from_date", "<=", utils.nowdate()],
+			["docstatus", "=", 1]
+		]
 		if self.supplier == None:
-			filters["supplier"] = ["is", "Null"]
+			filters.append(["supplier", "is", "not set"])
+		else:
+			filters.append(["supplier", "=", self.supplier])
 		price_list = frappe.db.get_list(
 			'Item Price',
 			filters=filters,
@@ -163,10 +164,11 @@ def get_all_active_price(item = None, supplier = None):
 	return lst
 
 def update_all_expired_item_price():
-	filters = {
-		"to_date": ['<', utils.nowdate()],
-		"docstatus": 1
-	}
+	filters = [
+		["to_date", "<", utils.nowdate()],
+		["to_date", "is", "set"],
+		["docstatus", "=", 1]
+	]
 	price_list = frappe.db.get_all(
 		'Item Price',
 		filters=filters,
