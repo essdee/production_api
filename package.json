@@ -1,0 +1,15 @@
+{
+  "name": "production_api",
+  "version": "0.0.1",
+  "description": "Open Source MRP System powered by the Frappe Framework",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/essdee/production_api.git"
+  },
+  "author": "Essdee Knitting Mills Private Limited",
+  "license": "GPL-3.0",
+  "bugs": {
+    "url": "https://github.com/essdee/production_api/issues"
+  },
+  "homepage": "https://github.com/essdee/production_api#readme"
+}

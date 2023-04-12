@@ -29,10 +29,11 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2023-03-25 13:03:33.311855",
+ "modified": "2023-04-06 16:36:01.611163",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Tax Slab",
+ "naming_rule": "By fieldname",
  "owner": "Administrator",
  "permissions": [
   {
@@ -49,6 +50,20 @@
    "write": 1
   },
   {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "select": 1,
+   "share": 1,
+   "write": 1
+  },
+  {
+   "read": 1,
    "role": "All",
    "select": 1
   }
@@ -56,5 +71,6 @@
  "quick_entry": 1,
  "sort_field": "modified",
  "sort_order": "DESC",
+ "states": [],
  "track_changes": 1
 }

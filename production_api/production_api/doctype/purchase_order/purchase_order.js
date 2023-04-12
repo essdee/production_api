@@ -74,12 +74,7 @@ frappe.ui.form.on('Purchase Order', {
 
 	refresh: function(frm) {
 		$(frm.fields_dict['item_html'].wrapper).html("");
-		if (!frm.itemEditor) {
-			frm.itemEditor = new frappe.production.ui.PurchaseOrderItem(frm.fields_dict["item_html"].wrapper);
-		} else {
-			console.log(frm.itemEditor);
-			frm.itemEditor.updateWrapper(frm.fields_dict["item_html"].wrapper)
-		}
+		frm.itemEditor = new frappe.production.ui.PurchaseOrderItem(frm.fields_dict["item_html"].wrapper);
 		if(frm.doc.__onload && frm.doc.__onload.item_details) {
 			frm.doc['item_details'] = JSON.stringify(frm.doc.__onload.item_details);
 			frm.itemEditor.load_data(frm.doc.__onload.item_details);
@@ -115,6 +110,19 @@ frappe.ui.form.on('Purchase Order', {
 	supplier: function(frm) {
 		if (frm.doc.supplier) {
 			frappe.production.ui.eventBus.$emit("supplier_updated", frm.doc.supplier)
+		}
+		if (frm.doc.supplier) {
+			frappe.call({
+				method: "production_api.production_api.doctype.supplier.supplier.get_primary_address",
+				args: {"supplier": frm.doc.supplier},
+				callback: function(r) {
+					if (r.message) {
+						frm.set_value('supplier_address', r.message)
+					} else {
+						frm.set_value('supplier_address', '')
+					}
+				}
+			})
 		}
 	},
 

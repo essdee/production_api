@@ -53,12 +53,22 @@
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2021-09-27 11:25:32.804064",
+ "modified": "2023-04-06 16:37:52.399955",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Company Settings",
  "owner": "Administrator",
  "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "print": 1,
+   "read": 1,
+   "role": "Administrator",
+   "share": 1,
+   "write": 1
+  },
   {
    "create": 1,
    "delete": 1,
@@ -72,5 +82,6 @@
  ],
  "sort_field": "modified",
  "sort_order": "DESC",
+ "states": [],
  "track_changes": 1
 }

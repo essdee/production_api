@@ -27,10 +27,11 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2021-07-07 12:33:22.138602",
+ "modified": "2023-04-06 16:33:12.059526",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "UOM",
+ "naming_rule": "By fieldname",
  "owner": "Administrator",
  "permissions": [
   {
@@ -44,10 +45,33 @@
    "role": "System Manager",
    "share": 1,
    "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Item Master Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "All",
+   "select": 1,
+   "share": 1
   }
  ],
  "quick_entry": 1,
  "sort_field": "modified",
  "sort_order": "DESC",
+ "states": [],
  "track_changes": 1
 }

@@ -2,68 +2,44 @@
     <div class="item-price-list-template frappe-control">
         <table class="table table-sm table-bordered" v-if="item_price_list">
             <tr>
-                <th style="width:36px"> </th>
                 <th style="width:48px">S.No</th>
                 <th v-if='doctype=="Supplier"'>Item Name</th>
                 <th v-if='doctype=="Item"'>Supplier Name</th>
-                <!-- <th>Item Price</th>
-                <th>Minimum Order Quantity</th> -->
+                <th>Based on Attribute</th>
+                <th>Minimum Order Quantity</th>
+                <th>Item Price</th>
+                <th>Attribute</th>
             </tr>
-            <template v-for="(item, index) in item_price_list" :key="item">
-                <tr  class="openable-row" :class="{ opened: opened.includes(index) }" @click="toggle(index)">
-                    <td>
-                        <i class="fa fa-md fa-fw pull-left" :class="{ 'fa-minus-square-o': opened.includes(index), 'fa-plus-square-o': !opened.includes(index) }"></i>
-                    </td>
-                    <td class="text-center">
-                         {{ index + 1 }}
-                    </td>
-                    <td v-if='doctype=="Supplier"'>{{ item.item_name }}</td>
-                    <td v-if='doctype=="Item"'>{{ item.supplier_name }}</td>
-                    <!-- <td>{{ item.price }}</td>
-                    <td>{{ item.moq }}</td> -->
-                </tr>
-                <tr v-if="opened.includes(index)" :key="'i-'+index">
-                    <td></td>
-                    <td colspan="2">
-                        <div class="sub-table">
-                            <div v-if="item.depends_on_attribute">Depends on {{item.attribute}}</div>
-                            <table class="table table-sm table-bordered" v-if="item.item_price_values">
-                                <tr>
-                                    <th>S.No</th>
-                                    <th>Minimum Order Quantity</th>
-                                    <th>Item Price</th>
-                                    <th v-if="item.depends_on_attribute">Attribute Value</th>
-                                </tr>
-                                <tr v-for="(price, j) in item.item_price_values" :key="price">
-                                    <td>{{ j + 1 }}</td>
-                                    <td>{{ price.moq }}</td>
-                                    <td>{{ price.price }}</td>
-                                    <td v-if="item.depends_on_attribute">{{ price.attribute_value }}</td>
-                                </tr>
-                            </table>
-                        </div>
-                    </td>
-                </tr>
-            </template>
+            <tr v-for="item in item_price_list" :key="item.uid">
+                <td v-if='item.count' class="text-center" :rowspan="item.count">
+                    {{ item.index + 1 }}
+                </td>
+                <td v-if='item.count && doctype=="Supplier"' :rowspan="item.count">{{ item.item_name }}</td>
+                <td v-if='item.count && doctype=="Item"' :rowspan="item.count">{{ item.supplier }}</td>
+                <td v-if='item.count' :rowspan="item.count">{{ item.depends_on_attribute ? item.attribute : "" }}</td>
+                <td>{{ item.moq }}</td>
+                <td>{{ item.price }}</td>
+                <td>{{ item.attribute_value }}</td>
+            </tr>
         </table>
         <p v-else>Price not available.</p>
-        <p>
+        <!-- <p>
             <button class="btn btn-xs btn-default btn-address" @click="addValue('Item Price', doc_name)">
                 {{ __("Add") + ' Price' }}
             </button>
-        </p>
+        </p> -->
     </div>
 </template>
 
 <script>
+let uuid = 0;
 export default {
     name: 'ItemPriceListTemplate',
     data: function(){
         return {
-            item_price_list: this.getPriceList(),
+            item_price_list: this.compute_price_list(this.getPriceList()),
             doc_name: cur_frm.doc.name,
             doctype: cur_frm.doctype,
-            opened: [],
         };
     },
     methods: {
@@ -82,13 +58,37 @@ export default {
                 return cur_frm.doc.__onload["item_price_list"];
             else return null;
         },
-        toggle(id) {
-            const index = this.opened.indexOf(id);
-            if (index > -1) {
-                this.opened.splice(index, 1)
-            } else {
-                this.opened.push(id)
+        compute_price_list: function(item_price_list) {
+            if (!item_price_list) return null
+            let pl = []
+            for (let i = 0;i<item_price_list.length;i++) {
+                let item_price = item_price_list[i]
+                let x = {
+                    index: i,
+                    item: item_price.item_name,
+                    supplier: item_price.supplier,
+                    depends_on_attribute: item_price.depends_on_attribute,
+                    attribute: item_price.attribute,
+                    count: item_price.item_price_values.length
+                }
+                for (let j = 0;j<item_price.item_price_values.length;j++) {
+                    let price_value = item_price.item_price_values[j]
+                    let y = {}
+                    if (j==0) {
+                        y = {...x}
+                    }
+                    y = {
+                        ...y,
+                        moq: price_value.moq,
+                        price: price_value.price,
+                        attribute_value: price_value.attribute_value,
+                        row_count: j,
+                        uid: uuid++
+                    }
+                    pl.push(y)
+                }
             }
+            return pl;
         }
     }
 }

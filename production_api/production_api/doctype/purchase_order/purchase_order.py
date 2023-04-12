@@ -25,39 +25,26 @@ class PurchaseOrder(Document):
 		# print(self.workflow_state)
 		print("before submit called")
 		price_validation = frappe.db.get_single_value('MRP Settings', 'enable_price_validation')
-		if price_validation:
+		try:
 			items = validate_price_details([d.as_dict() for d in self.items], self.supplier)
-			print(json.dumps(items, indent=3))
+			# print(json.dumps(items, indent=3))
 			self.set('items', items)
+		except:
+			if price_validation:
+				raise
+			
 		self.calculate_amount()
 		self.set('approved_by', frappe.get_user().doc.name)
 		self.send_sms_and_email()
 
-	# def on_update(self):
-	# 	# print(self.workflow_state)
-	# 	price_validation = frappe.db.get_single_value('MRP Settings', 'enable_price_validation')
-	# 	if price_validation:
-	# 		items = validate_price_details([d.as_dict() for d in self.items], self.supplier)
-	# 		print(json.dumps(items, indent=3))
-	# 		self.set('items', items)
-	# 	self.calculate_amount()
-
-	# def on_update_after_submit(self):
-	# 	# print(self.workflow_state)
-	# 	price_validation = frappe.db.get_single_value('MRP Settings', 'enable_price_validation')
-	# 	if price_validation:
-	# 		items = validate_price_details([d.as_dict() for d in self.items], self.supplier)
-	# 		print(json.dumps(items, indent=3))
-	# 		self.set('items', items)
-	# 	self.calculate_amount()
-	
 	def before_validate(self):
 		print(self.item_details)
 		if(self.item_details):
 			items = save_item_details(self.item_details)
-			# price_validation = frappe.db.get_single_value('MRP Settings', 'enable_price_validation')
-			# if price_validation:
-			# 	items = validate_price_details(items, self.supplier)
+			try:
+				items = validate_price_details(items, self.supplier)
+			except:
+				pass
 			print(json.dumps(items, indent=3))
 			self.set('items', items)
 			self.calculate_amount()
