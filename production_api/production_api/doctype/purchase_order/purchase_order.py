@@ -54,7 +54,7 @@ class PurchaseOrder(Document):
 	def send_sms_and_email(self):
 		supplier = frappe.get_doc("Supplier", self.supplier)
 		# If supplier has a contact
-		if (supplier.contact):
+		if (supplier.contact_mobile):
 			from production_api.production_api.util import send_submitted_doc
 			send_submitted_doc(self)
 
