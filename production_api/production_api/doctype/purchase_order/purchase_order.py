@@ -12,6 +12,7 @@ from frappe.model.document import Document
 from production_api.production_api.doctype.item.item import get_variant, create_variant, get_attribute_details
 from production_api.production_api.doctype.item_price.item_price import get_item_supplier_price, get_active_price
 
+
 class PurchaseOrder(Document):
 
 	def onload(self):
@@ -30,6 +31,7 @@ class PurchaseOrder(Document):
 			self.set('items', items)
 		self.calculate_amount()
 		self.set('approved_by', frappe.get_user().doc.name)
+		self.send_sms_and_email()
 
 	# def on_update(self):
 	# 	# print(self.workflow_state)
@@ -61,6 +63,13 @@ class PurchaseOrder(Document):
 			self.calculate_amount()
 		else:
 			frappe.throw('Add items to Purchase Order.', title='Purchase Order')
+
+	def send_sms_and_email(self):
+		supplier = frappe.get_doc("Supplier", self.supplier)
+		# If supplier has a contact
+		if (supplier.contact):
+			from production_api.production_api.util import send_submitted_doc
+			send_submitted_doc(self)
 
 	def calculate_amount(self):
 		total_amount = 0
