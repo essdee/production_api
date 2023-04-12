@@ -35,6 +35,8 @@ class PurchaseOrder(Document):
 			
 		self.calculate_amount()
 		self.set('approved_by', frappe.get_user().doc.name)
+
+	def on_submit(self):
 		self.send_sms_and_email()
 
 	def before_validate(self):
@@ -56,7 +58,7 @@ class PurchaseOrder(Document):
 		# If supplier has a contact
 		if (supplier.contact_mobile):
 			from production_api.production_api.util import send_submitted_doc
-			send_submitted_doc(self)
+			send_submitted_doc(doc = self)
 
 	def calculate_amount(self):
 		total_amount = 0

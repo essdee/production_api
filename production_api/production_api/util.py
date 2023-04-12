@@ -1,12 +1,22 @@
 import frappe
+from frappe import _, msgprint
+from frappe.core.doctype.sms_settings.sms_settings import validate_receiver_nos, get_headers, send_request
+from production_api.production_api.doctype.shortened_link.shortened_link import create_print_sl
 
-def send_submitted_doc(doc):
-	shortned_link = frappe.new_doc("Shortened Link")
-	shortned_link.document_type = "Purchase Order"
-	shortned_link.document_linked = doc.name
-	shortned_link.insert()
-	shortned_url_domain = frappe.get_doc("MRP Settings").shortned_url_domain
-	link = f"{shortned_url_domain}/{shortned_link.name}"
+def send_submitted_doc(doctype = None, docname = None, doc = None):
+	if not doctype and not doc:
+		return None
+	if doc:
+		doctype = doc.doctype
+		docname = doc.docname
+	elif doctype:
+		if not docname:
+			return None
+		doc = frappe.get_doc(doctype, docname)
+
+	sl_name = create_print_sl(doctype, docname)
+	shortened_url_domain = frappe.get_doc("MRP Settings").shortned_url_domain
+	link = f"{shortened_url_domain}{sl_name}"
 	# Fetch contact doc
 	# If contact doc has phone number and site has SMS settings set send sms using send_sms()
 
@@ -64,4 +74,4 @@ def send_via_gateway(arg):
 		args.update(arg)
 		# create_sms_log(args, success_list)
 		if arg.get("success_msg"):
-			frappe.msgprint(_("SMS sent to following numbers: {0}").format("\n" + "\n".join(success_list)))
+			msgprint(_("SMS sent to following numbers: {0}").format("\n" + "\n".join(success_list)))

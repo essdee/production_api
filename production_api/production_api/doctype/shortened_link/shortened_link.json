@@ -8,8 +8,10 @@
  "editable_grid": 1,
  "engine": "InnoDB",
  "field_order": [
+  "type",
   "document_type",
   "document_linked",
+  "link",
   "link_expiry",
   "link_views"
  ],
@@ -19,16 +21,16 @@
    "fieldtype": "Link",
    "in_list_view": 1,
    "label": "Document Type",
-   "options": "DocType",
-   "reqd": 1
+   "mandatory_depends_on": "eval:(doc.type == \"Print PDF\")",
+   "options": "DocType"
   },
   {
    "fieldname": "document_linked",
    "fieldtype": "Dynamic Link",
    "in_list_view": 1,
    "label": "Document",
-   "options": "document_type",
-   "reqd": 1
+   "mandatory_depends_on": "eval:(doc.type == \"Print PDF\")",
+   "options": "document_type"
   },
   {
    "fieldname": "link_expiry",
@@ -38,12 +40,26 @@
   {
    "fieldname": "link_views",
    "fieldtype": "Int",
-   "label": "Views"
+   "label": "Views",
+   "read_only": 1
+  },
+  {
+   "fieldname": "type",
+   "fieldtype": "Select",
+   "label": "type",
+   "options": "Print PDF\nLink",
+   "reqd": 1
+  },
+  {
+   "fieldname": "link",
+   "fieldtype": "Text",
+   "label": "Link",
+   "mandatory_depends_on": "eval:(doc.type == \"Link\")"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2023-04-06 18:07:23.815864",
+ "modified": "2023-04-12 18:14:30.482133",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Shortened Link",

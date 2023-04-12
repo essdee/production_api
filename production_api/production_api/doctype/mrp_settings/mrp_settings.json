@@ -6,7 +6,8 @@
  "engine": "InnoDB",
  "field_order": [
   "enable_price_validation",
-  "shortned_url_domain"
+  "shortned_url_domain",
+  "link_expiry_days"
  ],
  "fields": [
   {
@@ -20,12 +21,17 @@
    "fieldname": "shortned_url_domain",
    "fieldtype": "Data",
    "label": "Shortned URL domain"
+  },
+  {
+   "fieldname": "link_expiry_days",
+   "fieldtype": "Int",
+   "label": "Shortened Link Expires(In Days) "
   }
  ],
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2023-04-07 12:43:15.034222",
+ "modified": "2023-04-12 16:58:04.372707",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "MRP Settings",
