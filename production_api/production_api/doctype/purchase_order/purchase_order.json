@@ -53,6 +53,7 @@
   {
    "fieldname": "supplier",
    "fieldtype": "Link",
+   "in_list_view": 1,
    "label": "Supplier",
    "options": "Supplier",
    "reqd": 1
@@ -99,7 +100,6 @@
   {
    "fieldname": "naming_series",
    "fieldtype": "Select",
-   "in_list_view": 1,
    "label": "PO Series",
    "options": "PO-",
    "reqd": 1
@@ -226,31 +226,35 @@
    "fieldname": "total",
    "fieldtype": "Currency",
    "label": "Total",
+   "no_copy": 1,
    "read_only": 1
   },
   {
    "fieldname": "total_tax",
    "fieldtype": "Currency",
    "label": "Total Tax",
+   "no_copy": 1,
    "read_only": 1
   },
   {
    "fieldname": "grand_total",
    "fieldtype": "Currency",
    "label": "Grand Total",
+   "no_copy": 1,
    "read_only": 1
   },
   {
    "fieldname": "in_words",
    "fieldtype": "Data",
    "label": "In Words",
+   "no_copy": 1,
    "read_only": 1
   }
  ],
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2023-03-30 17:05:06.791279",
+ "modified": "2023-04-12 11:11:04.280846",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Purchase Order",
@@ -273,9 +277,7 @@
    "write": 1
   },
   {
-   "cancel": 1,
    "create": 1,
-   "delete": 1,
    "email": 1,
    "export": 1,
    "print": 1,
@@ -284,7 +286,6 @@
    "role": "Purchase User",
    "select": 1,
    "share": 1,
-   "submit": 1,
    "write": 1
   },
   {

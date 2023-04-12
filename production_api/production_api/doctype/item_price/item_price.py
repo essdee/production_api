@@ -5,7 +5,7 @@ import frappe
 import json
 from frappe.model.document import Document
 from frappe import utils
-from frappe.utils import cint
+from frappe.utils import cint, get_link_to_form
 from frappe import _
 
 class ItemPrice(Document):
@@ -31,14 +31,16 @@ class ItemPrice(Document):
 		for price in price_list:
 			doc = frappe.get_doc("Item Price", price)
 			if doc.from_date == self.from_date:
-				frappe.throw("An Item Price was found with the same `From Date`. Please Expire it before submitting this one.")
+				frappe.throw(f"An Item Price was found with the same `From Date`. Please Expire it before submitting this one.\n{get_link_to_form('Item Price', price)}")
 			elif doc.from_date > self.from_date:
 				if not self.to_date or self.to_date >= doc.from_date:
-					frappe.throw(f"An Updated Price list for the same Item and Supplier exists from {frappe.utils.format_date(doc.from_date)}. Please set `To Date` less than that date or cancel the next Price.")
+					frappe.throw(f"An Updated Price list for the same Item and Supplier exists from {frappe.utils.format_date(doc.from_date)}. Please set `To Date` less than that date or cancel the next Price.\n{get_link_to_form('Item Price', price)}")
 			else:
 				print(self.from_date)
 				to_date = utils.add_days(self.from_date, -1)
 				doc.to_date = to_date
+		
+		self.set('approved_by', frappe.get_user().doc.name)
 
 
 
