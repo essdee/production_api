@@ -5,7 +5,8 @@
  "editable_grid": 1,
  "engine": "InnoDB",
  "field_order": [
-  "enable_price_validation"
+  "enable_price_validation",
+  "shortned_url_domain"
  ],
  "fields": [
   {
@@ -13,12 +14,17 @@
    "fieldname": "enable_price_validation",
    "fieldtype": "Check",
    "label": "Enable Price Validation"
+  },
+  {
+   "fieldname": "shortned_url_domain",
+   "fieldtype": "Data",
+   "label": "Shortned URL domain"
   }
  ],
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2023-03-27 20:28:56.386132",
+ "modified": "2023-04-06 18:14:31.951189",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "MRP Settings",
@@ -37,5 +43,6 @@
  ],
  "sort_field": "modified",
  "sort_order": "DESC",
+ "states": [],
  "track_changes": 1
 }

@@ -133,3 +133,7 @@ jinja = {
         "production_api.production_api.doctype.signature.signature.get_user_signature"
     ]
 }
+
+website_route_rules = [ 
+    {"from_route": "/s/<name>", "to_route": "shortned_link"},
+]
