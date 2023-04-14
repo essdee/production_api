@@ -41,7 +41,7 @@ def send_notification(
 
 
 @frappe.whitelist(allow_guest=True)
-def parse_link(hash=None):
+def parse_short_link(hash=None):
 	if hash is None:
 		raise frappe.exceptions.DoesNotExistError("Not Valid")
 	
