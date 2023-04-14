@@ -10,7 +10,8 @@ from itertools import groupby
 from jinja2 import TemplateSyntaxError
 from frappe.model.document import Document
 from production_api.production_api.doctype.item.item import get_variant, create_variant, get_attribute_details
-from production_api.production_api.doctype.item_price.item_price import get_item_supplier_price, get_active_price
+from production_api.production_api.doctype.item_price.item_price import get_active_price
+from production_api.production_api.util import send_notification
 
 class PurchaseOrder(Document):
 
@@ -270,4 +271,3 @@ def get_address_display(address_dict):
 		return frappe.render_template(template, address_dict)
 	except TemplateSyntaxError:
 		frappe.throw(_("There is an error in your Address Template"))
-		

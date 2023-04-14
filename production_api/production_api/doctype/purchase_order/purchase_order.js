@@ -84,6 +84,41 @@ frappe.ui.form.on('Purchase Order', {
 		frappe.production.ui.eventBus.$on("po_updated", e => {
 			frm.dirty();
 		})
+
+		// Add a custom drop down button for sending Notification to the form
+		// Add two Buttons to the group Send SMS and Send Email
+		if (frm.doc.docstatus == 1) {
+			frm.add_custom_button(__('Send SMS'), function() {
+				frappe.call({
+					method: "production_api.production_api.util.send_notification",
+					args: {
+						"doctype": frm.doc.doctype,
+						"docname": frm.doc.name,
+						"channels": ['SMS'],
+					},
+					callback: function(r) {
+						if (r.message) {
+							frappe.msgprint(r.message)
+						}
+					}
+				})
+			}, __("Send Notification"));
+			frm.add_custom_button(__('Send Email'), function() {
+				frappe.call({
+					method: "production_api.production_api.util.send_notification",
+					args: {
+						"doctype": frm.doc.doctype,
+						"docname": frm.doc.name,
+						"channels": ['Email'],
+					},
+					callback: function(r) {
+						if (r.message) {
+							frappe.msgprint(r.message)
+						}
+					}
+				})
+			}, __("Send Notification"));
+		}
 	},
 
 	validate: function(frm) {
