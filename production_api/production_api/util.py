@@ -76,7 +76,6 @@ def get_contacts_with_phone_number(phone_numbers: list[str]) -> list[str]:
 def send_automatic_notification(doc, method=None):
 	# check if doc is present in 
 	event = None
-	print("Sending Automatic Notification", method)
 	if method == 'on_submit':
 		event = 'Submit'
 	elif method == 'on_cancel':

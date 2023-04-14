@@ -48,7 +48,6 @@ class Supplier(Document):
 			primary_mobiles = [phone.phone for phone in contact.phone_nos if phone.is_primary_mobile_no == 1]
 			if primary_mobiles:
 				primary_mobile = primary_mobiles[0]
-		print(primary_email, primary_mobile)
 		# get all notification template for the doctype and channel
 		filters = {
 			"document_type": doctype,
@@ -56,13 +55,10 @@ class Supplier(Document):
 			"event": event,
 			"enabled": 1
 		}
-		print("Filters: ", filters)
 		notificaton_templates = frappe.get_all("Notification Template", filters=filters)
-		print("Notification Templates: ", notificaton_templates)
 
 		# send notification
 		for template in notificaton_templates:
-			print("Template: ", template)
 			template = frappe.get_doc("Notification Template", template.name)
 			if template.channel == "Email" and primary_email:
 				template.send(docname, event, [primary_email])
