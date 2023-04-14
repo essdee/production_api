@@ -18,7 +18,8 @@
   "attribute",
   "tax",
   "item_price_values",
-  "amended_from"
+  "amended_from",
+  "approved_by"
  ],
  "fields": [
   {
@@ -39,6 +40,7 @@
    "allow_in_quick_entry": 1,
    "fieldname": "supplier",
    "fieldtype": "Link",
+   "in_list_view": 1,
    "in_standard_filter": 1,
    "label": "Supplier",
    "options": "Supplier"
@@ -48,6 +50,7 @@
    "fetch_from": "item_name.default_unit_of_measure",
    "fieldname": "uom",
    "fieldtype": "Link",
+   "in_list_view": 1,
    "label": "UOM",
    "options": "UOM",
    "reqd": 1
@@ -112,13 +115,20 @@
   {
    "fieldname": "to_date",
    "fieldtype": "Date",
+   "in_list_view": 1,
    "label": "To Date"
+  },
+  {
+   "fieldname": "approved_by",
+   "fieldtype": "Link",
+   "label": "Approved By",
+   "options": "User"
   }
  ],
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2023-04-06 19:27:20.428822",
+ "modified": "2023-04-12 11:46:02.331166",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Item Price",

@@ -236,10 +236,10 @@ def fetch_item_details(items):
 				current_variant = frappe.get_doc("Item Variant", variant['item_variant'])
 				for attr in current_variant.attributes:
 					if attr.attribute == item.get('primary_attribute'):
-						item['values'][attr.attribute_value] = {'qty': variant.qty, 'secondary_qty': variant.secondary_qty, 'rate': variant.rate}
+						item['values'][attr.attribute_value] = {'qty': variant.qty, 'secondary_qty': variant.secondary_qty, 'rate': variant.rate, 'tax': variant.tax}
 						break
 		else:
-			item['values']['default'] = {'qty': variants[0].qty, 'secondary_qty': variants[0].secondary_qty, 'rate': variants[0].rate}
+			item['values']['default'] = {'qty': variants[0].qty, 'secondary_qty': variants[0].secondary_qty, 'rate': variants[0].rate, 'tax': variants[0].tax}
 		index = get_item_group_index(item_details, current_item_attribute_details)
 
 		if index == -1:
