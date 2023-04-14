@@ -32,6 +32,7 @@ class ShortenedLink(Document):
 	
 	def download_document_pdf(self):
 		doc = frappe.get_doc(self.document_type, self.document_linked)
+		language = None
 		format = None
 		default_letterhead = None
 		letterheads = frappe.get_list(
@@ -42,7 +43,6 @@ class ShortenedLink(Document):
 		for letterhead in letterheads:
 			if (letterhead["is_default"]): 
 				default_letterhead = letterhead["name"]
-		language = None
 		with print_language(language):
 			pdf_file = frappe.get_print(
 				self.document_type, self.document_linked, format, doc=doc, as_pdf=True, letterhead=default_letterhead, no_letterhead=0
@@ -55,17 +55,18 @@ class ShortenedLink(Document):
 		frappe.local.response.type = "pdf"
 
 	def redirect_link(self):
+		frappe.db.commit()
 		frappe.response.type = "redirect"
 		frappe.response.location = self.link
 
-@frappe.whitelist()
+@frappe.whitelist(allow_guest=True)
 def parse_link(hash=None):
 	if hash is None:
 		raise frappe.exceptions.DoesNotExistError("Not Valid")
 	
 	sl = frappe.get_doc("Shortened Link", hash)
 	sl.link_views = sl.link_views + 1
-	sl.save()
+	sl.save(ignore_permissions=True)
 	try:
 		sl.redirect()
 	except:
@@ -82,6 +83,15 @@ def create_print_sl(doctype, docname):
 	sl.link_expiry = utils.add_days(utils.now(), expires_in)
 	sl.insert()
 	return sl.name
+
+def get_short_link(doctype, docname):
+	if not doctype and not docname:
+		return None
+	
+	sl_name = create_print_sl(doctype, docname)
+	shortened_url_domain = frappe.get_doc("MRP Settings").shortned_url_domain
+	link = f"{shortened_url_domain}{sl_name}"
+	return link
 
 	
 

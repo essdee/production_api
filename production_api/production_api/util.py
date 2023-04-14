@@ -1,77 +1,59 @@
 import frappe
-from frappe import _, msgprint
-from frappe.core.doctype.sms_settings.sms_settings import validate_receiver_nos, get_headers, send_request
-from production_api.production_api.doctype.shortened_link.shortened_link import create_print_sl
+from production_api.production_api.doctype.supplier.supplier import Supplier
 
-def send_submitted_doc(doctype = None, docname = None, doc = None):
-	if not doctype and not doc:
-		return None
-	if doc:
-		doctype = doc.doctype
-		docname = doc.docname
-	elif doctype:
-		if not docname:
-			return None
-		doc = frappe.get_doc(doctype, docname)
+@frappe.whitelist()
+def send_notification(
+	doctype: str,
+	docname :str,
+	event: str = None,
+	channels: str | list[str]=['Email', 'SMS'],
+	supplier_key: str='supplier',
+	is_auto_send: bool=False
+):
+	if not channels:
+		return
+	if isinstance(channels, str):
+		if channels.startswith("["):
+			channels = frappe.parse_json(channels)
+		else:
+			channels = [channels]
+	if is_auto_send:
+		mrp_settings = frappe.get_doc("MRP Settings")
+		if not mrp_settings.auto_send_notifications:
+			return
+		if not any([(doctype == row.doc_type and row.enabled) for row in mrp_settings.auto_send_notifications]):
+			return
+	doc = frappe.get_doc(doctype, docname)
+	if not event:
+		if doc.docstatus == 1:
+			event = 'Submit'
+		elif doc.docstatus == 2:
+			event = 'Cancel'
+		elif doc.docstatus == 0:
+			event = 'Save'
+	
+	# get supplier from doc
+	supplier_name = doc.get(supplier_key)
+	if not supplier_name:
+		return
+	supplier: Supplier = frappe.get_doc("Supplier", supplier_name)
+	supplier.send_notification(doctype, docname, channels, event)
 
-	sl_name = create_print_sl(doctype, docname)
-	shortened_url_domain = frappe.get_doc("MRP Settings").shortned_url_domain
-	link = f"{shortened_url_domain}{sl_name}"
-	# Fetch contact doc
-	# If contact doc has phone number and site has SMS settings set send sms using send_sms()
+def validate_communication(doc, method=None):
+	if doc.communication_medium == "SMS":
+		contacts = []
+		contacts = get_contacts_with_phone_number([doc.recipients])
+		from frappe.core.doctype.communication.communication import add_contact_links_to_communication
+		for contact_name in contacts:
+			doc.add_link("Contact", contact_name)
+			# link contact's dynamic links to communication
+			add_contact_links_to_communication(doc, contact_name)
 
-	msg = f"""Dear {doc.contact_person} Bill No: {doc.name} Dt: {doc.name} L.R.No: {doc.name} Cartons dispatched: {doc.name} CARTONS. Total: {doc.total} Thank you.
-	Increase the ease of doing business by downloading our app {link}
-	- Essdee"""
-	print(msg)
-	if doc.contact_mobile:
-		send_sms([doc.contact_mobile], msg)
-	# TODO If contact doc has email send email with PDF attachment using frappe.sendmail() 
-
-
-def send_sms(receiver_list, msg, sender_name="", success_msg=True):
-
-	import json
-
-	if isinstance(receiver_list, str):
-		receiver_list = json.loads(receiver_list)
-		if not isinstance(receiver_list, list):
-			receiver_list = [receiver_list]
-
-	receiver_list = validate_receiver_nos(receiver_list)
-
-	arg = {
-		"receiver_list": receiver_list,
-		"message": frappe.safe_decode(msg).encode("utf-8"),
-		"success_msg": success_msg,
-	}
-
-	if frappe.db.get_single_value("SMS Settings", "sms_gateway_url"):
-		send_via_gateway(arg)
-	else:
-		msgprint(_("Please Update SMS Settings"))
-
-def send_via_gateway(arg):
-	ss = frappe.get_doc("SMS Settings", "SMS Settings")
-	headers = get_headers(ss)
-	use_json = headers.get("Content-Type") == "application/json"
-
-	message = frappe.safe_decode(arg.get("message"))
-	args = {ss.message_parameter: message}
-	for d in ss.get("parameters"):
-		if not d.header:
-			args[d.parameter] = d.value
-
-	success_list = []
-	for d in arg.get("receiver_list"):
-		args[ss.receiver_parameter] = d
-		status = send_request(ss.sms_gateway_url, args, headers, ss.use_post, use_json)
-
-		if 200 <= status < 300:
-			success_list.append(d)
-
-	if len(success_list) > 0:
-		args.update(arg)
-		# create_sms_log(args, success_list)
-		if arg.get("success_msg"):
-			msgprint(_("SMS sent to following numbers: {0}").format("\n" + "\n".join(success_list)))
+def get_contacts_with_phone_number(phone_numbers: list[str]) -> list[str]:
+	from frappe.contacts.doctype.contact.contact import get_contact_with_phone_number
+	contacts = []
+	for phone in phone_numbers:
+		contact_name = get_contact_with_phone_number(phone)
+		if contact_name:
+			contacts.append(contact_name)
+	return contacts

@@ -10,8 +10,8 @@ from itertools import groupby
 from jinja2 import TemplateSyntaxError
 from frappe.model.document import Document
 from production_api.production_api.doctype.item.item import get_variant, create_variant, get_attribute_details
-from production_api.production_api.doctype.item_price.item_price import get_item_supplier_price, get_active_price
-
+from production_api.production_api.doctype.item_price.item_price import get_active_price
+from production_api.production_api.util import send_notification
 
 class PurchaseOrder(Document):
 
@@ -37,7 +37,7 @@ class PurchaseOrder(Document):
 		self.set('approved_by', frappe.get_user().doc.name)
 
 	def on_submit(self):
-		self.send_sms_and_email()
+		send_notification(self.doctype, self.name, event='Submit', is_auto_send=True)
 
 	def before_validate(self):
 		print(self.item_details)
@@ -52,13 +52,6 @@ class PurchaseOrder(Document):
 			self.calculate_amount()
 		else:
 			frappe.throw('Add items to Purchase Order.', title='Purchase Order')
-
-	def send_sms_and_email(self):
-		supplier = frappe.get_doc("Supplier", self.supplier)
-		# If supplier has a contact
-		if (supplier.contact_mobile):
-			from production_api.production_api.util import send_submitted_doc
-			send_submitted_doc(doc = self)
 
 	def calculate_amount(self):
 		total_amount = 0
@@ -281,4 +274,3 @@ def get_address_display(address_dict):
 		return frappe.render_template(template, address_dict)
 	except TemplateSyntaxError:
 		frappe.throw(_("There is an error in your Address Template"))
-		

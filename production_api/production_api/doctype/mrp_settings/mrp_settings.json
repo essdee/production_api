@@ -7,7 +7,8 @@
  "field_order": [
   "enable_price_validation",
   "shortned_url_domain",
-  "link_expiry_days"
+  "link_expiry_days",
+  "auto_send_notifications"
  ],
  "fields": [
   {
@@ -26,12 +27,18 @@
    "fieldname": "link_expiry_days",
    "fieldtype": "Int",
    "label": "Shortened Link Expires(In Days) "
+  },
+  {
+   "fieldname": "auto_send_notifications",
+   "fieldtype": "Table",
+   "label": "Auto Send Notifications",
+   "options": "Doctype List"
   }
  ],
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2023-04-12 16:58:04.372707",
+ "modified": "2023-04-13 20:02:08.262656",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "MRP Settings",
