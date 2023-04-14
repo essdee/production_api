@@ -80,6 +80,11 @@ app_include_js = ["vue_plugin.bundle.js"]
 # Hook on document methods and events
 
 doc_events = {
+    "*": {
+		"after_insert": "production_api.production_api.util.send_automatic_notification",
+		"on_submit": "production_api.production_api.util.send_automatic_notification",
+        "on_cancel": "production_api.production_api.util.send_automatic_notification",
+	},
 	"Communication": {
 		"validate": "production_api.production_api.util.validate_communication",
 	}

@@ -128,6 +128,7 @@ def send_sms(receiver_list, msg, dynamic_params):
 		"receiver_list": receiver_list,
 		"message": frappe.safe_decode(msg).encode("utf-8"),
 		"dynamic_params": dynamic_params,
+		"success_msg": True
 	}
 
 	if frappe.db.get_single_value("SMS Settings", "sms_gateway_url"):
@@ -159,7 +160,6 @@ def send_via_gateway(arg):
 	for d in arg.get("receiver_list"):
 		args[ss.receiver_parameter] = d
 		status = send_request(ss.sms_gateway_url, args, headers, ss.use_post, use_json)
-		print(d, status)
 		if 200 <= status < 300:
 			success_list.append(d)
 
@@ -192,7 +192,6 @@ def send_request(gateway_url, params, headers=None, use_post=False, use_json=Fal
 		kwargs["data"] = params
 	else:
 		kwargs["params"] = params
-	print(gateway_url, kwargs)
 	if use_post:
 		response = requests.post(gateway_url, **kwargs)
 	else:
@@ -205,7 +204,6 @@ def validate_receiver_nos(receiver_list):
 	for d in receiver_list:
 		if not d:
 			break
-
 		# remove invalid character
 		for x in [" ", "-", "(", ")"]:
 			d = d.replace(x, "")

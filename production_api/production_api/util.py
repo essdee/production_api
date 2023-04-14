@@ -39,6 +39,21 @@ def send_notification(
 	supplier: Supplier = frappe.get_doc("Supplier", supplier_name)
 	supplier.send_notification(doctype, docname, channels, event)
 
+
+@frappe.whitelist(allow_guest=True)
+def parse_link(hash=None):
+	if hash is None:
+		raise frappe.exceptions.DoesNotExistError("Not Valid")
+	
+	sl = frappe.get_doc("Shortened Link", hash)
+	sl.link_views = sl.link_views + 1
+	sl.save(ignore_permissions=True)
+	frappe.db.commit()
+	try:
+		sl.redirect()
+	except:
+		raise
+
 def validate_communication(doc, method=None):
 	if doc.communication_medium == "SMS":
 		contacts = []
@@ -57,3 +72,16 @@ def get_contacts_with_phone_number(phone_numbers: list[str]) -> list[str]:
 		if contact_name:
 			contacts.append(contact_name)
 	return contacts
+
+def send_automatic_notification(doc, method=None):
+	# check if doc is present in 
+	event = None
+	print("Sending Automatic Notification", method)
+	if method == 'on_submit':
+		event = 'Submit'
+	elif method == 'on_cancel':
+		event = 'Cancel'
+	elif method == 'after_insert' and doc.is_new():
+		event = 'Save'
+	if event:
+		send_notification(doc.doctype, doc.name, event, is_auto_send=True)

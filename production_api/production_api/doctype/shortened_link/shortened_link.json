@@ -59,7 +59,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2023-04-12 18:14:30.482133",
+ "modified": "2023-04-14 16:49:42.624279",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Shortened Link",
@@ -77,6 +77,16 @@
    "role": "System Manager",
    "share": 1,
    "write": 1
+  },
+  {
+   "create": 1,
+   "read": 1,
+   "role": "All",
+   "write": 1
+  },
+  {
+   "read": 1,
+   "role": "Guest"
   }
  ],
  "sort_field": "modified",

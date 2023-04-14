@@ -36,9 +36,6 @@ class PurchaseOrder(Document):
 		self.calculate_amount()
 		self.set('approved_by', frappe.get_user().doc.name)
 
-	def on_submit(self):
-		send_notification(self.doctype, self.name, event='Submit', is_auto_send=True)
-
 	def before_validate(self):
 		print(self.item_details)
 		if(self.item_details):
