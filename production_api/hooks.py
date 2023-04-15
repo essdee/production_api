@@ -140,5 +140,7 @@ jinja = {
         "production_api.production_api.doctype.purchase_order.purchase_order.fetch_item_details",
         "production_api.production_api.doctype.signature.signature.get_user_signature",
         "production_api.production_api.doctype.shortened_link.shortened_link.get_short_link",
+        "production_api.production_api.doctype.purchase_order.purchase_order.get_PO_print_details",
+        "production_api.production_api.util.parse_string_for_SMS",
     ]
 }

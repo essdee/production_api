@@ -153,7 +153,9 @@ def save_item_details(item_details):
 						item1['delivery_date'] = item['delivery_date']
 						item1['lot'] = item.get('lot')
 						item1['qty'] = values.get('qty')
+						item1['uom'] = values.get('default_uom')
 						item1['secondary_qty'] = values.get('secondary_qty')
+						item1['secondary_uom'] = values.get('secondary_uom')
 						item1['rate'] = values.get('rate')
 						item1['table_index'] = table_index
 						item1['row_index'] = row_index
@@ -173,7 +175,9 @@ def save_item_details(item_details):
 					item1['delivery_date'] = item['delivery_date']
 					item1['lot'] = item.get('lot')
 					item1['qty'] = item['values']['default'].get('qty')
+					item1['uom'] = item.get('default_uom')
 					item1['secondary_qty'] = item['values']['default'].get('secondary_qty')
+					item1['secondary_uom'] = item.get('secondary_uom')
 					item1['rate'] = item['values']['default'].get('rate')
 					item1['table_index'] = table_index
 					item1['row_index'] = row_index
@@ -224,8 +228,8 @@ def fetch_item_details(items):
 			'attributes': get_item_attribute_details(current_variant, current_item_attribute_details),
 			'primary_attribute': current_item_attribute_details['primary_attribute'],
 			'values': {},
-			'default_uom': current_item_attribute_details['default_uom'],
-			'secondary_uom': current_item_attribute_details['secondary_uom'],
+			'default_uom': variants[0]['uom'] or current_item_attribute_details['default_uom'],
+			'secondary_uom': variants[0]['secondary_uom'] or current_item_attribute_details['secondary_uom'],
 			'comments': variants[0]['comments'],
 		}
 
@@ -271,3 +275,30 @@ def get_address_display(address_dict):
 		return frappe.render_template(template, address_dict)
 	except TemplateSyntaxError:
 		frappe.throw(_("There is an error in your Address Template"))
+
+def get_PO_print_details(docname):
+	item_names = []
+	item_quantities = {} # Group based on UOM
+	po = frappe.get_doc("Purchase Order", docname)
+	# for all item variants in the PO Get the Parent Item name
+	for item in po.items:
+		parent_item = frappe.db.get_value("Item Variant", item.item_variant, "item")
+		if parent_item not in item_names:
+			item_names.append(parent_item)
+		# check if uom already exists in the dict
+		if item.uom in item_quantities:
+			item_quantities[item.uom] += item.qty
+		else:
+			item_quantities[item.uom] = item.qty
+	item_qty_string = ""
+	for uom, qty in item_quantities.items():
+		item_qty_string += str(qty) + " " + uom + ", "
+	if item_qty_string:
+		item_qty_string = item_qty_string[:-2]
+	total_with_currency = frappe.utils.fmt_money(po.grand_total, currency="Rs")
+	return {
+		"item_names": ', '.join(item_names),
+		"item_quantities": item_qty_string,
+		"amount": total_with_currency,
+	}
+

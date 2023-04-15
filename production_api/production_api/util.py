@@ -84,3 +84,17 @@ def send_automatic_notification(doc, method=None):
 		event = 'Save'
 	if event:
 		send_notification(doc.doctype, doc.name, event, is_auto_send=True)
+
+def parse_string_for_SMS(string: str, variable_count=1, max_variable_length=30, end_with:str="...") -> str:
+	"""
+	:param string: string to be parsed
+	:param variable_count: Total Number of simultaneous variables
+	:param max_variable_length: Maximum length of a variable
+	Based on Indian SMS standards a variable can have a maximum of 30 characters
+	and if there are multiple variables It is multiplied by the number of variables
+	:param end_with: string to be added at the end of the string if it is truncated
+	"""
+	if len(string) <= max_variable_length * variable_count:
+		return string
+	else:
+		return string[:max_variable_length * variable_count - len(end_with)] + end_with
