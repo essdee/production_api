@@ -51,3 +51,9 @@ def get_primary_address(supplier):
 
 	if address:
 		return address[0]
+
+@frappe.whitelist()
+def get_supplier_list():
+	suppliers = frappe.db.get_list("Supplier")
+	if suppliers:
+		return suppliers

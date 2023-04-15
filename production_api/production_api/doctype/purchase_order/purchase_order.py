@@ -270,4 +270,8 @@ def get_address_display(address_dict):
 		return frappe.render_template(template, address_dict)
 	except TemplateSyntaxError:
 		frappe.throw(_("There is an error in your Address Template"))
-		
+
+@frappe.whitelist()
+def get_po_details(purchase_order):
+	po = frappe.get_doc("Purchase Order", purchase_order)
+	return {"supplier": po.supplier, "address": po.supplier_address, "contact": po.contact_person}
