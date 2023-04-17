@@ -13,6 +13,7 @@
     <pre>{{ $resources.ping }}</pre>
 
     <Button @click="showDialog = true">Open Dialog</Button>
+    <Button @click="showToast()">Show Toast</Button>
     <Dialog title="Title" v-model="showDialog"> Dialog content </Dialog>
   </div>
 </template>
@@ -22,6 +23,7 @@ import { Dialog } from 'frappe-ui'
 
 export default {
   name: 'Home',
+  inject: ['$notify'],
   data() {
     return {
       showDialog: false,
@@ -29,11 +31,23 @@ export default {
   },
   resources: {
     ping: {
-      method: 'ping',
+      url: "ping",
+      method: 'get',
     },
   },
   components: {
     Dialog,
+  },
+  methods: {
+    showToast() {
+      console.log(this)
+      console.log(this.$notify)
+      this.$notify({
+        title: 'Title',
+        message: 'Message',
+        appearance: 'success',
+      })
+    },
   },
 }
 </script>

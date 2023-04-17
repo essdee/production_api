@@ -1,5 +1,22 @@
 <template>
-  <div>
-    <router-view />
-  </div>
+  <div class="flex h-screen w-screen bg-white font-sans">
+		<template v-if="route.meta.allowGuest">
+			<router-view></router-view>
+		</template>
+		<template v-else>
+			<AppShell />
+			<Toasts />
+			<Dialog v-model="prompt.show" :options="prompt.options" />
+		</template>
+	</div>
 </template>
+
+<script setup>
+import AppShell from '@/components/AppShell.vue'
+import usePrompt from '@/utils/prompt'
+import Toasts from '@/utils/toasts'
+import { inject, onBeforeUnmount } from 'vue'
+import { useRoute } from 'vue-router'
+const route = useRoute()
+const prompt = usePrompt()
+</script>
