@@ -16,6 +16,16 @@ const routes = [
       allowGuest: true,
     },
   },
+
+  {
+    path: '/createGRN',
+    name: 'createGRN',
+    component: () => import('@/pages/CreateGRN.vue'),
+    meta: {
+      hideSidebar: true,
+      allowGuest: true,
+    },
+  },
 ]
 
 let router = createRouter({

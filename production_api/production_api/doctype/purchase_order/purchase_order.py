@@ -275,3 +275,8 @@ def get_address_display(address_dict):
 def get_po_details(purchase_order):
 	po = frappe.get_doc("Purchase Order", purchase_order)
 	return {"supplier": po.supplier, "address": po.supplier_address, "contact": po.contact_person}
+
+@frappe.whitelist()
+def get_po_for_supplier(supplier):
+	pos = frappe.get_list("Purchase Order", filters={"supplier": supplier})
+	return pos
