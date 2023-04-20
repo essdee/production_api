@@ -128,7 +128,6 @@
                 </table>
             </div>
         </div>
-        {{ poItems }}
     </div>
 </template>
 
@@ -154,11 +153,7 @@ const getToday = () => {
 };
 const deliveryDate = ref(getToday());
 const deliveryLocation = ref(null);
-const deliveryLocations = supplierList({
-    filters: {
-        is_company_location: 1,
-    }
-});
+const deliveryLocations = supplierList({});
 
 const onSelectSupplier = async function (event) {
     selectedPO.value = null;
