@@ -207,8 +207,9 @@ def get_item_group_index(items, item_details):
 	return index
 
 @frappe.whitelist()
-def fetch_item_details(items):
-	items = [item.as_dict() for item in items]
+def fetch_item_details(items, as_dict=False):
+	if not as_dict:
+		items = [item.as_dict() for item in items]
 	item_details = []
 	items = sorted(items, key = lambda i: i['row_index'])
 	for key, variants in groupby(items, lambda i: i['row_index']):
@@ -280,3 +281,8 @@ def get_po_details(purchase_order):
 def get_po_for_supplier(supplier):
 	pos = frappe.get_list("Purchase Order", filters={"supplier": supplier})
 	return pos
+
+@frappe.whitelist()
+def get_po_items(purchase_order):
+	items = frappe.get_list("Purchase Order Item", filters={"parent": purchase_order}, fields=["*"])
+	return fetch_item_details(items, as_dict=True)
