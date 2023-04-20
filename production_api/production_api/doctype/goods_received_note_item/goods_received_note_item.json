@@ -69,7 +69,7 @@
  "modified": "2023-04-14 13:09:16.646031",
  "modified_by": "Administrator",
  "module": "Production Api",
- "name": "Goods Recieved Note Item",
+ "name": "Goods Received Note Item",
  "owner": "Administrator",
  "permissions": [],
  "sort_field": "modified",

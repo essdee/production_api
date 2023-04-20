@@ -45,6 +45,10 @@
    "reqd": 1
   },
   {
+   "fieldname": "column_break_1",
+   "fieldtype": "Column Break"
+  },
+  {
    "fieldname": "supplier",
    "fieldtype": "Link",
    "in_list_view": 1,
@@ -67,6 +71,10 @@
    "reqd": 1
   },
   {
+   "fieldname": "section_break_1",
+   "fieldtype": "Section Break"
+  },
+  {
    "fieldname": "delivery_date",
    "fieldtype": "Date",
    "label": "Delivery Date",
@@ -84,7 +92,7 @@
    "fieldtype": "Link",
    "label": "Amended From",
    "no_copy": 1,
-   "options": "Goods Recieved Note",
+   "options": "Goods Received Note",
    "print_hide": 1,
    "read_only": 1
   },
@@ -92,24 +100,16 @@
    "fieldname": "items",
    "fieldtype": "Table",
    "label": "Items",
-   "options": "Goods Recieved Note Item"
-  },
-  {
-   "fieldname": "column_break_1",
-   "fieldtype": "Column Break"
-  },
-  {
-   "fieldname": "section_break_1",
-   "fieldtype": "Section Break"
+   "options": "Goods Received Note Item"
   }
  ],
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2023-04-14 14:06:11.911917",
+ "modified": "2023-04-20 11:20:13.569151",
  "modified_by": "Administrator",
  "module": "Production Api",
- "name": "Goods Recieved Note",
+ "name": "Goods Received Note",
  "naming_rule": "By \"Naming Series\" field",
  "owner": "Administrator",
  "permissions": [
