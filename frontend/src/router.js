@@ -16,15 +16,20 @@ const routes = [
       allowGuest: true,
     },
   },
-
   {
-    path: '/createGRN',
+    path: '/grn',
+    name: 'GRN',
+    component: () => import('@/pages/GRN.vue'),
+  },
+  {
+    path: '/grn/create',
     name: 'createGRN',
     component: () => import('@/pages/CreateGRN.vue'),
-    meta: {
-      hideSidebar: true,
-      allowGuest: true,
-    },
+  },
+  {
+    path: '/grn/:name',
+    name: 'GRNDetail',
+    component: () => import('@/pages/CreateGRN.vue'),
   },
 ]
 

@@ -79,13 +79,16 @@ app_include_js = ["vue_plugin.bundle.js"]
 # ---------------
 # Hook on document methods and events
 
-# doc_events = {
-# 	"*": {
-# 		"on_update": "method",
-# 		"on_cancel": "method",
-# 		"on_trash": "method"
-#	}
-# }
+doc_events = {
+    "*": {
+		"after_insert": "production_api.production_api.util.send_automatic_notification",
+		"on_submit": "production_api.production_api.util.send_automatic_notification",
+        "on_cancel": "production_api.production_api.util.send_automatic_notification",
+	},
+	"Communication": {
+		"validate": "production_api.production_api.util.validate_communication",
+	}
+}
 
 # Scheduled Tasks
 # ---------------
@@ -135,6 +138,9 @@ scheduler_events = {
 jinja = {
     "methods": [
         "production_api.production_api.doctype.purchase_order.purchase_order.fetch_item_details",
-        "production_api.production_api.doctype.signature.signature.get_user_signature"
+        "production_api.production_api.doctype.signature.signature.get_user_signature",
+        "production_api.production_api.doctype.shortened_link.shortened_link.get_short_link",
+        "production_api.production_api.doctype.purchase_order.purchase_order.get_PO_print_details",
+        "production_api.production_api.util.parse_string_for_SMS",
     ]
 }

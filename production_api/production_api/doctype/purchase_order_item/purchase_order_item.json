@@ -15,7 +15,9 @@
   "comments",
   "table_index",
   "row_index",
-  "tax"
+  "tax",
+  "uom",
+  "secondary_uom"
  ],
  "fields": [
   {
@@ -82,12 +84,26 @@
    "fieldtype": "Link",
    "label": "Tax Slab",
    "options": "Tax Slab"
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "uom",
+   "fieldtype": "Link",
+   "label": "UOM",
+   "options": "UOM"
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "secondary_uom",
+   "fieldtype": "Link",
+   "label": "Secondary UOM",
+   "options": "UOM"
   }
  ],
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2023-03-27 20:39:00.134467",
+ "modified": "2023-04-15 10:49:19.544238",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Purchase Order Item",
@@ -95,5 +111,6 @@
  "permissions": [],
  "sort_field": "modified",
  "sort_order": "DESC",
+ "states": [],
  "track_changes": 1
 }

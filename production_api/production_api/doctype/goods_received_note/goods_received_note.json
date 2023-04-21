@@ -45,6 +45,10 @@
    "reqd": 1
   },
   {
+   "fieldname": "column_break_1",
+   "fieldtype": "Column Break"
+  },
+  {
    "fieldname": "supplier",
    "fieldtype": "Link",
    "in_list_view": 1,
@@ -65,6 +69,10 @@
    "label": "Supplier Address",
    "options": "Address",
    "reqd": 1
+  },
+  {
+   "fieldname": "section_break_1",
+   "fieldtype": "Section Break"
   },
   {
    "fieldname": "delivery_date",
