@@ -39,6 +39,36 @@ def send_notification(
 	supplier: Supplier = frappe.get_doc("Supplier", supplier_name)
 	supplier.send_notification(doctype, docname, channels, event)
 
+@frappe.whitelist()
+def get_notification_message(
+	doctype: str,
+	docname :str,
+	event: str = None,
+	channel: str = 'Copy Message',
+):
+	doc = frappe.get_doc(doctype, docname)
+	if not event:
+		if doc.docstatus == 1:
+			event = 'Submit'
+		elif doc.docstatus == 2:
+			event = 'Cancel'
+		elif doc.docstatus == 0:
+			event = 'Save'
+
+	filters = {
+		"document_type": doctype,
+		"channel": channel,
+		"event": event,
+		"enabled": 1
+	}
+	notification_templates = frappe.get_all("Notification Template", filters=filters)
+	if not notification_templates:
+		frappe.msgprint("No Notification Template Found")
+		return
+	template = frappe.get_doc("Notification Template", notification_templates[0].name)
+	message = template.get_message(docname=docname)
+	return message
+
 
 @frappe.whitelist(allow_guest=True)
 def parse_short_link(hash=None):

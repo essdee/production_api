@@ -19,6 +19,9 @@ class NotificationTemplate(Document):
 			self.send_email(docname, recipients)
 		elif self.channel == "SMS":
 			self.send_sms(docname, recipients)
+	
+	def get_message(self, context=None, docname=None):
+		return frappe.render_template(self.template, context or get_context(self.document_type, docname))
 
 	def send_email(self, docname, recipients):
 		from email.utils import formataddr

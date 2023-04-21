@@ -98,7 +98,7 @@ frappe.ui.form.on('Purchase Order', {
 					},
 					callback: function(r) {
 						if (r.message) {
-							frappe.msgprint(r.message)
+							console.log(r.message)
 						}
 					}
 				})
@@ -113,7 +113,21 @@ frappe.ui.form.on('Purchase Order', {
 					},
 					callback: function(r) {
 						if (r.message) {
-							frappe.msgprint(r.message)
+							console.log(r.message)
+						}
+					}
+				})
+			}, __("Send Notification"));
+			frm.add_custom_button(__('Copy Message'), function() {
+				frappe.call({
+					method: "production_api.production_api.util.get_notification_message",
+					args: {
+						"doctype": frm.doc.doctype,
+						"docname": frm.doc.name,
+					},
+					callback: function(r) {
+						if (r.message) {
+							frappe.utils.copy_to_clipboard(r.message)
 						}
 					}
 				})
