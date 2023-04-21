@@ -9,6 +9,7 @@ from six import string_types
 from itertools import groupby
 from jinja2 import TemplateSyntaxError
 from frappe.model.document import Document
+from frappe.utils import getdate, nowdate
 from production_api.production_api.doctype.item.item import get_variant, create_variant, get_attribute_details
 from production_api.production_api.doctype.item_price.item_price import get_item_supplier_price, get_active_price
 
@@ -34,6 +35,10 @@ class PurchaseOrder(Document):
 			
 		self.calculate_amount()
 		self.set('approved_by', frappe.get_user().doc.name)
+		self.set_status()
+
+	def on_cancel(self):
+		self.set_status()
 
 	def before_validate(self):
 		print(self.item_details)
@@ -64,6 +69,52 @@ class PurchaseOrder(Document):
 		self.set('total_tax', total_tax)
 		self.set('grand_total', grand_total)
 		self.set('in_words', money_in_words(grand_total))
+
+	def set_status(self):
+		if (self.docstatus == 0):
+			self.status = "Draft"
+		if (self.docstatus == 2):
+			self.status = "Cancelled"
+		if (self.docstatus == 1):
+			# Check for partial and complete fulfillment
+			self.status = self.get_fulfillment_status()
+			if (self.status == "Partially Fulfilled" or self.status == "Completed"):
+				if self.default_delivery_date:
+					deliver_date = getdate(self.default_delivery_date)
+					self.status = "Overdue" if deliver_date > getdate(nowdate()) else "Submitted"
+			else:
+				self.status = "Submitted"
+
+	def get_fulfillment_status(self):
+		grns = frappe.get_list("Goods Received Note", filters={"against": self.name})
+		if not (len(grns) > 0):
+			return
+		items_in_all_grns = {}
+		for grn in grns:
+			items_in_grn = frappe.get_list("Goods Received Note Item", fields=["item_variant", "quantity"])
+			for item in items_in_grn:
+				if items_in_all_grns[item.item_variant]:
+					items_in_all_grns[item.item_variant] += item.quantity
+				else:
+					items_in_all_grns[item.item_variant] = item.quantity
+		items_in_po = frappe.get_list("Purchase Order Item", fields=["item_variant", "quantity"])
+
+		item_fulfilled = False
+		for po_item in items_in_po:
+			# Check if item exists in GRN items
+			# If item does not exist 
+			# Check quantity of item in GRN items
+			if items_in_all_grns[po_item.item_variant]:
+				item_fulfilled = True
+				po_item.quantity -= items_in_all_grns[po_item.item_variant]
+
+		remaining_items = [item.quantity for item in items_in_all_grns]
+
+		if set(remaining_items) != {0}:
+			return "Partially Fulfilled"
+		return "Completed"
+
+
 
 def validate_price_details(items, supplier):
 	item_list = get_unique_items(items)

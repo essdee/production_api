@@ -84,7 +84,7 @@
    "fieldtype": "Link",
    "label": "Amended From",
    "no_copy": 1,
-   "options": "Goods Recieved Note",
+   "options": "Goods Received Note",
    "print_hide": 1,
    "read_only": 1
   },
@@ -92,7 +92,7 @@
    "fieldname": "items",
    "fieldtype": "Table",
    "label": "Items",
-   "options": "Goods Recieved Note Item"
+   "options": "Goods Received Note Item"
   },
   {
    "fieldname": "column_break_1",
@@ -106,10 +106,10 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2023-04-14 14:06:11.911917",
+ "modified": "2023-04-21 08:11:18.374726",
  "modified_by": "Administrator",
  "module": "Production Api",
- "name": "Goods Recieved Note",
+ "name": "Goods Received Note",
  "naming_rule": "By \"Naming Series\" field",
  "owner": "Administrator",
  "permissions": [

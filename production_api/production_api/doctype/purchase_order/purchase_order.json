@@ -9,7 +9,9 @@
   "naming_series",
   "supplier",
   "supplier_name",
+  "default_delivery_date",
   "default_delivery_location",
+  "status",
   "column_break_4",
   "po_date",
   "default_lot",
@@ -249,12 +251,25 @@
    "label": "In Words",
    "no_copy": 1,
    "read_only": 1
+  },
+  {
+   "default": "Draft",
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "label": "Status",
+   "options": "Draft\nSubmitted\nPartially Fulfilled\nCompleted\nCancelled\nOverdue",
+   "print_hide": 1
+  },
+  {
+   "fieldname": "default_delivery_date",
+   "fieldtype": "Date",
+   "label": "Default Delivery Date"
   }
  ],
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2023-04-12 11:11:04.280846",
+ "modified": "2023-04-21 08:27:12.948366",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Purchase Order",
