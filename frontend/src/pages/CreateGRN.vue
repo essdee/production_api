@@ -116,8 +116,8 @@
                                             </span>
                                         </td>
                                         <td>
-                                            <Input type="number" v-model="j.values['default'].received" />
-                                            <Input v-if="j.values['default'].secondary_qty" type="number" v-model="j.values['default'].secondary_received" label="Secondary Qty"/>
+                                            <Input type="number" v-model="j.values['default'].received" placeholder="0" min="0" :max="j.values['default'].qty" />
+                                            <Input v-if="j.values['default'].secondary_qty" type="number" min="0" :max="j.values['default'].secondary_qty" v-model="j.values['default'].secondary_received" label="Secondary Qty"/>
                                         </td>
                                         <td>{{ j.comments }}</td>
                                     </tr>
@@ -126,6 +126,7 @@
                         </td>
                     </tr>
                 </table>
+                <Button appearance="primary" @click="createGRN">Create GRN</Button>
             </div>
         </div>
     </div>
@@ -137,6 +138,7 @@ import { supplierList } from "@/data/supplier";
 
 import { ref, computed, watch } from 'vue'
 import { purchaseOrdersForSupplier, purchaseOrderItems } from "@/data/purchase_order.js"
+import { grnCreate } from "@/data/grn.js"
 
 const suppliers = supplierList({});
 const selectedSupplier = ref(null);
@@ -188,4 +190,14 @@ const deliveryOptions = computed(() => {
         }
     })
 })
+
+const createGRN = function(event) {
+    console.log("Purchase Order", JSON.stringify(selectedPO.value["value"]), JSON.stringify(deliveryLocation.value), JSON.stringify(deliveryDate.value), JSON.stringify(poItems.value));
+    grnCreate(
+        "Purchase Order",
+        JSON.stringify(selectedPO.value["value"]),
+        JSON.stringify(deliveryLocation.value["value"]),
+        JSON.stringify(deliveryDate.value),
+        JSON.stringify(poItems.value)).submit()
+}
 </script>
