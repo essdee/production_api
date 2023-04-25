@@ -24,6 +24,7 @@
    "in_list_view": 1,
    "label": "Price(Excluding Tax)",
    "options": "INR",
+   "precision": "3",
    "reqd": 1
   },
   {
@@ -38,7 +39,7 @@
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2023-03-27 15:23:16.097783",
+ "modified": "2023-04-25 15:43:22.598075",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Item Price Value",
@@ -46,5 +47,6 @@
  "permissions": [],
  "sort_field": "modified",
  "sort_order": "DESC",
+ "states": [],
  "track_changes": 1
 }

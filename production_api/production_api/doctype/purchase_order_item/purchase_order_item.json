@@ -31,7 +31,8 @@
    "fieldname": "rate",
    "fieldtype": "Currency",
    "in_list_view": 1,
-   "label": "Rate"
+   "label": "Rate",
+   "precision": "3"
   },
   {
    "fieldname": "comments",
@@ -103,7 +104,7 @@
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2023-04-15 10:49:19.544238",
+ "modified": "2023-04-25 15:45:20.304253",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Purchase Order Item",
