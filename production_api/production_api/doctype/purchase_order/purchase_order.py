@@ -77,43 +77,43 @@ class PurchaseOrder(Document):
 		if (self.docstatus == 2):
 			self.status = "Cancelled"
 		if (self.docstatus == 1):
+			self.status = "Submitted"
 			# Check for partial and complete fulfillment
 			self.status = self.get_fulfillment_status()
-			if (self.status == "Partially Fulfilled" or self.status == "Completed"):
-				if self.default_delivery_date:
-					deliver_date = getdate(self.default_delivery_date)
-					self.status = "Overdue" if deliver_date > getdate(nowdate()) else "Submitted"
-			else:
-				self.status = "Submitted"
+			print("got fulfillment")
+			print(self.status)
+		self.save()
 
 	def get_fulfillment_status(self):
-		grns = frappe.get_list("Goods Received Note", filters={"against": self.name})
+		grns = frappe.get_list("Goods Received Note", filters={"against_id": self.name, "docstatus": 1})
+		print(grns)
 		if not (len(grns) > 0):
-			return
+			return "Submitted"
 		items_in_all_grns = {}
 		for grn in grns:
 			items_in_grn = frappe.get_list("Goods Received Note Item", fields=["item_variant", "quantity"])
 			for item in items_in_grn:
-				if items_in_all_grns[item.item_variant]:
+				if item.item_variant in items_in_all_grns:
 					items_in_all_grns[item.item_variant] += item.quantity
 				else:
 					items_in_all_grns[item.item_variant] = item.quantity
-		items_in_po = frappe.get_list("Purchase Order Item", fields=["item_variant", "quantity"])
+		items_in_po = frappe.get_list("Purchase Order Item", fields=["item_variant", "qty"])
 
 		item_fulfilled = False
 		for po_item in items_in_po:
 			# Check if item exists in GRN items
 			# If item does not exist 
 			# Check quantity of item in GRN items
-			if items_in_all_grns[po_item.item_variant]:
+			if po_item.item_variant in items_in_all_grns:
 				item_fulfilled = True
-				po_item.quantity -= items_in_all_grns[po_item.item_variant]
+				po_item.qty -= items_in_all_grns[po_item.item_variant]
 
-		remaining_items = [item.quantity for item in items_in_all_grns]
+		all_fulfilled = all([item.qty == 0 for item in items_in_po])
+		print(all_fulfilled)
 
-		if set(remaining_items) != {0}:
-			return "Partially Fulfilled"
-		return "Completed"
+		if all_fulfilled:
+			return "Completed"
+		return "Partially Fulfilled"
 
 
 

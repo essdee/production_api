@@ -4,14 +4,26 @@
 import frappe
 from frappe.model.document import Document
 from frappe.utils import nowdate, getdate
+from production_api.production_api.doctype.item.item import get_variant, create_variant, get_attribute_details
+from production_api.production_api.doctype.item_price.item_price import get_active_price
+from six import string_types
 
 class GoodsReceivedNote(Document):
-	pass
+	def on_submit(self):
+		self.set_po_status()
 
-@frappe.whitelist(allow_guest=True)
+	def on_cancel(self):
+		self.set_po_status()
+
+	def set_po_status(self):
+		against_doc = frappe.get_doc(self.against, self.against_id)
+		against_doc.set_status()
+
+@frappe.whitelist()
 def save_goods_received_note(against, purchase_order, delivery_location, delivery_date, items):
+	print(items)
 	grn = frappe.new_doc("Goods Received Note")
-	purchase_order_doc = frappe.get_doc(against, purchase_order)
+	purchase_order_doc = frappe.get_doc(against, purchase_order, ignore_permissions=True)
 	grn.naming_series = "GRN-"
 	grn.against = against
 	grn.against_id = purchase_order
@@ -54,6 +66,7 @@ def save_item_details(item_details):
 						item1['delivery_date'] = item['delivery_date']
 						item1['lot'] = item.get('lot')
 						item1['qty'] = values.get('qty')
+						item1['quantity'] = values.get('quantity')
 						item1['uom'] = values.get('default_uom')
 						item1['secondary_qty'] = values.get('secondary_qty')
 						item1['secondary_uom'] = values.get('secondary_uom')
@@ -63,7 +76,8 @@ def save_item_details(item_details):
 						item1['comments'] = item.get('comments')
 						items.append(item1)
 			else:
-				if item['values'].get('default') and item['values']['default'].get('qty'):
+				print("without primary attribute")
+				if item['values'].get('default') and item['values']['default'].get('received'):
 					print(item_name)
 					item1 = {}
 					variant_name = get_variant(item_name, item_attributes)
@@ -76,6 +90,7 @@ def save_item_details(item_details):
 					item1['delivery_date'] = item['delivery_date']
 					item1['lot'] = item.get('lot')
 					item1['qty'] = item['values']['default'].get('qty')
+					item1['quantity'] = item['values']['default'].get('received')
 					item1['uom'] = item.get('default_uom')
 					item1['secondary_qty'] = item['values']['default'].get('secondary_qty')
 					item1['secondary_uom'] = item.get('secondary_uom')

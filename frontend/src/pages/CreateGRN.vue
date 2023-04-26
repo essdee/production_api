@@ -192,12 +192,12 @@ const deliveryOptions = computed(() => {
 })
 
 const createGRN = function(event) {
-    console.log("Purchase Order", JSON.stringify(selectedPO.value["value"]), JSON.stringify(deliveryLocation.value), JSON.stringify(deliveryDate.value), JSON.stringify(poItems.value));
     grnCreate(
         "Purchase Order",
-        JSON.stringify(selectedPO.value["value"]),
-        JSON.stringify(deliveryLocation.value["value"]),
-        JSON.stringify(deliveryDate.value),
-        JSON.stringify(poItems.value)).submit()
+        selectedPO.value["value"],
+        deliveryLocation.value["value"],
+        deliveryDate.value,
+        poItems.value).submit();
+
 }
 </script>

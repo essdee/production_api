@@ -5,7 +5,7 @@ frappe.listview_settings["Purchase Order"] = {
 			"Submitted": "blue",
 			"Cancelled": "gray",
 			"Overdue": "red",
-			"Partly Fulfilled": "yellow",
+			"Partially Fulfilled": "yellow",
 			"Completed": "green",
 		};
 
