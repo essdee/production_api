@@ -163,7 +163,7 @@ frappe.ui.form.on('Roll Sticker Printing', {
         frm.set_value('color', "");
         frm.set_value('gsm', "");
 
-        
+
     },
     print: function (frm) {
     frm.doc.lot
@@ -174,6 +174,7 @@ frappe.ui.form.on('Roll Sticker Printing', {
     frm.doc.dia
     frm.doc.color
     frm.doc.gsm
+    
     doc = frappe.new_doc('Task')
     doc.title = 'New Task 2'
 doc.insert()
