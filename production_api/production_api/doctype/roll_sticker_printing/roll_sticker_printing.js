@@ -177,7 +177,6 @@ frappe.ui.form.on('Roll Sticker Printing', {
     doc.title = 'New Task 2'
 doc.insert()
 
-
         
         // frappe.ui.form
         //     .qz_connect()
