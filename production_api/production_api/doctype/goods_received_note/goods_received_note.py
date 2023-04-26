@@ -20,8 +20,23 @@ class GoodsReceivedNote(Document):
 		against_doc.set_status()
 
 @frappe.whitelist()
+def submit_goods_received_note(grn,against, purchase_order, delivery_location, delivery_date, items):
+	grn = frappe.get_doc("Goods Received Note", grn)
+	purchase_order_doc = frappe.get_doc(against, purchase_order, ignore_permissions=True)
+	grn.naming_series = "GRN-"
+	grn.against = against
+	grn.against_id = purchase_order
+	grn.supplier = purchase_order_doc.supplier
+	grn.delivery_date = getdate(delivery_date)
+	grn.supplier_address = purchase_order_doc.supplier_address
+	grn.supplier_contact = purchase_order_doc.contact_person
+	grn.delivery_location = delivery_location
+	item_table = save_item_details(items)
+	grn.set('items', item_table)
+	return grn.submit()
+
+@frappe.whitelist()
 def save_goods_received_note(against, purchase_order, delivery_location, delivery_date, items):
-	print(items)
 	grn = frappe.new_doc("Goods Received Note")
 	purchase_order_doc = frappe.get_doc(against, purchase_order, ignore_permissions=True)
 	grn.naming_series = "GRN-"
@@ -34,8 +49,7 @@ def save_goods_received_note(against, purchase_order, delivery_location, deliver
 	grn.delivery_location = delivery_location
 	item_table = save_item_details(items)
 	grn.set('items', item_table)
-	grn.save()
-	return grn.submit()
+	return grn.save()
 
 def save_item_details(item_details):
 	"""

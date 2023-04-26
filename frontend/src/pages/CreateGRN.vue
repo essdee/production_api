@@ -126,7 +126,8 @@
                         </td>
                     </tr>
                 </table>
-                <Button appearance="primary" @click="createGRN">Create GRN</Button>
+                <Button v-if="savedGRN" appearance="primary" @click="submitGRN">Submit</Button>
+                <Button v-else appearance="primary" @click="createGRN">Create GRN</Button>
             </div>
         </div>
     </div>
@@ -139,12 +140,14 @@ import { supplierList } from "@/data/supplier";
 import { ref, computed, watch } from 'vue'
 import { purchaseOrdersForSupplier, purchaseOrderItems } from "@/data/purchase_order.js"
 import { grnCreate } from "@/data/grn.js"
+import { grnSubmit } from '../data/grn';
 
 const suppliers = supplierList({});
 const selectedSupplier = ref(null);
 const purchaseOrderOptions = ref(null);
 const selectedPO = ref(null);
 const poItems = ref(null);
+const savedGRN = ref(null);
 const getToday = () => {
     // get today's date in yyyy-mm-dd format using DateFormatter
     const today = new Date();
@@ -191,13 +194,30 @@ const deliveryOptions = computed(() => {
     })
 })
 
-const createGRN = function(event) {
-    grnCreate(
+const createGRN = async function(event) {
+    let grn = await grnCreate(
         "Purchase Order",
         selectedPO.value["value"],
         deliveryLocation.value["value"],
         deliveryDate.value,
         poItems.value).submit();
+    // TODO Add visual feedback for successful save
+    savedGRN.value = grn.name;
+}
 
+const submitGRN = async function(event) {
+    let submitResource = await grnSubmit(
+        savedGRN.value,
+        "Purchase Order",
+        selectedPO.value["value"],
+        deliveryLocation.value["value"],
+        deliveryDate.value,
+        poItems.value);
+
+    submitResource.submit();
+    // TODO Add visual feedback for successful submit
+    if (submitResource.error) {
+        console.log("Something went wrong");
+    }
 }
 </script>
