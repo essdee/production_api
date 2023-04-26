@@ -9,6 +9,7 @@ from six import string_types
 from itertools import groupby
 from jinja2 import TemplateSyntaxError
 from frappe.model.document import Document
+from frappe.utils import getdate, nowdate
 from production_api.production_api.doctype.item.item import get_variant, create_variant, get_attribute_details
 from production_api.production_api.doctype.item_price.item_price import get_active_price
 from production_api.production_api.util import send_notification
@@ -35,6 +36,10 @@ class PurchaseOrder(Document):
 			
 		self.calculate_amount()
 		self.set('approved_by', frappe.get_user().doc.name)
+		self.set_status()
+
+	def on_cancel(self):
+		self.set_status()
 
 	def before_validate(self):
 		print(self.item_details)
@@ -65,6 +70,52 @@ class PurchaseOrder(Document):
 		self.set('total_tax', total_tax)
 		self.set('grand_total', grand_total)
 		self.set('in_words', money_in_words(grand_total))
+
+	def set_status(self):
+		if (self.docstatus == 0):
+			self.status = "Draft"
+		if (self.docstatus == 2):
+			self.status = "Cancelled"
+		if (self.docstatus == 1):
+			self.status = "Submitted"
+			# Check for partial and complete fulfillment
+			self.status = self.get_fulfillment_status()
+			print("got fulfillment")
+			print(self.status)
+		self.save()
+
+	def get_fulfillment_status(self):
+		grns = frappe.get_list("Goods Received Note", filters={"against_id": self.name, "docstatus": 1})
+		print(grns)
+		if not (len(grns) > 0):
+			return "Submitted"
+		items_in_all_grns = {}
+		for grn in grns:
+			items_in_grn = frappe.get_list("Goods Received Note Item", fields=["item_variant", "quantity"])
+			for item in items_in_grn:
+				if item.item_variant in items_in_all_grns:
+					items_in_all_grns[item.item_variant] += item.quantity
+				else:
+					items_in_all_grns[item.item_variant] = item.quantity
+		items_in_po = frappe.get_list("Purchase Order Item", fields=["item_variant", "qty"])
+
+		item_fulfilled = False
+		for po_item in items_in_po:
+			# Check if item exists in GRN items
+			# If item does not exist 
+			# Check quantity of item in GRN items
+			if po_item.item_variant in items_in_all_grns:
+				item_fulfilled = True
+				po_item.qty -= items_in_all_grns[po_item.item_variant]
+
+		all_fulfilled = all([item.qty == 0 for item in items_in_po])
+		print(all_fulfilled)
+
+		if all_fulfilled:
+			return "Completed"
+		return "Partially Fulfilled"
+
+
 
 def validate_price_details(items, supplier):
 	item_list = get_unique_items(items)
@@ -212,8 +263,9 @@ def get_item_group_index(items, item_details):
 	return index
 
 @frappe.whitelist()
-def fetch_item_details(items):
-	items = [item.as_dict() for item in items]
+def fetch_item_details(items, as_dict=False):
+	if not as_dict:
+		items = [item.as_dict() for item in items]
 	item_details = []
 	items = sorted(items, key = lambda i: i['row_index'])
 	for key, variants in groupby(items, lambda i: i['row_index']):
@@ -302,3 +354,17 @@ def get_PO_print_details(docname):
 		"amount": total_with_currency,
 	}
 
+@frappe.whitelist()
+def get_po_details(purchase_order):
+	po = frappe.get_doc("Purchase Order", purchase_order)
+	return {"supplier": po.supplier, "address": po.supplier_address, "contact": po.contact_person}
+
+@frappe.whitelist()
+def get_po_for_supplier(supplier):
+	pos = frappe.get_list("Purchase Order", filters={"supplier": supplier})
+	return pos
+
+@frappe.whitelist()
+def get_po_items(purchase_order):
+	items = frappe.get_list("Purchase Order Item", filters={"parent": purchase_order}, fields=["*"])
+	return fetch_item_details(items, as_dict=True)
