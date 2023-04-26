@@ -13,7 +13,8 @@ frappe.ui.form.on('Roll Sticker Printing', {
                 qz.serial.setSerialCallbacks(function (evt) {
                     if (evt.type !== 'ERROR') {
                         window.weight.unshift(evt.output)
-                        if (window.weight.length == 8) {
+                        if (window.weight.length == 16) {
+                            
                             window.weight.pop()
                         }
                         // window.weight=evt.output
@@ -174,10 +175,12 @@ frappe.ui.form.on('Roll Sticker Printing', {
     frm.doc.dia
     frm.doc.color
     frm.doc.gsm
-    
-    doc = frappe.new_doc('Task')
-    doc.title = 'New Task 2'
-doc.insert()
+
+    window.doc1 = frappe.new_doc('Roll Sticker Log')
+    doc1.name = '2bf4480d4d8'
+    doc1.dia  = 2
+    doc1.insert()
+    doc1.insert()
 
         
         // frappe.ui.form
