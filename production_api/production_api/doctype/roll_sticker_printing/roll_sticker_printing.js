@@ -163,6 +163,7 @@ frappe.ui.form.on('Roll Sticker Printing', {
         frm.set_value('color', "");
         frm.set_value('gsm', "");
 
+        
     },
     print: function (frm) {
     frm.doc.lot
