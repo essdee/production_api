@@ -1,0 +1,98 @@
+{
+ "_liked_by": "[\"Administrator\"]",
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "hash",
+ "creation": "2023-04-18 13:16:13.458777",
+ "default_view": "List",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "name1",
+  "lot",
+  "date",
+  "fabric",
+  "dia",
+  "colour",
+  "gsm",
+  "roll_no",
+  "roll_weight"
+ ],
+ "fields": [
+  {
+   "fieldname": "name1",
+   "fieldtype": "Data",
+   "label": "name",
+   "options": "Roll Sticker Printing"
+  },
+  {
+   "fieldname": "lot",
+   "fieldtype": "Data",
+   "label": "Lot"
+  },
+  {
+   "default": "Today",
+   "fieldname": "date",
+   "fieldtype": "Date",
+   "label": "date"
+  },
+  {
+   "fieldname": "fabric",
+   "fieldtype": "Data",
+   "label": "Fabric"
+  },
+  {
+   "fieldname": "dia",
+   "fieldtype": "Data",
+   "label": "Dia"
+  },
+  {
+   "fieldname": "colour",
+   "fieldtype": "Data",
+   "label": "Colour"
+  },
+  {
+   "fieldname": "gsm",
+   "fieldtype": "Int",
+   "label": "GSM "
+  },
+  {
+   "fieldname": "roll_no",
+   "fieldtype": "Int",
+   "label": "roll no"
+  },
+  {
+   "fieldname": "roll_weight",
+   "fieldtype": "Float",
+   "label": "Roll Weight"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2023-04-18 16:06:52.528016",
+ "modified_by": "Administrator",
+ "module": "Production Api",
+ "name": "Roll Sticker Log",
+ "naming_rule": "Random",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1,
+ "track_views": 1
+}
