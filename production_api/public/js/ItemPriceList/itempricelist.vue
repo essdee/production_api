@@ -65,7 +65,7 @@ export default {
                 let item_price = item_price_list[i]
                 let x = {
                     index: i,
-                    item: item_price.item_name,
+                    item_name: item_price.item_name,
                     supplier: item_price.supplier,
                     depends_on_attribute: item_price.depends_on_attribute,
                     attribute: item_price.attribute,

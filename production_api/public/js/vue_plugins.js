@@ -6,6 +6,7 @@ import ItemDetail from "./components/ItemDetails.vue";
 
 import PONewItem from "./PurchaseOrder/components/NewItem.vue"
 import POItem from "./PurchaseOrder/components/Item.vue"
+import GRNItemWrapper from "./GRN";
 import evntBus from "./bus.js";
 
 frappe.provide("frappe.production.ui");
@@ -117,4 +118,10 @@ frappe.production.ui.PurchaseOrderItem = class {
     load_data(item_details) {
         this.vue.$children[0].load_data(item_details);
     }
+
+    update_status() {
+        this.vue.$children[0].update_status();
+    }
 };
+
+frappe.production.ui.GRNItem = GRNItemWrapper

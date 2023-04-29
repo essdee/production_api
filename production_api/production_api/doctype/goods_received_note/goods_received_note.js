@@ -1,13 +1,20 @@
-// Copyright (c) 2021, Essdee and contributors
+// Copyright (c) 2023, Essdee and contributors
 // For license information, please see license.txt
 
-frappe.ui.form.on('Purchase Order', {
+frappe.ui.form.on('Goods Received Note', {
 	setup: function(frm) {
-		frm.set_query('default_delivery_location', function(doc) {
+		frm.set_query('against_id', function(doc) {
+			let filters = {
+				'docstatus': 1,
+			}
+			if (doc.supplier) {
+				filters['supplier'] = doc.supplier
+			}
+			if (doc.against == 'Purchase Order') {
+				filters['status'] = ['in', ['Ordered', 'Partially Delivered', 'Overdue', 'Partially Cancelled']]
+			}
 			return{
-				filters: {
-					is_company_location: doc.deliver_to_supplier ? 0 : 1,
-				}
+				filters: filters
 			}
 		});
 
@@ -27,31 +34,31 @@ frappe.ui.form.on('Purchase Order', {
 		});
 
 		frm.set_query('delivery_address', function(doc) {
-			if(!doc.default_delivery_location) {
+			if(!doc.delivery_location) {
 				frappe.throw(__("Please set {0}",
-					[__(frappe.meta.get_label(doc.doctype, 'default_delivery_location', doc.name))]));
+					[__(frappe.meta.get_label(doc.doctype, 'delivery_location', doc.name))]));
 			}
 
 			return {
 				query: 'frappe.contacts.doctype.address.address.address_query',
 				filters: {
 					link_doctype: 'Supplier',
-					link_name: doc.default_delivery_location
+					link_name: doc.delivery_location
 				}
 			};
 		});
 
 		frm.set_query('billing_address', function(doc) {
-			if(!doc.default_delivery_location) {
+			if(!doc.delivery_location) {
 				frappe.throw(__("Please set {0}",
-					[__(frappe.meta.get_label(doc.doctype, 'default_delivery_location', doc.name))]));
+					[__(frappe.meta.get_label(doc.doctype, 'delivery_location', doc.name))]));
 			}
 
 			return {
 				query: 'frappe.contacts.doctype.address.address.address_query',
 				filters: {
 					link_doctype: 'Supplier',
-					link_name: doc.default_delivery_location
+					link_name: doc.delivery_location
 				}
 			};
 		});
@@ -74,115 +81,45 @@ frappe.ui.form.on('Purchase Order', {
 
 	refresh: function(frm) {
 		$(frm.fields_dict['item_html'].wrapper).html("");
-		frm.itemEditor = new frappe.production.ui.PurchaseOrderItem(frm.fields_dict["item_html"].wrapper);
+		frm.itemEditor = new frappe.production.ui.GRNItem(frm.fields_dict["item_html"].wrapper);
+		frm.itemEditor.load_data({
+			supplier: frm.doc.supplier,
+			against: frm.doc.against,
+			against_id: frm.doc.against_id
+		}, true);
 		if(frm.doc.__onload && frm.doc.__onload.item_details) {
 			frm.doc['item_details'] = JSON.stringify(frm.doc.__onload.item_details);
-			frm.itemEditor.load_data(frm.doc.__onload.item_details);
-		} else {
-			frm.itemEditor.load_data([]);
+			frm.itemEditor.load_data({
+				items: frm.doc.__onload.item_details
+			}, true);
+		} else if (frm.doc.item_details) {
+			frm.itemEditor.load_data({
+				items: JSON.parse(frm.doc.item_details)
+			}, true);
 		}
 		frm.itemEditor.update_status();
-		frappe.production.ui.eventBus.$on("po_updated", e => {
+		frappe.production.ui.eventBus.$on("grn_updated", e => {
 			frm.dirty();
+			frm.events.save_item_details(frm);
 		})
-
-		if (frm.doc.docstatus == 1) {
-			frm.page.btn_secondary.hide();			
-			frm.add_custom_button(__('Send SMS'), function() {
-				frappe.call({
-					method: "production_api.production_api.util.send_notification",
-					args: {
-						"doctype": frm.doc.doctype,
-						"docname": frm.doc.name,
-						"channels": ['SMS'],
-					},
-					callback: function(r) {
-						if (r.message) {
-							console.log(r.message)
-						}
-					}
-				})
-			}, __("Send Notification"));
-			frm.add_custom_button(__('Send Email'), function() {
-				frappe.call({
-					method: "production_api.production_api.util.send_notification",
-					args: {
-						"doctype": frm.doc.doctype,
-						"docname": frm.doc.name,
-						"channels": ['Email'],
-					},
-					callback: function(r) {
-						if (r.message) {
-							console.log(r.message)
-						}
-					}
-				})
-			}, __("Send Notification"));
-			frm.add_custom_button(__('Copy Message'), function() {
-				frappe.call({
-					method: "production_api.production_api.util.get_notification_message",
-					args: {
-						"doctype": frm.doc.doctype,
-						"docname": frm.doc.name,
-					},
-					callback: function(r) {
-						if (r.message) {
-							frappe.utils.copy_to_clipboard(r.message)
-						}
-					}
-				})
-			}, __("Send Notification"));
-
-			if (frm.doc.status != 'Partially Cancelled') {
-				frm.add_custom_button(__('Cancel'), function() {
-					frappe.prompt({
-						label: 'Reason',
-						fieldname: 'reason',
-						fieldtype: 'Data',
-						reqd: 1
-					}, (values) => {
-						// console.log(values.reason);
-						frappe.call({
-							method: "production_api.production_api.doctype.purchase_order.purchase_order.cancel_purchase_order",
-							args: {
-								"purchase_order": frm.doc.name,
-								"reason": values.reason
-							},
-							callback: function(r) {
-								if (r.message) {
-									console.log(r.message)
-								}
-							}
-						})
-					},
-					'Reason for Cancellation',
-					'Submit')
-				});
-			}
-
-			frm.page.add_menu_item(__('Refresh Status'), function() {
-				frappe.call({
-					method: "production_api.production_api.doctype.purchase_order.purchase_order.refresh_status",
-					args: {
-						"purchase_order": frm.doc.name,
-					},
-					callback: function(r) {
-						if (r.message) {
-							console.log(r.message)
-						}
-					}
-				})
-			});
-		}
 	},
 
-	validate: function(frm) {
+	save_item_details: function(frm) {
 		if(frm.itemEditor){
 			let items = frm.itemEditor.get_items();
 			if(items && items.length > 0) {
 				frm.doc['item_details'] = JSON.stringify(items);
 			}
 			else {
+				frm.doc['item_details'] = null;
+			}
+		}
+	},
+
+	validate: function(frm) {
+		if(frm.itemEditor){
+			frm.events.save_item_details(frm);
+			if (!frm.doc.item_details) {
 				frappe.throw(__('Add Items to continue'));
 			}
 		}
@@ -199,7 +136,7 @@ frappe.ui.form.on('Purchase Order', {
 
 	supplier: function(frm) {
 		if (frm.doc.supplier) {
-			frappe.production.ui.eventBus.$emit("supplier_updated", frm.doc.supplier)
+			frappe.production.ui.eventBus.$emit("update_grn_details", {supplier: frm.doc.supplier})
 		}
 		if (frm.doc.supplier) {
 			frappe.call({
@@ -213,6 +150,49 @@ frappe.ui.form.on('Purchase Order', {
 					}
 				}
 			})
+		}
+	},
+
+	delivery_location: function(frm) {
+		if (frm.doc.delivery_location) {
+			frappe.call({
+				method: "production_api.production_api.doctype.supplier.supplier.get_primary_address",
+				args: {"supplier": frm.doc.delivery_location},
+				callback: function(r) {
+					if (r.message) {
+						frm.set_value('delivery_address', r.message)
+					} else {
+						frm.set_value('delivery_address', '')
+					}
+				}
+			})
+			frappe.call({
+				method: "production_api.production_api.doctype.supplier.supplier.get_address",
+				args: {"supplier": frm.doc.delivery_location, "type": "Billing"},
+				callback: function(r) {
+					if (r.message) {
+						frm.set_value('billing_address', r.message)
+					} else {
+						frm.set_value('billing_address', '')
+					}
+				}
+			})
+		}
+	},
+
+	against: function(frm) {
+		frappe.production.ui.eventBus.$emit("update_grn_details", {against: frm.doc.against})
+	},
+
+	against_id: function(frm) {
+		frappe.production.ui.eventBus.$emit("update_grn_details", {against_id: frm.doc.against_id})
+		if (frm.doc.against_id) {
+			// get the supplier in the Purchase Order
+			frappe.db.get_doc(frm.doc.against, frm.doc.against_id)
+				.then(doc => {
+					frm.set_value('supplier', doc.supplier);
+					frm.set_value('delivery_location', doc.default_delivery_location);
+				})
 		}
 	},
 

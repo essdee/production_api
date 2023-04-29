@@ -37,7 +37,7 @@
                             <td>{{ j.delivery_location }}</td>
                             <td>{{ j.delivery_date }}</td>
                             <td>{{ j.comments }}</td>
-                            <td>
+                            <td v-if="docstatus==0">
                                 <div class="pull-right cursor-pointer" @click="remove_item(item_index, item1_index)" v-html="frappe.utils.icon('delete', 'md')"></div>
                                 <div class="pull-right cursor-pointer" @click="edit_item(item_index, item1_index)" v-html="frappe.utils.icon('edit', 'md', 'mr-1')"></div>
                             </td>
@@ -73,7 +73,7 @@
                             <td>{{ j.delivery_location }}</td>
                             <td>{{ j.delivery_date }}</td>
                             <td>{{ j.comments }}</td>
-                            <td>
+                            <td v-if="docstatus==0">
                                 <div class="pull-right cursor-pointer" @click="remove_item(item_index, item1_index)" v-html="frappe.utils.icon('delete', 'md')"></div>
                                 <div class="pull-right cursor-pointer" @click="edit_item(item_index, item1_index)" v-html="frappe.utils.icon('edit', 'md', 'mr-1')"></div>
                             </td>
@@ -83,7 +83,7 @@
             </tr>
         </table>
 
-        <form name="formp" class="form-horizontal" autocomplete="off" @submit.prevent="get_lot_item_details()">
+        <form v-if="docstatus==0" name="formp" class="form-horizontal" autocomplete="off" @submit.prevent="get_lot_item_details()">
             <div class="row">
                 <div class="lot-control col-md-5"></div>
                 <div class="item-control col-md-5"></div>
@@ -100,7 +100,7 @@
                 </div>
             </div>
         </form>
-        <form name="formp" class="form-horizontal new-item-form" autocomplete="off" @submit.prevent="add_item()" v-show="!cur_item_changed && cur_item.item && cur_item.item != ''">
+        <form name="formp" class="form-horizontal new-item-form" autocomplete="off" @submit.prevent="add_item()" v-show="docstatus==0 && !cur_item_changed && cur_item.item && cur_item.item != ''">
             <div class="row">
                 <div class="item-attribute-controls col-md-6"></div>
                 <div class="item-attribute-controls-right col-md-6"></div>
@@ -175,12 +175,13 @@
 </template>
 
 <script>
-import evntBus  from '../../bus';
+import evntBus from '../../bus';
 
 export default {
     name: 'item',
     data() {
         return {
+            docstatus: 0,
             items: [],
             item: {
                 name: "",
@@ -221,6 +222,10 @@ export default {
         })
     },
     methods: {
+        update_status: function() {
+            this.docstatus = cur_frm.doc.docstatus;
+        },
+
         load_data: function(items) {
             this.items = items;
         },
