@@ -1,8 +1,6 @@
 import frappe
 
 def execute():
-    frappe.reload_doc("production_api", "doctype", "Purchase Order Item")
-
     # get all Purchase Order Item records
     po_items = get_all_po_items()
     print(f"Migrating {len(po_items)} Purchase Order Items")
