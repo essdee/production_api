@@ -21,7 +21,7 @@ export default class GRNItemWrapper {
     }
 
     get_items() {
-        return this.vue.$children[0].items;
+        return this.vue.$children[0].get_items();
     }
 
     load_data(data, skip_watch=false) {

@@ -15,9 +15,11 @@
   "grn_date",
   "section_break_1",
   "supplier",
-  "delivery_date",
+  "supplier_document_no",
+  "vehicle_no",
   "column_break_vyiz9",
   "supplier_name",
+  "delivery_date",
   "section_addresses",
   "supplier_address",
   "supplier_address_display",
@@ -83,6 +85,7 @@
    "fieldname": "grn_date",
    "fieldtype": "Date",
    "label": "GRN Date",
+   "read_only": 1,
    "reqd": 1
   },
   {
@@ -98,6 +101,7 @@
    "reqd": 1
   },
   {
+   "default": "Today",
    "fieldname": "delivery_date",
    "fieldtype": "Date",
    "label": "Delivery Date",
@@ -260,12 +264,24 @@
    "in_list_view": 1,
    "label": "Supplier Contact",
    "options": "Contact"
+  },
+  {
+   "fieldname": "supplier_document_no",
+   "fieldtype": "Data",
+   "label": "Supplier Document Number",
+   "reqd": 1
+  },
+  {
+   "fieldname": "vehicle_no",
+   "fieldtype": "Data",
+   "label": "Vehicle Number",
+   "reqd": 1
   }
  ],
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2023-04-28 19:21:01.175980",
+ "modified": "2023-04-29 17:42:41.255776",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Goods Received Note",

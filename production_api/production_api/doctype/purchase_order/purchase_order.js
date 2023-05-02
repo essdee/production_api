@@ -87,53 +87,57 @@ frappe.ui.form.on('Purchase Order', {
 		})
 
 		if (frm.doc.docstatus == 1) {
-			frm.page.btn_secondary.hide();			
-			frm.add_custom_button(__('Send SMS'), function() {
-				frappe.call({
-					method: "production_api.production_api.util.send_notification",
-					args: {
-						"doctype": frm.doc.doctype,
-						"docname": frm.doc.name,
-						"channels": ['SMS'],
-					},
-					callback: function(r) {
-						if (r.message) {
-							console.log(r.message)
+			frm.page.btn_secondary.hide();
+			// Add send notification button if the status is not closed or cancelled or partially cancelled
+			let closed_statuses = ['Closed', 'Cancelled', 'Partially Cancelled']
+			if (!closed_statuses.includes(frm.doc.status)) {
+				frm.add_custom_button(__('Send SMS'), function() {
+					frappe.call({
+						method: "production_api.production_api.util.send_notification",
+						args: {
+							"doctype": frm.doc.doctype,
+							"docname": frm.doc.name,
+							"channels": ['SMS'],
+						},
+						callback: function(r) {
+							if (r.message) {
+								console.log(r.message)
+							}
 						}
-					}
-				})
-			}, __("Send Notification"));
-			frm.add_custom_button(__('Send Email'), function() {
-				frappe.call({
-					method: "production_api.production_api.util.send_notification",
-					args: {
-						"doctype": frm.doc.doctype,
-						"docname": frm.doc.name,
-						"channels": ['Email'],
-					},
-					callback: function(r) {
-						if (r.message) {
-							console.log(r.message)
+					})
+				}, __("Send Notification"));
+				frm.add_custom_button(__('Send Email'), function() {
+					frappe.call({
+						method: "production_api.production_api.util.send_notification",
+						args: {
+							"doctype": frm.doc.doctype,
+							"docname": frm.doc.name,
+							"channels": ['Email'],
+						},
+						callback: function(r) {
+							if (r.message) {
+								console.log(r.message)
+							}
 						}
-					}
-				})
-			}, __("Send Notification"));
-			frm.add_custom_button(__('Copy Message'), function() {
-				frappe.call({
-					method: "production_api.production_api.util.get_notification_message",
-					args: {
-						"doctype": frm.doc.doctype,
-						"docname": frm.doc.name,
-					},
-					callback: function(r) {
-						if (r.message) {
-							frappe.utils.copy_to_clipboard(r.message)
+					})
+				}, __("Send Notification"));
+				frm.add_custom_button(__('Copy Message'), function() {
+					frappe.call({
+						method: "production_api.production_api.util.get_notification_message",
+						args: {
+							"doctype": frm.doc.doctype,
+							"docname": frm.doc.name,
+						},
+						callback: function(r) {
+							if (r.message) {
+								frappe.utils.copy_to_clipboard(r.message)
+							}
 						}
-					}
-				})
-			}, __("Send Notification"));
+					})
+				}, __("Send Notification"));
+			}
 
-			if (frm.doc.status != 'Partially Cancelled') {
+			if (frm.doc.status != 'Partially Cancelled' && frm.doc.open_status == 'Open') {
 				frm.add_custom_button(__('Cancel'), function() {
 					frappe.prompt({
 						label: 'Reason',
@@ -160,6 +164,27 @@ frappe.ui.form.on('Purchase Order', {
 				});
 			}
 
+			if (frm.doc.open_status == 'Open') {
+				frm.add_custom_button(__('Close'), function() {
+					if (frm.is_dirty()) {
+						frappe.throw(__("Please save the document before closing"));
+					}
+					frappe.confirm('Are you sure you want to close this Purchase Order?', function() {
+						frappe.call({
+							method: "production_api.production_api.doctype.purchase_order.purchase_order.close_purchase_order",
+							args: {
+								"purchase_order": frm.doc.name,
+							},
+							callback: function(r) {
+								if (r.message) {
+									console.log(r.message)
+								}
+							}
+						})
+					});
+				});
+			}
+
 			frm.page.add_menu_item(__('Refresh Status'), function() {
 				frappe.call({
 					method: "production_api.production_api.doctype.purchase_order.purchase_order.refresh_status",
@@ -173,6 +198,26 @@ frappe.ui.form.on('Purchase Order', {
 					}
 				})
 			});
+		}
+
+		if (frm.doc.open_status == 'Closed') {
+			frm.page.btn_secondary.hide();
+			frm.page.btn_primary.hide();
+			if (frappe.user.has_role("System Manager")) {
+				frm.page.add_menu_item(__('Reopen'), function() {
+					frappe.call({
+						method: "production_api.production_api.doctype.purchase_order.purchase_order.reopen_purchase_order",
+						args: {
+							"purchase_order": frm.doc.name,
+						},
+						callback: function(r) {
+							if (r.message) {
+								console.log(r.message)
+							}
+						}
+					})
+				});
+			}
 		}
 	},
 

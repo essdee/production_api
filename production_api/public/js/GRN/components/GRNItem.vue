@@ -217,7 +217,24 @@ export default {
             } else {
                 this.clear_items();
             }
-        }
+        },
+
+        get_items: function() {
+            // Parse the received values to 0 if it is empty or null
+            for (let i in this.items) {
+                for (let j in this.items[i].items) {
+                    for (let k in this.items[i].items[j].values) {
+                        if (this.items[i].items[j].values[k].received == null || this.items[i].items[j].values[k].received == "") {
+                            this.items[i].items[j].values[k].received = 0;
+                        }
+                        if (this.items[i].items[j].values[k].secondary_received == null || this.items[i].items[j].values[k].secondary_received == "") {
+                            this.items[i].items[j].values[k].secondary_received = 0;
+                        }
+                    }
+                }
+            }
+            return this.items;
+        },
     },
     watch: {
         items: {

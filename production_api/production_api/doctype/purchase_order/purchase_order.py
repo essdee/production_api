@@ -42,6 +42,12 @@ class PurchaseOrder(Document):
 		self.set_status()
 	
 	def before_cancel(self):
+		pending_qty = [item.qty == item.pending_qty for item in self.items]
+		if not all(pending_qty):
+			frappe.throw('Cannot completely cancel a partially delivered Purchase Order.')
+		for item in self.items:
+			item.cancelled_qty = item.pending_qty
+			item.pending_qty = 0
 		self.set_status()
 
 	def before_validate(self):
@@ -75,6 +81,9 @@ class PurchaseOrder(Document):
 		self.set('in_words', money_in_words(grand_total))
 	
 	def set_status(self):
+		if (self.open_status == "Closed"):
+			self.status = "Closed"
+			return
 		if (self.docstatus == 0):
 			self.status = "Draft"
 		if (self.docstatus == 2):
@@ -103,6 +112,19 @@ class PurchaseOrder(Document):
 			return "Partially Delivered"
 		else:
 			return "Ordered"
+	
+	def set_open_status(self, close=True):
+		print('in set open status')
+		print(self.docstatus, self.open_status, close)
+		if self.docstatus == 2:
+			frappe.throw(_("Cannot close a cancelled document"))
+		if close:
+			self.open_status = "Closed"
+		else:
+			# Check if a user has System Manager role
+			if "System Manager" not in frappe.get_roles():
+				frappe.throw(_("Only Administrators can open a closed document"))
+			self.open_status = "Open"
 
 def validate_price_details(items, supplier):
 	item_list = get_unique_items(items)
@@ -282,6 +304,7 @@ def fetch_item_details(items, include_id:bool=False):
 							'qty': variant.qty,
 							'secondary_qty': variant.secondary_qty,
 							'pending_qty': variant.pending_qty,
+							'cancelled_qty': variant.cancelled_qty,
 							'rate': variant.rate,
 							'tax': variant.tax,
 						}
@@ -294,6 +317,7 @@ def fetch_item_details(items, include_id:bool=False):
 				'qty': variants[0].qty,
 				'secondary_qty': variants[0].secondary_qty,
 				'pending_qty': variants[0].pending_qty,
+				'cancelled_qty': variants[0].cancelled_qty,
 				'rate': variants[0].rate,
 				'tax': variants[0].tax
 			}
@@ -366,6 +390,8 @@ def get_purchase_order_items(purchase_order):
 @frappe.whitelist()
 def cancel_purchase_order(purchase_order, reason=None):
 	po = frappe.get_doc("Purchase Order", purchase_order)
+	if po.open_status == "Closed":
+		frappe.throw(_("Cannot cancel Closed Purchase Order"))
 	draft_grns = frappe.get_all("Goods Received Note", filters={
 		"against": "Purchase Order",
 		"against_id": purchase_order,
@@ -375,18 +401,16 @@ def cancel_purchase_order(purchase_order, reason=None):
 		frappe.throw(_("Cannot cancel Purchase Order as there are Goods Received Notes in draft state"))
 	
 	pending_items = [item.pending_qty==item.qty for item in po.items]
-	print("pending_items", pending_items)
 	if all(pending_items):
 		po.set("cancel_reason", reason)
 		po.save()
 		po.cancel()
 		return
 	delivered_items = [item.pending_qty==0 for item in po.items]
-	print("delivered_items", delivered_items)
 	if all(delivered_items):
-		frappe.throw(_("Cannot cancel Purchase Order as all items are delivered"))
+		frappe.throw(_("There is nothing to cancel in this Purchase Order as there is no pending quantity"))
 	for item in po.items:
-		item.cancelled_qty = item.qty
+		item.cancelled_qty = item.cancelled_qty + item.pending_qty
 		item.pending_qty = 0
 	po.set("cancel_reason", reason)
 	po.save()
@@ -399,3 +423,35 @@ def refresh_status(purchase_order):
 	if status != po.status:
 		po.save()
 	return po.status
+
+@frappe.whitelist()
+def close_purchase_order(purchase_order):
+	po = frappe.get_doc("Purchase Order", purchase_order)
+	status = po.open_status
+	po.set_open_status()
+	if status != po.open_status:
+		po.save()
+	return po.open_status
+
+@frappe.whitelist()
+def reopen_purchase_order(purchase_order):
+	po = frappe.get_doc("Purchase Order", purchase_order)
+	status = po.open_status
+	po.set_open_status(close=False)
+	if status != po.open_status:
+		po.save()
+	return po.open_status
+
+@frappe.whitelist()
+def close_or_open_purchase_orders(names, close):
+	if not frappe.has_permission("Purchase Order", "write"):
+		frappe.throw(_("Not permitted"), frappe.PermissionError)
+
+	names = json.loads(names)
+	if isinstance(close, string_types):
+		close = True if close == "true" else False
+	for name in names:
+		if close:
+			close_purchase_order(name)
+		else:
+			reopen_purchase_order(name)

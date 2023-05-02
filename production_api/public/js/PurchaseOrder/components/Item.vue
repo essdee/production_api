@@ -27,6 +27,12 @@
                                         <br>
                                         ({{ attr.secondary_qty }}<span v-if="j.secondary_uom">{{ ' ' + j.secondary_uom }}</span>)
                                     </span>
+                                    <span v-if="docstatus==1">
+                                        <br>
+                                        Pending: {{ attr.pending_qty }}
+                                        <br>
+                                        Cancelled: {{ attr.cancelled_qty || 0 }}
+                                    </span>
                                     <br>
                                     Rate: {{ attr.rate }}
                                 </div>
@@ -52,6 +58,8 @@
                             <th>Lot</th>
                             <th v-for="attr in i.attributes" :key="attr">{{ attr }}</th>
                             <th>Quantity</th>
+                            <th v-if="docstatus==1">Pending Quantity</th>
+                            <th v-if="docstatus==1">Cancelled Quantity</th>
                             <th>Rate</th>
                             <th>Delivery Location</th>
                             <th>Delivery Date</th>
@@ -69,6 +77,8 @@
                                     ({{ j.values['default'].secondary_qty }}<span v-if="j.secondary_uom">{{ ' ' + j.secondary_uom }}</span>)
                                 </span>
                             </td>
+                            <td v-if="docstatus==1">{{ j.values['default'].pending_qty }}</td>
+                            <td v-if="docstatus==1">{{ j.values['default'].cancelled_qty || 0 }}</td>
                             <td>{{ j.values['default'].rate }}</td>
                             <td>{{ j.delivery_location }}</td>
                             <td>{{ j.delivery_date }}</td>

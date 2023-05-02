@@ -20,18 +20,32 @@ class GoodsReceivedNote(Document):
 		self.set_onload('item_details', item_details)
 	
 	def before_submit(self):
-		print("before submit called")
-		self.calculate_amount()
-		self.set('approved_by', frappe.get_user().doc.name)
-	
-	def on_submit(self):
+		against_docstatus = frappe.get_value(self.against, self.against_id, 'docstatus')
+		if against_docstatus != 1:
+			frappe.throw(f'{self.against} is not submitted.', title='GRN')
 		# Remove all item rows quantity is zero
 		for item in self.items:
 			if item.quantity == 0:
 				self.items.remove(item)
+		self.validate_quantity()
+		self.calculate_amount()
+		self.set('approved_by', frappe.get_user().doc.name)
+	
+	def on_submit(self):
 		self.update_purchase_order()
 	
 	def on_cancel(self):
+		settings = frappe.get_single('MRP Settings')
+		cancel_before_days = settings.grn_cancellation_in_days
+		if cancel_before_days == 0:
+			frappe.throw('GRN cancellation is not allowed.', title='GRN')
+		if cancel_before_days and not settings.allow_grn_cancellation:
+			if (frappe.utils.nowdate() - self.creation).days > cancel_before_days:
+				frappe.throw(f'GRN cannot be cancelled after {cancel_before_days} days of creation.', title='GRN')
+		if self.against == 'Purchase Order':
+			status = frappe.get_value('Purchase Order', self.against_id, 'open_status')
+			if status != 'Open':
+				frappe.throw('Purchase order is not open.', title='GRN')
 		self.update_purchase_order()
 
 	def update_purchase_order(self):
@@ -54,6 +68,13 @@ class GoodsReceivedNote(Document):
 
 	def before_validate(self):
 		print(self.item_details)
+		if self.against == 'Purchase Order':
+			status = frappe.get_value('Purchase Order', self.against_id, 'open_status')
+			if status != 'Open':
+				frappe.throw('Purchase order is not open.', title='GRN')
+			supplier = frappe.get_value('Purchase Order', self.against_id, 'supplier')
+			if supplier != self.supplier:
+				frappe.throw('Supplier cannot be changed.', title='GRN')
 		if(self.item_details):
 			items = save_grn_item_details(self.item_details)
 			print(json.dumps(items, indent=3))
@@ -102,7 +123,7 @@ def save_grn_item_details(item_details):
 			item_attributes = item['attributes']
 			if(item.get('primary_attribute')):
 				for attr, values in item['values'].items():
-					if values.get('received'):
+					if values.get('qty') or values.get('pending_qty') or values.get('received'):
 						item_attributes[item.get('primary_attribute')] = attr
 						item1 = {}
 						variant_name = get_variant(item_name, item_attributes)
@@ -135,7 +156,7 @@ def save_grn_item_details(item_details):
 						item1['ref_docname'] = values.get('ref_docname')
 						items.append(item1)
 			else:
-				if item['values'].get('default') and item['values']['default'].get('received'):
+				if item['values'].get('default'):
 					print(item_name)
 					item1 = {}
 					variant_name = get_variant(item_name, item_attributes)

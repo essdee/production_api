@@ -8,7 +8,11 @@
   "enable_price_validation",
   "shortned_url_domain",
   "link_expiry_days",
-  "auto_send_notifications"
+  "auto_send_notifications",
+  "section_break_45wni",
+  "grn_cancellation_in_days",
+  "column_break_arv2f",
+  "allow_grn_cancellation"
  ],
  "fields": [
   {
@@ -33,12 +37,33 @@
    "fieldtype": "Table",
    "label": "Auto Send Notifications",
    "options": "Doctype List"
+  },
+  {
+   "fieldname": "section_break_45wni",
+   "fieldtype": "Section Break",
+   "label": "GRN"
+  },
+  {
+   "description": "Allow GRN Cancellation after creation for these days",
+   "fieldname": "grn_cancellation_in_days",
+   "fieldtype": "Int",
+   "label": "GRN Cancellation (In Days)"
+  },
+  {
+   "default": "0",
+   "fieldname": "allow_grn_cancellation",
+   "fieldtype": "Check",
+   "label": "Allow GRN Cancellation"
+  },
+  {
+   "fieldname": "column_break_arv2f",
+   "fieldtype": "Column Break"
   }
  ],
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2023-04-13 20:02:08.262656",
+ "modified": "2023-05-01 19:22:25.701720",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "MRP Settings",

@@ -2,21 +2,14 @@
 # For license information, please see license.txt
 
 import frappe
+from pypika import Order
 
 
 def execute(filters=None):
     columns, data = [], []
-    validate_filters(filters)
     columns = get_columns()
     data = get_data(filters)
     return columns, data
-
-
-def validate_filters(filters):
-    if filters.get('date_based_on'):
-        if filters.get('from_date') and filters.get('to_date'):
-            if filters.get('from_date') > filters.get('to_date'):
-                frappe.throw('From Date cannot be greater than To Date')
 
 
 def get_columns():
@@ -47,95 +40,93 @@ def get_columns():
             "label": "Supplier Name",
             "fieldtype": "Data",
             "width": 200
-        },
-        {
+		},
+		{
             "fieldname": "po_date",
             "label": "PO Date",
             "fieldtype": "Date",
             "width": 100
-        },
-        {
+		},
+		{
             "fieldname": "qty",
             "label": "Qty",
             "fieldtype": "Float",
             "width": 100
-        },
-        {
-            "fieldname": "delivered_qty",
-            "label": "Delivered Qty",
+		},
+		{
+            "fieldname": "pending_qty",
+            "label": "Pending Qty",
             "fieldtype": "Float",
             "width": 100
-        },
+		},
         {
             "fieldname": "cancelled_qty",
             "label": "Cancelled Qty",
             "fieldtype": "Float",
             "width": 100
-        },
+		},
         {
-            "fieldname": "pending_qty",
-            "label": "Pending Qty",
+            "fieldname": "received_qty",
+            "label": "Received Qty",
             "fieldtype": "Float",
             "width": 100
-        },
+		},
+        {
+            "fieldname": "balance_qty",
+            "label": "Balance Qty",
+            "fieldtype": "Float",
+            "width": 100
+		},
         {
             "fieldname": "uom",
             "label": "UOM",
             "fieldtype": "Link",
             "options": "UOM",
             "width": 100
-        },
-        {
-            "fieldname": "secondary_qty",
-            "label": "Secondary Qty",
-            "fieldtype": "Float",
-            "width": 100
-        },
-        {
-            "fieldname": "secondary_uom",
-            "label": "Secondary UOM",
-            "fieldtype": "Link",
-            "options": "UOM",
-            "width": 100
-        },
+		},
         {
             "fieldname": "rate",
             "label": "Rate",
-            "fieldtype": "Float",
+            "fieldtype": "Currency",
             "width": 100
-        },
+		},
+        {
+            "fieldname": "delivery_date",
+            "label": "Delivery Date",
+            "fieldtype": "Date",
+            "width": 100
+		},
         {
             "fieldname": "delivery_location",
             "label": "Delivery Location",
             "fieldtype": "Link",
             "options": "Supplier",
             "width": 100
-        },
+		},
         {
             "fieldname": "delivery_location_name",
             "label": "Delivery Location Name",
             "fieldtype": "Data",
             "width": 200
-        },
-        {
-            "fieldname": "delivery_date",
-            "label": "Delivery Date",
-            "fieldtype": "Date",
-            "width": 100
-        },
+		},
         {
             "fieldname": "lot",
             "label": "Lot",
-            "fieldtype": "Link",
-            "options": "Lot",
+            "fieldtype": "Data",
             "width": 100
-        },
+		},
         {
-            "fieldname": "status",
-            "label": "Status",
+            "fieldname": "grn_status",
+            "label": "GRN Status",
             "fieldtype": "Data",
             "width": 200
         },
+        {
+            "fieldname": "po_status",
+            "label": "PO Status",
+            "fieldtype": "Data",
+            "width": 200
+		},
         {
             "fieldname": "modified",
             "label": "Modified",
@@ -162,80 +153,83 @@ def get_columns():
             "width": 100
         },
     ]
+
     return columns
 
-
 def get_data(filters):
+    grn_item = frappe.qb.DocType('Goods Received Note Item')
     po_item = frappe.qb.DocType('Purchase Order Item')
+    grn = frappe.qb.DocType('Goods Received Note')
     po = frappe.qb.DocType('Purchase Order')
     supplier = frappe.qb.DocType('Supplier')
     item_variant = frappe.qb.DocType('Item Variant')
 
-    query = (
-        frappe.qb.from_(po_item)
+    q = (
+        frappe.qb.from_(grn_item)
+        .left_join(po_item)
+        .on(grn_item.ref_docname == po_item.name)
+        .left_join(grn)
+        .on(grn_item.parent == grn.name)
         .left_join(po)
         .on(po_item.parent == po.name)
         .left_join(supplier)
-        .on(po_item.delivery_location == supplier.name)
+        .on(grn.delivery_location == supplier.name)
         .left_join(item_variant)
         .on(po_item.item_variant == item_variant.name)
         .select(
-            po_item.item_variant,
-            po_item.qty,
-            po_item.pending_qty,
-            po_item.cancelled_qty,
-            (po_item.qty - po_item.pending_qty -
-             po_item.cancelled_qty).as_('delivered_qty'),
-            po_item.uom,
-            po_item.secondary_qty,
-            po_item.secondary_uom,
-            po_item.rate,
-            po_item.delivery_location,
-            supplier.supplier_name.as_('delivery_location_name'),
-            po_item.delivery_date,
-            po_item.lot,
-            po_item.comments,
             po.name,
-            po.creation,
-            po.modified,
-            po.modified_by,
+            po_item.item_variant,
             po.supplier,
             po.supplier_name,
             po.po_date,
-            po.comments,
-            po.status
+            po_item.qty,
+            po_item.pending_qty,
+            po_item.cancelled_qty,
+            grn_item.quantity.as_('received_qty'),
+            po_item.uom,
+            po_item.rate,
+            grn.delivery_location,
+            grn.delivery_date,
+            supplier.supplier_name.as_('delivery_location_name'),
+            grn.name.as_('grn_name'),
+            grn.grn_date,
+            grn_item.lot,
+            grn_item.comments,
+            grn.creation,
+            grn.modified,
+            grn.modified_by,
+            # grn.comments,
+            grn.docstatus.as_('grn_status'),
+            po.status.as_('po_status'),
+            po_item.name.as_('po_item_name'),
         )
     )
-    if (filters.get('docstatus')):
-        query = query.where(po.docstatus == filters.get('docstatus'))
-    if (filters.get('item_variant')):
-        query = query.where(po_item.item_variant == filters.get('item_variant'))
-    if (filters.get('item')):
-        query = query.where(item_variant.item == filters.get('item'))
-    if (filters.get('supplier')):
-        query = query.where(po.supplier == filters.get('supplier'))
-    if (filters.get('delivery_location')):
-        query = query.where(po_item.delivery_location == filters.get('delivery_location'))
-    if (filters.get('purchase_order')):
-        query = query.where(po.name == filters.get('purchase_order'))
-    if (filters.get('lot')):
-        query = query.where(po_item.lot == filters.get('lot'))
-    if (filters.get('status')):
-        query = query.where(po.status == filters.get('status'))
-    if (filters.get('open_status')):
-        query = query.where(po.open_status == filters.get('open_status'))
-    if (filters.get('date_based_on')):
-        if filters.get('date_based_on') == 'Posting Date':
-            if filters.get('from_date'):
-                query = query.where(po.po_date >= filters.get('from_date'))
-            if filters.get('to_date'):
-                query = query.where(po.po_date <= filters.get('to_date'))
-        elif filters.get('date_based_on') == 'Delivery Date':
-            if filters.get('from_date'):
-                query = query.where(po_item.delivery_date >= filters.get('from_date'))
-            if filters.get('to_date'):
-                query = query.where(po_item.delivery_date <= filters.get('to_date'))
+    # .desc(), po_item.idx.asc(), grn_item.creation.asc()
 
-    data = query.run(as_dict=True)
+    q = q.orderby(po.modified, order=Order.desc)
+    q = q.orderby(po_item.idx, order=Order.asc)
+    q = q.orderby(grn_item.creation, order=Order.asc)
+    
+    print(q)
+    data = q.run(as_dict=True)
+    
+    return compute_data(data)
 
+def compute_data(data):
+    # Compute the balance qty in a sequential manner
+    # the data is sorted so go by each row and compute the balance qty grouped by name and po_item_name
+
+    balance_qty = 0
+    current_po = None
+    current_po_item = None
+    for row in data:
+        if current_po != row.name or current_po_item != row.po_item_name:
+            balance_qty = row.qty
+            current_po = row.name
+            current_po_item = row.po_item_name
+
+        if row.grn_status == 1:
+            balance_qty -= row.received_qty
+        row.balance_qty = balance_qty
+    
     return data

@@ -12,6 +12,7 @@ frappe.ui.form.on('Goods Received Note', {
 			}
 			if (doc.against == 'Purchase Order') {
 				filters['status'] = ['in', ['Ordered', 'Partially Delivered', 'Overdue', 'Partially Cancelled']]
+				filters['open_status'] = 'Open'
 			}
 			return{
 				filters: filters

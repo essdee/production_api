@@ -44,14 +44,14 @@ frappe.query_reports["Purchase Order Itemwise"] = {
 			"fieldname": "open_status",
 			"label": __("Open Status"),
 			"fieldtype": "Select",
-			"options": "\nOpen\nClosed"
+			"options": "\nOpen\nClosed",
+			"default": "Open"
 		},
 		{
 			"fieldname": "docstatus",
 			"label": __("Docstatus"),
 			"fieldtype": "Select",
 			"options": "\n0\n1\n2",
-			"default": "1"
 		},
 		{
 			"fieldname": "date_based_on",
@@ -79,11 +79,11 @@ frappe.query_reports["Purchase Order Itemwise"] = {
 			if (data.pending_qty > 0 && data.delivery_date > frappe.datetime.nowdate()) {
 				value = "<span style='color:green'>" + value + "</span>";
 			} else if (data.pending_qty > 0 && data.delivery_date == frappe.datetime.nowdate()) {
-				value = "<span style='color:orange'>" + value + "</span>";
+				value = "<span style='color:blue'>" + value + "</span>";
 			} else if (data.pending_qty > 0 && data.delivery_date < frappe.datetime.nowdate()) {
 				value = "<span style='color:red'>" + value + "</span>";
 			} else if (data.pending_qty < 0) {
-				value = "<span style='color:yellow'>" + value + "</span>";
+				value = "<span style='color:orange'>" + value + "</span>";
 			}
 		} else if (column.fieldname == "status") {
 			const status_colors = {
