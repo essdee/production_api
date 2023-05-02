@@ -11,6 +11,7 @@
   "column_break_4",
   "name1",
   "disabled",
+  "over_delivery_receipt_allowance",
   "uom_section",
   "default_unit_of_measure",
   "uom_conversion_details",
@@ -133,11 +134,18 @@
    "label": "Brand",
    "options": "Brand",
    "set_only_once": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "over_delivery_receipt_allowance",
+   "fieldtype": "Float",
+   "label": "Over Delivery/Receipt Allowance (%)",
+   "precision": "1"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2023-03-29 12:20:14.716525",
+ "modified": "2023-04-29 11:57:55.678688",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Item",
@@ -182,5 +190,6 @@
  ],
  "sort_field": "modified",
  "sort_order": "DESC",
+ "states": [],
  "track_changes": 1
 }

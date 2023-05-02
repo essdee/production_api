@@ -39,7 +39,10 @@
   "print_settings_section",
   "show_delivery_details",
   "approved_by",
-  "amended_from"
+  "amended_from",
+  "status",
+  "cancel_reason",
+  "open_status"
  ],
  "fields": [
   {
@@ -54,6 +57,7 @@
    "fieldname": "supplier",
    "fieldtype": "Link",
    "in_list_view": 1,
+   "in_standard_filter": 1,
    "label": "Supplier",
    "options": "Supplier",
    "reqd": 1
@@ -211,7 +215,9 @@
    "fieldtype": "Link",
    "hidden": 1,
    "label": "Approved By",
-   "options": "User"
+   "no_copy": 1,
+   "options": "User",
+   "read_only": 1
   },
   {
    "fieldname": "amended_from",
@@ -249,12 +255,41 @@
    "label": "In Words",
    "no_copy": 1,
    "read_only": 1
+  },
+  {
+   "allow_on_submit": 1,
+   "default": "Draft",
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "hidden": 1,
+   "label": "Status",
+   "options": "Draft\nOrdered\nPartially Delivered\nDelivered\nCancelled\nPartially Cancelled\nOverdue\nClosed",
+   "read_only": 1
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "cancel_reason",
+   "fieldtype": "Data",
+   "label": "Cancel reason",
+   "read_only": 1
+  },
+  {
+   "allow_on_submit": 1,
+   "default": "Open",
+   "fieldname": "open_status",
+   "fieldtype": "Select",
+   "hidden": 1,
+   "in_standard_filter": 1,
+   "label": "Open Status",
+   "options": "Open\nClosed",
+   "print_hide": 1,
+   "read_only": 1
   }
  ],
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2023-04-12 11:11:04.280846",
+ "modified": "2023-05-01 16:29:50.018910",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Purchase Order",
@@ -289,7 +324,6 @@
    "write": 1
   },
   {
-   "cancel": 1,
    "create": 1,
    "delete": 1,
    "email": 1,

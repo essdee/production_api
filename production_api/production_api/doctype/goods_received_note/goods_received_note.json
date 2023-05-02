@@ -1,0 +1,308 @@
+{
+ "actions": [],
+ "autoname": "naming_series:",
+ "creation": "2023-04-14 13:27:37.367617",
+ "default_view": "List",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "naming_series",
+  "against",
+  "delivery_location",
+  "column_break_1",
+  "against_id",
+  "grn_date",
+  "section_break_1",
+  "supplier",
+  "supplier_document_no",
+  "vehicle_no",
+  "column_break_vyiz9",
+  "supplier_name",
+  "delivery_date",
+  "section_addresses",
+  "supplier_address",
+  "supplier_address_display",
+  "contact_person",
+  "contact_display",
+  "contact_mobile",
+  "column_break_fwrcg",
+  "delivery_address",
+  "delivery_address_display",
+  "billing_address",
+  "billing_address_display",
+  "section_break_ve8oj",
+  "items",
+  "item_html",
+  "section_break_8ncnk",
+  "total",
+  "total_tax",
+  "grand_total",
+  "in_words",
+  "section_break_ogawr",
+  "comments",
+  "section_break_zvhdj",
+  "approved_by",
+  "amended_from"
+ ],
+ "fields": [
+  {
+   "fieldname": "naming_series",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "GRN Series",
+   "options": "GRN-",
+   "reqd": 1
+  },
+  {
+   "fieldname": "against",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Against",
+   "options": "Purchase Order",
+   "reqd": 1
+  },
+  {
+   "fieldname": "delivery_location",
+   "fieldtype": "Link",
+   "label": "Delivery Location",
+   "options": "Supplier",
+   "reqd": 1
+  },
+  {
+   "fieldname": "column_break_1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "against_id",
+   "fieldtype": "Dynamic Link",
+   "label": "PO/WO ID",
+   "options": "against",
+   "reqd": 1
+  },
+  {
+   "default": "Today",
+   "fieldname": "grn_date",
+   "fieldtype": "Date",
+   "label": "GRN Date",
+   "read_only": 1,
+   "reqd": 1
+  },
+  {
+   "fieldname": "section_break_1",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "supplier",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Supplier",
+   "options": "Supplier",
+   "reqd": 1
+  },
+  {
+   "default": "Today",
+   "fieldname": "delivery_date",
+   "fieldtype": "Date",
+   "label": "Delivery Date",
+   "reqd": 1
+  },
+  {
+   "fieldname": "column_break_vyiz9",
+   "fieldtype": "Column Break"
+  },
+  {
+   "bold": 1,
+   "fetch_from": "supplier.supplier_name",
+   "fieldname": "supplier_name",
+   "fieldtype": "Data",
+   "label": "Supplier Name",
+   "read_only": 1
+  },
+  {
+   "fieldname": "section_addresses",
+   "fieldtype": "Section Break",
+   "label": "Address and Contact"
+  },
+  {
+   "fieldname": "supplier_address",
+   "fieldtype": "Link",
+   "label": "Supplier Address",
+   "options": "Address",
+   "reqd": 1
+  },
+  {
+   "fieldname": "supplier_address_display",
+   "fieldtype": "Small Text",
+   "label": "Supplier Address Details",
+   "read_only": 1
+  },
+  {
+   "fieldname": "contact_display",
+   "fieldtype": "Small Text",
+   "label": "Contact Name",
+   "read_only": 1
+  },
+  {
+   "fieldname": "contact_mobile",
+   "fieldtype": "Small Text",
+   "label": "Contact Mobile",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_fwrcg",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "delivery_address",
+   "fieldtype": "Link",
+   "label": "Delivery Address",
+   "options": "Address"
+  },
+  {
+   "fieldname": "delivery_address_display",
+   "fieldtype": "Small Text",
+   "label": "Delivery Address Details",
+   "read_only": 1
+  },
+  {
+   "fieldname": "billing_address",
+   "fieldtype": "Link",
+   "label": "Billing Address",
+   "options": "Address"
+  },
+  {
+   "fieldname": "billing_address_display",
+   "fieldtype": "Small Text",
+   "label": "Billing Address Details",
+   "read_only": 1
+  },
+  {
+   "fieldname": "section_break_ve8oj",
+   "fieldtype": "Section Break",
+   "label": "Items"
+  },
+  {
+   "fieldname": "items",
+   "fieldtype": "Table",
+   "hidden": 1,
+   "label": "Items",
+   "options": "Goods Received Note Item"
+  },
+  {
+   "fieldname": "amended_from",
+   "fieldtype": "Link",
+   "label": "Amended From",
+   "no_copy": 1,
+   "options": "Goods Received Note",
+   "print_hide": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "item_html",
+   "fieldtype": "HTML",
+   "label": "Item"
+  },
+  {
+   "fieldname": "section_break_8ncnk",
+   "fieldtype": "Section Break",
+   "hidden": 1
+  },
+  {
+   "fieldname": "total",
+   "fieldtype": "Currency",
+   "hidden": 1,
+   "label": "Total",
+   "read_only": 1
+  },
+  {
+   "fieldname": "total_tax",
+   "fieldtype": "Currency",
+   "hidden": 1,
+   "label": "Total Tax",
+   "read_only": 1
+  },
+  {
+   "fieldname": "grand_total",
+   "fieldtype": "Currency",
+   "hidden": 1,
+   "label": "Grand Total",
+   "read_only": 1
+  },
+  {
+   "fieldname": "in_words",
+   "fieldtype": "Data",
+   "hidden": 1,
+   "label": "In Words",
+   "read_only": 1
+  },
+  {
+   "fieldname": "section_break_ogawr",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "comments",
+   "fieldtype": "Small Text",
+   "label": "Comments"
+  },
+  {
+   "fieldname": "section_break_zvhdj",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "approved_by",
+   "fieldtype": "Link",
+   "hidden": 1,
+   "label": "Approved By",
+   "no_copy": 1,
+   "options": "User",
+   "read_only": 1
+  },
+  {
+   "fieldname": "contact_person",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Supplier Contact",
+   "options": "Contact"
+  },
+  {
+   "fieldname": "supplier_document_no",
+   "fieldtype": "Data",
+   "label": "Supplier Document Number",
+   "reqd": 1
+  },
+  {
+   "fieldname": "vehicle_no",
+   "fieldtype": "Data",
+   "label": "Vehicle Number",
+   "reqd": 1
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "is_submittable": 1,
+ "links": [],
+ "modified": "2023-04-29 17:42:41.255776",
+ "modified_by": "Administrator",
+ "module": "Production Api",
+ "name": "Goods Received Note",
+ "naming_rule": "By \"Naming Series\" field",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1
+}

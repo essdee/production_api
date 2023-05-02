@@ -17,7 +17,9 @@
   "row_index",
   "tax",
   "uom",
-  "secondary_uom"
+  "secondary_uom",
+  "pending_qty",
+  "cancelled_qty"
  ],
  "fields": [
   {
@@ -99,12 +101,24 @@
    "fieldtype": "Link",
    "label": "Secondary UOM",
    "options": "UOM"
+  },
+  {
+   "fieldname": "pending_qty",
+   "fieldtype": "Float",
+   "label": "Pending Qty",
+   "read_only": 1
+  },
+  {
+   "fieldname": "cancelled_qty",
+   "fieldtype": "Float",
+   "label": "Cancelled Qty",
+   "read_only": 1
   }
  ],
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2023-04-25 15:45:20.304253",
+ "modified": "2023-04-26 17:03:42.189610",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Purchase Order Item",

@@ -90,3 +90,18 @@ def get_primary_address(supplier):
 
 	if address:
 		return address[0]
+	
+@frappe.whitelist()
+def get_address(supplier, type):
+	filters = [
+		["Dynamic Link", "link_doctype", "=", "Supplier"],
+		["Dynamic Link", "link_name", "=", supplier],
+		["Dynamic Link", "parenttype", "=", "Address"],
+		["Address", "disabled", "=", "0"],
+		["Address", "address_type", "=", type]
+	]
+
+	address = frappe.get_list("Address", filters=filters, pluck="name") or {}
+
+	if address:
+		return address[0]
