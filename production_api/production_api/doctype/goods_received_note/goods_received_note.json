@@ -98,6 +98,7 @@
    "in_list_view": 1,
    "label": "Supplier",
    "options": "Supplier",
+   "read_only": 1,
    "reqd": 1
   },
   {
@@ -281,7 +282,7 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2023-04-29 17:42:41.255776",
+ "modified": "2023-05-04 10:24:04.487637",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Goods Received Note",

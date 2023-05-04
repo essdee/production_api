@@ -194,6 +194,9 @@ frappe.ui.form.on('Goods Received Note', {
 					frm.set_value('supplier', doc.supplier);
 					frm.set_value('delivery_location', doc.default_delivery_location);
 				})
+		} else {
+			frm.set_value('supplier', '');
+			frm.set_value('delivery_location', '');
 		}
 	},
 

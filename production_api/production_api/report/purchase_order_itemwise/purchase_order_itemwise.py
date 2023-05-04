@@ -2,6 +2,7 @@
 # For license information, please see license.txt
 
 import frappe
+from pypika import Order
 
 
 def execute(filters=None):
@@ -236,6 +237,7 @@ def get_data(filters):
             if filters.get('to_date'):
                 query = query.where(po_item.delivery_date <= filters.get('to_date'))
 
+    query = query.orderby(po.modified, order=Order.desc)
     data = query.run(as_dict=True)
 
     return data

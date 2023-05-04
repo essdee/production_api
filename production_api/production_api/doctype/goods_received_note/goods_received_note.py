@@ -84,6 +84,11 @@ class GoodsReceivedNote(Document):
 		else:
 			frappe.throw('Add items to GRN.', title='GRN')
 	
+	def validate(self):
+		supplier = frappe.get_value(self.against, self.against_id, 'supplier')
+		if supplier != self.supplier:
+			frappe.throw('Supplier cannot be changed.', title='GRN')
+	
 	def validate_quantity(self):
 		total_quantity = 0
 		for item in self.items:

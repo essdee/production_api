@@ -385,7 +385,12 @@ def get_PO_print_details(docname):
 @frappe.whitelist()
 def get_purchase_order_items(purchase_order):
 	po = frappe.get_doc("Purchase Order", purchase_order)
-	return fetch_item_details(po.items, include_id=True)
+	data = fetch_item_details(po.items, include_id=True)
+	# remove comments
+	for item in data:
+		for item_row in item['items']:
+			item_row['comments'] = ''
+	return data
 
 @frappe.whitelist()
 def cancel_purchase_order(purchase_order, reason=None):
