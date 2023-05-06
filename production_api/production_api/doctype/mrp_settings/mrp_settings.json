@@ -5,7 +5,9 @@
  "editable_grid": 1,
  "engine": "InnoDB",
  "field_order": [
+  "purchase_order_section",
   "enable_price_validation",
+  "url_shortner_settings_section",
   "shortned_url_domain",
   "link_expiry_days",
   "auto_send_notifications",
@@ -36,7 +38,7 @@
    "fieldname": "auto_send_notifications",
    "fieldtype": "Table",
    "label": "Auto Send Notifications",
-   "options": "Doctype List"
+   "options": "MRP Settings Notification Doctype List"
   },
   {
    "fieldname": "section_break_45wni",
@@ -58,12 +60,22 @@
   {
    "fieldname": "column_break_arv2f",
    "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "url_shortner_settings_section",
+   "fieldtype": "Section Break",
+   "label": "URL Shortner Settings"
+  },
+  {
+   "fieldname": "purchase_order_section",
+   "fieldtype": "Section Break",
+   "label": "Purchase Order"
   }
  ],
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2023-05-01 19:22:25.701720",
+ "modified": "2023-05-06 10:57:24.973097",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "MRP Settings",

@@ -32,7 +32,7 @@
  "modified": "2023-04-14 16:49:55.018775",
  "modified_by": "Administrator",
  "module": "Production Api",
- "name": "Doctype List",
+ "name": "MRP Settings Notification Doctype List",
  "owner": "Administrator",
  "permissions": [],
  "sort_field": "modified",
