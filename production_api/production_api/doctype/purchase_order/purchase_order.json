@@ -23,8 +23,6 @@
   "column_break_11",
   "delivery_address",
   "delivery_address_display",
-  "billing_address",
-  "billing_address_display",
   "section_break_8",
   "items",
   "item_html",
@@ -150,7 +148,8 @@
    "fieldname": "delivery_address",
    "fieldtype": "Link",
    "label": "Delivery Address",
-   "options": "Address"
+   "options": "Address",
+   "reqd": 1
   },
   {
    "fieldname": "section_break_17",
@@ -166,18 +165,6 @@
    "fieldname": "contact_mobile",
    "fieldtype": "Small Text",
    "label": "Contact Mobile",
-   "read_only": 1
-  },
-  {
-   "fieldname": "billing_address",
-   "fieldtype": "Link",
-   "label": "Billing Address",
-   "options": "Address"
-  },
-  {
-   "fieldname": "billing_address_display",
-   "fieldtype": "Small Text",
-   "label": "Billing Address Details",
    "read_only": 1
   },
   {
@@ -298,7 +285,7 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2023-05-06 12:47:08.591212",
+ "modified": "2023-05-06 18:32:37.322158",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Purchase Order",

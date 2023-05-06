@@ -261,6 +261,22 @@ frappe.ui.form.on('Purchase Order', {
 		}
 	},
 
+	default_delivery_location: function(frm) {
+		if (frm.doc.default_delivery_location) {
+			frappe.call({
+				method: "production_api.production_api.doctype.supplier.supplier.get_primary_address",
+				args: {"supplier": frm.doc.default_delivery_location},
+				callback: function(r) {
+					if (r.message) {
+						frm.set_value('delivery_address', r.message)
+					} else {
+						frm.set_value('delivery_address', '')
+					}
+				}
+			})
+		}
+	},
+
 	supplier_address: function(frm) {
 		if (frm.doc['supplier_address']) {
 			frappe.call({
@@ -290,22 +306,6 @@ frappe.ui.form.on('Purchase Order', {
 			})
 		} else {
 			frm.set_value('delivery_address_display', '');
-		}
-	},
-	
-	billing_address: function(frm) {
-		if (frm.doc['billing_address']) {
-			frappe.call({
-				method: "frappe.contacts.doctype.address.address.get_address_display",
-				args: {"address_dict": frm.doc['billing_address'] },
-				callback: function(r) {
-					if (r.message) {
-						frm.set_value('billing_address_display', r.message)
-					}
-				}
-			})
-		} else {
-			frm.set_value('billing_address_display', '');
 		}
 	},
 

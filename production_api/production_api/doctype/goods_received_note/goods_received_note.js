@@ -167,17 +167,6 @@ frappe.ui.form.on('Goods Received Note', {
 					}
 				}
 			})
-			frappe.call({
-				method: "production_api.production_api.doctype.supplier.supplier.get_address",
-				args: {"supplier": frm.doc.delivery_location, "type": "Billing"},
-				callback: function(r) {
-					if (r.message) {
-						frm.set_value('billing_address', r.message)
-					} else {
-						frm.set_value('billing_address', '')
-					}
-				}
-			})
 		}
 	},
 
