@@ -106,6 +106,12 @@ def get_columns():
             "width": 100
         },
         {
+            "fieldname": "discount_percentage",
+            "label": "Discount %",
+            "fieldtype": "Float",
+            "width": 100
+        },
+        {
             "fieldname": "delivery_location",
             "label": "Delivery Location",
             "fieldtype": "Link",
@@ -191,6 +197,7 @@ def get_data(filters):
             po_item.secondary_qty,
             po_item.secondary_uom,
             po_item.rate,
+            po_item.discount_percentage,
             po_item.delivery_location,
             supplier.supplier_name.as_('delivery_location_name'),
             po_item.delivery_date,

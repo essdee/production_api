@@ -19,7 +19,8 @@
   "uom",
   "secondary_uom",
   "pending_qty",
-  "cancelled_qty"
+  "cancelled_qty",
+  "discount_percentage"
  ],
  "fields": [
   {
@@ -103,22 +104,32 @@
    "options": "UOM"
   },
   {
+   "allow_on_submit": 1,
    "fieldname": "pending_qty",
    "fieldtype": "Float",
    "label": "Pending Qty",
    "read_only": 1
   },
   {
+   "allow_on_submit": 1,
    "fieldname": "cancelled_qty",
    "fieldtype": "Float",
    "label": "Cancelled Qty",
    "read_only": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "discount_percentage",
+   "fieldtype": "Float",
+   "label": "Discount %",
+   "non_negative": 1,
+   "precision": "1"
   }
  ],
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2023-04-26 17:03:42.189610",
+ "modified": "2023-05-06 12:17:14.618740",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Purchase Order Item",

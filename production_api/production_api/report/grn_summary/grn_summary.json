@@ -10,7 +10,7 @@
  "idx": 0,
  "is_standard": "Yes",
  "letter_head": "Standard 2023",
- "modified": "2023-05-01 15:30:20.822980",
+ "modified": "2023-05-06 13:39:58.240185",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "GRN Summary",
@@ -20,6 +20,15 @@
  "report_name": "GRN Summary",
  "report_type": "Script Report",
  "roles": [
+  {
+   "role": "Purchase Manager"
+  },
+  {
+   "role": "Store Manager"
+  },
+  {
+   "role": "Store User"
+  },
   {
    "role": "System Manager"
   }

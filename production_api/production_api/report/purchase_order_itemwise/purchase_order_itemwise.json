@@ -10,7 +10,7 @@
  "idx": 0,
  "is_standard": "Yes",
  "letter_head": "Standard 2023",
- "modified": "2023-04-28 22:29:50.147542",
+ "modified": "2023-05-06 13:40:13.439531",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Purchase Order Itemwise",
@@ -19,5 +19,18 @@
  "ref_doctype": "Purchase Order",
  "report_name": "Purchase Order Itemwise",
  "report_type": "Script Report",
- "roles": []
+ "roles": [
+  {
+   "role": "Purchase Manager"
+  },
+  {
+   "role": "Purchase User"
+  },
+  {
+   "role": "System Manager"
+  },
+  {
+   "role": "Store Manager"
+  }
+ ]
 }

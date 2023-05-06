@@ -67,15 +67,23 @@ class PurchaseOrder(Document):
 	def calculate_amount(self):
 		total_amount = 0
 		total_tax = 0
+		total_discount = 0
 		grand_total = 0
 		for item in self.items:
+			# Item Total
 			item_total = item.rate * item.qty
 			total_amount += item_total
-			tax = item_total * (float(item.tax or 0) / 100)
+			# Item Discount
+			discount = item_total * (float(item.discount_percentage or 0) / 100)
+			total_discount += discount
+			# Item Tax after discount
+			tax = (item_total - discount) * (float(item.tax or 0) / 100)
 			total_tax += tax
-			total = item_total + tax
+			# Item Total after tax
+			total = item_total - discount + tax
 			grand_total += total
 		self.set('total', total_amount)
+		self.set('total_discount', total_discount)
 		self.set('total_tax', total_tax)
 		self.set('grand_total', grand_total)
 		self.set('in_words', money_in_words(grand_total))
@@ -97,6 +105,9 @@ class PurchaseOrder(Document):
 		partial = False
 		complete = True
 		cancelled = False
+		all_cancelled = [item.cancelled_qty == item.qty for item in self.items]
+		if all(all_cancelled):
+			return "Cancelled"
 		for item in self.items:
 			if item.pending_qty > 0:
 				complete = False
@@ -219,6 +230,7 @@ def save_item_details(item_details):
 						item1['rate'] = values.get('rate')
 						item1['table_index'] = table_index
 						item1['row_index'] = row_index
+						item1['discount_percentage'] = item.get('discount_percentage')
 						item1['comments'] = item.get('comments')
 						items.append(item1)
 			else:
@@ -241,6 +253,7 @@ def save_item_details(item_details):
 					item1['rate'] = item['values']['default'].get('rate')
 					item1['table_index'] = table_index
 					item1['row_index'] = row_index
+					item1['discount_percentage'] = item.get('discount_percentage')
 					item1['comments'] = item.get('comments')
 					items.append(item1)
 			row_index += 1
@@ -290,6 +303,7 @@ def fetch_item_details(items, include_id:bool=False):
 			'values': {},
 			'default_uom': variants[0]['uom'] or current_item_attribute_details['default_uom'],
 			'secondary_uom': variants[0]['secondary_uom'] or current_item_attribute_details['secondary_uom'],
+			'discount_percentage': variants[0]['discount_percentage'],
 			'comments': variants[0]['comments'],
 		}
 
@@ -419,6 +433,9 @@ def cancel_purchase_order(purchase_order, reason=None):
 		item.pending_qty = 0
 	po.set("cancel_reason", reason)
 	po.save()
+	cancelled_items = [item.cancelled_qty==item.qty for item in po.items]
+	if all(cancelled_items):
+		po.cancel()
 	
 @frappe.whitelist()
 def refresh_status(purchase_order):

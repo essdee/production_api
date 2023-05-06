@@ -43,7 +43,7 @@
    "hidden": 0,
    "is_query_report": 0,
    "label": "Reports",
-   "link_count": 1,
+   "link_count": 2,
    "onboard": 0,
    "type": "Card Break"
   },
@@ -56,9 +56,19 @@
    "link_type": "Report",
    "onboard": 0,
    "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 1,
+   "label": "GRN Summary",
+   "link_count": 0,
+   "link_to": "GRN Summary",
+   "link_type": "Report",
+   "onboard": 0,
+   "type": "Link"
   }
  ],
- "modified": "2023-04-29 12:18:59.184517",
+ "modified": "2023-05-06 13:37:58.975241",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Manufacturing",

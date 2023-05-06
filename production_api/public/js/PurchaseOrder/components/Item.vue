@@ -11,6 +11,7 @@
                             <th>Lot</th>
                             <th v-for="attr in i.attributes" :key="attr">{{ attr }}</th>
                             <th v-for="attr in i.primary_attribute_values" :key="attr">{{ attr }}</th>
+                            <th>Discount %</th>
                             <th>Delivery Location</th>
                             <th>Delivery Date</th>
                             <th>Comments</th>
@@ -40,6 +41,7 @@
                                     ---
                                 </div>
                             </td>
+                            <td>{{ j.discount_percentage }}</td>
                             <td>{{ j.delivery_location }}</td>
                             <td>{{ j.delivery_date }}</td>
                             <td>{{ j.comments }}</td>
@@ -61,6 +63,7 @@
                             <th v-if="docstatus==1">Pending Quantity</th>
                             <th v-if="docstatus==1">Cancelled Quantity</th>
                             <th>Rate</th>
+                            <th>Discount %</th>
                             <th>Delivery Location</th>
                             <th>Delivery Date</th>
                             <th>Comments</th>
@@ -80,6 +83,7 @@
                             <td v-if="docstatus==1">{{ j.values['default'].pending_qty }}</td>
                             <td v-if="docstatus==1">{{ j.values['default'].cancelled_qty || 0 }}</td>
                             <td>{{ j.values['default'].rate }}</td>
+                            <td>{{ j.discount_percentage }}</td>
                             <td>{{ j.delivery_location }}</td>
                             <td>{{ j.delivery_date }}</td>
                             <td>{{ j.comments }}</td>
@@ -171,9 +175,10 @@
                 </div>
             </div>
             <div class="row">
-                <div class="delivery-location-control col-md-4"></div>
-                <div class="delivery-date-control col-md-4"></div>
-                <div class="comments-control col-md-4"></div>
+                <div class="delivery-location-control col-md-3"></div>
+                <div class="delivery-date-control col-md-3"></div>
+                <div class="discount-control col-md-3"></div>
+                <div class="comments-control col-md-3"></div>
             </div>
             <div>
                 <button v-if="!is_edit" type="submit" class="btn btn-success pull-right">Add Item</button>
@@ -204,6 +209,7 @@ export default {
                 default_uom: "",
 		        secondary_uom: "",
                 comments: "",
+                discount_percentage: 0,
             },
             cur_item: {
                 item: "",
@@ -407,9 +413,11 @@ export default {
             if(!this.cur_item.item || this.cur_item.item == '') return;
             this.delivery_location_input = null;
             this.delivery_date_input = null;
+            this.discount_input = null;
             this.comments_input = null;
             $(this.$el).find('.delivery-location-control').html("");
             $(this.$el).find('.delivery-date-control').html("");
+            $(this.$el).find('.discount-control').html("");
             $(this.$el).find('.comments-control').html("");
             this.delivery_location_input = frappe.ui.form.make_control({
                 parent: $(this.$el).find('.delivery-location-control'),
@@ -447,6 +455,18 @@ export default {
                 render_input: true,
             });
             this.delivery_date_input.set_value(this.item.delivery_date)
+            this.discount_input = frappe.ui.form.make_control({
+                parent: $(this.$el).find('.discount-control'),
+                df: {
+                    fieldtype: 'Float',
+                    label: 'Discount %',
+                    default: 0,
+                    non_negative: 1,
+                    precision: "1"
+                },
+                render_input: true,
+            });
+            this.discount_input.set_value(this.item.discount_percentage)
             this.comments_input = frappe.ui.form.make_control({
                 parent: $(this.$el).find('.comments-control'),
                 df: {
@@ -493,7 +513,9 @@ export default {
                 return false;
             }
             this.item.delivery_date = date;
-
+            
+            this.item.discount_percentage = this.discount_input.get_value();
+            console.log(this.item.discount_percentage)
             this.item.comments = this.comments_input.get_value();
             return true;
         },
@@ -520,6 +542,7 @@ export default {
         clear_item_delivery_inputs: function() {
             if(this.delivery_location_input) this.delivery_location_input.set_value('');
             if(this.delivery_date_input) this.delivery_date_input.set_value('');
+            if(this.discount_input) this.discount_input.set_value('');
             if(this.comments_input) this.comments_input.set_value('');
         },
         

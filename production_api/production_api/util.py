@@ -128,3 +128,22 @@ def parse_string_for_SMS(string: str, variable_count=1, max_variable_length=30, 
 		return string
 	else:
 		return string[:max_variable_length * variable_count - len(end_with)] + end_with
+
+def check_key_value_in_dict_or_list_of_dict(key: str, dict_or_list_of_dict: dict | list[dict]) -> bool:
+	"""
+	:param key: key to be checked
+	:param dict_or_list_of_dict: dict or list of dict to be checked
+	Check if the key is present and has a valid value in the dict or list of dict
+	"""
+	if isinstance(dict_or_list_of_dict, dict):
+		if dict_or_list_of_dict.get(key):
+			return True
+		else:
+			return False
+	elif isinstance(dict_or_list_of_dict, list):
+		for row in dict_or_list_of_dict:
+			if row.get(key):
+				return True
+		return False
+	else:
+		return False
