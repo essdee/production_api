@@ -377,6 +377,7 @@ export default {
             $(this.$el).find('.item-attribute-controls-right').html("");
             let i = 0;
             for(i = 0; i < this.cur_item.attributes.length; i++){
+                let current_index = i;
                 let attribute = this.cur_item.attributes[i];
                 let attribute_name = attribute.charAt(0).toUpperCase() + attribute.slice(1);
                 let classname = '';
@@ -401,6 +402,46 @@ export default {
                             };
                         },
                         reqd: true,
+                        onchange: function() {
+                            let df_me = this;
+                            let value = df_me.get_value();
+                            if (!value) return;
+                            let args = {
+                                'txt': value,
+                                'doctype': 'Item Attribute Value',
+                                query: "production_api.production_api.doctype.item.item.get_item_attribute_values",
+                                filters: {
+                                    "item": me.cur_item.item,
+                                    "attribute": attribute_name
+                                }
+                            };
+                            frappe.call({
+                                type: "POST",
+                                method: "frappe.desk.search.search_link",
+                                no_spinner: true,
+                                args: args,
+                                callback: function (r) {
+                                    console.log(r)
+                                    if (r.results.length > 0) {
+                                        // results has json of value and description
+                                        // check if value is in results
+                                        let value_exists = false;
+                                        for (let index = 0; index < r.results.length; index++) {
+                                            if (r.results[index].value == value) {
+                                                value_exists = true;
+                                                break;
+                                            }
+                                        }
+                                        if (!value_exists) {
+                                            df_me.set_value("");
+                                        }
+                                    }
+                                    else {
+                                        df_me.set_value("");
+                                    }
+                                }
+                            });
+                        }
                     },
                     render_input: true,
                 });
@@ -480,15 +521,27 @@ export default {
 
         get_item_attributes: function() {
             if(!this.attribute_inputs) return false;
-            for(let i = 0; i < this.cur_item.attributes.length; i++){
-                let attribute = this.cur_item.attributes[i];
+            let attributes = [];
+            let attribute_values = {};
+            for (let i = 0; i < this.attribute_inputs.length; i++) {
+                let attribute = this.attribute_inputs[i].df.label;
+                attributes.push(attribute);
                 let value = this.attribute_inputs[i].get_value();
-                if(!value) {
+                if (!value) {
                     this.attribute_inputs[i].$input.select();
-                    frappe.msgprint(__('Attribute '+ attribute + ' does not have a value'));
+                    frappe.msgprint(__('Attribute ' + attribute + ' does not have a value'));
                     return false;
                 }
-                this.item.attributes[attribute] = value;
+                attribute_values[attribute] = value;
+            }
+            if (!this.arrays_equal(attributes, this.cur_item.attributes)) {
+                frappe.msgprint(__('Attributes might have changed. Please try again'));
+                return false;
+            } else {
+                this.item.attributes = {
+                    ...this.item.attributes,
+                    ...attribute_values
+                }
             }
             return true;
         },
@@ -523,13 +576,22 @@ export default {
         get_item_group_index: function() {
             let index = -1;
             for(let i = 0; i < this.items.length; i++){
-                if(!(this.items[i].attributes.sort().join(',') === this.cur_item.attributes.sort().join(','))) continue;
-                if(!(this.items[i].primary_attribute === this.cur_item.primary_attribute)) continue;
-                if(!(this.items[i].primary_attribute_values.sort().join(',') === this.cur_item.primary_attribute_values.sort().join(','))) continue;
-                index = i;
-                break;
+                if (this.arrays_equal(this.items[i].attributes, this.cur_item.attributes) 
+                    && this.items[i].primary_attribute === this.cur_item.primary_attribute
+                    && this.arrays_equal(this.items[i].primary_attribute_values, this.cur_item.primary_attribute_values)) {
+                    index = i;
+                    break;
+                }
             }
             return index;
+        },
+
+        // find if two arrays have the same elements, It can be in any order
+        arrays_equal: function(a, b) {
+            // duplicate the arrays to avoid changing the original
+            var arr1 = a.concat([]), arr2 = b.concat([]);
+            arr1.sort();arr2.sort();
+            return JSON.stringify(arr1)===JSON.stringify(arr2);
         },
 
         clear_item_attribute_inputs: function() {
@@ -540,7 +602,7 @@ export default {
         },
 
         clear_item_delivery_inputs: function() {
-            if(this.delivery_location_input) this.delivery_location_input.set_value('');
+            if(this.delivery_location_input) this.delivery_location_input.set_value(cur_frm.doc.default_delivery_location || '');
             if(this.delivery_date_input) this.delivery_date_input.set_value('');
             if(this.discount_input) this.discount_input.set_value('');
             if(this.comments_input) this.comments_input.set_value('');
@@ -580,7 +642,6 @@ export default {
             if(this.is_edit){
                 this.items[this.edit_index].items[this.edit_index1] = JSON.parse(JSON.stringify(this.item));
                 this.cancel_edit();
-                console.log("Updated PO Item")
                 evntBus.$emit("po_updated", true);
                 return;
             }
@@ -595,7 +656,6 @@ export default {
             } else {
                 this.items[index].items.push(JSON.parse(JSON.stringify(this.item)));
             }
-            console.log("Added PO Item")
             evntBus.$emit("po_updated", true);
             this.clear_inputs(false);
         },
@@ -624,7 +684,6 @@ export default {
             } else {
                 this.items[index].items.splice(index1, 1);
             }
-            console.log("Deleted PO Item")
             evntBus.$emit("po_updated", true);
         },
 
@@ -642,7 +701,6 @@ export default {
                 default_uom: items.items[index1].default_uom,
 		        secondary_uom: items.items[index1].secondary_uom,
             }, items.items[index1])
-            console.log(items, index, index1)
             this.lot_input.df.read_only = 1;
             this.item_input.df.read_only = 1;
             this.item_input.refresh();
