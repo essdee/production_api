@@ -51,7 +51,7 @@ class PurchaseOrder(Document):
 		self.set_status()
 
 	def before_validate(self):
-		if(self.item_details):
+		if(self.get('item_details')):
 			items = save_item_details(self.item_details)
 			try:
 				items = validate_price_details(items, self.supplier)

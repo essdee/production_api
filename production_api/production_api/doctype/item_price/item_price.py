@@ -30,9 +30,6 @@ class ItemPrice(Document):
 		)
 		for price in price_list:
 			doc = frappe.get_doc("Item Price", price)
-			# print instance of doc.from_date and self.from_date
-			print("Instance of doc.from_date and self.from_date", type(doc.from_date), doc.from_date, type(self.from_date), self.from_date)
-			# Parse from_date to datetime
 			from_date = utils.get_datetime(self.from_date).date()
 			if doc.from_date == from_date:
 				frappe.throw(f"An Item Price was found with the same `From Date`. Please Expire it before submitting this one.\n{get_link_to_form('Item Price', price)}")
