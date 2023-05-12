@@ -38,6 +38,9 @@ class PurchaseOrder(Document):
 		self.set_status()
 		self.set('approved_by', frappe.get_user().doc.name)
 
+	def before_save(self):
+		self.set_status()
+
 	def before_update_after_submit(self):
 		self.set_status()
 	

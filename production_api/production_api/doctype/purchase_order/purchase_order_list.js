@@ -1,4 +1,5 @@
 frappe.listview_settings["Purchase Order"] = {
+	add_fields: ["status", "open_status"],
 	filters: [
         ['open_status', '=', 'Open']
     ],
@@ -30,5 +31,12 @@ frappe.listview_settings["Purchase Order"] = {
 		listview.page.add_action_item(__("Open"), function() {
 			listview.call_for_selected_items(method, {"close": false});
 		});
+		if (!frappe.route_options) {
+			console.log("frappe.route_options is empty");
+			frappe.route_options = {
+				owner: frappe.session.user,
+				open_status: "Open",
+			};
+		}
 	},
 };
