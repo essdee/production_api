@@ -39,6 +39,9 @@ class PurchaseOrder(Document):
 		self.set('approved_by', frappe.get_user().doc.name)
 
 	def before_save(self):
+		for item in self.items:
+			item.set('pending_qty', item.qty)
+			item.set('cancelled_qty', 0)
 		self.set_status()
 
 	def before_update_after_submit(self):
@@ -63,11 +66,8 @@ class PurchaseOrder(Document):
 			print(json.dumps(items, indent=3))
 			self.set('items', items)
 			self.calculate_amount()
-		elif self.is_new():
+		elif self.is_new() or not self.get('items'):
 			frappe.throw('Add items to Purchase Order.', title='Purchase Order')
-		else:
-			if not self.items:
-				frappe.throw('Add items to Purchase Order.', title='Purchase Order')
 
 	def calculate_amount(self):
 		total_amount = 0

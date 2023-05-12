@@ -19,6 +19,9 @@ class GoodsReceivedNote(Document):
 		self.set('print_item_details', json.dumps(item_details))
 		self.set_onload('item_details', item_details)
 	
+	def before_save(self):
+		self.calculate_amount()
+
 	def before_submit(self):
 		against_docstatus = frappe.get_value(self.against, self.against_id, 'docstatus')
 		if against_docstatus != 1:
@@ -67,7 +70,14 @@ class GoodsReceivedNote(Document):
 		po.save()
 
 	def before_validate(self):
-		print(self.item_details)
+		if(self.get('item_details')):
+			items = save_grn_item_details(self.item_details)
+			print(json.dumps(items, indent=3))
+			self.set('items', items)
+		elif self.is_new() or not self.get('items'):
+			frappe.throw('Add items to GRN.', title='GRN')
+	
+	def validate(self):
 		if self.against == 'Purchase Order':
 			status = frappe.get_value('Purchase Order', self.against_id, 'open_status')
 			if status != 'Open':
@@ -75,19 +85,11 @@ class GoodsReceivedNote(Document):
 			supplier = frappe.get_value('Purchase Order', self.against_id, 'supplier')
 			if supplier != self.supplier:
 				frappe.throw('Supplier cannot be changed.', title='GRN')
-		if(self.item_details):
-			items = save_grn_item_details(self.item_details)
-			print(json.dumps(items, indent=3))
-			self.set('items', items)
-			self.validate_quantity()
-			self.calculate_amount()
-		else:
-			frappe.throw('Add items to GRN.', title='GRN')
-	
-	def validate(self):
-		supplier = frappe.get_value(self.against, self.against_id, 'supplier')
-		if supplier != self.supplier:
-			frappe.throw('Supplier cannot be changed.', title='GRN')
+			po_docstatus = frappe.get_value('Purchase Order', self.against_id, 'docstatus')
+			if po_docstatus != 1:
+				frappe.throw('Purchase order is not submitted.', title='GRN')
+		
+		self.validate_quantity()
 	
 	def validate_quantity(self):
 		total_quantity = 0
