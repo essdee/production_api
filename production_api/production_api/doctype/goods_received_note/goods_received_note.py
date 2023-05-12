@@ -67,7 +67,8 @@ class GoodsReceivedNote(Document):
 						validate_quantity_tolerance(i.item_variant, i.qty, i.pending_qty, quantity)
 					i.set('pending_qty', i.pending_qty - quantity)
 					break
-		po.save()
+		po.save(ignore_permissions=True)
+
 
 	def before_validate(self):
 		if(self.get('item_details')):
