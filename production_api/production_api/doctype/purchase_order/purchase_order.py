@@ -51,7 +51,6 @@ class PurchaseOrder(Document):
 		self.set_status()
 
 	def before_validate(self):
-		print(self.item_details)
 		if(self.item_details):
 			items = save_item_details(self.item_details)
 			try:
@@ -61,8 +60,11 @@ class PurchaseOrder(Document):
 			print(json.dumps(items, indent=3))
 			self.set('items', items)
 			self.calculate_amount()
-		else:
+		elif self.is_new():
 			frappe.throw('Add items to Purchase Order.', title='Purchase Order')
+		else:
+			if not self.items:
+				frappe.throw('Add items to Purchase Order.', title='Purchase Order')
 
 	def calculate_amount(self):
 		total_amount = 0

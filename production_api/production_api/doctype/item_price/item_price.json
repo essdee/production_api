@@ -1,5 +1,6 @@
 {
  "actions": [],
+ "allow_import": 1,
  "autoname": "ITP-.#####",
  "creation": "2021-08-21 19:37:38.840795",
  "doctype": "DocType",
@@ -69,6 +70,7 @@
    "fieldtype": "Date",
    "in_list_view": 1,
    "label": "From Date",
+   "no_copy": 1,
    "reqd": 1
   },
   {
@@ -113,10 +115,12 @@
    "read_only": 1
   },
   {
+   "allow_on_submit": 1,
    "fieldname": "to_date",
    "fieldtype": "Date",
    "in_list_view": 1,
-   "label": "To Date"
+   "label": "To Date",
+   "no_copy": 1
   },
   {
    "fieldname": "approved_by",
@@ -128,7 +132,7 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2023-04-12 11:46:02.331166",
+ "modified": "2023-05-12 10:39:16.837933",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Item Price",
@@ -140,6 +144,7 @@
    "create": 1,
    "email": 1,
    "export": 1,
+   "import": 1,
    "print": 1,
    "read": 1,
    "report": 1,

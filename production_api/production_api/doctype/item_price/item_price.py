@@ -15,8 +15,8 @@ class ItemPrice(Document):
 	def before_submit(self):
 		filters = [
 			["item_name", "=", self.item_name],
-			["from_date", "<=", utils.nowdate()],
-			["docstatus", "=", 1]
+			["docstatus", "=", 1],
+			["workflow_state", "=", "Approved"],
 		]
 		if self.supplier == None:
 			filters.append(["supplier", "is", "not set"])
@@ -30,19 +30,22 @@ class ItemPrice(Document):
 		)
 		for price in price_list:
 			doc = frappe.get_doc("Item Price", price)
-			if doc.from_date == self.from_date:
+			# print instance of doc.from_date and self.from_date
+			print("Instance of doc.from_date and self.from_date", type(doc.from_date), doc.from_date, type(self.from_date), self.from_date)
+			# Parse from_date to datetime
+			from_date = utils.get_datetime(self.from_date).date()
+			if doc.from_date == from_date:
 				frappe.throw(f"An Item Price was found with the same `From Date`. Please Expire it before submitting this one.\n{get_link_to_form('Item Price', price)}")
-			elif doc.from_date > self.from_date:
+			elif doc.from_date > from_date:
 				if not self.to_date or self.to_date >= doc.from_date:
 					frappe.throw(f"An Updated Price list for the same Item and Supplier exists from {frappe.utils.format_date(doc.from_date)}. Please set `To Date` less than that date or cancel the next Price.\n{get_link_to_form('Item Price', price)}")
 			else:
-				print(self.from_date)
-				to_date = utils.add_days(self.from_date, -1)
+				print(from_date)
+				to_date = utils.add_days(from_date, -1)
 				doc.to_date = to_date
+				doc.save()
 		
 		self.set('approved_by', frappe.get_user().doc.name)
-
-
 
 	def validate_attribute_values(self, qty = 0, attribute = None, attribute_value = None) :
 		if self.depends_on_attribute and (attribute == None or self.attribute != attribute or attribute_value == None):
@@ -59,14 +62,21 @@ def get_active_price(item: str, supplier: str = None):
 	filters = {
 		"item_name": item,
 		"from_date": ['<=', utils.nowdate()],
+		"to_date": ['is', 'not set'],
 		"docstatus": 1
 	}
 	if (supplier != None):
 		filters['supplier'] = supplier
-	lst = frappe.db.get_list(
+	lst1 = frappe.db.get_list(
 		'Item Price',
 		filters=filters,
 	)
+	filters['to_date'] = ['>=', utils.nowdate()]
+	lst2 = frappe.db.get_list(
+		'Item Price',
+		filters=filters,
+	)
+	lst = lst1 + lst2
 	if len(lst) == 0:
 		frappe.throw("No Active Price List")
 	
