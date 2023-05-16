@@ -284,7 +284,7 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2023-05-06 20:22:55.703468",
+ "modified": "2023-05-16 13:17:33.050275",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Purchase Order",
@@ -331,6 +331,21 @@
    "share": 1,
    "submit": 1,
    "write": 1
+  },
+  {
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Store User",
+   "select": 1
+  },
+  {
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Store Manager",
+   "select": 1
   }
  ],
  "sort_field": "modified",
