@@ -103,6 +103,20 @@ frappe.ui.form.on('Goods Received Note', {
 			frm.dirty();
 			frm.events.save_item_details(frm);
 		})
+
+		// Remove Print if draft
+		if (frm.doc.docstatus == 0) {
+			var print_menu = $(".dropdown-menu > li:contains('Print')");
+			if (print_menu.length >0){
+				print_menu[0].parentElement.removeChild(print_menu[0]);
+			}
+			
+			var print_btn = $('[data-original-title="Print"]');
+			if(print_btn.length > 0){
+				print_btn[0].parentElement.removeChild(print_btn[0]);
+			}
+		}
+
 	},
 
 	save_item_details: function(frm) {

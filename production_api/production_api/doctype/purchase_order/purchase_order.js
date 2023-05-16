@@ -85,8 +85,11 @@ frappe.ui.form.on('Purchase Order', {
 		frappe.production.ui.eventBus.$on("po_updated", e => {
 			frm.dirty();
 		})
-
-		if (frm.doc.docstatus == 1) {
+		
+		// Check if frappe.user_roles has role Purchase Manager 
+		let is_purchase_manager = frappe.user.has_role('Purchase Manager');
+		let is_purchase_user = frappe.user.has_role('Purchase User');
+		if (frm.doc.docstatus == 1 && (is_purchase_manager || is_purchase_user)) {
 			frm.page.btn_secondary.hide();
 			// Add send notification button if the status is not closed or cancelled or partially cancelled
 			let closed_statuses = ['Closed', 'Cancelled', 'Partially Cancelled']

@@ -82,7 +82,7 @@ class GoodsReceivedNote(Document):
 		if self.against == 'Purchase Order':
 			status = frappe.get_value('Purchase Order', self.against_id, 'open_status')
 			if status != 'Open':
-				frappe.throw('Purchase order is not open.', title='GRN')
+				frappe.throw('Purchase order is closed.', title='GRN')
 			supplier = frappe.get_value('Purchase Order', self.against_id, 'supplier')
 			if supplier != self.supplier:
 				frappe.throw('Supplier cannot be changed.', title='GRN')

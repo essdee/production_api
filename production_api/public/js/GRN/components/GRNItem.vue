@@ -90,8 +90,8 @@
                                             ({{ attr.secondary_qty }}<span v-if="j.secondary_uom">{{ ' ' + j.secondary_uom }}</span>)
                                     </span>
                                     <form>
-                                        <input class="form-control" type="number" v-model.number="attr.received"/>
-                                        <input class="form-control" v-if="attr.secondary_qty" type="number" v-model.number="attr.secondary_received"/>
+                                        <input class="form-control" type="number" v-model.number="attr.received" @blur="update_received_qty(attr, 'received')" min="0" step="0.001"/>
+                                        <input class="form-control" v-if="attr.secondary_qty" type="number" v-model.number="attr.secondary_received" @blur="update_received_qty(attr, 'secondary_received')" min="0" step="0.001"/>
                                     </form>
                                 </div>
                                 <div v-else class="text-center">
@@ -129,8 +129,8 @@
                             </td>
                             <td>
                                 <form>
-                                    <input class="form-control" type="number" v-model.number="j.values['default'].received" placeholder="0" min="0"/>
-                                    <input class="form-control" v-if="j.values['default'].secondary_qty" type="number" min="0" v-model.number="j.values['default'].secondary_received"/>
+                                    <input class="form-control" type="number" v-model.number="j.values['default'].received" step="0.001" @blur="update_received_qty(j.values['default'], 'received')" min="0" />
+                                    <input class="form-control" v-if="j.values['default'].secondary_qty" type="number" min="0" step="0.001" v-model.number="j.values['default'].secondary_received" @blur="update_received_qty(j.values['default'], 'secondary_received')"/>
                                 </form>
                             </td>
                             <td>
@@ -235,6 +235,10 @@ export default {
             }
             return this.items;
         },
+
+        update_received_qty: function(item, key) {
+            item[key] = parseFloat(parseFloat(item[key]).toFixed(3));
+        }
     },
     watch: {
         items: {
