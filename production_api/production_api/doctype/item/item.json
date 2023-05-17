@@ -7,6 +7,7 @@
  "field_order": [
   "brand",
   "hsn_code",
+  "item_group",
   "categories",
   "column_break_4",
   "name1",
@@ -141,11 +142,17 @@
    "fieldtype": "Float",
    "label": "Over Delivery/Receipt Allowance (%)",
    "precision": "1"
+  },
+  {
+   "fieldname": "item_group",
+   "fieldtype": "Link",
+   "label": "Item Group",
+   "options": "Item Group"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2023-04-29 11:57:55.678688",
+ "modified": "2023-05-17 15:48:10.784033",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Item",
