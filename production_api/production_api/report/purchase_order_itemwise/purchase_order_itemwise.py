@@ -24,25 +24,24 @@ def get_columns():
     columns = [
         {
             "fieldname": "name",
-            "label": "Name",
+            "label": "PO Number",
             "fieldtype": "Link",
             "options": "Purchase Order",
-            "width": 100
+            "width": 115
         },
         {
-            "fieldname": "item_variant",
-            "label": "Item Variant",
-            "fieldtype": "Link",
-            "options": "Item Variant",
-            "width": 150
-        },
-        {
-            "fieldname": "supplier",
-            "label": "Supplier",
-            "fieldtype": "Link",
-            "options": "Supplier",
+            "fieldname": "po_date",
+            "label": "PO Date",
+            "fieldtype": "Date",
             "width": 100
         },
+        # {
+        #     "fieldname": "supplier",
+        #     "label": "Supplier",
+        #     "fieldtype": "Link",
+        #     "options": "Supplier",
+        #     "width": 100
+        # },
         {
             "fieldname": "supplier_name",
             "label": "Supplier Name",
@@ -50,10 +49,11 @@ def get_columns():
             "width": 200
         },
         {
-            "fieldname": "po_date",
-            "label": "PO Date",
-            "fieldtype": "Date",
-            "width": 100
+            "fieldname": "item_variant",
+            "label": "Item Variant",
+            "fieldtype": "Link",
+            "options": "Item Variant",
+            "width": 150
         },
         {
             "fieldname": "qty",
@@ -87,6 +87,25 @@ def get_columns():
             "width": 100
         },
         {
+            "fieldname": "delivery_date",
+            "label": "Delivery Date",
+            "fieldtype": "Date",
+            "width": 100
+        },
+        # {
+        #     "fieldname": "delivery_location",
+        #     "label": "Delivery Location",
+        #     "fieldtype": "Link",
+        #     "options": "Supplier",
+        #     "width": 100
+        # },
+        {
+            "fieldname": "delivery_location_name",
+            "label": "Delivery Location Name",
+            "fieldtype": "Data",
+            "width": 200
+        },
+        {
             "fieldname": "secondary_qty",
             "label": "Secondary Qty",
             "fieldtype": "Float",
@@ -109,25 +128,6 @@ def get_columns():
             "fieldname": "discount_percentage",
             "label": "Discount %",
             "fieldtype": "Float",
-            "width": 100
-        },
-        {
-            "fieldname": "delivery_location",
-            "label": "Delivery Location",
-            "fieldtype": "Link",
-            "options": "Supplier",
-            "width": 100
-        },
-        {
-            "fieldname": "delivery_location_name",
-            "label": "Delivery Location Name",
-            "fieldtype": "Data",
-            "width": 200
-        },
-        {
-            "fieldname": "delivery_date",
-            "label": "Delivery Date",
-            "fieldtype": "Date",
             "width": 100
         },
         {

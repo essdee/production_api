@@ -98,6 +98,10 @@ frappe.query_reports["Purchase Order Itemwise"] = {
 			if (status_colors[data.status]) {
 				value = `<span class='indicator-pill ${status_colors[data.status]}'>${__(data.status)}</span>`;
 			}
+		} else if (column.fieldname == "supplier_name") {
+			value = `<a href="/app/supplier/${data.supplier}" data-doctype="Supplier" data-name="${data.supplier}" data-value="${data.supplier}">${data.supplier_name}</a>`;
+		} else if (column.fieldname == "delivery_location_name") {
+			value = `<a href="/app/supplier/${data.delivery_location}" data-doctype="Supplier" data-name="${data.delivery_location}" data-value="${data.delivery_location}">${data.delivery_location_name}</a>`;
 		}
 
 		return value;
