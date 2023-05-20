@@ -1,0 +1,35 @@
+{
+ "charts": [],
+ "content": "[{\"id\":\"V0CNyx2uYn\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">Product Development</span>\",\"col\":12}},{\"id\":\"WTNo01UGdD\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Product\",\"col\":3}}]",
+ "creation": "2023-05-20 11:50:40.244245",
+ "docstatus": 0,
+ "doctype": "Workspace",
+ "for_user": "",
+ "hide_custom": 0,
+ "icon": "branch",
+ "idx": 0,
+ "is_hidden": 0,
+ "label": "Product Development",
+ "links": [],
+ "modified": "2023-05-20 13:18:54.365655",
+ "modified_by": "Administrator",
+ "module": "Product Development",
+ "name": "Product Development",
+ "number_cards": [],
+ "owner": "Administrator",
+ "parent_page": "",
+ "public": 1,
+ "quick_lists": [],
+ "roles": [],
+ "sequence_id": 3.0,
+ "shortcuts": [
+  {
+   "color": "Grey",
+   "doc_view": "List",
+   "label": "Product",
+   "link_to": "Product",
+   "type": "DocType"
+  }
+ ],
+ "title": "Product Development"
+}
