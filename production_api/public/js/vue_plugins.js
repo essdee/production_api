@@ -7,9 +7,11 @@ import ItemDetail from "./components/ItemDetails.vue";
 import PONewItem from "./PurchaseOrder/components/NewItem.vue"
 import POItem from "./PurchaseOrder/components/Item.vue"
 import GRNItemWrapper from "./GRN";
+import ProductFileVersionsWrapper from "./ProductDevelopment"
 import evntBus from "./bus.js";
 
 frappe.provide("frappe.production.ui");
+frappe.provide("frappe.production.product_development.ui");
 
 frappe.production.ui.eventBus = evntBus;
 
@@ -125,3 +127,5 @@ frappe.production.ui.PurchaseOrderItem = class {
 };
 
 frappe.production.ui.GRNItem = GRNItemWrapper
+
+frappe.production.product_development.ui.ProductFileVersions = ProductFileVersionsWrapper

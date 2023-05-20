@@ -1,0 +1,162 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "field:style_no",
+ "creation": "2023-05-18 17:53:46.518369",
+ "default_view": "List",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "tab_break_v3vhq",
+  "style_no",
+  "product_group",
+  "description",
+  "fabric_details",
+  "column_break_gelhq",
+  "season",
+  "front_image",
+  "back_image",
+  "gsm",
+  "attachments_tab",
+  "product_file_versions",
+  "file_html",
+  "tab_break_z27ab",
+  "product_info_extras"
+ ],
+ "fields": [
+  {
+   "fieldname": "product_group",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Product Group",
+   "options": "Product Group",
+   "reqd": 1
+  },
+  {
+   "fieldname": "description",
+   "fieldtype": "Long Text",
+   "in_list_view": 1,
+   "label": "Description",
+   "reqd": 1
+  },
+  {
+   "fieldname": "season",
+   "fieldtype": "Data",
+   "label": "Season"
+  },
+  {
+   "fieldname": "front_image",
+   "fieldtype": "Attach Image",
+   "label": "Product Image (Front)"
+  },
+  {
+   "fieldname": "back_image",
+   "fieldtype": "Attach Image",
+   "label": "Product Image (Back)"
+  },
+  {
+   "fieldname": "product_file_versions",
+   "fieldtype": "Table",
+   "hidden": 1,
+   "label": "Product File Versions",
+   "no_copy": 1,
+   "options": "Product File Version"
+  },
+  {
+   "fieldname": "file_html",
+   "fieldtype": "HTML",
+   "label": "File HTML"
+  },
+  {
+   "fieldname": "tab_break_v3vhq",
+   "fieldtype": "Tab Break",
+   "label": "Basic"
+  },
+  {
+   "fieldname": "attachments_tab",
+   "fieldtype": "Tab Break",
+   "label": "Attachments"
+  },
+  {
+   "fieldname": "style_no",
+   "fieldtype": "Data",
+   "label": "Product Style No.",
+   "reqd": 1,
+   "unique": 1
+  },
+  {
+   "fieldname": "fabric_details",
+   "fieldtype": "Data",
+   "label": "Fabric Details"
+  },
+  {
+   "fieldname": "column_break_gelhq",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "gsm",
+   "fieldtype": "Data",
+   "label": "GSM"
+  },
+  {
+   "fieldname": "tab_break_z27ab",
+   "fieldtype": "Tab Break",
+   "label": "Extras"
+  },
+  {
+   "fieldname": "product_info_extras",
+   "fieldtype": "Table",
+   "label": "Product Info Extras",
+   "options": "Product Info"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2023-05-20 13:06:15.498058",
+ "modified_by": "Administrator",
+ "module": "Product Development",
+ "name": "Product",
+ "naming_rule": "By fieldname",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "PD User",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "PD Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}
