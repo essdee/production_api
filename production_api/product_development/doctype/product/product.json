@@ -48,11 +48,12 @@
   {
    "fieldname": "front_image",
    "fieldtype": "Attach Image",
-   "label": "Product Image (Front)"
+   "label": "Product Image"
   },
   {
    "fieldname": "back_image",
    "fieldtype": "Attach Image",
+   "hidden": 1,
    "label": "Product Image (Back)"
   },
   {
@@ -88,7 +89,8 @@
   {
    "fieldname": "fabric_details",
    "fieldtype": "Data",
-   "label": "Fabric Details"
+   "label": "Fabric Details",
+   "reqd": 1
   },
   {
    "fieldname": "column_break_gelhq",
@@ -113,7 +115,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2023-05-20 13:06:15.498058",
+ "modified": "2023-05-27 12:18:12.061765",
  "modified_by": "Administrator",
  "module": "Product Development",
  "name": "Product",

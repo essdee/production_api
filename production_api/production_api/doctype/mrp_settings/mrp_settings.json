@@ -13,7 +13,7 @@
   "auto_send_notifications",
   "section_break_45wni",
   "grn_cancellation_in_days",
-  "column_break_arv2f",
+  "column_break_b4fhl",
   "allow_grn_cancellation"
  ],
  "fields": [
@@ -52,16 +52,6 @@
    "label": "GRN Cancellation (In Days)"
   },
   {
-   "default": "0",
-   "fieldname": "allow_grn_cancellation",
-   "fieldtype": "Check",
-   "label": "Allow GRN Cancellation"
-  },
-  {
-   "fieldname": "column_break_arv2f",
-   "fieldtype": "Column Break"
-  },
-  {
    "fieldname": "url_shortner_settings_section",
    "fieldtype": "Section Break",
    "label": "URL Shortner Settings"
@@ -70,12 +60,22 @@
    "fieldname": "purchase_order_section",
    "fieldtype": "Section Break",
    "label": "Purchase Order"
+  },
+  {
+   "fieldname": "column_break_b4fhl",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "0",
+   "fieldname": "allow_grn_cancellation",
+   "fieldtype": "Check",
+   "label": "Allow GRN Cancellation"
   }
  ],
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2023-05-06 10:57:24.973097",
+ "modified": "2023-06-05 13:04:43.823256",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "MRP Settings",

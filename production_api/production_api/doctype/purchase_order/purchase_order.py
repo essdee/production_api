@@ -15,14 +15,11 @@ from production_api.production_api.util import send_notification
 
 class PurchaseOrder(Document):
 	def onload(self):
-		print('in onload')
 		item_details = fetch_item_details(self.get('items'))
 		self.set('print_item_details', json.dumps(item_details))
 		self.set_onload('item_details', item_details)
 
 	def before_submit(self):
-		# print(self.workflow_state)
-		print("before submit called")
 		price_validation = frappe.db.get_single_value('MRP Settings', 'enable_price_validation')
 		try:
 			items = validate_price_details([d.as_dict() for d in self.items], self.supplier)

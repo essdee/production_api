@@ -158,7 +158,7 @@
                         <label class="small">
                             {{ item.default_uom || 'Qty' }}
                         </label>
-                        <input class="form-control" type="number" min="0" v-model.number="item.values['default']['qty']" required>
+                        <input class="form-control" type="number" min="0.000" step="0.001" v-model.number="item.values['default']['qty']" required>
                     </div>
                     <div class="col col-md-6" v-if="secondary_quantity">
                         <label class="small text-muted">
