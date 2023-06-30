@@ -8,6 +8,7 @@ from frappe.contacts.address_and_contact import load_address_and_contact, delete
 from frappe.custom.doctype.custom_field.custom_field import create_custom_fields
 from frappe.custom.doctype.property_setter.property_setter import make_property_setter
 from frappe.contacts.doctype.contact.contact import get_default_contact
+from jinja2 import TemplateSyntaxError
 from production_api.production_api.doctype.item_price.item_price import get_all_active_price
 
 class Supplier(Document):
@@ -105,3 +106,23 @@ def get_address(supplier, type):
 
 	if address:
 		return address[0]
+
+@frappe.whitelist()
+def get_supplier_address_display(supplier):
+	address_dict = get_primary_address(supplier)
+	if not address_dict:
+		return
+
+	if not isinstance(address_dict, dict):
+		address_dict = frappe.db.get_value("Address", address_dict, "*", as_dict=True, cache=True) or {}
+
+	# name, template = get_address_templates(address_dict)
+	template = '''
+		{{ address_line1 }}, {% if address_line2 %}{{ address_line2 }}{% endif -%}<br>
+		{{ city }}, {% if state %}{{ state }}{% endif -%}{% if pincode %} - {{ pincode }}{% endif -%}
+	'''
+
+	try:
+		return frappe.render_template(template, address_dict)
+	except TemplateSyntaxError:
+		frappe.throw(_("There is an error in your Address Template"))

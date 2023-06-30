@@ -4,7 +4,7 @@
 from itertools import groupby
 import frappe
 from frappe import _
-from frappe.utils import money_in_words
+from frappe.utils import money_in_words, flt, cstr
 from frappe.model.document import Document
 from six import string_types
 import json
@@ -36,6 +36,7 @@ class GoodsReceivedNote(Document):
 	
 	def on_submit(self):
 		self.update_purchase_order()
+		self.update_stock_ledger()
 	
 	def on_cancel(self):
 		settings = frappe.get_single('MRP Settings')
@@ -49,7 +50,9 @@ class GoodsReceivedNote(Document):
 			status = frappe.get_value('Purchase Order', self.against_id, 'open_status')
 			if status != 'Open':
 				frappe.throw('Purchase order is not open.', title='GRN')
+		self.ignore_linked_doctypes = ("Stock Ledger Entry")
 		self.update_purchase_order()
+		self.update_stock_ledger()
 
 	def update_purchase_order(self):
 		if self.docstatus == 0:
@@ -114,6 +117,40 @@ class GoodsReceivedNote(Document):
 		self.set('total_tax', total_tax)
 		self.set('grand_total', grand_total)
 		self.set('in_words', money_in_words(grand_total))
+
+	def update_stock_ledger(self):
+		from production_api.stock.stock_ledger import make_sl_entries
+		if self.docstatus == 0:
+			return
+		sl_entries = []
+		for item in self.items:
+			sl_entries.append(self.get_sl_entries(item, {}))
+		print(sl_entries)
+		if self.docstatus == 2:
+			sl_entries.reverse()
+		make_sl_entries(sl_entries)
+	
+	def get_sl_entries(self, d, args):
+		sl_dict = frappe._dict(
+			{
+				"item": d.get("item_variant", None),
+				"warehouse": self.delivery_location,
+				"lot": cstr(d.get("lot")).strip(),
+				"voucher_type": self.doctype,
+				"voucher_no": self.name,
+				"voucher_detail_no": d.name,
+				"qty": flt(d.get("quantity")),
+				"uom": d.uom,
+				"rate": d.rate,
+				"is_cancelled": 1 if self.docstatus == 2 else 0,
+				"posting_date": self.posting_date,
+				"posting_time": self.posting_time,
+			}
+		)
+
+		sl_dict.update(args)
+		return sl_dict
+
 
 def save_grn_item_details(item_details):
 	"""

@@ -14,8 +14,12 @@
                 <td v-if='item.count' class="text-center" :rowspan="item.count">
                     {{ item.index + 1 }}
                 </td>
-                <td v-if='item.count && doctype=="Supplier"' :rowspan="item.count">{{ item.item_name }}</td>
-                <td v-if='item.count && doctype=="Item"' :rowspan="item.count">{{ item.supplier }}</td>
+                <td v-if='item.count && doctype=="Supplier"' :rowspan="item.count">
+                    <a :href="'/app/item/'+item.item_name" target="_blank">{{ item.item_name }}</a>
+                </td>
+                <td v-if='item.count && doctype=="Item"' :rowspan="item.count">
+                    <a :href="'/app/supplier/'+item.supplier" target="_blank">{{ item.supplier_name }}</a>
+                </td>
                 <td v-if='item.count' :rowspan="item.count">{{ item.depends_on_attribute ? item.attribute : "" }}</td>
                 <td>{{ item.moq }}</td>
                 <td>{{ item.price }}</td>
@@ -67,6 +71,7 @@ export default {
                     index: i,
                     item_name: item_price.item_name,
                     supplier: item_price.supplier,
+                    supplier_name: item_price.supplier_name,
                     depends_on_attribute: item_price.depends_on_attribute,
                     attribute: item_price.attribute,
                     count: item_price.item_price_values.length
