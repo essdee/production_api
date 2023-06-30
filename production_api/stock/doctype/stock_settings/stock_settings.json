@@ -22,7 +22,7 @@
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2023-06-28 21:09:22.679350",
+ "modified": "2023-06-30 19:19:19.293883",
  "modified_by": "Administrator",
  "module": "Stock",
  "name": "Stock Settings",
@@ -37,6 +37,10 @@
    "role": "System Manager",
    "share": 1,
    "write": 1
+  },
+  {
+   "read": 1,
+   "role": "All"
   }
  ],
  "sort_field": "modified",
