@@ -1,6 +1,7 @@
 [pre_model_sync]
 production_api.patches.v1_0.custom_field
 production_api.patches.v1_0.mapping
+production_api.patches.v1_0.set_grn_posting_date
 
 [post_model_sync]
 production_api.patches.v1_0.update_po_item_uom
