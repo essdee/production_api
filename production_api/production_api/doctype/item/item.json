@@ -13,6 +13,7 @@
   "name1",
   "disabled",
   "over_delivery_receipt_allowance",
+  "is_stock_item",
   "uom_section",
   "default_unit_of_measure",
   "uom_conversion_details",
@@ -148,11 +149,17 @@
    "fieldtype": "Link",
    "label": "Item Group",
    "options": "Item Group"
+  },
+  {
+   "default": "0",
+   "fieldname": "is_stock_item",
+   "fieldtype": "Check",
+   "label": "Is Stock Item"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2023-05-17 15:48:10.784033",
+ "modified": "2023-06-19 10:57:05.083342",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Item",

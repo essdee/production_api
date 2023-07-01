@@ -12,3 +12,12 @@ class ItemVariant(Document):
 			if attribute.attribute_value:
 				variant_name += '-' + attribute.attribute_value
 		self.name = variant_name
+	
+	def get_attribute_value(self, attribute):
+		attribute_value = None
+		for attr in self.attributes:
+			if attr.attribute == attribute:
+				attribute_value = attr.attribute_value
+				break
+		
+		return attribute_value

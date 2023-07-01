@@ -14,6 +14,8 @@
   "column_break_1",
   "against_id",
   "grn_date",
+  "posting_date",
+  "posting_time",
   "section_break_1",
   "supplier",
   "supplier_document_no",
@@ -83,9 +85,9 @@
    "default": "Today",
    "fieldname": "grn_date",
    "fieldtype": "Date",
+   "hidden": 1,
    "label": "GRN Date",
-   "read_only": 1,
-   "reqd": 1
+   "read_only": 1
   },
   {
    "fieldname": "section_break_1",
@@ -271,12 +273,32 @@
    "fieldtype": "Data",
    "label": "Delivery Location Name",
    "read_only": 1
+  },
+  {
+   "default": "Today",
+   "fieldname": "posting_date",
+   "fieldtype": "Date",
+   "in_list_view": 1,
+   "label": "Posting Date",
+   "no_copy": 1,
+   "read_only": 1,
+   "reqd": 1
+  },
+  {
+   "default": "Now",
+   "fieldname": "posting_time",
+   "fieldtype": "Time",
+   "in_list_view": 1,
+   "label": "Posting Time",
+   "no_copy": 1,
+   "read_only": 1,
+   "reqd": 1
   }
  ],
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2023-05-16 13:18:10.239593",
+ "modified": "2023-06-30 19:11:21.856450",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Goods Received Note",

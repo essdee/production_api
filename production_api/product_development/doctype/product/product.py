@@ -101,7 +101,7 @@ def get_or_create_product_folder(doctype, docname):
 		)
 		doctype_folder.save(ignore_permissions=True)
 		doctype_folder_name = doctype_folder.name
-		print("Created folder for doctype", doctype_folder.name)
+
 	# Create folder for docname with parent folder as doctype
 	docname_folder_name = frappe.db.exists(
 		"File",
@@ -122,7 +122,7 @@ def get_or_create_product_folder(doctype, docname):
 		)
 		docname_folder.save(ignore_permissions=True)
 		docname_folder_name = docname_folder.name
-		print("Created folder for docname", docname_folder.name)
+
 	return docname_folder_name
 
 def get_latest_product_images(product_name):

@@ -23,7 +23,6 @@ class PurchaseOrder(Document):
 		price_validation = frappe.db.get_single_value('MRP Settings', 'enable_price_validation')
 		try:
 			items = validate_price_details([d.as_dict() for d in self.items], self.supplier)
-			# print(json.dumps(items, indent=3))
 			self.set('items', items)
 		except:
 			if price_validation:
@@ -60,7 +59,6 @@ class PurchaseOrder(Document):
 				items = validate_price_details(items, self.supplier)
 			except:
 				pass
-			print(json.dumps(items, indent=3))
 			self.set('items', items)
 			self.calculate_amount()
 		elif self.is_new() or not self.get('items'):
@@ -127,8 +125,6 @@ class PurchaseOrder(Document):
 			return "Ordered"
 	
 	def set_open_status(self, close=True):
-		print('in set open status')
-		print(self.docstatus, self.open_status, close)
 		if self.docstatus == 2:
 			frappe.throw(_("Cannot close a cancelled document"))
 		if close:
@@ -237,7 +233,6 @@ def save_item_details(item_details):
 						items.append(item1)
 			else:
 				if item['values'].get('default') and item['values']['default'].get('qty'):
-					print(item_name)
 					item1 = {}
 					variant_name = get_variant(item_name, item_attributes)
 					if not variant_name:

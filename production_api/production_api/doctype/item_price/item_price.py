@@ -37,23 +37,59 @@ class ItemPrice(Document):
 				if not self.to_date or self.to_date >= doc.from_date:
 					frappe.throw(f"An Updated Price list for the same Item and Supplier exists from {frappe.utils.format_date(doc.from_date)}. Please set `To Date` less than that date or cancel the next Price.\n{get_link_to_form('Item Price', price)}")
 			else:
-				print(from_date)
 				to_date = utils.add_days(from_date, -1)
 				doc.to_date = to_date
 				doc.save()
 		
 		self.set('approved_by', frappe.get_user().doc.name)
 
-	def validate_attribute_values(self, qty = 0, attribute = None, attribute_value = None) :
+	def validate_attribute_values(self, qty = 0, attribute = None, attribute_value = None, get_lowest_moq_price=False) :
 		if self.depends_on_attribute and (attribute == None or self.attribute != attribute or attribute_value == None):
 			return None
 		price_values = [[price.moq, price.price, price.attribute_value] for price in self.item_price_values]
-		price = get_price_value(price_values, qty, attribute_value)
+		price = self.get_price_value(price_values, qty, attribute_value, get_lowest_moq_price)
 		return price
+	
+	def get_price_value(self, item_price_values, qty = 0, attribute_value = None, get_lowest_moq_price=False):
+		"""
+		Get Item Price Value for the qty and the attribute value from item_price_values
+		:param item_price_values: as List of List
+			item_price_values = [
+				[moq, price, attribute],
+				[0, 100, None],
+				[10, 98, '20 Dia']
+			]
+		"""
+		# Filter the Attribute Value
+		item_price_values = [item_price for item_price in item_price_values if item_price[2] == attribute_value]
+		if not len(item_price_values):
+			return None
+		moq = -1
+		rate = -1
+		for price in item_price_values:
+			if moq < price[0] and (price[0] <= qty or get_lowest_moq_price):
+				moq = price[0]
+				rate = price[1]
+		if (moq != -1):
+			return rate
+		return None
 
+def get_item_variant_price(variant: str):
+	variant = frappe.get_doc("Item Variant", variant)
+	price_list = get_all_active_price(item=variant.item)
+	rate = None
+	for price in price_list:
+		item_price = frappe.get_doc("Item Price", price.name)
+		if item_price.depends_on_attribute:
+			rate1 = item_price.validate_attribute_values(qty=0, attribute=item_price.attribute, attribute_value=variant.get_attribute_value(item_price.attribute), get_lowest_moq_price=True)
+			if rate1:
+				rate = rate1
+				break
+
+	return rate
 
 @frappe.whitelist()
-def get_active_price(item: str, supplier: str = None):
+def get_active_price(item: str, supplier: str = None, raise_error=True):
 	if (item == None):
 		return None
 	filters = {
@@ -92,38 +128,12 @@ def validate_price_values(item_price_values):
 		else:
 			values.append(unique_value)
 
-def get_price_value(item_price_values, qty = 0, attribute_value = None):
-	"""
-	Get Item Price Value for the qty and the attribute value from item_price_values
-	:param item_price_values: as List of List
-		item_price_values = [
-			[moq, price, attribute],
-			[0, 100, None],
-			[10, 98, '20 Dia']
-		]
-	"""
-	moq = -1
-	rate = -1
-	print(item_price_values)
-	for price in item_price_values:
-		print(price)
-		if price[2] == attribute_value and (moq < price[0] and price[0] <= qty):
-			print(price[2])
-			moq = price[0]
-			rate = price[1]
-	print(moq)
-	if (moq != -1):
-		return rate
-	return None
-
 @frappe.whitelist()
 def get_item_supplier_price(item_detail, supplier: str = None):
 	if (item_detail == None or supplier == None):
 		return None
 	if (type(item_detail) is str):
 		item_detail = json.loads(item_detail)
-	print(json.dumps(item_detail, indent=3))
-	print("")
 	item_price = None
 	try:
 		item_price = get_active_price(item_detail["name"], supplier)

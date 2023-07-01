@@ -2,6 +2,7 @@
 # For license information, please see license.txt
 
 import frappe
+from frappe import _
 from frappe.utils import cstr, flt
 from six import string_types
 import json
@@ -17,7 +18,6 @@ class Item(Document):
 			self.name = self.name1 if name[0].lower() == self.brand.lower() else self.brand + ' ' + self.name1
 		else:
 			self.name = self.name1
-		print('Item Name: ', self.name)
 	
 	def load_attribute_list(self):
 		"""Load Attribute List into `__onload`"""
@@ -342,3 +342,23 @@ def get_item_attributes(doctype, txt, searchfield, start, page_len, filters):
 	attributes = [attribute.attribute for attribute in item.attributes]
 	return [[value] for value in attributes if value.lower().startswith(txt.lower())]
 
+def validate_is_stock_item(item, is_stock_item=None):
+	if not is_stock_item:
+		is_stock_item = frappe.db.get_value("Item", item, "is_stock_item")
+
+	if is_stock_item != 1:
+		frappe.throw(_("Item {0} is not a stock Item").format(item))
+
+def validate_cancelled_item(item, docstatus=None):
+	if docstatus is None:
+		docstatus = frappe.db.get_value("Item", item, "docstatus")
+
+	if docstatus == 2:
+		frappe.throw(_("Item {0} is cancelled").format(item))
+
+def validate_disabled(item, disabled=None):
+	if (disabled is None):
+		disabled = frappe.db.get_value("Item", item, "disabled")
+
+	if disabled:
+		frappe.throw(_("Item {0} is disabled").format(item))
