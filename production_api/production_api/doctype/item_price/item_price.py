@@ -37,7 +37,6 @@ class ItemPrice(Document):
 				if not self.to_date or self.to_date >= doc.from_date:
 					frappe.throw(f"An Updated Price list for the same Item and Supplier exists from {frappe.utils.format_date(doc.from_date)}. Please set `To Date` less than that date or cancel the next Price.\n{get_link_to_form('Item Price', price)}")
 			else:
-				print(from_date)
 				to_date = utils.add_days(from_date, -1)
 				doc.to_date = to_date
 				doc.save()
@@ -62,20 +61,15 @@ class ItemPrice(Document):
 			]
 		"""
 		# Filter the Attribute Value
-		print(item_price_values)
 		item_price_values = [item_price for item_price in item_price_values if item_price[2] == attribute_value]
 		if not len(item_price_values):
 			return None
 		moq = -1
 		rate = -1
-		print(item_price_values)
 		for price in item_price_values:
-			print(price)
 			if moq < price[0] and (price[0] <= qty or get_lowest_moq_price):
-				print(price[2])
 				moq = price[0]
 				rate = price[1]
-		print(moq)
 		if (moq != -1):
 			return rate
 		return None
@@ -140,8 +134,6 @@ def get_item_supplier_price(item_detail, supplier: str = None):
 		return None
 	if (type(item_detail) is str):
 		item_detail = json.loads(item_detail)
-	print(json.dumps(item_detail, indent=3))
-	print("")
 	item_price = None
 	try:
 		item_price = get_active_price(item_detail["name"], supplier)

@@ -14,7 +14,6 @@ from production_api.production_api.doctype.purchase_order.purchase_order import 
 
 class GoodsReceivedNote(Document):
 	def onload(self):
-		print('in onload')
 		item_details = fetch_grn_item_details(self.get('items'), docstatus=self.docstatus)
 		self.set('print_item_details', json.dumps(item_details))
 		self.set_onload('item_details', item_details)
@@ -76,7 +75,6 @@ class GoodsReceivedNote(Document):
 	def before_validate(self):
 		if(self.get('item_details')):
 			items = save_grn_item_details(self.item_details)
-			print(json.dumps(items, indent=3))
 			self.set('items', items)
 		elif self.is_new() or not self.get('items'):
 			frappe.throw('Add items to GRN.', title='GRN')
@@ -125,7 +123,6 @@ class GoodsReceivedNote(Document):
 		sl_entries = []
 		for item in self.items:
 			sl_entries.append(self.get_sl_entries(item, {}))
-		print(sl_entries)
 		if self.docstatus == 2:
 			sl_entries.reverse()
 		make_sl_entries(sl_entries)
@@ -202,7 +199,6 @@ def save_grn_item_details(item_details):
 						items.append(item1)
 			else:
 				if item['values'].get('default'):
-					print(item_name)
 					item1 = {}
 					variant_name = get_variant(item_name, item_attributes)
 					if not variant_name:
@@ -288,8 +284,6 @@ def fetch_grn_item_details(items, docstatus=0):
 				'tax': variants[0].tax
 			}
 			if docstatus == 0:
-				print("docstatus")
-				print(variants[0])
 				doc = frappe.get_doc("Purchase Order Item", variants[0].ref_docname)
 				item['values']['default']['qty'] = doc.qty
 				item['values']['default']['secondary_qty'] = doc.secondary_qty

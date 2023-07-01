@@ -18,7 +18,6 @@ from production_api.stock.utils import get_stock_balance
 
 class StockReconciliation(Document):
 	def onload(self):
-		print('in onload')
 		item_details = fetch_stock_reconciliation_items(self.get('items'))
 		self.set('print_item_details', json.dumps(item_details))
 		self.set_onload('item_details', item_details)
@@ -72,16 +71,13 @@ class StockReconciliation(Document):
 			# do not allow negative valuation
 			if flt(row.rate) < 0:
 				self.validation_messages.append(_get_msg(row.table_index, row.row_index, _("Negative Valuation Rate is not allowed")))
-			print(row.item, row.qty, row.rate)
 			if row.qty and row.rate in ["", None, 0]:
 				row.rate = get_stock_balance(
 					row.item, None, self.posting_date, self.posting_time, with_valuation_rate=True
 				)[1]
 				if not row.rate:
 					# try if there is a buying price list in default currency
-					print("Could not get Price till now")
 					buying_rate = get_item_variant_price(row.item)
-					print("buying rate", buying_rate)
 					if buying_rate:
 						row.rate = buying_rate
 			
@@ -172,7 +168,6 @@ class StockReconciliation(Document):
 				continue
 
 			sl_entries.append(self.get_sle_for_items(row))
-		print("sl_entries", sl_entries)
 		if not len(sl_entries):
 			frappe.throw("Empty")
 		make_sl_entries(sl_entries)
@@ -338,7 +333,6 @@ def save_stock_reconciliation_items(item_details):
 						items.append(item1)
 			else:
 				if item['values'].get('default') and item['values']['default'].get('qty'):
-					print(item_name)
 					item1 = {}
 					variant_name = get_variant(item_name, item_attributes)
 					if not variant_name:

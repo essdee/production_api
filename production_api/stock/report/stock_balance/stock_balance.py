@@ -26,6 +26,7 @@ class StockBalanceFilter(TypedDict):
 	item_group: Optional[str]
 	item: Optional[str]
 	warehouse: Optional[str]
+	lot: Optional[str]
 	# warehouse_type: Optional[str]
 	# include_uom: Optional[str]  # include extra info in converted UOM
 	show_stock_ageing_data: bool
@@ -36,14 +37,9 @@ SLEntry = Dict[str, Any]
 
 
 def execute(filters: Optional[StockBalanceFilter] = None):
-	# is_reposting_item_valuation_in_progress()
 	if not filters:
 		filters = {}
 
-	# if filters.get("company"):
-	# 	company_currency = erpnext.get_company_currency(filters.get("company"))
-	# else:
-	# 	company_currency = frappe.db.get_single_value("Global Defaults", "default_currency")
 	company_currency = "INR"
 	include_uom = filters.get("include_uom")
 	columns = get_columns(filters)
@@ -149,6 +145,13 @@ def get_columns(filters: StockBalanceFilter):
 			"width": 100,
 		},
 		{
+			"label": _("Lot"),
+			"fieldname": "lot",
+			"fieldtype": "Link",
+			"options": "Lot",
+			"width": 100,
+		},
+		{
 			"label": _("Warehouse"),
 			"fieldname": "warehouse",
 			"fieldtype": "Link",
@@ -156,17 +159,6 @@ def get_columns(filters: StockBalanceFilter):
 			"width": 100,
 		},
 	]
-
-	# for dimension in get_inventory_dimensions():
-	# 	columns.append(
-	# 		{
-	# 			"label": _(dimension.doctype),
-	# 			"fieldname": dimension.fieldname,
-	# 			"fieldtype": "Link",
-	# 			"options": dimension.doctype,
-	# 			"width": 110,
-	# 		}
-	# 	)
 
 	columns.extend(
 		[
@@ -229,27 +221,6 @@ def get_columns(filters: StockBalanceFilter):
 				"convertible": "rate",
 				"options": "currency",
 			},
-			# {
-			# 	"label": _("Reorder Level"),
-			# 	"fieldname": "reorder_level",
-			# 	"fieldtype": "Float",
-			# 	"width": 80,
-			# 	"convertible": "qty",
-			# },
-			# {
-			# 	"label": _("Reorder Qty"),
-			# 	"fieldname": "reorder_qty",
-			# 	"fieldtype": "Float",
-			# 	"width": 80,
-			# 	"convertible": "qty",
-			# },
-			# {
-			# 	"label": _("Company"),
-			# 	"fieldname": "company",
-			# 	"fieldtype": "Link",
-			# 	"options": "Company",
-			# 	"width": 100,
-			# },
 		]
 	)
 
@@ -271,7 +242,6 @@ def get_columns(filters: StockBalanceFilter):
 
 def apply_conditions(query, filters):
 	sle = frappe.qb.DocType("Stock Ledger Entry")
-	supplier_table = frappe.qb.DocType("Supplier")
 
 	if not filters.get("from_date"):
 		frappe.throw(_("'From Date' is required"))
@@ -298,16 +268,17 @@ def apply_conditions(query, filters):
 
 def get_stock_ledger_entries(filters: StockBalanceFilter, items: List[str]) -> List[SLEntry]:
 	sle = frappe.qb.DocType("Stock Ledger Entry")
+	supplier = frappe.qb.DocType("Supplier")
 
 	query = (
-		frappe.qb.from_(sle)
+		frappe.qb.from_(sle).from_(supplier)
 		.select(
 			sle.item,
 			sle.warehouse,
+			supplier.supplier_name.as_("warehouse_name"),
 			sle.posting_date,
 			sle.qty,
 			sle.valuation_rate,
-			# sle.company,
 			sle.voucher_type,
 			sle.qty_after_transaction,
 			sle.stock_value_difference,
@@ -317,17 +288,11 @@ def get_stock_ledger_entries(filters: StockBalanceFilter, items: List[str]) -> L
 			sle.lot,
 		)
 		.where((sle.docstatus < 2) & (sle.is_cancelled == 0))
+		.where(supplier.name == sle.warehouse)
 		.orderby(CombineDatetime(sle.posting_date, sle.posting_time))
 		.orderby(sle.creation)
 		.orderby(sle.qty)
 	)
-
-	# inventory_dimension_fields = get_inventory_dimension_fields()
-	# if inventory_dimension_fields:
-	# 	for fieldname in inventory_dimension_fields:
-	# 		query = query.select(fieldname)
-	# 		if fieldname in filters and filters.get(fieldname):
-	# 			query = query.where(sle[fieldname].isin(filters.get(fieldname)))
 
 	if filters.get("warehouse"):
 		query.where(sle.warehouse == filters.get("warehouse"))
@@ -367,18 +332,13 @@ def get_opening_vouchers(to_date):
 	return opening_vouchers
 
 
-# def get_inventory_dimension_fields():
-# 	return [dimension.fieldname for dimension in get_inventory_dimensions()]
-
-
 def get_item_warehouse_map(filters: StockBalanceFilter, sle: List[SLEntry]):
 	iwb_map = {}
 	from_date = getdate(filters.get("from_date"))
 	to_date = getdate(filters.get("to_date"))
 	opening_vouchers = get_opening_vouchers(to_date)
 	float_precision = cint(frappe.db.get_default("float_precision")) or 3
-	# inventory_dimensions = get_inventory_dimension_fields()
-	print(opening_vouchers)
+
 	for d in sle:
 		group_by_key = get_group_by_key(d)
 		if group_by_key not in iwb_map:
@@ -397,8 +357,6 @@ def get_item_warehouse_map(filters: StockBalanceFilter, sle: List[SLEntry]):
 			)
 
 		qty_dict = iwb_map[group_by_key]
-		# for field in inventory_dimensions:
-		# 	qty_dict[field] = d.get(field)
 
 		if d.voucher_type == "Stock Reconciliation":
 			qty_diff = flt(d.qty_after_transaction) - flt(qty_dict.bal_qty)
@@ -497,14 +455,6 @@ def get_item_details(items: List[str], sle: List[SLEntry], filters: StockBalance
 	 	)
 	)
 
-	# if uom := filters.get("include_uom"):
-	# 	uom_conv_detail = frappe.qb.DocType("UOM Conversion Detail")
-	# 	query = (
-	# 		query.left_join(uom_conv_detail)
-	# 		.on((uom_conv_detail.parent == item_table.name) & (uom_conv_detail.uom == uom))
-	# 		.select(uom_conv_detail.conversion_factor)
-	# 	)
-
 	result = query.run(as_dict=1)
 
 	for item_table in result:
@@ -515,20 +465,6 @@ def get_item_details(items: List[str], sle: List[SLEntry], filters: StockBalance
 		item_details = {k: v.update(variant_values.get(k, {})) for k, v in item_details.items()}
 
 	return item_details
-
-
-# def get_item_reorder_details(items):
-# 	item_reorder_details = frappe._dict()
-
-# 	if items:
-# 		item_reorder_details = frappe.get_all(
-# 			"Item Reorder",
-# 			["parent", "warehouse", "warehouse_reorder_qty", "warehouse_reorder_level"],
-# 			filters={"parent": ("in", items)},
-# 		)
-
-# 	return dict((d.parent + d.warehouse, d) for d in item_reorder_details)
-
 
 def get_variants_attributes() -> List[str]:
 	"""Return all item variant attributes."""

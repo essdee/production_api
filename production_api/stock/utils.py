@@ -28,7 +28,6 @@ def get_stock_balance(
 	}
 
 	last_entry = get_previous_sle(args)
-	print(last_entry)
 
 	if with_valuation_rate:
 		return (

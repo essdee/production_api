@@ -7,25 +7,13 @@ from frappe import _
 from frappe.query_builder.functions import CombineDatetime
 from frappe.utils import cint, flt
 
-# from erpnext.stock.doctype.inventory_dimension.inventory_dimension import get_inventory_dimensions
-# from erpnext.stock.doctype.serial_no.serial_no import get_serial_nos
-# from erpnext.stock.doctype.stock_reconciliation.stock_reconciliation import get_stock_balance_for
-# from erpnext.stock.doctype.warehouse.warehouse import apply_warehouse_filter
-# from erpnext.stock.utils import (
-# 	is_reposting_item_valuation_in_progress,
-# 	update_included_uom_in_report,
-# )
-
-
 def execute(filters=None):
-	# is_reposting_item_valuation_in_progress()
 	include_uom = filters.get("include_uom")
 	columns = get_columns(filters)
 	items = get_items(filters)
 	sl_entries = get_stock_ledger_entries(filters, items)
 	item_details = get_item_details(items, sl_entries, include_uom)
 	opening_row = get_opening_balance(filters, columns, sl_entries)
-	# precision = cint(frappe.db.get_single_value("System Settings", "float_precision"))
 	precision = 3
 
 	data = []
@@ -77,35 +65,16 @@ def execute(filters=None):
 	return columns, data
 
 
-# def update_available_serial_nos(available_serial_nos, sle):
-# 	serial_nos = get_serial_nos(sle.serial_no)
-# 	key = (sle.item_code, sle.warehouse)
-# 	if key not in available_serial_nos:
-# 		stock_balance = get_stock_balance_for(
-# 			sle.item_code, sle.warehouse, sle.posting_date, sle.posting_time
-# 		)
-# 		serials = get_serial_nos(stock_balance["serial_nos"]) if stock_balance["serial_nos"] else []
-# 		available_serial_nos.setdefault(key, serials)
-
-# 	existing_serial_no = available_serial_nos[key]
-# 	for sn in serial_nos:
-# 		if sle.actual_qty > 0:
-# 			if sn in existing_serial_no:
-# 				existing_serial_no.remove(sn)
-# 			else:
-# 				existing_serial_no.append(sn)
-# 		else:
-# 			if sn in existing_serial_no:
-# 				existing_serial_no.remove(sn)
-# 			else:
-# 				existing_serial_no.append(sn)
-
-# 	sle.balance_serial_no = "\n".join(existing_serial_no)
-
-
 def get_columns(filters):
 	columns = [
 		{"label": _("Date"), "fieldname": "date", "fieldtype": "Datetime", "width": 150},
+		{
+			"label": _("Lot"),
+			"fieldname": "lot",
+			"fieldtype": "Link",
+			"options": "Lot",
+			"width": 100,
+		},
 		{
 			"label": _("Item"),
 			"fieldname": "item",
@@ -122,17 +91,6 @@ def get_columns(filters):
 			"width": 90,
 		},
 	]
-
-	# for dimension in get_inventory_dimensions():
-	# 	columns.append(
-	# 		{
-	# 			"label": _(dimension.doctype),
-	# 			"fieldname": dimension.fieldname,
-	# 			"fieldtype": "Link",
-	# 			"options": dimension.doctype,
-	# 			"width": 110,
-	# 		}
-	# 	)
 
 	columns.extend(
 		[
@@ -232,13 +190,6 @@ def get_columns(filters):
 				"options": "voucher_type",
 				"width": 100,
 			},
-			{
-				"label": _("Lot"),
-				"fieldname": "lot",
-				"fieldtype": "Link",
-				"options": "Lot",
-				"width": 100,
-			},
 		]
 	)
 
@@ -260,16 +211,12 @@ def get_stock_ledger_entries(filters, items):
 			sle.qty,
 			sle.rate,
 			sle.valuation_rate,
-			# sle.company,
 			sle.voucher_type,
 			sle.qty_after_transaction,
 			sle.stock_value_difference,
 			sle.voucher_no,
 			sle.stock_value,
 			sle.lot,
-			# sle.batch_no,
-			# sle.serial_no,
-			# sle.project,
 		)
 		.where(
 			(sle.docstatus < 2)
@@ -332,14 +279,6 @@ def get_item_details(items, sl_entries, include_uom):
 		.select(item_variant.name, item.name.as_('item_name'), item.brand, item.default_unit_of_measure.as_('stock_uom'), item.item_group)
 		.where((item_variant.name.isin(items)) & (item_variant.item == item.name))
 	)
-
-	# if include_uom:
-	# 	ucd = frappe.qb.DocType("UOM Conversion Detail")
-	# 	query = (
-	# 		query.left_join(ucd)
-	# 		.on((ucd.parent == item_variant.name) & (ucd.uom == include_uom))
-	# 		.select(ucd.conversion_factor)
-	# 	)
 
 	res = query.run(as_dict=True)
 
@@ -432,11 +371,3 @@ def get_item_group_condition(item_group, item_table=None):
 				where ig.lft >= %s and ig.rgt <= %s and item.item_group = ig.name)"
 				% (item_group_details.lft, item_group_details.rgt)
 			)
-
-
-# def check_inventory_dimension_filters_applied(filters) -> bool:
-# 	for dimension in get_inventory_dimensions():
-# 		if dimension.fieldname in filters and filters.get(dimension.fieldname):
-# 			return True
-
-# 	return False

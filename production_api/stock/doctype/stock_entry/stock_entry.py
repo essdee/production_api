@@ -22,16 +22,13 @@ class StockEntry(Document):
 		self.set_onload('item_details', item_details)
 
 	def before_validate(self):
-		print(self._action)
 		if(self.get('item_details')) and self._action != "submit":
-			print("Updating Stock Entry")
 			items = save_stock_entry_items(self.item_details)
 			self.set('items', items)
 		elif self.is_new() or not self.get('items'):
 			frappe.throw('Add items to Stock Entry.', title='Stock Entry')
 
 	def validate(self):
-		# print(self.as_dict())
 		self.validate_data()
 		self.validate_warehouse()
 		self.calculate_rate_and_amount()
@@ -139,12 +136,10 @@ class StockEntry(Document):
 
 	def on_submit(self):
 		self.update_stock_ledger()
-		print(self.as_dict())
 		self.update_transferred_qty()
 	
 	def before_cancel(self):
 		self.update_stock_ledger()
-		print(self.as_dict())
 		self.update_transferred_qty()
 	
 	def update_stock_ledger(self):
@@ -238,8 +233,6 @@ class StockEntry(Document):
 					continue
 
 				stock_entries_child_list.append(d.ste_detail)
-				print(d.as_dict())
-				print(d.against_stock_entry, d.ste_detail)
 				transferred_qty = frappe.get_all(
 					"Stock Entry Detail",
 					fields=["sum(qty) as qty"],
@@ -254,7 +247,6 @@ class StockEntry(Document):
 					transferred_qty[0].qty if transferred_qty and transferred_qty[0] else 0.0
 				) or 0.0
 
-			print(stock_entries)
 			if not stock_entries:
 				return None
 
@@ -344,8 +336,6 @@ def fetch_stock_entry_items(items):
 			})
 		else:
 			item_details[index]['items'].append(item)
-	print("---------------------- Fetch Item DEtails --------------------")
-	print(json.dumps(item_details, indent=3))
 	return item_details
 
 def save_stock_entry_items(item_details):
@@ -384,7 +374,6 @@ def save_stock_entry_items(item_details):
 						items.append(item1)
 			else:
 				if item['values'].get('default') and item['values']['default'].get('qty'):
-					print(item_name)
 					item1 = {}
 					variant_name = get_variant(item_name, item_attributes)
 					if not variant_name:
@@ -396,9 +385,6 @@ def save_stock_entry_items(item_details):
 					item1['uom'] = item.get('default_uom')
 					item1['qty'] = item['values']['default'].get('qty')
 					item1['rate'] = item['values']['default'].get('rate')
-					print(json.dumps(item['values']['default']))
-					print(item['values']['default'].get("against_stock_entry"))
-					print(item['values']['default'].get("against_stock_entry", None))
 					item1['against_stock_entry'] = item['values']['default'].get("against_stock_entry", None)
 					item1['ste_detail'] = item['values']['default'].get("ste_detail", None)
 					item1['transferred_qty'] = item['values']['default'].get("transferred_qty", None)
@@ -406,10 +392,7 @@ def save_stock_entry_items(item_details):
 					item1['row_index'] = row_index
 					# item1['comments'] = item.get('comments')
 					items.append(item1)
-					print(json.dumps(item1, indent=3))
 			row_index += 1
-	print("------------------- SAVE ITEMS -----------------------------")
-	print(json.dumps(items, indent=3))
 	return items
 
 @frappe.whitelist()

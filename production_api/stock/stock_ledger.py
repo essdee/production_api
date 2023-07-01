@@ -40,9 +40,8 @@ def make_sl_entries(sl_entries):
 						sle.item, sle.voucher_type, sle.voucher_no, sle.voucher_detail_no
 					)
 					sle["outgoing_rate"] = 0.0
-			print(sle)
+
 			if sle.get("qty") or sle.get("voucher_type") == "Stock Reconciliation":
-				print("creating sle - ", sle.get('qty'))
 				sle_doc = make_entry(sle)
 			
 			args = sle_doc.as_dict()
@@ -54,34 +53,20 @@ def make_sl_entries(sl_entries):
 			item = frappe.get_cached_value("Item Variant", args.get("item"), "item")
 			is_stock_item = frappe.get_cached_value("Item", item, "is_stock_item")
 			if is_stock_item:
-				print("Reposting Voucher", args)
 				repost_current_voucher(args)
 			else:
 				frappe.msgprint(
 					_("Item {0} ignored since it is not a stock item").format(args.get("item"))
 				)
 
-def printP(data, key=None):
-	import json
-	print(f"- - - - - - - - - - - - - - - - - - - - {key} - - - - - - - - - - - - - - - - - - - - \n")
-	try:
-		print(json.dumps(data, indent=3, sort_keys=True, default=str))
-	except:
-		print(data)
-	print("\n")
-
 def repost_current_voucher(args, allow_negative_stock=False, via_landed_cost_voucher=False):
-	print(args)
 	if args.get("qty") or args.get("voucher_type") == "Stock Reconciliation":
-		print("Inside Reposting")
 		if not args.get("posting_date"):
 			args["posting_date"] = nowdate()
-		print("Cancelled", args.get("is_cancelled"), " -> Condt: ", (not (args.get("is_cancelled") and via_landed_cost_voucher)))
 
 		if not (args.get("is_cancelled") and via_landed_cost_voucher):
 			# Reposts only current voucher SL Entries
 			# Updates valuation rate, stock value, stock queue for current transaction
-			print('Need Update After')
 			update_entries_after(
 				{
 					"item": args.get("item"),
@@ -100,21 +85,18 @@ def repost_current_voucher(args, allow_negative_stock=False, via_landed_cost_vou
 
 		# update qty in future sle and Validate negative qty
 		# For LCV: update future balances with -ve LCV SLE, which will be balanced by +ve LCV SLE
-		print('Update qty in future sle')
 		update_qty_in_future_sle(args, allow_negative_stock)
 
 def make_entry(args, allow_negative_stock=False, via_landed_cost_voucher=False):
 	args["doctype"] = "Stock Ledger Entry"
 	sle = frappe.get_doc(args)
 	sle.flags.ignore_permissions = 1
-	print(sle.as_dict())
 	# sle.allow_negative_stock = allow_negative_stock
 	# sle.via_landed_cost_voucher = via_landed_cost_voucher
 	sle.submit()
 	return sle
 
 def set_as_cancelled(voucher_type, voucher_no):
-	print("cancelling the Ledger entry")
 	frappe.db.sql(
 		"""update `tabStock Ledger Entry` set is_cancelled=1,
 		modified=%s, modified_by=%s
@@ -142,8 +124,6 @@ def update_qty_in_future_sle(args, allow_negative_stock=False):
 
 		# add condition to update SLEs before this date & time
 		datetime_limit_condition = get_datetime_limit_condition(detail)
-	print(args)
-	print('Qty Shift - ', qty_shift)
 	# frappe.db.sql(
 	# 	f"""
 	# 	update `tabStock Ledger Entry`
@@ -190,7 +170,6 @@ class update_entries_after(object):
 		# allow_negative_stock=None,
 		verbose=1,
 	):
-		printP(args, "Update Entry args")
 		self.exceptions = {}
 		self.verbose = verbose
 		self.allow_zero_rate = allow_zero_rate
@@ -256,12 +235,9 @@ class update_entries_after(object):
 				"stock_value_difference": 0.0,
 			}
 		)
-		print("Warehouse", warehouse_dict)
 	
 	def build(self):
-		print("\nFuture Entries to Fix -> \n")
 		entries_to_fix = self.get_future_entries_to_fix()
-		printP(entries_to_fix, "Future Entries to Fix")
 		i = 0
 		while i < len(entries_to_fix):
 			sle = entries_to_fix[i]
@@ -278,7 +254,6 @@ class update_entries_after(object):
 		args = self.data[(self.args.warehouse, self.args.lot)].previous_sle or frappe._dict(
 			{"item": self.item, "warehouse": self.args.warehouse, "lot": self.args.lot}
 		)
-		printP(args, 'Future Etry args')
 		return list(self.get_sle_after_datetime(args))
 
 	def get_sle_after_datetime(self, args):
@@ -289,8 +264,6 @@ class update_entries_after(object):
 		# previous sle data for this warehouse
 		self.wh_data = self.data[(sle.warehouse, sle.lot)]
 		self.affected_transactions.add((sle.voucher_type, sle.voucher_no))
-		print("WH_DATA", self.wh_data)
-		print("affected transactions", self.affected_transactions)
 
 		# if (sle.serial_no and not self.via_landed_cost_voucher) or not cint(self.allow_negative_stock):
 		# 	# validate negative stock for serialized items, fifo valuation
@@ -348,9 +321,7 @@ class update_entries_after(object):
 			# 		self.wh_data.valuation_rate
 			# 	)
 			# else:
-			printP(sle, "Before Update Queue Value")
 			self.update_queue_values(sle)
-			printP(sle, "After Update Queue Value")
 
 		# rounding as per precision
 		self.wh_data.stock_value = flt(self.wh_data.stock_value, self.currency_precision)
@@ -366,8 +337,6 @@ class update_entries_after(object):
 		sle.stock_queue = json.dumps(self.wh_data.stock_queue)
 		sle.stock_value_difference = stock_value_difference
 		sle.doctype = "Stock Ledger Entry"
-		printP(sle, "After Current Update")
-		printP(self.wh_data, "WH DATA")
 		frappe.get_doc(sle).db_update()
 
 		if not self.args.get("sle_id"):
@@ -546,7 +515,6 @@ class update_entries_after(object):
 		)
 
 	def raise_exceptions(self):
-		printP(self.exceptions)
 		msg_list = []
 		for warehouse, exceptions in self.exceptions.items():
 			deficiency = min(e["diff"] for e in exceptions)
@@ -773,7 +741,6 @@ def validate_negative_qty_in_future_sle(args, allow_negative_stock=False):
 		return
 
 	neg_sle = get_future_sle_with_negative_qty(args)
-	print("NEG SLE", neg_sle)
 
 	if is_negative_with_precision(neg_sle):
 		message = _(
@@ -872,7 +839,6 @@ def get_stock_ledger_entries(
 
 	if operator in (">", "<=") and previous_sle.get("name"):
 		conditions += " and name!=%(name)s"
-	print("Previous SLE", previous_sle)
 	return frappe.db.sql(
 		"""
 		select *, timestamp(posting_date, posting_time) as "timestamp"
