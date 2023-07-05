@@ -1,0 +1,366 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "hash",
+ "creation": "2023-07-04 19:06:16.506643",
+ "default_view": "List",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "item",
+  "column_break_pyp07",
+  "lot",
+  "section_break_c0aaz",
+  "qty_rate_chart",
+  "section_break_ztyv1",
+  "total_qty",
+  "column_break_2uo7e",
+  "total_selling_value",
+  "section_break_2zbsk",
+  "cloth_value",
+  "section_break_8ndqg",
+  "total_cloth_value",
+  "section_break_u6qqj",
+  "cmt",
+  "column_break_j9q47",
+  "packing_materials",
+  "column_break_izrve",
+  "trims",
+  "section_break_dly2x",
+  "total_cmt",
+  "column_break_a6wza",
+  "packing_materials_total",
+  "column_break_uxr6u",
+  "trims_total",
+  "section_break_shxnd",
+  "production_cost",
+  "production_cost_html",
+  "section_break_pumui",
+  "trade_discounts",
+  "section_break_kzkjs",
+  "other_costs",
+  "section_break_cybx4",
+  "total_trade_discount",
+  "column_break_n1xkn",
+  "total_other_cost",
+  "section_break_vklzi",
+  "gst",
+  "column_break_vo4wu",
+  "gst_value",
+  "section_break_yew61",
+  "cost_price",
+  "column_break_f3qzs",
+  "profit",
+  "profit_percent"
+ ],
+ "fields": [
+  {
+   "fieldname": "item",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Item",
+   "options": "FG Item Master",
+   "reqd": 1
+  },
+  {
+   "fieldname": "lot",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Lot",
+   "options": "Lot",
+   "reqd": 1
+  },
+  {
+   "fieldname": "qty_rate_chart",
+   "fieldtype": "Table",
+   "label": "Qty Rate Chart",
+   "options": "Lotwise Item Profit Qty Rate",
+   "reqd": 1
+  },
+  {
+   "fieldname": "cloth_value",
+   "fieldtype": "Table",
+   "label": "Cloth Value",
+   "options": "Lotwise Item Profit Cloth Value"
+  },
+  {
+   "fieldname": "cmt",
+   "fieldtype": "Table",
+   "label": "CMT",
+   "options": "Lotwise Item Profit Breakup"
+  },
+  {
+   "fieldname": "trims",
+   "fieldtype": "Table",
+   "label": "Trims",
+   "options": "Lotwise Item Profit Breakup"
+  },
+  {
+   "fieldname": "packing_materials",
+   "fieldtype": "Table",
+   "label": "Packing Materials",
+   "options": "Lotwise Item Profit Breakup"
+  },
+  {
+   "fieldname": "trade_discounts",
+   "fieldtype": "Table",
+   "label": "Trade Discounts",
+   "options": "Lotwise Item Profit Additional Cost"
+  },
+  {
+   "bold": 1,
+   "fieldname": "total_qty",
+   "fieldtype": "Int",
+   "label": "Total Qty",
+   "read_only": 1
+  },
+  {
+   "bold": 1,
+   "fieldname": "total_selling_value",
+   "fieldtype": "Currency",
+   "label": "Total Selling Value",
+   "read_only": 1
+  },
+  {
+   "fieldname": "production_cost_html",
+   "fieldtype": "HTML",
+   "label": "Production Cost HTML"
+  },
+  {
+   "bold": 1,
+   "fieldname": "production_cost",
+   "fieldtype": "Currency",
+   "label": "Total Production Cost",
+   "read_only": 1
+  },
+  {
+   "fieldname": "other_costs",
+   "fieldtype": "Table",
+   "label": "Other Costs",
+   "options": "Lotwise Item Profit Additional Cost"
+  },
+  {
+   "bold": 1,
+   "fieldname": "total_cloth_value",
+   "fieldtype": "Currency",
+   "label": "Total Cloth Value",
+   "read_only": 1
+  },
+  {
+   "bold": 1,
+   "fieldname": "total_trade_discount",
+   "fieldtype": "Currency",
+   "label": "Total Trade Discount",
+   "read_only": 1
+  },
+  {
+   "bold": 1,
+   "fieldname": "total_other_cost",
+   "fieldtype": "Currency",
+   "label": "Total Other Cost",
+   "read_only": 1
+  },
+  {
+   "default": "5",
+   "fieldname": "gst",
+   "fieldtype": "Percent",
+   "label": "GST %"
+  },
+  {
+   "bold": 1,
+   "fieldname": "cost_price",
+   "fieldtype": "Currency",
+   "label": "Cost Price",
+   "read_only": 1
+  },
+  {
+   "bold": 1,
+   "fieldname": "profit",
+   "fieldtype": "Currency",
+   "label": "Profit",
+   "read_only": 1
+  },
+  {
+   "bold": 1,
+   "fieldname": "profit_percent",
+   "fieldtype": "Percent",
+   "label": "Profit %",
+   "read_only": 1
+  },
+  {
+   "bold": 1,
+   "fieldname": "gst_value",
+   "fieldtype": "Currency",
+   "label": "GST Value",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_pyp07",
+   "fieldtype": "Column Break"
+  },
+  {
+   "collapsible": 1,
+   "fieldname": "section_break_c0aaz",
+   "fieldtype": "Section Break",
+   "label": "Qty and Rate"
+  },
+  {
+   "fieldname": "section_break_ztyv1",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "column_break_2uo7e",
+   "fieldtype": "Column Break"
+  },
+  {
+   "collapsible": 1,
+   "fieldname": "section_break_2zbsk",
+   "fieldtype": "Section Break",
+   "label": "Cloth Value"
+  },
+  {
+   "collapsible": 1,
+   "fieldname": "section_break_u6qqj",
+   "fieldtype": "Section Break",
+   "label": "Production Cost"
+  },
+  {
+   "fieldname": "column_break_j9q47",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "column_break_izrve",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "section_break_dly2x",
+   "fieldtype": "Section Break"
+  },
+  {
+   "bold": 1,
+   "fieldname": "total_cmt",
+   "fieldtype": "Currency",
+   "label": "Total CMT",
+   "read_only": 1
+  },
+  {
+   "bold": 1,
+   "fieldname": "packing_materials_total",
+   "fieldtype": "Currency",
+   "label": "Packing Materials Total",
+   "read_only": 1
+  },
+  {
+   "bold": 1,
+   "fieldname": "trims_total",
+   "fieldtype": "Currency",
+   "label": "Trims Total",
+   "read_only": 1
+  },
+  {
+   "collapsible": 1,
+   "fieldname": "section_break_pumui",
+   "fieldtype": "Section Break",
+   "label": "Trade Discounts"
+  },
+  {
+   "collapsible": 1,
+   "fieldname": "section_break_kzkjs",
+   "fieldtype": "Section Break",
+   "label": "Other Costs"
+  },
+  {
+   "collapsible": 1,
+   "fieldname": "section_break_vklzi",
+   "fieldtype": "Section Break",
+   "label": "GST"
+  },
+  {
+   "fieldname": "column_break_vo4wu",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "section_break_yew61",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "column_break_f3qzs",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "section_break_shxnd",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "column_break_a6wza",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "column_break_uxr6u",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "section_break_8ndqg",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "section_break_cybx4",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "column_break_n1xkn",
+   "fieldtype": "Column Break"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2023-07-05 10:07:09.574338",
+ "modified_by": "Administrator",
+ "module": "Product Development",
+ "name": "Lotwise Item Profit",
+ "naming_rule": "Random",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "PD Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "PD User",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "title_field": "item"
+}

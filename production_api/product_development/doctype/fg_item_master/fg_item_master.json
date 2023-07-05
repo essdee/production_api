@@ -1,0 +1,123 @@
+{
+ "actions": [],
+ "allow_import": 1,
+ "allow_rename": 1,
+ "autoname": "field:name1",
+ "creation": "2023-07-04 19:18:47.828942",
+ "default_view": "List",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "uid",
+  "name1",
+  "available_sizes",
+  "size_range",
+  "pcs_per_box",
+  "box_per_carton",
+  "category",
+  "hsn",
+  "deprecated",
+  "disabled"
+ ],
+ "fields": [
+  {
+   "fieldname": "uid",
+   "fieldtype": "Data",
+   "label": "UID",
+   "unique": 1
+  },
+  {
+   "fieldname": "name1",
+   "fieldtype": "Data",
+   "label": "Name",
+   "unique": 1
+  },
+  {
+   "fieldname": "available_sizes",
+   "fieldtype": "Data",
+   "label": "Available Sizes"
+  },
+  {
+   "fieldname": "size_range",
+   "fieldtype": "Data",
+   "label": "Size Range"
+  },
+  {
+   "fieldname": "pcs_per_box",
+   "fieldtype": "Int",
+   "label": "Pcs Per Box"
+  },
+  {
+   "fieldname": "box_per_carton",
+   "fieldtype": "Int",
+   "label": "Box Per Carton"
+  },
+  {
+   "fieldname": "category",
+   "fieldtype": "Data",
+   "label": "Category"
+  },
+  {
+   "fieldname": "hsn",
+   "fieldtype": "Int",
+   "label": "HSN"
+  },
+  {
+   "default": "0",
+   "fieldname": "deprecated",
+   "fieldtype": "Check",
+   "label": "Deprecated"
+  },
+  {
+   "default": "0",
+   "fieldname": "disabled",
+   "fieldtype": "Check",
+   "label": "Disabled"
+  }
+ ],
+ "links": [],
+ "modified": "2023-07-04 19:37:51.187561",
+ "modified_by": "Administrator",
+ "module": "Product Development",
+ "name": "FG Item Master",
+ "naming_rule": "By fieldname",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "import": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "import": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Administrator",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "read": 1,
+   "role": "All",
+   "select": 1
+  }
+ ],
+ "search_fields": "name1, uid",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

@@ -1,0 +1,57 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2023-07-04 19:04:14.887079",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "costing_name",
+  "based_on",
+  "rate",
+  "total"
+ ],
+ "fields": [
+  {
+   "fieldname": "costing_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Costing Name",
+   "reqd": 1
+  },
+  {
+   "fieldname": "based_on",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Based On",
+   "options": "Total Qty\nTotal Value\nProduction Cost",
+   "reqd": 1
+  },
+  {
+   "fieldname": "rate",
+   "fieldtype": "Float",
+   "in_list_view": 1,
+   "label": "Rate Or Percentage",
+   "reqd": 1
+  },
+  {
+   "fieldname": "total",
+   "fieldtype": "Currency",
+   "in_list_view": 1,
+   "label": "Total",
+   "read_only": 1
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2023-07-04 19:36:26.596400",
+ "modified_by": "Administrator",
+ "module": "Product Development",
+ "name": "Lotwise Item Profit Additional Cost",
+ "owner": "Administrator",
+ "permissions": [],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

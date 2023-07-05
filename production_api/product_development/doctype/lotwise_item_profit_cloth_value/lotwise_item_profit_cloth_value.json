@@ -1,0 +1,108 @@
+{
+ "actions": [],
+ "creation": "2023-07-04 18:58:06.727138",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "yarn",
+  "gsm",
+  "qty",
+  "rate",
+  "knitting_cost",
+  "dyeing_cost",
+  "compacting_cost",
+  "total_cost",
+  "net_rate"
+ ],
+ "fields": [
+  {
+   "allow_in_quick_entry": 1,
+   "columns": 2,
+   "fieldname": "yarn",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Yarn",
+   "reqd": 1
+  },
+  {
+   "allow_in_quick_entry": 1,
+   "columns": 1,
+   "fieldname": "gsm",
+   "fieldtype": "Int",
+   "in_list_view": 1,
+   "label": "GSM"
+  },
+  {
+   "allow_in_quick_entry": 1,
+   "columns": 1,
+   "fieldname": "qty",
+   "fieldtype": "Int",
+   "in_list_view": 1,
+   "label": "Qty",
+   "reqd": 1
+  },
+  {
+   "allow_in_quick_entry": 1,
+   "columns": 1,
+   "fieldname": "rate",
+   "fieldtype": "Currency",
+   "in_list_view": 1,
+   "label": "Yarn Rate",
+   "reqd": 1
+  },
+  {
+   "allow_in_quick_entry": 1,
+   "columns": 1,
+   "fieldname": "knitting_cost",
+   "fieldtype": "Currency",
+   "in_list_view": 1,
+   "label": "Knitting Cost"
+  },
+  {
+   "allow_in_quick_entry": 1,
+   "columns": 1,
+   "fieldname": "dyeing_cost",
+   "fieldtype": "Currency",
+   "in_list_view": 1,
+   "label": "Dyeing Cost"
+  },
+  {
+   "allow_in_quick_entry": 1,
+   "columns": 1,
+   "fieldname": "compacting_cost",
+   "fieldtype": "Currency",
+   "in_list_view": 1,
+   "label": "Compacting Cost"
+  },
+  {
+   "allow_in_quick_entry": 1,
+   "columns": 1,
+   "fieldname": "total_cost",
+   "fieldtype": "Currency",
+   "in_list_view": 1,
+   "label": "Total Cost",
+   "read_only": 1
+  },
+  {
+   "columns": 1,
+   "fieldname": "net_rate",
+   "fieldtype": "Currency",
+   "in_list_view": 1,
+   "label": "Net Rate",
+   "read_only": 1
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2023-07-04 20:26:18.051251",
+ "modified_by": "Administrator",
+ "module": "Product Development",
+ "name": "Lotwise Item Profit Cloth Value",
+ "owner": "Administrator",
+ "permissions": [],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}
