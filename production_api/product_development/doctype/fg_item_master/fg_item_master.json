@@ -12,6 +12,7 @@
   "uid",
   "name1",
   "available_sizes",
+  "prices",
   "size_range",
   "pcs_per_box",
   "box_per_carton",
@@ -74,10 +75,15 @@
    "fieldname": "disabled",
    "fieldtype": "Check",
    "label": "Disabled"
+  },
+  {
+   "fieldname": "prices",
+   "fieldtype": "Data",
+   "label": "Prices"
   }
  ],
  "links": [],
- "modified": "2023-07-04 19:37:51.187561",
+ "modified": "2023-07-05 10:50:49.522730",
  "modified_by": "Administrator",
  "module": "Product Development",
  "name": "FG Item Master",

@@ -19,17 +19,28 @@ frappe.ui.form.on('Lotwise Item Profit', {
 
 	item: function(frm) {
 		if (frm.doc.item) {
-			frappe.db.get_value("FG Item Master", frm.doc.item, "available_sizes").then(result => {console.log(result);
-				let sizes = result.message.available_sizes.split(',');
+			frappe.db.get_doc("FG Item Master", frm.doc.item).then(result => {
+				console.log(result);
+				let sizes = result.available_sizes.split(',');
+				let prices_str = result.prices;
+				let prices = []
+				if (prices_str) {
+					prices = prices_str.split(',');
+				}
 				console.log(sizes)
+				console.log(prices)
 				frm.doc.qty_rate_chart = []
-				sizes.forEach(size => {
+				for (var i = 0;i < sizes.length;i++) {
+					var price = 0
+					if (sizes.length == prices.length) {
+						price = prices[i];
+					}
 					frm.add_child('qty_rate_chart', {
-						'size': size,
+						'size': sizes[i],
 						'qty': 0,
-						'rate': 0,
+						'rate': price,
 					});
-				});
+				}
 				frm.refresh_field('qty_rate_chart')
 			});
 		}
