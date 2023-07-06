@@ -83,7 +83,7 @@
   }
  ],
  "links": [],
- "modified": "2023-07-05 10:50:49.522730",
+ "modified": "2023-07-06 11:32:38.245154",
  "modified_by": "Administrator",
  "module": "Product Development",
  "name": "FG Item Master",
@@ -125,5 +125,6 @@
  "search_fields": "name1, uid",
  "sort_field": "modified",
  "sort_order": "DESC",
- "states": []
+ "states": [],
+ "track_changes": 1
 }

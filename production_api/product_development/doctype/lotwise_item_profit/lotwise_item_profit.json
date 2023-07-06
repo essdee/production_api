@@ -315,7 +315,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2023-07-05 10:07:09.574338",
+ "modified": "2023-07-06 11:32:02.812588",
  "modified_by": "Administrator",
  "module": "Product Development",
  "name": "Lotwise Item Profit",
@@ -362,5 +362,6 @@
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": [],
- "title_field": "item"
+ "title_field": "item",
+ "track_changes": 1
 }
