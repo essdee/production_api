@@ -11,6 +11,16 @@ frappe.ui.form.on('Lotwise Item Profit', {
 		frm.page.add_menu_item(__("Calculate"), function() {
 			calculate_all(frm);
 		}, false, 'Ctrl+E', false);
+
+		frm.add_custom_button(__('Calculate Rate'), function() {
+			frappe.prompt({
+				label: 'Percent',
+				fieldname: 'percent',
+				fieldtype: 'Percent',
+			}, (values) => {
+				calculate_backwards_rate(frm, values.percent);
+			}, 'Enter the Required Percent')
+		});
 	},
 
 	validate: function(frm){
@@ -20,15 +30,12 @@ frappe.ui.form.on('Lotwise Item Profit', {
 	item: function(frm) {
 		if (frm.doc.item) {
 			frappe.db.get_doc("FG Item Master", frm.doc.item).then(result => {
-				console.log(result);
 				let sizes = result.available_sizes.split(',');
 				let prices_str = result.prices;
 				let prices = []
 				if (prices_str) {
 					prices = prices_str.split(',');
 				}
-				console.log(sizes)
-				console.log(prices)
 				frm.doc.qty_rate_chart = []
 				for (var i = 0;i < sizes.length;i++) {
 					var price = 0
@@ -44,10 +51,84 @@ frappe.ui.form.on('Lotwise Item Profit', {
 				frm.refresh_field('qty_rate_chart')
 			});
 		}
+	},
+
+	gst: function(frm) {
+		calculate_all(frm);
+	},
+
+	add_rate: function(frm) {
+		let add_rate = get_numeric_value(frm, 'additional_rate');
+		$.each(frm.doc.qty_rate_chart || [], (i, v) => {
+			v.rate += add_rate;
+		})
+		frm.doc.additional_rate = 0;
+		calculate_all(frm);
 	}
 });
 
+function calculate_backwards_rate(frm, percent) {
+	// Calculate Groupwise avg_weight
+	let qty_groups = {};
+	$.each(frm.doc.qty_rate_chart || [], function(i, v) {
+		if (qty_groups.hasOwnProperty(v.group_index)) {
+			qty_groups[v.group_index].values.push(v);
+			qty_groups[v.group_index].total_ratio += v.ratio;
+			qty_groups[v.group_index].total_value += v.ratio * v.weight;
+		} else  {
+			qty_groups[v.group_index] = {
+				values: [v],
+				total_ratio: v.ratio,
+				total_value: v.ratio * v.weight,
+			};
+		}
+    })
+	// Calculate avg rate of cloth used
+	let cloth_value = {
+		total_ratio: 0,
+		total_value: 0,
+	};
+	$.each(frm.doc.cloth_value || [], function(i, v) {
+		cloth_value.total_ratio += v.ratio;
+		cloth_value.total_value += v.ratio * v.total_cost;
+    })
+	// Add other costs and percentage
+	let cmt = get_numeric_value(frm, 'total_cmt');
+	let pm = get_numeric_value(frm, 'packing_materials_total');
+	let trims = get_numeric_value(frm, 'trims_total');
+	let total_cloth_value = 0;
+	if (cloth_value.total_ratio) {
+		total_cloth_value = cloth_value.total_value / cloth_value.total_ratio;
+	}
+	let gst = get_numeric_value(frm, 'gst');
+
+	Object.entries(qty_groups).forEach(([k, v]) => {
+		let avg_weight = 0;
+		if (v.total_ratio) {
+			avg_weight = v.total_value / v.total_ratio;
+		}
+		let rate = (avg_weight * total_cloth_value) + cmt + pm + trims;
+		rate += ((percent/100) * rate);
+		rate += ((gst/100) * rate);
+
+		$.each(v.values || [], function(i, vi) {
+			vi.rate = rate;
+		})
+	});
+
+	calculate_all(frm);
+}
+
 frappe.ui.form.on('Lotwise Item Profit Qty Rate', {
+	group_index: function(frm, cdt, cdn) {
+		calculate_all(frm);
+	},
+	weight: function(frm, cdt, cdn) {
+		calculate_all(frm);
+	},
+	ratio: function(frm, cdt, cdn) {
+		calculate_all(frm);
+	},
 	rate: function(frm, cdt, cdn) {
 		calculate_all(frm);
 	},
@@ -57,6 +138,9 @@ frappe.ui.form.on('Lotwise Item Profit Qty Rate', {
 });
 
 frappe.ui.form.on('Lotwise Item Profit Cloth Value', {
+	ratio: function(frm, cdt, cdn) {
+		calculate_all(frm);
+	},
 	qty: function(frm, cdt, cdn) {
 		calculate_all(frm);
 	},

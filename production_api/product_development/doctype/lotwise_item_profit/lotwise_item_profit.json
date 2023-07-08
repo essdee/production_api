@@ -13,6 +13,8 @@
   "lot",
   "section_break_c0aaz",
   "qty_rate_chart",
+  "additional_rate",
+  "add_rate",
   "section_break_ztyv1",
   "total_qty",
   "column_break_2uo7e",
@@ -311,11 +313,21 @@
   {
    "fieldname": "column_break_n1xkn",
    "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "additional_rate",
+   "fieldtype": "Currency",
+   "label": "Additional Rate"
+  },
+  {
+   "fieldname": "add_rate",
+   "fieldtype": "Button",
+   "label": "Add Rate"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2023-07-06 11:32:02.812588",
+ "modified": "2023-07-08 20:42:29.600937",
  "modified_by": "Administrator",
  "module": "Product Development",
  "name": "Lotwise Item Profit",
