@@ -147,6 +147,6 @@ jinja = {
         "production_api.product_development.doctype.product.product.get_latest_product_images",
         "production_api.production_api.doctype.supplier.supplier.get_supplier_address_display",
         # Stock
-		"production_api.stock.doctype.stock_entry.stock_entry.fetch_stock_entry_items",
+		"production_api.mrp_stock.doctype.stock_entry.stock_entry.fetch_stock_entry_items",
     ]
 }

@@ -117,7 +117,7 @@ class GoodsReceivedNote(Document):
 		self.set('in_words', money_in_words(grand_total))
 
 	def update_stock_ledger(self):
-		from production_api.stock.stock_ledger import make_sl_entries
+		from production_api.mrp_stock.stock_ledger import make_sl_entries
 		if self.docstatus == 0:
 			return
 		sl_entries = []
