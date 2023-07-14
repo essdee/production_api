@@ -33,11 +33,6 @@ frappe.query_reports["Stock Balance"] = {
 			"fieldtype": "Link",
 			"width": "80",
 			"options": "Item Variant",
-			// "get_query": function() {
-			// 	return {
-			// 		query: "erpnext.controllers.queries.item_query",
-			// 	};
-			// }
 		},
 		{
 			"fieldname": "warehouse",
@@ -45,31 +40,7 @@ frappe.query_reports["Stock Balance"] = {
 			"fieldtype": "Link",
 			"width": "80",
 			"options": "Supplier",
-			// get_query: () => {
-			// 	let warehouse_type = frappe.query_report.get_filter_value("warehouse_type");
-			// 	let company = frappe.query_report.get_filter_value("company");
-
-			// 	return {
-			// 		filters: {
-			// 			...warehouse_type && {warehouse_type},
-			// 			...company && {company}
-			// 		}
-			// 	}
-			// }
 		},
-		// {
-		// 	"fieldname": "warehouse_type",
-		// 	"label": __("Warehouse Type"),
-		// 	"fieldtype": "Link",
-		// 	"width": "80",
-		// 	"options": "Warehouse Type"
-		// },
-		// {
-		// 	"fieldname":"include_uom",
-		// 	"label": __("Include UOM"),
-		// 	"fieldtype": "Link",
-		// 	"options": "UOM"
-		// },
 		{
 			"fieldname": "show_variant_attributes",
 			"label": __("Show Variant Attributes"),

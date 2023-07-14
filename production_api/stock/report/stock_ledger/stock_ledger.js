@@ -43,11 +43,6 @@ frappe.query_reports["Stock Ledger"] = {
 			"label": __("Item"),
 			"fieldtype": "Link",
 			"options": "Item Variant",
-			// "get_query": function() {
-			// 	return {
-			// 		query: "erpnext.controllers.queries.item_query"
-			// 	}
-			// }
 		},
 		// {
 		// 	"fieldname":"item_group",

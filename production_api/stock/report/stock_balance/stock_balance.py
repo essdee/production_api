@@ -13,12 +13,6 @@ from frappe.utils.nestedset import get_descendants_of
 
 from production_api.stock.report.stock_ageing.stock_ageing import FIFOSlots
 
-# import erpnext
-# from erpnext.stock.doctype.inventory_dimension.inventory_dimension import get_inventory_dimensions
-# from erpnext.stock.doctype.warehouse.warehouse import apply_warehouse_filter
-# from erpnext.stock.report.stock_ageing.stock_ageing import FIFOSlots, get_average_age
-# from erpnext.stock.utils import add_additional_uom_columns, is_reposting_item_valuation_in_progress
-
 
 class StockBalanceFilter(TypedDict):
 	from_date: str

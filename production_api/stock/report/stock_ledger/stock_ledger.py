@@ -306,7 +306,7 @@ def get_opening_balance(filters, columns, sl_entries):
 	if not (filters.item_code and filters.warehouse and filters.from_date):
 		return
 
-	from erpnext.stock.stock_ledger import get_previous_sle
+	from production_api.stock.stock_ledger import get_previous_sle
 
 	last_entry = get_previous_sle(
 		{
