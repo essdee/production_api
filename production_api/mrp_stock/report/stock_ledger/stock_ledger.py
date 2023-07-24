@@ -231,7 +231,7 @@ def get_stock_ledger_entries(filters, items):
 	if items:
 		query = query.where(sle.item.isin(items))
 
-	for field in ["voucher_no", "lot",]:
+	for field in ["voucher_no", "lot", "warehouse"]:
 		if filters.get(field):
 			query = query.where(sle[field] == filters.get(field))
 
@@ -246,7 +246,9 @@ def get_items(filters):
 	query = frappe.qb.from_(item_variant).from_(item).select(item_variant.name)
 	conditions = [item.name == item_variant.item]
 
-	if item_code := filters.get("item"):
+	if parent_item_code := filters.get("parent_item"):
+		conditions.append(item.name == parent_item_code)
+	elif item_code := filters.get("item"):
 		conditions.append(item_variant.name == item_code)
 	else:
 		if brand := filters.get("brand"):

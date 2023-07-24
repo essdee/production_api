@@ -27,9 +27,15 @@ frappe.query_reports["Stock Ageing"] = {
 		},
 		{
 			"fieldname":"item",
-			"label": __("Item"),
+			"label": __("Item Variant"),
 			"fieldtype": "Link",
 			"options": "Item Variant"
+		},
+		{
+			"fieldname":"parent_item",
+			"label": __("Item"),
+			"fieldtype": "Link",
+			"options": "Item"
 		},
 		{
 			"fieldname":"brand",

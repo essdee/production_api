@@ -419,7 +419,7 @@ class FIFOSlots:
 		)
 		if self.filters.get("warehouse"):
 			# sle_query = self.__get_warehouse_conditions(sle, sle_query)
-			sle_query.where(sle.warehouse == self.filters.get("warehouse"))
+			sle_query = sle_query.where(sle.warehouse == self.filters.get("warehouse"))
 
 		sle_query = sle_query.orderby(sle.posting_date, sle.posting_time, sle.creation, sle.qty)
 
@@ -437,6 +437,9 @@ class FIFOSlots:
 			item_table.item_group
 		)
 		item = item.where(item_table.name == item_variant_table.item)
+		
+		if self.filters.get("parent_item"):
+			item = item.where(item_table.name == self.filters.get("parent_item"))
 
 		if self.filters.get("item"):
 			item = item.where(item_variant_table.name == self.filters.get("item"))

@@ -289,7 +289,7 @@ def get_stock_ledger_entries(filters: StockBalanceFilter, items: List[str]) -> L
 	)
 
 	if filters.get("warehouse"):
-		query.where(sle.warehouse == filters.get("warehouse"))
+		query = query.where(sle.warehouse == filters.get("warehouse"))
 
 	if items:
 		query = query.where(sle.item.isin(items))
