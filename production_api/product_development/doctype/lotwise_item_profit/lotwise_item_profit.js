@@ -64,42 +64,130 @@ frappe.ui.form.on('Lotwise Item Profit', {
 		})
 		frm.doc.additional_rate = 0;
 		calculate_all(frm);
-	}
+	},
+
+	get_size_cloth_combination: function(frm) {
+		let sizes = []
+		$.each(frm.doc.qty_rate_chart || [], function(i, v) {
+			if (!sizes.includes(v.size)) {
+				sizes.push(v.size);
+			}
+		})
+		let cloth_group = []
+		$.each(frm.doc.cloth_value || [], function(i, v) {
+			if (!cloth_group.includes(v.yarn)) {
+				cloth_group.push(v.yarn);
+			}
+		})
+		if (sizes.length > 0 && cloth_group.length > 0) {
+			frm.doc.piece_cloth_weight = []
+			for (let i = 0; i<cloth_group.length; i++) {
+				for (let j = 0; j<sizes.length; j++) {
+					frm.add_child('piece_cloth_weight', {
+						'size': sizes[j],
+						'cloth_group': cloth_group[i],
+						'weight': 0.00,
+					});
+				}
+			}
+			frm.refresh_field('piece_cloth_weight');
+		}
+	},
+
+	calculate_cloth_qty: function(frm) {
+		let cloth_group_weight = {}
+		$.each(frm.doc.piece_cloth_weight || [], function(i, v) {
+			if (cloth_group_weight.hasOwnProperty(v.cloth_group)){
+				cloth_group_weight[v.cloth_group] += (((v.weight || 0) / 1000) * get_size_qty(frm, v.size))
+			} else {
+				cloth_group_weight[v.cloth_group] = (((v.weight || 0) / 1000) * get_size_qty(frm, v.size))
+			}
+		})
+		$.each(frm.doc.cloth_value || [], function(i, v) {
+			if (cloth_group_weight.hasOwnProperty(v.yarn)) {
+				v.qty = cloth_group_weight[v.yarn]
+			}
+		})
+		frm.refresh_field('cloth_value')
+		calculate_all(frm);
+	},
+
+	calculate_all: function(frm) {
+		calculate_all(frm);
+	},
+
 });
+
+function get_size_qty(frm, size) {
+	let qty = 0;
+	$.each(frm.doc.qty_rate_chart || [], function(i, v) {
+		if (frm.doc.qty_rate_chart[i].size == size) {
+			qty = frm.doc.qty_rate_chart[i].qty;
+			return false;
+		}
+	})
+	return qty;
+}
 
 function calculate_backwards_rate(frm, percent) {
 	// Calculate Groupwise avg_weight
 	let qty_groups = {};
 	$.each(frm.doc.qty_rate_chart || [], function(i, v) {
 		if (qty_groups.hasOwnProperty(v.group_index)) {
+			console.log('Qty', v.qty)
+			let cloth_group = qty_groups[v.group_index].cloth_group || {}
+			$.each(frm.doc.piece_cloth_weight || [], function(i, weight) {
+				if (v.size == weight.size) {
+					if (cloth_group.hasOwnProperty(weight.cloth_group)) {
+						console.log('Value', (weight.weight/1000 * v.qty))
+						cloth_group[weight.cloth_group] = {
+							'total_qty': cloth_group[weight.cloth_group].total_qty + v.qty,
+							'total_weight': cloth_group[weight.cloth_group].total_weight + (weight.weight/1000 * v.qty),
+						}
+					} else {
+						console.log("Shouldnt happen")
+						cloth_group[weight.cloth_group] = {
+							'total_qty': v.qty,
+							'total_weight': weight.weight/1000 * v.qty,
+						}
+					}
+				}
+			})
 			qty_groups[v.group_index].values.push(v);
-			qty_groups[v.group_index].total_ratio += v.ratio;
-			qty_groups[v.group_index].total_value += v.ratio * v.weight;
+			qty_groups[v.group_index].cloth_group = cloth_group;
 		} else  {
+			let cloth_group = {}
+			$.each(frm.doc.piece_cloth_weight || [], function(i, weight) {
+				if (v.size == weight.size) {
+					if (cloth_group.hasOwnProperty(weight.cloth_group)) {
+						cloth_group[weight.cloth_group] = {
+							'total_qty': cloth_group[weight.cloth_group].total_qty + v.qty,
+							'total_weight': cloth_group[weight.cloth_group].total_weight + (weight.weight/1000 * v.qty),
+						}
+					} else {
+						cloth_group[weight.cloth_group] = {
+							'total_qty': v.qty,
+							'total_weight': weight.weight/1000 * v.qty,
+						}
+					}
+				}
+			})
 			qty_groups[v.group_index] = {
 				values: [v],
-				total_ratio: v.ratio,
-				total_value: v.ratio * v.weight,
+				cloth_group: cloth_group,
 			};
 		}
+		console.log(v.size, JSON.parse(JSON.stringify(qty_groups)))
     })
 	// Calculate avg rate of cloth used
-	let cloth_value = {
-		total_ratio: 0,
-		total_value: 0,
-	};
+	let cloth_value = {};
 	$.each(frm.doc.cloth_value || [], function(i, v) {
-		cloth_value.total_ratio += v.ratio;
-		cloth_value.total_value += v.ratio * v.total_cost;
+		cloth_value[v.yarn] = v.total_cost;
     })
 	// Add other costs and percentage
 	let cmt = get_numeric_value(frm, 'total_cmt');
 	let pm = get_numeric_value(frm, 'packing_materials_total');
 	let trims = get_numeric_value(frm, 'trims_total');
-	let total_cloth_value = 0;
-	if (cloth_value.total_ratio) {
-		total_cloth_value = cloth_value.total_value / cloth_value.total_ratio;
-	}
 	let gst = get_numeric_value(frm, 'gst');
 
 	let extra_per_cost = 0;
@@ -128,13 +216,25 @@ function calculate_backwards_rate(frm, percent) {
 	console.log('extra_per_cost', extra_per_cost)
 	console.log('extra_mu', extra_mu)
 	console.log('total_md', total_md)
+
 	Object.entries(qty_groups).forEach(([k, v]) => {
-		let avg_weight = 0;
-		if (v.total_ratio) {
-			avg_weight = v.total_value / v.total_ratio;
-		}
-		console.log('avg_weight', avg_weight)
-		let rate = (avg_weight * total_cloth_value) + cmt + pm + trims + extra_per_cost;
+		console.log('Group index: ', k)
+		let total_cloth_value = 0;
+		$.each(v.cloth_group, function(k1, v1) {
+			let c_value = 0;
+			if (cloth_value.hasOwnProperty(k1)) {
+				let avg_weight = 0;
+				if (v1.total_qty) {
+					avg_weight = v1.total_weight / v1.total_qty
+				}
+				console.log(k1, "Cloth Weight", avg_weight)
+				c_value = avg_weight * cloth_value[k1];
+			}
+			console.log(k1, "Cloth Value", c_value)
+			total_cloth_value += c_value;
+		})
+		console.log('Cloth Value Per Pcs', total_cloth_value)
+		let rate = total_cloth_value + cmt + pm + trims + extra_per_cost;
 		console.log('rate', rate)
 		rate += ((extra_mu/100) * rate);
 		console.log('rate', rate)

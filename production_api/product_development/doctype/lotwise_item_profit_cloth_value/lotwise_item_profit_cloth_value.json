@@ -23,7 +23,7 @@
    "fieldname": "yarn",
    "fieldtype": "Data",
    "in_list_view": 1,
-   "label": "Yarn",
+   "label": "Cloth Group",
    "reqd": 1
   },
   {
@@ -103,7 +103,7 @@
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2023-07-08 19:40:43.164402",
+ "modified": "2023-07-29 17:30:48.677309",
  "modified_by": "Administrator",
  "module": "Product Development",
  "name": "Lotwise Item Profit Cloth Value",

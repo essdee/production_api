@@ -21,6 +21,10 @@
   "column_break_2uo7e",
   "total_selling_value",
   "section_break_2zbsk",
+  "piece_cloth_weight",
+  "get_size_cloth_combination",
+  "calculate_cloth_qty",
+  "cloth_weight_difference",
   "cloth_value",
   "section_break_8ndqg",
   "total_cloth_value",
@@ -53,6 +57,7 @@
   "gst_value",
   "section_break_yew61",
   "cost_price",
+  "calculate_all",
   "column_break_f3qzs",
   "profit",
   "profit_percent",
@@ -337,11 +342,38 @@
    "fieldtype": "Percent",
    "label": "Profit % (At Markdown)",
    "read_only": 1
+  },
+  {
+   "fieldname": "calculate_cloth_qty",
+   "fieldtype": "Button",
+   "label": "Calculate Cloth Qty"
+  },
+  {
+   "fieldname": "piece_cloth_weight",
+   "fieldtype": "Table",
+   "label": "Piece Cloth Weight",
+   "options": "Lotwise Item Profit Piece Cloth Weight"
+  },
+  {
+   "fieldname": "get_size_cloth_combination",
+   "fieldtype": "Button",
+   "label": "Get Size Cloth Combination"
+  },
+  {
+   "fieldname": "cloth_weight_difference",
+   "fieldtype": "Data",
+   "label": "Cloth Weight Difference",
+   "read_only": 1
+  },
+  {
+   "fieldname": "calculate_all",
+   "fieldtype": "Button",
+   "label": "Calculate All"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2023-07-10 19:26:49.062665",
+ "modified": "2023-07-29 20:36:20.102871",
  "modified_by": "Administrator",
  "module": "Product Development",
  "name": "Lotwise Item Profit",
