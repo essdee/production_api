@@ -350,7 +350,6 @@ def get_item_warehouse_map(filters: StockBalanceFilter, sle: List[SLEntry]):
 					"val_rate": 0.0,
 				}
 			)
-
 		qty_dict = iwb_map[group_by_key]
 
 		if d.voucher_type == "Stock Reconciliation":
@@ -377,7 +376,7 @@ def get_item_warehouse_map(filters: StockBalanceFilter, sle: List[SLEntry]):
 		qty_dict.bal_val += value_diff
 
 	iwb_map = filter_items_with_no_transactions(iwb_map, float_precision)
-
+	print(iwb_map)
 	return iwb_map
 
 
@@ -393,8 +392,8 @@ def filter_items_with_no_transactions(iwb_map, float_precision: float):
 
 		no_transactions = True
 		for key, val in qty_dict.items():
-
-			val = flt(val, float_precision)
+			if key != "warehouse_name":
+				val = flt(val, float_precision)
 			qty_dict[key] = val
 			if key != "val_rate" and val:
 				no_transactions = False
