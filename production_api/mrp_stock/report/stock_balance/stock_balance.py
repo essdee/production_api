@@ -147,7 +147,7 @@ def get_columns(filters: StockBalanceFilter):
 		},
 		{
 			"label": _("Warehouse"),
-			"fieldname": "warehouse",
+			"fieldname": "warehouse_name",
 			"fieldtype": "Link",
 			"options": "Supplier",
 			"width": 100,
@@ -338,6 +338,7 @@ def get_item_warehouse_map(filters: StockBalanceFilter, sle: List[SLEntry]):
 		if group_by_key not in iwb_map:
 			iwb_map[group_by_key] = frappe._dict(
 				{
+					"warehouse_name": d.warehouse_name,
 					"opening_qty": 0.0,
 					"opening_val": 0.0,
 					"in_qty": 0.0,
