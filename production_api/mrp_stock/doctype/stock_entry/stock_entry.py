@@ -42,14 +42,14 @@ class StockEntry(Document):
 
 		for row in self.items:
 			# find duplicates
-			key = [row.item, row.lot]
+			# key = [row.item, row.lot]
 
-			if key in item_lot_combinations:
-				self.validation_messages.append(
-					_get_msg(row.table_index, row.row_index, _("Same item, lot combination already entered."))
-				)
-			else:
-				item_lot_combinations.append(key)
+			# if key in item_lot_combinations:
+			# 	self.validation_messages.append(
+			# 		_get_msg(row.table_index, row.row_index, _("Same item, lot combination already entered."))
+			# 	)
+			# else:
+			# 	item_lot_combinations.append(key)
 
 			self.validate_item(row.item, row)
 
@@ -76,8 +76,8 @@ class StockEntry(Document):
 					if buying_rate:
 						row.rate = buying_rate
 			
-			if not row.rate:
-				self.validation_messages.append(_get_msg(row.table_index, row.row_index, _("Could not find valuation rate.")))
+			# if not row.rate:
+			# 	self.validation_messages.append(_get_msg(row.table_index, row.row_index, _("Could not find valuation rate.")))
 
 		# throw all validation messages
 		if self.validation_messages:
