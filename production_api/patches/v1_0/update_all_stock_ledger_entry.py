@@ -4,7 +4,7 @@ from production_api.mrp_stock.stock_ledger import update_entries_after
 def execute():
     sl_entries = frappe.get_all("Stock Ledger Entry", filters={"is_cancelled": 0})
     for s in sl_entries:
-        sle = frappe.get_doc("Stock Ledger Entry")
+        sle = frappe.get_doc("Stock Ledger Entry", s["name"])
         update_entries_after(
             {
                 "item": sle.get("item"),
