@@ -24,6 +24,12 @@ def make_sl_entries(sl_entries):
 			set_as_cancelled(sl_entries[0].get("voucher_type"), sl_entries[0].get("voucher_no"))
 		
 		for sle in sl_entries:
+			item = frappe.get_cached_value("Item Variant", sle.get("item"), "item")
+			is_stock_item = frappe.get_cached_value("Item", item, "is_stock_item")
+
+			if not is_stock_item:
+				continue
+
 			if sle.get("voucher_type") != "Stock Reconciliation" and not sle["qty"]:
 				continue
 			if cancel:
@@ -50,8 +56,8 @@ def make_sl_entries(sl_entries):
 				# preserve previous_qty_after_transaction for qty reposting
 				args.previous_qty_after_transaction = sle.get("previous_qty_after_transaction")
 
-			item = frappe.get_cached_value("Item Variant", args.get("item"), "item")
-			is_stock_item = frappe.get_cached_value("Item", item, "is_stock_item")
+			# item = frappe.get_cached_value("Item Variant", args.get("item"), "item")
+			# is_stock_item = frappe.get_cached_value("Item", item, "is_stock_item")
 			if is_stock_item:
 				repost_current_voucher(args)
 			else:
