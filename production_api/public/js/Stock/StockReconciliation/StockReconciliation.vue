@@ -251,6 +251,13 @@ export default ({
                     options: 'Item',
                     label: 'Item',
                     reqd: true,
+                    get_query: function() {
+                        return {
+                            filters: {
+                                "is_stock_item": 1,
+                            }
+                        };
+                    },
                     onchange: () => {
                         me.onchange_lot_item();
                     }

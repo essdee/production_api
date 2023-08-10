@@ -1,7 +1,8 @@
 {
  "charts": [],
- "content": "[{\"id\":\"ZK6zXqEA6l\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">Stock</span>\",\"col\":12}},{\"id\":\"EfeYIF7Bg7\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Stock Entry\",\"col\":3}},{\"id\":\"TFB8gi6pdk\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Stock Reconciliation\",\"col\":3}},{\"id\":\"z34_BzSBnE\",\"type\":\"spacer\",\"data\":{\"col\":12}},{\"id\":\"WOIVwPoGRS\",\"type\":\"card\",\"data\":{\"card_name\":\"Report\",\"col\":4}}]",
+ "content": "[{\"id\":\"ZK6zXqEA6l\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">Stock</span>\",\"col\":12}},{\"id\":\"EfeYIF7Bg7\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Stock Entry\",\"col\":3}},{\"id\":\"TFB8gi6pdk\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Stock Reconciliation\",\"col\":3}},{\"id\":\"lHUf_f10-Y\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Lot Transfer\",\"col\":3}},{\"id\":\"z34_BzSBnE\",\"type\":\"spacer\",\"data\":{\"col\":12}},{\"id\":\"WOIVwPoGRS\",\"type\":\"card\",\"data\":{\"card_name\":\"Report\",\"col\":4}}]",
  "creation": "2023-05-10 11:20:41.649840",
+ "custom_blocks": [],
  "docstatus": 0,
  "doctype": "Workspace",
  "for_user": "",
@@ -50,7 +51,7 @@
    "type": "Link"
   }
  ],
- "modified": "2023-07-14 19:56:21.744464",
+ "modified": "2023-07-24 19:34:04.702824",
  "modified_by": "Administrator",
  "module": "MRP Stock",
  "name": "Stock",
@@ -74,6 +75,13 @@
    "doc_view": "List",
    "label": "Stock Entry",
    "link_to": "Stock Entry",
+   "type": "DocType"
+  },
+  {
+   "color": "Grey",
+   "doc_view": "List",
+   "label": "Lot Transfer",
+   "link_to": "Lot Transfer",
    "type": "DocType"
   }
  ],

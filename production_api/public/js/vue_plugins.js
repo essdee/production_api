@@ -7,7 +7,7 @@ import ItemDetail from "./components/ItemDetails.vue";
 import PONewItem from "./PurchaseOrder/components/NewItem.vue"
 import POItem from "./PurchaseOrder/components/Item.vue"
 import GRNItemWrapper from "./GRN";
-import { StockEntryWrapper, StockReconciliationWrapper } from "./Stock";
+import { StockEntryWrapper, StockReconciliationWrapper, LotTransferWrapper } from "./Stock";
 import ProductFileVersionsWrapper from "./ProductDevelopment"
 import evntBus from "./bus.js";
 
@@ -130,4 +130,5 @@ frappe.production.ui.PurchaseOrderItem = class {
 frappe.production.ui.GRNItem = GRNItemWrapper
 frappe.production.ui.StockEntryItem = StockEntryWrapper
 frappe.production.ui.StockReconciliationItem = StockReconciliationWrapper
+frappe.production.ui.LotTransferItem = LotTransferWrapper
 frappe.production.product_development.ui.ProductFileVersions = ProductFileVersionsWrapper

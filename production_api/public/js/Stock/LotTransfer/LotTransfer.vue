@@ -147,12 +147,10 @@
                     </div> -->
                 </div>
             </div>
-            <!-- <div class="row"> -->
-                <!-- <div class="delivery-location-control col-md-3"></div>
-                <div class="delivery-date-control col-md-3"></div>
-                <div class="discount-control col-md-3"></div> -->
-                <!-- <div class="comments-control col-md-6"></div> -->
-            <!-- </div> -->
+            <div class="row">
+                <div class="warehouse-control col-md-3"></div>
+                <div class="to-lot-control col-md-3"></div>
+            </div>
             <div>
                 <button v-if="!is_edit" type="submit" class="btn btn-success pull-right">Add Item</button>
                 <button v-if="is_edit" type="submit" class="btn btn-warning pull-right">Update Item</button>
@@ -165,7 +163,7 @@
 <script>
 import evntBus from '../../bus.js';
 export default ({
-    name: 'StockEntry',
+    name: 'LotTransfer',
     data() {
         return {
             docstatus: cur_frm.doc.docstatus,
@@ -178,7 +176,8 @@ export default ({
                 values: {},
                 default_uom: "",
 		        secondary_uom: "",
-                // comments: "",
+                warehouse: "",
+                to_lot: "",
             },
             cur_item: {
                 item: "",
@@ -209,17 +208,17 @@ export default ({
         //         this.t_warehouse = cur_frm.to_warehouse;
         //     }
         // })
-        if (cur_frm.doc.purpose == "Receive at Warehouse") {
-            this.can_create = false;
-        }
-        evntBus.$on("purpose_updated", purpose => {
-            if (purpose == "Receive at Warehouse") {
-                this.can_create = false;
-            } else {
-                this.can_create = true;
-                // this.create_lot_item_inputs();
-            }
-        })
+        // if (cur_frm.doc.purpose == "Receive at Warehouse") {
+        //     this.can_create = false;
+        // }
+        // evntBus.$on("purpose_updated", purpose => {
+        //     if (purpose == "Receive at Warehouse") {
+        //         this.can_create = false;
+        //     } else {
+        //         this.can_create = true;
+        //         // this.create_lot_item_inputs();
+        //     }
+        // })
     },
     methods: {
         is_editable: function(field) {
@@ -227,9 +226,6 @@ export default ({
             console.log(field)
             console.log(cur_frm.doc.purpose)
             if (this.docstatus > 0) {
-                return false;
-            }
-            if (field != 'qty' && cur_frm.doc.purpose == "Receive at Warehouse") {
                 return false;
             }
             return true;
@@ -360,7 +356,7 @@ export default ({
                 this.set_lot_item_inputs(item_details);
             }
             this.create_item_attribute_inputs();
-            // this.create_comments_inputs();
+            this.create_other_inputs();
         },
 
         create_item_attribute_inputs: function(){
@@ -441,21 +437,34 @@ export default ({
             }
         },
 
-        // create_comments_inputs: function() {
-        //     var me = this;
-        //     if(!this.cur_item.item || this.cur_item.item == '') return;
-        //     this.comments_input = null;
-        //     $(this.$el).find('.comments-control').html("");
-        //     this.comments_input = frappe.ui.form.make_control({
-        //         parent: $(this.$el).find('.comments-control'),
-        //         df: {
-        //             fieldtype: 'Data',
-        //             label: 'Comments',
-        //         },
-        //         render_input: true,
-        //     });
-        //     this.comments_input.set_value(this.item.comments)
-        // },
+        create_other_inputs: function() {
+            var me = this;
+            if(!this.cur_item.item || this.cur_item.item == '') return;
+            this.warehouse_input = null;
+            $(this.$el).find('.warehouse-control').html("");
+            this.warehouse_input = frappe.ui.form.make_control({
+                parent: $(this.$el).find('.warehouse-control'),
+                df: {
+                    fieldtype: 'Link',
+                    label: 'Warehouse',
+                    options: 'Supplier',
+                },
+                render_input: true,
+            });
+            this.warehouse_input.set_value(this.item.warehouse)
+            this.to_lot_input = null;
+            $(this.$el).find('.to-lot-control').html("");
+            this.to_lot_input = frappe.ui.form.make_control({
+                parent: $(this.$el).find('.to-lot-control'),
+                df: {
+                    fieldtype: 'Link',
+                    label: 'To Lot',
+                    options: 'Lot',
+                },
+                render_input: true,
+            });
+            this.to_lot_input.set_value(this.item.to_lot)
+        },
 
         get_item_attributes: function() {
             if(!this.attribute_inputs) return false;
@@ -490,11 +499,13 @@ export default ({
             return true;
         },
 
-        // get_comments: function() {
-        //     if(!this.comments_input) return false;
-        //     this.item.comments = this.comments_input.get_value();
-        //     return true;
-        // },
+        get_others: function() {
+            if(!this.warehouse_input) return false;
+            this.item.warehouse = this.warehouse_input.get_value();
+            if(!this.to_lot_input) return false;
+            this.item.to_lot = this.to_lot_input.get_value();
+            return true;
+        },
 
         get_item_group_index: function() {
             let index = -1;
@@ -586,7 +597,7 @@ export default ({
         add_item: function() {
             if(!this.get_item_attributes()) return;
             if (!this.validate_item_values()) return;
-            // if(!this.get_comments()) return;
+            if(!this.get_others()) return;
             if(this.item.name != this.item_input.get_value()){
                 frappe.msgprint(__('Item does not match'));
                 this.clear_inputs(true);

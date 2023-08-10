@@ -77,6 +77,7 @@ class ItemPrice(Document):
 def get_item_variant_price(variant: str):
 	variant = frappe.get_doc("Item Variant", variant)
 	price_list = get_all_active_price(item=variant.item)
+	print("Price List: ", price_list)
 	rate = None
 	for price in price_list:
 		item_price = frappe.get_doc("Item Price", price.name)
@@ -85,6 +86,12 @@ def get_item_variant_price(variant: str):
 			if rate1:
 				rate = rate1
 				break
+		else:
+			rate1 = item_price.validate_attribute_values(qty=0, get_lowest_moq_price=True)
+			if rate1:
+				rate = rate1
+				break
+			pass
 
 	return rate
 
