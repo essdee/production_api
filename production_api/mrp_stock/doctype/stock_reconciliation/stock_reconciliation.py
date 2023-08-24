@@ -163,7 +163,7 @@ class StockReconciliation(Document):
 			if (
 				previous_sle
 				and row.qty == previous_sle.get("qty_after_transaction")
-				and (row.valuation_rate == previous_sle.get("valuation_rate") or row.qty == 0)
+				and (row.rate == previous_sle.get("valuation_rate") or row.qty == 0)
 			) or (not previous_sle and not row.qty):
 				continue
 
