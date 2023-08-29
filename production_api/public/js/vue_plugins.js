@@ -11,6 +11,8 @@ import { StockEntryWrapper, StockReconciliationWrapper, LotTransferWrapper } fro
 import ProductFileVersionsWrapper from "./ProductDevelopment"
 import evntBus from "./bus.js";
 
+import { EditBOMAttributeMappingWrapper, BOMAttributeMappingWrapper } from "./ItemBOM";
+
 frappe.provide("frappe.production.ui");
 frappe.provide("frappe.production.product_development.ui");
 
@@ -52,21 +54,7 @@ frappe.production.ui.ItemAttributeList = class {
     }
 };
 
-frappe.production.ui.BomItemAttributeMapping = class {
-    constructor({ wrapper } = {}) {
-        this.$wrapper = $(wrapper);
-        this.make_body();
-    }
-
-    make_body() {
-        this.$page_container = $('<div class="bom-attribute-mapping-template frappe-control">').appendTo(this.$wrapper);
-        this.vue = new Vue({
-            el: '.bom-attribute-mapping-template',
-            render: h => h(BomAttributeMapping, {
-            }),
-        });
-    }
-};
+frappe.production.ui.BomItemAttributeMapping = BOMAttributeMappingWrapper;
 
 frappe.production.ui.ItemPriceList = ItemPriceList;
 
@@ -132,3 +120,6 @@ frappe.production.ui.StockEntryItem = StockEntryWrapper
 frappe.production.ui.StockReconciliationItem = StockReconciliationWrapper
 frappe.production.ui.LotTransferItem = LotTransferWrapper
 frappe.production.product_development.ui.ProductFileVersions = ProductFileVersionsWrapper
+
+frappe.production.ui.EditBOMAttributeMapping = EditBOMAttributeMappingWrapper
+
