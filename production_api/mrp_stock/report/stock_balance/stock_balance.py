@@ -2,6 +2,8 @@
 # For license information, please see license.txt
 
 
+import json
+from six import string_types
 from operator import itemgetter
 from typing import Any, Dict, List, Optional, Tuple, TypedDict, Union
 
@@ -413,11 +415,11 @@ def get_items(filters: StockBalanceFilter) -> List[str]:
 		return [item]
 	else:
 		item_filters = {}
-		if item_group := filters.get("item_group"):
-			children = get_descendants_of("Item Group", item_group, ignore_permissions=True)
-			item_filters["item_group"] = ("in", children + [item_group])
-		if brand := filters.get("brand"):
-			item_filters["brand"] = brand
+		# if item_group := filters.get("item_group"):
+		# 	children = get_descendants_of("Item Group", item_group, ignore_permissions=True)
+		# 	item_filters["item_group"] = ("in", children + [item_group])
+		# if brand := filters.get("brand"):
+		# 	item_filters["brand"] = brand
 
 		return frappe.get_all("Item Variant", filters=item_filters, pluck="name", order_by=None)
 
@@ -448,6 +450,9 @@ def get_item_details(items: List[str], sle: List[SLEntry], filters: StockBalance
 			& (item_table.name == item_variant_table.item)
 	 	)
 	)
+
+	if filters.get('parent_item'):
+		query = query.where(item_table.name == filters.get('parent_item'))
 
 	result = query.run(as_dict=1)
 
@@ -482,3 +487,10 @@ def get_variant_values_for(items):
 		attribute_map[attr["parent"]].update({attr["attribute"]: attr["attribute_value"]})
 
 	return attribute_map
+
+@frappe.whitelist()
+def get_stock_balance(filters: Optional[StockBalanceFilter] = None):
+	print(filters)
+	if isinstance(filters, string_types):
+		filters = json.loads(filters)
+	return execute(filters)
