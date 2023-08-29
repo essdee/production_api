@@ -156,6 +156,14 @@ def get_complete_item_details(item_name):
 	
 	return item
 
+def get_or_create_variant(template, args):
+	variant_name = get_variant(template, args)
+	if not variant_name:
+		variant = create_variant(template, args)
+		variant.insert()
+		variant_name = variant.name
+	return variant_name
+
 def create_variant(template, args):
 	if isinstance(args, string_types):
 		args = json.loads(args)
@@ -166,6 +174,8 @@ def create_variant(template, args):
 	variant_attributes = []
 
 	for d in template.attributes:
+		if not args.get(d.attribute):
+			frappe.throw("Please mention {0} attribute in {1}".format(d.attribute, template.name))
 		variant_attributes.append({
 			"attribute": d.attribute,
 			"attribute_value": args.get(d.attribute)
@@ -341,6 +351,21 @@ def get_item_attributes(doctype, txt, searchfield, start, page_len, filters):
 	item = frappe.get_doc("Item", item_name)
 	attributes = [attribute.attribute for attribute in item.attributes]
 	return [[value] for value in attributes if value.lower().startswith(txt.lower())]
+
+@frappe.whitelist()
+def get_attribute_values(item, attributes = None):
+	item_doc = frappe.get_doc("Item", item)
+	attribute_values = {}
+
+	if not attributes:
+		attributes = [attr.attribute for attr in item_doc.attributes]
+
+	for attribute in item_doc.attributes:
+		if attribute.attribute in attributes and attribute.mapping != None:
+			doc = frappe.get_doc("Item Item Attribute Mapping", attribute.mapping)
+			attribute_values[attribute.attribute] = [d.attribute_value for d in doc.values]
+	
+	return attribute_values
 
 def validate_is_stock_item(item, is_stock_item=None):
 	if not is_stock_item:

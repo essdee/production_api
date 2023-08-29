@@ -3,7 +3,7 @@
 
 import frappe
 from frappe import throw, _
-from frappe.utils import money_in_words
+from frappe.utils import money_in_words, add_days, today
 import json, copy
 from six import string_types
 from itertools import groupby
@@ -466,7 +466,8 @@ def close_or_open_purchase_orders(names, close):
 	if not frappe.has_permission("Purchase Order", "write"):
 		frappe.throw(_("Not permitted"), frappe.PermissionError)
 
-	names = json.loads(names)
+	if isinstance(names, string_types):
+		names = json.loads(names)
 	if isinstance(close, string_types):
 		close = True if close == "true" else False
 	for name in names:
@@ -474,3 +475,13 @@ def close_or_open_purchase_orders(names, close):
 			close_purchase_order(name)
 		else:
 			reopen_purchase_order(name)
+
+def close_delivered_po():
+	delivered_po = frappe.get_list("Purchase Order", filters=[
+		["status", "=", "Delivered"],
+		["open_status", "=", "Open"],
+		["docstatus", "=", 1],
+		["modified", "<", add_days(today(), -8)],
+	], pluck="name")
+	for name in delivered_po:
+		close_purchase_order(name)

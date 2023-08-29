@@ -106,19 +106,6 @@ def get_columns():
             "width": 200
         },
         {
-            "fieldname": "secondary_qty",
-            "label": "Secondary Qty",
-            "fieldtype": "Float",
-            "width": 100
-        },
-        {
-            "fieldname": "secondary_uom",
-            "label": "Secondary UOM",
-            "fieldtype": "Link",
-            "options": "UOM",
-            "width": 100
-        },
-        {
             "fieldname": "rate",
             "label": "Rate",
             "fieldtype": "Float",
@@ -191,11 +178,8 @@ def get_data(filters):
             po_item.qty,
             po_item.pending_qty,
             po_item.cancelled_qty,
-            (po_item.qty - po_item.pending_qty -
-             po_item.cancelled_qty).as_('delivered_qty'),
+            (po_item.qty - po_item.pending_qty - po_item.cancelled_qty).as_('delivered_qty'),
             po_item.uom,
-            po_item.secondary_qty,
-            po_item.secondary_uom,
             po_item.rate,
             po_item.discount_percentage,
             po_item.delivery_location,
