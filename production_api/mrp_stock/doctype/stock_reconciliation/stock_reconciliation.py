@@ -313,7 +313,7 @@ def save_stock_reconciliation_items(item_details):
 			item_attributes = item['attributes']
 			if(item.get('primary_attribute')):
 				for attr, values in item['values'].items():
-					if values.get('qty'):
+					if values.get('qty') != None:
 						item_attributes[item.get('primary_attribute')] = attr
 						item1 = {}
 						variant_name = get_variant(item_name, item_attributes)
@@ -332,7 +332,7 @@ def save_stock_reconciliation_items(item_details):
 						# item1['comments'] = item.get('comments')
 						items.append(item1)
 			else:
-				if item['values'].get('default') and item['values']['default'].get('qty'):
+				if item['values'].get('default') and item['values']['default'].get('qty') != None:
 					item1 = {}
 					variant_name = get_variant(item_name, item_attributes)
 					if not variant_name:
