@@ -1,7 +1,7 @@
 <template>
     <div>
-        <button @click="printHelp">help</button>
-        {{ sample_doc }}
+        <!-- <button @click="printHelp">help</button>
+        {{ sample_doc }} -->
         <table class="table table-sm table-bordered">
             <tr v-for="(i, item_index) in items" :key="item_index">
                 <td v-if="i.primary_attribute">

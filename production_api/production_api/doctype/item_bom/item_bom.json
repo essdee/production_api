@@ -8,7 +8,7 @@
   "item",
   "qty_of_product",
   "qty_of_bom_item",
-  "attribute_mapping_based_on",
+  "based_on_attribute_mapping",
   "attribute_mapping"
  ],
  "fields": [
@@ -35,23 +35,25 @@
    "reqd": 1
   },
   {
-   "fieldname": "attribute_mapping_based_on",
-   "fieldtype": "Link",
-   "in_list_view": 1,
-   "label": "Attribute mapping based on ",
-   "options": "Item Attribute"
-  },
-  {
    "fieldname": "attribute_mapping",
    "fieldtype": "Link",
    "label": "Attribute Mapping",
    "options": "Item BOM Attribute Mapping"
+  },
+  {
+   "allow_in_quick_entry": 1,
+   "columns": 2,
+   "default": "0",
+   "fieldname": "based_on_attribute_mapping",
+   "fieldtype": "Check",
+   "in_list_view": 1,
+   "label": "Based on Attribute Mapping"
   }
  ],
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2021-08-23 17:33:44.471069",
+ "modified": "2023-08-29 12:11:29.562290",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Item BOM",
@@ -59,5 +61,6 @@
  "permissions": [],
  "sort_field": "modified",
  "sort_order": "DESC",
+ "states": [],
  "track_changes": 1
 }

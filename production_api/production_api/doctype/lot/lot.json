@@ -8,15 +8,13 @@
  "field_order": [
   "lot_name",
   "item",
-  "planned_qty",
+  "column_break_tvkgg",
   "status",
-  "item_attributes_section",
-  "primary_item_attribute",
-  "item_attributes",
-  "item_attribute_list_html",
+  "lot_template",
+  "section_break_ry89l",
+  "planned_qty",
   "bill_of_materials_section",
-  "bom",
-  "bom_attribute_mapping_html",
+  "calculate_bom",
   "bom_summary"
  ],
  "fields": [
@@ -32,8 +30,7 @@
    "fieldname": "item",
    "fieldtype": "Link",
    "label": "Item",
-   "options": "Item",
-   "set_only_once": 1
+   "options": "Item"
   },
   {
    "fieldname": "planned_qty",
@@ -48,31 +45,9 @@
    "options": "Open\nClosed"
   },
   {
-   "fieldname": "item_attributes_section",
-   "fieldtype": "Section Break",
-   "label": "Item Attributes"
-  },
-  {
-   "fieldname": "item_attributes",
-   "fieldtype": "Table",
-   "label": "Item Attributes",
-   "options": "Item Item Attribute"
-  },
-  {
-   "fieldname": "item_attribute_list_html",
-   "fieldtype": "HTML",
-   "label": "Item Attribute List Values"
-  },
-  {
    "fieldname": "bill_of_materials_section",
    "fieldtype": "Section Break",
    "label": "Bill of Materials"
-  },
-  {
-   "fieldname": "bom",
-   "fieldtype": "Table",
-   "label": "BOM",
-   "options": "Item BOM"
   },
   {
    "fieldname": "bom_summary",
@@ -81,20 +56,29 @@
    "options": "Lot BOM"
   },
   {
-   "fieldname": "primary_item_attribute",
+   "depends_on": "eval:doc.item",
+   "fieldname": "lot_template",
    "fieldtype": "Link",
-   "label": "Primary Item Attribute",
-   "options": "Item Attribute"
+   "label": "Lot Template",
+   "options": "Lot Template"
   },
   {
-   "fieldname": "bom_attribute_mapping_html",
-   "fieldtype": "HTML",
-   "label": "BOM Attribute Mapping"
+   "fieldname": "column_break_tvkgg",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "section_break_ry89l",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "calculate_bom",
+   "fieldtype": "Button",
+   "label": "Calculate BOM"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2023-04-06 16:46:20.682486",
+ "modified": "2023-08-28 13:16:45.702212",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Lot",

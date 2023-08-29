@@ -3,123 +3,89 @@
 
 
 frappe.ui.form.on('Lot', {
+	setup: function(frm) {
+		frm.set_query('lot_template', (doc) => {
+			return {
+				filters: {
+					item: doc.item,
+				}
+			}
+		});
+		frm.set_query('size', 'planned_qty', (doc) => {
+			return {
+				filters: {
+					attribute_name: 'Size',
+				}
+			}
+		});
+	},
+
 	refresh: function(frm) {
-		if (frm.doc.__islocal) {
-			hide_field(["item_attribute_list_html", "bom_attribute_mapping_html"]);
-		} else {
-			unhide_field(["attribute_list_html", "bom_attribute_mapping_html"]);
 
-			// Setting the HTML for the attribute list
-			$(frm.fields_dict['item_attribute_list_html'].wrapper).html("");
-			new frappe.production.ui.ItemAttributeList({
-				wrapper: frm.fields_dict["item_attribute_list_html"].wrapper,
-				attr_values: frm.doc.__onload["attr_list"]
-			});
-
-			// Setting the HTML for the BOM item attribute mapping
-			$(frm.fields_dict['bom_attribute_mapping_html'].wrapper).html("");
-			new frappe.production.ui.BomItemAttributeMapping({
-				wrapper: frm.fields_dict["bom_attribute_mapping_html"].wrapper,
-			});
-		}
 	},
 
 	item: function(frm) {
 		if (frm.doc.item) {
+			frm.set_value({"lot_template": ""});
+		}
+	},
+
+	lot_template: function(frm) {
+		if (frm.doc.lot_template) {
 			frappe.call({
-				method: "production_api.production_api.doctype.item.item.get_complete_item_details",
+				method: "production_api.production_api.doctype.lot_template.lot_template.get_attribute_values",
 				args: {
-					item_name: frm.doc.item
+					lot_template: frm.doc.lot_template,
 				},
 				callback: function(r) {
 					if (r.message) {
-						console.log(r.message)
-						let bom_summary = []
-						for(let i = 0; i < r.message.bom.length; i++){
-							bom_summary.push({item_name: r.message.bom[i].item, required_qty: 0});
-						}
-						let values = {
-							'primary_item_attribute': r.message.primary_attribute,
-							'item_attributes': r.message.attributes,
-							'bom': r.message.bom,
-							'bom_summary': bom_summary,
-						}
-						for(let i = 0; i < r.message.attributes.length; i++){
-							if(r.message.attributes[i].attribute == 'Size'){
-								frappe.call({
-									method: "frappe.client.get",
-									args: {
-										doctype: "Item Item Attribute Mapping",
-										name: r.message.attributes[i].mapping
-									},
-									callback: function(r) {
-										if (r.message) {
-											console.log('planned_qty', r.message)
-											let planned_qty = []
-											for(let i = 0; i < r.message.values.length; i++){
-												planned_qty.push({size: r.message.values[i].attribute_value, qty: 0})
-											}
-											values['planned_qty'] = planned_qty
-											console.log(values);
-											frm.set_value(values);
-										}
-									}
-								})
+						if (r.message['Size']) {
+							let planned_qty = []
+							for(let i = 0;i < r.message.Size.length; i++) {
+								planned_qty.push({size: r.message.Size[i], qty: 0});
 							}
+							frm.set_value({'planned_qty': planned_qty});
 						}
-						
 					}
 				}
 			});
 		}
 	},
 
-});
-
-function update_bom_summary(frm){
-	let bom_summary = [];
-	let sum = 0;
-	for(let i = 0; i < frm.doc.planned_qty.length; i++){
-		sum += frm.doc.planned_qty[i].qty;
-	}
-	let remove_index = [];
-	for(let i = 0; i < frm.doc.bom_summary.length; i++){
-		let found = false;
-		for(let j = 0; j < frm.doc.bom.length; j++){
-			if(frm.doc.bom_summary[i].item_name == frm.doc.bom[j].item){
-				if(frm.doc.bom[j].qty_of_bom_item && frm.doc.bom[j].qty_of_product){
-					let required_qty = frm.doc.bom[j].qty_of_bom_item * sum / frm.doc.bom[j].qty_of_product;
-					frm.doc.bom_summary[i].required_qty = required_qty;
-					frm.doc.bom_summary[i].pending_for_po_qty = required_qty - frm.doc.bom_summary[i].po_generated_qty;
+	calculate_bom: function(frm) {
+		if (frm.doc.item && frm.doc.lot_template && frm.doc.planned_qty.length > 0) {
+			frappe.call({
+				method: "production_api.production_api.doctype.lot_template.lot_template.get_calculated_bom",
+				args: {
+					lot_template: frm.doc.lot_template,
+					planned_qty: frm.doc.planned_qty,
+				},
+				callback: function(r) {
+					console.log(r.message);
+					if (r.message) {
+						if (r.message['items']) {
+							let items = r.message.items || [];
+							for (let i = 0; i < items.length; i++) {
+								let bom = frm.doc.bom_summary;
+								let found = false;
+								for (let j = 0; j < bom.length; j++) {
+									if (bom[j].item_name == items[i].item) {
+										bom[j].required_qty = items[i].required_qty;
+										found = true;
+										break;
+									}
+								}
+								if (!found) {
+									var childTable = frm.add_child("bom_summary");
+									childTable.item_name = items[i].item;
+									childTable.required_qty = items[i].required_qty;
+								}
+							}
+							frm.refresh_field('bom_summary');
+						}
+					}
 				}
-				found = true;
-				break;
-			}
-		}
-		if(!found){
-			remove_index.push(i);
+			});
 		}
 	}
-	while(remove_index.length) {
-		frm.doc.bom_summary.splice(remove_index.pop(), 1);
-	}
-	frm.refresh_field('bom_summary');
-}
-
-frappe.ui.form.on('Lot Planned Qty', {
-	qty: function(frm, cdt, cdn) {
-		update_bom_summary(frm);
-	},
-})
-
-frappe.ui.form.on('Item BOM', {
-	qty_of_bom_item: function(frm, cdt, cdn) {
-		update_bom_summary(frm);
-	},
-	qty_of_product: function(frm, cdt, cdn) {
-		update_bom_summary(frm);
-	},
-	bom_remove: function(frm, cdt, cdn) {
-		update_bom_summary(frm);
-	}
-})
+});
