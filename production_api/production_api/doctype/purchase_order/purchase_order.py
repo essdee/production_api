@@ -485,3 +485,98 @@ def close_delivered_po():
 	], pluck="name")
 	for name in delivered_po:
 		close_purchase_order(name)
+
+@frappe.whitelist()
+def make_purchase_order_mapped_doc(items):
+	if isinstance(items, string_types):
+		items = json.loads(items)
+	new_doc = frappe.new_doc("Purchase Order")
+	new_items = get_new_items(items)
+	print(json.dumps(new_items))
+	new_doc.set_onload('item_details', new_items)
+	return new_doc
+
+def get_new_items(items):
+	print(items)
+	data = []
+	for item in items:
+		current_variant = frappe.get_doc("Item Variant", item['item'])
+		current_item_attribute_details = get_attribute_details(current_variant.item)
+		index = get_item_group_index(data, current_item_attribute_details)
+		if index == -1:
+			data.append({
+				'attributes': current_item_attribute_details['attributes'],
+				'primary_attribute': current_item_attribute_details['primary_attribute'],
+				'primary_attribute_values': current_item_attribute_details['primary_attribute_values'],
+				'items': []
+			})
+			index = len(data) - 1
+		item_detail = {
+			'name': current_variant.item,
+			'lot': item.get('lot'),
+			'delivery_location': item.get('delivery_location'),
+			'delivery_date': str(item.get('delivery_date')),
+			'attributes': get_item_attribute_details(current_variant, current_item_attribute_details),
+			'primary_attribute': current_item_attribute_details['primary_attribute'],
+			'values': {},
+			'default_uom': current_item_attribute_details['default_uom'],
+			'secondary_uom': current_item_attribute_details['secondary_uom'],
+			'discount_percentage': item.get('discount_percentage') or 0,
+			'comments': item.get('comments'),
+		}
+		row_index = get_item_in_group_index(data[index], item_detail)
+		if row_index == -1:
+			if item_detail['primary_attribute']:
+				for attr in current_item_attribute_details['primary_attribute_values']:
+					item_detail['values'][attr] = {'qty': 0, 'rate': 0}
+			else:
+				item_detail['values']['default'] = {'qty': 0, 'rate': 0}
+			data[index]['items'].append(item_detail)
+			row_index = len(data[index]['items']) - 1
+		if item_detail['primary_attribute']:
+			attr_list = get_item_attribute_details(current_variant, {'attributes': [data[index]['items'][row_index]['primary_attribute']]})
+			attr_value = attr_list[data[index]['items'][row_index]['primary_attribute']]
+			data[index]['items'][row_index]['values'][attr_value]['qty'] += (item.get('qty') or 0)
+		else:
+			data[index]['items'][row_index]['values']['default']['qty'] += (item.get('qty') or 0)
+	return data
+
+def get_item_in_group_index(group, item):
+	item_index = -1
+	if not group.get('items'):
+		group['items'] = []
+		return item_index
+	for index, i in enumerate(group['items']):
+		list1 = ['name', 'lot', 'delivery_location', 'delivery_date', 'primary_attribute', 'default_uom', 'secondary_uom', 'discount_percentage', 'comments']
+		all = True
+		for l in list1:
+			if i.get(l) != item.get(l):
+				all = False
+				break
+		if not all:
+			continue
+		a1 = []
+		a2 = []
+		if i.get('attributes'):
+			a1 = [k for k in i['attributes']]
+		if item.get('attributes'):
+			a2 = [k for k in item['attributes']]
+		if len(a1) != len(a2):
+			continue
+		a1.sort()
+		a2.sort()
+		for j in range(len(a1)):
+			if a1[j] != a2[j]:
+				all == False
+				break
+		if not all:
+			continue
+		for a in a1:
+			if i['attributes'][a] != item['attributes'][a]:
+				all = False
+				break
+		if not all:
+			continue
+		item_index = index
+		break
+	return item_index

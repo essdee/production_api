@@ -13,6 +13,7 @@
                             <th v-for="attr in i.attributes" :key="attr">{{ attr }}</th>
                             <th v-for="attr in i.primary_attribute_values" :key="attr">{{ attr }}</th>
                             <th v-for="a in other_table_fields" :key="a.name">{{ a.label }}</th>
+                            <th v-if="edit"></th>
                         </tr>
                         <tr v-for="(j, item1_index) in i.items" :key="item1_index">
                             <td>{{ item1_index + 1 }}</td>
@@ -53,6 +54,7 @@
                             <th>Quantity</th>
                             <th v-for="a in table_qty_fields" :key="a.name">{{ a.label }}</th>
                             <th v-for="a in other_table_fields" :key="a.name">{{ a.label }}</th>
+                            <th v-if="edit"></th>
                         </tr>
                         <tr v-for="(j, item1_index) in i.items" :key="item1_index">
                             <td>{{ item1_index + 1 }}</td>
@@ -560,6 +562,9 @@ export default {
                     render_input: true,
                 });
 
+                if (data.df.fieldtype == 'Date' && this.item[data.name] == "None") {
+                    this.item[data.name] = null;
+                }
                 this.other_input_controls[data.name].set_value(this.item[data.name])
             }
         },

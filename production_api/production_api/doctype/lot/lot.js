@@ -21,7 +21,13 @@ frappe.ui.form.on('Lot', {
 	},
 
 	refresh: function(frm) {
-
+		if (!frm.is_new()) {
+			frm.add_custom_button(__('Purchase Summary'), function() {
+				frappe.set_route("query-report", "Lot Purchase Summary", {
+					lot: frm.doc.name
+				});
+			}, __("View"));
+		}
 	},
 
 	item: function(frm) {
