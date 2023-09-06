@@ -1,5 +1,6 @@
 {
  "actions": [],
+ "allow_rename": 1,
  "creation": "2021-08-23 16:59:13.935404",
  "doctype": "DocType",
  "editable_grid": 1,
@@ -159,7 +160,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2023-06-19 10:57:05.083342",
+ "modified": "2023-09-06 14:05:25.744072",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Item",
