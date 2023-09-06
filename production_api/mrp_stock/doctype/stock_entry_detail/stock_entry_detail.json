@@ -15,7 +15,8 @@
   "row_index",
   "transferred_qty",
   "against_stock_entry",
-  "ste_detail"
+  "ste_detail",
+  "remarks"
  ],
  "fields": [
   {
@@ -89,12 +90,17 @@
    "no_copy": 1,
    "print_hide": 1,
    "read_only": 1
+  },
+  {
+   "fieldname": "remarks",
+   "fieldtype": "Data",
+   "label": "Remarks"
   }
  ],
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2023-07-14 19:50:46.193317",
+ "modified": "2023-09-06 19:47:08.188757",
  "modified_by": "Administrator",
  "module": "MRP Stock",
  "name": "Stock Entry Detail",

@@ -2,7 +2,7 @@
     <div>
         <item-lot-fetcher 
             :items="items"
-            :other-inputs="[]"
+            :other-inputs="otherInputs"
             :table-fields="table_fields"
             :allow-secondary-qty="false"
             :args="args"
@@ -28,11 +28,27 @@ export default ({
             docstatus: cur_frm.doc.docstatus,
             items: [],
             can_create: true,
+            otherInputs: [
+                {
+                    name: 'remarks',
+                    parent: 'remarks-control',
+                    df: {
+                        fieldtype: 'Data',
+                        fieldname: 'remarks',
+                        label: 'Remarks',
+                        reqd: true,
+                    },
+                },
+            ],
             table_fields: [
                 {
                     name: 'rate',
                     label: 'Rate',
                     uses_primary_attribute: 1,
+                },
+                {
+                    name: 'remarks',
+                    label: 'Remarks',
                 },
             ],
             args: {

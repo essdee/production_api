@@ -217,6 +217,7 @@ class StockEntry(Document):
 				"uom": d.uom,
 				"rate": 0,
 				"is_cancelled": 1 if self.docstatus == 2 else 0,
+				"remarks": d.remarks,
 			}
 		)
 
@@ -297,7 +298,7 @@ def fetch_stock_entry_items(items):
 			'values': {},
 			'default_uom': variants[0].get('uom') or current_item_attribute_details['default_uom'],
 			'secondary_uom': variants[0].get('secondary_uom') or current_item_attribute_details['secondary_uom'],
-			# 'comments': variants[0]['comments'],
+			'remarks': variants[0]['remarks'],
 		}
 
 		if item['primary_attribute']:
@@ -370,7 +371,7 @@ def save_stock_entry_items(item_details):
 						item1['transferred_qty'] = values.get("transferred_qty", None)
 						item1['table_index'] = table_index
 						item1['row_index'] = row_index
-						# item1['comments'] = item.get('comments')
+						item1['remarks'] = item.get('remarks')
 						items.append(item1)
 			else:
 				if item['values'].get('default') and item['values']['default'].get('qty'):
@@ -390,7 +391,7 @@ def save_stock_entry_items(item_details):
 					item1['transferred_qty'] = item['values']['default'].get("transferred_qty", None)
 					item1['table_index'] = table_index
 					item1['row_index'] = row_index
-					# item1['comments'] = item.get('comments')
+					item1['remarks'] = item.get('remarks')
 					items.append(item1)
 			row_index += 1
 	return items
