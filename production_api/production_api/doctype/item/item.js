@@ -8,6 +8,40 @@ frappe.ui.form.on('Item', {
 		} else {
 			unhide_field(["attribute_list_html", "bom_attribute_mapping_html"]);
 
+			frm.page.add_menu_item(__('Rename'), function() {
+				let d = new frappe.ui.Dialog({
+					title: __("Rename"),
+					fields: [
+						{
+							label: 'Brand',
+							fieldname: "brand",
+							fieldtype: "Link",
+							options: 'Brand',
+							default: frm.doc.brand,
+						},
+						{
+							label: 'New Name',
+							fieldname: "name",
+							fieldtype: "Data",
+							reqd: 1,
+							default: frm.doc.name1,
+						},
+					],
+				});
+				d.show();
+				d.set_primary_action(__("Rename"), (values) => {
+					d.disable_primary_action();
+					d.hide();
+					rename_item_name(frm, values.name, values.brand)
+						.then(() => {
+							d.hide();
+						})
+						.catch(() => {
+							d.enable_primary_action();
+						});
+				});
+			});
+
 			// Setting the HTML for the attribute list
 			$(frm.fields_dict['attribute_list_html'].wrapper).html("");
 			new frappe.production.ui.ItemAttributeList({
@@ -16,10 +50,10 @@ frappe.ui.form.on('Item', {
 			});
 
 			// Setting the HTML for the BOM item attribute mapping
-			$(frm.fields_dict['bom_attribute_mapping_html'].wrapper).html("");
-			new frappe.production.ui.BomItemAttributeMapping({
-				wrapper: frm.fields_dict["bom_attribute_mapping_html"].wrapper,
-			});
+			// $(frm.fields_dict['bom_attribute_mapping_html'].wrapper).html("");
+			// new frappe.production.ui.BomItemAttributeMapping({
+			// 	wrapper: frm.fields_dict["bom_attribute_mapping_html"].wrapper,
+			// });
 
 			// Setting the HTML for Item Price List
 			$(frm.fields_dict['price_html'].wrapper).html("");
@@ -29,3 +63,74 @@ frappe.ui.form.on('Item', {
 		}
 	}
 });
+
+function rename_item_name(frm, name, brand) {
+	let confirm_message = null;
+	const docname = frm.doc.name;
+	const doctype = frm.doctype;
+
+	if (name) {
+		const warning = __("This cannot be undone");
+		const message = __("Are you sure you want to merge {0} with {1}?", [
+			docname.bold(),
+			name.bold(),
+		]);
+		confirm_message = `${message}<br><b>${warning}<b>`;
+	}
+
+	let rename_document = () => {
+		return frappe
+			.xcall("production_api.production_api.doctype.item.item.rename_item", {
+				docname,
+				name: name,
+				brand: brand,
+				// enqueue: true,
+				freeze: true,
+				freeze_message: __("Updating related fields..."),
+			})
+			.then((new_docname) => {
+				console.log("A1", new_docname, doctype, docname)
+				const reload_form = (input_name) => {
+					$(document).trigger("rename", [doctype, docname, input_name]);
+					if (locals[doctype] && locals[doctype][docname]){
+						delete locals[doctype][docname];
+					}
+					frm.reload_doc();
+				};
+
+				// handle document renaming queued action
+				if (name && new_docname == docname) {
+					frappe.socketio.doc_subscribe(doctype, name);
+					frappe.realtime.on("doc_update", (data) => {
+						console.log("A2")
+						if (data && data.doctype && data.docname && data.doctype == doctype && data.name != docname) {
+							reload_form(data.name);
+							frappe.show_alert({
+								message: __("Document renamed from {0} to {1}", [
+									docname.bold(),
+									data.name.bold(),
+								]),
+								indicator: "success",
+							});
+						}
+					});
+					frappe.show_alert(
+						__("Document renaming from {0} to {1} has been queued", [
+							docname.bold(),
+							input_name.bold(),
+						])
+					);
+				}
+
+				// handle document sync rename action
+				if (name && (new_docname || input_name) != docname) {
+					console.log("A3")
+					reload_form(new_docname || input_name);
+				}
+			});
+	};
+
+	return new Promise((resolve, reject) => {
+		rename_document().then(resolve).catch(reject);
+	});
+}

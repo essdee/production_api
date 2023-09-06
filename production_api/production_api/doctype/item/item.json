@@ -1,6 +1,5 @@
 {
  "actions": [],
- "allow_rename": 1,
  "creation": "2021-08-23 16:59:13.935404",
  "doctype": "DocType",
  "editable_grid": 1,
@@ -35,8 +34,8 @@
    "fieldtype": "Data",
    "in_list_view": 1,
    "label": "Name",
-   "reqd": 1,
-   "set_only_once": 1
+   "read_only_depends_on": "eval:!doc.__islocal",
+   "reqd": 1
   },
   {
    "fieldname": "hsn_code",
@@ -136,7 +135,7 @@
    "fieldtype": "Link",
    "label": "Brand",
    "options": "Brand",
-   "set_only_once": 1
+   "read_only_depends_on": "eval:!doc.__islocal"
   },
   {
    "default": "0",
@@ -160,7 +159,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2023-09-06 14:05:25.744072",
+ "modified": "2023-09-06 18:59:43.140050",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Item",

@@ -7,11 +7,14 @@ from frappe.model.document import Document
 class ItemVariant(Document):
 	
 	def autoname(self):
+		self.name = self.get_name()
+	
+	def get_name(self):
 		variant_name = self.item
 		for attribute in self.attributes:
 			if attribute.attribute_value:
 				variant_name += '-' + attribute.attribute_value
-		self.name = variant_name
+		return variant_name
 	
 	def get_attribute_value(self, attribute):
 		attribute_value = None

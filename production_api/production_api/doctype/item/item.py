@@ -10,14 +10,27 @@ from frappe.model.document import Document
 from frappe.desk.search import search_widget
 from production_api.production_api.doctype.item_price.item_price import get_all_active_price
 
+
 class Item(Document):
 
 	def autoname(self):
-		if self.brand:
-			name = self.name1.split(' ')
-			self.name = self.name1 if name[0].lower() == self.brand.lower() else self.brand + ' ' + self.name1
-		else:
-			self.name = self.name1
+		self.name1 = self.name1.strip()
+		self.name = self.get_name(self.brand, self.name1)
+
+	def get_name(self, brand, name):
+		name = name.strip()
+		if brand:
+			name1 = name.split(' ')
+			return name if name1[0].lower() == brand.lower() else brand + ' ' + name
+		return name
+	
+	def after_rename(self, old, new, merge):
+		variants = frappe.get_list('Item Variant', filters={"item": self.name}, pluck="name")
+		for v in variants:
+			doc = frappe.get_doc('Item Variant', v)
+			newname = doc.get_name()
+			if v != newname:
+				doc.rename(name=newname, force=True)
 	
 	def load_attribute_list(self):
 		"""Load Attribute List into `__onload`"""
@@ -114,6 +127,7 @@ class Item(Document):
 				doc = frappe.new_doc("Item BOM Attribute Mapping")
 				doc.save()
 				bom.attribute_mapping = doc.name
+
 
 @frappe.whitelist()
 def get_attribute_details(item_name):
@@ -387,3 +401,20 @@ def validate_disabled(item, disabled=None):
 
 	if disabled:
 		frappe.throw(_("Item {0} is disabled").format(item))
+
+@frappe.whitelist()
+def rename_item(docname, name, brand = None):
+	print(name, brand)
+	doc = frappe.get_doc('Item', docname)
+	doc.check_permission(permtype="write")
+
+	transformed_name = doc.get_name(brand, name)
+	name_updated = transformed_name and (transformed_name != doc.name)
+	doc.name1 = name
+	doc.brand = brand
+	doc.save()
+
+	if name_updated:
+		doc.rename(transformed_name, force=True)
+
+	return doc.name
