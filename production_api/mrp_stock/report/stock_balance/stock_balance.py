@@ -68,6 +68,8 @@ def execute(filters: Optional[StockBalanceFilter] = None):
 
 		if item_map.get(item):
 			qty_dict = iwb_map[group_by_key]
+			if (filters.get('remove_zero_balance_item') and qty_dict['bal_qty'] == 0):
+				continue
 			item_reorder_level = 0
 			item_reorder_qty = 0
 			# if item + warehouse in item_reorder_detail_map:
@@ -102,7 +104,6 @@ def execute(filters: Optional[StockBalanceFilter] = None):
 					stock_ageing_data["latest_age"] = date_diff(to_date, fifo_queue[-1][1])
 
 				report_data.update(stock_ageing_data)
-
 			data.append(report_data)
 
 	# add_additional_uom_columns(columns, data, include_uom, conversion_factors)

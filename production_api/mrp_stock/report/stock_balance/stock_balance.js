@@ -58,6 +58,11 @@ frappe.query_reports["Stock Balance"] = {
 			"label": __('Show Stock Ageing Data'),
 			"fieldtype": 'Check'
 		},
+		{
+			"fieldname": 'remove_zero_balance_item',
+			"label": __('Remove Zero Balance Item'),
+			"fieldtype": 'Check'
+		},
 	],
 
 	"formatter": function (value, row, column, data, default_formatter) {

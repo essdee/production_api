@@ -182,6 +182,12 @@ def get_columns(filters):
 				"width": 110,
 				"options": "Company:company:default_currency",
 			},
+			{
+				"label": "Remarks",
+				"fieldname": "remarks",
+				"fieldtype": "Data",
+				"width": 100,
+			},
 			{"label": _("Voucher Type"), "fieldname": "voucher_type", "width": 110},
 			{
 				"label": _("Voucher #"),
@@ -217,6 +223,7 @@ def get_stock_ledger_entries(filters, items):
 			sle.voucher_no,
 			sle.stock_value,
 			sle.lot,
+			sle.remarks
 		)
 		.where(
 			(sle.docstatus < 2)
