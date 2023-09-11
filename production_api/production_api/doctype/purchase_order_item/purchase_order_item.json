@@ -20,7 +20,8 @@
   "secondary_uom",
   "pending_qty",
   "cancelled_qty",
-  "discount_percentage"
+  "discount_percentage",
+  "additional_parameters"
  ],
  "fields": [
   {
@@ -124,12 +125,17 @@
    "label": "Discount %",
    "non_negative": 1,
    "precision": "1"
+  },
+  {
+   "fieldname": "additional_parameters",
+   "fieldtype": "Text",
+   "label": "Additional Parameters"
   }
  ],
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2023-05-06 12:17:14.618740",
+ "modified": "2023-09-11 13:38:23.580625",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Purchase Order Item",

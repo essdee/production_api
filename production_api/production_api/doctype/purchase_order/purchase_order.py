@@ -230,6 +230,7 @@ def save_item_details(item_details):
 						item1['row_index'] = row_index
 						item1['discount_percentage'] = item.get('discount_percentage')
 						item1['comments'] = item.get('comments')
+						item1['additional_parameters'] = item.get('additional_parameters')
 						items.append(item1)
 			else:
 				if item['values'].get('default') and item['values']['default'].get('qty'):
@@ -252,6 +253,7 @@ def save_item_details(item_details):
 					item1['row_index'] = row_index
 					item1['discount_percentage'] = item.get('discount_percentage')
 					item1['comments'] = item.get('comments')
+					item1['additional_parameters'] = item.get('additional_parameters')
 					items.append(item1)
 			row_index += 1
 	return items
@@ -302,6 +304,7 @@ def fetch_item_details(items, include_id:bool=False):
 			'secondary_uom': variants[0]['secondary_uom'] or current_item_attribute_details['secondary_uom'],
 			'discount_percentage': variants[0]['discount_percentage'],
 			'comments': variants[0]['comments'],
+			'additional_parameters': variants[0]['additional_parameters'],
 		}
 
 		if item['primary_attribute']:
@@ -342,6 +345,7 @@ def fetch_item_details(items, include_id:bool=False):
 				'attributes': current_item_attribute_details['attributes'],
 				'primary_attribute': current_item_attribute_details['primary_attribute'],
 				'primary_attribute_values': current_item_attribute_details['primary_attribute_values'],
+				'additional_parameters': current_item_attribute_details['additional_parameters'],
 				'items': [item]
 			})
 		else:

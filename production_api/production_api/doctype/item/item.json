@@ -22,6 +22,7 @@
   "primary_attribute",
   "attributes",
   "attribute_list_html",
+  "additional_parameters",
   "bill_of_materials_section",
   "bom",
   "bom_attribute_mapping_html",
@@ -89,17 +90,20 @@
    "depends_on": "eval:!doc.__islocal",
    "fieldname": "bill_of_materials_section",
    "fieldtype": "Section Break",
+   "hidden": 1,
    "label": "Bill of Materials"
   },
   {
    "fieldname": "bom",
    "fieldtype": "Table",
+   "hidden": 1,
    "label": "BOM",
    "options": "Item BOM"
   },
   {
    "fieldname": "bom_attribute_mapping_html",
    "fieldtype": "HTML",
+   "hidden": 1,
    "label": "BOM Attribute Mapping"
   },
   {
@@ -155,11 +159,17 @@
    "fieldname": "is_stock_item",
    "fieldtype": "Check",
    "label": "Is Stock Item"
+  },
+  {
+   "fieldname": "additional_parameters",
+   "fieldtype": "Table",
+   "label": "Additional Parameters",
+   "options": "Additional Parameter"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2023-09-06 18:59:43.140050",
+ "modified": "2023-09-11 11:13:06.171433",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Item",

@@ -2,6 +2,25 @@
 // For license information, please see license.txt
 
 frappe.ui.form.on('Item', {
+	setup: function(frm) {
+		frm.set_query('additional_parameter_value', 'additional_parameters', (doc, cdt, cdn) => {
+			let child = locals[cdt][cdn]
+			if (!child.additional_parameter_key){
+				frappe.throw("Set Additional Parameter Key")
+			}
+			return {
+				filters: {
+					key: child.additional_parameter_key,
+				}
+			}
+		});
+		frm.get_docfield('additional_parameters', 'additional_parameter_value').get_route_options_for_new_doc = (field) => {
+			return {
+				key: field.doc.additional_parameter_key,
+			}
+		};
+	},
+
 	refresh: function(frm) {
 		if (frm.doc.__islocal) {
 			hide_field(["attribute_list_html", "bom_attribute_mapping_html", "price_html"]);

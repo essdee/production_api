@@ -8,6 +8,7 @@
             :args="args"
             :edit="docstatus == 0"
             :validate-qty="true"
+            :enableAdditionalParameter="true"
             @itemadded="updated"
             @itemupdated="updated"
             @itemremoved="updated">

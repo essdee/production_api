@@ -103,11 +103,27 @@ frappe.production.ui.PurchaseOrderItem = class {
     }
 
     get_items() {
-        return this.vue.$children[0].items;
+        let items = JSON.parse(JSON.stringify(this.vue.$children[0].items));
+        for (let i = 0; i < items.length; i++) {
+            for (let j = 0; j < items[i].items.length; j++) {
+                if (items[i].items[j].additional_parameters) {
+                    items[i].items[j].additional_parameters = JSON.stringify(items[i].items[j].additional_parameters)
+                }
+            }
+        }
+        return items;
     }
 
     load_data(item_details) {
-        this.vue.$children[0].load_data(item_details);
+        let items = JSON.parse(JSON.stringify(item_details));
+        for (let i = 0; i < items.length; i++) {
+            for (let j = 0; j < items[i].items.length; j++) {
+                if (items[i].items[j].additional_parameters) {
+                    items[i].items[j].additional_parameters = JSON.parse(items[i].items[j].additional_parameters)
+                }
+            }
+        }
+        this.vue.$children[0].load_data(items);
     }
 
     update_status() {

@@ -1,4 +1,5 @@
 import frappe
+import json
 from production_api.production_api.doctype.supplier.supplier import Supplier
 
 @frappe.whitelist()
@@ -147,3 +148,8 @@ def check_key_value_in_dict_or_list_of_dict(key: str, dict_or_list_of_dict: dict
 		return False
 	else:
 		return False
+
+def parse_json(value: str):
+	if value:
+		return json.loads(value)
+	return None

@@ -11,6 +11,7 @@
                             <th>Item</th>
                             <th>Lot</th>
                             <th v-for="attr in i.attributes" :key="attr">{{ attr }}</th>
+                            <th v-if="has_additional_parameter(i)">Additional Parameters</th>
                             <th v-for="attr in i.primary_attribute_values" :key="attr">{{ attr }}</th>
                             <th v-for="a in other_table_fields" :key="a.name">{{ a.label }}</th>
                             <th v-if="edit"></th>
@@ -20,6 +21,11 @@
                             <td>{{ j.name }}</td>
                             <td>{{ j.lot }}</td>
                             <td v-for="attr in i.attributes" :key="attr">{{ j.attributes[attr] }}</td>
+                            <td v-if="has_additional_parameter(i)">
+                                <p v-for="(parameter, p_index) in j.additional_parameters" :key="p_index">
+                                    {{ parameter.additional_parameter_key }} : {{ parameter.additional_parameter_value }}
+                                </p>
+                            </td>
                             <td v-for="(attr, key) in j.values" :key="key">
                                 <div v-if="attr.qty">
                                     {{ attr.qty }}<span v-if="j.default_uom">{{ ' ' + j.default_uom }}</span>
@@ -51,6 +57,7 @@
                             <th>Item</th>
                             <th>Lot</th>
                             <th v-for="attr in i.attributes" :key="attr">{{ attr }}</th>
+                            <th v-if="has_additional_parameter(i)">Additional Parameters</th>
                             <th>Quantity</th>
                             <th v-for="a in table_qty_fields" :key="a.name">{{ a.label }}</th>
                             <th v-for="a in other_table_fields" :key="a.name">{{ a.label }}</th>
@@ -61,6 +68,11 @@
                             <td>{{ j.name }}</td>
                             <td>{{ j.lot }}</td>
                             <td v-for="attr in i.attributes" :key="attr">{{ j.attributes[attr] }}</td>
+                            <td v-if="has_additional_parameter(i)">
+                                <span v-for="(parameter, p_index) in j.additional_parameters" :key="p_index">
+                                    {{ parameter.additional_parameter_key }} : {{ parameter.additional_parameter_value }} <br>
+                                </span>
+                            </td>
                             <td>
                                 {{ j.values['default'].qty }}<span v-if="j.default_uom">{{ ' ' + j.default_uom}}</span>
                                 <span v-if="allowSecondaryQty && j.values['default'].secondary_qty">
@@ -159,6 +171,11 @@
                 </div>
             </div>
 
+            <div class="row" v-if="enableAdditionalParameter">
+                <div class="additional-parameter-controls col-md-6"></div>
+                <div class="additional-parameter-controls-right col-md-6"></div>
+            </div>
+
             <div class="row" v-if="other_inputs">
                 <div v-for="i in other_inputs" :class="[i, other_fields_class]"></div>
             </div>
@@ -174,7 +191,7 @@
 <script>
 export default {
     name: 'ItemLotFetcher',
-    props: ['items', 'edit', 'otherInputs', 'tableFields', 'allowSecondaryQty', 'qtyFields', 'args', 'validateQty'],
+    props: ['items', 'edit', 'otherInputs', 'tableFields', 'allowSecondaryQty', 'qtyFields', 'args', 'validateQty', 'enableAdditionalParameter'],
     data() {
         return {
             item: {
@@ -314,6 +331,10 @@ export default {
             return this.qtyFields && this.qtyFields.includes(field);
         },
 
+        has_additional_parameter: function(item) {
+            return this.enableAdditionalParameter && item.additional_parameters && item.additional_parameters.length;
+        },
+
         create_lot_item_inputs: function() {
             let me = this;
             $(this.$el).find('.lot-control').html("");
@@ -434,6 +455,7 @@ export default {
                     default_uom: item_details.default_uom,
                     secondary_uom: item_details.secondary_uom,
                     comments: "",
+                    additional_parameters: item_details.additional_parameters,
                 };
                 for(var i = 0; i < item_details.attributes.length; i++){
                     this.item.attributes[item_details.attributes[i]] = ""
@@ -451,6 +473,9 @@ export default {
                 this.set_lot_item_inputs(item_details);
             }
             this.create_item_attribute_inputs();
+            if (this.enableAdditionalParameter) {
+                this.create_additional_parameter_inputs();
+            }
             if (this.otherInputs) {
                 this.createOtherInputs();
             }
@@ -537,6 +562,51 @@ export default {
             }
         },
 
+        create_additional_parameter_inputs: function(){
+            if(!this.cur_item.item || this.cur_item.item == '') return;
+            this.additional_parameter_inputs = [];
+            $(this.$el).find('.additional-parameter-controls').html("");
+            $(this.$el).find('.additional-parameter-controls-right').html("");
+            for(let i = 0; i < this.cur_item.additional_parameters.length; i++){
+                let current_index = i;
+                let additional_parameter = this.cur_item.additional_parameters[i];
+                let key = additional_parameter.additional_parameter_key;
+                let value = additional_parameter.additional_parameter_value;
+                
+                let classname = '';
+                if(i%2 == 0) classname = '.additional-parameter-controls';
+                else classname = '.additional-parameter-controls-right';
+                console.log($(this.$el).find(classname))
+                let me = this;
+                this.additional_parameter_inputs[i] = frappe.ui.form.make_control({
+                    parent: $(this.$el).find(classname),
+                    df: {
+                        fieldtype: 'Link',
+                        fieldname: key + '_parameter',
+                        options: 'Additional Parameter Value',
+                        label: key,
+                        get_query: function() {
+                            return {
+                                filters: {
+                                    "key": key,
+                                }
+                            };
+                        },
+                        get_route_options_for_new_doc: function(field) {
+                            console.log(field);
+                            return {
+				                key: key,
+			                }
+                        },
+                        reqd: true,
+                    },
+                    doc: this.sample_doc,
+                    render_input: true,
+                });
+                this.additional_parameter_inputs[i].set_value(this.item.additional_parameters[i].additional_parameter_value || value || '')
+            }
+        },
+
         createOtherInputs: function() {
             let me = this;
             if(!this.cur_item.item || this.cur_item.item == '') return;
@@ -596,6 +666,29 @@ export default {
             return true;
         },
 
+        get_additional_parameters: function() {
+            console.log('Get Additional Parameters')
+            if(!this.additional_parameter_inputs) return false;
+            let attributes = [];
+            let attribute_values = [];
+            for (let i = 0; i < this.additional_parameter_inputs.length; i++) {
+                let attribute = this.additional_parameter_inputs[i].df.label;
+                attributes.push(attribute);
+                let value = this.additional_parameter_inputs[i].get_value();
+                if (!value) {
+                    this.additional_parameter_inputs[i].$input.select();
+                    frappe.msgprint(__('Additional Parameter ' + attribute + ' does not have a value'));
+                    return false;
+                }
+                attribute_values.push({
+                    additional_parameter_key: attribute,
+                    additional_parameter_value: value,
+                });
+            }
+            this.item.additional_parameters = attribute_values
+            return true;
+        },
+
         get_other_details: function() {
             if(!this.other_input_controls) return false;
 
@@ -618,7 +711,8 @@ export default {
             for(let i = 0; i < this.items.length; i++){
                 if (this.arrays_equal(this.items[i].attributes, this.cur_item.attributes) 
                     && this.items[i].primary_attribute === this.cur_item.primary_attribute
-                    && this.arrays_equal(this.items[i].primary_attribute_values, this.cur_item.primary_attribute_values)) {
+                    && this.arrays_equal(this.items[i].primary_attribute_values, this.cur_item.primary_attribute_values)
+                    && this.has_additional_parameter(this.items[i]) == this.has_additional_parameter(this.cur_item)) {
                     index = i;
                     break;
                 }
@@ -705,6 +799,7 @@ export default {
 
         add_item: function() {
             if(!this.get_item_attributes()) return;
+            if(this.enableAdditionalParameter && !this.get_additional_parameters()) return;
             if(!this.get_other_details()) return;
             if(this.validateQty && !this.validate_item_values()) return;
             if(this.item.name != this.item_input.get_value()){
@@ -724,6 +819,7 @@ export default {
                     attributes: this.cur_item.attributes,
                     primary_attribute: this.cur_item.primary_attribute,
                     primary_attribute_values: this.cur_item.primary_attribute_values,
+                    additional_parameters: this.cur_item.additional_parameters,
                     items: [JSON.parse(JSON.stringify(this.item))]
                 });
             } else {
@@ -773,6 +869,7 @@ export default {
                 primary_attribute_values: items.primary_attribute_values,
                 default_uom: items.items[index1].default_uom,
                 secondary_uom: items.items[index1].secondary_uom,
+                additional_parameters: items.additional_parameters,
             }, items.items[index1])
             this.lot_input.df.read_only = 1;
             this.item_input.df.read_only = 1;
