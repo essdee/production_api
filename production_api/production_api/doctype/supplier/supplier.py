@@ -198,7 +198,7 @@ def handle_update(payload):
 		data = frappe._dict(payload.get('Payload'))
 		if data.name != local_doc.name:
 			logger.debug("Renaming doc in update")
-			local_doc.rename(data.name)
+			local_doc.rename(data.name, force=True)
 		remove_payload_fields(data)
 		local_doc.update(data)
 		logger.debug("Saving doc")
@@ -239,6 +239,6 @@ def handle_rename(payload):
 	if rename_meta:
 		local_doc = get_local_doc(doctype, rename_meta.get("old_name"))
 		if local_doc:
-			local_doc.rename(name=rename_meta.get("new_name"),  merge=rename_meta.get("merge"))
+			local_doc.rename(name=rename_meta.get("new_name"),  merge=rename_meta.get("merge"), force=True)
 	else:
 		raise IncorrectData("Incorrect Data Passed")

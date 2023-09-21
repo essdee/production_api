@@ -1,10 +1,13 @@
 # Copyright (c) 2021, Essdee and contributors
 # For license information, please see license.txt
 
-# import frappe
+import frappe
 from frappe.model.document import Document
 
 class ItemVariant(Document):
+	def set_item(self):
+		item = frappe.get_doc("Item", self.item)
+		self.set('__parent_item', item.as_dict())
 	
 	def autoname(self):
 		self.name = self.get_name()
@@ -24,3 +27,13 @@ class ItemVariant(Document):
 				break
 		
 		return attribute_value
+
+def spine_set_item(payload):
+	doc = payload.get("doc_to_publish")
+	if not doc:
+		return None
+	if not isinstance(doc, Document):
+		return payload
+	doc.set("__parent_item", frappe._dict())
+	doc.run_method("set_item")
+	return payload
