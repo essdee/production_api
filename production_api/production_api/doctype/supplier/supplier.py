@@ -10,6 +10,7 @@ from frappe.custom.doctype.property_setter.property_setter import make_property_
 from frappe.contacts.doctype.contact.contact import get_default_contact
 from jinja2 import TemplateSyntaxError
 from production_api.production_api.doctype.item_price.item_price import get_all_active_price
+from spine.spine_adapter.handler.default_consumer_handler import DocDoesNotExist, DocTypeNotAvailable, IncorrectData, UnknownEvent, get_module_logger
 
 class Supplier(Document):
 
@@ -126,3 +127,118 @@ def get_supplier_address_display(supplier):
 		return frappe.render_template(template, address_dict)
 	except TemplateSyntaxError:
 		frappe.throw(_("There is an error in your Address Template"))
+
+
+# ---------------------------------
+# Spine Sync handler for supplier
+# ---------------------------------
+def handler(payload, raise_error = True):
+	try:
+		logger = get_module_logger()
+		incoming_doctype = payload.get("Header").get("DocType")
+		if incoming_doctype != "Supplier": raise Exception("This handler only handles Supplier DocType")
+		logger.debug(incoming_doctype)
+		if not incoming_doctype or not frappe.db.exists("DocType", incoming_doctype):
+			logger.debug("Doctype does not Exist ->", incoming_doctype)
+			if raise_error:
+				raise DocTypeNotAvailable(incoming_doctype)
+			else:
+				return None
+		event = payload.get("Header").get("Event")
+		logger.debug("Handling Event -> {}".format(event))
+		if event in ["on_update"]:
+			handle_update(payload)
+		elif event in ["on_insert", "first_sync"]:
+			handle_insert(payload)
+		elif event == "on_trash":
+			handle_remove(payload)
+		elif event == "after_rename":
+			handle_rename(payload)
+		else:
+			logger.debug("Did not find event "+event)
+			if raise_error:
+				raise UnknownEvent(event)
+			else:
+				return None
+	except:
+		if raise_error:
+			raise
+
+def get_local_doc(doctype, uid):
+	"""Get the local document if created with a different name"""
+	if not doctype or not uid:
+		return None
+	try:
+		doc_list = frappe.get_list(doctype, filters={"uid":uid}, pluck="name")
+		if len(doc_list) > 0:
+			return frappe.get_doc(doctype, doc_list[0])
+		else: return None
+	except frappe.DoesNotExistError:
+		return None
+	
+def remove_payload_fields(payload):
+	remove_fields = ["modified", "creation", "modified_by", "owner", "idx"]
+	for f in remove_fields:
+		if payload.get(f):
+			del payload[f]
+	return payload
+		
+def handle_update(payload):
+	"""Sync update type update"""
+	logger = get_module_logger()
+	doctype = payload.get("Header").get("DocType")
+	docname = payload.get("Payload").get("name")
+	uid = payload.get("Payload").get("uid")
+	if not doctype or not uid:
+		raise IncorrectData(msg="Incorrect Data passed")
+	local_doc = get_local_doc(doctype, uid)
+	logger.debug("Updating {}".format(docname))
+	logger.debug(local_doc)
+	if local_doc:
+		data = frappe._dict(payload.get('Payload'))
+		if data.name != local_doc.name:
+			logger.debug("Renaming doc in update")
+			local_doc.rename(data.name)
+		remove_payload_fields(data)
+		local_doc.update(data)
+		logger.debug("Saving doc")
+		local_doc.save()
+		local_doc.db_update_all()
+	else:
+		raise DocDoesNotExist(doctype, docname)
+
+def handle_insert(payload):
+	doctype = payload.get("Header").get("DocType")
+	docname = payload.get("Payload").get("name")
+	uid = payload.get("Payload").get("uid")
+	if not doctype or not uid:
+		raise IncorrectData(msg="Incorrect Data passed")
+	if frappe.db.exists(doctype, {"uid": uid}):
+		raise Exception("Document already exists")
+	
+	data = frappe._dict(payload.get("Payload"))
+	remove_payload_fields(data)
+	doc = frappe.get_doc(data)
+	doc.insert(set_name=docname, set_child_names=False)
+	return doc
+
+def handle_remove(payload):
+	doctype = payload.get("Header").get("DocType")
+	docname = payload.get("Payload").get("name")
+	uid = payload.get("Payload").get("uid")
+	if not doctype or not uid:
+		raise IncorrectData(msg="Incorrect Data passed")
+	local_doc = get_local_doc(doctype, uid)
+	if local_doc:
+		local_doc.remove()
+
+def handle_rename(payload):
+	doctype = payload.get("Header").get("DocType")
+	publish_doc = payload.get("Payload")
+	rename_meta = publish_doc.get("rename_meta")
+	if rename_meta:
+		local_doc = get_local_doc(doctype, rename_meta.get("old_name"))
+		if local_doc:
+			local_doc.rename(name=rename_meta.get("new_name"),  merge=rename_meta.get("merge"))
+	else:
+		raise IncorrectData("Incorrect Data Passed")
