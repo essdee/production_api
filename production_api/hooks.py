@@ -87,7 +87,14 @@ doc_events = {
 	},
 	"Communication": {
 		"validate": "production_api.production_api.util.validate_communication",
-	}
+	},
+    ("Item Variant"): {
+        "on_update": "spine.spine_adapter.docevents.eventhandler.handle_event",
+        "on_update_after_submit": "spine.spine_adapter.docevents.eventhandler.handle_event",
+        "after_rename": "spine.spine_adapter.docevents.eventhandler.handle_event",
+        "on_submit": "spine.spine_adapter.docevents.eventhandler.handle_event",
+        "on_cancel": "spine.spine_adapter.docevents.eventhandler.handle_event",
+    },
 }
 
 # Scheduled Tasks
