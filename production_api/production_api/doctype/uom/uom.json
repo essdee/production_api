@@ -1,5 +1,6 @@
 {
  "actions": [],
+ "allow_rename": 1,
  "autoname": "field:uom_name",
  "creation": "2021-07-07 12:33:22.138602",
  "doctype": "DocType",
@@ -27,7 +28,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2023-04-06 16:33:12.059526",
+ "modified": "2023-09-25 11:13:03.480737",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "UOM",
