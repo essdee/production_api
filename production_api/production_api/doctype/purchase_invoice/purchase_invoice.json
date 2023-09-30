@@ -1,0 +1,203 @@
+{
+ "actions": [],
+ "autoname": "naming_series:",
+ "creation": "2023-09-23 18:47:29.403682",
+ "default_view": "List",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "naming_series",
+  "supplier",
+  "due_date",
+  "column_break_cob1e",
+  "posting_date",
+  "posting_time",
+  "supplier_invoice_details_section",
+  "bill_no",
+  "column_break_njb2s",
+  "bill_date",
+  "section_break_q9k0j",
+  "grn",
+  "fetch_grn",
+  "section_break_rqlkf",
+  "items",
+  "total",
+  "total_tax",
+  "grand_total",
+  "in_words",
+  "amended_from",
+  "erp_inv_name",
+  "final_amount"
+ ],
+ "fields": [
+  {
+   "fieldname": "naming_series",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Naming Series",
+   "options": "\nMPI-2324-",
+   "reqd": 1
+  },
+  {
+   "fieldname": "supplier",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Supplier",
+   "options": "Supplier",
+   "reqd": 1
+  },
+  {
+   "fieldname": "column_break_cob1e",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "Today",
+   "fieldname": "posting_date",
+   "fieldtype": "Date",
+   "in_list_view": 1,
+   "label": "Posting Date",
+   "reqd": 1
+  },
+  {
+   "default": "Now",
+   "fieldname": "posting_time",
+   "fieldtype": "Time",
+   "in_list_view": 1,
+   "label": "Posting Time",
+   "reqd": 1
+  },
+  {
+   "fieldname": "section_break_q9k0j",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "grn",
+   "fieldtype": "Table",
+   "label": "GRNs",
+   "no_copy": 1,
+   "options": "Purchase Invoice GRN",
+   "reqd": 1
+  },
+  {
+   "fieldname": "section_break_rqlkf",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "items",
+   "fieldtype": "Table",
+   "label": "Items",
+   "options": "Purchase Invoice Item",
+   "reqd": 1
+  },
+  {
+   "fieldname": "amended_from",
+   "fieldtype": "Link",
+   "label": "Amended From",
+   "no_copy": 1,
+   "options": "Purchase Invoice",
+   "print_hide": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "fetch_grn",
+   "fieldtype": "Button",
+   "label": "Fetch GRN"
+  },
+  {
+   "fieldname": "due_date",
+   "fieldtype": "Date",
+   "label": "Due Date"
+  },
+  {
+   "fieldname": "supplier_invoice_details_section",
+   "fieldtype": "Section Break",
+   "label": "Supplier Invoice Details"
+  },
+  {
+   "fieldname": "bill_no",
+   "fieldtype": "Data",
+   "label": "Supplier Invoice no",
+   "reqd": 1
+  },
+  {
+   "fieldname": "column_break_njb2s",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "bill_date",
+   "fieldtype": "Date",
+   "label": "Supplier Invoice Date",
+   "reqd": 1
+  },
+  {
+   "fieldname": "total",
+   "fieldtype": "Currency",
+   "label": "Total",
+   "no_copy": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "total_tax",
+   "fieldtype": "Currency",
+   "label": "Total Tax",
+   "no_copy": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "grand_total",
+   "fieldtype": "Currency",
+   "label": "Grand Total",
+   "no_copy": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "in_words",
+   "fieldtype": "Data",
+   "label": "In Words",
+   "no_copy": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "erp_inv_name",
+   "fieldtype": "Data",
+   "label": "ERP Purchase Invoice Name",
+   "no_copy": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "final_amount",
+   "fieldtype": "Currency",
+   "label": "Final Amount",
+   "no_copy": 1,
+   "read_only": 1
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "is_submittable": 1,
+ "links": [],
+ "modified": "2023-09-25 21:59:17.921445",
+ "modified_by": "Administrator",
+ "module": "Production Api",
+ "name": "Purchase Invoice",
+ "naming_rule": "By \"Naming Series\" field",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1
+}

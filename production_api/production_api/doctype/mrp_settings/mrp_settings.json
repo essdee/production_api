@@ -7,6 +7,11 @@
  "field_order": [
   "purchase_order_section",
   "enable_price_validation",
+  "erp_api_key",
+  "erp_api_secret",
+  "column_break_d1dky",
+  "enable_purchase_invoice_sync",
+  "erp_site_url",
   "url_shortner_settings_section",
   "shortned_url_domain",
   "link_expiry_days",
@@ -59,7 +64,7 @@
   {
    "fieldname": "purchase_order_section",
    "fieldtype": "Section Break",
-   "label": "Purchase Order"
+   "label": "Purchase Settings"
   },
   {
    "fieldname": "column_break_b4fhl",
@@ -70,12 +75,44 @@
    "fieldname": "allow_grn_cancellation",
    "fieldtype": "Check",
    "label": "Allow GRN Cancellation"
+  },
+  {
+   "default": "0",
+   "description": "Enable Purchase Invoice Sync with ERP",
+   "fieldname": "enable_purchase_invoice_sync",
+   "fieldtype": "Check",
+   "label": "Enable Purchase Invoice Sync"
+  },
+  {
+   "fieldname": "erp_site_url",
+   "fieldtype": "Data",
+   "label": "ERP Site URL",
+   "mandatory_depends_on": "eval:doc.enable_purchase_invoice_sync",
+   "read_only_depends_on": "eval:!doc.enable_purchase_invoice_sync"
+  },
+  {
+   "fieldname": "erp_api_key",
+   "fieldtype": "Data",
+   "label": "ERP API Key",
+   "mandatory_depends_on": "eval:doc.enable_purchase_invoice_sync",
+   "read_only_depends_on": "eval:!doc.enable_purchase_invoice_sync"
+  },
+  {
+   "fieldname": "erp_api_secret",
+   "fieldtype": "Password",
+   "label": "ERP API Secret",
+   "mandatory_depends_on": "eval:doc.enable_purchase_invoice_sync",
+   "read_only_depends_on": "eval:!doc.enable_purchase_invoice_sync"
+  },
+  {
+   "fieldname": "column_break_d1dky",
+   "fieldtype": "Column Break"
   }
  ],
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2023-06-05 13:04:43.823256",
+ "modified": "2023-09-24 17:10:02.583386",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "MRP Settings",

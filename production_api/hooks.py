@@ -158,3 +158,5 @@ jinja = {
 		"production_api.mrp_stock.doctype.stock_entry.stock_entry.fetch_stock_entry_items",
     ]
 }
+
+auto_cancel_exempted_doctypes = ["Goods Received Note"]
