@@ -14,11 +14,19 @@ frappe.ui.form.on('Item', {
 				}
 			}
 		});
+		
 		frm.get_docfield('additional_parameters', 'additional_parameter_value').get_route_options_for_new_doc = (field) => {
 			return {
 				key: field.doc.additional_parameter_key,
 			}
 		};
+		frm.set_query('default_unit_of_measure', (doc) => {
+			return {
+				filters: {
+					secondary_only: 0,
+				}
+			}
+		});
 	},
 
 	refresh: function(frm) {

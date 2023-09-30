@@ -9,7 +9,8 @@
  "field_order": [
   "uom_name",
   "enabled",
-  "must_be_whole_number"
+  "must_be_whole_number",
+  "secondary_only"
  ],
  "fields": [
   {
@@ -31,11 +32,17 @@
    "fieldname": "enabled",
    "fieldtype": "Check",
    "label": "Enabled"
+  },
+  {
+   "default": "0",
+   "fieldname": "secondary_only",
+   "fieldtype": "Check",
+   "label": "Allow for Secondary Qty only"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2023-09-30 12:44:40.292578",
+ "modified": "2023-09-30 13:03:58.640274",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "UOM",

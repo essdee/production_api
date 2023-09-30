@@ -93,6 +93,9 @@ class Item(Document):
 
 	def validate(self):
 		"""Add a empty Mapping Table for each attribute"""
+		secondary_only = frappe.get_value("UOM", doc.default_unit_of_measure, "secondary_only")
+		if secondary_only:
+			frappe.throw(f"{doc.default_unit_of_measure} can only be used as Secondary UOM")
 		if self.primary_attribute and self.primary_attribute not in [attribute.attribute for attribute in self.attributes]:
 			frappe.throw("Default Attribute must be in Attribute List")
 		
