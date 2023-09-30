@@ -206,7 +206,7 @@ frappe.ui.form.on('Purchase Order', {
 		if (frm.doc.open_status == 'Closed') {
 			frm.page.btn_secondary.hide();
 			frm.page.btn_primary.hide();
-			if (frappe.user.has_role("System Manager")) {
+			if (frappe.user.has_role("Purchase Manager")) {
 				frm.page.add_menu_item(__('Reopen'), function() {
 					frappe.call({
 						method: "production_api.production_api.doctype.purchase_order.purchase_order.reopen_purchase_order",

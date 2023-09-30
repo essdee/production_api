@@ -8,6 +8,7 @@
  "engine": "InnoDB",
  "field_order": [
   "uom_name",
+  "enabled",
   "must_be_whole_number"
  ],
  "fields": [
@@ -24,11 +25,17 @@
    "fieldname": "must_be_whole_number",
    "fieldtype": "Check",
    "label": "Must be Whole Number"
+  },
+  {
+   "default": "0",
+   "fieldname": "enabled",
+   "fieldtype": "Check",
+   "label": "Enabled"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2023-09-25 11:13:03.480737",
+ "modified": "2023-09-30 12:44:40.292578",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "UOM",
@@ -48,16 +55,13 @@
    "write": 1
   },
   {
-   "create": 1,
-   "delete": 1,
    "email": 1,
    "export": 1,
    "print": 1,
    "read": 1,
    "report": 1,
    "role": "Item Master Manager",
-   "share": 1,
-   "write": 1
+   "share": 1
   },
   {
    "email": 1,
