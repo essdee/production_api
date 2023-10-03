@@ -88,6 +88,9 @@ doc_events = {
 	"Communication": {
 		"validate": "production_api.production_api.util.validate_communication",
 	},
+    "Item": {
+        "on_update": "production_api.production_api.doctype.item.item.sync_updated_item_variant",
+	},
     ("Item Variant", "Item Group"): {
         "on_update": "spine.spine_adapter.docevents.eventhandler.handle_event",
         "on_update_after_submit": "spine.spine_adapter.docevents.eventhandler.handle_event",
