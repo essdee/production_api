@@ -92,6 +92,7 @@ doc_events = {
         "on_update": "production_api.production_api.doctype.item.item.sync_updated_item_variant",
 	},
     ("Item Variant", "Item Group"): {
+        "after_insert": "spine.spine_adapter.docevents.eventhandler.handle_event",
         "on_update": "spine.spine_adapter.docevents.eventhandler.handle_event",
         "on_update_after_submit": "spine.spine_adapter.docevents.eventhandler.handle_event",
         "after_rename": "spine.spine_adapter.docevents.eventhandler.handle_event",
