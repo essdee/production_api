@@ -427,4 +427,4 @@ def rename_item(docname, name, brand = None):
 
 def sync_updated_item_variant(doc, event):
 	if event == "on_update":
-		trigger_event("Item Variant", event, filters={"item": doc.name})
+		trigger_event("Item Variant", event, filters={"item": doc.name}, enqueue_after_commit=True)

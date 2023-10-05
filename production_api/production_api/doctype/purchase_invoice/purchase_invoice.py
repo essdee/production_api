@@ -28,11 +28,11 @@ class PurchaseInvoice(Document):
 			for g in removed:
 				grn = frappe.get_doc("Goods Received Note", g)
 				grn.purchase_invoice_name = None
-				grn.save()
+				grn.save(ignore_permissions=True)
 			for g in added:
 				grn = frappe.get_doc("Goods Received Note", g)
 				grn.purchase_invoice_name = self.name
-				grn.save()
+				grn.save(ignore_permissions=True)
 	
 	def calculate_total(self):
 		total_amount = 0
@@ -59,14 +59,14 @@ class PurchaseInvoice(Document):
 		for g in grns:
 			grn = frappe.get_doc("Goods Received Note", g)
 			grn.purchase_invoice_name = self.name
-			grn.save()
+			grn.save(ignore_permissions=True)
 	
 	def before_cancel(self):
 		grns = [g.grn for g in self.grn]
 		for g in grns:
 			grn = frappe.get_doc("Goods Received Note", g)
 			grn.purchase_invoice_name = None
-			grn.save()
+			grn.save(ignore_permissions=True)
 		res = post_erp_request("/api/method/frappe.desk.form.save.cancel", {"doctype": "Purchase Invoice", "name": self.erp_inv_name})
 		if res.status_code == 200:
 			pass
