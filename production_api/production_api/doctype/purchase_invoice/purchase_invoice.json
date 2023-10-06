@@ -13,6 +13,7 @@
   "column_break_cob1e",
   "posting_date",
   "posting_time",
+  "do_not_submit_invoice",
   "supplier_invoice_details_section",
   "bill_no",
   "column_break_njb2s",
@@ -28,7 +29,9 @@
   "in_words",
   "amended_from",
   "erp_inv_name",
-  "final_amount"
+  "final_amount",
+  "eligibility_for_itc",
+  "remarks"
  ],
  "fields": [
   {
@@ -171,12 +174,33 @@
    "label": "Final Amount",
    "no_copy": 1,
    "read_only": 1
+  },
+  {
+   "default": "All Other ITC",
+   "fieldname": "eligibility_for_itc",
+   "fieldtype": "Select",
+   "label": "Eligibility For ITC",
+   "options": "Input Service Distributor\nImport Of Service\nImport Of Capital Goods\nITC on Reverse Charge\nIneligible As Per Section 17(5)\nIneligible Others\nAll Other ITC"
+  },
+  {
+   "fieldname": "remarks",
+   "fieldtype": "Small Text",
+   "label": "Remarks"
+  },
+  {
+   "default": "0",
+   "description": "Check this box only if you want to update some info in ERP",
+   "fieldname": "do_not_submit_invoice",
+   "fieldtype": "Check",
+   "label": "Do not submit Invoice",
+   "no_copy": 1,
+   "permlevel": 1
   }
  ],
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2023-10-03 20:31:21.134185",
+ "modified": "2023-10-06 11:22:59.520569",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Purchase Invoice",
@@ -222,6 +246,28 @@
    "role": "Accounts Manager",
    "share": 1,
    "submit": 1,
+   "write": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "permlevel": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Accounts Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "permlevel": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
    "write": 1
   }
  ],

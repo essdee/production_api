@@ -67,7 +67,7 @@ class PurchaseInvoice(Document):
 			grn = frappe.get_doc("Goods Received Note", g)
 			grn.purchase_invoice_name = None
 			grn.save(ignore_permissions=True)
-		res = post_erp_request("/api/method/frappe.desk.form.save.cancel", {"doctype": "Purchase Invoice", "name": self.erp_inv_name})
+		res = post_erp_request("/api/method/essdee.essdee.utils.mrp.purchase_invoice.cancel", {"name": self.erp_inv_name})
 		if res.status_code == 200:
 			pass
 		else:
@@ -82,6 +82,7 @@ class PurchaseInvoice(Document):
 			self.update({
 				'erp_inv_name': data['name'],
 				'final_amount': data['amount'],
+				'due_date': data['due_date']
 			})
 		else:
 			frappe.throw(res.json().get('exception') or f"Unknown Error - {res.status_code}")
