@@ -148,7 +148,7 @@ def handler(payload, raise_error = True):
 		logger.debug("Handling Event -> {}".format(event))
 		if event in ["on_update"]:
 			handle_update(payload)
-		elif event in ["on_insert", "first_sync"]:
+		elif event in ["after_insert", "first_sync"]:
 			handle_insert(payload)
 		elif event == "on_trash":
 			handle_remove(payload)
