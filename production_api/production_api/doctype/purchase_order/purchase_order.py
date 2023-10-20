@@ -131,7 +131,7 @@ class PurchaseOrder(Document):
 			self.open_status = "Closed"
 		else:
 			# Check if a user has System Manager role
-			if "System Manager" not in frappe.get_roles():
+			if "Purchase Manager" not in frappe.get_roles():
 				frappe.throw(_("Only Administrators can open a closed document"))
 			self.open_status = "Open"
 
