@@ -48,6 +48,7 @@ frappe.ui.form.on('Purchase Invoice', {
 
 	supplier: function(frm) {
 		frm.set_value('grn', [])
+		frm.set_value('billing_supplier', frm.doc.supplier)
 	},
 
 	fetch_grn: function(frm) {

@@ -16,6 +16,7 @@
   "do_not_submit_invoice",
   "supplier_invoice_details_section",
   "bill_no",
+  "billing_supplier",
   "column_break_njb2s",
   "bill_date",
   "section_break_q9k0j",
@@ -195,12 +196,19 @@
    "label": "Do not submit Invoice",
    "no_copy": 1,
    "permlevel": 1
+  },
+  {
+   "fieldname": "billing_supplier",
+   "fieldtype": "Link",
+   "label": "Billing Supplier",
+   "options": "Supplier",
+   "reqd": 1
   }
  ],
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2023-10-06 11:22:59.520569",
+ "modified": "2023-10-24 17:22:34.948077",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Purchase Invoice",
