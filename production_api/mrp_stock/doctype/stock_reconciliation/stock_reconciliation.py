@@ -26,7 +26,7 @@ class StockReconciliation(Document):
 		if(self.get('item_details')):
 			items = save_stock_reconciliation_items(self.item_details)
 			self.set('items', items)
-		elif self.is_new() or not self.get('items'):
+		elif self.is_new() and not self.get('items'):
 			frappe.throw('Add items to Stock Reconciliation.', title='Stock Reconciliation')
 		self.set_warehouse()
 		
