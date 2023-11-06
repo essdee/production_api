@@ -131,9 +131,15 @@ def get_columns(filters: StockBalanceFilter):
 			"fieldname": "item",
 			"fieldtype": "Link",
 			"options": "Item Variant",
-			"width": 100,
+			"width": 150,
 		},
-		{"label": _("Item Name"), "fieldname": "item_name", "width": 150},
+		{
+			"label": _("Item Name"),
+			"fieldname": "item_name",
+			"fieldtype": "Link",
+			"options": "Item",
+			"width": 150
+		},
 		{
 			"label": _("Item Group"),
 			"fieldname": "item_group",
