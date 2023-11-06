@@ -71,7 +71,7 @@ class StockReconciliation(Document):
 			# do not allow negative valuation
 			if flt(row.rate) < 0:
 				self.validation_messages.append(_get_msg(row.table_index, row.row_index, _("Negative Valuation Rate is not allowed")))
-			if row.qty and row.rate in ["", None, 0]:
+			if row.rate in ["", None, 0]:
 				row.rate = get_stock_balance(
 					row.item, None, self.posting_date, self.posting_time, with_valuation_rate=True
 				)[1]
