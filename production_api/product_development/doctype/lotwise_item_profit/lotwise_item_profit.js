@@ -309,6 +309,11 @@ frappe.ui.form.on('Lotwise Item Profit Cloth Value', {
 		row.compacting_cost = parseFloat(row.compacting_cost);
 		calculate_all(frm);
 	},
+	wastage_allowance: function(frm, cdt, cdn) {
+		let row = frappe.get_doc(cdt, cdn)
+		row.wastage_allowance = parseFloat(row.wastage_allowance);
+		calculate_all(frm);
+	},
 });
 
 frappe.ui.form.on('Lotwise Item Profit Breakup', {
@@ -437,6 +442,7 @@ function calculate_qty_rate(row) {
 
 function calculate_cloth_value(row) {
 	row.total_cost = numeric_value(row, 'rate') + numeric_value(row, 'knitting_cost') + numeric_value(row, 'dyeing_cost') + numeric_value(row, 'compacting_cost');
+	row.total_cost = numeric_value(row, 'total_cost') + (numeric_value(row, 'total_cost') * numeric_value(row, 'wastage_allowance')/100);
 	row.net_rate = numeric_value(row, 'total_cost') * numeric_value(row, 'qty');
 }
 
