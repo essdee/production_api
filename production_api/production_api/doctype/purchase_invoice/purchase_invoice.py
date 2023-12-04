@@ -67,11 +67,12 @@ class PurchaseInvoice(Document):
 			grn = frappe.get_doc("Goods Received Note", g)
 			grn.purchase_invoice_name = None
 			grn.save(ignore_permissions=True)
-		res = post_erp_request("/api/method/essdee.essdee.utils.mrp.purchase_invoice.cancel", {"name": self.erp_inv_name})
-		if res.status_code == 200:
-			pass
-		else:
-			frappe.throw(res.json().get('exception') or f"Unknown Error - {res.status_code}")
+		if not self.cancel_without_cancelling_erp_inv:
+			res = post_erp_request("/api/method/essdee.essdee.utils.mrp.purchase_invoice.cancel", {"name": self.erp_inv_name})
+			if res.status_code == 200:
+				pass
+			else:
+				frappe.throw(res.json().get('exception') or f"Unknown Error - {res.status_code}")
 	
 	def before_submit(self):
 		data = self.as_dict(convert_dates_to_str=True)

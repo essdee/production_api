@@ -32,7 +32,8 @@
   "erp_inv_name",
   "final_amount",
   "eligibility_for_itc",
-  "remarks"
+  "remarks",
+  "cancel_without_cancelling_erp_inv"
  ],
  "fields": [
   {
@@ -203,12 +204,20 @@
    "label": "Billing Supplier",
    "options": "Supplier",
    "reqd": 1
+  },
+  {
+   "allow_on_submit": 1,
+   "default": "0",
+   "fieldname": "cancel_without_cancelling_erp_inv",
+   "fieldtype": "Check",
+   "label": "Cancel without Cancelling ERP Inv",
+   "permlevel": 2
   }
  ],
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2023-10-24 17:22:34.948077",
+ "modified": "2023-12-04 11:58:45.612967",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Purchase Invoice",
@@ -275,6 +284,34 @@
    "read": 1,
    "report": 1,
    "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "amend": 1,
+   "cancel": 1,
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Administrator",
+   "select": 1,
+   "share": 1,
+   "submit": 1,
+   "write": 1
+  },
+  {
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "permlevel": 2,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Administrator",
    "share": 1,
    "write": 1
   }
