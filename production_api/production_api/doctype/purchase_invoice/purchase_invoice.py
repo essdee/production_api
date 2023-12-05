@@ -72,7 +72,9 @@ class PurchaseInvoice(Document):
 			if res.status_code == 200:
 				pass
 			else:
-				frappe.throw(res.json().get('exception') or f"Unknown Error - {res.status_code}")
+				data = res.json()
+				error = frappe.log_error("Purchase Inv Cancel Error", json.dumps(data), self.doctype, self.name)
+				frappe.throw(data.get('exception') or f"Unknown Error - {frappe.get_desk_link(error.doctype, error.name)}")
 	
 	def before_submit(self):
 		data = self.as_dict(convert_dates_to_str=True)
@@ -86,7 +88,9 @@ class PurchaseInvoice(Document):
 				'due_date': data['due_date']
 			})
 		else:
-			frappe.throw(res.json().get('exception') or f"Unknown Error - {res.status_code}")
+			data = res.json()
+			error = frappe.log_error("Purchase Inv Submit Error", json.dumps(data), self.doctype, self.name)
+			frappe.throw(res.json().get('exception') or f"Unknown Error - {frappe.get_desk_link(error.doctype, error.name)}")
 
 
 @frappe.whitelist()
