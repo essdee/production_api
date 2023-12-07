@@ -28,6 +28,8 @@
   "cloth_value",
   "section_break_8ndqg",
   "total_cloth_value",
+  "column_break_dvy4u",
+  "cloth_value_per_piece",
   "section_break_u6qqj",
   "cmt",
   "column_break_j9q47",
@@ -36,6 +38,7 @@
   "trims",
   "section_break_dly2x",
   "total_cmt",
+  "production_cost_per_piece",
   "column_break_a6wza",
   "packing_materials_total",
   "column_break_uxr6u",
@@ -44,8 +47,12 @@
   "production_cost",
   "production_cost_html",
   "section_break_pumui",
+  "trade_discounts_template",
+  "set_discount_template",
   "trade_discounts",
   "section_break_kzkjs",
+  "other_costs_template",
+  "set_other_cost_template",
   "other_costs",
   "section_break_cybx4",
   "total_trade_discount",
@@ -57,6 +64,8 @@
   "gst_value",
   "section_break_yew61",
   "cost_price",
+  "avg_cost_per_piece",
+  "avg_rate_per_piece",
   "calculate_all",
   "column_break_f3qzs",
   "profit",
@@ -369,11 +378,61 @@
    "fieldname": "calculate_all",
    "fieldtype": "Button",
    "label": "Calculate All"
+  },
+  {
+   "fieldname": "column_break_dvy4u",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "cloth_value_per_piece",
+   "fieldtype": "Currency",
+   "label": "Cloth Value Per Piece",
+   "read_only": 1
+  },
+  {
+   "fieldname": "production_cost_per_piece",
+   "fieldtype": "Currency",
+   "label": "Production Cost Per Piece",
+   "read_only": 1
+  },
+  {
+   "fieldname": "avg_rate_per_piece",
+   "fieldtype": "Currency",
+   "label": "Avg Rate Per Piece",
+   "read_only": 1
+  },
+  {
+   "fieldname": "avg_cost_per_piece",
+   "fieldtype": "Currency",
+   "label": "Avg Cost Per Piece",
+   "read_only": 1
+  },
+  {
+   "fieldname": "trade_discounts_template",
+   "fieldtype": "Link",
+   "label": "Trade Discounts Template",
+   "options": "Lotwise Item Profit Additional Cost Template"
+  },
+  {
+   "fieldname": "set_discount_template",
+   "fieldtype": "Button",
+   "label": "Set Discount Template"
+  },
+  {
+   "fieldname": "other_costs_template",
+   "fieldtype": "Link",
+   "label": "Other Costs Template",
+   "options": "Lotwise Item Profit Additional Cost Template"
+  },
+  {
+   "fieldname": "set_other_cost_template",
+   "fieldtype": "Button",
+   "label": "Set Other Cost Template"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2023-07-29 20:36:20.102871",
+ "modified": "2023-12-07 17:58:29.600386",
  "modified_by": "Administrator",
  "module": "Product Development",
  "name": "Lotwise Item Profit",
