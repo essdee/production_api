@@ -30,7 +30,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2023-12-07 17:41:00.948026",
+ "modified": "2023-12-09 10:07:22.945917",
  "modified_by": "Administrator",
  "module": "Product Development",
  "name": "Lotwise Item Profit Additional Cost Template",
@@ -47,6 +47,22 @@
    "report": 1,
    "role": "System Manager",
    "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "read": 1,
+   "report": 1,
+   "role": "PD User",
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "read": 1,
+   "report": 1,
+   "role": "PD Manager",
    "write": 1
   }
  ],
