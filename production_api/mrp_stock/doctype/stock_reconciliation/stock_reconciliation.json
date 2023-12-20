@@ -1,5 +1,6 @@
 {
  "actions": [],
+ "allow_import": 1,
  "allow_rename": 1,
  "autoname": "naming_series:",
  "creation": "2023-05-18 12:20:28.744186",
@@ -93,7 +94,7 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2023-07-14 19:48:48.311419",
+ "modified": "2023-11-06 11:14:30.070910",
  "modified_by": "Administrator",
  "module": "MRP Stock",
  "name": "Stock Reconciliation",

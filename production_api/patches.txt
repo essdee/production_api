@@ -9,3 +9,4 @@ production_api.patches.v1_0.updated_existing_po_status #1
 production_api.patches.v1_0.set_grn_posting_date
 production_api.patches.v1_0.update_all_stock_ledger_entry
 production_api.patches.v1_0.update_purchase_invoice_billing_supplier
+production_api.patches.v1_0.item_variant_display_name

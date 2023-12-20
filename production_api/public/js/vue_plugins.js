@@ -1,5 +1,6 @@
 import AttributeValues from "./components/AttributeValues.vue";
 import AttributeList from "./components/AttributeList.vue";
+import DependentAttributeTemplate from "./components/DependentAttribute.vue";
 import BomAttributeMapping from "./components/BomAttributeMapping.vue";
 import ItemPriceList from "./ItemPriceList";
 import ItemDetail from "./components/ItemDetails.vue";
@@ -49,6 +50,22 @@ frappe.production.ui.ItemAttributeList = class {
         this.vue = new Vue({
             el: '.attribute-list-template',
             render: h => h(AttributeList, {
+            }),
+        });
+    }
+};
+
+frappe.production.ui.ItemDependentAttributeDetail = class {
+    constructor(wrapper) {
+        this.$wrapper = $(wrapper);
+        this.make_body();
+    }
+
+    make_body() {
+        this.$page_container = $('<div class="dependent-attribute-template frappe-control">').appendTo(this.$wrapper);
+        this.vue = new Vue({
+            el: '.dependent-attribute-template',
+            render: h => h(DependentAttributeTemplate, {
             }),
         });
     }

@@ -15,8 +15,10 @@ class ItemVariant(Document):
 	def get_name(self):
 		variant_name = self.item
 		for attribute in self.attributes:
-			if attribute.attribute_value:
-				variant_name += '-' + attribute.attribute_value
+			if not attribute.display_name_is_empty:
+				if not (attribute.display_name or attribute.attribute_value):
+					frappe.throw("The set of attributes for this item is not correct")
+				variant_name += '-' + (attribute.display_name or attribute.attribute_value)
 		return variant_name
 	
 	def get_attribute_value(self, attribute):
