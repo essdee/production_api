@@ -1,0 +1,45 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2023-10-25 18:40:25.458156",
+ "default_view": "List",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "enable_auto_update"
+ ],
+ "fields": [
+  {
+   "default": "0",
+   "description": "Enable Auto update to push changes to other systems(ERP, OMS, DC Systems)",
+   "fieldname": "enable_auto_update",
+   "fieldtype": "Check",
+   "label": "Enable Auto Update"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "issingle": 1,
+ "links": [],
+ "modified": "2023-10-25 18:40:33.164235",
+ "modified_by": "Administrator",
+ "module": "Product Development",
+ "name": "FG Item Settings",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "print": 1,
+   "read": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1
+}
