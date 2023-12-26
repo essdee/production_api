@@ -1,0 +1,120 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "prompt",
+ "creation": "2023-10-18 17:04:57.326636",
+ "default_view": "List",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "uom_section",
+  "default_unit_of_measure",
+  "uom_conversion_details",
+  "secondary_unit_of_measure",
+  "attributes_section",
+  "primary_attribute",
+  "dependent_attribute",
+  "dependent_attribute_mapping",
+  "attributes",
+  "attribute_list_html",
+  "dependent_attribute_details_html",
+  "additional_parameters"
+ ],
+ "fields": [
+  {
+   "fieldname": "uom_section",
+   "fieldtype": "Section Break",
+   "label": "UOM"
+  },
+  {
+   "fieldname": "default_unit_of_measure",
+   "fieldtype": "Link",
+   "label": "Default Unit of Measure",
+   "options": "UOM"
+  },
+  {
+   "fieldname": "uom_conversion_details",
+   "fieldtype": "Table",
+   "label": "UOM Conversion Details",
+   "options": "UOM Conversion Detail"
+  },
+  {
+   "fieldname": "secondary_unit_of_measure",
+   "fieldtype": "Link",
+   "label": "Secondary Unit of Measure",
+   "options": "UOM"
+  },
+  {
+   "fieldname": "attributes_section",
+   "fieldtype": "Section Break",
+   "label": "Attributes"
+  },
+  {
+   "fieldname": "primary_attribute",
+   "fieldtype": "Link",
+   "label": "Primary Attribute",
+   "options": "Item Attribute"
+  },
+  {
+   "fieldname": "dependent_attribute",
+   "fieldtype": "Link",
+   "label": "Dependent Attribute",
+   "options": "Item Attribute"
+  },
+  {
+   "fieldname": "dependent_attribute_mapping",
+   "fieldtype": "Link",
+   "label": "Dependent Attribute Mapping",
+   "options": "Item Dependent Attribute Mapping"
+  },
+  {
+   "fieldname": "attributes",
+   "fieldtype": "Table",
+   "label": "Attributes",
+   "options": "Item Item Attribute"
+  },
+  {
+   "fieldname": "attribute_list_html",
+   "fieldtype": "HTML",
+   "label": "Attribute List Values"
+  },
+  {
+   "fieldname": "dependent_attribute_details_html",
+   "fieldtype": "HTML",
+   "label": "Dependent Attribute Details"
+  },
+  {
+   "fieldname": "additional_parameters",
+   "fieldtype": "Table",
+   "label": "Additional Parameters",
+   "options": "Additional Parameter"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2023-10-18 17:04:57.326636",
+ "modified_by": "Administrator",
+ "module": "Product Development",
+ "name": "FG Item Master Template",
+ "naming_rule": "Set by user",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1
+}
