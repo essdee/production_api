@@ -30,6 +30,21 @@ class ItemVariant(Document):
 		
 		return attribute_value
 
+	def rename_variant(self):
+		name = self.get_name()
+		print(self.name, name)
+		if name != self.name:
+			self.rename(name, force=True)
+
+
+
+@frappe.whitelist()
+def rename_item_variant(variant):
+	variant = frappe.get_doc("Item Variant", variant)
+	variant.rename_variant()
+	return variant.name
+
+
 def spine_set_item(payload):
 	doc = payload.get("doc_to_publish")
 	if not doc:
