@@ -32,6 +32,8 @@
   "cloth_value_per_piece",
   "section_break_u6qqj",
   "cmt",
+  "production_cost_template",
+  "set_production_cost_template",
   "column_break_j9q47",
   "packing_materials",
   "column_break_izrve",
@@ -428,11 +430,22 @@
    "fieldname": "set_other_cost_template",
    "fieldtype": "Button",
    "label": "Set Other Cost Template"
+  },
+  {
+   "fieldname": "production_cost_template",
+   "fieldtype": "Link",
+   "label": "Production Cost Template",
+   "options": "Lotwise Item Profit Breakup Template"
+  },
+  {
+   "fieldname": "set_production_cost_template",
+   "fieldtype": "Button",
+   "label": "Set Production Cost Template"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2023-12-07 17:58:29.600386",
+ "modified": "2024-01-06 10:20:44.363859",
  "modified_by": "Administrator",
  "module": "Product Development",
  "name": "Lotwise Item Profit",

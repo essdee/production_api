@@ -168,6 +168,41 @@ frappe.ui.form.on('Lotwise Item Profit', {
 				calculate_all(frm);
 			})
 	},
+
+	set_production_cost_template: function(frm) {
+		if (!frm.doc.production_cost_template) return
+		frappe.db.get_doc("Lotwise Item Profit Breakup Template", frm.doc.production_cost_template)
+			.then(result => {
+				console.log(result);
+				frm.doc.cmt = []
+				$.each(result.cmt || [], function(i, v) {
+					frm.add_child('cmt', {
+						'costing_name': v['costing_name'],
+						'cost': v['cost'],
+					});
+				});
+				frm.refresh_field('cmt');
+
+				frm.doc.packing_materials = []
+				$.each(result.packing_materials || [], function(i, v) {
+					frm.add_child('packing_materials', {
+						'costing_name': v['costing_name'],
+						'cost': v['cost'],
+					});
+				});
+				frm.refresh_field('packing_materials');
+
+				frm.doc.trims = []
+				$.each(result.trims || [], function(i, v) {
+					frm.add_child('trims', {
+						'costing_name': v['costing_name'],
+						'cost': v['cost'],
+					});
+				});
+				frm.refresh_field('trims');
+				calculate_all(frm);
+			})
+	},
 });
 
 function get_size_qty(frm, size) {
