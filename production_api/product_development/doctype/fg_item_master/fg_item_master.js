@@ -14,12 +14,12 @@ frappe.ui.form.on('FG Item Master', {
 	},
 
 	refresh: function(frm) {
-		if (!frm.is_new()) {
+		if (!frm.is_new() && frm.has_perm("write")) {
 			frm.page.add_menu_item(__('Sync FG Item'), function() {
 				frappe.call({
-					method: "production_api.product_development.doctype.fg_item_master.fg_item_master.sync_fg_items",
+					method: "production_api.product_development.doctype.fg_item_master.fg_item_master.sync_fg_item",
 					args: {
-						"names": [frm.doc.name],
+						"name": frm.doc.name,
 					},
 					callback: function(r) {
 						if (r.message) {

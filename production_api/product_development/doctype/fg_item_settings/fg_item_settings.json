@@ -7,7 +7,12 @@
  "editable_grid": 1,
  "engine": "InnoDB",
  "field_order": [
-  "enable_auto_update"
+  "enable_auto_update",
+  "oms",
+  "dc_grn_section",
+  "dc_grn_url",
+  "dc_grn_api_key",
+  "dc_grn_api_secret"
  ],
  "fields": [
   {
@@ -16,12 +21,38 @@
    "fieldname": "enable_auto_update",
    "fieldtype": "Check",
    "label": "Enable Auto Update"
+  },
+  {
+   "fieldname": "oms",
+   "fieldtype": "Table",
+   "label": "OMS",
+   "options": "FG Item OMS Settings"
+  },
+  {
+   "fieldname": "dc_grn_section",
+   "fieldtype": "Section Break",
+   "label": "DC GRN"
+  },
+  {
+   "fieldname": "dc_grn_url",
+   "fieldtype": "Data",
+   "label": "DC GRN URL"
+  },
+  {
+   "fieldname": "dc_grn_api_key",
+   "fieldtype": "Data",
+   "label": "DC GRN API Key"
+  },
+  {
+   "fieldname": "dc_grn_api_secret",
+   "fieldtype": "Password",
+   "label": "DC GRN API Secret"
   }
  ],
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2023-10-25 18:40:33.164235",
+ "modified": "2024-01-03 23:25:34.701826",
  "modified_by": "Administrator",
  "module": "Product Development",
  "name": "FG Item Settings",

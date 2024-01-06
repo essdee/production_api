@@ -25,13 +25,17 @@
   "box_per_carton",
   "section_break_muule",
   "sizes",
-  "item"
+  "item",
+  "dc_uid",
+  "brand1"
  ],
  "fields": [
   {
    "fieldname": "uid",
    "fieldtype": "Data",
    "label": "UID",
+   "no_copy": 1,
+   "read_only": 1,
    "unique": 1
   },
   {
@@ -123,10 +127,23 @@
    "fieldtype": "Link",
    "label": "Template",
    "options": "FG Item Master Template"
+  },
+  {
+   "fieldname": "dc_uid",
+   "fieldtype": "Data",
+   "label": "DC UID",
+   "read_only": 1
+  },
+  {
+   "description": "This is only used for syncing purposes between other Systems",
+   "fieldname": "brand1",
+   "fieldtype": "Link",
+   "label": "Brand1",
+   "options": "Brand"
   }
  ],
  "links": [],
- "modified": "2023-12-22 13:03:47.775539",
+ "modified": "2024-01-05 18:49:26.592026",
  "modified_by": "Administrator",
  "module": "Product Development",
  "name": "FG Item Master",
