@@ -16,8 +16,8 @@ class PurchaseInvoice(Document):
 		self.calculate_total()
 
 	def validate_grn(self):
-		if not len(self.grn):
-			frappe.throw("Please set atleast one GRN")
+		# if not len(self.grn):
+		# 	frappe.throw("Please set atleast one GRN")
 		grns = [g.grn for g in self.grn]
 		old_grns = []
 		if not self.is_new():
@@ -68,6 +68,7 @@ class PurchaseInvoice(Document):
 			grn.purchase_invoice_name = None
 			grn.save(ignore_permissions=True)
 		if not self.cancel_without_cancelling_erp_inv:
+			self.erp_inv_docstatus = 2
 			res = post_erp_request("/api/method/essdee.essdee.utils.mrp.purchase_invoice.cancel", {"name": self.erp_inv_name})
 			if res.status_code == 200:
 				pass
@@ -77,6 +78,8 @@ class PurchaseInvoice(Document):
 				frappe.throw(data.get('exception') or f"Unknown Error - {frappe.get_desk_link(error.doctype, error.name)}")
 	
 	def before_submit(self):
+		if not len(self.grn) or not len(self.items):
+			frappe.throw("Please set at least 1 grn and item row.")
 		data = self.as_dict(convert_dates_to_str=True)
 		p = "/api/method/essdee.essdee.utils.mrp.purchase_invoice.create"
 		res = post_erp_request(p, {'data': data})
@@ -84,6 +87,7 @@ class PurchaseInvoice(Document):
 			data = res.json()['message']
 			self.update({
 				'erp_inv_name': data['name'],
+				'erp_inv_docstatus': data['docstatus'],
 				'final_amount': data['amount'],
 				'due_date': data['due_date']
 			})
@@ -92,6 +96,32 @@ class PurchaseInvoice(Document):
 			error = frappe.log_error("Purchase Inv Submit Error", json.dumps(data), self.doctype, self.name)
 			frappe.throw(res.json().get('exception') or f"Unknown Error - {frappe.get_desk_link(error.doctype, error.name)}")
 
+@frappe.whitelist()
+def submit_erp_invoice(name):
+	inv = frappe.get_doc("Purchase Invoice", name)
+	if inv.docstatus == 0:
+		frappe.throw("Document not submitted")
+	elif inv.docstatus == 2:
+		frappe.throw("Document already cancelled")
+	
+	if inv.erp_inv_docstatus != 0:
+		frappe.throw(f"ERP Invoice {inv.erp_inv_name} already submitted")
+	
+	res = post_erp_request("/api/method/essdee.essdee.utils.mrp.purchase_invoice.submit", {"name": inv.erp_inv_name})
+	if res.status_code == 200:
+		data = res.json()['message']
+		inv.update({
+			'erp_inv_name': data['name'],
+			'erp_inv_docstatus': data['docstatus'],
+			'final_amount': data['amount'],
+			'due_date': data['due_date']
+		})
+		inv.save()
+	else:
+		data = res.json()
+		error = frappe.log_error("Purchase Inv Submit Error", json.dumps(data), inv.doctype, inv.name)
+		frappe.throw(res.json().get('exception') or f"Unknown Error - {frappe.get_desk_link(error.doctype, error.name)}")
+	
 
 @frappe.whitelist()
 def fetch_grn_details(grns):

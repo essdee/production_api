@@ -30,6 +30,7 @@
   "in_words",
   "amended_from",
   "erp_inv_name",
+  "erp_inv_docstatus",
   "final_amount",
   "eligibility_for_itc",
   "remarks",
@@ -81,8 +82,7 @@
    "fieldtype": "Table",
    "label": "GRNs",
    "no_copy": 1,
-   "options": "Purchase Invoice GRN",
-   "reqd": 1
+   "options": "Purchase Invoice GRN"
   },
   {
    "fieldname": "section_break_rqlkf",
@@ -92,8 +92,7 @@
    "fieldname": "items",
    "fieldtype": "Table",
    "label": "Items",
-   "options": "Purchase Invoice Item",
-   "reqd": 1
+   "options": "Purchase Invoice Item"
   },
   {
    "fieldname": "amended_from",
@@ -212,12 +211,21 @@
    "fieldtype": "Check",
    "label": "Cancel without Cancelling ERP Inv",
    "permlevel": 2
+  },
+  {
+   "allow_on_submit": 1,
+   "default": "0",
+   "fieldname": "erp_inv_docstatus",
+   "fieldtype": "Int",
+   "hidden": 1,
+   "label": "ERP Purchase Invoice Docstatus",
+   "read_only": 1
   }
  ],
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2023-12-04 11:58:45.612967",
+ "modified": "2024-01-13 17:00:35.422557",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Purchase Invoice",

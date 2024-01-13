@@ -44,6 +44,24 @@ frappe.ui.form.on('Purchase Invoice', {
 				})
 			});
 		}
+
+		if (frm.doc.docstatus == 1 && frm.doc.erp_inv_docstatus == 0) {
+			frm.add_custom_button(__('Submit Bill'), function() {
+				frappe.call({
+					method: "production_api.production_api.doctype.purchase_invoice.purchase_invoice.submit_erp_invoice",
+					args: {
+						"name": frm.doc.name,
+					},
+					freeze: true,
+					freeze_message: __("Submitting Bill..."),
+					callback: function(r) {
+						if (r.message) {
+							console.log(r.message)
+						}
+					}
+				})
+			})
+		}
 	},
 
 	supplier: function(frm) {
