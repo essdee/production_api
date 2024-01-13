@@ -104,17 +104,22 @@ def fetch_grn_details(grns):
 	for grn in grns:
 		grn_doc = frappe.get_doc("Goods Received Note", grn)
 		for grn_item in grn_doc.items:
-			key = (grn_item.item_variant, grn_item.uom, grn_item.rate, grn_item.tax)
+			rate = grn_item.rate
+			discount_percentage = frappe.get_value(grn_item.ref_doctype, grn_item.ref_docname, "discount_percentage")
+			print("Discount Percentage", discount_percentage)
+			if discount_percentage:
+				rate = rate - (rate * (discount_percentage / 100))
+			key = (grn_item.item_variant, grn_item.uom, rate, grn_item.tax)
 			items.setdefault(key, {
 				"item": grn_item.item_variant,
 				"qty": 0,
 				"uom": grn_item.uom,
-				"rate": grn_item.rate,
+				"rate": rate,
 				"amount": 0,
 				"tax": grn_item.tax,
 			})
 			items[key]["qty"] += grn_item.quantity
-			items[key]["amount"] += (grn_item.quantity * grn_item.rate)
+			items[key]["amount"] += (grn_item.quantity * rate)
 	
 	return list(items.values())
 
