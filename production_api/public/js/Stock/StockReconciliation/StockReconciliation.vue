@@ -17,7 +17,7 @@
 </template>
 
 <script>
-import evntBus from '../../bus.js';
+import EventBus from '../../bus.js';
 import ItemLotFetcher from '../../components/ItemLotFetcher.vue'
 
 export default ({
@@ -68,7 +68,7 @@ export default ({
         },
 
         updated: function(value) {
-            evntBus.$emit('stock_updated', true);
+            EventBus.$emit('stock_updated', true);
         },
     }
 })

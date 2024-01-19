@@ -133,7 +133,7 @@
 </template>
 
 <script>
-import evntBus from '../../bus.js';
+import EventBus from '../../bus.js';
 import ItemLotFetcher from '../../components/ItemLotFetcher.vue'
 
 export default ({
@@ -212,7 +212,7 @@ export default ({
         },
 
         updated: function(value) {
-            evntBus.$emit('stock_updated', true);
+            EventBus.$emit('stock_updated', true);
         },
 
         create_lot_item_inputs: function() {
@@ -578,7 +578,7 @@ export default ({
             if(this.is_edit){
                 this.items[this.edit_index].items[this.edit_index1] = JSON.parse(JSON.stringify(this.item));
                 this.cancel_edit();
-                evntBus.$emit("stock_updated", true);
+                EventBus.$emit("stock_updated", true);
                 return;
             }
             let index = this.get_item_group_index();
@@ -592,7 +592,7 @@ export default ({
             } else {
                 this.items[index].items.push(JSON.parse(JSON.stringify(this.item)));
             }
-            evntBus.$emit("po_updated", true);
+            EventBus.$emit("po_updated", true);
             this.clear_inputs(false);
         },
 
@@ -620,7 +620,7 @@ export default ({
             } else {
                 this.items[index].items.splice(index1, 1);
             }
-            evntBus.$emit("po_updated", true);
+            EventBus.$emit("po_updated", true);
         },
 
         set_lot_item_inputs: function(cur_item) {

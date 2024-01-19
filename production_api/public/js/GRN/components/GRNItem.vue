@@ -148,7 +148,7 @@
 </template>
 
 <script>
-import evntBus  from '../../bus';
+import EventBus  from '../../bus';
 
 export default {
     name: 'grnitem',
@@ -164,7 +164,7 @@ export default {
     },
     mounted() {
         console.log('new-grn-item mounted');
-        evntBus.$on("update_grn_details", data => {
+        EventBus.$on("update_grn_details", data => {
             this.load_data(data);
         })
     },
@@ -247,7 +247,7 @@ export default {
                     this.skip_watch = false;
                     return;
                 }
-                evntBus.$emit("grn_updated", true);
+                EventBus.$emit("grn_updated", true);
             },
             deep: true
         }

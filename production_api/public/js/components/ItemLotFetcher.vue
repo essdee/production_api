@@ -218,6 +218,7 @@ export default {
             deto: true,
             cur_item_changed: false,
             sample_doc: {},
+            frappe: frappe
         }
     },
     mounted() {
@@ -395,7 +396,6 @@ export default {
         },
 
         clear_lot_item_inputs: function() {
-            console.log('inside clear')
             this.lot_input.set_value('');
             this.item_input.set_value('');
             this.cur_item = {
@@ -494,7 +494,6 @@ export default {
                 let classname = '';
                 if(i%2 == 0) classname = '.item-attribute-controls';
                 else classname = '.item-attribute-controls-right';
-                console.log($(this.$el).find(classname))
                 let me = this;
                 this.attribute_inputs[i] = frappe.ui.form.make_control({
                     parent: $(this.$el).find(classname),
@@ -533,7 +532,6 @@ export default {
                                 no_spinner: true,
                                 args: args,
                                 callback: function (r) {
-                                    console.log(r)
                                     if (r.results.length > 0) {
                                         // results has json of value and description
                                         // check if value is in results
@@ -576,7 +574,6 @@ export default {
                 let classname = '';
                 if(i%2 == 0) classname = '.additional-parameter-controls';
                 else classname = '.additional-parameter-controls-right';
-                console.log($(this.$el).find(classname))
                 let me = this;
                 this.additional_parameter_inputs[i] = frappe.ui.form.make_control({
                     parent: $(this.$el).find(classname),
@@ -593,7 +590,6 @@ export default {
                             };
                         },
                         get_route_options_for_new_doc: function(field) {
-                            console.log(field);
                             return {
 				                key: key,
 			                }
@@ -667,7 +663,6 @@ export default {
         },
 
         get_additional_parameters: function() {
-            console.log('Get Additional Parameters')
             if(!this.additional_parameter_inputs) return false;
             let attributes = [];
             let attribute_values = [];

@@ -16,7 +16,7 @@
 </template>
 
 <script>
-import evntBus from '../../bus.js';
+import EventBus from '../../bus.js';
 import ItemLotFetcher from '../../components/ItemLotFetcher.vue'
 
 export default ({
@@ -72,7 +72,7 @@ export default ({
         if (cur_frm.doc.purpose == "Receive at Warehouse") {
             this.can_create = false;
         }
-        evntBus.$on("purpose_updated", purpose => {
+        EventBus.$on("purpose_updated", purpose => {
             if (purpose == "Receive at Warehouse") {
                 this.can_create = false;
             } else {
@@ -108,7 +108,7 @@ export default ({
         },
 
         updated: function(value) {
-            evntBus.$emit("stock_updated", true);
+            EventBus.$emit("stock_updated", true);
         }
     }
 })
