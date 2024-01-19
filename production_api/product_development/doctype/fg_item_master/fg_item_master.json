@@ -10,22 +10,32 @@
  "engine": "InnoDB",
  "field_order": [
   "uid",
-  "name1",
+  "brand",
   "available_sizes",
-  "prices",
-  "size_range",
   "pcs_per_box",
-  "box_per_carton",
-  "category",
-  "hsn",
+  "prices",
+  "template",
+  "column_break_rmzju",
+  "name1",
+  "disabled",
   "deprecated",
-  "disabled"
+  "category",
+  "size_range",
+  "hsn",
+  "box_per_carton",
+  "section_break_muule",
+  "sizes",
+  "item",
+  "dc_uid",
+  "brand1"
  ],
  "fields": [
   {
    "fieldname": "uid",
    "fieldtype": "Data",
    "label": "UID",
+   "no_copy": 1,
+   "read_only": 1,
    "unique": 1
   },
   {
@@ -37,12 +47,14 @@
   {
    "fieldname": "available_sizes",
    "fieldtype": "Data",
-   "label": "Available Sizes"
+   "label": "Available Sizes",
+   "read_only": 1
   },
   {
    "fieldname": "size_range",
-   "fieldtype": "Data",
-   "label": "Size Range"
+   "fieldtype": "Link",
+   "label": "Size Range",
+   "options": "FG Item Size Range"
   },
   {
    "fieldname": "pcs_per_box",
@@ -56,10 +68,12 @@
   },
   {
    "fieldname": "category",
-   "fieldtype": "Data",
-   "label": "Category"
+   "fieldtype": "Link",
+   "label": "Category",
+   "options": "FG Item Category"
   },
   {
+   "fetch_from": "category.hsn",
    "fieldname": "hsn",
    "fieldtype": "Int",
    "label": "HSN"
@@ -80,10 +94,56 @@
    "fieldname": "prices",
    "fieldtype": "Data",
    "label": "Prices"
+  },
+  {
+   "fieldname": "column_break_rmzju",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "brand",
+   "fieldtype": "Link",
+   "label": "Brand",
+   "options": "Brand"
+  },
+  {
+   "fieldname": "section_break_muule",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "sizes",
+   "fieldtype": "Table",
+   "label": "Sizes",
+   "options": "FG Item Size"
+  },
+  {
+   "fieldname": "item",
+   "fieldtype": "Link",
+   "label": "Item",
+   "options": "Item",
+   "read_only": 1
+  },
+  {
+   "fieldname": "template",
+   "fieldtype": "Link",
+   "label": "Template",
+   "options": "FG Item Master Template"
+  },
+  {
+   "fieldname": "dc_uid",
+   "fieldtype": "Data",
+   "label": "DC UID",
+   "read_only": 1
+  },
+  {
+   "description": "This is only used for syncing purposes between other Systems",
+   "fieldname": "brand1",
+   "fieldtype": "Link",
+   "label": "Brand1",
+   "options": "Brand"
   }
  ],
  "links": [],
- "modified": "2023-07-06 11:32:38.245154",
+ "modified": "2024-01-05 18:49:26.592026",
  "modified_by": "Administrator",
  "module": "Product Development",
  "name": "FG Item Master",

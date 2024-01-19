@@ -7,6 +7,7 @@
  "engine": "InnoDB",
  "field_order": [
   "supplier_name",
+  "uid",
   "pan",
   "address_html",
   "column_break_4",
@@ -42,8 +43,7 @@
    "fieldname": "deparments",
    "fieldtype": "Table MultiSelect",
    "label": "Deparments",
-   "options": "Supplier Department",
-   "reqd": 1
+   "options": "Supplier Department"
   },
   {
    "fieldname": "address_html",
@@ -84,11 +84,18 @@
    "fieldname": "price_html",
    "fieldtype": "HTML Editor",
    "label": "Price"
+  },
+  {
+   "fieldname": "uid",
+   "fieldtype": "Data",
+   "label": "UID",
+   "read_only": 1,
+   "unique": 1
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2023-04-03 11:08:45.075765",
+ "modified": "2023-09-21 12:12:51.114409",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Supplier",

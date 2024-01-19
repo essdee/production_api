@@ -1,5 +1,4 @@
 import { createApp } from 'vue';
-
 import GRNItem from "./components/GRNItem.vue"
 
 export default class GRNItemWrapper {
@@ -35,4 +34,15 @@ export default class GRNItemWrapper {
     update_status() {
         this.grn.update_status();
     }
+    // get_items() {
+    //     return this.vue.$children[0].get_items();
+    // }
+
+    // load_data(data, skip_watch=false) {
+    //     this.vue.$children[0].load_data(data, skip_watch);
+    // }
+    
+    // update_status() {
+    //     this.vue.$children[0].update_status();
+    // }
 };

@@ -1,5 +1,4 @@
 import { createApp } from 'vue';
-
 import StockItem from "./StockEntry/StockEntry.vue"
 import StockReconciliation from "./StockReconciliation/StockReconciliation.vue"
 import LotTransfer from "./LotTransfer/LotTransfer.vue"

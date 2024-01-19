@@ -4,6 +4,23 @@
 let total_count = 0;
 
 frappe.ui.form.on('Lotwise Item Profit', {
+	setup: function(frm) {
+		frm.set_query('trade_discounts_template', function(doc) {
+			return{
+				filters: {
+					type: 'Discounts',
+				}
+			}
+		});
+		frm.set_query('other_costs_template', function(doc) {
+			return{
+				filters: {
+					type: 'Other',
+				}
+			}
+		});
+	},
+
 	refresh: function(frm) {
 		frm.add_custom_button(__('Recalculate'), function() {
 			calculate_all(frm);
@@ -116,6 +133,76 @@ frappe.ui.form.on('Lotwise Item Profit', {
 		calculate_all(frm);
 	},
 
+	set_discount_template: function(frm) {
+		if (!frm.doc.trade_discounts_template) return
+		frappe.db.get_doc("Lotwise Item Profit Additional Cost Template", frm.doc.trade_discounts_template)
+			.then(result => {
+				console.log(result);
+				frm.doc.trade_discounts = []
+				$.each(result.value || [], function(i, v) {
+					frm.add_child('trade_discounts', {
+						'costing_name': v['costing_name'],
+						'based_on': v['based_on'],
+						'rate': v['rate'],
+					});
+				})
+				frm.refresh_field('trade_discounts');
+				calculate_all(frm);
+			})
+	},
+
+	set_other_cost_template: function(frm) {
+		if (!frm.doc.other_costs_template) return
+		frappe.db.get_doc("Lotwise Item Profit Additional Cost Template", frm.doc.other_costs_template)
+			.then(result => {
+				console.log(result);
+				frm.doc.other_costs = []
+				$.each(result.value || [], function(i, v) {
+					frm.add_child('other_costs', {
+						'costing_name': v['costing_name'],
+						'based_on': v['based_on'],
+						'rate': v['rate'],
+					});
+				})
+				frm.refresh_field('other_costs');
+				calculate_all(frm);
+			})
+	},
+
+	set_production_cost_template: function(frm) {
+		if (!frm.doc.production_cost_template) return
+		frappe.db.get_doc("Lotwise Item Profit Breakup Template", frm.doc.production_cost_template)
+			.then(result => {
+				console.log(result);
+				frm.doc.cmt = []
+				$.each(result.cmt || [], function(i, v) {
+					frm.add_child('cmt', {
+						'costing_name': v['costing_name'],
+						'cost': v['cost'],
+					});
+				});
+				frm.refresh_field('cmt');
+
+				frm.doc.packing_materials = []
+				$.each(result.packing_materials || [], function(i, v) {
+					frm.add_child('packing_materials', {
+						'costing_name': v['costing_name'],
+						'cost': v['cost'],
+					});
+				});
+				frm.refresh_field('packing_materials');
+
+				frm.doc.trims = []
+				$.each(result.trims || [], function(i, v) {
+					frm.add_child('trims', {
+						'costing_name': v['costing_name'],
+						'cost': v['cost'],
+					});
+				});
+				frm.refresh_field('trims');
+				calculate_all(frm);
+			})
+	},
 });
 
 function get_size_qty(frm, size) {
@@ -309,6 +396,11 @@ frappe.ui.form.on('Lotwise Item Profit Cloth Value', {
 		row.compacting_cost = parseFloat(row.compacting_cost);
 		calculate_all(frm);
 	},
+	wastage_allowance: function(frm, cdt, cdn) {
+		let row = frappe.get_doc(cdt, cdn)
+		row.wastage_allowance = parseFloat(row.wastage_allowance);
+		calculate_all(frm);
+	},
 });
 
 frappe.ui.form.on('Lotwise Item Profit Breakup', {
@@ -376,6 +468,11 @@ function calculate_total_cloth_value(frm) {
 		total += (v.net_rate || 0);
     })
 	frm.doc.total_cloth_value = total;
+	if (frm.doc.total_qty) {
+		frm.doc.cloth_value_per_piece = total / frm.doc.total_qty;
+	} else {
+		frm.doc.cloth_value_per_piece = 0;
+	}
 }
 
 function calculate_production_cost(frm) {
@@ -395,6 +492,7 @@ function calculate_production_cost(frm) {
 	frm.doc.total_cmt = cmt;
 	frm.doc.packing_materials_total = packing_material;
 	frm.doc.trims_total = trims;
+	frm.doc.production_cost_per_piece = cmt + packing_material + trims
 	frm.doc.production_cost = (frm.doc.total_cloth_value || 0) + total;
 }
 
@@ -417,6 +515,13 @@ function calculate_total(frm) {
 	let gst = (get_numeric_value(frm, 'gst') / 100) * (get_numeric_value(frm, 'total_selling_value') - get_numeric_value(frm, 'total_trade_discount'))
 	frm.doc.gst_value = gst;
 	frm.doc.cost_price = get_numeric_value(frm, 'production_cost') + get_numeric_value(frm, 'total_trade_discount') + get_numeric_value(frm, 'total_other_cost') + gst;
+	if (frm.doc.total_qty) {
+		frm.doc.avg_cost_per_piece = get_numeric_value(frm, 'cost_price') / frm.doc.total_qty;
+		frm.doc.avg_rate_per_piece = get_numeric_value(frm, 'total_selling_value') / frm.doc.total_qty;
+	} else {
+		frm.doc.avg_cost_per_piece = 0
+		frm.doc.avg_rate_per_piece = 0
+	}
 	frm.doc.profit = get_numeric_value(frm, 'total_selling_value') - get_numeric_value(frm, 'cost_price');
 	frm.doc.profit_percent = get_numeric_value(frm, 'profit') / get_numeric_value(frm, 'cost_price', 1) * 100;
 	frm.doc.profit_percent_markdown = get_numeric_value(frm, 'profit') / get_numeric_value(frm, 'total_selling_value', 1) * 100;
@@ -437,6 +542,7 @@ function calculate_qty_rate(row) {
 
 function calculate_cloth_value(row) {
 	row.total_cost = numeric_value(row, 'rate') + numeric_value(row, 'knitting_cost') + numeric_value(row, 'dyeing_cost') + numeric_value(row, 'compacting_cost');
+	row.total_cost = numeric_value(row, 'total_cost') + (numeric_value(row, 'total_cost') * numeric_value(row, 'wastage_allowance')/100);
 	row.net_rate = numeric_value(row, 'total_cost') * numeric_value(row, 'qty');
 }
 

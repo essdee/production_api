@@ -1,0 +1,76 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2023-10-25 18:40:25.458156",
+ "default_view": "List",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "enable_auto_update",
+  "oms",
+  "dc_grn_section",
+  "dc_grn_url",
+  "dc_grn_api_key",
+  "dc_grn_api_secret"
+ ],
+ "fields": [
+  {
+   "default": "0",
+   "description": "Enable Auto update to push changes to other systems(ERP, OMS, DC Systems)",
+   "fieldname": "enable_auto_update",
+   "fieldtype": "Check",
+   "label": "Enable Auto Update"
+  },
+  {
+   "fieldname": "oms",
+   "fieldtype": "Table",
+   "label": "OMS",
+   "options": "FG Item OMS Settings"
+  },
+  {
+   "fieldname": "dc_grn_section",
+   "fieldtype": "Section Break",
+   "label": "DC GRN"
+  },
+  {
+   "fieldname": "dc_grn_url",
+   "fieldtype": "Data",
+   "label": "DC GRN URL"
+  },
+  {
+   "fieldname": "dc_grn_api_key",
+   "fieldtype": "Data",
+   "label": "DC GRN API Key"
+  },
+  {
+   "fieldname": "dc_grn_api_secret",
+   "fieldtype": "Password",
+   "label": "DC GRN API Secret"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "issingle": 1,
+ "links": [],
+ "modified": "2024-01-03 23:25:34.701826",
+ "modified_by": "Administrator",
+ "module": "Product Development",
+ "name": "FG Item Settings",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "print": 1,
+   "read": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1
+}

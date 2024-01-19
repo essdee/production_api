@@ -87,7 +87,18 @@ doc_events = {
 	},
 	"Communication": {
 		"validate": "production_api.production_api.util.validate_communication",
-	}
+	},
+    "Item": {
+        "on_update": "production_api.production_api.doctype.item.item.sync_updated_item_variant",
+	},
+    ("Item Variant", "Item Group"): {
+        "after_insert": "spine.spine_adapter.docevents.eventhandler.handle_event",
+        "on_update": "spine.spine_adapter.docevents.eventhandler.handle_event",
+        "on_update_after_submit": "spine.spine_adapter.docevents.eventhandler.handle_event",
+        "after_rename": "spine.spine_adapter.docevents.eventhandler.handle_event",
+        "on_submit": "spine.spine_adapter.docevents.eventhandler.handle_event",
+        "on_cancel": "spine.spine_adapter.docevents.eventhandler.handle_event",
+    },
 }
 
 # Scheduled Tasks
@@ -151,3 +162,5 @@ jinja = {
 		"production_api.mrp_stock.doctype.stock_entry.stock_entry.fetch_stock_entry_items",
     ]
 }
+
+auto_cancel_exempted_doctypes = ["Goods Received Note"]

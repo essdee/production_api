@@ -14,7 +14,8 @@
   "dyeing_cost",
   "compacting_cost",
   "total_cost",
-  "net_rate"
+  "net_rate",
+  "wastage_allowance"
  ],
  "fields": [
   {
@@ -98,12 +99,18 @@
    "fieldname": "ratio",
    "fieldtype": "Int",
    "label": "Ratio"
+  },
+  {
+   "default": "0",
+   "fieldname": "wastage_allowance",
+   "fieldtype": "Percent",
+   "label": "Wastage Allowance %"
   }
  ],
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2023-07-29 17:30:48.677309",
+ "modified": "2023-11-28 12:13:35.778471",
  "modified_by": "Administrator",
  "module": "Product Development",
  "name": "Lotwise Item Profit Cloth Value",

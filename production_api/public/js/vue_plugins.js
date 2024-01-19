@@ -1,5 +1,6 @@
 import AttributeValues from "./components/AttributeValues.vue";
 import AttributeList from "./components/AttributeList.vue";
+import DependentAttributeTemplate from "./components/DependentAttribute.vue";
 import BomAttributeMapping from "./components/BomAttributeMapping.vue";
 import ItemPriceList from "./ItemPriceList";
 import ItemDetail from "./components/ItemDetails.vue";
@@ -13,19 +14,13 @@ import EventBus from "./bus.js";
 
 import { EditBOMAttributeMappingWrapper, BOMAttributeMappingWrapper } from "./ItemBOM";
 
-
-
-
-
 import { createApp } from 'vue';
-
-
-
 
 frappe.provide("frappe.production.ui");
 frappe.provide("frappe.production.product_development.ui");
 
 frappe.production.ui.eventBus = EventBus;
+
 
 frappe.production.ui.ItemAttributeValues = class {
     constructor({ wrapper, attr_values, attr_name } = {}) {
@@ -64,6 +59,22 @@ frappe.production.ui.ItemAttributeList = class {
         //     render: h => h(AttributeList, {
         //     }),
         // });
+    }
+};
+
+frappe.production.ui.ItemDependentAttributeDetail = class {
+    constructor(wrapper) {
+        this.$wrapper = $(wrapper);
+        this.make_body();
+    }
+
+    make_body() {
+        this.$page_container = $('<div class="dependent-attribute-template frappe-control">').appendTo(this.$wrapper);
+        this.vue = new Vue({
+            el: '.dependent-attribute-template',
+            render: h => h(DependentAttributeTemplate, {
+            }),
+        });
     }
 };
 
@@ -108,6 +119,11 @@ frappe.production.ui.PurchaseOrderItem = class {
         this.app = createApp(POItem)
         SetVueGlobals(this.app);
         this.vue = this.app.mount(this.$wrapper.get(0))
+        // this.vue = new Vue({
+        //     el: '.item',
+        //     render: h => h(POItem, {
+        //     })
+        // });
     }
 
     updateWrapper(wrapper) {
@@ -118,6 +134,7 @@ frappe.production.ui.PurchaseOrderItem = class {
     }
 
     get_items() {
+        // let items = JSON.parse(JSON.stringify(this.vue.$children[0].items));
         let items = JSON.parse(JSON.stringify(this.vue.items));
         for (let i = 0; i < items.length; i++) {
             for (let j = 0; j < items[i].items.length; j++) {

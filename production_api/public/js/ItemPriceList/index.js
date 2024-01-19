@@ -1,5 +1,4 @@
 import { createApp } from 'vue';
-
 import PriceList from "./itempricelist.vue";
 
 export default class ItemPriceList {

@@ -1,0 +1,40 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2023-10-09 17:41:41.844170",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "dependent_attribute_value",
+  "depending_attribute"
+ ],
+ "fields": [
+  {
+   "fieldname": "dependent_attribute_value",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Dependent Attribute Value",
+   "options": "Item Attribute Value"
+  },
+  {
+   "fieldname": "depending_attribute",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Depending Attribute",
+   "options": "Item Attribute"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2023-10-10 16:45:03.368997",
+ "modified_by": "Administrator",
+ "module": "Production Api",
+ "name": "Item Dependent Attribute Mapping Value",
+ "owner": "Administrator",
+ "permissions": [],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

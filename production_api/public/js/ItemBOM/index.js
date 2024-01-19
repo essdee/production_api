@@ -1,5 +1,4 @@
 import { createApp } from 'vue';
-
 import EditBOMAttributeMapping from './EditBOMAttributeMapping.vue';
 import BOMAttributeMapping from './BOMAttributeMapping.vue';
 

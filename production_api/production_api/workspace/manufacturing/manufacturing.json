@@ -1,6 +1,6 @@
 {
  "charts": [],
- "content": "[{\"id\":\"tcx875NdZN\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">Manufacturing</span>\",\"col\":12}},{\"id\":\"77aCRbFikj\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Purchase Order\",\"col\":3}},{\"id\":\"opf9TPh5-A\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Lot\",\"col\":3}},{\"id\":\"WIySpX3vQV\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Item\",\"col\":3}},{\"id\":\"VBX8mK0Z-3\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Supplier\",\"col\":3}},{\"id\":\"TRc6u3ugUT\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"GRN\",\"col\":3}},{\"id\":\"3LJP-0wFoI\",\"type\":\"spacer\",\"data\":{\"col\":12}},{\"id\":\"ZtwupzFsjZ\",\"type\":\"card\",\"data\":{\"card_name\":\"Item\",\"col\":3}},{\"id\":\"TCbrVnqsRP\",\"type\":\"card\",\"data\":{\"card_name\":\"Reports\",\"col\":4}}]",
+ "content": "[{\"id\":\"tcx875NdZN\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">Manufacturing</span>\",\"col\":12}},{\"id\":\"77aCRbFikj\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Purchase Order\",\"col\":3}},{\"id\":\"opf9TPh5-A\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Lot\",\"col\":3}},{\"id\":\"WIySpX3vQV\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Item\",\"col\":3}},{\"id\":\"VBX8mK0Z-3\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Supplier\",\"col\":3}},{\"id\":\"TRc6u3ugUT\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"GRN\",\"col\":3}},{\"id\":\"-ElAWu5ogn\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Purchase Invoice\",\"col\":3}},{\"id\":\"3LJP-0wFoI\",\"type\":\"spacer\",\"data\":{\"col\":12}},{\"id\":\"ZtwupzFsjZ\",\"type\":\"card\",\"data\":{\"card_name\":\"Item\",\"col\":3}},{\"id\":\"TCbrVnqsRP\",\"type\":\"card\",\"data\":{\"card_name\":\"Reports\",\"col\":4}}]",
  "creation": "2023-03-30 15:17:33.105497",
  "custom_blocks": [],
  "docstatus": 0,
@@ -79,7 +79,7 @@
    "type": "Link"
   }
  ],
- "modified": "2023-08-30 12:08:30.000067",
+ "modified": "2023-10-03 20:40:10.656391",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Manufacturing",
@@ -115,8 +115,17 @@
   {
    "color": "Grey",
    "doc_view": "List",
+   "label": "Purchase Invoice",
+   "link_to": "Purchase Invoice",
+   "type": "DocType"
+  },
+  {
+   "color": "Grey",
+   "doc_view": "List",
+   "format": "{} Open",
    "label": "Purchase Order",
    "link_to": "Purchase Order",
+   "stats_filter": "{\"open_status\":[\"=\",\"Open\"]}",
    "type": "DocType"
   },
   {

@@ -4,7 +4,7 @@
 from itertools import groupby
 import frappe
 from frappe import _
-from frappe.utils import money_in_words, flt, cstr
+from frappe.utils import money_in_words, flt, cstr, date_diff
 from frappe.model.document import Document
 from six import string_types
 import json
@@ -38,12 +38,14 @@ class GoodsReceivedNote(Document):
 		self.update_stock_ledger()
 	
 	def on_cancel(self):
+		if self.purchase_invoice_name:
+			frappe.throw(f'Please remove this GRN from Purchase Invoice {self.purchase_invoice_name} before cancelling. Please Contact Purchase Department.')
 		settings = frappe.get_single('MRP Settings')
 		cancel_before_days = settings.grn_cancellation_in_days
 		if cancel_before_days == 0:
 			frappe.throw('GRN cancellation is not allowed.', title='GRN')
 		if cancel_before_days and not settings.allow_grn_cancellation:
-			if (frappe.utils.nowdate() - self.creation).days > cancel_before_days:
+			if date_diff(frappe.utils.nowdate(), self.creation) > cancel_before_days:
 				frappe.throw(f'GRN cannot be cancelled after {cancel_before_days} days of creation.', title='GRN')
 		if self.against == 'Purchase Order':
 			status = frappe.get_value('Purchase Order', self.against_id, 'open_status')

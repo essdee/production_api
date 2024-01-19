@@ -14,18 +14,26 @@ frappe.ui.form.on('Item', {
 				}
 			}
 		});
+		
 		frm.get_docfield('additional_parameters', 'additional_parameter_value').get_route_options_for_new_doc = (field) => {
 			return {
 				key: field.doc.additional_parameter_key,
 			}
 		};
+		frm.set_query('default_unit_of_measure', (doc) => {
+			return {
+				filters: {
+					secondary_only: 0,
+				}
+			}
+		});
 	},
 
 	refresh: function(frm) {
 		if (frm.doc.__islocal) {
-			hide_field(["attribute_list_html", "bom_attribute_mapping_html", "price_html"]);
+			hide_field(["attribute_list_html", "dependent_attribute_details_html", "price_html"]);
 		} else {
-			unhide_field(["attribute_list_html", "bom_attribute_mapping_html"]);
+			unhide_field(["attribute_list_html", "dependent_attribute_details_html", "price_html"]);
 
 			frm.page.add_menu_item(__('Rename'), function() {
 				let d = new frappe.ui.Dialog({
@@ -68,11 +76,9 @@ frappe.ui.form.on('Item', {
 				attr_values: frm.doc.__onload["attr_list"]
 			});
 
-			// Setting the HTML for the BOM item attribute mapping
-			// $(frm.fields_dict['bom_attribute_mapping_html'].wrapper).html("");
-			// new frappe.production.ui.BomItemAttributeMapping({
-			// 	wrapper: frm.fields_dict["bom_attribute_mapping_html"].wrapper,
-			// });
+			// Setting the HTML for the attribute list
+			$(frm.fields_dict['dependent_attribute_details_html'].wrapper).html("");
+			new frappe.production.ui.ItemDependentAttributeDetail(frm.fields_dict["dependent_attribute_details_html"].wrapper);
 
 			// Setting the HTML for Item Price List
 			$(frm.fields_dict['price_html'].wrapper).html("");
@@ -108,7 +114,6 @@ function rename_item_name(frm, name, brand) {
 				freeze_message: __("Updating related fields..."),
 			})
 			.then((new_docname) => {
-				console.log("A1", new_docname, doctype, docname)
 				const reload_form = (input_name) => {
 					$(document).trigger("rename", [doctype, docname, input_name]);
 					if (locals[doctype] && locals[doctype][docname]){
@@ -121,7 +126,6 @@ function rename_item_name(frm, name, brand) {
 				if (name && new_docname == docname) {
 					frappe.socketio.doc_subscribe(doctype, name);
 					frappe.realtime.on("doc_update", (data) => {
-						console.log("A2")
 						if (data && data.doctype && data.docname && data.doctype == doctype && data.name != docname) {
 							reload_form(data.name);
 							frappe.show_alert({
@@ -143,7 +147,6 @@ function rename_item_name(frm, name, brand) {
 
 				// handle document sync rename action
 				if (name && (new_docname || input_name) != docname) {
-					console.log("A3")
 					reload_form(new_docname || input_name);
 				}
 			});

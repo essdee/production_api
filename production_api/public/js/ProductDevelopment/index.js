@@ -1,5 +1,4 @@
 import { createApp } from 'vue';
-
 import ProductFileVersions from "./Product/ProductFileVersions.vue"
 
 export default class ProductFileVersionsWrapper {

@@ -1,5 +1,6 @@
 {
  "actions": [],
+ "allow_rename": 1,
  "autoname": "field:attribute_value",
  "creation": "2021-07-07 13:49:10.153095",
  "doctype": "DocType",
@@ -29,7 +30,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2023-04-06 16:24:35.653587",
+ "modified": "2023-12-22 17:30:54.058528",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Item Attribute Value",

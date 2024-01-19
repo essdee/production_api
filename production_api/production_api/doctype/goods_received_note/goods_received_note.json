@@ -44,7 +44,8 @@
   "comments",
   "section_break_zvhdj",
   "approved_by",
-  "amended_from"
+  "amended_from",
+  "purchase_invoice_name"
  ],
  "fields": [
   {
@@ -293,12 +294,21 @@
    "no_copy": 1,
    "read_only": 1,
    "reqd": 1
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "purchase_invoice_name",
+   "fieldtype": "Link",
+   "label": "Purchase Invoice",
+   "no_copy": 1,
+   "options": "Purchase Invoice",
+   "read_only": 1
   }
  ],
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2023-06-30 19:11:21.856450",
+ "modified": "2023-10-03 20:32:42.845833",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Goods Received Note",
@@ -364,6 +374,20 @@
    "role": "Purchase User",
    "select": 1,
    "share": 1
+  },
+  {
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Accounts User",
+   "select": 1
+  },
+  {
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Accounts Manager",
+   "select": 1
   }
  ],
  "sort_field": "modified",
