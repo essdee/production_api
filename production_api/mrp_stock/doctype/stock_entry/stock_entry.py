@@ -139,6 +139,7 @@ class StockEntry(Document):
 		self.update_transferred_qty()
 	
 	def before_cancel(self):
+		self.ignore_linked_doctypes = ("Stock Ledger Entry")
 		self.update_stock_ledger()
 		self.update_transferred_qty()
 	
