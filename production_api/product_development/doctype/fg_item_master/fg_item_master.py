@@ -10,13 +10,24 @@ from frappe.utils.data import cint, get_link_to_form
 from production_api.product_development.doctype.fg_item_settings.fg_item_settings import get_dc_details, get_oms_details, make_get_request, make_post_request
 from production_api.production_api.doctype.item.item import create_variant, get_or_create_variant, rename_item
 from production_api.production_api.doctype.item_dependent_attribute_mapping.item_dependent_attribute_mapping import get_dependent_attribute_details
+from production_api.product_development.doctype.fg_item_size_range.fg_item_size_range import get_sizes
 
 class FGItemMaster(Document):
 	def validate(self):
 		if frappe.flags.in_patch:
 			return
+		self.validate_sizes()
 		sizes = [size.attribute_value for size in self.sizes]
 		self.set("available_sizes", ",".join(sizes))
+	
+	def validate_sizes(self):
+		size_range = self.size_range
+		if not size_range:
+			frappe.throw("Please set size range")
+		sizes = get_sizes(size_range)
+		c_sizes = [size.attribute_value for size in self.sizes]
+		if sizes != c_sizes:
+			self.set("sizes", [frappe._dict({"attribute_value": s}) for s in sizes])
 	
 	# function that is used to sync the item with other systems
 	def sync_item(self, rename=False):
@@ -73,6 +84,7 @@ def create_or_update_item(fg_item):
 		fg_item.item = doc.name
 		fg_item.save()
 	doc.update({
+		"item_group": "Products",
 		"hsn_code": fg_item.hsn,
 		"disabled": fg_item.disabled,
 		"is_stock_item": 1,

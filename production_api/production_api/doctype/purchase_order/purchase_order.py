@@ -96,6 +96,7 @@ class PurchaseOrder(Document):
 			self.status = "Draft"
 		if (self.docstatus == 2):
 			self.status = "Cancelled"
+			self.open_status = "Closed"
 		if (self.docstatus == 1):
 			self.status = "Ordered"
 			self.status = self.get_fulfillment_status()

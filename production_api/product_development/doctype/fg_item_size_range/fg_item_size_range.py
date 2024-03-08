@@ -13,3 +13,7 @@ class FGItemSizeRange(Document):
 		if self.is_new():
 			if frappe.db.exists({"doctype": "FG Item Size Range", "uid": self.uid}):
 				frappe.throw(_("UID {0} already exists.").format(self.uid))
+
+def get_sizes(size_range):
+	doc = frappe.get_doc("FG Item Size Range", size_range)
+	return [s.attribute_value for s in doc.sizes]
