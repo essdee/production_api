@@ -56,7 +56,7 @@ def sync_fg_item(name):
 def sync_fg_items(names, rename=False):
 	if isinstance(names, string_types):
 		names = json.loads(names)
-	frappe.enqueue(method=sync_fg_item_background, fg_items=names, rename=rename)
+	frappe.enqueue(sync_fg_item_background, fg_items=names, rename=rename)
 	return "Queued Item for Sync"
 
 def sync_fg_item_background(fg_items, rename=False):
