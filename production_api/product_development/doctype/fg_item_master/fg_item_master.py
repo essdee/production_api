@@ -54,12 +54,18 @@ def sync_fg_item(name):
 
 @frappe.whitelist()
 def sync_fg_items(names, rename=False):
+	from frappe.utils.background_jobs import enqueue
 	if isinstance(names, string_types):
 		names = json.loads(names)
-	frappe.enqueue(sync_fg_item_background, fg_items=names, rename=rename)
-	return "Queued Item for Sync"
+	enqueue(
+		_sync_fg_item_background,
+		queue="long",
+		data={"fg_items":names, "rename":rename}
+	)
 
-def sync_fg_item_background(fg_items, rename=False):
+def _sync_fg_item_background(data):
+	fg_items = data["fg_items"]
+	rename = True if data["rename"] == 'true' else False
 	exceptions = {}
 	for fg_item in fg_items:
 		try:
