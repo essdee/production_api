@@ -33,6 +33,23 @@ frappe.ui.form.on('Lot', {
 	item: function(frm) {
 		if (frm.doc.item) {
 			frm.set_value({"lot_template": ""});
+			frappe.call({
+				method: "production_api.production_api.doctype.item.item.get_attribute_values",
+				args: {
+					item: frm.doc.item,
+				},
+				callback: function(r) {
+					if (r.message) {
+						if (r.message['Size']) {
+							let planned_qty = []
+							for(let i = 0;i < r.message.Size.length; i++) {
+								planned_qty.push({size: r.message.Size[i], qty: 0});
+							}
+							frm.set_value({'planned_qty': planned_qty});
+						}
+					}
+				}
+			});
 		}
 	},
 
