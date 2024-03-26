@@ -147,7 +147,7 @@ def create_or_update_item(fg_item):
 	# if not is_new and (doc.brand != fg_item.brand or doc.name1 != fg_item.name):
 	# 		rename_item(doc.name, fg_item.name, brand=fg_item.brand)
 
-def sync_rename_item(item_name, brand, new_name):
+def sync_rename_item(item_name, new_name, brand=None):
 	rename_item(item_name, new_name, brand=brand)
 
 def create_item(fg_item):
