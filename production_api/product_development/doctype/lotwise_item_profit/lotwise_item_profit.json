@@ -9,6 +9,7 @@
  "engine": "InnoDB",
  "field_order": [
   "item",
+  "disabled",
   "column_break_pyp07",
   "lot",
   "lot_costing_type",
@@ -80,6 +81,7 @@
    "fieldname": "item",
    "fieldtype": "Link",
    "in_list_view": 1,
+   "in_standard_filter": 1,
    "label": "Item",
    "options": "FG Item Master",
    "reqd": 1
@@ -88,6 +90,7 @@
    "fieldname": "lot",
    "fieldtype": "Link",
    "in_list_view": 1,
+   "in_standard_filter": 1,
    "label": "Lot",
    "options": "Lot",
    "reqd": 1
@@ -446,15 +449,22 @@
   {
    "fieldname": "lot_costing_type",
    "fieldtype": "Select",
+   "in_standard_filter": 1,
    "label": "Lot Costing Type",
    "no_copy": 1,
    "options": "Costing\nPlanned Qty\nCutting Qty\nFinal Qty",
    "reqd": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "disabled",
+   "fieldtype": "Check",
+   "label": "Disabled"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2024-03-22 20:55:03.567190",
+ "modified": "2024-03-26 10:37:11.623475",
  "modified_by": "Administrator",
  "module": "Product Development",
  "name": "Lotwise Item Profit",

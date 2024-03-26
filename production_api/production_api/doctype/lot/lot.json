@@ -13,6 +13,12 @@
   "lot_template",
   "section_break_ry89l",
   "planned_qty",
+  "section_break_kwosd",
+  "total_planned_qty",
+  "column_break_igjf8",
+  "total_cutting_qty",
+  "column_break_n3hup",
+  "total_final_qty",
   "bill_of_materials_section",
   "calculate_bom",
   "bom_summary"
@@ -74,11 +80,41 @@
    "fieldname": "calculate_bom",
    "fieldtype": "Button",
    "label": "Calculate BOM"
+  },
+  {
+   "fieldname": "section_break_kwosd",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "total_planned_qty",
+   "fieldtype": "Int",
+   "label": "Total Planned Qty",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_igjf8",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "total_cutting_qty",
+   "fieldtype": "Int",
+   "label": "Total Cutting Qty",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_n3hup",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "total_final_qty",
+   "fieldtype": "Int",
+   "label": "Total Final Qty",
+   "read_only": 1
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2023-08-28 13:16:45.702212",
+ "modified": "2024-03-25 21:59:59.247413",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Lot",
