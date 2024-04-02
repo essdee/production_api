@@ -9,6 +9,7 @@
   "enable_price_validation",
   "erp_api_key",
   "erp_api_secret",
+  "purchase_invoice_series_map",
   "column_break_d1dky",
   "enable_purchase_invoice_sync",
   "erp_site_url",
@@ -107,12 +108,18 @@
   {
    "fieldname": "column_break_d1dky",
    "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "purchase_invoice_series_map",
+   "fieldtype": "Table",
+   "label": "Purchase Invoice Series Map",
+   "options": "MRP Settings Series Map"
   }
  ],
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2023-09-24 17:10:02.583386",
+ "modified": "2024-04-02 10:09:27.364333",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "MRP Settings",

@@ -22,3 +22,12 @@ def post_erp_request(endpoint: str, data: dict) -> Response:
 	}
 	response = requests.post(url, headers=headers, json=data)
 	return response
+
+def get_purchase_invoice_series(series:str) -> str:
+	mapped_series = None
+	config = frappe.get_single('MRP Settings').purchase_invoice_series_map
+	for c in config:
+		if c.series == series:
+			mapped_series = c.mapped_series
+			break
+	return mapped_series
