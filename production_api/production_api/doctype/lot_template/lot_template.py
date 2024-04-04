@@ -47,7 +47,7 @@ class LotTemplate(Document):
 				bom_attribute_list.append({
 					'bom_item': bom.item,
 					'bom_attr_mapping_link': bom.attribute_mapping,
-					'bom_attr_mapping_based_on': bom.attribute_mapping_based_on,
+					'bom_attr_mapping_based_on': bom.based_on_attribute_mapping,
 					'bom_attr_mapping_list': doc.values,
 					'doctype': 'Item BOM Attribute Mapping'
 				})
@@ -97,6 +97,7 @@ class LotTemplate(Document):
 				doc.lot_template = self.name
 				doc.item = self.item
 				doc.bom_item = bom.item
+				doc.flags.ignore_validate = True
 				doc.save()
 				bom.attribute_mapping = doc.name
 			elif not bom.based_on_attribute_mapping and bom.attribute_mapping:

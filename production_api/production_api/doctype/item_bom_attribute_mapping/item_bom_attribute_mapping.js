@@ -106,7 +106,7 @@ function get_attributes(frm) {
 	});
 	if (same_attributes.length != 0 && item_attributes.length == 0) {
 		return []
-	} else if (item_attributes.length == 0 || attributes.length == 0) {
+	} else if (item_attributes.length == 0) {
 		return null;
 	}
 	let m = null

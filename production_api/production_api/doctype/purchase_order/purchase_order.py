@@ -280,6 +280,8 @@ def get_item_group_index(items, item_details):
 			continue
 		if not item.get('primary_attribute_values').sort() == item_details.get('primary_attribute_values').sort():
 			continue
+		if not item.get('dependent_attribute') == item_details.get('dependent_attribute'):
+			continue
 		index = i
 		break
 	return index
@@ -300,6 +302,8 @@ def fetch_item_details(items, include_id:bool=False):
 			'delivery_date': str(variants[0]['delivery_date']),
 			'attributes': get_item_attribute_details(current_variant, current_item_attribute_details),
 			'primary_attribute': current_item_attribute_details['primary_attribute'],
+			"dependent_attribute": current_item_attribute_details['dependent_attribute'],
+			"dependent_attribute_details": current_item_attribute_details['dependent_attribute_details'],
 			'values': {},
 			'default_uom': variants[0]['uom'] or current_item_attribute_details['default_uom'],
 			'secondary_uom': variants[0]['secondary_uom'] or current_item_attribute_details['secondary_uom'],
@@ -346,6 +350,8 @@ def fetch_item_details(items, include_id:bool=False):
 				'attributes': current_item_attribute_details['attributes'],
 				'primary_attribute': current_item_attribute_details['primary_attribute'],
 				'primary_attribute_values': current_item_attribute_details['primary_attribute_values'],
+				"dependent_attribute": current_item_attribute_details['dependent_attribute'],
+				"dependent_attribute_details": current_item_attribute_details['dependent_attribute_details'],
 				'additional_parameters': current_item_attribute_details['additional_parameters'],
 				'items': [item]
 			})

@@ -1,14 +1,25 @@
 <template>
     <div>
-        <!-- <button @click="printHelp">help</button> -->
+        <!-- <button class="btn btn-xs btn-default" @click="printHelp">help</button> -->
+        <button class="btn btn-xs btn-default" @click="disable_rows">Disable</button>
+        <button class="btn btn-xs btn-default" @click="enable_rows">Enable</button>
         <table v-if="attributes && attributes.length > 0" class="table table-sm table-bordered">
             <tr>
                 <th>S.No</th>
+                <th></th>
                 <th v-for="attr in item_attributes">{{ attr }}</th>
                 <th v-for="attr in bom_attributes">{{ attr }}</th>
             </tr>
             <tr v-for="(d, index) in data">
                 <td>{{ index + 1 }}</td>
+                <td>
+                    <span v-if="d.included" @click="toggle_row(index, false)">
+                        ⛔️
+                    </span>
+                    <span v-else  @click="toggle_row(index, true)">
+                        ➕
+                    </span>
+                </td>
                 <td v-for="attr in item_attributes">
                     <div :class="get_input_class('item', attr, index)"></div>
                 </td>
@@ -41,9 +52,10 @@ export default {
         },
 
         get_final_output: function() {
-            this.get_input_values();
+            if (!this.get_input_values()) return;
             let output = [];
             for (let i = 0; i < this.data.length; i++) {
+                if (!this.data[i]["included"]) continue;
                 for (let j = 0; j < this.item_attributes.length; j++) {
                     let value = this.data[i][this.get_attribute_name('item', this.item_attributes[j])]
                     if (!value) {
@@ -69,41 +81,94 @@ export default {
                     });
                 }
             }
+            if (output.length == 0) return;
             return {
                 'attributes': this.attributes,
                 'output': output,
             };
         },
 
+        find_index: function(item_attributes) {
+            let index = -1;
+            for (let i = 0; i < this.data.length; i++) {
+                let flag = true;
+                let d = this.data[i];
+                for (let j = 0; j < this.item_attributes.length; j++) {
+                    let attr = this.item_attributes[j];
+                    let attr_value = item_attributes[attr];
+                    let attr_value1 = d[this.get_attribute_name('item', attr)];
+                    if (attr_value != attr_value1) {
+                        flag = false;
+                        break;
+                    }
+                }
+                if (flag) {
+                    index = i;
+                    break;
+                }
+            }
+            return index;
+        },
+
         load_data: function(data) {
             this.remove_attribute_inputs()
-            this.attributes = data.attributes;
-            this.item_attributes = this.get_mapping_attributes('item', this.attributes);
-            this.bom_attributes = this.get_mapping_attributes('bom', this.attributes);
-            this.attribute_values = this.get_item_attribute_values(this.attributes);
-            this.data = [];
-            data.data.sort(function(a, b) {
-                var keyA = a.index,
-                    keyB = b.index;
-                if (keyA < keyB) return -1;
-                if (keyA > keyB) return 1;
-                return 0;
-            });
-            for (let i = 0; i < data.data.length; i++) {
-                let d = data.data[i]
-                if (!this.data[d.index]) {
-                    this.data[d.index] = {}
-                }
-                this.data[d.index][this.get_attribute_name(d.type, d.attribute)] = d.attribute_value;
-            }
+            console.log(data);
+            // this.attributes = data.attributes;
+            // this.item_attributes = this.get_mapping_attributes('item', this.attributes);
+            // this.bom_attributes = this.get_mapping_attributes('bom', this.attributes);
+            // this.attribute_values = this.get_item_attribute_values(this.attributes);
+            // this.data = [];
+            this.set_attributes(data.attributes);
             this.$nextTick(() => {
-                this.create_attribute_inputs();
-                $(this.$el).find(".control-label").remove();
+                data.data.sort(function(a, b) {
+                    var keyA = a.index,
+                        keyB = b.index;
+                    if (keyA < keyB) return -1;
+                    if (keyA > keyB) return 1;
+                    return 0;
+                });
+    
+                let g_data = {}
+                let indexes = []
+                for (let i = 0; i < data.data.length; i++) {
+                    let d = data.data[i]
+                    if (!(d.index in g_data)) {
+                        g_data[d.index] = {};
+                        indexes.push(d.index);
+                    }
+                    g_data[d.index][this.get_attribute_name(d.type, d.attribute)] = d.attribute_value;
+                }
+                for (let i = 0; i < indexes.length; i++) {
+                    let i_attrs = {}
+                    for (let j = 0; j < this.item_attributes.length; j++) {
+                        let attr = this.item_attributes[j];
+                        i_attrs[attr] = g_data[indexes[i]][this.get_attribute_name('item', attr)]
+                    }
+                    let index = this.find_index(i_attrs);
+                    if (index > -1) {
+                        for (let j = 0; j < this.bom_attributes.length; j++) {
+                            let attr = this.bom_attributes[j];
+                            let attr_name = this.get_attribute_name('bom', attr);
+                            this.data[index][attr_name] = g_data[indexes[i]][attr_name]
+                            this.attribute_inputs[index][attr_name].set_value(this.data[index][attr_name]);
+                        }
+                    }
+                }
+                for (let i = 0; i < this.data.length; i++) {
+                    if (!indexes.includes(i)) {
+                        this.toggle_row(i, false);
+                    }
+                }
             });
+            // this.$nextTick(() => {
+            //     this.create_attribute_inputs();
+            //     $(this.$el).find(".control-label").remove();
+            // });
         },
 
         set_attributes: function(attributes) {
             this.remove_attribute_inputs()
+            console.log("Attributes", attributes)
 
             this.attributes = attributes;
             this.item_attributes = this.get_mapping_attributes('item', attributes);
@@ -137,6 +202,9 @@ export default {
                     for (let j = 0; j < this.bom_attributes.length; j++) {
                         data[i][this.get_attribute_name('bom', this.bom_attributes[j])] = null;
                     }
+                }
+                for (let i = 0; i < data.length; i++) {
+                    data[i]["included"] = true;
                 }
                 this.data = data;
             }
@@ -201,7 +269,7 @@ export default {
             return frappe.ui.form.make_control({
                 parent: $(this.$el).find(parent_class),
                 df: df,
-                doc: this.sample_doc,
+                // doc: this.sample_doc,
                 render_input: true,
             });
         },
@@ -223,6 +291,7 @@ export default {
                     this.data[i][attr_name] = value;
                 }
             }
+            return true;
         },
 
         create_attribute_inputs: function() {
@@ -261,6 +330,52 @@ export default {
             }
             this.attribute_inputs = [];
         },
+
+        toggle_row: function(index, b) {
+            this.data[index]["included"] = b;
+            for (let j=0;j<this.bom_attributes.length;j++) {
+                let attr = this.bom_attributes[j];
+                let attr_name = this.get_attribute_name('bom', attr);
+                let input = this.attribute_inputs[index][attr_name]
+                input.set_value("");
+                console.log(input.get_value());
+                input.df["reqd"] = b;
+                input.df["read_only"] = !b;
+                input.refresh();
+            }
+        },
+
+        disable_rows: function() {
+            for (let i = 0; i < this.data.length; i++) {
+                if (!this.data[i]["included"]) continue;
+                let flag = false;
+                for (let j = 0; j<this.bom_attributes.length; j++) {
+                    let attr = this.bom_attributes[j];
+                    let attr_name = this.get_attribute_name('bom', attr);
+                    let input = this.attribute_inputs[i][attr_name]
+                    let value = input.get_value();
+                    console.log(value)
+                    if (!value) {
+                        flag = true;
+                        break;
+                    }
+                }
+                if (this.bom_attributes.length == 0) {
+                    flag = true;
+                }
+                if (flag) {
+                    this.toggle_row(i, false);
+                }
+            }
+        },
+
+        enable_rows: function() {
+            for (let i = 0; i < this.data.length; i++) {
+                if (!this.data[i]["included"]) {
+                    this.toggle_row(i, true);
+                }
+            }
+        }
     }
 }
 </script>

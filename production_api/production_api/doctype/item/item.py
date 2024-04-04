@@ -200,9 +200,15 @@ def get_attribute_details(item_name):
 				doc = frappe.get_doc("Item Item Attribute Mapping", attribute.mapping)
 				primary_attribute_details = [value.attribute_value for value in doc.values]
 	additional_parameters = [{'additional_parameter_key': a.additional_parameter_key, 'additional_parameter_value': a.additional_parameter_value} for a in item.additional_parameters]
+	dependent_attribute_details = {}
+	if item.dependent_attribute and item.dependent_attribute_mapping:
+		# attributes.remove(item.dependent_attribute)
+		dependent_attribute_details = get_dependent_attribute_details(item.dependent_attribute_mapping)
 	return {
 		"item": item_name,
 		"primary_attribute": item.primary_attribute,
+		"dependent_attribute": item.dependent_attribute,
+		"dependent_attribute_details": dependent_attribute_details,
 		"attributes": attributes,
 		"primary_attribute_values": primary_attribute_details,
 		"default_uom": item.default_unit_of_measure,
@@ -256,6 +262,7 @@ def create_variant(template, args):
 	variant.item = template.name
 	variant_attributes = []
 	attributes = [d.attribute for d in template.attributes]
+	dependent_attributes = None
 
 	if template.dependent_attribute:
   		# Validate dependent attribute mapping and populate variant attributes
@@ -265,8 +272,8 @@ def create_variant(template, args):
 		if not args.get(template.dependent_attribute):
 			frappe.throw("Please mention {0} attribute in {1}".format(template.dependent_attribute, template.name))
 		dependent_attribute_mapping['attr_list'].setdefault(args.get(template.dependent_attribute), {}).setdefault('attributes', [])
-		attributes = dependent_attribute_mapping['attr_list'][args.get(template.dependent_attribute)]['attributes']
-		if len(attributes) == 0:
+		dependent_attributes = dependent_attribute_mapping['attr_list'][args.get(template.dependent_attribute)]['attributes']
+		if len(dependent_attributes) == 0:
 			frappe.throw(f"Dependent Attribute Value {args.get(template.dependent_attribute)} does not have proper mapping")
 		variant_attributes.append({
 			"attribute": template.dependent_attribute,
@@ -276,6 +283,8 @@ def create_variant(template, args):
 		})
 	
 	for d in attributes:
+		if dependent_attributes and d not in dependent_attributes:
+			continue
 		if not args.get(d):
 			frappe.throw("Please mention {0} attribute in {1}".format(d, template.name))
 		variant_attributes.append({
@@ -482,6 +491,11 @@ def get_attribute_values(item, attributes = None):
 			attribute_values[attribute.attribute] = [d.attribute_value for d in doc.values]
 	
 	return attribute_values
+
+@frappe.whitelist()
+def get_attributes(item):
+	item = frappe.get_doc("Item", item)
+	return [attribute.attribute for attribute in item.attributes]
 
 def validate_is_stock_item(item, is_stock_item=None):
 	if not is_stock_item:
