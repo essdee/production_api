@@ -81,6 +81,38 @@ frappe.ui.form.on('Lotwise Item Profit', {
 					});
 				}
 				frm.refresh_field('qty_rate_chart')
+				frm.doc.product = "";
+				frm.refresh_field('product')
+			});
+		}
+	},
+
+	product: function(frm) {
+		if (frm.doc.product) {
+			frappe.db.get_doc("Product", frm.doc.product).then(result => {
+				let sizes = result.sizes.map((v) => {
+					return v.attribute_value
+				});
+				// let prices_str = result.prices;
+				// let prices = []
+				// if (prices_str) {
+				// 	prices = prices_str.split(',');
+				// }
+				frm.doc.qty_rate_chart = []
+				for (var i = 0;i < sizes.length;i++) {
+					var price = 0
+					// if (sizes.length == prices.length) {
+					// 	price = prices[i];
+					// }
+					frm.add_child('qty_rate_chart', {
+						'size': sizes[i],
+						'qty': 0,
+						'rate': price,
+					});
+				}
+				frm.refresh_field('qty_rate_chart')
+				frm.doc.item = "";
+				frm.refresh_field('item')
 			});
 		}
 	},

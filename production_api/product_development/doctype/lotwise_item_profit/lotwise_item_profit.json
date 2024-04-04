@@ -9,6 +9,7 @@
  "engine": "InnoDB",
  "field_order": [
   "item",
+  "product",
   "disabled",
   "column_break_pyp07",
   "lot",
@@ -83,8 +84,8 @@
    "in_list_view": 1,
    "in_standard_filter": 1,
    "label": "Item",
-   "options": "FG Item Master",
-   "reqd": 1
+   "mandatory_depends_on": "eval:(doc.product == null || doc.product == undefined || doc.product == \"\")",
+   "options": "FG Item Master"
   },
   {
    "fieldname": "lot",
@@ -460,11 +461,21 @@
    "fieldname": "disabled",
    "fieldtype": "Check",
    "label": "Disabled"
+  },
+  {
+   "description": "Use this field only for Development(Sampling) Products",
+   "fieldname": "product",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Product",
+   "mandatory_depends_on": "eval:(doc.item == null || doc.item == undefined || doc.item == \"\")",
+   "options": "Product"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2024-03-26 10:37:11.623475",
+ "modified": "2024-04-04 18:29:31.261490",
  "modified_by": "Administrator",
  "module": "Product Development",
  "name": "Lotwise Item Profit",

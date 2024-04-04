@@ -1,6 +1,7 @@
 import ProductFileVersions from "./Product/ProductFileVersions.vue"
+import ProductCostingList from "./Product/ProductCostingList.vue"
 
-export default class ProductFileVersionsWrapper {
+export class ProductFileVersionsWrapper {
     constructor(wrapper) {
         this.$wrapper = $(wrapper);
         this.make_body();
@@ -11,6 +12,22 @@ export default class ProductFileVersionsWrapper {
         this.vue = new Vue({
             el: '.file-uploader',
             render: h => h(ProductFileVersions, {
+            })
+        });
+    }
+};
+
+export class ProductCostingListWrapper {
+    constructor(wrapper) {
+        this.$wrapper = $(wrapper);
+        this.make_body();
+    }
+
+    make_body() {
+        let $page_container = $('<div class="costing-list frappe-control">').appendTo(this.$wrapper);
+        this.vue = new Vue({
+            el: '.costing-list',
+            render: h => h(ProductCostingList, {
             })
         });
     }

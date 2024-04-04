@@ -1,5 +1,6 @@
 {
  "actions": [],
+ "allow_import": 1,
  "allow_rename": 1,
  "autoname": "field:style_no",
  "creation": "2023-05-18 17:53:46.518369",
@@ -18,17 +19,22 @@
   "front_image",
   "back_image",
   "gsm",
+  "size_range",
+  "sizes",
   "attachments_tab",
   "product_file_versions",
   "file_html",
   "tab_break_z27ab",
-  "product_info_extras"
+  "product_info_extras",
+  "costing_tab",
+  "costing_html"
  ],
  "fields": [
   {
    "fieldname": "product_group",
    "fieldtype": "Link",
    "in_list_view": 1,
+   "in_standard_filter": 1,
    "label": "Product Group",
    "options": "Product Group",
    "reqd": 1
@@ -42,8 +48,11 @@
   },
   {
    "fieldname": "season",
-   "fieldtype": "Data",
-   "label": "Season"
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Season",
+   "options": "Product Season"
   },
   {
    "fieldname": "front_image",
@@ -89,6 +98,7 @@
   {
    "fieldname": "fabric_details",
    "fieldtype": "Data",
+   "in_standard_filter": 1,
    "label": "Fabric Details",
    "reqd": 1
   },
@@ -111,11 +121,34 @@
    "fieldtype": "Table",
    "label": "Product Info Extras",
    "options": "Product Info"
+  },
+  {
+   "fieldname": "size_range",
+   "fieldtype": "Link",
+   "label": "Size Range",
+   "options": "FG Item Size Range"
+  },
+  {
+   "fieldname": "sizes",
+   "fieldtype": "Table",
+   "label": "Sizes",
+   "options": "FG Item Size"
+  },
+  {
+   "fieldname": "costing_tab",
+   "fieldtype": "Tab Break",
+   "label": "Costing"
+  },
+  {
+   "fieldname": "costing_html",
+   "fieldtype": "HTML",
+   "label": "Costing HTML"
   }
  ],
+ "image_field": "front_image",
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2023-05-27 12:18:12.061765",
+ "modified": "2024-04-04 22:18:08.207688",
  "modified_by": "Administrator",
  "module": "Product Development",
  "name": "Product",
@@ -160,5 +193,6 @@
  ],
  "sort_field": "modified",
  "sort_order": "DESC",
- "states": []
+ "states": [],
+ "track_changes": 1
 }

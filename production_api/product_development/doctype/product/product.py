@@ -7,7 +7,16 @@ from frappe.utils import cint
 from frappe.model.document import Document
 
 class Product(Document):
-	pass
+	def load_costing_list(self):
+		"""Load Lotwise Item Profit List into `__onload`"""
+		fields = ["name", "product", "total_qty", "avg_rate_per_piece", "profit_percent_markdown"]
+		filters = {"product": self.name}
+		costing_list = frappe.get_list("Lotwise Item Profit", fields=fields, filters=filters)
+		self.set_onload('costing_list', costing_list)
+
+	def onload(self):
+		"""Load Attribute List into `__onload`"""
+		self.load_costing_list()
 
 @frappe.whitelist()
 def upload_product_file():

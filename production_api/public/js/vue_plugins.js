@@ -9,7 +9,10 @@ import PONewItem from "./PurchaseOrder/components/NewItem.vue"
 import POItem from "./PurchaseOrder/components/Item.vue"
 import GRNItemWrapper from "./GRN";
 import { StockEntryWrapper, StockReconciliationWrapper, LotTransferWrapper } from "./Stock";
-import ProductFileVersionsWrapper from "./ProductDevelopment"
+
+// Product Development
+import { ProductFileVersionsWrapper, ProductCostingListWrapper } from "./ProductDevelopment"
+
 import evntBus from "./bus.js";
 
 import { EditBOMAttributeMappingWrapper, BOMAttributeMappingWrapper } from "./ItemBOM";
@@ -152,7 +155,10 @@ frappe.production.ui.GRNItem = GRNItemWrapper
 frappe.production.ui.StockEntryItem = StockEntryWrapper
 frappe.production.ui.StockReconciliationItem = StockReconciliationWrapper
 frappe.production.ui.LotTransferItem = LotTransferWrapper
-frappe.production.product_development.ui.ProductFileVersions = ProductFileVersionsWrapper
-
 frappe.production.ui.EditBOMAttributeMapping = EditBOMAttributeMappingWrapper
+
+// Product Development
+frappe.production.product_development.ui.ProductFileVersions = ProductFileVersionsWrapper
+frappe.production.product_development.ui.ProductCostingList = ProductCostingListWrapper
+
 
