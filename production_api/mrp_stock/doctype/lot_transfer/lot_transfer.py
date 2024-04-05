@@ -109,6 +109,7 @@ class LotTransfer(Document):
 		self.update_stock_ledger()
 	
 	def before_cancel(self):
+		self.ignore_linked_doctypes = ("Stock Ledger Entry")
 		self.update_stock_ledger()
 
 	def update_stock_ledger(self):

@@ -38,6 +38,21 @@ frappe.ui.form.on('Lotwise Item Profit', {
 				calculate_backwards_rate(frm, values.percent);
 			}, 'Enter the Required Percent')
 		});
+
+		frm.add_custom_button(__('Fetch Lot Qty'), function() {
+			if (!frm.doc.lot) {
+				frappe.msgprint("Please set Lot");
+				return;
+			}
+			if (!frm.doc.lot_costing_type) {
+				frappe.msgprint("Please set Lot Costing Type");
+				return;
+			}
+			if (frm.doc.lot_costing_type != "Costing") {
+				console.log("fetching lot")
+				fetch_lot_qty(frm);
+			}
+		});
 	},
 
 	validate: function(frm){
@@ -66,6 +81,38 @@ frappe.ui.form.on('Lotwise Item Profit', {
 					});
 				}
 				frm.refresh_field('qty_rate_chart')
+				frm.doc.product = "";
+				frm.refresh_field('product')
+			});
+		}
+	},
+
+	product: function(frm) {
+		if (frm.doc.product) {
+			frappe.db.get_doc("Product", frm.doc.product).then(result => {
+				let sizes = result.sizes.map((v) => {
+					return v.attribute_value
+				});
+				// let prices_str = result.prices;
+				// let prices = []
+				// if (prices_str) {
+				// 	prices = prices_str.split(',');
+				// }
+				frm.doc.qty_rate_chart = []
+				for (var i = 0;i < sizes.length;i++) {
+					var price = 0
+					// if (sizes.length == prices.length) {
+					// 	price = prices[i];
+					// }
+					frm.add_child('qty_rate_chart', {
+						'size': sizes[i],
+						'qty': 0,
+						'rate': price,
+					});
+				}
+				frm.refresh_field('qty_rate_chart')
+				frm.doc.item = "";
+				frm.refresh_field('item')
 			});
 		}
 	},
@@ -204,6 +251,32 @@ frappe.ui.form.on('Lotwise Item Profit', {
 			})
 	},
 });
+
+function fetch_lot_qty(frm) {
+	console.log("fetching lot qty")
+	let m = {
+		"Planned Qty": "qty",
+		"Cutting Qty": "cut_qty",
+		"Final Qty": "final_qty",
+	}
+	frappe.call({
+		method: "production_api.product_development.doctype.lotwise_item_profit.lotwise_item_profit.get_lot_qty",
+		args: {
+			"lot": frm.doc.lot,
+			"type": m[frm.doc.lot_costing_type],
+		}
+	}).then((r) => {
+		let data = r.message;
+		$.each(frm.doc.qty_rate_chart || [], function(i, v) {
+			if (data[frm.doc.qty_rate_chart[i].size]) {
+				console.log(data[frm.doc.qty_rate_chart[i].size]);
+				frm.doc.qty_rate_chart[i].qty = data[frm.doc.qty_rate_chart[i].size];
+			}
+		});
+		frm.refresh_field("qty_rate_chart");
+		calculate_all(frm)
+	})
+}
 
 function get_size_qty(frm, size) {
 	let qty = 0;

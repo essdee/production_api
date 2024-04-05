@@ -237,8 +237,11 @@ def handle_rename(payload):
 	publish_doc = payload.get("Payload")
 	rename_meta = publish_doc.get("rename_meta")
 	if rename_meta:
-		local_doc = get_local_doc(doctype, rename_meta.get("old_name"))
+		uid = payload.get("Payload").get("uid")
+		local_doc = get_local_doc(doctype, uid)
 		if local_doc:
 			local_doc.rename(name=rename_meta.get("new_name"),  merge=rename_meta.get("merge"), force=True)
+			local_doc.supplier_name = publish_doc.get("supplier_name") or local_doc.suppler_name
+			local_doc.save()
 	else:
 		raise IncorrectData("Incorrect Data Passed")

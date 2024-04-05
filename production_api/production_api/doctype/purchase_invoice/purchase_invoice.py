@@ -8,7 +8,7 @@ import frappe
 from frappe.model.document import Document
 from frappe.utils.data import money_in_words
 
-from production_api.production_api.doctype.mrp_settings.mrp_settings import post_erp_request
+from production_api.production_api.doctype.mrp_settings.mrp_settings import get_purchase_invoice_series, post_erp_request
 
 class PurchaseInvoice(Document):
 	def validate(self):
@@ -81,6 +81,9 @@ class PurchaseInvoice(Document):
 		if not len(self.grn) or not len(self.items):
 			frappe.throw("Please set at least 1 grn and item row.")
 		data = self.as_dict(convert_dates_to_str=True)
+		mapped_series = get_purchase_invoice_series(data['naming_series'])
+		if mapped_series:
+			data['mapped_series'] = mapped_series
 		p = "/api/method/essdee.essdee.utils.mrp.purchase_invoice.create"
 		res = post_erp_request(p, {'data': data})
 		if res.status_code == 200:
