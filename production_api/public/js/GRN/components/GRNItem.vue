@@ -1,5 +1,5 @@
 <template>
-    <div class="frappe-control">
+    <div ref="root" class="frappe-control">
         <table v-if="docstatus!==0" class="table table-sm table-bordered">
             <tr v-for="(i, item_index) in items" :key="item_index">
                 <td v-if="i.primary_attribute">
@@ -147,110 +147,129 @@
     </div>
 </template>
 
-<script>
+<script setup>
 import EventBus  from '../../bus';
 
-export default {
-    name: 'grnitem',
-    data() {
-        return {
-            docstatus: 0,
-            items: [],
-            supplier: null,
-            against: null,
-            against_id: null,
-            skip_watch: false,
+import { ref, onMounted, computed, watch } from 'vue'
+
+const docstatus = ref(0);
+const items = ref([]);
+const supplier = ref(null);
+const against = ref(null);
+const against_id = ref(null);
+let _skip_watch = false;
+
+
+const root = ref(null);
+
+onMounted(() => {
+    console.log('new-grn-item mounted');
+    EventBus.$on("update_grn_details", data => {
+        load_data(data);
+    })
+});
+
+function load_data(data, skip_watch=false) {
+    if (data) {
+        // Only update the values which are present in the data object
+        // let keys = ['supplier', 'against', 'against_id', 'docstatus', 'items']
+        // for (let key in keys) {
+        //     if (data.hasOwnProperty(key)) {
+        //         this[key] = data[key];
+        //     }
+        // }
+
+        if (data.hasOwnProperty('supplier')) {
+            supplier.value = data['supplier']
         }
-    },
-    mounted() {
-        console.log('new-grn-item mounted');
-        EventBus.$on("update_grn_details", data => {
-            this.load_data(data);
-        })
-    },
-    methods: {
-        update_status: function() {
-            this.docstatus = cur_frm.doc.docstatus;
-        },
-
-        load_data: function(data, skip_watch=false) {
-            if (data) {
-                // Only update the values which are present in the data object
-                for (let key in data) {
-                    if (this.hasOwnProperty(key)) {
-                        this[key] = data[key];
-                    }
-                }
-                if (data.hasOwnProperty("against_id") && !skip_watch) {
-                    this.against_id_changed();
-                }
-                if (data.hasOwnProperty("items")) {
-                    this.skip_watch = skip_watch;
-                }
-            }
-        },
-
-        get_purchase_order_items: function() {
-            let me = this;
-            frappe.call({
-                method: "production_api.production_api.doctype.purchase_order.purchase_order.get_purchase_order_items",
-                args: {
-                    "purchase_order": me.against_id
-                },
-                callback: function(r) {
-                    if (r.message) {
-                        me.items = r.message;
-                    }
-                }
-            });
-        },
-
-        clear_items: function() {
-            this.items = [];
-        },
-
-        against_id_changed: function() {
-            if (this.against_id) {
-                if (this.against == "Purchase Order") {
-                    this.get_purchase_order_items();
-                }
-            } else {
-                this.clear_items();
-            }
-        },
-
-        get_items: function() {
-            // Parse the received values to 0 if it is empty or null
-            for (let i in this.items) {
-                for (let j in this.items[i].items) {
-                    for (let k in this.items[i].items[j].values) {
-                        if (this.items[i].items[j].values[k].received == null || this.items[i].items[j].values[k].received == "") {
-                            this.items[i].items[j].values[k].received = 0;
-                        }
-                        if (this.items[i].items[j].values[k].secondary_received == null || this.items[i].items[j].values[k].secondary_received == "") {
-                            this.items[i].items[j].values[k].secondary_received = 0;
-                        }
-                    }
-                }
-            }
-            return this.items;
-        },
-
-        update_received_qty: function(item, key) {
-            item[key] = parseFloat(parseFloat(item[key]).toFixed(3));
+        if (data.hasOwnProperty('against')) {
+            against.value = data['against']
         }
-    },
-    watch: {
-        items: {
-            handler(newVal, oldVal) {
-                if (this.skip_watch) {
-                    this.skip_watch = false;
-                    return;
-                }
-                EventBus.$emit("grn_updated", true);
-            },
-            deep: true
+        if (data.hasOwnProperty('against_id')) {
+            against_id.value = data['against_id']
+        }
+        if (data.hasOwnProperty('docstatus')) {
+            docstatus.value = data['docstatus']
+        }
+        if (data.hasOwnProperty('items')) {
+            items.value = data['items']
+        }
+
+        if (data.hasOwnProperty("against_id") && !skip_watch) {
+            against_id_changed();
+        }
+        if (data.hasOwnProperty("items")) {
+            _skip_watch = skip_watch;
         }
     }
 }
+
+function update_status() {
+    docstatus.value = cur_frm.doc.docstatus;
+}
+
+function get_purchase_order_items() {
+    frappe.call({
+        method: "production_api.production_api.doctype.purchase_order.purchase_order.get_purchase_order_items",
+        args: {
+            "purchase_order": against_id.value
+        },
+        callback: function(r) {
+            if (r.message) {
+                items.value = r.message;
+            }
+        }
+    });
+}
+
+function clear_items() {
+    items.value = [];
+}
+
+function against_id_changed() {
+    if (against_id.value) {
+        if (against.value == "Purchase Order") {
+            get_purchase_order_items();
+        }
+    } else {
+        clear_items();
+    }
+}
+
+function get_items() {
+    // Parse the received values to 0 if it is empty or null
+    for (let i in items.value) {
+        for (let j in items.value[i].items) {
+            for (let k in items.value[i].items[j].values) {
+                if (items.value[i].items[j].values[k].received == null || items.value[i].items[j].values[k].received == "") {
+                    items.value[i].items[j].values[k].received = 0;
+                }
+                if (items.value[i].items[j].values[k].secondary_received == null || items.value[i].items[j].values[k].secondary_received == "") {
+                    items.value[i].items[j].values[k].secondary_received = 0;
+                }
+            }
+        }
+    }
+    return items.value;
+}
+
+function update_received_qty(item, key) {
+    item[key] = parseFloat(parseFloat(item[key]).toFixed(3));
+}
+
+watch(items, (newVal, oldVal) => {
+    console.log("Item Updated", _skip_watch)
+    if (_skip_watch) {
+        _skip_watch = false;
+        return;
+    }
+    EventBus.$emit("grn_updated", true);
+}, {deep: true})
+
+defineExpose({
+	items,
+    load_data,
+    update_status,
+    get_items,
+});
 </script>

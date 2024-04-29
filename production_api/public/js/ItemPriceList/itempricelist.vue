@@ -35,67 +35,65 @@
     </div>
 </template>
 
-<script>
+<script setup>
+import { ref } from 'vue'
+
 let uuid = 0;
-export default {
-    name: 'ItemPriceListTemplate',
-    data: function(){
-        return {
-            item_price_list: this.compute_price_list(this.getPriceList()),
-            doc_name: cur_frm.doc.name,
-            doctype: cur_frm.doctype,
-        };
-    },
-    methods: {
-        addValue: function(doctype, name){
-            frappe.model.with_doctype(doctype, function() {
-                var new_doc = frappe.model.get_new_doc(doctype);
-                if(cur_frm.doctype == "Supplier")
-                    new_doc.supplier = name;
-                else if(cur_frm.doctype == "Item")
-                    new_doc.item_name = name;
-                frappe.ui.form.make_quick_entry(doctype, function(x){cur_frm && cur_frm.reload_doc();}, null, new_doc);
-		    });
-        },
-        getPriceList: function() {
-            if(cur_frm.doc.__onload.item_price_list && cur_frm.doc.__onload.item_price_list.length != 0)
-                return cur_frm.doc.__onload["item_price_list"];
-            else return null;
-        },
-        compute_price_list: function(item_price_list) {
-            if (!item_price_list) return null
-            let pl = []
-            for (let i = 0;i<item_price_list.length;i++) {
-                let item_price = item_price_list[i]
-                let x = {
-                    index: i,
-                    item_name: item_price.item_name,
-                    supplier: item_price.supplier,
-                    supplier_name: item_price.supplier_name,
-                    depends_on_attribute: item_price.depends_on_attribute,
-                    attribute: item_price.attribute,
-                    count: item_price.item_price_values.length
-                }
-                for (let j = 0;j<item_price.item_price_values.length;j++) {
-                    let price_value = item_price.item_price_values[j]
-                    let y = {}
-                    if (j==0) {
-                        y = {...x}
-                    }
-                    y = {
-                        ...y,
-                        moq: price_value.moq,
-                        price: price_value.price,
-                        attribute_value: price_value.attribute_value,
-                        row_count: j,
-                        uid: uuid++
-                    }
-                    pl.push(y)
-                }
+
+const item_price_list = ref(compute_price_list(getPriceList()));
+const doc_name = ref(cur_frm.doc.name);
+const doctype = ref(cur_frm.doctype);
+
+
+function addValue(doctype, name){
+    frappe.model.with_doctype(doctype, function() {
+        var new_doc = frappe.model.get_new_doc(doctype);
+        if(cur_frm.doctype == "Supplier")
+            new_doc.supplier = name;
+        else if(cur_frm.doctype == "Item")
+            new_doc.item_name = name;
+        frappe.ui.form.make_quick_entry(doctype, function(x){cur_frm && cur_frm.reload_doc();}, null, new_doc);
+    });
+}
+
+function getPriceList() {
+    if(cur_frm.doc.__onload.item_price_list && cur_frm.doc.__onload.item_price_list.length != 0)
+        return cur_frm.doc.__onload["item_price_list"];
+    else return null;
+}
+
+function compute_price_list(item_price_list) {
+    if (!item_price_list) return null
+    let pl = []
+    for (let i = 0;i<item_price_list.length;i++) {
+        let item_price = item_price_list[i]
+        let x = {
+            index: i,
+            item_name: item_price.item_name,
+            supplier: item_price.supplier,
+            supplier_name: item_price.supplier_name,
+            depends_on_attribute: item_price.depends_on_attribute,
+            attribute: item_price.attribute,
+            count: item_price.item_price_values.length
+        }
+        for (let j = 0;j<item_price.item_price_values.length;j++) {
+            let price_value = item_price.item_price_values[j]
+            let y = {}
+            if (j==0) {
+                y = {...x}
             }
-            return pl;
+            y = {
+                ...y,
+                moq: price_value.moq,
+                price: price_value.price,
+                attribute_value: price_value.attribute_value,
+                row_count: j,
+                uid: uuid++
+            }
+            pl.push(y)
         }
     }
+    return pl;
 }
 </script>
 

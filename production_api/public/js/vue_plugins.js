@@ -9,7 +9,10 @@ import PONewItem from "./PurchaseOrder/components/NewItem.vue"
 import POItem from "./PurchaseOrder/components/Item.vue"
 import GRNItemWrapper from "./GRN";
 import { StockEntryWrapper, StockReconciliationWrapper, LotTransferWrapper } from "./Stock";
-import ProductFileVersionsWrapper from "./ProductDevelopment"
+
+// Product Development
+import { ProductFileVersionsWrapper, ProductCostingListWrapper } from "./ProductDevelopment"
+
 import EventBus from "./bus.js";
 
 import { EditBOMAttributeMappingWrapper, BOMAttributeMappingWrapper } from "./ItemBOM";
@@ -70,11 +73,13 @@ frappe.production.ui.ItemDependentAttributeDetail = class {
 
     make_body() {
         this.$page_container = $('<div class="dependent-attribute-template frappe-control">').appendTo(this.$wrapper);
-        this.vue = new Vue({
-            el: '.dependent-attribute-template',
-            render: h => h(DependentAttributeTemplate, {
-            }),
-        });
+        this.app = createApp(DependentAttributeTemplate);
+        this.app.mount(this.$wrapper.get(0));
+        // this.vue = new Vue({
+        //     el: '.dependent-attribute-template',
+        //     render: h => h(DependentAttributeTemplate, {
+        //     }),
+        // });
     }
 };
 
@@ -167,7 +172,10 @@ frappe.production.ui.GRNItem = GRNItemWrapper
 frappe.production.ui.StockEntryItem = StockEntryWrapper
 frappe.production.ui.StockReconciliationItem = StockReconciliationWrapper
 frappe.production.ui.LotTransferItem = LotTransferWrapper
-frappe.production.product_development.ui.ProductFileVersions = ProductFileVersionsWrapper
-
 frappe.production.ui.EditBOMAttributeMapping = EditBOMAttributeMappingWrapper
+
+// Product Development
+frappe.production.product_development.ui.ProductFileVersions = ProductFileVersionsWrapper
+frappe.production.product_development.ui.ProductCostingList = ProductCostingListWrapper
+
 

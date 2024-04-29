@@ -5,11 +5,11 @@
                 <h5>{{ attr.attr_name }}
                     <a :href="'/app/Form/' + encodeURIComponent(attr.doctype) +'/' + encodeURIComponent(attr.attr_values_link)" 
                     v-if="attr.attr_values_link" class="btn btn-default btn-xs pull-right" style="margin-top:-3px; margin-right: -5px;">
-                        {{ __("Edit") }}
+                        Edit
                     </a>
                     <a @click="addAttributeMapping(attr.doctype, index)" 
                     v-else class="btn btn-default btn-xs pull-right" style="margin-top:-3px; margin-right: -5px;">
-                        {{ __("Add") }}
+                        Add
                     </a>
                 </h5>
                 <p class="text-muted" v-for="value in attr.attr_values" :key="value.name">{{ value.attribute_value }}</p>
@@ -19,26 +19,17 @@
     </div>
 </template>
 
-<script>
+<script setup>
 // Used in Item to show list of attributes of the item
-export default {
-    name: 'AttributeListTemplate',
-    data: function(){
-        return {
-            attr_list: cur_frm.doc.__onload.attr_list
-        };
-    },
-    methods: {
-        addAttributeMapping: function(doctype, name){
-            var me = this;
-            frappe.model.with_doctype(doctype, function() {
-                var new_doc = frappe.model.get_new_doc(doctype);
-                console.log(new_doc);
-                frappe.ui.form.make_quick_entry(doctype, (doc) => {
-                    return me.setAttributeMapping(name, doc);
-                });
-		    });
-        },
-    }
+import { ref } from 'vue'
+
+const attr_list = ref(cur_frm.doc.__onload.attr_list)
+
+function addAttributeMapping(doctype, name) {
+    frappe.model.with_doctype(doctype, function() {
+        var new_doc = frappe.model.get_new_doc(doctype);
+        console.log(new_doc);
+        frappe.ui.form.make_quick_entry(doctype, (doc) => {});
+    });
 }
 </script>

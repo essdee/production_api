@@ -445,9 +445,7 @@ def get_item_attribute_values(doctype, txt, searchfield, start, page_len, filter
 
 	attr = frappe.get_doc("Item Attribute", attribute)
 	if attr.numeric_values:
-		search_widget(doctype=doctype, txt=txt, page_length=page_len, searchfield=searchfield, filters=[['Item Attribute Value', 'attribute_name', '=', attribute]])
-		values = frappe.response['values']
-		del frappe.response['values']
+		values = search_widget(doctype=doctype, txt=txt, page_length=page_len, searchfield=searchfield, filters=[['Item Attribute Value', 'attribute_name', '=', attribute]])
 		return values
 
 	item = frappe.get_doc("Item", item_name)
@@ -458,9 +456,7 @@ def get_item_attribute_values(doctype, txt, searchfield, start, page_len, filter
 		if attribute == attr_obj.attribute:
 			mapping_doc = frappe.get_doc("Item Item Attribute Mapping", attr_obj.mapping)
 			if len(mapping_doc.values) == 0:
-				search_widget(doctype=doctype, txt=txt, page_length=page_len, searchfield=searchfield, filters=[['Item Attribute Value', 'attribute_name', '=', attribute]])
-				values = frappe.response['values']
-				del frappe.response['values']
+				values = search_widget(doctype=doctype, txt=txt, page_length=page_len, searchfield=searchfield, filters=[['Item Attribute Value', 'attribute_name', '=', attribute]])
 				return values
 			else:
 				attribute_values = [value.attribute_value for value in mapping_doc.values]

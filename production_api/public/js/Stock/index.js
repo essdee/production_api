@@ -12,6 +12,7 @@ export class StockEntryWrapper {
     make_body() {
         let $page_container = $('<div class="item frappe-control">').appendTo(this.$wrapper);
         this.app = createApp(StockItem);
+        SetVueGlobals(this.app);
         this.stockEntry = this.app.mount(this.$wrapper.get(0))
         // this.vue = new Vue({
         //     el: '.item',
@@ -48,6 +49,7 @@ export class StockReconciliationWrapper {
     make_body() {
         let $page_container = $('<div class="item frappe-control">').appendTo(this.$wrapper);
         this.app = createApp(StockReconciliation);
+        SetVueGlobals(this.app);
         this.stockReconciliation = this.app.mount(this.$wrapper.get(0))
         // this.vue = new Vue({
         //     el: '.item',
@@ -84,6 +86,7 @@ export class LotTransferWrapper {
     make_body() {
         let $page_container = $('<div class="item frappe-control">').appendTo(this.$wrapper);
         this.app = createApp(LotTransfer);
+        SetVueGlobals(this.app);
         this.lotTransfer = this.app.mount(this.$wrapper.get(0));
         // this.vue = new Vue({
         //     el: '.item',
@@ -103,6 +106,7 @@ export class LotTransferWrapper {
     }
 
     load_data(data) {
+        console.log("Loading Data", data)
         this.lotTransfer.load_data(data);
     }
     

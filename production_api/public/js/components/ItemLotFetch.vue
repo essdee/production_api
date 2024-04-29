@@ -1,7 +1,7 @@
 <template>
     <div ref="root">
-        <button @click="printHelp">help</button>
-        {{ sample_doc }}
+        <!-- <button @click="printHelp">help</button>
+        {{ sample_doc }} -->
         <table class="table table-sm table-bordered">
             <tr v-for="(i, item_index) in items" :key="item_index">
                 <td v-if="i.primary_attribute">
@@ -92,7 +92,7 @@
             </tr>
         </table>
 
-        <form v-show="can_create" v-if="edit" name="formp" class="form-horizontal" autocomplete="off" @submit.prevent="get_lot_item_details()">
+        <form v-show="can_create && edit" name="formp" class="form-horizontal" autocomplete="off" @submit.prevent="get_lot_item_details()">
             <div class="row">
                 <div class="lot-control col-md-5"></div>
                 <div class="item-control col-md-5"></div>
@@ -111,6 +111,9 @@
         </form>
 
         <form name="formp" class="form-horizontal new-item-form" autocomplete="off" @submit.prevent="add_item()" v-show="edit && !cur_item_changed && cur_item.item && cur_item.item != ''">
+            <div v-show="cur_item.dependent_attribute" class="row">
+                <div class="dependent-attribute-controls col-md-6"></div>
+            </div>
             <div class="row">
                 <div class="item-attribute-controls col-md-6"></div>
                 <div class="item-attribute-controls-right col-md-6"></div>
@@ -123,7 +126,7 @@
                     </label>
                 </div>
             </div>
-            <div v-if="cur_item.item && cur_item.item != ''">
+            <div v-if="cur_item.item && cur_item.item != '' && show_qty_fields">
                 <div class="d-flex flex-row" v-if="cur_item.primary_attribute">
                     <div class="m-1" v-for="(attr, index) in cur_item.primary_attribute_values" :key="attr">
                         <div>
@@ -194,7 +197,7 @@
     const root = ref(null);
 
     const props = defineProps(['items', 'edit', 'otherInputs', 'tableFields', 'allowSecondaryQty', 'qtyFields', 'args', 'validateQty', 'enableAdditionalParameter']);
-
+    const emit = defineEmits(['itemupdated', 'itemadded', 'itemremoved'])
     const item = ref({
         name: "",
         lot: "",
@@ -219,6 +222,7 @@
     const deto = ref(true)
     const cur_item_changed = ref(false)
     const sample_doc = ref({})
+    const cur_dependent_attribute_value = ref(null)
     // const frappe = frappe
 
     let lot_input = null;
@@ -226,6 +230,7 @@
     let attribute_inputs = null;
     let other_input_controls = null;
     let additional_parameter_inputs = null;
+    let dependent_attribute_input = null;
 
 
     onMounted(() => {
@@ -266,6 +271,12 @@
         }
         return flag;
     });
+
+    const show_qty_fields = function() {
+        if (!cur_item.value.dependent_attribute) return true;
+        return Boolean(cur_dependent_attribute_value.value)
+    }
+
     const other_inputs = computed(() => {
         let x = [];
         if (!props.otherInputs) return x;
@@ -341,7 +352,8 @@
     }
 
     function create_lot_item_inputs() {
-        let el = root.value.outerHTML;
+        let el = root.value;
+        console.log("in lot inputs", frappe, $(el))
         $(el).find('.lot-control').html("");
         lot_input = frappe.ui.form.make_control({
             parent: $(el).find('.lot-control'),
@@ -364,6 +376,7 @@
             doc: sample_doc.value,
             render_input: true,
         });
+        console.log("Lot Input", lot_input)
         $(el).find('.item-control').html("");
         item_input = frappe.ui.form.make_control({
             parent: $(el).find('.item-control'),
@@ -454,6 +467,7 @@
                 delivery_date: "",
                 attributes: {},
                 primary_attribute: item_details.primary_attribute,
+                dependent_attribute: item_details.dependent_attribute,
                 values: {},
                 default_uom: item_details.default_uom,
                 secondary_uom: item_details.secondary_uom,
@@ -470,101 +484,186 @@
             } else {
                 item.value.values['default'] = {qty: 0, rate: 0}
             }
+            if(item_details.dependent_attribute){
+                item.value.attributes[item_details.dependent_attribute] = ""
+            }
         } else {
             item.value = item1;
             set_lot_item_inputs(item_details);
         }
-        create_item_attribute_inputs();
-        if (props.enableAdditionalParameter) {
-            create_additional_parameter_inputs();
-        }
-        if (props.otherInputs) {
-            createOtherInputs();
+        if (item_details.dependent_attribute) { 
+            create_item_dependent_attribute_input();
+        } else {
+            create_item_attribute_inputs();
+            if (props.enableAdditionalParameter) {
+                create_additional_parameter_inputs();
+            }
+            if (props.otherInputs) {
+                createOtherInputs();
+            }
         }
     }
 
-    function create_item_attribute_inputs(){
-        if(!cur_item.value.item || cur_item.value.item == '') return;
-        attribute_inputs = [];
-        let $el = root.value.outerHTML;
-        $($el).find('.item-attribute-controls').html("");
-        $($el).find('.item-attribute-controls-right').html("");
-        for(let i = 0; i < cur_item.value.attributes.length; i++){
-            let current_index = i;
-            let attribute = cur_item.value.attributes[i];
-            let attribute_name = attribute.charAt(0).toUpperCase() + attribute.slice(1);
-            let classname = '';
-            if(i%2 == 0) classname = '.item-attribute-controls';
+    function get_attribute_field(attribute, attribute_name, default_value, classname, on_change) {
+        let $el = root.value;
+        if (!classname) {
+            classname = '';
+            if(index%2 == 0) classname = '.item-attribute-controls';
             else classname = '.item-attribute-controls-right';
-            attribute_inputs[i] = frappe.ui.form.make_control({
-                parent: $($el).find(classname),
-                df: {
-                    fieldtype: 'Link',
-                    fieldname: attribute_name,
-                    options: 'Item Attribute Value',
-                    label: attribute_name,
-                    only_select: true,
-                    get_query: function() {
-                        return {
-                            query: "production_api.production_api.doctype.item.item.get_item_attribute_values",
-                            filters: {
-                                "item": cur_item.value.item,
-                                "attribute": attribute_name
-                            }
-                        };
-                    },
-                    reqd: true,
-                    onchange: function() {
-                        let df_me = this;
-                        let value = df_me.get_value();
-                        if (!value) return;
-                        let args = {
-                            'txt': value,
-                            'doctype': 'Item Attribute Value',
-                            query: "production_api.production_api.doctype.item.item.get_item_attribute_values",
-                            filters: {
-                                "item": cur_item.value.item,
-                                "attribute": attribute_name
-                            }
-                        };
-                        frappe.call({
-                            type: "POST",
-                            method: "frappe.desk.search.search_link",
-                            no_spinner: true,
-                            args: args,
-                            callback: function (r) {
-                                if (r.results.length > 0) {
-                                    // results has json of value and description
-                                    // check if value is in results
-                                    let value_exists = false;
-                                    for (let index = 0; index < r.results.length; index++) {
-                                        if (r.results[index].value == value) {
-                                            value_exists = true;
-                                            break;
-                                        }
-                                    }
-                                    if (!value_exists) {
-                                        df_me.set_value("");
+        }
+        let field = frappe.ui.form.make_control({
+            parent: $($el).find(classname),
+            df: {
+                fieldtype: 'Link',
+                fieldname: attribute_name,
+                options: 'Item Attribute Value',
+                label: attribute_name,
+                only_select: true,
+                get_query: function() {
+                    return {
+                        query: "production_api.production_api.doctype.item.item.get_item_attribute_values",
+                        filters: {
+                            "item": cur_item.value.item,
+                            "attribute": attribute_name
+                        }
+                    };
+                },
+                reqd: true,
+                onchange: function() {
+                    let df_me = this;
+                    let value = df_me.get_value();
+                    if (!value) {
+                        if (on_change) {
+                            on_change(value);
+                        }
+                        return;
+                    };
+                    let args = {
+                        'txt': value,
+                        'doctype': 'Item Attribute Value',
+                        query: "production_api.production_api.doctype.item.item.get_item_attribute_values",
+                        filters: {
+                            "item": cur_item.value.item,
+                            "attribute": attribute_name
+                        }
+                    };
+                    frappe.call({
+                        type: "POST",
+                        method: "frappe.desk.search.search_link",
+                        no_spinner: true,
+                        args: args,
+                        callback: function (r) {
+                            console.log(r)
+                            if (r.message && r.message.length > 0) {
+                                // results has json of value and description
+                                // check if value is in results
+                                let value_exists = false;
+                                for (let i = 0; i < r.message.length; i++) {
+                                    if (r.message[i].value == value) {
+                                        value_exists = true;
+                                        break;
                                     }
                                 }
-                                else {
+                                if (!value_exists) {
                                     df_me.set_value("");
                                 }
+                                if (on_change) {
+                                    on_change(value);
+                                }
+                            } else {
+                                df_me.set_value("");
                             }
-                        });
+                        }
+                    });
+                }
+            },
+            doc: sample_doc,
+            render_input: true,
+        });
+        field.set_value(default_value)
+        return field;
+    };
+
+    function create_item_dependent_attribute_input() {
+        dependent_attribute_input = null;
+        let $el = root.value;
+        $($el).find('.dependent-attribute-controls').html("");
+        if (item.value.dependent_attribute) {
+            let attribute = item.value.dependent_attribute;
+            let attribute_name = attribute.charAt(0).toUpperCase() + attribute.slice(1);
+            let default_value = item.value.attributes[attribute];
+            dependent_attribute_input = get_attribute_field(attribute, attribute_name, default_value, '.dependent-attribute-controls', (value) => {
+                if (value == cur_dependent_attribute_value.value) {
+                    return;
+                }
+
+                if (!value) {
+                    // remove all other fields
+                    clear_dependent_attribute_inputs();
+                } else {
+                    let d_attr_values = cur_item.value.dependent_attribute_details.attr_list[value]
+                    if (!d_attr_values) return;
+                    let attributes = d_attr_values.attributes
+                    item.value.default_uom = d_attr_values.uom
+                    create_item_attribute_inputs(attributes, 1);
+                    if (props.enableAdditionalParameter) {
+                        create_additional_parameter_inputs();
                     }
-                },
-                doc: sample_doc.value,
-                render_input: true,
-            });
-            attribute_inputs[i].set_value(item.value.attributes[attribute])
+                    if (props.otherInputs) {
+                        createOtherInputs();
+                    }
+                }
+                cur_dependent_attribute_value.value = value;
+            })
+            if (default_value) {
+                let d_attr_values = cur_item.value.dependent_attribute_details.attr_list[default_value]
+                if (!d_attr_values) return;
+                let attributes = d_attr_values.attributes
+                item.value.default_uom = d_attr_values.uom
+                create_item_attribute_inputs(attributes, 1);
+                if (props.enableAdditionalParameter) {
+                    create_additional_parameter_inputs();
+                }
+                if (props.otherInputs) {
+                    createOtherInputs();
+                }
+            } else {
+                clear_dependent_attribute_inputs();
+            }
+
+        }
+    }
+
+    function create_item_attribute_inputs(attributes = null, start_index = 0){
+        if(!cur_item.value.item || cur_item.value.item == '') return;
+        attribute_inputs = [];
+        let $el = root.value;
+        $($el).find('.item-attribute-controls').html("");
+        $($el).find('.item-attribute-controls-right').html("");
+        if (!attributes || attributes.length == 0) {
+            attributes = cur_item.value.attributes;
+        }
+        if (cur_item.value.primary_attribute) {
+            attributes = attributes.filter((v) => {
+                if (v == cur_item.value.primary_attribute) return false;
+                if (v == cur_item.value.dependent_attribute) return false;
+                return true;
+            })
+        }
+        for(let i = 0; i < attributes.length; i++){
+            let attribute = attributes[i];
+            let attribute_name = attribute.charAt(0).toUpperCase() + attribute.slice(1);
+            let classname = '';
+            if(i % 2 == 0) classname = '.item-attribute-controls';
+            else classname = '.item-attribute-controls-right';
+            attribute_inputs[i] = get_attribute_field(attribute, attribute_name, item.value.attributes[attribute], classname, null);
         }
     }
 
     function create_additional_parameter_inputs(){
         if(!cur_item.value.item || cur_item.value.item == '') return;
         additional_parameter_inputs = [];
-        let $el = root.value.outerHTML;
+        let $el = root.value;
         $($el).find('.additional-parameter-controls').html("");
         $($el).find('.additional-parameter-controls-right').html("");
         for(let i = 0; i < cur_item.value.additional_parameters.length; i++){
@@ -607,7 +706,7 @@
     function createOtherInputs() {
         if(!cur_item.value.item || cur_item.value.item == '') return;
         if (!props.otherInputs) return;
-        let $el = root.value.outerHTML;
+        let $el = root.value;
         for (let i = 0;i < other_inputs.value.length; i++) {
             let data = other_inputs.value[i];
             let parent_class = '.' + data
@@ -619,7 +718,7 @@
             let parent_class = '.' + data.parent
             if (data['query']) {
                 data.df['get_query'] = function() {
-                    return data.query(item, other_input_controls)
+                    return data.query(item.value, other_input_controls)
                 }
             }
             other_input_controls[data.name] = frappe.ui.form.make_control({
@@ -629,10 +728,10 @@
                 render_input: true,
             });
 
-            if (data.df.fieldtype == 'Date' && item[data.name] == "None") {
-                item[data.name] = null;
+            if (data.df.fieldtype == 'Date' && item.value[data.name] == "None") {
+                item.value[data.name] = null;
             }
-            other_input_controls[data.name].set_value(item[data.name])
+            other_input_controls[data.name].set_value(item.value[data.name])
         }
     }
     
@@ -640,6 +739,21 @@
         if(!attribute_inputs) return false;
         let attributes = [];
         let attribute_values = {};
+        let dependent_attribute = null;
+        let dependent_attribute_value = null;
+        if (cur_item.value.dependent_attribute) {
+            let attribute = dependent_attribute_input.df.label;
+            let value = dependent_attribute_input.get_value();
+            attributes.push(attribute);
+            if (!value) {
+                dependent_attribute_input.$input.select();
+                frappe.msgprint(__('Attribute ' + attribute + ' does not have a value'));
+                return false;
+            }
+            attribute_values[attribute] = value
+            dependent_attribute = attribute;
+            dependent_attribute_value = value;
+        }
         for (let i = 0; i < attribute_inputs.length; i++) {
             let attribute = attribute_inputs[i].df.label;
             attributes.push(attribute);
@@ -651,12 +765,21 @@
             }
             attribute_values[attribute] = value;
         }
-        if (!arrays_equal(attributes, cur_item.value.attributes)) {
+        let attr_list = cur_item.value.attributes;
+        if (cur_item.value.dependent_attribute) {
+            let d_attr_values = cur_item.value.dependent_attribute_details.attr_list[dependent_attribute_value]
+            if (!d_attr_values) return false;
+            attr_list = d_attr_values.attributes;
+            attr_list = attr_list.filter((v) => {
+                return v !== cur_item.value.primary_attribute
+            })
+            attr_list.push(dependent_attribute);
+        }
+        if (!arrays_equal(attributes, attr_list)) {
             frappe.msgprint(__('Attributes might have changed. Please try again'));
             return false;
         } else {
-            item.attributes = {
-                ...item.attributes,
+            item.value.attributes = {
                 ...attribute_values
             }
         }
@@ -681,7 +804,7 @@
                 additional_parameter_value: value,
             });
         }
-        item.additional_parameters = attribute_values
+        item.value.additional_parameters = attribute_values
         return true;
     }
     
@@ -697,7 +820,7 @@
                 frappe.msgprint(__(label + ' does not have a value'));
                 return false;
             }
-            item[data.name] = value;
+            item.value[data.name] = value;
         }
         return true;
     }
@@ -724,6 +847,10 @@
         return JSON.stringify(arr1)===JSON.stringify(arr2);
     }
     
+    function clear_dependent_attribute() {
+        if (!dependent_attribute_input) return;
+        dependent_attribute_input.set_value('');
+    }
     function clear_item_attribute_inputs() {
         if(!attribute_inputs) return;
         for(let i = 0; i < attribute_inputs.length; i++){
@@ -740,19 +867,20 @@
 
     function clear_item_values() {
         for(var i = 0; i < cur_item.value.attributes.length; i++){
-            item.attributes[cur_item.value.attributes[i]] = ""
+            item.value.attributes[cur_item.value.attributes[i]] = ""
         }
         if(cur_item.value.primary_attribute){
             for(var i = 0;i < cur_item.value.primary_attribute_values.length; i++){
-                item.values[cur_item.value.primary_attribute_values[i]] = {qty: 0, rate: 0}
+                item.value.values[cur_item.value.primary_attribute_values[i]] = {qty: 0, rate: 0}
             }
         }
         else{
-            item.values['default'] = {qty: 0, rate: 0}
+            item.value.values['default'] = {qty: 0, rate: 0}
         }
     }
 
     function clear_inputs(force) {
+        clear_dependent_attribute();
         clear_item_attribute_inputs();
         clear_other_inputs();
         clear_item_values();
@@ -761,9 +889,28 @@
         }
     }
 
+    function clear_dependent_attribute_inputs() {
+
+        attribute_inputs = [];
+        let $el = root.value
+        $($el).find('.item-attribute-controls').html("");
+        $($el).find('.item-attribute-controls-right').html("");
+
+        additional_parameter_inputs = [];
+        $($el).find('.additional-parameter-controls').html("");
+        $($el).find('.additional-parameter-controls-right').html("");
+
+        if (!props.otherInputs) return;
+        for (let i = 0;i < other_inputs.value.length; i++) {
+            let data = other_inputs.value[i];
+            let parent_class = '.' + data
+            $($el).find(parent_class).html("");
+        }
+        other_input_controls = {};
+    }
     function validate_item_values() {
         if(!cur_item.value.primary_attribute){
-            if(item.values['default'].qty == 0){
+            if(item.value.values['default'].qty == 0){
                 $nextTick(() => {
                     $refs.qty_control.focus();
                 });
@@ -777,7 +924,7 @@
         else{
             let total_qty = 0;
             for(var i = 0; i < cur_item.value.primary_attribute_values.length; i++){
-                total_qty += item.values[cur_item.value.primary_attribute_values[i]].qty;
+                total_qty += item.value.values[cur_item.value.primary_attribute_values[i]].qty;
             }
             if(total_qty == 0){
                 $nextTick(() => {
@@ -798,15 +945,15 @@
         if(props.enableAdditionalParameter && !get_additional_parameters()) return;
         if(!get_other_details()) return;
         if(props.validateQty && !validate_item_values()) return;
-        if(item.name != item_input.get_value()){
+        if(item.value.name != item_input.get_value()){
             frappe.msgprint(__('Item does not match'));
             clear_inputs(true);
             return;
         }
         if(is_edit.value){
-            props.items[edit_index.value].items[edit_index1.value] = JSON.parse(JSON.stringify(item));
+            props.items[edit_index.value].items[edit_index1.value] = JSON.parse(JSON.stringify(item.value));
             cancel_edit();
-            $emit("itemupdated", true);
+            emit("itemupdated", true);
             return;
         }
         let index = get_item_group_index();
@@ -814,14 +961,16 @@
             props.items.push({
                 attributes: cur_item.value.attributes,
                 primary_attribute: cur_item.value.primary_attribute,
+                dependent_attribute: cur_item.value.dependent_attribute,
+                dependent_attribute_details: cur_item.value.dependent_attribute_details,
                 primary_attribute_values: cur_item.value.primary_attribute_values,
                 additional_parameters: cur_item.value.additional_parameters,
-                items: [JSON.parse(JSON.stringify(item))]
+                items: [JSON.parse(JSON.stringify(item.value))]
             });
         } else {
-            props.items[index].items.push(JSON.parse(JSON.stringify(item)));
+            props.items[index].items.push(JSON.parse(JSON.stringify(item.value)));
         }
-        $emit("itemadded", true);
+        emit("itemadded", true);
         clear_inputs(false);
     }
 
@@ -849,7 +998,7 @@
         } else {
             props.items[index].items.splice(index1, 1);
         }
-        $emit("itemremoved", true);
+        emit("itemremoved", true);
     }
 
     function edit_item(index, index1) {
@@ -862,6 +1011,8 @@
             item: items.items[index1].name,
             attributes: items.attributes,
             primary_attribute: items.primary_attribute,
+            dependent_attribute: items.dependent_attribute,
+            dependent_attribute_details: items.dependent_attribute_details,
             primary_attribute_values: items.primary_attribute_values,
             default_uom: items.items[index1].default_uom,
             secondary_uom: items.items[index1].secondary_uom,
