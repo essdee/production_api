@@ -222,6 +222,7 @@ export default {
             cur_item_changed: false,
             sample_doc: {},
             cur_dependent_attribute_value: null,
+            frappe: frappe,
         }
     },
     mounted() {
@@ -659,8 +660,6 @@ export default {
                 let classname = '';
                 if(i % 2 == 0) classname = '.item-attribute-controls';
                 else classname = '.item-attribute-controls-right';
-                // console.log($(this.$el).find(classname))
-                // let me = this;
                 this.attribute_inputs[i] = this.get_attribute_field(attribute, attribute_name, this.item.attributes[attribute], classname, null)
             }
         },

@@ -17,7 +17,7 @@
                         <td>{{ c.profit_percent_markdown }}</td>
                         <td>
                             <a :href="'/app/lotwise-item-profit/' + encodeURIComponent(c.name)" class="btn btn-default btn-xs">
-                                {{ __("Open") }}
+                                Open
                             </a>
                         </td>
                     </tr>
@@ -28,13 +28,7 @@
     </div>
 </template>
 
-<script>
-export default ({
-    name: 'ProductCostingList',
-    data: function(){
-        return {
-            costing_list: cur_frm.doc.__onload.costing_list
-        };
-    },
-})
+<script setup>
+import { ref } from 'vue';
+const costing_list = ref(cur_frm.doc.__onload.costing_list);
 </script>

@@ -1,3 +1,4 @@
+import { createApp } from 'vue';
 import StockItem from "./StockEntry/StockEntry.vue"
 import StockReconciliation from "./StockReconciliation/StockReconciliation.vue"
 import LotTransfer from "./LotTransfer/LotTransfer.vue"
@@ -10,12 +11,15 @@ export class StockEntryWrapper {
 
     make_body() {
         let $page_container = $('<div class="item frappe-control">').appendTo(this.$wrapper);
-        this.vue = new Vue({
-            el: '.item',
-            render: h => h(StockItem, {
-            })
-        });
-        this.stockEntry = this.vue.$children[0];
+        this.app = createApp(StockItem);
+        SetVueGlobals(this.app);
+        this.stockEntry = this.app.mount(this.$wrapper.get(0))
+        // this.vue = new Vue({
+        //     el: '.item',
+        //     render: h => h(StockItem, {
+        //     })
+        // });
+        // this.stockEntry = this.vue.$children[0];
     }
 
     updateWrapper(wrapper) {
@@ -44,12 +48,15 @@ export class StockReconciliationWrapper {
 
     make_body() {
         let $page_container = $('<div class="item frappe-control">').appendTo(this.$wrapper);
-        this.vue = new Vue({
-            el: '.item',
-            render: h => h(StockReconciliation, {
-            })
-        });
-        this.stockReconciliation = this.vue.$children[0];
+        this.app = createApp(StockReconciliation);
+        SetVueGlobals(this.app);
+        this.stockReconciliation = this.app.mount(this.$wrapper.get(0))
+        // this.vue = new Vue({
+        //     el: '.item',
+        //     render: h => h(StockReconciliation, {
+        //     })
+        // });
+        // this.stockReconciliation = this.vue.$children[0];
     }
 
     updateWrapper(wrapper) {
@@ -78,12 +85,15 @@ export class LotTransferWrapper {
 
     make_body() {
         let $page_container = $('<div class="item frappe-control">').appendTo(this.$wrapper);
-        this.vue = new Vue({
-            el: '.item',
-            render: h => h(LotTransfer, {
-            })
-        });
-        this.lotTransfer = this.vue.$children[0];
+        this.app = createApp(LotTransfer);
+        SetVueGlobals(this.app);
+        this.lotTransfer = this.app.mount(this.$wrapper.get(0));
+        // this.vue = new Vue({
+        //     el: '.item',
+        //     render: h => h(LotTransfer, {
+        //     })
+        // });
+        // this.lotTransfer = this.vue.$children[0];
     }
 
     updateWrapper(wrapper) {
@@ -96,6 +106,7 @@ export class LotTransferWrapper {
     }
 
     load_data(data) {
+        console.log("Loading Data", data)
         this.lotTransfer.load_data(data);
     }
     

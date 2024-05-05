@@ -299,7 +299,7 @@ frappe.ui.form.on('Purchase Order', {
 	delivery_address: function(frm) {
 		if (frm.doc['delivery_address']) {
 			frappe.call({
-				method: "frappe.contacts.doctype.address.address.get_address_display",
+				method: "production_api.production_api.doctype.purchase_order.purchase_order.get_address_display",
 				args: {"address_dict": frm.doc['delivery_address'] },
 				callback: function(r) {
 					if (r.message) {

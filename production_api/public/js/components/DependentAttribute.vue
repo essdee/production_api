@@ -182,8 +182,7 @@ export default {
 				// enqueue: true,
 				freeze: true,
 				freeze_message: __("Updating related fields..."),
-			})
-			.then((r) => {
+			}).then((r) => {
                 this.edit=false;
                 cur_frm.reload_doc();
 			});

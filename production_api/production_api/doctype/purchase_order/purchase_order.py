@@ -368,10 +368,7 @@ def get_address_display(address_dict):
 		address_dict = frappe.db.get_value("Address", address_dict, "*", as_dict=True, cache=True) or {}
 
 	# name, template = get_address_templates(address_dict)
-	template = '''
-		{{ address_line1 }}, {% if address_line2 %}{{ address_line2 }}{% endif -%}<br>
-		{{ city }}, {% if state %}{{ state }}{% endif -%}{% if pincode %} - {{ pincode }}{% endif -%}
-	'''
+	template = '''{{ address_line1 }}, {% if address_line2 %}{{ address_line2 }}{% endif -%}<br>{{ city }}, {% if state %}{{ state }}{% endif -%}{% if pincode %} - {{ pincode }}{% endif -%}'''
 
 	try:
 		return frappe.render_template(template, address_dict)
