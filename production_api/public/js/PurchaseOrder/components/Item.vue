@@ -86,6 +86,7 @@ const otherInputs = ref([
         },
     },
 ]);
+
 const table_fields = ref([
     {
         name: 'pending_qty',

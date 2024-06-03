@@ -23,6 +23,10 @@
   "column_break_vyiz9",
   "supplier_name",
   "delivery_date",
+  "section_break_chkx",
+  "accepted_quantity",
+  "rejected_quantity",
+  "quality_ins_doc",
   "section_addresses",
   "supplier_address",
   "supplier_address_display",
@@ -35,6 +39,9 @@
   "section_break_ve8oj",
   "items",
   "item_html",
+  "section_break_ciqq",
+  "items_wo",
+  "item_wo",
   "section_break_8ncnk",
   "total",
   "total_tax",
@@ -61,7 +68,7 @@
    "fieldtype": "Select",
    "in_list_view": 1,
    "label": "Against",
-   "options": "Purchase Order",
+   "options": "\nPurchase Order\nWork Order",
    "reqd": 1
   },
   {
@@ -303,12 +310,53 @@
    "no_copy": 1,
    "options": "Purchase Invoice",
    "read_only": 1
+  },
+  {
+   "fieldname": "section_break_chkx",
+   "fieldtype": "Section Break"
+  },
+  {
+   "default": "0",
+   "fieldname": "accepted_quantity",
+   "fieldtype": "Float",
+   "label": "Accepted Quantity",
+   "non_negative": 1,
+   "precision": "3"
+  },
+  {
+   "default": "0",
+   "fieldname": "rejected_quantity",
+   "fieldtype": "Float",
+   "label": "Rejected Quantity",
+   "non_negative": 1,
+   "precision": "3"
+  },
+  {
+   "fieldname": "quality_ins_doc",
+   "fieldtype": "Attach",
+   "label": "Quality Inspection Document"
+  },
+  {
+   "fieldname": "section_break_ciqq",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "items_wo",
+   "fieldtype": "Table",
+   "hidden": 1,
+   "label": "Items WO",
+   "options": "Goods Received Note Work Order"
+  },
+  {
+   "fieldname": "item_wo",
+   "fieldtype": "HTML",
+   "label": "Item WO"
   }
  ],
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2023-10-03 20:32:42.845833",
+ "modified": "2024-06-03 18:30:04.747487",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Goods Received Note",

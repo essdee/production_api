@@ -10,7 +10,7 @@ from frappe.custom.doctype.property_setter.property_setter import make_property_
 from frappe.contacts.doctype.contact.contact import get_default_contact
 from jinja2 import TemplateSyntaxError
 from production_api.production_api.doctype.item_price.item_price import get_all_active_price
-from spine.spine_adapter.handler.default_consumer_handler import DocDoesNotExist, DocTypeNotAvailable, IncorrectData, UnknownEvent, get_module_logger
+# from spine.spine_adapter.handler.default_consumer_handler import DocDoesNotExist, DocTypeNotAvailable, IncorrectData, UnknownEvent, get_module_logger
 
 class Supplier(Document):
 
@@ -134,6 +134,8 @@ def get_supplier_address_display(supplier):
 # ---------------------------------
 def handler(payload, raise_error = True):
 	try:
+		from spine.spine_adapter.handler.default_consumer_handler import get_module_logger
+
 		logger = get_module_logger()
 		incoming_doctype = payload.get("Header").get("DocType")
 		if incoming_doctype != "Supplier": raise Exception("This handler only handles Supplier DocType")
@@ -141,6 +143,8 @@ def handler(payload, raise_error = True):
 		if not incoming_doctype or not frappe.db.exists("DocType", incoming_doctype):
 			logger.debug("Doctype does not Exist ->", incoming_doctype)
 			if raise_error:
+				from spine.spine_adapter.handler.default_consumer_handler import DocTypeNotAvailable
+
 				raise DocTypeNotAvailable(incoming_doctype)
 			else:
 				return None
@@ -157,6 +161,8 @@ def handler(payload, raise_error = True):
 		else:
 			logger.debug("Did not find event "+event)
 			if raise_error:
+				from spine.spine_adapter.handler.default_consumer_handler import UnknownEvent
+
 				raise UnknownEvent(event)
 			else:
 				return None
@@ -185,11 +191,14 @@ def remove_payload_fields(payload):
 		
 def handle_update(payload):
 	"""Sync update type update"""
+	from spine.spine_adapter.handler.default_consumer_handler import get_module_logger
+
 	logger = get_module_logger()
 	doctype = payload.get("Header").get("DocType")
 	docname = payload.get("Payload").get("name")
 	uid = payload.get("Payload").get("uid")
 	if not doctype or not uid:
+		from spine.spine_adapter.handler.default_consumer_handler import IncorrectData
 		raise IncorrectData(msg="Incorrect Data passed")
 	local_doc = get_local_doc(doctype, uid)
 	logger.debug("Updating {}".format(docname))
@@ -205,6 +214,7 @@ def handle_update(payload):
 		local_doc.save()
 		local_doc.db_update_all()
 	else:
+		from spine.spine_adapter.handler.default_consumer_handler import DocDoesNotExist
 		raise DocDoesNotExist(doctype, docname)
 
 def handle_insert(payload):
@@ -212,6 +222,8 @@ def handle_insert(payload):
 	docname = payload.get("Payload").get("name")
 	uid = payload.get("Payload").get("uid")
 	if not doctype or not uid:
+		from spine.spine_adapter.handler.default_consumer_handler import IncorrectData
+
 		raise IncorrectData(msg="Incorrect Data passed")
 	if frappe.db.exists(doctype, {"uid": uid}):
 		raise Exception("Document already exists")
@@ -227,6 +239,8 @@ def handle_remove(payload):
 	docname = payload.get("Payload").get("name")
 	uid = payload.get("Payload").get("uid")
 	if not doctype or not uid:
+		from spine.spine_adapter.handler.default_consumer_handler import IncorrectData
+
 		raise IncorrectData(msg="Incorrect Data passed")
 	local_doc = get_local_doc(doctype, uid)
 	if local_doc:
@@ -244,4 +258,5 @@ def handle_rename(payload):
 			local_doc.supplier_name = publish_doc.get("supplier_name") or local_doc.suppler_name
 			local_doc.save()
 	else:
+		from spine.spine_adapter.handler.default_consumer_handler import IncorrectData
 		raise IncorrectData("Incorrect Data Passed")

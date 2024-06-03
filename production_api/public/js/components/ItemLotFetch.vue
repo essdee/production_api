@@ -234,7 +234,7 @@
 
 
     onMounted(() => {
-        console.log('new-item mounted');
+        // console.log('new-item mounted');
         create_lot_item_inputs();
     });
 
@@ -353,7 +353,7 @@
 
     function create_lot_item_inputs() {
         let el = root.value;
-        console.log("in lot inputs", frappe, $(el))
+        // console.log("in lot inputs", frappe, $(el))
         $(el).find('.lot-control').html("");
         lot_input = frappe.ui.form.make_control({
             parent: $(el).find('.lot-control'),
@@ -376,7 +376,7 @@
             doc: sample_doc.value,
             render_input: true,
         });
-        console.log("Lot Input", lot_input)
+        // console.log("Lot Input", lot_input)
         $(el).find('.item-control').html("");
         item_input = frappe.ui.form.make_control({
             parent: $(el).find('.item-control'),
@@ -553,7 +553,7 @@
                         no_spinner: true,
                         args: args,
                         callback: function (r) {
-                            console.log(r)
+                            // console.log(r)
                             if (r.message && r.message.length > 0) {
                                 // results has json of value and description
                                 // check if value is in results

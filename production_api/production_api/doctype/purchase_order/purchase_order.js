@@ -71,7 +71,6 @@ frappe.ui.form.on('Purchase Order', {
 			};
 		});
 	},
-
 	refresh: function(frm) {
 		$(frm.fields_dict['item_html'].wrapper).html("");
 		frm.itemEditor = new frappe.production.ui.PurchaseOrderItem(frm.fields_dict["item_html"].wrapper);

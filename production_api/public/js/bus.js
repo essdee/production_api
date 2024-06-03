@@ -10,7 +10,7 @@ class Bus {
          */
         this.eventListeners = new Map()
     }
-  
+
     /**
      * @param {EventName} eventName
      * @param {Function} callback
@@ -21,11 +21,11 @@ class Bus {
         if (!this.eventListeners.has(eventName)) {
             this.eventListeners.set(eventName, [])
         }
-    
+
         const eventListeners = this.eventListeners.get(eventName)
         eventListeners.push({ callback, once })
     }
-  
+
     /**
      * See: https://v2.vuejs.org/v2/api/#vm-on
      *
@@ -35,7 +35,7 @@ class Bus {
     $on(eventName, callback) {
         this.registerEventListener(eventName, callback)
     }
-  
+
     /**
      * See: https://v2.vuejs.org/v2/api/#vm-once
      *
@@ -46,7 +46,7 @@ class Bus {
         const once = true
         this.registerEventListener(eventName, callback, once)
     }
-  
+
     /**
      * Removes all event listeners for the given event name or names.
      *
@@ -59,14 +59,14 @@ class Bus {
      */
     $off(eventNameOrNames, callback = undefined) {
         const eventNames = Array.isArray(eventNameOrNames) ? eventNameOrNames : [eventNameOrNames]
-    
+
         for (const eventName of eventNames) {
             const eventListeners = this.eventListeners.get(eventName)
-    
+
             if (eventListeners === undefined) {
                 continue
             }
-    
+
             if (typeof callback === 'function') {
             for (let i = eventListeners.length - 1; i >= 0; i--) {
                 if (eventListeners[i].callback === callback) {
@@ -78,7 +78,7 @@ class Bus {
             }
         }
     }
-  
+
     /**
      * See: https://v2.vuejs.org/v2/api/#vm-emit
      *

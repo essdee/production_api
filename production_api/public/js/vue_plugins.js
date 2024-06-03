@@ -9,6 +9,9 @@ import PONewItem from "./PurchaseOrder/components/NewItem.vue"
 import POItem from "./PurchaseOrder/components/Item.vue"
 import GRNItemWrapper from "./GRN";
 import { StockEntryWrapper, StockReconciliationWrapper, LotTransferWrapper } from "./Stock";
+import WorkOrderDeliverables from "./WorkOrder/components/Deliverables.vue"
+import WorkOrderReceivables from "./WorkOrder/components/Receivables.vue"
+import DeliveryChallan from "./Delivery_Challan/components/deliverable_items.vue"
 
 // Product Development
 import { ProductFileVersionsWrapper, ProductCostingListWrapper } from "./ProductDevelopment"
@@ -167,6 +170,89 @@ frappe.production.ui.PurchaseOrderItem = class {
         this.vue.update_status();
     }
 };
+frappe.production.ui.Deliverables = class {
+    constructor(wrapper){
+        this.$wrapper = $(wrapper);
+        this.make_table();
+    }
+    make_table(){
+        this.app = createApp(WorkOrderDeliverables)
+        SetVueGlobals(this.app)
+        this.vue = this.app.mount(this.$wrapper.get(0))
+    }
+    get_deliverables_data(){
+        let items = JSON.parse(JSON.stringify(this.vue.items))
+        return items
+    }
+    load_data(item_details){
+        let items = JSON.parse(JSON.stringify(item_details));
+        this.vue.load_data(items)
+    }
+    update_status() {
+        this.vue.update_status();
+    }
+};
+
+frappe.production.ui.Receivables = class {
+    constructor(wrapper){
+        this.$wrapper = $(wrapper);
+        this.make_table();
+    }
+    make_table(){
+        this.app = createApp(WorkOrderReceivables)
+        SetVueGlobals(this.app)
+        this.vue = this.app.mount(this.$wrapper.get(0))
+    }
+    get_receivables_data(){
+        let items = JSON.parse(JSON.stringify(this.vue.items))
+        return items
+    }
+    load_data(item_details){
+        let items = JSON.parse(JSON.stringify(item_details));
+        this.vue.load_data(items)
+    }
+    update_status() {
+        this.vue.update_status();
+    }
+};
+
+frappe.production.ui.Delivery_Challan = class {
+    constructor(wrapper, items){
+        this.$wrapper = $(wrapper);
+        this.items = items;
+        this.make_table();
+    }
+    make_table(){
+        this.app = createApp(DeliveryChallan, {items: this.items});
+        SetVueGlobals(this.app)
+        this.vue = this.app.mount(this.$wrapper.get(0))
+    }
+    get_data(){
+        let items = JSON.parse(JSON.stringify(this.vue.deliverables_item))
+        return items
+    }
+    update_status() {
+        this.vue.update_status();
+    }
+
+}
+// Basic structure to integrate vue
+
+// frappe.ui.production.sampleName = class {
+//     constructor(wrapper){
+//         this.$wrapper = $(wrapper)
+//         this.make_app()
+//     }
+//     make_app(){
+//         this.app = createApp('sample_vue_app_which_is_imported')
+//         SetVueGlobals(this.app)
+//         this.vue = this.app.mount(this.$wrapper.get(0))
+//     }
+//     get_page_data(){
+//         let data = 'this.vue.variable_name_which_is_in_the_vue_page_._that_should_be_defined_inside_the_defineExpose_componenet'
+//         return data
+//     }
+// }
 
 frappe.production.ui.GRNItem = GRNItemWrapper
 frappe.production.ui.StockEntryItem = StockEntryWrapper

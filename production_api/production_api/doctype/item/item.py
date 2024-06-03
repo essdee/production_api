@@ -10,7 +10,6 @@ from frappe.model.document import Document
 from frappe.desk.search import search_widget
 from production_api.production_api.doctype.item_dependent_attribute_mapping.item_dependent_attribute_mapping import get_dependent_attribute_details
 from production_api.production_api.doctype.item_price.item_price import get_all_active_price
-from spine.spine_adapter.doctype.spine_producer_config.spine_producer_config import trigger_event
 
 
 class Item(Document):
@@ -532,5 +531,6 @@ def rename_item(docname, name, brand = None):
 	return doc.name
 
 def sync_updated_item_variant(doc, event):
+	from spine.spine_adapter.doctype.spine_producer_config.spine_producer_config import trigger_event
 	if event == "on_update":
 		trigger_event("Item Variant", event, filters={"item": doc.name}, enqueue_after_commit=True)
