@@ -35,9 +35,9 @@ class WorkOrder(Document):
 			item.set('pending_quantity', item.qty)
 			item.set('cancelled_quantity', 0)
 
-		for item in self.receivables:
-			item.set('pending_quantity', item.qty)
-			item.set('cancelled_quantity', 0)	
+		# for item in self.receivables:
+		# 	item.set('pending_quantity', item.qty)
+		# 	item.set('cancelled_quantity', 0)	
 
 	def before_validate(self):
 		if self.docstatus == 1:
@@ -153,7 +153,7 @@ def get_rate_and_quantity(process_name, variant_name, quantity, wo_date):
 	
 
 	
-def fetch_item_details(items):
+def fetch_item_details(items, include_id = False):
 	items = [item.as_dict() for item in items]
 	item_details = []
 	items = sorted(items, key = lambda i: i['row_index'])
@@ -195,6 +195,9 @@ def fetch_item_details(items):
 							'rate': variant.rate,
 							'tax': variant.tax,
 						}
+						if include_id:
+							item['values'][attr.attribute_value]['ref_doctype'] = "Work Order Receivables"
+							item['values'][attr.attribute_value]['ref_docname'] = variant.name
 						break
 		else:
 			item['values']['default'] = {
@@ -205,6 +208,9 @@ def fetch_item_details(items):
 				'rate': variants[0].rate,
 				'tax': variants[0].tax
 			}
+			if include_id:
+				item['values']['default']['ref_doctype'] = "Work Order Receivables"
+				item['values']['default']['ref_docname'] = variants[0].name
 		index = get_item_group_index(item_details, current_item_attribute_details)
 
 		if index == -1:
@@ -247,6 +253,12 @@ def get_item_attribute_details(variant, item_attributes):
 		if attr.attribute in item_attributes['attributes']:
 			attribute_details[attr.attribute] = attr.attribute_value
 	return attribute_details
+
+@frappe.whitelist()
+def get_work_order_items(work_order):
+	wo = frappe.get_doc("Work Order", work_order)
+	data = fetch_item_details(wo.receivables, include_id=True)
+	return data
 
 
 

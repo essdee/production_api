@@ -16,8 +16,6 @@
   "comments",
   "table_index",
   "row_index",
-  "pending_quantity",
-  "cancelled_quantity",
   "additional_parameters",
   "cost",
   "total_cost"
@@ -82,16 +80,6 @@
    "label": "Row Index"
   },
   {
-   "fieldname": "pending_quantity",
-   "fieldtype": "Int",
-   "label": "Pending Quantity"
-  },
-  {
-   "fieldname": "cancelled_quantity",
-   "fieldtype": "Int",
-   "label": "Cancelled Quantity"
-  },
-  {
    "fieldname": "additional_parameters",
    "fieldtype": "Data",
    "label": "Additional Parameters"
@@ -117,7 +105,7 @@
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2024-05-31 16:36:27.393243",
+ "modified": "2024-06-11 12:50:43.570697",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Work Order Receivables",

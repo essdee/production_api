@@ -18,7 +18,10 @@
   "table_index",
   "row_index",
   "ref_doctype",
-  "ref_docname"
+  "ref_docname",
+  "accepted_qty",
+  "rejected_qty",
+  "rework_details"
  ],
  "fields": [
   {
@@ -89,19 +92,34 @@
    "fieldname": "ref_doctype",
    "fieldtype": "Select",
    "label": "Reference Doctype",
-   "options": "Purchase Order Item"
+   "options": "Purchase Order Item\nWork Order Receivables"
   },
   {
    "fieldname": "ref_docname",
    "fieldtype": "Dynamic Link",
    "label": "Item Table Reference",
    "options": "ref_doctype"
+  },
+  {
+   "fieldname": "accepted_qty",
+   "fieldtype": "Float",
+   "label": "Accepted Qty"
+  },
+  {
+   "fieldname": "rejected_qty",
+   "fieldtype": "Float",
+   "label": "Rejected Qty"
+  },
+  {
+   "fieldname": "rework_details",
+   "fieldtype": "Small Text",
+   "label": "Rework Details"
   }
  ],
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2023-04-26 18:22:54.218525",
+ "modified": "2024-06-13 11:55:48.798742",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Goods Received Note Item",

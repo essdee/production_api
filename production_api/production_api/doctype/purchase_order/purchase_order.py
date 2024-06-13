@@ -505,7 +505,6 @@ def make_purchase_order_mapped_doc(items):
 	return new_doc
 
 def get_new_items(items):
-	print(items)
 	data = []
 	for item in items:
 		current_variant = frappe.get_doc("Item Variant", item['item'])

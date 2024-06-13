@@ -24,10 +24,15 @@ export default class GRNItemWrapper {
     }
 
     get_items() {
+        console.log("<------------------------get items------------------------->")
+        console.log(JSON.stringify(this.grn.get_items()))
         return this.grn.get_items();
     }
 
     load_data(data, skip_watch=false) {
+        console.log("<------------------------load data------------------------->")
+
+        console.log(JSON.stringify(data))
         this.grn.load_data(data, skip_watch);
     }
     

@@ -122,6 +122,7 @@ frappe.ui.form.on('Goods Received Note', {
 	save_item_details: function(frm) {
 		if(frm.itemEditor){
 			let items = frm.itemEditor.get_items();
+			// console.log(JSON.stringify(items))
 			if(items && items.length > 0) {
 				frm.doc['item_details'] = JSON.stringify(items);
 			}
@@ -145,7 +146,7 @@ frappe.ui.form.on('Goods Received Note', {
 
 	before_save: function(frm) {
 		if(frm.itemEditor) {
-			console.log(frm.itemEditor);
+			// console.log(frm.itemEditor);
 		}
 	},
 
@@ -191,13 +192,13 @@ frappe.ui.form.on('Goods Received Note', {
 	against_id: function(frm) {
 		frappe.production.ui.eventBus.$emit("update_grn_details", {against_id: frm.doc.against_id})
 		if (frm.doc.against_id) {
-			// get the supplier in the Purchase Order
 			frappe.db.get_doc(frm.doc.against, frm.doc.against_id)
 				.then(doc => {
 					frm.set_value('supplier', doc.supplier);
 					frm.set_value('delivery_location', doc.default_delivery_location);
 				})
-		} else {
+		} 
+		else {
 			frm.set_value('supplier', '');
 			frm.set_value('delivery_location', '');
 		}

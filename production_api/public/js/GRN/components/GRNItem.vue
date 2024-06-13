@@ -18,7 +18,7 @@
                             <td>{{ j.lot }}</td>
                             <td v-for="attr in i.attributes" :key="attr">{{ j.attributes[attr] }}</td>
                             <td v-for="attr in j.values" :key="attr">
-                                <div v-if="attr.qty">
+                                <div v-if="attr.received">
                                     {{ attr.received }}<span v-if="j.default_uom">{{ ' ' + j.default_uom }}</span>
                                     <span v-if="attr.secondary_qty">
                                             ({{ attr.secondary_received }}<span v-if="j.secondary_uom">{{ ' ' + j.secondary_uom }}</span>)
@@ -35,6 +35,7 @@
                     </table>
                 </td>
                 <td v-else>
+                    <h1>Else Primary Attribute</h1>
                     <table class="table table-sm table-bordered" v-if="i.items && i.items.length > 0">
                         <tr>
                             <th>S.No.</th>
@@ -43,23 +44,27 @@
                             <th v-for="attr in i.attributes" :key="attr">{{ attr }}</th>
                             <th>Received Quantity</th>
                             <th>Comments</th>
+                            <th>Else primary</th>
                         </tr>
                         <tr v-for="(j, item1_index) in i.items" :key="item1_index">
                             <td>{{ item1_index + 1 }}</td>
                             <td>{{ j.name }}</td>
                             <td>{{ j.lot }}</td>
                             <td v-for="attr in i.attributes" :key="attr">{{ j.attributes[attr] }}</td>
-                            <td>
+                            <td v-if="against == 'Purchase Order'">
                                 {{ j.values['default'].received }}<span v-if="j.default_uom">{{ ' ' + j.default_uom}}</span>
                                 <span v-if="j.values['default'].secondary_received">
                                     <br>
                                     ({{ j.values['default'].secondary_received }}<span v-if="j.secondary_uom">{{ ' ' + j.secondary_uom }}</span>)
                                 </span>
                             </td>
-                            <!-- <td>
-                                <input class="form-control" type="number" v-model="j.values['default'].received" placeholder="0" min="0" :max="j.values['default'].qty" />
-                                <input class="form-control" v-if="j.values['default'].secondary_qty" type="number" min="0" :max="j.values['default'].secondary_qty" v-model="j.values['default'].secondary_received" label="Secondary Qty"/>
-                            </td> -->
+                            <td v-else>
+                                {{ j.values['default'].accepted_qty }}<span v-if="j.default_uom">{{ ' ' + j.default_uom}}</span>
+                                <span v-if="j.values['default'].rejected_qty">
+                                    <br>
+                                    ({{ j.values['default'].rejected_qty }}<span v-if="j.default_uom">{{ ' ' + j.default_uom }}</span>)
+                                </span>
+                            </td>
                             <td>{{ j.comments }}</td>
                         </tr>
                     </table>
@@ -67,6 +72,7 @@
             </tr>
         </table>
         <table v-else-if="against_id" class="table table-sm table-bordered">
+            <h1>Another</h1>
             <tr v-for="(i, item_index) in items" :key="item_index">
                 <td v-if="i.primary_attribute">
                     <table class="table table-sm table-bordered" v-if="i.items && i.items.length > 0">
@@ -77,6 +83,7 @@
                             <th v-for="attr in i.attributes" :key="attr">{{ attr }}</th>
                             <th v-for="attr in i.primary_attribute_values" :key="attr">{{ attr }}</th>
                             <th>Comments</th>
+                            <th>Another</th>
                         </tr>
                         <tr v-for="(j, item1_index) in i.items" :key="item1_index">
                             <td>{{ item1_index + 1 }}</td>
@@ -94,8 +101,9 @@
                                         <input class="form-control" v-if="attr.secondary_qty" type="number" v-model.number="attr.secondary_received" @blur="update_received_qty(attr, 'secondary_received')" min="0" step="0.001"/>
                                     </form>
                                 </div>
+
                                 <div v-else class="text-center">
-                                    ---
+                                    Noo
                                 </div>
                             </td>
                             <td>
@@ -105,6 +113,7 @@
                     </table>
                 </td>
                 <td v-else>
+                    <h1>V-else </h1>
                     <table class="table table-sm table-bordered" v-if="i.items && i.items.length > 0">
                         <tr>
                             <th>S.No.</th>
@@ -114,23 +123,53 @@
                             <th>Pending Quantity</th>
                             <th>Received Quantity</th>
                             <th>Comments</th>
+                            <th>Last v else</th>
                         </tr>
                         <tr v-for="(j, item1_index) in i.items" :key="item1_index">
                             <td>{{ item1_index + 1 }}</td>
                             <td>{{ j.name }}</td>
                             <td>{{ j.lot }}</td>
                             <td v-for="attr in i.attributes" :key="attr">{{ j.attributes[attr] }}</td>
-                            <td>
+                            <td v-if="against == 'Purchase Order'">
                                 {{ j.values['default'].pending_qty }}<span v-if="j.default_uom">{{ ' ' + j.default_uom}}</span>
                                 <span v-if="j.values['default'].secondary_qty">
                                     <br>
                                     ({{ j.values['default'].secondary_qty }}<span v-if="j.secondary_uom">{{ ' ' + j.secondary_uom }}</span>)
                                 </span>
                             </td>
-                            <td>
+                            <td v-else>
+                                {{ j.values['default'].qty }}<span v-if="j.default_uom">{{ ' ' + j.default_uom}}</span>
+                                <span v-if="j.values['default'].secondary_qty">
+                                    <br>
+                                    ({{ j.values['default'].secondary_qty }}<span v-if="j.secondary_uom">{{ ' ' + j.secondary_uom }}</span>)
+                                </span>
+                            </td>
+                            <td v-if="against == 'Purchase Order'">
                                 <form>
                                     <input class="form-control" type="number" v-model.number="j.values['default'].received" step="0.001" @blur="update_received_qty(j.values['default'], 'received')" min="0" />
                                     <input class="form-control" v-if="j.values['default'].secondary_qty" type="number" min="0" step="0.001" v-model.number="j.values['default'].secondary_received" @blur="update_received_qty(j.values['default'], 'secondary_received')"/>
+                                </form>
+                            </td>
+                            <td v-else>
+                                <!-- <div v-if="show_dialog && show_dialog_for === item1_index" class="fixed inset-0 flex items-center justify-center z-50 bg-gray-800 bg-opacity-50">
+                                    <div class="bg-white rounded-lg shadow p-4 max-w-md w-full">
+                                        <label class="block mb-2 text-lg font-medium">Rework Details</label>
+                                        <textarea class="form-control block w-full p-2 border border-gray-300 rounded-md" v-model="j.values['default'].rework_details" @blur="update_reworks(j.values['default'], 'rework_details')" placeholder="Enter rework details"></textarea>
+                                        <div class="flex justify-end mt-4">
+                                            <button @click="show_dialog = false" class="btn btn-secondary">Save</button>
+                                        </div>
+                                    </div>
+                                </div> -->
+                                <form  @submit.prevent="submitForm">
+                                    <label>Accepted Qty</label>
+                                    <input class="form-control" type="number" v-model.number="j.values['default'].accepted_qty" step="0.001" @blur="update_received_qty(j.values['default'], 'accepted_qty')" min="0" />
+                                    <label>Rejected Qty</label>
+                                    <input class="form-control" type="number" v-model.number="j.values['default'].rejected_qty" step="0.001" @blur="update_received_qty(j.values['default'], 'rejected_qty')" min="0" />
+                                    <label class="block mb-2 text-lg font-medium">Rework Details</label>
+                                        <textarea class="form-control block w-full p-2 border border-gray-300 rounded-md" v-model="j.values['default'].rework_details" @blur="update_reworks(j.values['default'], 'rework_details')" placeholder="Enter rework details"></textarea>
+                                        <div class="flex justify-end mt-4">
+                                            <button @click="show_dialog = false" class="btn btn-secondary">Save</button>
+                                        </div>
                                 </form>
                             </td>
                             <td>
@@ -158,10 +197,19 @@ const supplier = ref(null);
 const against = ref(null);
 const against_id = ref(null);
 let _skip_watch = false;
+const show_dialog = ref(false)
+const dialog_save = ref(true)
+const show_dialog_for = ref(-1)
 
+function showDialog(index) {
+    show_dialog.value = true
+    show_dialog_for.value = index;
+}
 
 const root = ref(null);
-
+function call(items){
+    console.log(items)
+}
 onMounted(() => {
     console.log('new-grn-item mounted');
     EventBus.$on("update_grn_details", data => {
@@ -221,6 +269,20 @@ function get_purchase_order_items() {
         }
     });
 }
+function get_work_order_items(){
+    frappe.call({
+        method: "production_api.production_api.doctype.work_order.work_order.get_work_order_items",
+        args: {
+            "work_order": against_id.value
+        },
+        callback: function(r) {
+            if (r.message) {
+                items.value = r.message;
+            }
+        }
+    });
+}
+
 
 function clear_items() {
     items.value = [];
@@ -231,6 +293,9 @@ function against_id_changed() {
         if (against.value == "Purchase Order") {
             get_purchase_order_items();
         }
+        else{
+            get_work_order_items();
+        }
     } else {
         clear_items();
     }
@@ -238,11 +303,18 @@ function against_id_changed() {
 
 function get_items() {
     // Parse the received values to 0 if it is empty or null
+    // console.log(JSON.stringify(items.value))
     for (let i in items.value) {
         for (let j in items.value[i].items) {
             for (let k in items.value[i].items[j].values) {
                 if (items.value[i].items[j].values[k].received == null || items.value[i].items[j].values[k].received == "") {
                     items.value[i].items[j].values[k].received = 0;
+                }
+                if (items.value[i].items[j].values[k].accepted_qty == null || items.value[i].items[j].values[k].accepted_qty == "") {
+                    items.value[i].items[j].values[k].accepted_qty = 0;
+                }
+                if (items.value[i].items[j].values[k].rejected_qty == null || items.value[i].items[j].values[k].rejected_qty == "") {
+                    items.value[i].items[j].values[k].rejected_qty = 0;
                 }
                 if (items.value[i].items[j].values[k].secondary_received == null || items.value[i].items[j].values[k].secondary_received == "") {
                     items.value[i].items[j].values[k].secondary_received = 0;
@@ -252,7 +324,9 @@ function get_items() {
     }
     return items.value;
 }
-
+function update_reworks(item, key){
+    item[key] = item[key]
+}
 function update_received_qty(item, key) {
     item[key] = parseFloat(parseFloat(item[key]).toFixed(3));
 }

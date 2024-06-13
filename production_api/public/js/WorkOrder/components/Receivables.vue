@@ -1,19 +1,19 @@
 <template>
-    <div class="item frappe-control">
-        <item-lot-fetcher 
-            :items="items"
-            :other-inputs="otherInputs"
-            :table-fields="table_fields"
-            :allow-secondary-qty="true"
-            :args="args"
-            :edit="docstatus == 0"
-            :validate-qty="true"
-            :enableAdditionalParameter="true"
-            @itemadded="updated"
-            @itemupdated="updated"
-            @itemremoved="updated">
-        </item-lot-fetcher>
-    </div>
+	<div class="item frappe-control">
+		<item-lot-fetcher 
+			:items="items"
+			:other-inputs="otherInputs"
+			:table-fields="table_fields"
+			:allow-secondary-qty="true"
+			:args="args"
+			:edit="docstatus == 0"
+			:validate-qty="true"
+			:enableAdditionalParameter="true"
+			@itemadded="updated"
+			@itemupdated="updated"
+			@itemremoved="updated">
+		</item-lot-fetcher>
+	</div>
 </template>
 
 <script setup>
@@ -27,92 +27,114 @@ const items = ref([]);
 const supplier = ref(cur_frm.doc.supplier);
 
 const otherInputs = ref([
-    {
-        name: 'comments',
-        parent: 'comments-control',
-        df: {
-            fieldtype: 'Data',
-            fieldname: 'comments',
-            label: 'Comments',
-        },
-    },
+	{
+		name: 'comments',
+		parent: 'comments-control',
+		df: {
+			fieldtype: 'Data',
+			fieldname: 'comments',
+			label: 'Comments',
+		},
+	},
 ]);
 
 const table_fields = ref([
-    // {
-    //     name: 'pending_qty',
-    //     label: 'Pending Qty',
-    //     uses_primary_attribute: 1,
-    //     condition: function(data, props) {
-    //         return props['docstatus'] == 1;
-    //     },
-    // },
-    // {
-    //     name: 'cancelled_qty',
-    //     label: 'Cancelled Qty',
-    //     uses_primary_attribute: 1,
-    //     condition: function(data, props) {
-    //         return props['docstatus'] == 1;
-    //     },
-    //     format: function(value) {
-    //         return value || 0;
-    //     }
-    // },
-    {
-        name: 'comments',
-        label: 'Comments',
-    },
-    {
-        name: 'cost',
-        label: 'Cost',
-    },
-    {
-        name: 'total_cost',
-        label: 'Total Cost',
-    }
-    
+	// {
+	//     name: 'pending_qty',
+	//     label: 'Pending Qty',
+	//     uses_primary_attribute: 1,
+	//     condition: function(data, props) {
+	//         return props['docstatus'] == 1;
+	//     },
+	// },
+	// {
+	//     name: 'cancelled_qty',
+	//     label: 'Cancelled Qty',
+	//     uses_primary_attribute: 1,
+	//     condition: function(data, props) {
+	//         return props['docstatus'] == 1;
+	//     },
+	//     format: function(value) {
+	//         return value || 0;
+	//     }
+	// },
+	{
+		name: 'comments',
+		label: 'Comments',
+	},
+	{
+		name: 'cost',
+		label: 'Cost',
+	},
+	{
+		name: 'total_cost',
+		label: 'Total Cost',
+	}
+	
 ]);
 
 const args = ref({
-    'docstatus': cur_frm.doc.docstatus
+	'docstatus': cur_frm.doc.docstatus
 });
 
 onMounted(() => {
-    EventBus.$on("supplier_updated", new_supplier => {
-        if (supplier.value !== new_supplier) {
-            supplier.value = new_supplier;
-        }
-    })
+	EventBus.$on("supplier_updated", new_supplier => {
+		if (supplier.value !== new_supplier) {
+			supplier.value = new_supplier;
+		}
+	})
 });
 
 function update_status() {
-    docstatus.value = cur_frm.doc.docstatus;
-    args.value['docstatus'] = cur_frm.doc.docstatus;
+	docstatus.value = cur_frm.doc.docstatus;
+	args.value['docstatus'] = cur_frm.doc.docstatus;
 }
 
 function load_data(all_items) {
-    items.value = all_items;
+	all_items.forEach(element => {	
+		if(element.primary_attribute){
+			let qty_arr = []
+			let cost = []
+			details = []
+			element.items.forEach((row,index) => {
+				details.push(row.values)
+				cost.push([index, row.cost])
+			})
+			details.forEach((row,index) => {
+				let qty = 0;
+				for (let key in row) {
+					qty += row[key].qty;
+				}
+				element.items.forEach((rows,ind) => {
+					if(ind == index){
+						rows.total_cost = qty*cost[index][1]
+					}
+				})
+			})
+		}
+	});
+	items.value = all_items;
 }
 
 function updated(value) {
-    EventBus.$emit('wo_updated', true);
+	EventBus.$emit('wo_updated', true);
 }
 
 defineExpose({
 	items,
-    load_data,
-    update_status,
+	load_data,
+	update_status,
 });
 
 </script>
 
 <style scoped>
 .new-item-form {
-    border-style: solid;
-    border-color: red;
-    border-width: thin;
-    border-radius: 10px;
-    padding: 10px 10px 46px 10px;
-    margin-top: 20px;
+	border-style: solid;
+	border-color: red;
+	border-width: thin;
+	border-radius: 10px;
+	padding: 10px 10px 46px 10px;
+	margin-top: 20px;
 }
 </style>

@@ -18,7 +18,9 @@
   "table_index",
   "row_index",
   "ref_doctype",
-  "ref_docname"
+  "ref_docname",
+  "accepted_quantity",
+  "rejected_quantity"
  ],
  "fields": [
   {
@@ -96,12 +98,26 @@
    "fieldtype": "Dynamic Link",
    "label": "Item Table Reference",
    "options": "ref_doctype"
+  },
+  {
+   "default": "0",
+   "fieldname": "accepted_quantity",
+   "fieldtype": "Float",
+   "label": "Accepted Quantity",
+   "precision": "3"
+  },
+  {
+   "default": "0",
+   "fieldname": "rejected_quantity",
+   "fieldtype": "Float",
+   "label": "Rejected Quantity",
+   "precision": "3"
   }
  ],
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2024-06-03 18:27:54.626412",
+ "modified": "2024-06-11 12:37:36.281183",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Goods Received Note Work Order",
