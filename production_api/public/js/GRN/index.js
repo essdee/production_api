@@ -1,6 +1,9 @@
 import { createApp } from 'vue';
 import GRNItem from "./components/GRNItem.vue"
+// import Vue from 'vue';
+// import VueCompositionAPI from '@vue/composition-api';
 
+// Vue.use(VueCompositionAPI);
 export default class GRNItemWrapper {
     constructor(wrapper) {
         this.$wrapper = $(wrapper);
@@ -24,15 +27,12 @@ export default class GRNItemWrapper {
     }
 
     get_items() {
-        console.log("<------------------------get items------------------------->")
-        console.log(JSON.stringify(this.grn.get_items()))
+        // console.log(JSON.stringify(this.grn.get_items()))
         return this.grn.get_items();
     }
 
     load_data(data, skip_watch=false) {
-        console.log("<------------------------load data------------------------->")
-
-        console.log(JSON.stringify(data))
+        // console.log(JSON.stringify(data))
         this.grn.load_data(data, skip_watch);
     }
     
