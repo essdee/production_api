@@ -39,25 +39,6 @@ const otherInputs = ref([
 ]);
 
 const table_fields = ref([
-	// {
-	//     name: 'pending_qty',
-	//     label: 'Pending Qty',
-	//     uses_primary_attribute: 1,
-	//     condition: function(data, props) {
-	//         return props['docstatus'] == 1;
-	//     },
-	// },
-	// {
-	//     name: 'cancelled_qty',
-	//     label: 'Cancelled Qty',
-	//     uses_primary_attribute: 1,
-	//     condition: function(data, props) {
-	//         return props['docstatus'] == 1;
-	//     },
-	//     format: function(value) {
-	//         return value || 0;
-	//     }
-	// },
 	{
 		name: 'comments',
 		label: 'Comments',

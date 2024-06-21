@@ -31,6 +31,31 @@ frappe.ui.form.on("Process Cost", {
 					attribute: doc.attribute,
 				}
 			};
-        })
+        });
 	},
+	item: function(frm){
+		if(frm.doc.item){
+			frappe.call({
+				method: 'production_api.production_api.doctype.item.item.get_dependent_attribute',
+				args: {
+					'item_name': frm.doc.item,
+				},
+				callback: function(r){
+					if(r.message){
+						frm.set_value('dependent_attribute',r.message[0])
+						frm.set_df_property("dependent_attribute_values", "options", r.message[1]);
+					}
+					else{
+						frm.set_value('dependent_attribute',"")
+						frm.set_df_property("dependent_attribute_values", "options", []);
+					}
+				}
+			})
+		}
+		else{
+			frm.set_value('dependent_attribute',"")
+			frm.set_value("dependent_attribute_values","")
+		}
+		
+	}
 });

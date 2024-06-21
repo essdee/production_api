@@ -216,6 +216,14 @@ def get_attribute_details(item_name):
 	}
 
 @frappe.whitelist()
+def get_dependent_attribute(item_name):
+	doc = frappe.get_doc('Item',item_name)
+	if doc.dependent_attribute:
+		attribute_values = frappe.get_list('Item Attribute Value', filters={'attribute_name': doc.dependent_attribute}, pluck='name')
+		return doc.dependent_attribute, attribute_values
+	return None
+
+@frappe.whitelist()
 def get_complete_item_details(item_name):
 	""" Return Item with it item mapping values """
 

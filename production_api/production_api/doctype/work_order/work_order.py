@@ -79,15 +79,18 @@ def save_item_details(item_details, process_name = None, wo_date = None):
 			row_index += 1
 	return items
 
+
+
 def get_data(item, item_name, item_attributes, table_index, row_index, process_name, quantity, wo_date):
 	item1 = {}
+	print(item)
 	variant_name = get_variant(item_name, item_attributes)
 	if not variant_name:
 		variant1 = create_variant(item_name, item_attributes)
 		variant1.insert()
-		variant_name = variant1.name
+		variant_name = variant1.name	
 	if process_name:
-		rate = get_rate_and_quantity(process_name,variant_name,quantity,wo_date)
+		rate = get_rate_and_quantity(process_name,item_name,variant_name,quantity,wo_date)
 		total_cost = flt(rate) * flt(quantity)
 		item1['cost'] = rate
 		item1['total_cost'] = total_cost		
@@ -101,17 +104,22 @@ def get_data(item, item_name, item_attributes, table_index, row_index, process_n
 
 	return item1	
 
-def get_rate_and_quantity(process_name, variant_name, quantity, wo_date):
+def get_rate_and_quantity(process_name,item_name, variant_name, quantity, wo_date):
 	item_doc = frappe.get_doc('Item Variant',variant_name)
+	# doc = frappe.get_doc("Item",item_name)
 	item = item_doc.item
-	doc_names = frappe.get_list('Process Cost',filters = {
+	filters = {
 		'process_name':process_name,
 		'item':item,
 		'is_expired':0,
 		'from_date':['<=',wo_date],
 		'to_date':['>=',wo_date],
 		'docstatus': 1,
-	})
+	}
+	# if doc.dependent_attribute:
+	# 	filters['dependent_attribute'] = doc.dependent_attribute
+	
+	doc_names = frappe.get_list('Process Cost',filters = filters)
 	docname = None
 	if doc_names:
 		docname = doc_names[0]['name']
