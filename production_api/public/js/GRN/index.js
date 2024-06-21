@@ -13,6 +13,7 @@ export default class GRNItemWrapper {
     make_body() {
         let $page_container = $('<div class="item frappe-control">').appendTo(this.$wrapper);
         this.app = createApp(GRNItem);
+        SetVueGlobals(this.app)
         this.grn = this.app.mount(this.$wrapper.get(0));
         // this.vue = new Vue({
         //     el: '.item',

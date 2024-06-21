@@ -15,11 +15,15 @@
   "supplier",
   "process_name",
   "to_date",
-  "section_break_midy",
+  "section_break_oriw",
   "depends_on_attribute",
   "tax_slab",
   "attribute",
   "approved_by",
+  "column_break_eclt",
+  "dependent_attribute",
+  "dependent_attribute_values",
+  "section_break_midy",
   "process_cost_values",
   "amended_from"
  ],
@@ -128,12 +132,31 @@
    "fieldtype": "Link",
    "label": "Supplier",
    "options": "Supplier"
+  },
+  {
+   "fieldname": "section_break_oriw",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "column_break_eclt",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "dependent_attribute",
+   "fieldtype": "Link",
+   "label": "Dependent Attribute",
+   "options": "Item Attribute"
+  },
+  {
+   "fieldname": "dependent_attribute_values",
+   "fieldtype": "Select",
+   "label": "Dependent Attribute Values"
   }
  ],
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2024-05-31 17:35:09.598080",
+ "modified": "2024-06-21 16:03:51.129631",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Process Cost",
