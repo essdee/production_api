@@ -3,6 +3,76 @@
 
 frappe.ui.form.on("Work Order", {
 	refresh(frm) {
+		if(frm.doc.start_date){
+			frm.add_custom_button('End Date', ()=>{
+				frappe.call({
+					method: 'production_api.production_api.doctype.work_order.work_order.check_delivered_and_received',
+					args: {
+						doc_name: frm.doc.name,
+					},
+					callback: function(r){
+						if(r.message[0] == false){
+							if(r.message[1]=='Deliverable'){
+								frappe.msgprint('Not all items are delivered')
+							}
+							else{
+								frappe.msgprint('Not all items are received')
+							}
+						}
+					}
+
+				})
+			})
+		}
+		if(frm.docstatus != 0 && frm.docstatus != 2 && !frm.is_new()){
+			frm.add_custom_button('Change Delievery Date',()=>{
+				var d = new frappe.ui.Dialog({
+					title : 'Change Deleivery Date',
+					fields : [
+						{
+							fieldname : 'date',
+							fieldtype : 'Date',
+							label : "Delivery Date",
+							default : frm.doc.expected_delivery_date,
+						},
+						{
+							fieldname : 'reason',
+							fieldtype : 'Data',
+							label : 'Reason'
+						}
+					],
+					primary_action_label : "Submit",
+					primary_action(values){
+						console.log(values.date)
+						console.log(values.reason)
+						console.log(frm.doc.name)
+
+
+						frappe.call({
+							method : 'production_api.production_api.doctype.work_order.work_order.add_comment',
+							args : {
+								doc_name : frm.doc.name,
+								date : values.date,
+								reason : values.reason,
+							}
+
+						})
+						d.hide()
+					}
+				})
+				d.show()
+			})
+			frm.add_custom_button('Close', ()=> {
+				frappe.msgprint("Hii")
+			})
+		}
+		frm.set_query('ppo',()=> {
+			return {
+				filters : {
+					docstatus : 1
+				}
+			}
+		})
         $(frm.fields_dict['deliverable_items'].wrapper).html("")
         frm.deliverable_items = new frappe.production.ui.Deliverables(frm.fields_dict["deliverable_items"].wrapper);
         

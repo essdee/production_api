@@ -213,6 +213,8 @@ def save_item_details(item_details):
 					if values.get('qty'):
 						item_attributes[item.get('primary_attribute')] = attr
 						item1 = {}
+						print("ITEM ATTRIBUTES")
+						print(item_attributes)
 						variant_name = get_variant(item_name, item_attributes)
 						if not variant_name:
 							variant1 = create_variant(item_name, item_attributes)

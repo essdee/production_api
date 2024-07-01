@@ -256,10 +256,10 @@
         </td>
       </tr>
     </table>
-    <div>
+    <div v-if="against == 'Work Order'">
       <p>Delivered Items</p>
     </div>
-    <table class="table table-sm table-bordered">
+    <table v-if="against == 'Work Order'" class="table table-sm table-bordered">
       <tr v-for="(i, item_index) in items" :key="item_index">
         <td v-if="i.primary_attribute && i.created === 1">
           <table

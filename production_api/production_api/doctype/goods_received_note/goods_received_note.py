@@ -7,6 +7,8 @@ from frappe import _
 from frappe.utils import money_in_words, flt, cstr, date_diff
 from frappe.model.document import Document
 from six import string_types
+from itertools import zip_longest
+
 import json
 
 from production_api.production_api.doctype.item.item import get_variant, create_variant, get_attribute_details
@@ -33,12 +35,21 @@ class GoodsReceivedNote(Document):
 		if self.against == 'Purchase Order':		
 			self.validate_quantity()
 			self.calculate_amount()
+		else:
+			doc = frappe.get_doc("Work Order", self.against_id)
+			for item, work_order_item in zip_longest(self.items, doc.receivables):
+				if item.ref_docname == work_order_item.name:
+					work_order_item.pending_quantity = work_order_item.pending_quantity - item.get('accepted_qty')
+				else:
+					frappe.throw("some conflict")
+			doc.save()
+			doc.submit()
 		self.set('approved_by', frappe.get_user().doc.name)
 	
 	def on_submit(self):
 		if self.against == 'Purchase Order':
 			self.update_purchase_order()
-			self.update_stock_ledger()
+			self.update_stock_ledger()	
 	
 	def on_cancel(self):
 		if self.purchase_invoice_name:
@@ -133,6 +144,8 @@ class GoodsReceivedNote(Document):
 		make_sl_entries(sl_entries)
 	
 	def get_sl_entries(self, d, args):
+		print(d)
+		print(args)
 		sl_dict = frappe._dict(
 			{
 				"item": d.get("item_variant", None),

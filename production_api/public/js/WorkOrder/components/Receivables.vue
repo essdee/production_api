@@ -40,18 +40,24 @@ const otherInputs = ref([
 
 const table_fields = ref([
 	{
+		name : 'pending_qty',
+		label : 'Pending Qty',
+		uses_primary_attribute: 1,
+	},
+	{
 		name: 'comments',
 		label: 'Comments',
 	},
 	{
 		name: 'cost',
 		label: 'Cost',
+		uses_primary_attribute: 1,
 	},
 	{
-		name: 'total_cost',
-		label: 'Total Cost',
-	}
-	
+		name: 'tax',
+		label: 'Tax %',
+		uses_primary_attribute: 1,
+	},
 ]);
 
 const args = ref({
@@ -72,29 +78,18 @@ function update_status() {
 }
 
 function load_data(all_items) {
-	all_items.forEach(element => {	
-		if(element.primary_attribute){
-			let qty_arr = []
-			let cost = []
-			details = []
-			element.items.forEach((row,index) => {
-				details.push(row.values)
-				cost.push([index, row.cost])
+	all_items.forEach(row => {
+		row.items.forEach(data => {
+			let sum = 0
+			Object.keys(data['values']).forEach(key => {
+				sum += data['values'][key]['total_cost']
+
 			})
-			details.forEach((row,index) => {
-				let qty = 0;
-				for (let key in row) {
-					qty += row[key].qty;
-				}
-				element.items.forEach((rows,ind) => {
-					if(ind == index){
-						rows.total_cost = qty*cost[index][1]
-					}
-				})
-			})
-		}
-	});
+			data['total_cost'] = sum
+		})
+	})
 	items.value = all_items;
+	// console.log(JSON.stringify(items.value))
 }
 
 function updated(value) {

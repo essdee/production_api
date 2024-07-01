@@ -27,16 +27,6 @@ const items = ref([]);
 const supplier = ref(cur_frm.doc.supplier);
 
 const otherInputs = ref([
-    // {
-    //     name: 'rate',
-    //     parent: 'rate-control',
-    //     df: {
-    //         fieldtype: 'Float',
-    //         fieldname: 'rate',
-    //         label: 'Rate',
-    //         reqd: 1,
-    //     },
-    // },
     {
         name: 'comments',
         parent: 'comments-control',
@@ -49,25 +39,11 @@ const otherInputs = ref([
 ]);
 
 const table_fields = ref([
-    // {
-    //     name: 'pending_qty',
-    //     label: 'Pending Qty',
-    //     uses_primary_attribute: 1,
-    //     condition: function(data, props) {
-    //         return props['docstatus'] == 1;
-    //     },
-    // },
-    // {
-    //     name: 'cancelled_qty',
-    //     label: 'Cancelled Qty',
-    //     uses_primary_attribute: 1,
-    //     condition: function(data, props) {
-    //         return props['docstatus'] == 1;
-    //     },
-    //     format: function(value) {
-    //         return value || 0;
-    //     }
-    // },
+    {
+		name : 'pending_qty',
+		label : 'Pending Qty',
+		uses_primary_attribute: 1,
+	},
     {
         name: 'comments',
         label: 'Comments',

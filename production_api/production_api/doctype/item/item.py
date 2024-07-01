@@ -42,6 +42,7 @@ class Item(Document):
 			if not attribute_doc.numeric_values:
 				if attribute.mapping != None:
 					doc = frappe.get_doc("Item Item Attribute Mapping", attribute.mapping)
+					print (attribute)
 					attribute_list.append({
 						'name': attribute.name,
 						'attr_name': attribute.attribute,
@@ -57,6 +58,7 @@ class Item(Document):
 						'attr_values': [],
 						'doctype': 'Item Item Attribute Mapping'
 					})
+		# print(attribute_list)
 		self.set_onload('attr_list', attribute_list)
 	
 	def load_dependent_attribute(self):
@@ -174,7 +176,7 @@ def update_dependent_attribute_details(dependent_attribute_mapping, detail):
 	mapping_details = []
 	print(json.dumps(detail, indent=3))
 	for attr,value in detail['attr_list'].items():
-		details.append({"attribute_value": attr, "uom": value['uom'], "display_name": value['name']})
+		details.append({"attribute_value": attr, "uom": value['uom'], "display_name": value['name'], "is_final": value['is_final']})
 		for attr_value in value['attributes']:
 			mapping_details.append({"dependent_attribute_value": attr, "depending_attribute": attr_value})
 	mapping.update({
@@ -270,7 +272,6 @@ def create_variant(template, args):
 	variant_attributes = []
 	attributes = [d.attribute for d in template.attributes]
 	dependent_attributes = None
-
 	if template.dependent_attribute:
   		# Validate dependent attribute mapping and populate variant attributes
 		dependent_attribute_mapping = get_dependent_attribute_details(template.dependent_attribute_mapping)
@@ -288,7 +289,6 @@ def create_variant(template, args):
 			"display_name": dependent_attribute_mapping['attr_list'][args.get(template.dependent_attribute)]['name'] or '',
 			"display_name_is_empty": not bool(dependent_attribute_mapping['attr_list'][args.get(template.dependent_attribute)]['name'])
 		})
-	
 	for d in attributes:
 		if dependent_attributes and d not in dependent_attributes:
 			continue

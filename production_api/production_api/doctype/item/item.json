@@ -157,7 +157,6 @@
   {
    "fieldname": "dependent_attribute_mapping",
    "fieldtype": "Link",
-   "hidden": 1,
    "label": "Dependent Attribute Mapping",
    "options": "Item Dependent Attribute Mapping",
    "read_only": 1
@@ -182,7 +181,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2023-10-30 12:22:09.766224",
+ "modified": "2024-06-25 10:08:40.603628",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Item",

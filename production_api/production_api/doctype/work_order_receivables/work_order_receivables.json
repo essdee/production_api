@@ -14,11 +14,13 @@
   "secondary_qty",
   "secondary_uom",
   "comments",
+  "pending_quantity",
   "table_index",
   "row_index",
   "additional_parameters",
   "cost",
-  "total_cost"
+  "total_cost",
+  "tax"
  ],
  "fields": [
   {
@@ -100,12 +102,23 @@
    "fieldtype": "Float",
    "label": "Cost",
    "precision": "3"
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "pending_quantity",
+   "fieldtype": "Float",
+   "label": "Pending Qty"
+  },
+  {
+   "fieldname": "tax",
+   "fieldtype": "Float",
+   "label": "Tax"
   }
  ],
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2024-06-11 12:50:43.570697",
+ "modified": "2024-06-29 11:34:43.953293",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Work Order Receivables",

@@ -29,7 +29,7 @@ frappe.ui.form.on('Lot', {
 				frappe.set_route("query-report", "Lot Purchase Summary", {
 					lot: frm.doc.name
 				});
-			}, __("View"));
+			}, __("Report View"));
 		}
 	},
 
@@ -77,7 +77,7 @@ frappe.ui.form.on('Lot', {
 			});
 		}
 	},
-
+	
 	calculate_bom: function(frm) {
 		if (frm.doc.item && frm.doc.lot_template && frm.doc.planned_qty.length > 0) {
 			frappe.call({

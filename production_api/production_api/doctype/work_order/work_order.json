@@ -12,6 +12,7 @@
   "column_break_wrym",
   "wo_date",
   "process_name",
+  "ppo",
   "section_break_tmhn",
   "planned_start_date",
   "planned_end_date",
@@ -31,6 +32,11 @@
   "section_break_qtip",
   "receivables",
   "receivable_items",
+  "section_break_duyr",
+  "total",
+  "tax_total",
+  "grand_total",
+  "in_words",
   "section_break_axzz",
   "comments",
   "amended_from"
@@ -45,14 +51,18 @@
    "reqd": 1
   },
   {
+   "allow_on_submit": 1,
    "fieldname": "start_date",
    "fieldtype": "Date",
-   "label": "Start Date"
+   "label": "Start Date",
+   "read_only": 1
   },
   {
+   "allow_on_submit": 1,
    "fieldname": "end_date",
    "fieldtype": "Date",
-   "label": "End Date"
+   "label": "End Date",
+   "read_only": 1
   },
   {
    "fieldname": "supplier",
@@ -93,9 +103,9 @@
    "options": "Work Order Deliverables"
   },
   {
+   "allow_on_submit": 1,
    "fieldname": "receivables",
    "fieldtype": "Table",
-   "hidden": 1,
    "label": "Receivables",
    "options": "Work Order Receivables"
   },
@@ -135,6 +145,7 @@
    "reqd": 1
   },
   {
+   "allow_on_submit": 1,
    "fieldname": "expected_delivery_date",
    "fieldtype": "Date",
    "label": "Expected Delivery Date",
@@ -202,12 +213,46 @@
    "fieldtype": "Check",
    "label": "Is Delivered",
    "read_only": 1
+  },
+  {
+   "fieldname": "ppo",
+   "fieldtype": "Link",
+   "label": "PPO",
+   "options": "PPO"
+  },
+  {
+   "fieldname": "section_break_duyr",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "total",
+   "fieldtype": "Currency",
+   "label": "Total",
+   "read_only": 1
+  },
+  {
+   "fieldname": "tax_total",
+   "fieldtype": "Currency",
+   "label": "Tax Total",
+   "read_only": 1
+  },
+  {
+   "fieldname": "grand_total",
+   "fieldtype": "Currency",
+   "label": "Grand Total",
+   "read_only": 1
+  },
+  {
+   "fieldname": "in_words",
+   "fieldtype": "Data",
+   "label": "In Words",
+   "read_only": 1
   }
  ],
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2024-06-12 14:24:19.323972",
+ "modified": "2024-06-29 13:56:49.677383",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Work Order",

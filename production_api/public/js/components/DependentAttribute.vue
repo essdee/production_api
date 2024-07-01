@@ -6,6 +6,7 @@
                     <td>{{ item.dependent_attribute }}</td>
                     <td>UOM</td>
                     <td>Display Name</td>
+                    <td>Is Final</td>
                     <td v-for="attr in attributes">{{ attr }}</td>
                 </tr>
                 <tr v-for="attr_value in dependent_attr_list">
@@ -17,6 +18,13 @@
                     <td>
                         <div v-if="edit" :class="get_input_class(attr_value, 'name')"></div>
                         <span v-else>{{ data.attr_list[attr_value].name }}</span>
+                    </td>
+                    <td>
+                        <div v-if="edit" :class="get_input_class(attr_value, 'is_final')"></div>
+                        <span v-else>
+                            <span v-if="data.attr_list[attr_value].is_final">✅</span>
+                            <!-- {{ data.attr_list[attr_value].attributes }} -->
+                        </span>
                     </td>
                     <td v-for="attr in attributes">
                         <div v-if="edit" :class="get_input_class(attr_value, attr)"></div>
@@ -67,6 +75,7 @@ export default {
                             this.data.attr_list[value] = {
                                 "uom": this.item.default_unit_of_measure,
                                 "name": "",
+                                "is_final": 0,
                                 "attributes": [],
                             }
                         }
@@ -74,6 +83,7 @@ export default {
                     break;
                 }
             }
+            console.log(JSON.stringify(dependent_attribute_values))
             return dependent_attribute_values;
         },
         attributes: function() {
@@ -84,6 +94,7 @@ export default {
             if (index > -1) { // only splice array when item is found
                 attributes.splice(index, 1); // 2nd parameter means remove one item only
             }
+            console.log(JSON.stringify(this.data))
             return attributes;
         }
     },
@@ -144,6 +155,20 @@ export default {
                     render_input: true,
                 });
                 inputs[b].set_value(this.data.attr_list[attr_value].name)
+                let c = this.get_input_class(attr_value, 'is_final');
+                inputs[c] = frappe.ui.form.make_control({
+                    parent: $(this.$el).find('.'+c),
+                    df: {
+                        fieldtype: 'Check',
+                        label: '',
+                        onchange: () => {
+                            me.data.attr_list[attr_value].is_final = inputs[c].get_value();
+                        }
+                    },
+                    render_input: true,
+                })
+                inputs[c].set_value(this.data.attr_list[attr_value].is_final)
+
                 for (let j=0;j<this.attributes.length;j++) {
                     let n = this.get_input_class(attr_value, this.attributes[j]);
                     inputs[n] = frappe.ui.form.make_control({
@@ -176,6 +201,7 @@ export default {
                 frappe.msgprint("Please save this document before saving")
                 return;
             }
+            console.log(JSON.stringify(this.data))
             frappe.xcall("production_api.production_api.doctype.item.item.update_dependent_attribute_details", {
 				dependent_attribute_mapping: this.item.dependent_attribute_mapping,
 				detail: this.data,

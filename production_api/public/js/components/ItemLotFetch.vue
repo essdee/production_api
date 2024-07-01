@@ -29,6 +29,7 @@
                             <td v-for="(attr, key) in j.values" :key="key">
                                 <div v-if="attr.qty">
                                     {{ attr.qty }}<span v-if="j.default_uom">{{ ' ' + j.default_uom }}</span>
+
                                     <span v-if="allowSecondaryQty && attr.secondary_qty">
                                         <br>
                                         ({{ attr.secondary_qty }}<span v-if="j.secondary_uom">{{ ' ' + j.secondary_uom }}</span>)
@@ -75,6 +76,7 @@
                             </td>
                             <td>
                                 {{ j.values['default'].qty }}<span v-if="j.default_uom">{{ ' ' + j.default_uom}}</span>
+
                                 <span v-if="allowSecondaryQty && j.values['default'].secondary_qty">
                                     <br>
                                     ({{ j.values['default'].secondary_qty }}<span v-if="j.secondary_uom">{{ ' ' + j.secondary_uom }}</span>)
@@ -235,6 +237,7 @@
 
     onMounted(() => {
         // console.log('new-item mounted');
+        // console.log(JSON.stringify(props.items))
         create_lot_item_inputs();
     });
 
