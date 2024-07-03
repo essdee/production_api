@@ -45,11 +45,14 @@ class GoodsReceivedNote(Document):
 			doc.save()
 			doc.submit()
 		self.set('approved_by', frappe.get_user().doc.name)
+		# self.update_stock_ledger()	
+		# frappe.throw("kgfd")
+
 	
 	def on_submit(self):
 		if self.against == 'Purchase Order':
 			self.update_purchase_order()
-			self.update_stock_ledger()	
+		self.update_stock_ledger()	
 	
 	def on_cancel(self):
 		if self.purchase_invoice_name:
@@ -144,8 +147,12 @@ class GoodsReceivedNote(Document):
 		make_sl_entries(sl_entries)
 	
 	def get_sl_entries(self, d, args):
-		print(d)
-		print(args)
+		qty = 0.0
+		if self.against == "Purchase Order":
+			qty = flt(d.get("quantity"))
+		else:
+			qty = flt(d.get("accepted_qty"))	
+		
 		sl_dict = frappe._dict(
 			{
 				"item": d.get("item_variant", None),
@@ -154,7 +161,7 @@ class GoodsReceivedNote(Document):
 				"voucher_type": self.doctype,
 				"voucher_no": self.name,
 				"voucher_detail_no": d.name,
-				"qty": flt(d.get("quantity")),
+				"qty": qty,
 				"uom": d.uom,
 				"rate": d.rate,
 				"is_cancelled": 1 if self.docstatus == 2 else 0,

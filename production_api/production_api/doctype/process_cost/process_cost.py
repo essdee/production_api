@@ -38,6 +38,10 @@ class ProcessCost(Document):
 				to_dates = utils.add_days(from_date, -1)
 				doc.to_date = to_dates
 				doc.save()	
+
+	def validate(self):
+		if len(self.process_cost_values) == 0:
+			frappe.throw("There are no entries in the process cost values")
 				
 # Use this code to automate the before-submit function process. 
 

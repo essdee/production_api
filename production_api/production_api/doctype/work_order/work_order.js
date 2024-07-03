@@ -24,7 +24,7 @@ frappe.ui.form.on("Work Order", {
 				})
 			})
 		}
-		if(frm.docstatus != 0 && frm.docstatus != 2 && !frm.is_new()){
+		if(frm.doc.docstatus == 1){
 			frm.add_custom_button('Change Delievery Date',()=>{
 				var d = new frappe.ui.Dialog({
 					title : 'Change Deleivery Date',
@@ -43,11 +43,6 @@ frappe.ui.form.on("Work Order", {
 					],
 					primary_action_label : "Submit",
 					primary_action(values){
-						console.log(values.date)
-						console.log(values.reason)
-						console.log(frm.doc.name)
-
-
 						frappe.call({
 							method : 'production_api.production_api.doctype.work_order.work_order.add_comment',
 							args : {
@@ -63,7 +58,13 @@ frappe.ui.form.on("Work Order", {
 				d.show()
 			})
 			frm.add_custom_button('Close', ()=> {
-				frappe.msgprint("Hii")
+				let receivables = frm.doc.receivables
+				for(let i=0;i<receivables.length; i++){
+					if(receivables[i].pending_qty != 0){
+						frappe.msgprint(`Not all ${receivables[i].item_variant} was received`)
+						return
+					}
+				}
 			})
 		}
 		frm.set_query('ppo',()=> {

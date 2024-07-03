@@ -48,6 +48,11 @@ class WorkOrder(Document):
 		self.set('tax_total', total_tax_amount)
 		self.set('grand_total', total_tax_amount + total_amount)
 		self.set('in_words', money_in_words(total_tax_amount + total_amount))
+
+	def validate(self):
+		if len(self.receivables) == 0:
+			frappe.throw("There are no items received")
+				
 	def before_validate(self):
 		if self.docstatus == 1:
 			return
@@ -124,12 +129,13 @@ def get_rate_and_quantity(process_name,variant_name, quantity, wo_date, item, su
 	filters = {
 		'process_name':process_name,
 		'item':item,
-		'supplier': supplier,
 		'is_expired':0,
 		'from_date':['<=',wo_date],
 		'to_date':['>=',wo_date],
 		'docstatus': 1,
 	}
+	if supplier:
+		filters['supplier'] = supplier
 	if dep_attr_value:
 		filters['dependent_attribute_values'] = dep_attr_value
 
@@ -138,7 +144,7 @@ def get_rate_and_quantity(process_name,variant_name, quantity, wo_date, item, su
 	if doc_names:
 		docname = doc_names[0]['name']
 	else:
-		del filters['supplier']	
+		del filters['supplier']
 		doc_names = frappe.get_list('Process Cost',filters = filters)
 		if doc_names:
 			docname = doc_names[0]['name']
@@ -146,7 +152,6 @@ def get_rate_and_quantity(process_name,variant_name, quantity, wo_date, item, su
 		frappe.throw('No process cost for ' + item)
 	
 	rate = 0
-	order_quantity = 0
 	low_price = 0
 	found = False
 
@@ -157,28 +162,25 @@ def get_rate_and_quantity(process_name,variant_name, quantity, wo_date, item, su
 		attribute_value = next((attr.attribute_value for attr in item_doc.attributes if attr.attribute == attribute), None)
 		for cost_values in doc.process_cost_values:
 			cost = cost_values.as_dict()
-			if cost['min_order_qty'] > quantity and cost['attribute_value'] == attribute_value:
+			if cost['min_order_qty'] >= quantity and cost['attribute_value'] == attribute_value:
 				rate = cost['price']
 				found = True
 				break
-			if order_quantity < cost['min_order_qty'] and cost['attribute_value'] == attribute_value:
-				order_quantity = cost['min_order_qty']
+			elif cost['attribute_value'] == attribute_value:
 				low_price = cost['price']
 	else:
 		for cost_values in doc.process_cost_values:
 			cost = cost_values.as_dict()
-			if cost['min_order_qty'] > quantity:
+			if cost['min_order_qty'] >= quantity:
 				rate = cost['price']
 				found = True
 				break
-			if order_quantity < cost['min_order_qty']:
-				order_quantity = cost['min_order_qty']
+			else:
 				low_price = cost['price']			
 	if not found:
 		return low_price, tax
-	else:
-		return rate, tax
-	# return low_price if not found else rate	
+	
+	return rate, tax
 
 def fetch_item_details(items, process_name = None,include_id = False):
 	items = [item.as_dict() for item in items]

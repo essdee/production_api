@@ -175,7 +175,6 @@
   {
    "fieldname": "items",
    "fieldtype": "Table",
-   "hidden": 1,
    "label": "Items",
    "options": "Goods Received Note Item"
   },
@@ -307,7 +306,7 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2024-06-19 18:45:30.763947",
+ "modified": "2024-07-01 14:34:42.011707",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Goods Received Note",
