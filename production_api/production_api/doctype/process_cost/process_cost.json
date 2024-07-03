@@ -37,7 +37,6 @@
    "reqd": 1
   },
   {
-   "allow_on_submit": 1,
    "default": "Today",
    "fieldname": "from_date",
    "fieldtype": "Date",
@@ -81,7 +80,6 @@
    "options": "Tax Slab"
   },
   {
-   "allow_on_submit": 1,
    "default": "0",
    "fieldname": "depends_on_attribute",
    "fieldtype": "Check",
@@ -159,7 +157,7 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2024-07-03 11:23:12.489201",
+ "modified": "2024-07-03 11:56:59.729173",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Process Cost",

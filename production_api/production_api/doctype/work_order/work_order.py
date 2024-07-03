@@ -324,8 +324,8 @@ def check_delivered_and_received(doc_name):
 @frappe.whitelist()
 def add_comment(doc_name, date, reason):
 	doc = frappe.get_doc('Work Order', doc_name)
+	text = f"Current delivery date: {doc.expected_delivery_date} <br> Date changed to {date} due to {reason}"
 	doc.expected_delivery_date = date
-	text = f"Delivery date changed to {date} due to {reason}"
 	doc.add_comment('Comment',text=text)
 	doc.save()
 
