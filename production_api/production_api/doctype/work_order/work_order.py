@@ -25,7 +25,7 @@ class WorkOrder(Document):
 		deliverable_item_details = fetch_item_details(self.get('deliverables'))
 		self.set_onload('deliverable_item_details', deliverable_item_details)
 
-		receivable_item_details = fetch_item_details(self.get('receivables'),process_name = self.process_name)
+		receivable_item_details = fetch_item_details(self.get('receivables'),process_name = self.process_name, is_rework = self.is_rework)
 		self.set_onload('receivable_item_details', receivable_item_details)
 
 	def before_save(self):
@@ -38,16 +38,18 @@ class WorkOrder(Document):
 			item.set('cancelled_quantity', 0)
 		for item in self.receivables:
 			item.set('pending_quantity', item.qty)
-			temp_total = item.total_cost
-			temp_tax = item.tax if item.tax else 0.0
-			total_amount += temp_total
-			x = temp_total/100.0
-			x = flt(x) * flt(temp_tax)
-			total_tax_amount += x
-		self.set('total', total_amount)
-		self.set('tax_total', total_tax_amount)
-		self.set('grand_total', total_tax_amount + total_amount)
-		self.set('in_words', money_in_words(total_tax_amount + total_amount))
+			if not self.is_rework:
+				temp_total = item.total_cost
+				temp_tax = item.tax if item.tax else 0.0
+				total_amount += temp_total
+				x = temp_total/100.0
+				x = flt(x) * flt(temp_tax)
+				total_tax_amount += x
+		if not self.is_rework:		
+			self.set('total', total_amount)
+			self.set('tax_total', total_tax_amount)
+			self.set('grand_total', total_tax_amount + total_amount)
+			self.set('in_words', money_in_words(total_tax_amount + total_amount))
 
 	def validate(self):
 		if len(self.receivables) == 0:
@@ -62,10 +64,10 @@ class WorkOrder(Document):
 			self.set("deliverables",items)
 
 		if(self.get('receivable_item_details')):
-			items = save_item_details(self.receivable_item_details,self.supplier, self.process_name,self.wo_date)
+			items = save_item_details(self.receivable_item_details,self.supplier, self.process_name,self.wo_date, self.is_rework)
 			self.set("receivables",items)
 
-def save_item_details(item_details,supplier = None, process_name = None, wo_date = None):
+def save_item_details(item_details,supplier = None, process_name = None, wo_date = None, is_rework = False):
 	if isinstance(item_details, string_types):
 		item_details = json.loads(item_details)
 	items = []
@@ -79,14 +81,14 @@ def save_item_details(item_details,supplier = None, process_name = None, wo_date
 					if values.get('qty'):
 						quantity = values.get('qty')
 						item_attributes[item.get('primary_attribute')] = attr
-						item1 = get_data(item,item_name,item_attributes,table_index,row_index, process_name, quantity, wo_date, supplier)	
+						item1 = get_data(item,item_name,item_attributes,table_index,row_index, process_name, quantity, wo_date, supplier, is_rework)	
 						item1['secondary_qty'] = values.get('secondary_qty')
 						item1['secondary_uom'] = values.get('secondary_uom')
 						items.append(item1)
 			else:
 				if item['values'].get('default') and item['values']['default'].get('qty'):
 					quantity = item['values']['default'].get('qty')
-					item1 = get_data(item,item_name,item_attributes,table_index,row_index, process_name, quantity, wo_date,supplier)	
+					item1 = get_data(item,item_name,item_attributes,table_index,row_index, process_name, quantity, wo_date,supplier, is_rework)	
 					item1['secondary_qty'] = item['values']['default'].get('secondary_qty')
 					item1['secondary_uom'] = item.get('secondary_uom')
 					items.append(item1)
@@ -95,7 +97,7 @@ def save_item_details(item_details,supplier = None, process_name = None, wo_date
 
 
 
-def get_data(item, item_name, item_attributes, table_index, row_index, process_name, quantity, wo_date, supplier):
+def get_data(item, item_name, item_attributes, table_index, row_index, process_name, quantity, wo_date, supplier, is_rework):
 	item1 = {}
 	variant_name = get_variant(item_name, item_attributes)
 	if not variant_name:
@@ -105,9 +107,14 @@ def get_data(item, item_name, item_attributes, table_index, row_index, process_n
 	if process_name:
 		rate, tax = get_rate_and_quantity(process_name,variant_name,quantity,wo_date,item, supplier)
 		total_cost = flt(rate) * flt(quantity)
-		item1['cost'] = rate
-		item1['total_cost'] = total_cost
-		item1['tax'] = tax		
+		if is_rework:
+			item1['cost'] = 0
+			item1['total_cost'] = 0
+			item1['tax'] = 0
+		else:	
+			item1['cost'] = rate
+			item1['total_cost'] = total_cost
+			item1['tax'] = tax
 	item1['qty'] = quantity
 	item1['item_variant'] = variant_name
 	item1['lot'] = item.get('lot')
@@ -182,7 +189,7 @@ def get_rate_and_quantity(process_name,variant_name, quantity, wo_date, item, su
 	
 	return rate, tax
 
-def fetch_item_details(items, process_name = None,include_id = False):
+def fetch_item_details(items, process_name = None,include_id = False, return_materials = 0, is_rework = 0):
 	items = [item.as_dict() for item in items]
 	item_details = []
 	items = sorted(items, key = lambda i: i['row_index'])
@@ -229,20 +236,32 @@ def fetch_item_details(items, process_name = None,include_id = False):
 							
 
 						if include_id:
-							item['values'][attr.attribute_value]['ref_doctype'] = "Work Order Receivables"
+							if return_materials == 1:
+								item['values'][attr.attribute_value]['ref_doctype'] = "Work Order Deliverables"
+							else:
+								item['values'][attr.attribute_value]['ref_doctype'] = "Work Order Receivables"
+
 							item['values'][attr.attribute_value]['ref_docname'] = variant.name
 						break	
 				
 		else:
+			qty = 0.0
+			pending_qty = 0.0
+			if is_rework:
+				for variant in variants:
+					qty += variant.qty
+					pending_qty += variant.pending_quantity
+			else:
+				qty = variants[0].qty
+				pending_qty = variants[0].pending_quantity		
 			item['values']['default'] = {
-				'qty': variants[0].qty,
+				'qty': qty,
 				'secondary_qty': variants[0].secondary_qty,
-				'pending_qty': variants[0].pending_quantity,
+				'pending_qty': pending_qty,
 				'cancelled_qty': variants[0].cancelled_qty,
 				'rate': variants[0].rate,
 				'tax': variants[0].tax,
 			}
-			
 			if process_name:
 				item['values']['default']['cost'] = variants[0].cost
 				item['values']['default']['total_cost'] = variants[0].total_cost
@@ -251,7 +270,10 @@ def fetch_item_details(items, process_name = None,include_id = False):
 
 
 			if include_id:
-				item['values']['default']['ref_doctype'] = "Work Order Receivables"
+				if return_materials == 1:
+					item['values']['default']['ref_doctype'] = "Work Order Deliverables"
+				else:
+					item['values']['default']['ref_doctype'] = "Work Order Receivables"
 				item['values']['default']['ref_docname'] = variants[0].name
 		index = get_item_group_index(item_details, current_item_attribute_details)
 
@@ -299,10 +321,14 @@ def get_item_attribute_details(variant, item_attributes):
 	return attribute_details
 
 @frappe.whitelist()
-def get_work_order_items(work_order):
+def get_work_order_items(work_order, return_of_materials):
 	wo = frappe.get_doc("Work Order", work_order)
-	data = fetch_item_details(wo.receivables,process_name = None, include_id=True)
+	if int(return_of_materials) == 1:
+		data = fetch_item_details(wo.deliverables,process_name = None, include_id=True, return_materials = 1 )
+	else:
+		data = fetch_item_details(wo.receivables,process_name = None, include_id=True)	
 	return data
+
 @frappe.whitelist()
 def check_delivered_and_received(doc_name):
 	doc = frappe.get_doc('Work Order', doc_name)
@@ -324,11 +350,7 @@ def check_delivered_and_received(doc_name):
 @frappe.whitelist()
 def add_comment(doc_name, date, reason):
 	doc = frappe.get_doc('Work Order', doc_name)
-	text = f"Current delivery date: {doc.expected_delivery_date} <br> Date changed to {date} due to {reason}"
+	text = f"Delivery date changed from {doc.expected_delivery_date} to {date} <br> Reason: {reason}"
 	doc.expected_delivery_date = date
 	doc.add_comment('Comment',text=text)
 	doc.save()
-
-
-
-

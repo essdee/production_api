@@ -81,12 +81,14 @@ frappe.ui.form.on('Goods Received Note', {
 	},
 
 	refresh: function(frm) {
+		frm.set_df_property("return_of_materials","hidden",true)
 		$(frm.fields_dict['item_html'].wrapper).html("");
 		frm.itemEditor = new frappe.production.ui.GRNItem(frm.fields_dict["item_html"].wrapper);
 		frm.itemEditor.load_data({
 			supplier: frm.doc.supplier,
 			against: frm.doc.against,
-			against_id: frm.doc.against_id
+			against_id: frm.doc.against_id,
+			return_of_materials: frm.doc.return_of_materials
 		}, true);
 		if(frm.doc.__onload && frm.doc.__onload.item_details) {
 			frm.doc['item_details'] = JSON.stringify(frm.doc.__onload.item_details);
@@ -103,7 +105,17 @@ frappe.ui.form.on('Goods Received Note', {
 			frm.dirty();
 			frm.events.save_item_details(frm);
 		})
-
+		if(!frm.doc.rework_created && frm.doc.docstatus == 1 && frm.doc.against == 'Work Order'){
+			frm.add_custom_button('Create Rework', ()=> {
+				frappe.call({
+					method: 'production_api.production_api.doctype.goods_received_note.goods_received_note.create_rework',
+					args: {
+						doc_name: frm.doc.name,
+						work_order: frm.doc.against_id,
+					}
+				})
+			})
+		}
 		// Remove Print if draft
 		if (frm.doc.docstatus == 0) {
 			var print_menu = $(".dropdown-menu > li:contains('Print')");
@@ -116,9 +128,18 @@ frappe.ui.form.on('Goods Received Note', {
 				print_btn[0].parentElement.removeChild(print_btn[0]);
 			}
 		}
+		if(!frm.is_new()){
+			frm.set_df_property('return_of_materials', 'read_only', true)
+
+		}
 
 	},
-
+	return_of_materials: function(frm){
+			frm.itemEditor.load_data({
+				return_of_materials: frm.doc.return_of_materials,
+				against_id: frm.doc.against_id
+			})
+	},
 	save_item_details: function(frm) {
 		if(frm.itemEditor){
 			let items = frm.itemEditor.get_items();
@@ -152,7 +173,7 @@ frappe.ui.form.on('Goods Received Note', {
 
 	supplier: function(frm) {
 		if (frm.doc.supplier) {
-			frappe.production.ui.eventBus.$emit("update_grn_details", {supplier: frm.doc.supplier})
+			frappe.production.ui.eventBus.$emit("update_grn_details", {supplier: frm.doc.supplier,return_of_materials: frm.doc.return_of_materials})
 		}
 		if (frm.doc.supplier) {
 			frappe.call({
@@ -186,16 +207,30 @@ frappe.ui.form.on('Goods Received Note', {
 	},
 
 	against: function(frm) {
-		frappe.production.ui.eventBus.$emit("update_grn_details", {against: frm.doc.against})
+		frappe.production.ui.eventBus.$emit("update_grn_details", {against: frm.doc.against,return_of_materials: frm.doc.return_of_materials})
+		if(frm.doc.against == "Work Order"){
+			frm.set_df_property("return_of_materials","hidden", false)
+		}
+		else{
+			frm.set_df_property("return_of_materials","hidden", true)
+
+		}
 	},
 
 	against_id: function(frm) {
-		frappe.production.ui.eventBus.$emit("update_grn_details", {against_id: frm.doc.against_id})
+		frappe.production.ui.eventBus.$emit("update_grn_details", {against_id: frm.doc.against_id, return_of_materials: frm.doc.return_of_materials})
 		if (frm.doc.against_id) {
 			frappe.db.get_doc(frm.doc.against, frm.doc.against_id)
 				.then(doc => {
-					frm.set_value('supplier', doc.supplier);
-					frm.set_value('delivery_location', doc.default_delivery_location);
+					
+					if(frm.doc.against == "Purchase Order"){
+						frm.set_value('supplier', doc.supplier)
+						frm.set_value('delivery_location', doc.default_delivery_location);
+					}
+					else{
+						frm.set_value('supplier', doc.supplier);
+						frm.set_value('supplier_address', doc.supplier_address)
+					}
 				})
 		} 
 		else {

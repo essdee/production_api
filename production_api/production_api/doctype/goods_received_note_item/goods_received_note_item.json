@@ -15,12 +15,12 @@
   "tax",
   "lot",
   "comments",
+  "item_type",
+  "type",
   "table_index",
   "row_index",
   "ref_doctype",
   "ref_docname",
-  "accepted_qty",
-  "rejected_qty",
   "rework_details"
  ],
  "fields": [
@@ -92,7 +92,7 @@
    "fieldname": "ref_doctype",
    "fieldtype": "Select",
    "label": "Reference Doctype",
-   "options": "Purchase Order Item\nWork Order Receivables"
+   "options": "Purchase Order Item\nWork Order Receivables\nWork Order Deliverables"
   },
   {
    "fieldname": "ref_docname",
@@ -101,25 +101,27 @@
    "options": "ref_doctype"
   },
   {
-   "fieldname": "accepted_qty",
-   "fieldtype": "Float",
-   "label": "Accepted Qty"
-  },
-  {
-   "fieldname": "rejected_qty",
-   "fieldtype": "Float",
-   "label": "Rejected Qty"
-  },
-  {
    "fieldname": "rework_details",
    "fieldtype": "Small Text",
    "label": "Rework Details"
+  },
+  {
+   "fieldname": "item_type",
+   "fieldtype": "Link",
+   "label": "Item Type",
+   "options": "GRN Item type"
+  },
+  {
+   "fieldname": "type",
+   "fieldtype": "Select",
+   "label": "Type",
+   "options": "Accepted\nRejected\nRework"
   }
  ],
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2024-06-13 11:55:48.798742",
+ "modified": "2024-07-04 16:18:16.031841",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Goods Received Note Item",

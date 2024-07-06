@@ -32,7 +32,9 @@ frappe.ui.form.on("Delivery Challan", {
                 },
                 callback: function(response){
                     if(response.message){
-                        frm.deliverable_items = new frappe.production.ui.Delivery_Challan(frm.fields_dict['deliverable_items'].wrapper, response.message)
+                        frm.set_value('supplier', response.message.supplier)
+                        frm.set_value('supplier_address',response.message.supplier_address)
+                        frm.deliverable_items = new frappe.production.ui.Delivery_Challan(frm.fields_dict['deliverable_items'].wrapper, response.message.item)
                     }
                 }
             })

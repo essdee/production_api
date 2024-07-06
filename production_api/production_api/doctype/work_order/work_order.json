@@ -6,6 +6,8 @@
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
+  "is_rework",
+  "parent_wo",
   "naming_series",
   "supplier",
   "is_delivered",
@@ -23,9 +25,6 @@
   "address_and_contact_section",
   "supplier_address",
   "supplier_address_details",
-  "column_break_ztqp",
-  "delivery_address",
-  "delivery_address_details",
   "section_break_oufa",
   "deliverables",
   "deliverable_items",
@@ -46,10 +45,10 @@
   {
    "fieldname": "naming_series",
    "fieldtype": "Select",
+   "hidden": 1,
    "in_list_view": 1,
    "label": "WO Series",
-   "options": "WO-",
-   "reqd": 1
+   "options": "WO-"
   },
   {
    "allow_on_submit": 1,
@@ -127,13 +126,6 @@
    "reqd": 1
   },
   {
-   "fieldname": "delivery_address",
-   "fieldtype": "Link",
-   "label": "Delivery Address",
-   "options": "Address",
-   "reqd": 1
-  },
-  {
    "default": "Today",
    "fieldname": "planned_start_date",
    "fieldtype": "Date",
@@ -175,16 +167,6 @@
    "label": "Address and Contact"
   },
   {
-   "fieldname": "column_break_ztqp",
-   "fieldtype": "Column Break"
-  },
-  {
-   "fieldname": "delivery_address_details",
-   "fieldtype": "Small Text",
-   "label": "Delivery Address Details",
-   "read_only": 1
-  },
-  {
    "fieldname": "supplier_address_details",
    "fieldtype": "Small Text",
    "label": "Supplier Address Details",
@@ -220,7 +202,8 @@
    "fieldname": "ppo",
    "fieldtype": "Link",
    "label": "PPO",
-   "options": "PPO"
+   "options": "PPO",
+   "reqd": 1
   },
   {
    "fieldname": "section_break_duyr",
@@ -253,12 +236,25 @@
   {
    "fieldname": "column_break_unwb",
    "fieldtype": "Column Break"
+  },
+  {
+   "default": "0",
+   "fieldname": "is_rework",
+   "fieldtype": "Check",
+   "label": "Is Rework"
+  },
+  {
+   "depends_on": "eval:doc.is_rework == 1",
+   "fieldname": "parent_wo",
+   "fieldtype": "Link",
+   "label": "Parent WO",
+   "options": "Work Order"
   }
  ],
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2024-07-01 17:47:15.306535",
+ "modified": "2024-07-06 18:02:37.525683",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Work Order",

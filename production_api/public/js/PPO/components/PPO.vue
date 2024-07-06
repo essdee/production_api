@@ -287,7 +287,7 @@ function delete_item(index) {
   if (index == 0) {
     list_item.value[0].items = item_list.slice(1, len);
   } else if (index == len - 1) {
-    list_item.value[0].items = item_list.splice(index);
+    list_item.value[0].items = item_list.slice(0,index);
   } else {
     let lis = item_list.slice(0, index);
     let lis2 = item_list.slice(index + 1, len);

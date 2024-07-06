@@ -101,6 +101,22 @@ doc_events = {
     },
 }
 
+fixtures =[
+    { 
+		"dt": 'Workflow',
+		"filters": [["name", "in",["PC_Flow"]]]
+    },
+    {
+        'dt': 'Workflow State',
+        'filters':[['name','in',['Draft','Approval Pending','Expired']]],
+	},
+    {
+        'dt':'Workflow Action Master',
+        'filters':[['name','in',['Submit','Expired']]]
+	}
+]
+
+
 # Scheduled Tasks
 # ---------------
 

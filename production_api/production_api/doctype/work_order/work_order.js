@@ -34,11 +34,13 @@ frappe.ui.form.on("Work Order", {
 							fieldtype : 'Date',
 							label : "Delivery Date",
 							default : frm.doc.expected_delivery_date,
+							reqd : 1,
 						},
 						{
 							fieldname : 'reason',
 							fieldtype : 'Data',
-							label : 'Reason'
+							label : 'Reason',
+							reqd : 1,
 						}
 					],
 					primary_action_label : "Submit",
@@ -66,7 +68,22 @@ frappe.ui.form.on("Work Order", {
 					}
 				}
 			})
+			frm.add_custom_button(__('Make GRN'), function() {
+				let x = frappe.model.get_new_doc('Goods Received Note')
+				x.grn_series = "GRN-"
+				x.against = "Work Order"
+				x.against_id = frm.doc.name
+				frappe.set_route("Form",x.doctype, x.name);
+			}, __("Create"));
+	
+			frm.add_custom_button(__('Make DC'), function() {
+				let x = frappe.model.get_new_doc('Delivery Challan')
+				x.work_order = frm.doc.name
+				frappe.set_route("Form",x.doctype, x.name);
+			}, __("Create"));
 		}
+		
+
 		frm.set_query('ppo',()=> {
 			return {
 				filters : {
@@ -74,6 +91,11 @@ frappe.ui.form.on("Work Order", {
 				}
 			}
 		})
+
+		if(frm.doc.docstatus == 1){
+			frm.set_df_property("expected_delivery_date","read_only" , true)
+		}
+
         $(frm.fields_dict['deliverable_items'].wrapper).html("")
         frm.deliverable_items = new frappe.production.ui.Deliverables(frm.fields_dict["deliverable_items"].wrapper);
         
@@ -121,6 +143,7 @@ frappe.ui.form.on("Work Order", {
 					"supplier": frm.doc.supplier
 				},
 				callback: function(r) {
+					console.log(r)
 					if (r.message) {
 						frm.set_value('supplier_address', r.message)
 					} else {
@@ -147,25 +170,6 @@ frappe.ui.form.on("Work Order", {
 		} 
 		else {
 			frm.set_value('supplier_address_details', '');
-		}
-	},
-
-    delivery_address: function(frm) {
-		if (frm.doc['delivery_address']) {
-			frappe.call({
-				method: "production_api.production_api.doctype.purchase_order.purchase_order.get_address_display",
-				args: {
-					"address_dict": frm.doc['delivery_address'] 
-				},
-				callback: function(r) {
-					if (r.message) {
-						frm.set_value('delivery_address_details', r.message)
-					}
-				}
-			})
-		} 
-		else {
-			frm.set_value('delivery_address_details', '');
 		}
 	},
 });

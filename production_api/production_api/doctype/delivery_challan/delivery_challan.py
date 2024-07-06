@@ -10,7 +10,7 @@ from frappe.utils import flt, cstr
 class DeliveryChallan(Document):
 	def before_submit(self):
 		for row in self.items:
-			quantity = get_stock_balance(row.item_variant, self.supplier, with_valuation_rate=False)
+			quantity = get_stock_balance(row.item_variant, self.from_location, with_valuation_rate=False)
 			if quantity < row.qty:
 				frappe.throw(f"Required quantity is {row.qty} but stock count is {quantity}")
 		
@@ -85,7 +85,7 @@ class DeliveryChallan(Document):
 	
 	def before_save(self):
 		for row in self.items:
-			quantity,rate = get_stock_balance(row.item_variant,self.supplier,with_valuation_rate = True)
+			quantity,rate = get_stock_balance(row.item_variant,self.from_location,with_valuation_rate = True)
 			if flt(row.qty) < flt(0.0):
 				frappe.throw("Only positive")
 			if flt(row.qty) > flt(row.pending_quantity):
@@ -159,5 +159,10 @@ def get_deliverables(work_order):
 			"ref_docname":row.name,
 		}
 		item.append(x)
-	return item
+	result = {
+		"item" : item,
+		"supplier":doc.supplier,
+		"supplier_address": doc.supplier_address,
+	}	
+	return result
 
