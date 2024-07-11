@@ -81,12 +81,6 @@
    "label": "Row Index"
   },
   {
-   "allow_on_submit": 1,
-   "fieldname": "pending_quantity",
-   "fieldtype": "Float",
-   "label": "Pending Quantity"
-  },
-  {
    "fieldname": "cancelled_quantity",
    "fieldtype": "Int",
    "label": "Cancelled Quantity"
@@ -100,12 +94,18 @@
    "fieldname": "rate",
    "fieldtype": "Float",
    "label": "Rate"
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "pending_quantity",
+   "fieldtype": "Float",
+   "label": "Pending Quantity"
   }
  ],
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2024-05-29 12:33:00.307383",
+ "modified": "2024-07-10 11:56:24.140039",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Work Order Deliverables",

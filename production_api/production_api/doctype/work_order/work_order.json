@@ -7,6 +7,7 @@
  "engine": "InnoDB",
  "field_order": [
   "is_rework",
+  "status",
   "parent_wo",
   "naming_series",
   "supplier",
@@ -202,8 +203,7 @@
    "fieldname": "ppo",
    "fieldtype": "Link",
    "label": "PPO",
-   "options": "PPO",
-   "reqd": 1
+   "options": "PPO"
   },
   {
    "fieldname": "section_break_duyr",
@@ -244,17 +244,25 @@
    "label": "Is Rework"
   },
   {
-   "depends_on": "eval:doc.is_rework == 1",
+   "depends_on": "eval: doc.is_rework == 1",
    "fieldname": "parent_wo",
    "fieldtype": "Link",
    "label": "Parent WO",
    "options": "Work Order"
+  },
+  {
+   "allow_on_submit": 1,
+   "default": "0",
+   "fieldname": "status",
+   "fieldtype": "Check",
+   "hidden": 1,
+   "label": "Status"
   }
  ],
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2024-07-06 18:02:37.525683",
+ "modified": "2024-07-11 12:58:13.223778",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Work Order",

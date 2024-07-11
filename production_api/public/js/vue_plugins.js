@@ -205,8 +205,6 @@ frappe.production.ui.Receivables = class {
     }
     get_receivables_data(){
         let items = JSON.parse(JSON.stringify(this.vue.items))
-        console.log("In get receivables")
-        console.log(JSON.stringify(this.vue.items))
         return items
     }
     load_data(item_details){
@@ -252,8 +250,6 @@ frappe.production.ui.PPOpage = class {
     }
     get_data(){
         let items = JSON.parse(JSON.stringify(this.vue.list_item))
-        console.log("GET ITEMS")
-        console.log(items)
         return items
     }
     load_data(item_details){

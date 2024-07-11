@@ -2,8 +2,24 @@
 // For license information, please see license.txt
 
 frappe.ui.form.on("Work Order", {
+	setup:function(frm){
+		frm.set_query('supplier_address', function(doc) {
+			if(!doc.supplier) {
+				frappe.throw(__("Please set {0}",
+					[__(frappe.meta.get_label(doc.doctype, 'supplier', doc.name))]));
+			}
+
+			return {
+				query: 'frappe.contacts.doctype.address.address.address_query',
+				filters: {
+					link_doctype: 'Supplier',
+					link_name: doc.supplier
+				}
+			};
+		});
+	},
 	refresh(frm) {
-		if(frm.doc.start_date){
+		if(frm.doc.start_date && !frm.doc.end_date){
 			frm.add_custom_button('End Date', ()=>{
 				frappe.call({
 					method: 'production_api.production_api.doctype.work_order.work_order.check_delivered_and_received',
@@ -52,7 +68,6 @@ frappe.ui.form.on("Work Order", {
 								date : values.date,
 								reason : values.reason,
 							}
-
 						})
 						d.hide()
 					}
@@ -61,28 +76,83 @@ frappe.ui.form.on("Work Order", {
 			})
 			frm.add_custom_button('Close', ()=> {
 				let receivables = frm.doc.receivables
-				for(let i=0;i<receivables.length; i++){
-					if(receivables[i].pending_qty != 0){
-						frappe.msgprint(`Not all ${receivables[i].item_variant} was received`)
-						return
+				let d =new frappe.ui.Dialog({
+					title:"Pending quantity of receivables",
+					fields : [
+						{
+							'fieldtype':'HTML',
+							'fieldname': "pending_qty",
+						}
+					],
+					primary_action_label: "Close Work Order",
+					primary_action(){
+						d.hide()
+						let x = new frappe.ui.Dialog({
+							title: "Are you sure want to close this work order",
+							primary_action_label:'Yes',
+							secondary_action_label:"No",
+							primary_action:() => {
+								x.hide();
+								frappe.call({
+									method:'production_api.production_api.doctype.work_order.work_order.make_close',
+									args:{
+										'docname': frm.doc.name,
+									}
+								})
+							},
+							secondary_action:()=>{
+								x.hide()
+							}
+						})
+						x.show()
 					}
+				})
+				d.fields_dict.pending_qty.$wrapper.html('');
+				let html_content = `
+					<table >
+						<thead>
+							<tr>
+								<th style="width: 40%; font-size: 18px; text-align: center; ">Item</th>
+								<th style="width: 15%; font-size: 18px; text-align: center; ">Quantity</th>
+								<th style="width: 20%; font-size: 18px; text-align: center; ">Pending Qty</th>
+							</tr>
+						</thead>
+						<tbody>
+				`;
+				for(let i = 0 ; i < receivables.length ; i++){
+					let row = receivables[i];
+					html_content += `
+						<tr>
+							<td style="font-size: 15px; text-align: center; " >${row.item_variant}</td>
+							<td style="font-size: 15px; text-align: center; ">${row.qty}</td>
+							<td style="font-size: 15px; text-align: center; ">${row.pending_quantity}</td>
+						</tr>
+					`;
 				}
+				html_content += `</tbody></table>`;
+				d.fields_dict.pending_qty.$wrapper.append(html_content)
+				d.show()
 			})
 			frm.add_custom_button(__('Make GRN'), function() {
 				let x = frappe.model.get_new_doc('Goods Received Note')
-				x.grn_series = "GRN-"
 				x.against = "Work Order"
+				x.naming_series = "GRN-"
 				x.against_id = frm.doc.name
+				x.supplier = frm.doc.supplier
+				x.posting_date = frappe.datetime.nowdate()
+				x.posting_time = new Date().toTimeString().split(' ')[0]
 				frappe.set_route("Form",x.doctype, x.name);
 			}, __("Create"));
 	
 			frm.add_custom_button(__('Make DC'), function() {
 				let x = frappe.model.get_new_doc('Delivery Challan')
 				x.work_order = frm.doc.name
+				x.naming_series = "DC-"
+				x.posting_date = frappe.datetime.nowdate()
+				x.posting_time = new Date().toTimeString().split(' ')[0]
 				frappe.set_route("Form",x.doctype, x.name);
 			}, __("Create"));
 		}
-		
 
 		frm.set_query('ppo',()=> {
 			return {
@@ -143,7 +213,6 @@ frappe.ui.form.on("Work Order", {
 					"supplier": frm.doc.supplier
 				},
 				callback: function(r) {
-					console.log(r)
 					if (r.message) {
 						frm.set_value('supplier_address', r.message)
 					} else {

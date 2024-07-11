@@ -32,9 +32,9 @@ class ProcessCost(Document):
 			doc = frappe.get_doc("Process Cost", process_cost)
 			from_date = utils.get_datetime(self.from_date).date()
 			to_date = utils.get_datetime(self.to_date).date()
-			if doc.from_date == from_date and doc.dependent_attribute_values == self.dependent_attribute_values:
+			if doc.from_date == from_date and doc.dependent_attribute_values == self.dependent_attribute_values and doc.supplier == self.supplier:
 				frappe.throw(f"An Process cost was found with the same `From Date`.")
-			elif doc.from_date > from_date and doc.dependent_attribute_values == self.dependent_attribute_values:
+			elif doc.from_date > from_date and doc.dependent_attribute_values == self.dependent_attribute_values  and doc.supplier == self.supplier:
 				if not to_date or to_date >= doc.from_date:
 					frappe.throw(f"An Updated Process cost list for the same Item and Supplier exists from {frappe.utils.format_date(doc.from_date)}. Please set `To Date` less than that date or cancel the next Price")
 			else:

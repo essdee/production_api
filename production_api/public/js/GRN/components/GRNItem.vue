@@ -111,7 +111,7 @@
                 {{ attr }}
               </th>
               <th>Comments</th>
-              <th>Edit</th>
+              <th>Add</th>
             </tr>
             <tr v-for="(j, item1_index) in i.items" :key="item1_index">
               <td>{{ item1_index + 1 }}</td>
@@ -159,12 +159,11 @@
                 <input class="form-control" type="text" v-model="j.comments" />
               </td>
               <td v-if="against == 'Work Order'">
-                <!-- <div @click='edit_item(item_index,item1_index)'>Edit</div>  -->
                 <div
-                  class="pull-left cursor-pointer"
-                  @click="edit_item(item_index, item1_index)"
-                  v-html="frappe.utils.icon('edit', 'md', 'mr-1')"
-                ></div>
+                  class="circle"
+                  @click="edit_item(item_index, item1_index)">
+                  <span class="plus">+</span>
+                </div>
               </td>
             </tr>
           </table>
@@ -182,7 +181,7 @@
               <th>Pending Quantity</th>
               <th v-if="against == 'Purchase Order'">Received Quantity</th>
               <th>Comments</th>
-              <th v-if="against == 'Work Order'">Edit</th>
+              <th v-if="against == 'Work Order'">Add</th>
             </tr>
             <tr v-for="(j, item1_index) in i.items" :key="item1_index">
               <td>{{ item1_index + 1 }}</td>
@@ -204,8 +203,8 @@
                 </span>
               </td>
               <td v-else>
-                {{ j.values["default"].qty
-                }}<span v-if="j.default_uom">{{ " " + j.default_uom }}</span>
+                {{ j.values["default"].qty }}
+                <span v-if="j.default_uom">{{ " " + j.default_uom }}</span>
                 <span v-if="j.values['default'].secondary_qty">
                   <br />
                   ({{ j.values["default"].secondary_qty
@@ -246,10 +245,10 @@
               </td>
               <td v-if="against == 'Work Order'">
                 <div
-                  class="pull-left cursor-pointer"
-                  @click="edit_item(item_index, item1_index)"
-                  v-html="frappe.utils.icon('edit', 'md', 'mr-1')"
-                ></div>
+                  class="circle"
+                  @click="edit_item(item_index, item1_index)">
+                  <span class="plus">+</span>
+                </div>
               </td>
             </tr>
           </table>
@@ -278,7 +277,7 @@
                   {{ attr }}
                 </th>
                 <th>Comments</th>
-                <th>Delete</th>
+                <th v-if='docstatus == 0'>Delete</th>
               </tr>
             </thead>
             <tbody>
@@ -293,7 +292,7 @@
                       :key="item3_index"
                     >
                       <tr v-if="item2_index == 0">
-                        <td>{{ get_index(item_index) }}</td>
+                        <td>{{ item3_index + item2_index + 1 }}</td>
                         <td>{{ j.name }}</td>
                         <td>{{ j.lot }}</td>
                         <td v-for="attr in i.attributes" :key="attr">
@@ -314,7 +313,7 @@
                           {{ val["rework_details"][item3_index].quantity }}
                         </td>
                         <td>{{ j.comments }}</td>
-                        <td>
+                        <td v-if='docstatus == 0'>
                           <div
                             class="pull-left cursor-pointer"
                             @click="
@@ -351,7 +350,7 @@
                 <th>Type</th>
                 <th>Quantity</th>
                 <th>Comments</th>
-                <th>Delete</th>
+                <th v-if='docstatus == 0'>Delete</th>
               </tr>
             </thead>
             <tbody>
@@ -374,7 +373,7 @@
                       <td>{{ k.type }}</td>
                       <td>{{ k.quantity }}</td>
                       <td>{{ j.comments }}</td>
-                      <td>
+                      <td v-if='docstatus == 0'>
                         <div
                           class="pull-left cursor-pointer"
                           @click="
@@ -415,11 +414,7 @@
           style="display: flex; gap: 10px"
         ></div>
       </div>
-      <div v-if="fetch_button">
-        <button class="btn btn-success pull-left" @click="fetch_item()">
-          Fetch Item
-        </button>
-      </div>
+     
       <div v-if="show_button">
         <button class="btn btn-success pull-left" @click="add_item()">
           Add Item
@@ -450,7 +445,6 @@ const cur_lot = ref(null);
 let lot_input = null;
 let item_input = null;
 const sample_doc = ref({});
-const fetch_button = ref(false);
 const controlRefs = ref({
   quantities: [],
 });
@@ -461,7 +455,6 @@ let indexes = [];
 
 function delete_delivered_item(idx, idx1, key, idx2) {
   Object.keys(items.value[idx].items[idx1]["values"]).forEach((row) => {
-    console.log(row);
     let item_list =
       items.value[idx].items[idx1]["values"][row]["rework_details"];
     let len = item_list.length;
@@ -474,7 +467,6 @@ function delete_delivered_item(idx, idx1, key, idx2) {
       items.value[idx].items[idx1]["values"][row]["rework_details"] =
         item_list.slice(1, len);
     } else if (idx2 == len - 1) {
-      console.log("LAst Item");
       items.value[idx].items[idx1]["values"][row]["rework_details"] =
         item_list.slice(0, idx2);
     } else {
@@ -532,7 +524,7 @@ function edit_item(index, index1) {
   qty_attributes.value = [];
   cur_item.value = null;
   cur_lot.value = null;
-  fetch_button.value = true;
+  show_button.value = true
   $(el).find(".qty-parameters").html("");
   let row = items.value[index].items[index1];
   let data1 = row.values;
@@ -644,8 +636,6 @@ function create_attributes(attributes, quantities, item, lot, idx, idx1) {
   });
   types.set_value("");
   types.refresh();
-}
-function fetch_item() {
   let selected_value = types.get_value();
   if (selected_value !== "" || selected_value !== null) {
     handleQtyParameters(qty_attributes.value, selected_value);
@@ -653,12 +643,10 @@ function fetch_item() {
     let el = root.value;
     $(el).find(".qty-parameters").html("");
   }
-  show_button.value = true;
-  fetch_button.value = false;
+ 
 }
-// Function to handle creation of quantity parameter controls
+
 function handleQtyParameters(quantities, value) {
-  console.log(value);
   let el = root.value;
   $(el).find(".qty-parameters").html("");
   qty_parameters = [];
@@ -731,9 +719,6 @@ async function add_item() {
   $(el).find(".lot-name").html("");
   $(el).find(".item-name").html("");
   show_button.value = false;
-  fetch_button.value = false;
-
-  // $(el).find('.qty-parameters-value').html("")
 }
 
 onMounted(() => {
@@ -769,7 +754,6 @@ function load_data(data, skip_watch = false) {
     }
     if (data.hasOwnProperty("return_of_materials")) {
       return_materials.value = data["return_of_materials"];
-      // against_id_changed(return_materials.value);
     }
     if (data.hasOwnProperty("items")) {
       items.value = data["items"];
@@ -778,7 +762,6 @@ function load_data(data, skip_watch = false) {
     if (data.hasOwnProperty("against_id") && !skip_watch) {
       if (data.hasOwnProperty("return_of_materials")) {
         return_materials.value = data["return_of_materials"];
-        // against_id_changed(return_materials.value);
       }
       against_id_changed(return_materials.value);
     }
@@ -812,12 +795,11 @@ function get_work_order_items() {
       "production_api.production_api.doctype.work_order.work_order.get_work_order_items",
     args: {
       work_order: against_id.value,
-      return_of_materials: return_materials.value,
+      return_of_materials: return_materials.value ? return_materials.value : 0 ,
     },
     callback: function (r) {
       if (r.message) {
         items.value = r.message;
-        console.log(JSON.stringify(items.value));
       }
     },
   });
@@ -888,3 +870,22 @@ defineExpose({
   get_items,
 });
 </script>
+<style scoped>
+.circle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;  
+  height: 20px; 
+  border-radius: 40%;
+  background-color: #0a0a0a;
+  color: white;
+  font-size: 18px; 
+  font-weight: bold;
+  cursor : pointer;
+}
+
+.plus {
+  line-height: 1;
+}
+</style>

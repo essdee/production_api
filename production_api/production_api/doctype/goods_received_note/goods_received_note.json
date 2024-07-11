@@ -7,7 +7,6 @@
  "editable_grid": 1,
  "engine": "InnoDB",
  "field_order": [
-  "rework_created",
   "naming_series",
   "against",
   "delivery_location",
@@ -51,6 +50,7 @@
  ],
  "fields": [
   {
+   "default": "GRN-",
    "fieldname": "naming_series",
    "fieldtype": "Select",
    "in_list_view": 1,
@@ -310,20 +310,12 @@
    "fieldname": "return_of_materials",
    "fieldtype": "Check",
    "label": "Return of materials"
-  },
-  {
-   "allow_on_submit": 1,
-   "default": "0",
-   "fieldname": "rework_created",
-   "fieldtype": "Check",
-   "label": "Rework Created",
-   "read_only": 1
   }
  ],
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2024-07-06 18:21:25.375399",
+ "modified": "2024-07-10 12:45:57.023909",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Goods Received Note",

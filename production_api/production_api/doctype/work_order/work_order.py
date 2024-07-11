@@ -33,9 +33,10 @@ class WorkOrder(Document):
 			return
 		total_amount = 0.0
 		total_tax_amount = 0.0
-		for item in self.deliverables:
-			item.set('pending_quantity', item.qty)
-			item.set('cancelled_quantity', 0)
+		if not self.is_rework:
+			for item in self.deliverables:
+				item.set('pending_quantity', item.qty)
+				item.set('cancelled_quantity', 0)
 		for item in self.receivables:
 			item.set('pending_quantity', item.qty)
 			if not self.is_rework:
@@ -105,13 +106,14 @@ def get_data(item, item_name, item_attributes, table_index, row_index, process_n
 		variant1.insert()
 		variant_name = variant1.name	
 	if process_name:
-		rate, tax = get_rate_and_quantity(process_name,variant_name,quantity,wo_date,item, supplier)
-		total_cost = flt(rate) * flt(quantity)
 		if is_rework:
 			item1['cost'] = 0
 			item1['total_cost'] = 0
 			item1['tax'] = 0
-		else:	
+		
+		else:
+			rate, tax = get_rate_and_quantity(process_name,variant_name,quantity,wo_date,item, supplier)
+			total_cost = flt(rate) * flt(quantity)	
 			item1['cost'] = rate
 			item1['total_cost'] = total_cost
 			item1['tax'] = tax
@@ -126,35 +128,44 @@ def get_data(item, item_name, item_attributes, table_index, row_index, process_n
 	return item1	
 
 def get_rate_and_quantity(process_name,variant_name, quantity, wo_date, item, supplier):
-	dep_attr = item['dependent_attribute']
+	
+	dep_attr = item.get('dependent_attribute')
 	dep_attr_value = None
 	if dep_attr:
-		dep_attr_value = item['attributes'][dep_attr]
+		dep_attr_value = item['attributes'].get(dep_attr)
 
-	item_doc = frappe.get_doc('Item Variant',variant_name)
+	item_doc = frappe.get_doc('Item Variant', variant_name)
 	item = item_doc.item
+
 	filters = {
-		'process_name':process_name,
-		'item':item,
-		'is_expired':0,
-		'from_date':['<=',wo_date],
-		'to_date':['>=',wo_date],
+		'process_name': process_name,
+		'item': item,
+		'is_expired': 0,
+		'from_date': ['<=', wo_date],
 		'docstatus': 1,
 	}
-	if supplier:
-		filters['supplier'] = supplier
+
 	if dep_attr_value:
 		filters['dependent_attribute_values'] = dep_attr_value
 
-	doc_names = frappe.get_list('Process Cost',filters = filters)
+	list1 = frappe.get_list('Process Cost', filters=filters)
+
+	filters['to_date'] = ['>=', wo_date]
+	list2 = frappe.get_list('Process Cost', filters=filters)
+
+	if supplier:
+		filters['supplier'] = supplier
+
+	list3 = frappe.get_list('Process Cost', filters=filters)
+	filters['to_date'] = ['is', 'not set']
+
+	list4 = frappe.get_list('Process Cost', filters=filters)
+
+	doc_names = list1 + list2 + list3 + list4
+
 	docname = None
 	if doc_names:
 		docname = doc_names[0]['name']
-	else:
-		del filters['supplier']
-		doc_names = frappe.get_list('Process Cost',filters = filters)
-		if doc_names:
-			docname = doc_names[0]['name']
 	if not docname:
 		frappe.throw('No process cost for ' + item)
 	
@@ -187,9 +198,9 @@ def get_rate_and_quantity(process_name,variant_name, quantity, wo_date, item, su
 	if not found:
 		return low_price, tax
 	
-	return rate, tax
+	return rate, flt(tax)
 
-def fetch_item_details(items, process_name = None,include_id = False, return_materials = 0, is_rework = 0):
+def fetch_item_details(items, process_name = None,include_id = False, return_materials = 0, is_rework = 0, is_grn = 0):
 	items = [item.as_dict() for item in items]
 	item_details = []
 	items = sorted(items, key = lambda i: i['row_index'])
@@ -222,18 +233,22 @@ def fetch_item_details(items, process_name = None,include_id = False, return_mat
 					
 					if attr.attribute == item.get('primary_attribute'):
 						item['values'][attr.attribute_value] = {
-							'qty': variant.qty,
 							'secondary_qty': variant.secondary_qty,
 							'pending_qty': variant.pending_quantity,
 							'cancelled_qty': variant.cancelled_qty,
 							'rate': variant.rate,
 							'tax': variant.tax,
 						}
+
+						if is_grn == 1:
+							item['values'][attr.attribute_value]['qty'] = variant.pending_qty
+						else:
+							item['values'][attr.attribute_value]['qty'] = variant.qty
+
 						if process_name:
 							item['values'][attr.attribute_value]['cost'] = variant.cost
 							item['values'][attr.attribute_value]['total_cost'] = variant.total_cost
 							item['values'][attr.attribute_value]['tax'] = variant.tax
-							
 
 						if include_id:
 							if return_materials == 1:
@@ -243,7 +258,7 @@ def fetch_item_details(items, process_name = None,include_id = False, return_mat
 
 							item['values'][attr.attribute_value]['ref_docname'] = variant.name
 						break	
-				
+
 		else:
 			qty = 0.0
 			pending_qty = 0.0
@@ -255,13 +270,16 @@ def fetch_item_details(items, process_name = None,include_id = False, return_mat
 				qty = variants[0].qty
 				pending_qty = variants[0].pending_quantity		
 			item['values']['default'] = {
-				'qty': qty,
 				'secondary_qty': variants[0].secondary_qty,
 				'pending_qty': pending_qty,
 				'cancelled_qty': variants[0].cancelled_qty,
 				'rate': variants[0].rate,
 				'tax': variants[0].tax,
 			}
+			if is_grn == 1:
+				item['values']['default']['qty'] = pending_qty
+			else:
+				item['values']['default']['qty'] = qty	
 			if process_name:
 				item['values']['default']['cost'] = variants[0].cost
 				item['values']['default']['total_cost'] = variants[0].total_cost
@@ -324,9 +342,9 @@ def get_item_attribute_details(variant, item_attributes):
 def get_work_order_items(work_order, return_of_materials):
 	wo = frappe.get_doc("Work Order", work_order)
 	if int(return_of_materials) == 1:
-		data = fetch_item_details(wo.deliverables,process_name = None, include_id=True, return_materials = 1 )
+		data = fetch_item_details(wo.deliverables,process_name = None, include_id=True, return_materials = 1, is_grn = 1)
 	else:
-		data = fetch_item_details(wo.receivables,process_name = None, include_id=True)	
+		data = fetch_item_details(wo.receivables,process_name = None, include_id=True, is_grn = 1)
 	return data
 
 @frappe.whitelist()
@@ -345,7 +363,7 @@ def check_delivered_and_received(doc_name):
 			return False,"Receivable"	
 
 	doc.end_date = nowdate()
-	doc.update()
+	doc.save()
 
 @frappe.whitelist()
 def add_comment(doc_name, date, reason):
@@ -353,4 +371,10 @@ def add_comment(doc_name, date, reason):
 	text = f"Delivery date changed from {doc.expected_delivery_date} to {date} <br> Reason: {reason}"
 	doc.expected_delivery_date = date
 	doc.add_comment('Comment',text=text)
+	doc.save()
+
+@frappe.whitelist()
+def make_close(docname):
+	doc = frappe.get_doc("Work Order", docname)
+	doc.status = 1
 	doc.save()

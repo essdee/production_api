@@ -6,6 +6,7 @@ frappe.ui.form.on('Goods Received Note', {
 		frm.set_query('against_id', function(doc) {
 			let filters = {
 				'docstatus': 1,
+				'status': 0,
 			}
 			if (doc.supplier) {
 				filters['supplier'] = doc.supplier
@@ -81,9 +82,17 @@ frappe.ui.form.on('Goods Received Note', {
 	},
 
 	refresh: function(frm) {
-		frm.set_df_property("return_of_materials","hidden",true)
+		if (frm.doc.return_of_materials){
+			frm.set_df_property("return_of_materials","hidden",false)
+		}
+		else{
+			frm.set_df_property("return_of_materials","hidden",true)
+		}
 		$(frm.fields_dict['item_html'].wrapper).html("");
 		frm.itemEditor = new frappe.production.ui.GRNItem(frm.fields_dict["item_html"].wrapper);
+		if (frm.is_new() && frm.doc.against_id && !frm.doc.delivery_location){
+			frm.trigger('against_id')
+		}
 		frm.itemEditor.load_data({
 			supplier: frm.doc.supplier,
 			against: frm.doc.against,
@@ -105,18 +114,46 @@ frappe.ui.form.on('Goods Received Note', {
 			frm.dirty();
 			frm.events.save_item_details(frm);
 		})
-		if(!frm.doc.rework_created && frm.doc.docstatus == 1 && frm.doc.against == 'Work Order'){
+		if(frm.doc.docstatus == 1 && frm.doc.against == 'Work Order'){
 			frm.add_custom_button('Create Rework', ()=> {
 				frappe.call({
 					method: 'production_api.production_api.doctype.goods_received_note.goods_received_note.create_rework',
 					args: {
 						doc_name: frm.doc.name,
 						work_order: frm.doc.against_id,
+						return_materials : frm.doc.return_of_materials,
+					},
+					callback:function(res){
+						let result = res.message
+						if(result){
+							let x = frappe.model.get_new_doc('Work Order')
+							x.is_rework = 1
+							x.parent_wo = result.parent_wo
+							x.is_delivered = 0
+							x.deliverables = result.deliverables
+							x.supplier = result.supplier
+							x.process_name = result.process_name
+							x.ppo = result.ppo
+							x.planned_start_date = result.planned_start_date
+							x.planned_end_date = result.planned_end_date
+							x.expected_delivery_date = result.expected_delivery_date
+							x.supplier_address = result.supplier_address
+							x.receivables = result.receivables
+							x.wo_series = "WO-"
+							if (x.doctype) {
+								frappe.db.insert(x).then(function (doc) {
+									frappe.set_route("Form", doc.doctype, doc.name);
+								}).catch(function (error) {
+									frappe.msgprint(__('Failed to create Work Order: ') + error);
+								});
+							} else {
+								frappe.msgprint(__('Document type is undefined.'));
+							}
+						}
 					}
 				})
 			})
 		}
-		// Remove Print if draft
 		if (frm.doc.docstatus == 0) {
 			var print_menu = $(".dropdown-menu > li:contains('Print')");
 			if (print_menu.length >0){
@@ -130,20 +167,17 @@ frappe.ui.form.on('Goods Received Note', {
 		}
 		if(!frm.is_new()){
 			frm.set_df_property('return_of_materials', 'read_only', true)
-
 		}
-
 	},
 	return_of_materials: function(frm){
-			frm.itemEditor.load_data({
-				return_of_materials: frm.doc.return_of_materials,
-				against_id: frm.doc.against_id
-			})
+		frm.itemEditor.load_data({
+			return_of_materials: frm.doc.return_of_materials,
+			against_id: frm.doc.against_id
+		})
 	},
 	save_item_details: function(frm) {
 		if(frm.itemEditor){
 			let items = frm.itemEditor.get_items();
-			// console.log(JSON.stringify(items))
 			if(items && items.length > 0) {
 				frm.doc['item_details'] = JSON.stringify(items);
 			}
@@ -164,13 +198,6 @@ frappe.ui.form.on('Goods Received Note', {
 			frappe.throw(__('Please refresh and try again.'));
 		}
 	},
-
-	before_save: function(frm) {
-		if(frm.itemEditor) {
-			// console.log(frm.itemEditor);
-		}
-	},
-
 	supplier: function(frm) {
 		if (frm.doc.supplier) {
 			frappe.production.ui.eventBus.$emit("update_grn_details", {supplier: frm.doc.supplier,return_of_materials: frm.doc.return_of_materials})
@@ -232,13 +259,12 @@ frappe.ui.form.on('Goods Received Note', {
 						frm.set_value('supplier_address', doc.supplier_address)
 					}
 				})
-		} 
+		}
 		else {
 			frm.set_value('supplier', '');
 			frm.set_value('delivery_location', '');
 		}
 	},
-
 	supplier_address: function(frm) {
 		if (frm.doc['supplier_address']) {
 			frappe.call({
@@ -254,7 +280,6 @@ frappe.ui.form.on('Goods Received Note', {
 			frm.set_value('supplier_address_display', '');
 		}
 	},
-
 	delivery_address: function(frm) {
 		if (frm.doc['delivery_address']) {
 			frappe.call({
@@ -270,7 +295,6 @@ frappe.ui.form.on('Goods Received Note', {
 			frm.set_value('delivery_address_display', '');
 		}
 	},
-	
 	billing_address: function(frm) {
 		if (frm.doc['billing_address']) {
 			frappe.call({
@@ -286,7 +310,6 @@ frappe.ui.form.on('Goods Received Note', {
 			frm.set_value('billing_address_display', '');
 		}
 	},
-
 	contact_person: function(frm) {
 		if (frm.doc["contact_person"]) {
 			frappe.call({

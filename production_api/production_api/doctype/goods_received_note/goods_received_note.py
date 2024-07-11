@@ -17,7 +17,7 @@ from production_api.production_api.doctype.purchase_order.purchase_order import 
 class GoodsReceivedNote(Document):
 	def onload(self):
 		if self.against == "Work Order":
-			item_details = fetch_wo_grn_item_details(self.get('items'))
+			item_details = fetch_wo_grn_item_details(self.get('items'), self.docstatus)
 		else:
 			item_details = fetch_grn_item_details(self.get('items'), docstatus=self.docstatus)
 		self.set('print_item_details', json.dumps(item_details))
@@ -40,12 +40,23 @@ class GoodsReceivedNote(Document):
 			self.validate_quantity()
 			self.calculate_amount()
 		else:
+			table_name = None
+			table_data = None
+
+			if self.return_of_materials:
+				table_name = "Work Order Deliverables"
+				table_data = doc.deliverables
+			else:
+				table_name = "Work Order Receivables"
+				table_data = doc.receivables
+
 			for item in self.items:
-				docname = frappe.db.get_value("Work Order Receivables",item.ref_docname, 'name')
+				docname = frappe.db.get_value(table_name,item.ref_docname, 'name')
 				if docname == item.ref_docname:
-					for work_order_item in doc.receivables:
+					for work_order_item in table_data:
 						if work_order_item.name == item.ref_docname:
-							work_order_item.pending_quantity = work_order_item.pending_quantity - item.get('quantity')		
+							work_order_item.pending_quantity = work_order_item.pending_quantity - item.get('quantity')
+								
 			doc.save()
 			doc.submit()
 		self.set('approved_by', frappe.get_user().doc.name)
@@ -395,7 +406,7 @@ def fetch_grn_item_details(items, docstatus=0):
 			item_details[index]['items'].append(item)
 	return item_details
 
-def fetch_wo_grn_item_details(items):
+def fetch_wo_grn_item_details(items, docstatus):
 	items = [item.as_dict() for item in items]
 	item_details = []
 	items = sorted(items, key = lambda i: i['row_index'])
@@ -429,6 +440,8 @@ def fetch_wo_grn_item_details(items):
 					for attr in current_variant.attributes:
 						if attr.attribute == item.get('primary_attribute'):
 							item['values'][attr.attribute_value]['rework_details'].append(x)
+							if docstatus != 1:
+								item['values'][attr.attribute_value]['qty'] -= variant.quantity
 				else:
 					v.append(variant['item_variant'])	
 					for attr in current_variant.attributes:
@@ -442,12 +455,16 @@ def fetch_wo_grn_item_details(items):
 							}
 							item['values'][attr.attribute_value]['rework_details'].append(x)
 							doc = frappe.get_doc(variant.ref_doctype, variant.ref_docname)
-							item['values'][attr.attribute_value]['qty'] = doc.qty  
+							if docstatus == 1:
+								item['values'][attr.attribute_value]['qty'] = flt(doc.pending_quantity)
+							else:
+								item['values'][attr.attribute_value]['qty'] = flt(doc.pending_quantity) - variant.quantity
+
 							item['values'][attr.attribute_value]['secondary_qty'] = doc.secondary_qty
 							item['values'][attr.attribute_value]['ref_doctype'] = variant.ref_doctype
-							item['values'][attr.attribute_value]['ref_docname'] = variant.ref_docname
+							item['values'][attr.attribute_value]['ref_docname'] = variant.ref_docname	
+
 		else:
-			print(variants)
 			item['values']['default'] = {
 				'received': variants[0].quantity,
 				'secondary_received': variants[0].secondary_qty,
@@ -455,15 +472,20 @@ def fetch_wo_grn_item_details(items):
 				'tax': variants[0].tax,
 				'rework_details': []
 			}
+			qty = 0.0
 			for variant in variants:
 				x = {
 					"item_type" : variant.item_type, 
 					"type" : variant.type,
 					"quantity" : variant.quantity
 				}
+				qty += variant.quantity
 				item['values']['default']['rework_details'].append(x)	
 			doc = frappe.get_doc(variants[0].ref_doctype, variants[0].ref_docname)
-			item['values']['default']['qty'] = doc.qty
+			if docstatus == 1:
+				item['values']['default']['qty'] = flt(doc.pending_quantity)
+			else:
+				item['values']['default']['qty'] = flt(doc.pending_quantity)-flt(qty)
 			item['values']['default']['secondary_qty'] = doc.secondary_qty
 			item['values']['default']['ref_doctype'] = variants[0].ref_doctype
 			item['values']['default']['ref_docname'] = variants[0].ref_docname
@@ -483,22 +505,9 @@ def fetch_wo_grn_item_details(items):
 
 
 @frappe.whitelist()
-def create_rework(doc_name,work_order):
+def create_rework(doc_name,work_order, return_materials):
 	doc = frappe.get_doc("Work Order", work_order)
 	grn_doc = frappe.get_doc('Goods Received Note', doc_name)
-	new_doc = frappe.new_doc("Work Order")
-	new_doc.is_rework = 1
-	new_doc.parent_wo = grn_doc.against_id
-	new_doc.deliverables = doc.deliverables
-	new_doc.supplier = doc.receiver_supplier
-	new_doc.receiver_supplier = doc.supplier
-	new_doc.process_name = doc.process_name
-	new_doc.ppo = doc.ppo
-	new_doc.planned_start_date = doc.planned_start_date
-	new_doc.planned_end_date = doc.planned_end_date
-	new_doc.expected_delivery_date = doc.expected_delivery_date
-	new_doc.supplier_address = doc.delivery_address
-	new_doc.delivery_address = doc.supplier_address
 	receivable = []
 	for item in grn_doc.items:
 		row = item.as_dict()
@@ -508,11 +517,24 @@ def create_rework(doc_name,work_order):
 		item1['qty'] = row.quantity
 		item1['uom'] = row.uom
 		item1['comments'] = row.comments
-		item1['pending_qty'] = row.quantity
+		item1['pending_qty'] = row.pending_quantity
 		item1['table_index'] = row.table_index
 		item1['row_index'] = row.row_index
 		receivable.append(item1)
-	new_doc.set('receivables',receivable)
-	new_doc.insert()
-	grn_doc.rework_created = 1
-	grn_doc.save()
+	table_data = None
+	if return_materials:
+		table_data = doc.deliverables
+	else:		
+		table_data = doc.receivables
+	data = {}
+	data['parent_wo'] = grn_doc.against_id
+	data['deliverables'] = table_data
+	data['supplier'] = doc.supplier
+	data['process_name'] = doc.process_name
+	data['ppo'] = doc.ppo
+	data['planned_start_date'] = doc.planned_start_date
+	data['planned_end_date'] = doc.planned_end_date
+	data['expected_delivery_date'] = doc.expected_delivery_date
+	data['supplier_address'] = doc.supplier_address
+	data['receivables'] = receivable
+	return data

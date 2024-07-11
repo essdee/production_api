@@ -2,12 +2,29 @@
 // For license information, please see license.txt
 
 frappe.ui.form.on("Delivery Challan", {
+    setup:function(frm){
+		frm.set_query('from_address', function(doc) {
+			if(!doc.from_location) {
+				frappe.throw(__("Please set From Location",
+					[__(frappe.meta.get_label(doc.doctype, 'supplier', doc.name))]));
+			}
+
+			return {
+				query: 'frappe.contacts.doctype.address.address.address_query',
+				filters: {
+					link_doctype: 'Supplier',
+					link_name: doc.from_location
+				}
+			};
+		});
+	},
     refresh(frm){
         frm.set_query('work_order',() => {
             return {
                 filters : {
                     "docstatus" : 1,
                     "is_delivered" : 0,
+					"status": 0,
                 }
             }
         })
