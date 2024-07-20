@@ -143,11 +143,6 @@ frappe.ui.form.on('Goods Received Note', {
 		}
 	},
 
-	before_save: function(frm) {
-		if(frm.itemEditor) {
-			console.log(frm.itemEditor);
-		}
-	},
 
 	supplier: function(frm) {
 		if (frm.doc.supplier) {
