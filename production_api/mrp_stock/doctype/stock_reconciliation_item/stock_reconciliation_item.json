@@ -30,7 +30,7 @@
    "fieldtype": "Link",
    "in_list_view": 1,
    "label": "Warehouse",
-   "options": "Supplier",
+   "options": "Warehouse",
    "reqd": 1
   },
   {
@@ -79,7 +79,7 @@
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2023-07-14 19:50:01.790179",
+ "modified": "2024-07-16 15:39:43.049247",
  "modified_by": "Administrator",
  "module": "MRP Stock",
  "name": "Stock Reconciliation Item",

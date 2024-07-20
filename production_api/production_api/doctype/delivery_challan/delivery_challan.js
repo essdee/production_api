@@ -23,8 +23,7 @@ frappe.ui.form.on("Delivery Challan", {
             return {
                 filters : {
                     "docstatus" : 1,
-                    "is_delivered" : 0,
-					"status": 0,
+					"open_status": 'Open',
                 }
             }
         })
@@ -79,7 +78,48 @@ frappe.ui.form.on("Delivery Challan", {
 			frm.set_value('from_address_details', '');
 		}
 	},
-
+	from_location: function(frm){
+		if(frm.doc.from_location){
+			frappe.call({
+				method: "production_api.mrp_stock.doctype.warehouse.warehouse.get_warehouse",
+				args: {
+					"supplier":frm.doc.from_location,
+				},
+				callback: function(response){
+					if(response.message){
+						frm.set_value('from_warehouse',response.message)
+					}
+					else{
+						frm.set_value('from_warehouse','')
+					}
+				}
+			})
+		}
+		else{
+			frm.set_value('from_warehouse','')
+		}
+	},
+	supplier: function(frm){
+		if(frm.doc.supplier){
+			frappe.call({
+				method: "production_api.mrp_stock.doctype.warehouse.warehouse.get_warehouse",
+				args: {
+					"supplier":frm.doc.supplier,
+				},
+				callback: function(response){
+					if(response.message){
+						frm.set_value('supplier_warehouse',response.message)
+					}
+					else{
+						frm.set_value('supplier_warehouse','')
+					}
+				}
+			})
+		}
+		else{
+			frm.set_value('supplier_warehouse','')
+		}
+	},
     supplier_address: function(frm) {
 		if (frm.doc['supplier_address']) {
 			frappe.call({

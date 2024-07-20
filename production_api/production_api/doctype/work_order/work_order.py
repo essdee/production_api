@@ -9,18 +9,8 @@ from itertools import groupby
 from frappe.model.document import Document
 from production_api.production_api.doctype.item.item import get_variant, create_variant, get_attribute_details
 
-
 class WorkOrder(Document):
-	def on_update_after_submit(self):
-		check_quantity = True
-		for item in self.deliverables:
-			if item.pending_quantity > 0:
-				check_quantity = False
-				break
-
-		if check_quantity and self.deliverables:
-			self.set('is_delivered',1)
-
+	
 	def onload(self):
 		deliverable_item_details = fetch_item_details(self.get('deliverables'))
 		self.set_onload('deliverable_item_details', deliverable_item_details)
@@ -96,8 +86,6 @@ def save_item_details(item_details,supplier = None, process_name = None, wo_date
 			row_index += 1
 	return items
 
-
-
 def get_data(item, item_name, item_attributes, table_index, row_index, process_name, quantity, wo_date, supplier, is_rework):
 	item1 = {}
 	variant_name = get_variant(item_name, item_attributes)
@@ -110,7 +98,6 @@ def get_data(item, item_name, item_attributes, table_index, row_index, process_n
 			item1['cost'] = 0
 			item1['total_cost'] = 0
 			item1['tax'] = 0
-		
 		else:
 			rate, tax = get_rate_and_quantity(process_name,variant_name,quantity,wo_date,item, supplier)
 			total_cost = flt(rate) * flt(quantity)	
@@ -140,9 +127,9 @@ def get_rate_and_quantity(process_name,variant_name, quantity, wo_date, item, su
 	filters = {
 		'process_name': process_name,
 		'item': item,
-		'is_expired': 0,
 		'from_date': ['<=', wo_date],
 		'docstatus': 1,
+		'workflow_state':'Approved',
 	}
 
 	if dep_attr_value:
@@ -258,7 +245,6 @@ def fetch_item_details(items, process_name = None,include_id = False, return_mat
 
 							item['values'][attr.attribute_value]['ref_docname'] = variant.name
 						break	
-
 		else:
 			qty = 0.0
 			pending_qty = 0.0
@@ -284,8 +270,6 @@ def fetch_item_details(items, process_name = None,include_id = False, return_mat
 				item['values']['default']['cost'] = variants[0].cost
 				item['values']['default']['total_cost'] = variants[0].total_cost
 				item['values']['default']['tax'] = variants[0].tax
-				
-
 
 			if include_id:
 				if return_materials == 1:
@@ -308,7 +292,6 @@ def fetch_item_details(items, process_name = None,include_id = False, return_mat
 		else:
 			item_details[index]['items'].append(item)
 	
-
 	return item_details
 
 def get_item_group_index(items, item_details):
@@ -376,5 +359,5 @@ def add_comment(doc_name, date, reason):
 @frappe.whitelist()
 def make_close(docname):
 	doc = frappe.get_doc("Work Order", docname)
-	doc.status = 1
+	doc.open_status = 'Close'
 	doc.save()

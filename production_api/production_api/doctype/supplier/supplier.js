@@ -17,5 +17,5 @@ frappe.ui.form.on('Supplier', {
 				wrapper: frm.fields_dict["price_html"].wrapper,
 			});
 		}
-	}
+	},
 });

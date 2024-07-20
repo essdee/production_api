@@ -13,10 +13,12 @@
   "posting_time",
   "address_and_contact_section",
   "from_location",
+  "from_warehouse",
   "from_address",
   "from_address_details",
   "column_break_xvmi",
   "supplier",
+  "supplier_warehouse",
   "supplier_address",
   "supplier_address_details",
   "section_break_uqkl",
@@ -141,12 +143,26 @@
    "fieldtype": "Small Text",
    "label": "Supplier Address Details",
    "read_only": 1
+  },
+  {
+   "fieldname": "from_warehouse",
+   "fieldtype": "Link",
+   "label": "From Warehouse",
+   "options": "Warehouse",
+   "read_only": 1
+  },
+  {
+   "fieldname": "supplier_warehouse",
+   "fieldtype": "Link",
+   "label": "Supplier Warehouse",
+   "options": "Warehouse",
+   "read_only": 1
   }
  ],
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2024-05-30 11:58:42.490450",
+ "modified": "2024-07-19 09:40:49.925516",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Delivery Challan",

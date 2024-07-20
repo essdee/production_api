@@ -9,16 +9,19 @@
   "supplier_name",
   "uid",
   "pan",
-  "address_html",
   "column_break_4",
   "disabled",
   "is_company_location",
   "deparments",
-  "contact_html",
   "section_break_8",
   "account_mappings",
   "section_break_10",
-  "price_html"
+  "price_html",
+  "address_and_contact_tab",
+  "address_html",
+  "default_warehouse",
+  "column_break_tvci",
+  "contact_html"
  ],
  "fields": [
   {
@@ -91,11 +94,26 @@
    "label": "UID",
    "read_only": 1,
    "unique": 1
+  },
+  {
+   "fieldname": "address_and_contact_tab",
+   "fieldtype": "Tab Break",
+   "label": "Address and Contact"
+  },
+  {
+   "fieldname": "default_warehouse",
+   "fieldtype": "Link",
+   "label": "Default Warehouse",
+   "options": "Warehouse"
+  },
+  {
+   "fieldname": "column_break_tvci",
+   "fieldtype": "Column Break"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2023-09-21 12:12:51.114409",
+ "modified": "2024-07-18 14:23:45.066817",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Supplier",
@@ -160,7 +178,6 @@
    "report": 1,
    "role": "System Manager",
    "select": 1,
-   "set_user_permissions": 1,
    "share": 1,
    "write": 1
   },

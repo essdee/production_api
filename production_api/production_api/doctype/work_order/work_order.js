@@ -74,71 +74,76 @@ frappe.ui.form.on("Work Order", {
 				})
 				d.show()
 			})
-			frm.add_custom_button('Close', ()=> {
-				let receivables = frm.doc.receivables
-				let d =new frappe.ui.Dialog({
-					title:"Pending quantity of receivables",
-					fields : [
-						{
-							'fieldtype':'HTML',
-							'fieldname': "pending_qty",
-						}
-					],
-					primary_action_label: "Close Work Order",
-					primary_action(){
-						d.hide()
-						let x = new frappe.ui.Dialog({
-							title: "Are you sure want to close this work order",
-							primary_action_label:'Yes',
-							secondary_action_label:"No",
-							primary_action:() => {
-								x.hide();
-								frappe.call({
-									method:'production_api.production_api.doctype.work_order.work_order.make_close',
-									args:{
-										'docname': frm.doc.name,
-									}
-								})
-							},
-							secondary_action:()=>{
-								x.hide()
+			if(frm.doc.status == 'Open'){
+				frm.add_custom_button('Close', ()=> {
+					let receivables = frm.doc.receivables
+					let d =new frappe.ui.Dialog({
+						title:"Pending quantity of receivables",
+						fields : [
+							{
+								'fieldtype':'HTML',
+								'fieldname': "pending_qty",
 							}
-						})
-						x.show()
-					}
-				})
-				d.fields_dict.pending_qty.$wrapper.html('');
-				let html_content = `
-					<table >
-						<thead>
-							<tr>
-								<th style="width: 40%; font-size: 18px; text-align: center; ">Item</th>
-								<th style="width: 15%; font-size: 18px; text-align: center; ">Quantity</th>
-								<th style="width: 20%; font-size: 18px; text-align: center; ">Pending Qty</th>
-							</tr>
-						</thead>
-						<tbody>
-				`;
-				for(let i = 0 ; i < receivables.length ; i++){
-					let row = receivables[i];
-					html_content += `
-						<tr>
-							<td style="font-size: 15px; text-align: center; " >${row.item_variant}</td>
-							<td style="font-size: 15px; text-align: center; ">${row.qty}</td>
-							<td style="font-size: 15px; text-align: center; ">${row.pending_quantity}</td>
-						</tr>
+						],
+						primary_action_label: "Close Work Order",
+						primary_action(){
+							d.hide()
+							let x = new frappe.ui.Dialog({
+								title: "Are you sure want to close this work order",
+								primary_action_label:'Yes',
+								secondary_action_label:"No",
+								primary_action:() => {
+									x.hide();
+									frappe.call({
+										method:'production_api.production_api.doctype.work_order.work_order.make_close',
+										args:{
+											'docname': frm.doc.name,
+										}
+									})
+								},
+								secondary_action:()=>{
+									x.hide()
+								}
+							})
+							x.show()
+						}
+					})
+					// style="border-collapse: collapse;border: 1px solid black;"
+					d.fields_dict.pending_qty.$wrapper.html('');
+					let html_content = `
+						<table >
+							<thead style="background-color : #D3D3D3;">
+								<tr >
+									<th style="width: 40%; font-size: 18px; text-align: center; ">Item</th>
+									<th style="width: 15%; font-size: 18px; text-align: center; ">Quantity</th>
+									<th style="width: 20%; font-size: 18px; text-align: center; ">Pending Qty</th>
+								</tr>
+							</thead>
+							<tbody>
 					`;
-				}
-				html_content += `</tbody></table>`;
-				d.fields_dict.pending_qty.$wrapper.append(html_content)
-				d.show()
-			})
+					for(let i = 0 ; i < receivables.length ; i++){
+						let row = receivables[i];
+						html_content += `
+							<tr >
+								<td style="font-size: 15px; text-align: center; ">${row.item_variant}</td>
+								<td style="font-size: 15px; text-align: center; ">${row.qty}</td>
+								<td style="font-size: 15px; text-align: center; ">${row.pending_quantity}</td>
+							</tr>
+						`;
+					}
+					html_content += `</tbody></table>`;
+					d.fields_dict.pending_qty.$wrapper.append(html_content)
+					d.show()
+				})
+			}
 			frm.add_custom_button(__('Make GRN'), function() {
 				let x = frappe.model.get_new_doc('Goods Received Note')
 				x.against = "Work Order"
 				x.naming_series = "GRN-"
 				x.against_id = frm.doc.name
 				x.supplier = frm.doc.supplier
+				x.supplier_address = frm.doc.supplier_address
+				x.supplier_address_display = frm.doc.supplier_address_details
 				x.posting_date = frappe.datetime.nowdate()
 				x.posting_time = new Date().toTimeString().split(' ')[0]
 				frappe.set_route("Form",x.doctype, x.name);
@@ -217,6 +222,20 @@ frappe.ui.form.on("Work Order", {
 						frm.set_value('supplier_address', r.message)
 					} else {
 						frm.set_value('supplier_address', '')
+					}
+				}
+			})
+			frappe.call({
+				method: "production_api.mrp_stock.doctype.warehouse.warehouse.get_warehouse",
+				args: {
+					"supplier":frm.doc.supplier,
+				},
+				callback: function(response){
+					if(response.message){
+						frm.set_value('supplier_warehouse',response.message)
+					}
+					else{
+						frm.set_value('supplier_warehouse','')
 					}
 				}
 			})

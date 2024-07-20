@@ -83,24 +83,18 @@ function load_data(all_items) {
 			let sum = 0
 			Object.keys(data['values']).forEach(key => {
 				sum += data['values'][key]['total_cost']
-
 			})
 			data['total_cost'] = sum
 		})
 	})
 	items.value = all_items;
-	// console.log(JSON.stringify(items.value))
 }
 
 function updated(value) {
 	EventBus.$emit('wo_updated', true);
 }
 
-defineExpose({
-	items,
-	load_data,
-	update_status,
-});
+defineExpose({items,load_data,update_status});
 
 </script>
 

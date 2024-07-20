@@ -129,7 +129,6 @@ frappe.ui.form.on('Goods Received Note', {
 							let x = frappe.model.get_new_doc('Work Order')
 							x.is_rework = 1
 							x.parent_wo = result.parent_wo
-							x.is_delivered = 0
 							x.deliverables = result.deliverables
 							x.supplier = result.supplier
 							x.process_name = result.process_name
@@ -203,17 +202,37 @@ frappe.ui.form.on('Goods Received Note', {
 			frappe.production.ui.eventBus.$emit("update_grn_details", {supplier: frm.doc.supplier,return_of_materials: frm.doc.return_of_materials})
 		}
 		if (frm.doc.supplier) {
-			frappe.call({
-				method: "production_api.production_api.doctype.supplier.supplier.get_primary_address",
-				args: {"supplier": frm.doc.supplier},
-				callback: function(r) {
-					if (r.message) {
-						frm.set_value('supplier_address', r.message)
-					} else {
-						frm.set_value('supplier_address', '')
+			if(!frm.doc.supplier_address){
+				frappe.call({
+					method: "production_api.production_api.doctype.supplier.supplier.get_primary_address",
+					args: {"supplier": frm.doc.supplier},
+					callback: function(r) {
+						if (r.message) {
+							frm.set_value('supplier_address', r.message)
+						} else {
+							frm.set_value('supplier_address', '')
+						}
 					}
-				}
-			})
+				})
+				frappe.call({
+					method: "production_api.mrp_stock.doctype.warehouse.warehouse.get_warehouse",
+					args: {
+						"supplier":frm.doc.supplier,
+					},
+					callback: function(response){
+						if(response.message){
+							frm.set_value('supplier_warehouse',response.message)
+						}
+						else{
+							frm.set_value('supplier_warehouse','')
+						}
+					}
+				})
+			}
+		}
+		else{
+			frm.set_value('supplier_address', '')
+			frm.set_value('supplier_warehouse','')
 		}
 	},
 
@@ -230,6 +249,24 @@ frappe.ui.form.on('Goods Received Note', {
 					}
 				}
 			})
+			frappe.call({
+				method: "production_api.mrp_stock.doctype.warehouse.warehouse.get_warehouse",
+				args: {
+					"supplier":frm.doc.delivery_location,
+				},
+				callback: function(response){
+					if(response.message){
+						frm.set_value('delivery_warehouse',response.message)
+					}
+					else{
+						frm.set_value('delivery_warehouse','')
+					}
+				}
+			})
+		}
+		else{
+			frm.set_value('delivery_address', '')
+			frm.set_value('delivery_warehouse','')
 		}
 	},
 

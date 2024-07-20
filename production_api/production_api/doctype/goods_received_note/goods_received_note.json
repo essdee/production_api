@@ -10,6 +10,7 @@
   "naming_series",
   "against",
   "delivery_location",
+  "delivery_warehouse",
   "delivery_location_name",
   "column_break_1",
   "return_of_materials",
@@ -19,6 +20,7 @@
   "posting_time",
   "section_break_1",
   "supplier",
+  "supplier_warehouse",
   "supplier_document_no",
   "vehicle_no",
   "column_break_vyiz9",
@@ -310,12 +312,26 @@
    "fieldname": "return_of_materials",
    "fieldtype": "Check",
    "label": "Return of materials"
+  },
+  {
+   "fieldname": "supplier_warehouse",
+   "fieldtype": "Link",
+   "label": "Supplier Warehouse",
+   "options": "Warehouse",
+   "read_only": 1
+  },
+  {
+   "fieldname": "delivery_warehouse",
+   "fieldtype": "Link",
+   "label": "Delivery Warehouse",
+   "options": "Warehouse",
+   "read_only": 1
   }
  ],
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2024-07-10 12:45:57.023909",
+ "modified": "2024-07-18 14:55:30.462270",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Goods Received Note",

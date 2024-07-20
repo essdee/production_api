@@ -8,6 +8,9 @@ from frappe.utils import nowdate, nowtime
 
 class StockLedgerEntry(Document):
 	def validate(self):
+		if frappe.flags.in_patch or frappe.flags.in_migrate:
+			return
+		
 		self.flags.ignore_submit_comment = True
 
 		self.scrub_posting_time()

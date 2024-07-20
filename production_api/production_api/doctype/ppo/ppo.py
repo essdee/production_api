@@ -42,14 +42,10 @@ def save_item_details(item_details):
 				item1['qty'] = x['values'][val]
 				item1['table_index'] = idx1
 				item1['row_index'] = idx2
-				if x['comments']:
-					item1['comments'] = x['comments']
 				items.append(item1)
 		else:
 			item1 = {}
 			attributes = x['attributes']
-			if x['comments']:
-				item1['comments'] = x['comments']
 			variant_name = item['item']
 			if attributes:
 				variant_name = get_variant(item['item'], attributes)
@@ -75,7 +71,6 @@ def fetch_item_details(items):
 			item_structure = get_item_details(grp_variant.item)
 		values = {}	
 		for variant in variants:
-			comments = variant.comments
 			current_variant = frappe.get_doc("Item Variant", variant['item_variant'])
 			variant_attr_details = get_attribute_details(current_variant.item)
 			item_attribute_details = get_item_attribute_details(current_variant, variant_attr_details)
@@ -94,7 +89,6 @@ def fetch_item_details(items):
 		item1['primary_attribute'] = primary_attribute
 		item1['attributes'] = item_attribute_details
 		item1['values'] = values
-		item1['comments'] = comments
 		item_structure['items'].append(item1)
 	return item_structure
 
@@ -103,6 +97,7 @@ def get_item_attribute_details(variant, item_attributes):
 	for attr in variant.attributes:
 		if attr.attribute in item_attributes['attributes']:
 			attribute_details[attr.attribute] = attr.attribute_value
+	print(attribute_details)
 	return attribute_details
 
 @frappe.whitelist()

@@ -7,7 +7,6 @@ from production_api.production_api.doctype.item.item import get_attribute_detail
 from frappe.utils import nowdate, cint
 from frappe import utils, _
 
-
 class ProcessCost(Document):
 	def before_submit(self):
 		filters = [
@@ -83,30 +82,26 @@ class ProcessCost(Document):
 # 					doc.from_date = utils.add_days(date2, 1)
 # 		doc.save()
 
-
-
-
-
 def update_expired_process_cost():
 	filters = [
 		["to_date", "<", utils.nowdate()],
 		["to_date", "is", "set"],
-		["docstatus", "=", 1]
+		["docstatus", "=", 1],
+		['workflow_state','!=', 'Expired'],
 	]
 	process_cost_list = frappe.db.get_all(
 		'Process Cost',
 		filters=filters,
 		pluck="name"
 	)
-	workflow_exists = frappe.db.exists("Workflow", {"document_type": "Process Cost", "is_active": 1})
+	# workflow_exists = frappe.db.exists("Workflow", {"document_type": "Process Cost", "is_active": 1})
 	for process_cost in process_cost_list:
 		doc = frappe.get_doc("Process Cost", process_cost)
-		if workflow_exists:
-			cancel_process_cost(doc)
-		else:
-			doc.cancel()
+		# if workflow_exists:
+		cancel_process_cost(doc)
+		# else:
+		# 	doc.cancel()
 		doc.add_comment("Info", "Cancelled Automatically due to expiry")
-
 
 def cancel_process_cost(doc):
 	workflow_name = frappe.db.get_value("Workflow", {"document_type": "Process Cost", "is_active": 1}, "name")

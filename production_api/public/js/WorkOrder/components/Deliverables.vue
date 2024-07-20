@@ -76,11 +76,7 @@ function updated(value) {
     EventBus.$emit('wo_updated', true);
 }
 
-defineExpose({
-	items,
-    load_data,
-    update_status,
-});
+defineExpose({items,load_data,update_status});
 
 </script>
 

@@ -14,7 +14,6 @@
               <th v-for="(j, idx) in i.primary_attribute_values" :key="idx">
                 {{ j }}
               </th>
-              <th>Comments</th>
               <th>Edit</th>
             </tr>
             <tr v-for="(j, item1_index) in i.items" :key="item1_index">
@@ -22,7 +21,6 @@
               <td>{{ i.item }}</td>
               <td v-for="(k, idx) in j.attributes" :key="idx">{{ k }}</td>
               <td v-for="(k, idx) in j.values" :key="idx">{{ k }}</td>
-              <td>{{ j.comments }}</td>
               <td>
                 <div
                   class="pull-left cursor-pointer"
@@ -48,7 +46,6 @@
               <th>Item</th>
               <th v-for="(j, idx) in i.final_state_attr" :key="idx">{{ j }}</th>
               <th>Qty</th>
-              <th>Comments</th>
               <th>Edit</th>
             </tr>
             <tr v-for="(j, item1_index) in i.items" :key="item1_index">
@@ -58,7 +55,6 @@
                 <td v-for="(k, idx) in j.attributes" :key="idx">{{ k }}</td>
               </template>
               <td>{{ j.values.qty }}</td>
-              <td>{{ j.comments }}</td>
               <td>
                 <div
                   class="pull-left cursor-pointer"
@@ -228,22 +224,7 @@ function create_dependent_attribute() {
     }
     dependent_values[attr] = dep_attr[ind];
   });
-  $(el).find(".comment-attr").html("");
-  let comments = frappe.ui.form.make_control({
-    parent: $(el).find(".comment-attr"),
-    df: {
-      fieldtype: "Data",
-      fieldname: "comments",
-      label: "Comments",
-      reqd: true,
-    },
-    doc: sample_doc.value,
-    render_input: true,
-  });
-  comment["comment"] = comments;
-  if (edit.value) {
-    comments.set_value(list_item.value[0].items[edit_index.value]["comments"]);
-  }
+  
 }
 
 function add_item() {
@@ -265,20 +246,64 @@ function add_item() {
   item["attributes"] = dependent;
   item["primary_attribute"] = list_item.value[0].primary_attribute;
   item["values"] = primary;
-  item["comments"] = comment["comment"].get_value();
   if (edit.value) {
     list_item.value[0].items[edit_index.value] = item;
     edit.value = false;
     edit_index.value = null;
   } else {
-    list_item.value[0].items.push(item);
+    if(list_item.value[0].items.length == 0){
+      list_item.value[0].items.push(item);
+    }
+    else{
+      check = {}
+      for(let i = 0; i < list_item.value[0].final_state_attr.length; i++){
+        check[list_item.value[0].final_state_attr[i]] = item["attributes"][list_item.value[0].final_state_attr[i]]
+      }
+      let pushed = false
+      for(let i = 0; i < list_item.value[0].items.length; i++){
+        if(deepEqual(list_item.value[0].items[i]['attributes'],check)){
+          Object.keys(list_item.value[0].items[i].values).forEach(row => {
+            list_item.value[0].items[i].values[row] += item['values'][row]
+            pushed = true
+          })
+          break;
+        }
+      }
+      if(!pushed){
+      list_item.value[0].items.push(item);
+
+      }  
+    }
   }
   primary_values = {};
   dependent_values = {};
   make_clean();
   create_input_fields();
 }
+function deepEqual(obj1, obj2) {
+  if (obj1 === obj2) {
+    return true;
+  }
 
+  if (typeof obj1 !== 'object' || obj1 === null || typeof obj2 !== 'object' || obj2 === null) {
+    return false;
+  }
+
+  let keys1 = Object.keys(obj1);
+  let keys2 = Object.keys(obj2);
+
+  if (keys1.length !== keys2.length) {
+    return false;
+  }
+
+  for (let key of keys1) {
+    if (!keys2.includes(key) || !deepEqual(obj1[key], obj2[key])) {
+      return false;
+    }
+  }
+
+  return true;
+}
 function delete_item(index) {
   cur_frm.dirty();
   let len = list_item.value[0].items.length;

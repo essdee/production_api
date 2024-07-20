@@ -8,7 +8,6 @@
  "field_order": [
   "item_variant",
   "qty",
-  "comments",
   "table_index",
   "row_index"
  ],
@@ -36,18 +35,12 @@
    "fieldname": "row_index",
    "fieldtype": "Int",
    "label": "Row Index"
-  },
-  {
-   "fieldname": "comments",
-   "fieldtype": "Data",
-   "in_list_view": 1,
-   "label": "Comments"
   }
  ],
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2024-06-28 12:59:23.142835",
+ "modified": "2024-07-15 12:31:15.341143",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "PPO Items",

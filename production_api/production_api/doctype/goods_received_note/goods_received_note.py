@@ -61,8 +61,6 @@ class GoodsReceivedNote(Document):
 			doc.submit()
 		self.set('approved_by', frappe.get_user().doc.name)
 		
-
-	
 	def on_submit(self):
 		if self.against == 'Purchase Order':
 			self.update_purchase_order()
@@ -180,10 +178,8 @@ class GoodsReceivedNote(Document):
 				"posting_time": self.posting_time,
 			}
 		)
-
 		sl_dict.update(args)
 		return sl_dict
-
 
 def save_grn_item_details(item_details):
 	"""
@@ -463,7 +459,6 @@ def fetch_wo_grn_item_details(items, docstatus):
 							item['values'][attr.attribute_value]['secondary_qty'] = doc.secondary_qty
 							item['values'][attr.attribute_value]['ref_doctype'] = variant.ref_doctype
 							item['values'][attr.attribute_value]['ref_docname'] = variant.ref_docname	
-
 		else:
 			item['values']['default'] = {
 				'received': variants[0].quantity,
@@ -502,7 +497,6 @@ def fetch_wo_grn_item_details(items, docstatus):
 		else:
 			item_details[index]['items'].append(item)
 	return item_details
-
 
 @frappe.whitelist()
 def create_rework(doc_name,work_order, return_materials):

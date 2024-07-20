@@ -10,7 +10,6 @@
   "uom",
   "from_date",
   "naming_series",
-  "is_expired",
   "column_break_fsdv",
   "supplier",
   "process_name",
@@ -112,13 +111,6 @@
    "label": "Naming Series"
   },
   {
-   "allow_on_submit": 1,
-   "default": "0",
-   "fieldname": "is_expired",
-   "fieldtype": "Check",
-   "label": "Is Expired"
-  },
-  {
    "fieldname": "amended_from",
    "fieldtype": "Link",
    "label": "Amended From",
@@ -157,7 +149,7 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2024-07-03 11:56:59.729173",
+ "modified": "2024-07-12 10:36:19.062883",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Process Cost",

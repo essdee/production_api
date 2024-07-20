@@ -21,24 +21,17 @@
 							<td>{{ item.lot }}</td>
 							<td> {{item.pending_quantity}} </td>
 							<td v-if="docstatus == 0">
-								<input 
-									type="number" 
-									v-model.number="item.qty" 
-									class="editable-input"
-									@click="make_dirty()"
-									@input="check(item.qty)"
-									min="0" step="0.001"
+								<input type="number" v-model.number="item.qty" 
+									class="editable-input" @click="make_dirty()"
+									@input="check(item.qty)" min="0" step="0.001"
 								/>
 							</td>
 							<td v-else> {{item.qty}} </td>
 							<td>{{ item.rate }}</td>
 							<td>{{ item.uom }}</td>
 							<td v-if="docstatus === 0">
-								<input 
-									type="text" 
-									v-model="item.comments" 
-									class="editable-input"
-									@click="make_dirty()"
+								<input type="text" v-model="item.comments" 
+									class="editable-input" @click="make_dirty()"
 								/>
 							</td>
 							<td v-else>{{ item.comments }}</td>
@@ -67,10 +60,7 @@ function check(qty){
 		frappe.msgprint("Only positive quantity is acceptable")
 	}
 }
-defineExpose({
-	deliverables_item,
-	update_status,
-})
+defineExpose({deliverables_item,update_status})
 
 </script>
 

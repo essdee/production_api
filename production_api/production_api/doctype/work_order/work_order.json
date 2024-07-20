@@ -7,12 +7,12 @@
  "engine": "InnoDB",
  "field_order": [
   "is_rework",
-  "status",
   "parent_wo",
   "naming_series",
   "supplier",
-  "is_delivered",
+  "supplier_warehouse",
   "column_break_wrym",
+  "open_status",
   "wo_date",
   "process_name",
   "ppo",
@@ -192,14 +192,6 @@
    "search_index": 1
   },
   {
-   "allow_on_submit": 1,
-   "default": "0",
-   "fieldname": "is_delivered",
-   "fieldtype": "Check",
-   "label": "Is Delivered",
-   "read_only": 1
-  },
-  {
    "fieldname": "ppo",
    "fieldtype": "Link",
    "label": "PPO",
@@ -252,17 +244,25 @@
   },
   {
    "allow_on_submit": 1,
-   "default": "0",
-   "fieldname": "status",
-   "fieldtype": "Check",
+   "default": "Open",
+   "fieldname": "open_status",
+   "fieldtype": "Select",
    "hidden": 1,
-   "label": "Status"
+   "label": "Open Status",
+   "options": "Open\nClose"
+  },
+  {
+   "fieldname": "supplier_warehouse",
+   "fieldtype": "Link",
+   "label": "Supplier Warehouse",
+   "options": "Warehouse",
+   "read_only": 1
   }
  ],
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2024-07-11 12:58:13.223778",
+ "modified": "2024-07-18 14:55:08.571169",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Work Order",

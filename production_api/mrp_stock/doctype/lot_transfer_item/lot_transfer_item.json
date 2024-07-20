@@ -65,7 +65,7 @@
    "fieldname": "warehouse",
    "fieldtype": "Link",
    "label": "Warehouse",
-   "options": "Supplier",
+   "options": "Warehouse",
    "reqd": 1
   },
   {
@@ -82,7 +82,7 @@
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2023-07-24 17:45:44.145458",
+ "modified": "2024-07-18 12:48:46.683425",
  "modified_by": "Administrator",
  "module": "MRP Stock",
  "name": "Lot Transfer Item",

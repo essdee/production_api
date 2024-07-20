@@ -70,7 +70,6 @@ class DeliveryChallan(Document):
 				"posting_time": self.posting_time,
 			}
 		)
-
 		sl_dict.update(args)
 		return sl_dict				
 
