@@ -192,11 +192,11 @@
 </template>
 
 <script setup>
-    import { ref, onMounted, computed } from 'vue'
+    import { ref, onMounted, computed, nextTick } from 'vue'
 
     const root = ref(null);
 
-    const props = defineProps(['items', 'edit', 'otherInputs', 'tableFields', 'allowSecondaryQty', 'qtyFields', 'args', 'validateQty', 'enableAdditionalParameter']);
+    const props = defineProps(['items', 'edit', 'otherInputs', 'tableFields', 'allowSecondaryQty', 'qtyFields', 'args', 'validateQty', 'enableAdditionalParameter','validate']);
     const emit = defineEmits(['itemupdated', 'itemadded', 'itemremoved'])
     const item = ref({
         name: "",
@@ -376,6 +376,7 @@
             doc: sample_doc.value,
             render_input: true,
         });
+        
         console.log("Lot Input", lot_input)
         $(el).find('.item-control').html("");
         item_input = frappe.ui.form.make_control({
@@ -553,7 +554,6 @@
                         no_spinner: true,
                         args: args,
                         callback: function (r) {
-                            console.log(r)
                             if (r.message && r.message.length > 0) {
                                 // results has json of value and description
                                 // check if value is in results
@@ -810,10 +810,36 @@
     
     function get_other_details() {
         if(!other_input_controls) return false;
-
         for (let i = 0; i < props.otherInputs.length; i++) {
             let data = props.otherInputs[i];
             let label = data.df.label;
+            if(data.df.label == 'Delivery Date' && props.validate){
+                let x = props.otherInputs[ i + 1 ]
+                let value = other_input_controls[x.name].get_value();
+                if(value == 1){
+                    validate_item_values()
+                    frappe.call({
+                        method: 'production_api.production_api.doctype.item_price.item_price.get_active_price',
+                        args: {
+                            'item': item_input.value,
+                        },
+                        callback: function(r){
+                            console.log(r.message)
+                            if(!r.message){
+                                frappe.throw("There is no lead time for this item")
+                            }
+                        }
+                    })
+                }
+                else{
+                    let y = other_input_controls[data.name].get_value();
+                    if(!y){
+                        other_input_controls[data.name].$input.select();
+                        frappe.msgprint(__(label + ' does not have a value'));
+                        return false;    
+                    } 
+                }
+            }
             let value = other_input_controls[data.name].get_value();
             if (data.df.reqd && !value) {
                 other_input_controls[data.name].$input.select();
@@ -824,7 +850,6 @@
         }
         return true;
     }
-    
     function get_item_group_index() {
         let index = -1;
         for(let i = 0; i < props.items.length; i++){
@@ -911,9 +936,9 @@
     function validate_item_values() {
         if(!cur_item.value.primary_attribute){
             if(item.value.values['default'].qty == 0){
-                $nextTick(() => {
-                    $refs.qty_control.focus();
-                });
+                // $nextTick(() => {
+                //     $ref.qty_control.focus();
+                // });
                 frappe.show_alert({
                     message: __('Quantity cannot be 0'),
                     indicator: 'red'
@@ -927,9 +952,9 @@
                 total_qty += item.value.values[cur_item.value.primary_attribute_values[i]].qty;
             }
             if(total_qty == 0){
-                $nextTick(() => {
-                    $refs.qty_control_0[0].focus();
-                });
+                // $nextTick(() => {
+                //     $ref.qty_control_0[0].focus();
+                // });
                 frappe.show_alert({
                     message: __('Quantity cannot be 0'),
                     indicator: 'red'

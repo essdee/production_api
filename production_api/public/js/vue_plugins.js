@@ -4,7 +4,7 @@ import DependentAttributeTemplate from "./components/DependentAttribute.vue";
 import BomAttributeMapping from "./components/BomAttributeMapping.vue";
 import ItemPriceList from "./ItemPriceList";
 import ItemDetail from "./components/ItemDetails.vue";
-
+import DDItem from "./PurchaseOrder/components/DateUpdateDialog.vue"
 import PONewItem from "./PurchaseOrder/components/NewItem.vue"
 import POItem from "./PurchaseOrder/components/Item.vue"
 import GRNItemWrapper from "./GRN";
@@ -82,6 +82,23 @@ frappe.production.ui.ItemDependentAttributeDetail = class {
         // });
     }
 };
+
+frappe.production.ui.DateDialog = class {
+    constructor(wrapper, items){
+        this.$wrapper = $(wrapper)
+        this.items = items
+        this.make_body();
+    }
+    make_body(){
+        this.app = createApp(DDItem, {items: this.items})
+        SetVueGlobals(this.app)
+        this.vue = this.app.mount(this.$wrapper.get(0))
+    }
+    get_items(){
+        let items = JSON.parse(JSON.stringify(this.vue.item_data));
+        return items
+    }
+}
 
 frappe.production.ui.BomItemAttributeMapping = BOMAttributeMappingWrapper;
 
