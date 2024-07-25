@@ -721,13 +721,16 @@
                     return data.query(item.value, other_input_controls)
                 }
             }
+            
             other_input_controls[data.name] = frappe.ui.form.make_control({
                 parent: $($el).find(parent_class),
                 df: data.df,
                 doc: sample_doc.value,
                 render_input: true,
             });
-
+            if(data.name == 'fetch_delivery_date'){
+                other_input_controls[data.name].set_value(1)
+            }
             if (data.df.fieldtype == 'Date' && item.value[data.name] == "None") {
                 item.value[data.name] = null;
             }

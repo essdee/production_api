@@ -634,9 +634,30 @@ def update_table(doc_name, data, comment):
 	data = json.loads(data)
 
 	for item_data, self_item in zip_longest(data, doc.items):
+		if not item_data.get('new_delivery_date', False):
+			continue
 		if item_data['new_delivery_date']:
 			self_item.delivery_date = item_data['new_delivery_date']
+			create_purchase_order_log(doc_name,self_item,item_data['new_delivery_date'], comment)
 	text = f"Delivery dates are changed <br> Reason: {comment}"
 	doc.add_comment('Comment', text=text)
 	doc.save()
+	# sle.flags.ignore_permissions = 1
+	# sle.submit()
 
+def create_purchase_order_log(doc_name,item,new_date, comment):
+	doc = frappe.get_doc('Purchase Order', doc_name)
+	log_doc = frappe.new_doc("Purchase Order Log")
+	log_doc.purchase_order = doc_name
+	log_doc.po_date = doc.po_date
+	log_doc.supplier = doc.supplier
+	log_doc.type = "Delivery Date Changed"
+	log_doc.posting_date = frappe.utils.nowdate()
+	log_doc.posting_time = frappe.utils.now()
+	log_doc.item_variant = item.item_variant
+	log_doc.qty = item.pending_qty
+	log_doc.previous_date = item.delivery_date 
+	log_doc.changed_date = new_date
+	log_doc.reason = comment
+	log_doc.flags.ignore_permissions = 1
+	log_doc.submit()

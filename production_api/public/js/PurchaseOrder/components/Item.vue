@@ -72,6 +72,7 @@ const otherInputs = ref([
             fieldtype: 'Check',
             fieldname: 'fetch_delivery_date',
             label: 'Fetch Delivery Date',
+            default: true,
         }
     },
     {

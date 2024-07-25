@@ -55,6 +55,7 @@ function createFrappeDateField(index) {
         doc: sample_doc.value,
         render_input: true
     });
+    date_field.set_value(item_data[index].delivery_date)
 }
 
 defineExpose({

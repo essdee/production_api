@@ -152,7 +152,8 @@ frappe.ui.form.on('Purchase Order', {
 							{
 								fieldname: 'comments',
 								fieldtype: 'Small Text',
-								label: 'Comments'
+								label: 'Comments',
+								reqd: 1,
 							}
 						],
 						primary_action_label: 'Save',

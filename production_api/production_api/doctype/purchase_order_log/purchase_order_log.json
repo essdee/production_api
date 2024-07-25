@@ -1,0 +1,118 @@
+{
+ "actions": [],
+ "autoname": "naming_series: POL-.YYYY.-.#####",
+ "creation": "2024-07-25 11:49:06.303982",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "purchase_order",
+  "po_date",
+  "supplier",
+  "type",
+  "posting_date",
+  "posting_time",
+  "naming_series",
+  "column_break_ykoj",
+  "item_variant",
+  "qty",
+  "previous_date",
+  "changed_date",
+  "reason"
+ ],
+ "fields": [
+  {
+   "fieldname": "purchase_order",
+   "fieldtype": "Link",
+   "label": "Purchase Order",
+   "options": "Purchase Order"
+  },
+  {
+   "fieldname": "po_date",
+   "fieldtype": "Date",
+   "label": "PO Date"
+  },
+  {
+   "fieldname": "type",
+   "fieldtype": "Data",
+   "label": "Type"
+  },
+  {
+   "fieldname": "posting_date",
+   "fieldtype": "Date",
+   "label": "Posting Date"
+  },
+  {
+   "fieldname": "posting_time",
+   "fieldtype": "Time",
+   "label": "Posting Time"
+  },
+  {
+   "fieldname": "item_variant",
+   "fieldtype": "Link",
+   "label": "Item Variant",
+   "options": "Item Variant"
+  },
+  {
+   "fieldname": "qty",
+   "fieldtype": "Float",
+   "label": "Qty"
+  },
+  {
+   "fieldname": "previous_date",
+   "fieldtype": "Date",
+   "label": "Previous Date"
+  },
+  {
+   "fieldname": "changed_date",
+   "fieldtype": "Date",
+   "label": "Changed Date"
+  },
+  {
+   "fieldname": "reason",
+   "fieldtype": "Small Text",
+   "label": "Reason"
+  },
+  {
+   "fieldname": "supplier",
+   "fieldtype": "Link",
+   "label": "Supplier",
+   "options": "Supplier"
+  },
+  {
+   "fieldname": "column_break_ykoj",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "POL-.YYYY.-.#####",
+   "fieldname": "naming_series",
+   "fieldtype": "Data",
+   "hidden": 1,
+   "label": "Naming Series"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2024-07-25 12:22:32.941799",
+ "modified_by": "Administrator",
+ "module": "Production Api",
+ "name": "Purchase Order Log",
+ "naming_rule": "By \"Naming Series\" field",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}
