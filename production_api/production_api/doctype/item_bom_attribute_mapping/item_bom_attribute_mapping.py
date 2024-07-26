@@ -5,7 +5,7 @@ import frappe
 import copy
 from frappe.model.document import Document 
 
-from production_api.production_api.doctype.lot_template.lot_template import get_attribute_values as get_lot_attribute_values
+from production_api.production_api.doctype.item_production_detail.item_production_detail import get_attribute_values as get_lot_attribute_values
 from production_api.production_api.doctype.item.item import get_attribute_values as get_item_attribute_values, get_attributes
 
 class ItemBOMAttributeMapping(Document):
@@ -28,7 +28,7 @@ class ItemBOMAttributeMapping(Document):
 		item_mapping_attributes = [i.attribute for i in self.item_attributes if not i.attribute in same_attributes]
 		bom_mapping_attributes = [i.attribute for i in self.bom_item_attributes if not i.attribute in same_attributes]
 		if same_attributes and len(same_attributes) > 0:
-			item_attributes = get_lot_attribute_values(self.lot_template, same_attributes)
+			item_attributes = get_lot_attribute_values(self.item_production_detail, same_attributes)
 			bom_item_attributes = get_item_attribute_values(self.bom_item, same_attributes)
 			for attr in same_attributes:
 				item_attr_values = item_attributes.get(attr)
@@ -68,7 +68,7 @@ class ItemBOMAttributeMapping(Document):
 		same_item_attributes = [i.attribute for i in self.item_attributes if i.same_attribute]
 		same_attributes = [i.attribute for i in self.bom_item_attributes if i.same_attribute and i.attribute in same_item_attributes]
 		if same_attributes and len(same_attributes) > 0:
-			item_attributes = get_lot_attribute_values(self.lot_template, same_attributes)
+			item_attributes = get_lot_attribute_values(self.item_production_detail, same_attributes)
 			for attr in same_attributes:
 				l1 = []
 				attr_values = item_attributes[attr]

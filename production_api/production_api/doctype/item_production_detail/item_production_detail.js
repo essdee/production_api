@@ -13,6 +13,8 @@ frappe.ui.form.on("Item Production Detail", {
 				wrapper: frm.fields_dict["item_attribute_list_values"].wrapper,
 				attr_values: frm.doc.__onload["attr_list"]
 			});
+			$(frm.fields_dict['dependent_attribute_details'].wrapper).html("");
+			new frappe.production.ui.ItemDependentAttributeDetail(frm.fields_dict["dependent_attribute_details"].wrapper);
 
 			$(frm.fields_dict['bom_attribute_mapping'].wrapper).html("");
 			new frappe.production.ui.BomItemAttributeMapping(frm.fields_dict["bom_attribute_mapping"].wrapper);
@@ -28,8 +30,11 @@ frappe.ui.form.on("Item Production Detail", {
 				},
 				callback: function(r) {
 					if (r.message) {
+						console.log(r.message)
 						frm.set_value('primary_item_attribute',r.message.primary_attribute)
                         frm.set_value('item_attributes',r.message.attributes)
+						frm.set_value('dependent_attribute', r.message.dependent_attribute)
+						frm.set_value('dependent_attribute_mapping', r.message.dependent_attribute_mapping)
 					}
 				}
 			});
@@ -37,6 +42,8 @@ frappe.ui.form.on("Item Production Detail", {
         else{
             frm.set_value('primary_item_attribute','')
             frm.set_value('item_attributes',[])
+			frm.set_value('dependent_attribute','')
+			frm.set_value('dependent_attribute_mapping','')
         }
 	},
 });

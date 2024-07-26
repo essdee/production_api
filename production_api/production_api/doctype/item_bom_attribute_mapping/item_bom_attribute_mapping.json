@@ -7,7 +7,7 @@
  "field_order": [
   "item",
   "item_attributes",
-  "lot_template",
+  "item_production_detail",
   "column_break_kxpi6",
   "bom_item",
   "bom_item_attributes",
@@ -45,13 +45,6 @@
    "fieldtype": "Section Break"
   },
   {
-   "fieldname": "lot_template",
-   "fieldtype": "Link",
-   "hidden": 1,
-   "label": "Lot Template",
-   "options": "Lot Template"
-  },
-  {
    "fieldname": "item",
    "fieldtype": "Link",
    "label": "Item",
@@ -74,11 +67,18 @@
    "fieldname": "get_combination",
    "fieldtype": "Button",
    "label": "Get Combination"
+  },
+  {
+   "fieldname": "item_production_detail",
+   "fieldtype": "Link",
+   "hidden": 1,
+   "label": "Item Production Detail",
+   "options": "Item Production Detail"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2024-07-24 17:41:40.633103",
+ "modified": "2024-07-26 12:43:59.146060",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Item BOM Attribute Mapping",

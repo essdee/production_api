@@ -8,6 +8,7 @@ import DDItem from "./PurchaseOrder/components/DateUpdateDialog.vue"
 import PONewItem from "./PurchaseOrder/components/NewItem.vue"
 import POItem from "./PurchaseOrder/components/Item.vue"
 import GRNItemWrapper from "./GRN";
+import PPOPage from "./PPO/components/PPO.vue" 
 import { StockEntryWrapper, StockReconciliationWrapper, LotTransferWrapper } from "./Stock";
 
 // Product Development
@@ -129,6 +130,26 @@ frappe.production.ui.ItemDetail = function(wrapper, type, data) {
 //         })
 //     });
 // };
+
+frappe.production.ui.PPOpage = class {
+    constructor(wrapper){
+        this.$wrapper = $(wrapper)
+        this.make_app()
+    }
+    make_app(){
+        this.app = createApp(PPOPage)
+        SetVueGlobals(this.app)
+        this.vue = this.app.mount(this.$wrapper.get(0))
+    }
+    get_data(){
+        let items = JSON.parse(JSON.stringify(this.vue.list_item))
+        return items
+    }
+    load_data(item_details){
+        let items = JSON.parse(JSON.stringify(item_details));
+        this.vue.load_data(items)
+    }
+}
 
 frappe.production.ui.PurchaseOrderItem = class {
     constructor(wrapper) {

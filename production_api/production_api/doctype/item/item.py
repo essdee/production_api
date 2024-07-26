@@ -167,15 +167,13 @@ def create_dependent_attribute_mapping(doc, attr_list):
 
 @frappe.whitelist()
 def update_dependent_attribute_details(dependent_attribute_mapping, detail):
-	# item = frappe.get_doc("Item", item)
 	if isinstance(detail, string_types):
 		detail = json.loads(detail)
 	mapping = frappe.get_doc("Item Dependent Attribute Mapping", dependent_attribute_mapping)
 	details = []
 	mapping_details = []
-	print(json.dumps(detail, indent=3))
 	for attr,value in detail['attr_list'].items():
-		details.append({"attribute_value": attr, "uom": value['uom'], "display_name": value['name']})
+		details.append({"attribute_value": attr, "uom": value['uom'], "display_name": value['name'], "is_final": value['is_final']})
 		for attr_value in value['attributes']:
 			mapping_details.append({"dependent_attribute_value": attr, "depending_attribute": attr_value})
 	mapping.update({

@@ -7,10 +7,17 @@
  "engine": "InnoDB",
  "field_order": [
   "item",
+  "packing_section",
+  "packing_combo",
+  "packing_attribute",
+  "packing_attribute_no",
   "section_break_yqii",
   "primary_item_attribute",
+  "dependent_attribute",
+  "dependent_attribute_mapping",
   "item_attributes",
   "item_attribute_list_values",
+  "dependent_attribute_details",
   "bill_of_materials_section",
   "item_bom",
   "bom_attribute_mapping"
@@ -61,11 +68,55 @@
    "fieldname": "bill_of_materials_section",
    "fieldtype": "Section Break",
    "label": "Bill of Materials"
+  },
+  {
+   "fieldname": "packing_section",
+   "fieldtype": "Section Break",
+   "label": "Packing"
+  },
+  {
+   "fieldname": "packing_combo",
+   "fieldtype": "Int",
+   "label": "Packing Combo",
+   "non_negative": 1,
+   "reqd": 1
+  },
+  {
+   "fieldname": "packing_attribute",
+   "fieldtype": "Link",
+   "label": "Packing Attribute",
+   "options": "Item Attribute",
+   "reqd": 1
+  },
+  {
+   "fieldname": "packing_attribute_no",
+   "fieldtype": "Int",
+   "label": "Packing Attribute No",
+   "non_negative": 1,
+   "reqd": 1
+  },
+  {
+   "fieldname": "dependent_attribute",
+   "fieldtype": "Link",
+   "label": "Dependent Attribute",
+   "options": "Item Attribute"
+  },
+  {
+   "fieldname": "dependent_attribute_details",
+   "fieldtype": "HTML",
+   "label": "Dependent Attribute Details"
+  },
+  {
+   "fieldname": "dependent_attribute_mapping",
+   "fieldtype": "Link",
+   "hidden": 1,
+   "label": "Dependent Attribute Mapping",
+   "options": "Item Dependent Attribute Mapping"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2024-07-24 15:33:56.482002",
+ "modified": "2024-07-25 15:18:06.790724",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Item Production Detail",
