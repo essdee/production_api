@@ -637,13 +637,11 @@ def update_table(doc_name, data, comment):
 		if not item_data.get('new_delivery_date', False):
 			continue
 		if item_data['new_delivery_date']:
-			self_item.delivery_date = item_data['new_delivery_date']
 			create_purchase_order_log(doc_name,self_item,item_data['new_delivery_date'], comment)
+			self_item.delivery_date = item_data['new_delivery_date']
 	text = f"Delivery dates are changed <br> Reason: {comment}"
 	doc.add_comment('Comment', text=text)
 	doc.save()
-	# sle.flags.ignore_permissions = 1
-	# sle.submit()
 
 def create_purchase_order_log(doc_name,item,new_date, comment):
 	doc = frappe.get_doc('Purchase Order', doc_name)
