@@ -79,6 +79,7 @@
    "allow_on_submit": 1,
    "fieldname": "items",
    "fieldtype": "Table",
+   "hidden": 1,
    "label": "Items",
    "options": "Purchase Order Item"
   },
@@ -284,7 +285,7 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2024-07-29 16:35:53.430184",
+ "modified": "2024-07-29 18:07:05.377745",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Purchase Order",
