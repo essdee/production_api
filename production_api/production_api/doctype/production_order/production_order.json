@@ -16,7 +16,8 @@
   "items",
   "items_html",
   "section_break_rewk",
-  "calculate_bom"
+  "calculate_bom",
+  "bom_summary"
  ],
  "fields": [
   {
@@ -80,12 +81,18 @@
   {
    "fieldname": "section_break_rewk",
    "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "bom_summary",
+   "fieldtype": "Table",
+   "label": "BOM Summary",
+   "options": "Production Items"
   }
  ],
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2024-07-26 12:34:15.810383",
+ "modified": "2024-07-26 17:08:26.750361",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Production Order",

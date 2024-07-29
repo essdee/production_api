@@ -161,9 +161,9 @@ def get_calculated_bom(item_production_detail, planned_qty):
 				print(b.item)
 				attribute_mapping = frappe.get_doc("Item BOM Attribute Mapping", b.attribute_mapping)
 				valid = validate_bom_item(attribute_mapping.bom_item, [attr.attribute for attr in attribute_mapping.bom_item_attributes])
-				print(valid)
+				# print(valid)
 				attribute_mapping_list = attribute_mapping.get_attribute_mapping()
-				print(attribute_mapping_list)
+				# print(attribute_mapping_list)
 				qty = get_planned_qty_based_on_attributes(planned_qty, attributes, based_on = list(attribute_mapping_list[0]['item'].keys()))
 				for m in attribute_mapping_list:
 					variant_name = get_or_create_variant(attribute_mapping.bom_item, m['bom'])
@@ -209,10 +209,10 @@ def get_qty(qty, attributes):
 		if len(list(attributes)) == 0 and len(list(q['attributes'])) == 0:
 			return q['qty']
 		flag = True
-		print('Flag:', flag)
-		print('Attributes:', attributes)
+		# print('Flag:', flag)
+		# print('Attributes:', attributes)
 		for attr, attr_value in attributes.items():
-			print('Attr:', attr, attr_value)
+			# print('Attr:', attr, attr_value)
 			if q['attributes'][attr] != "*" and q['attributes'][attr] != attr_value:
 				flag = False
 				break
@@ -223,7 +223,9 @@ def get_qty(qty, attributes):
 		
 
 def get_planned_qty_based_on_attributes(planned_qty, attributes, based_on = None):
-	print(planned_qty)
+	print("Planned Qty",planned_qty)
+	print("Attributes",attributes)
+	print(based_on)
 	total = sum([flt(q['qty']) for q in planned_qty])
 	print(total)
 	if not based_on or len(based_on) == 0:
@@ -245,8 +247,10 @@ def get_planned_qty_based_on_attributes(planned_qty, attributes, based_on = None
 				'attributes': attribute_values,
 				'qty': flt(q['qty']) / x
 			})
+		print(qty)	
 		return qty
 	else:
+		print("NO sixe")
 		qty = []
 		attribute_values = {}
 		x = 1
@@ -257,6 +261,7 @@ def get_planned_qty_based_on_attributes(planned_qty, attributes, based_on = None
 			'attributes': attribute_values,
 			'qty': total / x
 		})
+		print(qty)
 		return qty
 
 
