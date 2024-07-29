@@ -57,7 +57,7 @@
    "fieldtype": "Table",
    "hidden": 1,
    "label": "Items",
-   "options": "Production Order Items"
+   "options": "Production Order Item"
   },
   {
    "fieldname": "production_detail",
@@ -92,7 +92,7 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2024-07-26 17:08:26.750361",
+ "modified": "2024-07-29 11:23:23.535355",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Production Order",
