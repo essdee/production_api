@@ -4,7 +4,7 @@ import frappe, json
 from frappe.model.document import Document
 from frappe.utils import flt
 from six import string_types
-from production_api.production_api.doctype.item.item import get_or_create_variant
+from production_api.production_api.doctype.item.item import get_or_create_variant, get_attribute_details
 from production_api.production_api.doctype.item_dependent_attribute_mapping.item_dependent_attribute_mapping import get_dependent_attribute_details
 
 class ItemProductionDetail(Document):
@@ -148,132 +148,45 @@ def get_attribute_values(item_production_detail, attributes = None):
 
 @frappe.whitelist()
 def get_calculated_bom(item_production_detail, planned_qty):
+
 	if isinstance(planned_qty, string_types):
 		planned_qty = json.loads(planned_qty)
 	item_detail = frappe.get_doc("Item Production Detail", item_production_detail)
-	attributes = get_attribute_values(item_production_detail)
-	bom = []
-	errors = []
-	for b in item_detail.item_bom:
-		try:
-			bom1 = []
-			if b.based_on_attribute_mapping:
-				print(b.item)
-				attribute_mapping = frappe.get_doc("Item BOM Attribute Mapping", b.attribute_mapping)
-				valid = validate_bom_item(attribute_mapping.bom_item, [attr.attribute for attr in attribute_mapping.bom_item_attributes])
-				# print(valid)
-				attribute_mapping_list = attribute_mapping.get_attribute_mapping()
-				# print(attribute_mapping_list)
-				qty = get_planned_qty_based_on_attributes(planned_qty, attributes, based_on = list(attribute_mapping_list[0]['item'].keys()))
-				for m in attribute_mapping_list:
-					variant_name = get_or_create_variant(attribute_mapping.bom_item, m['bom'])
-					bom1.append({
-						"item": variant_name,
-						"required_qty": (get_qty(qty, m['item']) / b.qty_of_product) * b.qty_of_bom_item,
-					})
-			else:
-				print(b.item)
-				valid = validate_bom_item(b.item, [])
-				print(valid)
-				if valid:
-					variant_name = get_or_create_variant(b.item, {})
-					qty = get_planned_qty_based_on_attributes(planned_qty, attributes)
-					bom1.append({
-						"item": variant_name,
-						"required_qty": (get_qty(qty, {}) / b.qty_of_product) * b.qty_of_bom_item,
-					})
-		except Exception as e:
-			errors.append({"item": b.item, "exception": e})
-		else:
-			bom.extend(bom1)
+	bom = {}
+	for p in planned_qty:
+		variant = p['item_variant']
+		for item in item_detail.item_bom:
+			if item.based_on_attribute_mapping:
+				doc = frappe.get_doc("Item Variant",variant)
+				variant_attr = [attr.attribute for attr in doc.attributes]
+			# 	variant_attr_values = [attr.attribute_value for attr in doc.attributes]
+			# 	item_name = doc.item
+			# 	mapping_doc = frappe.get_doc("Item BOM Attribute Mapping", item.attribute_mapping)
+			# 	from itertools import groupby
+			# 	attributes = {}
+			# 	for key, groups in groupby(mapping_doc.values, lambda i: i.index):
+			# 		print(key)
+			# 		for grp in groups:
+			# 			if grp.type == 'item' and grp.attribute not in variant_attr or grp.attribute_value not in variant_attr_values:
+			# 				break
+			# 			else:
+			# 				if grp.type == 'bom':
+			# 					attributes[grp.attribute] = grp.attribute_value
+			# 					break
+			# 		if attributes:
+			# 			break
+			# 	new_v = get_or_create_variant(mapping_doc.bom_item,attributes)
+			# 	qty = p['qty']/item.qty_of_product
+			# 	if not bom.get(new_v, False):
+			# 		bom[new_v] = qty
+			# 	else:
+			# 		bom[new_v] += qty
+			# else:
+			# 	qty = p['qty']/item.qty_of_product
+			# 	if not bom.get(item.item, False):
+			# 		bom[item.item] = qty
+			# 	else:
+			# 		bom[item.item] += qty
+
+	print(bom)				
 	
-	return {
-		'items': cumulate_duplicate(bom),
-		'errors': errors, 
-	}
-
-def cumulate_duplicate(bom):
-	total = {}
-	for b in bom:
-		if not total.get(b['item']):
-			total[b['item']] = b['required_qty']
-		else:
-			total[b['item']] = total[b['item']] + b['required_qty']
-	bom = []
-	for t, t1 in total.items():
-		bom.append({'item': t, 'required_qty': t1})
-	return bom
-
-def get_qty(qty, attributes):
-	for q in qty:
-		if len(list(attributes)) == 0 and len(list(q['attributes'])) == 0:
-			return q['qty']
-		flag = True
-		# print('Flag:', flag)
-		# print('Attributes:', attributes)
-		for attr, attr_value in attributes.items():
-			# print('Attr:', attr, attr_value)
-			if q['attributes'][attr] != "*" and q['attributes'][attr] != attr_value:
-				flag = False
-				break
-		if flag:
-			return q['qty']
-	
-	raise Exception("Could not calculate Qty")
-		
-
-def get_planned_qty_based_on_attributes(planned_qty, attributes, based_on = None):
-	print("Planned Qty",planned_qty)
-	print("Attributes",attributes)
-	print(based_on)
-	total = sum([flt(q['qty']) for q in planned_qty])
-	print(total)
-	if not based_on or len(based_on) == 0:
-		return [{
-			'attributes': {},
-			'qty': total,
-		}]
-	based_on = sorted(based_on)
-	if 'Size' in based_on:
-		qty = []
-		for q in planned_qty:
-			attribute_values = {'Size': q['size']}
-			x = 1
-			for b in based_on:
-				if b != 'Size':
-					x *= len(attributes[b])
-					attribute_values[b] = "*"
-			qty.append({
-				'attributes': attribute_values,
-				'qty': flt(q['qty']) / x
-			})
-		print(qty)	
-		return qty
-	else:
-		print("NO sixe")
-		qty = []
-		attribute_values = {}
-		x = 1
-		for b in based_on:
-			x *= len(attributes[b])
-			attribute_values[b] = "*"
-		qty.append({
-			'attributes': attribute_values,
-			'qty': total / x
-		})
-		print(qty)
-		return qty
-
-
-def validate_bom_item(item, attributes):
-	item = frappe.get_doc("Item", item)
-	attributes = attributes or []
-	item_attributes = [attr.attribute for attr in item.attributes]
-	if len(attributes) != len(item_attributes):
-		return False
-	attributes.sort()
-	item_attributes.sort()
-	for i in range(0, len(attributes)):
-		if (attributes[i] != item_attributes[i]):
-			return False
-	return True

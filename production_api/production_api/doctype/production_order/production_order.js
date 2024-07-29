@@ -39,32 +39,32 @@ frappe.ui.form.on("Production Order", {
 				method: "production_api.production_api.doctype.item_production_detail.item_production_detail.get_calculated_bom",
 				args: {
 					item_production_detail: frm.doc.production_detail,
-					planned_qty: 75,
+					planned_qty: frm.doc.items,
 				},
 				callback: function(r) {
-					console.log(r.message['items']);
-					if (r.message) {
-						if (r.message['items']) {
-							let items = r.message.items || [];
-							for (let i = 0; i < items.length; i++) {
-								let bom = frm.doc.bom_summary;
-								let found = false;
-								for (let j = 0; j < bom.length; j++) {
-									if (bom[j].item_name == items[i].item) {
-										bom[j].required_qty = items[i].required_qty;
-										found = true;
-										break;
-									}
-								}
-								if (!found) {
-									var childTable = frm.add_child("bom_summary");
-									childTable.item_name = items[i].item;
-									childTable.required_qty = items[i].required_qty;
-								}
-							}
-							frm.refresh_field('bom_summary');
-						}
-					}
+					console.log(r.message);
+					// if (r.message) {
+					// 	if (r.message['items']) {
+					// 		let items = r.message.items || [];
+					// 		for (let i = 0; i < items.length; i++) {
+					// 			let bom = frm.doc.bom_summary;
+					// 			let found = false;
+					// 			for (let j = 0; j < bom.length; j++) {
+					// 				if (bom[j].item == items[i].item) {
+					// 					bom[j].required_qty = items[i].required_qty;
+					// 					found = true;
+					// 					break;
+					// 				}
+					// 			}
+					// 			if (!found) {
+					// 				var childTable = frm.add_child("bom_summary");
+					// 				childTable.item = items[i].item;
+					// 				childTable.required_qty = items[i].required_qty;
+					// 			}
+					// 		}
+					// 		frm.refresh_field('bom_summary');
+					// 	}
+					// }
 				}
 			});
 		}
