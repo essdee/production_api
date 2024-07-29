@@ -139,6 +139,10 @@ const table_fields = ref([
         name: 'comments',
         label: 'Comments',
     },
+    {
+        name: 'expected_delivery_date',
+        label: 'Expected Delivery Date',
+    }
 ]);
 
 const args = ref({

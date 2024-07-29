@@ -46,7 +46,7 @@ class ItemPrice(Document):
 	def validate_attribute_values(self, qty = 0, attribute = None, attribute_value = None, get_lowest_moq_price=False) :
 		if self.depends_on_attribute and (attribute == None or self.attribute != attribute or attribute_value == None):
 			return None
-		price_values = [[price.moq, price.price, price.attribute_value] for price in self.item_price_values]
+		price_values = [[price.moq, price.price,price.lead_time ,price.attribute_value] for price in self.item_price_values]
 		price = self.get_price_value(price_values, qty, attribute_value, get_lowest_moq_price)
 		return price
 	
@@ -61,17 +61,19 @@ class ItemPrice(Document):
 			]
 		"""
 		# Filter the Attribute Value
-		item_price_values = [item_price for item_price in item_price_values if item_price[2] == attribute_value]
+		item_price_values = [item_price for item_price in item_price_values if item_price[3] == attribute_value]
 		if not len(item_price_values):
 			return None
 		moq = -1
 		rate = -1
+		lead_time = -1
 		for price in item_price_values:
 			if moq < price[0] and (price[0] <= qty or get_lowest_moq_price):
 				moq = price[0]
 				rate = price[1]
+				lead_time = price[2]		
 		if (moq != -1):
-			return rate
+			return lead_time
 		return None
 
 def get_item_variant_price(variant: str):

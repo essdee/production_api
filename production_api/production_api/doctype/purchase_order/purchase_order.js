@@ -161,7 +161,7 @@ frappe.ui.form.on('Purchase Order', {
 							let items = popupDialog.get_items()
 							dialog.hide()
 							frappe.call({
-								method: 'production_api.production_api.doctype.purchase_order.purchase_order.update_table',
+								method: 'production_api.production_api.doctype.purchase_order.purchase_order.update_delivery_date',
 								args: {
 									doc_name: frm.doc.name,
 									data: items,
