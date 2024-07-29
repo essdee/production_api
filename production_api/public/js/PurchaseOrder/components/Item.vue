@@ -9,6 +9,7 @@
             :edit="docstatus == 0"
             :validate-qty="true"
             :enableAdditionalParameter="true"
+            :validate="true"
             @itemadded="updated"
             @itemupdated="updated"
             @itemremoved="updated">
@@ -17,7 +18,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, reactive } from 'vue'
 
 import EventBus from '../../bus';
 import ItemLotFetcher from '../../components/ItemLotFetch.vue'
@@ -25,6 +26,7 @@ import ItemLotFetcher from '../../components/ItemLotFetch.vue'
 const docstatus = ref(0);
 const items = ref([]);
 const supplier = ref(cur_frm.doc.supplier);
+const delivery_date = ref(null)
 
 const otherInputs = ref([
     {
@@ -61,8 +63,17 @@ const otherInputs = ref([
             fieldtype: 'Date',
             fieldname: 'delivery_date',
             label: 'Delivery Date',
-            reqd: 1
         },
+    },
+    {
+        name: 'fetch_delivery_date',
+        parent: 'delivery-date-control',
+        df: {
+            fieldtype: 'Check',
+            fieldname: 'fetch_delivery_date',
+            label: 'Fetch Delivery Date',
+            default: true,
+        }
     },
     {
         name: 'discount_percentage',
@@ -86,6 +97,7 @@ const otherInputs = ref([
         },
     },
 ]);
+
 const table_fields = ref([
     {
         name: 'pending_qty',
@@ -139,8 +151,10 @@ onMounted(() => {
     EventBus.$on("supplier_updated", new_supplier => {
         if (supplier.value !== new_supplier) {
             supplier.value = new_supplier;
+            
         }
     })
+    delivery_date.value = cur_frm.doc.po_date        
 });
 
 function update_status() {

@@ -15,7 +15,7 @@ from production_api.production_api.util import send_notification
 
 class PurchaseOrder(Document):
 	def onload(self):
-		item_details = fetch_item_details(self.get('items'))
+		item_details = fetch_item_details(self.get('items'), self.po_date)
 		self.set('print_item_details', json.dumps(item_details))
 		self.set_onload('item_details', item_details)
 
@@ -54,7 +54,7 @@ class PurchaseOrder(Document):
 
 	def before_validate(self):
 		if(self.get('item_details')):
-			items = save_item_details(self.item_details)
+			items = save_item_details(self.item_details, self.po_date, self.supplier)
 			try:
 				items = validate_price_details(items, self.supplier)
 			except:
@@ -194,7 +194,7 @@ def get_unique_items(items):
 	return unique_items
 
 
-def save_item_details(item_details):
+def save_item_details(item_details, po_date, supplier):
 	"""
 		Save item details to purchase order
 		Item details format:
@@ -220,7 +220,16 @@ def save_item_details(item_details):
 							variant_name = variant1.name
 						item1['item_variant'] = variant_name
 						item1['delivery_location'] = item['delivery_location']
-						item1['delivery_date'] = item['delivery_date']
+						if not item.get('fetch_delivery_date', False):
+							item1['delivery_date'] = item['delivery_date']
+						elif item['fetch_delivery_date'] == 0:
+							if not item['delivery_date']:
+								frappe.throw("Delivery Date is needed for item", variant_name)
+							else:
+								item1['delivery_date'] = item['delivery_date']
+						elif item['fetch_delivery_date'] == 1:
+							del_date = get_delivery_date(item_name,values['qty'],po_date, supplier)
+							item1['delivery_date'] = del_date
 						item1['lot'] = item.get('lot')
 						item1['qty'] = values.get('qty')
 						item1['uom'] = values.get('default_uom')
@@ -243,7 +252,18 @@ def save_item_details(item_details):
 						variant_name = variant1.name
 					item1['item_variant'] = variant_name
 					item1['delivery_location'] = item['delivery_location']
-					item1['delivery_date'] = item['delivery_date']
+
+					if not item.get('fetch_delivery_date', False):
+						item1['delivery_date'] = item['delivery_date']
+					elif item['fetch_delivery_date'] == 0:
+						if not item['delivery_date']:
+							frappe.throw("Delivery Date is needed for item", variant_name)
+						else:
+							item1['delivery_date'] = item['delivery_date']
+					elif item['fetch_delivery_date'] == 1:
+						del_date = get_delivery_date(item_name,item['values']['default'].get('qty'),po_date, supplier)
+						item1['delivery_date'] = del_date
+
 					item1['lot'] = item.get('lot')
 					item1['qty'] = item['values']['default'].get('qty')
 					item1['uom'] = item.get('default_uom')
@@ -258,6 +278,22 @@ def save_item_details(item_details):
 					items.append(item1)
 			row_index += 1
 	return items
+
+def get_delivery_date(item_name, qty, po_date, supplier):
+    response = get_active_price(item_name)
+    
+    lead = 0  # Initialize the lead variable
+    for res in response.item_price_values:
+        d = res
+        if d.moq > qty:
+            break
+        else:
+            lead = d.lead_time
+    
+    # If you need to return a date based on po_date and lead time, you can calculate it here
+    delivery_date = frappe.utils.add_days(po_date, lead)
+    return delivery_date
+
 
 def get_item_attribute_details(variant, item_attributes):
 	attribute_details = {}
@@ -287,7 +323,7 @@ def get_item_group_index(items, item_details):
 	return index
 
 @frappe.whitelist()
-def fetch_item_details(items, include_id:bool=False):
+def fetch_item_details(items, include_id=False, po_date=None):
 	items = [item.as_dict() for item in items]
 	item_details = []
 	items = sorted(items, key = lambda i: i['row_index'])
@@ -315,8 +351,12 @@ def fetch_item_details(items, include_id:bool=False):
 		if item['primary_attribute']:
 			for attr in current_item_attribute_details['primary_attribute_values']:
 				item['values'][attr] = {'qty': 0, 'rate': 0}
+			
 			for variant in variants:
+				if frappe.utils.getdate(variant.delivery_date) > frappe.utils.getdate(item['delivery_date']):
+					item['delivery_date'] = str(variant.delivery_date)	
 				current_variant = frappe.get_doc("Item Variant", variant['item_variant'])
+				
 				for attr in current_variant.attributes:
 					if attr.attribute == item.get('primary_attribute'):
 						item['values'][attr.attribute_value] = {
@@ -500,12 +540,10 @@ def make_purchase_order_mapped_doc(items):
 		items = json.loads(items)
 	new_doc = frappe.new_doc("Purchase Order")
 	new_items = get_new_items(items)
-	print(json.dumps(new_items))
 	new_doc.set_onload('item_details', new_items)
 	return new_doc
 
 def get_new_items(items):
-	print(items)
 	data = []
 	for item in items:
 		current_variant = frappe.get_doc("Item Variant", item['item'])
@@ -588,3 +626,36 @@ def get_item_in_group_index(group, item):
 		item_index = index
 		break
 	return item_index
+
+@frappe.whitelist()
+def update_table(doc_name, data, comment):
+	from itertools import zip_longest
+	doc = frappe.get_doc('Purchase Order', doc_name)
+	data = json.loads(data)
+
+	for item_data, self_item in zip_longest(data, doc.items):
+		if not item_data.get('new_delivery_date', False):
+			continue
+		if item_data['new_delivery_date']:
+			create_purchase_order_log(doc_name,self_item,item_data['new_delivery_date'], comment)
+			self_item.delivery_date = item_data['new_delivery_date']
+	text = f"Delivery dates are changed <br> Reason: {comment}"
+	doc.add_comment('Comment', text=text)
+	doc.save()
+
+def create_purchase_order_log(doc_name,item,new_date, comment):
+	doc = frappe.get_doc('Purchase Order', doc_name)
+	log_doc = frappe.new_doc("Purchase Order Log")
+	log_doc.purchase_order = doc_name
+	log_doc.po_date = doc.po_date
+	log_doc.supplier = doc.supplier
+	log_doc.type = "Delivery Date Changed"
+	log_doc.posting_date = frappe.utils.nowdate()
+	log_doc.posting_time = frappe.utils.now()
+	log_doc.item_variant = item.item_variant
+	log_doc.qty = item.pending_qty
+	log_doc.previous_date = item.delivery_date 
+	log_doc.changed_date = new_date
+	log_doc.reason = comment
+	log_doc.flags.ignore_permissions = 1
+	log_doc.submit()
