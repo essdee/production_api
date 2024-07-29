@@ -228,8 +228,11 @@ def save_item_details(item_details, po_date, supplier):
 							else:
 								item1['delivery_date'] = item['delivery_date']
 						elif item['fetch_delivery_date'] == 1:
-							del_date = get_delivery_date(item_name,values['qty'],po_date, supplier)
-							item1['delivery_date'] = del_date
+							if item1['delivery_date']:
+								item1['delivery_date'] = item['delivery_date']
+							else:	 
+								del_date = get_delivery_date(item_name,values['qty'],po_date, supplier)
+								item1['delivery_date'] = del_date
 						item1['lot'] = item.get('lot')
 						item1['qty'] = values.get('qty')
 						item1['uom'] = values.get('default_uom')
@@ -261,8 +264,11 @@ def save_item_details(item_details, po_date, supplier):
 						else:
 							item1['delivery_date'] = item['delivery_date']
 					elif item['fetch_delivery_date'] == 1:
-						del_date = get_delivery_date(item_name,item['values']['default'].get('qty'),po_date, supplier)
-						item1['delivery_date'] = del_date
+						if not item.get('delivery_date', False):
+							del_date = get_delivery_date(item_name,item['values']['default'].get('qty'),po_date, supplier)
+							item1['delivery_date'] = del_date
+						else:
+							item1['delivery_date'] = item['delivery_date']
 
 					item1['lot'] = item.get('lot')
 					item1['qty'] = item['values']['default'].get('qty')
