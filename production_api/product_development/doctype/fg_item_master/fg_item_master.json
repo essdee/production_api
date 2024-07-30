@@ -23,6 +23,7 @@
   "size_range",
   "hsn",
   "box_per_carton",
+  "is_temp_item",
   "section_break_muule",
   "sizes",
   "item",
@@ -74,8 +75,9 @@
   },
   {
    "fetch_from": "category.hsn",
+   "fetch_if_empty": 1,
    "fieldname": "hsn",
-   "fieldtype": "Int",
+   "fieldtype": "Data",
    "label": "HSN"
   },
   {
@@ -140,10 +142,16 @@
    "fieldtype": "Link",
    "label": "Brand1",
    "options": "Brand"
+  },
+  {
+   "default": "0",
+   "fieldname": "is_temp_item",
+   "fieldtype": "Check",
+   "label": "Is Temp Item"
   }
  ],
  "links": [],
- "modified": "2024-01-05 18:49:26.592026",
+ "modified": "2024-07-30 20:15:46.171995",
  "modified_by": "Administrator",
  "module": "Product Development",
  "name": "FG Item Master",
