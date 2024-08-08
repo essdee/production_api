@@ -10,7 +10,20 @@ frappe.ui.form.on("Production Order", {
             frm.item.load_data(frm.doc.__onload.item_details);
         }
         else{
-            frm.item.load_data([])
+			if (frm.doc.item){
+				frappe.call({
+					method : 'production_api.production_api.doctype.production_order.production_order.get_item_details',
+					args : {
+						item_name : frm.doc.item,
+					},
+					callback:function(r){
+						frm.item.load_data(r.message) 
+					}
+				})
+			}
+			else{
+				frm.item.load_data([])
+			}
         }
     },
     validate(frm){
@@ -33,40 +46,57 @@ frappe.ui.form.on("Production Order", {
             frm.item.load_data([])
         }
     },
-    calculate_bom: function(frm) {
+    calculate_bom:async function(frm) {
+		if(frm.is_dirty()){
+			frappe.msgprint("Save the document before calculate the BOM")
+			return
+		}
 		if (frm.doc.item && frm.doc.production_detail) {
-			frappe.call({
-				method: "production_api.production_api.doctype.item_production_detail.item_production_detail.get_calculated_bom",
-				args: {
-					item_production_detail: frm.doc.production_detail,
-					planned_qty: frm.doc.items,
-				},
-				callback: function(r) {
-					console.log(r.message);
-					// if (r.message) {
-					// 	if (r.message['items']) {
-					// 		let items = r.message.items || [];
-					// 		for (let i = 0; i < items.length; i++) {
-					// 			let bom = frm.doc.bom_summary;
-					// 			let found = false;
-					// 			for (let j = 0; j < bom.length; j++) {
-					// 				if (bom[j].item == items[i].item) {
-					// 					bom[j].required_qty = items[i].required_qty;
-					// 					found = true;
-					// 					break;
-					// 				}
-					// 			}
-					// 			if (!found) {
-					// 				var childTable = frm.add_child("bom_summary");
-					// 				childTable.item = items[i].item;
-					// 				childTable.required_qty = items[i].required_qty;
-					// 			}
-					// 		}
-					// 		frm.refresh_field('bom_summary');
-					// 	}
-					// }
-				}
-			});
+			let bom = [];
+			// frm.set_value('bom_summary',[])
+			// frm.refresh_field("bom_summary")
+			let count = 0
+			for (let i = 0; i < frm.doc.items.length; i++) {
+				count++;
+				await frappe.call({
+					method: "production_api.production_api.doctype.item_production_detail.item_production_detail.get_calculated_bom",
+					args: {
+						item_production_detail: frm.doc.production_detail,
+						item: frm.doc.items[i],
+					},
+					callback:function(r) {
+						let res = r.message;
+						Object.keys(res).forEach(row => {
+							let found = false;
+							let temp = {}
+							for (let j = 0; j < bom.length; j++) {
+								if (bom[j]['item'] == row){
+									bom[j]['required_qty'] += res[row];
+									found = true;
+									break;
+								}
+							}
+							if (!found) {
+								temp["item"] = row;
+								temp['required_qty'] = res[row];
+								bom.push(temp);
+							}
+						});
+					}
+				});
+			}
+			if(count == frm.doc.items.length){
+				frappe.call({
+					method: 'production_api.production_api.doctype.production_order.production_order.update_bom_summary',
+					args: {
+						doc_name: frm.doc.name,
+						bom : bom
+					},
+					callback: function(r){
+						frm.refresh()
+					}
+				})
+			}
 		}
 	}
 });

@@ -147,46 +147,87 @@ def get_attribute_values(item_production_detail, attributes = None):
 
 
 @frappe.whitelist()
-def get_calculated_bom(item_production_detail, planned_qty):
-
-	if isinstance(planned_qty, string_types):
-		planned_qty = json.loads(planned_qty)
+def get_calculated_bom(item_production_detail, item):
+	import math
+	if isinstance(item, string_types):
+		item = json.loads(item)
 	item_detail = frappe.get_doc("Item Production Detail", item_production_detail)
 	bom = {}
-	for p in planned_qty:
-		variant = p['item_variant']
-		for item in item_detail.item_bom:
-			if item.based_on_attribute_mapping:
-				doc = frappe.get_doc("Item Variant",variant)
-				variant_attr = [attr.attribute for attr in doc.attributes]
-			# 	variant_attr_values = [attr.attribute_value for attr in doc.attributes]
-			# 	item_name = doc.item
-			# 	mapping_doc = frappe.get_doc("Item BOM Attribute Mapping", item.attribute_mapping)
-			# 	from itertools import groupby
-			# 	attributes = {}
-			# 	for key, groups in groupby(mapping_doc.values, lambda i: i.index):
-			# 		print(key)
-			# 		for grp in groups:
-			# 			if grp.type == 'item' and grp.attribute not in variant_attr or grp.attribute_value not in variant_attr_values:
-			# 				break
-			# 			else:
-			# 				if grp.type == 'bom':
-			# 					attributes[grp.attribute] = grp.attribute_value
-			# 					break
-			# 		if attributes:
-			# 			break
-			# 	new_v = get_or_create_variant(mapping_doc.bom_item,attributes)
-			# 	qty = p['qty']/item.qty_of_product
-			# 	if not bom.get(new_v, False):
-			# 		bom[new_v] = qty
-			# 	else:
-			# 		bom[new_v] += qty
-			# else:
-			# 	qty = p['qty']/item.qty_of_product
-			# 	if not bom.get(item.item, False):
-			# 		bom[item.item] = qty
-			# 	else:
-			# 		bom[item.item] += qty
+	qty = item['qty']
+	variant = item['item_variant']
+	attr_values = {}
+	variant_doc = frappe.get_doc("Item Variant", variant)
+	item_name = variant_doc.item
+	doc = frappe.get_doc("Item", item_name)
+	uom = doc.default_unit_of_measure
+	uom_conv = 0.0
+	for uom_conversion in doc.uom_conversion_details:
+		if uom_conversion.uom == uom:
+			uom_conv = uom_conversion.conversion_factor
+			break
+	if uom_conv:
+		qty = qty * uom_conv	
+	
+	for x in variant_doc.attributes:
+		attr_values[x.attribute] = x.attribute_value
+	
+	for bom_item in item_detail.item_bom:
+		if not bom_item.based_on_attribute_mapping: 
+			quantity = qty / bom_item.qty_of_product
+			print(quantity)
+			if not bom.get(bom_item.item, False):
+				bom[bom_item.item] = math.ceil(quantity)
+			else:
+				bom[bom_item.item] += math.ceil(quantity)
+		else:
+			pack_attr = item_detail.packing_attribute
+			# pack_combo = item_detail.packing_combo
+			pack_attr_no =	item_detail.packing_attribute_no	
+			if pack_attr in attr_values:
+				mapping_attr = bom_item.attribute_mapping
+				mapping_doc = frappe.get_doc("Item BOM Attribute Mapping", mapping_attr)
+				quantity = qty/bom_item.qty_of_product
+				for value in mapping_doc.values:
+					if value.attribute == pack_attr and value.attribute_value == attr_values[pack_attr] and value.type == "item":
+						attributes = get_same_index_values(value.index, "bom", mapping_doc.values, attr_values, mapping_doc.bom_item_attributes)
+						new_variant = get_or_create_variant(bom_item.item, attributes)
+						if not bom.get(new_variant, False):
+							bom[new_variant] = math.ceil(quantity)
+						else:
+							bom[new_variant] += math.ceil(quantity)
+						break
+			else:
+				temp_qty = qty/	pack_attr_no
+				item_map_doc = None
+				mapping_attr = bom_item.attribute_mapping
+				mapping_doc = frappe.get_doc("Item BOM Attribute Mapping", mapping_attr)
+				for attr in item_detail.item_attributes:
+					if attr.attribute == pack_attr:
+						item_map_doc = attr.mapping
+						break 
+				item_map = frappe.get_doc("Item Item Attribute Mapping", item_map_doc)
+				for attr in item_map.values:
+					for value in mapping_doc.values:
+						if value.attribute == pack_attr and value.attribute_value == attr.attribute_value and value.type == "item":
+							attributes = get_same_index_values(value.index, "bom", mapping_doc.values, attr_values, mapping_doc.bom_item_attributes)
+							new_variant = get_or_create_variant(bom_item.item, attributes)
+							if not bom.get(new_variant, False):
+								bom[new_variant] = math.ceil(temp_qty)
+							else:
+								bom[new_variant] += math.ceil(temp_qty)
+							break
+	return bom
+	
+def get_same_index_values(index, type, values, attr_values, bom_item_attributes):
+	bom_attr = {}
+	for value in values:
+		if value.index == index and value.type == type:
+			bom_attr[value.attribute] = value.attribute_value
+		elif value.index > index:
+			break
+	for attr in bom_item_attributes:
+		if attr.attribute not in bom_attr and attr.same_attribute:
+			bom_attr[attr.attribute] = attr_values[attr.attribute]
 
-	print(bom)				
+	return bom_attr		
 	
