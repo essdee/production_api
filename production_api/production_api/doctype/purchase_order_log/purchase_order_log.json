@@ -1,6 +1,5 @@
 {
  "actions": [],
- "autoname": "naming_series: POL-.YYYY.-.#####",
  "creation": "2024-07-25 11:49:06.303982",
  "doctype": "DocType",
  "engine": "InnoDB",
@@ -11,11 +10,11 @@
   "type",
   "posting_date",
   "posting_time",
-  "naming_series",
   "column_break_ykoj",
   "item_variant",
   "qty",
   "previous_date",
+  "expected_date",
   "changed_date",
   "reason"
  ],
@@ -53,13 +52,6 @@
    "label": "Posting Time"
   },
   {
-   "default": "POL-.YYYY.-.#####",
-   "fieldname": "naming_series",
-   "fieldtype": "Data",
-   "hidden": 1,
-   "label": "Naming Series"
-  },
-  {
    "fieldname": "column_break_ykoj",
    "fieldtype": "Column Break"
   },
@@ -88,16 +80,21 @@
    "fieldname": "reason",
    "fieldtype": "Small Text",
    "label": "Reason"
+  },
+  {
+   "fieldname": "expected_date",
+   "fieldtype": "Date",
+   "label": "Expected Date"
   }
  ],
  "in_create": 1,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2024-07-29 10:22:29.274580",
+ "modified": "2024-08-08 18:06:44.775054",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Purchase Order Log",
- "naming_rule": "By \"Naming Series\" field",
+ "naming_rule": "Expression (old style)",
  "owner": "Administrator",
  "permissions": [
   {

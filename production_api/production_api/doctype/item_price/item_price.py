@@ -43,14 +43,14 @@ class ItemPrice(Document):
 		
 		self.set('approved_by', frappe.get_user().doc.name)
 
-	def validate_attribute_values(self, qty = 0, attribute = None, attribute_value = None, get_lowest_moq_price=False) :
+	def validate_attribute_values(self, qty = 0, attribute = None, attribute_value = None, get_lowest_moq_price=False,get_value = None) :
 		if self.depends_on_attribute and (attribute == None or self.attribute != attribute or attribute_value == None):
 			return None
 		price_values = [[price.moq, price.price,price.lead_time ,price.attribute_value] for price in self.item_price_values]
-		price = self.get_price_value(price_values, qty, attribute_value, get_lowest_moq_price)
+		price = self.get_price_value(price_values, qty, attribute_value, get_lowest_moq_price, value = get_value)
 		return price
 	
-	def get_price_value(self, item_price_values, qty = 0, attribute_value = None, get_lowest_moq_price=False):
+	def get_price_value(self, item_price_values, qty = 0, attribute_value = None, get_lowest_moq_price=False, value = None):
 		"""
 		Get Item Price Value for the qty and the attribute value from item_price_values
 		:param item_price_values: as List of List
@@ -73,7 +73,9 @@ class ItemPrice(Document):
 				rate = price[1]
 				lead_time = price[2]		
 		if (moq != -1):
-			return lead_time
+			if value:
+				return lead_time
+			return rate
 		return None
 
 def get_item_variant_price(variant: str):
@@ -99,32 +101,30 @@ def get_item_variant_price(variant: str):
 
 @frappe.whitelist()
 def get_active_price(item: str, supplier: str = None, raise_error=True):
-	if (item == None):
+	if not item:
 		return None
 	filters = {
 		"item_name": item,
 		"from_date": ['<=', utils.nowdate()],
-		"to_date": ['is', 'not set'],
 		"docstatus": 1
 	}
-	if (supplier != None):
+	if supplier:
 		filters['supplier'] = supplier
-	lst1 = frappe.db.get_list(
-		'Item Price',
-		filters=filters,
-	)
-	filters['to_date'] = ['>=', utils.nowdate()]
-	lst2 = frappe.db.get_list(
-		'Item Price',
-		filters=filters,
-	)
-	lst = lst1 + lst2
+
+	lst = frappe.db.get_list('Item Price', filters={**filters, "to_date": ['is', 'not set']}) + \
+	      frappe.db.get_list('Item Price', filters={**filters, "to_date": ['>=', utils.nowdate()]})
+
+	if len(lst)==0 and supplier:
+		del filters['supplier']
+		lst = frappe.db.get_list('Item Price', filters={**filters, "to_date": ['is', 'not set']}) + \
+		      frappe.db.get_list('Item Price', filters={**filters, "to_date": ['>=', utils.nowdate()]})
+
 	if len(lst) == 0:
 		frappe.throw("No Active Price List")
-	
+
 	if supplier != None and len(lst) > 1:
 		frappe.throw("Multiple Price list Found")
-	
+
 	d = frappe.get_doc('Item Price', lst[0].name)
 	return d
 

@@ -1,6 +1,6 @@
 # Copyright (c) 2024, Essdee and contributors
 # For license information, please see license.txt
-import frappe
+import frappe 
 
 def execute(filters=None):
 	columns, data = [], []
@@ -68,6 +68,12 @@ def get_columns():
             "width": 150,
         },
 		{
+		    "fieldname": "expected_date",
+            "label": "Expected Date",
+            "fieldtype": "Date",
+            "width": 150,	
+        },
+		{
             "fieldname": "changed_date",
             "label": "Changed Date",
             "fieldtype": "Date",
@@ -93,6 +99,7 @@ def get_data(filters):
 		pol.posting_time.as_('posting_time'),
 		pol.qty.as_('qty'),
 		pol.previous_date.as_('previous_date'),
+		pol.expected_date.as_('expected_date'),
 		pol.changed_date.as_('changed_date'),
 		pol.reason.as_('reason'),
 	)

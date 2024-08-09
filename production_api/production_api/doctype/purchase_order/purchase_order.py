@@ -16,7 +16,7 @@ from production_api.production_api.util import send_notification
 
 class PurchaseOrder(Document):
 	def onload(self):
-		item_details = fetch_item_details(self.get('items'), self.po_date)
+		item_details = fetch_item_details(self.get('items'))
 		# self.set('print_item_details', json.dumps(item_details))
 		self.set_onload('item_details', item_details)
 
@@ -211,7 +211,6 @@ def save_item_details(item_details, po_date, supplier):
 	for table_index, group in enumerate(item_details):
 		for item in group['items']:
 			item_name = item['name']
-			del_date = get_delivery_date(item['name'],item['values'], po_date)
 			item_attributes = item['attributes']
 			if(item.get('primary_attribute')):
 				for attr, values in item['values'].items():
@@ -234,6 +233,7 @@ def save_item_details(item_details, po_date, supplier):
 								item1['delivery_date'] = item['delivery_date']
 						elif item['fetch_delivery_date'] == 1:
 							if not item.get('delivery_date', False):
+								del_date = get_delivery_date(item['name'],item['values'], po_date, supplier)
 								item1['delivery_date'] = del_date
 							else:
 								item1['delivery_date'] = item['delivery_date']
@@ -270,6 +270,7 @@ def save_item_details(item_details, po_date, supplier):
 							item1['delivery_date'] = item['delivery_date']
 					elif item['fetch_delivery_date'] == 1:
 						if not item.get('delivery_date', False):
+							del_date = get_delivery_date(item['name'],item['values'], po_date, supplier)
 							item1['delivery_date'] = del_date
 						else:
 							item1['delivery_date'] = item['delivery_date']
@@ -289,10 +290,10 @@ def save_item_details(item_details, po_date, supplier):
 			row_index += 1
 	return items
 
-def get_delivery_date(item_name,item_values, po_date):
-	response = get_active_price(item_name)
+def get_delivery_date(item_name,item_values, po_date, supplier):
+	response = get_active_price(item_name, supplier)
 	total = calculate_total(item_values)
-	x = response.validate_attribute_values(qty = total, attribute = None, attribute_value = None, get_lowest_moq_price=False) 
+	x = response.validate_attribute_values(qty = total, attribute = None, attribute_value = None, get_lowest_moq_price=False, get_value = 'lead') 
 	return frappe.utils.add_days(po_date, x)
 
 def calculate_total(item_values):
@@ -329,7 +330,7 @@ def get_item_group_index(items, item_details):
 	return index
 
 @frappe.whitelist()
-def fetch_item_details(items, include_id=False, po_date=None):
+def fetch_item_details(items, include_id=False):
 	items = [item.as_dict() for item in items]
 	item_details = []
 	items = sorted(items, key = lambda i: i['row_index'])
@@ -663,6 +664,7 @@ def create_purchase_order_log(doc_name,item,new_date, comment):
 	log_doc.item_variant = item.item_variant
 	log_doc.qty = item.pending_qty
 	log_doc.previous_date = item.delivery_date 
+	log_doc.expected_date = item.expected_delivery_date
 	log_doc.changed_date = new_date
 	log_doc.reason = comment
 	log_doc.flags.ignore_permissions = 1

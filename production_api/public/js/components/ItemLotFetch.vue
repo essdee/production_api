@@ -721,15 +721,14 @@
                     return data.query(item.value, other_input_controls)
                 }
             }
-            
             other_input_controls[data.name] = frappe.ui.form.make_control({
                 parent: $($el).find(parent_class),
                 df: data.df,
                 doc: sample_doc.value,
                 render_input: true,
             });
-            if(data.name == 'fetch_delivery_date'){
-                other_input_controls[data.name].set_value(1)
+            if(data.df.default){
+                other_input_controls[data.name].set_value(data.df.default)
             }
             if (data.df.fieldtype == 'Date' && item.value[data.name] == "None") {
                 item.value[data.name] = null;
@@ -816,33 +815,6 @@
         for (let i = 0; i < props.otherInputs.length; i++) {
             let data = props.otherInputs[i];
             let label = data.df.label;
-            if(data.df.label == 'Delivery Date' && props.validate){
-                let x = props.otherInputs[ i + 1 ]
-                let value = other_input_controls[x.name].get_value();
-                if(value == 1){
-                    validate_item_values()
-                    frappe.call({
-                        method: 'production_api.production_api.doctype.item_price.item_price.get_active_price',
-                        args: {
-                            'item': item_input.value,
-                        },
-                        callback: function(r){
-                            console.log(r.message)
-                            if(!r.message){
-                                frappe.throw("There is no lead time for this item")
-                            }
-                        }
-                    })
-                }
-                else{
-                    let y = other_input_controls[data.name].get_value();
-                    if(!y){
-                        other_input_controls[data.name].$input.select();
-                        frappe.msgprint(__(label + ' does not have a value'));
-                        return false;    
-                    } 
-                }
-            }
             let value = other_input_controls[data.name].get_value();
             if (data.df.reqd && !value) {
                 other_input_controls[data.name].$input.select();
@@ -889,7 +861,11 @@
     function clear_other_inputs() {
         if (!other_input_controls) return;
         for (let key in other_input_controls) {
-            other_input_controls[key].set_value('');
+            let value = ''
+            if(other_input_controls[key].df.default){
+                value = other_input_controls[key].df.default    
+            }
+            other_input_controls[key].set_value(value);
         }
     }
 
@@ -972,7 +948,10 @@
         if(!get_item_attributes()) return;
         if(props.enableAdditionalParameter && !get_additional_parameters()) return;
         if(!get_other_details()) return;
+        
+
         if(props.validateQty && !validate_item_values()) return;
+        if(props.validate && !props.validate()) return;
         if(item.value.name != item_input.get_value()){
             frappe.msgprint(__('Item does not match'));
             clear_inputs(true);
@@ -1063,4 +1042,7 @@
         lot_input.refresh();
     }
 
+defineExpose({
+    item,
+});
 </script> 

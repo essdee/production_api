@@ -1,6 +1,6 @@
 <template>
     <div class="item frappe-control">
-        <item-lot-fetcher 
+        <item-lot-fetcher ref='item_lot_ref'
             :items="items"
             :other-inputs="otherInputs"
             :table-fields="table_fields"
@@ -9,7 +9,7 @@
             :edit="docstatus == 0"
             :validate-qty="true"
             :enableAdditionalParameter="true"
-            :validate="true"
+            :validate="validate"
             @itemadded="updated"
             @itemupdated="updated"
             @itemremoved="updated">
@@ -22,6 +22,8 @@ import { ref, onMounted, reactive } from 'vue'
 
 import EventBus from '../../bus';
 import ItemLotFetcher from '../../components/ItemLotFetch.vue'
+
+const item_lot_ref = ref()
 
 const docstatus = ref(0);
 const items = ref([]);
@@ -160,6 +162,29 @@ onMounted(() => {
     })
     delivery_date.value = cur_frm.doc.po_date        
 });
+
+function validate(){
+    let item = item_lot_ref.value.item
+    if (item.fetch_delivery_date == 1){
+        frappe.call({
+            method: 'production_api.production_api.doctype.item_price.item_price.get_active_price',
+            args: {
+                'item': item.name,
+                'supplier':cur_frm.doc.supplier.value
+            },
+            callback: function(r){
+                if(!r.message){
+                    frappe.throw("There is no lead time for this item")
+                }
+            }
+        })
+    }
+    else if(item.fetch_delivery_date == 0 && !item.delivery_date){
+        frappe.msgprint(__("Delivery Date does not have a value"));
+        return false;    
+    }
+    return true
+}
 
 function update_status() {
     docstatus.value = cur_frm.doc.docstatus;
