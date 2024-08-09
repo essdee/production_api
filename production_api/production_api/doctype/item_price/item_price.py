@@ -100,7 +100,7 @@ def get_item_variant_price(variant: str):
 	return rate
 
 @frappe.whitelist()
-def get_active_price(item: str, supplier: str = None, raise_error=True):
+def get_active_price(item: str, supplier: str = None, raise_error: bool=True):
 	if not item:
 		return None
 	filters = {
@@ -120,10 +120,16 @@ def get_active_price(item: str, supplier: str = None, raise_error=True):
 		      frappe.db.get_list('Item Price', filters={**filters, "to_date": ['>=', utils.nowdate()]})
 
 	if len(lst) == 0:
-		frappe.throw("No Active Price List")
+		if raise_error:
+			frappe.throw("No Active Price List")
+		else:
+			return None
 
 	if supplier != None and len(lst) > 1:
-		frappe.throw("Multiple Price list Found")
+		if raise_error:
+			frappe.throw("Multiple Price list Found")
+		else:
+			return None
 
 	d = frappe.get_doc('Item Price', lst[0].name)
 	return d

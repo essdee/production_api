@@ -660,20 +660,22 @@ def update_delivery_date(doc_name, data, comment):
 	doc.add_comment('Comment', text=text)
 	doc.save()
 
-def create_purchase_order_log(doc_name,item,new_date, comment):
+def create_purchase_order_log(doc_name, item, new_date, comment):
 	doc = frappe.get_doc('Purchase Order', doc_name)
 	log_doc = frappe.new_doc("Purchase Order Log")
-	log_doc.purchase_order = doc_name
-	log_doc.po_date = doc.po_date
-	log_doc.supplier = doc.supplier
-	log_doc.type = "Delivery Date Changed"
-	log_doc.posting_date = frappe.utils.nowdate()
-	log_doc.posting_time = frappe.utils.now()
-	log_doc.item_variant = item.item_variant
-	log_doc.qty = item.pending_qty
-	log_doc.previous_date = item.delivery_date 
-	log_doc.expected_date = item.expected_delivery_date
-	log_doc.changed_date = new_date
-	log_doc.reason = comment
+	log_doc.update({
+		'purchase_order': doc_name,
+		'po_date': doc.po_date,
+		'supplier': doc.supplier,
+		'type': "Delivery Date Changed",
+		'posting_date': frappe.utils.nowdate(),
+		'posting_time': frappe.utils.now(),
+		'item_variant': item.item_variant,
+		'qty': item.pending_qty,
+		'previous_date': item.delivery_date ,
+		'expected_date': item.expected_delivery_date,
+		'changed_date': new_date,
+		'reason': comment,
+	})
 	log_doc.flags.ignore_permissions = 1
 	log_doc.submit()

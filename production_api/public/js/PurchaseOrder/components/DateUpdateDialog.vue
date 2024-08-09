@@ -1,7 +1,7 @@
 
 <template>
     <div ref="root" class="table-container">
-        <table class="styled-table" v-if="items.length > 0">
+        <table class="table table-sm table-bordered" v-if="items.length > 0">
             <thead>
                 <tr>
                     <th>S.No</th>
@@ -27,7 +27,7 @@
 </template>
 
 <script setup>
-import { reactive, ref, onMounted } from 'vue';
+import { reactive, ref, onMounted, nextTick } from 'vue';
 
 const props = defineProps(['items']);
 const item_data = reactive([...props.items]);
@@ -57,6 +57,10 @@ function createFrappeDateField(index) {
         render_input: true
     });
     date_field.set_value(item_data[index].delivery_date)
+
+    nextTick(() => {
+        $(el).find(".control-label").remove();
+    });
 }
 
 defineExpose({

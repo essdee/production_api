@@ -161,23 +161,31 @@ onMounted(() => {
     delivery_date.value = cur_frm.doc.po_date        
 });
 
-function validate(item){
-    if (item.fetch_delivery_date == 1){
-        frappe.call({
-            method: 'production_api.production_api.doctype.item_price.item_price.get_active_price',
-            args: {
-                'item': item.name,
-                'supplier':cur_frm.doc.supplier.value
-            },
-            callback: function(r){
-                if(!r.message){
-                    frappe.throw("There is no lead time for this item")
-                }
-            }
-        })
-    }
-    else if(item.fetch_delivery_date == 0 && !item.delivery_date){
-        frappe.msgprint(__("Delivery Date does not have a value"));
+async function validate(item){
+    if (item.fetch_delivery_date == 1) {
+        let response = (
+            await frappe.call({
+                method: 'production_api.production_api.doctype.item_price.item_price.get_active_price',
+                args: {
+                    'item': item.name,
+                    'supplier': cur_frm.doc.supplier.value,
+                    'raise_error': false,
+                },
+                freeze: true,
+            })
+        );
+        if (!response.message) {
+            frappe.show_alert({
+                message: "There is no Lead Time for this Item",
+                indicator: 'red',
+            });
+            return false;
+        }
+    } else if (item.fetch_delivery_date == 0 && !item.delivery_date) {
+        frappe.show_alert({
+            message:__("Delivery Date does not have a value"),
+            indicator: 'red',
+        });
         return false;    
     }
     return true
