@@ -727,11 +727,12 @@
                 doc: sample_doc.value,
                 render_input: true,
             });
-            if(data.df.default){
-                other_input_controls[data.name].set_value(data.df.default)
-            }
+           
             if (data.df.fieldtype == 'Date' && item.value[data.name] == "None") {
                 item.value[data.name] = null;
+            }
+            if(data.df.default){
+                other_input_controls[data.name].set_value(data.df.default)
             }
             other_input_controls[data.name].set_value(item.value[data.name])
         }
@@ -951,7 +952,7 @@
         
 
         if(props.validateQty && !validate_item_values()) return;
-        if(props.validate && !props.validate()) return;
+        if(props.validate && !props.validate(item.value)) return;
         if(item.value.name != item_input.get_value()){
             frappe.msgprint(__('Item does not match'));
             clear_inputs(true);
@@ -1042,7 +1043,4 @@
         lot_input.refresh();
     }
 
-defineExpose({
-    item,
-});
 </script> 

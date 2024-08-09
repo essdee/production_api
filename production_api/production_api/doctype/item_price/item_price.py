@@ -43,14 +43,14 @@ class ItemPrice(Document):
 		
 		self.set('approved_by', frappe.get_user().doc.name)
 
-	def validate_attribute_values(self, qty = 0, attribute = None, attribute_value = None, get_lowest_moq_price=False,get_value = None) :
+	def validate_attribute_values(self, qty = 0, attribute = None, attribute_value = None, get_lowest_moq_price=False,get_lead_time = False) :
 		if self.depends_on_attribute and (attribute == None or self.attribute != attribute or attribute_value == None):
 			return None
 		price_values = [[price.moq, price.price,price.lead_time ,price.attribute_value] for price in self.item_price_values]
-		price = self.get_price_value(price_values, qty, attribute_value, get_lowest_moq_price, value = get_value)
+		price = self.get_price_value(price_values, qty, attribute_value, get_lowest_moq_price, get_lead_time = get_lead_time)
 		return price
 	
-	def get_price_value(self, item_price_values, qty = 0, attribute_value = None, get_lowest_moq_price=False, value = None):
+	def get_price_value(self, item_price_values, qty = 0, attribute_value = None, get_lowest_moq_price=False, get_lead_time = False):
 		"""
 		Get Item Price Value for the qty and the attribute value from item_price_values
 		:param item_price_values: as List of List
@@ -73,7 +73,7 @@ class ItemPrice(Document):
 				rate = price[1]
 				lead_time = price[2]		
 		if (moq != -1):
-			if value:
+			if get_lead_time:
 				return lead_time
 			return rate
 		return None

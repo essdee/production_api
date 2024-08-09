@@ -234,6 +234,8 @@ def save_item_details(item_details, po_date, supplier):
 						elif item['fetch_delivery_date'] == 1:
 							if not item.get('delivery_date', False):
 								del_date = get_delivery_date(item['name'],item['values'], po_date, supplier)
+								if not del_date:
+									frappe.throw("There is no delivery date for this item",item_name)
 								item1['delivery_date'] = del_date
 							else:
 								item1['delivery_date'] = item['delivery_date']
@@ -271,6 +273,9 @@ def save_item_details(item_details, po_date, supplier):
 					elif item['fetch_delivery_date'] == 1:
 						if not item.get('delivery_date', False):
 							del_date = get_delivery_date(item['name'],item['values'], po_date, supplier)
+							if not del_date:
+								frappe.throw("There is no delivery date for this item",item_name)
+
 							item1['delivery_date'] = del_date
 						else:
 							item1['delivery_date'] = item['delivery_date']
@@ -291,10 +296,13 @@ def save_item_details(item_details, po_date, supplier):
 	return items
 
 def get_delivery_date(item_name,item_values, po_date, supplier):
-	response = get_active_price(item_name, supplier)
-	total = calculate_total(item_values)
-	x = response.validate_attribute_values(qty = total, attribute = None, attribute_value = None, get_lowest_moq_price=False, get_value = 'lead') 
-	return frappe.utils.add_days(po_date, x)
+	try:
+		response = get_active_price(item_name, supplier)
+		total = calculate_total(item_values)
+		x = response.validate_attribute_values(qty = total, attribute = None, attribute_value = None, get_lowest_moq_price=False,get_lead_time = True) 
+		return frappe.utils.add_days(po_date, x)
+	except:
+		return None
 
 def calculate_total(item_values):
 	qty = 0.0

@@ -90,11 +90,10 @@
  "in_create": 1,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2024-08-08 18:06:44.775054",
+ "modified": "2024-08-09 13:10:14.952371",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Purchase Order Log",
- "naming_rule": "Expression (old style)",
  "owner": "Administrator",
  "permissions": [
   {

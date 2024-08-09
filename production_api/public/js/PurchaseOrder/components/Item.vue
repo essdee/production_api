@@ -1,6 +1,6 @@
 <template>
     <div class="item frappe-control">
-        <item-lot-fetcher ref='item_lot_ref'
+        <item-lot-fetcher 
             :items="items"
             :other-inputs="otherInputs"
             :table-fields="table_fields"
@@ -22,8 +22,6 @@ import { ref, onMounted, reactive } from 'vue'
 
 import EventBus from '../../bus';
 import ItemLotFetcher from '../../components/ItemLotFetch.vue'
-
-const item_lot_ref = ref()
 
 const docstatus = ref(0);
 const items = ref([]);
@@ -163,8 +161,7 @@ onMounted(() => {
     delivery_date.value = cur_frm.doc.po_date        
 });
 
-function validate(){
-    let item = item_lot_ref.value.item
+function validate(item){
     if (item.fetch_delivery_date == 1){
         frappe.call({
             method: 'production_api.production_api.doctype.item_price.item_price.get_active_price',
