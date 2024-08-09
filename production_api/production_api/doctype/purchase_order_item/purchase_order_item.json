@@ -11,6 +11,7 @@
   "rate",
   "delivery_location",
   "delivery_date",
+  "expected_delivery_date",
   "lot",
   "comments",
   "table_index",
@@ -74,6 +75,7 @@
    "options": "Supplier"
   },
   {
+   "allow_on_submit": 1,
    "fieldname": "delivery_date",
    "fieldtype": "Date",
    "label": "Delivery Date"
@@ -130,12 +132,17 @@
    "fieldname": "additional_parameters",
    "fieldtype": "Text",
    "label": "Additional Parameters"
+  },
+  {
+   "fieldname": "expected_delivery_date",
+   "fieldtype": "Date",
+   "label": "Expected Delivery Date"
   }
  ],
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2023-09-11 13:38:23.580625",
+ "modified": "2024-07-29 16:31:42.307909",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Purchase Order Item",

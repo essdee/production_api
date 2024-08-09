@@ -136,7 +136,7 @@
                             <label class="small text-muted">
                                 {{ item.default_uom || '' }}
                             </label>
-                            <input class="form-control" :ref="'qty_control_'+index" type="number" min="0" v-model.number="item.values[attr]['qty']">
+                            <input class="form-control" :id="'qty_control_'+index" :ref="'qty_control_'+index" type="number" min="0" v-model.number="item.values[attr]['qty']">
                         </div>
                         <div v-if="allowSecondaryQty && secondary_quantity">
                             <label class="small text-muted">
@@ -157,7 +157,7 @@
                         <label class="small">
                             {{ item.default_uom || 'Qty' }}
                         </label>
-                        <input class="form-control" ref="qty_control" type="number" min="0.000" step="0.001" v-model.number="item.values['default']['qty']" required>
+                        <input class="form-control" id="qty_control" ref="qty_control" type="number" min="0.000" step="0.001" v-model.number="item.values['default']['qty']" required>
                     </div>
                     <div class="col col-md-6" v-if="allowSecondaryQty && secondary_quantity">
                         <label class="small text-muted">
@@ -192,11 +192,11 @@
 </template>
 
 <script setup>
-    import { ref, onMounted, computed } from 'vue'
+    import { ref, onMounted, computed, nextTick } from 'vue'
 
     const root = ref(null);
 
-    const props = defineProps(['items', 'edit', 'otherInputs', 'tableFields', 'allowSecondaryQty', 'qtyFields', 'args', 'validateQty', 'enableAdditionalParameter']);
+    const props = defineProps(['items', 'edit', 'otherInputs', 'tableFields', 'allowSecondaryQty', 'qtyFields', 'args', 'validateQty', 'enableAdditionalParameter','validate']);
     const emit = defineEmits(['itemupdated', 'itemadded', 'itemremoved'])
     const item = ref({
         name: "",
@@ -376,6 +376,7 @@
             doc: sample_doc.value,
             render_input: true,
         });
+        
         console.log("Lot Input", lot_input)
         $(el).find('.item-control').html("");
         item_input = frappe.ui.form.make_control({
@@ -553,7 +554,6 @@
                         no_spinner: true,
                         args: args,
                         callback: function (r) {
-                            console.log(r)
                             if (r.message && r.message.length > 0) {
                                 // results has json of value and description
                                 // check if value is in results
@@ -727,9 +727,12 @@
                 doc: sample_doc.value,
                 render_input: true,
             });
-
+           
             if (data.df.fieldtype == 'Date' && item.value[data.name] == "None") {
                 item.value[data.name] = null;
+            }
+            if(data.df.default){
+                other_input_controls[data.name].set_value(data.df.default)
             }
             other_input_controls[data.name].set_value(item.value[data.name])
         }
@@ -747,7 +750,10 @@
             attributes.push(attribute);
             if (!value) {
                 dependent_attribute_input.$input.select();
-                frappe.msgprint(__('Attribute ' + attribute + ' does not have a value'));
+                frappe.show_alert({
+                    message: __('Attribute ' + attribute + ' does not have a value'),
+                    indicator: 'red',
+                });
                 return false;
             }
             attribute_values[attribute] = value
@@ -760,7 +766,10 @@
             let value = attribute_inputs[i].get_value();
             if (!value) {
                 attribute_inputs[i].$input.select();
-                frappe.msgprint(__('Attribute ' + attribute + ' does not have a value'));
+                frappe.show_alert({
+                    message: __('Attribute ' + attribute + ' does not have a value'),
+                    indicator: 'red',
+                });
                 return false;
             }
             attribute_values[attribute] = value;
@@ -776,7 +785,10 @@
             attr_list.push(dependent_attribute);
         }
         if (!arrays_equal(attributes, attr_list)) {
-            frappe.msgprint(__('Attributes might have changed. Please try again'));
+            frappe.show_alert({
+                message: __('Attributes might have changed. Please try again'),
+                indicator: 'red',
+            });
             return false;
         } else {
             item.value.attributes = {
@@ -796,7 +808,10 @@
             let value = additional_parameter_inputs[i].get_value();
             if (!value) {
                 additional_parameter_inputs[i].$input.select();
-                frappe.msgprint(__('Additional Parameter ' + attribute + ' does not have a value'));
+                frappe.show_alert({
+                    message: __('Additional Parameter ' + attribute + ' does not have a value'),
+                    indicator: 'red',
+                });
                 return false;
             }
             attribute_values.push({
@@ -810,21 +825,22 @@
     
     function get_other_details() {
         if(!other_input_controls) return false;
-
         for (let i = 0; i < props.otherInputs.length; i++) {
             let data = props.otherInputs[i];
             let label = data.df.label;
             let value = other_input_controls[data.name].get_value();
             if (data.df.reqd && !value) {
                 other_input_controls[data.name].$input.select();
-                frappe.msgprint(__(label + ' does not have a value'));
+                frappe.show_alert({
+                    message: __(label + ' does not have a value'),
+                    indicator: 'red',
+                });
                 return false;
             }
             item.value[data.name] = value;
         }
         return true;
     }
-    
     function get_item_group_index() {
         let index = -1;
         for(let i = 0; i < props.items.length; i++){
@@ -861,7 +877,11 @@
     function clear_other_inputs() {
         if (!other_input_controls) return;
         for (let key in other_input_controls) {
-            other_input_controls[key].set_value('');
+            let value = ''
+            if(other_input_controls[key].df.default){
+                value = other_input_controls[key].df.default    
+            }
+            other_input_controls[key].set_value(value);
         }
     }
 
@@ -911,8 +931,8 @@
     function validate_item_values() {
         if(!cur_item.value.primary_attribute){
             if(item.value.values['default'].qty == 0){
-                $nextTick(() => {
-                    $refs.qty_control.focus();
+                nextTick(() => {
+                    document.getElementById("qty_control").focus();
                 });
                 frappe.show_alert({
                     message: __('Quantity cannot be 0'),
@@ -927,8 +947,8 @@
                 total_qty += item.value.values[cur_item.value.primary_attribute_values[i]].qty;
             }
             if(total_qty == 0){
-                $nextTick(() => {
-                    $refs.qty_control_0[0].focus();
+                nextTick(() => {
+                    document.getElementById("qty_control_0").focus();
                 });
                 frappe.show_alert({
                     message: __('Quantity cannot be 0'),
@@ -940,13 +960,22 @@
         return true;
     }
 
-    function add_item() {
+    async function add_item() {
         if(!get_item_attributes()) return;
         if(props.enableAdditionalParameter && !get_additional_parameters()) return;
         if(!get_other_details()) return;
+        
+
         if(props.validateQty && !validate_item_values()) return;
+        if(props.validate) {
+            let v = await props.validate(item.value);
+            if (!v) return;
+        }
         if(item.value.name != item_input.get_value()){
-            frappe.msgprint(__('Item does not match'));
+            frappe.show_alert({
+                message: __('Item does not match'),
+                indicator: 'red',
+            });
             clear_inputs(true);
             return;
         }

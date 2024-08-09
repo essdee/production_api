@@ -12,11 +12,12 @@ from frappe.model.document import Document
 from production_api.production_api.doctype.item.item import get_variant, create_variant, get_attribute_details
 from production_api.production_api.doctype.item_price.item_price import get_active_price
 from production_api.production_api.util import send_notification
+# from production_api.production_api.doctype.item_price.item_price import
 
 class PurchaseOrder(Document):
 	def onload(self):
 		item_details = fetch_item_details(self.get('items'))
-		self.set('print_item_details', json.dumps(item_details))
+		# self.set('print_item_details', json.dumps(item_details))
 		self.set_onload('item_details', item_details)
 
 	def before_submit(self):
@@ -30,6 +31,7 @@ class PurchaseOrder(Document):
 		for item in self.items:
 			item.set('pending_qty', item.qty)
 			item.set('cancelled_qty', 0)
+			item.set('expected_delivery_date', item.delivery_date)
 		self.calculate_amount()
 		self.set_status()
 		self.set('approved_by', frappe.get_user().doc.name)
@@ -38,6 +40,8 @@ class PurchaseOrder(Document):
 		for item in self.items:
 			item.set('pending_qty', item.qty)
 			item.set('cancelled_qty', 0)
+			item.set('expected_delivery_date', item.delivery_date)
+
 		self.set_status()
 
 	def before_update_after_submit(self):
@@ -54,7 +58,7 @@ class PurchaseOrder(Document):
 
 	def before_validate(self):
 		if(self.get('item_details')):
-			items = save_item_details(self.item_details)
+			items = save_item_details(self.item_details, self.po_date, self.supplier)
 			try:
 				items = validate_price_details(items, self.supplier)
 			except:
@@ -194,7 +198,7 @@ def get_unique_items(items):
 	return unique_items
 
 
-def save_item_details(item_details):
+def save_item_details(item_details, po_date, supplier):
 	"""
 		Save item details to purchase order
 		Item details format:
@@ -220,7 +224,22 @@ def save_item_details(item_details):
 							variant_name = variant1.name
 						item1['item_variant'] = variant_name
 						item1['delivery_location'] = item['delivery_location']
-						item1['delivery_date'] = item['delivery_date']
+						if not item.get('fetch_delivery_date', False):
+							item1['delivery_date'] = item['delivery_date']
+						elif item['fetch_delivery_date'] == 0:
+							if not item['delivery_date']:
+								frappe.throw("Delivery Date is needed for item", variant_name)
+							else:
+								item1['delivery_date'] = item['delivery_date']
+						elif item['fetch_delivery_date'] == 1:
+							if not item.get('delivery_date', False):
+								del_date = get_delivery_date(item['name'],item['values'], po_date, supplier)
+								if not del_date:
+									frappe.throw("There is no delivery date for this item",item_name)
+								item1['delivery_date'] = del_date
+							else:
+								item1['delivery_date'] = item['delivery_date']
+								
 						item1['lot'] = item.get('lot')
 						item1['qty'] = values.get('qty')
 						item1['uom'] = values.get('default_uom')
@@ -243,7 +262,24 @@ def save_item_details(item_details):
 						variant_name = variant1.name
 					item1['item_variant'] = variant_name
 					item1['delivery_location'] = item['delivery_location']
-					item1['delivery_date'] = item['delivery_date']
+
+					if not item.get('fetch_delivery_date', False):
+						item1['delivery_date'] = item['delivery_date']
+					elif item['fetch_delivery_date'] == 0:
+						if not item['delivery_date']:
+							frappe.throw("Delivery Date is needed for item", variant_name)
+						else:
+							item1['delivery_date'] = item['delivery_date']
+					elif item['fetch_delivery_date'] == 1:
+						if not item.get('delivery_date', False):
+							del_date = get_delivery_date(item['name'],item['values'], po_date, supplier)
+							if not del_date:
+								frappe.throw("There is no delivery date for this item",item_name)
+
+							item1['delivery_date'] = del_date
+						else:
+							item1['delivery_date'] = item['delivery_date']
+
 					item1['lot'] = item.get('lot')
 					item1['qty'] = item['values']['default'].get('qty')
 					item1['uom'] = item.get('default_uom')
@@ -258,6 +294,21 @@ def save_item_details(item_details):
 					items.append(item1)
 			row_index += 1
 	return items
+
+def get_delivery_date(item_name,item_values, po_date, supplier):
+	try:
+		response = get_active_price(item_name, supplier)
+		total = calculate_total(item_values)
+		x = response.validate_attribute_values(qty = total, attribute = None, attribute_value = None, get_lowest_moq_price=False,get_lead_time = True) 
+		return frappe.utils.add_days(po_date, x)
+	except:
+		return None
+
+def calculate_total(item_values):
+	qty = 0.0
+	for x in item_values:
+		qty += item_values[x]['qty']
+	return qty
 
 def get_item_attribute_details(variant, item_attributes):
 	attribute_details = {}
@@ -287,7 +338,7 @@ def get_item_group_index(items, item_details):
 	return index
 
 @frappe.whitelist()
-def fetch_item_details(items, include_id:bool=False):
+def fetch_item_details(items, include_id=False):
 	items = [item.as_dict() for item in items]
 	item_details = []
 	items = sorted(items, key = lambda i: i['row_index'])
@@ -299,6 +350,7 @@ def fetch_item_details(items, include_id:bool=False):
 			'name': current_variant.item,
 			'lot': variants[0]['lot'],
 			'delivery_location': variants[0]['delivery_location'],
+			'expected_delivery_date': variants[0]['expected_delivery_date'],
 			'delivery_date': str(variants[0]['delivery_date']),
 			'attributes': get_item_attribute_details(current_variant, current_item_attribute_details),
 			'primary_attribute': current_item_attribute_details['primary_attribute'],
@@ -315,7 +367,10 @@ def fetch_item_details(items, include_id:bool=False):
 		if item['primary_attribute']:
 			for attr in current_item_attribute_details['primary_attribute_values']:
 				item['values'][attr] = {'qty': 0, 'rate': 0}
+			
 			for variant in variants:
+				if frappe.utils.getdate(variant.delivery_date) > frappe.utils.getdate(item['delivery_date']):
+					item['delivery_date'] = str(variant.delivery_date)	
 				current_variant = frappe.get_doc("Item Variant", variant['item_variant'])
 				for attr in current_variant.attributes:
 					if attr.attribute == item.get('primary_attribute'):
@@ -500,12 +555,10 @@ def make_purchase_order_mapped_doc(items):
 		items = json.loads(items)
 	new_doc = frappe.new_doc("Purchase Order")
 	new_items = get_new_items(items)
-	print(json.dumps(new_items))
 	new_doc.set_onload('item_details', new_items)
 	return new_doc
 
 def get_new_items(items):
-	print(items)
 	data = []
 	for item in items:
 		current_variant = frappe.get_doc("Item Variant", item['item'])
@@ -523,6 +576,7 @@ def get_new_items(items):
 			'name': current_variant.item,
 			'lot': item.get('lot'),
 			'delivery_location': item.get('delivery_location'),
+			'expected_delivery_date': item.get('expected_delivery_date'),
 			'delivery_date': str(item.get('delivery_date')),
 			'attributes': get_item_attribute_details(current_variant, current_item_attribute_details),
 			'primary_attribute': current_item_attribute_details['primary_attribute'],
@@ -588,3 +642,40 @@ def get_item_in_group_index(group, item):
 		item_index = index
 		break
 	return item_index
+
+@frappe.whitelist()
+def update_delivery_date(doc_name, data, comment):
+	from itertools import zip_longest
+	doc = frappe.get_doc('Purchase Order', doc_name)
+	data = json.loads(data)
+
+	for item_data, self_item in zip_longest(data, doc.items):
+		if not item_data.get('new_delivery_date', False):
+			continue
+		if item_data['new_delivery_date']:
+			if not frappe.utils.get_datetime(self_item.delivery_date).date() == frappe.utils.get_datetime(item_data['new_delivery_date']).date():
+				create_purchase_order_log(doc_name,self_item,item_data['new_delivery_date'], comment)
+				self_item.delivery_date = item_data['new_delivery_date']
+	text = f"Delivery dates are changed <br> Reason: {comment}"
+	doc.add_comment('Comment', text=text)
+	doc.save()
+
+def create_purchase_order_log(doc_name, item, new_date, comment):
+	doc = frappe.get_doc('Purchase Order', doc_name)
+	log_doc = frappe.new_doc("Purchase Order Log")
+	log_doc.update({
+		'purchase_order': doc_name,
+		'po_date': doc.po_date,
+		'supplier': doc.supplier,
+		'type': "Delivery Date Changed",
+		'posting_date': frappe.utils.nowdate(),
+		'posting_time': frappe.utils.now(),
+		'item_variant': item.item_variant,
+		'qty': item.pending_qty,
+		'previous_date': item.delivery_date ,
+		'expected_date': item.expected_delivery_date,
+		'changed_date': new_date,
+		'reason': comment,
+	})
+	log_doc.flags.ignore_permissions = 1
+	log_doc.submit()
