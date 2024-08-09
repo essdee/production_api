@@ -1,0 +1,119 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "naming_series:",
+ "creation": "2024-07-25 16:25:24.292702",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "section_break_ix5v",
+  "item",
+  "naming_series",
+  "column_break_pufg",
+  "production_detail",
+  "amended_from",
+  "section_break_pzgy",
+  "items",
+  "items_html",
+  "section_break_rewk",
+  "calculate_bom",
+  "bom_summary"
+ ],
+ "fields": [
+  {
+   "fieldname": "section_break_ix5v",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "item",
+   "fieldtype": "Link",
+   "label": "Item",
+   "options": "Item"
+  },
+  {
+   "default": "PPO-.#####",
+   "fieldname": "naming_series",
+   "fieldtype": "Data",
+   "hidden": 1,
+   "label": "Naming Series"
+  },
+  {
+   "fieldname": "column_break_pufg",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "production_detail",
+   "fieldtype": "Link",
+   "label": "Production Detail",
+   "options": "Item Production Detail"
+  },
+  {
+   "fieldname": "amended_from",
+   "fieldtype": "Link",
+   "label": "Amended From",
+   "no_copy": 1,
+   "options": "Production Order",
+   "print_hide": 1,
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "section_break_pzgy",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "items",
+   "fieldtype": "Table",
+   "hidden": 1,
+   "label": "Items",
+   "options": "Production Order Item"
+  },
+  {
+   "fieldname": "items_html",
+   "fieldtype": "HTML",
+   "label": "Items HTML"
+  },
+  {
+   "fieldname": "section_break_rewk",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "calculate_bom",
+   "fieldtype": "Button",
+   "label": "Calculate BOM"
+  },
+  {
+   "fieldname": "bom_summary",
+   "fieldtype": "Table",
+   "label": "BOM Summary",
+   "options": "Production Items"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "is_submittable": 1,
+ "links": [],
+ "modified": "2024-07-29 10:24:17.788427",
+ "modified_by": "Administrator",
+ "module": "Production Api",
+ "name": "Production Order",
+ "naming_rule": "By \"Naming Series\" field",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "submit": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

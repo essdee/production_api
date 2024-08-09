@@ -1,0 +1,142 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "prompt",
+ "creation": "2024-07-24 11:16:08.015116",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "item",
+  "packing_section",
+  "packing_combo",
+  "packing_attribute",
+  "packing_attribute_no",
+  "section_break_yqii",
+  "primary_item_attribute",
+  "dependent_attribute",
+  "dependent_attribute_mapping",
+  "item_attributes",
+  "item_attribute_list_values",
+  "dependent_attribute_details",
+  "bill_of_materials_section",
+  "item_bom",
+  "bom_attribute_mapping"
+ ],
+ "fields": [
+  {
+   "fieldname": "item",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Item",
+   "options": "Item",
+   "reqd": 1
+  },
+  {
+   "fieldname": "packing_section",
+   "fieldtype": "Section Break",
+   "label": "Packing"
+  },
+  {
+   "fieldname": "packing_combo",
+   "fieldtype": "Int",
+   "label": "Packing Combo",
+   "non_negative": 1,
+   "reqd": 1
+  },
+  {
+   "fieldname": "packing_attribute",
+   "fieldtype": "Link",
+   "label": "Packing Attribute",
+   "options": "Item Attribute",
+   "reqd": 1
+  },
+  {
+   "fieldname": "packing_attribute_no",
+   "fieldtype": "Int",
+   "label": "Packing Attribute No",
+   "non_negative": 1,
+   "reqd": 1
+  },
+  {
+   "fieldname": "section_break_yqii",
+   "fieldtype": "Section Break",
+   "label": "Item Attributes"
+  },
+  {
+   "fieldname": "primary_item_attribute",
+   "fieldtype": "Link",
+   "label": "Primary Item Attribute",
+   "options": "Item Attribute"
+  },
+  {
+   "fieldname": "dependent_attribute",
+   "fieldtype": "Link",
+   "label": "Dependent Attribute",
+   "options": "Item Attribute"
+  },
+  {
+   "fieldname": "dependent_attribute_mapping",
+   "fieldtype": "Link",
+   "hidden": 1,
+   "label": "Dependent Attribute Mapping",
+   "options": "Item Dependent Attribute Mapping"
+  },
+  {
+   "fieldname": "item_attributes",
+   "fieldtype": "Table",
+   "label": "Item Attributes",
+   "options": "Item Item Attribute"
+  },
+  {
+   "fieldname": "item_attribute_list_values",
+   "fieldtype": "HTML",
+   "label": "Item Attribute List Values"
+  },
+  {
+   "fieldname": "dependent_attribute_details",
+   "fieldtype": "HTML",
+   "label": "Dependent Attribute Details"
+  },
+  {
+   "fieldname": "bill_of_materials_section",
+   "fieldtype": "Section Break",
+   "label": "Bill of Materials"
+  },
+  {
+   "fieldname": "item_bom",
+   "fieldtype": "Table",
+   "label": "Item BOM",
+   "options": "Item BOM"
+  },
+  {
+   "fieldname": "bom_attribute_mapping",
+   "fieldtype": "HTML",
+   "label": "BOM Attribute Mapping"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2024-07-29 10:24:32.149897",
+ "modified_by": "Administrator",
+ "module": "Production Api",
+ "name": "Item Production Detail",
+ "naming_rule": "Set by user",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

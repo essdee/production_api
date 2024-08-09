@@ -9,6 +9,7 @@
             :edit="docstatus == 0"
             :validate-qty="true"
             :enableAdditionalParameter="true"
+            :validate="validate"
             @itemadded="updated"
             @itemupdated="updated"
             @itemremoved="updated">
@@ -17,7 +18,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, reactive } from 'vue'
 
 import EventBus from '../../bus';
 import ItemLotFetcher from '../../components/ItemLotFetch.vue'
@@ -25,6 +26,7 @@ import ItemLotFetcher from '../../components/ItemLotFetch.vue'
 const docstatus = ref(0);
 const items = ref([]);
 const supplier = ref(cur_frm.doc.supplier);
+const delivery_date = ref(null)
 
 const otherInputs = ref([
     {
@@ -61,8 +63,17 @@ const otherInputs = ref([
             fieldtype: 'Date',
             fieldname: 'delivery_date',
             label: 'Delivery Date',
-            reqd: 1
         },
+    },
+    {
+        name: 'fetch_delivery_date',
+        parent: 'delivery-date-control',
+        df: {
+            fieldtype: 'Check',
+            fieldname: 'fetch_delivery_date',
+            label: 'Fetch Delivery Date',
+            default: true,
+        }
     },
     {
         name: 'discount_percentage',
@@ -86,6 +97,7 @@ const otherInputs = ref([
         },
     },
 ]);
+
 const table_fields = ref([
     {
         name: 'pending_qty',
@@ -127,6 +139,10 @@ const table_fields = ref([
         name: 'comments',
         label: 'Comments',
     },
+    {
+        name: 'expected_delivery_date',
+        label: 'Expected Delivery Date',
+    }
 ]);
 
 const args = ref({
@@ -139,9 +155,41 @@ onMounted(() => {
     EventBus.$on("supplier_updated", new_supplier => {
         if (supplier.value !== new_supplier) {
             supplier.value = new_supplier;
+            
         }
     })
+    delivery_date.value = cur_frm.doc.po_date        
 });
+
+async function validate(item){
+    if (item.fetch_delivery_date == 1) {
+        let response = (
+            await frappe.call({
+                method: 'production_api.production_api.doctype.item_price.item_price.get_active_price',
+                args: {
+                    'item': item.name,
+                    'supplier': cur_frm.doc.supplier.value,
+                    'raise_error': false,
+                },
+                freeze: true,
+            })
+        );
+        if (!response.message) {
+            frappe.show_alert({
+                message: "There is no Lead Time for this Item",
+                indicator: 'red',
+            });
+            return false;
+        }
+    } else if (item.fetch_delivery_date == 0 && !item.delivery_date) {
+        frappe.show_alert({
+            message:__("Delivery Date does not have a value"),
+            indicator: 'red',
+        });
+        return false;    
+    }
+    return true
+}
 
 function update_status() {
     docstatus.value = cur_frm.doc.docstatus;
