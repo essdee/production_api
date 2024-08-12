@@ -167,6 +167,7 @@ def get_calculated_bom(item_production_detail, item):
 			break
 	if uom_conv:
 		qty = qty * uom_conv	
+
 	
 	for x in variant_doc.attributes:
 		attr_values[x.attribute] = x.attribute_value
@@ -174,7 +175,6 @@ def get_calculated_bom(item_production_detail, item):
 	for bom_item in item_detail.item_bom:
 		if not bom_item.based_on_attribute_mapping: 
 			quantity = qty / bom_item.qty_of_product
-			print(quantity)
 			if not bom.get(bom_item.item, False):
 				bom[bom_item.item] = math.ceil(quantity)
 			else:
