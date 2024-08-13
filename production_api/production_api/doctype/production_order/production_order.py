@@ -126,7 +126,6 @@ def get_item_details(item_name):
 
 @frappe.whitelist()
 def update_bom_summary(doc_name, bom):
-	print(bom)
 	doc = frappe.get_doc("Production Order", doc_name)
 	doc.set('bom_summary', json.loads(bom))
 	doc.save()

@@ -53,8 +53,6 @@ frappe.ui.form.on("Production Order", {
 		}
 		if (frm.doc.item && frm.doc.production_detail) {
 			let bom = [];
-			// frm.set_value('bom_summary',[])
-			// frm.refresh_field("bom_summary")
 			let count = 0
 			for (let i = 0; i < frm.doc.items.length; i++) {
 				count++;
@@ -92,6 +90,8 @@ frappe.ui.form.on("Production Order", {
 						doc_name: frm.doc.name,
 						bom : bom
 					},
+					freeze:true,
+					freeze_message: __("Calculating BOM..."),
 					callback: function(r){
 						frm.refresh()
 					}
