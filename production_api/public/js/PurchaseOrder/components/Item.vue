@@ -63,17 +63,8 @@ const otherInputs = ref([
             fieldtype: 'Date',
             fieldname: 'delivery_date',
             label: 'Delivery Date',
+            reqd: true,
         },
-    },
-    {
-        name: 'fetch_delivery_date',
-        parent: 'delivery-date-control',
-        df: {
-            fieldtype: 'Check',
-            fieldname: 'fetch_delivery_date',
-            label: 'Fetch Delivery Date',
-            default: true,
-        }
     },
     {
         name: 'discount_percentage',

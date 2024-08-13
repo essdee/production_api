@@ -816,33 +816,6 @@
         for (let i = 0; i < props.otherInputs.length; i++) {
             let data = props.otherInputs[i];
             let label = data.df.label;
-            if(data.df.label == 'Delivery Date' && props.validate){
-                let x = props.otherInputs[ i + 1 ]
-                let value = other_input_controls[x.name].get_value();
-                if(value == 1){
-                    validate_item_values()
-                    frappe.call({
-                        method: 'production_api.production_api.doctype.item_price.item_price.get_active_price',
-                        args: {
-                            'item': item_input.value,
-                        },
-                        callback: function(r){
-                            console.log(r.message)
-                            if(!r.message){
-                                frappe.throw("There is no lead time for this item")
-                            }
-                        }
-                    })
-                }
-                else{
-                    let y = other_input_controls[data.name].get_value();
-                    if(!y){
-                        other_input_controls[data.name].$input.select();
-                        frappe.msgprint(__(label + ' does not have a value'));
-                        return false;    
-                    } 
-                }
-            }
             let value = other_input_controls[data.name].get_value();
             if (data.df.reqd && !value) {
                 other_input_controls[data.name].$input.select();
