@@ -8,6 +8,10 @@ from itertools import groupby
 
 
 class ProductionOrder(Document):
+	def before_submit(self):
+		if len(self.bom_summary) == 0:
+			frappe.throw("BOM is not calculated");
+
 	def before_validate(self):
 		if(self.get('item_details')):
 			items = save_item_details(self.item_details)
@@ -23,13 +27,13 @@ def save_item_details(item_details):
 		item_details = json.loads(item_details)
 	item = item_details[0]
 	items = []
-	for idx1, x in enumerate(item['items']):
-		if x['primary_attribute']:
-			attributes = x['attributes']
+	for id1, row in enumerate(item['items']):
+		if row['primary_attribute']:
+			attributes = row['attributes']
 			if item['final_state']:
 				attributes[item['dependent_attribute']] = item['final_state']
-			for idx2, val in enumerate(x['values'].keys()):
-				attributes[x['primary_attribute']] = val
+			for id2, val in enumerate(row['values'].keys()):
+				attributes[row['primary_attribute']] = val
 				item1 = {}
 				variant_name = get_variant(item['item'], attributes)
 				if not variant_name:
@@ -38,13 +42,13 @@ def save_item_details(item_details):
 					variant_name = variant1.name
 
 				item1['item_variant'] = variant_name
-				item1['qty'] = x['values'][val]
-				item1['table_index'] = idx1
-				item1['row_index'] = idx2
+				item1['qty'] = row['values'][val]
+				item1['table_index'] = id1
+				item1['row_index'] = id2
 				items.append(item1)
 		else:
 			item1 = {}
-			attributes = x['attributes']
+			attributes = row['attributes']
 			variant_name = item['item']
 			variant_name = get_variant(item['item'], attributes)
 			if not variant_name:
@@ -53,8 +57,8 @@ def save_item_details(item_details):
 				variant_name = variant1.name
 
 			item1['item_variant'] = variant_name
-			item1['qty'] = x['values']['qty']
-			item1['table_index'] = idx1
+			item1['qty'] = row['values']['qty']
+			item1['table_index'] = id1
 			items.append(item1)
 	return items	
 
@@ -105,10 +109,10 @@ def get_item_details(item_name):
 	final_state_attr = None
 	item['items'] = []
 	if item['dependent_attribute']:
-		for x in item['dependent_attribute_details']['attr_list']:
-			if item['dependent_attribute_details']['attr_list'][x]['is_final'] == 1:
-				final_state = x
-				final_state_attr = item['dependent_attribute_details']['attr_list'][x]['attributes']
+		for attr in item['dependent_attribute_details']['attr_list']:
+			if item['dependent_attribute_details']['attr_list'][attr]['is_final'] == 1:
+				final_state = attr
+				final_state_attr = item['dependent_attribute_details']['attr_list'][attr]['attributes']
 		if not final_state:
 			frappe.msgprint("There is no final state for this item")
 			return []	
