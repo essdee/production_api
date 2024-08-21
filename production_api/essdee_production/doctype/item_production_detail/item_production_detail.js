@@ -94,7 +94,6 @@ frappe.ui.form.on("Item Production Detail", {
 		frm.dirty()
 		if(frm.set_item && frm.doc.is_set_item){
 			let item_details = frm.set_item.get_data()
-			console.log(item_details)
 			frm.doc['set_item_detail'] = JSON.stringify(item_details);
 		}
 	},

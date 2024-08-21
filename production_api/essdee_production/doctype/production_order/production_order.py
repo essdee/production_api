@@ -6,7 +6,6 @@ from six import string_types
 from production_api.production_api.doctype.item.item import create_variant, get_variant, get_attribute_details, get_or_create_variant
 from itertools import groupby
 from production_api.production_api.doctype.item_dependent_attribute_mapping.item_dependent_attribute_mapping import get_dependent_attribute_details
-import concurrent.futures
 
 class ProductionOrder(Document):
 	def before_submit(self):
@@ -76,7 +75,6 @@ def calculate_order_details(items, production_detail):
 					if not item_detail.auto_calculate:
 						major_attr = attr.major_attribute_value
 						q = get_quantity(major_attr, item_detail.packing_item_details)
-					print(attrs)	
 					new_variant = get_or_create_variant(variant.item, attrs)
 					item1 = {
 						'item_variant': new_variant,
@@ -146,7 +144,6 @@ def save_item_details(item_details):
 
 def fetch_item_details(items, production_detail):
 	items = [item.as_dict() for item in items]
-	# items = sorted(items, key = lambda i: i['table_index'])
 	item_structure = None
 	for key, variants in groupby(items, lambda i: i['table_index']):
 		variants = list(variants)

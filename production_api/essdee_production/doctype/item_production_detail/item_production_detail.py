@@ -45,7 +45,6 @@ class ItemProductionDetail(Document):
 					'bom_attr_mapping_list': doc.values,
 					'doctype': 'Item BOM Attribute Mapping'
 				})
-		print(bom_attribute_list)		
 		self.set_onload('bom_attr_list', bom_attribute_list)
 
 	def load_dependent_attribute(self):
@@ -400,7 +399,6 @@ def create_and_update_bom(index, type, mapping_doc_values, attr_values, mapping_
 	else:
 		bom[new_variant] += math.ceil(quantity)
 	return bom
-
 
 def create_and_update_bom_set(attributes, bom_item, bom, quantity, auto_calculate, packing_item_details, attr_value):
 	import math
