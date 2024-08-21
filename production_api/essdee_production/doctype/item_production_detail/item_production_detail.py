@@ -277,15 +277,15 @@ def get_calculated_bom(item_production_detail, item, final_uom):
 				if pack_attr in attr_values:
 					quantity = qty/bom_item.qty_of_product
 					set_map = frappe.get_doc("Item Item Attribute Mapping", set_item_map_doc)
-					for v in set_map.values:
+					for set_val in set_map.values:
 						for value in mapping_doc.values:
-							if v.attribute_value == item_detail.major_attribute_value:
+							if set_val.attribute_value == item_detail.major_attribute_value:
 								if value.attribute == pack_attr and value.attribute_value == attr_values[pack_attr] and value.type == "item":
 									updated_bom = create_and_update_bom(value.index, "bom", mapping_doc.values, attr_values, mapping_doc.bom_item_attributes,bom_item.item, bom, quantity)	
 									bom = updated_bom
 									break
 							else:
-								if value.attribute == set_attr and  value.attribute_value == v.attribute_value and value.type == "item":
+								if value.attribute == set_attr and  value.attribute_value == set_val.attribute_value and value.type == "item":
 									if check_attr_value(value.index, "item",mapping_doc.values,attr_values[pack_attr]):
 										updated_bom = create_and_update_bom(value.index, "bom", mapping_doc.values, attr_values, mapping_doc.bom_item_attributes,bom_item.item, bom, quantity)	
 										bom = updated_bom
@@ -298,20 +298,20 @@ def get_calculated_bom(item_production_detail, item, final_uom):
 							break
 					item_map = frappe.get_doc("Item Item Attribute Mapping", item_map_doc)
 					set_map = frappe.get_doc("Item Item Attribute Mapping", set_item_map_doc)
-					for at in item_detail.packing_item_details:
+					for pack_attr_value in item_detail.packing_item_details:
 						for attr in set_map.values:
 							for value in mapping_doc.values:
 								if value.attribute == set_attr and value.attribute_value == attr.attribute_value and value.type == "item":
 									if item_detail.major_attribute_value == attr.attribute_value:
-										if check_attr_value(value.index, "item", mapping_doc.values,at.attribute_value):
+										if check_attr_value(value.index, "item", mapping_doc.values,pack_attr_value.attribute_value):
 											attributes = get_same_index_values(value.index, "bom", mapping_doc.values, attr_values, mapping_doc.bom_item_attributes)
-											updated_bom = create_and_update_bom_set(attributes,bom_item.item,bom,temp_qty,item_detail.auto_calculate,item_detail.packing_item_details, at.attribute_value)
+											updated_bom = create_and_update_bom_set(attributes,bom_item.item,bom,temp_qty,item_detail.auto_calculate,item_detail.packing_item_details, pack_attr_value.attribute_value)
 											bom = updated_bom
 											break
 									else:
-										attributes = get_bottom_part_values(at.attribute_value,attr.attribute_value, item_detail.set_item_details, item_detail.set_item_attribute, pack_attr,mapping_doc.values, attr_values, mapping_doc.bom_item_attributes) 
-										for xy in attributes:
-											updated_bom = create_and_update_bom_set(xy,bom_item.item,bom,temp_qty,item_detail.auto_calculate,item_detail.packing_item_details, at.attribute_value)
+										attributes = get_bottom_part_values(pack_attr_value.attribute_value,attr.attribute_value, item_detail.set_item_details, item_detail.set_item_attribute, pack_attr,mapping_doc.values, attr_values, mapping_doc.bom_item_attributes) 
+										for attribute in attributes:
+											updated_bom = create_and_update_bom_set(attribute,bom_item.item,bom,temp_qty,item_detail.auto_calculate,item_detail.packing_item_details, pack_attr_value.attribute_value)
 											bom = updated_bom
 										break
 			else:
