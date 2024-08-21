@@ -19,6 +19,17 @@ frappe.ui.form.on("Item Production Detail", {
 				frm.packing_stage = frm.doc.item_attributes[i].mapping
 			}
 		}
+		let attributes = []
+		for(let i = 0 ; i < frm.doc.item_attributes.length; i++){
+			attributes.push(frm.doc.item_attributes[i].attribute)
+		}
+		frm.set_query('set_item_attribute', ()=> {
+			return {
+				filters: {
+					name: ["in", attributes],
+				},
+			};
+		})
 		frm.set_query('attribute_value','packing_item_details',() => {
 			if(!frm.doc.packing_attribute){
 				frappe.throw("Please select the packing attribute first")
