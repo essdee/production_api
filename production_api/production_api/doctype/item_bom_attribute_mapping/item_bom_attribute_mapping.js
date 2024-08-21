@@ -119,7 +119,6 @@ function get_attributes(frm) {
 		async: false,
 		callback: function(r) {
 			if (r.message) {
-				console.log(r.message);
 				m = r.message;
 			}
 		}

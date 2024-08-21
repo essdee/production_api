@@ -21,6 +21,7 @@
                     </span>
                 </td>
                 <td v-for="attr in item_attributes">
+                    <!-- {{get_input_class('item', attr, index)}} -->
                     <div :class="get_input_class('item', attr, index)"></div>
                 </td>
                 <td v-for="attr in bom_attributes">
@@ -112,7 +113,6 @@ export default {
 
         load_data: function(data) {
             this.remove_attribute_inputs()
-            console.log(data);
             // this.attributes = data.attributes;
             // this.item_attributes = this.get_mapping_attributes('item', this.attributes);
             // this.bom_attributes = this.get_mapping_attributes('bom', this.attributes);
@@ -338,7 +338,6 @@ export default {
                 let attr_name = this.get_attribute_name('bom', attr);
                 let input = this.attribute_inputs[index][attr_name]
                 input.set_value("");
-                console.log(input.get_value());
                 input.df["reqd"] = b;
                 input.df["read_only"] = !b;
                 input.refresh();
@@ -354,7 +353,6 @@ export default {
                     let attr_name = this.get_attribute_name('bom', attr);
                     let input = this.attribute_inputs[i][attr_name]
                     let value = input.get_value();
-                    console.log(value)
                     if (!value) {
                         flag = true;
                         break;

@@ -84,7 +84,6 @@ export default {
                     break;
                 }
             }
-            console.log(JSON.stringify(dependent_attribute_values))
             return dependent_attribute_values;
         },
         attributes: function() {
@@ -95,7 +94,6 @@ export default {
             if (index > -1) { // only splice array when item is found
                 attributes.splice(index, 1); // 2nd parameter means remove one item only
             }
-            console.log(JSON.stringify(this.data))
             return attributes;
         }
     },
@@ -202,7 +200,6 @@ export default {
                 frappe.msgprint("Please save this document before saving")
                 return;
             }
-            console.log(JSON.stringify(this.data))
             frappe.xcall("production_api.production_api.doctype.item.item.update_dependent_attribute_details", {
 				dependent_attribute_mapping: this.item.dependent_attribute_mapping,
 				detail: this.data,

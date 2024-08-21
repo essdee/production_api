@@ -1,0 +1,39 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2024-08-16 10:10:46.382703",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "attribute_value",
+  "quantity"
+ ],
+ "fields": [
+  {
+   "fieldname": "attribute_value",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Attribute Value",
+   "options": "Item Attribute Value"
+  },
+  {
+   "fieldname": "quantity",
+   "fieldtype": "Float",
+   "in_list_view": 1,
+   "label": "Quantity"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2024-08-17 15:20:36.383401",
+ "modified_by": "Administrator",
+ "module": "Essdee Production",
+ "name": "Packing Item Detail",
+ "owner": "Administrator",
+ "permissions": [],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

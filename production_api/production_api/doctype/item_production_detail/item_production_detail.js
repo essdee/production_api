@@ -2,6 +2,9 @@
 // For license information, please see license.txt
 
 frappe.ui.form.on("Item Production Detail", {
+	setup: function(frm) {
+		
+	},
 	refresh: function(frm) {
 		if (frm.doc.__islocal) {
 			hide_field(["item_attribute_list_values", "bom_attribute_mapping"]);
@@ -20,7 +23,6 @@ frappe.ui.form.on("Item Production Detail", {
 			new frappe.production.ui.BomItemAttributeMapping(frm.fields_dict["bom_attribute_mapping"].wrapper);
 		}
 	},
-
 	item: function(frm) {
 		if (frm.doc.item) {
 			frappe.call({
@@ -46,4 +48,5 @@ frappe.ui.form.on("Item Production Detail", {
 			frm.set_value('dependent_attribute_mapping','')
         }
 	},
+	
 });

@@ -14,15 +14,15 @@ class ItemBOMAttributeMapping(Document):
 			return
 		bom_attributes = list(set([i.attribute for i in self.bom_item_attributes]))
 		bom_item_attributes = get_attributes(self.bom_item)
-		if len(bom_attributes) != len(bom_item_attributes):
-			frappe.throw("Please use all the BOM Item Attributes")
-		flag = True
-		for attr in bom_item_attributes:
-			if attr not in bom_attributes:
-				flag = False
-				break
-		if not flag:
-			frappe.throw("Please use all the BOM Item Attributes")
+		# if len(bom_attributes) != len(bom_item_attributes):
+		# 	frappe.throw("Please use all the BOM Item Attributes")
+		# flag = True
+		# for attr in bom_item_attributes:
+		# 	if attr not in bom_attributes:
+		# 		flag = False
+		# 		break
+		# if not flag:
+		# 	frappe.throw("Please use all the BOM Item Attributes")
 		same_item_attributes = [i.attribute for i in self.item_attributes if i.same_attribute]
 		same_attributes = [i.attribute for i in self.bom_item_attributes if i.same_attribute and i.attribute in same_item_attributes]
 		item_mapping_attributes = [i.attribute for i in self.item_attributes if not i.attribute in same_attributes]
@@ -54,9 +54,6 @@ class ItemBOMAttributeMapping(Document):
 					bom_mapping_attributes.remove(r.attribute)
 				else:
 					frappe.throw("All Attribute values are not specified")
-		if len(item_mapping_attributes) > 0 or len(bom_mapping_attributes) > 0:
-			frappe.throw("All Attribute values are not specified")
-
 
 	def get_attribute_mapping(self):
 		attribute_mapping_list = []

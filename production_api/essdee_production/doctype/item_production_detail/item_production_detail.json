@@ -6,6 +6,7 @@
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
+  "item_details_tab",
   "item",
   "section_break_yqii",
   "primary_item_attribute",
@@ -19,15 +20,20 @@
   "bom_attribute_mapping",
   "packing_tab",
   "packing_section",
+  "packing_stage",
   "packing_combo",
   "packing_attribute",
   "packing_attribute_no",
   "auto_calculate",
   "packing_item_details",
   "set_item_tab",
+  "set_item_details_section",
   "is_set_item",
+  "set_item_attribute",
+  "major_attribute_value",
+  "get_combination",
   "set_item_details",
-  "set_item_attribute"
+  "set_items_html"
  ],
  "fields": [
   {
@@ -37,28 +43,6 @@
    "label": "Item",
    "options": "Item",
    "reqd": 1
-  },
-  {
-   "fieldname": "item_attributes",
-   "fieldtype": "Table",
-   "label": "Item Attributes",
-   "options": "Item Item Attribute"
-  },
-  {
-   "fieldname": "item_attribute_list_values",
-   "fieldtype": "HTML",
-   "label": "Item Attribute List Values"
-  },
-  {
-   "fieldname": "item_bom",
-   "fieldtype": "Table",
-   "label": "Item BOM",
-   "options": "Item BOM"
-  },
-  {
-   "fieldname": "bom_attribute_mapping",
-   "fieldtype": "HTML",
-   "label": "BOM Attribute Mapping"
   },
   {
    "fieldname": "section_break_yqii",
@@ -72,13 +56,60 @@
    "options": "Item Attribute"
   },
   {
+   "fieldname": "dependent_attribute",
+   "fieldtype": "Link",
+   "label": "Dependent Attribute",
+   "options": "Item Attribute"
+  },
+  {
+   "fieldname": "dependent_attribute_mapping",
+   "fieldtype": "Link",
+   "hidden": 1,
+   "label": "Dependent Attribute Mapping",
+   "options": "Item Dependent Attribute Mapping"
+  },
+  {
+   "fieldname": "item_attributes",
+   "fieldtype": "Table",
+   "label": "Item Attributes",
+   "options": "Item Item Attribute"
+  },
+  {
+   "fieldname": "item_attribute_list_values",
+   "fieldtype": "HTML",
+   "label": "Item Attribute List Values"
+  },
+  {
+   "fieldname": "dependent_attribute_details",
+   "fieldtype": "HTML",
+   "label": "Dependent Attribute Details"
+  },
+  {
    "fieldname": "bill_of_materials_section",
    "fieldtype": "Section Break",
    "label": "Bill of Materials"
   },
   {
+   "fieldname": "item_bom",
+   "fieldtype": "Table",
+   "label": "Item BOM",
+   "options": "Item BOM"
+  },
+  {
+   "fieldname": "bom_attribute_mapping",
+   "fieldtype": "HTML",
+   "label": "BOM Attribute Mapping"
+  },
+  {
+   "depends_on": "eval: !doc.is_local",
+   "fieldname": "packing_tab",
+   "fieldtype": "Tab Break",
+   "label": "Packing"
+  },
+  {
    "fieldname": "packing_section",
-   "fieldtype": "Section Break"
+   "fieldtype": "Section Break",
+   "label": "Packing Details"
   },
   {
    "fieldname": "packing_combo",
@@ -102,39 +133,16 @@
    "reqd": 1
   },
   {
-   "fieldname": "dependent_attribute",
-   "fieldtype": "Link",
-   "label": "Dependent Attribute",
-   "options": "Item Attribute"
-  },
-  {
-   "fieldname": "dependent_attribute_details",
-   "fieldtype": "HTML",
-   "label": "Dependent Attribute Details"
-  },
-  {
-   "fieldname": "dependent_attribute_mapping",
-   "fieldtype": "Link",
-   "hidden": 1,
-   "label": "Dependent Attribute Mapping",
-   "options": "Item Dependent Attribute Mapping"
-  },
-  {
-   "fieldname": "packing_tab",
-   "fieldtype": "Tab Break",
-   "label": "Packing"
+   "default": "0",
+   "fieldname": "auto_calculate",
+   "fieldtype": "Check",
+   "label": "Auto Calculate"
   },
   {
    "fieldname": "packing_item_details",
    "fieldtype": "Table",
    "label": "Packing Item Details",
    "options": "Packing Item Detail"
-  },
-  {
-   "default": "0",
-   "fieldname": "auto_calculate",
-   "fieldtype": "Check",
-   "label": "Auto Calculate"
   },
   {
    "fieldname": "set_item_tab",
@@ -150,21 +158,59 @@
   {
    "fieldname": "set_item_details",
    "fieldtype": "Table",
+   "hidden": 1,
    "label": "Set Item Details",
    "options": "Item Production Detail Set Item Combination"
   },
   {
+   "depends_on": "eval: doc.is_set_item",
    "fieldname": "set_item_attribute",
    "fieldtype": "Link",
    "label": "Set Item Attribute",
+   "mandatory_depends_on": "eval: doc.is_set_item",
    "options": "Item Attribute"
+  },
+  {
+   "fieldname": "get_combination",
+   "fieldtype": "Button",
+   "label": "Get Combination"
+  },
+  {
+   "fieldname": "set_items_html",
+   "fieldtype": "HTML",
+   "label": "Set Items HTML"
+  },
+  {
+   "depends_on": "eval: doc.dependent_attribute_mapping",
+   "fieldname": "packing_stage",
+   "fieldtype": "Link",
+   "label": "Packing Stage",
+   "options": "Item Attribute Value"
+  },
+  {
+   "depends_on": "eval: doc.is_set_item",
+   "fieldname": "major_attribute_value",
+   "fieldtype": "Link",
+   "label": "Major Attribute Value",
+   "mandatory_depends_on": "eval: doc.is_set_item",
+   "options": "Item Attribute Value"
+  },
+  {
+   "fieldname": "set_item_details_section",
+   "fieldtype": "Section Break",
+   "label": "Set Item Details"
+  },
+  {
+   "fieldname": "item_details_tab",
+   "fieldtype": "Tab Break",
+   "label": "Item Details"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2024-08-17 15:16:41.572676",
+ "modified": "2024-08-21 16:10:15.376175",
  "modified_by": "Administrator",
- "module": "Production Api",
+ "module": "Essdee Production",
  "name": "Item Production Detail",
  "naming_rule": "Set by user",
  "owner": "Administrator",

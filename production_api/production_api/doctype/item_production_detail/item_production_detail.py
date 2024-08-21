@@ -117,7 +117,30 @@ class ItemProductionDetail(Document):
 
 		map_doc = frappe.get_doc("Item Item Attribute Mapping", mapping)
 		if len(map_doc.values) < self.packing_attribute_no:
-			frappe.throw(f"The Packing attribute number is {self.packing_attribute_no} But there is only {len(map_doc.values)} attributes are available")		
+			frappe.throw(f"The Packing attribute number is {self.packing_attribute_no} But there is only {len(map_doc.values)} attributes are available")
+
+		if len(self.packing_item_details) != self.packing_attribute_no:
+			frappe.throw(f"Only {self.packing_attribute_no} {self.packing_attribute}'s are required")
+
+		attr = set()
+		if self.auto_calculate:
+			for row in self.packing_item_details:
+				attr.add(row.attribute_value)
+				row.quantity = 0
+		else:			
+			sum = 0.0
+			for row in self.packing_item_details:
+				if row.quantity == 0:
+					frappe.throw("Zero is not considered as a valid quantity")
+				sum = sum + row.quantity
+				attr.add(row.attribute_value)
+			
+			if sum < self.packing_combo or sum > self.packing_combo:
+				frappe.throw(f"The sum of quantity should be {self.packing_combo}")
+
+		if len(attr) != len(self.packing_item_details):
+			frappe.throw("Duplicate Attribute values are occured")	
+		
 
 @frappe.whitelist()
 @frappe.validate_and_sanitize_search_inputs
@@ -129,6 +152,13 @@ def get_item_attributes(doctype, txt, searchfield, start, page_len, filters):
 	item_production_detail = frappe.get_doc("Item Production Detail", item_production_detail_name)
 	attributes = [attribute.attribute for attribute in item_production_detail.item_attributes]
 	return [[value] for value in attributes if value.lower().startswith(txt.lower())]
+
+@frappe.whitelist()
+@frappe.validate_and_sanitize_search_inputs
+def get_attribute_detail_values(doctype, txt, searchfield, start, page_len, filters):
+	doc = frappe.get_doc('Item Item Attribute Mapping', filters['mapping'])
+	out = [[item.attribute_value] for item in doc.values]
+	return out
 
 @frappe.whitelist()
 def get_attribute_values(item_production_detail, attributes = None):
@@ -147,7 +177,7 @@ def get_attribute_values(item_production_detail, attributes = None):
 
 
 @frappe.whitelist()
-def get_calculated_bom(item_production_detail, item):
+def get_calculated_bom(item_production_detail, item, final_uom):
 	import math
 	if isinstance(item, string_types):
 		item = json.loads(item)
@@ -159,7 +189,7 @@ def get_calculated_bom(item_production_detail, item):
 	variant_doc = frappe.get_doc("Item Variant", variant)
 	item_name = variant_doc.item
 	doc = frappe.get_doc("Item", item_name)
-	uom = doc.default_unit_of_measure
+	uom = final_uom
 	uom_conv = 0.0
 	for uom_conversion in doc.uom_conversion_details:
 		if uom_conversion.uom == uom:
@@ -168,7 +198,6 @@ def get_calculated_bom(item_production_detail, item):
 	if uom_conv:
 		qty = qty * uom_conv	
 
-	
 	for x in variant_doc.attributes:
 		attr_values[x.attribute] = x.attribute_value
 	
@@ -181,7 +210,7 @@ def get_calculated_bom(item_production_detail, item):
 				bom[bom_item.item] += math.ceil(quantity)
 		else:
 			pack_attr = item_detail.packing_attribute
-			# pack_combo = item_detail.packing_combo
+			pack_combo = item_detail.packing_combo
 			pack_attr_no =	item_detail.packing_attribute_no	
 			if pack_attr in attr_values:
 				mapping_attr = bom_item.attribute_mapping
@@ -197,14 +226,17 @@ def get_calculated_bom(item_production_detail, item):
 							bom[new_variant] += math.ceil(quantity)
 						break
 			else:
-				temp_qty = qty/	pack_attr_no
+				if item_detail.auto_calculate:
+					temp_qty = qty/	pack_attr_no
+				else:
+					temp_qty = qty/	pack_combo
 				item_map_doc = None
 				mapping_attr = bom_item.attribute_mapping
 				mapping_doc = frappe.get_doc("Item BOM Attribute Mapping", mapping_attr)
 				for attr in item_detail.item_attributes:
 					if attr.attribute == pack_attr:
 						item_map_doc = attr.mapping
-						break 
+						break
 				item_map = frappe.get_doc("Item Item Attribute Mapping", item_map_doc)
 				for attr in item_map.values:
 					for value in mapping_doc.values:
@@ -212,12 +244,23 @@ def get_calculated_bom(item_production_detail, item):
 							attributes = get_same_index_values(value.index, "bom", mapping_doc.values, attr_values, mapping_doc.bom_item_attributes)
 							new_variant = get_or_create_variant(bom_item.item, attributes)
 							if not bom.get(new_variant, False):
-								bom[new_variant] = math.ceil(temp_qty)
+								if item_detail.auto_calculate:
+									bom[new_variant] = math.ceil(temp_qty)
+								else:
+									bom[new_variant] = math.ceil(temp_qty * get_quantity(item_detail.packing_item_details, value.attribute_value))
 							else:
-								bom[new_variant] += math.ceil(temp_qty)
+								if item_detail.auto_calculate:
+									bom[new_variant] += math.ceil(temp_qty)
+								else:
+									bom[new_variant] += math.ceil(temp_qty * get_quantity(item_detail.packing_item_details, value.attribute_value))
 							break
 	return bom
-	
+
+def get_quantity(packing_item_details, attr):
+	for item in packing_item_details:
+		if item.attribute_value == attr:
+			return item.quantity
+		
 def get_same_index_values(index, type, values, attr_values, bom_item_attributes):
 	bom_attr = {}
 	for value in values:
@@ -230,4 +273,3 @@ def get_same_index_values(index, type, values, attr_values, bom_item_attributes)
 			bom_attr[attr.attribute] = attr_values[attr.attribute]
 
 	return bom_attr		
-	
