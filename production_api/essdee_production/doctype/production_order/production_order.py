@@ -20,21 +20,24 @@ class ProductionOrder(Document):
 		for item in self.items:
 			qty = qty + item.qty
 		self.total_quantity = qty
-		items = calculate_order_details(self.get('items'), self.production_detail)
+		items = calculate_order_details(self.get('items'), self.production_detail, self.packing_uom)
 		self.set('production_order_details',items )
 
 	def onload(self):
 		item_details = fetch_item_details(self.get('items'), self.production_detail)
 		self.set_onload('item_details', item_details)
 		if len(self.get('production_order_details')) > 0:
+			# items = fetch_order_item_details(self.get('production_order_details'), self.production_detail)
+			# self.set_onload('order_item_details', items)
 			self.set_onload('order_item_details', True)
+
 		
 
-def calculate_order_details(items, production_detail):
+def calculate_order_details(items, production_detail, packing_uom):
 	item_detail = frappe.get_doc("Item Production Detail", production_detail)
 	final_list = []
 	import math
-	uom = get_isfinal_uom(production_detail)
+	uom = packing_uom
 	doc = frappe.get_doc("Item", item_detail.item)
 	uom_conv = 0.0
 	for uom_conversion in doc.uom_conversion_details:
@@ -151,7 +154,7 @@ def fetch_item_details(items, production_detail):
 		grp_variant = frappe.get_doc("Item Variant", variants[0]['item_variant'])
 		if not item_structure:
 			uom = get_isfinal_uom(production_detail)
-			item_structure = get_item_details(grp_variant.item, uom)
+			item_structure = get_item_details(grp_variant.item, uom=uom)
 		values = {}	
 		for variant in variants:
 			current_variant = frappe.get_doc("Item Variant", variant['item_variant'])
@@ -190,6 +193,7 @@ def get_same_index_set_item(index, set_item_details, set_attr, pack_attr):
 @frappe.whitelist()
 def fetch_order_item_details(items, production_detail):
 	item_detail = frappe.get_doc("Item Production Detail", production_detail)
+	# items = [item.as_dict() for item in items]
 	if isinstance(items, string_types):
 		items = json.loads(items)
 	order_item_details = []
@@ -284,8 +288,13 @@ def get_item_details(item_name, uom=None, production_detail=None, dependent_stat
 
 @frappe.whitelist()
 def update_bom_summary(doc_name, bom):
+	if isinstance(bom, string_types):
+		bom = json.loads(bom)
+	bom_items = []	
+	for key, val in bom.items():
+		bom_items.append({'item': key,'required_qty':val})	
 	doc = frappe.get_doc("Production Order", doc_name)
-	doc.set('bom_summary', json.loads(bom))
+	doc.set('bom_summary', bom_items)
 	doc.save()
 
 @frappe.whitelist()
@@ -297,4 +306,17 @@ def get_isfinal_uom(item_production_detail):
 			if attribute_details['attr_list'][attr]['is_final'] == 1:
 				return attribute_details['attr_list'][attr]['uom']
 	else:
-		return None		
+		item = doc.item
+		item_doc = frappe.get_doc("Item", item)
+		return item_doc.default_unit_of_measure
+
+@frappe.whitelist()
+def get_pack_stage_uom(item_production_detail):
+	doc = frappe.get_doc("Item Production Detail", item_production_detail)
+	pack_stage = doc.packing_stage
+	if doc.dependent_attribute_mapping:
+		attribute_details = get_dependent_attribute_details(doc.dependent_attribute_mapping)
+		return {
+			'packing_stage':pack_stage,
+			'packing_uom': attribute_details['attr_list'][pack_stage]['uom']
+		}

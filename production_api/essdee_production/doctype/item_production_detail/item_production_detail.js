@@ -2,14 +2,12 @@
 // For license information, please see license.txt
 
 frappe.ui.form.on("Item Production Detail", {
-	setup:async function(frm) {
-		let packing_attr_map = null;
+	setup:function(frm) {
 		frm.set_packing_attr_map = null;
 		frm.set_item_attr = null
 		frm.packing_stage = null
 		for(let i = 0; i < frm.doc.item_attributes.length; i++){
 			if(frm.doc.item_attributes[i].attribute == frm.doc.packing_attribute){
-				packing_attr_map = frm.doc.item_attributes[i].mapping;
 				frm.set_packing_attr_map = frm.doc.item_attributes[i].mapping;
 			}
 			if(frm.doc.item_attributes[i].attribute == frm.doc.set_item_attribute){
@@ -19,17 +17,13 @@ frappe.ui.form.on("Item Production Detail", {
 				frm.packing_stage = frm.doc.item_attributes[i].mapping
 			}
 		}
-		let attributes = []
-		for(let i = 0 ; i < frm.doc.item_attributes.length; i++){
-			attributes.push(frm.doc.item_attributes[i].attribute)
-		}
-		frm.set_query('set_item_attribute', ()=> {
-			return {
-				filters: {
-					name: ["in", attributes],
-				},
-			};
-		})
+		const attributes = frm.doc.item_attributes.map(attr => attr.attribute);
+
+		const setAttributeQuery = () => ({ filters: { name: ["in", attributes] } });
+
+		frm.set_query('set_item_attribute', setAttributeQuery);
+		frm.set_query('packing_attribute', setAttributeQuery);
+
 		frm.set_query('attribute_value','packing_item_details',() => {
 			if(!frm.doc.packing_attribute){
 				frappe.throw("Please select the packing attribute first")
@@ -37,10 +31,11 @@ frappe.ui.form.on("Item Production Detail", {
 			return {
 				query:'production_api.essdee_production.doctype.item_production_detail.item_production_detail.get_attribute_detail_values',
 				filters: {
-					'mapping': packing_attr_map,
+					'mapping': frm.set_packing_attr_map,
 				}
 			}
 		});
+		
 		frm.set_query('packing_stage', ()=> {
 			return {
 				query:'production_api.essdee_production.doctype.item_production_detail.item_production_detail.get_attribute_detail_values',
@@ -62,6 +57,7 @@ frappe.ui.form.on("Item Production Detail", {
 		})
 	},
 	refresh:async function(frm) {
+		frm.trigger('setup')
 		if (frm.doc.__islocal) {
 			hide_field(["item_attribute_list_values", "bom_attribute_mapping"]);
 		} else {
@@ -101,6 +97,21 @@ frappe.ui.form.on("Item Production Detail", {
 			}
 		}
 	},
+	get_packing_values: function(frm){
+		frappe.call({
+			method: 'production_api.essdee_production.doctype.item_production_detail.item_production_detail.get_packing_values',
+			args: {
+				pack_attr_map: frm.set_packing_attr_map ,
+				pack_attr_no : frm.doc.packing_attribute_no,
+			},
+			callback: function(r){
+				if(r.message){
+					frm.set_value('packing_item_details', r.message)
+					frm.refresh_field('packing_item_details')
+				}
+			}
+		})
+	},
 	validate: function(frm){
 		frm.dirty()
 		if(frm.set_item && frm.doc.is_set_item){
@@ -133,26 +144,44 @@ frappe.ui.form.on("Item Production Detail", {
         }
 	},
 	async get_combination(frm){
+		if(!frm.doc.major_attribute_value){
+			frappe.msgprint("Set the major attribute value")
+			return
+		}
 		let data = null
 		await frappe.call({
 			method:'production_api.essdee_production.doctype.item_production_detail.item_production_detail.get_new_set_item_details',
 			args: {
 				map : frm.set_item_attr,
 				pack_details : frm.doc.packing_item_details,
+				major_attr_value : frm.doc.major_attribute_value,
 			},
 			callback: function(r){
 				data = r.message
 			}
 		})
 		await frm.set_item.load_data(data)
-		await frm.set_item.set_attributes()
+		frm.set_item.set_attributes()
 	},
 	set_item_attribute(frm){
+		frm.set_item = new frappe.production.ui.SetItemDetail(frm.fields_dict['set_items_html'].wrapper);
+		if(frm.doc.major_attribute_value){
+			frm.trigger('get_combination')
+		}
 		if(frm.doc.is_set_item && frm.doc.set_item_attribute){
 			frm.trigger('setup')
 			unhide_field(['set_items_html','get_combination'])
-			frm.set_item = new frappe.production.ui.SetItemDetail(frm.fields_dict['set_items_html'].wrapper);
-			frm.trigger('get_combination')
+			if(frm.doc.major_attr_value){
+				frm.trigger('get_combination')
+			}
 		}
 	},
+	packing_attribute(frm){
+		if(frm.doc.packing_attribute){
+			frm.trigger('setup')
+		}
+	},
+	major_attribute_value(frm){
+		frm.trigger('get_combination')
+	}
 });

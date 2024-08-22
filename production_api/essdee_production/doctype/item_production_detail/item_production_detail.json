@@ -25,6 +25,7 @@
   "packing_attribute",
   "packing_attribute_no",
   "auto_calculate",
+  "get_packing_values",
   "packing_item_details",
   "set_item_tab",
   "set_item_details_section",
@@ -101,7 +102,7 @@
    "label": "BOM Attribute Mapping"
   },
   {
-   "depends_on": "eval: !doc.is_local",
+   "depends_on": "eval: !doc.__islocal",
    "fieldname": "packing_tab",
    "fieldtype": "Tab Break",
    "label": "Packing"
@@ -115,22 +116,22 @@
    "fieldname": "packing_combo",
    "fieldtype": "Int",
    "label": "Packing Combo (Per Box)",
-   "non_negative": 1,
-   "reqd": 1
+   "mandatory_depends_on": "eval: !doc.__islocal",
+   "non_negative": 1
   },
   {
    "fieldname": "packing_attribute",
    "fieldtype": "Link",
    "label": "Packing Attribute",
-   "options": "Item Attribute",
-   "reqd": 1
+   "mandatory_depends_on": "eval: !doc.__islocal",
+   "options": "Item Attribute"
   },
   {
    "fieldname": "packing_attribute_no",
    "fieldtype": "Int",
    "label": "Packing Attribute No",
-   "non_negative": 1,
-   "reqd": 1
+   "mandatory_depends_on": "eval: !doc.__islocal",
+   "non_negative": 1
   },
   {
    "default": "0",
@@ -145,6 +146,7 @@
    "options": "Packing Item Detail"
   },
   {
+   "depends_on": "eval: !doc.__islocal",
    "fieldname": "set_item_tab",
    "fieldtype": "Tab Break",
    "label": "Set Item"
@@ -188,7 +190,7 @@
    "options": "Item Attribute Value"
   },
   {
-   "depends_on": "eval: doc.is_set_item",
+   "depends_on": "eval: doc.is_set_item && doc.set_item_attribute",
    "fieldname": "major_attribute_value",
    "fieldtype": "Link",
    "label": "Major Attribute Value",
@@ -204,11 +206,17 @@
    "fieldname": "item_details_tab",
    "fieldtype": "Tab Break",
    "label": "Item Details"
+  },
+  {
+   "depends_on": "eval: doc.packing_attribute_no && doc.packing_attribute",
+   "fieldname": "get_packing_values",
+   "fieldtype": "Button",
+   "label": "Get Packing Values"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2024-08-21 16:10:15.376175",
+ "modified": "2024-08-22 14:08:49.204701",
  "modified_by": "Administrator",
  "module": "Essdee Production",
  "name": "Item Production Detail",

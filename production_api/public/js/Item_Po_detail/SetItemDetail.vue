@@ -2,13 +2,11 @@
     <div ref="root">
         <table class="table table-sm table-bordered">
             <tr>
-                <th>{{ items.major_attribute }}</th>
                 <th v-for="x in items.set_attributes" :key="x">{{ x }}</th>
             </tr>
             <tr v-for="(item, index) in items.values" :key="index">
-                <td class='pt-4'>{{ item.major_attribute }}</td>
                 <td v-for="(value, key) in item.val" :key="key">
-                <div :class="get_input_class(key, index)"></div>
+                    <div :class="get_input_class(key, index)"></div>
                 </td>
             </tr>
         </table>
@@ -49,9 +47,7 @@ async function remove_attributes(){
 function createInput(attr, index){
     let parent_class = "." + get_input_class(attr, index);
     let el = root.value
-    return frappe.ui.form.make_control({
-        parent: $(el).find(parent_class),
-        df: {
+    let df = {
             fieldtype: 'Link',
             fieldname: attr+"_"+index,
             options: 'Item Attribute Value',
@@ -63,7 +59,13 @@ function createInput(attr, index){
                     }
                 }
             },
-        },
+        }
+    if (attr == cur_frm.doc.major_attribute_value){
+        df['read_only'] = true
+    }
+    return frappe.ui.form.make_control({
+        parent: $(el).find(parent_class),
+        df:df ,
         doc: sample_doc.value,
         render_input: true,
     });

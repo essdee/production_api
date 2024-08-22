@@ -49,7 +49,6 @@ let show_title = ref(false)
 
 function load_data(item){
     items.value = item;
-    console.log(items.value)
     if(item.length > 0){
         show_title.value = true
     }

@@ -128,7 +128,6 @@ function make_clean() {
 
 function load_data(items) {
   make_clean();
-  console.log(JSON.stringify(items))
   if (items.length == 0) {
     button_show.value = false;
     list_item.value = [];
@@ -146,7 +145,6 @@ function create_input_fields() {
   $(el).find(".primary-attr").html("");
   button_show.value = true;
   if (list_item.value[0].primary_attribute != null && list_item.value[0].primary_attribute != "") {
-    console.log("PRIMARY")
     primary_values = {};
     list_item.value[0].primary_attribute_values.forEach((attr, ind) => {
       qty_params[ind] = frappe.ui.form.make_control({
@@ -168,7 +166,6 @@ function create_input_fields() {
       }
     });
   } else if (list_item.value[0].primary_attribute == null || list_item.value[0].primary_attribute == "") {
-    console.log("IHUGUYYYF")
     primary_values = {};
     let qty_field = frappe.ui.form.make_control({
       parent: $(el).find(".primary-attr"),
