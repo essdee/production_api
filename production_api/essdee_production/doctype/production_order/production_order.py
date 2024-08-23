@@ -20,7 +20,7 @@ class ProductionOrder(Document):
 		for item in self.items:
 			qty = qty + item.qty
 		self.total_quantity = qty
-		items = calculate_order_details(self.get('items'), self.production_detail, self.packing_uom)
+		items = calculate_order_details(self.get('items'), self.production_detail, self.packing_uom, self.uom)
 		self.set('production_order_details',items )
 
 	def onload(self):
@@ -33,22 +33,17 @@ class ProductionOrder(Document):
 
 		
 
-def calculate_order_details(items, production_detail, packing_uom):
+def calculate_order_details(items, production_detail, packing_uom, final_uom):
 	item_detail = frappe.get_doc("Item Production Detail", production_detail)
 	final_list = []
 	import math
-	uom = packing_uom
 	doc = frappe.get_doc("Item", item_detail.item)
-	uom_conv = 0.0
-	for uom_conversion in doc.uom_conversion_details:
-		if uom_conversion.uom == uom:
-			uom_conv = uom_conversion.conversion_factor
-			break
 	dept_attr = None
 	pack_stage = None
 	if item_detail.dependent_attribute:
 		pack_stage = item_detail.packing_stage
 		dept_attr = item_detail.dependent_attribute
+	mul_factor,div_factor = get_uom_conversion_factor(doc.uom_conversion_details,final_uom, packing_uom)
 	for item in items:
 		variant = frappe.get_doc("Item Variant", item.item_variant)
 		is_not_pack_attr = True
@@ -57,8 +52,8 @@ def calculate_order_details(items, production_detail, packing_uom):
 			if attribute.attribute == item_detail.packing_attribute:
 				is_not_pack_attr = False
 				break
-		if is_not_pack_attr:		
-			qty = item.qty * uom_conv
+		if is_not_pack_attr:	
+			qty = (item.qty * mul_factor)/div_factor
 			if item_detail.auto_calculate:
 				qty = qty / item_detail.packing_attribute_no
 			else:
@@ -83,7 +78,7 @@ def calculate_order_details(items, production_detail, packing_uom):
 						'item_variant': new_variant,
 						'table_index': item.table_index,
 						'row_index': item.row_index,
-						'quantity': math.ceil(qty) if item_detail.auto_calculate else math.ceil(qty * q)
+						'quantity': math.ceil(qty) if item_detail.auto_calculate else round(qty * q)
 					}
 					final_list.append(item1)		
 
@@ -214,7 +209,7 @@ def fetch_order_item_details(items, production_detail):
 				doc = frappe.get_doc("Item", current_variant.item)
 				if doc.dependent_attribute and doc.dependent_attribute in item_attribute_details:
 					del item_attribute_details[doc.dependent_attribute]
-				if doc.primary_attribute:		
+				if doc.primary_attribute:
 					for attr in current_variant.attributes:
 						if attr.attribute == variant_attr_details['primary_attribute']:
 							values[attr.attribute_value] = variant['quantity']
@@ -235,7 +230,7 @@ def fetch_order_item_details(items, production_detail):
 						x['values'].update(values)
 						check = False
 						break
-				if check:		
+				if check:	
 					item_structure['items'].append(item1)
 		order_item_details.append(item_structure)
 	return order_item_details
@@ -320,3 +315,13 @@ def get_pack_stage_uom(item_production_detail):
 			'packing_stage':pack_stage,
 			'packing_uom': attribute_details['attr_list'][pack_stage]['uom']
 		}
+	
+def get_uom_conversion_factor(uom_conversion_details,final_uom,packing_uom):
+	packing_uom_factor = None
+	final_uom_factor = None
+	for item in uom_conversion_details:
+		if item.uom == final_uom:
+			final_uom_factor = item.conversion_factor
+		if item.uom == packing_uom:
+			packing_uom_factor = item.conversion_factor
+	return final_uom_factor, packing_uom_factor

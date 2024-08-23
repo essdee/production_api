@@ -106,7 +106,7 @@ frappe.ui.form.on("Production Order", {
 				args: {
 					item_production_detail: frm.doc.production_detail,
 					items: frm.doc.items,
-					final_uom: frm.doc.packing_uom || null,
+					production_order: frm.doc.name
 				},
 				callback:function(r) {
 					let res = r.message;

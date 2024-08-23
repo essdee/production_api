@@ -8,7 +8,7 @@ from six import string_types
 from itertools import groupby
 from production_api.production_api.doctype.item.item import get_or_create_variant, get_attribute_details
 from production_api.production_api.doctype.item_dependent_attribute_mapping.item_dependent_attribute_mapping import get_dependent_attribute_details
-
+from production_api.essdee_production.doctype.production_order.production_order import get_uom_conversion_factor
 class ItemProductionDetail(Document):
 	def load_attribute_list(self):
 		attribute_list = []
@@ -81,22 +81,20 @@ class ItemProductionDetail(Document):
 				if attribute.mapping:
 					doc = frappe.get_doc("Item Item Attribute Mapping", attribute.mapping)
 					duplicate_doc = frappe.new_doc("Item Item Attribute Mapping")
+					duplicate_doc.attribute_name = doc.attribute_name
 					duplicate_doc.values = doc.values
 					duplicate_doc.save()
 					attribute.mapping = duplicate_doc.name
-			
-			for bom in self.get('item_bom'):
-				if bom.based_on_attribute_mapping and bom.attribute_mapping:
-					doc = frappe.get_doc("Item BOM Attribute Mapping", bom.attribute_mapping)
-					duplicate_doc = frappe.new_doc("Item BOM Attribute Mapping")
-					duplicate_doc.values = doc.values
-					duplicate_doc.item_production_detail = self.name
-					duplicate_doc.item = self.item
-					duplicate_doc.bom_item = bom.item
-					duplicate_doc.save()
-					bom.attribute_mapping = duplicate_doc.name
-				else:
-					bom.attribute_mapping = None
+
+			if self.dependent_attribute_mapping:
+				doc = frappe.get_doc('Item Dependent Attribute Mapping',self.dependent_attribute_mapping)		
+				duplicate_doc = frappe.new_doc("Item Dependent Attribute Mapping")
+				duplicate_doc.item = doc.item
+				duplicate_doc.dependent_attribute = doc.dependent_attribute
+				duplicate_doc.mapping = doc.mapping
+				duplicate_doc.details = doc.details
+				duplicate_doc.save()
+				self.dependent_attribute_mapping = duplicate_doc.name
 
 		for attribute in self.get('item_attributes'):
 			if attribute.mapping == None:
@@ -163,6 +161,37 @@ class ItemProductionDetail(Document):
 
 			if len(attr) != len(self.packing_item_details):
 				frappe.throw("Duplicate Attribute values are occured")	
+	
+	def on_trash(self):
+		temp = {
+			"Item Item Attribute Mapping":[],
+			'Item Dependent Attribute Mapping':[],
+			"Item BOM Attribute Mapping":[],
+		}
+		for attribute in self.get('item_attributes'):
+			if attribute.mapping:
+				doc_name = attribute.mapping
+				attribute.mapping = None
+				temp['Item Item Attribute Mapping'].append(doc_name)
+
+		if self.dependent_attribute_mapping:
+			doc_name = self.dependent_attribute_mapping
+			self.dependent_attribute_mapping = None
+			temp['Item Dependent Attribute Mapping'].append(doc_name)		
+			
+		for bom in self.get('item_bom'):
+			if bom.attribute_mapping:
+				doc_name = bom.attribute_mapping
+				bom.attribute_mapping = None
+				temp["Item BOM Attribute Mapping"].append(doc_name)
+		delete_docs(temp)		
+
+def delete_docs(documents):
+	# have to delete child table values also
+	for key, value in documents.items():
+		doctype = frappe.qb.DocType(key)
+		if value:
+			frappe.qb.from_(doctype).delete().where(doctype.name.isin(value)).run()
 
 def fetch_set_items(set_items):
 	set_items = [item.as_dict() for item in set_items]
@@ -232,11 +261,12 @@ def get_attribute_values(item_production_detail, attributes = None):
 
 
 @frappe.whitelist()
-def get_calculated_bom(item_production_detail, items, final_uom):
+def get_calculated_bom(item_production_detail, items, production_order):
 	item_detail = frappe.get_doc("Item Production Detail", item_production_detail)
 	bom = {}
 	if isinstance(items, string_types):
 		items = json.loads(items)
+	production_doc = frappe.get_doc("Production Order", production_order)	
 	for item in items:
 		qty = item['qty']
 		variant = item['item_variant']
@@ -244,17 +274,8 @@ def get_calculated_bom(item_production_detail, items, final_uom):
 		variant_doc = frappe.get_doc("Item Variant", variant)
 		item_name = variant_doc.item
 		doc = frappe.get_doc("Item", item_name)
-		uom = final_uom or doc.default_unit_of_measure
-		uom_conv = 0.0
-		for uom_conversion in doc.uom_conversion_details:
-			if uom_conversion.uom == uom:
-				uom_conv = uom_conversion.conversion_factor
-				break
-		if uom_conv:
-			qty = qty * uom_conv	
-		else:
-			frappe.throw(uom_conv)	
-
+		mul_factor, div_factor = get_uom_conversion_factor(doc.uom_conversion_details,production_doc.uom,production_doc.packing_uom)
+		qty = (qty*mul_factor)/div_factor
 		for x in variant_doc.attributes:
 			attr_values[x.attribute] = x.attribute_value
 		if len(item_detail.item_bom) == 0:
@@ -405,7 +426,7 @@ def create_and_update_bom(index, type, mapping_doc_values, attr_values, mapping_
 	if not bom.get(new_variant, False):
 		bom[new_variant] = math.ceil(quantity)
 	else:
-		bom[new_variant] += math.ceil(quantity)
+		bom[new_variant] += round(quantity)
 	return bom
 
 def create_and_update_bom_set(attributes, bom_item, bom, quantity, auto_calculate, packing_item_details, attr_value):
@@ -414,12 +435,12 @@ def create_and_update_bom_set(attributes, bom_item, bom, quantity, auto_calculat
 		if auto_calculate:
 			bom[new_variant] = math.ceil(quantity)
 		else:
-			bom[new_variant] = math.ceil(quantity * get_quantity(packing_item_details, attr_value))
+			bom[new_variant] = round(quantity * get_quantity(packing_item_details, attr_value))
 	else:
 		if auto_calculate:
 			bom[new_variant] += math.ceil(quantity)
 		else:
-			bom[new_variant] += math.ceil(quantity * get_quantity(packing_item_details, attr_value))
+			bom[new_variant] += round(quantity * get_quantity(packing_item_details, attr_value))
 	return bom
 
 @frappe.whitelist()
