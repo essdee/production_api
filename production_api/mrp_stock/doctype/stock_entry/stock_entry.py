@@ -111,7 +111,8 @@ class StockEntry(Document):
 		source_mandatory = [
 			"Material Issue",
 			"Send to Warehouse",
-			"Receive at Warehouse"
+			"Receive at Warehouse",
+			"Material Consumed"
 		]
 
 		target_mandatory = [
@@ -132,7 +133,7 @@ class StockEntry(Document):
 				frappe.throw("Target Warehouse is Mandatory")
 	
 	def calculate_rate_and_amount(self):
-		self.total_amount = sum([flt(item.qty) * flt(item.rate) for item in self.get("items")])
+		self.total_amount = sum([flt(item.qty) * flt(item.rate) for item in self.get("items")]) + flt(self.additional_amount)
 
 	def on_submit(self):
 		self.update_stock_ledger()
