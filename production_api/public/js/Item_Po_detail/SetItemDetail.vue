@@ -13,16 +13,18 @@
     </div>
 </template>
 <script setup>
-import {ref,reactive, onMounted, nextTick} from 'vue';
+import {ref} from 'vue';
+
 const items = ref([])
 const root = ref(null)
 const sample_doc = ref({})
+
 function load_data(item){
-    items.value = item; 
+    items.value = item;
 }
 
-async function set_attributes() {
-    await remove_attributes()
+function set_attributes() {
+    remove_attributes()
     if (items.value) {
         for(let i = 0; i < items.value.values.length ; i++){
             Object.keys(items.value.values[i]['val']).forEach(row => {
@@ -35,7 +37,7 @@ async function set_attributes() {
     }
 }
 
-async function remove_attributes(){
+function remove_attributes(){
     for(let i = 0; i < items.value.values.length ; i++){
         Object.keys(items.value.values[i]['val']).forEach(row => {
             let el = root.value

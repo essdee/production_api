@@ -113,13 +113,15 @@
    "label": "Packing Details"
   },
   {
+   "description": "Pcs per Box",
    "fieldname": "packing_combo",
    "fieldtype": "Int",
-   "label": "Packing Combo (Per Box)",
+   "label": "Packing Combo",
    "mandatory_depends_on": "eval: !doc.__islocal",
    "non_negative": 1
   },
   {
+   "description": "Attribute based on which Packing Depends",
    "fieldname": "packing_attribute",
    "fieldtype": "Link",
    "label": "Packing Attribute",
@@ -127,6 +129,7 @@
    "options": "Item Attribute"
   },
   {
+   "description": "Unique number of attribute values that will be put into a box.",
    "fieldname": "packing_attribute_no",
    "fieldtype": "Int",
    "label": "Packing Attribute No",
@@ -184,6 +187,7 @@
   },
   {
    "depends_on": "eval: doc.dependent_attribute_mapping",
+   "description": "The stage which is used for packing.",
    "fieldname": "packing_stage",
    "fieldtype": "Link",
    "label": "Packing Stage",
@@ -191,6 +195,7 @@
   },
   {
    "depends_on": "eval: doc.is_set_item && doc.set_item_attribute",
+   "description": "The main Set Item Attribute",
    "fieldname": "major_attribute_value",
    "fieldtype": "Link",
    "label": "Major Attribute Value",
@@ -216,7 +221,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2024-08-22 16:25:02.740632",
+ "modified": "2024-08-23 17:13:38.844345",
  "modified_by": "Administrator",
  "module": "Essdee Production",
  "name": "Item Production Detail",

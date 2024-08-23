@@ -240,6 +240,7 @@ def get_item_attributes(doctype, txt, searchfield, start, page_len, filters):
 @frappe.whitelist()
 @frappe.validate_and_sanitize_search_inputs
 def get_attribute_detail_values(doctype, txt, searchfield, start, page_len, filters):
+	# Todo: Change it to a single query
 	doc = frappe.get_doc('Item Item Attribute Mapping', filters['mapping'])
 	out = [[item.attribute_value] for item in doc.values]
 	return out
@@ -274,8 +275,8 @@ def get_calculated_bom(item_production_detail, items, production_order):
 		variant_doc = frappe.get_doc("Item Variant", variant)
 		item_name = variant_doc.item
 		doc = frappe.get_doc("Item", item_name)
-		mul_factor, div_factor = get_uom_conversion_factor(doc.uom_conversion_details,production_doc.uom,production_doc.packing_uom)
-		qty = (qty*mul_factor)/div_factor
+		uom_factor = get_uom_conversion_factor(doc.uom_conversion_details,production_doc.uom,production_doc.packing_uom)
+		qty = (qty*uom_factor)
 		for x in variant_doc.attributes:
 			attr_values[x.attribute] = x.attribute_value
 		if len(item_detail.item_bom) == 0:
@@ -283,10 +284,11 @@ def get_calculated_bom(item_production_detail, items, production_order):
 		for bom_item in item_detail.item_bom:
 			if not bom_item.based_on_attribute_mapping: 
 				quantity = qty / bom_item.qty_of_product
-				if not bom.get(bom_item.item, False):
-					bom[bom_item.item] = math.ceil(quantity)
+				item_variant = get_or_create_variant(bom_item.item, {})
+				if not bom.get(item_variant, False):
+					bom[item_variant] = math.ceil(quantity)
 				else:
-					bom[bom_item.item] += math.ceil(quantity)
+					bom[item_variant] += math.ceil(quantity)
 			else:
 				pack_attr = item_detail.packing_attribute
 				pack_combo = item_detail.packing_combo

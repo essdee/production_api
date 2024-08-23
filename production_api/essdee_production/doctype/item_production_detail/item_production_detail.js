@@ -17,9 +17,11 @@ frappe.ui.form.on("Item Production Detail", {
 				frm.packing_stage = frm.doc.item_attributes[i].mapping
 			}
 		}
-		const attributes = frm.doc.item_attributes.map(attr => attr.attribute);
 
-		const setAttributeQuery = () => ({ filters: { name: ["in", attributes] } });
+		const setAttributeQuery = (doc)=>{
+			const attributes = doc.item_attributes.map(attr => attr.attribute)
+			return { filters: { name: ["in", attributes] } };
+		};
 
 		frm.set_query('set_item_attribute', setAttributeQuery);
 		frm.set_query('packing_attribute', setAttributeQuery);
@@ -56,7 +58,8 @@ frappe.ui.form.on("Item Production Detail", {
 			}
 		})
 	},
-	refresh:async function(frm) {
+	refresh: async function(frm) {
+		// Todo: Call only part of the function which will change
 		frm.trigger('setup')
 		if (frm.doc.__islocal) {
 			hide_field(["item_attribute_list_values", "bom_attribute_mapping"]);
@@ -87,7 +90,7 @@ frappe.ui.form.on("Item Production Detail", {
 				if(frm.doc.__onload && frm.doc.__onload.set_item_detail) {
 					frm.doc['set_item_detail'] = JSON.stringify(frm.doc.__onload.set_item_detail);
 					await frm.set_item.load_data(frm.doc.__onload.set_item_detail);
-					await frm.set_item.set_attributes()
+					frm.set_item.set_attributes()
 				}
 				else{
 					if(frm.doc.is_set_item){
@@ -113,7 +116,6 @@ frappe.ui.form.on("Item Production Detail", {
 		})
 	},
 	validate: function(frm){
-		frm.dirty()
 		if(frm.set_item && frm.doc.is_set_item){
 			let item_details = frm.set_item.get_data()
 			frm.doc['set_item_detail'] = JSON.stringify(item_details);
@@ -149,7 +151,7 @@ frappe.ui.form.on("Item Production Detail", {
 			return
 		}
 		let data = null
-		await frappe.call({
+		frappe.call({
 			method:'production_api.essdee_production.doctype.item_production_detail.item_production_detail.get_new_set_item_details',
 			args: {
 				map : frm.set_item_attr,
@@ -158,10 +160,11 @@ frappe.ui.form.on("Item Production Detail", {
 			},
 			callback: function(r){
 				data = r.message
+				frm.set_item.load_data(data)
+				frm.set_item.set_attributes()
 			}
 		})
-		await frm.set_item.load_data(data)
-		frm.set_item.set_attributes()
+		
 	},
 	set_item_attribute(frm){
 		frm.set_item = new frappe.production.ui.SetItemDetail(frm.fields_dict['set_items_html'].wrapper);
