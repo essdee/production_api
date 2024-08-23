@@ -35,7 +35,6 @@ frappe.ui.form.on("Item Production Detail", {
 				}
 			}
 		});
-		
 		frm.set_query('packing_stage', ()=> {
 			return {
 				query:'production_api.essdee_production.doctype.item_production_detail.item_production_detail.get_attribute_detail_values',
@@ -81,6 +80,7 @@ frappe.ui.form.on("Item Production Detail", {
 			hide_field(['set_items_html','get_combination'])
 		} else{
 			unhide_field(['set_items_html','get_combination'])
+			
 			if(!frm.doc.is_local){
 				$(frm.fields_dict['set_items_html'].wrapper).html("");
 				frm.set_item = new frappe.production.ui.SetItemDetail(frm.fields_dict['set_items_html'].wrapper);

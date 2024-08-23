@@ -39,7 +39,8 @@
    "fieldname": "attribute_mapping",
    "fieldtype": "Link",
    "label": "Attribute Mapping",
-   "options": "Item BOM Attribute Mapping"
+   "options": "Item BOM Attribute Mapping",
+   "read_only": 1
   },
   {
    "allow_in_quick_entry": 1,
@@ -62,7 +63,7 @@
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2024-07-24 15:33:38.349036",
+ "modified": "2024-08-23 13:12:18.348192",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Item BOM",

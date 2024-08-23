@@ -42,7 +42,6 @@ frappe.ui.form.on("Production Order", {
 				}
 			})  
 			// frm.order_detail.load_data(frm.doc.__onload.order_item_details);
-
         }
         else{
 			frm.order_detail.load_data([])
@@ -95,7 +94,7 @@ frappe.ui.form.on("Production Order", {
 			}
 		}
 	},
-    calculate_bom:async function(frm) {
+    calculate_bom:function(frm) {
 		if(frm.is_dirty()){
 			frappe.msgprint("Save the document before calculate the BOM")
 			return

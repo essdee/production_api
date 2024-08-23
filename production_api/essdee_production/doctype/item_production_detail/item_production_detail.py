@@ -163,7 +163,7 @@ class ItemProductionDetail(Document):
 				frappe.throw("Duplicate Attribute values are occured")	
 	
 	def on_trash(self):
-		temp = {
+		documents = {
 			"Item Item Attribute Mapping":[],
 			'Item Dependent Attribute Mapping':[],
 			"Item BOM Attribute Mapping":[],
@@ -172,22 +172,21 @@ class ItemProductionDetail(Document):
 			if attribute.mapping:
 				doc_name = attribute.mapping
 				attribute.mapping = None
-				temp['Item Item Attribute Mapping'].append(doc_name)
+				documents['Item Item Attribute Mapping'].append(doc_name)
 
 		if self.dependent_attribute_mapping:
 			doc_name = self.dependent_attribute_mapping
 			self.dependent_attribute_mapping = None
-			temp['Item Dependent Attribute Mapping'].append(doc_name)		
+			documents['Item Dependent Attribute Mapping'].append(doc_name)		
 			
 		for bom in self.get('item_bom'):
 			if bom.attribute_mapping:
 				doc_name = bom.attribute_mapping
 				bom.attribute_mapping = None
-				temp["Item BOM Attribute Mapping"].append(doc_name)
-		delete_docs(temp)		
+				documents["Item BOM Attribute Mapping"].append(doc_name)
+		delete_docs(documents)		
 
 def delete_docs(documents):
-	# have to delete child table values also
 	for key, value in documents.items():
 		doctype = frappe.qb.DocType(key)
 		if value:
@@ -259,7 +258,6 @@ def get_attribute_values(item_production_detail, attributes = None):
 	
 	return attribute_values
 
-
 @frappe.whitelist()
 def get_calculated_bom(item_production_detail, items, production_order):
 	item_detail = frappe.get_doc("Item Production Detail", item_production_detail)
@@ -275,7 +273,7 @@ def get_calculated_bom(item_production_detail, items, production_order):
 		item_name = variant_doc.item
 		doc = frappe.get_doc("Item", item_name)
 		mul_factor, div_factor = get_uom_conversion_factor(doc.uom_conversion_details,production_doc.uom,production_doc.packing_uom)
-		qty = (qty*mul_factor)/div_factor
+		qty = (qty * mul_factor)/div_factor
 		for x in variant_doc.attributes:
 			attr_values[x.attribute] = x.attribute_value
 		if len(item_detail.item_bom) == 0:
