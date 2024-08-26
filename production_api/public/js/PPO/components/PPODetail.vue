@@ -17,7 +17,10 @@
                         <tr v-for="(j, item1_index) in i.items" :key="item1_index">
                             <td>{{item1_index + 1}}</td>
                             <td v-for="(k, idx) in j.attributes" :key="idx">{{k}}</td>
-                            <td v-for="(k, idx) in j.values" :key="idx">{{k}}</td>
+                            <td v-for="(k, idx) in j.values" :key="idx">
+                                <div v-if='k > 0'>{{k}}</div>
+                                <div v-else>--</div>
+                            </td>
                         </tr>
                     </table>
                 </td>

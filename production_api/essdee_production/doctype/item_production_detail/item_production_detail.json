@@ -13,11 +13,11 @@
   "dependent_attribute",
   "dependent_attribute_mapping",
   "item_attributes",
-  "item_attribute_list_values",
-  "dependent_attribute_details",
+  "item_attribute_list_values_html",
+  "dependent_attribute_details_html",
   "bill_of_materials_section",
   "item_bom",
-  "bom_attribute_mapping",
+  "bom_attribute_mapping_html",
   "packing_tab",
   "packing_section",
   "packing_stage",
@@ -25,15 +25,15 @@
   "packing_attribute",
   "packing_attribute_no",
   "auto_calculate",
-  "get_packing_values",
-  "packing_item_details",
+  "get_packing_attribute_values",
+  "packing_attribute_details",
   "set_item_tab",
   "set_item_details_section",
   "is_set_item",
   "set_item_attribute",
   "major_attribute_value",
-  "get_combination",
-  "set_item_details",
+  "get_set_item_combination",
+  "set_item_combination_details",
   "set_items_html"
  ],
  "fields": [
@@ -76,16 +76,6 @@
    "options": "Item Item Attribute"
   },
   {
-   "fieldname": "item_attribute_list_values",
-   "fieldtype": "HTML",
-   "label": "Item Attribute List Values"
-  },
-  {
-   "fieldname": "dependent_attribute_details",
-   "fieldtype": "HTML",
-   "label": "Dependent Attribute Details"
-  },
-  {
    "fieldname": "bill_of_materials_section",
    "fieldtype": "Section Break",
    "label": "Bill of Materials"
@@ -95,11 +85,6 @@
    "fieldtype": "Table",
    "label": "Item BOM",
    "options": "Item BOM"
-  },
-  {
-   "fieldname": "bom_attribute_mapping",
-   "fieldtype": "HTML",
-   "label": "BOM Attribute Mapping"
   },
   {
    "depends_on": "eval: !doc.__islocal",
@@ -113,13 +98,15 @@
    "label": "Packing Details"
   },
   {
+   "description": "Pcs per Box",
    "fieldname": "packing_combo",
    "fieldtype": "Int",
-   "label": "Packing Combo (Per Box)",
+   "label": "Packing Combo",
    "mandatory_depends_on": "eval: !doc.__islocal",
    "non_negative": 1
   },
   {
+   "description": "Attribute based on which Packing Depends",
    "fieldname": "packing_attribute",
    "fieldtype": "Link",
    "label": "Packing Attribute",
@@ -127,6 +114,7 @@
    "options": "Item Attribute"
   },
   {
+   "description": "Unique number of attribute values that will be put into a box.",
    "fieldname": "packing_attribute_no",
    "fieldtype": "Int",
    "label": "Packing Attribute No",
@@ -138,12 +126,6 @@
    "fieldname": "auto_calculate",
    "fieldtype": "Check",
    "label": "Auto Calculate"
-  },
-  {
-   "fieldname": "packing_item_details",
-   "fieldtype": "Table",
-   "label": "Packing Item Details",
-   "options": "Packing Item Detail"
   },
   {
    "depends_on": "eval: !doc.__islocal",
@@ -158,13 +140,6 @@
    "label": "Is Set Item"
   },
   {
-   "fieldname": "set_item_details",
-   "fieldtype": "Table",
-   "hidden": 1,
-   "label": "Set Item Details",
-   "options": "Item Production Detail Set Item Combination"
-  },
-  {
    "depends_on": "eval: doc.is_set_item",
    "fieldname": "set_item_attribute",
    "fieldtype": "Link",
@@ -173,24 +148,22 @@
    "options": "Item Attribute"
   },
   {
-   "fieldname": "get_combination",
-   "fieldtype": "Button",
-   "label": "Get Combination"
-  },
-  {
    "fieldname": "set_items_html",
    "fieldtype": "HTML",
    "label": "Set Items HTML"
   },
   {
    "depends_on": "eval: doc.dependent_attribute_mapping",
+   "description": "The stage which is used for packing.",
    "fieldname": "packing_stage",
    "fieldtype": "Link",
    "label": "Packing Stage",
+   "mandatory_depends_on": "eval: doc.dependent_attribute_mapping && !doc.__islocal",
    "options": "Item Attribute Value"
   },
   {
    "depends_on": "eval: doc.is_set_item && doc.set_item_attribute",
+   "description": "The main Set Item Attribute",
    "fieldname": "major_attribute_value",
    "fieldtype": "Link",
    "label": "Major Attribute Value",
@@ -208,15 +181,49 @@
    "label": "Item Details"
   },
   {
+   "fieldname": "item_attribute_list_values_html",
+   "fieldtype": "HTML",
+   "label": "Item Attribute List Values HTML"
+  },
+  {
+   "fieldname": "dependent_attribute_details_html",
+   "fieldtype": "HTML",
+   "label": "Dependent Attribute Details HTML"
+  },
+  {
+   "fieldname": "bom_attribute_mapping_html",
+   "fieldtype": "HTML",
+   "label": "BOM Attribute Mapping HTML"
+  },
+  {
+   "fieldname": "packing_attribute_details",
+   "fieldtype": "Table",
+   "label": "Packing Attribute Details",
+   "options": "Item Production Detail Packing Attribute Detail"
+  },
+  {
    "depends_on": "eval: doc.packing_attribute_no && doc.packing_attribute",
-   "fieldname": "get_packing_values",
+   "fieldname": "get_packing_attribute_values",
    "fieldtype": "Button",
-   "label": "Get Packing Values"
+   "label": "Get Packing Attribute Values"
+  },
+  {
+   "depends_on": "eval: doc.is_set_item && doc.set_item_attribute && doc.major_attribute_value",
+   "fieldname": "get_set_item_combination",
+   "fieldtype": "Button",
+   "label": "Get Set Item Combination"
+  },
+  {
+   "fieldname": "set_item_combination_details",
+   "fieldtype": "Table",
+   "hidden": 1,
+   "label": "Set Item Combination Details",
+   "options": "Item Production Detail Set Item Combination"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2024-08-22 16:25:02.740632",
+ "modified": "2024-08-26 12:51:44.205094",
  "modified_by": "Administrator",
  "module": "Essdee Production",
  "name": "Item Production Detail",

@@ -20,7 +20,7 @@
   "packing_stage",
   "packing_uom",
   "production_order_details",
-  "item_order",
+  "production_item_order_html",
   "section_break_rewk",
   "total_quantity",
   "calculate_bom",
@@ -96,11 +96,6 @@
    "options": "Production Order Detail"
   },
   {
-   "fieldname": "item_order",
-   "fieldtype": "HTML",
-   "label": "Item Order"
-  },
-  {
    "fieldname": "section_break_rewk",
    "fieldtype": "Section Break"
   },
@@ -140,11 +135,16 @@
   {
    "fieldname": "section_break_veir",
    "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "production_item_order_html",
+   "fieldtype": "HTML",
+   "label": "Production Item Order HTML"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2024-08-23 11:37:02.552952",
+ "modified": "2024-08-26 14:51:43.845194",
  "modified_by": "Administrator",
  "module": "Essdee Production",
  "name": "Production Order",

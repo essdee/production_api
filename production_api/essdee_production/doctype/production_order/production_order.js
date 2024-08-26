@@ -28,20 +28,9 @@ frappe.ui.form.on("Production Order", {
 				frm.item.load_data([])
 			}
         }
-		frm.order_detail = new frappe.production.ui.PPODetail(frm.fields_dict['item_order'].wrapper)
+		frm.order_detail = new frappe.production.ui.PPODetail(frm.fields_dict['production_item_order_html'].wrapper)
 		if(frm.doc.__onload && frm.doc.__onload.order_item_details) {
-			frappe.call({
-				method: 'production_api.essdee_production.doctype.production_order.production_order.fetch_order_item_details',
-				args: {
-					items : frm.doc.production_order_details,
-					production_detail: frm.doc.production_detail,
-				},
-				callback:function(r){
-					frm.doc['order_item_details'] = JSON.stringify(r.message);
-            		frm.order_detail.load_data(r.message);
-				}
-			})  
-			// frm.order_detail.load_data(frm.doc.__onload.order_item_details);
+			frm.order_detail.load_data(frm.doc.__onload.order_item_details);
         }
         else{
 			frm.order_detail.load_data([])
@@ -57,41 +46,26 @@ frappe.ui.form.on("Production Order", {
 				method : 'production_api.essdee_production.doctype.production_order.production_order.get_isfinal_uom',
                 args : {
                     item_production_detail: frm.doc.production_detail,
+					get_pack_stage: true,
                 },
 				callback: function(r){
 					if(r.message){
-						frm.set_value('uom', r.message)
-						frm.refresh_field('uom')
-					}
-				}
-			})
-			await frappe.call({
-				method : 'production_api.essdee_production.doctype.production_order.production_order.get_pack_stage_uom',
-                args : {
-                    item_production_detail: frm.doc.production_detail,
-                },
-				callback: function(r){
-					if(r.message){
+						frm.set_value('uom',r.message.uom)
 						frm.set_value('packing_stage', r.message.packing_stage)
 						frm.set_value('packing_uom', r.message.packing_uom)
 					}
 				}
 			})
-			if (frm.doc.item){
-				frappe.call({
-					method : 'production_api.essdee_production.doctype.production_order.production_order.get_item_details',
-					args : {
-						item_name : frm.doc.item,
-						uom: frm.doc.uom,
-					},
-					callback:function(r){
-						frm.item.load_data(r.message) 
-					}
-				})
-			}
-			else{
-				frm.item.load_data([])
-			}
+			frappe.call({
+				method : 'production_api.essdee_production.doctype.production_order.production_order.get_item_details',
+				args : {
+					item_name : frm.doc.item,
+					uom: frm.doc.uom,
+				},
+				callback:function(r){
+					frm.item.load_data(r.message) 
+				}
+			})
 		}
 	},
     calculate_bom:function(frm) {
@@ -107,20 +81,10 @@ frappe.ui.form.on("Production Order", {
 					items: frm.doc.items,
 					production_order: frm.doc.name
 				},
+				freeze:true,
+				freeze_message: __("Calculating BOM..."),
 				callback:function(r) {
-					let res = r.message;
-					frappe.call({
-						method: 'production_api.essdee_production.doctype.production_order.production_order.update_bom_summary',
-						args: {
-							doc_name: frm.doc.name,
-							bom : res
-						},
-						freeze:true,
-						freeze_message: __("Calculating BOM..."),
-						callback: function(r){
-							frm.refresh()
-						}
-					})
+					frm.refresh()
 				}
 			});
 		}

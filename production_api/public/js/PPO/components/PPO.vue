@@ -20,7 +20,10 @@
               <td>{{ item1_index + 1 }}</td>
               <td>{{ i.item }}</td>
               <td v-for="(k, idx) in j.attributes" :key="idx">{{ k }}</td>
-              <td v-for="(k, idx) in j.values" :key="idx">{{ k }}</td>
+              <td v-for="(k, idx) in j.values" :key="idx">
+                <div v-if='k > 0'>{{k}}</div>
+                <div v-else>--</div>
+              </td>
               <td v-if='docstatus == 0'>
                 <div
                   class="pull-left cursor-pointer"

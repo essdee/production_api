@@ -20,6 +20,7 @@
   {
    "fieldname": "values",
    "fieldtype": "Table",
+   "hidden": 1,
    "label": "Values",
    "options": "Item BOM Attribute Mapping Value"
   },
@@ -77,7 +78,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2024-08-23 11:12:34.398377",
+ "modified": "2024-08-26 14:56:54.323169",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Item BOM Attribute Mapping",
