@@ -12,6 +12,7 @@
   "uom",
   "column_break_pufg",
   "production_detail",
+  "dependent_attribute_mapping",
   "amended_from",
   "section_break_pzgy",
   "items",
@@ -106,7 +107,7 @@
    "read_only": 1
   },
   {
-   "depends_on": "eval: doc.items.length > 0",
+   "depends_on": "eval: !doc.__islocal",
    "fieldname": "calculate_bom",
    "fieldtype": "Button",
    "label": "Calculate BOM"
@@ -140,11 +141,18 @@
    "fieldname": "production_item_order_html",
    "fieldtype": "HTML",
    "label": "Production Item Order HTML"
+  },
+  {
+   "fieldname": "dependent_attribute_mapping",
+   "fieldtype": "Link",
+   "hidden": 1,
+   "label": "Dependent Attribute Mapping",
+   "options": "Item Dependent Attribute Mapping"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2024-08-26 14:51:43.845194",
+ "modified": "2024-08-27 16:43:05.328273",
  "modified_by": "Administrator",
  "module": "Essdee Production",
  "name": "Production Order",

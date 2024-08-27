@@ -3,7 +3,7 @@
 
 frappe.ui.form.on("Item Production Detail", {
 	setup:function(frm) {
-		frm.trigger("declaration")
+		frm.trigger("declarations")
 		const setAttributeQuery = (doc)=>{
 			const attributes = doc.item_attributes.map(attr => attr.attribute)
 			return { filters: { name: ["in", attributes] } };
@@ -43,7 +43,7 @@ frappe.ui.form.on("Item Production Detail", {
 			}
 		})
 	},
-	declaration(frm){
+	declarations(frm){
 		frm.set_packing_attr_map_value = null;
 		frm.set_item_attr_map_value = null
 		frm.packing_stage = null
@@ -60,14 +60,11 @@ frappe.ui.form.on("Item Production Detail", {
 		}
 	},
 	refresh: async function(frm) {
-		frm.trigger('declaration')
+		frm.trigger('declarations')
 		if (frm.doc.__islocal) {
-			hide_field(["item_attribute_list_values_html", "bom_attribute_mapping_html"]);
+			hide_field(["item_attribute_list_values_html", "bom_attribute_mapping_html",'dependent_attribute_details_html']);
 		} else {
-			if (frm.doc.dependent_attribute_mapping){
-				frm.set_df_property('packing_stage','reqd', true);
-			}
-			unhide_field(["item_attribute_list_values_html", "bom_attribute_mapping_html"]);
+			unhide_field(["item_attribute_list_values_html", "bom_attribute_mapping_html",'dependent_attribute_details_html']);
 
 			$(frm.fields_dict['item_attribute_list_values_html'].wrapper).html("");
 			new frappe.production.ui.ItemAttributeList({
@@ -80,7 +77,12 @@ frappe.ui.form.on("Item Production Detail", {
 			$(frm.fields_dict['bom_attribute_mapping_html'].wrapper).html("");
 			new frappe.production.ui.BomItemAttributeMapping(frm.fields_dict["bom_attribute_mapping_html"].wrapper);
 		}
-
+		if(!frm.doc.packing_attribute){
+			frm.$wrapper.find("[data-fieldname='set_item_tab']").hide();
+		}
+		else{
+			frm.$wrapper.find("[data-fieldname='set_item_tab']").show();
+		}
 		if (!frm.doc.is_set_item){
 			hide_field('set_items_html')
 		} else{
@@ -170,7 +172,7 @@ frappe.ui.form.on("Item Production Detail", {
 			frm.trigger('get_set_item_combination')
 		}
 		if(frm.doc.is_set_item && frm.doc.set_item_attribute){
-			frm.trigger('declaration')
+			frm.trigger('declarations')
 			unhide_field(['set_items_html'])
 			if(frm.doc.major_attr_value){
 				frm.trigger('get_set_item_combination')
@@ -179,7 +181,7 @@ frappe.ui.form.on("Item Production Detail", {
 	},
 	packing_attribute(frm){
 		if(frm.doc.packing_attribute){
-			frm.trigger('declaration')
+			frm.trigger('declarations')
 		}
 	},
 	major_attribute_value(frm){

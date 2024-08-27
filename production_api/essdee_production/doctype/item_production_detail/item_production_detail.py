@@ -6,7 +6,7 @@ from frappe.model.document import Document
 from frappe.utils import flt
 from six import string_types
 from itertools import groupby
-from production_api.production_api.doctype.item.item import get_or_create_variant, get_attribute_details
+from production_api.production_api.doctype.item.item import get_or_create_variant
 from production_api.production_api.doctype.item_dependent_attribute_mapping.item_dependent_attribute_mapping import get_dependent_attribute_details
 from production_api.essdee_production.doctype.production_order.production_order import get_uom_conversion_factor
 class ItemProductionDetail(Document):
@@ -94,6 +94,17 @@ class ItemProductionDetail(Document):
 				duplicate_doc.details = doc.details
 				duplicate_doc.save()
 				self.dependent_attribute_mapping = duplicate_doc.name
+			
+			for bom in self.get('item_bom'):
+				if bom.based_on_attribute_mapping and bom.attribute_mapping:
+					doc = frappe.get_doc("Item BOM Attribute Mapping", bom.attribute_mapping)
+					duplicate_doc = frappe.new_doc("Item BOM Attribute Mapping")
+					duplicate_doc.item = self.item
+					duplicate_doc.bom_item = bom.item
+					duplicate_doc.save()
+					bom.attribute_mapping = duplicate_doc.name
+				else:
+					bom.attribute_mapping = None
 
 		for attribute in self.get('item_attributes'):
 			if attribute.mapping == None:
@@ -378,10 +389,10 @@ def get_calculated_bom(item_production_detail, items, production_order):
 	bom_items = []	
 	for key, val in bom.items():
 		if val:
-			bom_items.append({'item': key,'required_qty':val})	
+			bom_items.append({'item': key,'required_qty':val})
 	doc = frappe.get_doc("Production Order", production_order)
 	doc.set('bom_summary', bom_items)
-	doc.save()							
+	doc.save()			
 
 def get_bottom_part_values(attr, major_attr, set_item_details, set_item_attr, pack_attr, mapping_doc_values, attr_values, mapping_bom_item_attributes):
 	index = -1
@@ -413,13 +424,12 @@ def check_attr_value(index, type, values,pack_attr_value):
 	for value in values:
 		if index == value.index and type == value.type and pack_attr_value == value.attribute_value:
 			return True
-	return False	
+	return False
 
 def get_quantity(packing_attribute_details, attr):
 	for item in packing_attribute_details:
 		if item.attribute_value == attr:
 			return flt(item.quantity)
-	return 0	
 		
 def get_same_index_values(index, type, values, attr_values, bom_item_attributes):
 	bom_attr = {}
@@ -441,7 +451,7 @@ def create_and_update_bom(index, type, mapping_doc_values, attr_values, mapping_
 	if not bom.get(new_variant, False):
 		bom[new_variant] = math.ceil(quantity)
 	else:
-		bom[new_variant] += round(quantity)
+		bom[new_variant] += math.ceil(quantity)
 	return bom
 
 def create_and_update_bom_set(attributes, bom_item, bom, quantity, auto_calculate, packing_attribute_details, attr_value):
@@ -450,12 +460,12 @@ def create_and_update_bom_set(attributes, bom_item, bom, quantity, auto_calculat
 		if auto_calculate:
 			bom[new_variant] = math.ceil(quantity)
 		else:
-			bom[new_variant] = round(quantity * get_quantity(packing_attribute_details, attr_value))
+			bom[new_variant] = math.ceil(quantity * get_quantity(packing_attribute_details, attr_value))
 	else:
 		if auto_calculate:
 			bom[new_variant] += math.ceil(quantity)
 		else:
-			bom[new_variant] += round(quantity * get_quantity(packing_attribute_details, attr_value))
+			bom[new_variant] += math.ceil(quantity * get_quantity(packing_attribute_details, attr_value))
 	return bom
 
 @frappe.whitelist()

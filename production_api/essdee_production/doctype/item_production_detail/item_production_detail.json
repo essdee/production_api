@@ -54,13 +54,15 @@
    "fieldname": "primary_item_attribute",
    "fieldtype": "Link",
    "label": "Primary Item Attribute",
-   "options": "Item Attribute"
+   "options": "Item Attribute",
+   "read_only": 1
   },
   {
    "fieldname": "dependent_attribute",
    "fieldtype": "Link",
    "label": "Dependent Attribute",
-   "options": "Item Attribute"
+   "options": "Item Attribute",
+   "read_only": 1
   },
   {
    "fieldname": "dependent_attribute_mapping",
@@ -73,7 +75,8 @@
    "fieldname": "item_attributes",
    "fieldtype": "Table",
    "label": "Item Attributes",
-   "options": "Item Item Attribute"
+   "options": "Item Item Attribute",
+   "read_only": 1
   },
   {
    "fieldname": "bill_of_materials_section",
@@ -128,7 +131,7 @@
    "label": "Auto Calculate"
   },
   {
-   "depends_on": "eval: !doc.__islocal",
+   "depends_on": "eval: !doc.__islocal && doc.packing_attribute",
    "fieldname": "set_item_tab",
    "fieldtype": "Tab Break",
    "label": "Set Item"
@@ -223,7 +226,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2024-08-26 12:51:44.205094",
+ "modified": "2024-08-27 13:56:58.185268",
  "modified_by": "Administrator",
  "module": "Essdee Production",
  "name": "Item Production Detail",

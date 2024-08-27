@@ -2,6 +2,16 @@
 // For license information, please see license.txt
 
 frappe.ui.form.on("Production Order", {
+	setup(frm){
+		frm.set_query('production_detail',(doc)=> {
+			return{
+				query: 'production_api.essdee_production.doctype.production_order.production_order.get_production_detail',
+				filters: {
+					'item':doc.item
+				}
+			}
+		})
+	},
     refresh(frm) {
         $(frm.fields_dict['items_html'].wrapper).html("")
         frm.item = new frappe.production.ui.PPOpage(frm.fields_dict['items_html'].wrapper)
@@ -40,6 +50,13 @@ frappe.ui.form.on("Production Order", {
         let items = frm.item.get_data()
         frm.doc['item_details'] = JSON.stringify(items)
     },
+	item(frm){
+		if(!frm.doc.item){
+			if(frm.item){
+				frm.item.load_data([])
+			}
+		}
+	},
 	async production_detail(frm){
 		if(frm.doc.production_detail){
 			await frappe.call({
@@ -53,6 +70,7 @@ frappe.ui.form.on("Production Order", {
 						frm.set_value('uom',r.message.uom)
 						frm.set_value('packing_stage', r.message.packing_stage)
 						frm.set_value('packing_uom', r.message.packing_uom)
+						frm.set_value('dependent_attribute_mapping',r.message.dependent_attr_mapping)
 					}
 				}
 			})
@@ -61,6 +79,8 @@ frappe.ui.form.on("Production Order", {
 				args : {
 					item_name : frm.doc.item,
 					uom: frm.doc.uom,
+					production_detail:frm.doc.production_detail,
+					dependent_attr_mapping: frm.doc.dependent_attribute_mapping
 				},
 				callback:function(r){
 					frm.item.load_data(r.message) 

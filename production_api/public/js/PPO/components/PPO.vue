@@ -135,6 +135,7 @@ function load_data(items) {
     button_show.value = false;
     list_item.value = [];
   } else {
+    console.log(JSON.stringify(items))
     list_item.value[0] = items;
     if (docstatus.value != 1 && docstatus.value != 2) {
       create_input_fields();
@@ -211,6 +212,7 @@ function create_dependent_attribute() {
             filters: {
               item: list_item.value[0].item,
               attribute: attr,
+              production_detail: cur_frm.doc.production_detail,
             },
           };
         },
