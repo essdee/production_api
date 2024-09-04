@@ -36,11 +36,7 @@
   "get_set_item_combination",
   "set_item_combination_details",
   "set_items_html",
-  "section_break_ikzf",
-  "stiching_attribute",
-  "in",
-  "out",
-  "stiching_attribute_details"
+  "section_break_ikzf"
  ],
  "fields": [
   {
@@ -235,30 +231,6 @@
    "label": "Pack Out Stage",
    "mandatory_depends_on": "eval: doc.dependent_attribute_mapping && !doc.__islocal",
    "options": "Item Attribute Value"
-  },
-  {
-   "fieldname": "in",
-   "fieldtype": "Link",
-   "label": "In",
-   "options": "Item Attribute Value"
-  },
-  {
-   "fieldname": "out",
-   "fieldtype": "Link",
-   "label": "Out",
-   "options": "Item Attribute Value"
-  },
-  {
-   "fieldname": "stiching_attribute_details",
-   "fieldtype": "Table",
-   "label": "Stiching Attribute Details",
-   "options": "Stiching Attribute Detail"
-  },
-  {
-   "fieldname": "stiching_attribute",
-   "fieldtype": "Link",
-   "label": "Stiching Attribute",
-   "options": "Item Attribute"
   },
   {
    "fieldname": "section_break_ikzf",
