@@ -3,7 +3,7 @@
 import frappe, json
 import math
 from frappe.model.document import Document
-from frappe.utils import flt
+from frappe.utils import flt, now_datetime
 from six import string_types
 from itertools import groupby
 from production_api.production_api.doctype.item.item import get_or_create_variant
@@ -50,7 +50,6 @@ class ItemProductionDetail(Document):
 
 	def load_dependent_attribute(self):
 		"""Load Dependent Attribute Detail into `__onload`"""
-		
 		dependent_attribute = {}
 		if self.dependent_attribute and self.dependent_attribute_mapping:
 			dependent_attribute = get_dependent_attribute_details(self.dependent_attribute_mapping)
@@ -119,7 +118,7 @@ class ItemProductionDetail(Document):
 				doc.item_production_detail = self.name
 				doc.item = self.item
 				doc.bom_item = bom.item
-				
+
 				attr_values = []
 				item_doc = frappe.get_doc("Item",bom.item)
 				for item in item_doc.attributes:
@@ -127,7 +126,7 @@ class ItemProductionDetail(Document):
 
 				doc.set('item_attributes',[{'attribute':self.packing_attribute}])
 				doc.set('bom_item_attributes',attr_values)
-				
+
 				doc.flags.ignore_validate = True
 				doc.save()
 				bom.attribute_mapping = doc.name
@@ -135,14 +134,14 @@ class ItemProductionDetail(Document):
 				name = bom.attribute_mapping
 				bom.attribute_mapping = None
 				frappe.delete_doc("Item BOM Attribute Mapping", name)
-		
+
 		if not self.is_new():
 			if self.packing_combo == 0:
 				frappe.throw("The packing combo should not be zero")
-				
+
 			if self.packing_attribute_no == 0:
 				frappe.throw("The packing attribute no should not be zero")
-			
+
 			mapping = None
 			is_attribute = False
 			for item in self.item_attributes:
@@ -150,13 +149,13 @@ class ItemProductionDetail(Document):
 					is_attribute = True
 					mapping = item.mapping
 					break
-			
+
 			if not is_attribute:
 				frappe.throw("The packing attribute is not the item attribute")
 
 			map_doc = frappe.get_doc("Item Item Attribute Mapping", mapping)
 			if len(map_doc.values) < self.packing_attribute_no:
-				frappe.throw(f"The Packing attribute number is {self.packing_attribute_no} But there is only {len(map_doc.values)} attributes are available")
+				frappe.throw(f"The Packing attribute no is {self.packing_attribute_no} But there is only {len(map_doc.values)} attributes are available")
 
 			if len(self.packing_attribute_details) != self.packing_attribute_no:
 				frappe.throw(f"Only {self.packing_attribute_no} {self.packing_attribute}'s are required")
@@ -173,13 +172,13 @@ class ItemProductionDetail(Document):
 						frappe.throw("Zero is not considered as a valid quantity")
 					sum = sum + row.quantity
 					attr.add(row.attribute_value)
-				
+
 				if sum < self.packing_combo or sum > self.packing_combo:
 					frappe.throw(f"The sum of quantity should be {self.packing_combo}")
 
 			if len(attr) != len(self.packing_attribute_details):
 				frappe.throw("Duplicate Attribute values are occured")	
-	
+
 	def on_trash(self):
 		documents = {
 			"Item Item Attribute Mapping":[],
@@ -196,7 +195,7 @@ class ItemProductionDetail(Document):
 			doc_name = self.dependent_attribute_mapping
 			self.dependent_attribute_mapping = None
 			documents['Item Dependent Attribute Mapping'].append(doc_name)		
-			
+
 		for bom in self.get('item_bom'):
 			if bom.attribute_mapping:
 				doc_name = bom.attribute_mapping
@@ -241,13 +240,12 @@ def save_item_details(set_item_detail):
 			item_detail.append(row)
 	return item_detail		
 
-
 @frappe.whitelist()
 @frappe.validate_and_sanitize_search_inputs
 def get_item_attributes(doctype, txt, searchfield, start, page_len, filters):
 	if (doctype != 'Item Attribute' or filters['item_production_detail'] == None):
 		return []
-	
+
 	item_production_detail_name = filters['item_production_detail']
 	item_production_detail = frappe.get_doc("Item Production Detail", item_production_detail_name)
 	attributes = [attribute.attribute for attribute in item_production_detail.item_attributes]
@@ -273,7 +271,7 @@ def get_attribute_values(item_production_detail, attributes = None):
 		if attribute.attribute in attributes and attribute.mapping != None:
 			doc = frappe.get_doc("Item Item Attribute Mapping", attribute.mapping)
 			attribute_values[attribute.attribute] = [d.attribute_value for d in doc.values]
-	
+
 	return attribute_values
 
 @frappe.whitelist()
@@ -282,7 +280,11 @@ def get_calculated_bom(item_production_detail, items, production_order):
 	bom = {}
 	if isinstance(items, string_types):
 		items = json.loads(items)
-	production_doc = frappe.get_doc("Production Order", production_order)	
+	production_doc = frappe.get_doc("Production Order", production_order)
+	pack_out_stage = production_doc.pack_out_stage
+	pack_in_stage = production_doc.pack_in_stage
+	if len(items) == 0:
+		return
 	for item in items:
 		qty = item['qty']
 		if not qty:
@@ -299,13 +301,24 @@ def get_calculated_bom(item_production_detail, items, production_order):
 		if len(item_detail.item_bom) == 0:
 			frappe.throw("No BOM is set on this item production detail")
 		for bom_item in item_detail.item_bom:
-			if not bom_item.based_on_attribute_mapping: 
-				quantity = qty / bom_item.qty_of_product
+			qty_of_product = bom_item.qty_of_product
+			qty_of_bom = bom_item.qty_of_bom_item
+			if pack_in_stage and pack_out_stage and bom_item.dependent_attribute_value:
+				if not bom_item.dependent_attribute_value == pack_in_stage:
+					dependent_attr_uom = get_uom(production_doc.dependent_attribute_mapping,bom_item.dependent_attribute_value)
+					bom_item_doc = frappe.get_doc("Item", bom_item.item)
+					bom_item_conv = get_uom_conversion_factor(bom_item_doc.uom_conversion_details, dependent_attr_uom ,production_doc.packing_uom)
+					qty_of_product = bom_item_conv
+
+			qty_of_product = qty_of_product/qty_of_bom
+
+			if not bom_item.based_on_attribute_mapping:
+				quantity = qty / qty_of_product
 				item_variant = get_or_create_variant(bom_item.item, {})
 				if not bom.get(item_variant, False):
-					bom[item_variant] = math.ceil(quantity)
+					bom[item_variant] = [math.ceil(quantity),bom_item.process_name]
 				else:
-					bom[item_variant] += math.ceil(quantity)
+					bom[item_variant][0] += math.ceil(quantity)
 			else:
 				pack_attr = item_detail.packing_attribute
 				pack_combo = item_detail.packing_combo
@@ -313,9 +326,12 @@ def get_calculated_bom(item_production_detail, items, production_order):
 				mapping_attr = bom_item.attribute_mapping
 				mapping_doc = frappe.get_doc("Item BOM Attribute Mapping", mapping_attr)
 				if item_detail.auto_calculate:
-					temp_qty = qty/	pack_attr_no
+					temp_qty = qty/pack_attr_no
 				else:
-					temp_qty = qty/	pack_combo
+					temp_qty = qty/pack_combo
+					
+				temp_qty = temp_qty*qty_of_bom
+
 				if item_detail.is_set_item:
 					set_attr = item_detail.set_item_attribute
 					set_item_map_doc = None
@@ -323,76 +339,95 @@ def get_calculated_bom(item_production_detail, items, production_order):
 						if attr.attribute == set_attr:
 							set_item_map_doc = attr.mapping
 							break
+
+					same_attribute = get_same_attr(mapping_doc.item_attributes, attr_values, pack_attr)
 					if pack_attr in attr_values:
-						quantity = qty/bom_item.qty_of_product
+						quantity = qty/qty_of_product
 						set_map = frappe.get_doc("Item Item Attribute Mapping", set_item_map_doc)
 						for set_val in set_map.values:
 							for value in mapping_doc.values:
-								if set_val.attribute_value == item_detail.major_attribute_value:
-									if value.attribute == pack_attr and value.attribute_value == attr_values[pack_attr] and value.type == "item":
-										updated_bom = create_and_update_bom(value.index, "bom", mapping_doc.values, attr_values, mapping_doc.bom_item_attributes,bom_item.item, bom, quantity)	
+								if value.attribute == pack_attr and value.attribute_value == attr_values[pack_attr] and value.type == "item":
+									if check_attr_value(value.index,'item',mapping_doc.values,set_attr,set_val.attribute_value):
+										updated_bom = create_and_update_bom(value.index, "bom", mapping_doc.values, attr_values, mapping_doc.bom_item_attributes,bom_item.item, bom, quantity, bom_item.process_name)
 										bom = updated_bom
 										break
-								else:
-									if value.attribute == set_attr and  value.attribute_value == set_val.attribute_value and value.type == "item":
-										if check_attr_value(value.index, "item",mapping_doc.values,attr_values[pack_attr]):
-											updated_bom = create_and_update_bom(value.index, "bom", mapping_doc.values, attr_values, mapping_doc.bom_item_attributes,bom_item.item, bom, quantity)	
-											bom = updated_bom
-											break
-					else:	
-						item_map_doc = None
-						for attr in item_detail.item_attributes:
-							if attr.attribute == pack_attr:
-								item_map_doc = attr.mapping
-								break
-						item_map = frappe.get_doc("Item Item Attribute Mapping", item_map_doc)
+					else:
 						set_map = frappe.get_doc("Item Item Attribute Mapping", set_item_map_doc)
 						for pack_attr_value in item_detail.packing_attribute_details:
 							for attr in set_map.values:
 								for value in mapping_doc.values:
 									if value.attribute == set_attr and value.attribute_value == attr.attribute_value and value.type == "item":
-										if item_detail.major_attribute_value == attr.attribute_value:
-											if check_attr_value(value.index, "item", mapping_doc.values,pack_attr_value.attribute_value):
+										get_attr = pack_attr
+										get_value = pack_attr_value.attribute_value
+
+										if not same_attribute == pack_attr:
+											get_attr = same_attribute
+											get_value = attr_values[same_attribute]	
+											
+										if item_detail.major_attribute_value == attr.attribute_value:	
+											if check_attr_value(value.index, "item", mapping_doc.values,get_attr,get_value):
 												attributes = get_same_index_values(value.index, "bom", mapping_doc.values, attr_values, mapping_doc.bom_item_attributes)
-												updated_bom = create_and_update_bom_set(attributes,bom_item.item,bom,temp_qty,item_detail.auto_calculate,item_detail.packing_attribute_details, pack_attr_value.attribute_value)
+												updated_bom = create_and_update_bom_set(attributes,bom_item.item,bom,temp_qty,item_detail.auto_calculate,item_detail.packing_attribute_details, pack_attr_value.attribute_value, bom_item.process_name)
 												bom = updated_bom
 												break
 										else:
-											attributes = get_bottom_part_values(pack_attr_value.attribute_value,attr.attribute_value, item_detail.set_item_combination_details, item_detail.set_item_attribute, pack_attr,mapping_doc.values, attr_values, mapping_doc.bom_item_attributes) 
+											attributes = get_bottom_part_values(get_value,attr.attribute_value, item_detail.set_item_combination_details, item_detail.set_item_attribute, get_attr,mapping_doc.values, attr_values, mapping_doc.bom_item_attributes) 
 											for attribute in attributes:
-												updated_bom = create_and_update_bom_set(attribute,bom_item.item,bom,temp_qty,item_detail.auto_calculate,item_detail.packing_attribute_details, pack_attr_value.attribute_value)
+												updated_bom = create_and_update_bom_set(attribute,bom_item.item,bom,temp_qty,item_detail.auto_calculate,item_detail.packing_attribute_details, pack_attr_value.attribute_value, bom_item.process_name)
 												bom = updated_bom
 											break
 				else:
+					same_attribute = get_same_attr(mapping_doc.item_attributes, attr_values, pack_attr)
 					if pack_attr in attr_values:
-						quantity = qty/bom_item.qty_of_product
+						quantity = qty/qty_of_product
+						get_attr = pack_attr
+						get_value = attr_values[pack_attr]
+						if not same_attribute == pack_attr:
+							get_attr = same_attribute
+							get_value = attr_values[same_attribute]
 						for value in mapping_doc.values:
-							if value.attribute == pack_attr and value.attribute_value == attr_values[pack_attr] and value.type == "item":
-								updated_bom = create_and_update_bom(value.index, "bom", mapping_doc.values, attr_values, mapping_doc.bom_item_attributes,bom_item.item, bom, quantity)	
+							if value.attribute == get_attr and value.attribute_value == get_value and value.type == "item":
+								updated_bom = create_and_update_bom(value.index, "bom", mapping_doc.values, attr_values, mapping_doc.bom_item_attributes,bom_item.item, bom, quantity,bom_item.process_name)	
 								bom = updated_bom
-								break
+								break	
 					else:
 						item_map_doc = None
 						for attr in item_detail.item_attributes:
-							if attr.attribute == pack_attr:
+							if attr.attribute == same_attribute:
 								item_map_doc = attr.mapping
 								break
+						
 						item_map = frappe.get_doc("Item Item Attribute Mapping", item_map_doc)
 						for attr in item_map.values:
 							for value in mapping_doc.values:
-								if value.attribute == pack_attr and value.attribute_value == attr.attribute_value and value.type == "item":
+								if value.attribute == same_attribute and value.attribute_value == attr.attribute_value and value.type == "item":
 									attributes = get_same_index_values(value.index, "bom", mapping_doc.values, attr_values, mapping_doc.bom_item_attributes)
-									updated_bom = create_and_update_bom_set(attributes,bom_item.item,bom,temp_qty,item_detail.auto_calculate,item_detail.packing_attribute_details, attr.attribute_value)
+									updated_bom = create_and_update_bom_set(attributes,bom_item.item,bom,temp_qty,item_detail.auto_calculate,item_detail.packing_attribute_details, attr.attribute_value, bom_item.process_name)
 									bom = updated_bom
 									break
-							
 	bom_items = []	
+	
 	for key, val in bom.items():
-		if val:
-			bom_items.append({'item': key,'required_qty':val})
-	doc = frappe.get_doc("Production Order", production_order)
-	doc.set('bom_summary', bom_items)
-	doc.save()			
+		bom_items.append({'item': key,'process_name':val[1],'required_qty':val[0]})
+
+	production_doc.set('bom_summary', bom_items)
+	production_doc.last_calculated_time = now_datetime()
+	production_doc.save()	
+
+def get_same_attr(item_attributes, attr_values, pack_attr):
+	for item in item_attributes:
+		if item.attribute == pack_attr:
+			return item.attribute
+
+	for item in item_attributes:
+		if item.attribute in attr_values:
+			return item.attribute
+ 
+def get_uom(dependent_attribute_mapping,dependent_attribute_value):
+	dept_attr_details = get_dependent_attribute_details(dependent_attribute_mapping)
+	for attr in dept_attr_details['attr_list']:
+		if attr == dependent_attribute_value:
+			return dept_attr_details['attr_list'][attr]['uom']
 
 def get_bottom_part_values(attr, major_attr, set_item_details, set_item_attr, pack_attr, mapping_doc_values, attr_values, mapping_bom_item_attributes):
 	index = -1
@@ -400,12 +435,13 @@ def get_bottom_part_values(attr, major_attr, set_item_details, set_item_attr, pa
 		if item.major_attribute_value == attr:
 			index = item.index
 			break
-	
+
 	bottom_parts = {}
 	bottom_parts[set_item_attr] = []
 	for item in set_item_details:
 		if item.index == index and item.set_item_attribute_value == major_attr:
 			bottom_parts[set_item_attr].append({set_item_attr : item.set_item_attribute_value, pack_attr:item.attribute_value})
+
 	attributes = []
 	for parts in bottom_parts[set_item_attr]:
 		key, val = parts.items()
@@ -415,14 +451,13 @@ def get_bottom_part_values(attr, major_attr, set_item_details, set_item_attr, pa
 				for y in mapping_doc_values:
 					if y.index == x.index and y.attribute == val[0] and y.attribute_value == val[1] and y.type == 'item':
 						index = y.index
-						break
 		if index != -1:	
 			attributes.append(get_same_index_values(index,"bom",mapping_doc_values, attr_values, mapping_bom_item_attributes))
 	return attributes
 
-def check_attr_value(index, type, values,pack_attr_value):
+def check_attr_value(index, type, values,attr ,attr_value):
 	for value in values:
-		if index == value.index and type == value.type and pack_attr_value == value.attribute_value:
+		if index == value.index and type == value.type and attr == value.attribute and attr_value == value.attribute_value:
 			return True
 	return False
 
@@ -430,7 +465,7 @@ def get_quantity(packing_attribute_details, attr):
 	for item in packing_attribute_details:
 		if item.attribute_value == attr:
 			return flt(item.quantity)
-		
+
 def get_same_index_values(index, type, values, attr_values, bom_item_attributes):
 	bom_attr = {}
 	for value in values:
@@ -445,27 +480,28 @@ def get_same_index_values(index, type, values, attr_values, bom_item_attributes)
 
 	return bom_attr		
 
-def create_and_update_bom(index, type, mapping_doc_values, attr_values, mapping_bom_item_attributes, bom_item, bom, quantity):
+def create_and_update_bom(index, type, mapping_doc_values, attr_values, mapping_bom_item_attributes, bom_item, bom, quantity, process_name):
 	attributes = get_same_index_values(index, type, mapping_doc_values, attr_values, mapping_bom_item_attributes)
 	new_variant = get_or_create_variant(bom_item, attributes)
 	if not bom.get(new_variant, False):
-		bom[new_variant] = math.ceil(quantity)
+		bom[new_variant] = [math.ceil(quantity),process_name]
 	else:
-		bom[new_variant] += math.ceil(quantity)
+		bom[new_variant][0] += math.ceil(quantity)
 	return bom
 
-def create_and_update_bom_set(attributes, bom_item, bom, quantity, auto_calculate, packing_attribute_details, attr_value):
+def create_and_update_bom_set(attributes, bom_item, bom, quantity, auto_calculate, packing_attribute_details, attr_value, process_name):
 	new_variant = get_or_create_variant(bom_item, attributes)
 	if not bom.get(new_variant, False):
 		if auto_calculate:
-			bom[new_variant] = math.ceil(quantity)
+			bom[new_variant] = [math.ceil(quantity),process_name]
 		else:
-			bom[new_variant] = math.ceil(quantity * get_quantity(packing_attribute_details, attr_value))
+			bom[new_variant] = [math.ceil(quantity * get_quantity(packing_attribute_details, attr_value)),process_name]
 	else:
 		if auto_calculate:
-			bom[new_variant] += math.ceil(quantity)
+			bom[new_variant][0] += math.ceil(quantity)
 		else:
-			bom[new_variant] += math.ceil(quantity * get_quantity(packing_attribute_details, attr_value))
+			bom[new_variant][0] += math.ceil(quantity * get_quantity(packing_attribute_details, attr_value))
+			
 	return bom
 
 @frappe.whitelist()

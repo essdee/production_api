@@ -5,7 +5,7 @@ frappe.ui.form.on('Item BOM Attribute Mapping', {
 	setup: function(frm) {
 		frm.set_query('attribute', 'item_attributes', (doc) => {
 			return {
-				query: 'production_api.production_api.doctype.item_production_detail.item_production_detail.get_item_attributes',
+				query: 'production_api.essdee_production.doctype.item_production_detail.item_production_detail.get_item_attributes',
 				filters: {
 					item_production_detail: doc.item_production_detail,
 				}
@@ -111,7 +111,7 @@ function get_attributes(frm) {
 	}
 	let m = null
 	frappe.call({
-		method: "production_api.production_api.doctype.item_production_detail.item_production_detail.get_attribute_values",
+		method: "production_api.essdee_production.doctype.item_production_detail.item_production_detail.get_attribute_values",
 		args: {
 			'item_production_detail': frm.doc.item_production_detail,
 			'attributes': item_attributes,

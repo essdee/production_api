@@ -7,7 +7,6 @@
                     <td>{{ item.dependent_attribute }}</td>
                     <td>UOM</td>
                     <td>Display Name</td>
-                    <td>Is Final</td>
                     <td v-for="attr in attributes">{{ attr }}</td>
                 </tr>
                 <tr v-for="attr_value in dependent_attr_list">
@@ -20,13 +19,12 @@
                         <div v-if="edit" :class="get_input_class(attr_value, 'name')"></div>
                         <span v-else>{{ data.attr_list[attr_value].name }}</span>
                     </td>
-                    <td>
+                    <!-- <td>
                         <div v-if="edit" :class="get_input_class(attr_value, 'is_final')"></div>
                         <span v-else>
                             <span v-if="data.attr_list[attr_value].is_final">✅</span>
-                            <!-- {{ data.attr_list[attr_value].attributes }} -->
                         </span>
-                    </td>
+                    </td> -->
                     <td v-for="attr in attributes">
                         <div v-if="edit" :class="get_input_class(attr_value, attr)"></div>
                         <span v-else>
@@ -76,7 +74,7 @@ export default {
                             this.data.attr_list[value] = {
                                 "uom": this.item.default_unit_of_measure,
                                 "name": "",
-                                "is_final": 0,
+                                // "is_final": 0,
                                 "attributes": [],
                             }
                         }
@@ -154,19 +152,19 @@ export default {
                     render_input: true,
                 });
                 inputs[b].set_value(this.data.attr_list[attr_value].name)
-                let c = this.get_input_class(attr_value, 'is_final');
-                inputs[c] = frappe.ui.form.make_control({
-                    parent: $(this.$el).find('.'+c),
-                    df: {
-                        fieldtype: 'Check',
-                        label: '',
-                        onchange: () => {
-                            me.data.attr_list[attr_value].is_final = inputs[c].get_value();
-                        }
-                    },
-                    render_input: true,
-                })
-                inputs[c].set_value(this.data.attr_list[attr_value].is_final)
+                // let c = this.get_input_class(attr_value, 'is_final');
+                // inputs[c] = frappe.ui.form.make_control({
+                //     parent: $(this.$el).find('.'+c),
+                //     df: {
+                //         fieldtype: 'Check',
+                //         label: '',
+                //         onchange: () => {
+                //             me.data.attr_list[attr_value].is_final = inputs[c].get_value();
+                //         }
+                //     },
+                //     render_input: true,
+                // })
+                // inputs[c].set_value(this.data.attr_list[attr_value].is_final)
 
                 for (let j=0;j<this.attributes.length;j++) {
                     let n = this.get_input_class(attr_value, this.attributes[j]);

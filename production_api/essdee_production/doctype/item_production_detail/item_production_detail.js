@@ -23,7 +23,7 @@ frappe.ui.form.on("Item Production Detail", {
 				}
 			}
 		});
-		frm.set_query('packing_stage', ()=> {
+		frm.set_query('pack_in_stage', ()=> {
 			return {
 				query:'production_api.essdee_production.doctype.item_production_detail.item_production_detail.get_attribute_detail_values',
 				filters: {
@@ -31,6 +31,24 @@ frappe.ui.form.on("Item Production Detail", {
 				}
 			}
 		})
+		frm.set_query('pack_out_stage', ()=> {
+			return {
+				query:'production_api.essdee_production.doctype.item_production_detail.item_production_detail.get_attribute_detail_values',
+				filters: {
+					'mapping': frm.packing_stage,
+				}
+			}
+		})
+		frm.set_query('dependent_attribute_value','item_bom', ()=> {
+			return {
+				query:'production_api.essdee_production.doctype.item_production_detail.item_production_detail.get_attribute_detail_values',
+				filters: {
+					'mapping': frm.packing_stage,
+				}
+			}
+		})
+		
+		
 		frm.set_query('major_attribute_value', ()=> {
 			if(!frm.doc.set_item_attribute){
 				frappe.throw("Please set the Set Attribute Item")
@@ -47,6 +65,7 @@ frappe.ui.form.on("Item Production Detail", {
 		frm.set_packing_attr_map_value = null;
 		frm.set_item_attr_map_value = null
 		frm.packing_stage = null
+	
 		for(let i = 0; i < frm.doc.item_attributes.length; i++){
 			if(frm.doc.item_attributes[i].attribute == frm.doc.packing_attribute){
 				frm.set_packing_attr_map_value = frm.doc.item_attributes[i].mapping;
@@ -57,10 +76,12 @@ frappe.ui.form.on("Item Production Detail", {
 			if(frm.doc.item_attributes[i].attribute == frm.doc.dependent_attribute){
 				frm.packing_stage = frm.doc.item_attributes[i].mapping
 			}
+			
 		}
 	},
 	refresh: async function(frm) {
 		frm.trigger('declarations')
+		
 		if (frm.doc.__islocal) {
 			hide_field(["item_attribute_list_values_html", "bom_attribute_mapping_html",'dependent_attribute_details_html']);
 		} else {
@@ -102,6 +123,10 @@ frappe.ui.form.on("Item Production Detail", {
 				}
 			}
 		}
+	},
+	onload_post_render(frm){
+		showOrHideColumns(frm,['dependent_attribute_value'],'item_bom', frm.doc.dependent_attribute ? 0 : 1)
+		updateChildTableReqd(frm, ['dependent_attribute_value'],'item_bom', frm.doc.dependent_attribute ? 1 : 0)
 	},
 	get_packing_attribute_values: function(frm){
 		frappe.call({
@@ -188,3 +213,63 @@ frappe.ui.form.on("Item Production Detail", {
 		frm.trigger('get_set_item_combination')
 	}
 });
+
+
+function showOrHideColumns(frm, fields, table, hidden) {
+	if (frappe.ui.form.editable_row) {
+		frappe.ui.form.editable_row.toggle_editable_row(false)
+	}
+	let grid = frm.get_field(table).grid;
+	for (let field of fields) {
+		grid.fields_map[field].hidden = hidden;
+	}
+	grid.visible_columns = undefined;
+	grid.setup_visible_columns();
+	
+	grid.header_row.wrapper.remove();
+	delete grid.header_row;
+	grid.make_head();
+	
+	for (let row of grid.grid_rows) {
+		if (row.open_form_button) {
+			row.open_form_button.parent().remove();
+			delete row.open_form_button;
+		}
+		for (let field in row.columns) {
+			if (row.columns[field] !== undefined) {
+				row.columns[field].remove();
+			}
+		}
+		for (let fieldname of fields) {
+			let df = row.docfields.find(field => field.fieldname === fieldname)
+			df && (df.hidden = hidden)
+		}
+		delete row.columns;
+		row.columns = [];
+		row.render_row();
+	}
+	frappe.ui.form.editable_row && frappe.ui.form.editable_row.toggle_editable_row(false)
+}
+
+function updateChildTableReqd(frm, fields, table, reqd) {
+    let grid = frm.get_field(table).grid;
+    for (let row of grid.grid_rows) {
+        if (row.open_form_button) {
+            row.open_form_button.parent().remove();
+            delete row.open_form_button;
+        }
+        for (let field in row.columns) {
+            if (row.columns[field] !== undefined) {
+                row.columns[field].remove();
+            }
+        }
+        for (let fieldname of fields) {
+			let df = row.docfields.find(field => field.fieldname === fieldname)
+            df && (df.reqd = reqd)
+        }
+        delete row.columns;
+        row.columns = [];
+        row.render_row();
+    }
+    frappe.ui.form.editable_row && frappe.ui.form.editable_row.toggle_editable_row(false)
+}

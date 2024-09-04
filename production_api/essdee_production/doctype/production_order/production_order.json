@@ -9,23 +9,26 @@
   "section_break_ix5v",
   "item",
   "naming_series",
-  "uom",
+  "pack_out_stage",
   "column_break_pufg",
   "production_detail",
   "dependent_attribute_mapping",
-  "amended_from",
+  "uom",
   "section_break_pzgy",
   "items",
   "items_html",
   "section_break_veir",
-  "packing_stage",
+  "pack_in_stage",
   "packing_uom",
   "production_order_details",
   "production_item_order_html",
   "section_break_rewk",
   "total_quantity",
+  "last_calculated_time",
   "calculate_bom",
-  "bom_summary"
+  "bom_summary",
+  "bom_additional_items",
+  "amended_from"
  ],
  "fields": [
   {
@@ -117,13 +120,7 @@
    "fieldname": "bom_summary",
    "fieldtype": "Table",
    "label": "BOM Summary",
-   "options": "Production Items"
-  },
-  {
-   "fieldname": "packing_stage",
-   "fieldtype": "Link",
-   "label": "Packing Stage",
-   "options": "Item Attribute Value",
+   "options": "Production Items",
    "read_only": 1
   },
   {
@@ -148,11 +145,38 @@
    "hidden": 1,
    "label": "Dependent Attribute Mapping",
    "options": "Item Dependent Attribute Mapping"
+  },
+  {
+   "fieldname": "pack_out_stage",
+   "fieldtype": "Link",
+   "label": "Pack Out Stage",
+   "options": "Item Attribute Value",
+   "read_only": 1
+  },
+  {
+   "fieldname": "last_calculated_time",
+   "fieldtype": "Datetime",
+   "label": "Last Calculated Time",
+   "read_only": 1
+  },
+  {
+   "depends_on": "eval: !doc.__islocal",
+   "fieldname": "bom_additional_items",
+   "fieldtype": "Table",
+   "label": "BOM Additional Items",
+   "options": "Production Items"
+  },
+  {
+   "fieldname": "pack_in_stage",
+   "fieldtype": "Link",
+   "label": "Pack In Stage",
+   "options": "Item Attribute Value",
+   "read_only": 1
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2024-08-27 16:43:05.328273",
+ "modified": "2024-09-04 14:59:18.139985",
  "modified_by": "Administrator",
  "module": "Essdee Production",
  "name": "Production Order",

@@ -5,5 +5,5 @@
 from frappe.model.document import Document
 
 
-class ItemProductionDetailSetItemCombination(Document):
+class StichingAttributeDetail(Document):
 	pass

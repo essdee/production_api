@@ -75,7 +75,18 @@
         </td>
       </tr>
     </table>
-    <div v-if="docstatus != 1 && docstatus != 2">
+    <div>
+      <div v-if='!show_parameters'>
+        <button 
+          class="btn btn-success" 
+          @click="show_add_items()"
+        >
+          Fetch Item
+        </button>
+      </div>
+    </div>
+
+    <div>
       <form @submit.prevent>
         <div>
           <div
@@ -117,10 +128,25 @@ let comment = {};
 const edit = ref(false);
 const edit_index = ref(null);
 const button_show = ref(false);
+const show_parameters = ref(false)
 
 onMounted(() => {
   docstatus.value = cur_frm.doc.docstatus;
+  if(cur_frm.is_new()){
+    show_parameters.value = true
+  }
 });
+
+function show_add_items(){
+  if(show_parameters.value == false){
+    show_parameters.value = true
+    create_input_fields()
+  }
+  else{
+    make_clean()
+    show_parameters.value = false
+  }
+}
 
 function make_clean() {
   let el = root.value;
@@ -135,9 +161,8 @@ function load_data(items) {
     button_show.value = false;
     list_item.value = [];
   } else {
-    console.log(JSON.stringify(items))
     list_item.value[0] = items;
-    if (docstatus.value != 1 && docstatus.value != 2) {
+    if (cur_frm.is_new()) {
       create_input_fields();
     }
   }
@@ -235,10 +260,17 @@ function add_item() {
   let primary = {};
   let dependent = {};
   let item = {};
+  let check = true
   Object.keys(primary_values).forEach((data, index) => {
     primary[data] = primary_values[data].get_value();
+    if(primary[data] > 0){
+      check = false
+    }
     primary_values[data].set_value(0);
   });
+  if(check){
+    frappe.throw("Fill The Quantity")
+  }
   Object.keys(dependent_values).forEach((data, index) => {
     dependent[data] = dependent_values[data].get_value();
     if (dependent[data] == null || dependent[data] == "") {
@@ -281,7 +313,9 @@ function add_item() {
   primary_values = {};
   dependent_values = {};
   make_clean();
-  create_input_fields();
+  show_parameters.value = false
+  button_show.value = false
+  // create_input_fields();
 }
 function deepEqual(obj1, obj2) {
   if (obj1 === obj2) {
@@ -324,6 +358,7 @@ function delete_item(index) {
 }
 
 function edit_item(index) {
+  show_parameters.value = true
   edit.value = true;
   edit_index.value = index;
   create_input_fields();

@@ -5,7 +5,7 @@ import frappe
 import copy
 from frappe.model.document import Document 
 
-from production_api.production_api.doctype.item_production_detail.item_production_detail import get_attribute_values as get_lot_attribute_values
+from production_api.essdee_production.doctype.item_production_detail.item_production_detail import get_attribute_values as get_lot_attribute_values
 from production_api.production_api.doctype.item.item import get_attribute_values as get_item_attribute_values, get_attributes
 
 class ItemBOMAttributeMapping(Document):

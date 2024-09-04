@@ -15,8 +15,8 @@ frappe.ui.form.on("Production Order", {
     refresh(frm) {
         $(frm.fields_dict['items_html'].wrapper).html("")
         frm.item = new frappe.production.ui.PPOpage(frm.fields_dict['items_html'].wrapper)
-		frm.set_df_property('bom_summary','cannot_add_rows',true);
-		frm.set_df_property('bom_summary','cannot_delete_rows',true);
+		// frm.set_df_property('bom_summary','cannot_add_rows',true);
+		// frm.set_df_property('bom_summary','cannot_delete_rows',true);
         if(frm.doc.__onload && frm.doc.__onload.item_details) {
             frm.doc['item_details'] = JSON.stringify(frm.doc.__onload.item_details);
             frm.item.load_data(frm.doc.__onload.item_details);
@@ -28,6 +28,7 @@ frappe.ui.form.on("Production Order", {
 					args : {
 						item_name : frm.doc.item,
 						uom: frm.doc.uom,
+						production_detail: frm.doc.production_detail,
 					},
 					callback:function(r){
 						frm.item.load_data(r.message) 
@@ -68,8 +69,9 @@ frappe.ui.form.on("Production Order", {
 				callback: function(r){
 					if(r.message){
 						frm.set_value('uom',r.message.uom)
-						frm.set_value('packing_stage', r.message.packing_stage)
+						frm.set_value('pack_in_stage', r.message.pack_in_stage)
 						frm.set_value('packing_uom', r.message.packing_uom)
+						frm.set_value('pack_out_stage', r.message.pack_out_stage)
 						frm.set_value('dependent_attribute_mapping',r.message.dependent_attr_mapping)
 					}
 				}

@@ -173,7 +173,7 @@ def update_dependent_attribute_details(dependent_attribute_mapping, detail):
 	details = []
 	mapping_details = []
 	for attr,value in detail['attr_list'].items():
-		details.append({"attribute_value": attr, "uom": value['uom'], "display_name": value['name'], "is_final": value['is_final']})
+		details.append({"attribute_value": attr, "uom": value['uom'], "display_name": value['name']}) #, "is_final": value['is_final']
 		for attr_value in value['attributes']:
 			mapping_details.append({"dependent_attribute_value": attr, "depending_attribute": attr_value})
 	mapping.update({

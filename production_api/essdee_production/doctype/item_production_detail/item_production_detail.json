@@ -20,7 +20,8 @@
   "bom_attribute_mapping_html",
   "packing_tab",
   "packing_section",
-  "packing_stage",
+  "pack_in_stage",
+  "pack_out_stage",
   "packing_combo",
   "packing_attribute",
   "packing_attribute_no",
@@ -34,7 +35,12 @@
   "major_attribute_value",
   "get_set_item_combination",
   "set_item_combination_details",
-  "set_items_html"
+  "set_items_html",
+  "section_break_ikzf",
+  "stiching_attribute",
+  "in",
+  "out",
+  "stiching_attribute_details"
  ],
  "fields": [
   {
@@ -55,14 +61,14 @@
    "fieldtype": "Link",
    "label": "Primary Item Attribute",
    "options": "Item Attribute",
-   "read_only": 1
+   "read_only_depends_on": "eval: !doc.__islocal"
   },
   {
    "fieldname": "dependent_attribute",
    "fieldtype": "Link",
    "label": "Dependent Attribute",
    "options": "Item Attribute",
-   "read_only": 1
+   "read_only_depends_on": "eval: !doc.__islocal"
   },
   {
    "fieldname": "dependent_attribute_mapping",
@@ -75,8 +81,7 @@
    "fieldname": "item_attributes",
    "fieldtype": "Table",
    "label": "Item Attributes",
-   "options": "Item Item Attribute",
-   "read_only": 1
+   "options": "Item Item Attribute"
   },
   {
    "fieldname": "bill_of_materials_section",
@@ -156,15 +161,6 @@
    "label": "Set Items HTML"
   },
   {
-   "depends_on": "eval: doc.dependent_attribute_mapping",
-   "description": "The stage which is used for packing.",
-   "fieldname": "packing_stage",
-   "fieldtype": "Link",
-   "label": "Packing Stage",
-   "mandatory_depends_on": "eval: doc.dependent_attribute_mapping && !doc.__islocal",
-   "options": "Item Attribute Value"
-  },
-  {
    "depends_on": "eval: doc.is_set_item && doc.set_item_attribute",
    "description": "The main Set Item Attribute",
    "fieldname": "major_attribute_value",
@@ -222,11 +218,56 @@
    "hidden": 1,
    "label": "Set Item Combination Details",
    "options": "Item Production Detail Set Item Combination"
+  },
+  {
+   "depends_on": "eval: doc.dependent_attribute_mapping",
+   "description": "The stage which is used for packing.",
+   "fieldname": "pack_in_stage",
+   "fieldtype": "Link",
+   "label": "Pack In Stage",
+   "mandatory_depends_on": "eval: doc.dependent_attribute_mapping && !doc.__islocal",
+   "options": "Item Attribute Value"
+  },
+  {
+   "depends_on": "eval: doc.dependent_attribute_mapping",
+   "fieldname": "pack_out_stage",
+   "fieldtype": "Link",
+   "label": "Pack Out Stage",
+   "mandatory_depends_on": "eval: doc.dependent_attribute_mapping && !doc.__islocal",
+   "options": "Item Attribute Value"
+  },
+  {
+   "fieldname": "in",
+   "fieldtype": "Link",
+   "label": "In",
+   "options": "Item Attribute Value"
+  },
+  {
+   "fieldname": "out",
+   "fieldtype": "Link",
+   "label": "Out",
+   "options": "Item Attribute Value"
+  },
+  {
+   "fieldname": "stiching_attribute_details",
+   "fieldtype": "Table",
+   "label": "Stiching Attribute Details",
+   "options": "Stiching Attribute Detail"
+  },
+  {
+   "fieldname": "stiching_attribute",
+   "fieldtype": "Link",
+   "label": "Stiching Attribute",
+   "options": "Item Attribute"
+  },
+  {
+   "fieldname": "section_break_ikzf",
+   "fieldtype": "Section Break"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2024-08-27 13:56:58.185268",
+ "modified": "2024-09-04 16:04:26.873373",
  "modified_by": "Administrator",
  "module": "Essdee Production",
  "name": "Item Production Detail",
