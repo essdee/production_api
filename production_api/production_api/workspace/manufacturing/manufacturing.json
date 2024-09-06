@@ -1,6 +1,6 @@
 {
  "charts": [],
- "content": "[{\"id\":\"tcx875NdZN\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">Manufacturing</span>\",\"col\":12}},{\"id\":\"77aCRbFikj\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Purchase Order\",\"col\":3}},{\"id\":\"opf9TPh5-A\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Lot\",\"col\":3}},{\"id\":\"WIySpX3vQV\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Item\",\"col\":3}},{\"id\":\"VBX8mK0Z-3\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Supplier\",\"col\":3}},{\"id\":\"TRc6u3ugUT\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"GRN\",\"col\":3}},{\"id\":\"-ElAWu5ogn\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Purchase Invoice\",\"col\":3}},{\"id\":\"3LJP-0wFoI\",\"type\":\"spacer\",\"data\":{\"col\":12}},{\"id\":\"ZtwupzFsjZ\",\"type\":\"card\",\"data\":{\"card_name\":\"Item\",\"col\":3}},{\"id\":\"TCbrVnqsRP\",\"type\":\"card\",\"data\":{\"card_name\":\"Reports\",\"col\":4}}]",
+ "content": "[{\"id\":\"tcx875NdZN\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">Manufacturing</span>\",\"col\":12}},{\"id\":\"77aCRbFikj\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Purchase Order\",\"col\":3}},{\"id\":\"opf9TPh5-A\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Lot\",\"col\":3}},{\"id\":\"WIySpX3vQV\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Item\",\"col\":3}},{\"id\":\"VBX8mK0Z-3\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Supplier\",\"col\":3}},{\"id\":\"TRc6u3ugUT\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"GRN\",\"col\":3}},{\"id\":\"-ElAWu5ogn\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Purchase Invoice\",\"col\":3}},{\"id\":\"KQVuXiOr3d\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Item Price\",\"col\":3}},{\"id\":\"3LJP-0wFoI\",\"type\":\"spacer\",\"data\":{\"col\":12}},{\"id\":\"ZtwupzFsjZ\",\"type\":\"card\",\"data\":{\"card_name\":\"Item\",\"col\":3}},{\"id\":\"TCbrVnqsRP\",\"type\":\"card\",\"data\":{\"card_name\":\"Reports\",\"col\":4}}]",
  "creation": "2023-03-30 15:17:33.105497",
  "custom_blocks": [],
  "docstatus": 0,
@@ -79,7 +79,7 @@
    "type": "Link"
   }
  ],
- "modified": "2024-04-05 10:34:43.882667",
+ "modified": "2024-08-17 16:02:02.840379",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Manufacturing",
@@ -96,6 +96,14 @@
    "doc_view": "List",
    "label": "Supplier",
    "link_to": "Supplier",
+   "type": "DocType"
+  },
+  {
+   "color": "Grey",
+   "doc_view": "List",
+   "label": "Item Price",
+   "link_to": "Item Price",
+   "stats_filter": "[]",
    "type": "DocType"
   },
   {

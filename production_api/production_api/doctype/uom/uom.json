@@ -22,18 +22,21 @@
    "unique": 1
   },
   {
+   "allow_in_quick_entry": 1,
    "default": "0",
    "fieldname": "must_be_whole_number",
    "fieldtype": "Check",
    "label": "Must be Whole Number"
   },
   {
+   "allow_in_quick_entry": 1,
    "default": "0",
    "fieldname": "enabled",
    "fieldtype": "Check",
    "label": "Enabled"
   },
   {
+   "allow_in_quick_entry": 1,
    "default": "0",
    "fieldname": "secondary_only",
    "fieldtype": "Check",
@@ -42,7 +45,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2023-09-30 13:03:58.640274",
+ "modified": "2024-07-22 17:30:59.216619",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "UOM",

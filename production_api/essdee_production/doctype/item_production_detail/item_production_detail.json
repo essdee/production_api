@@ -1,0 +1,293 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "prompt",
+ "creation": "2024-07-24 11:16:08.015116",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "item_details_tab",
+  "item",
+  "section_break_yqii",
+  "primary_item_attribute",
+  "dependent_attribute",
+  "dependent_attribute_mapping",
+  "item_attributes",
+  "item_attribute_list_values_html",
+  "dependent_attribute_details_html",
+  "bill_of_materials_section",
+  "item_bom",
+  "bom_attribute_mapping_html",
+  "packing_tab",
+  "packing_section",
+  "pack_in_stage",
+  "pack_out_stage",
+  "packing_combo",
+  "packing_attribute",
+  "packing_attribute_no",
+  "auto_calculate",
+  "get_packing_attribute_values",
+  "packing_attribute_details",
+  "set_item_tab",
+  "set_item_details_section",
+  "is_set_item",
+  "set_item_attribute",
+  "major_attribute_value",
+  "get_set_item_combination",
+  "set_item_combination_details",
+  "set_items_html",
+  "section_break_ikzf",
+  "stiching_attribute",
+  "in",
+  "out",
+  "stiching_attribute_details"
+ ],
+ "fields": [
+  {
+   "fieldname": "item",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Item",
+   "options": "Item",
+   "reqd": 1
+  },
+  {
+   "fieldname": "section_break_yqii",
+   "fieldtype": "Section Break",
+   "label": "Item Attributes"
+  },
+  {
+   "fieldname": "primary_item_attribute",
+   "fieldtype": "Link",
+   "label": "Primary Item Attribute",
+   "options": "Item Attribute",
+   "read_only_depends_on": "eval: !doc.__islocal"
+  },
+  {
+   "fieldname": "dependent_attribute",
+   "fieldtype": "Link",
+   "label": "Dependent Attribute",
+   "options": "Item Attribute",
+   "read_only_depends_on": "eval: !doc.__islocal"
+  },
+  {
+   "fieldname": "dependent_attribute_mapping",
+   "fieldtype": "Link",
+   "hidden": 1,
+   "label": "Dependent Attribute Mapping",
+   "options": "Item Dependent Attribute Mapping"
+  },
+  {
+   "fieldname": "item_attributes",
+   "fieldtype": "Table",
+   "label": "Item Attributes",
+   "options": "Item Item Attribute"
+  },
+  {
+   "fieldname": "bill_of_materials_section",
+   "fieldtype": "Section Break",
+   "label": "Bill of Materials"
+  },
+  {
+   "fieldname": "item_bom",
+   "fieldtype": "Table",
+   "label": "Item BOM",
+   "options": "Item BOM"
+  },
+  {
+   "depends_on": "eval: !doc.__islocal",
+   "fieldname": "packing_tab",
+   "fieldtype": "Tab Break",
+   "label": "Packing"
+  },
+  {
+   "fieldname": "packing_section",
+   "fieldtype": "Section Break",
+   "label": "Packing Details"
+  },
+  {
+   "description": "Pcs per Box",
+   "fieldname": "packing_combo",
+   "fieldtype": "Int",
+   "label": "Packing Combo",
+   "mandatory_depends_on": "eval: !doc.__islocal",
+   "non_negative": 1
+  },
+  {
+   "description": "Attribute based on which Packing Depends",
+   "fieldname": "packing_attribute",
+   "fieldtype": "Link",
+   "label": "Packing Attribute",
+   "mandatory_depends_on": "eval: !doc.__islocal",
+   "options": "Item Attribute"
+  },
+  {
+   "description": "Unique number of attribute values that will be put into a box.",
+   "fieldname": "packing_attribute_no",
+   "fieldtype": "Int",
+   "label": "Packing Attribute No",
+   "mandatory_depends_on": "eval: !doc.__islocal",
+   "non_negative": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "auto_calculate",
+   "fieldtype": "Check",
+   "label": "Auto Calculate"
+  },
+  {
+   "depends_on": "eval: !doc.__islocal && doc.packing_attribute",
+   "fieldname": "set_item_tab",
+   "fieldtype": "Tab Break",
+   "label": "Set Item"
+  },
+  {
+   "default": "0",
+   "fieldname": "is_set_item",
+   "fieldtype": "Check",
+   "label": "Is Set Item"
+  },
+  {
+   "depends_on": "eval: doc.is_set_item",
+   "fieldname": "set_item_attribute",
+   "fieldtype": "Link",
+   "label": "Set Item Attribute",
+   "mandatory_depends_on": "eval: doc.is_set_item",
+   "options": "Item Attribute"
+  },
+  {
+   "fieldname": "set_items_html",
+   "fieldtype": "HTML",
+   "label": "Set Items HTML"
+  },
+  {
+   "depends_on": "eval: doc.is_set_item && doc.set_item_attribute",
+   "description": "The main Set Item Attribute",
+   "fieldname": "major_attribute_value",
+   "fieldtype": "Link",
+   "label": "Major Attribute Value",
+   "mandatory_depends_on": "eval: doc.is_set_item",
+   "options": "Item Attribute Value"
+  },
+  {
+   "fieldname": "set_item_details_section",
+   "fieldtype": "Section Break",
+   "label": "Set Item Details"
+  },
+  {
+   "fieldname": "item_details_tab",
+   "fieldtype": "Tab Break",
+   "label": "Item Details"
+  },
+  {
+   "fieldname": "item_attribute_list_values_html",
+   "fieldtype": "HTML",
+   "label": "Item Attribute List Values HTML"
+  },
+  {
+   "fieldname": "dependent_attribute_details_html",
+   "fieldtype": "HTML",
+   "label": "Dependent Attribute Details HTML"
+  },
+  {
+   "fieldname": "bom_attribute_mapping_html",
+   "fieldtype": "HTML",
+   "label": "BOM Attribute Mapping HTML"
+  },
+  {
+   "fieldname": "packing_attribute_details",
+   "fieldtype": "Table",
+   "label": "Packing Attribute Details",
+   "options": "Item Production Detail Packing Attribute Detail"
+  },
+  {
+   "depends_on": "eval: doc.packing_attribute_no && doc.packing_attribute",
+   "fieldname": "get_packing_attribute_values",
+   "fieldtype": "Button",
+   "label": "Get Packing Attribute Values"
+  },
+  {
+   "depends_on": "eval: doc.is_set_item && doc.set_item_attribute && doc.major_attribute_value",
+   "fieldname": "get_set_item_combination",
+   "fieldtype": "Button",
+   "label": "Get Set Item Combination"
+  },
+  {
+   "fieldname": "set_item_combination_details",
+   "fieldtype": "Table",
+   "hidden": 1,
+   "label": "Set Item Combination Details",
+   "options": "Item Production Detail Set Item Combination"
+  },
+  {
+   "depends_on": "eval: doc.dependent_attribute_mapping",
+   "description": "The stage which is used for packing.",
+   "fieldname": "pack_in_stage",
+   "fieldtype": "Link",
+   "label": "Pack In Stage",
+   "mandatory_depends_on": "eval: doc.dependent_attribute_mapping && !doc.__islocal",
+   "options": "Item Attribute Value"
+  },
+  {
+   "depends_on": "eval: doc.dependent_attribute_mapping",
+   "fieldname": "pack_out_stage",
+   "fieldtype": "Link",
+   "label": "Pack Out Stage",
+   "mandatory_depends_on": "eval: doc.dependent_attribute_mapping && !doc.__islocal",
+   "options": "Item Attribute Value"
+  },
+  {
+   "fieldname": "in",
+   "fieldtype": "Link",
+   "label": "In",
+   "options": "Item Attribute Value"
+  },
+  {
+   "fieldname": "out",
+   "fieldtype": "Link",
+   "label": "Out",
+   "options": "Item Attribute Value"
+  },
+  {
+   "fieldname": "stiching_attribute_details",
+   "fieldtype": "Table",
+   "label": "Stiching Attribute Details",
+   "options": "Stiching Attribute Detail"
+  },
+  {
+   "fieldname": "stiching_attribute",
+   "fieldtype": "Link",
+   "label": "Stiching Attribute",
+   "options": "Item Attribute"
+  },
+  {
+   "fieldname": "section_break_ikzf",
+   "fieldtype": "Section Break"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2024-09-04 16:04:26.873373",
+ "modified_by": "Administrator",
+ "module": "Essdee Production",
+ "name": "Item Production Detail",
+ "naming_rule": "Set by user",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

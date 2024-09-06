@@ -8,6 +8,9 @@ import DDItem from "./PurchaseOrder/components/DateUpdateDialog.vue"
 import PONewItem from "./PurchaseOrder/components/NewItem.vue"
 import POItem from "./PurchaseOrder/components/Item.vue"
 import GRNItemWrapper from "./GRN";
+import PPOPage from "./PPO/components/PPO.vue" 
+import PPODetail from "./PPO/components/PPODetail.vue"
+import SetItemDetail from "./Item_Po_detail/SetItemDetail.vue"
 import { StockEntryWrapper, StockReconciliationWrapper, LotTransferWrapper } from "./Stock";
 
 // Product Development
@@ -83,6 +86,45 @@ frappe.production.ui.ItemDependentAttributeDetail = class {
     }
 };
 
+frappe.production.ui.DateDialog = class {
+    constructor(wrapper, items){
+        this.$wrapper = $(wrapper)
+        this.items = items
+        this.make_body();
+    }
+    make_body(){
+        this.app = createApp(DDItem, {items: this.items})
+        SetVueGlobals(this.app)
+        this.vue = this.app.mount(this.$wrapper.get(0))
+    }
+    get_items(){
+        let items = JSON.parse(JSON.stringify(this.vue.item_data));
+        return items
+    }
+}
+frappe.production.ui.SetItemDetail = class {
+    constructor(wrapper){
+        console.log(wrapper)
+        this.$wrapper = $(wrapper);
+        this.make_body();
+    }
+    make_body(){
+        this.app = createApp(SetItemDetail)
+        SetVueGlobals(this.app)
+        this.vue = this.app.mount(this.$wrapper.get(0))
+    }
+    load_data(items){
+        this.vue.load_data(JSON.parse(JSON.stringify(items)))
+    }
+    set_attributes(){
+        this.vue.set_attributes();
+    }
+    get_data(){
+        let items = JSON.parse(JSON.stringify(this.vue.get_data()))
+        return items
+    }   
+}
+
 frappe.production.ui.BomItemAttributeMapping = BOMAttributeMappingWrapper;
 
 frappe.production.ui.ItemPriceList = ItemPriceList;
@@ -112,6 +154,42 @@ frappe.production.ui.ItemDetail = function(wrapper, type, data) {
 //         })
 //     });
 // };
+
+frappe.production.ui.PPOpage = class {
+    constructor(wrapper){
+        this.$wrapper = $(wrapper)
+        this.make_app()
+    }
+    make_app(){
+        this.app = createApp(PPOPage)
+        SetVueGlobals(this.app)
+        this.vue = this.app.mount(this.$wrapper.get(0))
+    }
+    get_data(){
+        let items = JSON.parse(JSON.stringify(this.vue.list_item))
+        return items
+    }
+    load_data(item_details){
+        let items = JSON.parse(JSON.stringify(item_details));
+        this.vue.load_data(items)
+    }
+}
+
+frappe.production.ui.PPODetail = class {
+    constructor(wrapper){
+        this.$wrapper = $(wrapper)
+        this.make_app()
+    }
+    make_app(){
+        this.app = createApp(PPODetail)
+        SetVueGlobals(this.app)
+        this.vue = this.app.mount(this.$wrapper.get(0))
+    }
+    load_data(item_details){
+        let items = JSON.parse(JSON.stringify(item_details))
+        this.vue.load_data(items)
+    }
+}
 
 frappe.production.ui.PurchaseOrderItem = class {
     constructor(wrapper) {

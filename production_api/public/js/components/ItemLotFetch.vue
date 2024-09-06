@@ -721,6 +721,7 @@
                     return data.query(item.value, other_input_controls)
                 }
             }
+            
             other_input_controls[data.name] = frappe.ui.form.make_control({
                 parent: $($el).find(parent_class),
                 df: data.df,

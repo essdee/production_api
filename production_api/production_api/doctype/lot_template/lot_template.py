@@ -55,7 +55,6 @@ class LotTemplate(Document):
 
 	def onload(self):
 		"""Load Attribute List and BOM Item Attribute Mapping List into `__onload`"""
-
 		self.load_attribute_list()
 		self.load_bom_attribute_list()
 
@@ -105,17 +104,17 @@ class LotTemplate(Document):
 				bom.attribute_mapping = None
 				doc = frappe.delete_doc("Item BOM Attribute Mapping", name)
 
-		# for attribute in self.get('item_attributes'):
-		# 	if attribute.mapping == None:
-		# 		doc = frappe.new_doc("Item Item Attribute Mapping")
-		# 		doc.save()
-		# 		attribute.mapping = doc.name
+		for attribute in self.get('item_attributes'):
+			if attribute.mapping == None:
+				doc = frappe.new_doc("Item Item Attribute Mapping")
+				doc.save()
+				attribute.mapping = doc.name
 		
-		# for bom in self.get('bom'):
-		# 	if bom.attribute_mapping_based_on and not bom.attribute_mapping:
-		# 		doc = frappe.new_doc("Item BOM Attribute Mapping")
-		# 		doc.save()
-		# 		bom.attribute_mapping = doc.name
+		for bom in self.get('bom'):
+			if bom.attribute_mapping_based_on and not bom.attribute_mapping:
+				doc = frappe.new_doc("Item BOM Attribute Mapping")
+				doc.save()
+				bom.attribute_mapping = doc.name
 
 	def on_trash(self):
 		for attribute in self.get('item_attributes'):

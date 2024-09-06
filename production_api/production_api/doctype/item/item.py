@@ -167,15 +167,13 @@ def create_dependent_attribute_mapping(doc, attr_list):
 
 @frappe.whitelist()
 def update_dependent_attribute_details(dependent_attribute_mapping, detail):
-	# item = frappe.get_doc("Item", item)
 	if isinstance(detail, string_types):
 		detail = json.loads(detail)
 	mapping = frappe.get_doc("Item Dependent Attribute Mapping", dependent_attribute_mapping)
 	details = []
 	mapping_details = []
-	print(json.dumps(detail, indent=3))
 	for attr,value in detail['attr_list'].items():
-		details.append({"attribute_value": attr, "uom": value['uom'], "display_name": value['name']})
+		details.append({"attribute_value": attr, "uom": value['uom'], "display_name": value['name']}) #, "is_final": value['is_final']
 		for attr_value in value['attributes']:
 			mapping_details.append({"dependent_attribute_value": attr, "depending_attribute": attr_value})
 	mapping.update({
@@ -187,7 +185,7 @@ def update_dependent_attribute_details(dependent_attribute_mapping, detail):
 
 
 @frappe.whitelist()
-def get_attribute_details(item_name):
+def get_attribute_details(item_name,dependent_attr_mapping=None):
 	"""Return Attribute Details of an item"""
 
 	item = frappe.get_doc("Item", item_name)
@@ -201,7 +199,9 @@ def get_attribute_details(item_name):
 				primary_attribute_details = [value.attribute_value for value in doc.values]
 	additional_parameters = [{'additional_parameter_key': a.additional_parameter_key, 'additional_parameter_value': a.additional_parameter_value} for a in item.additional_parameters]
 	dependent_attribute_details = {}
-	if item.dependent_attribute and item.dependent_attribute_mapping:
+	if dependent_attr_mapping:
+		dependent_attribute_details = get_dependent_attribute_details(dependent_attr_mapping)
+	elif item.dependent_attribute and item.dependent_attribute_mapping:
 		# attributes.remove(item.dependent_attribute)
 		dependent_attribute_details = get_dependent_attribute_details(item.dependent_attribute_mapping)
 	return {
@@ -235,15 +235,15 @@ def get_complete_item_details(item_name):
 	
 	return item
 
-def get_or_create_variant(template, args):
+def get_or_create_variant(template, args, dependent_attr=None):
 	variant_name = get_variant(template, args)
 	if not variant_name:
-		variant = create_variant(template, args)
+		variant = create_variant(template, args, dependent_attr=dependent_attr)
 		variant.insert()
 		variant_name = variant.name
 	return variant_name
 
-def create_variant(template, args):
+def create_variant(template, args, dependent_attr=None):
 	"""
 	Creates a new Item Variant by copying attributes from the template Item.
 	 
@@ -256,17 +256,18 @@ def create_variant(template, args):
 	"""
 	if isinstance(args, string_types):
 		args = json.loads(args)
-
 	template = frappe.get_doc("Item", template)
 	variant = frappe.new_doc("Item Variant")
 	variant.item = template.name
 	variant_attributes = []
 	attributes = [d.attribute for d in template.attributes]
 	dependent_attributes = None
-
 	if template.dependent_attribute:
   		# Validate dependent attribute mapping and populate variant attributes
-		dependent_attribute_mapping = get_dependent_attribute_details(template.dependent_attribute_mapping)
+		if dependent_attr:
+			dependent_attribute_mapping = get_dependent_attribute_details(dependent_attr)
+		else:	
+			dependent_attribute_mapping = get_dependent_attribute_details(template.dependent_attribute_mapping)
 		if template.dependent_attribute != dependent_attribute_mapping['attribute']:
 			frappe.throw("Dependent Attribute Mismatch Error.")
 		if not args.get(template.dependent_attribute):
@@ -281,7 +282,6 @@ def create_variant(template, args):
 			"display_name": dependent_attribute_mapping['attr_list'][args.get(template.dependent_attribute)]['name'] or '',
 			"display_name_is_empty": not bool(dependent_attribute_mapping['attr_list'][args.get(template.dependent_attribute)]['name'])
 		})
-	
 	for d in attributes:
 		if dependent_attributes and d not in dependent_attributes:
 			continue
@@ -292,7 +292,6 @@ def create_variant(template, args):
 			"attribute_value": args.get(d),
 			"display_name": args.get(d),
 		})
-
 	variant.set("attributes", variant_attributes)
 
 	return variant
@@ -349,7 +348,6 @@ def get_variants_by_attributes(args, template=None):
 	- list: List of Item codes of matching Item Variants  
 	"""
 	items = []
-
 	for attribute, values in args.items():
 		attribute_values = values
 
@@ -357,7 +355,6 @@ def get_variants_by_attributes(args, template=None):
 			attribute_values = [attribute_values]
 
 		if not attribute_values: continue
-
 		wheres = []
 		query_values = []
 		for attribute_value in attribute_values:
@@ -365,7 +362,6 @@ def get_variants_by_attributes(args, template=None):
 			query_values += [attribute, attribute_value]
 
 		attribute_query = ' or '.join(wheres)
-
 		if template:
 			variant_of_query = 'AND t2.item = %s'
 			query_values.append(template)
@@ -442,25 +438,48 @@ def get_item_attribute_values(doctype, txt, searchfield, start, page_len, filter
 
 	item_name = filters['item']
 	attribute = filters['attribute']
+	production_detail = None
+	if not filters.get('production_detail',False):
+		pass
+	else:
+		production_detail = filters['production_detail']
 
 	attr = frappe.get_doc("Item Attribute", attribute)
 	if attr.numeric_values:
 		values = search_widget(doctype=doctype, txt=txt, page_length=page_len, searchfield=searchfield, filters=[['Item Attribute Value', 'attribute_name', '=', attribute]])
 		return values
-
-	item = frappe.get_doc("Item", item_name)
-	attributes = [attribute.attribute for attribute in item.attributes]
-	if attribute not in attributes:
-		return []
-	for attr_obj in item.attributes:
-		if attribute == attr_obj.attribute:
-			mapping_doc = frappe.get_doc("Item Item Attribute Mapping", attr_obj.mapping)
+	if production_detail:
+		item_detail = frappe.get_doc("Item Production Detail",production_detail)
+		mapping = None
+		if attribute == item_detail.packing_attribute:
+			attribute_values = [value.attribute_value for value in item_detail.packing_attribute_details]
+			return [[value] for value in attribute_values if value.lower().startswith(txt.lower())]
+		else:
+			for attr in item_detail.item_attributes:
+				if attr.attribute == attribute:
+					mapping = attr.mapping
+					break
+			mapping_doc = frappe.get_doc("Item Item Attribute Mapping", mapping)
 			if len(mapping_doc.values) == 0:
 				values = search_widget(doctype=doctype, txt=txt, page_length=page_len, searchfield=searchfield, filters=[['Item Attribute Value', 'attribute_name', '=', attribute]])
 				return values
 			else:
 				attribute_values = [value.attribute_value for value in mapping_doc.values]
 				return [[value] for value in attribute_values if value.lower().startswith(txt.lower())]
+	else:	
+		item = frappe.get_doc("Item", item_name)
+		attributes = [attribute.attribute for attribute in item.attributes]
+		if attribute not in attributes:
+			return []
+		for attr_obj in item.attributes:
+			if attribute == attr_obj.attribute:
+				mapping_doc = frappe.get_doc("Item Item Attribute Mapping", attr_obj.mapping)
+				if len(mapping_doc.values) == 0:
+					values = search_widget(doctype=doctype, txt=txt, page_length=page_len, searchfield=searchfield, filters=[['Item Attribute Value', 'attribute_name', '=', attribute]])
+					return values
+				else:
+					attribute_values = [value.attribute_value for value in mapping_doc.values]
+					return [[value] for value in attribute_values if value.lower().startswith(txt.lower())]
 		
 @frappe.whitelist()
 @frappe.validate_and_sanitize_search_inputs

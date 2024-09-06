@@ -185,7 +185,6 @@ frappe.ui.form.on('Purchase Order', {
 						fieldtype: 'Data',
 						reqd: 1
 					}, (values) => {
-						// console.log(values.reason);
 						frappe.call({
 							method: "production_api.production_api.doctype.purchase_order.purchase_order.cancel_purchase_order",
 							args: {
