@@ -1,36 +1,29 @@
 {
  "actions": [],
  "allow_rename": 1,
- "creation": "2024-08-16 14:27:51.125053",
+ "creation": "2024-09-06 16:46:44.195365",
  "doctype": "DocType",
  "editable_grid": 1,
  "engine": "InnoDB",
  "field_order": [
-  "item_variant",
-  "quantity"
+  "attribute"
  ],
  "fields": [
   {
-   "fieldname": "item_variant",
+   "fieldname": "attribute",
    "fieldtype": "Link",
    "in_list_view": 1,
-   "label": "Item Variant",
-   "options": "Item Variant"
-  },
-  {
-   "fieldname": "quantity",
-   "fieldtype": "Float",
-   "in_list_view": 1,
-   "label": "Quantity"
+   "label": "Attribute",
+   "options": "Item Attribute"
   }
  ],
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2024-09-03 10:07:17.532578",
+ "modified": "2024-09-06 16:55:37.787968",
  "modified_by": "Administrator",
  "module": "Essdee Production",
- "name": "Production Order Detail",
+ "name": "Cutting Attribute Detail",
  "owner": "Administrator",
  "permissions": [],
  "sort_field": "modified",

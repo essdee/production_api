@@ -1,7 +1,7 @@
 {
  "actions": [],
  "allow_rename": 1,
- "autoname": "prompt",
+ "autoname": "format:{item}-{#####}",
  "creation": "2024-07-24 11:16:08.015116",
  "doctype": "DocType",
  "engine": "InnoDB",
@@ -36,7 +36,26 @@
   "get_set_item_combination",
   "set_item_combination_details",
   "set_items_html",
-  "section_break_ikzf"
+  "stiching_tab",
+  "stiching_details_section",
+  "stiching_attribute",
+  "stiching_major_attribute_value",
+  "stiching_in_stage",
+  "stiching_out_stage",
+  "stiching_item_details",
+  "get_stiching_item_combination",
+  "stiching_items_html",
+  "stiching_item_combination_details",
+  "cutting_tab",
+  "cutting_attributes",
+  "select_attributes_html",
+  "cloth_detail",
+  "section_break_cqll",
+  "additional_cloth",
+  "get_cutting_combination",
+  "update_cloth_items",
+  "cutting_items_html",
+  "cutting_items_json"
  ],
  "fields": [
   {
@@ -233,17 +252,126 @@
    "options": "Item Attribute Value"
   },
   {
-   "fieldname": "section_break_ikzf",
+   "fieldname": "stiching_item_details",
+   "fieldtype": "Table",
+   "label": "Stiching Item Details",
+   "options": "Stiching Item Detail"
+  },
+  {
+   "fieldname": "stiching_details_section",
+   "fieldtype": "Section Break",
+   "label": "Stiching Details"
+  },
+  {
+   "fieldname": "stiching_attribute",
+   "fieldtype": "Link",
+   "label": "Stiching Attribute",
+   "options": "Item Attribute"
+  },
+  {
+   "depends_on": "eval: doc.stiching_attribute",
+   "fieldname": "stiching_in_stage",
+   "fieldtype": "Link",
+   "label": "Stiching In Stage",
+   "options": "Item Attribute Value"
+  },
+  {
+   "depends_on": "eval: doc.stiching_attribute",
+   "fieldname": "stiching_out_stage",
+   "fieldtype": "Link",
+   "label": "Stiching Out Stage",
+   "options": "Item Attribute Value"
+  },
+  {
+   "depends_on": "eval: !doc.__islocal",
+   "fieldname": "stiching_tab",
+   "fieldtype": "Tab Break",
+   "label": "Stiching"
+  },
+  {
+   "fieldname": "stiching_major_attribute_value",
+   "fieldtype": "Link",
+   "label": "Stiching Major Attribute Value",
+   "options": "Item Attribute Value"
+  },
+  {
+   "fieldname": "get_stiching_item_combination",
+   "fieldtype": "Button",
+   "label": "Get Stiching Item Combination"
+  },
+  {
+   "fieldname": "stiching_items_html",
+   "fieldtype": "HTML",
+   "label": "Stiching Items HTML"
+  },
+  {
+   "fieldname": "stiching_item_combination_details",
+   "fieldtype": "Table",
+   "hidden": 1,
+   "label": "Stiching Item Combination Details",
+   "options": "Item Production Detail Set Item Combination"
+  },
+  {
+   "fieldname": "cutting_tab",
+   "fieldtype": "Tab Break",
+   "label": "Cutting"
+  },
+  {
+   "fieldname": "cutting_attributes",
+   "fieldtype": "Table MultiSelect",
+   "hidden": 1,
+   "label": "Cutting Attributes",
+   "options": "Cutting Attribute Detail"
+  },
+  {
+   "fieldname": "select_attributes_html",
+   "fieldtype": "HTML",
+   "label": "Select Attributes HTML"
+  },
+  {
+   "fieldname": "get_cutting_combination",
+   "fieldtype": "Button",
+   "label": "Get Cutting Combination"
+  },
+  {
+   "fieldname": "section_break_cqll",
    "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "cutting_items_html",
+   "fieldtype": "HTML",
+   "label": "Cutting Items HTML"
+  },
+  {
+   "fieldname": "cutting_items_json",
+   "fieldtype": "JSON",
+   "hidden": 1,
+   "label": "Cutting Items JSON"
+  },
+  {
+   "fieldname": "cloth_detail",
+   "fieldtype": "Table",
+   "label": "Cloth Detail",
+   "options": "Item Production Detail Cloth Accessories"
+  },
+  {
+   "fieldname": "update_cloth_items",
+   "fieldtype": "Button",
+   "label": "Update Cloth Items"
+  },
+  {
+   "fieldname": "additional_cloth",
+   "fieldtype": "Float",
+   "label": "Additional Cloth"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2024-09-04 16:04:26.873373",
+ "modified": "2024-09-11 11:07:10.573690",
  "modified_by": "Administrator",
  "module": "Essdee Production",
  "name": "Item Production Detail",
- "naming_rule": "Set by user",
+ "naming_rule": "Expression",
  "owner": "Administrator",
  "permissions": [
   {

@@ -2,7 +2,7 @@
     <div ref="root">
         <table class="table table-sm table-bordered">
             <tr>
-                <th v-for="x in items.set_attributes" :key="x">{{ x }}</th>
+                <th v-for="x in items.attributes" :key="x">{{ x }}</th>
             </tr>
             <tr v-for="(item, index) in items.values" :key="index">
                 <td v-for="(value, key) in item.val" :key="key">
@@ -29,7 +29,7 @@ function set_attributes() {
         for(let i = 0; i < items.value.values.length ; i++){
             Object.keys(items.value.values[i]['val']).forEach(row => {
                 let val = items.value.values[i]['val'][row]
-                let input =  createInput(row, i, val)
+                let input =createInput(row, i, val)
                 items.value.values[i]['val'][row] = input 
             })
         }
@@ -63,52 +63,53 @@ function createInput(attr, index, value){
         },
         default: value,
     }
-    if (attr == cur_frm.doc.major_attribute_value){
+
+    if (attr == cur_frm.doc.stiching_major_attribute_value){
         df['read_only'] = true
-    }
+    }   
     let input =  frappe.ui.form.make_control({
         parent: $(el).find(parent_class),
         df:df ,
         doc: sample_doc.value,
         render_input: true,
     });
+
     input.set_value(value)
     
     input['df']['onchange'] = ()=>{
-        if(input.get_value() != input.df.default){
-            cur_frm.dirty()
+       if(input.get_value() != input.df.default){
+           cur_frm.dirty()
         }
     }
     return input
-
 }
 function get_input_class(attribute, index){
-      return attribute+"-"+index;
+    attribute = attribute.replaceAll(" ","-")
+    return attribute+"-"+index;
 }
 function get_data(){
-    for (let i = 0; i < items.value.values.length; i++) {
-        Object.keys(items.value.values[i]['val']).forEach(row => {
-            let input = items.value.values[i]['val'][row]
+    const x = ref(items.value)
+    for (let i = 0; i < x.value.values.length; i++) {
+        Object.keys(x.value.values[i]['val']).forEach(row => {
+            let input = x.value.values[i]['val'][row]
             let value = null
-            if(typeof(input) == 'string'){
-                value = input
+            if(typeof(input) == 'object'){
+                value = input.get_value()
             }
             else{
-                value = input.get_value()
+                value = input
             }
             if(value == null || value == ""){
                 frappe.throw("Fill all the combinations")
             }
-            items.value.values[i]['val'][row] = value
+            x.value.values[i]['val'][row] = value
         })
     }
-    return items.value
+    return x.value
 }
 defineExpose({
     load_data,
     set_attributes,
     get_data,
-})
+});
 </script>
-
-

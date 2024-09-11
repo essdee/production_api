@@ -1,15 +1,13 @@
 {
  "actions": [],
  "allow_rename": 1,
- "creation": "2024-07-25 16:27:48.954963",
+ "creation": "2024-08-16 14:27:51.125053",
  "doctype": "DocType",
  "editable_grid": 1,
  "engine": "InnoDB",
  "field_order": [
   "item_variant",
-  "qty",
-  "table_index",
-  "row_index"
+  "quantity"
  ],
  "fields": [
   {
@@ -20,31 +18,19 @@
    "options": "Item Variant"
   },
   {
-   "fieldname": "qty",
+   "fieldname": "quantity",
    "fieldtype": "Float",
    "in_list_view": 1,
-   "label": "Qty"
-  },
-  {
-   "fieldname": "table_index",
-   "fieldtype": "Int",
-   "in_list_view": 1,
-   "label": "Table Index"
-  },
-  {
-   "fieldname": "row_index",
-   "fieldtype": "Int",
-   "in_list_view": 1,
-   "label": "Row Index"
+   "label": "Quantity"
   }
  ],
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2024-08-26 10:48:39.661199",
+ "modified": "2024-09-03 10:07:17.532578",
  "modified_by": "Administrator",
  "module": "Essdee Production",
- "name": "Production Order Item",
+ "name": "Lot Order Detail",
  "owner": "Administrator",
  "permissions": [],
  "sort_field": "modified",

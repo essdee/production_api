@@ -1,0 +1,274 @@
+{
+ "actions": [],
+ "autoname": "field:lot_name",
+ "creation": "2021-08-25 09:40:42.087544",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "lot_name",
+  "item",
+  "pack_out_stage",
+  "status",
+  "column_break_tvkgg",
+  "lot_template",
+  "production_detail",
+  "uom",
+  "dependent_attribute_mapping",
+  "section_break_ry89l",
+  "planned_qty",
+  "items",
+  "items_html",
+  "section_break_kwosd",
+  "total_planned_qty",
+  "column_break_igjf8",
+  "total_cutting_qty",
+  "column_break_n3hup",
+  "total_final_qty",
+  "section_break_yquv",
+  "pack_in_stage",
+  "packing_uom",
+  "lot_order_details",
+  "lot_item_order_detail_html",
+  "bill_of_materials_section",
+  "total_quantity",
+  "last_calculated_time",
+  "calculate_bom",
+  "bom_summary",
+  "bom_additional_items"
+ ],
+ "fields": [
+  {
+   "fieldname": "lot_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Lot Name",
+   "reqd": 1,
+   "unique": 1
+  },
+  {
+   "fieldname": "item",
+   "fieldtype": "Link",
+   "label": "Item",
+   "options": "Item"
+  },
+  {
+   "fieldname": "column_break_tvkgg",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "label": "Status",
+   "options": "Open\nClosed"
+  },
+  {
+   "depends_on": "eval:doc.item",
+   "fieldname": "lot_template",
+   "fieldtype": "Link",
+   "hidden": 1,
+   "label": "Lot Template",
+   "options": "Lot Template"
+  },
+  {
+   "fieldname": "section_break_ry89l",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "planned_qty",
+   "fieldtype": "Table",
+   "hidden": 1,
+   "label": "Planned Qty",
+   "options": "Lot Planned Qty"
+  },
+  {
+   "fieldname": "section_break_kwosd",
+   "fieldtype": "Section Break",
+   "hidden": 1
+  },
+  {
+   "fieldname": "total_planned_qty",
+   "fieldtype": "Int",
+   "hidden": 1,
+   "label": "Total Planned Qty",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_igjf8",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "total_cutting_qty",
+   "fieldtype": "Int",
+   "hidden": 1,
+   "label": "Total Cutting Qty",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_n3hup",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "total_final_qty",
+   "fieldtype": "Int",
+   "hidden": 1,
+   "label": "Total Final Qty",
+   "read_only": 1
+  },
+  {
+   "fieldname": "bill_of_materials_section",
+   "fieldtype": "Section Break",
+   "label": "Bill of Materials"
+  },
+  {
+   "fieldname": "calculate_bom",
+   "fieldtype": "Button",
+   "label": "Calculate BOM"
+  },
+  {
+   "fieldname": "bom_summary",
+   "fieldtype": "Table",
+   "label": "BOM Summary",
+   "options": "Lot BOM",
+   "read_only": 1
+  },
+  {
+   "depends_on": "eval: doc.item",
+   "fieldname": "production_detail",
+   "fieldtype": "Link",
+   "label": "Production Detail",
+   "options": "Item Production Detail"
+  },
+  {
+   "fieldname": "pack_out_stage",
+   "fieldtype": "Link",
+   "label": "Pack Out Stage",
+   "options": "Item Attribute Value",
+   "read_only": 1
+  },
+  {
+   "fieldname": "uom",
+   "fieldtype": "Link",
+   "label": "UOM",
+   "options": "UOM",
+   "read_only": 1
+  },
+  {
+   "fieldname": "items",
+   "fieldtype": "Table",
+   "hidden": 1,
+   "label": "Items",
+   "options": "Lot Order Item"
+  },
+  {
+   "collapsible": 1,
+   "fieldname": "section_break_yquv",
+   "fieldtype": "Section Break",
+   "label": "Order Details"
+  },
+  {
+   "fieldname": "lot_order_details",
+   "fieldtype": "Table",
+   "hidden": 1,
+   "label": "Lot Order Details",
+   "options": "Lot Order Detail"
+  },
+  {
+   "fieldname": "pack_in_stage",
+   "fieldtype": "Link",
+   "label": "Pack In Stage",
+   "options": "Item Attribute Value",
+   "read_only": 1
+  },
+  {
+   "fieldname": "packing_uom",
+   "fieldtype": "Link",
+   "label": "Packing UOM",
+   "options": "UOM",
+   "read_only": 1
+  },
+  {
+   "fieldname": "lot_item_order_detail_html",
+   "fieldtype": "HTML",
+   "label": "Lot Item Order Detail HTML"
+  },
+  {
+   "fieldname": "dependent_attribute_mapping",
+   "fieldtype": "Link",
+   "hidden": 1,
+   "label": "Dependent Attribute Mapping",
+   "options": "Item Dependent Attribute Mapping"
+  },
+  {
+   "fieldname": "items_html",
+   "fieldtype": "HTML",
+   "label": "Items HTML"
+  },
+  {
+   "fieldname": "total_quantity",
+   "fieldtype": "Int",
+   "label": "Total Quantity",
+   "read_only": 1
+  },
+  {
+   "fieldname": "last_calculated_time",
+   "fieldtype": "Datetime",
+   "label": "Last Calculated Time",
+   "read_only": 1
+  },
+  {
+   "fieldname": "bom_additional_items",
+   "fieldtype": "Table",
+   "label": "BOM Additional Items",
+   "options": "Lot BOM"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2024-09-10 17:58:24.902539",
+ "modified_by": "Administrator",
+ "module": "Essdee Production",
+ "name": "Lot",
+ "naming_rule": "By fieldname",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Item Master Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "All",
+   "select": 1,
+   "share": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1
+}
