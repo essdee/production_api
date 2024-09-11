@@ -34,6 +34,8 @@
   "packing_uom",
   "lot_order_details",
   "lot_item_order_detail_html",
+  "lot_order_details_json",
+  "total_order_quantity",
   "bill_of_materials_section",
   "total_quantity",
   "last_calculated_time",
@@ -141,8 +143,7 @@
    "fieldname": "production_detail",
    "fieldtype": "Link",
    "label": "Production Detail",
-   "options": "Item Production Detail",
-   "reqd": 1
+   "options": "Item Production Detail"
   },
   {
    "fieldname": "pack_out_stage",
@@ -230,8 +231,7 @@
   {
    "fieldname": "expected_delivery_date",
    "fieldtype": "Date",
-   "label": "Expected Delivery Date",
-   "reqd": 1
+   "label": "Expected Delivery Date"
   },
   {
    "fieldname": "section_break_qubc",
@@ -248,11 +248,23 @@
    "fieldtype": "Data",
    "hidden": 1,
    "label": "Pattern Version"
+  },
+  {
+   "fieldname": "lot_order_details_json",
+   "fieldtype": "JSON",
+   "hidden": 1,
+   "label": "Lot Order Details JSON"
+  },
+  {
+   "fieldname": "total_order_quantity",
+   "fieldtype": "Int",
+   "label": "Total Order Quantity",
+   "read_only": 1
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2024-09-11 12:15:32.110676",
+ "modified": "2024-09-11 17:17:20.339447",
  "modified_by": "Administrator",
  "module": "Essdee Production",
  "name": "Lot",
