@@ -8,9 +8,10 @@ import DDItem from "./PurchaseOrder/components/DateUpdateDialog.vue"
 import PONewItem from "./PurchaseOrder/components/NewItem.vue"
 import POItem from "./PurchaseOrder/components/Item.vue"
 import GRNItemWrapper from "./GRN";
-import PPOPage from "./PPO/components/PPO.vue" 
-import PPODetail from "./PPO/components/PPODetail.vue"
-import SetItemDetail from "./Item_Po_detail/SetItemDetail.vue"
+import LotOrder from "./Lot/components/LotOrder.vue" 
+import LotOrderDetail from "./Lot/components/LotOrderDetail.vue"
+import CombinationItemDetail from "./Item_Po_detail/CombinationItemDetail.vue"
+import CuttingItemDetail from "./Item_Po_detail/CuttingItemDetail.vue"
 import { StockEntryWrapper, StockReconciliationWrapper, LotTransferWrapper } from "./Stock";
 
 // Product Development
@@ -102,19 +103,41 @@ frappe.production.ui.DateDialog = class {
         return items
     }
 }
-frappe.production.ui.SetItemDetail = class {
+frappe.production.ui.CombinationItemDetail = class {
     constructor(wrapper){
-        console.log(wrapper)
         this.$wrapper = $(wrapper);
         this.make_body();
     }
     make_body(){
-        this.app = createApp(SetItemDetail)
+        this.app = createApp(CombinationItemDetail)
         SetVueGlobals(this.app)
         this.vue = this.app.mount(this.$wrapper.get(0))
     }
     load_data(items){
         this.vue.load_data(JSON.parse(JSON.stringify(items)))
+    }
+    set_attributes(){
+        this.vue.set_attributes();
+    }
+    get_data(){
+        let items = JSON.parse(JSON.stringify(this.vue.get_data()))
+        return items
+    }   
+}
+
+
+frappe.production.ui.CuttingItemDetail = class {
+    constructor(wrapper){
+        this.$wrapper = $(wrapper);
+        this.make_body();
+    }
+    make_body(){
+        this.app = createApp(CuttingItemDetail)
+        SetVueGlobals(this.app)
+        this.vue = this.app.mount(this.$wrapper.get(0))
+    }
+    load_data(items){
+        this.vue.load_data(items)
     }
     set_attributes(){
         this.vue.set_attributes();
@@ -155,13 +178,13 @@ frappe.production.ui.ItemDetail = function(wrapper, type, data) {
 //     });
 // };
 
-frappe.production.ui.PPOpage = class {
+frappe.production.ui.LotOrder = class {
     constructor(wrapper){
         this.$wrapper = $(wrapper)
         this.make_app()
     }
     make_app(){
-        this.app = createApp(PPOPage)
+        this.app = createApp(LotOrder)
         SetVueGlobals(this.app)
         this.vue = this.app.mount(this.$wrapper.get(0))
     }
@@ -175,13 +198,13 @@ frappe.production.ui.PPOpage = class {
     }
 }
 
-frappe.production.ui.PPODetail = class {
+frappe.production.ui.LotOrderDetail = class {
     constructor(wrapper){
         this.$wrapper = $(wrapper)
         this.make_app()
     }
     make_app(){
-        this.app = createApp(PPODetail)
+        this.app = createApp(LotOrderDetail)
         SetVueGlobals(this.app)
         this.vue = this.app.mount(this.$wrapper.get(0))
     }

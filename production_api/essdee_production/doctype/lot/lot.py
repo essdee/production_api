@@ -9,7 +9,7 @@ from itertools import groupby
 import math
 from production_api.production_api.doctype.item_dependent_attribute_mapping.item_dependent_attribute_mapping import get_dependent_attribute_details
 
-class ProductionOrder(Document):
+class Lot(Document):
 	def before_submit(self):
 		if len(self.bom_summary) == 0:
 			frappe.throw("BOM is not calculated")
@@ -25,13 +25,13 @@ class ProductionOrder(Document):
 	
 	def validate(self):	
 		items = calculate_order_details(self.get('items'), self.production_detail, self.packing_uom, self.uom)
-		self.set('production_order_details',items )
+		self.set('lot_order_details',items )
 
 	def onload(self):
 		item_details = fetch_item_details(self.get('items'), self.production_detail)
 		self.set_onload('item_details', item_details)
-		if len(self.get('production_order_details')) > 0:
-			items = fetch_order_item_details(self.get('production_order_details'), self.production_detail)
+		if len(self.get('lot_order_details')) > 0:
+			items = fetch_order_item_details(self.get('lot_order_details'), self.production_detail)
 			self.set_onload('order_item_details', items)
 
 def calculate_order_details(items, production_detail, packing_uom, final_uom):
@@ -266,7 +266,7 @@ def get_item_details(item_name, uom=None, production_detail=None, dependent_stat
 		if item['primary_attribute'] in final_state_attr:
 			final_state_attr.remove(item['primary_attribute'])
 		item['final_state_attr'] = final_state_attr	
-
+		
 	elif not item['dependent_attribute'] and not item['primary_attribute']:
 		doc = frappe.get_doc("Item", item['item'])
 		final_state_attr = []

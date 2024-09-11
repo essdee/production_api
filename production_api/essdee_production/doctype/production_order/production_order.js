@@ -5,7 +5,6 @@ frappe.ui.form.on("Production Order", {
 	setup(frm){
 		frm.set_query('production_detail',(doc)=> {
 			return{
-				query: 'production_api.essdee_production.doctype.production_order.production_order.get_production_detail',
 				filters: {
 					'item':doc.item
 				}
@@ -15,8 +14,6 @@ frappe.ui.form.on("Production Order", {
     refresh(frm) {
         $(frm.fields_dict['items_html'].wrapper).html("")
         frm.item = new frappe.production.ui.PPOpage(frm.fields_dict['items_html'].wrapper)
-		// frm.set_df_property('bom_summary','cannot_add_rows',true);
-		// frm.set_df_property('bom_summary','cannot_delete_rows',true);
         if(frm.doc.__onload && frm.doc.__onload.item_details) {
             frm.doc['item_details'] = JSON.stringify(frm.doc.__onload.item_details);
             frm.item.load_data(frm.doc.__onload.item_details);

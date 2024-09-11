@@ -85,7 +85,7 @@
    "fieldtype": "Table",
    "hidden": 1,
    "label": "Items",
-   "options": "Production Order Item"
+   "options": "Lot Order Item"
   },
   {
    "fieldname": "items_html",
@@ -97,7 +97,7 @@
    "fieldtype": "Table",
    "hidden": 1,
    "label": "Production Order Details",
-   "options": "Production Order Detail"
+   "options": "Lot Order Detail"
   },
   {
    "fieldname": "section_break_rewk",
@@ -176,7 +176,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2024-09-04 14:59:18.139985",
+ "modified": "2024-09-09 17:00:24.128224",
  "modified_by": "Administrator",
  "module": "Essdee Production",
  "name": "Production Order",

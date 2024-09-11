@@ -5,5 +5,5 @@
 from frappe.model.document import Document
 
 
-class ProductionOrderItem(Document):
+class LotOrderDetail(Document):
 	pass

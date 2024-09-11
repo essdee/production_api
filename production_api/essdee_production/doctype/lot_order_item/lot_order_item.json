@@ -1,0 +1,53 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2024-07-25 16:27:48.954963",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "item_variant",
+  "qty",
+  "table_index",
+  "row_index"
+ ],
+ "fields": [
+  {
+   "fieldname": "item_variant",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Item Variant",
+   "options": "Item Variant"
+  },
+  {
+   "fieldname": "qty",
+   "fieldtype": "Float",
+   "in_list_view": 1,
+   "label": "Qty"
+  },
+  {
+   "fieldname": "table_index",
+   "fieldtype": "Int",
+   "in_list_view": 1,
+   "label": "Table Index"
+  },
+  {
+   "fieldname": "row_index",
+   "fieldtype": "Int",
+   "in_list_view": 1,
+   "label": "Row Index"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2024-08-26 10:48:39.661199",
+ "modified_by": "Administrator",
+ "module": "Essdee Production",
+ "name": "Lot Order Item",
+ "owner": "Administrator",
+ "permissions": [],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}
