@@ -62,7 +62,7 @@ function createInput(attr, index, value){
     let parent_class = "." + get_input_class(attr, index);
     let fieldtype = 'Link'
     if (attr == "Dia"){
-        fieldtype = "Int"
+        fieldtype = "Link"
     }
     else if(attr == 'Weight'){
         fieldtype = 'Float'
@@ -76,7 +76,7 @@ function createInput(attr, index, value){
         fieldname: attr+"_"+index,
         default: value,
     }
-    if (fieldtype == 'Link'){
+    if (fieldtype == 'Link' && attr != 'Dia'){
         df['options'] = 'Item Attribute Value'
         df['get_query'] = function(){
             return {
@@ -87,7 +87,16 @@ function createInput(attr, index, value){
             }
         }
     }
-    
+    else if(fieldtype == 'Link'){
+        df['options'] = 'Item Attribute Value'
+        df['get_query'] = function(){
+            return {
+                filters: {
+                    'attribute_name': 'Dia',
+                }
+            }
+        }
+    }
     else if(fieldtype == 'Select'){
         df['options'] = items.value.select_list
     }
