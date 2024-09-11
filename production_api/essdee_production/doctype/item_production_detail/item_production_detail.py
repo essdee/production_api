@@ -288,7 +288,7 @@ def get_calculated_bom(item_production_detail, items, lot_name):
 		variant_doc = frappe.get_doc("Item Variant", variant)
 		item_name = variant_doc.item
 		doc = frappe.get_doc("Item", item_name)
-		og_uom_factor_to_piece = get_uom_conversion_factor(doc.uom_conversion_details,lot_doc.uom,'Piece')
+		og_uom_factor_to_piece = get_uom_conversion_factor(doc.uom_conversion_details,lot_doc.uom,lot_doc.packing_uom)
 		og_piece_quantity = qty * og_uom_factor_to_piece
 		uom_factor = get_uom_conversion_factor(doc.uom_conversion_details,lot_doc.uom,lot_doc.packing_uom)
 		qty = (qty * uom_factor)
@@ -435,7 +435,6 @@ def get_calculated_bom(item_production_detail, items, lot_name):
 						if item_detail.packing_attribute in cut_attrs_list:
 							attr_values[item_detail.packing_attribute] = packing_attr.attribute_value
 						if check_cutting_attr(attr_values, cutting_attr):
-
 							if not cloth_detail.get(cutting_attr['Cloth'], False):
 								break
 							else:
@@ -454,7 +453,7 @@ def get_calculated_bom(item_production_detail, items, lot_name):
 									x = x/ 100
 									x = x * item_detail.additional_cloth
 								weight = weight + x
-								cloth_color = get_cloth_colour(item_detail.stiching_item_combination_details,packing_attr.attribute_value,cutting_attr['Panel'])
+								cloth_color = get_cloth_colour(item_detail.stiching_item_combination_details,packing_attr.attribute_value,cutting_attr[item_detail.stiching_attribute]])
 								variant = get_or_create_variant(cloth_item, {'Color': cloth_color, 'Dia':dia})
 								
 								if not bom.get(variant, False):
