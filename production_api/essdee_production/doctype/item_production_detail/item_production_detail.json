@@ -8,6 +8,8 @@
  "field_order": [
   "item_details_tab",
   "item",
+  "tech_pack_version",
+  "pattern_version",
   "section_break_yqii",
   "primary_item_attribute",
   "dependent_attribute",
@@ -363,11 +365,21 @@
    "fieldname": "additional_cloth",
    "fieldtype": "Float",
    "label": "Additional Cloth"
+  },
+  {
+   "fieldname": "tech_pack_version",
+   "fieldtype": "Data",
+   "label": "Tech Pack Version"
+  },
+  {
+   "fieldname": "pattern_version",
+   "fieldtype": "Data",
+   "label": "Pattern Version"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2024-09-11 11:07:10.573690",
+ "modified": "2024-09-11 12:12:12.597556",
  "modified_by": "Administrator",
  "module": "Essdee Production",
  "name": "Item Production Detail",

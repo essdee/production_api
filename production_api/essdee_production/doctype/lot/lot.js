@@ -34,7 +34,7 @@ frappe.ui.form.on("Lot", {
         else{
 			if (frm.doc.item){
 				frappe.call({
-					method : 'production_api.essdee_production.doctype.production_order.production_order.get_item_details',
+					method : 'production_api.essdee_production.doctype.lot.lot.get_item_details',
 					args : {
 						item_name : frm.doc.item,
 						uom: frm.doc.uom,
@@ -71,7 +71,7 @@ frappe.ui.form.on("Lot", {
 	async production_detail(frm){
 		if(frm.doc.production_detail){
 			await frappe.call({
-				method : 'production_api.essdee_production.doctype.production_order.production_order.get_isfinal_uom',
+				method : 'production_api.essdee_production.doctype.lot.lot.get_isfinal_uom',
                 args : {
                     item_production_detail: frm.doc.production_detail,
 					get_pack_stage: true,
@@ -87,7 +87,7 @@ frappe.ui.form.on("Lot", {
 				}
 			})
 			frappe.call({
-				method : 'production_api.essdee_production.doctype.production_order.production_order.get_item_details',
+				method : 'production_api.essdee_production.doctype.lot.lot.get_item_details',
 				args : {
 					item_name : frm.doc.item,
 					uom: frm.doc.uom,

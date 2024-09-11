@@ -54,7 +54,8 @@
    "fieldname": "item",
    "fieldtype": "Link",
    "label": "Item",
-   "options": "Item"
+   "options": "Item",
+   "reqd": 1
   },
   {
    "fieldname": "column_break_tvkgg",
@@ -140,7 +141,8 @@
    "fieldname": "production_detail",
    "fieldtype": "Link",
    "label": "Production Detail",
-   "options": "Item Production Detail"
+   "options": "Item Production Detail",
+   "reqd": 1
   },
   {
    "fieldname": "pack_out_stage",
@@ -250,7 +252,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2024-09-11 12:04:29.263578",
+ "modified": "2024-09-11 12:15:32.110676",
  "modified_by": "Administrator",
  "module": "Essdee Production",
  "name": "Lot",
