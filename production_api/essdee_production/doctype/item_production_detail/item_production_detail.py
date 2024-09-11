@@ -453,7 +453,7 @@ def get_calculated_bom(item_production_detail, items, lot_name):
 									x = x/ 100
 									x = x * item_detail.additional_cloth
 								weight = weight + x
-								cloth_color = get_cloth_colour(item_detail.stiching_item_combination_details,packing_attr.attribute_value,cutting_attr[item_detail.stiching_attribute]])
+								cloth_color = get_cloth_colour(item_detail.stiching_item_combination_details,packing_attr.attribute_value,cutting_attr[item_detail.stiching_attribute])
 								variant = get_or_create_variant(cloth_item, {'Color': cloth_color, 'Dia':dia})
 								
 								if not bom.get(variant, False):
