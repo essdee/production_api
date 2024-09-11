@@ -14,6 +14,10 @@
   "lot_template",
   "production_detail",
   "uom",
+  "expected_delivery_date",
+  "section_break_qubc",
+  "tech_pack_version",
+  "pattern_version",
   "dependent_attribute_mapping",
   "section_break_ry89l",
   "planned_qty",
@@ -129,8 +133,7 @@
    "fieldname": "bom_summary",
    "fieldtype": "Table",
    "label": "BOM Summary",
-   "options": "Lot BOM",
-   "read_only": 1
+   "options": "Lot BOM"
   },
   {
    "depends_on": "eval: doc.item",
@@ -221,11 +224,33 @@
    "fieldtype": "Table",
    "label": "BOM Additional Items",
    "options": "Lot BOM"
+  },
+  {
+   "fieldname": "expected_delivery_date",
+   "fieldtype": "Date",
+   "label": "Expected Delivery Date",
+   "reqd": 1
+  },
+  {
+   "fieldname": "section_break_qubc",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "tech_pack_version",
+   "fieldtype": "Data",
+   "hidden": 1,
+   "label": "Tech Pack Version"
+  },
+  {
+   "fieldname": "pattern_version",
+   "fieldtype": "Data",
+   "hidden": 1,
+   "label": "Pattern Version"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2024-09-10 17:58:24.902539",
+ "modified": "2024-09-11 12:04:29.263578",
  "modified_by": "Administrator",
  "module": "Essdee Production",
  "name": "Lot",

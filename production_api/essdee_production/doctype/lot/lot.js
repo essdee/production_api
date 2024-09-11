@@ -22,6 +22,9 @@ frappe.ui.form.on("Lot", {
         //         });
         //     }, __("View"));
         // }
+		frm.set_df_property('bom_summary','cannot_add_rows',true)
+		frm.set_df_property('bom_summary','cannot_delete_rows',true)
+
         $(frm.fields_dict['items_html'].wrapper).html("")
         frm.item = new frappe.production.ui.LotOrder(frm.fields_dict['items_html'].wrapper)
         if(frm.doc.__onload && frm.doc.__onload.item_details) {
