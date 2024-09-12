@@ -16,23 +16,23 @@ from frappe.utils.nestedset import get_descendants_of
 from production_api.mrp_stock.report.stock_ageing.stock_ageing import FIFOSlots
 
 
-class StockBalanceFilter(TypedDict):
-	from_date: str
-	to_date: str
-	item_group: Optional[str]
-	item: Optional[str]
-	warehouse: Optional[str]
-	lot: Optional[str]
-	# warehouse_type: Optional[str]
-	# include_uom: Optional[str]  # include extra info in converted UOM
-	show_stock_ageing_data: bool
-	show_variant_attributes: bool
+# class StockBalanceFilter(TypedDict):
+# 	from_date: str
+# 	to_date: str
+# 	item_group: Optional[str]
+# 	item: Optional[str]
+# 	warehouse: Optional[str]
+# 	lot: Optional[str]
+# 	# warehouse_type: Optional[str]
+# 	# include_uom: Optional[str]  # include extra info in converted UOM
+# 	show_stock_ageing_data: bool
+# 	show_variant_attributes: bool
 
 
 SLEntry = Dict[str, Any]
 
 
-def execute(filters: Optional[StockBalanceFilter] = None):
+def execute(filters=None):
 	if not filters:
 		filters = {}
 
@@ -123,7 +123,7 @@ def get_average_age(fifo_queue: List, to_date: str) -> float:
 
 	return flt(age_qty / total_qty, 2) if total_qty else 0.0
 
-def get_columns(filters: StockBalanceFilter):
+def get_columns(filters):
 	"""return columns"""
 	columns = [
 		{
@@ -269,7 +269,7 @@ def apply_conditions(query, filters):
 	return query
 
 
-def get_stock_ledger_entries(filters: StockBalanceFilter, items: List[str]) -> List[SLEntry]:
+def get_stock_ledger_entries(filters, items: List[str]) -> List[SLEntry]:
 	sle = frappe.qb.DocType("Stock Ledger Entry")
 	supplier = frappe.qb.DocType("Supplier")
 
@@ -297,8 +297,13 @@ def get_stock_ledger_entries(filters: StockBalanceFilter, items: List[str]) -> L
 		.orderby(sle.qty)
 	)
 
-	if filters.get("warehouse"):
-		query = query.where(sle.warehouse == filters.get("warehouse"))
+	if warehouse := filters.get("warehouse"):
+		w = []
+		if isinstance(warehouse, list):
+			w = warehouse
+		elif isinstance(warehouse, string_types):
+			w = [warehouse]
+		query = query.where(sle.warehouse.isin(w))
 
 	if items:
 		query = query.where(sle.item.isin(items))
@@ -335,7 +340,7 @@ def get_opening_vouchers(to_date):
 	return opening_vouchers
 
 
-def get_item_warehouse_map(filters: StockBalanceFilter, sle: List[SLEntry]):
+def get_item_warehouse_map(filters, sle: List[SLEntry]):
 	iwb_map = {}
 	from_date = getdate(filters.get("from_date"))
 	to_date = getdate(filters.get("to_date"))
@@ -416,22 +421,27 @@ def filter_items_with_no_transactions(iwb_map, float_precision: float):
 	return iwb_map
 
 
-def get_items(filters: StockBalanceFilter) -> List[str]:
+def get_items(filters) -> List[str]:
 	"Get items based on item code, item group or brand."
 	if item := filters.get("item"):
-		return [item]
-	else:
-		item_filters = {}
-		# if item_group := filters.get("item_group"):
-		# 	children = get_descendants_of("Item Group", item_group, ignore_permissions=True)
-		# 	item_filters["item_group"] = ("in", children + [item_group])
-		# if brand := filters.get("brand"):
-		# 	item_filters["brand"] = brand
+		if isinstance(item, list):
+			return item
+		elif isinstance(item, string_types):
+			return [item]
+		
+	item_filters = {}
+	# if item_group := filters.get("item_group"):
+	# 	children = get_descendants_of("Item Group", item_group, ignore_permissions=True)
+	# 	item_filters["item_group"] = ("in", children + [item_group])
+	# if brand := filters.get("brand"):
+	# 	item_filters["brand"] = brand
+	if parent_item := filters.get("parent_item"):
+		item_filters["item"] = parent_item
 
-		return frappe.get_all("Item Variant", filters=item_filters, pluck="name", order_by=None)
+	return frappe.get_all("Item Variant", filters=item_filters, pluck="name", order_by=None)
 
 
-def get_item_details(items: List[str], sle: List[SLEntry], filters: StockBalanceFilter):
+def get_item_details(items: List[str], sle: List[SLEntry], filters):
 	item_details = {}
 	if not items:
 		items = list(set(d.item for d in sle))
@@ -496,7 +506,7 @@ def get_variant_values_for(items):
 	return attribute_map
 
 @frappe.whitelist()
-def get_stock_balance(filters: Optional[StockBalanceFilter] = None):
+def get_stock_balance(filters=None):
 	print(filters)
 	if isinstance(filters, string_types):
 		filters = json.loads(filters)

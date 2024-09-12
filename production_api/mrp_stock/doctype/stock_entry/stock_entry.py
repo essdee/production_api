@@ -112,7 +112,8 @@ class StockEntry(Document):
 			"Material Issue",
 			"Send to Warehouse",
 			"Receive at Warehouse",
-			"Material Consumed"
+			"Material Consumed",
+			"Stock Dispatch"
 		]
 
 		target_mandatory = [
