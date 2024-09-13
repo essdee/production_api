@@ -93,10 +93,10 @@ class ItemProductionDetail(Document):
 		cloths = []
 		for cloth in self.cloth_detail:
 			cloths.append(cloth.name1)
-		cut_json = self.cutting_items_json
+		cut_json = self.cutting_cloths_json
 		if cut_json:
 			cut_json['select_list'] = cloths		
-		self.cutting_items_json = cut_json
+		self.cutting_cloths_json = cut_json
 
 	def validate(self):
 		if self.get('__islocal'):
@@ -277,6 +277,7 @@ def get_calculated_bom(item_production_detail, items, lot_name):
 	lot_doc = frappe.get_doc("Lot", lot_name)
 	pack_out_stage = lot_doc.pack_out_stage
 	pack_in_stage = lot_doc.pack_in_stage
+	cloth_combination = get_combination(item_detail.cutting_items_json, item_detail.cutting_cloths_json)
 	if len(items) == 0:
 		return
 	for item in items:
@@ -429,7 +430,7 @@ def get_calculated_bom(item_production_detail, items, lot_name):
 
 			for packing_attr in item_detail.packing_attribute_details:
 				for stiching_attr in item_detail.stiching_item_details:
-					for cutting_attr in json.loads(item_detail.cutting_items_json)['items']:
+					for cutting_attr in cloth_combination:
 						if item_detail.stiching_attribute in cut_attrs_list:
 							attr_values[item_detail.stiching_attribute] = stiching_attr.stiching_attribute_value
 						if item_detail.packing_attribute in cut_attrs_list:
@@ -454,7 +455,7 @@ def get_calculated_bom(item_production_detail, items, lot_name):
 									x = x * item_detail.additional_cloth
 								weight = weight + x
 								cloth_color = get_cloth_colour(item_detail.stiching_item_combination_details,packing_attr.attribute_value,cutting_attr[item_detail.stiching_attribute])
-								variant = get_or_create_variant(cloth_item, {'Color': cloth_color, 'Dia':dia})
+								variant = get_or_create_variant(cloth_item, {item_detail.packing_attribute: cloth_color, 'Dia':dia})
 								
 								if not bom.get(variant, False):
 									bom[variant] = [weight, 'Cutting', 'kg']
@@ -470,7 +471,7 @@ def get_calculated_bom(item_production_detail, items, lot_name):
 	lot_doc.last_calculated_time = now_datetime()
 	lot_doc.save()	
 
-##################       BOM CALCULATION FUNCTION       ##################
+##################       BOM CALCULATION FUNCTIONS       ##################
 
 def get_cloth_colour(stiching_combination_detail, major_attribute, set_attribute):
 	for item in stiching_combination_detail:
@@ -519,6 +520,57 @@ def check_cutting_attr(item_attr, combination_attr):
 		elif combination_attr[key] != value:
 			return False
 	return True	
+
+def get_combination(cutting_items, cloth_items):
+	cutting_items = json.loads(cutting_items)
+	cloth_items = json.loads(cloth_items)
+	combination_list = []
+	for cut_item in cutting_items['items']:
+		for cloth_item in cloth_items['items']:
+			same_attrs = get_same_attributes(cut_item, cloth_item)
+			check = True
+			if len(same_attrs) > 0:
+				check = check_same_values(cut_item, cloth_item, same_attrs)
+			if check:
+				x = cloth_item | cut_item
+				combination_list.append(x)
+	return combination_list
+
+def get_same_attributes(cut_item, cloth_item):
+	same_attrs = []
+	for key, value in cut_item.items():
+		if cloth_item.get(key):
+			same_attrs.append(key)
+	return same_attrs		
+
+def check_same_values(cut_item, cloth_item, same_attrs):
+	for item in same_attrs:
+		if cut_item[item] != cloth_item[item]:
+			return False
+	return True	
+
+def create_and_update_bom(index, type, mapping_doc_values, attr_values, mapping_bom_item_attributes, bom_item, bom, quantity, process_name, uom):
+	attributes = get_same_index_values(index, type, mapping_doc_values, attr_values, mapping_bom_item_attributes)
+	new_variant = get_or_create_variant(bom_item, attributes)
+	if not bom.get(new_variant, False):
+		bom[new_variant] = [math.ceil(quantity),process_name, uom]
+	else:
+		bom[new_variant][0] += math.ceil(quantity)
+	return bom
+
+def create_and_update_bom_set(attributes, bom_item, bom, quantity, auto_calculate, packing_attribute_details, attr_value, process_name, uom):
+	new_variant = get_or_create_variant(bom_item, attributes)
+	if not bom.get(new_variant, False):
+		if auto_calculate:
+			bom[new_variant] = [math.ceil(quantity),process_name, uom]
+		else:
+			bom[new_variant] = [math.ceil(quantity * get_quantity(packing_attribute_details, attr_value)),process_name, uom]
+	else:
+		if auto_calculate:
+			bom[new_variant][0] += math.ceil(quantity)
+		else:
+			bom[new_variant][0] += math.ceil(quantity * get_quantity(packing_attribute_details, attr_value))
+	return bom
 
 ##################       COMBINATION       ##################
 
@@ -579,15 +631,6 @@ def get_new_combination(attribute_mapping_value, packing_attribute_details, majo
 
 ##################       PACKING FUNCTIONS        ###################
 
-def create_and_update_bom(index, type, mapping_doc_values, attr_values, mapping_bom_item_attributes, bom_item, bom, quantity, process_name, uom):
-	attributes = get_same_index_values(index, type, mapping_doc_values, attr_values, mapping_bom_item_attributes)
-	new_variant = get_or_create_variant(bom_item, attributes)
-	if not bom.get(new_variant, False):
-		bom[new_variant] = [math.ceil(quantity),process_name, uom]
-	else:
-		bom[new_variant][0] += math.ceil(quantity)
-	return bom
-
 @frappe.whitelist()
 def get_packing_values(packing_attribute_mapping_value, packing_attribute_no):
 	map_doc = frappe.get_doc("Item Item Attribute Mapping", packing_attribute_mapping_value)
@@ -602,20 +645,6 @@ def get_packing_values(packing_attribute_mapping_value, packing_attribute_no):
 	return packing_list
 
 ##################       SET ITEM FUNCTIONS       ###################
-
-def create_and_update_bom_set(attributes, bom_item, bom, quantity, auto_calculate, packing_attribute_details, attr_value, process_name, uom):
-	new_variant = get_or_create_variant(bom_item, attributes)
-	if not bom.get(new_variant, False):
-		if auto_calculate:
-			bom[new_variant] = [math.ceil(quantity),process_name, uom]
-		else:
-			bom[new_variant] = [math.ceil(quantity * get_quantity(packing_attribute_details, attr_value)),process_name, uom]
-	else:
-		if auto_calculate:
-			bom[new_variant][0] += math.ceil(quantity)
-		else:
-			bom[new_variant][0] += math.ceil(quantity * get_quantity(packing_attribute_details, attr_value))
-	return bom
 
 def get_bottom_part_values(attr, major_attr, set_item_details, set_item_attr, pack_attr, mapping_doc_values, attr_values, mapping_bom_item_attributes):
 	index = -1
@@ -664,7 +693,7 @@ def get_stiching_in_stage_attributes(dependent_attribute_mapping,stiching_in_sta
 ##################       CUTTING FUNCTIONS        ###################
 
 @frappe.whitelist()		
-def get_cutting_combination(attributes,item_attributes, cloth_detail):
+def get_cutting_combination(attributes,item_attributes, cloth_detail, combination_type, packing_attr, packing_attr_details):
 	attributes = json.loads(attributes)
 	item_attr_value_list = {}
 	if isinstance(item_attributes, string_types):
@@ -673,10 +702,18 @@ def get_cutting_combination(attributes,item_attributes, cloth_detail):
 	if isinstance(cloth_detail, string_types):
 		cloth_detail = json.loads(cloth_detail)
 
+	if isinstance(packing_attr_details, string_types):
+		packing_attr_details = json.loads(packing_attr_details)
+
+	pack_details = []
+	for pack_attr in packing_attr_details:
+		pack_details.append(pack_attr['attribute_value'])
+
 	for item in item_attributes:
 		if item['attribute'] in attributes:
 			attr_details = get_attr_mapping_details(item['mapping'])
 			item_attr_value_list[item['attribute']] = attr_details
+	item_attr_value_list[packing_attr] = pack_details
 	item_attr_val_list = {}
 	for attr in attributes:
 		item_attr_val_list[attr] = item_attr_value_list[attr]
@@ -684,12 +721,18 @@ def get_cutting_combination(attributes,item_attributes, cloth_detail):
 	item_list = []
 	if len(attributes) == 1:
 		for attr_val in item_attr_val_list[attributes[0]]:
-			item_list.append({
-				attributes[0]:attr_val,
-				'Dia':None,
-				"Weight":None,
-				"Cloth":None,
-			})
+			if combination_type == 'Cutting':
+				item_list.append({
+					attributes[0]:attr_val,
+					'Dia':None,
+					"Weight":None,
+				})
+			else:		
+				item_list.append({
+					attributes[0]:attr_val,
+					"Cloth":None,
+					"Required GSM":None,
+				})
 	else:
 		attrs_len = {}
 		initial_attrs = {}
@@ -697,7 +740,6 @@ def get_cutting_combination(attributes,item_attributes, cloth_detail):
 			attrs_len[key] = len(val)
 			initial_attrs[key] = 0
 		check = False
-		# first_item = attributes[0]
 		last_item = attributes[len(attributes)-1]
 		while True:
 			temp = {}
@@ -708,10 +750,14 @@ def get_cutting_combination(attributes,item_attributes, cloth_detail):
 					if initial_attrs[item] == attrs_len[item]:
 						initial_attrs = update_below(initial_attrs, attributes, last_item, attrs_len)
 				if initial_attrs == None:
-					check = True	
-			temp['Dia'] = None
-			temp['Weight'] = None
-			temp['Cloth'] = None
+					check = True
+			if combination_type == 'Cutting':			
+				temp['Dia'] = None
+				temp['Weight'] = None
+			else:
+				temp['Cloth'] = None
+				temp['Required GSM'] = None	
+			
 			item_list.append(temp)
 			if check:
 				break
@@ -719,8 +765,14 @@ def get_cutting_combination(attributes,item_attributes, cloth_detail):
 	cloths = []
 	for cloth in cloth_detail:
 		cloths.append(cloth['name1'])
+	additional_attr = []
+	if combination_type == 'Cutting':
+		additional_attr = ['Dia', 'Weight']
+	else:
+		additional_attr = ['Cloth',"Required GSM"]	
 	final_list = {
-		'attributes' : attributes + ['Dia','Weight','Cloth'],
+		'combination_type': combination_type,
+		'attributes' : attributes + additional_attr,
 		'items': item_list,
 		'select_list':cloths
 	}
@@ -746,24 +798,3 @@ def get_attr_mapping_details(mapping):
 	for item in doc.values:
 		values.append(item.attribute_value)
 	return values
-
-# @frappe.whitelist()
-# def check_dia_in_cloth(dia_value, cloth_name):
-# 	doc = frappe.get_doc("Item",cloth_name)
-# 	mapping = None
-# 	for attr in doc.attributes:
-# 		if attr.attribute == 'Dia':
-# 			mapping = attr.mapping
-
-# 	if mapping:
-# 		map_doc = frappe.get_doc("Item Item Attribute Mapping",mapping)
-# 		if len(map_doc.values) != 0:
-# 			check = True
-# 			for item in map_doc.values:
-# 				if item.attribute_value == dia_value:
-# 					check = False
-# 					break
-# 			if check:
-# 				frappe.throw(f"Dia {dia_value} is not applicable for Item {cloth_name}")
-# 	else:
-# 		frappe.throw(f"Dia is not a attribute for Item {cloth_name}")	

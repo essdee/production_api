@@ -30,7 +30,7 @@
                         <tr>
                             <th>S.No.</th>
                             <th v-for="(j, idx) in i.final_state_attr" :key="idx">{{ j }}</th>
-                            <th>Qty</th>
+                            <th>Quantity</th>
                         </tr>
                         <tr v-for="(j, item1_index) in i.items" :key="item1_index">
                             <td>{{ item1_index + 1 }}</td>

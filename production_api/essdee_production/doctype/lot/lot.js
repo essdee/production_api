@@ -83,6 +83,9 @@ frappe.ui.form.on("Lot", {
 						frm.set_value('packing_uom', r.message.packing_uom)
 						frm.set_value('pack_out_stage', r.message.pack_out_stage)
 						frm.set_value('dependent_attribute_mapping',r.message.dependent_attr_mapping)
+						frm.set_value('tech_pack_version', r.message.tech_pack_version)
+						frm.set_value('pattern_version',r.message.pattern_version)
+						frm.set_value('packing_combo', r.message.packing_combo)
 					}
 				}
 			})

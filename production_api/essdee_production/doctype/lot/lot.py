@@ -24,15 +24,26 @@ class Lot(Document):
 		self.total_quantity = qty
 	
 	def validate(self):	
-		items = calculate_order_details(self.get('items'), self.production_detail, self.packing_uom, self.uom)
-		self.set('lot_order_details',items )
+		items, qty = calculate_order_details(self.get('items'), self.production_detail, self.packing_uom, self.uom)
+
+		if len(items) == 0:
+			x = []
+			for item in self.items:
+				x.append({'item_variant': item.item_variant, 'quantity':item.qty })
+				qty += item.qty
+			self.set('lot_order_details',x)
+			self.set('total_order_quantity', qty)
+		else:
+			self.set('lot_order_details',items)
+			self.set('total_order_quantity', qty)
 
 	def onload(self):
 		item_details = fetch_item_details(self.get('items'), self.production_detail)
 		self.set_onload('item_details', item_details)
-		if len(self.get('lot_order_details')) > 0:
-			items = fetch_order_item_details(self.get('lot_order_details'), self.production_detail)
-			self.set_onload('order_item_details', items)
+		items = fetch_order_item_details(self.get('lot_order_details'), self.production_detail)
+		x = items[0]
+		self.lot_order_details_json = x
+		self.set_onload('order_item_details', items)
 
 def calculate_order_details(items, production_detail, packing_uom, final_uom):
 	item_detail = frappe.get_doc("Item Production Detail", production_detail)
@@ -44,6 +55,7 @@ def calculate_order_details(items, production_detail, packing_uom, final_uom):
 		pack_stage = item_detail.pack_in_stage
 		dept_attr = item_detail.dependent_attribute
 	uom_factor = get_uom_conversion_factor(doc.uom_conversion_details,final_uom, packing_uom)
+	final_qty = 0
 	for item in items:
 		variant = frappe.get_doc("Item Variant", item.item_variant)
 		is_not_pack_attr = True
@@ -74,10 +86,14 @@ def calculate_order_details(items, production_detail, packing_uom, final_uom):
 						major_attr = attr.major_attribute_value
 						q = get_quantity(major_attr, item_detail.packing_attribute_details)
 					new_variant = get_or_create_variant(variant.item, attrs,dependent_attr=item_detail.dependent_attribute_mapping)
+
+					temp_qty = math.ceil(qty) if item_detail.auto_calculate else math.ceil(qty * flt(q))
+					if item_detail.major_attribute_value == attr.set_item_attribute_value:
+						final_qty += temp_qty
 					if not item_list.get(new_variant,False):
-						item_list[new_variant] = math.ceil(qty) if item_detail.auto_calculate else math.ceil(qty * flt(q))
+						item_list[new_variant] = temp_qty
 					else:
-						item_list[new_variant] += math.ceil(qty) if item_detail.auto_calculate else math.ceil(qty * flt(q))
+						item_list[new_variant] += temp_qty
 			else:
 				for attr in item_detail.packing_attribute_details:
 					attrs = {}
@@ -89,16 +105,18 @@ def calculate_order_details(items, production_detail, packing_uom, final_uom):
 							attrs[attribute.attribute] = attribute['attribute_value']
 					attrs[item_detail.packing_attribute] = attr.attribute_value
 					new_variant = get_or_create_variant(variant.item, attrs,dependent_attr=item_detail.dependent_attribute_mapping)
+					temp_qty = math.ceil(qty) if item_detail.auto_calculate else math.ceil(qty * attr.quantity)
+					final_qty += temp_qty
 					if not item_list.get(new_variant,False):
-						item_list[new_variant] = math.ceil(qty) if item_detail.auto_calculate else math.ceil(qty * attr.quantity)
+						item_list[new_variant] = temp_qty 
 					else:
-						item_list[new_variant] += math.ceil(qty) if item_detail.auto_calculate else math.ceil(qty * attr.quantity)
+						item_list[new_variant] += temp_qty
 			for key, val in item_list.items():
 				final_list.append({
 					'item_variant':key,
 					'quantity':val,
 				})		
-	return final_list
+	return final_list, final_qty
 
 def save_item_details(item_details, dependent_attr=None):
 	if isinstance(item_details, string_types):
@@ -118,7 +136,9 @@ def save_item_details(item_details, dependent_attr=None):
 					variant1.insert()
 					variant_name = variant1.name
 				item1['item_variant'] = variant_name
-				item1['qty'] = row['values'][val]
+				item1['qty'] = row['values'][val]['qty']
+				item1['ratio'] = row['values'][val]['ratio']
+				item1['mrp'] = row['values'][val]['mrp']
 				item1['table_index'] = id1
 				item1['row_index'] = id2
 				items.append(item1)
@@ -133,6 +153,8 @@ def save_item_details(item_details, dependent_attr=None):
 				variant_name = variant1.name
 			item1['item_variant'] = variant_name
 			item1['qty'] = row['values']['qty']
+			item1['ratio'] = row['values']['ratio']
+			item1['mrp'] = row['values']['mrp']
 			item1['table_index'] = id1
 			items.append(item1)
 	return items
@@ -161,10 +183,16 @@ def fetch_item_details(items, production_detail):
 			if doc.primary_attribute:
 				for attr in current_variant.attributes:
 					if attr.attribute == primary_attr:
-						values[attr.attribute_value] = variant['qty']
+						values[attr.attribute_value] = {
+							"qty":variant['qty'],
+							"ratio": variant['ratio'],
+							"mrp": variant['mrp'],
+						}
 						break
 			else:
 				values['qty'] = variant['qty']
+				values['ratio'] = variant['ratio']
+				values['mrp'] = variant['mrp']
 		attrs = {}
 		for item in item_structure['attributes']:
 			if item in item_attribute_details:
@@ -302,18 +330,19 @@ def get_isfinal_uom(item_production_detail, get_pack_stage=None):
 				'uom':uom,
 				'pack_in_stage':pack_in_stage,
 				'pack_out_stage': pack_out_stage,
-				'packing_uom': attribute_details['attr_list'][pack_in_stage]['uom'],
+				'packing_uom': attribute_details['attr_list'][pack_in_stage]['uom'] or uom,
 				'dependent_attr_mapping': doc.dependent_attribute_mapping,
+				'tech_pack_version': doc.tech_pack_version,
+				'pattern_version': doc.pattern_version,
+				'packing_combo': doc.packing_combo,
 			}
 	return {
 		'uom':uom,
-		'pack_in_stage':None,
-		'pack_out_stage': None,
-		'packing_uom': uom,
-		'dependent_attr_mapping': None,
 	}
 
 def get_uom_conversion_factor(uom_conversion_details, from_uom, to_uom):
+	if not to_uom:
+		to_uom = from_uom
 	to_uom_factor = None
 	from_uom_factor = None
 	for item in uom_conversion_details:
@@ -322,3 +351,41 @@ def get_uom_conversion_factor(uom_conversion_details, from_uom, to_uom):
 		if item.uom == to_uom:
 			to_uom_factor = item.conversion_factor
 	return from_uom_factor / to_uom_factor
+
+@frappe.whitelist()
+def get_dict_object(data):
+	return json.loads(data)
+
+@frappe.whitelist()
+def combine_child_tables(table1, table2):
+	table = table1 + table2
+	tab_list = []
+	for row in table:
+		tab_list.append(row.as_dict())
+	return tab_list
+
+@frappe.whitelist()
+def get_attributes(data):
+	grp_variant_doc = frappe.get_doc("Item Variant", data[0].item_variant)
+	grp_item = grp_variant_doc.item
+	dept_attr = frappe.get_value("Item", grp_item, "dependent_attribute")
+	attribute_list = []
+	for attrs in grp_variant_doc.attributes:
+		if attrs.attribute != dept_attr:
+			attribute_list.append(attrs.attribute)
+	attribute_list = attribute_list + ['Ratio', 'MRP']
+	
+	attr_list = []
+	for item in data:
+		item= item.as_dict()
+		doc = frappe.get_doc("Item Variant", item['item_variant'])
+		temp_attr = {}
+		for attr in doc.attributes:
+			if attr.attribute != dept_attr:
+				temp_attr[attr.attribute] = attr.attribute_value
+		temp_attr['Ratio'] = item['ratio']
+		temp_attr['MRP'] = item['mrp']	
+		attr_list.append(temp_attr)
+	return attribute_list, attr_list
+
+	
