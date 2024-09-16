@@ -8,7 +8,7 @@ from six import string_types
 from itertools import groupby
 from production_api.production_api.doctype.item.item import get_or_create_variant
 from production_api.production_api.doctype.item_dependent_attribute_mapping.item_dependent_attribute_mapping import get_dependent_attribute_details
-from production_api.essdee_production.doctype.production_order.production_order import get_uom_conversion_factor
+from production_api.essdee_production.doctype.lot.lot import get_uom_conversion_factor
 class ItemProductionDetail(Document):
 	def load_attribute_list(self):
 		attribute_list = []
@@ -731,7 +731,6 @@ def get_cutting_combination(attributes,item_attributes, cloth_detail, combinatio
 				item_list.append({
 					attributes[0]:attr_val,
 					"Cloth":None,
-					"Required GSM":None,
 				})
 	else:
 		attrs_len = {}
@@ -756,7 +755,6 @@ def get_cutting_combination(attributes,item_attributes, cloth_detail, combinatio
 				temp['Weight'] = None
 			else:
 				temp['Cloth'] = None
-				temp['Required GSM'] = None	
 			
 			item_list.append(temp)
 			if check:
@@ -769,7 +767,7 @@ def get_cutting_combination(attributes,item_attributes, cloth_detail, combinatio
 	if combination_type == 'Cutting':
 		additional_attr = ['Dia', 'Weight']
 	else:
-		additional_attr = ['Cloth',"Required GSM"]	
+		additional_attr = ['Cloth']	
 	final_list = {
 		'combination_type': combination_type,
 		'attributes' : attributes + additional_attr,
