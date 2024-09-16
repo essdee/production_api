@@ -296,16 +296,16 @@ def get_stock_ledger_entries(filters, items: List[str]) -> List[SLEntry]:
 		.orderby(sle.creation)
 		.orderby(sle.qty)
 	)
-
+	
 	if warehouse := filters.get("warehouse"):
 		w = []
 		if isinstance(warehouse, list):
 			w = warehouse
 		elif isinstance(warehouse, string_types):
 			w = [warehouse]
-		query = query.where(sle.warehouse.isin(w))
-
-	if items:
+		if len(w)!=0:
+			query = query.where(sle.warehouse.isin(w))
+	if items and len(items)!=0 :
 		query = query.where(sle.item.isin(items))
 
 	query = apply_conditions(query, filters)
@@ -428,7 +428,7 @@ def get_items(filters) -> List[str]:
 			return item
 		elif isinstance(item, string_types):
 			return [item]
-		
+
 	item_filters = {}
 	# if item_group := filters.get("item_group"):
 	# 	children = get_descendants_of("Item Group", item_group, ignore_permissions=True)
@@ -507,7 +507,6 @@ def get_variant_values_for(items):
 
 @frappe.whitelist()
 def get_stock_balance(filters=None):
-	print(filters)
 	if isinstance(filters, string_types):
 		filters = json.loads(filters)
 	return execute(filters)

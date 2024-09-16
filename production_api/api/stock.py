@@ -1,9 +1,16 @@
 import frappe
 from frappe.utils import today, add_to_date
 from production_api.mrp_stock.report.stock_balance.stock_balance import execute as stock_balance
+from six import string_types
 
 @frappe.whitelist()
 def get_stock(item, warehouse, remove_zero_balance_item=1):
+    
+    if isinstance(warehouse,string_types):
+        warehouse = frappe.json.loads(warehouse)
+    if isinstance(item,string_types):
+        item = frappe.json.loads(item)
+        
     filters = {
         'from_date': add_to_date(today(), days=-7),
         'to_date': today(),
@@ -18,18 +25,16 @@ def get_stock(item, warehouse, remove_zero_balance_item=1):
         if group_by_key not in item_wh_map:
             item_wh_map[group_by_key] = frappe._dict(
                 {
-                    "item": d.item,
-                    "warehouse": d.warehouse,
-                    "warehouse_name": d.warehouse_name,
+                    "item": d['item'],
                     "bal_qty": 0.0,
-                    "uom": d.stock_uom,
+                    "uom": d['stock_uom'],
                 }
             )
-        qty_dict = item_wh_map[group_by_key]
-        qty_dict.bal_qty += d.bal_qty
+        item_wh_map[group_by_key]['bal_qty'] += d['bal_qty']
     
-    return [d for _, d in item_wh_map.items()]
+    return item_wh_map
 
-def get_group_by_key(row) -> tuple:
-    group_by_key = [row.item, row.warehouse]
-    return tuple(group_by_key)
+def get_group_by_key(row) -> str:
+    # group_by_key = [row['item'], row['warehouse']]
+    # return tuple(group_by_key)
+    return row['item']
