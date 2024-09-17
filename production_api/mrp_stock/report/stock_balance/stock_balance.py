@@ -305,6 +305,8 @@ def get_stock_ledger_entries(filters, items: List[str]) -> List[SLEntry]:
 			w = [warehouse]
 		if len(w)!=0:
 			query = query.where(sle.warehouse.isin(w))
+	if lot := filters.get("lot"):
+		query = query.where(sle.lot == lot)
 	if items and len(items)!=0 :
 		query = query.where(sle.item.isin(items))
 
