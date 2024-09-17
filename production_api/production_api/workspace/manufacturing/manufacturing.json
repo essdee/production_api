@@ -44,7 +44,8 @@
    "hidden": 0,
    "is_query_report": 0,
    "label": "Reports",
-   "link_count": 3,
+   "link_count": 4,
+   "link_type": "DocType",
    "onboard": 0,
    "type": "Card Break"
   },
@@ -71,6 +72,16 @@
   {
    "hidden": 0,
    "is_query_report": 1,
+   "label": "Purchase Order Log",
+   "link_count": 0,
+   "link_to": "Purchase Order Log",
+   "link_type": "Report",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 1,
    "label": "Lot Purchase Summary",
    "link_count": 0,
    "link_to": "Lot Purchase Summary",
@@ -79,7 +90,7 @@
    "type": "Link"
   }
  ],
- "modified": "2024-08-17 16:02:02.840379",
+ "modified": "2024-09-17 12:47:44.325528",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Manufacturing",
