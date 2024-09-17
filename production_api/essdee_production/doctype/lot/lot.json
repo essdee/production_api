@@ -57,8 +57,7 @@
    "fieldname": "item",
    "fieldtype": "Link",
    "label": "Item",
-   "options": "Item",
-   "reqd": 1
+   "options": "Item"
   },
   {
    "fieldname": "column_break_tvkgg",
@@ -271,7 +270,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2024-09-13 13:14:23.897224",
+ "modified": "2024-09-17 17:16:48.843364",
  "modified_by": "Administrator",
  "module": "Essdee Production",
  "name": "Lot",
