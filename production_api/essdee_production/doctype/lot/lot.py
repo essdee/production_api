@@ -38,12 +38,13 @@ class Lot(Document):
 			self.set('total_order_quantity', qty)
 
 	def onload(self):
-		item_details = fetch_item_details(self.get('items'), self.production_detail)
-		self.set_onload('item_details', item_details)
-		items = fetch_order_item_details(self.get('lot_order_details'), self.production_detail)
-		x = items[0]
-		self.lot_order_details_json = x
-		self.set_onload('order_item_details', items)
+		if self.production_detail:
+			item_details = fetch_item_details(self.get('items'), self.production_detail)
+			self.set_onload('item_details', item_details)
+			items = fetch_order_item_details(self.get('lot_order_details'), self.production_detail)
+			x = items[0]
+			self.lot_order_details_json = x
+			self.set_onload('order_item_details', items)
 
 def calculate_order_details(items, production_detail, packing_uom, final_uom):
 	item_detail = frappe.get_doc("Item Production Detail", production_detail)
