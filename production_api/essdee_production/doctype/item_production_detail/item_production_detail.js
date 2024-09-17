@@ -127,11 +127,11 @@ frappe.ui.form.on("Item Production Detail", {
 		frm.trigger('onload_post_render')
 		if(frm.doc.stiching_in_stage && frm.doc.dependent_attribute){
 			frm.cutting_attrs = await get_stich_in_attributes(frm.doc.dependent_attribute_mapping,frm.doc.stiching_in_stage, frm.doc.item)
+			make_select_attributes(frm,'select_attributes_html','select_attributes_wrapper','select_attrs_multicheck','cutting_attributes','cutting_items_json','get_cutting_combination')
 			if(frm.doc.cloth_detail.length > 0){
-				frm.trigger('make_select_attributes')
+				make_select_attributes(frm,'select_cloths_attribute_html','select_cloths_attributes_wrapper','select_cloth_attrs_multicheck','cloth_attributes','cutting_cloths_json', 'get_cloth_combination')
 			}
 		}
-		frm.cloth_detail_length = frm.doc.cloth_detail.length
 		if (frm.doc.__islocal) {
 			hide_field(["item_attribute_list_values_html", "bom_attribute_mapping_html",'dependent_attribute_details_html']);
 		} 
@@ -204,11 +204,6 @@ frappe.ui.form.on("Item Production Detail", {
 			await frm.set_item.load_data(frm.doc.__onload.set_item_detail);
 			frm.set_item.set_attributes()
 		}
-		// else{
-		// 	if(frm.doc.is_set_item){
-		// 		frm.trigger('get_set_item_combination')
-		// 	}
-		// }
 	},
 	async make_stiching_combination(frm){
 		$(frm.fields_dict['stiching_items_html'].wrapper).html("");
@@ -218,9 +213,6 @@ frappe.ui.form.on("Item Production Detail", {
 			await frm.stiching_item.load_data(frm.doc.__onload.stiching_item_detail);
 			frm.stiching_item.set_attributes()
 		}
-		// else{
-		// 	frm.trigger('get_stiching_item_combination')
-		// }
 	},
 	async make_cutting_combination(frm){
 		$(frm.fields_dict['cutting_items_html'].wrapper).html("");
@@ -229,51 +221,12 @@ frappe.ui.form.on("Item Production Detail", {
 			await frm.cutting_item.load_data(frm.doc.cutting_items_json);
 			frm.cutting_item.set_attributes()
 		}
-		// else{
-		// 	if(frm.doc.cloth_detail.length > 0){
-		// 		frm.trigger('get_cutting_combination')
-		// 	}
-		// }
-	},
-	make_select_attributes(frm){
-		let $wrapper = frm.get_field("select_attributes_html").$wrapper;
-		$wrapper.empty();
-		const select_attributes_wrapper = $(`<div class="select_attributes_wrapper">`).appendTo($wrapper);
-		let cutting_attr_list = frm.doc.cutting_attributes
-		let check_list = []
-		for(let i = 0; i < cutting_attr_list.length; i++){
-			check_list.push(cutting_attr_list[i].attribute)
+		$(frm.fields_dict['cutting_cloths_html'].wrapper).html("");
+		frm.cloth_item = new frappe.production.ui.CuttingItemDetail(frm.fields_dict['cutting_cloths_html'].wrapper);
+		if(frm.doc.cutting_cloths_json) {
+			await frm.cloth_item.load_data(frm.doc.cutting_cloths_json);
+			frm.cloth_item.set_attributes()
 		}
-		frm.select_attrs_multicheck = frappe.ui.form.make_control({
-			parent: select_attributes_wrapper,
-			df: {
-				fieldname: "select_attributes_wrapper",
-				fieldtype: "MultiCheck",
-				// select_all: true,
-				sort_options: false,
-				columns: 4,
-				get_data: () => {
-					return frm.cutting_attrs.map(attr => {
-						let check = 0
-						if(check_list.includes(attr)){
-							check = 1
-						}
-						return {
-							label: attr,   
-							value: attr,  
-							checked: check   
-						};
-					});
-				},
-				on_change:()=> {
-					console.log("HELLO")
-					frm.set_value('cutting_items_json',{});
-					frm.trigger('get_cutting_combination')
-				}
-			},
-			render_input: true,
-		});
-		frm.select_attrs_multicheck.refresh_input();
 	},
 	onload_post_render(frm){
 		showOrHideColumns(frm,['dependent_attribute_value'],'item_bom', frm.doc.dependent_attribute ? 0 : 1)
@@ -301,12 +254,14 @@ frappe.ui.form.on("Item Production Detail", {
 			let item_details = frm.set_item.get_data()
 			frm.doc['set_item_detail'] = JSON.stringify(item_details);
 		}
+
 		if(frm.stiching_item){
 			let item_details = frm.stiching_item.get_data()
 			if(item_details['values'].length > 0){
 				frm.doc['stiching_item_detail'] = JSON.stringify(item_details);
 			}
 		}
+
 		if(frm.select_attrs_multicheck){
 			let cutting_attr_list = []
 			let get_checked_attributes = frm.select_attrs_multicheck.get_checked_options()
@@ -315,6 +270,16 @@ frappe.ui.form.on("Item Production Detail", {
 			}
 			frm.set_value('cutting_attributes',cutting_attr_list)
 		}
+
+		if(frm.select_cloth_attrs_multicheck){
+			let cutting_attr_list = []
+			let get_checked_attributes = frm.select_cloth_attrs_multicheck.get_checked_options()
+			for(let i = 0 ; i< get_checked_attributes.length; i++){
+				cutting_attr_list.push({'attribute':get_checked_attributes[i]})
+			}
+			frm.set_value('cloth_attributes',cutting_attr_list)
+		}
+
 		if(frm.cutting_item){
 			let item_details = frm.cutting_item.get_data()
 			if(item_details == null){
@@ -322,6 +287,16 @@ frappe.ui.form.on("Item Production Detail", {
 			}
 			else if(item_details.items.length > 0){
 				frm.doc.cutting_items_json = item_details
+			}
+		}
+
+		if(frm.cloth_item){
+			let item_details = frm.cloth_item.get_data()
+			if(item_details == null){
+				frm.doc.cutting_cloths_json = {}
+			}
+			else if(item_details.items.length > 0){
+				frm.doc.cutting_cloths_json = item_details
 			}
 		}
 	},
@@ -350,19 +325,19 @@ frappe.ui.form.on("Item Production Detail", {
         }
 	},
 	async update_cloth_items(frm){
-		if(frm.cutting_item){
-			if(frm.doc.cutting_items_json) {
+		if(frm.cloth_item){
+			if(frm.doc.cutting_cloths_json) {
 				let cloths = []
 				for(let i = 0 ; i < frm.doc.cloth_detail.length; i++){
 					if(frm.doc.cloth_detail[i].name1 && frm.doc.cloth_detail[i].cloth){
 						cloths.push(frm.doc.cloth_detail[i].name1)
 					}
 				}	
-				let cut_json = frm.doc.cutting_items_json
+				let cut_json = frm.doc.cutting_cloths_json
 				cut_json = JSON.parse(cut_json)
 				cut_json['select_list'] = cloths
-				await frm.cutting_item.load_data(cut_json);
-				frm.cutting_item.set_attributes()
+				await frm.cloth_item.load_data(cut_json);
+				frm.cloth_item.set_attributes()
 			}
 		}
 	},
@@ -411,10 +386,6 @@ frappe.ui.form.on("Item Production Detail", {
 		})
 	},
 	get_cutting_combination(frm){
-		if(frm.doc.cloth_detail.length == 0){
-			frappe.msgprint("Fill The Cloth Details")
-			return
-		}
 		let get_checked_attributes = frm.select_attrs_multicheck.get_checked_options()
 		if(get_checked_attributes.length == 0){
 			frappe.msgprint("Select the attributes to make combination")
@@ -426,11 +397,41 @@ frappe.ui.form.on("Item Production Detail", {
 			args: {
 				attributes: get_checked_attributes,
 				item_attributes: frm.doc.item_attributes,	
-				cloth_detail: frm.doc.cloth_detail			
+				cloth_detail: frm.doc.cloth_detail,
+				combination_type: 'Cutting',
+				packing_attr: frm.doc.packing_attribute,
+				packing_attr_details: frm.doc.packing_attribute_details,		
 			},
 			callback:(async (r)=> {
 				await frm.cutting_item.load_data(r.message)
 				frm.cutting_item.set_attributes()
+			})
+		})
+	},
+	get_cloth_combination(frm){
+		if(frm.doc.cloth_detail.length == 0){
+			frappe.msgprint("Fill The Cloth Details")
+			return
+		}
+		let get_checked_attributes = frm.select_cloth_attrs_multicheck.get_checked_options()
+		if(get_checked_attributes.length == 0){
+			frappe.msgprint("Select the attributes to make combination")
+			frm.cloth_item.load_data([])
+			return
+		}
+		frappe.call({
+			method: 'production_api.essdee_production.doctype.item_production_detail.item_production_detail.get_cutting_combination',
+			args: {
+				attributes: get_checked_attributes,
+				item_attributes: frm.doc.item_attributes,	
+				cloth_detail: frm.doc.cloth_detail,
+				combination_type:'Cloth',
+				packing_attr: frm.doc.packing_attribute,
+				packing_attr_details: frm.doc.packing_attribute_details,				
+			},
+			callback:(async (r)=> {
+				await frm.cloth_item.load_data(r.message)
+				frm.cloth_item.set_attributes()
 			})
 		})
 	},
@@ -535,5 +536,45 @@ async function get_stich_in_attributes(dependent_attribute_mapping, stiching_in_
             },
         });
     });
+}
+
+function make_select_attributes(frm, html_field, html_class, name, attrs, json_field, combination_type){
+	let $wrapper = frm.get_field(html_field).$wrapper;
+	$wrapper.empty();
+	const select_attributes_wrapper = $(`<div class="${html_class}"></div>`).appendTo($wrapper);
+	let cutting_attr_list = frm.doc[attrs]
+	let check_list = []
+	for(let i = 0; i < cutting_attr_list.length; i++){
+		check_list.push(cutting_attr_list[i].attribute)
+	}
+	frm[name] = frappe.ui.form.make_control({
+		parent: select_attributes_wrapper,
+		df: {
+			fieldname: "select_attributes_wrapper",
+			fieldtype: "MultiCheck",
+			// select_all: true,
+			sort_options: false,
+			columns: 4,
+			get_data: () => {
+				return frm.cutting_attrs.map(attr => {
+					let check = 0
+					if(check_list.includes(attr)){
+						check = 1
+					}
+					return {
+						label: attr,   
+						value: attr,  
+						checked: check   
+					};
+				});
+			},
+			on_change:()=> {
+				frm.set_value(json_field,{});
+				frm.trigger(combination_type)
+			}
+		},
+		render_input: true,
+	});
+	frm[name].refresh_input();
 }
 

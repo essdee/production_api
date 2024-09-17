@@ -49,15 +49,23 @@
   "stiching_items_html",
   "stiching_item_combination_details",
   "cutting_tab",
+  "cutting_details_section",
   "cutting_attributes",
   "select_attributes_html",
-  "cloth_detail",
-  "section_break_cqll",
-  "additional_cloth",
+  "section_break_eorj",
   "get_cutting_combination",
-  "update_cloth_items",
   "cutting_items_html",
-  "cutting_items_json"
+  "cutting_items_json",
+  "section_break_cqll",
+  "column_break_gwca",
+  "select_cloths_attribute_html",
+  "cloth_attributes",
+  "additional_cloth",
+  "cloth_detail",
+  "get_cloth_combination",
+  "update_cloth_items",
+  "cutting_cloths_html",
+  "cutting_cloths_json"
  ],
  "fields": [
   {
@@ -232,7 +240,6 @@
   {
    "fieldname": "set_item_combination_details",
    "fieldtype": "Table",
-   "hidden": 1,
    "label": "Set Item Combination Details",
    "options": "Item Production Detail Set Item Combination"
   },
@@ -337,7 +344,8 @@
   },
   {
    "fieldname": "section_break_cqll",
-   "fieldtype": "Section Break"
+   "fieldtype": "Section Break",
+   "label": "Cloth Details"
   },
   {
    "fieldname": "cutting_items_html",
@@ -364,7 +372,7 @@
   {
    "fieldname": "additional_cloth",
    "fieldtype": "Float",
-   "label": "Additional Cloth"
+   "label": "Additional Cloth %"
   },
   {
    "fieldname": "tech_pack_version",
@@ -375,11 +383,53 @@
    "fieldname": "pattern_version",
    "fieldtype": "Data",
    "label": "Pattern Version"
+  },
+  {
+   "fieldname": "get_cloth_combination",
+   "fieldtype": "Button",
+   "label": "Get Cloth Combination"
+  },
+  {
+   "fieldname": "cutting_cloths_html",
+   "fieldtype": "HTML",
+   "label": "Cutting Cloths HTML"
+  },
+  {
+   "fieldname": "cutting_cloths_json",
+   "fieldtype": "JSON",
+   "hidden": 1,
+   "label": "Cutting Cloths JSON"
+  },
+  {
+   "fieldname": "select_cloths_attribute_html",
+   "fieldtype": "HTML",
+   "label": "Select Cloths Attribute HTML"
+  },
+  {
+   "fieldname": "column_break_gwca",
+   "fieldtype": "Column Break",
+   "hidden": 1
+  },
+  {
+   "fieldname": "cloth_attributes",
+   "fieldtype": "Table MultiSelect",
+   "hidden": 1,
+   "label": "Cloth Attributes",
+   "options": "Cutting Attribute Detail"
+  },
+  {
+   "fieldname": "cutting_details_section",
+   "fieldtype": "Section Break",
+   "label": "Cutting Details"
+  },
+  {
+   "fieldname": "section_break_eorj",
+   "fieldtype": "Section Break"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2024-09-11 12:12:12.597556",
+ "modified": "2024-09-13 10:02:49.006691",
  "modified_by": "Administrator",
  "module": "Essdee Production",
  "name": "Item Production Detail",

@@ -70,6 +70,10 @@ function createInput(attr, index, value){
     else if(attr == 'Cloth'){
         fieldtype = 'Select'
     }
+    else if(attr == 'Required GSM'){
+        fieldtype = "Int"
+    }
+
     let el = root.value
     let df = {
         fieldtype: fieldtype,
@@ -100,9 +104,11 @@ function createInput(attr, index, value){
     else if(fieldtype == 'Select'){
         df['options'] = items.value.select_list
     }
+    
     if (cur_frm.cutting_attrs.includes(attr)){
         df['read_only'] = true
     }   
+    
     let input =  frappe.ui.form.make_control({
         parent: $(el).find(parent_class),
         df:df ,
@@ -128,20 +134,30 @@ function get_data(){
     if(!items.value.items){
         return null
     }
-    let cloths = []
-    for(let i = 0 ; i < cur_frm.doc.cloth_detail.length; i++){
-        cloths.push(cur_frm.doc.cloth_detail[i].name1)
-        let cloth =  cur_frm.doc.cloth_detail[i].name1
-        if (!items.value.select_list.includes(cloth)){
-            frappe.throw("Cloth item not in the select list")
+    let field = 'Required GSM'
+    if(items.value.combination_type == 'Cloth'){
+        let cloths = []
+        for(let i = 0 ; i < cur_frm.doc.cloth_detail.length; i++){
+            cloths.push(cur_frm.doc.cloth_detail[i].name1)
+            let cloth =  cur_frm.doc.cloth_detail[i].name1
+            if (!items.value.select_list.includes(cloth)){
+                frappe.throw("Cloth item not in the select list")
+            }
+        }
+        if(cloths.length < items.value.select_list.length){
+            frappe.throw("Some Cloth items not in the select list")
         }
     }
-    if(cloths.length < items.value.select_list.length){
-        frappe.throw("Some Cloth items not in the select list")
+    let ind = -1
+    for(let i = 0 ; i < items.value.attributes.length; i++){
+        if(items.value.attributes[i] == field){
+            ind = i;
+            break
+        }
     }
     const x = ref(items.value)
     for (let i = 0; i < x.value.items.length; i++) {
-        Object.keys(x.value.items[i]).forEach(row => {
+        Object.keys(x.value.items[i]).forEach((row, index) => {
             let input = x.value.items[i][row]
             let value = null
             if(typeof(input) == 'object'){
@@ -150,10 +166,11 @@ function get_data(){
             else {
                 value = input
             }
-          
-            x.value.items[i][row] = input
             if(value == null || value == ""){
-                frappe.throw("Fill all the combinations")
+                if(index != ind){
+                    frappe.throw("Fill all the combinations")    
+                }
+                x.value.items[i][row] = null
             }
             else{
                 x.value.items[i][row] = value

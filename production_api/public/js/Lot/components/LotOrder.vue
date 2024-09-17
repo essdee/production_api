@@ -14,17 +14,17 @@
               <th v-for="(j, idx) in i.primary_attribute_values" :key="idx">
                 {{ j }}
               </th>
-              <th v-if='docstatus == 0'>Edit</th>
+              <th v-if="docstatus == 0">Edit</th>
             </tr>
             <tr v-for="(j, item1_index) in i.items" :key="item1_index">
-              <td>{{ item1_index + 1 }}</td>
-              <td>{{ i.item }}</td>
-              <td v-for="(k, idx) in j.attributes" :key="idx">{{ k }}</td>
-              <td v-for="(k, idx) in j.values" :key="idx">
-                <div v-if='k > 0'>{{k}}</div>
-                <div v-else>--</div>
+              <td :rowspan="3">{{ item1_index + 1 }}</td>
+              <td :rowspan="3">{{ i.item }}</td>
+              <td v-for="(k, idx) in j.attributes" :key="idx" :rowspan="3">{{ k }}</td>
+
+              <td v-for="(k, idx) in Object.keys(j.values)" :key="'qty-' + idx">
+                Qty: {{ j.values[k]['qty'] }}
               </td>
-              <td v-if='docstatus == 0'>
+              <td :rowspan="3" v-if="docstatus == 0">
                 <div
                   class="pull-left cursor-pointer"
                   @click="edit_item(item1_index)"
@@ -37,7 +37,18 @@
                 ></div>
               </td>
             </tr>
+            <tr v-for="(j, item1_index) in i.items" :key="'ratio-' + item1_index">
+              <td v-for="(k, idx) in Object.keys(j.values)" :key="'ratio-' + idx">
+                Ratio: {{ j.values[k]['ratio'] }}
+              </td>
+            </tr>
+            <tr v-for="(j, item1_index) in i.items" :key="'mrp-' + item1_index">
+              <td v-for="(k, idx) in Object.keys(j.values)" :key="'mrp-' + idx">
+                MRP: {{ j.values[k]['mrp'] }}
+              </td>
+            </tr>
           </table>
+
         </td>
         <td v-else>
           <table
@@ -49,6 +60,8 @@
               <th>Item</th>
               <th v-for="(j, idx) in i.final_state_attr" :key="idx">{{ j }}</th>
               <th>Qty</th>
+              <th>Ratio</th>
+              <th>MRP</th>
               <th v-if='docstatus == 0'>Edit</th>
             </tr>
             <tr v-for="(j, item1_index) in i.items" :key="item1_index">
@@ -58,6 +71,8 @@
                 <td v-for="(k, idx) in j.attributes" :key="idx">{{ k }}</td>
               </template>
               <td>{{ j.values.qty }}</td>
+              <td>{{ j.values.ratio }}</td>
+              <td>{{ j.values.mrp }}</td>
               <td v-if='docstatus == 0'>
                 <div
                   class="pull-left cursor-pointer"
@@ -97,6 +112,14 @@
         <div>
           <div
             class="primary-attr row pl-4"
+            style="display: flex; gap: 10px"
+          ></div>
+          <div
+            class="ratio-attr row pl-4"
+            style="display: flex; gap: 10px"
+          ></div>
+          <div
+            class="mrp-attr row pl-4"
             style="display: flex; gap: 10px"
           ></div>
         </div>
@@ -151,6 +174,8 @@ function show_add_items(){
 function make_clean() {
   let el = root.value;
   $(el).find(".primary-attr").html("");
+  $(el).find(".ratio-attr").html("");
+  $(el).find(".mrp-attr").html("");
   $(el).find(".dependent-attr").html("");
   $(el).find(".comment-attr").html("");
 }
@@ -170,8 +195,11 @@ function load_data(items) {
 
 function create_input_fields() {
   let qty_params = [];
+  let ratio_params = []
+  let mrp_params = []
   let el = root.value;
   $(el).find(".primary-attr").html("");
+  $(el).find(".ratio-attr").html("");
   button_show.value = true;
   if (list_item.value[0].primary_attribute != null && list_item.value[0].primary_attribute != "") {
     primary_values = {};
@@ -187,14 +215,46 @@ function create_input_fields() {
         doc: sample_doc.value,
         render_input: true,
       });
-      primary_values[attr] = qty_params[ind];
+      let attrs = {"qty":qty_params[ind]}
+      ratio_params[ind] = frappe.ui.form.make_control({
+        parent: $(el).find(".ratio-attr"),
+        df: {
+          fieldtype: "Float",
+          fieldname: attr+'_ratio',
+          label: "Ratio",
+          reqd: true,
+        },
+        doc: sample_doc.value,
+        render_input: true,
+      });
+      attrs['ratio'] = ratio_params[ind] 
+      mrp_params[ind] = frappe.ui.form.make_control({
+        parent: $(el).find(".mrp-attr"),
+        df: {
+          fieldtype: "Float",
+          fieldname: attr+'_mrp',
+          label: "MRP",
+          reqd: true,
+        },
+        doc: sample_doc.value,
+        render_input: true,
+      });
+      attrs['mrp'] = mrp_params[ind]
+      primary_values[attr] = attrs;
       if (edit.value) {
         qty_params[ind].set_value(
-          list_item.value[0].items[edit_index.value]["values"][attr]
+          list_item.value[0].items[edit_index.value]["values"][attr]['qty']
         );
+        ratio_params[ind].set_value(
+          list_item.value[0].items[edit_index.value]["values"][attr]['ratio']
+        )
+        mrp_params[ind].set_value(
+          list_item.value[0].items[edit_index.value]["values"][attr]['mrp']
+        )
       }
     });
-  } else if (list_item.value[0].primary_attribute == null || list_item.value[0].primary_attribute == "") {
+  } 
+  else if (list_item.value[0].primary_attribute == null || list_item.value[0].primary_attribute == "") {
     primary_values = {};
     let qty_field = frappe.ui.form.make_control({
       parent: $(el).find(".primary-attr"),
@@ -208,9 +268,39 @@ function create_input_fields() {
       render_input: true,
     });
     primary_values["qty"] = qty_field;
+    let ratio_field = frappe.ui.form.make_control({
+      parent: $(el).find(".ratio-attr"),
+      df: {
+        fieldtype: "Float",
+        fieldname: 'ratio',
+        label: "Ratio",
+        reqd: true,
+      },
+      doc: sample_doc.value,
+      render_input: true,
+    });
+    primary_values['ratio'] = ratio_field
+    let mrp_field = frappe.ui.form.make_control({
+      parent: $(el).find(".mrp-attr"),
+      df: {
+        fieldtype: "Float",
+        fieldname: 'mrp',
+        label: "MRP",
+        reqd: true,
+      },
+      doc: sample_doc.value,
+      render_input: true,
+    });
+    primary_values['mrp'] = mrp_field
     if (edit.value) {
       qty_field.set_value(
         list_item.value[0].items[edit_index.value]["values"]["qty"]
+      );
+      ratio_field.set_value(
+        list_item.value[0].items[edit_index.value]["values"]["ratio"]
+      );
+      mrp_field.set_value(
+        list_item.value[0].items[edit_index.value]["values"]["mrp"]
       );
     }
   }
@@ -261,16 +351,29 @@ function add_item() {
   let dependent = {};
   let item = {};
   let check = true
-  Object.keys(primary_values).forEach((data, index) => {
-    primary[data] = primary_values[data].get_value();
-    if(primary[data] > 0){
-      check = false
-    }
-    primary_values[data].set_value(0);
-  });
-  if(check){
-    frappe.throw("Fill The Quantity")
+  if (list_item.value[0].primary_attribute){
+    Object.keys(primary_values).forEach((data, index) => {
+      primary[data] = {
+        "qty":primary_values[data]['qty'].get_value(),
+        "ratio":primary_values[data]['ratio'].get_value(),
+        "mrp":primary_values[data]['mrp'].get_value(),
+      };
+      if(primary[data]['qty'] > 0){
+        check = false
+      }
+      // primary_values[data].set_value(0);
+    });
   }
+  else{
+    Object.keys(primary_values).forEach((data, index) => {
+      primary[data] = primary_values[data].get_value()
+      if(primary[data] > 0 && data == 'qty'){
+        check = false
+      }
+      // primary_values[data].set_value(0);
+    });
+  }
+  
   Object.keys(dependent_values).forEach((data, index) => {
     dependent[data] = dependent_values[data].get_value();
     if (dependent[data] == null || dependent[data] == "") {
@@ -278,9 +381,15 @@ function add_item() {
     }
     dependent_values[data].set_value("");
   });
+  
+  if(check){
+    frappe.throw("Fill The Quantity")
+  }
+
   item["attributes"] = dependent;
   item["primary_attribute"] = list_item.value[0].primary_attribute;
   item["values"] = primary;
+
   if (edit.value) {
     list_item.value[0].items[edit_index.value] = item;
     edit.value = false;
@@ -298,15 +407,26 @@ function add_item() {
       for(let i = 0; i < list_item.value[0].items.length; i++){
         if(deepEqual(list_item.value[0].items[i]['attributes'],check)){
           Object.keys(list_item.value[0].items[i].values).forEach(row => {
-            list_item.value[0].items[i].values[row] += item['values'][row]
+            if(list_item.value[0].primary_attribute){
+              list_item.value[0].items[i].values[row]['qty'] += item['values'][row]['qty'] 
+              list_item.value[0].items[i].values[row]['ratio'] = item['values'][row]['ratio']
+              list_item.value[0].items[i].values[row]['mrp'] = item['values'][row]['mrp']
+            }
+            else{
+              if (row == 'qty'){
+                list_item.value[0].items[i].values[row] += item['values'][row]
+              }
+              else{
+                list_item.value[0].items[i].values[row] = item['values'][row]
+              }
+            }
             pushed = true
           })
           break;
         }
       }
       if(!pushed){
-      list_item.value[0].items.push(item);
-
+        list_item.value[0].items.push(item);
       }  
     }
   }
@@ -315,7 +435,6 @@ function add_item() {
   make_clean();
   show_parameters.value = false
   button_show.value = false
-  // create_input_fields();
 }
 function deepEqual(obj1, obj2) {
   if (obj1 === obj2) {
@@ -348,9 +467,11 @@ function delete_item(index) {
 
   if (index == 0) {
     list_item.value[0].items = item_list.slice(1, len);
-  } else if (index == len - 1) {
+  } 
+  else if (index == len - 1) {
     list_item.value[0].items = item_list.slice(0,index);
-  } else {
+  } 
+  else {
     let lis = item_list.slice(0, index);
     let lis2 = item_list.slice(index + 1, len);
     list_item.value[0].items = lis.concat(lis2);
@@ -358,6 +479,7 @@ function delete_item(index) {
 }
 
 function edit_item(index) {
+  make_clean()
   show_parameters.value = true
   edit.value = true;
   edit_index.value = index;

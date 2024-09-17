@@ -27,6 +27,7 @@
    "fieldtype": "Float",
    "in_list_view": 1,
    "label": "Required Qty",
+   "precision": "3",
    "reqd": 1
   },
   {
@@ -70,7 +71,7 @@
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2024-09-10 17:58:59.461543",
+ "modified": "2024-09-13 11:54:12.727289",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Lot BOM",

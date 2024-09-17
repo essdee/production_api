@@ -19,6 +19,7 @@
   "tech_pack_version",
   "pattern_version",
   "dependent_attribute_mapping",
+  "packing_combo",
   "section_break_ry89l",
   "planned_qty",
   "items",
@@ -260,11 +261,17 @@
    "fieldtype": "Int",
    "label": "Total Order Quantity",
    "read_only": 1
+  },
+  {
+   "fieldname": "packing_combo",
+   "fieldtype": "Int",
+   "hidden": 1,
+   "label": "Packing Combo"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2024-09-11 17:17:20.339447",
+ "modified": "2024-09-13 13:14:23.897224",
  "modified_by": "Administrator",
  "module": "Essdee Production",
  "name": "Lot",
