@@ -33,7 +33,10 @@ def make_post_request(data, oms_url, oms_endpoint, oms_api_key, oms_api_secret):
 	try:
 		response = requests.post(url, json=data, headers=headers)
 		if response.status_code == 200:
-			return response.json()
+			response = response.json()
+			if 'message' in response:
+				return response['message']
+			return response
 		else:
 			return {
 				"error": True,
