@@ -67,6 +67,8 @@ def make_dispatch_stock_entry(items, warehouse, packing_slip):
             'table_index': index,
             'row_index': index,
         })
+        index += 1
+    ste.flags.allow_from_sms = True
     ste.save()
     ste.submit()
     return ste.name

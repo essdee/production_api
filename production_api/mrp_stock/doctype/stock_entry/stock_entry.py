@@ -25,7 +25,7 @@ class StockEntry(Document):
 		if(self.get('item_details')) and self._action != "submit":
 			items = save_stock_entry_items(self.item_details)
 			self.set('items', items)
-		elif self.is_new() or not self.get('items'):
+		elif not self.flags.allow_from_sms and self.is_new() or not self.get('items'):
 			frappe.throw('Add items to Stock Entry.', title='Stock Entry')
 
 	def validate(self):
