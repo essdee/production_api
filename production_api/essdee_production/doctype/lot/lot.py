@@ -24,26 +24,27 @@ class Lot(Document):
 		self.total_quantity = qty
 	
 	def validate(self):	
-		items, qty = calculate_order_details(self.get('items'), self.production_detail, self.packing_uom, self.uom)
+		if self.production_detail:
+			items, qty = calculate_order_details(self.get('items'), self.production_detail, self.packing_uom, self.uom)
 
-		if len(items) == 0:
-			x = []
-			for item in self.items:
-				x.append({'item_variant': item.item_variant, 'quantity':item.qty })
-				qty += item.qty
-			self.set('lot_order_details',x)
-			self.set('total_order_quantity', qty)
-		else:
-			self.set('lot_order_details',items)
-			self.set('total_order_quantity', qty)
+			if len(items) == 0:
+				x = []
+				for item in self.items:
+					x.append({'item_variant': item.item_variant, 'quantity':item.qty })
+					qty += item.qty
+				self.set('lot_order_details',x)
+				self.set('total_order_quantity', qty)
+			else:
+				self.set('lot_order_details',items)
+				self.set('total_order_quantity', qty)
 
 	def onload(self):
 		if self.production_detail:
 			item_details = fetch_item_details(self.get('items'), self.production_detail)
 			self.set_onload('item_details', item_details)
 			items = fetch_order_item_details(self.get('lot_order_details'), self.production_detail)
-			x = items[0]
-			self.lot_order_details_json = x
+			x = json.dumps(items[0])
+			self.db_set('lot_order_details_json', x, update_modified=False)
 			self.set_onload('order_item_details', items)
 
 def calculate_order_details(items, production_detail, packing_uom, final_uom):
@@ -122,6 +123,8 @@ def calculate_order_details(items, production_detail, packing_uom, final_uom):
 def save_item_details(item_details, dependent_attr=None):
 	if isinstance(item_details, string_types):
 		item_details = json.loads(item_details)
+	if len(item_details) == 0:
+		return []
 	item = item_details[0]
 	items = []
 	for id1, row in enumerate(item['items']):
