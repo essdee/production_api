@@ -1,6 +1,6 @@
 {
  "charts": [],
- "content": "[{\"id\":\"tcx875NdZN\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">Essdee Production<br></span>\",\"col\":12}},{\"id\":\"wWrvHKkreu\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Item Production Detail\",\"col\":3}},{\"id\":\"l6i75rQQm9\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Lot\",\"col\":3}}]",
+ "content": "[{\"id\":\"tcx875NdZN\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">Essdee Production<br></span>\",\"col\":12}},{\"id\":\"wWrvHKkreu\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Item Production Detail\",\"col\":3}},{\"id\":\"l6i75rQQm9\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Lot\",\"col\":3}},{\"id\":\"PxmQMrIbgc\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Box Sticker Print\",\"col\":3}}]",
  "creation": "2024-08-14 18:49:01.018010",
  "custom_blocks": [],
  "docstatus": 0,
@@ -13,7 +13,7 @@
  "is_hidden": 0,
  "label": "Essdee Production",
  "links": [],
- "modified": "2024-09-10 09:40:25.870156",
+ "modified": "2024-09-18 09:50:13.164154",
  "modified_by": "Administrator",
  "module": "Essdee Production",
  "name": "Essdee Production",
@@ -25,6 +25,13 @@
  "roles": [],
  "sequence_id": 1.1,
  "shortcuts": [
+  {
+   "color": "Grey",
+   "doc_view": "List",
+   "label": "Box Sticker Print",
+   "link_to": "Box Sticker Print",
+   "type": "DocType"
+  },
   {
    "color": "Grey",
    "doc_view": "List",

@@ -392,4 +392,11 @@ def get_attributes(data):
 		attr_list.append(temp_attr)
 	return attribute_list, attr_list
 
-	
+@frappe.whitelist()
+def get_item_list_details(lot):
+	doc = frappe.get_doc("Lot",lot)
+	items = []
+	for item in doc.items:
+		items.append(item.as_dict())
+
+	return items	

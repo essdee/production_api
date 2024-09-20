@@ -101,6 +101,11 @@ doc_events = {
     },
 }
 
+fixtures = [
+    {
+        "dt":'Essdee Raw Print Format'
+    }
+]
 # Scheduled Tasks
 # ---------------
 
