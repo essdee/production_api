@@ -36,44 +36,26 @@ def get_print_format(print_format, quantity, size, mrp, piece_per_box, fg_item, 
 	piece_per_box = int(piece_per_box)
 	if doc_name:
 		print_qty, qty , allow_excess, allow_excess_percent= frappe.get_value('Box Sticker Print Detail',doc_name,['printed_quantity','quantity','allow_excess_quantity','allow_excess_percentage'])
-		print_qty = int(print_qty) + int(quantity)
+		check_print_qty = int(print_qty) + int(quantity)
 		
-		if print_qty > qty and not allow_excess:
+		if check_print_qty > qty and not allow_excess:
 			if allow_excess_percent:
 				allowed_qty = int(math.ceil((qty/100) * allow_excess_percent))
 				qty = allowed_qty + qty
-				if print_qty > qty:
+				if check_print_qty > qty:
 					frappe.msgprint("Not applicable to print more than the required quantity")
 					return None
 			else:
 				frappe.msgprint("Not applicable to print more than the required quantity")
 				return None
-		
-	if len(size) < sizepad:
-		length = sizepad - len(size)
-		size = size.ljust(sizepad, ' ')
-	
 	box_mrp = str(piece_per_box * int(mrp)) + ".00"
-	
-	if len(box_mrp) < box_price_pad:
-		length = box_price_pad - len(box_mrp)
-		box_mrp = box_mrp.ljust(length, ' ')
-	
 	mrp = str(mrp) + ".00"
-	if len(mrp) < piece_price_pad:
-		length = piece_price_pad - len(mrp)
-		mrp = mrp.ljust(length, ' ')
-	
 	print_quantity = int(math.ceil(int(quantity) / int(label_count)))
 	now = add_to_date(nowdate(), days=15)
 	date = getdate(now)
 	months = ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC']
 	mfd = str(months[date.month-1])+"/"+str(date.year)+"/"+str(lot)
 	mddate_year = str(months[date.month-1])+"/"+str(date.year)
-	if len(mfd) < mfd_pad:
-		length = mfd_pad - len(mfd)
-		mfd = mfd.ljust(length, ' ')
-
 	if use_item_name == 0:
 		display_name = frappe.get_value("FG Item Master", fg_item,'display_name')
 		if display_name:
@@ -85,15 +67,15 @@ def get_print_format(print_format, quantity, size, mrp, piece_per_box, fg_item, 
         'item_name': fg_item,
         'piece_price': mrp,
         'box_price': box_mrp,
-        'piece_size': size,
+        'piece_size': "120CM",
 		'mfdate':mfd,
 		'item_size':item_name_len,
 		'mfdateyear':mddate_year,
     })
 	
 	if doc_name:
-		m = print_qty % label_count
-		frappe.db.set_value('Box Sticker Print Detail',doc_name,'printed_quantity',print_qty+m)
+		mod_div_val = int(math.floor(int(quantity)/int(label_count))) + (int(quantity)%int(label_count))
+		frappe.db.set_value('Box Sticker Print Detail',doc_name,'printed_quantity',print_qty + label_count*mod_div_val)
 		frappe.db.commit()
 	printer = printer[1:-1]
 
