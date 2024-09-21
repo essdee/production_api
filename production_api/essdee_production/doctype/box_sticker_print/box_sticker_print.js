@@ -147,7 +147,7 @@ frappe.ui.form.on("Box Sticker Print", {
                         const cropX = 0;
                         const cropY = 0;
                         const cropWidth = 1000; 
-                        const cropHeight = 600; 
+                        const cropHeight = 700; 
                         canvas.width = cropWidth;
                         canvas.height = cropHeight;
 

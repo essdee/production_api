@@ -18,7 +18,9 @@
   {
    "fieldname": "lot",
    "fieldtype": "Link",
+   "in_filter": 1,
    "in_list_view": 1,
+   "in_standard_filter": 1,
    "label": "Lot",
    "options": "Lot",
    "reqd": 1
@@ -27,7 +29,9 @@
    "depends_on": "eval: doc.lot",
    "fieldname": "fg_item",
    "fieldtype": "Link",
+   "in_filter": 1,
    "in_list_view": 1,
+   "in_standard_filter": 1,
    "label": "FG Item",
    "options": "FG Item Master",
    "reqd": 1
@@ -73,7 +77,7 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2024-09-20 18:05:51.226769",
+ "modified": "2024-09-21 11:23:27.301271",
  "modified_by": "Administrator",
  "module": "Essdee Production",
  "name": "Box Sticker Print",

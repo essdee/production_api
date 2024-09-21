@@ -32,9 +32,9 @@ def get_fg_details(fg_item):
 def get_print_format(print_format, quantity, size, mrp, piece_per_box, fg_item, printer, doc_name,lot):
 	label_count, raw_code = frappe.get_value('Essdee Raw Print Format', print_format, ['labels_per_row', 'raw_code'])
 	piece_per_box = int(piece_per_box)
-	sizepad = 12
-	piece_price_pad = 19
-	box_price_pad = 19
+	sizepad =12
+	piece_price_pad = 17
+	box_price_pad = 17
 	mfd_pad = 40
 	if doc_name:
 		doc = frappe.get_doc('Box Sticker Print Detail',doc_name)
@@ -67,9 +67,8 @@ def get_print_format(print_format, quantity, size, mrp, piece_per_box, fg_item, 
 	if len(mrp) < piece_price_pad:
 		length = piece_price_pad - len(mrp)
 		mrp = mrp.ljust(length, ' ')
-
 	
-	data = f'^XA ^PQ{int(math.ceil(int(quantity) / int(label_count)))}' + raw_code
+	print_quantity = int(math.ceil(int(quantity) / int(label_count)))
 	now = add_to_date(nowdate(), days=15)
 	date = getdate(now)
 	months = ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC']
@@ -80,7 +79,8 @@ def get_print_format(print_format, quantity, size, mrp, piece_per_box, fg_item, 
 		mfd = mfd.ljust(length, ' ')
 	
 	item_name_len = 35 if len(fg_item) > 20 else 45
-	template = frappe.render_template(data, {
+	template = frappe.render_template(raw_code, {
+		'print_quantity': print_quantity,
         'item_name': fg_item,
         'piece_price': mrp,
         'box_price': box_mrp,
@@ -109,6 +109,7 @@ def override_print_quantity(quantity, doc_name):
 @frappe.whitelist()
 def get_raw_code(print_format, doc_name):
 	doc = frappe.get_doc("Box Sticker Print", doc_name)
+	# code = get_print_format(print_format, 5, "1200CM", 1000, 5, doc.fg_item, "printer", None,doc.lot)
 	code = get_print_format(print_format, 5, doc.box_sticker_print_details[0].size, int(doc.box_sticker_print_details[0].mrp), 5, doc.fg_item, "printer", None,doc.lot)
 	
 	return code['print_format']
