@@ -32,7 +32,7 @@ def get_fg_details(fg_item):
 
 @frappe.whitelist()
 def get_print_format(print_format, quantity, size, mrp, piece_per_box, fg_item, printer, doc_name,lot, use_item_name:int):
-	label_count, raw_code, sizepad,piece_price_pad,box_price_pad,mfd_pad = frappe.get_value('Essdee Raw Print Format', print_format, ['labels_per_row', 'raw_code','size_pad','piece_price_pad','box_price_pad','mfd_pad'])
+	label_count, raw_code= frappe.get_value('Essdee Raw Print Format', print_format, ['labels_per_row', 'raw_code'])
 	piece_per_box = int(piece_per_box)
 	if doc_name:
 		print_qty, qty , allow_excess, allow_excess_percent= frappe.get_value('Box Sticker Print Detail',doc_name,['printed_quantity','quantity','allow_excess_quantity','allow_excess_percentage'])
@@ -67,7 +67,7 @@ def get_print_format(print_format, quantity, size, mrp, piece_per_box, fg_item, 
         'item_name': fg_item,
         'piece_price': mrp,
         'box_price': box_mrp,
-        'piece_size': "120CM",
+        'piece_size': size,
 		'mfdate':mfd,
 		'item_size':item_name_len,
 		'mfdateyear':mddate_year,

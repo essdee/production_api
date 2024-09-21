@@ -23,7 +23,7 @@ frappe.ui.form.on("Box Sticker Print", {
         removeDefaultPrintEvent();
         $('[data-original-title=Print]').hide();
         $("li:has(a:has(span[data-label='Print']))").remove();
-        if(frm.doc.docstatus == 0){
+        if(frm.doc.docstatus == 1){
             frm.add_custom_button("Print", ()=> {
                 frappe.ui.form.qz_connect()
                     .then(function () {

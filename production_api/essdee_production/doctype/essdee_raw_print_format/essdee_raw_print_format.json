@@ -9,11 +9,7 @@
   "labels_per_row",
   "raw_code",
   "width",
-  "height",
-  "size_pad",
-  "piece_price_pad",
-  "box_price_pad",
-  "mfd_pad"
+  "height"
  ],
  "fields": [
   {
@@ -35,31 +31,11 @@
    "fieldname": "height",
    "fieldtype": "Float",
    "label": "Height (In Inches)"
-  },
-  {
-   "fieldname": "size_pad",
-   "fieldtype": "Int",
-   "label": "Size Pad"
-  },
-  {
-   "fieldname": "piece_price_pad",
-   "fieldtype": "Int",
-   "label": "Piece Price Pad"
-  },
-  {
-   "fieldname": "box_price_pad",
-   "fieldtype": "Int",
-   "label": "Box Price Pad"
-  },
-  {
-   "fieldname": "mfd_pad",
-   "fieldtype": "Int",
-   "label": "MFD Pad"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2024-09-21 14:10:02.310304",
+ "modified": "2024-09-21 19:09:57.341936",
  "modified_by": "Administrator",
  "module": "Essdee Production",
  "name": "Essdee Raw Print Format",
