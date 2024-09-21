@@ -18,6 +18,7 @@
   "mrp",
   "column_break_rmzju",
   "name1",
+  "display_name",
   "disabled",
   "deprecated",
   "category",
@@ -154,10 +155,15 @@
    "fieldname": "mrp",
    "fieldtype": "Data",
    "label": "MRP"
+  },
+  {
+   "fieldname": "display_name",
+   "fieldtype": "Data",
+   "label": "Display Name"
   }
  ],
  "links": [],
- "modified": "2024-09-19 10:01:16.635619",
+ "modified": "2024-09-21 12:06:30.982447",
  "modified_by": "Administrator",
  "module": "Product Development",
  "name": "FG Item Master",

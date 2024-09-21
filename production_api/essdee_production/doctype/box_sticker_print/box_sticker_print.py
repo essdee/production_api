@@ -39,8 +39,6 @@ def get_print_format(print_format, quantity, size, mrp, piece_per_box, fg_item, 
 	box_price_pad = 17
 	mfd_pad = 40
 	if doc_name:
-		doc = frappe.get_doc('Box Sticker Print Detail',doc_name)
-		doc.flags.ignore_permissions = True
 		print_qty, qty , allow_excess, allow_excess_percent= frappe.get_value('Box Sticker Print Detail',doc_name,['printed_quantity','quantity','allow_excess_quantity','allow_excess_percentage'])
 		print_qty = int(print_qty) + int(quantity)
 		
@@ -79,7 +77,10 @@ def get_print_format(print_format, quantity, size, mrp, piece_per_box, fg_item, 
 	if len(mfd) < mfd_pad:
 		length = mfd_pad - len(mfd)
 		mfd = mfd.ljust(length, ' ')
-	
+	# if not use_item_name:
+	# 	display_name = frappe.get_value("FG Item Master", fg_item,'display_name')
+	# 	if display_name:
+	# 		fg_item = display_name
 	item_name_len = 35 if len(fg_item) > 20 else 45
 	template = frappe.render_template(raw_code, {
 		'print_quantity': print_quantity,
@@ -111,7 +112,12 @@ def override_print_quantity(quantity, doc_name):
 @frappe.whitelist()
 def get_raw_code(print_format, doc_name):
 	doc = frappe.get_doc("Box Sticker Print", doc_name)
+	width , height = frappe.get_value("Essdee Raw Print Format", print_format,['width','height'])
 	# code = get_print_format(print_format, 5, "1200CM", 1000, 5, doc.fg_item, "printer", None,doc.lot)
 	code = get_print_format(print_format, 5, doc.box_sticker_print_details[0].size, int(doc.box_sticker_print_details[0].mrp), 5, doc.fg_item, "printer", None,doc.lot)
 	
-	return code['print_format']
+	return {
+		"code":code['print_format'],
+		"height": height,
+		"width":width,
+	}

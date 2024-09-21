@@ -88,6 +88,7 @@ frappe.ui.form.on("Box Sticker Print", {
                                                             printer:printer,
                                                             doc_name: row_name,
                                                             lot:frm.doc.lot,
+                                                            use_item_name: frm.doc.use_item_name,
                                                         },
                                                         callback: async function(r){
                                                             dialog.hide()
@@ -135,31 +136,10 @@ frappe.ui.form.on("Box Sticker Print", {
                     doc_name: frm.doc.name,
                 },
                 callback: async function(r){
-                    let data = encodeURI(r.message);
-                    frm.fields_dict['preview'].df.options = `<canvas id="canvas"></canvas>`
+                    let data = encodeURI(r.message.code);
+                    const imageUrl = `http://api.labelary.com/v1/printers/12dpmm/labels/${r.message.width}x${r.message.height}/0/"${data}"`
+                    frm.fields_dict['preview'].df.options = `<img src=${imageUrl} style="border: 2px solid #000;">`
                     frm.fields_dict['preview'].refresh()
-                    const imageUrl = `http://api.labelary.com/v1/printers/12dpmm/labels/4x6/0/"${data}"`
-                    const canvas = document.getElementById('canvas');
-                    const ctx = canvas.getContext('2d');
-                    const img = new Image();
-
-                    img.onload = function () {
-                        const cropX = 0;
-                        const cropY = 0;
-                        const cropWidth = 1000; 
-                        const cropHeight = 700; 
-                        canvas.width = cropWidth;
-                        canvas.height = cropHeight;
-
-                        ctx.drawImage(img, cropX, cropY, cropWidth, cropHeight, 0, 0, cropWidth, cropHeight);
-                        ctx.strokeStyle = 'black'; 
-                        ctx.lineWidth = 5;
-                        ctx.strokeRect(0, 0, cropWidth, cropHeight); 
-                    };
-
-                    img.src = imageUrl;
-                    img.style.borderColor = "black"
-                    img.style.borderWidth = "2px"
                 }
             })
         }

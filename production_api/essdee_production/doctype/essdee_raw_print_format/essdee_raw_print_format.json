@@ -7,7 +7,9 @@
  "engine": "InnoDB",
  "field_order": [
   "labels_per_row",
-  "raw_code"
+  "raw_code",
+  "width",
+  "height"
  ],
  "fields": [
   {
@@ -19,11 +21,21 @@
    "fieldname": "labels_per_row",
    "fieldtype": "Int",
    "label": "Labels Per Row"
+  },
+  {
+   "fieldname": "width",
+   "fieldtype": "Float",
+   "label": "Width (In Inches)"
+  },
+  {
+   "fieldname": "height",
+   "fieldtype": "Float",
+   "label": "Height (In Inches)"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2024-09-20 18:32:39.650145",
+ "modified": "2024-09-21 11:48:25.592142",
  "modified_by": "Administrator",
  "module": "Essdee Production",
  "name": "Essdee Raw Print Format",
