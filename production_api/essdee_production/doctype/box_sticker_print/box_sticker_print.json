@@ -1,7 +1,7 @@
 {
  "actions": [],
  "allow_rename": 1,
- "autoname": "format:BSP-{YYYY}-{#####}",
+ "autoname": "format: BSP-{YYYY}-{#####}",
  "creation": "2024-09-19 09:58:19.299038",
  "doctype": "DocType",
  "engine": "InnoDB",
@@ -75,6 +75,7 @@
    "search_index": 1
   },
   {
+   "allow_on_submit": 1,
    "default": "0",
    "fieldname": "use_item_name",
    "fieldtype": "Check",
@@ -84,7 +85,7 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2024-09-21 12:07:15.327146",
+ "modified": "2024-09-21 14:12:41.158633",
  "modified_by": "Administrator",
  "module": "Essdee Production",
  "name": "Box Sticker Print",

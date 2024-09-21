@@ -93,7 +93,6 @@ frappe.ui.form.on("Box Sticker Print", {
                                                         callback: async function(r){
                                                             dialog.hide()
                                                             if(quantity > 0 && r.message){
-                                                                console.log(quantity)
                                                                 let config = qz.configs.create(r.message.printer)
                                                                 qz.print(config,[r.message.print_format]).then(
                                                                     input.remove()
@@ -134,6 +133,7 @@ frappe.ui.form.on("Box Sticker Print", {
                 args: {
                     print_format:frm.doc.print_format,
                     doc_name: frm.doc.name,
+                    use_item_name: frm.doc.use_item_name,
                 },
                 callback: async function(r){
                     let data = encodeURI(r.message.code);
@@ -144,7 +144,6 @@ frappe.ui.form.on("Box Sticker Print", {
             })
         }
     },
-
     lot(frm){
         if(!frm.doc.lot){
             frm.set_value('box_sticker_print_details',[])
