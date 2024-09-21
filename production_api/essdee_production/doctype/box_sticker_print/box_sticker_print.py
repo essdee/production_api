@@ -19,6 +19,8 @@ class BoxStickerPrint(Document):
 def get_fg_details(fg_item):
 	sizes, mrp = frappe.get_value("FG Item Master",fg_item,['available_sizes','mrp'])
 	sizes = sizes.split(",")
+	if mrp is None:
+		mrp = ""
 	mrp = mrp.split(",")
 	fg_data = []
 	for x, y in zip_longest(sizes, mrp, fillvalue=None):
