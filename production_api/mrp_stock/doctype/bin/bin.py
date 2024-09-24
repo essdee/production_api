@@ -60,14 +60,12 @@ def update_qty(bin_name, args):
 	actual_qty = 0.0
 	if last_sle_qty:
 		actual_qty = last_sle_qty[0][0]
-	# reserved_qty = flt(bin_details.reserved_qty) + flt(args.get("reserved_stock"))
 
 	frappe.db.set_value(
 		"Bin",
 		bin_name,
 		{
 			"actual_qty": actual_qty,
-			# "reserved_qty": reserved_qty,
 		},
 		update_modified=True,
 	)
