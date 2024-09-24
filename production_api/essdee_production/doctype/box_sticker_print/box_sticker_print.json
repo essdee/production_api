@@ -1,7 +1,7 @@
 {
  "actions": [],
  "allow_rename": 1,
- "autoname": "format:BSP-{YYYY}-{#####}",
+ "autoname": "naming_series:",
  "creation": "2024-09-19 09:58:19.299038",
  "doctype": "DocType",
  "engine": "InnoDB",
@@ -14,7 +14,8 @@
   "box_sticker_print_details",
   "piece_per_box",
   "preview",
-  "amended_from"
+  "amended_from",
+  "naming_series"
  ],
  "fields": [
   {
@@ -88,16 +89,23 @@
    "fieldtype": "Data",
    "label": "Display Name",
    "read_only": 1
+  },
+  {
+   "fieldname": "naming_series",
+   "fieldtype": "Data",
+   "hidden": 1,
+   "label": "Naming Series",
+   "options": "BSP-.YYYY.-"
   }
  ],
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2024-09-24 14:26:20.061699",
+ "modified": "2024-09-24 15:22:04.961099",
  "modified_by": "Administrator",
  "module": "Essdee Production",
  "name": "Box Sticker Print",
- "naming_rule": "Expression",
+ "naming_rule": "By \"Naming Series\" field",
  "owner": "Administrator",
  "permissions": [
   {

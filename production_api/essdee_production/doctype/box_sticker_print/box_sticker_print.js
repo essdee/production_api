@@ -14,7 +14,7 @@ frappe.ui.form.on("Box Sticker Print", {
             return {
                 filters: {
                     is_temp_item : 0,
-                    disabled: 0
+                    disabled: 0,
                 }
             }
         })
