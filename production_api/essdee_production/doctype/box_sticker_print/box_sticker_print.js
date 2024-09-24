@@ -54,6 +54,7 @@ frappe.ui.form.on("Box Sticker Print", {
                                     primary_action_label:"Print",
                                     primary_action:async function(){
                                         let print_items =await get_print_items(frm)
+                                        printer = printer.slice(1, -1);
                                         if(print_items.length > 0){
                                             dialog.hide()
                                             print_labels(frm,print_items, printer)
@@ -231,18 +232,13 @@ function print_labels(frm,print_items, printer){
     frappe.call({
         method:'production_api.essdee_production.doctype.box_sticker_print.box_sticker_print.get_print_format',
         args: {
-            print_format : frm.doc.print_format,
-            piece_per_box: frm.doc.piece_per_box,
-            fg_item: frm.doc.fg_item,
-            printer:printer,
-            lot:frm.doc.lot,
-            use_item_name: frm.doc.use_item_name,
+            doc : frm.doc.name, 
             print_items: print_items,
         },
         callback: function(r){
             if(r.message){
-                let config = qz.configs.create(r.message.printer)
-                qz.print(config,[r.message.print_format]).then().catch((err)=>{
+                let config = qz.configs.create(printer)
+                qz.print(config,[r.message]).then().catch((err)=>{
                     frappe.call({
                         method:'production_api.essdee_production.doctype.box_sticker_print.box_sticker_print.override_print_quantity',
                         args: {
