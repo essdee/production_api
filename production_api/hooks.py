@@ -168,7 +168,8 @@ jinja = {
         "production_api.essdee_production.doctype.lot.lot.get_dict_object",
         "production_api.essdee_production.doctype.lot.lot.combine_child_tables",
         "production_api.essdee_production.doctype.lot.lot.get_attributes",
-        "production_api.essdee_production.doctype.essdee_raw_print_format.essdee_raw_print_format.get_value_with_pad"
+        "production_api.essdee_production.doctype.essdee_raw_print_format.essdee_raw_print_format.get_value_with_pad",
+        "production_api.essdee_production.doctype.essdee_raw_print_format.essdee_raw_print_format.get_item_size",
     ]
 }
 

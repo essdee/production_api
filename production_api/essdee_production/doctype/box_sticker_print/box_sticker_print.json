@@ -1,13 +1,14 @@
 {
  "actions": [],
  "allow_rename": 1,
- "autoname": "format: BSP-{YYYY}-{#####}",
+ "autoname": "format:BSP-{YYYY}-{#####}",
  "creation": "2024-09-19 09:58:19.299038",
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
   "lot",
   "fg_item",
+  "display_name",
   "use_item_name",
   "print_format",
   "box_sticker_print_details",
@@ -33,7 +34,7 @@
    "in_filter": 1,
    "in_list_view": 1,
    "in_standard_filter": 1,
-   "label": "FG Item",
+   "label": "Item",
    "options": "FG Item Master",
    "reqd": 1
   },
@@ -80,16 +81,23 @@
    "fieldname": "use_item_name",
    "fieldtype": "Check",
    "label": "Use Item Name"
+  },
+  {
+   "fetch_from": "fg_item.display_name",
+   "fieldname": "display_name",
+   "fieldtype": "Data",
+   "label": "Display Name",
+   "read_only": 1
   }
  ],
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2024-09-21 14:12:41.158633",
+ "modified": "2024-09-24 14:26:20.061699",
  "modified_by": "Administrator",
  "module": "Essdee Production",
  "name": "Box Sticker Print",
- "naming_rule": "Expression (old style)",
+ "naming_rule": "Expression",
  "owner": "Administrator",
  "permissions": [
   {

@@ -40,82 +40,29 @@ frappe.ui.form.on("Box Sticker Print", {
                             ],
                             size:'small',
                             primary_action:function(){
-                                let checkedCheckboxes = $(`.printers-checkbox-${0}:checked`);
-                                let printers_list = new Set()
-                                checkedCheckboxes.each(function() {
-                                    let p = $(this).data('response')
-                                    if(p!=null){
-                                        printers_list.add(p);
-                                    }
-                                    $(this).data('response', null);
-                                });
-                                if(printers_list.size == 0){
-                                    frappe.throw("Select a printer")
-                                }
-                                else if(printers_list.size > 1){
-                                    frappe.throw("Select only one printer")
-                                }
-                                else{
-                                    d.hide()
-                                    let prints = [...printers_list] 
-                                    let printer = prints[0]
-                                    let dialog = new frappe.ui.Dialog({
-                                        title:"Select only one Item",
-                                        fields: [
-                                            {
-                                                fieldname: 'item_list_html',
-                                                fieldtype: 'HTML',
-                                            },
-                                        ],
-                                        size:'large',
-                                        primary_action: function(){
-                                            document.querySelectorAll('.quantity-input').forEach(async (input, index) => {
-                                                let itemIndex = input.getAttribute('data-response');
-                                                let row_name = frm.doc.box_sticker_print_details[itemIndex].name
-                                                let quantity = input.value || 0; 
-                                                let size = frm.doc.box_sticker_print_details[itemIndex].size;
-                                                let mrp = frm.doc.box_sticker_print_details[itemIndex].mrp;
-                                                if(quantity > 0){
-                                                    await frappe.call({
-                                                        method:'production_api.essdee_production.doctype.box_sticker_print.box_sticker_print.get_print_format',
-                                                        args: {
-                                                            print_format : frm.doc.print_format,
-                                                            quantity : quantity,
-                                                            size: size,
-                                                            mrp: mrp,
-                                                            piece_per_box: frm.doc.piece_per_box,
-                                                            fg_item: frm.doc.fg_item,
-                                                            printer:printer,
-                                                            doc_name: row_name,
-                                                            lot:frm.doc.lot,
-                                                            use_item_name: frm.doc.use_item_name,
-                                                        },
-                                                        callback: async function(r){
-                                                            dialog.hide()
-                                                            if(quantity > 0 && r.message){
-                                                                let config = qz.configs.create(r.message.printer)
-                                                                qz.print(config,[r.message.print_format]).then(
-                                                                    input.remove()
-                                                                ).catch((err)=>{
-                                                                    frappe.call({
-                                                                        method:'production_api.essdee_production.doctype.box_sticker_print.box_sticker_print.override_print_quantity',
-                                                                        args: {
-                                                                            quantity : quantity,
-                                                                            doc_name: row_name,
-                                                                        },
-                                                                    })
-                                                                })
-                                                            }
-                                                        }
-                                                    })
-                                                }
-                                            });   
+                                d.hide()
+                                let printer = get_printer()
+                                let dialog = new frappe.ui.Dialog({
+                                    title:"Select only one Item",
+                                    fields: [
+                                        {
+                                            fieldname: 'item_list_html',
+                                            fieldtype: 'HTML',
+                                        },
+                                    ],
+                                    size:'large',
+                                    primary_action_label:"Print",
+                                    primary_action:async function(){
+                                        let print_items =await get_print_items(frm)
+                                        if(print_items.length > 0){
+                                            dialog.hide()
+                                            print_labels(frm,print_items, printer)
                                         }
-                                    })
-                                    dialog.show()
-                                    dialog.fields_dict.item_list_html.$wrapper.html("")
-                                    dialog.fields_dict.item_list_html.$wrapper.append(get_item_list(frm.doc.box_sticker_print_details))
-                                }
+                                    }
+                                })
+                                dialog.show()
+                                dialog.fields_dict.item_list_html.$wrapper.html("")
+                                dialog.fields_dict.item_list_html.$wrapper.append(get_item_list(frm.doc.box_sticker_print_details))
                             }
                         })
                         d.fields_dict.printer_list_html.$wrapper.html('');
@@ -131,9 +78,7 @@ frappe.ui.form.on("Box Sticker Print", {
             frappe.call({
                 method:'production_api.essdee_production.doctype.box_sticker_print.box_sticker_print.get_raw_code',
                 args: {
-                    print_format:frm.doc.print_format,
                     doc_name: frm.doc.name,
-                    use_item_name: frm.doc.use_item_name,
                 },
                 callback: async function(r){
                     let data = encodeURI(r.message.code);
@@ -219,25 +164,94 @@ function get_item_list(items){
         <tbody>
     `;
 
-for (let i = 0; i < items.length; i++) {
-    htmlContent += `
-        <tr>
-            <td style="padding: 10px; border: 1px solid #ddd; font-size: 12px;">${i + 1}</td>
-            <td style="padding: 10px; border: 1px solid #ddd; font-size: 12px;">${items[i].size}</td>
-            <td style="padding: 10px; border: 1px solid #ddd; font-size: 12px;">${items[i].mrp}</td>
-            <td style="padding: 10px; border: 1px solid #ddd; font-size: 12px;">${items[i].quantity}</td>
-            <td style="padding: 10px; border: 1px solid #ddd; font-size: 12px;">${items[i].printed_quantity}</td>
-            <td style="padding: 10px; border: 1px solid #ddd; font-size: 12px;">
-                <input type="number" class="quantity-input" data-response="${i}" style="width: 100%; padding: 5px; border: 1px solid #ccc;" />
-            </td>
-        </tr>
-    `;
-}
+    for (let i = 0; i < items.length; i++) {
+        htmlContent += `
+            <tr>
+                <td style="padding: 10px; border: 1px solid #ddd; font-size: 12px;">${i + 1}</td>
+                <td style="padding: 10px; border: 1px solid #ddd; font-size: 12px;">${items[i].size}</td>
+                <td style="padding: 10px; border: 1px solid #ddd; font-size: 12px;">${items[i].mrp}</td>
+                <td style="padding: 10px; border: 1px solid #ddd; font-size: 12px;">${items[i].quantity}</td>
+                <td style="padding: 10px; border: 1px solid #ddd; font-size: 12px;">${items[i].printed_quantity}</td>
+                <td style="padding: 10px; border: 1px solid #ddd; font-size: 12px;">
+                    <input type="number" class="quantity-input" data-response="${i}" style="width: 100%; padding: 5px; border: 1px solid #ccc;" />
+                </td>
+            </tr>
+        `;
+    }
 
-htmlContent += `
-        </tbody>
-    </table>
-`;
+    htmlContent += `
+            </tbody>
+        </table>
+    `;
 
     return htmlContent
+}
+
+function get_printer(){
+    let checkedCheckboxes = $(`.printers-checkbox-${0}:checked`);
+    let printers_list = new Set()
+    checkedCheckboxes.each(function() {
+        let p = $(this).data('response')
+        if(p!=null){
+            printers_list.add(p);
+        }
+        $(this).data('response', null);
+    });
+    if(printers_list.size == 0){
+        frappe.throw("Select a printer")
+    }
+    else if(printers_list.size > 1){
+        frappe.throw("Select only one printer")
+    }
+    else{
+        let prints = [...printers_list] 
+        return prints[0]
+    }
+}
+
+async function get_print_items(frm){
+    let items = []
+    document.querySelectorAll('.quantity-input').forEach(async (input, index) => {
+        let itemIndex = input.getAttribute('data-response');
+        let quantity = input.value || 0; 
+        if(quantity > 0){
+            items.push({
+                quantity:quantity,
+                size: frm.doc.box_sticker_print_details[itemIndex].size,
+                mrp:frm.doc.box_sticker_print_details[itemIndex].mrp,
+                doc_name:frm.doc.box_sticker_print_details[itemIndex].name,
+            })
+        }
+        input.remove()
+    })
+    return items
+}
+
+function print_labels(frm,print_items, printer){
+    frappe.call({
+        method:'production_api.essdee_production.doctype.box_sticker_print.box_sticker_print.get_print_format',
+        args: {
+            print_format : frm.doc.print_format,
+            piece_per_box: frm.doc.piece_per_box,
+            fg_item: frm.doc.fg_item,
+            printer:printer,
+            lot:frm.doc.lot,
+            use_item_name: frm.doc.use_item_name,
+            print_items: print_items,
+        },
+        callback: function(r){
+            if(r.message){
+                let config = qz.configs.create(r.message.printer)
+                qz.print(config,[r.message.print_format]).then().catch((err)=>{
+                    frappe.call({
+                        method:'production_api.essdee_production.doctype.box_sticker_print.box_sticker_print.override_print_quantity',
+                        args: {
+                            print_items: print_items,
+                            print_format: frm.doc.print_format,
+                        },
+                    })
+                })
+            }
+        }
+    })
 }
