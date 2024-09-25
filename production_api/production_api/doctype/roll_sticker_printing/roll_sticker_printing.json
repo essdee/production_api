@@ -1,0 +1,135 @@
+{
+ "_liked_by": "[\"Administrator\"]",
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2023-04-18 12:52:02.534470",
+ "default_view": "List",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "lot",
+  "date",
+  "fabric",
+  "clear",
+  "column_break_9qgg6",
+  "dia",
+  "color",
+  "gsm",
+  "section_break_uftin",
+  "roll_no",
+  "roll_weight",
+  "get_weight",
+  "print",
+  "column_break_jdtn5",
+  "clear_weight"
+ ],
+ "fields": [
+  {
+   "fieldname": "lot",
+   "fieldtype": "Link",
+   "label": "Lot",
+   "options": "Lot"
+  },
+  {
+   "default": "Today",
+   "fetch_from": "lot.date",
+   "fieldname": "date",
+   "fieldtype": "Date",
+   "label": "Date"
+  },
+  {
+   "fetch_from": "lot.fabric",
+   "fieldname": "fabric",
+   "fieldtype": "Data",
+   "label": "Fabric"
+  },
+  {
+   "fetch_from": "lot.dia",
+   "fieldname": "dia",
+   "fieldtype": "Data",
+   "label": "Dia"
+  },
+  {
+   "fetch_from": "lot.primary_item_attribute",
+   "fieldname": "color",
+   "fieldtype": "Data",
+   "label": "Color"
+  },
+  {
+   "fetch_from": "lot.gsm",
+   "fieldname": "gsm",
+   "fieldtype": "Data",
+   "label": "Gsm"
+  },
+  {
+   "fieldname": "section_break_uftin",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fetch_from": "lot.roll_no",
+   "fieldname": "roll_no",
+   "fieldtype": "Data",
+   "label": "Roll No",
+   "options": "\n\n"
+  },
+  {
+   "fetch_from": "lot.roll_weight",
+   "fieldname": "roll_weight",
+   "fieldtype": "Float",
+   "label": "Roll Weight"
+  },
+  {
+   "fieldname": "clear",
+   "fieldtype": "Button",
+   "label": "clear"
+  },
+  {
+   "fieldname": "get_weight",
+   "fieldtype": "Button",
+   "label": "Get weight"
+  },
+  {
+   "fieldname": "clear_weight",
+   "fieldtype": "Button",
+   "label": "Clear weight"
+  },
+  {
+   "fieldname": "print",
+   "fieldtype": "Button",
+   "label": "print"
+  },
+  {
+   "fieldname": "column_break_9qgg6",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "column_break_jdtn5",
+   "fieldtype": "Column Break"
+  }
+ ],
+ "hide_toolbar": 1,
+ "index_web_pages_for_search": 1,
+ "issingle": 1,
+ "links": [],
+ "modified": "2023-04-24 12:39:16.575407",
+ "modified_by": "Administrator",
+ "module": "Production Api",
+ "name": "Roll Sticker Printing",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "print": 1,
+   "read": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}
