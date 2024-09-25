@@ -9,12 +9,13 @@
   "size",
   "quantity",
   "mrp",
-  "printed_quantity",
   "allow_excess_quantity",
-  "allow_excess_percentage"
+  "allow_excess_percentage",
+  "printed_quantity"
  ],
  "fields": [
   {
+   "columns": 1,
    "fieldname": "size",
    "fieldtype": "Link",
    "in_list_view": 1,
@@ -23,6 +24,7 @@
    "reqd": 1
   },
   {
+   "columns": 2,
    "fieldname": "quantity",
    "fieldtype": "Int",
    "in_list_view": 1,
@@ -30,6 +32,7 @@
    "reqd": 1
   },
   {
+   "columns": 2,
    "fieldname": "mrp",
    "fieldtype": "Currency",
    "in_list_view": 1,
@@ -38,12 +41,15 @@
   },
   {
    "allow_on_submit": 1,
+   "columns": 2,
    "fieldname": "printed_quantity",
    "fieldtype": "Int",
    "in_list_view": 1,
-   "label": "Printed Quantity"
+   "label": "Printed Quantity",
+   "read_only": 1
   },
   {
+   "columns": 1,
    "default": "0",
    "fieldname": "allow_excess_quantity",
    "fieldtype": "Check",
@@ -51,15 +57,17 @@
    "label": "Allow Excess Quantity"
   },
   {
+   "columns": 2,
    "fieldname": "allow_excess_percentage",
    "fieldtype": "Int",
+   "in_list_view": 1,
    "label": "Allow Excess Percentage"
   }
  ],
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2024-09-20 19:03:54.755671",
+ "modified": "2024-09-25 13:08:51.364765",
  "modified_by": "Administrator",
  "module": "Essdee Production",
  "name": "Box Sticker Print Detail",

@@ -12,16 +12,16 @@ frappe.ui.form.on("Lot", {
 		})
 	},
     refresh(frm) {
-        // frm.page.add_menu_item(__("Calculate"), function() {
-        //     calculate_all(frm);
-        // }, false, 'Ctrl+E', false);
-        // if (!frm.is_new()) {
-        //     frm.add_custom_button(__('Purchase Summary'), function() {
-        //         frappe.set_route("query-report", "Lot Purchase Summary", {
-        //             lot: frm.doc.name
-        //         });
-        //     }, __("View"));
-        // }
+        frm.page.add_menu_item(__("Calculate"), function() {
+            calculate_all(frm);
+        }, false, 'Ctrl+E', false);
+        if (!frm.is_new()) {
+            frm.add_custom_button(__('Purchase Summary'), function() {
+                frappe.set_route("query-report", "Lot Purchase Summary", {
+                    lot: frm.doc.name
+                });
+            }, __("View"));
+        }
 		frm.set_df_property('bom_summary','cannot_add_rows',true)
 		frm.set_df_property('bom_summary','cannot_delete_rows',true)
 
