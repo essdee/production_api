@@ -36,20 +36,14 @@ frappe.ui.form.on("Box Sticker Print", {
                                 {
                                     fieldname: 'printer_list_html',
                                     fieldtype: 'HTML',
-                                },
-                                {
-                                    fieldname: 'printer_type',
-                                    fieldtype: 'Select',
-                                    label: 'Printer Type',
-                                    options: '200dpi\n300dpi',
-                                    reqd: 1,
                                 }
                             ],
                             size:'small',
-                            primary_action:function(val){
+                            primary_action:function(){
                                 d.hide()
-                                let printer = get_printer()
-                                let printer_type = val.printer_type
+                                let printer_details = get_printer()
+                                let printer = printer_details[0]
+                                let printer_type = printer_details[1]
                                 let dialog = new frappe.ui.Dialog({
                                     title:"Enter quantity to print labels",
                                     fields: [
@@ -150,10 +144,25 @@ function get_printers_html(printers){
             </tr>
         `;
     }
-    htmlContent += `
-            </tbody>
-        </table>
-    `;
+
+    htmlContent += `<tr>
+                        <td></td>
+                        <td>&nbsp;</td>
+                    </tr>
+                    <tr>
+                        <td></td>
+                        <td>Select Printer Resolution</td>
+                    </tr>
+                    <tr>
+                        <td></td>
+                        <td>
+                            <input type="radio" class="printers-radio" data-response="200dpi" name="printerOption"> 200dpi</input>&nbsp;&nbsp;
+                            <input type="radio" class="printers-radio" data-response="300dpi" name="printerOption"> 300dpi</input>    
+                        </td>
+                    </tr>
+                </tbody>
+            </table>`
+
     return htmlContent
 }
 
@@ -206,6 +215,17 @@ function get_printer(){
         }
         $(this).data('response', null);
     });
+    let checkedRadioButtons = $(`.printers-radio:checked`);
+    let selectedPrinter = null;
+
+    checkedRadioButtons.each(function() {
+        let p = $(this).data('response');
+        if (p != null) {
+            selectedPrinter = p;
+        }
+        $(this).data('response', null);
+    });
+
     if(printers_list.size == 0){
         frappe.throw("Select a printer")
     }
@@ -214,7 +234,12 @@ function get_printer(){
     }
     else{
         let prints = [...printers_list] 
-        return prints[0]
+        if(selectedPrinter == null){
+            frappe.throw("Select the printer type")
+        }
+        else{
+            return [prints[0],selectedPrinter]
+        }
     }
 }
 
