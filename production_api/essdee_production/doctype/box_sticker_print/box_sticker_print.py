@@ -44,10 +44,12 @@ def get_fg_details(fg_item):
 	return fg_data
 
 @frappe.whitelist()
-def get_print_format(doc, print_items):
+def get_print_format(doc, print_items, printer_type):
 	doc = frappe.get_doc("Box Sticker Print", doc)
 	fg_item = doc.fg_item
-	label_count, raw_code= frappe.get_value('Essdee Raw Print Format', doc.print_format, ['labels_per_row', 'raw_code'])
+	doc_list = frappe.db.get_list("Essdee Raw Print Format Detail", filters = {"parent":doc.print_format,"printer_type":printer_type}, pluck="name")
+	raw_code = frappe.get_value("Essdee Raw Print Format Detail", doc_list[0],"raw_code")
+	label_count = frappe.get_value('Essdee Raw Print Format', doc.print_format, "labels_per_row")
 	if isinstance(print_items, string_types):
 		print_items = json.loads(print_items)
 	
@@ -97,6 +99,7 @@ def get_template(doc, item, raw_code,label_count, fg_item):
 		'piece_size': item['size'],
 		'mfdate':mfd,
 		'mfdateyear':mddate_year,
+		'dpi':203,
 	})
 	return template
 
@@ -114,7 +117,9 @@ def override_print_quantity(print_items, print_format):
 @frappe.whitelist()
 def get_raw_code(doc_name):
 	doc = frappe.get_doc("Box Sticker Print", doc_name)
-	raw_code, width , height, labels_count = frappe.get_value("Essdee Raw Print Format", doc.print_format,['raw_code','width','height','labels_per_row'])
+	doc_list = frappe.db.get_list("Essdee Raw Print Format Detail", filters = {"parent":doc.print_format,"printer_type":"200dpi"}, pluck="name")
+	raw_code = frappe.get_value("Essdee Raw Print Format Detail", doc_list[0],"raw_code")
+	width , height, labels_count = frappe.get_value("Essdee Raw Print Format", doc.print_format,['width','height','labels_per_row'])
 	code = get_template(doc, doc.box_sticker_print_details[0].as_dict(),raw_code, labels_count, doc.fg_item)
 	return {
 		"code":code,

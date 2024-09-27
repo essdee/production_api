@@ -23,7 +23,7 @@ frappe.ui.form.on("Box Sticker Print", {
         removeDefaultPrintEvent();
         $('[data-original-title=Print]').hide();
         $("li:has(a:has(span[data-label='Print']))").remove();
-        if(frm.doc.docstatus == 1){
+        if(frm.doc.docstatus == 0){
             frm.add_custom_button("Print", ()=> {
                 frappe.ui.form.qz_connect()
                     .then(function () {
@@ -37,13 +37,21 @@ frappe.ui.form.on("Box Sticker Print", {
                                     fieldname: 'printer_list_html',
                                     fieldtype: 'HTML',
                                 },
+                                {
+                                    fieldname: 'printer_type',
+                                    fieldtype: 'Select',
+                                    label: 'Printer Type',
+                                    options: '200dpi\n300dpi',
+                                    reqd: 1,
+                                }
                             ],
                             size:'small',
-                            primary_action:function(){
+                            primary_action:function(val){
                                 d.hide()
                                 let printer = get_printer()
+                                let printer_type = val.printer_type
                                 let dialog = new frappe.ui.Dialog({
-                                    title:"Select only one Item",
+                                    title:"Enter quantity to print labels",
                                     fields: [
                                         {
                                             fieldname: 'item_list_html',
@@ -57,7 +65,7 @@ frappe.ui.form.on("Box Sticker Print", {
                                         printer = printer.slice(1, -1);
                                         if(print_items.length > 0){
                                             dialog.hide()
-                                            print_labels(frm,print_items, printer)
+                                            print_labels(frm,print_items, printer, printer_type)
                                         }
                                     }
                                 })
@@ -83,7 +91,7 @@ frappe.ui.form.on("Box Sticker Print", {
                 },
                 callback: async function(r){
                     let data = encodeURI(r.message.code);
-                    const imageUrl = `http://api.labelary.com/v1/printers/12dpmm/labels/${r.message.width}x${r.message.height}/0/"${data}"`
+                    const imageUrl = `http://api.labelary.com/v1/printers/8dpmm/labels/${r.message.width}x${r.message.height}/0/"${data}"`
                     frm.fields_dict['preview'].df.options = `<img src=${imageUrl} style="border: 2px solid #000;">`
                     frm.fields_dict['preview'].refresh()
                 }
@@ -228,12 +236,13 @@ async function get_print_items(frm){
     return items
 }
 
-function print_labels(frm,print_items, printer){
+function print_labels(frm,print_items, printer, printer_type){
     frappe.call({
         method:'production_api.essdee_production.doctype.box_sticker_print.box_sticker_print.get_print_format',
         args: {
             doc : frm.doc.name, 
             print_items: print_items,
+            printer_type : printer_type
         },
         callback: function(r){
             if(r.message){
