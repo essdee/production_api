@@ -57,6 +57,7 @@ def get_print_format(doc, print_items, printer_type):
 	
 	if not raw_code:
 		frappe.throw("Print Format Res not defined")
+
 	label_count = print_format_doc.labels_per_row
 	if isinstance(print_items, string_types):
 		print_items = json.loads(print_items)
@@ -135,7 +136,9 @@ def get_raw_code(doc_name):
 	if not raw_code:
 		frappe.throw("Print Format Res not defined")
 	# width , height, labels_count = frappe.get_value("Essdee Raw Print Format", doc.print_format,['width','height','labels_per_row'])
-	code = get_template(doc, doc.box_sticker_print_details[0].as_dict(),raw_code, print_format_doc.labels_per_row, doc.fg_item)
+	item_dict = doc.box_sticker_print_details[0].as_dict()
+	item_dict.quantity = 1
+	code = get_template(doc, item_dict, raw_code, print_format_doc.labels_per_row, doc.fg_item)
 	return {
 		"code":code,
 		"height": print_format_doc.height,
