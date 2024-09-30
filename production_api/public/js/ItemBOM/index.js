@@ -1,6 +1,6 @@
 import { createApp } from 'vue';
 import EditBOMAttributeMapping from './EditBOMAttributeMapping.vue';
-import BOMAttributeMapping from './BOMAttributeMapping.vue';
+import BomAttributeMapping from './BOMAttributeMapping.vue';
 
 export class EditBOMAttributeMappingWrapper {
 
@@ -52,7 +52,7 @@ export class BOMAttributeMappingWrapper {
 
     make_body() {
         let $page_container = $('<div class="item frappe-control">').appendTo(this.$wrapper);
-        this.app = createApp(BOMAttributeMapping);
+        this.app = createApp(BomAttributeMapping);
         this.bomEntry = this.app.mount(this.$wrapper.get(0));
         // this.vue = new Vue({
         //     el: '.item',

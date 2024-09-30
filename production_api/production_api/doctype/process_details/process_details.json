@@ -1,7 +1,7 @@
 {
  "actions": [],
  "allow_rename": 1,
- "creation": "2024-05-24 10:43:30.510000",
+ "creation": "2024-07-24 13:58:54.499836",
  "doctype": "DocType",
  "editable_grid": 1,
  "engine": "InnoDB",
@@ -20,7 +20,7 @@
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2024-05-24 14:22:27.846740",
+ "modified": "2024-07-24 14:02:10.057267",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Process Details",

@@ -20,13 +20,14 @@
    "fieldname": "mapping",
    "fieldtype": "Link",
    "label": "Mapping",
-   "options": "Item Item Attribute Mapping"
+   "options": "Item Item Attribute Mapping",
+   "read_only": 1
   }
  ],
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2021-08-24 16:33:10.769716",
+ "modified": "2024-08-22 15:22:52.565711",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Item Item Attribute",
@@ -34,5 +35,6 @@
  "permissions": [],
  "sort_field": "modified",
  "sort_order": "DESC",
+ "states": [],
  "track_changes": 1
 }

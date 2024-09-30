@@ -6,6 +6,8 @@
  "engine": "InnoDB",
  "field_order": [
   "item",
+  "process_name",
+  "dependent_attribute_value",
   "qty_of_product",
   "qty_of_bom_item",
   "based_on_attribute_mapping",
@@ -38,7 +40,8 @@
    "fieldname": "attribute_mapping",
    "fieldtype": "Link",
    "label": "Attribute Mapping",
-   "options": "Item BOM Attribute Mapping"
+   "options": "Item BOM Attribute Mapping",
+   "read_only": 1
   },
   {
    "allow_in_quick_entry": 1,
@@ -48,12 +51,27 @@
    "fieldtype": "Check",
    "in_list_view": 1,
    "label": "Based on Attribute Mapping"
+  },
+  {
+   "fieldname": "process_name",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Process Name",
+   "options": "Process",
+   "reqd": 1
+  },
+  {
+   "fieldname": "dependent_attribute_value",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Dependent Attribute Value",
+   "options": "Item Attribute Value"
   }
  ],
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2023-08-29 12:11:29.562290",
+ "modified": "2024-09-02 14:34:35.324469",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Item BOM",

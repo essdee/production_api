@@ -21,7 +21,10 @@
   "section_break_uc2k1",
   "items",
   "item_html",
+  "section_break_zvib",
   "amended_from",
+  "additional_amount",
+  "column_break_agyh",
   "per_transferred",
   "total_amount"
  ],
@@ -40,7 +43,7 @@
    "fieldtype": "Select",
    "in_list_view": 1,
    "label": "Purpose",
-   "options": "Material Issue\nMaterial Receipt\nSend to Warehouse\nReceive at Warehouse",
+   "options": "Material Issue\nMaterial Receipt\nSend to Warehouse\nReceive at Warehouse\nMaterial Consumed",
    "reqd": 1
   },
   {
@@ -132,12 +135,27 @@
    "label": "Total Amount",
    "no_copy": 1,
    "read_only": 1
+  },
+  {
+   "fieldname": "section_break_zvib",
+   "fieldtype": "Section Break"
+  },
+  {
+   "depends_on": "eval: doc.purpose == 'Send to Warehouse'",
+   "fieldname": "additional_amount",
+   "fieldtype": "Currency",
+   "label": "Additional Amount",
+   "read_only_depends_on": "eval: doc.purpose != 'Send to Warehouse'"
+  },
+  {
+   "fieldname": "column_break_agyh",
+   "fieldtype": "Column Break"
   }
  ],
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2023-07-14 19:43:07.737285",
+ "modified": "2024-08-23 20:31:17.284755",
  "modified_by": "Administrator",
  "module": "MRP Stock",
  "name": "Stock Entry",

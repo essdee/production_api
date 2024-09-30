@@ -91,7 +91,7 @@ frappe.ui.form.on('Purchase Order', {
 		if (frm.doc.docstatus == 1 && (is_purchase_manager || is_purchase_user)) {
 			frm.page.btn_secondary.hide();
 			// Add send notification button if the status is not closed or cancelled or partially cancelled
-			let closed_statuses = ['Closed', 'Cancelled', 'Partially Cancelled']
+			let closed_statuses = ['Closed', 'Cancelled', 'Partially Cancelled']	
 			if (!closed_statuses.includes(frm.doc.status)) {
 				frm.add_custom_button(__('Send SMS'), function() {
 					frappe.call({
@@ -138,7 +138,44 @@ frappe.ui.form.on('Purchase Order', {
 					})
 				}, __("Send Notification"));
 			}
+			let update_status = ['Cancelled','Closed','Partially Cancelled','Delivered']
+			if (!update_status.includes(frm.doc.status)) {
+				frm.add_custom_button(__('Update Delivery Date'), function() {
+					let dialog = new frappe.ui.Dialog({
+						title: 'Update Delivery Date',
+						fields: [
+							{
+								fieldname: "html_field",
+								fieldtype: 'HTML',
+							},
+							{
+								fieldname: 'comments',
+								fieldtype: 'Small Text',
+								label: 'Comments',
+								reqd: 1,
+							}
+						],
+						primary_action_label: 'Save',
+						primary_action :(values)=>{
+							let items = popupDialog.get_items()
+							dialog.hide()
+							frappe.call({
+								method: 'production_api.production_api.doctype.purchase_order.purchase_order.update_delivery_date',
+								args: {
+									doc_name: frm.doc.name,
+									data: items,
+									comment : values.comments
+								}
+							})
+						},	 
+					})
+					let popupDialog = new frappe.production.ui.DateDialog(dialog.fields_dict['html_field'].wrapper, frm.doc.items);
+					
+					dialog.show();
+					dialog.$wrapper.find('.modal-dialog').css("min-width",'max-content')
 
+				})
+			}
 			if (frm.doc.status != 'Partially Cancelled' && frm.doc.open_status == 'Open') {
 				frm.add_custom_button(__('Cancel'), function() {
 					frappe.prompt({
@@ -147,7 +184,6 @@ frappe.ui.form.on('Purchase Order', {
 						fieldtype: 'Data',
 						reqd: 1
 					}, (values) => {
-						// console.log(values.reason);
 						frappe.call({
 							method: "production_api.production_api.doctype.purchase_order.purchase_order.cancel_purchase_order",
 							args: {

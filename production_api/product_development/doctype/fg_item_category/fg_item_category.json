@@ -21,7 +21,7 @@
   },
   {
    "fieldname": "hsn",
-   "fieldtype": "Int",
+   "fieldtype": "Data",
    "in_list_view": 1,
    "label": "HSN",
    "reqd": 1
@@ -29,7 +29,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2023-12-22 13:02:19.726830",
+ "modified": "2024-07-30 20:16:14.967232",
  "modified_by": "Administrator",
  "module": "Product Development",
  "name": "FG Item Category",

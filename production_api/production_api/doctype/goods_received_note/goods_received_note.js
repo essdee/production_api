@@ -24,7 +24,6 @@ frappe.ui.form.on('Goods Received Note', {
 				frappe.throw(__("Please set {0}",
 					[__(frappe.meta.get_label(doc.doctype, 'supplier', doc.name))]));
 			}
-
 			return {
 				query: 'frappe.contacts.doctype.address.address.address_query',
 				filters: {
@@ -39,7 +38,6 @@ frappe.ui.form.on('Goods Received Note', {
 				frappe.throw(__("Please set {0}",
 					[__(frappe.meta.get_label(doc.doctype, 'delivery_location', doc.name))]));
 			}
-
 			return {
 				query: 'frappe.contacts.doctype.address.address.address_query',
 				filters: {
@@ -54,7 +52,6 @@ frappe.ui.form.on('Goods Received Note', {
 				frappe.throw(__("Please set {0}",
 					[__(frappe.meta.get_label(doc.doctype, 'delivery_location', doc.name))]));
 			}
-
 			return {
 				query: 'frappe.contacts.doctype.address.address.address_query',
 				filters: {
@@ -69,7 +66,6 @@ frappe.ui.form.on('Goods Received Note', {
 				frappe.throw(__("Please set {0}",
 					[__(frappe.meta.get_label(doc.doctype, 'supplier', doc.name))]));
 			}
-
 			return {
 				query: 'frappe.contacts.doctype.contact.contact.contact_query',
 				filters: {
@@ -93,7 +89,8 @@ frappe.ui.form.on('Goods Received Note', {
 			frm.itemEditor.load_data({
 				items: frm.doc.__onload.item_details
 			}, true);
-		} else if (frm.doc.item_details) {
+		} 
+		else if (frm.doc.item_details) {
 			frm.itemEditor.load_data({
 				items: JSON.parse(frm.doc.item_details)
 			}, true);
@@ -103,20 +100,16 @@ frappe.ui.form.on('Goods Received Note', {
 			frm.dirty();
 			frm.events.save_item_details(frm);
 		})
-
-		// Remove Print if draft
 		if (frm.doc.docstatus == 0) {
 			var print_menu = $(".dropdown-menu > li:contains('Print')");
-			if (print_menu.length >0){
+			if (print_menu.length > 0){
 				print_menu[0].parentElement.removeChild(print_menu[0]);
 			}
-			
 			var print_btn = $('[data-original-title="Print"]');
 			if(print_btn.length > 0){
 				print_btn[0].parentElement.removeChild(print_btn[0]);
 			}
 		}
-
 	},
 
 	save_item_details: function(frm) {
@@ -144,11 +137,6 @@ frappe.ui.form.on('Goods Received Note', {
 		}
 	},
 
-	before_save: function(frm) {
-		if(frm.itemEditor) {
-			// console.log(frm.itemEditor);
-		}
-	},
 
 	supplier: function(frm) {
 		if (frm.doc.supplier) {
@@ -215,7 +203,8 @@ frappe.ui.form.on('Goods Received Note', {
 					}
 				}
 			})
-		} else {
+		} 
+		else {
 			frm.set_value('supplier_address_display', '');
 		}
 	},
@@ -231,7 +220,8 @@ frappe.ui.form.on('Goods Received Note', {
 					}
 				}
 			})
-		} else {
+		} 
+		else {
 			frm.set_value('delivery_address_display', '');
 		}
 	},
@@ -247,7 +237,8 @@ frappe.ui.form.on('Goods Received Note', {
 					}
 				}
 			})
-		} else {
+		} 
+		else {
 			frm.set_value('billing_address_display', '');
 		}
 	},

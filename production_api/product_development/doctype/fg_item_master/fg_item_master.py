@@ -31,6 +31,8 @@ class FGItemMaster(Document):
 	
 	# function that is used to sync the item with other systems
 	def sync_item(self, rename=False):
+		if self.is_temp_item:
+			frappe.throw("You cannot Sync Temp Items")
 		push_enabled = frappe.db.get_single_value("FG Item Settings", "enable_auto_update")
 		if not push_enabled:
 			return

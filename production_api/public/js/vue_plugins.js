@@ -4,10 +4,14 @@ import DependentAttributeTemplate from "./components/DependentAttribute.vue";
 import BomAttributeMapping from "./components/BomAttributeMapping.vue";
 import ItemPriceList from "./ItemPriceList";
 import ItemDetail from "./components/ItemDetails.vue";
-
+import DDItem from "./PurchaseOrder/components/DateUpdateDialog.vue"
 import PONewItem from "./PurchaseOrder/components/NewItem.vue"
 import POItem from "./PurchaseOrder/components/Item.vue"
 import GRNItemWrapper from "./GRN";
+import LotOrder from "./Lot/components/LotOrder.vue" 
+import LotOrderDetail from "./Lot/components/LotOrderDetail.vue"
+import CombinationItemDetail from "./Item_Po_detail/CombinationItemDetail.vue"
+import CuttingItemDetail from "./Item_Po_detail/CuttingItemDetail.vue"
 import { StockEntryWrapper, StockReconciliationWrapper, LotTransferWrapper } from "./Stock";
 import WorkOrderDeliverables from "./WorkOrder/components/Deliverables.vue"
 import WorkOrderReceivables from "./WorkOrder/components/Receivables.vue"
@@ -86,6 +90,67 @@ frappe.production.ui.ItemDependentAttributeDetail = class {
     }
 };
 
+frappe.production.ui.DateDialog = class {
+    constructor(wrapper, items){
+        this.$wrapper = $(wrapper)
+        this.items = items
+        this.make_body();
+    }
+    make_body(){
+        this.app = createApp(DDItem, {items: this.items})
+        SetVueGlobals(this.app)
+        this.vue = this.app.mount(this.$wrapper.get(0))
+    }
+    get_items(){
+        let items = JSON.parse(JSON.stringify(this.vue.item_data));
+        return items
+    }
+}
+frappe.production.ui.CombinationItemDetail = class {
+    constructor(wrapper){
+        this.$wrapper = $(wrapper);
+        this.make_body();
+    }
+    make_body(){
+        this.app = createApp(CombinationItemDetail)
+        SetVueGlobals(this.app)
+        this.vue = this.app.mount(this.$wrapper.get(0))
+    }
+    load_data(items){
+        this.vue.load_data(JSON.parse(JSON.stringify(items)))
+    }
+    set_attributes(){
+        this.vue.set_attributes();
+    }
+    get_data(){
+        let items = JSON.parse(JSON.stringify(this.vue.get_data()))
+        return items
+    }   
+}
+
+
+frappe.production.ui.CuttingItemDetail = class {
+    constructor(wrapper){
+        this.$wrapper = $(wrapper);
+        this.make_body();
+    }
+    make_body(){
+        this.app = createApp(CuttingItemDetail)
+        SetVueGlobals(this.app)
+        this.vue = this.app.mount(this.$wrapper.get(0))
+    }
+    load_data(items){
+        this.vue.load_data(items)
+    }
+    set_attributes(){
+        this.vue.set_attributes();
+    }
+    get_data(){
+        let items = JSON.parse(JSON.stringify(this.vue.get_data()))
+        return items
+    }   
+}
+
 frappe.production.ui.BomItemAttributeMapping = BOMAttributeMappingWrapper;
 
 frappe.production.ui.ItemPriceList = ItemPriceList;
@@ -115,6 +180,42 @@ frappe.production.ui.ItemDetail = function(wrapper, type, data) {
 //         })
 //     });
 // };
+
+frappe.production.ui.LotOrder = class {
+    constructor(wrapper){
+        this.$wrapper = $(wrapper)
+        this.make_app()
+    }
+    make_app(){
+        this.app = createApp(LotOrder)
+        SetVueGlobals(this.app)
+        this.vue = this.app.mount(this.$wrapper.get(0))
+    }
+    get_data(){
+        let items = JSON.parse(JSON.stringify(this.vue.list_item))
+        return items
+    }
+    load_data(item_details){
+        let items = JSON.parse(JSON.stringify(item_details));
+        this.vue.load_data(items)
+    }
+}
+
+frappe.production.ui.LotOrderDetail = class {
+    constructor(wrapper){
+        this.$wrapper = $(wrapper)
+        this.make_app()
+    }
+    make_app(){
+        this.app = createApp(LotOrderDetail)
+        SetVueGlobals(this.app)
+        this.vue = this.app.mount(this.$wrapper.get(0))
+    }
+    load_data(item_details){
+        let items = JSON.parse(JSON.stringify(item_details))
+        this.vue.load_data(items)
+    }
+}
 
 frappe.production.ui.PurchaseOrderItem = class {
     constructor(wrapper) {
@@ -253,6 +354,23 @@ frappe.production.ui.Delivery_Challan = class {
 //         return data
 //     }
 // }
+
+frappe.production.ui.DateDialog = class {
+    constructor(wrapper, items){
+        this.$wrapper = $(wrapper)
+        this.items = items
+        this.make_body();
+    }
+    make_body(){
+        this.app = createApp(DDItem, {items: this.items})
+        SetVueGlobals(this.app)
+        this.vue = this.app.mount(this.$wrapper.get(0))
+    }
+    get_items(){
+        let items = JSON.parse(JSON.stringify(this.vue.item_data));
+        return items
+    }
+}
 
 frappe.production.ui.GRNItem = GRNItemWrapper
 frappe.production.ui.StockEntryItem = StockEntryWrapper
