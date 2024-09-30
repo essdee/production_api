@@ -117,7 +117,7 @@ def override_print_quantity(print_items, print_format):
 @frappe.whitelist()
 def get_raw_code(doc_name):
 	doc = frappe.get_doc("Box Sticker Print", doc_name)
-	doc_list = frappe.db.get_list("Essdee Raw Print Format Detail", filters = {"parent":doc.print_format,"printer_type":"200dpi"}, pluck="name")
+	doc_list = frappe.db.get_list("Essdee Raw Print Format Detail", filters = {"parent":doc.print_format,"printer_type":"300dpi"}, pluck="name")
 	raw_code = frappe.get_value("Essdee Raw Print Format Detail", doc_list[0],"raw_code")
 	width , height, labels_count = frappe.get_value("Essdee Raw Print Format", doc.print_format,['width','height','labels_per_row'])
 	code = get_template(doc, doc.box_sticker_print_details[0].as_dict(),raw_code, labels_count, doc.fg_item)

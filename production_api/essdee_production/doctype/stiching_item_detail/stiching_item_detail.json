@@ -15,7 +15,8 @@
    "fieldname": "quantity",
    "fieldtype": "Int",
    "in_list_view": 1,
-   "label": "Quantity"
+   "label": "Quantity",
+   "non_negative": 1
   },
   {
    "fieldname": "set_item_attribute_value",
@@ -35,7 +36,7 @@
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2024-09-04 17:59:01.459597",
+ "modified": "2024-09-27 12:16:29.046594",
  "modified_by": "Administrator",
  "module": "Essdee Production",
  "name": "Stiching Item Detail",
