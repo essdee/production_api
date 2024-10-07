@@ -1,0 +1,34 @@
+{
+ "add_total_row": 0,
+ "columns": [],
+ "creation": "2024-09-24 16:41:41.491651",
+ "disabled": 0,
+ "docstatus": 0,
+ "doctype": "Report",
+ "filters": [],
+ "idx": 5,
+ "is_standard": "Yes",
+ "letterhead": null,
+ "modified": "2024-09-26 13:05:42.437583",
+ "modified_by": "Administrator",
+ "module": "MRP Stock",
+ "name": "Item Balance (Simple)",
+ "owner": "Administrator",
+ "prepared_report": 0,
+ "query": "select c.name as \"Item:Link/Item:120\",\n\t  a.name as \"Item Variant::150\",\n\t  c.item_group as \"Item Group:Link/Item Group:120\",\n\t  c.brand as \"Brand:Link/Brand:120\",\n\t  b.warehouse as \"Warehouse:Link/Supplier:120\",\n\t  d.supplier_name as \"Warehouse Name:Link/Supplier:120\",\n\t  b.lot as \"Lot:Link/Lot:120\",\n\t  b.actual_qty as \"Balance Qty:Float:140\"\n from `tabItem Variant` a left join `tabBin` b\n ON a.name = b.item_code left join `tabItem` c ON c.name = a.item\n left join `tabSupplier` d on b.warehouse = d.name\n ;",
+ "ref_doctype": "Bin",
+ "report_name": "Item Balance (Simple)",
+ "report_type": "Query Report",
+ "roles": [
+  {
+   "role": "Sales User"
+  },
+  {
+   "role": "Purchase User"
+  },
+  {
+   "role": "Stock User"
+  }
+ ],
+ "timeout": 0
+}

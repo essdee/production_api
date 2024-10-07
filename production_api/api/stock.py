@@ -1,6 +1,4 @@
 import frappe, json
-from frappe.utils import today, add_to_date
-from production_api.mrp_stock.report.stock_balance.stock_balance import execute as stock_balance
 from production_api.mrp_stock.doctype.bin.bin import get_stock_balance_bin
 from six import string_types
 
@@ -14,21 +12,12 @@ def get_stock(item, warehouse, remove_zero_balance_item=1):
 
     fg_lot = get_default_fg_lot()
         
-    filters = {
-        'from_date': add_to_date(today(), days=-7),
-        'to_date': today(),
-        'item': item,
-        'warehouse': warehouse,
-        'lot': fg_lot,
-        'remove_zero_balance_item': remove_zero_balance_item
-    }
     data  = get_stock_balance_bin(
         warehouse,
         fg_lot,item,
         remove_zero_balance_item
     )
-    # _,data = stock_balance(filters)
-    
+
     item_wh_map = {}
     for d in data:
         group_by_key = get_group_by_key(d)
