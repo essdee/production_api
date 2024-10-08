@@ -85,7 +85,7 @@ frappe.ui.form.on("Box Sticker Print", {
                 },
                 callback: async function(r){
                     let data = encodeURI(r.message.code);
-                    const imageUrl = `http://api.labelary.com/v1/printers/8dpmm/labels/${r.message.width}x${r.message.height}/0/"${data}"`
+                    const imageUrl = `http://api.labelary.com/v1/printers/12dpmm/labels/${r.message.width}x${r.message.height}/0/"${data}"`
                     frm.fields_dict['preview'].df.options = `<img src=${imageUrl} style="border: 2px solid #000;">`
                     frm.fields_dict['preview'].refresh()
                 }
