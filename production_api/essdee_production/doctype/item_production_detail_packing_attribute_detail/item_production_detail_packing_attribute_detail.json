@@ -21,13 +21,14 @@
    "fieldname": "quantity",
    "fieldtype": "Float",
    "in_list_view": 1,
-   "label": "Quantity"
+   "label": "Quantity",
+   "non_negative": 1
   }
  ],
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2024-08-17 15:20:36.383401",
+ "modified": "2024-09-30 10:06:19.296388",
  "modified_by": "Administrator",
  "module": "Essdee Production",
  "name": "Item Production Detail Packing Attribute Detail",
