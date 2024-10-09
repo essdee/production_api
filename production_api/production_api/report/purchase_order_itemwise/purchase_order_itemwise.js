@@ -102,6 +102,10 @@ frappe.query_reports["Purchase Order Itemwise"] = {
 			value = `<a href="/app/supplier/${data.supplier}" data-doctype="Supplier" data-name="${data.supplier}" data-value="${data.supplier}">${data.supplier_name}</a>`;
 		} else if (column.fieldname == "delivery_location_name") {
 			value = `<a href="/app/supplier/${data.delivery_location}" data-doctype="Supplier" data-name="${data.delivery_location}" data-value="${data.delivery_location}">${data.delivery_location_name}</a>`;
+		} else if (column.fieldname == "expected_delivery_date") {
+			if (data.pending_qty > 0 && data.delivery_date < data.expected_delivery_date) {
+				value = "<span style='color:red'>" + value + "</span>";
+			}
 		}
 
 		return value;
