@@ -20,7 +20,6 @@
   "bill_of_materials_section",
   "item_bom",
   "bom_attribute_mapping_html",
-  "process_section",
   "ipd_processes",
   "packing_tab",
   "packing_section",
@@ -57,6 +56,7 @@
   "stiching_item_combination_details",
   "cutting_tab",
   "cutting_details_section",
+  "cutting_process",
   "cloth_attributes",
   "cloth_detail",
   "additional_cloth",
@@ -253,6 +253,15 @@
   },
   {
    "depends_on": "eval: doc.dependent_attribute_mapping",
+   "description": "The stage which is used for packing.",
+   "fieldname": "pack_in_stage",
+   "fieldtype": "Link",
+   "label": "Pack In Stage",
+   "mandatory_depends_on": "eval: doc.dependent_attribute_mapping && !doc.__islocal",
+   "options": "Item Attribute Value"
+  },
+  {
+   "depends_on": "eval: doc.dependent_attribute_mapping",
    "fieldname": "pack_out_stage",
    "fieldtype": "Link",
    "label": "Pack Out Stage",
@@ -274,24 +283,21 @@
    "fieldname": "stiching_attribute",
    "fieldtype": "Link",
    "label": "Stiching Attribute",
-   "options": "Item Attribute",
-   "reqd": 1
+   "options": "Item Attribute"
   },
   {
    "depends_on": "eval: doc.stiching_attribute",
    "fieldname": "stiching_in_stage",
    "fieldtype": "Link",
    "label": "Stiching In Stage",
-   "options": "Item Attribute Value",
-   "reqd": 1
+   "options": "Item Attribute Value"
   },
   {
    "depends_on": "eval: doc.stiching_attribute",
    "fieldname": "stiching_out_stage",
    "fieldtype": "Link",
    "label": "Stiching Out Stage",
-   "options": "Item Attribute Value",
-   "reqd": 1
+   "options": "Item Attribute Value"
   },
   {
    "depends_on": "eval: !doc.__islocal",
@@ -304,8 +310,7 @@
    "fieldname": "stiching_major_attribute_value",
    "fieldtype": "Link",
    "label": "Stiching Major Attribute Value",
-   "options": "Item Attribute Value",
-   "reqd": 1
+   "options": "Item Attribute Value"
   },
   {
    "fieldname": "get_stiching_item_combination",
@@ -450,11 +455,35 @@
    "fieldname": "is_same_packing_attribute",
    "fieldtype": "Check",
    "label": "Is Same Packing Attribute"
+  },
+  {
+   "fieldname": "packing_process",
+   "fieldtype": "Link",
+   "label": "Packing Process",
+   "options": "Process"
+  },
+  {
+   "fieldname": "stiching_process",
+   "fieldtype": "Link",
+   "label": "Stiching Process",
+   "options": "Process"
+  },
+  {
+   "fieldname": "cutting_process",
+   "fieldtype": "Link",
+   "label": "Cutting Process",
+   "options": "Process"
+  },
+  {
+   "fieldname": "ipd_processes",
+   "fieldtype": "Table",
+   "label": "IPD Processes",
+   "options": "IPD Process"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2024-10-08 17:31:39.325988",
+ "modified": "2024-10-16 16:45:42.794059",
  "modified_by": "Administrator",
  "module": "Essdee Production",
  "name": "Item Production Detail",

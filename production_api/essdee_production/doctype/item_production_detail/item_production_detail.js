@@ -410,6 +410,7 @@ frappe.ui.form.on("Item Production Detail", {
 				is_same_packing_attribute: frm.doc.is_same_packing_attribute,
 			},
 			callback:async function(r){
+				console.log(r.message)
 				await frm.stiching_item.load_data(r.message)
 				frm.stiching_item.set_attributes()
 				frm.dirty()
