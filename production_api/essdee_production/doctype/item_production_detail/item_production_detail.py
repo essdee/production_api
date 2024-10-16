@@ -411,13 +411,16 @@ def get_calculated_bom(item_production_detail, items, lot_name, process_name = N
 
 		if not process_name or process_name == item_detail.cutting_process:
 			bom = calculate_cloth(bom, item_detail,cloth_combination, attr_values, og_piece_quantity)
+	
+	if process_name:
+		return bom
 				
 	bom_items = []	
 	for key, val in bom.items():
-		print(bom)
 		for k,v in val.items():
 			bom_items.append({'item_name': k,'uom':v[2],'process_name':v[1],'required_qty':v[0]})
-
+	
+	
 	lot_doc.set('bom_summary', bom_items)
 	lot_doc.last_calculated_time = now_datetime()
 	lot_doc.save()	

@@ -307,6 +307,7 @@ def get_deliverable_receivable( lot, process, items, doc_name):
 	item_list, row_index, table_index = get_item_structure(items, item_name, process, uom)
 
 	bom = get_calculated_bom(ipd, items, lot, process, from_uom=uom, to_uom=uom)
+	print(bom)
 	bom = get_bom_structure(bom, row_index, table_index)
 
 	deliverables = []

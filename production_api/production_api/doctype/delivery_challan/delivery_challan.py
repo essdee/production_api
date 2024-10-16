@@ -38,14 +38,13 @@ class DeliveryChallan(Document):
 	
 	def before_save(self):
 		for row in self.items:
-			print(row.as_dict())
 			quantity,rate = get_stock_balance(row.item_variant,self.supplier,with_valuation_rate = True)
 			if row.delivered_quantity < 0:
 				frappe.throw("Only positive")
 			# if row.delivered_quantity > row.pending_quantity:
 			# 	frappe.throw("High amount of product in " + row.item_variant)	
-			# if quantity <= row.delivered_quantity:
-			# 	frappe.throw(f"Quantity is {row.qty} but stock count is {quantity}")
+			if quantity <= row.delivered_quantity:
+				frappe.throw(f"Quantity is {row.qty} but stock count is {quantity}")
 			row.rate = rate	
 
 def save_deliverables(item_details):
@@ -102,8 +101,6 @@ def save_deliverables(item_details):
 			row_index += 1	
 	return items
 def fetch_item_details(items, is_new):
-	print(type(items))
-	# if type(items) == list:
 	items = [item.as_dict() for item in items]
 	if isinstance(items, string_types):
 		items = json.loads(items)
@@ -189,11 +186,6 @@ def fetch_item_details(items, is_new):
 @frappe.whitelist()
 def get_deliverables(work_order):
 	doc = frappe.get_doc("Work Order",work_order)
-	item = []
-	# for row in doc.deliverables:
-	# 	row['ref_doctype'] = row.doctype
-	# 	row['ref_doc_name'] = row.name
-	# print(doc.deliverables)	
 	items = fetch_item_details(doc.deliverables, is_new=True)	
 	return items
 
