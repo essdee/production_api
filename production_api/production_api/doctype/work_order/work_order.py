@@ -307,7 +307,6 @@ def get_deliverable_receivable( lot, process, items, doc_name):
 	item_list, row_index, table_index = get_item_structure(items, item_name, process, uom)
 
 	bom = get_calculated_bom(ipd, items, lot, process, from_uom=uom, to_uom=uom)
-	print(bom)
 	bom = get_bom_structure(bom, row_index, table_index)
 
 	deliverables = []
@@ -376,8 +375,6 @@ def get_receivables(items, process,lot, uom, wo_date, ipd, conversion_details = 
 	for item_name,variants in items.items():
 		for variant, details in variants.items():
 			rate, cost_doc = get_rate_and_quantity(process,variant,details['qty'],wo_date)
-			print(rate)
-			print(cost_doc)
 			attr_qty = get_attributes_qty(ipd, process, cost_doc)
 			rate = rate/attr_qty
 			uom_factor = 1

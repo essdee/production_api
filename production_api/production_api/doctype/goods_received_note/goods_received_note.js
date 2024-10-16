@@ -132,7 +132,6 @@ frappe.ui.form.on('Goods Received Note', {
 	save_item_details: function(frm) {
 		if(frm.itemEditor){
 			let items = frm.itemEditor.get_items();
-			console.log(JSON.stringify(items))
 			if(items && items.length > 0 && frm.doc.against == "Work Order") {
 				frm.doc['item_details'] = JSON.stringify(items[0]);
 				frm.doc['item_pending_details'] = JSON.stringify(items[1])

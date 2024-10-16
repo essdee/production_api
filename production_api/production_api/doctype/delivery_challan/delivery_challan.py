@@ -125,7 +125,6 @@ def fetch_item_details(items, is_new):
 			for attr in current_item_attribute_details['primary_attribute_values']:
 				item['values'][attr] = {'qty': 0, 'rate': 0}
 			for variant in variants:
-				print(variant)
 				current_variant = frappe.get_doc("Item Variant", variant['item_variant'])
 				for attr in current_variant.attributes:
 					if attr.attribute == item.get('primary_attribute'):
@@ -180,7 +179,6 @@ def fetch_item_details(items, is_new):
 			})
 		else:
 			item_details[index]['items'].append(item)
-	print(item_details)		
 	return item_details
 			
 @frappe.whitelist()

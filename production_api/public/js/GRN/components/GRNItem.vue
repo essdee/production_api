@@ -614,7 +614,6 @@ function add_item() {
     }
     x = x + 1;
   });
-  console.log(items.value[edit_index.value].items[edit_index1.value])
   items.value[edit_index.value]["created"] = 1;
   items.value[edit_index.value].items[edit_index1.value]["created"] = 1;
   make_clean()

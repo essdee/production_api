@@ -273,7 +273,6 @@ frappe.ui.form.on("Item Production Detail", {
 			},
 			callback: function(r){
 				if(r.message){
-					console.log(r.message)
 					frm.set_value('stiching_item_details', r.message)
 					frm.refresh_field('stiching_item_details')
 				}
@@ -305,7 +304,6 @@ frappe.ui.form.on("Item Production Detail", {
 		if(frm.select_cloth_attrs_multicheck){
 			let cutting_attr_list = []
 			let get_checked_attributes = frm.select_cloth_attrs_multicheck.get_checked_options()
-			console.log(get_checked_attributes)
 			for(let i = 0 ; i< get_checked_attributes.length; i++){
 				cutting_attr_list.push({'attribute':get_checked_attributes[i]})
 			}
