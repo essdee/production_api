@@ -274,24 +274,21 @@
    "fieldname": "stiching_attribute",
    "fieldtype": "Link",
    "label": "Stiching Attribute",
-   "options": "Item Attribute",
-   "reqd": 1
+   "options": "Item Attribute"
   },
   {
    "depends_on": "eval: doc.stiching_attribute",
    "fieldname": "stiching_in_stage",
    "fieldtype": "Link",
    "label": "Stiching In Stage",
-   "options": "Item Attribute Value",
-   "reqd": 1
+   "options": "Item Attribute Value"
   },
   {
    "depends_on": "eval: doc.stiching_attribute",
    "fieldname": "stiching_out_stage",
    "fieldtype": "Link",
    "label": "Stiching Out Stage",
-   "options": "Item Attribute Value",
-   "reqd": 1
+   "options": "Item Attribute Value"
   },
   {
    "depends_on": "eval: !doc.__islocal",
@@ -304,8 +301,7 @@
    "fieldname": "stiching_major_attribute_value",
    "fieldtype": "Link",
    "label": "Stiching Major Attribute Value",
-   "options": "Item Attribute Value",
-   "reqd": 1
+   "options": "Item Attribute Value"
   },
   {
    "fieldname": "get_stiching_item_combination",
@@ -454,7 +450,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2024-10-08 17:31:39.325988",
+ "modified": "2024-10-16 15:52:31.846431",
  "modified_by": "Administrator",
  "module": "Essdee Production",
  "name": "Item Production Detail",

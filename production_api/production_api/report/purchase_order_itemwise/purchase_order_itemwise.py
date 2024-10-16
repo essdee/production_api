@@ -90,7 +90,13 @@ def get_columns():
             "fieldname": "delivery_date",
             "label": "Delivery Date",
             "fieldtype": "Date",
-            "width": 100
+            "width": 120
+        },
+        {
+            "fieldname": "expected_delivery_date",
+            "label": "Expected Delivery Date",
+            "fieldtype": "Date",
+            "width": 120
         },
         # {
         #     "fieldname": "delivery_location",
@@ -185,6 +191,7 @@ def get_data(filters):
             po_item.delivery_location,
             supplier.supplier_name.as_('delivery_location_name'),
             po_item.delivery_date,
+            po_item.expected_delivery_date,
             po_item.lot,
             po_item.comments,
             po.name,
