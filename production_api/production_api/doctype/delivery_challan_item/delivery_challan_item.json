@@ -16,8 +16,9 @@
   "comments",
   "table_index",
   "row_index",
-  "additional_parameters",
+  "delivered_quantity",
   "pending_quantity",
+  "additional_parameters",
   "ref_doctype",
   "ref_docname"
  ],
@@ -112,12 +113,17 @@
    "label": "Reference Docname",
    "options": "ref_doctype",
    "read_only": 1
+  },
+  {
+   "fieldname": "delivered_quantity",
+   "fieldtype": "Float",
+   "label": "Delivered Quantity"
   }
  ],
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2024-05-30 12:54:48.558524",
+ "modified": "2024-10-15 17:13:58.268603",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Delivery Challan Item",

@@ -1,6 +1,5 @@
 // Copyright (c) 2024, Essdee and contributors
 // For license information, please see license.txt
-
 frappe.ui.form.on("Item Production Detail", {
 	setup:function(frm) {
 		frm.trigger("declarations")
@@ -23,7 +22,23 @@ frappe.ui.form.on("Item Production Detail", {
 				}
 			}
 		});
+		frm.set_query('stage','ipd_processes',() => {
+			return {
+				query:'production_api.essdee_production.doctype.item_production_detail.item_production_detail.get_attribute_detail_values',
+				filters: {
+					'mapping': frm.stage,
+				}
+			}
+		});
 		frm.set_query('pack_in_stage', ()=> {
+			return {
+				query:'production_api.essdee_production.doctype.item_production_detail.item_production_detail.get_attribute_detail_values',
+				filters: {
+					'mapping': frm.stage,
+				}
+			}
+		})
+		frm.set_query('cutting_in_stage', ()=> {
 			return {
 				query:'production_api.essdee_production.doctype.item_production_detail.item_production_detail.get_attribute_detail_values',
 				filters: {

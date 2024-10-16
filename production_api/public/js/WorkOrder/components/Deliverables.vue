@@ -18,7 +18,6 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
-
 import EventBus from '../../bus';
 import ItemLotFetcher from '../../components/ItemLotFetch.vue'
 
@@ -49,14 +48,14 @@ const otherInputs = ref([
 ]);
 
 const table_fields = ref([
-    // {
-    //     name: 'pending_qty',
-    //     label: 'Pending Qty',
-    //     uses_primary_attribute: 1,
-    //     condition: function(data, props) {
-    //         return props['docstatus'] == 1;
-    //     },
-    // },
+    {
+        name: 'pending_qty',
+        label: 'Pending Qty',
+        uses_primary_attribute: 1,
+        condition: function(data, props) {
+            return props['docstatus'] == 1;
+        },
+    },
     // {
     //     name: 'cancelled_qty',
     //     label: 'Cancelled Qty',
@@ -74,9 +73,8 @@ const table_fields = ref([
     },
     
 ]);
-
 const args = ref({
-    'docstatus': cur_frm.doc.docstatus
+    'docstatus': cur_frm.doc.docstatus,
 });
 
 onMounted(() => {
@@ -87,9 +85,16 @@ onMounted(() => {
     })
 });
 
-function update_status() {
-    docstatus.value = cur_frm.doc.docstatus;
-    args.value['docstatus'] = cur_frm.doc.docstatus;
+function update_status(val) {
+    let doc_status = cur_frm.doc.docstatus;
+    if(val && doc_status == 0){
+        doc_status = 1
+    }
+    else if(val == null && doc_status == 0){
+        doc_status = 0
+    }
+    docstatus.value = doc_status;
+    args.value['docstatus'] = doc_status;
 }
 
 function load_data(all_items) {

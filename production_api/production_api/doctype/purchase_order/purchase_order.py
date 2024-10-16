@@ -329,8 +329,8 @@ def get_item_group_index(items, item_details):
 			continue
 		if not item.get('primary_attribute') == item_details.get('primary_attribute'):
 			continue
-		if not item.get('primary_attribute_values').sort() == item_details.get('primary_attribute_values').sort():
-			continue
+		# if not item.get('primary_attribute_values').sort() == item_details.get('primary_attribute_values').sort():
+		# 	continue
 		if not item.get('dependent_attribute') == item_details.get('dependent_attribute'):
 			continue
 		index = i

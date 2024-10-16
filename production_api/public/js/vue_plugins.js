@@ -15,6 +15,8 @@ import CuttingItemDetail from "./Item_Po_detail/CuttingItemDetail.vue"
 import { StockEntryWrapper, StockReconciliationWrapper, LotTransferWrapper } from "./Stock";
 import WorkOrderDeliverables from "./WorkOrder/components/Deliverables.vue"
 import WorkOrderReceivables from "./WorkOrder/components/Receivables.vue"
+import WorkOrderItemView from "./WorkOrder/components/WorkOrderItemView.vue"
+
 import DeliveryChallan from "./Delivery_Challan/components/deliverable_items.vue"
 
 // Product Development
@@ -217,6 +219,33 @@ frappe.production.ui.LotOrderDetail = class {
     }
 }
 
+frappe.production.ui.WorkOrderItemView = class {
+    constructor(wrapper){
+        this.$wrapper = $(wrapper)
+        this.make_app()
+    }
+    make_app(){
+        this.app = createApp(WorkOrderItemView)
+        SetVueGlobals(this.app)
+        this.vue = this.app.mount(this.$wrapper.get(0))
+    }
+    load_data(item_details){
+        let items = JSON.parse(JSON.stringify(item_details))
+        this.vue.load_data(items)
+    }
+
+    get_work_order_items(){
+        let items = this.vue.get_items()
+        for(let i = 0 ; i < items[0].items.length; i++){
+            items[0].items[i]['entered_qty'] = {}
+        }
+        return items
+    }
+    create_input_attributes(){
+        this.vue.create_input_classes()
+    }
+}
+
 frappe.production.ui.PurchaseOrderItem = class {
     constructor(wrapper) {
         this.$wrapper = $(wrapper);
@@ -289,8 +318,8 @@ frappe.production.ui.Deliverables = class {
         let items = JSON.parse(JSON.stringify(item_details));
         this.vue.load_data(items)
     }
-    update_status() {
-        this.vue.update_status();
+    update_status(val) {
+        this.vue.update_status(val);
     }
 };
 
@@ -312,8 +341,8 @@ frappe.production.ui.Receivables = class {
         let items = JSON.parse(JSON.stringify(item_details));
         this.vue.load_data(items)
     }
-    update_status() {
-        this.vue.update_status();
+    update_status(val) {
+        this.vue.update_status(val);
     }
 };
 
@@ -330,6 +359,7 @@ frappe.production.ui.Delivery_Challan = class {
     }
     get_data(){
         let items = JSON.parse(JSON.stringify(this.vue.deliverables_item))
+        console.log(JSON.stringify(items))
         return items
     }
     update_status() {

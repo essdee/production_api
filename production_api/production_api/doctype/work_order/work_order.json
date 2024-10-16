@@ -6,12 +6,17 @@
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
+  "is_rework",
   "naming_series",
+  "wo_date",
+  "lot",
   "supplier",
   "is_delivered",
   "column_break_wrym",
-  "wo_date",
+  "parent_wo",
   "process_name",
+  "item",
+  "production_detail",
   "section_break_tmhn",
   "planned_start_date",
   "planned_end_date",
@@ -37,8 +42,10 @@
  ],
  "fields": [
   {
+   "default": "WO-",
    "fieldname": "naming_series",
    "fieldtype": "Select",
+   "hidden": 1,
    "in_list_view": 1,
    "label": "WO Series",
    "options": "WO-",
@@ -202,12 +209,47 @@
    "fieldtype": "Check",
    "label": "Is Delivered",
    "read_only": 1
+  },
+  {
+   "fieldname": "lot",
+   "fieldtype": "Link",
+   "label": "Lot",
+   "options": "Lot"
+  },
+  {
+   "fetch_from": "lot.item",
+   "fieldname": "item",
+   "fieldtype": "Link",
+   "label": "Item",
+   "options": "Item"
+  },
+  {
+   "default": "0",
+   "fieldname": "is_rework",
+   "fieldtype": "Check",
+   "label": "Is Rework"
+  },
+  {
+   "depends_on": "eval: doc.is_rework",
+   "fieldname": "parent_wo",
+   "fieldtype": "Link",
+   "label": "Parent WO",
+   "mandatory_depends_on": "eval: doc.is_rework",
+   "options": "Work Order"
+  },
+  {
+   "fetch_from": "lot.production_detail",
+   "fieldname": "production_detail",
+   "fieldtype": "Link",
+   "hidden": 1,
+   "label": "Production Detail",
+   "options": "Item Production Detail"
   }
  ],
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2024-06-12 14:24:19.323972",
+ "modified": "2024-10-16 11:20:00.751158",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Work Order",

@@ -75,7 +75,6 @@ frappe.ui.form.on('Goods Received Note', {
 			};
 		});
 	},
-
 	refresh: function(frm) {
 		$(frm.fields_dict['item_html'].wrapper).html("");
 		frm.itemEditor = new frappe.production.ui.GRNItem(frm.fields_dict["item_html"].wrapper);
@@ -86,14 +85,32 @@ frappe.ui.form.on('Goods Received Note', {
 		}, true);
 		if(frm.doc.__onload && frm.doc.__onload.item_details) {
 			frm.doc['item_details'] = JSON.stringify(frm.doc.__onload.item_details);
-			frm.itemEditor.load_data({
-				items: frm.doc.__onload.item_details
-			}, true);
+			if(frm.doc.__onload && frm.doc.__onload.item_pending_details){
+				frm.doc['item_pending_details'] = JSON.stringify(frm.doc.__onload.item_pending_details)
+				frm.itemEditor.load_data({
+					items: frm.doc.__onload.item_details,
+					pending_items: frm.doc.__onload.item_pending_details
+				}, true);	
+			}
+			else{
+				frm.itemEditor.load_data({
+					items: frm.doc.__onload.item_details,
+				}, true);
+			}
+			
 		} 
 		else if (frm.doc.item_details) {
-			frm.itemEditor.load_data({
-				items: JSON.parse(frm.doc.item_details)
-			}, true);
+			if(frm.doc.item_pending_details){
+				frm.itemEditor.load_data({
+					items: JSON.parse(frm.doc.item_details),
+					pending_items:JSON.parse(frm.doc.item_pending_details)
+				}, true);
+			}
+			else{
+				frm.itemEditor.load_data({
+					items: JSON.parse(frm.doc.item_details),
+				}, true);
+			}			
 		}
 		frm.itemEditor.update_status();
 		frappe.production.ui.eventBus.$on("grn_updated", e => {
@@ -115,8 +132,13 @@ frappe.ui.form.on('Goods Received Note', {
 	save_item_details: function(frm) {
 		if(frm.itemEditor){
 			let items = frm.itemEditor.get_items();
-			// console.log(JSON.stringify(items))
-			if(items && items.length > 0) {
+			console.log(JSON.stringify(items))
+			if(items && items.length > 0 && frm.doc.against == "Work Order") {
+				frm.doc['item_details'] = JSON.stringify(items[0]);
+				frm.doc['item_pending_details'] = JSON.stringify(items[1])
+			}
+			else if(items && items.length > 0 && frm.doc.against == "Purchase Order"){
+				
 				frm.doc['item_details'] = JSON.stringify(items);
 			}
 			else {
@@ -212,7 +234,7 @@ frappe.ui.form.on('Goods Received Note', {
 	delivery_address: function(frm) {
 		if (frm.doc['delivery_address']) {
 			frappe.call({
-				method: "frappe.contacts.doctype.address.address.get_address_display",
+				method: "production_api.production_api.doctype.purchase_order.purchase_order.get_address_display",
 				args: {"address_dict": frm.doc['delivery_address'] },
 				callback: function(r) {
 					if (r.message) {

@@ -1,10 +1,10 @@
 <template>
   <div ref="root" class="frappe-control">
-    <div>
+    <div v-if='against =="Work Order"'>
       <p>Pending Items</p>
     </div>
     <table v-if="docstatus !== 0" class="table table-sm table-bordered">
-      <tr v-for="(i, item_index) in items" :key="item_index">
+      <tr v-for="(i, item_index) in items1" :key="item_index">
         <td v-if="i.primary_attribute">
           <table
             class="table table-sm table-bordered"
@@ -45,8 +45,11 @@
                   <div v-else class="text-center">---</div>
                 </div>
                 <div v-else>
-                  {{ attr.qty
-                  }}<span v-if="j.default_uom">{{ " " + j.default_uom }}</span>
+                  <div v-if='attr.qty > 0'>
+                    {{ attr.qty}}
+                    <span v-if="j.default_uom">{{ " " + j.default_uom }}</span>
+                  </div>
+                  <div v-else> -- </div>
                 </div>
               </td>
               <td>{{ j.comments }}</td>
@@ -86,8 +89,12 @@
                 </span>
               </td>
               <td v-else>
-                {{ j.values["default"].qty
-                }}<span v-if="j.default_uom">{{ " " + j.default_uom }}</span>
+                <div v-if='j.values["default"].qty > 0'>
+                  {{ j.values["default"].qty}}
+                <span v-if="j.default_uom">{{ " " + j.default_uom }}</span>
+                </div>
+                <div v-else> -- </div>
+                
               </td>
               <td>{{ j.comments }}</td>
             </tr>
@@ -96,7 +103,7 @@
       </tr>
     </table>
     <table v-else-if="against_id" class="table table-sm table-bordered">
-      <tr v-for="(i, item_index) in items" :key="item_index">
+      <tr v-for="(i, item_index) in items1" :key="item_index">
         <td v-if="i.primary_attribute">
           <table
             class="table table-sm table-bordered"
@@ -111,7 +118,7 @@
                 {{ attr }}
               </th>
               <th>Comments</th>
-              <th>Edit</th>
+              <th v-if="against == 'Work Order'">Edit</th>
             </tr>
             <tr v-for="(j, item1_index) in i.items" :key="item1_index">
               <td>{{ item1_index + 1 }}</td>
@@ -141,7 +148,7 @@
                       min="0"
                       step="0.001"
                     />
-                    <input
+                    <!-- <input
                       class="form-control"
                       v-if="attr.secondary_qty"
                       type="number"
@@ -149,7 +156,7 @@
                       @blur="update_received_qty(attr, 'secondary_received')"
                       min="0"
                       step="0.001"
-                    />
+                    /> -->
                   </form>
                 </div>
 
@@ -159,7 +166,6 @@
                 <input class="form-control" type="text" v-model="j.comments" />
               </td>
               <td v-if="against == 'Work Order'">
-                <!-- <div @click='edit_item(item_index,item1_index)'>Edit</div>  -->
                 <div
                   class="pull-right cursor-pointer"
                   @click="edit_item(item_index, item1_index)"
@@ -225,7 +231,7 @@
                     @blur="update_received_qty(j.values['default'], 'received')"
                     min="0"
                   />
-                  <input
+                  <!-- <input
                     class="form-control"
                     v-if="j.values['default'].secondary_qty"
                     type="number"
@@ -238,7 +244,7 @@
                         'secondary_received'
                       )
                     "
-                  />
+                  /> -->
                 </form>
               </td>
               <td>
@@ -256,10 +262,10 @@
         </td>
       </tr>
     </table>
-    <div>
+    <div v-if='against =="Work Order"'>
       <p>Delivered Items</p>
     </div>
-    <table class="table table-sm table-bordered">
+    <table class="table table-sm table-bordered" v-if='against =="Work Order"'>
       <tr v-for="(i, item_index) in items" :key="item_index">
         <td v-if="i.primary_attribute && i.created === 1">
           <table
@@ -280,24 +286,29 @@
               </tr>
             </thead>
             <tbody>
-              <template v-for="(j, item1_index) in i.items">
+              <template v-for="(j, item1_index) in i.items" :key='item1_index'>
                 <template v-if="i.created && j.created">
-                  <template v-for="(k, item2_index) in arr" :key="item2_index">
-                    <tr v-if="check_qty(j.values, k)">
-                      <td>{{ get_index(item_index) }}</td>
-                      <td>{{ j.name }}</td>
-                      <td>{{ j.lot }}</td>
-                      <td v-for="attr in i.attributes" :key="attr">
-                        {{ j.attributes[attr] }}
-                      </td>
-                      <td>{{ get_type(k) }}</td>
-                      <td v-for="attr in j.values" :key="attr">
-                        {{ attr[k] }}
-                      </td>
-                      <td>{{ j.comments }}</td>
-                    </tr>
-                  </template>
-                </template>
+                  <tr v-for='m in j.types' :key='m'>
+                    <td>{{ get_index(item_index) }}</td>
+                    <td>{{ j.name }}</td>
+                    <td>{{ j.lot }}</td>
+                    <td v-for="attr in i.attributes" :key="attr">
+                      {{ j.attributes[attr] }}
+                    </td>
+                    <td>{{m}}</td>
+                    <template v-for="attr in Object.keys(j.values)">
+                      <template v-if="j.values[attr].qty == 0" :key='attr'>
+                        <td>--</td>
+                      </template>
+                      <template v-else>
+                        <template v-for="v in j.values[attr]['val']" :key='v'>
+                          <td v-if="v['received_type'] == m">{{v["received_quantity"]}}</td>
+                        </template>
+                      </template>
+                    </template>
+                    <td>{{ j.comments }}</td>
+                  </tr>
+                </template>  
               </template>
             </tbody>
           </table>
@@ -319,41 +330,30 @@
               </tr>
             </thead>
             <tbody>
-              <template v-for="(j, item1_index) in i.items" :key="item1_index">
-                <template v-if="i.created && j.created">
-                  <template
-                    v-for="(k, item2_index) in Object.keys(
-                      items[item_index].items[item1_index]['values']['default']
-                    )"
-                    :key="item2_index"
-                  >
-                    <tr
-                      v-if="
-                        arr.includes(k) &&
-                        items[item_index].items[item1_index]['values'][
-                          'default'
-                        ][k] !== 0
-                      "
-                    >
+              <template v-for="(j, item1_index) in i.items" :key='item1_index'>
+                  <template v-if="i.created && j.created">
+                    <tr v-for='m in j.types' :key='m'>
                       <td>{{ get_index(item_index) }}</td>
                       <td>{{ j.name }}</td>
                       <td>{{ j.lot }}</td>
                       <td v-for="attr in i.attributes" :key="attr">
                         {{ j.attributes[attr] }}
                       </td>
-                      <td>{{ get_type(k) }}</td>
-                      <td>
-                        {{
-                          items[item_index].items[item1_index]["values"][
-                            "default"
-                          ][k]
-                        }}
-                      </td>
+                      <td>{{m}}</td>
+                      <template v-for="attr in Object.keys(j.values)">
+                        <template v-if="j.values[attr].qty == 0">
+                          --
+                        </template>
+                        <template v-else>
+                          <template v-for="v in j.values[attr]['val']" :key='v'>
+                            <td v-if="v['received_type'] == m">{{v["received_quantity"]}}</td>
+                          </template>
+                        </template>
+                      </template>
                       <td>{{ j.comments }}</td>
                     </tr>
-                  </template>
+                  </template>  
                 </template>
-              </template>
             </tbody>
           </table>
         </td>
@@ -394,6 +394,7 @@ const root = ref(null);
 let i = 0;
 const docstatus = ref(0);
 const items = ref([]);
+const items1 = ref([])
 const supplier = ref(null);
 const against = ref(null);
 const against_id = ref(null);
@@ -413,16 +414,8 @@ const controlRefs = ref({
 const show_button = ref(false);
 let types = null;
 let qty_parameters = [];
-let arr = ["accepted_qty", "rejected_qty"];
 let indexes = [];
 
-function get_type(str) {
-  if (str == "accepted_qty") {
-    return "Accepted";
-  } else if (str == "rejected_qty") {
-    return "Rejected";
-  }
-}
 function get_index(idx) {
   if (!indexes.includes(idx)) {
     indexes.push(idx);
@@ -430,15 +423,6 @@ function get_index(idx) {
   }
   i = i + 1;
   return i;
-}
-function check_qty(data, key) {
-  let x = 0;
-  Object.keys(data).forEach((row) => {
-    if (data[row][key] !== 0) {
-      x = 1;
-    }
-  });
-  return x === 1 ? true : false;
 }
 
 function edit_item(index, index1) {
@@ -452,7 +436,7 @@ function edit_item(index, index1) {
   cur_lot.value = null;
   show_button.value = true;
   $(el).find(".qty-parameters").html("");
-  let row = items.value[index].items[index1];
+  let row = items1.value[index].items[index1];
   let data1 = row.values;
   let data2 = row.attributes;
   cur_item.value = row.name;
@@ -551,29 +535,29 @@ function create_attributes(attributes, quantities, item, lot, idx, idx1) {
   types = frappe.ui.form.make_control({
     parent: $(el).find(".type-parameters"),
     df: {
-      fieldtype: "Select",
+      fieldtype: "Link",
       fieldname: "types",
       label: "Type",
-      options: ["", "Accepted", "Rejected"],
+      options: "GRN Item Type",
+      onchange: () => {
+        const selectedValue = types.get_value();
+        if (selectedValue !== "" && selectedValue !== null) {
+          handleQtyParameters(quantities, selectedValue);
+        } else {
+          $(el).find(".qty-parameters").html("");
+        }
+      },
       reqd: true,
-      default: "",
     },
     doc: sample_doc.value,
     render_input: true,
   });
   types.set_value("");
   types.refresh();
-  types.$input.on("change", function () {
-    const selectedValue = types.get_value();
-    if (selectedValue !== "" && selectedValue !== null) {
-      handleQtyParameters(quantities, selectedValue);
-    } else {
-      $(el).find(".qty-parameters").html("");
-    }
-  });
 }
 // Function to handle creation of quantity parameter controls
 function handleQtyParameters(quantities, value) {
+  controlRefs.value.quantities = [];
   let el = root.value;
   $(el).find(".qty-parameters").html("");
   qty_parameters = [];
@@ -583,7 +567,6 @@ function handleQtyParameters(quantities, value) {
       if (key == "default") {
         key = "Qty";
       }
-
       qty_parameters[idx] = frappe.ui.form.make_control({
         parent: $(el).find(".qty-parameters"),
         df: {
@@ -600,25 +583,44 @@ function handleQtyParameters(quantities, value) {
 }
 
 function add_item() {
+  if(items.value.length == 0){
+    items.value = items1.value
+    get_items_structure()
+  }
   let data = getControlValues(controlRefs.value.quantities);
+  console.log(data)
   let x = 0;
   controlRefs.value.quantities = [];
   let type_selected = types.get_value();
-  let key = "";
-  if (type_selected == "Accepted") {
-    key = "accepted_qty";
-  } else if (type_selected == "Rejected") {
-    key = "rejected_qty";
+  if(items.value[edit_index.value].items[edit_index1.value]['types'].indexOf(type_selected) == -1){
+    items.value[edit_index.value].items[edit_index1.value]['types'].push(type_selected)
   }
+  // items.value[edit_index.value].items[edit_index1.value]
   Object.keys(
     items.value[edit_index.value].items[edit_index1.value].values
   ).forEach((row, index) => {
-    items.value[edit_index.value].items[edit_index1.value]["values"][row][key] =
-      data[x];
+    let bool = true
+    items.value[edit_index.value].items[edit_index1.value]["values"][row]['val'].forEach((dict,idx)=> {
+      if(dict['received_type'] == type_selected){
+        dict['received_quantity'] += data[x]
+        bool = false
+      }
+    })
+    if(bool){
+      items.value[edit_index.value].items[edit_index1.value]["values"][row]['val'].push({
+        'received_type':type_selected,
+        'received_quantity':data[x]
+      })
+    }
     x = x + 1;
   });
+  console.log(items.value[edit_index.value].items[edit_index1.value])
   items.value[edit_index.value]["created"] = 1;
   items.value[edit_index.value].items[edit_index1.value]["created"] = 1;
+  make_clean()
+}
+
+function make_clean(){
   let el = root.value;
   $(el).find(".qty-parameters").html("");
   $(el).find(".type-parameters").html("");
@@ -627,8 +629,6 @@ function add_item() {
   $(el).find(".lot-name").html("");
   $(el).find(".item-name").html("");
   show_button.value = false;
-
-  // $(el).find('.qty-parameters-value').html("")
 }
 
 onMounted(() => {
@@ -636,8 +636,6 @@ onMounted(() => {
   EventBus.$on("update_grn_details", (data) => {
     load_data(data);
   });
-  let el = root.value;
-  //
 });
 
 function load_data(data, skip_watch = false) {
@@ -663,9 +661,16 @@ function load_data(data, skip_watch = false) {
       docstatus.value = data["docstatus"];
     }
     if (data.hasOwnProperty("items")) {
-      items.value = data["items"];
+      if(against.value == "Purchase Order"){
+        items1.value = data["items"];
+      }
+      else{
+        items.value = data["items"];
+      }
     }
-
+    if (data.hasOwnProperty("pending_items")) {
+      items1.value = data["pending_items"];
+    }
     if (data.hasOwnProperty("against_id") && !skip_watch) {
       against_id_changed();
     }
@@ -689,6 +694,7 @@ function get_purchase_order_items() {
     callback: function (r) {
       if (r.message) {
         items.value = r.message;
+        items1.value = r.message;
       }
     },
   });
@@ -703,9 +709,22 @@ function get_work_order_items() {
     callback: function (r) {
       if (r.message) {
         items.value = r.message;
+        items1.value = r.message
+        get_items_structure()
       }
     },
   });
+}
+
+function get_items_structure(){
+  for(let i = 0 ; i < items.value.length; i++){
+    for(let j = 0 ; j < items.value[i]['items'].length; j++){
+      items.value[i]['items'][j]['types'] = []
+      Object.keys(items.value[i].items[j].values).forEach((key, val)=> {
+        items.value[i].items[j].values[key]['val'] = []
+      })
+    }
+  }
 }
 
 function clear_items() {
@@ -736,22 +755,16 @@ function get_items() {
           items.value[i].items[j].values[k].received = 0;
         }
         if (
-          items.value[i].items[j].values[k].accepted_qty == null ||
-          items.value[i].items[j].values[k].accepted_qty == ""
+          items.value[i].items[j].values[k].received_quantity == null ||
+          items.value[i].items[j].values[k].received_quantity == ""
         ) {
-          items.value[i].items[j].values[k].accepted_qty = 0;
+          items.value[i].items[j].values[k].received_quantity = 0;
         }
         if (
           items.value[i].items[j].values[k].rework_details == null ||
           items.value[i].items[j].values[k].rework_details == ""
         ) {
           items.value[i].items[j].values[k].rework_details = "";
-        }
-        if (
-          items.value[i].items[j].values[k].rejected_qty == null ||
-          items.value[i].items[j].values[k].rejected_qty == ""
-        ) {
-          items.value[i].items[j].values[k].rejected_qty = 0;
         }
         if (
           items.value[i].items[j].values[k].secondary_received == null ||
@@ -762,13 +775,17 @@ function get_items() {
       }
     }
   }
-  return items.value;
+  if(against.value == 'Purchase Order'){
+    return items1.value
+  }
+  return [items.value, items1.value];
 }
 function update_reworks(item, key) {
   item[key] = item[key];
 }
 function update_received_qty(item, key) {
   item[key] = parseFloat(parseFloat(item[key]).toFixed(3));
+  cur_frm.dirty()
 }
 
 watch(

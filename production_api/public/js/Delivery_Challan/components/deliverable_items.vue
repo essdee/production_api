@@ -1,52 +1,144 @@
 <template>
-		<div>
-			<div class="table-container">
-				<table class="styled-table" v-if="items.length > 0">
-					<thead>
-						<tr>
-							<th>S.No</th>
-							<th>Item Variant</th>
-							<th>Lot</th>
-							<th>Pending Quantity</th>
-							<th>Deliver Quantity</th>
-							<th>Rate</th>
-							<th>UOM</th>
-							<th>Comments</th>
-						</tr>
-					</thead>
-					<tbody>
-						<tr v-for="item, index in deliverables_item" :key="item.id">
-							<td>{{ index + 1 }}</td>
-							<td>{{ item.item_variant }}</td>
-							<td>{{ item.lot }}</td>
-							<td> {{item.pending_quantity}} </td>
-							<td v-if="docstatus == 0">
-								<input 
-									type="number" 
-									v-model.number="item.qty" 
-									class="editable-input"
-									@click="make_dirty()"
-									@input="check(item.qty)"
-									min="0" step="0.001"
-								/>
-							</td>
-							<td v-else> {{item.qty}} </td>
-							<td>{{ item.rate }}</td>
-							<td>{{ item.uom }}</td>
-							<td v-if="docstatus === 0">
-								<input 
-									type="text" 
-									v-model="item.comments" 
-									class="editable-input"
-									@click="make_dirty()"
-								/>
-							</td>
-							<td v-else>{{ item.comments }}</td>
-						</tr>
-					</tbody>
+	<table v-if="docstatus !== 0" class="table table-sm table-bordered">
+		<tr v-for="(i, item_index) in items" :key="item_index">
+			<td v-if="i.primary_attribute">
+			<table
+				class="table table-sm table-bordered"
+				v-if="i.items && i.items.length > 0"
+			>
+				<tr>
+					<th>S.No.</th>
+					<th>Item</th>
+					<th>Lot</th>
+					<th v-for="attr in i.attributes" :key="attr">{{ attr }}</th>
+					<th v-for="attr in i.primary_attribute_values" :key="attr">
+						{{ attr }}
+					</th>
+				</tr>
+				<tr v-for="(j, item1_index) in i.items" :key="item1_index">
+					<td>{{ item1_index + 1 }}</td>
+					<td>{{ j.name }}</td>
+					<td>{{ j.lot }}</td>
+					<td v-for="attr in i.attributes" :key="attr">
+						{{ j.attributes[attr] }}
+					</td>
+					<td v-for="attr in j.values" :key="attr">
+						<div v-if='attr.delivered_quantity > 0'>
+							{{ attr.delivered_quantity}}
+							<span v-if="j.default_uom">{{ " " + j.default_uom }}</span>
+						</div>
+						<div v-else>
+							--
+						</div>
+					</td>
+				</tr>
+			</table>
+			</td>
+			<td v-else>
+				<table
+					class="table table-sm table-bordered"
+					v-if="i.items && i.items.length > 0"
+				>
+					<tr>
+						<th>S.No.</th>
+						<th>Item</th>
+						<th>Lot</th>
+						<th v-for="attr in i.attributes" :key="attr">{{ attr }}</th>
+						<th>Delivered Quantity</th>
+					</tr>
+					<tr v-for="(j, item1_index) in i.items" :key="item1_index">
+						<td>{{ item1_index + 1 }}</td>
+						<td>{{ j.name }}</td>
+						<td>{{ j.lot }}</td>
+						<td v-for="attr in i.attributes" :key="attr">
+							{{ j.attributes[attr] }}
+						</td>
+						<td>
+							<div v-if='j.values["default"].delivered_quantity > 0'>
+								{{ j.values["default"].delivered_quantity}}
+								<span v-if="j.default_uom">{{ " " + j.default_uom }}</span>
+							</div>
+							<div v-else> -- </div>
+						</td>
+					</tr>
 				</table>
-			</div>
-		</div>
+			</td>
+		</tr>
+	</table>
+	<table v-else class="table table-sm table-bordered">
+		<tr v-for="(i, item_index) in items" :key="item_index">
+			<td v-if="i.primary_attribute">
+				<table
+					class="table table-sm table-bordered"
+					v-if="i.items && i.items.length > 0"
+				>
+					<tr>
+						<th>S.No.</th>
+						<th>Item</th>
+						<th>Lot</th>
+						<th v-for="attr in i.attributes" :key="attr">{{ attr }}</th>
+						<th v-for="attr in i.primary_attribute_values" :key="attr">
+							{{ attr }}
+						</th>
+					</tr>
+					<tr v-for="(j, item1_index) in i.items" :key="item1_index">
+						<td>{{ item1_index + 1 }}</td>
+						<td>{{ j.name }}</td>
+						<td>{{ j.lot }}</td>
+						<td v-for="attr in i.attributes" :key="attr">
+							{{ j.attributes[attr] }}
+						</td>
+						<td v-for="attr in j.values" :key="attr">
+							{{ attr.qty}}
+							<span v-if="j.default_uom">{{ " " + j.default_uom }}</span>
+							<form>
+								<input
+								class="form-control"
+								type="number"
+								v-model.number="attr.delivered_quantity"
+								min="0"
+								step="0.001"
+								/>
+							</form>
+						</td>
+					</tr>
+				</table>
+			</td>
+			<td v-else>
+				<table class="table table-sm table-bordered"
+					v-if="i.items && i.items.length > 0">
+					<tr>
+						<th>S.No.</th>
+						<th>Item</th>
+						<th>Lot</th>
+						<th v-for="attr in i.attributes" :key="attr">{{ attr }}</th>
+						<th>Pending Quantity</th>
+					</tr>
+					<tr v-for="(j, item1_index) in i.items" :key="item1_index">
+						<td>{{ item1_index + 1 }}</td>
+						<td>{{ j.name }}</td>
+						<td>{{ j.lot }}</td>
+						<td v-for="attr in i.attributes" :key="attr">
+							{{ j.attributes[attr] }}
+						</td>
+						<td>
+							{{ j.values["default"].qty}}
+							<span v-if="j.default_uom">{{ " " + j.default_uom }}</span>
+							<form>
+								<input
+								class="form-control"
+								type="number"
+								v-model.number="j.values['default']['delivered_quantity']"
+								min="0"
+								step="0.001"
+								/>
+							</form>
+						</td>
+					</tr>
+				</table>
+			</td>
+		</tr>
+	</table>
 </template>
 	
 <script setup>
@@ -57,7 +149,7 @@ const docstatus = ref(cur_frm.doc.docstatus);
 const deliverables_item = reactive([...props.items]);
 
 function update_status() {
-		docstatus.value = cur_frm.doc.docstatus;
+	docstatus.value = cur_frm.doc.docstatus;
 }
 function make_dirty(){
 		cur_frm.dirty();

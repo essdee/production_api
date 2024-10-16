@@ -58,6 +58,7 @@
    "reqd": 1
   },
   {
+   "fetch_from": "item.default_unit_of_measure",
    "fieldname": "uom",
    "fieldtype": "Link",
    "label": "UOM",
@@ -156,7 +157,7 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2024-06-21 16:03:51.129631",
+ "modified": "2024-10-16 09:54:52.679000",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Process Cost",

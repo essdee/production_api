@@ -269,7 +269,7 @@ def get_attribute_values(item_production_detail, attributes = None):
 	return attribute_values
 
 @frappe.whitelist()
-def get_calculated_bom(item_production_detail, items, lot_name):
+def get_calculated_bom(item_production_detail, items, lot_name, process_name = None, from_uom = None, to_uom = None):
 	item_detail = frappe.get_doc("Item Production Detail", item_production_detail)
 	bom = {}
 	if isinstance(items, string_types):
@@ -289,15 +289,28 @@ def get_calculated_bom(item_production_detail, items, lot_name):
 		variant_doc = frappe.get_doc("Item Variant", variant)
 		item_name = variant_doc.item
 		doc = frappe.get_doc("Item", item_name)
-		og_uom_factor_to_piece = get_uom_conversion_factor(doc.uom_conversion_details,lot_doc.uom,lot_doc.packing_uom)
+		og_uom_factor_to_piece = None
+		uom_factor = None
+		if from_uom and to_uom:
+			og_uom_factor_to_piece = get_uom_conversion_factor(doc.uom_conversion_details,from_uom,to_uom)	
+			uom_factor = get_uom_conversion_factor(doc.uom_conversion_details,from_uom,to_uom)
+		else:	
+			og_uom_factor_to_piece = get_uom_conversion_factor(doc.uom_conversion_details,lot_doc.uom,lot_doc.packing_uom)	
+			uom_factor = get_uom_conversion_factor(doc.uom_conversion_details,lot_doc.uom,lot_doc.packing_uom)
+		
 		og_piece_quantity = qty * og_uom_factor_to_piece
-		uom_factor = get_uom_conversion_factor(doc.uom_conversion_details,lot_doc.uom,lot_doc.packing_uom)
 		qty = (qty * uom_factor)
 		for x in variant_doc.attributes:
 			attr_values[x.attribute] = x.attribute_value
 		if len(item_detail.item_bom) == 0:
 			frappe.throw("No BOM is set on this item production detail")
 		for bom_item in item_detail.item_bom:
+			if process_name:
+				if bom_item.process_name != process_name:
+					continue
+			if not bom.get(bom_item.item, False):
+				bom[bom_item.item] = {}
+
 			qty_of_product = bom_item.qty_of_product
 			qty_of_bom = bom_item.qty_of_bom_item
 			bom_item_doc = None
@@ -307,7 +320,6 @@ def get_calculated_bom(item_production_detail, items, lot_name):
 					bom_item_doc = frappe.get_doc("Item", bom_item.item)
 					bom_item_conv = get_uom_conversion_factor(bom_item_doc.uom_conversion_details, dependent_attr_uom ,lot_doc.packing_uom)
 					qty_of_product = bom_item_conv
-
 			qty_of_product = qty_of_product/qty_of_bom
 			uom = None
 			if not bom_item.dependent_attribute_value or not item_detail.dependent_attribute:
@@ -318,10 +330,10 @@ def get_calculated_bom(item_production_detail, items, lot_name):
 				quantity = qty / qty_of_product
 				item_variant = get_or_create_variant(bom_item.item, {})
 				
-				if not bom.get(item_variant, False):
-					bom[item_variant] = [math.ceil(quantity),bom_item.process_name, uom]
+				if not bom[bom_item.item].get(item_variant, False):
+					bom[bom_item.item][item_variant] = [math.ceil(quantity),bom_item.process_name, uom]
 				else:
-					bom[item_variant][0] += math.ceil(quantity)
+					bom[bom_item.item][item_variant][0] += math.ceil(quantity)
 			else:
 				pack_attr = item_detail.packing_attribute
 				pack_combo = item_detail.packing_combo
@@ -408,6 +420,10 @@ def get_calculated_bom(item_production_detail, items, lot_name):
 									updated_bom = create_and_update_bom_set(attributes,bom_item.item,bom,temp_qty,item_detail.auto_calculate,item_detail.packing_attribute_details, attr.attribute_value, bom_item.process_name, uom)
 									bom = updated_bom
 									break
+		if process_name:
+			if process_name != item_detail.cutting_process:
+				continue
+
 		if item_detail.dependent_attribute:
 			del attr_values[item_detail.dependent_attribute]
 			cut_attrs_list = []	
@@ -457,16 +473,23 @@ def get_calculated_bom(item_production_detail, items, lot_name):
 								cloth_color = get_cloth_colour(item_detail.stiching_item_combination_details,packing_attr.attribute_value,cutting_attr[item_detail.stiching_attribute])
 								variant = get_or_create_variant(cloth_item, {item_detail.packing_attribute: cloth_color, 'Dia':dia})
 								
-								if not bom.get(variant, False):
-									bom[variant] = [weight, 'Cutting', 'kg']
+								if not bom.get(cloth_item, False):
+									bom[cloth_item] = {}
+
+								if not bom[cloth_item].get(variant, False):
+									bom[cloth_item][variant] = [weight, 'Cutting', 'kg']
 								else:
-									bom[variant][0] += weight
+									bom[cloth_item][variant][0] += weight
 								break
 	bom_items = []	
 	
 	for key, val in bom.items():
-		bom_items.append({'item_name': key,'uom':val[2],'process_name':val[1],'required_qty':val[0]})
+		for variant,value in val.items():
+			bom_items.append({'item_name': variant,'uom':value[2],'process_name':value[1],'required_qty':value[0]})
 
+	if process_name:
+		return bom
+	
 	lot_doc.set('bom_summary', bom_items)
 	lot_doc.last_calculated_time = now_datetime()
 	lot_doc.save()	
@@ -552,24 +575,29 @@ def check_same_values(cut_item, cloth_item, same_attrs):
 def create_and_update_bom(index, type, mapping_doc_values, attr_values, mapping_bom_item_attributes, bom_item, bom, quantity, process_name, uom):
 	attributes = get_same_index_values(index, type, mapping_doc_values, attr_values, mapping_bom_item_attributes)
 	new_variant = get_or_create_variant(bom_item, attributes)
-	if not bom.get(new_variant, False):
-		bom[new_variant] = [math.ceil(quantity),process_name, uom]
+	if not bom.get(bom_item, False):
+		bom[bom_item] = {}
+
+	if not bom[bom_item].get(new_variant, False):
+		bom[bom_item][new_variant] = [math.ceil(quantity),process_name, uom]
 	else:
-		bom[new_variant][0] += math.ceil(quantity)
+		bom[bom_item][new_variant][0] += math.ceil(quantity)
 	return bom
 
 def create_and_update_bom_set(attributes, bom_item, bom, quantity, auto_calculate, packing_attribute_details, attr_value, process_name, uom):
 	new_variant = get_or_create_variant(bom_item, attributes)
-	if not bom.get(new_variant, False):
+	if not bom.get(bom_item, False):
+		bom[bom_item] = {}
+	if not bom[bom_item].get(new_variant, False):
 		if auto_calculate:
-			bom[new_variant] = [math.ceil(quantity),process_name, uom]
+			bom[bom_item][new_variant] = [math.ceil(quantity),process_name, uom]
 		else:
-			bom[new_variant] = [math.ceil(quantity * get_quantity(packing_attribute_details, attr_value)),process_name, uom]
+			bom[bom_item][new_variant] = [math.ceil(quantity * get_quantity(packing_attribute_details, attr_value)),process_name, uom]
 	else:
 		if auto_calculate:
-			bom[new_variant][0] += math.ceil(quantity)
+			bom[bom_item][new_variant][0] += math.ceil(quantity)
 		else:
-			bom[new_variant][0] += math.ceil(quantity * get_quantity(packing_attribute_details, attr_value))
+			bom[bom_item][new_variant][0] += math.ceil(quantity * get_quantity(packing_attribute_details, attr_value))
 	return bom
 
 ##################       COMBINATION       ##################
