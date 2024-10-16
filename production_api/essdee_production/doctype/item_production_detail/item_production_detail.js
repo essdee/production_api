@@ -251,15 +251,31 @@ frappe.ui.form.on("Item Production Detail", {
 	},
 	get_packing_attribute_values: function(frm){
 		frappe.call({
-			method: 'production_api.essdee_production.doctype.item_production_detail.item_production_detail.get_packing_values',
+			method: 'production_api.essdee_production.doctype.item_production_detail.item_production_detail.get_mapping_attribute_values',
 			args: {
-				packing_attribute_mapping_value: frm.set_packing_attr_map_value ,
-				packing_attribute_no : frm.doc.packing_attribute_no,
+				attribute_mapping_value: frm.set_packing_attr_map_value ,
+				attribute_no : frm.doc.packing_attribute_no,
 			},
 			callback: function(r){
 				if(r.message){
 					frm.set_value('packing_attribute_details', r.message)
 					frm.refresh_field('packing_attribute_details')
+				}
+			}
+		})
+	},
+	get_stiching_attribute_values(frm){
+		frappe.call({
+			method: 'production_api.essdee_production.doctype.item_production_detail.item_production_detail.get_mapping_attribute_values',
+			args: {
+				attribute_mapping_value: frm.stiching_attribute_mapping ,
+				attribute_no : null,
+			},
+			callback: function(r){
+				if(r.message){
+					console.log(r.message)
+					frm.set_value('stiching_item_details', r.message)
+					frm.refresh_field('stiching_item_details')
 				}
 			}
 		})
@@ -289,6 +305,7 @@ frappe.ui.form.on("Item Production Detail", {
 		if(frm.select_cloth_attrs_multicheck){
 			let cutting_attr_list = []
 			let get_checked_attributes = frm.select_cloth_attrs_multicheck.get_checked_options()
+			console.log(get_checked_attributes)
 			for(let i = 0 ; i< get_checked_attributes.length; i++){
 				cutting_attr_list.push({'attribute':get_checked_attributes[i]})
 			}
@@ -382,7 +399,6 @@ frappe.ui.form.on("Item Production Detail", {
 			frappe.msgprint("Set the stiching major attribute value")
 			return
 		}
-
 		if(frm.doc.stiching_item_details.length == 0){
 			frappe.msgprint("Set the Stiching Item Detail")
 			return
@@ -393,10 +409,12 @@ frappe.ui.form.on("Item Production Detail", {
 				attribute_mapping_value : frm.stiching_attribute_mapping,
 				packing_attribute_details : frm.doc.packing_attribute_details,
 				major_attribute_value : frm.doc.stiching_major_attribute_value,
+				is_same_packing_attribute: frm.doc.is_same_packing_attribute,
 			},
 			callback:async function(r){
 				await frm.stiching_item.load_data(r.message)
 				frm.stiching_item.set_attributes()
+				frm.dirty()
 			}
 		})
 	},
@@ -405,23 +423,24 @@ frappe.ui.form.on("Item Production Detail", {
 		if(get_checked_attributes.length == 0){
 			frappe.msgprint("Select the attributes to make combination")
 			frm.cutting_item.load_data([])
-			return
 		}
-		frappe.call({
-			method: 'production_api.essdee_production.doctype.item_production_detail.item_production_detail.get_cutting_combination',
-			args: {
-				attributes: get_checked_attributes,
-				item_attributes: frm.doc.item_attributes,	
-				cloth_detail: frm.doc.cloth_detail,
-				combination_type: 'Cutting',
-				packing_attr: frm.doc.packing_attribute,
-				packing_attr_details: frm.doc.packing_attribute_details,		
-			},
-			callback:(async (r)=> {
-				await frm.cutting_item.load_data(r.message)
-				frm.cutting_item.set_attributes()
+		else{
+			frappe.call({
+				method: 'production_api.essdee_production.doctype.item_production_detail.item_production_detail.get_cutting_combination',
+				args: {
+					attributes: get_checked_attributes,
+					item_attributes: frm.doc.item_attributes,	
+					cloth_detail: frm.doc.cloth_detail,
+					combination_type: 'Cutting',
+					packing_attr: frm.doc.packing_attribute,
+					packing_attr_details: frm.doc.packing_attribute_details,		
+				},
+				callback:(async (r)=> {
+					await frm.cutting_item.load_data(r.message)
+					frm.cutting_item.set_attributes()
+				})
 			})
-		})
+		}
 	},
 	get_cloth_combination(frm){
 		if(frm.doc.cloth_detail.length == 0){
@@ -592,4 +611,3 @@ function make_select_attributes(frm, html_field, html_class, name, attrs, json_f
 	});
 	frm[name].refresh_input();
 }
-
