@@ -163,11 +163,13 @@ frappe.ui.form.on("Item Production Detail", {
 			}
 		}
 		frm.trigger('make_hide_and_unhide_tabs')
-		if(frm.doc.cloth_detail.length == 0){
-			frm.set_df_property('get_cutting_combination','hidden',true);
-		}
-		else{
-			frm.set_df_property('get_cutting_combination','hidden',false);
+		if(!frm.is_new()){
+			if(frm.doc.cloth_detail.length == 0){
+				frm.set_df_property('get_cutting_combination','hidden',true);
+			}
+			else{
+				frm.set_df_property('get_cutting_combination','hidden',false);
+			}
 		}
 	},
 	make_hide_and_unhide_tabs(frm){

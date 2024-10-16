@@ -246,6 +246,33 @@ frappe.production.ui.WorkOrderItemView = class {
     }
 }
 
+// frappe.production.ui.WorkOrderItemView = class {
+//     constructor(wrapper){
+//         this.$wrapper = $(wrapper)
+//         this.make_app()
+//     }
+//     make_app(){
+//         this.app = createApp(WorkOrderItemView)
+//         SetVueGlobals(this.app)
+//         this.vue = this.app.mount(this.$wrapper.get(0))
+//     }
+//     load_data(item_details){
+//         let items = JSON.parse(JSON.stringify(item_details))
+//         this.vue.load_data(items)
+//     }
+
+//     get_work_order_items(){
+//         let items = this.vue.get_items()
+//         for(let i = 0 ; i < items[0].items.length; i++){
+//             items[0].items[i]['entered_qty'] = {}
+//         }
+//         return items
+//     }
+//     create_input_attributes(){
+//         this.vue.create_input_classes()
+//     }
+// }
+
 frappe.production.ui.PurchaseOrderItem = class {
     constructor(wrapper) {
         this.$wrapper = $(wrapper);

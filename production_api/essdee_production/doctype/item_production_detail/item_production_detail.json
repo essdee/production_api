@@ -49,26 +49,26 @@
   "stiching_in_stage",
   "stiching_out_stage",
   "stiching_attribute_quantity",
-  "get_stiching_attribute_values",
   "stiching_item_details",
-  "is_same_packing_attribute",
   "get_stiching_item_combination",
   "stiching_items_html",
   "stiching_item_combination_details",
   "cutting_tab",
   "cutting_details_section",
-  "cloth_attributes",
-  "cloth_detail",
-  "additional_cloth",
-  "section_break_eorj",
+  "cutting_process",
+  "cutting_out_stage",
   "cutting_attributes",
   "select_attributes_html",
+  "section_break_eorj",
   "get_cutting_combination",
   "cutting_items_html",
   "cutting_items_json",
   "section_break_cqll",
   "column_break_gwca",
   "select_cloths_attribute_html",
+  "cloth_attributes",
+  "additional_cloth",
+  "cloth_detail",
   "get_cloth_combination",
   "update_cloth_items",
   "cutting_cloths_html",
@@ -247,7 +247,6 @@
   {
    "fieldname": "set_item_combination_details",
    "fieldtype": "Table",
-   "hidden": 1,
    "label": "Set Item Combination Details",
    "options": "Item Production Detail Set Item Combination"
   },
@@ -274,24 +273,21 @@
    "fieldname": "stiching_attribute",
    "fieldtype": "Link",
    "label": "Stiching Attribute",
-   "options": "Item Attribute",
-   "reqd": 1
+   "options": "Item Attribute"
   },
   {
    "depends_on": "eval: doc.stiching_attribute",
    "fieldname": "stiching_in_stage",
    "fieldtype": "Link",
    "label": "Stiching In Stage",
-   "options": "Item Attribute Value",
-   "reqd": 1
+   "options": "Item Attribute Value"
   },
   {
    "depends_on": "eval: doc.stiching_attribute",
    "fieldname": "stiching_out_stage",
    "fieldtype": "Link",
    "label": "Stiching Out Stage",
-   "options": "Item Attribute Value",
-   "reqd": 1
+   "options": "Item Attribute Value"
   },
   {
    "depends_on": "eval: !doc.__islocal",
@@ -300,12 +296,10 @@
    "label": "Stiching"
   },
   {
-   "depends_on": "eval: doc.stiching_attribute",
    "fieldname": "stiching_major_attribute_value",
    "fieldtype": "Link",
    "label": "Stiching Major Attribute Value",
-   "options": "Item Attribute Value",
-   "reqd": 1
+   "options": "Item Attribute Value"
   },
   {
    "fieldname": "get_stiching_item_combination",
@@ -349,7 +343,7 @@
   {
    "fieldname": "section_break_cqll",
    "fieldtype": "Section Break",
-   "label": "Cloth Mapping Details"
+   "label": "Cloth Details"
   },
   {
    "fieldname": "cutting_items_html",
@@ -376,9 +370,7 @@
   {
    "fieldname": "additional_cloth",
    "fieldtype": "Float",
-   "label": "Additional Cloth %",
-   "non_negative": 1,
-   "precision": "2"
+   "label": "Additional Cloth %"
   },
   {
    "fieldname": "tech_pack_version",
@@ -426,35 +418,62 @@
   {
    "fieldname": "cutting_details_section",
    "fieldtype": "Section Break",
-   "label": "Cloth Details"
+   "label": "Cutting Details"
   },
   {
    "fieldname": "section_break_eorj",
-   "fieldtype": "Section Break",
-   "label": "Cutting Details"
+   "fieldtype": "Section Break"
   },
   {
    "fieldname": "stiching_attribute_quantity",
    "fieldtype": "Int",
-   "label": "Stiching Attribute Quantity",
-   "non_negative": 1
+   "label": "Stiching Attribute Quantity"
   },
   {
-   "depends_on": "eval: doc.stiching_attribute_quantity > 0",
-   "fieldname": "get_stiching_attribute_values",
-   "fieldtype": "Button",
-   "label": "Get Stiching Attribute Values"
+   "fieldname": "process_section",
+   "fieldtype": "Section Break",
+   "label": "Process"
   },
   {
-   "default": "0",
-   "fieldname": "is_same_packing_attribute",
-   "fieldtype": "Check",
-   "label": "Is Same Packing Attribute"
+   "fieldname": "ipd_processes",
+   "fieldtype": "Table",
+   "label": "IPD Processes",
+   "options": "IPD Process"
+  },
+  {
+   "fieldname": "packing_process",
+   "fieldtype": "Link",
+   "label": "Packing Process",
+   "options": "Process"
+  },
+  {
+   "fieldname": "pack_in_stage",
+   "fieldtype": "Link",
+   "label": "Pack In Stage",
+   "options": "Item Attribute Value"
+  },
+  {
+   "fieldname": "stiching_process",
+   "fieldtype": "Link",
+   "label": "Stiching Process",
+   "options": "Process"
+  },
+  {
+   "fieldname": "cutting_process",
+   "fieldtype": "Link",
+   "label": "Cutting Process",
+   "options": "Process"
+  },
+  {
+   "fieldname": "cutting_out_stage",
+   "fieldtype": "Link",
+   "label": "Cutting Out Stage",
+   "options": "Item Attribute Value"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2024-10-08 17:31:39.325988",
+ "modified": "2024-10-16 15:38:33.200707",
  "modified_by": "Administrator",
  "module": "Essdee Production",
  "name": "Item Production Detail",

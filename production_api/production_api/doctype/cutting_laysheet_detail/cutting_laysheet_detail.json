@@ -1,0 +1,96 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2024-10-16 15:13:02.155703",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "cloth_type",
+  "colour",
+  "dia",
+  "shade",
+  "weight",
+  "no_of_rolls",
+  "no_of_bits",
+  "end_bit_weight",
+  "comments"
+ ],
+ "fields": [
+  {
+   "columns": 1,
+   "fieldname": "cloth_type",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Cloth Type"
+  },
+  {
+   "columns": 1,
+   "fieldname": "colour",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Colour"
+  },
+  {
+   "columns": 1,
+   "fieldname": "dia",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Dia"
+  },
+  {
+   "columns": 1,
+   "fieldname": "shade",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Shade"
+  },
+  {
+   "columns": 1,
+   "fieldname": "weight",
+   "fieldtype": "Float",
+   "in_list_view": 1,
+   "label": "Weight"
+  },
+  {
+   "columns": 1,
+   "fieldname": "no_of_rolls",
+   "fieldtype": "Float",
+   "in_list_view": 1,
+   "label": "No of Rolls"
+  },
+  {
+   "columns": 1,
+   "fieldname": "no_of_bits",
+   "fieldtype": "Int",
+   "in_list_view": 1,
+   "label": "No of Bits"
+  },
+  {
+   "columns": 1,
+   "fieldname": "end_bit_weight",
+   "fieldtype": "Float",
+   "in_list_view": 1,
+   "label": "End Bit Weight"
+  },
+  {
+   "columns": 2,
+   "fieldname": "comments",
+   "fieldtype": "Small Text",
+   "in_list_view": 1,
+   "label": "Comments"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2024-10-16 15:19:04.902274",
+ "modified_by": "Administrator",
+ "module": "Production Api",
+ "name": "Cutting LaySheet Detail",
+ "owner": "Administrator",
+ "permissions": [],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}
