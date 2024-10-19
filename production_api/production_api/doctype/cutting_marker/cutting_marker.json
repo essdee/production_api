@@ -1,0 +1,134 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "naming_series:",
+ "creation": "2024-10-16 14:58:44.042397",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "cutting_plan",
+  "lot",
+  "item",
+  "cutting_attribute",
+  "column_break_bwuo",
+  "length",
+  "width",
+  "total_no_of_plys",
+  "naming_series",
+  "section_break_lzec",
+  "cutting_marker_ratios",
+  "calculate_parts",
+  "cutting_marker_parts"
+ ],
+ "fields": [
+  {
+   "fieldname": "cutting_plan",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Cutting Plan",
+   "options": "Cutting Plan",
+   "reqd": 1
+  },
+  {
+   "fetch_from": "cutting_plan.lot",
+   "fieldname": "lot",
+   "fieldtype": "Link",
+   "label": "Lot",
+   "options": "Lot",
+   "read_only": 1
+  },
+  {
+   "fetch_from": "cutting_plan.item",
+   "fieldname": "item",
+   "fieldtype": "Link",
+   "label": "Item",
+   "options": "Item",
+   "read_only": 1
+  },
+  {
+   "fieldname": "total_no_of_plys",
+   "fieldtype": "Int",
+   "label": "Total No Of Plys",
+   "non_negative": 1
+  },
+  {
+   "fieldname": "length",
+   "fieldtype": "Float",
+   "label": "Length",
+   "precision": "3"
+  },
+  {
+   "fieldname": "width",
+   "fieldtype": "Float",
+   "label": "Width",
+   "precision": "3"
+  },
+  {
+   "fieldname": "cutting_marker_ratios",
+   "fieldtype": "Table",
+   "label": "Cutting Marker Ratios",
+   "options": "Cutting Marker Ratio"
+  },
+  {
+   "fieldname": "column_break_bwuo",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "section_break_lzec",
+   "fieldtype": "Section Break"
+  },
+  {
+   "depends_on": "eval: !doc.__islocal && doc.item",
+   "fieldname": "cutting_marker_parts",
+   "fieldtype": "Table",
+   "label": "Cutting Marker Parts",
+   "options": "Cutting Marker Part"
+  },
+  {
+   "fetch_from": "cutting_plan.ipd_cutting_attribute",
+   "fieldname": "cutting_attribute",
+   "fieldtype": "Link",
+   "hidden": 1,
+   "label": "Cutting Attribute",
+   "options": "Item Attribute"
+  },
+  {
+   "default": "CM-.DD.-.MM.-.YYYY.-.{#####}.",
+   "fieldname": "naming_series",
+   "fieldtype": "Data",
+   "hidden": 1,
+   "label": "Naming Series"
+  },
+  {
+   "depends_on": "eval: !doc.__islocal && doc.item",
+   "fieldname": "calculate_parts",
+   "fieldtype": "Button",
+   "label": "Calculate Parts"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2024-10-17 17:11:25.822067",
+ "modified_by": "Administrator",
+ "module": "Production Api",
+ "name": "Cutting Marker",
+ "naming_rule": "By \"Naming Series\" field",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

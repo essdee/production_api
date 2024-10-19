@@ -325,7 +325,6 @@
   {
    "fieldname": "stiching_item_combination_details",
    "fieldtype": "Table",
-   "hidden": 1,
    "label": "Stiching Item Combination Details",
    "options": "Item Production Detail Set Item Combination"
   },
@@ -483,7 +482,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2024-10-16 16:45:42.794059",
+ "modified": "2024-10-19 12:04:23.171407",
  "modified_by": "Administrator",
  "module": "Essdee Production",
  "name": "Item Production Detail",

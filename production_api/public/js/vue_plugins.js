@@ -10,13 +10,16 @@ import POItem from "./PurchaseOrder/components/Item.vue"
 import GRNItemWrapper from "./GRN";
 import LotOrder from "./Lot/components/LotOrder.vue" 
 import LotOrderDetail from "./Lot/components/LotOrderDetail.vue"
+import CutPlanItems from "./CuttingPlan/components/CutPlanItems.vue"
+import CutPlanClothItems from "./CuttingPlan/components/CutPlanClothItems.vue"
+
 import CombinationItemDetail from "./Item_Po_detail/CombinationItemDetail.vue"
 import CuttingItemDetail from "./Item_Po_detail/CuttingItemDetail.vue"
 import { StockEntryWrapper, StockReconciliationWrapper, LotTransferWrapper } from "./Stock";
 import WorkOrderDeliverables from "./WorkOrder/components/Deliverables.vue"
 import WorkOrderReceivables from "./WorkOrder/components/Receivables.vue"
 import WorkOrderItemView from "./WorkOrder/components/WorkOrderItemView.vue"
-
+import LaySheetCloths from "./CuttingLaySheet/components/LaySheetCloths.vue"
 import DeliveryChallan from "./Delivery_Challan/components/deliverable_items.vue"
 
 // Product Development
@@ -243,6 +246,66 @@ frappe.production.ui.WorkOrderItemView = class {
     }
     create_input_attributes(){
         this.vue.create_input_classes()
+    }
+}
+
+frappe.production.ui.CutPlanItems = class {
+    constructor(wrapper){
+        this.$wrapper = $(wrapper)
+        this.make_app()
+    }
+    make_app(){
+        this.app = createApp(CutPlanItems)
+        SetVueGlobals(this.app)
+        this.vue = this.app.mount(this.$wrapper.get(0))
+    }
+    load_data(item_details){
+        let items = JSON.parse(JSON.stringify(item_details))
+        this.vue.load_data(items)
+    }
+    get_items(){
+        let items = this.vue.get_items()
+        return items
+    }
+}
+
+frappe.production.ui.CutPlanClothItems = class {
+    constructor(wrapper){
+        this.$wrapper = $(wrapper)
+        this.make_app()
+    }
+    make_app(){
+        this.app = createApp(CutPlanClothItems)
+        SetVueGlobals(this.app)
+        this.vue = this.app.mount(this.$wrapper.get(0))
+    }
+    load_data(item_details){
+        let items = JSON.parse(JSON.stringify(item_details))
+        this.vue.load_data(items)
+    }
+    get_items(){
+        let items = this.vue.get_items()
+        return items
+    }
+}
+
+frappe.production.ui.LaySheetCloths = class {
+    constructor(wrapper){
+        this.$wrapper = $(wrapper)
+        this.make_app()
+    }
+    make_app(){
+        this.app = createApp(LaySheetCloths)
+        SetVueGlobals(this.app)
+        this.vue = this.app.mount(this.$wrapper.get(0))
+    }
+    load_data(item_details){
+        let items = JSON.parse(JSON.stringify(item_details))
+        this.vue.load_data(items)
+    }
+    get_items(){
+        let items = this.vue.get_items()
+        return items
     }
 }
 

@@ -1,0 +1,131 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "naming_series:",
+ "creation": "2024-10-16 14:48:08.751597",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "lot",
+  "lay_no",
+  "naming_series",
+  "column_break_nvaz",
+  "item",
+  "production_detail",
+  "ipd_cutting_attribute",
+  "section_break_krhn",
+  "items",
+  "items_html",
+  "section_break_pxju",
+  "cutting_plan_cloth_details",
+  "cloths_html"
+ ],
+ "fields": [
+  {
+   "fieldname": "lot",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Lot",
+   "options": "Lot",
+   "reqd": 1
+  },
+  {
+   "fieldname": "column_break_nvaz",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fetch_from": "lot.item",
+   "fieldname": "item",
+   "fieldtype": "Link",
+   "label": "Item",
+   "options": "Item"
+  },
+  {
+   "fetch_from": "lot.production_detail",
+   "fieldname": "production_detail",
+   "fieldtype": "Link",
+   "hidden": 1,
+   "label": "Production Detail",
+   "options": "Item Production Detail"
+  },
+  {
+   "default": "0",
+   "fieldname": "lay_no",
+   "fieldtype": "Int",
+   "label": "Lay No",
+   "read_only": 1
+  },
+  {
+   "fieldname": "section_break_krhn",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "items",
+   "fieldtype": "Table",
+   "hidden": 1,
+   "label": "Items",
+   "options": "Lot Order Detail"
+  },
+  {
+   "fieldname": "items_html",
+   "fieldtype": "HTML",
+   "label": "Items HTML"
+  },
+  {
+   "fieldname": "section_break_pxju",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "cutting_plan_cloth_details",
+   "fieldtype": "Table",
+   "hidden": 1,
+   "label": "Cutting Plan Cloth Details",
+   "options": "Cutting Plan Cloth Detail"
+  },
+  {
+   "fetch_from": "production_detail.stiching_attribute",
+   "fieldname": "ipd_cutting_attribute",
+   "fieldtype": "Link",
+   "hidden": 1,
+   "label": "IPD Cutting Attribute",
+   "options": "Item Attribute"
+  },
+  {
+   "default": "CP-.DD.-.MM.-.YYYY.-.{#####}.",
+   "fieldname": "naming_series",
+   "fieldtype": "Data",
+   "hidden": 1,
+   "label": "Naming Series"
+  },
+  {
+   "fieldname": "cloths_html",
+   "fieldtype": "HTML",
+   "label": "Cloths HTML"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2024-10-19 10:13:47.349949",
+ "modified_by": "Administrator",
+ "module": "Production Api",
+ "name": "Cutting Plan",
+ "naming_rule": "By \"Naming Series\" field",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

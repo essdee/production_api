@@ -1,0 +1,160 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "naming_series:",
+ "creation": "2024-10-16 15:06:57.171282",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "cutting_plan",
+  "length",
+  "width",
+  "cutting_spreader",
+  "start_datetime",
+  "lay_no",
+  "column_break_rxns",
+  "cutting_marker",
+  "length_allowance",
+  "width_allowance",
+  "cutter",
+  "end_datetime",
+  "naming_series",
+  "section_break_dasc",
+  "cutting_laysheet_details",
+  "cloths_html",
+  "section_break_mbrg",
+  "cutting_laysheet_bundles"
+ ],
+ "fields": [
+  {
+   "fieldname": "cutting_plan",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Cutting Plan",
+   "options": "Cutting Plan",
+   "reqd": 1
+  },
+  {
+   "fetch_from": "cutting_marker.length",
+   "fieldname": "length",
+   "fieldtype": "Float",
+   "label": "Length",
+   "precision": "3",
+   "read_only": 1
+  },
+  {
+   "fetch_from": "cutting_marker.width",
+   "fieldname": "width",
+   "fieldtype": "Float",
+   "label": "Width",
+   "precision": "3",
+   "read_only": 1
+  },
+  {
+   "fieldname": "cutting_spreader",
+   "fieldtype": "Link",
+   "label": "Cutting Spreader",
+   "options": "Cutting Spreader"
+  },
+  {
+   "fieldname": "start_datetime",
+   "fieldtype": "Datetime",
+   "label": "Start Datetime"
+  },
+  {
+   "fieldname": "lay_no",
+   "fieldtype": "Int",
+   "label": "Lay No",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_rxns",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "cutting_marker",
+   "fieldtype": "Link",
+   "label": "Cutting Marker",
+   "options": "Cutting Marker"
+  },
+  {
+   "fieldname": "length_allowance",
+   "fieldtype": "Float",
+   "label": "Length Allowance"
+  },
+  {
+   "fieldname": "width_allowance",
+   "fieldtype": "Float",
+   "label": "Width Allowance"
+  },
+  {
+   "fieldname": "cutter",
+   "fieldtype": "Link",
+   "label": "Cutter",
+   "options": "Cutter"
+  },
+  {
+   "fieldname": "end_datetime",
+   "fieldtype": "Datetime",
+   "label": "End Datetime"
+  },
+  {
+   "fieldname": "section_break_dasc",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "cutting_laysheet_details",
+   "fieldtype": "Table",
+   "hidden": 1,
+   "label": "Cutting LaySheet Details",
+   "options": "Cutting LaySheet Detail"
+  },
+  {
+   "default": "CLS-.DD.-.MM.-.YYYY.-.{#####}.",
+   "fieldname": "naming_series",
+   "fieldtype": "Data",
+   "hidden": 1,
+   "label": "Naming Series"
+  },
+  {
+   "fieldname": "cloths_html",
+   "fieldtype": "HTML",
+   "label": "Cloths HTML"
+  },
+  {
+   "fieldname": "section_break_mbrg",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "cutting_laysheet_bundles",
+   "fieldtype": "Table",
+   "label": "Cutting LaySheet Bundles",
+   "options": "Cutting LaySheet Bundle"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2024-10-19 10:24:02.712227",
+ "modified_by": "Administrator",
+ "module": "Production Api",
+ "name": "Cutting LaySheet",
+ "naming_rule": "By \"Naming Series\" field",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

@@ -330,7 +330,7 @@ def get_calculated_bom(item_production_detail, items, lot_name, process_name = N
 	lot_doc = frappe.get_doc("Lot", lot_name)
 	pack_out_stage = lot_doc.pack_out_stage
 	pack_in_stage = lot_doc.pack_in_stage
-	cloth_combination = get_combination(item_detail.cutting_items_json, item_detail.cutting_cloths_json)
+	cloth_combination = get_cloth_combination(item_detail.cutting_items_json, item_detail.cutting_cloths_json)
 	if len(items) == 0:
 		return
 	for item in items:
@@ -530,13 +530,14 @@ def calculate_cloth(bom, item_detail,cloth_combination, attr_values, og_piece_qu
 	is_stich_attribute = True
 	if not cloth_combination[0].get(item_detail.stiching_attribute):
 		is_stich_attribute = False
+	same_attr_value = attr_values.copy()
 
 	for packing_attr in item_detail.packing_attribute_details:
 		for stiching_attr in item_detail.stiching_item_details:
 			for cutting_attr in cloth_combination:
-				if item_detail.stiching_attribute in cut_attrs_list:
+				if not attr_values.get(item_detail.stiching_attribute) and item_detail.stiching_attribute in cut_attrs_list:
 					attr_values[item_detail.stiching_attribute] = stiching_attr.stiching_attribute_value	
-				if item_detail.packing_attribute in cut_attrs_list:
+				if not attr_values.get(item_detail.packing_attribute) and item_detail.packing_attribute in cut_attrs_list:
 					attr_values[item_detail.packing_attribute] = packing_attr.attribute_value
 				if check_cutting_attr(attr_values, cutting_attr):
 					if not cloth_detail.get(cutting_attr['Cloth'], False):
@@ -563,12 +564,12 @@ def calculate_cloth(bom, item_detail,cloth_combination, attr_values, og_piece_qu
 							x = x * item_detail.additional_cloth
 						weight = weight + x
 						if not is_stich_attribute and item_detail.is_same_packing_attribute:
-							cloth_color = get_cloth_colour(item_detail.stiching_item_combination_details,packing_attr.attribute_value,stiching_attr.stiching_attribute_value)
+							cloth_color = get_cloth_colour(item_detail.stiching_item_combination_details,attr_values[item_detail.packing_attribute],attr_values[item_detail.stiching_attribute])
 						else:
 							if not is_stich_attribute:
 								frappe.msgprint("Stiching Attribute Not Defined in the Combination")
 								return None
-							cloth_color = get_cloth_colour(item_detail.stiching_item_combination_details,packing_attr.attribute_value,cutting_attr[item_detail.stiching_attribute])
+							cloth_color = get_cloth_colour(item_detail.stiching_item_combination_details,attr_values[item_detail.packing_attribute],cutting_attr[item_detail.stiching_attribute])
 
 						variant = get_or_create_variant(cloth_item, {item_detail.packing_attribute: cloth_color, 'Dia':dia})
 
@@ -576,6 +577,7 @@ def calculate_cloth(bom, item_detail,cloth_combination, attr_values, og_piece_qu
 							bom[cloth_item][variant] = [weight, 'Cutting', 'kg']
 						else:
 							bom[cloth_item][variant][0] += weight
+						attr_values = same_attr_value.copy()	
 						break
 	return bom
 
@@ -627,7 +629,7 @@ def check_cutting_attr(item_attr, combination_attr):
 			return False
 	return True	
 
-def get_combination(cutting_items, cloth_items):
+def get_cloth_combination(cutting_items, cloth_items):
 	cutting_items = json.loads(cutting_items)
 	cloth_items = json.loads(cloth_items)
 	combination_list = []
