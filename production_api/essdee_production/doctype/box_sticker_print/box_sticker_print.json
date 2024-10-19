@@ -84,6 +84,7 @@
    "label": "Use Item Name"
   },
   {
+   "allow_on_submit": 1,
    "fetch_from": "fg_item.display_name",
    "fieldname": "display_name",
    "fieldtype": "Data",
@@ -101,7 +102,7 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2024-09-24 15:22:04.961099",
+ "modified": "2024-10-19 14:26:30.277335",
  "modified_by": "Administrator",
  "module": "Essdee Production",
  "name": "Box Sticker Print",

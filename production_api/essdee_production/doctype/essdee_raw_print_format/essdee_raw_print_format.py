@@ -16,8 +16,9 @@ def get_value_with_pad(value:str, pad:int):
 	return value
 
 @frappe.whitelist()
-def get_item_size(item,min,min_size, max_size):
-	if len(item)< min:
-		return max_size
-	else:
-		return min_size
+def get_item_size(item, item_size, text_size):
+	for idx,i in enumerate(item_size):
+		if len(item) <= i:
+			return text_size[idx]
+
+	return text_size[len(text_size)-1]	
