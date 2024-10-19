@@ -17,7 +17,7 @@ frappe.ui.form.on("Cutting LaySheet", {
                 frappe.call({
                     method:"production_api.production_api.doctype.cutting_laysheet.cutting_laysheet.get_parts",
                     args: {
-                        cutting_plan: frm.doc.cutting_plan,
+                        cutting_marker: frm.doc.cutting_marker,
                     },
                     callback:function(r){
                         let d =  new frappe.ui.Dialog({

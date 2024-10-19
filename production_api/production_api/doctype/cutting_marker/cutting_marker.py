@@ -34,13 +34,10 @@ def calculate_parts(ratios, cutting_plan, doc_name):
 	ipd = frappe.get_value("Cutting Plan", cutting_plan,"production_detail")
 	ipd_doc = frappe.get_doc("Item Production Detail",ipd)
 	attribute_list = []
-	for ratio in ratios:
-		for item in ipd_doc.stiching_item_details:
-			attribute_list.append({
-				"part": item.stiching_attribute_value,
-				"size": ratio['size'],
-				"quantity": ratio['ratio'] * item.quantity
-			})
+	for item in ipd_doc.stiching_item_details:
+		attribute_list.append({
+			"part": item.stiching_attribute_value,
+		})
 
 	cm_doc = frappe.get_doc("Cutting Marker", doc_name)
 	cm_doc.set("cutting_marker_parts",attribute_list)

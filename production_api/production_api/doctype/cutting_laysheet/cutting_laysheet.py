@@ -70,12 +70,11 @@ def get_select_attributes(cutting_plan):
 	}	
 
 @frappe.whitelist()
-def get_parts(cutting_plan):
-	ipd = frappe.get_value("Cutting Plan",cutting_plan,"production_detail")
-	ipd_doc = frappe.get_doc("Item Production Detail", ipd)
+def get_parts(cutting_marker):
+	cm_doc = frappe.get_doc("Cutting Marker",cutting_marker)
 	part_list = []
-	for item in ipd_doc.stiching_item_details:
-		part_list.append(item.stiching_attribute_value)
+	for item in cm_doc.cutting_marker_parts:
+		part_list.append(item.part)
 	return part_list	
 
 @frappe.whitelist()

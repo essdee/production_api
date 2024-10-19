@@ -6,9 +6,7 @@
  "editable_grid": 1,
  "engine": "InnoDB",
  "field_order": [
-  "part",
-  "size",
-  "quantity"
+  "part"
  ],
  "fields": [
   {
@@ -17,25 +15,12 @@
    "in_list_view": 1,
    "label": "Part",
    "options": "Item Attribute Value"
-  },
-  {
-   "fieldname": "size",
-   "fieldtype": "Link",
-   "in_list_view": 1,
-   "label": "Size",
-   "options": "Item Attribute Value"
-  },
-  {
-   "fieldname": "quantity",
-   "fieldtype": "Int",
-   "in_list_view": 1,
-   "label": "Quantity"
   }
  ],
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2024-10-17 11:00:53.690496",
+ "modified": "2024-10-19 12:30:21.099975",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Cutting Marker Part",
