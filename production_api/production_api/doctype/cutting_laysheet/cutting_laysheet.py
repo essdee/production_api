@@ -7,6 +7,7 @@ from itertools import groupby
 from six import string_types
 from frappe.model.document import Document
 from production_api.production_api.doctype.item.item import get_or_create_variant
+from frappe.utils import now_datetime
 
 class CuttingLaySheet(Document):
 	def onload(self):
@@ -50,6 +51,8 @@ def save_item_details(items, cutting_plan):
 			"no_of_bits":item['no_of_bits'],
 			"end_bit_weight":item['end_bit_weight'],
 			"comments":item['comments'],
+			"accessory_json":item['accessory_json'],
+			"accessory_weight":item['accessory_weight']
 		})	
 	return item_list	
 
@@ -101,17 +104,11 @@ def get_cut_sheet_data(doc_name,cutting_marker,item_details,items, max_plys:int)
 			minimum_count = total_bundles - maximum_count
 	
 			temp = bundle_no 
-			groups = []
 			for part,group in items.items():
-				if group in groups:
-					bundle_no = temp
-				else:
-					groups.append(group)
-					temp = bundle_no
-					bundle_no = temp	
-
+				bundle_no = temp	
 				for j in range(maximum_count):
 					bundle_no = bundle_no + 1
+					hash_value = frappe.generate_hash(length=16)
 					cut_sheet_data.append({
 						"size":cm_item.size,
 						"colour":item['colour'],
@@ -119,9 +116,11 @@ def get_cut_sheet_data(doc_name,cutting_marker,item_details,items, max_plys:int)
 						"bundle_no":bundle_no,
 						"part":part,
 						"quantity":maximum * item['no_of_bits'],
+						"hash_value":hash_value
 					})	
 				for j in range(minimum_count):
 					bundle_no = bundle_no + 1
+					hash_value = frappe.generate_hash(length=16)
 					cut_sheet_data.append({
 						"size":cm_item.size,
 						"colour":item['colour'],
@@ -129,24 +128,104 @@ def get_cut_sheet_data(doc_name,cutting_marker,item_details,items, max_plys:int)
 						"bundle_no":bundle_no,
 						"part":part,
 						"quantity":minimum * item['no_of_bits'],
+						"hash_value":hash_value
 					})		
 			temp = bundle_no	
 	
 	dictionary = {}
-	for items in cut_sheet_data:
-		if dictionary.get(items['bundle_no']):
-			item = dictionary[items['bundle_no']]
-			part = item['part']
-			item['part'] = part + ", " + items['part']
-			dictionary[items['bundle_no']] = item
-		else:	
-			dictionary[items['bundle_no']] = items
+	for item in cut_sheet_data:
+		if dictionary.get(item['bundle_no']):
+			dictionary[item['bundle_no']].append(item)
+		else:
+			dictionary[item['bundle_no']] = [item]	
+
+	final_list = {}
+	for key,values in dictionary.items():
+		final_list[key] = []
+		group = []
+		for value in values:
+			part = value['part']
+			if items[part] not in group:
+				value['group'] = items[part]
+				final_list[key].append(value)
+			else:
+				for j in final_list[key]:
+					if j['group'] == items[part]:
+						pt = j['part']
+						j['part'] =  pt + "," + part
+			group.append(items[part])				
 
 	cut_sheet_data = []
-	for key, values in dictionary.items():
-		cut_sheet_data.append(values)
-
+	for key, values in final_list.items():
+		for val in values:
+			val['bundle_no'] = key
+			cut_sheet_data.append(val)
 
 	doc = frappe.get_doc("Cutting LaySheet", doc_name)
 	doc.set("cutting_laysheet_bundles", cut_sheet_data)
 	doc.save()
+
+@frappe.whitelist()
+def get_cloth_accessories(cutting_plan):
+	ipd = frappe.get_value("Cutting Plan", cutting_plan, "production_detail")
+	ipd_doc = frappe.get_doc("Item Production Detail", ipd)
+	accessory_list = []
+	x = ipd_doc.accessory_clothtype_json
+	if isinstance(x,string_types):
+		x = json.loads(x)
+	if x:
+		for key,val in x.items():
+			accessory_list.append(key)
+	return accessory_list	
+
+@frappe.whitelist()
+def print_labels(print_items, lay_no, cutting_plan):
+	lot_no,item_name = frappe.get_value("Cutting Plan",cutting_plan,["lot","item"])
+	if isinstance(print_items,string_types):
+		print_items = json.loads(print_items)
+	zpl = ""
+	month = now_datetime().month
+	date = now_datetime().day
+	year = now_datetime().year
+	for item in print_items:
+		x = f"""^XA
+			^FO70,30^GFA,2736,2736,38,,:::::::::::::::P0FI0MF803MFC01MFC0NFI0MF803LFEF8,0018001006B001MF807MFC07MFC0NF801MF807LFEB8,001C00300EI03MF80NFC07MFC0NFC03MF80MFE,001E00701EI07MF81NFC0NFC0NFE07MF81MFE,001F00F03EI07MF81NFC0NFC0NFE07MF81MFE,001F01F07EI07MF81NFC1NFC0NFE07MF81MFE,001F83F07EI07MF81NFC1NFC0NFE07MF81MFE,001F83F0FEI07MF81NFC1NFC0NFE07MF81MFE,001FC3F0FEI07MF01NF81NFC0NFE07MF01MFC,001FC3F0FEI07FCL01FFM01FF8M0FF8I07FE07FCL01FF,001FC3F0FEI07FCL01FFM01FF8M0FF8I03FE07FCL01FF,:::001FC3F0FEI07MF81MFE01MFE00FF8I03FE07MF81MFE,001FC3F0FEI07MF81NF01NF80FF8I03FE07MF81MFE,001FC3F0FEI07MF81NF81NF80FF8I03FE07MF81MFE,001FC3F0FEI07MF81NF80NFC0FF8I03FE07MF81MFE,I0FC3F0FCI07MF81NFC0NFC0FF8I03FE07MF81MFE,I07C3F0F8I07MF80NFC0NFC0FF8I03FE07MF81MFE,I03C3F0FJ07MF807MFC07MFC0FF8I03FE07MF81MFE,I01C3F0EJ07MF803MFC01MFC0FF8I03FE07MF81MFE,J0C3F0CJ07FCS0FFCM07FC0FF8I03FE07FCL01FF,J043F08J07FCS0FFCM07FC0FF8I03FE07FCL01FF,K03FL07FCS0FFCM07FC0FF8I03FE07FCL01FF,::::::K03FL07FCS0FFCM07FC0FF8I07FE07FCL01FF,K03FL07MF81NFC1NFC0NFE07MF81MFE,:K03EL07MF81NFC1NFC0NFE07MF81MFE,K03CL07MF81NFC1NFC0NFE07MF81MFE,K038L07MF81NF81NFC0NFE07MF81MFE,K03M03MF81NF81NFC0NFC03MF80MFE,K02M03MF81NF01NF80NFC01MF80MFE,K02N0MF81MFE01NF00NFI0MF803LFE,,:::::::::::::::^FS
+			^PW1000
+			^FO720,50^A0,40,40^FD{date}/{month}/{year}^FS
+			^FO108,35^A0,15,15^FDTM^FS
+			^FO350,35^A0,15,15^FDTM^FS
+
+			^FO30,15^GB910,435,5^FS
+			^FO30,110^GB910,70,5^FS
+			^FO30,245^GB910,70,5^FS
+			^FO30,380^GB910,70,5^FS
+			^FO30,447^GB475,70,5^FS
+			^FO500,245^GB2,205,5^FS
+
+			^FO40,130^A0,40,40^FDStyle^FS
+			^FO40,195^A0,40,40^FDPanel^FS
+			^FO40,267^A0,40,40^FDLay No^FS
+			^FO40,335^A0,40,40^FDColour^FS
+			^FO40,403^A0,40,40^FDSize^FS
+			^FO40,470^A0,40,40^FDLot No^FS
+			^FO510,267^A0,40,40^FDBundle No^FS
+			^FO510,335^A0,40,40^FDShade^FS
+			^FO510,403^A0,40,40^FDQty^FS
+
+			^FO150,130^A0,40,40^FD: {item_name}^FS
+			^FO150,195^A0,40,40^FD: {item['part']}^FS
+			^FO150,267^A0,40,40^FD: {lay_no}^FS
+			^FO150,335^A0,40,40^FD: {item['colour']}^FS
+			^FO150,403^A0,40,40^FD: {item['size']}^FS
+			^FO150,470^A0,40,40^FD: {lot_no}^FS
+			^FO680,267^A0,40,40^FD: {item['bundle_no']}^FS
+			^FO610,335^A0,40,40^FD: {item['shade']}^FS
+			^FO610,403^A0,40,40^FD: {item['quantity']}^FS
+
+			^BY2,1,60
+			^FO510,455^BC^FD{item['hash_value']}^FS
+
+			^XZ"""
+		zpl += x
+
+	return zpl	

@@ -56,6 +56,39 @@ frappe.ui.form.on("Cutting LaySheet", {
                 })
             })
         }
+        if(frm.doc.cutting_laysheet_bundles.length > 0){
+            frm.add_custom_button("Print Labels", ()=> {
+                frappe.ui.form.qz_connect()
+                    .then(function () {
+                        return frappe.ui.form.qz_get_printer_list();
+                    })
+                    .then(function (printers) {
+                        let d = new frappe.ui.Dialog({
+                            title:"Select any one printer",
+                            fields: [
+                                {
+                                    fieldname: 'printer_list_html',
+                                    fieldtype: 'HTML',
+                                }
+                            ],
+                            size:'small',
+                            primary_action_label:"Print",
+                            primary_action:function(){
+                                d.hide()
+                                let printer = get_printer()
+                                printer = printer.slice(1, -1);
+                                print_labels(frm,printer)
+                            }
+                        })
+                        d.fields_dict.printer_list_html.$wrapper.html('');
+                        d.fields_dict.printer_list_html.$wrapper.append(get_printers_html(printers))
+                        d.show()
+                    })
+                    .catch(function (err) {
+                        frappe.ui.form.qz_fail(err);
+                    });
+                })
+        }
 	},
     validate(frm){
         let items = frm.laysheet.get_items()
@@ -92,6 +125,71 @@ function get_parts_html(parts_list) {
     return htmlContent;
 }
 
+function get_printers_html(printers){
+    let htmlContent = `
+        <table>
+            <thead>
+                <tr>
+                    <th style="padding: 10px; border: 1px solid #ddd; background-color: #f4f4f4; font-size: 15px;"></th>
+                    <th style="padding: 10px; border: 1px solid #ddd; background-color: #f4f4f4; font-size: 15px;">Printer</th>
+                </tr>
+            </thead>
+            <tbody>
+    `;
+    for (let i = 0; i < printers.length; i++) {
+        htmlContent += `
+            <tr>
+                <td style="padding: 10px; border: 1px solid #ddd; font-size: 12px;"><input type="checkbox" class="printers-checkbox-${0}" data-response='${JSON.stringify(printers[i])}'></td>
+                <td style="padding: 10px; border: 1px solid #ddd; font-size: 12px;">${printers[i]}</td>
+            </tr>
+        `;
+    }
+
+    htmlContent += `
+                </tbody>
+            </table>`
+
+    return htmlContent
+}
+
+function get_printer(){
+    let checkedCheckboxes = $(`.printers-checkbox-${0}:checked`);
+    let printers_list = new Set()
+    checkedCheckboxes.each(function() {
+        let p = $(this).data('response')
+        if(p!=null){
+            printers_list.add(p);
+        }
+        $(this).data('response', null);
+    });
+    if(printers_list.size == 0){
+        frappe.throw("Select a printer")
+    }
+    else if(printers_list.size > 1){
+        frappe.throw("Select only one printer")
+    }
+    else{
+        let prints = [...printers_list] 
+        return prints[0]
+    }
+}
+
+function print_labels(frm,printer){
+    frappe.call({
+        method:'production_api.production_api.doctype.cutting_laysheet.cutting_laysheet.print_labels',
+        args: {
+            print_items: frm.doc.cutting_laysheet_bundles,
+            lay_no:frm.doc.lay_no,
+            cutting_plan: frm.doc.cutting_plan,
+        },
+        callback: function(r){
+            if(r.message){
+                let config = qz.configs.create(printer)
+                qz.print(config,[r.message])
+            }
+        }
+    })
+}
 
 async function get_item_quantity(frm){
     let items = {}

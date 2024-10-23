@@ -12,6 +12,7 @@
                     <th>No of Rolls</th>
                     <th>No of Bits</th>
                     <th>End Bit Weight</th>
+                    <th>Accessory in kg's</th>
                     <th>Comments</th>
                     <th>Edit</th>
                 </tr>
@@ -25,6 +26,11 @@
                     <td>{{item.no_of_rolls}}</td>
                     <td>{{item.no_of_bits}}</td>
                     <td>{{item.end_bit_weight}}</td>
+                    <td>
+                        <div v-for='(key,value) in JSON.parse(item.accessory_json)' :key='key'>
+                            {{value}}:{{key}}
+                        </div>
+                    </td>
                     <td>{{item.comments}}</td>
                     <td>
                         <div class="pull-right cursor-pointer" @click="add_cloth_item(idx)"
@@ -45,13 +51,18 @@
                 <div class="cloth-dia col-md-4"></div>
             </div>
             <div class="row">
-                <div class="cloth-shade col-md-5"></div>
-                <div class="cloth-weight col-md-5"></div>
+                <div class="cloth-shade col-md-4"></div>
+                <div class="cloth-weight col-md-4"></div>
+                <div class="cloth-rolls col-md-4"></div>
             </div>
             <div class="row">
-                <div class="cloth-rolls col-md-5"></div>
-                <div class="cloth-bits col-md-5"></div>
-                <div class="cloth-end-bit col-md-5"></div>
+                <div class="cloth-bits col-md-4"></div>
+                <div class="cloth-end-bit col-md-4"></div>
+            </div>
+            <div class="row">                
+                <div class="cloth-accessory-left col-md-4"></div>
+                <div class="cloth-accessory-middle col-md-4"></div>
+                <div class="cloth-accessory-right col-md-4"></div>
             </div>
             <div class="row">
                 <div class="cloth-comment col-md-12"></div>
@@ -66,7 +77,7 @@
     </div>
 </template>
 <script setup>
-import {ref, onMounted} from 'vue';
+import {ref, onMounted, computed} from 'vue';
 let show_button1 = ref(true)
 let show_button2 = ref(false)
 let show_button3 = ref(false)
@@ -74,6 +85,7 @@ let items = ref([])
 let root = ref(null)
 let sample_doc = ref({})
 let select_attributes = null
+let cloth_accessories = []
 let cloth_type = null
 let cloth_colour = null
 let cloth_dia = null
@@ -84,6 +96,7 @@ let cloth_bits = null
 let cloth_end_bit = null
 let cloth_comment = null
 let edit_index = null
+let cloth_attrs = []
 let docstatus = ref(null)
 
 function add_cloth_item(index){
@@ -96,142 +109,63 @@ function add_cloth_item(index){
         show_button3.value = true
     }
     let el = root.value;
-    $(el).find(".cloth-type").html("");
-    cloth_type = frappe.ui.form.make_control({
-        parent: $(el).find(".cloth-type"),
-        df: {
-            fieldtype: "Select",
-            fieldname: "cloth_type",
-            label: "Cloth Type",
-            options : select_attributes['cloth_type'],
-            reqd: true,
-        },
-        doc: sample_doc.value,
-        render_input: true,
-    });
-    $(el).find(".cloth-colour").html("");
-    cloth_colour = frappe.ui.form.make_control({
-        parent: $(el).find(".cloth-colour"),
-        df: {
-            fieldtype: "Select",
-            fieldname: "cloth_colour",
-            label: "Colour",
-            options : select_attributes['colour'],
-            reqd: true,
-        },
-        doc: sample_doc.value,
-        render_input: true,
-    });
-    $(el).find(".cloth-dia").html("");
-    cloth_dia = frappe.ui.form.make_control({
-        parent: $(el).find(".cloth-dia"),
-        df: {
-            fieldtype: "Select",
-            fieldname: "cloth_dia",
-            label: "Dia",
-            options : select_attributes['dia'],
-            reqd: true,
-        },
-        doc: sample_doc.value,
-        render_input: true,
-    });
-    $(el).find(".cloth-shade").html("");
-    cloth_shade = frappe.ui.form.make_control({
-        parent: $(el).find(".cloth-shade"),
-        df: {
-            fieldtype: "Data",
-            fieldname: "cloth_shade",
-            label: "Shade",
-            reqd: true,
-        },
-        doc: sample_doc.value,
-        render_input: true,
-    });
-    $(el).find(".cloth-weight").html("");
-    cloth_weight = frappe.ui.form.make_control({
-        parent: $(el).find(".cloth-weight"),
-        df: {
-            fieldtype: "Float",
-            fieldname: "cloth_weight",
-            label: "Weight",
-            reqd: true,
-        },
-        doc: sample_doc.value,
-        render_input: true,
-    });
-    $(el).find(".cloth-rolls").html("");
-    cloth_rolls = frappe.ui.form.make_control({
-        parent: $(el).find(".cloth-rolls"),
-        df: {
-            fieldtype: "Int",
-            fieldname: "cloth_rolls",
-            label: "No of Rolls",
-            reqd: true,
-        },
-        doc: sample_doc.value,
-        render_input: true,
-    });
-    $(el).find(".cloth-bits").html("");
-    cloth_bits = frappe.ui.form.make_control({
-        parent: $(el).find(".cloth-bits"),
-        df: {
-            fieldtype: "Int",
-            fieldname: "cloth_bits",
-            label: "No of Bits",
-            reqd: true,
-        },
-        doc: sample_doc.value,
-        render_input: true,
-    });
-    $(el).find(".cloth-end-bit").html("");
-    cloth_end_bit = frappe.ui.form.make_control({
-        parent: $(el).find(".cloth-end-bit"),
-        df: {
-            fieldtype: "Float",
-            fieldname: "cloth_end_bit",
-            label: "Cloth End Bit Weight",
-            reqd: true,
-        },
-        doc: sample_doc.value,
-        render_input: true,
-    });
-    $(el).find(".cloth-comment").html("");
-    cloth_comment = frappe.ui.form.make_control({
-        parent: $(el).find(".cloth-comment"),
-        df: {
-            fieldtype: "Small Text",
-            fieldname: "cloth_comment",
-            label: "Comment",
-            reqd: true,
-        },
-        doc: sample_doc.value,
-        render_input: true,
-    });
+    cloth_type = get_input_field(".cloth-type","Select","cloth_type","Cloth Type",select_attributes['cloth_type'],true)
+    cloth_colour = get_input_field(".cloth-colour","Select","cloth_colour","Colour",select_attributes['colour'],true)
+    cloth_dia = get_input_field(".cloth-dia","Select","cloth_dia","Dia",select_attributes['dia'],true)
+    cloth_shade = get_input_field(".cloth-shade","Data","cloth_shade","Shade",null,true)
+    cloth_weight = get_input_field(".cloth-weight","Float","cloth_weight","Weight in kg's",null,true)
+    cloth_rolls = get_input_field(".cloth-rolls","Int","cloth_rolls","No of Rolls",null,true)
+    cloth_bits = get_input_field(".cloth-bits","Int","cloth_bits","No of Bits",null,true)
+    cloth_end_bit = get_input_field(".cloth-end-bit","Float","cloth_end_bit","End Bit Weight",null,true)
+    cloth_comment = get_input_field(".cloth-comment","Small Text","cloth_comment",'Comment',null,false)
+    $(el).find(".cloth-accessory-left").html("");
+    $(el).find(".cloth-accessory-right").html("");
+    $(el).find(".cloth-accessory-middle").html("");
+    for(let i = 0 ; i < cloth_accessories.length ; i++){
+        let classname = "";
+        if(i % 3 == 0){
+            classname = ".cloth-accessory-left";
+        }
+        else if(i % 2 == 0){
+            classname = ".cloth-accessory-right";
+        }
+        else{
+            classname = ".cloth-accessory-middle";
+        }
+        $(el).find(classname).append("<div class='input-wrapper'></div>");
+        cloth_attrs[i] = get_input_field(classname + ' .input-wrapper:last',"Float","cloth_accessories_" + i,cloth_accessories[i]+" in kg's",null,false)
+    }
     if(index != null){
-        cloth_type.set_value(items.value[index]['cloth_type'])
-        cloth_type.refresh()
-        cloth_colour.set_value(items.value[index]['colour'])
-        cloth_colour.refresh()
-        cloth_dia.set_value(items.value[index]['dia'])
-        cloth_dia.refresh()
-        cloth_weight.set_value(items.value[index]['weight'])
-        cloth_weight.refresh()
-        cloth_shade.set_value(items.value[index]['shade'])
-        cloth_shade.refresh()
-        cloth_rolls.set_value(items.value[index]['no_of_rolls'])
-        cloth_rolls.refresh()
-        cloth_bits.set_value(items.value[index]['no_of_bits'])
-        cloth_bits.refresh()
-        cloth_end_bit.set_value(items.value[index]['end_bit_weight'])
-        cloth_end_bit.refresh()
-        cloth_comment.set_value(items.value[index]['comments'])
-        cloth_comment.refresh()
+        let arr1 = [cloth_type,cloth_colour,cloth_dia,cloth_weight,cloth_shade,cloth_rolls,cloth_bits,cloth_end_bit,cloth_comment]
+        let arr2 = ["cloth_type","colour","dia","weight","shade","no_of_rolls","no_of_bits","end_bit_weight","comments"]
+        set_attr_values(arr1,arr2, index)
+        let dict = items.value[index]['accessory_json']
+        if(typeof(dict) == 'string'){
+            dict = JSON.parse(dict)
+        }
+        Object.keys(dict).forEach((key,value)=> {
+            cloth_attrs[value].set_value(dict[key])
+        })
+    }
+}
+
+function set_attr_values(variables,keys, index){
+    for(let i = 0 ; i < variables.length ; i++){
+        variables[i].set_value(items.value[index][keys[i]])
+        variables[i].refresh()
     }
 }
 
 function add_item(){
     check_values()
     cur_frm.dirty()
+    let accessory_json = {}
+    let total_weight = 0.0
+    for(let i = 0 ; i < cloth_attrs.length; i++){
+        let val = cloth_attrs[i].get_value()
+        accessory_json[cloth_accessories[i]] = val
+        total_weight += val
+    }
     items.value.push({
         "cloth_type":cloth_type.get_value(),
         "dia":cloth_dia.get_value(),
@@ -242,6 +176,8 @@ function add_item(){
         "no_of_bits":cloth_bits.get_value(),
         "end_bit_weight":cloth_end_bit.get_value(),
         "comments":cloth_comment.get_value(),
+        "accessory_json":JSON.stringify(accessory_json),
+        "accessory_weight":total_weight,
     })
     make_clean()
 }
@@ -266,6 +202,13 @@ function delete_item(index){
 function update_item(){
     check_values()
     cur_frm.dirty()
+    let accessory_json = {}
+    let total_weight = 0.0
+    for(let i = 0 ; i < cloth_attrs.length; i++){
+        let val = cloth_attrs[i].get_value()
+        accessory_json[cloth_accessories[i]] = val
+        total_weight += val
+    }
     items.value[edit_index] = {
         "cloth_type":cloth_type.get_value(),
         "dia":cloth_dia.get_value(),
@@ -275,6 +218,8 @@ function update_item(){
         "no_of_rolls":cloth_rolls.get_value(),
         "no_of_bits":cloth_bits.get_value(),
         "end_bit_weight":cloth_end_bit.get_value(),
+        "accessory_weight":total_weight,
+        "accessory_json":accessory_json,
         "comments":cloth_comment.get_value(),
     }
     edit_index = null
@@ -292,17 +237,34 @@ function check_values(){
     }
 }
 
+function get_input_field(classname,fieldtype,fieldname,label,options,reqd){
+    let el = root.value
+    $(el).find(classname).html("");
+    let df = {
+            fieldtype: fieldtype,
+            fieldname: fieldname,
+            label: label,
+            reqd:reqd,
+        }
+    if(options){
+        df['options'] = options
+    }    
+    return frappe.ui.form.make_control({
+        parent: $(el).find(classname),
+        df: df,
+        doc: sample_doc.value,
+        render_input: true,
+    });
+}
 function make_clean(){
     let el = root.value
-    cloth_type.set_value(null),
-    cloth_dia.set_value(null),
-    cloth_colour.set_value(null),
-    cloth_shade.set_value(null),
-    cloth_weight.set_value(null),
-    cloth_rolls.set_value(null),
-    cloth_bits.set_value(null),
-    cloth_end_bit.set_value(null),
-    cloth_comment.set_value(null),
+    let arr1 = [cloth_type,cloth_dia,cloth_colour,cloth_shade,cloth_weight,cloth_rolls,cloth_bits,cloth_end_bit,cloth_comment]
+    for(let i = 0 ; i < arr1.length; i++){
+        arr1[i].set_value(null)
+    }
+    for (let i =0 ; i < cloth_attrs.length ; i++){
+        cloth_attrs[i].set_value(null)
+    }
     $(el).find(".cloth-type").html("");
     $(el).find(".cloth-weight").html("");
     $(el).find(".cloth-end-bit").html("");
@@ -312,6 +274,9 @@ function make_clean(){
     $(el).find(".cloth-dia").html("");
     $(el).find(".cloth-bits").html("");
     $(el).find(".cloth-rolls").html("");
+    $(el).find(".cloth-accessory-right").html("");
+    $(el).find(".cloth-accessory-left").html("");
+    $(el).find(".cloth-accessory-middle").html("");
     show_button1.value = true
     show_button2.value = false
 }
@@ -333,11 +298,19 @@ onMounted(()=> {
                 select_attributes = r.message
             }
         })
+        frappe.call({
+            method:"production_api.production_api.doctype.cutting_laysheet.cutting_laysheet.get_cloth_accessories",
+            args: {
+                cutting_plan:cur_frm.doc.cutting_plan,
+            },
+            callback:function(r){
+                cloth_accessories = r.message
+            }
+        })
     }
 })
 
 function load_data(item_detail){
-    console.log(items.length)
     items.value = item_detail
 }
 

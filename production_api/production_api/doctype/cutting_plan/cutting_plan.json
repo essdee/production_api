@@ -104,8 +104,17 @@
   }
  ],
  "index_web_pages_for_search": 1,
- "links": [],
- "modified": "2024-10-19 10:13:47.349949",
+ "links": [
+  {
+   "link_doctype": "Cutting Marker",
+   "link_fieldname": "cutting_plan"
+  },
+  {
+   "link_doctype": "Cutting LaySheet",
+   "link_fieldname": "cutting_plan"
+  }
+ ],
+ "modified": "2024-10-23 12:42:35.898453",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Cutting Plan",

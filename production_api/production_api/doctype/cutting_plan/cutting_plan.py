@@ -78,6 +78,8 @@ def get_items(lot):
 	items = fetch_order_item_details(lot_doc.lot_order_details, lot_doc.production_detail)
 	return items
 
+# Get the current time
+
 @frappe.whitelist()
 def get_cloth(ipd, item_name, items, doc_name):
 	if isinstance(items, string_types):
@@ -85,7 +87,7 @@ def get_cloth(ipd, item_name, items, doc_name):
 	cloth_list = {}
 	ipd_doc = frappe.get_doc("Item Production Detail",ipd)
 	item_attributes = get_attribute_details(item_name)
-	cloth_combination = get_cloth_combination(ipd_doc.cutting_items_json, ipd_doc.cutting_cloths_json)
+	cloth_combination = get_cloth_combination(ipd_doc)
 	for item in items:
 		variant = frappe.get_doc("Item Variant", item['item_variant'])
 		attr_details = item_attribute_details(variant, item_attributes)
@@ -124,3 +126,7 @@ def item_attribute_details(variant, item_attributes):
 		if attr.attribute in item_attributes['attributes'] and attr.attribute != item_attributes['dependent_attribute']:
 			attribute_details[attr.attribute] = attr.attribute_value
 	return attribute_details
+
+@frappe.whitelist()
+def get_cutting_laysheet_details(cutting_plan):
+	cut_lay = frappe.qb.DocType("Cutting LaySheet")

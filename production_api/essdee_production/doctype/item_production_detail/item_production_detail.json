@@ -25,10 +25,12 @@
   "packing_section",
   "packing_process",
   "pack_in_stage",
-  "pack_out_stage",
   "packing_combo",
+  "column_break_gcku",
   "packing_attribute",
+  "pack_out_stage",
   "packing_attribute_no",
+  "section_break_rjdy",
   "auto_calculate",
   "get_packing_attribute_values",
   "packing_attribute_details",
@@ -45,11 +47,14 @@
   "stiching_process",
   "stiching_attribute",
   "stiching_major_attribute_value",
+  "column_break_houe",
   "stiching_in_stage",
   "stiching_out_stage",
   "stiching_attribute_quantity",
+  "section_break_lpco",
   "get_stiching_attribute_values",
   "stiching_item_details",
+  "section_break_wfps",
   "is_same_packing_attribute",
   "get_stiching_item_combination",
   "stiching_items_html",
@@ -72,7 +77,19 @@
   "get_cloth_combination",
   "update_cloth_items",
   "cutting_cloths_html",
-  "cutting_cloths_json"
+  "cutting_cloths_json",
+  "cloth_accessory_tab",
+  "accessory_attributes",
+  "accessory_clothtype_combination_html",
+  "select_cloth_accessory_html",
+  "get_accessory_combination",
+  "cloth_accessories_html",
+  "cloth_accessory_json",
+  "accessory_clothtype_json",
+  "section_break_bfkp",
+  "get_stiching_accessory_combination",
+  "stiching_accessory_json",
+  "stiching_accessory_html"
  ],
  "fields": [
   {
@@ -325,10 +342,12 @@
   {
    "fieldname": "stiching_item_combination_details",
    "fieldtype": "Table",
+   "hidden": 1,
    "label": "Stiching Item Combination Details",
    "options": "Item Production Detail Set Item Combination"
   },
   {
+   "depends_on": "eval: !doc.__islocal",
    "fieldname": "cutting_tab",
    "fieldtype": "Tab Break",
    "label": "Cutting"
@@ -370,7 +389,7 @@
    "fieldname": "cloth_detail",
    "fieldtype": "Table",
    "label": "Cloth Detail",
-   "options": "Item Production Detail Cloth Accessories"
+   "options": "Item Production Detail Cloth Detail"
   },
   {
    "fieldname": "update_cloth_items",
@@ -478,11 +497,96 @@
    "fieldtype": "Table",
    "label": "IPD Processes",
    "options": "IPD Process"
+  },
+  {
+   "fieldname": "cloth_accessories_html",
+   "fieldtype": "HTML",
+   "label": "Cloth Accessories HTML"
+  },
+  {
+   "fieldname": "select_cloth_accessory_html",
+   "fieldtype": "HTML",
+   "label": "Select Cloth Accessory HTML"
+  },
+  {
+   "fieldname": "get_accessory_combination",
+   "fieldtype": "Button",
+   "label": "Get Accessory Combination"
+  },
+  {
+   "fieldname": "accessory_attributes",
+   "fieldtype": "Table MultiSelect",
+   "hidden": 1,
+   "label": "Accessory Attributes",
+   "options": "Cutting Attribute Detail"
+  },
+  {
+   "fieldname": "cloth_accessory_json",
+   "fieldtype": "JSON",
+   "hidden": 1,
+   "label": "Cloth Accessory JSON"
+  },
+  {
+   "depends_on": "eval: !doc.__islocal",
+   "fieldname": "cloth_accessory_tab",
+   "fieldtype": "Tab Break",
+   "label": "Cloth Accessory"
+  },
+  {
+   "fieldname": "stiching_accessory_html",
+   "fieldtype": "HTML",
+   "label": "Stiching Accessory HTML"
+  },
+  {
+   "fieldname": "section_break_bfkp",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "get_stiching_accessory_combination",
+   "fieldtype": "Button",
+   "label": "Get Stiching Accessory Combination"
+  },
+  {
+   "fieldname": "stiching_accessory_json",
+   "fieldtype": "JSON",
+   "hidden": 1,
+   "label": "Stiching Accessory JSON"
+  },
+  {
+   "fieldname": "accessory_clothtype_combination_html",
+   "fieldtype": "HTML",
+   "label": "Accessory ClothType Combination HTML"
+  },
+  {
+   "fieldname": "accessory_clothtype_json",
+   "fieldtype": "JSON",
+   "hidden": 1,
+   "label": "Accessory Clothtype JSON"
+  },
+  {
+   "fieldname": "column_break_gcku",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "section_break_rjdy",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "column_break_houe",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "section_break_lpco",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "section_break_wfps",
+   "fieldtype": "Section Break"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2024-10-19 12:04:23.171407",
+ "modified": "2024-10-23 18:42:11.688640",
  "modified_by": "Administrator",
  "module": "Essdee Production",
  "name": "Item Production Detail",

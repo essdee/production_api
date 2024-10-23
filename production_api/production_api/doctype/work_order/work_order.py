@@ -73,7 +73,7 @@ def save_item_details(item_details, process_name = None, wo_date = None, ipd = N
 			else:
 				if item['values'].get('default') and item['values']['default'].get('qty'):
 					quantity = item['values']['default'].get('qty')
-					item1 = get_data(item,item_name,item_attributes,table_index,row_index, process_name, quantity, wo_date)	
+					item1 = get_data(item,item_name,item_attributes,table_index,row_index, process_name, quantity, wo_date, ipd)	
 					item1['secondary_qty'] = item['values']['default'].get('secondary_qty')
 					item1['secondary_uom'] = item.get('secondary_uom')
 					items.append(item1)
@@ -327,7 +327,7 @@ def get_deliverable_receivable( lot, process, items, doc_name):
 		receivables = get_receivables(packing_attributes, process,lot, uom, doc.wo_date, ipd, conversion_details=item_doc.uom_conversion_details, out_uom=pack_out_uom)
 		
 	elif ipd_doc.cutting_process == process:
-		cutting_out_stage = frappe.get_value("Item Production Detail", ipd,'cutting_out_stage')
+		cutting_out_stage = frappe.get_value("Item Production Detail", ipd,'stiching_in_stage')
 		cutting_attributes = get_attributes(item_list, item_name, cutting_out_stage, dept_attribute,ipd)
 		receivables = get_receivables(cutting_attributes, process, lot, uom, doc.wo_date, ipd)
 		deliverables =  get_deliverables(bom, lot)

@@ -31,6 +31,14 @@ frappe.ui.form.on("Cutting Plan", {
                     },
                 })
             })
+            frm.add_custom_button("Generate Lay Reports", function(){
+                frappe.call({
+                    method:"production_api.production_api.doctype.cutting_plan.cutting_plan.get_cutting_laysheet_details",
+                    args: {
+                        cutting_plan:frm.doc.cutting_plan,
+                    }
+                })
+            })
         }
 	},
     validate(frm){
