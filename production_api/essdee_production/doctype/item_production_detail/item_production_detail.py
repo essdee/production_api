@@ -333,6 +333,16 @@ def get_calculated_bom(item_production_detail, items, lot_name, process_name = N
 	pack_out_stage = lot_doc.pack_out_stage
 	pack_in_stage = lot_doc.pack_in_stage
 	cloth_combination = get_cloth_combination(item_detail)
+
+	cloth_detail = {}
+	for cloth in item_detail.cloth_detail:
+		if cloth.is_bom_item:
+			cloth_detail[cloth.name1] = cloth.cloth
+
+	cut_attrs_list = []	
+	for cut_attrs in item_detail.cutting_attributes:
+		cut_attrs_list.append(cut_attrs.attribute)
+
 	if len(items) == 0:
 		return
 	for item in items:
@@ -411,7 +421,7 @@ def get_calculated_bom(item_production_detail, items, lot_name, process_name = N
 			del attr_values[item_detail.dependent_attribute]
 
 		if not process_name or process_name == item_detail.cutting_process:
-			bom = calculate_cloth(bom, item_detail,cloth_combination, attr_values, og_piece_quantity)
+			bom = calculate_cloth(bom, item_detail,cloth_combination, attr_values, og_piece_quantity, cloth_detail,cut_attrs_list)
 	
 	if process_name:
 		return bom
@@ -506,17 +516,7 @@ def get_not_set_item_bom(bom, item_detail, mapping_doc, attr_values, pack_attr, 
 	return bom			
 
 ##################       BOM CALCULATION FUNCTIONS       ##################
-def calculate_cloth(bom, item_detail,cloth_combination, attr_values, og_piece_quantity):
-	cut_attrs_list = []	
-
-	for cut_attrs in item_detail.cutting_attributes:
-		cut_attrs_list.append(cut_attrs.attribute)
-
-	cloth_detail = {}
-
-	for cloth in item_detail.cloth_detail:
-		if cloth.is_bom_item:
-			cloth_detail[cloth.name1] = cloth.cloth
+def calculate_cloth(bom, item_detail,cloth_combination, attr_values, og_piece_quantity, cloth_detail,cut_attrs_list):
 	temp_qty = 0.0
 
 	if item_detail.auto_calculate:
@@ -561,13 +561,10 @@ def calculate_cloth(bom, item_detail,cloth_combination, attr_values, og_piece_qu
 							x = x * item_detail.additional_cloth
 
 						weight = weight + x
-						if not is_stich_attribute and item_detail.is_same_packing_attribute:
-							cloth_color = get_cloth_colour(item_detail.stiching_item_combination_details,attr_values[item_detail.packing_attribute],attr_values[item_detail.stiching_attribute])
-						else:
-							if not is_stich_attribute:
-								frappe.msgprint("Stiching Attribute Not Defined in the Combination")
-								return None
-							cloth_color = get_cloth_colour(item_detail.stiching_item_combination_details,attr_values[item_detail.packing_attribute],attr_values[item_detail.stiching_attribute])
+						if not is_stich_attribute and not item_detail.is_same_packing_attribute:
+							frappe.msgprint("Stiching Attribute Not Defined in the Combination")
+							return None
+						cloth_color = get_cloth_colour(item_detail.stiching_item_combination_details,attr_values[item_detail.packing_attribute],attr_values[item_detail.stiching_attribute])
 						
 						if attr_values[item_detail.stiching_attribute] == item_detail.stiching_major_attribute_value:
 							bom = calculate_accessories_cloth(quantity, cutting_attr, item_detail, cloth_detail, bom, cloth_item)
@@ -583,8 +580,18 @@ def calculate_cloth(bom, item_detail,cloth_combination, attr_values, og_piece_qu
 						break
 	return bom
 
+def get_packing_attr_quantity(packing_attr, packing_attr_details):
+	for item in packing_attr_details:
+		if item.attribute_value == packing_attr:
+			return item.quantity
+
+def get_stiching_attr_quantity(stiching_attr, stiching_attr_details):
+	for item in stiching_attr_details:
+		if item.stiching_attribute_value == stiching_attr:
+			return item.quantity
+		
 def get_item_uom(item):
-	uom = frappe.get_value("Item",item,'default_unit_of_measure')
+	uom = frappe.get_cached_value("Item",item,'default_unit_of_measure')
 	return uom
 
 def calculate_accessories_cloth(quantity, combination_attributes, item_detail, cloth_detail, bom, item_cloth):
@@ -704,7 +711,7 @@ def get_cloth_combination(item_detail):
 			packing_attribute_values.append(i.attribute_value)
 		cloth_combination = get_combination(item_detail.packing_attribute, packing_attribute_values, cloth_combination) 
 	
-	if item_detail.stiching_attribute not in cutting_attributes and item_detail.stiching_attribute not in cloth_attributes and not item_detail.is_same_packing_attribute:
+	if item_detail.stiching_attribute not in cutting_attributes and item_detail.stiching_attribute not in cloth_attributes: #and not item_detail.is_same_packing_attribute:
 		stiching_attribute_values = []
 		for i in item_detail.stiching_item_details:
 			stiching_attribute_values.append(i.stiching_attribute_value)

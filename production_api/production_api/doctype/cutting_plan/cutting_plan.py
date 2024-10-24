@@ -79,19 +79,31 @@ def get_items(lot):
 	return items
 
 # Get the current time
-
+from datetime import datetime
 @frappe.whitelist()
 def get_cloth(ipd, item_name, items, doc_name):
 	if isinstance(items, string_types):
 		items = json.loads(items)
 	cloth_list = {}
 	ipd_doc = frappe.get_doc("Item Production Detail",ipd)
+	print(vars(ipd_doc))
+	ipd_details = {
+		
+	}
 	item_attributes = get_attribute_details(item_name)
 	cloth_combination = get_cloth_combination(ipd_doc)
+	cloth_detail = {}
+	for cloth in ipd_doc.cloth_detail:
+		if cloth.is_bom_item:
+			cloth_detail[cloth.name1] = cloth.cloth
+
+	cut_attrs_list = []	
+	for cut_attrs in ipd_doc.cutting_attributes:
+		cut_attrs_list.append(cut_attrs.attribute)
 	for item in items:
 		variant = frappe.get_doc("Item Variant", item['item_variant'])
 		attr_details = item_attribute_details(variant, item_attributes)
-		cloths = calculate_cloth({},ipd_doc,cloth_combination, attr_details,item['quantity'])
+		cloths = calculate_cloth({},ipd_doc,cloth_combination, attr_details,item['quantity'],cloth_detail,cut_attrs_list)
 		for cloth, cloth_items in cloths.items():
 			for key, value in cloth_items.items():
 				if cloth_list.get(key):
@@ -123,7 +135,7 @@ def get_cloth(ipd, item_name, items, doc_name):
 def item_attribute_details(variant, item_attributes):
 	attribute_details = {}
 	for attr in variant.attributes:
-		if attr.attribute in item_attributes['attributes'] and attr.attribute != item_attributes['dependent_attribute']:
+		if attr.attribute != item_attributes['dependent_attribute']:
 			attribute_details[attr.attribute] = attr.attribute_value
 	return attribute_details
 

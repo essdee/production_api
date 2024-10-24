@@ -21,8 +21,15 @@ class CuttingLaySheet(Document):
 		if self.is_new():
 			cut_plan_doc = frappe.get_doc("Cutting Plan",self.cutting_plan)	
 			self.lay_no = cut_plan_doc.lay_no + 1
+			self.maximum_no_of_plys = cut_plan_doc.maximum_no_of_plys
+			self.maximum_allow_percentage = cut_plan_doc.maximum_allow_percent
 			cut_plan_doc.lay_no = self.lay_no
 			cut_plan_doc.save()
+			cut_marker_doc = frappe.get_doc("Cutting Marker",self.cutting_marker)
+			marker_list = []
+			for item in cut_marker_doc.cutting_marker_ratios:
+				marker_list.append({'size':item.size,'ratio':item.ratio})
+			self.set("cutting_marker_ratios",marker_list)		
 
 def save_item_details(items, cutting_plan):
 	if isinstance(items, string_types):
@@ -81,19 +88,19 @@ def get_parts(cutting_marker):
 	return part_list	
 
 @frappe.whitelist()
-def get_cut_sheet_data(doc_name,cutting_marker,item_details,items, max_plys:int):
+def get_cut_sheet_data(doc_name,cutting_marker,item_details,items, max_plys:int,maximum_allow:int):
 	if isinstance(items, string_types):
 		items = json.loads(items)
 	if isinstance(item_details, string_types):
 		item_details = json.loads(item_details)	
-	max_plys = max_plys + (max_plys/100) * 10
+	maximum_plys = max_plys + (max_plys/100) * maximum_allow
 	bundle_no = 0
 	cm_doc = frappe.get_doc("Cutting Marker",cutting_marker)
 	cut_sheet_data = []
 	for item in item_details:
 		for cm_item in cm_doc.cutting_marker_ratios:
 			no_of_marks = cm_item.ratio
-			max_grouping = int(max_plys/item['no_of_bits'])
+			max_grouping = int(maximum_plys/item['no_of_bits'])
 			total_bundles = math.ceil(no_of_marks/max_grouping)
 			avg_grouping = no_of_marks/total_bundles
 
@@ -108,7 +115,7 @@ def get_cut_sheet_data(doc_name,cutting_marker,item_details,items, max_plys:int)
 				bundle_no = temp	
 				for j in range(maximum_count):
 					bundle_no = bundle_no + 1
-					hash_value = frappe.generate_hash(length=16)
+					hash_value = get_timestamp_prefix() + generate_random_string(12)
 					cut_sheet_data.append({
 						"size":cm_item.size,
 						"colour":item['colour'],
@@ -120,7 +127,7 @@ def get_cut_sheet_data(doc_name,cutting_marker,item_details,items, max_plys:int)
 					})	
 				for j in range(minimum_count):
 					bundle_no = bundle_no + 1
-					hash_value = frappe.generate_hash(length=16)
+					hash_value = get_timestamp_prefix() + generate_random_string(12)
 					cut_sheet_data.append({
 						"size":cm_item.size,
 						"colour":item['colour'],
@@ -162,8 +169,22 @@ def get_cut_sheet_data(doc_name,cutting_marker,item_details,items, max_plys:int)
 			cut_sheet_data.append(val)
 
 	doc = frappe.get_doc("Cutting LaySheet", doc_name)
+	doc.maximum_no_of_plys = max_plys
+	doc.maximum_allow_percentage = maximum_allow 
 	doc.set("cutting_laysheet_bundles", cut_sheet_data)
 	doc.save()
+
+import base64
+from secrets import token_bytes as get_random_bytes
+import time
+
+def get_timestamp_prefix():
+	ts = int(time.time() * 10) 
+	ts = ts % (32**4)
+	return base64.b32hexencode(ts.to_bytes(length=5, byteorder="big")).decode()[-4:].lower()
+
+def generate_random_string(length=10):
+	return base64.b32hexencode(get_random_bytes(length)).decode()[:length].lower()
 
 @frappe.whitelist()
 def get_cloth_accessories(cutting_plan):
@@ -187,7 +208,9 @@ def print_labels(print_items, lay_no, cutting_plan):
 	month = now_datetime().month
 	date = now_datetime().day
 	year = now_datetime().year
+	i = 0
 	for item in print_items:
+		i = i + 1
 		x = f"""^XA
 			^FO70,30^GFA,2736,2736,38,,:::::::::::::::P0FI0MF803MFC01MFC0NFI0MF803LFEF8,0018001006B001MF807MFC07MFC0NF801MF807LFEB8,001C00300EI03MF80NFC07MFC0NFC03MF80MFE,001E00701EI07MF81NFC0NFC0NFE07MF81MFE,001F00F03EI07MF81NFC0NFC0NFE07MF81MFE,001F01F07EI07MF81NFC1NFC0NFE07MF81MFE,001F83F07EI07MF81NFC1NFC0NFE07MF81MFE,001F83F0FEI07MF81NFC1NFC0NFE07MF81MFE,001FC3F0FEI07MF01NF81NFC0NFE07MF01MFC,001FC3F0FEI07FCL01FFM01FF8M0FF8I07FE07FCL01FF,001FC3F0FEI07FCL01FFM01FF8M0FF8I03FE07FCL01FF,:::001FC3F0FEI07MF81MFE01MFE00FF8I03FE07MF81MFE,001FC3F0FEI07MF81NF01NF80FF8I03FE07MF81MFE,001FC3F0FEI07MF81NF81NF80FF8I03FE07MF81MFE,001FC3F0FEI07MF81NF80NFC0FF8I03FE07MF81MFE,I0FC3F0FCI07MF81NFC0NFC0FF8I03FE07MF81MFE,I07C3F0F8I07MF80NFC0NFC0FF8I03FE07MF81MFE,I03C3F0FJ07MF807MFC07MFC0FF8I03FE07MF81MFE,I01C3F0EJ07MF803MFC01MFC0FF8I03FE07MF81MFE,J0C3F0CJ07FCS0FFCM07FC0FF8I03FE07FCL01FF,J043F08J07FCS0FFCM07FC0FF8I03FE07FCL01FF,K03FL07FCS0FFCM07FC0FF8I03FE07FCL01FF,::::::K03FL07FCS0FFCM07FC0FF8I07FE07FCL01FF,K03FL07MF81NFC1NFC0NFE07MF81MFE,:K03EL07MF81NFC1NFC0NFE07MF81MFE,K03CL07MF81NFC1NFC0NFE07MF81MFE,K038L07MF81NF81NFC0NFE07MF81MFE,K03M03MF81NF81NFC0NFC03MF80MFE,K02M03MF81NF01NF80NFC01MF80MFE,K02N0MF81MFE01NF00NFI0MF803LFE,,:::::::::::::::^FS
 			^PW1000
@@ -227,5 +250,7 @@ def print_labels(print_items, lay_no, cutting_plan):
 
 			^XZ"""
 		zpl += x
+		if i == 2:
+			break
 
 	return zpl	

@@ -7,18 +7,26 @@
  "engine": "InnoDB",
  "field_order": [
   "cutting_plan",
+  "lot",
   "length",
   "width",
   "cutting_spreader",
-  "start_datetime",
   "lay_no",
+  "maximum_no_of_plys",
+  "start_datetime",
+  "printed_time",
   "column_break_rxns",
   "cutting_marker",
+  "item",
   "length_allowance",
   "width_allowance",
   "cutter",
+  "marker_name",
+  "maximum_allow_percentage",
   "end_datetime",
   "naming_series",
+  "section_break_cwpl",
+  "cutting_marker_ratios",
   "section_break_dasc",
   "cutting_laysheet_details",
   "cloths_html",
@@ -54,7 +62,8 @@
    "fieldname": "cutting_spreader",
    "fieldtype": "Link",
    "label": "Cutting Spreader",
-   "options": "Cutting Spreader"
+   "options": "Cutting Spreader",
+   "reqd": 1
   },
   {
    "fieldname": "start_datetime",
@@ -75,7 +84,8 @@
    "fieldname": "cutting_marker",
    "fieldtype": "Link",
    "label": "Cutting Marker",
-   "options": "Cutting Marker"
+   "options": "Cutting Marker",
+   "reqd": 1
   },
   {
    "fieldname": "length_allowance",
@@ -91,7 +101,8 @@
    "fieldname": "cutter",
    "fieldtype": "Link",
    "label": "Cutter",
-   "options": "Cutter"
+   "options": "Cutter",
+   "reqd": 1
   },
   {
    "fieldname": "end_datetime",
@@ -130,11 +141,63 @@
    "fieldtype": "Table",
    "label": "Cutting LaySheet Bundles",
    "options": "Cutting LaySheet Bundle"
+  },
+  {
+   "fetch_from": "cutting_plan.lot",
+   "fieldname": "lot",
+   "fieldtype": "Link",
+   "label": "Lot",
+   "options": "Lot",
+   "read_only": 1
+  },
+  {
+   "fetch_from": "cutting_plan.item",
+   "fieldname": "item",
+   "fieldtype": "Link",
+   "label": "Item",
+   "options": "Item",
+   "read_only": 1
+  },
+  {
+   "fetch_from": "cutting_marker.marker_name",
+   "fieldname": "marker_name",
+   "fieldtype": "Data",
+   "label": "Marker Name",
+   "read_only": 1
+  },
+  {
+   "fieldname": "section_break_cwpl",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "cutting_marker_ratios",
+   "fieldtype": "Table",
+   "label": "Cutting Marker Ratios",
+   "options": "Cutting Marker Ratio",
+   "read_only": 1
+  },
+  {
+   "fieldname": "printed_time",
+   "fieldtype": "Datetime",
+   "label": "Printed Time",
+   "read_only": 1
+  },
+  {
+   "fieldname": "maximum_no_of_plys",
+   "fieldtype": "Int",
+   "label": "Maximum no of Plys",
+   "read_only": 1
+  },
+  {
+   "fieldname": "maximum_allow_percentage",
+   "fieldtype": "Float",
+   "label": "Maximum Allow Percentage",
+   "read_only": 1
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2024-10-19 10:24:02.712227",
+ "modified": "2024-10-24 12:54:56.279341",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Cutting LaySheet",

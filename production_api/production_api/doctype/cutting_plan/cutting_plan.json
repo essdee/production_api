@@ -7,10 +7,12 @@
  "engine": "InnoDB",
  "field_order": [
   "lot",
+  "maximum_no_of_plys",
   "lay_no",
   "naming_series",
   "column_break_nvaz",
   "item",
+  "maximum_allow_percent",
   "production_detail",
   "ipd_cutting_attribute",
   "section_break_krhn",
@@ -101,6 +103,17 @@
    "fieldname": "cloths_html",
    "fieldtype": "HTML",
    "label": "Cloths HTML"
+  },
+  {
+   "fieldname": "maximum_no_of_plys",
+   "fieldtype": "Int",
+   "label": "Maximum No of Plys",
+   "reqd": 1
+  },
+  {
+   "fieldname": "maximum_allow_percent",
+   "fieldtype": "Percent",
+   "label": "Maximum Allow Percent"
   }
  ],
  "index_web_pages_for_search": 1,
@@ -114,7 +127,7 @@
    "link_fieldname": "cutting_plan"
   }
  ],
- "modified": "2024-10-23 12:42:35.898453",
+ "modified": "2024-10-24 12:25:20.924401",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Cutting Plan",

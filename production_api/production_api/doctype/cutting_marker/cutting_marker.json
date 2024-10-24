@@ -8,12 +8,13 @@
  "field_order": [
   "cutting_plan",
   "lot",
-  "item",
+  "length",
+  "total_no_of_plys",
   "cutting_attribute",
   "column_break_bwuo",
-  "length",
+  "marker_name",
+  "item",
   "width",
-  "total_no_of_plys",
   "naming_series",
   "section_break_lzec",
   "cutting_marker_ratios",
@@ -104,11 +105,17 @@
    "fieldname": "calculate_parts",
    "fieldtype": "Button",
    "label": "Calculate Parts"
+  },
+  {
+   "fieldname": "marker_name",
+   "fieldtype": "Data",
+   "label": "Marker Name",
+   "reqd": 1
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2024-10-17 17:11:25.822067",
+ "modified": "2024-10-24 12:16:03.255572",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Cutting Marker",
