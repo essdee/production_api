@@ -62,7 +62,7 @@
    "fieldtype": "Select",
    "in_list_view": 1,
    "label": "Against",
-   "options": "\nPurchase Order",
+   "options": "Purchase Order",
    "reqd": 1
   },
   {
@@ -315,7 +315,7 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2024-10-16 12:58:46.441592",
+ "modified": "2024-10-27 00:45:56.816627",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Goods Received Note",
