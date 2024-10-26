@@ -78,8 +78,6 @@ def get_items(lot):
 	items = fetch_order_item_details(lot_doc.lot_order_details, lot_doc.production_detail)
 	return items
 
-# Get the current time
-from datetime import datetime
 @frappe.whitelist()
 def get_cloth(ipd, item_name, items, doc_name):
 	if isinstance(items, string_types):
@@ -87,9 +85,6 @@ def get_cloth(ipd, item_name, items, doc_name):
 	cloth_list = {}
 	ipd_doc = frappe.get_doc("Item Production Detail",ipd)
 	print(vars(ipd_doc))
-	ipd_details = {
-		
-	}
 	item_attributes = get_attribute_details(item_name)
 	cloth_combination = get_cloth_combination(ipd_doc)
 	cloth_detail = {}
@@ -103,7 +98,7 @@ def get_cloth(ipd, item_name, items, doc_name):
 	for item in items:
 		variant = frappe.get_doc("Item Variant", item['item_variant'])
 		attr_details = item_attribute_details(variant, item_attributes)
-		cloths = calculate_cloth({},ipd_doc,cloth_combination, attr_details,item['quantity'],cloth_detail,cut_attrs_list)
+		cloths = calculate_cloth({},ipd_doc,cloth_combination, attr_details, item['quantity'],cloth_detail,cut_attrs_list)
 		for cloth, cloth_items in cloths.items():
 			for key, value in cloth_items.items():
 				if cloth_list.get(key):
@@ -132,6 +127,49 @@ def get_cloth(ipd, item_name, items, doc_name):
 	doc.set("cutting_plan_cloth_details", required_cloth_details)
 	doc.save()
 
+@frappe.whitelist()
+def get_cloth1(cutting_plan):
+	cutting_plan_doc = frappe.get_doc("Cutting Plan", cutting_plan)
+	ipd_doc = frappe.get_doc("Item Production Detail", cutting_plan_doc.production_detail)
+
+	item_attributes = get_attribute_details(cutting_plan_doc.item)
+	cloth_combination = get_cloth_combination1(ipd_doc)
+	stitching_combination = get_stitching_combination(ipd_doc)
+	print(item_attributes, cloth_combination, stitching_combination)
+	cloth_detail = {}
+	for cloth in ipd_doc.cloth_detail:
+		if cloth.is_bom_item:
+			cloth_detail[cloth.name1] = cloth.cloth
+	print(cloth_detail)
+
+	cloth_details = {}
+
+	for item in cutting_plan_doc.items:
+		variant = frappe.get_doc("Item Variant", item.item_variant)
+		attr_details = item_attribute_details(variant, item_attributes)
+		c = calculate_cloth1(ipd_doc, variant, attr_details, item.quantity, cloth_combination, stitching_combination)
+		for c1 in c:
+			key = (c1["cloth_type"], c1["colour"], c1["dia"])
+			cloth_details.setdefault(key, 0)
+			cloth_details[key] += c1["quantity"]
+
+	required_cloth_details = []
+	for k in cloth_details:
+		cloth_name = get_or_create_variant(cloth_detail[k[0]], {ipd_doc.packing_attribute: k[1], 'Dia': k[2]})
+		required_cloth_details.append({
+			"cloth_item_variant": cloth_name,
+			"cloth_type": k[0],
+			"colour": k[1],
+			'dia': k[2],
+			"required_weight": cloth_details[k],
+			"weight":0.0
+		})
+
+	print(required_cloth_details)
+	cutting_plan_doc.set("cutting_plan_cloth_details", required_cloth_details)
+	cutting_plan_doc.save()
+
+
 def item_attribute_details(variant, item_attributes):
 	attribute_details = {}
 	for attr in variant.attributes:
@@ -142,3 +180,65 @@ def item_attribute_details(variant, item_attributes):
 @frappe.whitelist()
 def get_cutting_laysheet_details(cutting_plan):
 	cut_lay = frappe.qb.DocType("Cutting LaySheet")
+
+def get_stitching_combination(ipd_doc):
+	stitching_combination = {}
+
+	for detail in ipd_doc.stiching_item_combination_details:
+		stitching_combination.setdefault(detail.major_attribute_value, {})
+		stitching_combination[detail.major_attribute_value][detail.set_item_attribute_value] = detail.attribute_value
+
+	return {
+		"stitching_attribute": ipd_doc.stiching_attribute,
+		"stitching_attribute_count": {i.stiching_attribute_value:i.quantity for i in ipd_doc.stiching_item_details},
+		"is_same_packing_attribute": ipd_doc.is_same_packing_attribute,
+		"stitching_combination": stitching_combination,
+	}
+
+
+def get_cloth_combination1(ipd_doc):
+	cutting_attributes = [i.attribute for i in ipd_doc.cutting_attributes]
+	cloth_attributes = [i.attribute for i in ipd_doc.cloth_attributes]
+
+	cutting_combination = {}
+	cloth_combination = {}
+
+	cutting_items = json.loads(ipd_doc.cutting_items_json)
+	cutting_cloths = json.loads(ipd_doc.cutting_cloths_json)
+	for item in cutting_items["items"]:
+		cutting_combination[get_key(item, cutting_attributes)] = (item["Dia"], item["Weight"])
+	for item in cutting_cloths["items"]:
+		cloth_combination[get_key(item, cloth_attributes)] = item["Cloth"]
+
+	return {
+		"cutting_attributes": cutting_attributes,
+		"cloth_attributes": cloth_attributes,
+		"cutting_combination": cutting_combination,
+		"cloth_combination": cloth_combination,
+	}
+
+def get_key(item, attrs):
+	key = []
+	for attr in attrs:
+		key.append(item[attr])
+	return tuple(key)
+
+# This function does not calculate for set item
+def calculate_cloth1(ipd_doc, variant, variant_attrs, qty, cloth_combination, stitching_combination):
+	if stitching_combination["stitching_attribute"] in cloth_combination["cloth_attributes"] and stitching_combination["stitching_attribute"] not in cloth_combination["cutting_attributes"]:
+		frappe.throw(f"Cannot calculate cloth quantity without {stitching_combination['stitching_attribute']} in Cloth Weight Combination.")
+	
+	cloth_detail = []
+
+	if stitching_combination["stitching_attribute"] in cloth_combination["cutting_attributes"]:
+		frappe.throw("Please contact the developer team. Feature not implemented")
+	else:
+		dia, weight = cloth_combination["cutting_combination"][get_key(variant_attrs, cloth_combination["cutting_attributes"])]
+		cloth_type = cloth_combination["cloth_combination"][get_key(variant_attrs, cloth_combination["cloth_attributes"])]
+		cloth_detail.append({
+			"cloth_type": cloth_type,
+			"colour": variant_attrs[ipd_doc.packing_attribute],
+			"dia": dia,
+			"quantity": weight * qty,
+		})
+	return cloth_detail

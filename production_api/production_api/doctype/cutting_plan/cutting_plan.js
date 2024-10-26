@@ -21,13 +21,22 @@ frappe.ui.form.on("Cutting Plan", {
 
         if(!frm.is_new()){
             frm.add_custom_button("Generate",function(){
+                if (frm.is_dirty()) {
+                    return;
+                }
+                // frappe.call({
+                //     method:"production_api.production_api.doctype.cutting_plan.cutting_plan.get_cloth",
+                //     args: {
+                //         ipd: frm.doc.production_detail,
+                //         item_name: frm.doc.item,
+                //         items: frm.doc.items,
+                //         doc_name: frm.doc.name,
+                //     },
+                // })
                 frappe.call({
-                    method:"production_api.production_api.doctype.cutting_plan.cutting_plan.get_cloth",
+                    method:"production_api.production_api.doctype.cutting_plan.cutting_plan.get_cloth1",
                     args: {
-                        ipd: frm.doc.production_detail,
-                        item_name: frm.doc.item,
-                        items: frm.doc.items,
-                        doc_name: frm.doc.name,
+                        cutting_plan: frm.doc.name,
                     },
                 })
             })
