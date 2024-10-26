@@ -601,7 +601,10 @@ def calculate_accessories_cloth(quantity, combination_attributes, item_detail, c
 			attributes.append(key)
 
 	accesory_list = []
-	for cloth_item in json.loads(item_detail.cloth_accessory_json)['items']:
+	cloth_accessory = json.loads(item_detail.cloth_accessory_json)
+	if not cloth_accessory or len(cloth_accessory) == 0:
+		return bom
+	for cloth_item in cloth_accessory['items']:
 		val = True
 		for attr in attributes:
 			if cloth_item.get(attr):
