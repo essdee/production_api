@@ -30,6 +30,12 @@
   "section_break_dasc",
   "cutting_laysheet_details",
   "cloths_html",
+  "section_break_yezv",
+  "no_of_rolls",
+  "weight",
+  "no_of_bits",
+  "end_bit_weight",
+  "accessory_weight",
   "section_break_mbrg",
   "cutting_laysheet_bundles"
  ],
@@ -193,11 +199,45 @@
    "fieldtype": "Float",
    "label": "Maximum Allow Percentage",
    "read_only": 1
+  },
+  {
+   "fieldname": "section_break_yezv",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "no_of_rolls",
+   "fieldtype": "Int",
+   "label": "No of Rolls",
+   "read_only": 1
+  },
+  {
+   "fieldname": "weight",
+   "fieldtype": "Float",
+   "label": "Weight",
+   "read_only": 1
+  },
+  {
+   "fieldname": "no_of_bits",
+   "fieldtype": "Int",
+   "label": "No of Bits",
+   "read_only": 1
+  },
+  {
+   "fieldname": "end_bit_weight",
+   "fieldtype": "Float",
+   "label": "End Bit Weight",
+   "read_only": 1
+  },
+  {
+   "fieldname": "accessory_weight",
+   "fieldtype": "Float",
+   "label": "Accessory Weight",
+   "read_only": 1
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2024-10-24 12:54:56.279341",
+ "modified": "2024-10-25 17:23:35.916992",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Cutting LaySheet",

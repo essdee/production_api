@@ -30,6 +30,31 @@ class CuttingLaySheet(Document):
 			for item in cut_marker_doc.cutting_marker_ratios:
 				marker_list.append({'size':item.size,'ratio':item.ratio})
 			self.set("cutting_marker_ratios",marker_list)		
+		colours = set()
+		no_of_bits = 0.0
+		weight = 0.0
+		end_bit_weight = 0.0
+		accessory_weight = 0.0
+		no_of_rolls = 0
+		for item in self.cutting_laysheet_details:
+			no_of_bits += item.no_of_bits
+			weight += item.weight
+			end_bit_weight += item.end_bit_weight
+			accessory_weight += item.accessory_weight
+			no_of_rolls += item.no_of_rolls
+			colours.add(item.colour)
+
+		items = []
+		for colour in colours:
+			for item in self.cutting_laysheet_details:
+				if item.colour == colour:
+					items.append(item)
+		self.no_of_rolls = no_of_rolls
+		self.no_of_bits = no_of_bits
+		self.weight = weight
+		self.end_bit_weight = end_bit_weight
+		self.accessory_weight = accessory_weight
+		self.set("cutting_laysheet_details",items)			
 
 def save_item_details(items, cutting_plan):
 	if isinstance(items, string_types):
@@ -201,20 +226,20 @@ def get_cloth_accessories(cutting_plan):
 
 @frappe.whitelist()
 def print_labels(print_items, lay_no, cutting_plan):
-	lot_no,item_name = frappe.get_value("Cutting Plan",cutting_plan,["lot","item"])
+	lot_no,item_name,creation = frappe.get_value("Cutting Plan",cutting_plan,["lot","item","creation"])
 	if isinstance(print_items,string_types):
 		print_items = json.loads(print_items)
 	zpl = ""
-	month = now_datetime().month
-	date = now_datetime().day
-	year = now_datetime().year
+	date = get_created_date(creation)
+	# month = now_datetime().month
+	# date = now_datetime().day
+	# year = now_datetime().year
 	i = 0
 	for item in print_items:
-		i = i + 1
 		x = f"""^XA
 			^FO70,30^GFA,2736,2736,38,,:::::::::::::::P0FI0MF803MFC01MFC0NFI0MF803LFEF8,0018001006B001MF807MFC07MFC0NF801MF807LFEB8,001C00300EI03MF80NFC07MFC0NFC03MF80MFE,001E00701EI07MF81NFC0NFC0NFE07MF81MFE,001F00F03EI07MF81NFC0NFC0NFE07MF81MFE,001F01F07EI07MF81NFC1NFC0NFE07MF81MFE,001F83F07EI07MF81NFC1NFC0NFE07MF81MFE,001F83F0FEI07MF81NFC1NFC0NFE07MF81MFE,001FC3F0FEI07MF01NF81NFC0NFE07MF01MFC,001FC3F0FEI07FCL01FFM01FF8M0FF8I07FE07FCL01FF,001FC3F0FEI07FCL01FFM01FF8M0FF8I03FE07FCL01FF,:::001FC3F0FEI07MF81MFE01MFE00FF8I03FE07MF81MFE,001FC3F0FEI07MF81NF01NF80FF8I03FE07MF81MFE,001FC3F0FEI07MF81NF81NF80FF8I03FE07MF81MFE,001FC3F0FEI07MF81NF80NFC0FF8I03FE07MF81MFE,I0FC3F0FCI07MF81NFC0NFC0FF8I03FE07MF81MFE,I07C3F0F8I07MF80NFC0NFC0FF8I03FE07MF81MFE,I03C3F0FJ07MF807MFC07MFC0FF8I03FE07MF81MFE,I01C3F0EJ07MF803MFC01MFC0FF8I03FE07MF81MFE,J0C3F0CJ07FCS0FFCM07FC0FF8I03FE07FCL01FF,J043F08J07FCS0FFCM07FC0FF8I03FE07FCL01FF,K03FL07FCS0FFCM07FC0FF8I03FE07FCL01FF,::::::K03FL07FCS0FFCM07FC0FF8I07FE07FCL01FF,K03FL07MF81NFC1NFC0NFE07MF81MFE,:K03EL07MF81NFC1NFC0NFE07MF81MFE,K03CL07MF81NFC1NFC0NFE07MF81MFE,K038L07MF81NF81NFC0NFE07MF81MFE,K03M03MF81NF81NFC0NFC03MF80MFE,K02M03MF81NF01NF80NFC01MF80MFE,K02N0MF81MFE01NF00NFI0MF803LFE,,:::::::::::::::^FS
 			^PW1000
-			^FO720,50^A0,40,40^FD{date}/{month}/{year}^FS
+			^FO720,50^A0,40,40^FD{date}^FS
 			^FO108,35^A0,15,15^FDTM^FS
 			^FO350,35^A0,15,15^FDTM^FS
 
@@ -250,7 +275,54 @@ def print_labels(print_items, lay_no, cutting_plan):
 
 			^XZ"""
 		zpl += x
-		if i == 2:
-			break
-
 	return zpl	
+
+@frappe.whitelist()
+def get_panels(cutting_laysheet):
+	doc = frappe.get_doc("Cutting LaySheet",cutting_laysheet)
+	items = []
+	for item in doc.cutting_laysheet_bundles:
+		if item.bundle_no > 1:
+			break
+		items.append(item.part)
+	return items
+
+@frappe.whitelist()
+def get_bundle_items(cutting_laysheet):
+	doc = frappe.get_doc("Cutting LaySheet",cutting_laysheet)
+	items = []
+	bundles = []
+	for item in doc.cutting_laysheet_bundles:
+		if item.bundle_no not in bundles:
+			items.append(item.as_dict())
+			bundles.append(item.bundle_no)
+	
+	return items
+
+@frappe.whitelist()
+def get_colours(cutting_laysheet, items):
+	doc = frappe.get_doc("Cutting LaySheet",cutting_laysheet)
+	colours = set()
+	for item in doc.cutting_laysheet_details:
+		colours.add(item.colour)
+	
+	colour_items = {}
+
+	for colour in colours:
+		for item in items:
+			if item['colour'] == colour:
+				if colour in colour_items:
+					colour_items[colour].append(item)
+				else:
+					colour_items[colour] = [item]
+
+	return colours,colour_items
+	
+from frappe.utils import getdate
+@frappe.whitelist()
+def get_created_date(creation):
+	created_date = getdate(creation)
+	date = created_date.day
+	month = created_date.month
+	year = created_date.year 
+	return str(date)+"/"+str(month)+"/"+str(year)
