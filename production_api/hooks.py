@@ -170,6 +170,10 @@ jinja = {
         "production_api.essdee_production.doctype.lot.lot.get_attributes",
         "production_api.essdee_production.doctype.essdee_raw_print_format.essdee_raw_print_format.get_value_with_pad",
         "production_api.essdee_production.doctype.essdee_raw_print_format.essdee_raw_print_format.get_item_size",
+        "production_api.production_api.doctype.cutting_laysheet.cutting_laysheet.get_panels",
+        "production_api.production_api.doctype.cutting_laysheet.cutting_laysheet.get_bundle_items",
+        "production_api.production_api.doctype.cutting_laysheet.cutting_laysheet.get_colours",
+        "production_api.production_api.doctype.cutting_laysheet.cutting_laysheet.get_created_date",
     ]
 }
 
