@@ -125,6 +125,8 @@ def get_cut_sheet_data(doc_name,cutting_marker,item_details,items, max_plys:int,
 	for item in item_details:
 		for cm_item in cm_doc.cutting_marker_ratios:
 			no_of_marks = cm_item.ratio
+			if no_of_marks == 0:
+				continue
 			max_grouping = int(maximum_plys/item['no_of_bits'])
 			total_bundles = math.ceil(no_of_marks/max_grouping)
 			avg_grouping = no_of_marks/total_bundles
