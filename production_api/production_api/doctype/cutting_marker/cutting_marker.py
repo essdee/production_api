@@ -7,6 +7,9 @@ from frappe.model.document import Document
 from production_api.production_api.doctype.item.item import get_attribute_details
 
 class CuttingMarker(Document):
+	def autoname(self):
+		self.naming_series = "CM-.YY..MM.-.{#####}."
+
 	def before_validate(self):
 		count = 0
 		for item in self.cutting_marker_ratios:

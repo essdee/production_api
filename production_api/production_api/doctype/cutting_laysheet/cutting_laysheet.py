@@ -10,6 +10,9 @@ from production_api.production_api.doctype.item.item import get_or_create_varian
 from frappe.utils import now_datetime
 
 class CuttingLaySheet(Document):
+	def autoname(self):
+		self.naming_series = "CLS-.YY..MM.-.{#####}."
+
 	def onload(self):
 		self.set_onload("item_details",self.cutting_laysheet_details)
 
@@ -20,10 +23,12 @@ class CuttingLaySheet(Document):
 
 		if self.is_new():
 			cut_plan_doc = frappe.get_doc("Cutting Plan",self.cutting_plan)	
+			
 			self.lay_no = cut_plan_doc.lay_no + 1
 			self.maximum_no_of_plys = cut_plan_doc.maximum_no_of_plys
 			self.maximum_allow_percentage = cut_plan_doc.maximum_allow_percent
 			cut_plan_doc.lay_no = self.lay_no
+			cut_plan_doc.flags.ignore_permissions = 1
 			cut_plan_doc.save()
 			cut_marker_doc = frappe.get_doc("Cutting Marker",self.cutting_marker)
 			marker_list = []
@@ -225,11 +230,12 @@ def get_cloth_accessories(cutting_plan):
 	return accessory_list	
 
 @frappe.whitelist()
-def print_labels(print_items, lay_no, cutting_plan):
-	lot_no,item_name,creation = frappe.get_value("Cutting Plan",cutting_plan,["lot","item","creation"])
+def print_labels(print_items, lay_no, cutting_plan, doc_name):
+	lot_no,item_name = frappe.get_value("Cutting Plan",cutting_plan,["lot","item"])
 	if isinstance(print_items,string_types):
 		print_items = json.loads(print_items)
 	zpl = ""
+	creation = frappe.get_value("Cutting LaySheet",doc_name,"creation")
 	date = get_created_date(creation)
 	# month = now_datetime().month
 	# date = now_datetime().day

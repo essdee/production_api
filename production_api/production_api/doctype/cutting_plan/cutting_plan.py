@@ -8,6 +8,9 @@ from production_api.production_api.doctype.item.item import get_or_create_varian
 from production_api.essdee_production.doctype.item_production_detail.item_production_detail import calculate_cloth, get_cloth_combination
 
 class CuttingPlan(Document):
+	def autoname(self):
+		self.naming_series = "CP-.YY..MM.-.{#####}."
+		
 	def onload(self):
 		items = fetch_order_item_details(self.items, self.production_detail)
 		self.set_onload('item_details', items)
