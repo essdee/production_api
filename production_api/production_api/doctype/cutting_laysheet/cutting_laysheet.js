@@ -12,7 +12,7 @@ frappe.ui.form.on("Cutting LaySheet", {
         }
         frm.set_df_property('cutting_laysheet_bundles','cannot_add_rows',true)
 		frm.set_df_property('cutting_laysheet_bundles','cannot_delete_rows',true)
-        if(frm.doc.cutting_laysheet_details.length > 0 ){
+        if(frm.doc.cutting_laysheet_details.length > 0 && frm.doc.printed_time == null){
             frm.add_custom_button("Generate",()=> {
                 frappe.call({
                     method:"production_api.production_api.doctype.cutting_laysheet.cutting_laysheet.get_parts",
@@ -65,7 +65,7 @@ frappe.ui.form.on("Cutting LaySheet", {
                 })
             })
         }
-        if(frm.doc.cutting_laysheet_bundles.length > 0 ){
+        if(frm.doc.cutting_laysheet_bundles.length > 0 && frm.doc.printed_time == null ){
             frm.add_custom_button("Print Labels", ()=> {
                 frappe.ui.form.qz_connect()
                     .then(function () {
@@ -190,6 +190,7 @@ function print_labels(frm,printer){
             print_items: frm.doc.cutting_laysheet_bundles,
             lay_no:frm.doc.lay_no,
             cutting_plan: frm.doc.cutting_plan,
+            doc_name:frm.doc.name,
         },
         callback: function(r){
             if(r.message){

@@ -27,6 +27,7 @@
    "fieldname": "lot",
    "fieldtype": "Link",
    "in_list_view": 1,
+   "in_standard_filter": 1,
    "label": "Lot",
    "options": "Lot",
    "reqd": 1
@@ -39,6 +40,8 @@
    "fetch_from": "lot.item",
    "fieldname": "item",
    "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
    "label": "Item",
    "options": "Item"
   },
@@ -93,7 +96,6 @@
    "options": "Item Attribute"
   },
   {
-   "default": "CP-.DD.-.MM.-.YYYY.-.{#####}.",
    "fieldname": "naming_series",
    "fieldtype": "Data",
    "hidden": 1,
@@ -127,7 +129,7 @@
    "link_fieldname": "cutting_plan"
   }
  ],
- "modified": "2024-10-24 12:25:20.924401",
+ "modified": "2024-10-27 16:48:00.823036",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Cutting Plan",
@@ -145,9 +147,43 @@
    "role": "System Manager",
    "share": 1,
    "write": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Cutting User",
+   "select": 1,
+   "share": 1
+  },
+  {
+   "create": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Production Planner",
+   "select": 1,
+   "share": 1,
+   "write": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "CAD User",
+   "select": 1,
+   "share": 1
   }
  ],
+ "search_fields": "lot,item",
  "sort_field": "modified",
  "sort_order": "DESC",
- "states": []
+ "states": [],
+ "track_changes": 1
 }
