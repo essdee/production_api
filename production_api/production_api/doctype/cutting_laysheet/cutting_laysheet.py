@@ -23,7 +23,6 @@ class CuttingLaySheet(Document):
 
 		if self.is_new():
 			cut_plan_doc = frappe.get_doc("Cutting Plan",self.cutting_plan)	
-			
 			self.lay_no = cut_plan_doc.lay_no + 1
 			self.maximum_no_of_plys = cut_plan_doc.maximum_no_of_plys
 			self.maximum_allow_percentage = cut_plan_doc.maximum_allow_percent
