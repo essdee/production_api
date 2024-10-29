@@ -40,12 +40,14 @@ class CuttingLaySheet(Document):
 		end_bit_weight = 0.0
 		accessory_weight = 0.0
 		no_of_rolls = 0
+		used_weight = 0.0
 		for item in self.cutting_laysheet_details:
 			no_of_bits += item.no_of_bits
 			weight += item.weight
 			end_bit_weight += item.end_bit_weight
 			accessory_weight += item.accessory_weight
 			no_of_rolls += item.no_of_rolls
+			used_weight += item.used_weight
 			colours.add(item.colour)
 
 		items = []
@@ -58,6 +60,7 @@ class CuttingLaySheet(Document):
 		self.weight = weight
 		self.end_bit_weight = end_bit_weight
 		self.accessory_weight = accessory_weight
+		self.total_used_weight = used_weight
 		self.set("cutting_laysheet_details",items)			
 
 def save_item_details(items, cutting_plan):
@@ -87,6 +90,8 @@ def save_item_details(items, cutting_plan):
 			"no_of_bits":item['no_of_bits'],
 			"end_bit_weight":item['end_bit_weight'],
 			"comments":item['comments'],
+			"used_weight":item['used_weight'],
+			"balance_weight":item['balance_weight'],
 			"accessory_json":item['accessory_json'],
 			"accessory_weight":item['accessory_weight']
 		})	
@@ -122,6 +127,7 @@ def get_cut_sheet_data(doc_name,cutting_marker,item_details,items, max_plys:int,
 		items = json.loads(items)
 	if isinstance(item_details, string_types):
 		item_details = json.loads(item_details)	
+	total_pieces = 0
 	maximum_plys = max_plys + (max_plys/100) * maximum_allow
 	bundle_no = 0
 	cm_doc = frappe.get_doc("Cutting Marker",cutting_marker)
@@ -145,25 +151,29 @@ def get_cut_sheet_data(doc_name,cutting_marker,item_details,items, max_plys:int,
 				for j in range(maximum_count):
 					bundle_no = bundle_no + 1
 					hash_value = get_timestamp_prefix() + generate_random_string(12)
+					qty = maximum * item['no_of_bits']
+					total_pieces += qty
 					cut_sheet_data.append({
 						"size":cm_item.size,
 						"colour":item['colour'],
 						"shade":item['shade'],
 						"bundle_no":bundle_no,
 						"part":part,
-						"quantity":maximum * item['no_of_bits'],
+						"quantity": qty,
 						"hash_value":hash_value
 					})	
 				for j in range(minimum_count):
 					bundle_no = bundle_no + 1
 					hash_value = get_timestamp_prefix() + generate_random_string(12)
+					qty = minimum * item['no_of_bits']
+					total_pieces += qty
 					cut_sheet_data.append({
 						"size":cm_item.size,
 						"colour":item['colour'],
 						"shade":item['shade'],
 						"bundle_no":bundle_no,
 						"part":part,
-						"quantity":minimum * item['no_of_bits'],
+						"quantity":qty,
 						"hash_value":hash_value
 					})		
 			temp = bundle_no	
@@ -200,6 +210,7 @@ def get_cut_sheet_data(doc_name,cutting_marker,item_details,items, max_plys:int,
 	doc = frappe.get_doc("Cutting LaySheet", doc_name)
 	doc.maximum_no_of_plys = max_plys
 	doc.maximum_allow_percentage = maximum_allow 
+	doc.total_no_of_pieces = total_pieces
 	doc.set("cutting_laysheet_bundles", cut_sheet_data)
 	doc.save()
 
@@ -236,9 +247,6 @@ def print_labels(print_items, lay_no, cutting_plan, doc_name):
 	zpl = ""
 	creation = frappe.get_value("Cutting LaySheet",doc_name,"creation")
 	date = get_created_date(creation)
-	# month = now_datetime().month
-	# date = now_datetime().day
-	# year = now_datetime().year
 	i = 0
 	for item in print_items:
 		x = f"""^XA
