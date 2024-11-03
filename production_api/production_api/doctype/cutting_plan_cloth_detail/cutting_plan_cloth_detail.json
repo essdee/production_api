@@ -1,0 +1,72 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2024-10-17 10:15:45.888196",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "cloth_item_variant",
+  "cloth_type",
+  "colour",
+  "dia",
+  "required_weight",
+  "weight"
+ ],
+ "fields": [
+  {
+   "fieldname": "required_weight",
+   "fieldtype": "Float",
+   "in_list_view": 1,
+   "label": "Required Weight",
+   "precision": "3",
+   "read_only": 1
+  },
+  {
+   "fieldname": "weight",
+   "fieldtype": "Float",
+   "in_list_view": 1,
+   "label": "Weight"
+  },
+  {
+   "fieldname": "cloth_item_variant",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Cloth Item Variant",
+   "options": "Item Variant",
+   "read_only": 1
+  },
+  {
+   "fieldname": "colour",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Colour",
+   "options": "Item Attribute Value"
+  },
+  {
+   "fieldname": "dia",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Dia",
+   "options": "Item Attribute Value"
+  },
+  {
+   "fieldname": "cloth_type",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Cloth Type"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2024-10-17 15:42:29.552901",
+ "modified_by": "Administrator",
+ "module": "Production Api",
+ "name": "Cutting Plan Cloth Detail",
+ "owner": "Administrator",
+ "permissions": [],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

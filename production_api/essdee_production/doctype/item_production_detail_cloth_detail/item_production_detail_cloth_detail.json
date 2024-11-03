@@ -1,0 +1,56 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2024-09-07 15:35:32.541074",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "name1",
+  "cloth",
+  "required_gsm",
+  "is_bom_item"
+ ],
+ "fields": [
+  {
+   "fieldname": "name1",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Name",
+   "reqd": 1
+  },
+  {
+   "fieldname": "cloth",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Cloth",
+   "options": "Item",
+   "reqd": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "is_bom_item",
+   "fieldtype": "Check",
+   "in_list_view": 1,
+   "label": "Is BOM Item"
+  },
+  {
+   "fieldname": "required_gsm",
+   "fieldtype": "Float",
+   "in_list_view": 1,
+   "label": "Required GSM"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2024-09-16 12:04:22.396956",
+ "modified_by": "Administrator",
+ "module": "Essdee Production",
+ "name": "Item Production Detail Cloth Detail",
+ "owner": "Administrator",
+ "permissions": [],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

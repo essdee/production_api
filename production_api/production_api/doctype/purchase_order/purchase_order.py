@@ -329,8 +329,8 @@ def get_item_group_index(items, item_details):
 			continue
 		if not item.get('primary_attribute') == item_details.get('primary_attribute'):
 			continue
-		if not item.get('primary_attribute_values').sort() == item_details.get('primary_attribute_values').sort():
-			continue
+		# if not item.get('primary_attribute_values').sort() == item_details.get('primary_attribute_values').sort():
+		# 	continue
 		if not item.get('dependent_attribute') == item_details.get('dependent_attribute'):
 			continue
 		index = i
@@ -372,6 +372,7 @@ def fetch_item_details(items, include_id=False):
 				if frappe.utils.getdate(variant.delivery_date) > frappe.utils.getdate(item['delivery_date']):
 					item['delivery_date'] = str(variant.delivery_date)	
 				current_variant = frappe.get_doc("Item Variant", variant['item_variant'])
+				
 				for attr in current_variant.attributes:
 					if attr.attribute == item.get('primary_attribute'):
 						item['values'][attr.attribute_value] = {

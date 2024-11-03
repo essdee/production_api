@@ -71,7 +71,6 @@ frappe.ui.form.on('Purchase Order', {
 			};
 		});
 	},
-
 	refresh: function(frm) {
 		$(frm.fields_dict['item_html'].wrapper).html("");
 		frm.itemEditor = new frappe.production.ui.PurchaseOrderItem(frm.fields_dict["item_html"].wrapper);
@@ -185,7 +184,6 @@ frappe.ui.form.on('Purchase Order', {
 						fieldtype: 'Data',
 						reqd: 1
 					}, (values) => {
-						// console.log(values.reason);
 						frappe.call({
 							method: "production_api.production_api.doctype.purchase_order.purchase_order.cancel_purchase_order",
 							args: {

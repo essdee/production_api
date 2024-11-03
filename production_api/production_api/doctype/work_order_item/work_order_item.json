@@ -1,0 +1,109 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2024-05-21 12:51:59.267920",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "item_variant",
+  "lot",
+  "qty",
+  "uom",
+  "secondary_qty",
+  "secondary_uom",
+  "comments",
+  "table_index",
+  "row_index",
+  "pending_quantity",
+  "cancelled_quantity",
+  "additional_parameters"
+ ],
+ "fields": [
+  {
+   "fieldname": "item_variant",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Item Variant",
+   "options": "Item Variant",
+   "reqd": 1
+  },
+  {
+   "fieldname": "qty",
+   "fieldtype": "Float",
+   "in_list_view": 1,
+   "label": "Qty",
+   "reqd": 1
+  },
+  {
+   "fieldname": "secondary_qty",
+   "fieldtype": "Float",
+   "label": "Secondary Qty"
+  },
+  {
+   "fieldname": "lot",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Lot",
+   "options": "Lot",
+   "reqd": 1
+  },
+  {
+   "fieldname": "comments",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Comments"
+  },
+  {
+   "fieldname": "uom",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "UOM",
+   "options": "UOM",
+   "reqd": 1
+  },
+  {
+   "fieldname": "secondary_uom",
+   "fieldtype": "Link",
+   "label": "Secondary UOM",
+   "options": "UOM"
+  },
+  {
+   "fieldname": "table_index",
+   "fieldtype": "Int",
+   "label": "Table Index"
+  },
+  {
+   "fieldname": "row_index",
+   "fieldtype": "Int",
+   "label": "Row Index"
+  },
+  {
+   "fieldname": "pending_quantity",
+   "fieldtype": "Int",
+   "label": "Pending Quantity"
+  },
+  {
+   "fieldname": "cancelled_quantity",
+   "fieldtype": "Int",
+   "label": "Cancelled Quantity"
+  },
+  {
+   "fieldname": "additional_parameters",
+   "fieldtype": "Data",
+   "label": "Additional Parameters"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2024-05-23 18:44:30.089855",
+ "modified_by": "Administrator",
+ "module": "Production Api",
+ "name": "Work Order Item",
+ "owner": "Administrator",
+ "permissions": [],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

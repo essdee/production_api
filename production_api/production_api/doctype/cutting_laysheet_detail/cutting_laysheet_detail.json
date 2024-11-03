@@ -1,0 +1,118 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2024-10-16 15:13:02.155703",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "cloth_item_variant",
+  "cloth_type",
+  "colour",
+  "dia",
+  "shade",
+  "weight",
+  "no_of_rolls",
+  "no_of_bits",
+  "end_bit_weight",
+  "comments",
+  "accessory_json",
+  "accessory_weight"
+ ],
+ "fields": [
+  {
+   "columns": 1,
+   "fieldname": "cloth_type",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Cloth Type"
+  },
+  {
+   "columns": 1,
+   "fieldname": "colour",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Colour",
+   "options": "Item Attribute Value"
+  },
+  {
+   "columns": 1,
+   "fieldname": "dia",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Dia",
+   "options": "Item Attribute Value"
+  },
+  {
+   "columns": 1,
+   "fieldname": "shade",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Shade"
+  },
+  {
+   "columns": 1,
+   "fieldname": "weight",
+   "fieldtype": "Float",
+   "in_list_view": 1,
+   "label": "Weight"
+  },
+  {
+   "columns": 1,
+   "fieldname": "no_of_rolls",
+   "fieldtype": "Int",
+   "in_list_view": 1,
+   "label": "No of Rolls"
+  },
+  {
+   "columns": 1,
+   "fieldname": "no_of_bits",
+   "fieldtype": "Int",
+   "in_list_view": 1,
+   "label": "No of Bits"
+  },
+  {
+   "columns": 1,
+   "fieldname": "end_bit_weight",
+   "fieldtype": "Float",
+   "in_list_view": 1,
+   "label": "End Bit Weight"
+  },
+  {
+   "columns": 1,
+   "fieldname": "comments",
+   "fieldtype": "Small Text",
+   "label": "Comments"
+  },
+  {
+   "columns": 1,
+   "fieldname": "cloth_item_variant",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Cloth Item Variant",
+   "options": "Item Variant"
+  },
+  {
+   "fieldname": "accessory_weight",
+   "fieldtype": "Float",
+   "label": "Accessory Weight"
+  },
+  {
+   "fieldname": "accessory_json",
+   "fieldtype": "JSON",
+   "label": "Accessory JSON"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2024-10-25 17:49:06.346218",
+ "modified_by": "Administrator",
+ "module": "Production Api",
+ "name": "Cutting LaySheet Detail",
+ "owner": "Administrator",
+ "permissions": [],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

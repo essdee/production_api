@@ -1,0 +1,153 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "naming_series:",
+ "creation": "2024-09-19 09:58:19.299038",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "lot",
+  "fg_item",
+  "display_name",
+  "use_item_name",
+  "print_format",
+  "box_sticker_print_details",
+  "piece_per_box",
+  "preview",
+  "amended_from",
+  "naming_series"
+ ],
+ "fields": [
+  {
+   "fieldname": "lot",
+   "fieldtype": "Link",
+   "in_filter": 1,
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Lot",
+   "options": "Lot",
+   "reqd": 1
+  },
+  {
+   "depends_on": "eval: doc.lot",
+   "fieldname": "fg_item",
+   "fieldtype": "Link",
+   "in_filter": 1,
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Item",
+   "options": "FG Item Master",
+   "reqd": 1
+  },
+  {
+   "fieldname": "box_sticker_print_details",
+   "fieldtype": "Table",
+   "label": "Box Sticker Print Details",
+   "options": "Box Sticker Print Detail"
+  },
+  {
+   "fieldname": "print_format",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Print Format",
+   "options": "Essdee Raw Print Format",
+   "reqd": 1
+  },
+  {
+   "fetch_from": "fg_item.pcs_per_box",
+   "fieldname": "piece_per_box",
+   "fieldtype": "Int",
+   "hidden": 1,
+   "label": "Piece Per Box"
+  },
+  {
+   "fieldname": "preview",
+   "fieldtype": "HTML",
+   "label": "Preview",
+   "options": "<div></div>"
+  },
+  {
+   "fieldname": "amended_from",
+   "fieldtype": "Link",
+   "label": "Amended From",
+   "no_copy": 1,
+   "options": "Box Sticker Print",
+   "print_hide": 1,
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "allow_on_submit": 1,
+   "default": "0",
+   "fieldname": "use_item_name",
+   "fieldtype": "Check",
+   "label": "Use Item Name"
+  },
+  {
+   "allow_on_submit": 1,
+   "fetch_from": "fg_item.display_name",
+   "fieldname": "display_name",
+   "fieldtype": "Data",
+   "label": "Display Name",
+   "read_only": 1
+  },
+  {
+   "fieldname": "naming_series",
+   "fieldtype": "Data",
+   "hidden": 1,
+   "label": "Naming Series",
+   "options": "BSP-.YYYY.-"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "is_submittable": 1,
+ "links": [],
+ "modified": "2024-10-19 14:26:30.277335",
+ "modified_by": "Administrator",
+ "module": "Essdee Production",
+ "name": "Box Sticker Print",
+ "naming_rule": "By \"Naming Series\" field",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "cancel": 1,
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "submit": 1,
+   "write": 1
+  },
+  {
+   "cancel": 1,
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Purchase User",
+   "share": 1,
+   "submit": 1,
+   "write": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Store User",
+   "share": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

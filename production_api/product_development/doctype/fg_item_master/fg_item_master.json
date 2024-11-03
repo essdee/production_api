@@ -15,8 +15,10 @@
   "pcs_per_box",
   "prices",
   "template",
+  "mrp",
   "column_break_rmzju",
   "name1",
+  "display_name",
   "disabled",
   "deprecated",
   "category",
@@ -148,10 +150,20 @@
    "fieldname": "is_temp_item",
    "fieldtype": "Check",
    "label": "Is Temp Item"
+  },
+  {
+   "fieldname": "mrp",
+   "fieldtype": "Data",
+   "label": "MRP"
+  },
+  {
+   "fieldname": "display_name",
+   "fieldtype": "Data",
+   "label": "Display Name"
   }
  ],
  "links": [],
- "modified": "2024-07-30 20:15:46.171995",
+ "modified": "2024-09-21 12:06:30.982447",
  "modified_by": "Administrator",
  "module": "Product Development",
  "name": "FG Item Master",

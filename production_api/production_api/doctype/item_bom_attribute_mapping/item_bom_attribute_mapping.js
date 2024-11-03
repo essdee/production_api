@@ -5,9 +5,9 @@ frappe.ui.form.on('Item BOM Attribute Mapping', {
 	setup: function(frm) {
 		frm.set_query('attribute', 'item_attributes', (doc) => {
 			return {
-				query: 'production_api.production_api.doctype.lot_template.lot_template.get_item_attributes',
+				query: 'production_api.essdee_production.doctype.item_production_detail.item_production_detail.get_item_attributes',
 				filters: {
-					lot_template: doc.lot_template,
+					item_production_detail: doc.item_production_detail,
 				}
 			}
 		})
@@ -111,15 +111,14 @@ function get_attributes(frm) {
 	}
 	let m = null
 	frappe.call({
-		method: "production_api.production_api.doctype.lot_template.lot_template.get_attribute_values",
+		method: "production_api.essdee_production.doctype.item_production_detail.item_production_detail.get_attribute_values",
 		args: {
-			'lot_template': frm.doc.lot_template,
+			'item_production_detail': frm.doc.item_production_detail,
 			'attributes': item_attributes,
 		},
 		async: false,
 		callback: function(r) {
 			if (r.message) {
-				console.log(r.message);
 				m = r.message;
 			}
 		}

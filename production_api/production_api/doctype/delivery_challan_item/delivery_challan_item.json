@@ -1,0 +1,135 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2024-05-23 10:56:22.445383",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "item_variant",
+  "lot",
+  "qty",
+  "rate",
+  "uom",
+  "secondary_qty",
+  "secondary_uom",
+  "comments",
+  "table_index",
+  "row_index",
+  "delivered_quantity",
+  "pending_quantity",
+  "additional_parameters",
+  "ref_doctype",
+  "ref_docname"
+ ],
+ "fields": [
+  {
+   "fieldname": "item_variant",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Item Variant",
+   "options": "Item Variant",
+   "reqd": 1
+  },
+  {
+   "fieldname": "lot",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Lot",
+   "options": "Lot",
+   "reqd": 1
+  },
+  {
+   "fieldname": "qty",
+   "fieldtype": "Float",
+   "in_list_view": 1,
+   "label": "Qty",
+   "reqd": 1
+  },
+  {
+   "fieldname": "uom",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "UOM",
+   "options": "UOM",
+   "reqd": 1
+  },
+  {
+   "fieldname": "secondary_qty",
+   "fieldtype": "Int",
+   "label": "Secondary Qty"
+  },
+  {
+   "fieldname": "secondary_uom",
+   "fieldtype": "Link",
+   "label": "Secondary UOM",
+   "options": "UOM"
+  },
+  {
+   "fieldname": "comments",
+   "fieldtype": "Text",
+   "label": "Comments"
+  },
+  {
+   "fieldname": "table_index",
+   "fieldtype": "Int",
+   "label": "Table Index",
+   "read_only": 1
+  },
+  {
+   "fieldname": "row_index",
+   "fieldtype": "Int",
+   "label": "Row Index",
+   "read_only": 1
+  },
+  {
+   "fieldname": "additional_parameters",
+   "fieldtype": "Data",
+   "label": "Additional Parameters"
+  },
+  {
+   "fieldname": "rate",
+   "fieldtype": "Float",
+   "label": "Rate",
+   "precision": "2"
+  },
+  {
+   "fieldname": "pending_quantity",
+   "fieldtype": "Float",
+   "hidden": 1,
+   "label": "Pending Quantity",
+   "read_only": 1
+  },
+  {
+   "fieldname": "ref_doctype",
+   "fieldtype": "Select",
+   "label": "Reference Doctype",
+   "options": "Work Order Deliverables",
+   "read_only": 1
+  },
+  {
+   "fieldname": "ref_docname",
+   "fieldtype": "Dynamic Link",
+   "label": "Reference Docname",
+   "options": "ref_doctype",
+   "read_only": 1
+  },
+  {
+   "fieldname": "delivered_quantity",
+   "fieldtype": "Float",
+   "label": "Delivered Quantity"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2024-10-15 17:13:58.268603",
+ "modified_by": "Administrator",
+ "module": "Production Api",
+ "name": "Delivery Challan Item",
+ "owner": "Administrator",
+ "permissions": [],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

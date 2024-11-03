@@ -8,7 +8,8 @@
  "field_order": [
   "attribute_value",
   "uom",
-  "display_name"
+  "display_name",
+  "is_final"
  ],
  "fields": [
   {
@@ -32,12 +33,18 @@
    "fieldtype": "Data",
    "in_list_view": 1,
    "label": "Display Name"
+  },
+  {
+   "default": "0",
+   "fieldname": "is_final",
+   "fieldtype": "Check",
+   "label": "Is Final"
   }
  ],
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2023-10-10 16:46:55.046593",
+ "modified": "2024-07-25 15:24:37.931999",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Item Dependent Attribute Mapping Detail",

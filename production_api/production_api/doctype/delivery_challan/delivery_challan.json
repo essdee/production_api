@@ -1,0 +1,172 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "naming_series:",
+ "creation": "2024-05-23 10:52:21.566351",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "work_order",
+  "naming_series",
+  "column_break_xmwj",
+  "posting_date",
+  "posting_time",
+  "address_and_contact_section",
+  "from_location",
+  "from_address",
+  "from_address_details",
+  "column_break_xvmi",
+  "supplier",
+  "supplier_address",
+  "supplier_address_details",
+  "section_break_uqkl",
+  "items",
+  "deliverable_items",
+  "comments",
+  "amended_from"
+ ],
+ "fields": [
+  {
+   "default": "DC-",
+   "fieldname": "naming_series",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Naming Series",
+   "options": "DC-",
+   "reqd": 1
+  },
+  {
+   "default": "Today",
+   "fieldname": "posting_date",
+   "fieldtype": "Date",
+   "label": "Posting Date",
+   "reqd": 1
+  },
+  {
+   "default": "Now",
+   "fieldname": "posting_time",
+   "fieldtype": "Time",
+   "label": "Posting Time",
+   "reqd": 1
+  },
+  {
+   "fieldname": "supplier_address",
+   "fieldtype": "Link",
+   "label": "Supplier Address",
+   "options": "Address",
+   "reqd": 1
+  },
+  {
+   "fieldname": "comments",
+   "fieldtype": "Text",
+   "label": "Comments"
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "items",
+   "fieldtype": "Table",
+   "hidden": 1,
+   "label": "Items",
+   "options": "Delivery Challan Item"
+  },
+  {
+   "fieldname": "from_location",
+   "fieldtype": "Link",
+   "label": "From Location",
+   "options": "Supplier",
+   "reqd": 1
+  },
+  {
+   "fieldname": "supplier",
+   "fieldtype": "Link",
+   "label": "Supplier(Receiver)",
+   "options": "Supplier",
+   "reqd": 1
+  },
+  {
+   "fieldname": "work_order",
+   "fieldtype": "Link",
+   "label": "Work Order",
+   "options": "Work Order",
+   "reqd": 1
+  },
+  {
+   "fieldname": "column_break_xmwj",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "section_break_uqkl",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "deliverable_items",
+   "fieldtype": "HTML",
+   "label": "Deliverable Items",
+   "read_only": 1
+  },
+  {
+   "fieldname": "address_and_contact_section",
+   "fieldtype": "Section Break",
+   "label": "Address and Contact"
+  },
+  {
+   "fieldname": "from_address",
+   "fieldtype": "Link",
+   "label": "From Address",
+   "options": "Address",
+   "reqd": 1
+  },
+  {
+   "fieldname": "column_break_xvmi",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "amended_from",
+   "fieldtype": "Link",
+   "label": "Amended From",
+   "no_copy": 1,
+   "options": "Delivery Challan",
+   "print_hide": 1,
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "from_address_details",
+   "fieldtype": "Small Text",
+   "label": "From Address Details",
+   "read_only": 1
+  },
+  {
+   "fieldname": "supplier_address_details",
+   "fieldtype": "Small Text",
+   "label": "Supplier Address Details",
+   "read_only": 1
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "is_submittable": 1,
+ "links": [],
+ "modified": "2024-10-16 09:51:19.994581",
+ "modified_by": "Administrator",
+ "module": "Production Api",
+ "name": "Delivery Challan",
+ "naming_rule": "By \"Naming Series\" field",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

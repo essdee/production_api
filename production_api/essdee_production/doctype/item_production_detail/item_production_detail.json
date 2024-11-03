@@ -1,0 +1,612 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "format:{item}-{#####}",
+ "creation": "2024-07-24 11:16:08.015116",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "item_details_tab",
+  "item",
+  "tech_pack_version",
+  "pattern_version",
+  "section_break_yqii",
+  "primary_item_attribute",
+  "dependent_attribute",
+  "dependent_attribute_mapping",
+  "item_attributes",
+  "item_attribute_list_values_html",
+  "dependent_attribute_details_html",
+  "bill_of_materials_section",
+  "item_bom",
+  "bom_attribute_mapping_html",
+  "ipd_processes",
+  "packing_tab",
+  "packing_section",
+  "packing_process",
+  "pack_in_stage",
+  "packing_combo",
+  "column_break_gcku",
+  "packing_attribute",
+  "pack_out_stage",
+  "packing_attribute_no",
+  "section_break_rjdy",
+  "auto_calculate",
+  "get_packing_attribute_values",
+  "packing_attribute_details",
+  "set_item_tab",
+  "set_item_details_section",
+  "is_set_item",
+  "set_item_attribute",
+  "major_attribute_value",
+  "get_set_item_combination",
+  "set_item_combination_details",
+  "set_items_html",
+  "stiching_tab",
+  "stiching_details_section",
+  "stiching_process",
+  "stiching_attribute",
+  "stiching_major_attribute_value",
+  "column_break_houe",
+  "stiching_in_stage",
+  "stiching_out_stage",
+  "stiching_attribute_quantity",
+  "section_break_lpco",
+  "get_stiching_attribute_values",
+  "stiching_item_details",
+  "section_break_wfps",
+  "is_same_packing_attribute",
+  "get_stiching_item_combination",
+  "stiching_items_html",
+  "stiching_item_combination_details",
+  "cutting_tab",
+  "cutting_details_section",
+  "cutting_process",
+  "cloth_attributes",
+  "cloth_detail",
+  "additional_cloth",
+  "section_break_eorj",
+  "cutting_attributes",
+  "select_attributes_html",
+  "get_cutting_combination",
+  "cutting_items_html",
+  "cutting_items_json",
+  "section_break_cqll",
+  "column_break_gwca",
+  "select_cloths_attribute_html",
+  "get_cloth_combination",
+  "update_cloth_items",
+  "cutting_cloths_html",
+  "cutting_cloths_json",
+  "cloth_accessory_tab",
+  "accessory_attributes",
+  "accessory_clothtype_combination_html",
+  "select_cloth_accessory_html",
+  "get_accessory_combination",
+  "cloth_accessories_html",
+  "cloth_accessory_json",
+  "accessory_clothtype_json",
+  "section_break_bfkp",
+  "get_stiching_accessory_combination",
+  "stiching_accessory_json",
+  "stiching_accessory_html"
+ ],
+ "fields": [
+  {
+   "fieldname": "item",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Item",
+   "options": "Item",
+   "reqd": 1
+  },
+  {
+   "fieldname": "section_break_yqii",
+   "fieldtype": "Section Break",
+   "label": "Item Attributes"
+  },
+  {
+   "fieldname": "primary_item_attribute",
+   "fieldtype": "Link",
+   "label": "Primary Item Attribute",
+   "options": "Item Attribute",
+   "read_only_depends_on": "eval: !doc.__islocal"
+  },
+  {
+   "fieldname": "dependent_attribute",
+   "fieldtype": "Link",
+   "label": "Dependent Attribute",
+   "options": "Item Attribute",
+   "read_only_depends_on": "eval: !doc.__islocal"
+  },
+  {
+   "fieldname": "dependent_attribute_mapping",
+   "fieldtype": "Link",
+   "hidden": 1,
+   "label": "Dependent Attribute Mapping",
+   "options": "Item Dependent Attribute Mapping"
+  },
+  {
+   "fieldname": "item_attributes",
+   "fieldtype": "Table",
+   "label": "Item Attributes",
+   "options": "Item Item Attribute"
+  },
+  {
+   "fieldname": "bill_of_materials_section",
+   "fieldtype": "Section Break",
+   "label": "Bill of Materials"
+  },
+  {
+   "fieldname": "item_bom",
+   "fieldtype": "Table",
+   "label": "Item BOM",
+   "options": "Item BOM"
+  },
+  {
+   "depends_on": "eval: !doc.__islocal",
+   "fieldname": "packing_tab",
+   "fieldtype": "Tab Break",
+   "label": "Packing"
+  },
+  {
+   "fieldname": "packing_section",
+   "fieldtype": "Section Break",
+   "label": "Packing Details"
+  },
+  {
+   "description": "Pcs per Box",
+   "fieldname": "packing_combo",
+   "fieldtype": "Int",
+   "label": "Packing Combo",
+   "mandatory_depends_on": "eval: !doc.__islocal",
+   "non_negative": 1
+  },
+  {
+   "description": "Attribute based on which Packing Depends",
+   "fieldname": "packing_attribute",
+   "fieldtype": "Link",
+   "label": "Packing Attribute",
+   "mandatory_depends_on": "eval: !doc.__islocal",
+   "options": "Item Attribute"
+  },
+  {
+   "description": "Unique number of attribute values that will be put into a box.",
+   "fieldname": "packing_attribute_no",
+   "fieldtype": "Int",
+   "label": "Packing Attribute No",
+   "mandatory_depends_on": "eval: !doc.__islocal",
+   "non_negative": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "auto_calculate",
+   "fieldtype": "Check",
+   "label": "Auto Calculate"
+  },
+  {
+   "depends_on": "eval: !doc.__islocal && doc.packing_attribute",
+   "fieldname": "set_item_tab",
+   "fieldtype": "Tab Break",
+   "label": "Set Item"
+  },
+  {
+   "default": "0",
+   "fieldname": "is_set_item",
+   "fieldtype": "Check",
+   "label": "Is Set Item"
+  },
+  {
+   "depends_on": "eval: doc.is_set_item",
+   "fieldname": "set_item_attribute",
+   "fieldtype": "Link",
+   "label": "Set Item Attribute",
+   "mandatory_depends_on": "eval: doc.is_set_item",
+   "options": "Item Attribute"
+  },
+  {
+   "fieldname": "set_items_html",
+   "fieldtype": "HTML",
+   "label": "Set Items HTML"
+  },
+  {
+   "depends_on": "eval: doc.is_set_item && doc.set_item_attribute",
+   "description": "The main Set Item Attribute",
+   "fieldname": "major_attribute_value",
+   "fieldtype": "Link",
+   "label": "Major Attribute Value",
+   "mandatory_depends_on": "eval: doc.is_set_item",
+   "options": "Item Attribute Value"
+  },
+  {
+   "fieldname": "set_item_details_section",
+   "fieldtype": "Section Break",
+   "label": "Set Item Details"
+  },
+  {
+   "fieldname": "item_details_tab",
+   "fieldtype": "Tab Break",
+   "label": "Item Details"
+  },
+  {
+   "fieldname": "item_attribute_list_values_html",
+   "fieldtype": "HTML",
+   "label": "Item Attribute List Values HTML"
+  },
+  {
+   "fieldname": "dependent_attribute_details_html",
+   "fieldtype": "HTML",
+   "label": "Dependent Attribute Details HTML"
+  },
+  {
+   "fieldname": "bom_attribute_mapping_html",
+   "fieldtype": "HTML",
+   "label": "BOM Attribute Mapping HTML"
+  },
+  {
+   "fieldname": "packing_attribute_details",
+   "fieldtype": "Table",
+   "label": "Packing Attribute Details",
+   "options": "Item Production Detail Packing Attribute Detail"
+  },
+  {
+   "depends_on": "eval: doc.packing_attribute_no && doc.packing_attribute",
+   "fieldname": "get_packing_attribute_values",
+   "fieldtype": "Button",
+   "label": "Get Packing Attribute Values"
+  },
+  {
+   "depends_on": "eval: doc.is_set_item && doc.set_item_attribute && doc.major_attribute_value",
+   "fieldname": "get_set_item_combination",
+   "fieldtype": "Button",
+   "label": "Get Set Item Combination"
+  },
+  {
+   "fieldname": "set_item_combination_details",
+   "fieldtype": "Table",
+   "hidden": 1,
+   "label": "Set Item Combination Details",
+   "options": "Item Production Detail Set Item Combination"
+  },
+  {
+   "depends_on": "eval: doc.dependent_attribute_mapping",
+   "description": "The stage which is used for packing.",
+   "fieldname": "pack_in_stage",
+   "fieldtype": "Link",
+   "label": "Pack In Stage",
+   "mandatory_depends_on": "eval: doc.dependent_attribute_mapping && !doc.__islocal",
+   "options": "Item Attribute Value"
+  },
+  {
+   "depends_on": "eval: doc.dependent_attribute_mapping",
+   "fieldname": "pack_out_stage",
+   "fieldtype": "Link",
+   "label": "Pack Out Stage",
+   "mandatory_depends_on": "eval: doc.dependent_attribute_mapping && !doc.__islocal",
+   "options": "Item Attribute Value"
+  },
+  {
+   "fieldname": "stiching_item_details",
+   "fieldtype": "Table",
+   "label": "Stiching Item Details",
+   "options": "Stiching Item Detail"
+  },
+  {
+   "fieldname": "stiching_details_section",
+   "fieldtype": "Section Break",
+   "label": "Stiching Details"
+  },
+  {
+   "fieldname": "stiching_attribute",
+   "fieldtype": "Link",
+   "label": "Stiching Attribute",
+   "options": "Item Attribute"
+  },
+  {
+   "depends_on": "eval: doc.stiching_attribute",
+   "fieldname": "stiching_in_stage",
+   "fieldtype": "Link",
+   "label": "Stiching In Stage",
+   "options": "Item Attribute Value"
+  },
+  {
+   "depends_on": "eval: doc.stiching_attribute",
+   "fieldname": "stiching_out_stage",
+   "fieldtype": "Link",
+   "label": "Stiching Out Stage",
+   "options": "Item Attribute Value"
+  },
+  {
+   "depends_on": "eval: !doc.__islocal",
+   "fieldname": "stiching_tab",
+   "fieldtype": "Tab Break",
+   "label": "Stiching"
+  },
+  {
+   "depends_on": "eval: doc.stiching_attribute",
+   "fieldname": "stiching_major_attribute_value",
+   "fieldtype": "Link",
+   "label": "Stiching Major Attribute Value",
+   "options": "Item Attribute Value"
+  },
+  {
+   "fieldname": "get_stiching_item_combination",
+   "fieldtype": "Button",
+   "label": "Get Stiching Item Combination"
+  },
+  {
+   "fieldname": "stiching_items_html",
+   "fieldtype": "HTML",
+   "label": "Stiching Items HTML"
+  },
+  {
+   "fieldname": "stiching_item_combination_details",
+   "fieldtype": "Table",
+   "hidden": 1,
+   "label": "Stiching Item Combination Details",
+   "options": "Item Production Detail Set Item Combination"
+  },
+  {
+   "depends_on": "eval: !doc.__islocal",
+   "fieldname": "cutting_tab",
+   "fieldtype": "Tab Break",
+   "label": "Cutting"
+  },
+  {
+   "fieldname": "cutting_attributes",
+   "fieldtype": "Table MultiSelect",
+   "hidden": 1,
+   "label": "Cutting Attributes",
+   "options": "Cutting Attribute Detail"
+  },
+  {
+   "fieldname": "select_attributes_html",
+   "fieldtype": "HTML",
+   "label": "Select Attributes HTML"
+  },
+  {
+   "fieldname": "get_cutting_combination",
+   "fieldtype": "Button",
+   "label": "Get Cutting Combination"
+  },
+  {
+   "fieldname": "section_break_cqll",
+   "fieldtype": "Section Break",
+   "label": "Cloth Mapping Details"
+  },
+  {
+   "fieldname": "cutting_items_html",
+   "fieldtype": "HTML",
+   "label": "Cutting Items HTML"
+  },
+  {
+   "fieldname": "cutting_items_json",
+   "fieldtype": "JSON",
+   "hidden": 1,
+   "label": "Cutting Items JSON"
+  },
+  {
+   "fieldname": "cloth_detail",
+   "fieldtype": "Table",
+   "label": "Cloth Detail",
+   "options": "Item Production Detail Cloth Detail"
+  },
+  {
+   "fieldname": "update_cloth_items",
+   "fieldtype": "Button",
+   "label": "Update Cloth Items"
+  },
+  {
+   "fieldname": "additional_cloth",
+   "fieldtype": "Float",
+   "label": "Additional Cloth %",
+   "non_negative": 1,
+   "precision": "2"
+  },
+  {
+   "fieldname": "tech_pack_version",
+   "fieldtype": "Data",
+   "label": "Tech Pack Version"
+  },
+  {
+   "fieldname": "pattern_version",
+   "fieldtype": "Data",
+   "label": "Pattern Version"
+  },
+  {
+   "fieldname": "get_cloth_combination",
+   "fieldtype": "Button",
+   "label": "Get Cloth Combination"
+  },
+  {
+   "fieldname": "cutting_cloths_html",
+   "fieldtype": "HTML",
+   "label": "Cutting Cloths HTML"
+  },
+  {
+   "fieldname": "cutting_cloths_json",
+   "fieldtype": "JSON",
+   "hidden": 1,
+   "label": "Cutting Cloths JSON"
+  },
+  {
+   "fieldname": "select_cloths_attribute_html",
+   "fieldtype": "HTML",
+   "label": "Select Cloths Attribute HTML"
+  },
+  {
+   "fieldname": "column_break_gwca",
+   "fieldtype": "Column Break",
+   "hidden": 1
+  },
+  {
+   "fieldname": "cloth_attributes",
+   "fieldtype": "Table MultiSelect",
+   "hidden": 1,
+   "label": "Cloth Attributes",
+   "options": "Cutting Attribute Detail"
+  },
+  {
+   "fieldname": "cutting_details_section",
+   "fieldtype": "Section Break",
+   "label": "Cloth Details"
+  },
+  {
+   "fieldname": "section_break_eorj",
+   "fieldtype": "Section Break",
+   "label": "Cutting Details"
+  },
+  {
+   "fieldname": "stiching_attribute_quantity",
+   "fieldtype": "Int",
+   "label": "Stiching Attribute Quantity",
+   "non_negative": 1
+  },
+  {
+   "depends_on": "eval: doc.stiching_attribute_quantity > 0",
+   "fieldname": "get_stiching_attribute_values",
+   "fieldtype": "Button",
+   "label": "Get Stiching Attribute Values"
+  },
+  {
+   "default": "0",
+   "fieldname": "is_same_packing_attribute",
+   "fieldtype": "Check",
+   "label": "Is Same Packing Attribute"
+  },
+  {
+   "fieldname": "packing_process",
+   "fieldtype": "Link",
+   "label": "Packing Process",
+   "options": "Process"
+  },
+  {
+   "fieldname": "stiching_process",
+   "fieldtype": "Link",
+   "label": "Stiching Process",
+   "options": "Process"
+  },
+  {
+   "fieldname": "cutting_process",
+   "fieldtype": "Link",
+   "label": "Cutting Process",
+   "options": "Process"
+  },
+  {
+   "fieldname": "ipd_processes",
+   "fieldtype": "Table",
+   "label": "IPD Processes",
+   "options": "IPD Process"
+  },
+  {
+   "fieldname": "cloth_accessories_html",
+   "fieldtype": "HTML",
+   "label": "Cloth Accessories HTML"
+  },
+  {
+   "fieldname": "select_cloth_accessory_html",
+   "fieldtype": "HTML",
+   "label": "Select Cloth Accessory HTML"
+  },
+  {
+   "fieldname": "get_accessory_combination",
+   "fieldtype": "Button",
+   "label": "Get Accessory Combination"
+  },
+  {
+   "fieldname": "accessory_attributes",
+   "fieldtype": "Table MultiSelect",
+   "hidden": 1,
+   "label": "Accessory Attributes",
+   "options": "Cutting Attribute Detail"
+  },
+  {
+   "fieldname": "cloth_accessory_json",
+   "fieldtype": "JSON",
+   "hidden": 1,
+   "label": "Cloth Accessory JSON"
+  },
+  {
+   "depends_on": "eval: !doc.__islocal",
+   "fieldname": "cloth_accessory_tab",
+   "fieldtype": "Tab Break",
+   "label": "Cloth Accessory"
+  },
+  {
+   "fieldname": "stiching_accessory_html",
+   "fieldtype": "HTML",
+   "label": "Stiching Accessory HTML"
+  },
+  {
+   "fieldname": "section_break_bfkp",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "get_stiching_accessory_combination",
+   "fieldtype": "Button",
+   "label": "Get Stiching Accessory Combination"
+  },
+  {
+   "fieldname": "stiching_accessory_json",
+   "fieldtype": "JSON",
+   "hidden": 1,
+   "label": "Stiching Accessory JSON"
+  },
+  {
+   "fieldname": "accessory_clothtype_combination_html",
+   "fieldtype": "HTML",
+   "label": "Accessory ClothType Combination HTML"
+  },
+  {
+   "fieldname": "accessory_clothtype_json",
+   "fieldtype": "JSON",
+   "hidden": 1,
+   "label": "Accessory Clothtype JSON"
+  },
+  {
+   "fieldname": "column_break_gcku",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "section_break_rjdy",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "column_break_houe",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "section_break_lpco",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "section_break_wfps",
+   "fieldtype": "Section Break"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2024-10-23 18:42:11.688640",
+ "modified_by": "Administrator",
+ "module": "Essdee Production",
+ "name": "Item Production Detail",
+ "naming_rule": "Expression",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

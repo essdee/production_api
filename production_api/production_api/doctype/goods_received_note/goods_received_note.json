@@ -33,6 +33,7 @@
   "delivery_address",
   "delivery_address_display",
   "section_break_ve8oj",
+  "items_pending",
   "items",
   "item_html",
   "section_break_8ncnk",
@@ -170,8 +171,7 @@
   },
   {
    "fieldname": "section_break_ve8oj",
-   "fieldtype": "Section Break",
-   "label": "Items"
+   "fieldtype": "Section Break"
   },
   {
    "fieldname": "items",
@@ -303,12 +303,19 @@
    "no_copy": 1,
    "options": "Purchase Invoice",
    "read_only": 1
+  },
+  {
+   "fieldname": "items_pending",
+   "fieldtype": "Table",
+   "hidden": 1,
+   "label": "Items Pending",
+   "options": "Goods Received Note Item"
   }
  ],
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2023-10-03 20:32:42.845833",
+ "modified": "2024-10-27 00:45:56.816627",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Goods Received Note",

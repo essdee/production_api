@@ -14,29 +14,39 @@ from production_api.production_api.doctype.purchase_order.purchase_order import 
 
 class GoodsReceivedNote(Document):
 	def onload(self):
-		item_details = fetch_grn_item_details(self.get('items'), docstatus=self.docstatus)
+		item_details = fetch_grn_item_details(self.get('items'),self.get('against'), docstatus=self.docstatus)
 		self.set('print_item_details', json.dumps(item_details))
 		self.set_onload('item_details', item_details)
-	
+		if self.against == "Work Order":
+			item_details = fetch_grn_item_pending_details(self.get('items_pending'),self.get('against'), docstatus=self.docstatus)
+			self.set_onload('item_pending_details', item_details)
+
 	def before_save(self):
-		self.calculate_amount()
+		if self.against == 'Purchase Order': 
+			self.calculate_amount()
 
 	def before_submit(self):
 		against_docstatus = frappe.get_value(self.against, self.against_id, 'docstatus')
 		if against_docstatus != 1:
 			frappe.throw(f'{self.against} is not submitted.', title='GRN')
+		
 		# Remove all item rows quantity is zero
 		for item in self.items:
-			if item.quantity == 0:
+			if item.quantity == 0 and self.against == 'Purchase Order':
 				self.items.remove(item)
-		self.validate_quantity()
-		self.calculate_amount()
+		if self.against == 'Purchase Order':		
+			self.validate_quantity()
+			self.calculate_amount()
 		self.set('approved_by', frappe.get_user().doc.name)
-	
+
 	def on_submit(self):
-		self.update_purchase_order()
-		self.update_stock_ledger()
-	
+		if self.against == 'Purchase Order':
+			self.update_purchase_order()
+			self.update_stock_ledger()
+		else:
+			self.update_work_order()
+			self.update_stock_ledger()	
+
 	def on_cancel(self):
 		if self.purchase_invoice_name:
 			frappe.throw(f'Please remove this GRN from Purchase Invoice {self.purchase_invoice_name} before cancelling. Please Contact Purchase Department.')
@@ -52,8 +62,9 @@ class GoodsReceivedNote(Document):
 			if status != 'Open':
 				frappe.throw('Purchase order is not open.', title='GRN')
 		self.ignore_linked_doctypes = ("Stock Ledger Entry")
-		self.update_purchase_order()
-		self.update_stock_ledger()
+		if self.against == 'Purchase Order':
+			self.update_purchase_order()
+			self.update_stock_ledger()
 
 	def update_purchase_order(self):
 		if self.docstatus == 0:
@@ -73,14 +84,47 @@ class GoodsReceivedNote(Document):
 					break
 		po.save(ignore_permissions=True)
 
+	def update_work_order(self):
+		if self.docstatus == 0:
+			return
+		multiplier = 1
+		if self.docstatus == 2:
+			multiplier = -1
+		wo = frappe.get_doc(self.against, self.against_id)
+		for item in self.items:
+			# find the po item with the same ref_docname
+			for i in wo.receivables:
+				if i.name == item.ref_docname:
+					quantity = item.received_quantity * multiplier
+					if self.docstatus == 1:
+						validate_quantity_tolerance(i.item_variant, i.qty, i.pending_quantity, quantity)
+					i.set('pending_quantity', i.pending_quantity - quantity)
+					break
+		
+		wo.save(ignore_permissions=True)	
+
+	def update_stock_ledger(self):
+		from production_api.mrp_stock.stock_ledger import make_sl_entries
+		if self.docstatus == 0:
+			return
+		sl_entries = []
+		for item in self.items:
+			sl_entries.append(self.get_sl_entries(item, {}))
+		if self.docstatus == 2:
+			sl_entries.reverse()
+		make_sl_entries(sl_entries)
 
 	def before_validate(self):
+		if self.get('item_pending_details'):
+			items = save_grn_item_pending_details(self.item_pending_details, self.against)
+			self.set('items_pending', items)
 		if(self.get('item_details')):
-			items = save_grn_item_details(self.item_details)
+
+			items = save_grn_item_details(self.item_details, self.against)
 			self.set('items', items)
 		elif self.is_new() or not self.get('items'):
 			frappe.throw('Add items to GRN.', title='GRN')
-	
+
 	def validate(self):
 		if self.against == 'Purchase Order':
 			status = frappe.get_value('Purchase Order', self.against_id, 'open_status')
@@ -92,16 +136,16 @@ class GoodsReceivedNote(Document):
 			po_docstatus = frappe.get_value('Purchase Order', self.against_id, 'docstatus')
 			if po_docstatus != 1:
 				frappe.throw('Purchase order is not submitted.', title='GRN')
-		
-		self.validate_quantity()
-	
+		if self.against == 'Purchase Order':
+			self.validate_quantity()
+
 	def validate_quantity(self):
 		total_quantity = 0
 		for item in self.items:
 			total_quantity += item.quantity
 		if total_quantity == 0:
 			frappe.throw('Quantity cannot be zero.', title='GRN')
-	
+
 	def calculate_amount(self):
 		total_amount = 0
 		total_tax = 0
@@ -118,17 +162,6 @@ class GoodsReceivedNote(Document):
 		self.set('grand_total', grand_total)
 		self.set('in_words', money_in_words(grand_total))
 
-	def update_stock_ledger(self):
-		from production_api.mrp_stock.stock_ledger import make_sl_entries
-		if self.docstatus == 0:
-			return
-		sl_entries = []
-		for item in self.items:
-			sl_entries.append(self.get_sl_entries(item, {}))
-		if self.docstatus == 2:
-			sl_entries.reverse()
-		make_sl_entries(sl_entries)
-	
 	def get_sl_entries(self, d, args):
 		sl_dict = frappe._dict(
 			{
@@ -146,12 +179,10 @@ class GoodsReceivedNote(Document):
 				"posting_time": self.posting_time,
 			}
 		)
-
 		sl_dict.update(args)
 		return sl_dict
 
-
-def save_grn_item_details(item_details):
+def save_grn_item_details(item_details, against):
 	"""
 		Save item details to purchase order
 		Item details format:
@@ -166,8 +197,10 @@ def save_grn_item_details(item_details):
 			item_name = item['name']
 			item_attributes = item['attributes']
 			if(item.get('primary_attribute')):
-				for attr, values in item['values'].items():
-					if values.get('qty') or values.get('pending_qty') or values.get('received'):
+				if(item.get('created')):
+					item['created'] = 1
+				for attr, values in item['values'].items():	
+					if values.get('qty') or values.get('pending_qty') or values.get('received') or values.get('received_quantity') or values.get('rework_details'):
 						item_attributes[item.get('primary_attribute')] = attr
 						item1 = {}
 						variant_name = get_variant(item_name, item_attributes)
@@ -175,7 +208,8 @@ def save_grn_item_details(item_details):
 							variant1 = create_variant(item_name, item_attributes)
 							variant1.insert()
 							variant_name = variant1.name
-						validate_quantity_tolerance(variant_name, values.get('qty'), values.get('pending_qty'), values.get('received'))
+						if against == 'Purchase Order':	
+							validate_quantity_tolerance(variant_name, values.get('qty'), values.get('pending_qty'), values.get('received'))
 						item1['item_variant'] = variant_name
 						item1['lot'] = item.get('lot')
 						# Convert to number if string
@@ -184,6 +218,7 @@ def save_grn_item_details(item_details):
 						else:
 							values['received'] = values.get('received') or 0
 						item1['quantity'] = values.get('received')
+
 						item1['uom'] = item.get('default_uom')
 						if isinstance(values.get('secondary_received'), string_types) and values.get('secondary_received') != '':
 							values['secondary_received'] = float(values.get('secondary_received'))
@@ -198,8 +233,19 @@ def save_grn_item_details(item_details):
 						item1['comments'] = item.get('comments')
 						item1['ref_doctype'] = values.get('ref_doctype')
 						item1['ref_docname'] = values.get('ref_docname')
-						items.append(item1)
+						if against == 'Work Order':
+							for v in values.get('val'):
+								item1['received_quantity'] = v['received_quantity']
+								item1['received_type'] = v['received_type']
+								item1['rework_details'] = values.get('rework_details')
+								x = item1.copy()
+								items.append(x)
+						else:
+							items.append(item1)		
+						
 			else:
+				if item.get('created'):
+					item['created'] = 1
 				if item['values'].get('default'):
 					item1 = {}
 					variant_name = get_variant(item_name, item_attributes)
@@ -207,7 +253,8 @@ def save_grn_item_details(item_details):
 						variant1 = create_variant(item_name, item_attributes)
 						variant1.insert()
 						variant_name = variant1.name
-					validate_quantity_tolerance(variant_name, item['values']['default'].get('qty'), item['values']['default'].get('pending_qty'), item['values']['default'].get('received'))
+					if against == 'Purchase Order':
+						validate_quantity_tolerance(variant_name, item['values']['default'].get('qty'), item['values']['default'].get('pending_qty'), item['values']['default'].get('received'))
 					item1['item_variant'] = variant_name
 					item1['lot'] = item.get('lot')
 					item1['quantity'] = item['values']['default'].get('received')
@@ -221,8 +268,93 @@ def save_grn_item_details(item_details):
 					item1['comments'] = item.get('comments')
 					item1['ref_doctype'] = item['values']['default'].get('ref_doctype')
 					item1['ref_docname'] = item['values']['default'].get('ref_docname')
-					items.append(item1)
-			row_index += 1
+					if against == 'Work Order':
+						for v in item['values']['default']['val']:
+							item1['received_quantity'] = v['received_quantity']
+							item1['received_type'] = v['received_type']
+							item1['rework_details'] = item['values']['default'].get('rework_details')
+							x = item1.copy()
+							items.append(x)
+					else:
+						items.append(item1)	
+			row_index += 1	
+	return items
+
+def save_grn_item_pending_details(item_details, against):
+	"""
+		Save item details to purchase order
+		Item details format:
+		Eg: see sample_po_item.jsonc
+	"""
+	if isinstance(item_details, string_types):
+		item_details = json.loads(item_details)
+	items = []
+	row_index = 0
+	for table_index, group in enumerate(item_details):
+		for item in group['items']:
+			item_name = item['name']
+			item_attributes = item['attributes']
+			if(item.get('primary_attribute')):
+				for attr, values in item['values'].items():	
+					if values.get('qty') or values.get('pending_qty'):
+						item_attributes[item.get('primary_attribute')] = attr
+						item1 = {}
+						variant_name = get_variant(item_name, item_attributes)
+						if not variant_name:
+							variant1 = create_variant(item_name, item_attributes)
+							variant1.insert()
+							variant_name = variant1.name
+						if against == 'Purchase Order':	
+							validate_quantity_tolerance(variant_name, values.get('qty'), values.get('pending_qty'), values.get('received'))
+						item1['item_variant'] = variant_name
+						item1['lot'] = item.get('lot')
+						if isinstance(values.get('received'), string_types) and values.get('received') != '':
+							values['received'] = float(values.get('received'))
+						else:
+							values['received'] = values.get('received') or 0
+						item1['quantity'] = values.get('received')
+
+						item1['uom'] = item.get('default_uom')
+						if isinstance(values.get('secondary_received'), string_types) and values.get('secondary_received') != '':
+							values['secondary_received'] = float(values.get('secondary_received'))
+						else:
+							values['secondary_received'] = values.get('secondary_received') or 0
+						item1['secondary_qty'] = values.get('secondary_received')
+						item1['secondary_uom'] = item.get('secondary_uom')
+						item1['rate'] = values.get('rate')
+						item1['tax'] = values.get('tax')
+						item1['table_index'] = table_index
+						item1['row_index'] = row_index
+						item1['comments'] = item.get('comments')
+						item1['ref_doctype'] = values.get('ref_doctype')
+						item1['ref_docname'] = values.get('ref_docname')	
+						items.append(item1)		
+						
+			else:
+				if item['values'].get('default'):
+					item1 = {}
+					variant_name = get_variant(item_name, item_attributes)
+					if not variant_name:
+						variant1 = create_variant(item_name, item_attributes)
+						variant1.insert()
+						variant_name = variant1.name
+					if against == 'Purchase Order':
+						validate_quantity_tolerance(variant_name, item['values']['default'].get('qty'), item['values']['default'].get('pending_qty'), item['values']['default'].get('received'))
+					item1['item_variant'] = variant_name
+					item1['lot'] = item.get('lot')
+					item1['quantity'] = item['values']['default'].get('received')
+					item1['uom'] = item.get('default_uom')
+					item1['secondary_qty'] = item['values']['default'].get('secondary_received')
+					item1['secondary_uom'] = item.get('secondary_uom')
+					item1['rate'] = item['values']['default'].get('rate')
+					item1['tax'] = item['values']['default'].get('tax')
+					item1['table_index'] = table_index
+					item1['row_index'] = row_index
+					item1['comments'] = item.get('comments')
+					item1['ref_doctype'] = item['values']['default'].get('ref_doctype')
+					item1['ref_docname'] = item['values']['default'].get('ref_docname')
+					items.append(item1)		
+			row_index += 1		
 	return items
 
 def validate_quantity_tolerance(item_variant, total_qty, pending_qty, received_qty):
@@ -235,11 +367,119 @@ def validate_quantity_tolerance(item_variant, total_qty, pending_qty, received_q
 		frappe.throw(_("Quantity tolerance exceeded for item {0}. Received Quantity must not exceed {1}").format(item, pending_qty + tolerance))
 	return True
 
-def fetch_grn_item_details(items, docstatus=0):
+def fetch_grn_item_details(items,against, docstatus=0):
 	items = [item.as_dict() for item in items]
 	# Delete all rows where quantity is 0 if docstatus is not 0
-	if docstatus != 0:
+	if docstatus != 0 and against == 'Purchase Order':
 		items = [item for item in items if item.get('quantity') > 0]
+	item_details = []
+	items = sorted(items, key = lambda i: i['row_index'])
+	for key, variants in groupby(items, lambda i: i['row_index']):
+		variants = list(variants)
+		current_variant = frappe.get_doc("Item Variant", variants[0]['item_variant'])
+		current_item_attribute_details = get_attribute_details(current_variant.item)
+		item = {
+			'name': current_variant.item,
+			'lot': variants[0]['lot'],
+			'attributes': get_item_attribute_details(current_variant, current_item_attribute_details),
+			'primary_attribute': current_item_attribute_details['primary_attribute'],
+			'values': {},
+			'types':[],
+			'default_uom': variants[0]['uom'] or current_item_attribute_details['default_uom'],
+			'secondary_uom': variants[0]['secondary_uom'] or current_item_attribute_details['secondary_uom'],
+			'comments': variants[0]['comments'],
+			'created' : 1 if variants[0]['received_quantity'] or variants[0]['rework_details'] else 0
+		}
+
+		if item['primary_attribute']:
+			for attr in current_item_attribute_details['primary_attribute_values']:
+				item['values'][attr] = {'qty': 0, 'rate': 0}
+			for variant in variants:
+				if variant.received_type not in item['types']:
+					item['types'].append(variant.received_type)
+				current_variant = frappe.get_doc("Item Variant", variant['item_variant'])
+				for attr in current_variant.attributes:
+					if attr.attribute == item.get('primary_attribute'):
+						if not item['values'][attr.attribute_value].get('val',False):
+							item['values'][attr.attribute_value] = {
+								'received': variant.quantity,
+								'secondary_received': variant.secondary_qty,
+								'rate': variant.rate,
+								'tax': variant.tax,
+								'val':[{
+									'received_quantity':variant.received_quantity,
+									'received_type':variant.received_type,
+								}],
+								'rework_details': variant.rework_details,
+							}
+						else:
+							item['values'][attr.attribute_value]['val'].append({
+								'received_quantity':variant.received_quantity,
+								'received_type':variant.received_type,
+							})
+						# if docstatus == 0:
+						doc = None
+						if against == 'Purchase Order':
+							doc = frappe.get_doc("Purchase Order Item", variant.ref_docname)
+							item['values'][attr.attribute_value]['pending_qty'] = doc.pending_qty
+						else:
+							doc = frappe.get_doc("Work Order Receivables", variant.ref_docname)
+
+						item['values'][attr.attribute_value]['qty'] = doc.qty
+						item['values'][attr.attribute_value]['secondary_qty'] = doc.secondary_qty
+						item['values'][attr.attribute_value]['ref_doctype'] = variant.ref_doctype
+						item['values'][attr.attribute_value]['ref_docname'] = variant.ref_docname
+						break
+		else:
+			if variants[0].received_type not in item['types']:
+				item['types'].append(variants[0].received_type)
+			item['values']['default'] = {}
+			if not item['values']['default'].get('val'): 
+				item['values']['default'] = {
+					'received': variants[0].quantity,
+					'secondary_received': variants[0].secondary_qty,
+					'rate': variants[0].rate,
+					'tax': variants[0].tax,
+					'val':[{
+						'received_quantity':variants[0].received_quantity,
+						'received_type':variants[0].received_type,
+					}],
+					'rework_details': variants[0].rework_details,
+				}
+			else:
+				item['values']['default']['val'].append({
+					'received_quantity':variants[0].received_quantity,
+					'received_type':variants[0].received_type,
+				})
+			# if docstatus == 0:
+			doc = None
+			if against == 'Purchase Order':
+				doc = frappe.get_doc("Purchase Order Item", variants[0].ref_docname)
+				item['values']['default']['pending_qty'] = doc.pending_qty
+			else:
+				doc = frappe.get_doc("Work Order Receivables", variants[0].ref_docname)
+
+			item['values']['default']['qty'] = doc.qty
+			item['values']['default']['secondary_qty'] = doc.secondary_qty
+			item['values']['default']['ref_doctype'] = variants[0].ref_doctype
+			item['values']['default']['ref_docname'] = variants[0].ref_docname
+		index = get_item_group_index(item_details, current_item_attribute_details)
+
+		if index == -1:
+			item_details.append({
+				'attributes': current_item_attribute_details['attributes'],
+				'primary_attribute': current_item_attribute_details['primary_attribute'],
+				'primary_attribute_values': current_item_attribute_details['primary_attribute_values'],
+				'created' : 1 if variants[0]['received_quantity'] or variants[0]['rework_details'] else 0,
+				'items': [item]
+			})
+		else:
+			item_details[index]['items'].append(item)
+	return item_details
+
+def fetch_grn_item_pending_details(items,against, docstatus=0):
+	items = [item.as_dict() for item in items]
+	# Delete all rows where quantity is 0 if docstatus is not 0
 	item_details = []
 	items = sorted(items, key = lambda i: i['row_index'])
 	for key, variants in groupby(items, lambda i: i['row_index']):
@@ -269,29 +509,27 @@ def fetch_grn_item_details(items, docstatus=0):
 							'secondary_received': variant.secondary_qty,
 							'rate': variant.rate,
 							'tax': variant.tax,
+							'rework_details': variant.rework_details,
 						}
-						if docstatus == 0:
-							doc = frappe.get_doc("Purchase Order Item", variant.ref_docname)
-							item['values'][attr.attribute_value]['qty'] = doc.qty
-							item['values'][attr.attribute_value]['secondary_qty'] = doc.secondary_qty
-							item['values'][attr.attribute_value]['pending_qty'] = doc.pending_qty
-							item['values'][attr.attribute_value]['ref_doctype'] = variant.ref_doctype
-							item['values'][attr.attribute_value]['ref_docname'] = variant.ref_docname
+						doc = frappe.get_doc("Work Order Receivables", variant.ref_docname)
+						item['values'][attr.attribute_value]['qty'] = doc.qty
+						item['values'][attr.attribute_value]['secondary_qty'] = doc.secondary_qty
+						item['values'][attr.attribute_value]['ref_doctype'] = variant.ref_doctype
+						item['values'][attr.attribute_value]['ref_docname'] = variant.ref_docname
 						break
 		else:
 			item['values']['default'] = {
 				'received': variants[0].quantity,
 				'secondary_received': variants[0].secondary_qty,
 				'rate': variants[0].rate,
-				'tax': variants[0].tax
+				'tax': variants[0].tax,
+				'rework_details': variants[0].rework_details,
 			}
-			if docstatus == 0:
-				doc = frappe.get_doc("Purchase Order Item", variants[0].ref_docname)
-				item['values']['default']['qty'] = doc.qty
-				item['values']['default']['secondary_qty'] = doc.secondary_qty
-				item['values']['default']['pending_qty'] = doc.pending_qty
-				item['values']['default']['ref_doctype'] = variants[0].ref_doctype
-				item['values']['default']['ref_docname'] = variants[0].ref_docname
+			doc = frappe.get_doc("Work Order Receivables", variants[0].ref_docname)
+			item['values']['default']['qty'] = doc.qty
+			item['values']['default']['secondary_qty'] = doc.secondary_qty
+			item['values']['default']['ref_doctype'] = variants[0].ref_doctype
+			item['values']['default']['ref_docname'] = variants[0].ref_docname
 		index = get_item_group_index(item_details, current_item_attribute_details)
 
 		if index == -1:

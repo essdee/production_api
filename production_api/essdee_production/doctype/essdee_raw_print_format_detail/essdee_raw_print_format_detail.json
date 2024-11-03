@@ -1,0 +1,38 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2024-09-26 15:38:52.461452",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "printer_type",
+  "raw_code"
+ ],
+ "fields": [
+  {
+   "fieldname": "printer_type",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Printer Type",
+   "options": "\n200dpi\n300dpi"
+  },
+  {
+   "fieldname": "raw_code",
+   "fieldtype": "Code",
+   "label": "Raw Code"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2024-09-26 16:31:56.015694",
+ "modified_by": "Administrator",
+ "module": "Essdee Production",
+ "name": "Essdee Raw Print Format Detail",
+ "owner": "Administrator",
+ "permissions": [],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

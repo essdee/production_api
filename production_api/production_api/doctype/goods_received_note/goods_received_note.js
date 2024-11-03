@@ -24,7 +24,6 @@ frappe.ui.form.on('Goods Received Note', {
 				frappe.throw(__("Please set {0}",
 					[__(frappe.meta.get_label(doc.doctype, 'supplier', doc.name))]));
 			}
-
 			return {
 				query: 'frappe.contacts.doctype.address.address.address_query',
 				filters: {
@@ -39,7 +38,6 @@ frappe.ui.form.on('Goods Received Note', {
 				frappe.throw(__("Please set {0}",
 					[__(frappe.meta.get_label(doc.doctype, 'delivery_location', doc.name))]));
 			}
-
 			return {
 				query: 'frappe.contacts.doctype.address.address.address_query',
 				filters: {
@@ -54,7 +52,6 @@ frappe.ui.form.on('Goods Received Note', {
 				frappe.throw(__("Please set {0}",
 					[__(frappe.meta.get_label(doc.doctype, 'delivery_location', doc.name))]));
 			}
-
 			return {
 				query: 'frappe.contacts.doctype.address.address.address_query',
 				filters: {
@@ -69,7 +66,6 @@ frappe.ui.form.on('Goods Received Note', {
 				frappe.throw(__("Please set {0}",
 					[__(frappe.meta.get_label(doc.doctype, 'supplier', doc.name))]));
 			}
-
 			return {
 				query: 'frappe.contacts.doctype.contact.contact.contact_query',
 				filters: {
@@ -79,7 +75,6 @@ frappe.ui.form.on('Goods Received Note', {
 			};
 		});
 	},
-
 	refresh: function(frm) {
 		$(frm.fields_dict['item_html'].wrapper).html("");
 		frm.itemEditor = new frappe.production.ui.GRNItem(frm.fields_dict["item_html"].wrapper);
@@ -90,39 +85,59 @@ frappe.ui.form.on('Goods Received Note', {
 		}, true);
 		if(frm.doc.__onload && frm.doc.__onload.item_details) {
 			frm.doc['item_details'] = JSON.stringify(frm.doc.__onload.item_details);
-			frm.itemEditor.load_data({
-				items: frm.doc.__onload.item_details
-			}, true);
-		} else if (frm.doc.item_details) {
-			frm.itemEditor.load_data({
-				items: JSON.parse(frm.doc.item_details)
-			}, true);
+			if(frm.doc.__onload && frm.doc.__onload.item_pending_details){
+				frm.doc['item_pending_details'] = JSON.stringify(frm.doc.__onload.item_pending_details)
+				frm.itemEditor.load_data({
+					items: frm.doc.__onload.item_details,
+					pending_items: frm.doc.__onload.item_pending_details
+				}, true);	
+			}
+			else{
+				frm.itemEditor.load_data({
+					items: frm.doc.__onload.item_details,
+				}, true);
+			}
+			
+		} 
+		else if (frm.doc.item_details) {
+			if(frm.doc.item_pending_details){
+				frm.itemEditor.load_data({
+					items: JSON.parse(frm.doc.item_details),
+					pending_items:JSON.parse(frm.doc.item_pending_details)
+				}, true);
+			}
+			else{
+				frm.itemEditor.load_data({
+					items: JSON.parse(frm.doc.item_details),
+				}, true);
+			}			
 		}
 		frm.itemEditor.update_status();
 		frappe.production.ui.eventBus.$on("grn_updated", e => {
 			frm.dirty();
 			frm.events.save_item_details(frm);
 		})
-
-		// Remove Print if draft
 		if (frm.doc.docstatus == 0) {
 			var print_menu = $(".dropdown-menu > li:contains('Print')");
-			if (print_menu.length >0){
+			if (print_menu.length > 0){
 				print_menu[0].parentElement.removeChild(print_menu[0]);
 			}
-			
 			var print_btn = $('[data-original-title="Print"]');
 			if(print_btn.length > 0){
 				print_btn[0].parentElement.removeChild(print_btn[0]);
 			}
 		}
-
 	},
 
 	save_item_details: function(frm) {
 		if(frm.itemEditor){
 			let items = frm.itemEditor.get_items();
-			if(items && items.length > 0) {
+			if(items && items.length > 0 && frm.doc.against == "Work Order") {
+				frm.doc['item_details'] = JSON.stringify(items[0]);
+				frm.doc['item_pending_details'] = JSON.stringify(items[1])
+			}
+			else if(items && items.length > 0 && frm.doc.against == "Purchase Order"){
+				
 				frm.doc['item_details'] = JSON.stringify(items);
 			}
 			else {
@@ -143,11 +158,6 @@ frappe.ui.form.on('Goods Received Note', {
 		}
 	},
 
-	before_save: function(frm) {
-		if(frm.itemEditor) {
-			console.log(frm.itemEditor);
-		}
-	},
 
 	supplier: function(frm) {
 		if (frm.doc.supplier) {
@@ -191,13 +201,13 @@ frappe.ui.form.on('Goods Received Note', {
 	against_id: function(frm) {
 		frappe.production.ui.eventBus.$emit("update_grn_details", {against_id: frm.doc.against_id})
 		if (frm.doc.against_id) {
-			// get the supplier in the Purchase Order
 			frappe.db.get_doc(frm.doc.against, frm.doc.against_id)
 				.then(doc => {
 					frm.set_value('supplier', doc.supplier);
 					frm.set_value('delivery_location', doc.default_delivery_location);
 				})
-		} else {
+		} 
+		else {
 			frm.set_value('supplier', '');
 			frm.set_value('delivery_location', '');
 		}
@@ -214,7 +224,8 @@ frappe.ui.form.on('Goods Received Note', {
 					}
 				}
 			})
-		} else {
+		} 
+		else {
 			frm.set_value('supplier_address_display', '');
 		}
 	},
@@ -222,7 +233,7 @@ frappe.ui.form.on('Goods Received Note', {
 	delivery_address: function(frm) {
 		if (frm.doc['delivery_address']) {
 			frappe.call({
-				method: "frappe.contacts.doctype.address.address.get_address_display",
+				method: "production_api.production_api.doctype.purchase_order.purchase_order.get_address_display",
 				args: {"address_dict": frm.doc['delivery_address'] },
 				callback: function(r) {
 					if (r.message) {
@@ -230,7 +241,8 @@ frappe.ui.form.on('Goods Received Note', {
 					}
 				}
 			})
-		} else {
+		} 
+		else {
 			frm.set_value('delivery_address_display', '');
 		}
 	},
@@ -246,7 +258,8 @@ frappe.ui.form.on('Goods Received Note', {
 					}
 				}
 			})
-		} else {
+		} 
+		else {
 			frm.set_value('billing_address_display', '');
 		}
 	},

@@ -1,0 +1,308 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "naming_series:",
+ "creation": "2024-10-16 15:06:57.171282",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "cutting_plan",
+  "lot",
+  "length",
+  "width",
+  "cutting_spreader",
+  "maximum_no_of_plys",
+  "start_datetime",
+  "printed_time",
+  "column_break_rxns",
+  "cutting_marker",
+  "marker_name",
+  "item",
+  "length_allowance",
+  "width_allowance",
+  "lay_no",
+  "cutter",
+  "maximum_allow_percentage",
+  "end_datetime",
+  "naming_series",
+  "section_break_cwpl",
+  "cutting_marker_ratios",
+  "section_break_dasc",
+  "cutting_laysheet_details",
+  "cloths_html",
+  "section_break_yezv",
+  "no_of_rolls",
+  "weight",
+  "accessory_weight",
+  "column_break_honq",
+  "no_of_bits",
+  "end_bit_weight",
+  "section_break_mbrg",
+  "cutting_laysheet_bundles"
+ ],
+ "fields": [
+  {
+   "fieldname": "cutting_plan",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Cutting Plan",
+   "options": "Cutting Plan",
+   "reqd": 1
+  },
+  {
+   "fetch_from": "cutting_marker.length",
+   "fieldname": "length",
+   "fieldtype": "Float",
+   "label": "Length (Meters)",
+   "precision": "3",
+   "read_only": 1
+  },
+  {
+   "fetch_from": "cutting_marker.width",
+   "fieldname": "width",
+   "fieldtype": "Float",
+   "label": "Width (Inches)",
+   "precision": "3",
+   "read_only": 1
+  },
+  {
+   "fieldname": "cutting_spreader",
+   "fieldtype": "Link",
+   "label": "Cutting Spreader",
+   "options": "Cutting Spreader",
+   "reqd": 1
+  },
+  {
+   "fieldname": "start_datetime",
+   "fieldtype": "Datetime",
+   "label": "Start Datetime"
+  },
+  {
+   "fieldname": "lay_no",
+   "fieldtype": "Int",
+   "label": "Lay No",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_rxns",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "cutting_marker",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Cutting Marker",
+   "options": "Cutting Marker",
+   "reqd": 1
+  },
+  {
+   "fieldname": "length_allowance",
+   "fieldtype": "Float",
+   "hidden": 1,
+   "label": "Length Allowance"
+  },
+  {
+   "fieldname": "width_allowance",
+   "fieldtype": "Float",
+   "hidden": 1,
+   "label": "Width Allowance"
+  },
+  {
+   "fieldname": "cutter",
+   "fieldtype": "Link",
+   "label": "Cutter",
+   "options": "Cutter",
+   "reqd": 1
+  },
+  {
+   "fieldname": "end_datetime",
+   "fieldtype": "Datetime",
+   "label": "End Datetime"
+  },
+  {
+   "fieldname": "section_break_dasc",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "cutting_laysheet_details",
+   "fieldtype": "Table",
+   "hidden": 1,
+   "label": "Cutting LaySheet Details",
+   "options": "Cutting LaySheet Detail"
+  },
+  {
+   "fieldname": "cloths_html",
+   "fieldtype": "HTML",
+   "label": "Cloths HTML"
+  },
+  {
+   "fieldname": "section_break_mbrg",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "cutting_laysheet_bundles",
+   "fieldtype": "Table",
+   "label": "Cutting LaySheet Bundles",
+   "options": "Cutting LaySheet Bundle"
+  },
+  {
+   "fetch_from": "cutting_plan.lot",
+   "fieldname": "lot",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Lot",
+   "options": "Lot",
+   "read_only": 1
+  },
+  {
+   "fetch_from": "cutting_plan.item",
+   "fieldname": "item",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Item",
+   "options": "Item",
+   "read_only": 1
+  },
+  {
+   "fetch_from": "cutting_marker.marker_name",
+   "fieldname": "marker_name",
+   "fieldtype": "Data",
+   "label": "Marker Name",
+   "read_only": 1
+  },
+  {
+   "fieldname": "section_break_cwpl",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "cutting_marker_ratios",
+   "fieldtype": "Table",
+   "label": "Cutting Marker Ratios",
+   "options": "Cutting Marker Ratio",
+   "read_only": 1
+  },
+  {
+   "fieldname": "printed_time",
+   "fieldtype": "Datetime",
+   "label": "Printed Time",
+   "read_only": 1
+  },
+  {
+   "fieldname": "maximum_no_of_plys",
+   "fieldtype": "Int",
+   "label": "Maximum no of Plys",
+   "read_only": 1
+  },
+  {
+   "fieldname": "maximum_allow_percentage",
+   "fieldtype": "Float",
+   "label": "Maximum Allow Percentage",
+   "read_only": 1
+  },
+  {
+   "fieldname": "section_break_yezv",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "no_of_rolls",
+   "fieldtype": "Int",
+   "label": "No of Rolls",
+   "read_only": 1
+  },
+  {
+   "fieldname": "weight",
+   "fieldtype": "Float",
+   "label": "Weight",
+   "read_only": 1
+  },
+  {
+   "fieldname": "no_of_bits",
+   "fieldtype": "Int",
+   "label": "No of Bits",
+   "read_only": 1
+  },
+  {
+   "fieldname": "end_bit_weight",
+   "fieldtype": "Float",
+   "label": "End Bit Weight",
+   "read_only": 1
+  },
+  {
+   "fieldname": "accessory_weight",
+   "fieldtype": "Float",
+   "label": "Accessory Weight",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_honq",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "naming_series",
+   "fieldtype": "Data",
+   "label": "Naming Series"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2024-10-27 16:47:16.442402",
+ "modified_by": "Administrator",
+ "module": "Production Api",
+ "name": "Cutting LaySheet",
+ "naming_rule": "By \"Naming Series\" field",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Cutting User",
+   "select": 1,
+   "share": 1,
+   "write": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "CAD User",
+   "select": 1,
+   "share": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Production Planner",
+   "select": 1,
+   "share": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1
+}

@@ -1,0 +1,275 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "naming_series:",
+ "creation": "2024-05-20 16:24:53.338011",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "is_rework",
+  "naming_series",
+  "wo_date",
+  "lot",
+  "supplier",
+  "is_delivered",
+  "column_break_wrym",
+  "parent_wo",
+  "process_name",
+  "item",
+  "production_detail",
+  "section_break_tmhn",
+  "planned_start_date",
+  "planned_end_date",
+  "expected_delivery_date",
+  "column_break_ahbf",
+  "start_date",
+  "end_date",
+  "address_and_contact_section",
+  "supplier_address",
+  "supplier_address_details",
+  "column_break_ztqp",
+  "delivery_address",
+  "delivery_address_details",
+  "section_break_oufa",
+  "deliverables",
+  "deliverable_items",
+  "section_break_qtip",
+  "receivables",
+  "receivable_items",
+  "section_break_axzz",
+  "comments",
+  "amended_from"
+ ],
+ "fields": [
+  {
+   "default": "WO-",
+   "fieldname": "naming_series",
+   "fieldtype": "Select",
+   "hidden": 1,
+   "in_list_view": 1,
+   "label": "WO Series",
+   "options": "WO-",
+   "reqd": 1
+  },
+  {
+   "fieldname": "start_date",
+   "fieldtype": "Date",
+   "label": "Start Date"
+  },
+  {
+   "fieldname": "end_date",
+   "fieldtype": "Date",
+   "label": "End Date"
+  },
+  {
+   "fieldname": "supplier",
+   "fieldtype": "Link",
+   "label": "Supplier",
+   "options": "Supplier"
+  },
+  {
+   "fieldname": "column_break_wrym",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "section_break_oufa",
+   "fieldtype": "Section Break",
+   "label": "Deliverables"
+  },
+  {
+   "fieldname": "section_break_qtip",
+   "fieldtype": "Section Break",
+   "label": "Receivables"
+  },
+  {
+   "fieldname": "deliverable_items",
+   "fieldtype": "HTML",
+   "label": "Deliverable Items"
+  },
+  {
+   "fieldname": "receivable_items",
+   "fieldtype": "HTML",
+   "label": "Receivable Items"
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "deliverables",
+   "fieldtype": "Table",
+   "hidden": 1,
+   "label": "Deliverables",
+   "options": "Work Order Deliverables"
+  },
+  {
+   "fieldname": "receivables",
+   "fieldtype": "Table",
+   "hidden": 1,
+   "label": "Receivables",
+   "options": "Work Order Receivables"
+  },
+  {
+   "default": "Today",
+   "fieldname": "wo_date",
+   "fieldtype": "Date",
+   "label": "WO Date",
+   "read_only": 1,
+   "reqd": 1
+  },
+  {
+   "fieldname": "supplier_address",
+   "fieldtype": "Link",
+   "label": "Supplier Address",
+   "options": "Address",
+   "reqd": 1
+  },
+  {
+   "fieldname": "delivery_address",
+   "fieldtype": "Link",
+   "label": "Delivery Address",
+   "options": "Address",
+   "reqd": 1
+  },
+  {
+   "default": "Today",
+   "fieldname": "planned_start_date",
+   "fieldtype": "Date",
+   "label": "Planned Start Date",
+   "reqd": 1
+  },
+  {
+   "fieldname": "planned_end_date",
+   "fieldtype": "Date",
+   "label": "Planned End Date",
+   "reqd": 1
+  },
+  {
+   "fieldname": "expected_delivery_date",
+   "fieldtype": "Date",
+   "label": "Expected Delivery Date",
+   "reqd": 1
+  },
+  {
+   "fieldname": "section_break_axzz",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "comments",
+   "fieldtype": "Text",
+   "label": "Comments"
+  },
+  {
+   "fieldname": "process_name",
+   "fieldtype": "Link",
+   "label": "Process Name",
+   "options": "Process",
+   "reqd": 1
+  },
+  {
+   "fieldname": "address_and_contact_section",
+   "fieldtype": "Section Break",
+   "label": "Address and Contact"
+  },
+  {
+   "fieldname": "column_break_ztqp",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "delivery_address_details",
+   "fieldtype": "Small Text",
+   "label": "Delivery Address Details",
+   "read_only": 1
+  },
+  {
+   "fieldname": "supplier_address_details",
+   "fieldtype": "Small Text",
+   "label": "Supplier Address Details",
+   "read_only": 1
+  },
+  {
+   "fieldname": "section_break_tmhn",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "column_break_ahbf",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "amended_from",
+   "fieldtype": "Link",
+   "label": "Amended From",
+   "no_copy": 1,
+   "options": "Work Order",
+   "print_hide": 1,
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "allow_on_submit": 1,
+   "default": "0",
+   "fieldname": "is_delivered",
+   "fieldtype": "Check",
+   "label": "Is Delivered",
+   "read_only": 1
+  },
+  {
+   "fieldname": "lot",
+   "fieldtype": "Link",
+   "label": "Lot",
+   "options": "Lot"
+  },
+  {
+   "fetch_from": "lot.item",
+   "fieldname": "item",
+   "fieldtype": "Link",
+   "label": "Item",
+   "options": "Item"
+  },
+  {
+   "default": "0",
+   "fieldname": "is_rework",
+   "fieldtype": "Check",
+   "label": "Is Rework"
+  },
+  {
+   "depends_on": "eval: doc.is_rework",
+   "fieldname": "parent_wo",
+   "fieldtype": "Link",
+   "label": "Parent WO",
+   "mandatory_depends_on": "eval: doc.is_rework",
+   "options": "Work Order"
+  },
+  {
+   "fetch_from": "lot.production_detail",
+   "fieldname": "production_detail",
+   "fieldtype": "Link",
+   "hidden": 1,
+   "label": "Production Detail",
+   "options": "Item Production Detail"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "is_submittable": 1,
+ "links": [],
+ "modified": "2024-10-16 11:20:00.751158",
+ "modified_by": "Administrator",
+ "module": "Production Api",
+ "name": "Work Order",
+ "naming_rule": "By \"Naming Series\" field",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}
