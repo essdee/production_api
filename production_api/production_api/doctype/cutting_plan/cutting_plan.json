@@ -15,6 +15,7 @@
   "maximum_allow_percent",
   "production_detail",
   "ipd_cutting_attribute",
+  "cutting_location",
   "section_break_krhn",
   "items",
   "items_html",
@@ -116,6 +117,12 @@
    "fieldname": "maximum_allow_percent",
    "fieldtype": "Percent",
    "label": "Maximum Allow Percent"
+  },
+  {
+   "fieldname": "cutting_location",
+   "fieldtype": "Select",
+   "label": "Cutting Location",
+   "options": "\nMachine Cutting\nManual Cutting"
   }
  ],
  "index_web_pages_for_search": 1,
@@ -129,7 +136,7 @@
    "link_fieldname": "cutting_plan"
   }
  ],
- "modified": "2024-10-27 16:48:00.823036",
+ "modified": "2024-10-29 15:36:28.665822",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Cutting Plan",

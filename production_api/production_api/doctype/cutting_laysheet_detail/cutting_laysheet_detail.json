@@ -17,7 +17,9 @@
   "end_bit_weight",
   "comments",
   "accessory_json",
-  "accessory_weight"
+  "accessory_weight",
+  "used_weight",
+  "balance_weight"
  ],
  "fields": [
   {
@@ -101,12 +103,22 @@
    "fieldname": "accessory_json",
    "fieldtype": "JSON",
    "label": "Accessory JSON"
+  },
+  {
+   "fieldname": "used_weight",
+   "fieldtype": "Float",
+   "label": "Used Weight"
+  },
+  {
+   "fieldname": "balance_weight",
+   "fieldtype": "Float",
+   "label": "Balance Weight"
   }
  ],
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2024-10-25 17:49:06.346218",
+ "modified": "2024-10-29 15:14:29.794416",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Cutting LaySheet Detail",

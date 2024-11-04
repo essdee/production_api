@@ -142,6 +142,9 @@ frappe.ui.form.on("Item Production Detail", {
 		frm.trigger('onload_post_render')
 		if(frm.doc.stiching_in_stage && frm.doc.dependent_attribute){
 			frm.cutting_attrs = await get_stich_in_attributes(frm.doc.dependent_attribute_mapping,frm.doc.stiching_in_stage, frm.doc.item)
+			if(frm.doc.is_set_item){
+				frm.cutting_attrs.push(frm.doc.set_item_attribute)
+			}
 			make_select_attributes(frm,'select_attributes_html','select_attributes_wrapper','select_attrs_multicheck','cutting_attributes','cutting_items_json','get_cutting_combination')
 			if(frm.doc.cloth_detail.length > 0){
 				make_select_attributes(frm,'select_cloths_attribute_html','select_cloths_attributes_wrapper','select_cloth_attrs_multicheck','cloth_attributes','cutting_cloths_json', 'get_cloth_combination')
@@ -498,12 +501,9 @@ frappe.ui.form.on("Item Production Detail", {
 			frappe.call({
 				method: 'production_api.essdee_production.doctype.item_production_detail.item_production_detail.get_cutting_combination',
 				args: {
+					doc_name:frm.doc.name,
 					attributes: get_checked_attributes,
-					item_attributes: frm.doc.item_attributes,	
-					cloth_detail: frm.doc.cloth_detail,
 					combination_type: 'Cutting',
-					packing_attr: frm.doc.packing_attribute,
-					packing_attr_details: frm.doc.packing_attribute_details,		
 				},
 				callback:(async (r)=> {
 					await frm.cutting_item.load_data(r.message)
@@ -526,12 +526,9 @@ frappe.ui.form.on("Item Production Detail", {
 		frappe.call({
 			method: 'production_api.essdee_production.doctype.item_production_detail.item_production_detail.get_cutting_combination',
 			args: {
+				doc_name:frm.doc.name,
 				attributes: get_checked_attributes,
-				item_attributes: frm.doc.item_attributes,	
-				cloth_detail: frm.doc.cloth_detail,
 				combination_type:'Cloth',
-				packing_attr: frm.doc.packing_attribute,
-				packing_attr_details: frm.doc.packing_attribute_details,				
 			},
 			callback:(async (r)=> {
 				await frm.cloth_item.load_data(r.message)
@@ -549,12 +546,9 @@ frappe.ui.form.on("Item Production Detail", {
 		frappe.call({
 			method: 'production_api.essdee_production.doctype.item_production_detail.item_production_detail.get_accessory_combination',
 			args: {
+				doc_name:frm.doc.name,
 				attributes: get_checked_attributes,
-				item_attributes: frm.doc.item_attributes,	
-				cloth_accessories: frm.doc.accessory_clothtype_json,
 				combination_type:'Accessory',
-				packing_attr: frm.doc.packing_attribute,
-				packing_attr_details: frm.doc.packing_attribute_details,				
 			},
 			callback:(async (r)=> {
 				await frm.cloth_accessories.load_data(r.message)
@@ -671,6 +665,7 @@ async function get_stich_in_attributes(dependent_attribute_mapping, stiching_in_
                 item: item,
             },
             callback: function(r) {
+				console.log(r.message)
                 resolve(r.message); 
             },
         });

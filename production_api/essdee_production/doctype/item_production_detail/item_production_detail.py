@@ -101,6 +101,22 @@ class ItemProductionDetail(Document):
 			cut_json['select_list'] = cloths		
 		self.cutting_cloths_json = cut_json
 
+		cutting_attributes = [i.attribute for i in self.cutting_attributes]
+		# cloth_attributes = [i.attribute for i in self.cloth_attributes]
+		accessory_attributes = [i.attribute for i in self.accessory_attributes]
+
+		if not self.is_same_packing_attribute and self.stiching_attribute not in cutting_attributes:
+			frappe.throw(f"{self.stiching_attribute} should be in the Cutting Combination")
+
+		if self.is_set_item and self.set_item_attribute not in cutting_attributes:
+			frappe.throw(f"{self.set_item_attribute} should be in the Cutting Combination")
+
+		if self.is_set_item and self.set_item_attribute not in accessory_attributes:
+			frappe.throw(f"{self.set_item_attribute} should be in the Accessory Combination")
+
+
+
+
 	def create_new_mapping_values(self):
 		for attribute in self.get('item_attributes'):
 			if attribute.mapping:
@@ -227,9 +243,7 @@ class ItemProductionDetail(Document):
 			frappe.throw("Duplicate Attribute values are occured in Stiching Item Details")	
 	
 	def cutting_tab_validations(self):
-		ipd_cloth_attributes = []
-		for item in self.cloth_attributes:
-			ipd_cloth_attributes.append(item.attribute)
+		ipd_cloth_attributes = [i.attribute for i in self.cloth_attributes]
 
 		if self.is_same_packing_attribute:
 			for item in self.stiching_item_combination_details:
@@ -339,9 +353,7 @@ def get_calculated_bom(item_production_detail, items, lot_name, process_name = N
 		if cloth.is_bom_item:
 			cloth_detail[cloth.name1] = cloth.cloth
 
-	cut_attrs_list = []	
-	for cut_attrs in item_detail.cutting_attributes:
-		cut_attrs_list.append(cut_attrs.attribute)
+	cut_attrs_list = [i.attribute for i in item_detail.cutting_attributes]
 
 	if len(items) == 0:
 		return
@@ -419,7 +431,6 @@ def get_calculated_bom(item_production_detail, items, lot_name, process_name = N
 		
 		if item_detail.dependent_attribute:
 			del attr_values[item_detail.dependent_attribute]
-
 		if not process_name or process_name == item_detail.cutting_process:
 			bom = calculate_cloth(bom, item_detail,cloth_combination, attr_values, og_piece_quantity, cloth_detail,cut_attrs_list)
 	
@@ -529,6 +540,8 @@ def calculate_cloth(bom, item_detail,cloth_combination, attr_values, og_piece_qu
 		is_stich_attribute = False
 	same_attr_value = attr_values.copy()
 
+	cloth_items = {}
+
 	for packing_attr in item_detail.packing_attribute_details:
 		for stiching_attr in item_detail.stiching_item_details:
 			for cutting_attr in cloth_combination:
@@ -568,27 +581,29 @@ def calculate_cloth(bom, item_detail,cloth_combination, attr_values, og_piece_qu
 						
 						if attr_values[item_detail.stiching_attribute] == item_detail.stiching_major_attribute_value:
 							bom = calculate_accessories_cloth(quantity, cutting_attr, item_detail, cloth_detail, bom, cloth_item)
-
-						variant = get_or_create_variant(cloth_item, {item_detail.packing_attribute: cloth_color, 'Dia':dia})
-						if not bom[cloth_item].get(variant, False):
+						
+						key = (cloth_item, tuple({item_detail.packing_attribute: cloth_color, 'Dia': dia}.items()))
+						if cloth_items.get(key):
+							cloth_items[key][0] += weight
+						else:    
 							uom = get_item_uom(cloth_item)
-							bom[cloth_item][variant] = [weight, item_detail.cutting_process, uom]
-						else:
-							bom[cloth_item][variant][0] += weight
+							cloth_items[key] = [weight, item_detail.cutting_process, uom]
 
 						attr_values = same_attr_value.copy()	
 						break
+	
+	for cloth,detail in cloth_items.items():
+		attrs = {}
+		for d in cloth[1]:
+			attrs[d[0]] = d[1]
+		variant = get_or_create_variant(cloth[0], attrs)	
+
+		if not bom[cloth[0]].get(variant, False):
+			bom[cloth[0]][variant] = detail
+		else:
+			bom[cloth[0]][variant][0] += detail[0]
+
 	return bom
-
-def get_packing_attr_quantity(packing_attr, packing_attr_details):
-	for item in packing_attr_details:
-		if item.attribute_value == packing_attr:
-			return item.quantity
-
-def get_stiching_attr_quantity(stiching_attr, stiching_attr_details):
-	for item in stiching_attr_details:
-		if item.stiching_attribute_value == stiching_attr:
-			return item.quantity
 		
 def get_item_uom(item):
 	uom = frappe.get_cached_value("Item",item,'default_unit_of_measure')
@@ -699,13 +714,8 @@ def check_cutting_attr(item_attr, combination_attr):
 	return True	
 
 def get_cloth_combination(item_detail):
-	cutting_attributes = []
-	cloth_attributes = []
-
-	for i in item_detail.cutting_attributes:
-		cutting_attributes.append(i.attribute)
-	for i in item_detail.cloth_attributes:
-		cloth_attributes.append(i.attribute)
+	cutting_attributes = [i.attribute for i in item_detail.cutting_attributes]
+	cloth_attributes = [i.attribute for i in item_detail.cloth_attributes]
 	
 	cloth_combination  = item_detail.cutting_cloths_json
 	if item_detail.packing_attribute not in cutting_attributes and item_detail.packing_attribute not in cloth_attributes:
@@ -916,14 +926,22 @@ def get_stiching_in_stage_attributes(dependent_attribute_mapping,stiching_in_sta
 ##################       CUTTING FUNCTIONS        ###################
 
 @frappe.whitelist()		
-def get_cutting_combination(attributes,item_attributes, cloth_detail, combination_type, packing_attr, packing_attr_details):
+def get_cutting_combination(doc_name,attributes, combination_type):
+	ipd_doc = frappe.get_doc("Item Production Detail",doc_name)
+
 	attributes = json.loads(attributes)
+	item_attributes = ipd_doc.item_attributes
+	cloth_detail = ipd_doc.cloth_detail
+	packing_attr = ipd_doc.packing_attribute
+	packing_attr_details = ipd_doc.packing_attribute_details
+
 	if isinstance(item_attributes, string_types):
 		item_attributes = json.loads(item_attributes)
 	if isinstance(cloth_detail, string_types):
 		cloth_detail = json.loads(cloth_detail)
 	if isinstance(packing_attr_details, string_types):
 		packing_attr_details = json.loads(packing_attr_details)
+
 	item_attr_val_list = get_combination_attr_list(attributes,packing_attr, packing_attr_details, item_attributes)
 	
 	item_list = []
@@ -940,36 +958,50 @@ def get_cutting_combination(attributes,item_attributes, cloth_detail, combinatio
 					attributes[0]:attr_val,
 					"Cloth":None,
 				})
+	elif ipd_doc.is_set_item and ipd_doc.stiching_attribute in attributes and ipd_doc.set_item_attribute in attributes:
+		item_attr_list = change_attr_list(item_attr_val_list,ipd_doc.stiching_item_details,ipd_doc.stiching_attribute,ipd_doc.set_item_attribute)
+		set_attr_values = item_attr_list[ipd_doc.set_item_attribute]
+		del item_attr_list[ipd_doc.set_item_attribute]
+		
+		index1 = attributes.index(ipd_doc.set_item_attribute)
+		attributes.pop(index1)
+		index1 = attributes.index(ipd_doc.stiching_attribute)
+		attributes.pop(index1)
+		item_attr_val_list = item_attr_list
+		
+		items = []
+		for part,panels in set_attr_values.items():
+			for panel in panels:
+				i = {}
+				i[ipd_doc.set_item_attribute] = part
+				i[ipd_doc.stiching_attribute] = panel
+				items.append(i)	
+
+		if len(attributes) == 0:
+			for item in items:
+				item = add_combination_value(combination_type,item)
+			item_list = items
+		else:
+			item_list = get_item_list(item_attr_list,attributes)
+			final_list = []
+			for i in items:
+				for item in item_list:
+					x = item | i
+					x = add_combination_value(combination_type,x)
+					final_list.append(x)
+			item_list = final_list
+
+		attributes.append(ipd_doc.set_item_attribute)
+		attributes.append(ipd_doc.stiching_attribute)		
+	
 	else:
-		attrs_len = {}
-		initial_attrs = {}
-		for key, val in item_attr_val_list.items():
-			attrs_len[key] = len(val)
-			initial_attrs[key] = 0
-		check = False
-		last_item = attributes[len(attributes)-1]
-		while True:
-			temp = {}
-			for item,item_values in item_attr_val_list.items():
-				temp[item] = item_values[initial_attrs[item]]
-				if item == last_item:
-					initial_attrs[item] += 1
-					if initial_attrs[item] == attrs_len[item]:
-						initial_attrs = update_below(initial_attrs, attributes, last_item, attrs_len)
-				if initial_attrs == None:
-					check = True
-			if combination_type == 'Cutting':			
-				temp['Dia'] = None
-				temp['Weight'] = None
-			elif combination_type == 'Cloth':
-				temp['Cloth'] = None
+		item_list = get_item_list(item_attr_val_list,attributes)
+		for item in item_list:
+			item = add_combination_value(combination_type,item)
 			
-			item_list.append(temp)
-			if check:
-				break
 	cloths = []
 	for cloth in cloth_detail:
-		cloths.append(cloth['name1'])
+		cloths.append(cloth.name1)
 	additional_attr = []
 	if combination_type == 'Cutting':
 		additional_attr = ['Dia', 'Weight']
@@ -984,9 +1016,64 @@ def get_cutting_combination(attributes,item_attributes, cloth_detail, combinatio
 	}
 	return final_list
 
+def get_item_list(item_attr_list,attributes):
+	attrs_len = {}
+	initial_attrs = {}
+	for key, val in item_attr_list.items():
+		attrs_len[key] = len(val)
+		initial_attrs[key] = 0
+	last_item = attributes[len(attributes)-1]
+	item_list = []
+	check = False
+	while True:
+		temp = {}
+		for item,item_values in item_attr_list.items():
+			temp[item] = item_values[initial_attrs[item]]
+			if item == last_item:
+				initial_attrs[item] += 1
+				if initial_attrs[item] == attrs_len[item]:
+					initial_attrs = update_below(initial_attrs, attributes, last_item, attrs_len)
+			if initial_attrs == None:
+				check = True
+		item_list.append(temp)
+		if check:
+			break
+	return item_list	
+
+def change_attr_list(item_attr_val_list, stiching_item_details, stiching_attr, set_attr):
+	attr_list = item_attr_val_list.copy()
+	stiching_details = {}
+	for item in stiching_item_details:
+		if stiching_details.get(item.set_item_attribute_value):
+			stiching_details[item.set_item_attribute_value].append(item.stiching_attribute_value)
+		else:
+			stiching_details[item.set_item_attribute_value] = [item.stiching_attribute_value]	
+
+	del attr_list[stiching_attr]
+	attr_list[set_attr] = stiching_details
+
+	return attr_list
+
+def add_combination_value(combination_type,item):
+	if combination_type == 'Cutting':			
+		item['Dia'] = None
+		item['Weight'] = None
+	elif combination_type == 'Cloth':
+		item['Cloth'] = None
+	else:
+		item['Weight'] = None	
+
+	return item
+
 @frappe.whitelist()		
-def get_accessory_combination(attributes,item_attributes, cloth_accessories, combination_type, packing_attr, packing_attr_details):
+def get_accessory_combination(doc_name, attributes, combination_type):
+	ipd_doc = frappe.get_doc("Item Production Detail",doc_name)
 	attributes = json.loads(attributes)
+	item_attributes = ipd_doc.item_attributes
+	cloth_accessories = ipd_doc.accessory_clothtype_json
+	packing_attr = ipd_doc.packing_attribute
+	packing_attr_details = ipd_doc.packing_attribute_details
+
 	if isinstance(item_attributes, string_types):
 		item_attributes = json.loads(item_attributes)
 	if isinstance(cloth_accessories, string_types):
@@ -999,6 +1086,7 @@ def get_accessory_combination(attributes,item_attributes, cloth_accessories, com
 	accessory_list = []
 	for cloth_accessory,cloth in cloth_accessories.items():
 		accessory_list.append(cloth_accessory)
+
 	item_attr_val_list['Accessory'] = accessory_list	
 	item_list = []
 
@@ -1006,32 +1094,48 @@ def get_accessory_combination(attributes,item_attributes, cloth_accessories, com
 		for attr_val in item_attr_val_list[attributes[0]]:
 			item_list.append({
 				attributes[0]:attr_val,
-				"Accessory":None,
 				"Weight":None
 			})	
+	elif ipd_doc.is_set_item and ipd_doc.stiching_attribute in attributes and ipd_doc.set_item_attribute in attributes:
+		item_attr_list = change_attr_list(item_attr_val_list,ipd_doc.stiching_item_details,ipd_doc.stiching_attribute,ipd_doc.set_item_attribute)
+		set_attr_values = item_attr_list[ipd_doc.set_item_attribute]
+		del item_attr_list[ipd_doc.set_item_attribute]
+
+		index1 = attributes.index(ipd_doc.set_item_attribute)
+		attributes.pop(index1)
+		index1 = attributes.index(ipd_doc.stiching_attribute)
+		attributes.pop(index1)
+		item_attr_val_list = item_attr_list
+		
+		items = []
+		for part,panels in set_attr_values.items():
+			for panel in panels:
+				i = {}
+				i[ipd_doc.set_item_attribute] = part
+				i[ipd_doc.stiching_attribute] = panel
+				items.append(i)	
+
+		if len(attributes) == 0:
+			for item in items:
+				item = add_combination_value(combination_type,item)
+			item_list = items
+		else:
+			item_list = get_item_list(item_attr_list,attributes)
+			final_list = []
+			for i in items:
+				for item in item_list:
+					x = item | i
+					x = add_combination_value(combination_type,x)
+					final_list.append(x)
+			item_list = final_list
+
+		attributes.append(ipd_doc.set_item_attribute)
+		attributes.append(ipd_doc.stiching_attribute)		
 	else:
-		attrs_len = {}
-		initial_attrs = {}
-		for key, val in item_attr_val_list.items():
-			attrs_len[key] = len(val)
-			initial_attrs[key] = 0
-		check = False
-		last_item = attributes[len(attributes)-1]
-		while True:
-			temp = {}
-			for item,item_values in item_attr_val_list.items():
-				temp[item] = item_values[initial_attrs[item]]
-				if item == last_item:
-					initial_attrs[item] += 1
-					if initial_attrs[item] == attrs_len[item]:
-						initial_attrs = update_below(initial_attrs, attributes, last_item, attrs_len)
-				if initial_attrs == None:
-					check = True
-			temp['Weight'] = None
-			item_list.append(temp)
-			if check:
-				break
-	
+		item_list = get_item_list(item_attr_val_list,attributes)
+		for item in item_list:
+			item["Weight"] = None	
+
 	additional_attr = ['Weight']	
 	final_list = {
 		'combination_type': combination_type,
@@ -1055,7 +1159,7 @@ def get_stiching_accessory_combination(doc_name):
 	for key,val in x.items():
 		combination_list['attributes'].append(key)
 	combination_list['items'] = []
-
+	
 	for stich_item in ipd_doc.stiching_item_combination_details:
 		if stich_item.set_item_attribute_value == ipd_doc.stiching_major_attribute_value:
 			new_dict = {}
@@ -1070,12 +1174,12 @@ def get_combination_attr_list(attributes, packing_attr, packing_attr_details, it
 	item_attr_value_list = {}
 	pack_details = []
 	for pack_attr in packing_attr_details:
-		pack_details.append(pack_attr['attribute_value'])
+		pack_details.append(pack_attr.attribute_value)
 
 	for item in item_attributes:
-		if item['attribute'] in attributes:
-			attr_details = get_attr_mapping_details(item['mapping'])
-			item_attr_value_list[item['attribute']] = attr_details
+		if item.attribute in attributes:
+			attr_details = get_attr_mapping_details(item.mapping)
+			item_attr_value_list[item.attribute] = attr_details
 
 	item_attr_value_list[packing_attr] = pack_details
 	item_attr_val_list = {}
