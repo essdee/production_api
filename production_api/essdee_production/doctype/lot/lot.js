@@ -113,7 +113,7 @@ frappe.ui.form.on("Lot", {
 				method: "production_api.essdee_production.doctype.item_production_detail.item_production_detail.get_calculated_bom",
 				args: {
 					item_production_detail: frm.doc.production_detail,
-					items: frm.doc.items,
+					items: frm.doc.lot_order_details,
 					lot_name: frm.doc.name
 				},
 				freeze:true,
