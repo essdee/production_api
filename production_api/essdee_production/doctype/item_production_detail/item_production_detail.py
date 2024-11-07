@@ -102,18 +102,7 @@ class ItemProductionDetail(Document):
 			cut_json['select_list'] = cloths		
 		self.cutting_cloths_json = cut_json
 
-		cutting_attributes = [i.attribute for i in self.cutting_attributes]
-		# cloth_attributes = [i.attribute for i in self.cloth_attributes]
-		accessory_attributes = [i.attribute for i in self.accessory_attributes]
 
-		if not self.is_same_packing_attribute and self.stiching_attribute not in cutting_attributes and self.cutting_process:
-			frappe.throw(f"{self.stiching_attribute} should be in the Cutting Combination")
-
-		if self.is_set_item and self.set_item_attribute not in cutting_attributes:
-			frappe.throw(f"{self.set_item_attribute} should be in the Cutting Combination")
-
-		if self.is_set_item and self.set_item_attribute not in accessory_attributes:
-			frappe.throw(f"{self.set_item_attribute} should be in the Accessory Combination")
 
 	def create_new_mapping_values(self):
 		for attribute in self.get('item_attributes'):
@@ -238,27 +227,33 @@ class ItemProductionDetail(Document):
 	
 	def cutting_tab_validations(self):
 		ipd_cloth_attributes = [i.attribute for i in self.cloth_attributes]
+		ipd_cutting_attributes = [i.attribute for i in self.cutting_attributes]
+		accessory_attributes = [i.attribute for i in self.accessory_attributes]
+
+		if self.is_set_item and self.set_item_attribute not in accessory_attributes and len(accessory_attributes) > 0:
+			frappe.throw(f"{self.set_item_attribute} should be in the Accessory Combination")
+
+		if self.primary_item_attribute not in accessory_attributes and len(accessory_attributes) > 0:
+			frappe.throw(f"{self.primary_item_attribute} Should be in the Accessory Combination")
+
+		if self.primary_item_attribute not in ipd_cutting_attributes and len(ipd_cutting_attributes) > 0:
+			frappe.throw(f"{self.primary_item_attribute} Should be in the Cutting Combination")
+
+		if not self.is_same_packing_attribute and self.stiching_attribute not in ipd_cutting_attributes and len(ipd_cutting_attributes) > 0:
+			frappe.throw(f"{self.stiching_attribute} Should be in Cutting Combination")
+
+		if self.packing_attribute not in ipd_cloth_attributes and len(ipd_cloth_attributes) > 0:
+			frappe.throw(f"{self.packing_attribute} not in the cloth combination")
+
+		if self.stiching_attribute in ipd_cloth_attributes and self.stiching_attribute not in ipd_cutting_attributes:
+			frappe.throw(f"Please mention the {self.stiching_attribute} in Cutting Combination")
+
+		if self.is_set_item and self.set_item_attribute not in ipd_cutting_attributes and len(ipd_cutting_attributes) > 0:
+			frappe.throw(f"{self.set_item_attribute} Should be in the Cutting Combination")
 
 		if self.is_same_packing_attribute:
 			for item in self.stiching_item_combination_details:
 				item.attribute_value = item.major_attribute_value
-		ipd_cutting_attributes = [i.attribute for i in self.cutting_attributes]
-
-		if self.primary_item_attribute not in ipd_cutting_attributes and len(ipd_cutting_attributes) > 0:
-			frappe.throw("Primary Attribute Should be in the Cutting Combination")
-
-		if not self.is_same_packing_attribute and self.stiching_attribute not in ipd_cutting_attributes and len(ipd_cutting_attributes) > 0:
-			frappe.throw("Stiching Attribute Should be in Cutting Combination")
-
-		if self.packing_attribute not in ipd_cloth_attributes and len(ipd_cloth_attributes) > 0:
-			frappe.throw("Packing Attribute not in the cloth combination")
-
-		if self.stiching_attribute in ipd_cloth_attributes and self.stiching_attribute not in ipd_cutting_attributes:
-			frappe.throw("Please mention the Stiching Attribute in Cutting Combination")
-
-		if self.is_set_item and self.set_item_attribute not in ipd_cutting_attributes and len(ipd_cutting_attributes) > 0:
-			frappe.throw("Set Item Attribute Should be in the Cutting Combination")
-
 
 	def validate(self):
 		if self.get('__islocal'):
