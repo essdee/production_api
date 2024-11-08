@@ -1,0 +1,110 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2024-11-08 15:41:46.634239",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "lot",
+  "colour",
+  "qty",
+  "column_break_ayau",
+  "item",
+  "sizes",
+  "start_date",
+  "column_break_ucee",
+  "master",
+  "description",
+  "section_break_hshs",
+  "details"
+ ],
+ "fields": [
+  {
+   "fieldname": "lot",
+   "fieldtype": "Link",
+   "label": "Lot",
+   "options": "Lot"
+  },
+  {
+   "fieldname": "item",
+   "fieldtype": "Link",
+   "label": "Item",
+   "options": "Item"
+  },
+  {
+   "fieldname": "colour",
+   "fieldtype": "Data",
+   "label": "Colour",
+   "read_only": 1
+  },
+  {
+   "fieldname": "master",
+   "fieldtype": "Link",
+   "label": "Master",
+   "options": "Action Master"
+  },
+  {
+   "fieldname": "sizes",
+   "fieldtype": "Data",
+   "label": "Sizes"
+  },
+  {
+   "fieldname": "qty",
+   "fieldtype": "Float",
+   "label": "Qty"
+  },
+  {
+   "fieldname": "description",
+   "fieldtype": "Data",
+   "label": "Description"
+  },
+  {
+   "fieldname": "column_break_ayau",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "column_break_ucee",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "section_break_hshs",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "details",
+   "fieldtype": "Table",
+   "label": "Details",
+   "options": "Time and Action Detail"
+  },
+  {
+   "fieldname": "start_date",
+   "fieldtype": "Date",
+   "label": "Start Date"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2024-11-08 16:41:39.721571",
+ "modified_by": "Administrator",
+ "module": "Essdee Production",
+ "name": "Time and Action",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1
+}

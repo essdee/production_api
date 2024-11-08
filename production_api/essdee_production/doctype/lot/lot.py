@@ -401,3 +401,58 @@ def get_item_list_details(lot):
 		items.append(item.as_dict())
 
 	return items	
+
+@frappe.whitelist()
+def get_packing_attributes(ipd):
+	ipd_doc = frappe.get_doc("Item Production Detail",ipd)
+	colours = []
+	sizes = ""
+	ratios = []
+	combo = None
+
+	if ipd_doc.auto_calculate:
+		combo = ipd_doc.packing_attribute_no
+
+	for item in ipd_doc.packing_attribute_details:
+		colours.append(item.attribute_value)
+		if not combo:
+			ratios.append(ipd_doc.packing_combo/item.quantity)
+
+	mapping = None
+	for item in ipd_doc.item_attributes:
+		if item.attribute == ipd_doc.primary_item_attribute:
+			mapping = item.mapping
+			break
+
+	map_doc = frappe.get_doc("Item Item Attribute Mapping",mapping)		
+	for item in map_doc.values:
+		sizes += item.attribute_value + ","
+
+	return {
+		"colours":colours,
+		"sizes":sizes,
+		"ratios":ratios,
+		"combo":combo
+	}	
+
+@frappe.whitelist()
+def create_time_and_action(lot,item_name,sizes,ratios,combo,item_list,total_qty,start_date):
+	if isinstance(item_list,string_types):
+		item_list = json.loads(item_list)
+	if isinstance(ratios,string_types):
+		ratios = json.loads(ratios)	
+	for idx,item in enumerate(item_list):
+		new_doc = frappe.new_doc("Time and Action")
+		new_doc.update({
+			"lot":lot,
+			"item":item_name,
+			"sizes":sizes,
+			"colour":item['colour'],
+			"master":item["master"],
+			"start_date":start_date,
+		})
+		if combo:
+			new_doc.qty = math.ceil(flt(total_qty)/flt(combo))
+		else:
+			new_doc.qty = math.ceil(flt(total_qty)/flt(ratios[idx]))
+		new_doc.save()		

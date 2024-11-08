@@ -1,0 +1,110 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2024-11-08 15:44:48.466698",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "action",
+  "department",
+  "lead_time",
+  "date",
+  "rescheduled_date",
+  "actual_date",
+  "date_diff",
+  "reason",
+  "performance",
+  "completed"
+ ],
+ "fields": [
+  {
+   "columns": 2,
+   "fieldname": "action",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Action",
+   "options": "Action",
+   "reqd": 1
+  },
+  {
+   "columns": 1,
+   "fieldname": "department",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Department",
+   "options": "Employee Department",
+   "reqd": 1
+  },
+  {
+   "columns": 1,
+   "fieldname": "lead_time",
+   "fieldtype": "Int",
+   "in_list_view": 1,
+   "label": "Lead Time",
+   "non_negative": 1,
+   "reqd": 1
+  },
+  {
+   "columns": 1,
+   "fieldname": "date",
+   "fieldtype": "Date",
+   "in_list_view": 1,
+   "label": "Date",
+   "reqd": 1
+  },
+  {
+   "columns": 1,
+   "fieldname": "rescheduled_date",
+   "fieldtype": "Date",
+   "in_list_view": 1,
+   "label": "Rescheduled Date"
+  },
+  {
+   "columns": 1,
+   "fieldname": "actual_date",
+   "fieldtype": "Date",
+   "in_list_view": 1,
+   "label": "Actual Date"
+  },
+  {
+   "columns": 1,
+   "fieldname": "date_diff",
+   "fieldtype": "Int",
+   "in_list_view": 1,
+   "label": "Date Diff"
+  },
+  {
+   "columns": 1,
+   "fieldname": "reason",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Reason"
+  },
+  {
+   "columns": 1,
+   "fieldname": "performance",
+   "fieldtype": "Percent",
+   "in_list_view": 1,
+   "label": "Performance"
+  },
+  {
+   "default": "0",
+   "fieldname": "completed",
+   "fieldtype": "Check",
+   "label": "Completed"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2024-11-08 16:58:48.260576",
+ "modified_by": "Administrator",
+ "module": "Essdee Production",
+ "name": "Time and Action Detail",
+ "owner": "Administrator",
+ "permissions": [],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}
