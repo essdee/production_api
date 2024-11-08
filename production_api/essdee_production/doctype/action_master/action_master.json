@@ -23,7 +23,7 @@
    "fieldtype": "Select",
    "hidden": 1,
    "label": "Naming Series",
-   "options": "Master-#"
+   "options": "Master-"
   },
   {
    "fieldname": "process_name",
@@ -73,7 +73,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2024-11-08 15:40:44.077059",
+ "modified": "2024-11-08 17:48:06.734811",
  "modified_by": "Administrator",
  "module": "Essdee Production",
  "name": "Action Master",

@@ -441,6 +441,7 @@ def create_time_and_action(lot,item_name,sizes,ratios,combo,item_list,total_qty,
 		item_list = json.loads(item_list)
 	if isinstance(ratios,string_types):
 		ratios = json.loads(ratios)	
+	sizes = sizes[:-1]
 	for idx,item in enumerate(item_list):
 		new_doc = frappe.new_doc("Time and Action")
 		new_doc.update({
