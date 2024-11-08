@@ -21,7 +21,14 @@
   "items_html",
   "section_break_pxju",
   "cutting_plan_cloth_details",
-  "cloths_html"
+  "cloths_html",
+  "cutting_plan_accessory_details",
+  "accessory_html",
+  "report_tab",
+  "completed_items_json",
+  "completed_items_html",
+  "incomplete_items_json",
+  "incompleted_items_html"
  ],
  "fields": [
   {
@@ -123,6 +130,45 @@
    "fieldtype": "Select",
    "label": "Cutting Location",
    "options": "\nMachine Cutting\nManual Cutting"
+  },
+  {
+   "fieldname": "report_tab",
+   "fieldtype": "Tab Break",
+   "label": "Summary"
+  },
+  {
+   "fieldname": "cutting_plan_accessory_details",
+   "fieldtype": "Table",
+   "hidden": 1,
+   "label": "Cutting Plan Accessory Details",
+   "options": "Cutting Plan Cloth Detail"
+  },
+  {
+   "fieldname": "accessory_html",
+   "fieldtype": "HTML",
+   "label": "Accessory HTML"
+  },
+  {
+   "fieldname": "completed_items_json",
+   "fieldtype": "JSON",
+   "hidden": 1,
+   "label": "Completed Items JSON"
+  },
+  {
+   "fieldname": "incomplete_items_json",
+   "fieldtype": "JSON",
+   "hidden": 1,
+   "label": "Incomplete Items JSON"
+  },
+  {
+   "fieldname": "completed_items_html",
+   "fieldtype": "HTML",
+   "label": "Completed Items HTML"
+  },
+  {
+   "fieldname": "incompleted_items_html",
+   "fieldtype": "HTML",
+   "label": "Incompleted Items HTML"
   }
  ],
  "index_web_pages_for_search": 1,
@@ -136,7 +182,7 @@
    "link_fieldname": "cutting_plan"
   }
  ],
- "modified": "2024-10-29 15:36:28.665822",
+ "modified": "2024-11-07 16:16:05.584597",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Cutting Plan",

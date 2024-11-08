@@ -224,13 +224,14 @@ function update_item(){
         "no_of_bits":cloth_bits.get_value(),
         "end_bit_weight":cloth_end_bit.get_value(),
         "balance_weight":balance_weight.get_value(),
-        "used_weight": cloth_weight.get_value() - cloth_end_bit.get_value() - balance_weight.get_value(),
+        "used_weight": cloth_weight.get_value() - balance_weight.get_value() - total_weight,
         "accessory_weight":total_weight,
         "accessory_json":accessory_json,
         "comments":cloth_comment.get_value(),
     }
     edit_index = null
     show_button3.value = false
+    show_button1.value = true
     make_clean()
 }
 
@@ -265,7 +266,7 @@ function get_input_field(classname,fieldtype,fieldname,label,options,reqd){
 }
 function make_clean(){
     let el = root.value
-    let arr1 = [cloth_type,cloth_dia,cloth_colour,cloth_shade,cloth_weight,cloth_rolls,cloth_bits,cloth_end_bit,cloth_comment]
+    let arr1 = [cloth_type,cloth_dia,cloth_colour,cloth_shade,cloth_weight,cloth_rolls,cloth_bits,cloth_end_bit,cloth_comment,balance_weight]
     for(let i = 0 ; i < arr1.length; i++){
         arr1[i].set_value(null)
     }

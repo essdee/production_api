@@ -114,7 +114,6 @@ frappe.ui.form.on("Item Production Detail", {
 			}
 		})
 	},
-
 	declarations(frm){
 		frm.set_packing_attr_map_value = null;
 		frm.set_item_attr_map_value = null
@@ -136,7 +135,6 @@ frappe.ui.form.on("Item Production Detail", {
 			}
 		}
 	},
-
 	refresh: async function(frm) {
 		frm.trigger('declarations')
 		frm.trigger('onload_post_render')
@@ -169,6 +167,7 @@ frappe.ui.form.on("Item Production Detail", {
 				frm.trigger('make_set_combination')
 			}
 		}
+		
 		frm.trigger('make_hide_and_unhide_tabs')
 		if(frm.doc.cloth_detail.length == 0){
 			frm.set_df_property('get_cutting_combination','hidden',true);
@@ -429,23 +428,6 @@ frappe.ui.form.on("Item Production Detail", {
 			frm.set_value('dependent_attribute_mapping','')
         }
 	},
-	// async update_cloth_items(frm){
-	// 	if(frm.cloth_item){
-	// 		if(frm.doc.cutting_cloths_json) {
-	// 			let cloths = []
-	// 			for(let i = 0 ; i < frm.doc.cloth_detail.length; i++){
-	// 				if(frm.doc.cloth_detail[i].name1 && frm.doc.cloth_detail[i].cloth){
-	// 					cloths.push(frm.doc.cloth_detail[i].name1)
-	// 				}
-	// 			}	
-	// 			let cut_json = frm.doc.cutting_cloths_json
-	// 			cut_json = JSON.parse(cut_json)
-	// 			cut_json['select_list'] = cloths
-	// 			await frm.cloth_item.load_data(cut_json);
-	// 			frm.cloth_item.set_attributes()
-	// 		}
-	// 	}
-	// },
 	get_set_item_combination(frm){
 		if(!frm.doc.major_attribute_value){
 			frappe.msgprint("Set the major attribute value")
@@ -499,7 +481,7 @@ frappe.ui.form.on("Item Production Detail", {
 		}
 		else{
 			frappe.call({
-				method: 'production_api.essdee_production.doctype.item_production_detail.item_production_detail.get_cutting_combination',
+				method: 'production_api.essdee_production.doctype.item_production_detail.item_production_detail.get_combination',
 				args: {
 					doc_name:frm.doc.name,
 					attributes: get_checked_attributes,
@@ -524,7 +506,7 @@ frappe.ui.form.on("Item Production Detail", {
 			return
 		}
 		frappe.call({
-			method: 'production_api.essdee_production.doctype.item_production_detail.item_production_detail.get_cutting_combination',
+			method: 'production_api.essdee_production.doctype.item_production_detail.item_production_detail.get_combination',
 			args: {
 				doc_name:frm.doc.name,
 				attributes: get_checked_attributes,
@@ -544,7 +526,7 @@ frappe.ui.form.on("Item Production Detail", {
 			return
 		}
 		frappe.call({
-			method: 'production_api.essdee_production.doctype.item_production_detail.item_production_detail.get_accessory_combination',
+			method: 'production_api.essdee_production.doctype.item_production_detail.item_production_detail.get_combination',
 			args: {
 				doc_name:frm.doc.name,
 				attributes: get_checked_attributes,
@@ -665,7 +647,6 @@ async function get_stich_in_attributes(dependent_attribute_mapping, stiching_in_
                 item: item,
             },
             callback: function(r) {
-				console.log(r.message)
                 resolve(r.message); 
             },
         });

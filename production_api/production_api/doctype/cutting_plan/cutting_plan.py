@@ -5,6 +5,9 @@ from six import string_types
 from frappe.model.document import Document
 from production_api.essdee_production.doctype.lot.lot import fetch_order_item_details
 from production_api.production_api.doctype.item.item import get_or_create_variant, get_attribute_details
+from production_api.essdee_production.doctype.item_production_detail.item_production_detail import get_cloth_combination,get_stitching_combination,calculate_cloth,get_key,get_additional_cloth,get_accessory_colour, add_cloth_detail
+import copy
+from production_api.production_api.doctype.cutting_laysheet.cutting_laysheet import update_cutting_plan
 
 class CuttingPlan(Document):
 	def autoname(self):
@@ -17,7 +20,16 @@ class CuttingPlan(Document):
 		cloth_items = fetch_cloth_details(self.cutting_plan_cloth_details)
 		self.set_onload('item_cloth_details', cloth_items)
 
+		accessory_items = fetch_cloth_details(self.cutting_plan_accessory_details)
+		self.set_onload("item_accessory_details",accessory_items)
+	
 	def before_validate(self):
+		if self.is_new():
+			if self.get('item_details'):
+				x, y = get_complete_incomplete_structure(self.production_detail,self.item_details)
+				self.completed_items_json = x
+				self.incomplete_items_json = y
+
 		if self.get('item_details'):
 			items = save_item_details(self.item_details)
 			self.set("items",items)
@@ -25,6 +37,75 @@ class CuttingPlan(Document):
 		if self.get('item_cloth_details'):
 			items = save_item_cloth_details(self.item_cloth_details)
 			self.set("cutting_plan_cloth_details",items)	
+
+def get_complete_incomplete_structure(ipd,item_details):
+	ipd_doc = frappe.get_doc("Item Production Detail",ipd)
+	stiching_attrs = None
+	panels = {}
+	
+	if isinstance(item_details,string_types):
+		item_details = json.loads(item_details)
+	x = item_details
+	x = x[0]
+	x = add_additional_attributes(ipd_doc,x)
+	if ipd_doc.is_set_item:
+		panels, stiching_attrs = get_set_item_panels(ipd_doc,panels)
+	else:
+		panels, stiching_attrs = get_item_panels(ipd_doc,panels)
+	y = copy.deepcopy(x)
+	completed_items_json = get_complete_cut_structure(x,stiching_attrs)
+	incomplete_items_json = get_incomplete_cut_structure(ipd_doc, panels, stiching_attrs, y)
+	return completed_items_json,incomplete_items_json
+
+def get_item_panels(ipd_doc,panels):
+	stiching_attrs = {ipd_doc.stiching_attribute : []}
+	for item in ipd_doc.stiching_item_details:
+		panels[item.stiching_attribute_value] = 0
+		stiching_attrs[ipd_doc.stiching_attribute].append(item.stiching_attribute_value)	
+	return panels,stiching_attrs
+
+def get_complete_cut_structure(x,stiching_attrs):
+	for item in x['items']:
+		for val in item['values']:
+			item['values'][val] = 0
+	x = x | stiching_attrs
+	return x
+
+def get_incomplete_cut_structure(ipd_doc,panels, stiching_attrs, y):
+	if ipd_doc.is_set_item:
+		for item in y['items']:
+			for val in item['values']:
+				item['values'][val] = panels[item['attributes'][ipd_doc.set_item_attribute]]
+	else:
+		for item in y['items']:
+			for val in item['values']:
+				item['values'][val] = panels
+	y = y | stiching_attrs
+	return y
+
+def add_additional_attributes(ipd_doc,x):
+	x['is_set_item'] = ipd_doc.is_set_item
+	x['set_item_attr'] = ipd_doc.set_item_attribute
+	x["stiching_attr"] = ipd_doc.stiching_attribute
+	total_qty = {}
+	for item in x['primary_attribute_values']:
+		total_qty[item] = 0
+	x['total_qty'] = total_qty
+
+	return x
+
+def get_set_item_panels(ipd_doc,panels):
+	m = {ipd_doc.stiching_attribute : {}}
+	for item in ipd_doc.stiching_item_details:
+		if item.set_item_attribute_value in panels:
+			panels[item.set_item_attribute_value][item.stiching_attribute_value] = 0
+			m[ipd_doc.stiching_attribute][item.set_item_attribute_value].append(item.stiching_attribute_value)
+		else:
+			panels[item.set_item_attribute_value] = {}
+			panels[item.set_item_attribute_value][item.stiching_attribute_value] = 0
+			m[ipd_doc.stiching_attribute][item.set_item_attribute_value] = []
+			m[ipd_doc.stiching_attribute][item.set_item_attribute_value].append(item.stiching_attribute_value)
+	return panels,m
 
 def save_item_cloth_details(items):
 	if isinstance(items, string_types):
@@ -71,6 +152,8 @@ def fetch_cloth_details(items):
 			"cloth_type":item.cloth_type,
 			"required_weight":item.required_weight,
 			"weight":item.weight,
+			"used_weight":item.used_weight,
+			"balance_weight":item.balance_weight,
 		})
 	return item_details	
 
@@ -90,10 +173,10 @@ def get_cloth1(cutting_plan):
 	stitching_combination = get_stitching_combination(ipd_doc)
 	cloth_detail = {}
 	for cloth in ipd_doc.cloth_detail:
-		if cloth.is_bom_item:
-			cloth_detail[cloth.name1] = cloth.cloth
-	cloth_details = {}
+		cloth_detail[cloth.name1] = cloth.cloth
 
+	cloth_details = {}
+	accessory_detail = {}
 	for item in cutting_plan_doc.items:
 		variant = frappe.get_doc("Item Variant", item.item_variant)
 		attr_details = item_attribute_details(variant, item_attributes)
@@ -102,6 +185,10 @@ def get_cloth1(cutting_plan):
 			key = (c1["cloth_type"], c1["colour"], c1["dia"])
 			cloth_details.setdefault(key, 0)
 			cloth_details[key] += c1["quantity"]
+
+			if c1["type"] == "accessory":
+				accessory_detail.setdefault(key,0)
+				accessory_detail[key] += c1["quantity"]
 
 	required_cloth_details = []
 	for k in cloth_details:
@@ -115,6 +202,19 @@ def get_cloth1(cutting_plan):
 			"weight":0.0
 		})
 
+	required_accessory_details = []
+	for k in accessory_detail:
+		cloth_name = get_or_create_variant(cloth_detail[k[0]], {ipd_doc.packing_attribute: k[1], 'Dia': k[2]})
+		required_accessory_details.append({
+			"cloth_item_variant": cloth_name,
+			"cloth_type": k[0],
+			"colour": k[1],
+			'dia': k[2],
+			"required_weight": accessory_detail[k],
+			"weight":0.0
+		})	
+
+	cutting_plan_doc.set("cutting_plan_accessory_details", required_accessory_details)
 	cutting_plan_doc.set("cutting_plan_cloth_details", required_cloth_details)
 	cutting_plan_doc.save()
 
@@ -125,117 +225,24 @@ def item_attribute_details(variant, item_attributes):
 			attribute_details[attr.attribute] = attr.attribute_value
 	return attribute_details
 
-def get_stitching_combination(ipd_doc):
-	stitching_combination = {}
-	for detail in ipd_doc.stiching_item_combination_details:
-		stitching_combination.setdefault(detail.major_attribute_value, {})
-		stitching_combination[detail.major_attribute_value][detail.set_item_attribute_value] = detail.attribute_value
+@frappe.whitelist()
+def calculate_laysheets(cutting_plan):
+	frappe.enqueue(calc, "short", cutting_plan=cutting_plan)
 
-	return {
-		"stitching_attribute": ipd_doc.stiching_attribute,
-		"stitching_attribute_count": {i.stiching_attribute_value:i.quantity for i in ipd_doc.stiching_item_details},
-		"is_same_packing_attribute": ipd_doc.is_same_packing_attribute,
-		"stitching_combination": stitching_combination,
-	}
+def calc(cutting_plan):	
+	cp_doc = frappe.get_doc("Cutting Plan",cutting_plan)
+	item_details = fetch_order_item_details(cp_doc.items,cp_doc.production_detail)
+	completed, incomplete = get_complete_incomplete_structure(cp_doc.production_detail,item_details)
+	cp_doc.completed_items_json = completed
+	cp_doc.incomplete_items_json = incomplete
+	for item in cp_doc.cutting_plan_cloth_details:
+		item.used_weight = 0
+		item.balance_weight = 0
 
-def get_cloth_combination(ipd_doc):
-	cutting_attributes = [i.attribute for i in ipd_doc.cutting_attributes]
-	cloth_attributes = [i.attribute for i in ipd_doc.cloth_attributes]
-	accessory_attributes = [i.attribute for i in ipd_doc.accessory_attributes]
-	cutting_combination = {}
-	cloth_combination = {}
-	accessory_combination = {}
+	for item in cp_doc.cutting_plan_accessory_details:
+		item.used_weight = 0
+	cp_doc.save()
 
-	cutting_items = json.loads(ipd_doc.cutting_items_json)
-	cutting_cloths = json.loads(ipd_doc.cutting_cloths_json)
-	accessory_items = json.loads(ipd_doc.cloth_accessory_json)
-
-	for item in cutting_items["items"]:
-		cutting_combination[get_key(item, cutting_attributes)] = (item["Dia"], item["Weight"])
-	for item in cutting_cloths["items"]:
-		cloth_combination[get_key(item, cloth_attributes)] = item["Cloth"]
-	accessory_attributes.append("Accessory")
-	for item in accessory_items["items"]:
-		accessory_combination[get_key(item, accessory_attributes)] = (item["Weight"])
-
-	return {
-		"cutting_attributes": cutting_attributes,
-		"cloth_attributes": cloth_attributes,
-		"accessory_attributes":accessory_attributes,
-		"cutting_combination": cutting_combination,
-		"cloth_combination": cloth_combination,
-		"accessory_combination":accessory_combination,
-	}
-
-def get_key(item, attrs):
-	key = []
-	for attr in attrs:
-		key.append(item[attr])
-	return tuple(key)
-
-def calculate_cloth(ipd_doc, variant_attrs, qty, cloth_combination, stitching_combination):
-	attrs = variant_attrs.copy()
-	if stitching_combination["stitching_attribute"] in cloth_combination["cloth_attributes"] and stitching_combination["stitching_attribute"] not in cloth_combination["cutting_attributes"]:
-		frappe.throw(f"Cannot calculate cloth quantity without {stitching_combination['stitching_attribute']} in Cloth Weight Combination.")
-
-	cloth_detail = []
-
-	if stitching_combination["stitching_attribute"] in cloth_combination["cutting_attributes"]:
-		for stiching_attr,attr_qty in stitching_combination["stitching_attribute_count"].items():
-			attrs[ipd_doc.stiching_attribute] = stiching_attr
-			if cloth_combination["cutting_combination"].get(get_key(attrs, cloth_combination["cutting_attributes"])):
-				dia, weight = cloth_combination["cutting_combination"][get_key(attrs, cloth_combination["cutting_attributes"])]	
-				cloth_type = cloth_combination["cloth_combination"][get_key(attrs, cloth_combination["cloth_attributes"])]
-				weight = weight * qty * attr_qty
-				cloth_colour = stitching_combination["stitching_combination"][attrs[ipd_doc.packing_attribute]][stiching_attr]
-				cloth_detail.append(add_cloth_detail(weight, ipd_doc.additional_cloth,cloth_type,cloth_colour,dia))
-	else:
-		dia, weight = cloth_combination["cutting_combination"][get_key(attrs, cloth_combination["cutting_attributes"])]
-		cloth_type = cloth_combination["cloth_combination"][get_key(attrs, cloth_combination["cloth_attributes"])]
-		weight = weight * qty
-		cloth_detail.append(add_cloth_detail(weight, ipd_doc.additional_cloth,cloth_type,attrs[ipd_doc.packing_attribute],dia))
-
-	cloth_accessory_json = ipd_doc.accessory_clothtype_json
-	if isinstance(cloth_accessory_json,string_types):
-		cloth_accessory_json = json.loads(cloth_accessory_json)
-
-	if ipd_doc.stiching_attribute in cloth_combination["accessory_attributes"] and cloth_accessory_json:
-		for stiching_attr, attr_qty in stitching_combination["stitching_attribute_count"].items():
-			attrs[ipd_doc.stiching_attribute] = stiching_attr
-			for accessory_name, accessory_cloth in cloth_accessory_json.items():
-				attrs["Accessory"] = accessory_name
-				if cloth_combination["accessory_combination"].get(get_key(attrs, cloth_combination["accessory_attributes"])):
-					accessory_weight = cloth_combination["accessory_combination"][get_key(attrs, cloth_combination["accessory_attributes"])]
-					accessory_colour = get_accessory_colour(ipd_doc,attrs,accessory_name)
-					weight = accessory_weight * qty * attr_qty
-					cloth_detail.append(add_cloth_detail(weight, ipd_doc.additional_cloth,accessory_cloth,accessory_colour,dia))
-	elif cloth_accessory_json:
-		for accessory_name, accessory_cloth in cloth_accessory_json.items():
-			attrs["Accessory"] = accessory_name
-			accessory_weight = cloth_combination["accessory_combination"][get_key(attrs, cloth_combination["accessory_attributes"])]
-			accessory_colour = get_accessory_colour(ipd_doc,attrs,accessory_name)	
-			weight = accessory_weight * qty
-			cloth_detail.append(add_cloth_detail(weight, ipd_doc.additional_cloth,accessory_cloth,accessory_colour,dia))
-	return cloth_detail
-
-def add_cloth_detail(weight, additional_cloth,cloth_type,cloth_colour,dia):
-	x = get_additional_cloth(weight, additional_cloth)
-	weight = weight + x
-	return {
-		"cloth_type": cloth_type,
-		"colour": cloth_colour,
-		"dia": dia,
-		"quantity": weight,
-	}
-
-def get_accessory_colour(ipd_doc,variant_attrs,accessory):
-	for acce in json.loads(ipd_doc.stiching_accessory_json)["items"]:
-		if acce[ipd_doc.stiching_major_attribute_value] == variant_attrs[ipd_doc.packing_attribute]:
-			return acce[accessory]		
-
-def get_additional_cloth(weight, additional_cloth):
-	if additional_cloth:
-		x = weight/100
-		return  x * additional_cloth
-	return 0.0
-		
+	cls_list = frappe.get_list("Cutting LaySheet",filters = {"cutting_plan":cutting_plan},pluck = "name")
+	for cls in cls_list:
+		update_cutting_plan(cls)

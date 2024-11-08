@@ -42,7 +42,8 @@
   "last_calculated_time",
   "calculate_bom",
   "bom_summary",
-  "bom_additional_items"
+  "bom_additional_items",
+  "bom_summary_json"
  ],
  "fields": [
   {
@@ -266,11 +267,17 @@
    "fieldtype": "Int",
    "hidden": 1,
    "label": "Packing Combo"
+  },
+  {
+   "fieldname": "bom_summary_json",
+   "fieldtype": "JSON",
+   "hidden": 1,
+   "label": "BOM Summary JSON"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2024-10-08 11:33:51.735573",
+ "modified": "2024-11-05 11:19:51.008682",
  "modified_by": "Administrator",
  "module": "Essdee Production",
  "name": "Lot",
