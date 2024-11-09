@@ -11,6 +11,8 @@ import GRNItemWrapper from "./GRN";
 import LotOrder from "./Lot/components/LotOrder.vue" 
 import LotOrderDetail from "./Lot/components/LotOrderDetail.vue"
 import CutPlanItems from "./CuttingPlan/components/CutPlanItems.vue"
+import CuttingCompletionDetail from "./CuttingPlan/components/CuttingCompletionDetail.vue"
+import CuttingIncompletionDetail from "./CuttingPlan/components/CuttingIncompletionDetail.vue"
 import CutPlanClothItems from "./CuttingPlan/components/CutPlanClothItems.vue"
 
 import CombinationItemDetail from "./Item_Po_detail/CombinationItemDetail.vue"
@@ -312,6 +314,38 @@ frappe.production.ui.CutPlanItems = class {
         return items
     }
 }
+frappe.production.ui.CuttingCompletionDetail = class {
+    constructor(wrapper){
+        this.$wrapper = $(wrapper)
+        this.make_app()
+    }
+    make_app(){
+        this.app = createApp(CuttingCompletionDetail)
+        SetVueGlobals(this.app)
+        this.vue = this.app.mount(this.$wrapper.get(0))
+    }
+    load_data(item_details){
+        item_details = "["+item_details+"]"
+        let items = JSON.parse(JSON.stringify(item_details))
+        this.vue.load_data(items)
+    }
+}
+frappe.production.ui.CuttingIncompletionDetail = class {
+    constructor(wrapper){
+        this.$wrapper = $(wrapper)
+        this.make_app()
+    }
+    make_app(){
+        this.app = createApp(CuttingIncompletionDetail)
+        SetVueGlobals(this.app)
+        this.vue = this.app.mount(this.$wrapper.get(0))
+    }
+    load_data(item_details){
+        item_details = "["+item_details+"]"
+        let items = JSON.parse(JSON.stringify(item_details))
+        this.vue.load_data(items)
+    }
+}
 
 frappe.production.ui.CutPlanClothItems = class {
     constructor(wrapper){
@@ -323,12 +357,13 @@ frappe.production.ui.CutPlanClothItems = class {
         SetVueGlobals(this.app)
         this.vue = this.app.mount(this.$wrapper.get(0))
     }
-    load_data(item_details){
+    load_data(item_details,type){
         let items = JSON.parse(JSON.stringify(item_details))
-        this.vue.load_data(items)
+        this.vue.load_data(items,type)
     }
     get_items(){
         let items = this.vue.get_items()
+        console.log(items)
         return items
     }
 }

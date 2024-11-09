@@ -37,10 +37,10 @@ class ItemBOMAttributeMapping(Document):
 				bom_attr_values = bom_item_attributes.get(attr)
 				if not bom_attr_values:
 					frappe.throw("Bom Item does not have attribute "+attr)
-				elif len(bom_attr_values) > 0:
-					for value in item_attr_values:
-						if not value in bom_attr_values:
-							frappe.throw("Bom Item does not have all the attribute values as the Item.")
+				# elif len(bom_attr_values) > 0:
+				# 	for value in item_attr_values:
+				# 		if not value in bom_attr_values:
+				# 			frappe.throw("Bom Item does not have all the attribute values as the Item.")
 		
 		first_row = [i for i in self.values if i.index == 0]
 		for r in first_row:

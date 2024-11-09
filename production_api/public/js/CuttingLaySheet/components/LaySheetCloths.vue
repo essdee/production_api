@@ -58,6 +58,7 @@
             <div class="row">
                 <div class="cloth-bits col-md-4"></div>
                 <div class="cloth-end-bit col-md-4"></div>
+                <div class="cloth-balance col-md-4"></div>
             </div>
             <div class="row">                
                 <div class="cloth-accessory-left col-md-4"></div>
@@ -96,6 +97,7 @@ let cloth_bits = null
 let cloth_end_bit = null
 let cloth_comment = null
 let edit_index = null
+let balance_weight = null
 let cloth_attrs = []
 let docstatus = ref(null)
 
@@ -118,6 +120,7 @@ function add_cloth_item(index){
     cloth_bits = get_input_field(".cloth-bits","Int","cloth_bits","No of Bits",null,true)
     cloth_end_bit = get_input_field(".cloth-end-bit","Float","cloth_end_bit","End Bit Weight",null,true)
     cloth_comment = get_input_field(".cloth-comment","Small Text","cloth_comment",'Comment',null,false)
+    balance_weight = get_input_field(".cloth-balance","Float","balance_weight","Balance Weight",null,true)
     $(el).find(".cloth-accessory-left").html("");
     $(el).find(".cloth-accessory-right").html("");
     $(el).find(".cloth-accessory-middle").html("");
@@ -136,8 +139,8 @@ function add_cloth_item(index){
         cloth_attrs[i] = get_input_field(classname + ' .input-wrapper:last',"Float","cloth_accessories_" + i,cloth_accessories[i]+" in kg's",null,false)
     }
     if(index != null){
-        let arr1 = [cloth_type,cloth_colour,cloth_dia,cloth_weight,cloth_shade,cloth_rolls,cloth_bits,cloth_end_bit,cloth_comment]
-        let arr2 = ["cloth_type","colour","dia","weight","shade","no_of_rolls","no_of_bits","end_bit_weight","comments"]
+        let arr1 = [cloth_type,cloth_colour,cloth_dia,cloth_weight,cloth_shade,cloth_rolls,cloth_bits,cloth_end_bit,cloth_comment,balance_weight]
+        let arr2 = ["cloth_type","colour","dia","weight","shade","no_of_rolls","no_of_bits","end_bit_weight","comments","balance_weight"]
         set_attr_values(arr1,arr2, index)
         let dict = items.value[index]['accessory_json']
         if(typeof(dict) == 'string'){
@@ -176,6 +179,8 @@ function add_item(){
         "no_of_bits":cloth_bits.get_value(),
         "end_bit_weight":cloth_end_bit.get_value(),
         "comments":cloth_comment.get_value(),
+        "balance_weight":balance_weight.get_value(),
+        "used_weight": cloth_weight.get_value() - cloth_end_bit.get_value() - balance_weight.get_value(),
         "accessory_json":JSON.stringify(accessory_json),
         "accessory_weight":total_weight,
     })
@@ -218,12 +223,15 @@ function update_item(){
         "no_of_rolls":cloth_rolls.get_value(),
         "no_of_bits":cloth_bits.get_value(),
         "end_bit_weight":cloth_end_bit.get_value(),
+        "balance_weight":balance_weight.get_value(),
+        "used_weight": cloth_weight.get_value() - balance_weight.get_value() - total_weight,
         "accessory_weight":total_weight,
         "accessory_json":accessory_json,
         "comments":cloth_comment.get_value(),
     }
     edit_index = null
     show_button3.value = false
+    show_button1.value = true
     make_clean()
 }
 
@@ -258,7 +266,7 @@ function get_input_field(classname,fieldtype,fieldname,label,options,reqd){
 }
 function make_clean(){
     let el = root.value
-    let arr1 = [cloth_type,cloth_dia,cloth_colour,cloth_shade,cloth_weight,cloth_rolls,cloth_bits,cloth_end_bit,cloth_comment]
+    let arr1 = [cloth_type,cloth_dia,cloth_colour,cloth_shade,cloth_weight,cloth_rolls,cloth_bits,cloth_end_bit,cloth_comment,balance_weight]
     for(let i = 0 ; i < arr1.length; i++){
         arr1[i].set_value(null)
     }
@@ -274,6 +282,7 @@ function make_clean(){
     $(el).find(".cloth-dia").html("");
     $(el).find(".cloth-bits").html("");
     $(el).find(".cloth-rolls").html("");
+    $(el).find(".cloth-balance").html("");
     $(el).find(".cloth-accessory-right").html("");
     $(el).find(".cloth-accessory-left").html("");
     $(el).find(".cloth-accessory-middle").html("");

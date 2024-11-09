@@ -499,6 +499,7 @@
    "options": "IPD Process"
   },
   {
+   "depends_on": "eval: doc.accessory_clothtype_json != \"{}\"",
    "fieldname": "cloth_accessories_html",
    "fieldtype": "HTML",
    "label": "Cloth Accessories HTML"
@@ -509,6 +510,7 @@
    "label": "Select Cloth Accessory HTML"
   },
   {
+   "depends_on": "eval: doc.accessory_clothtype_json != \"{}\"",
    "fieldname": "get_accessory_combination",
    "fieldtype": "Button",
    "label": "Get Accessory Combination"
@@ -533,6 +535,7 @@
    "label": "Cloth Accessory"
   },
   {
+   "depends_on": "eval: doc.accessory_clothtype_json != \"{}\"",
    "fieldname": "stiching_accessory_html",
    "fieldtype": "HTML",
    "label": "Stiching Accessory HTML"
@@ -542,6 +545,7 @@
    "fieldtype": "Section Break"
   },
   {
+   "depends_on": "eval: doc.accessory_clothtype_json != \"{}\"",
    "fieldname": "get_stiching_accessory_combination",
    "fieldtype": "Button",
    "label": "Get Stiching Accessory Combination"
@@ -586,7 +590,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2024-10-23 18:42:11.688640",
+ "modified": "2024-11-07 17:24:46.032735",
  "modified_by": "Administrator",
  "module": "Essdee Production",
  "name": "Item Production Detail",

@@ -13,7 +13,7 @@
   "cutting_spreader",
   "maximum_no_of_plys",
   "start_datetime",
-  "printed_time",
+  "required_pcs_weight",
   "column_break_rxns",
   "cutting_marker",
   "marker_name",
@@ -24,6 +24,7 @@
   "cutter",
   "maximum_allow_percentage",
   "end_datetime",
+  "printed_time",
   "naming_series",
   "section_break_cwpl",
   "cutting_marker_ratios",
@@ -34,9 +35,12 @@
   "no_of_rolls",
   "weight",
   "accessory_weight",
+  "total_no_of_pieces",
   "column_break_honq",
   "no_of_bits",
   "end_bit_weight",
+  "total_used_weight",
+  "piece_weight",
   "section_break_mbrg",
   "cutting_laysheet_bundles"
  ],
@@ -245,11 +249,37 @@
    "fieldname": "naming_series",
    "fieldtype": "Data",
    "label": "Naming Series"
+  },
+  {
+   "fieldname": "total_used_weight",
+   "fieldtype": "Float",
+   "label": "Total Used Weight",
+   "read_only": 1
+  },
+  {
+   "fieldname": "total_no_of_pieces",
+   "fieldtype": "Int",
+   "label": "Total No of Pieces",
+   "read_only": 1
+  },
+  {
+   "fetch_from": "cutting_marker.required_piece_weight",
+   "fieldname": "required_pcs_weight",
+   "fieldtype": "Float",
+   "label": "Required Pcs Weight",
+   "read_only": 1
+  },
+  {
+   "fieldname": "piece_weight",
+   "fieldtype": "Float",
+   "label": "Piece Weight",
+   "precision": "3",
+   "read_only": 1
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2024-10-27 16:47:16.442402",
+ "modified": "2024-11-07 17:43:58.077926",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Cutting LaySheet",

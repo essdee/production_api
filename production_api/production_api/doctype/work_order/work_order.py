@@ -306,7 +306,7 @@ def get_deliverable_receivable( lot, process, items, doc_name):
 	item_name = frappe.get_value("Item Variant", grp_variant, 'item')
 	item_list, row_index, table_index = get_item_structure(items, item_name, process, uom)
 
-	bom = get_calculated_bom(ipd, items, lot, process, from_uom=uom, to_uom=uom)
+	bom = get_calculated_bom(ipd, items, lot, process_name=process)
 	bom = get_bom_structure(bom, row_index, table_index)
 
 	deliverables = []
@@ -474,10 +474,10 @@ def get_items(items):
 					variant1.insert()
 					variant_name = variant1.name
 				item1['item_variant'] = variant_name
-				item1['qty'] = row['work_order_qty'][val]
+				item1['quantity'] = row['work_order_qty'][val]
 				item1['row_index'] = id1
 				item1['table_index'] = id1
-				if item1['qty']:
+				if item1['quantity']:
 					item_list.append(item1)
 		else:
 			item1 = {}
@@ -489,10 +489,10 @@ def get_items(items):
 				variant1.insert()
 				variant_name = variant1.name
 			item1['item_variant'] = variant_name
-			item1['qty'] = row['work_order_qty']
+			item1['quantity'] = row['work_order_qty']
 			item1['table_index'] = id1
 			item1['row_index'] = id1
-			if item1['qty']:
+			if item1['quantity']:
 				item_list.append(item1)
 	return item_list
 
@@ -506,7 +506,7 @@ def get_item_structure(items,item_name, process, uom):
 		row_index = item['row_index']
 		table_index = item['table_index']
 		item_list[item_name][item['item_variant']] = {
-			"qty":item['qty'],
+			"qty":item['quantity'],
 			"process":process,
 			"uom":uom,
 			"row_index":row_index,
