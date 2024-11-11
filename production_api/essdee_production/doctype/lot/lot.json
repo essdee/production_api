@@ -47,6 +47,7 @@
   "time_and_action_tab",
   "lot_time_and_action_details",
   "time_and_action_html",
+  "section_break_cmku",
   "time_and_action_report_html"
  ],
  "fields": [
@@ -299,11 +300,15 @@
    "fieldname": "time_and_action_report_html",
    "fieldtype": "HTML",
    "label": "Time and Action Report HTML"
+  },
+  {
+   "fieldname": "section_break_cmku",
+   "fieldtype": "Section Break"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2024-11-11 12:08:07.072933",
+ "modified": "2024-11-11 15:24:20.448657",
  "modified_by": "Administrator",
  "module": "Essdee Production",
  "name": "Lot",

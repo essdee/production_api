@@ -56,71 +56,70 @@ frappe.ui.form.on("Lot", {
 		}
 		$(frm.fields_dict['time_and_action_report_html'].wrapper).html("")
 		frm.time_action_report = new frappe.production.ui.TimeActionReport(frm.fields_dict['time_and_action_report_html'].wrapper)
-
-		frm.add_custom_button("Create T&A",()=> {
-			frappe.call({
-				method:"production_api.essdee_production.doctype.lot.lot.get_packing_attributes",
-				args: {
-					ipd: frm.doc.production_detail,
-				},
-				callback:function(r){
-					let data = []
-					for(let i = 0; i < r.message.colours.length ; i++){
-						data.push(
-							{'colour':r.message.colours[i],'master':null}
-						)
-					}
-					 
-					let dialog = new frappe.ui.Dialog({
-						size: "extra-large",
-						fields: [
-							{
-								label: 'Colours',
-								fieldname: 'table',
-								fieldtype: 'Table',
-								cannot_add_rows: true,
-								in_place_edit: false,
-								data: data,
-								fields: [
-									{ fieldname: 'colour', fieldtype: 'Data', in_list_view: 1, label: 'Test',reqd:1 ,readonly:1},
-									{ fieldname: 'master', fieldtype: 'Link', in_list_view: 1, options:"Action Master" ,label:'Master',reqd:1}
-								]
-							},
-							{
-								label:'Start Date',
-								fieldname:"start_date",
-								fieldtype:"Date",
-								reqd:true,
-							},
-						],
-						primary_action(values){
-							for(let i = 0 ; i < values.table.length; i++){
-								if(values.table[i].master == null){
-									frappe.throw(`Mention master for colour ${values.table[i].colour }`)
-								}
-							}
-							frappe.call({
-								method:"production_api.essdee_production.doctype.lot.lot.create_time_and_action",
-								args: {
-									"lot":frm.doc.name,
-									"item_name":frm.doc.item,
-									"sizes":r.message.sizes,
-									"ratios":r.message.ratios,
-									"combo":r.message.combo,
-									"item_list":values.table,
-									"total_qty":frm.doc.total_order_quantity,
-									"start_date":values.start_date
-								}
-							})
-							dialog.hide()
+		
+		if(frm.doc.lot_time_and_action_details.length == 0){
+			frm.add_custom_button("Create T&A",()=> {
+				frappe.call({
+					method:"production_api.essdee_production.doctype.lot.lot.get_packing_attributes",
+					args: {
+						ipd: frm.doc.production_detail,
+					},
+					callback:function(r){
+						let data = []
+						for(let i = 0; i < r.message.colours.length ; i++){
+							data.push(
+								{'colour':r.message.colours[i],'master':null}
+							)
 						}
-					});
-					dialog.show();
-				}
-				
-			})
-			
-		})
+						let dialog = new frappe.ui.Dialog({
+							size: "extra-large",
+							fields: [
+								{
+									label: 'Colours',
+									fieldname: 'table',
+									fieldtype: 'Table',
+									cannot_add_rows: true,
+									in_place_edit: false,
+									data: data,
+									fields: [
+										{ fieldname: 'colour', fieldtype: 'Data', in_list_view: 1, label: 'Colour',reqd:1 ,readonly:1},
+										{ fieldname: 'master', fieldtype: 'Link', in_list_view: 1, options:"Action Master" ,label:'Master',reqd:1}
+									]
+								},
+								{
+									label:'Start Date',
+									fieldname:"start_date",
+									fieldtype:"Date",
+									reqd:true,
+								},
+							],
+							primary_action(values){
+								for(let i = 0 ; i < values.table.length; i++){
+									if(values.table[i].master == null){
+										frappe.throw(`Mention master for colour ${values.table[i].colour }`)
+									}
+								}
+								frappe.call({
+									method:"production_api.essdee_production.doctype.lot.lot.create_time_and_action",
+									args: {
+										"lot":frm.doc.name,
+										"item_name":frm.doc.item,
+										"sizes":r.message.sizes,
+										"ratios":r.message.ratios,
+										"combo":r.message.combo,
+										"item_list":values.table,
+										"total_qty":frm.doc.total_order_quantity,
+										"start_date":values.start_date
+									}
+								})
+								dialog.hide()
+							}
+						});
+						dialog.show();
+					}
+				})
+			})	
+		}
 		frm.order_detail = new frappe.production.ui.LotOrderDetail(frm.fields_dict['lot_item_order_detail_html'].wrapper)
 		if(frm.doc.__onload && frm.doc.__onload.order_item_details) {
 			frm.order_detail.load_data(frm.doc.__onload.order_item_details);

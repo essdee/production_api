@@ -1,6 +1,7 @@
 <template>
     <div>
         <div v-if="items && items.length > 0">
+            <h4>Time and Action Summary</h4>
             <table class="table table-sm table-bordered">
                 <tr>
                     <th>S.No</th>
@@ -16,8 +17,8 @@
                     <td>{{ i.colour }}</td>
                     <td>{{ i.action }}</td>
                     <td>{{ i.department }}</td>
-                    <td>{{ i.date }}</td>
-                    <td>{{ i.rescheduled_date }}</td>
+                    <td>{{ date_format(i.date) }}</td>
+                    <td>{{ date_format(i.rescheduled_date) }}</td>
                     <td v-if="i.process"><button class="btn btn-success" @click="make_popup(index)">Update</button></td>
                 </tr>
             </table>
@@ -32,9 +33,19 @@ let items = ref([])
 function load_data(item){
     items.value = item
 }
+
 function get_data(){
     return items.value
 }
+
+function date_format(date){
+    if(date){
+        let arr = date.split("-")
+        return arr[2]+"-"+arr[1]+"-"+arr[0]
+    }
+    
+}
+
 function make_popup(index){
     let d =new frappe.ui.Dialog({
         title:"Update Actual Date",

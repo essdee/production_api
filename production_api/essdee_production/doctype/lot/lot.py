@@ -527,3 +527,36 @@ def get_time_and_action_details(docname):
 	doc = frappe.get_doc("Time and Action",docname)
 	item_list = [item.as_dict() for item in doc.details]
 	return item_list	
+
+@frappe.whitelist()
+def undo_last_update(time_and_action):
+	t_and_a = frappe.get_doc("Time and Action",time_and_action)
+	index = None
+	for item in t_and_a.details:
+		if item.completed:
+			index = item.idx
+	
+	for item in t_and_a.details:
+		if item.idx == index:
+			item.actual_date = None
+			item.completed = 0
+			item.date_diff = None
+			item.reason = None
+			break
+	
+	for item in t_and_a.details:
+		item.index2 = item.index2 + 2
+
+	if index != 1:
+		for item in t_and_a.details:
+			if item.idx == index - 1:
+				item.completed = 0
+				break
+	else:
+		for item in t_and_a.details:
+			item.index2 = item.idx
+			item.rescheduled_date = item.date	
+			item.date_diff = None	
+			item.reason = None
+
+	t_and_a.save()			

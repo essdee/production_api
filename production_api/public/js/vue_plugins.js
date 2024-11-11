@@ -266,8 +266,6 @@ frappe.production.ui.TimeAction = class {
     }
     get_data(){
         let items = JSON.parse(JSON.stringify(this.vue.get_data()))
-        console.log(items)
-        console.log("BUE")
         return items
     }
     load_data(item_details){
@@ -400,7 +398,6 @@ frappe.production.ui.CutPlanClothItems = class {
     }
     get_items(){
         let items = this.vue.get_items()
-        console.log(items)
         return items
     }
 }
