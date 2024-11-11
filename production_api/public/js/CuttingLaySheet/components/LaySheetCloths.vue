@@ -41,7 +41,7 @@
                 </tr>
             </table>
         </div>
-        <div class="row" v-if="show_button1 && docstatus != null">
+        <div class="row" v-if="status != 'Label Printed' && show_button1 && docstatus != null">
             <button class="btn btn-success pull-left" @click="add_cloth_item(null)">Add Cloth Items</button>
         </div>
         <div class="html-container col mt-5">
