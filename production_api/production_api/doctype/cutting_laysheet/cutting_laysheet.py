@@ -53,6 +53,9 @@ class CuttingLaySheet(Document):
 			used_weight += item.used_weight
 			colours.add(item.colour)
 
+		if weight and self.status == 'Started':
+			self.status = "Completed"
+
 		items = []
 		for colour in colours:
 			for item in self.cutting_laysheet_details:
@@ -218,6 +221,7 @@ def get_cut_sheet_data(doc_name,cutting_marker,item_details,items, max_plys:int,
 	doc.maximum_no_of_plys = max_plys
 	doc.maximum_allow_percentage = maximum_allow 
 	doc.total_no_of_pieces = total_pieces
+	doc.status = "Bundles Generated"
 	doc.set("cutting_laysheet_bundles", cut_sheet_data)
 	doc.save()
 
@@ -252,7 +256,8 @@ def print_labels(print_items, lay_no, cutting_plan, doc_name):
 	if isinstance(print_items,string_types):
 		print_items = json.loads(print_items)
 	zpl = ""
-	creation = frappe.get_value("Cutting LaySheet",doc_name,"creation")
+	cls_doc = frappe.get_doc("Cutting LaySheet",doc_name)
+	creation = cls_doc.creation
 	date = get_created_date(creation)
 	for item in print_items:
 		x = f"""^XA
@@ -295,6 +300,8 @@ def print_labels(print_items, lay_no, cutting_plan, doc_name):
 			^XZ"""
 		zpl += x
 	update_cutting_plan(doc_name)
+	cls_doc.status = "Label Printed"
+	cls_doc.save()
 	return zpl	
 
 @frappe.whitelist()
