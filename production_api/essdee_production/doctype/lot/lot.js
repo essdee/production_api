@@ -49,6 +49,14 @@ frappe.ui.form.on("Lot", {
 				frm.item.load_data([])
 			}
         }
+		$(frm.fields_dict['time_and_action_html'].wrapper).html("")
+		frm.time_action = new frappe.production.ui.TimeAction(frm.fields_dict['time_and_action_html'].wrapper)
+		if(frm.doc.__onload && frm.doc.__onload.action_details){
+			frm.time_action.load_data(frm.doc.__onload.action_details)
+		}
+		$(frm.fields_dict['time_and_action_report_html'].wrapper).html("")
+		frm.time_action_report = new frappe.production.ui.TimeActionReport(frm.fields_dict['time_and_action_report_html'].wrapper)
+
 		frm.add_custom_button("Create T&A",()=> {
 			frappe.call({
 				method:"production_api.essdee_production.doctype.lot.lot.get_packing_attributes",
@@ -64,7 +72,6 @@ frappe.ui.form.on("Lot", {
 					}
 					 
 					let dialog = new frappe.ui.Dialog({
-						title: 'Table-Test',
 						size: "extra-large",
 						fields: [
 							{
@@ -107,7 +114,6 @@ frappe.ui.form.on("Lot", {
 							})
 							dialog.hide()
 						}
-		
 					});
 					dialog.show();
 				}
@@ -126,6 +132,9 @@ frappe.ui.form.on("Lot", {
     validate(frm){
         let items = frm.item.get_data()
         frm.doc['item_details'] = JSON.stringify(items)
+
+		let action_items = frm.time_action.get_data()
+		frm.doc['action_details'] = JSON.stringify(action_items)
     },
 	item(frm){
 		if(!frm.doc.item){

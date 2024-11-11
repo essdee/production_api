@@ -10,6 +10,7 @@ class TimeandAction(Document):
 		if self.is_new():
 			master_doc = frappe.get_doc("Action Master",self.master)
 			d = self.start_date
+			x = 1
 			for item in master_doc.details:
 				d = add_days(d,item.lead_time)
 				self.append("details",{
@@ -18,7 +19,9 @@ class TimeandAction(Document):
 					"department":item.department,
 					"date":d,
 					"rescheduled_date":d,
+					"index2":x
 				})
+				x = x + 1
 
 	def before_validate(self):
 		if not self.is_new():
@@ -34,6 +37,7 @@ class TimeandAction(Document):
 
 			if idx:
 				for item in self.details:
+					item.index2 -= 1
 					if item.idx > idx:
 						actual_date = add_days(actual_date,item.lead_time)
 						item.rescheduled_date = actual_date

@@ -43,7 +43,11 @@
   "calculate_bom",
   "bom_summary",
   "bom_additional_items",
-  "bom_summary_json"
+  "bom_summary_json",
+  "time_and_action_tab",
+  "lot_time_and_action_details",
+  "time_and_action_html",
+  "time_and_action_report_html"
  ],
  "fields": [
   {
@@ -273,11 +277,33 @@
    "fieldtype": "JSON",
    "hidden": 1,
    "label": "BOM Summary JSON"
+  },
+  {
+   "fieldname": "time_and_action_tab",
+   "fieldtype": "Tab Break",
+   "label": "Time and Action"
+  },
+  {
+   "fieldname": "time_and_action_html",
+   "fieldtype": "HTML",
+   "label": "Time and Action HTML"
+  },
+  {
+   "fieldname": "lot_time_and_action_details",
+   "fieldtype": "Table",
+   "hidden": 1,
+   "label": "Lot Time and Action Details",
+   "options": "Lot Time and Action Detail"
+  },
+  {
+   "fieldname": "time_and_action_report_html",
+   "fieldtype": "HTML",
+   "label": "Time and Action Report HTML"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2024-11-05 11:19:51.008682",
+ "modified": "2024-11-11 12:08:07.072933",
  "modified_by": "Administrator",
  "module": "Essdee Production",
  "name": "Lot",

@@ -73,7 +73,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2024-11-08 17:48:06.734811",
+ "modified": "2024-11-08 18:39:11.260953",
  "modified_by": "Administrator",
  "module": "Essdee Production",
  "name": "Action Master",
@@ -93,6 +93,7 @@
    "write": 1
   }
  ],
+ "search_fields": "process_name,style",
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": []

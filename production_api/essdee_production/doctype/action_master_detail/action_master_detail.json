@@ -25,8 +25,7 @@
    "fieldname": "lead_time",
    "fieldtype": "Int",
    "in_list_view": 1,
-   "label": "Lead Time",
-   "read_only": 1
+   "label": "Lead Time"
   },
   {
    "fetch_from": "action.department",
@@ -41,7 +40,7 @@
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2024-11-08 17:52:07.658440",
+ "modified": "2024-11-08 18:45:12.881681",
  "modified_by": "Administrator",
  "module": "Essdee Production",
  "name": "Action Master Detail",

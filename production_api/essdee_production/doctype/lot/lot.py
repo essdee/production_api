@@ -5,7 +5,7 @@ from frappe.model.document import Document
 from six import string_types
 from frappe.utils import flt
 from production_api.production_api.doctype.item.item import create_variant, get_variant, get_attribute_details, get_or_create_variant
-from itertools import groupby
+from itertools import groupby, zip_longest
 import math
 from production_api.production_api.doctype.item_dependent_attribute_mapping.item_dependent_attribute_mapping import get_dependent_attribute_details
 
@@ -22,6 +22,9 @@ class Lot(Document):
 		for item in self.items:
 			qty = qty + item.qty
 		self.total_quantity = qty
+
+		if self.get("action_details"):
+			update_time_and_action(self.action_details,self.lot_time_and_action_details)
 	
 	def validate(self):	
 		if self.production_detail:
@@ -47,6 +50,41 @@ class Lot(Document):
 				x = json.dumps(items[0])
 				self.db_set('lot_order_details_json', x, update_modified=False)
 				self.set_onload('order_item_details', items)
+
+		if len(self.lot_time_and_action_details) > 0:
+			items = get_time_and_action_process(self.lot_time_and_action_details)
+			self.set_onload('action_details',items)		
+
+def get_time_and_action_process(action_details):
+	items = []
+	for item in action_details:
+		out = frappe.db.sql(
+			"""
+				SELECT * FROM `tabTime and Action Detail` AS t_and_a
+				WHERE t_and_a.parent = %s AND t_and_a.completed = 0
+				ORDER BY t_and_a.idx ASC
+				LIMIT 1
+			""",
+			(item.time_and_action,),
+			as_dict=1
+		)
+		if len(out) > 0:
+			out = out[0]
+			out['colour'] = item.colour
+			out['master'] = item.master
+			out['process'] = True
+			items.append(out)
+		else:
+			items.append({
+				"colour":item.colour,
+				"master":item.master,
+				"action":"Completed",
+				"department":None,
+				"date":None,
+				"rescheduled_date":None,
+				"process":False
+			})	
+	return items
 
 def calculate_order_details(items, production_detail, packing_uom, final_uom):
 	item_detail = frappe.get_doc("Item Production Detail", production_detail)
@@ -120,6 +158,21 @@ def calculate_order_details(items, production_detail, packing_uom, final_uom):
 					'quantity':val,
 				})		
 	return final_list, final_qty
+
+
+def update_time_and_action(action_details,lot_action_details):
+	if isinstance(action_details,string_types):
+		action_details = json.loads(action_details)
+
+	for item1,item2 in zip_longest(action_details,lot_action_details):
+		if item1['process']:
+			doc = frappe.get_doc("Time and Action",item2.time_and_action)
+			for i in doc.details:
+				if i.name == item1['name'] and item1['actual_date']:
+					i.actual_date = item1['actual_date']
+					i.reason = item1['reason']
+					doc.save()
+					break
 
 def save_item_details(item_details, dependent_attr=None):
 	if isinstance(item_details, string_types):
@@ -436,12 +489,15 @@ def get_packing_attributes(ipd):
 	}	
 
 @frappe.whitelist()
-def create_time_and_action(lot,item_name,sizes,ratios,combo,item_list,total_qty,start_date):
+def create_time_and_action(lot, item_name, sizes, ratios, combo, item_list, total_qty, start_date):
 	if isinstance(item_list,string_types):
 		item_list = json.loads(item_list)
 	if isinstance(ratios,string_types):
 		ratios = json.loads(ratios)	
 	sizes = sizes[:-1]
+
+	items = []
+
 	for idx,item in enumerate(item_list):
 		new_doc = frappe.new_doc("Time and Action")
 		new_doc.update({
@@ -456,4 +512,18 @@ def create_time_and_action(lot,item_name,sizes,ratios,combo,item_list,total_qty,
 			new_doc.qty = math.ceil(flt(total_qty)/flt(combo))
 		else:
 			new_doc.qty = math.ceil(flt(total_qty)/flt(ratios[idx]))
-		new_doc.save()		
+		new_doc.save()
+		items.append({
+			"colour":item['colour'],
+			"master":item["master"],
+			"time_and_action":new_doc.name,	
+		})
+	lot_doc = frappe.get_doc("Lot",lot)
+	lot_doc.set("lot_time_and_action_details",items)
+	lot_doc.save()
+
+@frappe.whitelist()
+def get_time_and_action_details(docname):
+	doc = frappe.get_doc("Time and Action",docname)
+	item_list = [item.as_dict() for item in doc.details]
+	return item_list	

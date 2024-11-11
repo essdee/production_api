@@ -10,6 +10,8 @@ import POItem from "./PurchaseOrder/components/Item.vue"
 import GRNItemWrapper from "./GRN";
 import LotOrder from "./Lot/components/LotOrder.vue" 
 import LotOrderDetail from "./Lot/components/LotOrderDetail.vue"
+import TimeAction from "./Lot/components/TimeAction.vue"
+import TimeActionReport from "./Lot/components/TimeActionReport.vue"
 import CutPlanItems from "./CuttingPlan/components/CutPlanItems.vue"
 import CuttingCompletionDetail from "./CuttingPlan/components/CuttingCompletionDetail.vue"
 import CuttingIncompletionDetail from "./CuttingPlan/components/CuttingIncompletionDetail.vue"
@@ -251,6 +253,41 @@ frappe.production.ui.LotOrder = class {
         this.vue.load_data(items)
     }
 }
+
+frappe.production.ui.TimeAction = class {
+    constructor(wrapper){
+        this.$wrapper = $(wrapper)
+        this.make_app()
+    }
+    make_app(){
+        this.app = createApp(TimeAction)
+        SetVueGlobals(this.app)
+        this.vue = this.app.mount(this.$wrapper.get(0))
+    }
+    get_data(){
+        let items = JSON.parse(JSON.stringify(this.vue.get_data()))
+        console.log(items)
+        console.log("BUE")
+        return items
+    }
+    load_data(item_details){
+        let items = JSON.parse(JSON.stringify(item_details));
+        this.vue.load_data(items)
+    }
+}
+
+frappe.production.ui.TimeActionReport = class {
+    constructor(wrapper){
+        this.$wrapper = $(wrapper)
+        this.make_app()
+    }
+    make_app(){
+        this.app = createApp(TimeActionReport)
+        SetVueGlobals(this.app)
+        this.vue = this.app.mount(this.$wrapper.get(0))
+    }
+}
+
 
 frappe.production.ui.LotOrderDetail = class {
     constructor(wrapper){
