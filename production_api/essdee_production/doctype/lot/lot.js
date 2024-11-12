@@ -54,9 +54,10 @@ frappe.ui.form.on("Lot", {
 		if(frm.doc.__onload && frm.doc.__onload.action_details){
 			frm.time_action.load_data(frm.doc.__onload.action_details)
 		}
-		$(frm.fields_dict['time_and_action_report_html'].wrapper).html("")
-		frm.time_action_report = new frappe.production.ui.TimeActionReport(frm.fields_dict['time_and_action_report_html'].wrapper)
-		
+		if(frm.doc.lot_time_and_action_details.length > 0){
+			$(frm.fields_dict['time_and_action_report_html'].wrapper).html("")
+			frm.time_action_report = new frappe.production.ui.TimeActionReport(frm.fields_dict['time_and_action_report_html'].wrapper)
+		}	
 		if(frm.doc.lot_time_and_action_details.length == 0){
 			frm.add_custom_button("Create T&A",()=> {
 				frappe.call({

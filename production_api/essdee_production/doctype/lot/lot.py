@@ -58,13 +58,9 @@ class Lot(Document):
 def get_time_and_action_process(action_details):
 	items = []
 	for item in action_details:
-		out = frappe.db.sql(
-			"""
-				SELECT * FROM `tabTime and Action Detail` AS t_and_a
-				WHERE t_and_a.parent = %s AND t_and_a.completed = 0
-				ORDER BY t_and_a.idx ASC
-				LIMIT 1
-			""",
+		out = frappe.db.sql( 
+			""" SELECT * FROM `tabTime and Action Detail` AS t_and_a WHERE t_and_a.parent = %s AND t_and_a.completed = 0
+				ORDER BY t_and_a.idx ASC LIMIT 1 """,
 			(item.time_and_action,),
 			as_dict=1
 		)
@@ -471,6 +467,25 @@ def get_packing_attributes(ipd):
 		if not combo:
 			ratios.append(ipd_doc.packing_combo/item.quantity)
 
+	if ipd_doc.is_set_item:
+		set_mapping = None
+		for item in ipd_doc.item_attributes:
+			if item.attribute == ipd_doc.set_item_attribute:
+				set_mapping = item.mapping
+				break
+		set_map_doc = frappe.get_doc("Item Item Attribute Mapping",set_mapping)
+		colour_combo = []
+		ratio_combo = []
+		index = -1		
+		for colour in colours:
+			index = index + 1
+			for part in set_map_doc.values:
+				colour_combo.append(str(colour)+"-"+str(part.attribute_value))
+				if not combo:
+					ratio_combo.append(ratios[index])
+		colours = colour_combo
+		ratios = ratio_combo
+
 	mapping = None
 	for item in ipd_doc.item_attributes:
 		if item.attribute == ipd_doc.primary_item_attribute:
@@ -497,7 +512,6 @@ def create_time_and_action(lot, item_name, sizes, ratios, combo, item_list, tota
 	sizes = sizes[:-1]
 
 	items = []
-
 	for idx,item in enumerate(item_list):
 		new_doc = frappe.new_doc("Time and Action")
 		new_doc.update({
@@ -526,7 +540,11 @@ def create_time_and_action(lot, item_name, sizes, ratios, combo, item_list, tota
 def get_time_and_action_details(docname):
 	doc = frappe.get_doc("Time and Action",docname)
 	item_list = [item.as_dict() for item in doc.details]
-	return item_list	
+	status = doc.status
+	return {
+		"item_list" : item_list,
+		"status" : status
+	}	
 
 @frappe.whitelist()
 def undo_last_update(time_and_action):
@@ -547,7 +565,7 @@ def undo_last_update(time_and_action):
 	for item in t_and_a.details:
 		item.index2 = item.index2 + 2
 
-	if index != 1:
+	if index and index != 1:
 		for item in t_and_a.details:
 			if item.idx == index - 1:
 				item.completed = 0
@@ -558,5 +576,18 @@ def undo_last_update(time_and_action):
 			item.rescheduled_date = item.date	
 			item.date_diff = None	
 			item.reason = None
+	t_and_a.save()		
 
-	t_and_a.save()			
+@frappe.whitelist()
+def make_complete(time_and_action):
+	t_and_a = frappe.get_doc("Time and Action",time_and_action)
+	check = True
+	for item in t_and_a.details:
+		if not item.actual_date and not item.completed:
+			check = False
+			break
+	if check:
+		t_and_a.status = "Completed"
+		t_and_a.save()	
+	else:
+		frappe.msgprint("Not all the Actions are Completed")		

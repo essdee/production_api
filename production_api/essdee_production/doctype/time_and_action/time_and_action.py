@@ -32,7 +32,7 @@ class TimeandAction(Document):
 					item.completed = 1
 					idx = item.idx
 					actual_date = item.actual_date
-					item.date_diff = date_diff(item.rescheduled_date,item.actual_date)
+					item.date_diff = date_diff(item.date,item.actual_date)
 					break
 
 			if idx:

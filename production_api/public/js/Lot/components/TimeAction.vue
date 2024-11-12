@@ -8,7 +8,7 @@
                     <th>Colour</th>
                     <th>Action</th>
                     <th>Department</th>
-                    <th>Date</th>
+                    <th>Planned Date</th>
                     <th>Rescheduled Date</th>
                     <th></th>
                 </tr>
@@ -22,7 +22,6 @@
                     <td v-if="i.process"><button class="btn btn-success" @click="make_popup(index)">Update</button></td>
                 </tr>
             </table>
-            
         </div>
     </div>    
 </template>
@@ -43,7 +42,6 @@ function date_format(date){
         let arr = date.split("-")
         return arr[2]+"-"+arr[1]+"-"+arr[0]
     }
-    
 }
 
 function make_popup(index){
@@ -76,12 +74,14 @@ function make_popup(index){
                     items.value[index]['actual_date'] = values.actual_date
                     items.value[index]['reason'] = values.reason    
                     cur_frm.dirty()
+                    cur_frm.save()
                     d.hide()
                 }
             }
             else{
                 items.value[index]['actual_date'] = values.actual_date
                 cur_frm.dirty()
+                cur_frm.save()
                 d.hide()
             }
         }

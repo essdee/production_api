@@ -5,8 +5,11 @@
         </div>
         <div class="row">
             <div class="select-field col-md-5"></div>
-            <div class="col-md-5"></div>
-            <div v-if="selected_colour" class="col-md-2 mt-4"><button @click="undo_last_update()" class="btn btn-success">Undo Last</button></div>
+            <div class="col-md-4"></div>
+            <div v-if="selected_colour && status != 'Completed'" class="col-md-3 mt-4">
+                <button @click="undo_last_update()" class="btn btn-success" style="margin-right: 10px;">Undo Last</button>
+                <button @click="make_complete()" class="btn btn-success">Complete T&A</button>
+            </div>
         </div>
         <table v-if="items && items.length > 0" class="table table-sm table-bordered">
             <tr>
@@ -14,7 +17,7 @@
                 <th>Action</th>
                 <th>Department</th>
                 <th>Lead Time</th>
-                <th>Date</th>
+                <th>Planned Date</th>
                 <th>Rescheduled Date</th>
                 <th>Actual Date</th>
                 <th>Date Diff</th>
@@ -50,16 +53,15 @@ const sample_doc = ref({});
 const docnames = {};
 let docname = ref(null)
 let selected_colour = ref(null)
+let status = ref(null)
 
 onMounted(() => {
     cur_frm.doc.lot_time_and_action_details.forEach(detail => {
         colours.value.push(detail.colour);
         docnames[detail.colour] = detail.time_and_action;
     });
-
     const el = root.value;
     $(el).find(".select-field").html("");
-
     select_field.value = frappe.ui.form.make_control({
         parent: $(el).find(".select-field"),
         df: {
@@ -74,7 +76,8 @@ onMounted(() => {
                         docname: docnames[select_field.value.get_value()]
                     },
                     callback: function (r) {
-                        items.value = r.message;
+                        items.value = r.message.item_list;
+                        status.value = r.message.status
                         docname.value = docnames[select_field.value.get_value()];
                         selected_colour.value = select_field.value.get_value();
                     }
@@ -98,8 +101,9 @@ function undo_last_update(){
                     "time_and_action":docname.value,
                 },
                 callback:function(){
-                    cur_frm.dirty()
                     d.hide()
+                    cur_frm.dirty()
+                    cur_frm.save()
                 }
             })
         },
@@ -108,7 +112,20 @@ function undo_last_update(){
         }
     })
     d.show()
-    
+}
+
+function make_complete(){
+    frappe.call({
+        method:"production_api.essdee_production.doctype.lot.lot.make_complete",
+        args: {
+            "time_and_action":docname.value,
+        },
+        callback:function(){
+            d.hide()
+            cur_frm.dirty()
+            cur_frm.save()
+        }
+    })
 }
 
 function date_format(date){
@@ -117,18 +134,14 @@ function date_format(date){
         return arr[2]+"-"+arr[1]+"-"+arr[0]
     }
 }
-
 </script>
-
 <style scoped>
 .bg-red {
     background-color: #f8d7da;
     color: #721c24;
 }
-
 .bg-green {
     background-color: #d4edda;
     color: #155724;
 }
-
 </style>

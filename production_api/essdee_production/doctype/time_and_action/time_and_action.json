@@ -15,6 +15,7 @@
   "column_break_ucee",
   "master",
   "description",
+  "status",
   "section_break_hshs",
   "details"
  ],
@@ -80,11 +81,18 @@
    "fieldname": "start_date",
    "fieldtype": "Date",
    "label": "Start Date"
+  },
+  {
+   "default": "In Progress",
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "label": "Status",
+   "options": "In Progress\nCompleted"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2024-11-08 16:41:39.721571",
+ "modified": "2024-11-12 10:53:33.681520",
  "modified_by": "Administrator",
  "module": "Essdee Production",
  "name": "Time and Action",

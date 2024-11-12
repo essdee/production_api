@@ -3,7 +3,6 @@
 
 import math
 import frappe,json
-from itertools import groupby
 from six import string_types
 from frappe.model.document import Document
 from production_api.production_api.doctype.item.item import get_or_create_variant
@@ -11,6 +10,9 @@ from frappe.utils import getdate
 from production_api.essdee_production.doctype.item_production_detail.item_production_detail import get_stitching_combination
 from itertools import zip_longest
 import sys
+import base64
+from secrets import token_bytes as get_random_bytes
+import time
 
 class CuttingLaySheet(Document):
 	def autoname(self):
@@ -159,7 +161,6 @@ def get_cut_sheet_data(doc_name,cutting_marker,item_details,items, max_plys:int,
 					bundle_no = bundle_no + 1
 					hash_value = get_timestamp_prefix() + generate_random_string(12)
 					qty = maximum * item['no_of_bits']
-					total_pieces += qty
 					cut_sheet_data.append({
 						"size":cm_item.size,
 						"colour":item['colour'],
@@ -173,7 +174,6 @@ def get_cut_sheet_data(doc_name,cutting_marker,item_details,items, max_plys:int,
 					bundle_no = bundle_no + 1
 					hash_value = get_timestamp_prefix() + generate_random_string(12)
 					qty = minimum * item['no_of_bits']
-					total_pieces += qty
 					cut_sheet_data.append({
 						"size":cm_item.size,
 						"colour":item['colour'],
@@ -215,15 +215,17 @@ def get_cut_sheet_data(doc_name,cutting_marker,item_details,items, max_plys:int,
 			cut_sheet_data.append(val)
 
 	doc = frappe.get_doc("Cutting LaySheet", doc_name)
+	count = 0
+	for item in doc.cutting_marker_ratios:
+		count = count + item.ratio
+
+	total_pieces = count * doc.no_of_bits
+		
 	doc.maximum_no_of_plys = max_plys
 	doc.maximum_allow_percentage = maximum_allow 
 	doc.total_no_of_pieces = total_pieces
 	doc.set("cutting_laysheet_bundles", cut_sheet_data)
 	doc.save()
-
-import base64
-from secrets import token_bytes as get_random_bytes
-import time
 
 def get_timestamp_prefix():
 	ts = int(time.time() * 10) 
@@ -316,7 +318,6 @@ def get_bundle_items(cutting_laysheet):
 		if item.bundle_no not in bundles:
 			items.append(item.as_dict())
 			bundles.append(item.bundle_no)
-	
 	return items
 
 @frappe.whitelist()
@@ -325,9 +326,7 @@ def get_colours(cutting_laysheet, items):
 	colours = set()
 	for item in doc.cutting_laysheet_details:
 		colours.add(item.colour)
-	
 	colour_items = {}
-
 	for colour in colours:
 		for item in items:
 			if item['colour'] == colour:
@@ -335,7 +334,6 @@ def get_colours(cutting_laysheet, items):
 					colour_items[colour].append(item)
 				else:
 					colour_items[colour] = [item]
-
 	return colours,colour_items
 	
 @frappe.whitelist()
@@ -395,7 +393,6 @@ def update_cutting_plan(cutting_laysheet):
 					else:	
 						item_panel[key] = {}
 						item_panel[key][panel] = item['values'][val][panel] 
-		
 		for item in item_panel:
 			check = True
 			min = sys.maxsize
@@ -409,7 +406,6 @@ def update_cutting_plan(cutting_laysheet):
 					panel_colour = stitching_combination['stitching_combination'][item[1]][i]
 					if set_item:
 						condition1 = i in incomplete_items[ipd_doc.stiching_attribute][part]
-
 					if condition1:	
 						m = False
 						for panel in item_panel:
@@ -445,7 +441,6 @@ def update_cutting_plan(cutting_laysheet):
 					condition4 = True
 					if set_item:
 						condition4 = i in incomplete_items[ipd_doc.stiching_attribute][part]
-
 					if condition4:	
 						for panel in item_panel:
 							condition5 = True
@@ -481,7 +476,6 @@ def update_cutting_plan(cutting_laysheet):
 					completed_items['total_qty'][val] += min
 			if total_qty != 0:		
 				item2['total_qty'] = total_qty 			
-
 	accessory= {}
 	cloth = {}
 	for item in cls_doc.cutting_laysheet_details:
@@ -503,3 +497,4 @@ def update_cutting_plan(cutting_laysheet):
 	cp_doc.incomplete_items_json = incomplete_items
 	cp_doc.completed_items_json = completed_items
 	cp_doc.save()		
+	
