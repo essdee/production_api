@@ -5,7 +5,8 @@
             <table class="table table-sm table-bordered">
                 <tr>
                     <th>S.No</th>
-                    <th>Colour</th>
+                    <th v-if="is_set_item">Colour - {{set_item_attribute}}</th>
+                    <th v-else>Colour</th>
                     <th>Action</th>
                     <th>Department</th>
                     <th>Planned Date</th>
@@ -29,6 +30,9 @@
 import {ref} from 'vue';
 
 let items = ref([])
+let is_set_item = ref(cur_frm.doc.is_set_item)
+let set_item_attribute = ref(cur_frm.doc.set_item_attribute)
+
 function load_data(item){
     items.value = item
 }

@@ -504,11 +504,19 @@ def get_packing_attributes(ipd):
 	}	
 
 @frappe.whitelist()
-def create_time_and_action(lot, item_name, sizes, ratios, combo, item_list, total_qty, start_date):
-	if isinstance(item_list,string_types):
-		item_list = json.loads(item_list)
-	if isinstance(ratios,string_types):
-		ratios = json.loads(ratios)	
+def create_time_and_action(lot, item_name, args , values, total_qty):
+	if isinstance(args,string_types):
+		args = json.loads(args)
+
+	if isinstance(values,string_types):
+		values = json.loads(values)	
+		
+	sizes = args['sizes']
+	ratios = args['ratios']
+	combo = args['combo']
+	item_list = values['table']
+	start_date = values['start_date']
+
 	sizes = sizes[:-1]
 
 	items = []

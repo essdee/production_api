@@ -62,12 +62,16 @@ onMounted(() => {
     });
     const el = root.value;
     $(el).find(".select-field").html("");
+    let label = "Select Colour"
+    if(cur_frm.doc.is_set_item){
+        label = label +" - "+cur_frm.doc.set_item_attribute
+    }
     select_field.value = frappe.ui.form.make_control({
         parent: $(el).find(".select-field"),
         df: {
             fieldtype: "Select",
             fieldname: "select_field",
-            label: "Select Colour",
+            label: label,
             options: colours.value,
             onchange: () => {
                 frappe.call({

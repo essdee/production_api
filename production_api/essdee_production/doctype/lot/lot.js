@@ -72,11 +72,15 @@ frappe.ui.form.on("Lot", {
 								{'colour':r.message.colours[i],'master':null}
 							)
 						}
+						let label = "Colours"
+						if(frm.doc.is_set_item){
+							label += " - " + frm.doc.set_item_attribute
+						}
 						let dialog = new frappe.ui.Dialog({
 							size: "extra-large",
 							fields: [
 								{
-									label: 'Colours',
+									label: label,
 									fieldname: 'table',
 									fieldtype: 'Table',
 									cannot_add_rows: true,
@@ -105,12 +109,9 @@ frappe.ui.form.on("Lot", {
 									args: {
 										"lot":frm.doc.name,
 										"item_name":frm.doc.item,
-										"sizes":r.message.sizes,
-										"ratios":r.message.ratios,
-										"combo":r.message.combo,
-										"item_list":values.table,
+										"args":r.message,
+										"values":values,
 										"total_qty":frm.doc.total_order_quantity,
-										"start_date":values.start_date
 									}
 								})
 								dialog.hide()
