@@ -507,10 +507,9 @@ def get_packing_attributes(ipd):
 def create_time_and_action(lot, item_name, args , values, total_qty):
 	if isinstance(args,string_types):
 		args = json.loads(args)
-
 	if isinstance(values,string_types):
 		values = json.loads(values)	
-		
+
 	sizes = args['sizes']
 	ratios = args['ratios']
 	combo = args['combo']
