@@ -25,12 +25,12 @@ class CuttingLaySheet(Document):
 			self.set("cutting_laysheet_details", items)
 
 		status = frappe.get_value("Cutting Plan",self.cutting_plan,"status")	
-		if status != "Started":
+		if status == "Completed":
 			frappe.throw("Select the Incompleted Cutting Plan")
 
-		cut_marker_cp = frappe.get_doc("Cutting Marker",self.cutting_marker,"cutting_plan")		
+		cut_marker_cp = frappe.get_value("Cutting Marker",self.cutting_marker,"cutting_plan")		
 		if cut_marker_cp != self.cutting_plan:
-			frappe.throw("Select the Cutting Plan which is in Cutting Marker")
+			frappe.throw(f"Select the Cutting Marker which is against {self.cutting_plan}")
 
 		if self.is_new():
 			cut_plan_doc = frappe.get_doc("Cutting Plan",self.cutting_plan)	
@@ -146,7 +146,6 @@ def get_cut_sheet_data(doc_name,cutting_marker,item_details,items, max_plys:int,
 		items = json.loads(items)
 	if isinstance(item_details, string_types):
 		item_details = json.loads(item_details)	
-	total_pieces = 0
 	maximum_plys = max_plys + (max_plys/100) * maximum_allow
 	bundle_no = 0
 	cm_doc = frappe.get_doc("Cutting Marker",cutting_marker)
@@ -173,7 +172,6 @@ def get_cut_sheet_data(doc_name,cutting_marker,item_details,items, max_plys:int,
 					bundle_no = bundle_no + 1
 					hash_value = get_timestamp_prefix() + generate_random_string(12)
 					qty = maximum * item['no_of_bits']
-					total_pieces += qty
 					cut_sheet_data.append({
 						"size":cm_item.size,
 						"colour":item['colour'],
@@ -187,7 +185,6 @@ def get_cut_sheet_data(doc_name,cutting_marker,item_details,items, max_plys:int,
 					bundle_no = bundle_no + 1
 					hash_value = get_timestamp_prefix() + generate_random_string(12)
 					qty = minimum * item['no_of_bits']
-					total_pieces += qty
 					cut_sheet_data.append({
 						"size":cm_item.size,
 						"colour":item['colour'],
@@ -227,8 +224,13 @@ def get_cut_sheet_data(doc_name,cutting_marker,item_details,items, max_plys:int,
 		for val in values:
 			val['bundle_no'] = key
 			cut_sheet_data.append(val)
-
+	
 	doc = frappe.get_doc("Cutting LaySheet", doc_name)
+	count = 0
+	for item in doc.cutting_marker_ratios:
+		count += item.ratio
+
+	total_pieces = count * doc.no_of_bits
 	doc.maximum_no_of_plys = max_plys
 	doc.maximum_allow_percentage = maximum_allow 
 	doc.total_no_of_pieces = total_pieces
