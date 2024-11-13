@@ -22,10 +22,6 @@ def get_columns():
 		{"fieldtype":"Int","fieldname":"lead_time","label":"Lead Time"},
 		{"fieldtype":"Date","fieldname":"date","label":"Date"},
 		{"fieldtype":"Date","fieldname":"rescheduled_date","label":"Rescheduled Date"},
-		{"fieldtype":"Date","fieldname":"actual_date","label":"Actual Date"},
-		{"fieldtype":"Int","fieldname":"date_diff","label":"Date Diff"},
-		{"fieldtype":"data","fieldname":"reason","label":"Reason"},
-		{"fieldtype":"Percent","fieldname":"performance","label":"Performance"},
 	]
 	return columns
 
@@ -42,13 +38,11 @@ def get_data(filters):
 		
 		list1 = frappe.db.sql(
 			""" SELECT * FROM `tabTime and Action` AS t_and_a
-				WHERE t_and_a.name = %s """,
-			(t_and_a,), as_dict=1
+				WHERE t_and_a.name = %s """, (t_and_a,), as_dict=1
 		)
 		list2 = frappe.db.sql(
 			""" SELECT * FROM `tabTime and Action Detail` AS t_and_a WHERE t_and_a.parent = %s AND t_and_a.completed = 0 
-				AND t_and_a.rescheduled_date > t_and_a.date ORDER BY t_and_a.idx ASC LIMIT 1 """,
-			(t_and_a,), as_dict=1
+				ORDER BY t_and_a.idx ASC LIMIT 1 """, (t_and_a,), as_dict=1
 		)
 		if list1 and list2:
 			final_list = list1[0] | list2[0]
