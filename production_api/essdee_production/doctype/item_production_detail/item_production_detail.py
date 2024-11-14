@@ -233,17 +233,8 @@ class ItemProductionDetail(Document):
 		if self.is_set_item and self.set_item_attribute not in accessory_attributes and len(accessory_attributes) > 0:
 			frappe.throw(f"{self.set_item_attribute} should be in the Accessory Combination")
 
-		if self.primary_item_attribute not in accessory_attributes and len(accessory_attributes) > 0:
-			frappe.throw(f"{self.primary_item_attribute} Should be in the Accessory Combination")
-
-		if self.primary_item_attribute not in ipd_cutting_attributes and len(ipd_cutting_attributes) > 0:
-			frappe.throw(f"{self.primary_item_attribute} Should be in the Cutting Combination")
-
 		if not self.is_same_packing_attribute and self.stiching_attribute not in ipd_cutting_attributes and len(ipd_cutting_attributes) > 0:
 			frappe.throw(f"{self.stiching_attribute} Should be in Cutting Combination")
-
-		if self.packing_attribute not in ipd_cloth_attributes and len(ipd_cloth_attributes) > 0:
-			frappe.throw(f"{self.packing_attribute} not in the cloth combination")
 
 		if self.stiching_attribute in ipd_cloth_attributes and self.stiching_attribute not in ipd_cutting_attributes:
 			frappe.throw(f"Please mention the {self.stiching_attribute} in Cutting Combination")

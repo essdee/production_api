@@ -26,6 +26,7 @@
   "end_datetime",
   "printed_time",
   "naming_series",
+  "status",
   "section_break_cwpl",
   "cutting_marker_ratios",
   "section_break_dasc",
@@ -275,11 +276,19 @@
    "label": "Piece Weight",
    "precision": "3",
    "read_only": 1
+  },
+  {
+   "default": "Started",
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "hidden": 1,
+   "label": "Status",
+   "options": "Started\nCompleted\nBundles Generated\nLabel Printed"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2024-11-07 17:43:58.077926",
+ "modified": "2024-11-11 14:43:19.050327",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Cutting LaySheet",

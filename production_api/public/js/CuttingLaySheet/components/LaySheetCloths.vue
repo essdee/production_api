@@ -14,7 +14,7 @@
                     <th>End Bit Weight</th>
                     <th>Accessory in kg's</th>
                     <th>Comments</th>
-                    <th>Edit</th>
+                    <th  v-if="status != 'Label Printed'">Edit</th>
                 </tr>
                 <tr v-for="(item,idx) in items" :key='idx'>
                     <td>{{idx + 1}}</td>
@@ -32,7 +32,7 @@
                         </div>
                     </td>
                     <td>{{item.comments}}</td>
-                    <td>
+                    <td v-if="status != 'Label Printed'">
                         <div class="pull-right cursor-pointer" @click="add_cloth_item(idx)"
                             v-html="frappe.utils.icon('edit', 'md', 'mr-1')"></div>
                         <div class="pull-right cursor-pointer" @click="delete_item(idx)"
@@ -41,7 +41,7 @@
                 </tr>
             </table>
         </div>
-        <div class="row" v-if="show_button1 && docstatus != null">
+        <div class="row" v-if="status != 'Label Printed' && show_button1 && docstatus != null">
             <button class="btn btn-success pull-left" @click="add_cloth_item(null)">Add Cloth Items</button>
         </div>
         <div class="html-container col mt-5">
@@ -100,6 +100,7 @@ let edit_index = null
 let balance_weight = null
 let cloth_attrs = []
 let docstatus = ref(null)
+let status = cur_frm.doc.status
 
 function add_cloth_item(index){
     show_button1.value = false
