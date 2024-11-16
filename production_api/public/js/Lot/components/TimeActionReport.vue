@@ -125,7 +125,6 @@ function make_complete(){
             "time_and_action":docname.value,
         },
         callback:function(){
-            d.hide()
             cur_frm.dirty()
             cur_frm.save()
         }

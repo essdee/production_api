@@ -265,8 +265,13 @@ frappe.production.ui.TimeAction = class {
         this.vue = this.app.mount(this.$wrapper.get(0))
     }
     get_data(){
-        let items = JSON.parse(JSON.stringify(this.vue.get_data()))
-        return items
+        let get_data = this.vue.get_data()
+        let items = JSON.parse(JSON.stringify(get_data.items))
+        let changed = JSON.parse(JSON.stringify(get_data.changed))
+        return {
+            "items":items,
+            "changed":changed,
+        }
     }
     load_data(item_details){
         let items = JSON.parse(JSON.stringify(item_details));

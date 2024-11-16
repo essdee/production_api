@@ -15,19 +15,19 @@ class Lot(Document):
 			frappe.throw("BOM is not calculated")
 
 	def before_validate(self):
-		if self.get('item_details'):
+		if self.get('item_details') and len(self.lot_time_and_action_details) == 0:
 			items = save_item_details(self.item_details, dependent_attr=self.get('dependent_attribute_mapping'))
 			self.set("items",items)
-		qty = 0
-		for item in self.items:
-			qty = qty + item.qty
-		self.total_quantity = qty
+			qty = 0
+			for item in self.items:
+				qty = qty + item.qty
+			self.total_quantity = qty
 
 		if self.get("action_details"):
 			update_time_and_action(self.action_details,self.lot_time_and_action_details)
 	
 	def validate(self):	
-		if self.production_detail:
+		if self.production_detail and len(self.lot_time_and_action_details) == 0:
 			items, qty = calculate_order_details(self.get('items'), self.production_detail, self.packing_uom, self.uom)
 
 			if len(items) == 0:
@@ -598,3 +598,11 @@ def make_complete(time_and_action):
 		t_and_a.save()	
 	else:
 		frappe.msgprint("Not all the Actions are Completed")		
+
+@frappe.whitelist()
+def get_select_options(lot):
+	lot_doc = frappe.get_doc("Lot",lot)
+	select_options = []
+	for item in lot_doc.lot_time_and_action_details:
+		select_options.append(item.colour)
+	return select_options

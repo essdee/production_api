@@ -32,13 +32,17 @@ import {ref} from 'vue';
 let items = ref([])
 let is_set_item = ref(cur_frm.doc.is_set_item)
 let set_item_attribute = ref(cur_frm.doc.set_item_attribute)
+let changed = ref(false)
 
 function load_data(item){
     items.value = item
 }
 
 function get_data(){
-    return items.value
+    return {
+        "items" : items.value,
+        "changed" : changed.value,
+    }
 }
 
 function date_format(date){
@@ -77,6 +81,7 @@ function make_popup(index){
                 else{
                     items.value[index]['actual_date'] = values.actual_date
                     items.value[index]['reason'] = values.reason    
+                    changed.value = true
                     cur_frm.dirty()
                     cur_frm.save()
                     d.hide()
@@ -84,6 +89,10 @@ function make_popup(index){
             }
             else{
                 items.value[index]['actual_date'] = values.actual_date
+                if(values.reason){
+                    items.value[index]['reason'] = values.reason
+                }
+                changed.value = true
                 cur_frm.dirty()
                 cur_frm.save()
                 d.hide()

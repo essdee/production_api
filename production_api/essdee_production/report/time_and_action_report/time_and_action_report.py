@@ -9,19 +9,18 @@ def execute(filters=None):
 
 def get_columns():
 	columns = [
-		{"fieldtype":"Link","fieldname":"lot","options":"Lot","label":"Lot"},
-		{"fieldtype":"Link","fieldname":"item","options":"Item","label":"Item"},
-		{"fieldtype":"Link","fieldname":"master","options":"Action Master","label":"Master"},
-		{"fieldtype":"Data","fieldname":"colour","label":"Colour"},
-		{"fieldtype":"Data","fieldname":"sizes","label":"Sizes"},
-		{"fieldtype":"Data","fieldname":"description","label":"Description"},
-		{"fieldtype":"Float","fieldname":"qty","label":"Quantity"},
-		{"fieldtype":"Date","fieldname":"start_date","label":"Start Date"},
-		{"fieldtype":"Link","fieldname":"action","options":"Action","label":"Action"},
-		{"fieldtype":"Link","fieldname":"department","options":"Employee Department","label":"Department"},
-		{"fieldtype":"Int","fieldname":"lead_time","label":"Lead Time"},
-		{"fieldtype":"Date","fieldname":"date","label":"Date"},
-		{"fieldtype":"Date","fieldname":"rescheduled_date","label":"Rescheduled Date"},
+		{"fieldtype":"Link","fieldname":"lot","options":"Lot","label":"Lot","width":120},
+		{"fieldtype":"Link","fieldname":"item","options":"Item","label":"Item","width":150},
+		{"fieldtype":"Link","fieldname":"master","options":"Action Master","label":"Master","width":120},
+		{"fieldtype":"Data","fieldname":"colour","label":"Colour","width":100},
+		{"fieldtype":"Data","fieldname":"sizes","label":"Sizes","width":100},
+		{"fieldtype":"Float","fieldname":"qty","label":"Quantity","width":100},
+		{"fieldtype":"Date","fieldname":"start_date","label":"Start Date","width":120},
+		{"fieldtype":"Link","fieldname":"action","options":"Action","label":"Action","width":100},
+		{"fieldtype":"Link","fieldname":"department","options":"Employee Department","label":"Department","width":120},
+		{"fieldtype":"Int","fieldname":"lead_time","label":"Lead Time","width":100},
+		{"fieldtype":"Date","fieldname":"date","label":"Planned date","width":120},
+		{"fieldtype":"Date","fieldname":"rescheduled_date","label":"Rescheduled Date","width":120},
 	]
 	return columns
 
@@ -36,17 +35,16 @@ def get_data(filters):
 		if doc.status == "Completed":
 			continue
 		
-		list1 = frappe.db.sql(
-			""" SELECT * FROM `tabTime and Action` AS t_and_a
-				WHERE t_and_a.name = %s """, (t_and_a,), as_dict=1
+		query_list = frappe.db.sql(
+			"""
+				SELECT A.lot, A.item, A.master, A.colour, A.sizes, A.qty, A.start_date, B.action, B.department, B.lead_time,
+				B.date, B.rescheduled_date FROM `tabTime and Action` AS A JOIN `tabTime and Action Detail` AS B ON A.name = B.parent
+				WHERE A.name = %s AND B.completed = 0 AND A.status != 'Completed' ORDER BY B.idx ASC LIMIT 1
+			""",(t_and_a,), as_dict = True
 		)
-		list2 = frappe.db.sql(
-			""" SELECT * FROM `tabTime and Action Detail` AS t_and_a WHERE t_and_a.parent = %s AND t_and_a.completed = 0 
-				ORDER BY t_and_a.idx ASC LIMIT 1 """, (t_and_a,), as_dict=1
-		)
-		if list1 and list2:
-			final_list = list1[0] | list2[0]
-			data_list.append(final_list)
+		
+		if query_list:
+			data_list.append(query_list[0])
 
 	sorted_data = sorted(data_list, key=lambda x: x['lot'])
 	return sorted_data

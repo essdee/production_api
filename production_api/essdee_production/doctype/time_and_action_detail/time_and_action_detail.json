@@ -99,7 +99,6 @@
    "default": "0",
    "fieldname": "completed",
    "fieldtype": "Check",
-   "hidden": 1,
    "label": "Completed"
   },
   {
@@ -113,7 +112,7 @@
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2024-11-12 11:31:40.865360",
+ "modified": "2024-11-13 17:53:33.413360",
  "modified_by": "Administrator",
  "module": "Essdee Production",
  "name": "Time and Action Detail",

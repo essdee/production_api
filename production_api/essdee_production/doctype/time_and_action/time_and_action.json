@@ -1,6 +1,7 @@
 {
  "actions": [],
  "allow_rename": 1,
+ "autoname": "format:{lot}-{master}-{colour}",
  "creation": "2024-11-08 15:41:46.634239",
  "doctype": "DocType",
  "engine": "InnoDB",
@@ -8,10 +9,12 @@
   "lot",
   "colour",
   "qty",
+  "delay",
   "column_break_ayau",
   "item",
   "sizes",
   "start_date",
+  "action",
   "column_break_ucee",
   "master",
   "description",
@@ -88,14 +91,28 @@
    "fieldtype": "Select",
    "label": "Status",
    "options": "In Progress\nCompleted"
+  },
+  {
+   "fieldname": "delay",
+   "fieldtype": "Int",
+   "label": "Delay",
+   "read_only": 1
+  },
+  {
+   "fieldname": "action",
+   "fieldtype": "Link",
+   "label": "Action",
+   "options": "Action",
+   "read_only": 1
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2024-11-12 10:53:33.681520",
+ "modified": "2024-11-15 11:50:59.771473",
  "modified_by": "Administrator",
  "module": "Essdee Production",
  "name": "Time and Action",
+ "naming_rule": "Expression",
  "owner": "Administrator",
  "permissions": [
   {

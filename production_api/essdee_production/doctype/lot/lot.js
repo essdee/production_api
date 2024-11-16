@@ -135,7 +135,10 @@ frappe.ui.form.on("Lot", {
         frm.doc['item_details'] = JSON.stringify(items)
 
 		let action_items = frm.time_action.get_data()
-		frm.doc['action_details'] = JSON.stringify(action_items)
+		if(action_items.changed){
+			frm.doc['action_details'] = JSON.stringify(action_items.items)
+		}
+		
     },
 	item(frm){
 		if(!frm.doc.item){
