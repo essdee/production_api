@@ -180,7 +180,7 @@ function add_item(){
         "end_bit_weight":cloth_end_bit.get_value(),
         "comments":cloth_comment.get_value(),
         "balance_weight":balance_weight.get_value(),
-        "used_weight": cloth_weight.get_value() - cloth_end_bit.get_value() - balance_weight.get_value(),
+        "used_weight": cloth_weight.get_value() - balance_weight.get_value(),
         "accessory_json":JSON.stringify(accessory_json),
         "accessory_weight":total_weight,
     })
@@ -224,7 +224,7 @@ function update_item(){
         "no_of_bits":cloth_bits.get_value(),
         "end_bit_weight":cloth_end_bit.get_value(),
         "balance_weight":balance_weight.get_value(),
-        "used_weight": cloth_weight.get_value() - balance_weight.get_value() - total_weight,
+        "used_weight": cloth_weight.get_value() - balance_weight.get_value(),
         "accessory_weight":total_weight,
         "accessory_json":accessory_json,
         "comments":cloth_comment.get_value(),
