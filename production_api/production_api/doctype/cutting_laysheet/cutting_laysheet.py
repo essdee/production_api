@@ -485,20 +485,23 @@ def update_cutting_plan(cutting_laysheet):
 	accessory= {}
 	cloth = {}
 	for item in cls_doc.cutting_laysheet_details:
-		cloth.setdefault(item.colour,0)
-		cloth[item.colour] += item.weight - item.balance_weight
-		accessory.setdefault(item.colour,0)
-		accessory[item.colour] += item.accessory_weight
+		key = (item.colour, item.cloth_type, item.dia)
+		cloth.setdefault(key,0)
+		cloth[key] += item.weight - item.balance_weight
+		accessory.setdefault(key,0)
+		accessory[key] += item.accessory_weight
 
 	cp_doc = frappe.get_doc("Cutting Plan",cls_doc.cutting_plan)
 	for item in cp_doc.cutting_plan_cloth_details:
-		if item.colour in cloth:
-			item.used_weight += cloth[item.colour]
+		key = (item.colour, item.cloth_type, item.dia)
+		if key in cloth:
+			item.used_weight += cloth[key]
 			item.balance_weight = item.weight - item.used_weight
 
 	for item in cp_doc.cutting_plan_accessory_details:
-		if item.colour in accessory:
-			item.used_weight += accessory[item.colour]
+		key = (item.colour, item.cloth_type, item.dia)
+		if key in accessory:
+			item.used_weight += accessory[key]
 
 	cp_doc.incomplete_items_json = incomplete_items
 	cp_doc.completed_items_json = completed_items
