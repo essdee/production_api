@@ -153,7 +153,7 @@ def get_cut_sheet_data(doc_name,cutting_marker,item_details,items, max_plys:int,
 			minimum_count = total_bundles - maximum_count
 	
 			temp = bundle_no 
-			for part,group in items.items():
+			for part_value in items:
 				bundle_no = temp	
 				for j in range(maximum_count):
 					bundle_no = bundle_no + 1
@@ -165,7 +165,7 @@ def get_cut_sheet_data(doc_name,cutting_marker,item_details,items, max_plys:int,
 						"colour":item['colour'],
 						"shade":item['shade'],
 						"bundle_no":bundle_no,
-						"part":part,
+						"part":part_value['part'],
 						"quantity": qty,
 						"hash_value":hash_value
 					})	
@@ -179,7 +179,7 @@ def get_cut_sheet_data(doc_name,cutting_marker,item_details,items, max_plys:int,
 						"colour":item['colour'],
 						"shade":item['shade'],
 						"bundle_no":bundle_no,
-						"part":part,
+						"part":part_value['part'],
 						"quantity":qty,
 						"hash_value":hash_value
 					})		
@@ -192,21 +192,25 @@ def get_cut_sheet_data(doc_name,cutting_marker,item_details,items, max_plys:int,
 		else:
 			dictionary[item['bundle_no']] = [item]	
 
+	item_dict = {}
+	for item in items:
+		item_dict[item['part']] = item['value']
+
 	final_list = {}
 	for key,values in dictionary.items():
 		final_list[key] = []
 		group = []
 		for value in values:
 			part = value['part']
-			if items[part] not in group:
-				value['group'] = items[part]
+			if item_dict[part] not in group:
+				value['group'] = item_dict[part]
 				final_list[key].append(value)
 			else:
 				for j in final_list[key]:
-					if j['group'] == items[part]:
+					if j['group'] == item_dict[part]:
 						pt = j['part']
 						j['part'] =  pt + "," + part
-			group.append(items[part])				
+			group.append(item_dict[part])				
 
 	cut_sheet_data = []
 	for key, values in final_list.items():
