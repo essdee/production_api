@@ -63,13 +63,14 @@ def save_item_details(item_details, process_name = None, wo_date = None, ipd = N
 			item_attributes = item['attributes']
 			if(item.get('primary_attribute')):
 				for attr, values in item['values'].items():
-					if values.get('qty'):
-						quantity = values.get('qty')
-						item_attributes[item.get('primary_attribute')] = attr
-						item1 = get_data(item,item_name,item_attributes,table_index,row_index, process_name, quantity, wo_date, ipd)	
-						item1['secondary_qty'] = values.get('secondary_qty')
-						item1['secondary_uom'] = values.get('secondary_uom')
-						items.append(item1)
+					quantity = values.get('qty')
+					if not quantity:
+						quantity = 0
+					item_attributes[item.get('primary_attribute')] = attr
+					item1 = get_data(item,item_name,item_attributes,table_index,row_index, process_name, quantity, wo_date, ipd)	
+					item1['secondary_qty'] = values.get('secondary_qty')
+					item1['secondary_uom'] = values.get('secondary_uom')
+					items.append(item1)
 			else:
 				if item['values'].get('default') and item['values']['default'].get('qty'):
 					quantity = item['values']['default'].get('qty')
@@ -156,8 +157,7 @@ def get_rate_and_quantity(process_name, variant_name, quantity, wo_date):
 
 	return rate,docname	
 
-import copy
-def fetch_item_details(items, include_id = False):
+def fetch_item_details(items, include_id = False, is_grn= False):
 	items = [item.as_dict() for item in items]
 	item_details = []
 	items = sorted(items, key = lambda i: i['row_index'])
@@ -199,6 +199,9 @@ def fetch_item_details(items, include_id = False):
 							'tax': variant.tax,
 							'cost':variant.cost,
 						}
+						if is_grn:
+							item['values'][attr.attribute_value]['qty'] = variant.pending_quantity
+							
 						if include_id:
 							item['values'][attr.attribute_value]['ref_doctype'] = "Work Order Receivables"
 							item['values'][attr.attribute_value]['ref_docname'] = variant.name
@@ -262,11 +265,7 @@ def get_item_attribute_details(variant, item_attributes):
 def check_process(process, ipd):
 	ipd_doc = frappe.get_doc("Item Production Detail",ipd)
 	process_exist = False
-	if ipd_doc.stiching_process == process:
-		process_exist = True
-	elif ipd_doc.packing_process == process:
-		process_exist = True
-	elif ipd_doc.cutting_process == process:
+	if ipd_doc.stiching_process == process or ipd_doc.packing_process == process or ipd_doc.cutting_process == process:
 		process_exist = True
 	else:		
 		for item in ipd_doc.ipd_processes:
@@ -278,9 +277,9 @@ def check_process(process, ipd):
 	return None		
 
 @frappe.whitelist()
-def get_work_order_items(work_order):
+def get_work_order_items(work_order, is_grn = False):
 	wo = frappe.get_doc("Work Order", work_order)
-	data = fetch_item_details(wo.receivables, include_id=True)
+	data = fetch_item_details(wo.receivables, include_id=True, is_grn= is_grn)
 	return data
  
 @frappe.whitelist()
@@ -306,7 +305,7 @@ def get_deliverable_receivable( lot, process, items, doc_name):
 	item_name = frappe.get_value("Item Variant", grp_variant, 'item')
 	item_list, row_index, table_index = get_item_structure(items, item_name, process, uom)
 
-	bom = get_calculated_bom(ipd, items, lot, process_name=process)
+	bom = get_calculated_bom(ipd, items, lot, process_name=process,doctype="Work Order")
 	bom = get_bom_structure(bom, row_index, table_index)
 
 	deliverables = []
@@ -477,7 +476,12 @@ def get_items(items):
 				item1['quantity'] = row['work_order_qty'][val]
 				item1['row_index'] = id1
 				item1['table_index'] = id1
-				if item1['quantity']:
+				i = False
+				for id3, value in enumerate(row['work_order_qty'].keys()):
+					if row['work_order_qty'][value]:
+						i = True
+						break
+				if i:
 					item_list.append(item1)
 		else:
 			item1 = {}
@@ -527,4 +531,12 @@ def get_bom_structure(items, row_index, table_index):
 				"table_index":table_index
 			}
 	return items
+
+@frappe.whitelist()
+def add_comment(doc_name, date, reason):
+	doc = frappe.get_doc('Work Order', doc_name)
+	text = f"Delivery date changed from {doc.expected_delivery_date} to {date} <br> Reason: {reason}"
+	doc.expected_delivery_date = date
+	doc.add_comment('Comment',text=text)
+	doc.save()
 	

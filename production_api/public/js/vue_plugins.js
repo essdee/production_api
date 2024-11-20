@@ -8,6 +8,8 @@ import DDItem from "./PurchaseOrder/components/DateUpdateDialog.vue"
 import PONewItem from "./PurchaseOrder/components/NewItem.vue"
 import POItem from "./PurchaseOrder/components/Item.vue"
 import GRNItemWrapper from "./GRN";
+import GRNPurchaseOrder from "./GRN/components/GRNPurchaseOrder.vue";
+import GRNWorkOrder from "./GRN/components/GRNWorkOrder.vue";
 import LotOrder from "./Lot/components/LotOrder.vue" 
 import LotOrderDetail from "./Lot/components/LotOrderDetail.vue"
 import CutPlanItems from "./CuttingPlan/components/CutPlanItems.vue"
@@ -314,6 +316,68 @@ frappe.production.ui.CutPlanItems = class {
         return items
     }
 }
+
+frappe.production.ui.GRNPurchaseOrder = class {
+    constructor(wrapper) {
+        this.$wrapper = $(wrapper);
+        this.make_body();
+    }
+    
+    make_body() {
+        this.app = createApp(GRNPurchaseOrder);
+        SetVueGlobals(this.app)
+        this.grn = this.app.mount(this.$wrapper.get(0));
+    }
+    
+    updateWrapper(wrapper) {
+        this.$wrapper = $(wrapper);
+        $(this.vue.$el).appendTo(this.$wrapper)
+    }
+    
+    get_items() {
+        return this.grn.get_items();
+    }
+    
+    load_data(data, skip_watch=false) {
+        this.grn.load_data(data, skip_watch);
+    }
+    update_status() {
+        this.grn.update_status();
+    }
+}
+
+frappe.production.ui.GRNWorkOrder = class {
+    constructor(wrapper) {
+        this.$wrapper = $(wrapper);
+        this.make_body();
+    }
+    
+    make_body() {
+        this.app = createApp(GRNWorkOrder);
+        SetVueGlobals(this.app)
+        this.grn = this.app.mount(this.$wrapper.get(0));
+    }
+    
+    updateWrapper(wrapper) {
+        this.$wrapper = $(wrapper);
+        $(this.vue.$el).appendTo(this.$wrapper)
+    }
+    
+    get_items() {
+        return this.grn.get_items();
+    }
+    
+    load_data(data, skip_watch=false) {
+        this.grn.load_data(data, skip_watch);
+    }
+    update_status() {
+        this.grn.update_status();
+    }
+}
+
+
+
+
 frappe.production.ui.CuttingCompletionDetail = class {
     constructor(wrapper){
         this.$wrapper = $(wrapper)

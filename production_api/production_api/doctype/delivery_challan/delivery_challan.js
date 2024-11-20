@@ -8,6 +8,7 @@ frappe.ui.form.on("Delivery Challan", {
                 filters : {
                     "docstatus" : 1,
                     "is_delivered" : 0,
+                    "open_status":"Open",
                 }
             }
         })
@@ -15,8 +16,8 @@ frappe.ui.form.on("Delivery Challan", {
         if(frm.doc.__onload && frm.doc.__onload.deliverable_item_details) {
             frm.doc['deliverable_item_details'] = JSON.stringify(frm.doc.__onload.deliverable_item_details);
             frm.deliverable_items = new frappe.production.ui.Delivery_Challan(frm.fields_dict['deliverable_items'].wrapper,frm.doc.__onload.deliverable_item_details )
+            frm.deliverable_items.update_status();
         }
-        frm.deliverable_items.update_status();
     },
 	work_order:function(frm) {
         frm.doc.items = [];
@@ -32,7 +33,9 @@ frappe.ui.form.on("Delivery Challan", {
                 },
                 callback: function(response){
                     if(response.message){
-                        frm.deliverable_items = new frappe.production.ui.Delivery_Challan(frm.fields_dict['deliverable_items'].wrapper, response.message)
+                        frm.deliverable_items = new frappe.production.ui.Delivery_Challan(frm.fields_dict['deliverable_items'].wrapper, response.message.items)
+                        frm.set_value('supplier',response.message.supplier)
+                        frm.set_value('supplier_address',response.message.supplier_address)        
                     }
                 }
             })
@@ -60,7 +63,6 @@ frappe.ui.form.on("Delivery Challan", {
 			frm.set_value('from_address_details', '');
 		}
 	},
-
     supplier_address: function(frm) {
 		if (frm.doc['supplier_address']) {
 			frappe.call({

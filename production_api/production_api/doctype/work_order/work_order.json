@@ -17,6 +17,7 @@
   "process_name",
   "item",
   "production_detail",
+  "open_status",
   "section_break_tmhn",
   "planned_start_date",
   "planned_end_date",
@@ -24,6 +25,8 @@
   "column_break_ahbf",
   "start_date",
   "end_date",
+  "supplier_type",
+  "rework_type",
   "address_and_contact_section",
   "supplier_address",
   "supplier_address_details",
@@ -142,6 +145,7 @@
    "reqd": 1
   },
   {
+   "allow_on_submit": 1,
    "fieldname": "expected_delivery_date",
    "fieldtype": "Date",
    "label": "Expected Delivery Date",
@@ -244,12 +248,39 @@
    "hidden": 1,
    "label": "Production Detail",
    "options": "Item Production Detail"
+  },
+  {
+   "allow_on_submit": 1,
+   "default": "Open",
+   "fieldname": "open_status",
+   "fieldtype": "Select",
+   "label": "Open Status",
+   "options": "Open\nClose",
+   "read_only": 1
+  },
+  {
+   "depends_on": "eval: doc.is_rework",
+   "fieldname": "supplier_type",
+   "fieldtype": "Select",
+   "label": "Supplier Type",
+   "mandatory_depends_on": "eval: doc.is_rework",
+   "options": "Same Supplier\nDifferent Supplier",
+   "read_only_depends_on": "eval: !doc.__islocal"
+  },
+  {
+   "depends_on": "eval: doc.is_rework",
+   "fieldname": "rework_type",
+   "fieldtype": "Select",
+   "label": "Rework Type",
+   "mandatory_depends_on": "eval: doc.is_rework",
+   "options": "No Cost\nNet Cost Nil\nAdditional Cost",
+   "read_only_depends_on": "eval: !doc.__islocal"
   }
  ],
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2024-10-16 11:20:00.751158",
+ "modified": "2024-11-20 16:15:22.267780",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Work Order",

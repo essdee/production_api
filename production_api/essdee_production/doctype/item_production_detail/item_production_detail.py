@@ -335,7 +335,7 @@ def get_attribute_values(item_production_detail, attributes = None):
 	return attribute_values
 
 @frappe.whitelist()
-def get_calculated_bom(item_production_detail, items, lot_name, process_name = None):
+def get_calculated_bom(item_production_detail, items, lot_name, process_name = None,doctype=None):
 	item_detail = frappe.get_doc("Item Production Detail", item_production_detail)
 	bom = {}
 	bom_summary = {}
@@ -349,7 +349,9 @@ def get_calculated_bom(item_production_detail, items, lot_name, process_name = N
 	bom_combination = get_bom_combination(item_detail.item_bom)
 	cloth_detail = {}
 	for cloth in item_detail.cloth_detail:
-		if cloth.is_bom_item:
+		if doctype:
+			cloth_detail[cloth.name1] = cloth.cloth
+		elif cloth.is_bom_item: 	
 			cloth_detail[cloth.name1] = cloth.cloth
 
 	total_quantity = lot_doc.total_order_quantity

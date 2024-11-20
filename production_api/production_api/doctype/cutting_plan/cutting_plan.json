@@ -10,6 +10,7 @@
   "maximum_no_of_plys",
   "lay_no",
   "naming_series",
+  "status",
   "column_break_nvaz",
   "item",
   "maximum_allow_percent",
@@ -169,6 +170,14 @@
    "fieldname": "incompleted_items_html",
    "fieldtype": "HTML",
    "label": "Incompleted Items HTML"
+  },
+  {
+   "default": "Started",
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Status",
+   "options": "Started\nCompleted"
   }
  ],
  "index_web_pages_for_search": 1,
@@ -182,7 +191,7 @@
    "link_fieldname": "cutting_plan"
   }
  ],
- "modified": "2024-11-07 16:16:05.584597",
+ "modified": "2024-11-19 10:32:11.578878",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Cutting Plan",

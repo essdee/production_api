@@ -15,10 +15,13 @@
   "from_location",
   "from_address",
   "from_address_details",
+  "stock_value",
+  "total_value",
   "column_break_xvmi",
   "supplier",
   "supplier_address",
   "supplier_address_details",
+  "additional_goods_value",
   "section_break_uqkl",
   "items",
   "deliverable_items",
@@ -141,12 +144,30 @@
    "fieldtype": "Small Text",
    "label": "Supplier Address Details",
    "read_only": 1
+  },
+  {
+   "fieldname": "stock_value",
+   "fieldtype": "Currency",
+   "label": "Stock Value",
+   "read_only": 1
+  },
+  {
+   "fieldname": "total_value",
+   "fieldtype": "Currency",
+   "label": "Total Value",
+   "non_negative": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "additional_goods_value",
+   "fieldtype": "Currency",
+   "label": "Additional Goods Value"
   }
  ],
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2024-10-16 09:51:19.994581",
+ "modified": "2024-11-18 14:10:38.138073",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Delivery Challan",

@@ -9,7 +9,7 @@
                         <tr>
                             <th>S.No.</th>
                             <th>Item</th>
-                            <th>Lot</th>
+                            <th v-if="!lot_no">Lot</th>
                             <th v-for="attr in i.attributes" :key="attr">{{ attr }}</th>
                             <th v-if="has_additional_parameter(i)">Additional Parameters</th>
                             <th v-for="attr in i.primary_attribute_values" :key="attr">{{ attr }}</th>
@@ -19,7 +19,7 @@
                         <tr v-for="(j, item1_index) in i.items" :key="item1_index">
                             <td>{{ item1_index + 1 }}</td>
                             <td>{{ j.name }}</td>
-                            <td>{{ j.lot }}</td>
+                            <td v-if="!lot_no">{{ j.lot }}</td>
                             <td v-for="attr in i.attributes" :key="attr">{{ j.attributes[attr] }}</td>
                             <td v-if="has_additional_parameter(i)">
                                 <p v-for="(parameter, p_index) in j.additional_parameters" :key="p_index">
@@ -55,7 +55,7 @@
                         <tr>
                             <th>S.No.</th>
                             <th>Item</th>
-                            <th>Lot</th>
+                            <th v-if="!lot_no">Lot</th>
                             <th v-for="attr in i.attributes" :key="attr">{{ attr }}</th>
                             <th v-if="has_additional_parameter(i)">Additional Parameters</th>
                             <th>Quantity</th>
@@ -66,7 +66,7 @@
                         <tr v-for="(j, item1_index) in i.items" :key="item1_index">
                             <td>{{ item1_index + 1 }}</td>
                             <td>{{ j.name }}</td>
-                            <td>{{ j.lot }}</td>
+                            <td v-if="!lot_no">{{ j.lot }}</td>
                             <td v-for="attr in i.attributes" :key="attr">{{ j.attributes[attr] }}</td>
                             <td v-if="has_additional_parameter(i)">
                                 <span v-for="(parameter, p_index) in j.additional_parameters" :key="p_index">
@@ -93,10 +93,17 @@
         </table>
 
         <form v-show="can_create && edit" name="formp" class="form-horizontal" autocomplete="off" @submit.prevent="get_lot_item_details()">
-            <div class="row">
+            <div v-if="lot_no" class="row">
+                <div class="lot-control col-md-0"></div>
+                <div class="item-control col-md-5"></div>
+                <div class="col-md-2 mt-4">
+                    <button type="submit" class="btn btn-success">Fetch Item</button>
+                </div>
+            </div>
+            <div v-else class="row">
                 <div class="lot-control col-md-5"></div>
                 <div class="item-control col-md-5"></div>
-                <div class="col-md-2">
+                <div class="col-md-2 mt-4">
                     <button type="submit" class="btn btn-success">Fetch Item</button>
                 </div>
             </div>
@@ -196,7 +203,7 @@
 
     const root = ref(null);
 
-    const props = defineProps(['items', 'edit', 'otherInputs', 'tableFields', 'allowSecondaryQty', 'qtyFields', 'args', 'validateQty', 'enableAdditionalParameter','validate']);
+    const props = defineProps(['items', 'edit', 'otherInputs', 'tableFields', 'allowSecondaryQty', 'qtyFields', 'args', 'validateQty', 'enableAdditionalParameter','validate',"lot_no"]);
     const emit = defineEmits(['itemupdated', 'itemadded', 'itemremoved'])
     const item = ref({
         name: "",
@@ -353,30 +360,35 @@
 
     function create_lot_item_inputs() {
         let el = root.value;
-        // console.log("in lot inputs", frappe, $(el))
         $(el).find('.lot-control').html("");
+        let df = {
+            fieldtype: 'Link',
+            fieldname: 'lot',
+            options: 'Lot',
+            label: 'Lot',
+            get_query: function() {
+                if (props.args && props.args.hasOwnProperty('lot_query') && props.args.lot_query instanceof Function) {
+                    return props.args.lot_query() || {};
+                }
+                return {}
+            },
+            onchange: () => {
+                onchange_lot_item();
+            }
+        }
+        if (props.lot_no){
+            df['hidden'] = true
+        }
         lot_input = frappe.ui.form.make_control({
             parent: $(el).find('.lot-control'),
-            df: {
-                fieldtype: 'Link',
-                fieldname: 'lot',
-                options: 'Lot',
-                label: 'Lot',
-                reqd: true,
-                get_query: function() {
-                    if (props.args && props.args.hasOwnProperty('lot_query') && props.args.lot_query instanceof Function) {
-                        return props.args.lot_query() || {};
-                    }
-                    return {}
-                },
-                onchange: () => {
-                    onchange_lot_item();
-                }
-            },
+            df: df,
             doc: sample_doc.value,
             render_input: true,
         });
-        // console.log("Lot Input", lot_input)
+        if (props.lot_no){
+            lot_input.set_value(props.lot_no)
+        }
+
         $(el).find('.item-control').html("");
         item_input = frappe.ui.form.make_control({
             parent: $(el).find('.item-control'),

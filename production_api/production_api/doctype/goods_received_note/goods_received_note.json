@@ -12,6 +12,7 @@
   "delivery_location",
   "delivery_location_name",
   "column_break_1",
+  "rework_created",
   "against_id",
   "grn_date",
   "posting_date",
@@ -33,9 +34,9 @@
   "delivery_address",
   "delivery_address_display",
   "section_break_ve8oj",
-  "items_pending",
   "items",
   "item_html",
+  "items_delivered",
   "section_break_8ncnk",
   "total",
   "total_tax",
@@ -62,7 +63,7 @@
    "fieldtype": "Select",
    "in_list_view": 1,
    "label": "Against",
-   "options": "Purchase Order",
+   "options": "Purchase Order\nWork Order",
    "reqd": 1
   },
   {
@@ -305,17 +306,26 @@
    "read_only": 1
   },
   {
-   "fieldname": "items_pending",
+   "allow_on_submit": 1,
+   "default": "0",
+   "depends_on": "eval: doc.against == \"Work Order\" && doc.docstatus == 1",
+   "fieldname": "rework_created",
+   "fieldtype": "Check",
+   "label": "Rework Created",
+   "read_only": 1
+  },
+  {
+   "fieldname": "items_delivered",
    "fieldtype": "Table",
    "hidden": 1,
-   "label": "Items Pending",
+   "label": "Items Delivered",
    "options": "Goods Received Note Item"
   }
  ],
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2024-10-27 00:45:56.816627",
+ "modified": "2024-11-20 14:59:40.818384",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Goods Received Note",

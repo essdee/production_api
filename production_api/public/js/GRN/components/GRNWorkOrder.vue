@@ -1,10 +1,8 @@
 <template>
 	<div ref="root" class="frappe-control">
-		<div v-if='against =="Work Order"'>
-			<p>Pending Items</p>
-		</div>
-		<table v-if="docstatus !== 0" class="table table-sm table-bordered">
-			<tr v-for="(i, item_index) in items1" :key="item_index">
+		<p>Pending Items</p>
+		<table class="table table-sm table-bordered">
+			<tr v-for="(i, item_index) in items" :key="item_index">
 				<td v-if="i.primary_attribute">
 					<table class="table table-sm table-bordered" v-if="i.items && i.items.length > 0">
 						<tr>
@@ -14,88 +12,7 @@
 							<th v-for="attr in i.attributes" :key="attr">{{ attr }}</th>
 							<th v-for="attr in i.primary_attribute_values" :key="attr">{{ attr }}</th>
 							<th>Comments</th>
-						</tr>
-						<tr v-for="(j, item1_index) in i.items" :key="item1_index">
-							<td>{{ item1_index + 1 }}</td>
-							<td>{{ j.name }}</td>
-							<td>{{ j.lot }}</td>
-							<td v-for="attr in i.attributes" :key="attr">
-								{{ j.attributes[attr] }}
-							</td>
-							<td v-for="attr in j.values" :key="attr">
-								<div v-if="against == 'Purchase Order'">
-									<div v-if="attr.received">
-										{{ attr.received}}
-										<span v-if="j.default_uom">{{" " + j.default_uom}}</span>
-										<span v-if="attr.secondary_qty">
-											({{ attr.secondary_received}}
-											<span v-if="j.secondary_uom">{{" " + j.secondary_uom}}</span>)
-										</span>
-									</div>
-									<div v-else class="text-center">---</div>
-								</div>
-								<div v-else>
-									<div v-if='attr.qty > 0'>
-										{{ attr.qty}}
-										<span v-if="j.default_uom">{{ " " + j.default_uom }}</span>
-									</div>
-									<div v-else> -- </div>
-								</div>
-							</td>
-							<td>{{ j.comments }}</td>
-						</tr>
-					</table>
-				</td>
-				<td v-else>
-					<table class="table table-sm table-bordered" v-if="i.items && i.items.length > 0">
-						<tr>
-							<th>S.No.</th>
-							<th>Item</th>
-							<th>Lot</th>
-							<th v-for="attr in i.attributes" :key="attr">{{ attr }}</th>
-							<th>Received Quantity</th>
-							<th>Comments</th>
-						</tr>
-						<tr v-for="(j, item1_index) in i.items" :key="item1_index">
-							<td>{{ item1_index + 1 }}</td>
-							<td>{{ j.name }}</td>
-							<td>{{ j.lot }}</td>
-							<td v-for="attr in i.attributes" :key="attr">
-								{{ j.attributes[attr] }}
-							</td>
-							<td v-if="against == 'Purchase Order'">
-								{{ j.values["default"].received}}
-								<span v-if="j.default_uom">{{ " " + j.default_uom }}</span>
-								<span v-if="j.values['default'].secondary_received">
-									<br />({{ j.values["default"].secondary_received}}
-									<span v-if="j.secondary_uom">{{" " + j.secondary_uom}}</span>)
-								</span>
-							</td>
-							<td v-else>
-								<div v-if='j.values["default"].qty > 0'>
-									{{ j.values["default"].qty}}
-									<span v-if="j.default_uom">{{ " " + j.default_uom }}</span>
-								</div>
-								<div v-else> -- </div>
-							</td>
-							<td>{{ j.comments }}</td>
-						</tr>
-					</table>
-				</td>
-			</tr>
-		</table>
-		<table v-else-if="against_id" class="table table-sm table-bordered">
-			<tr v-for="(i, item_index) in items1" :key="item_index">
-				<td v-if="i.primary_attribute">
-					<table class="table table-sm table-bordered" v-if="i.items && i.items.length > 0">
-						<tr>
-							<th>S.No.</th>
-							<th>Item</th>
-							<th>Lot</th>
-							<th v-for="attr in i.attributes" :key="attr">{{ attr }}</th>
-							<th v-for="attr in i.primary_attribute_values" :key="attr">{{ attr }}</th>
-							<th>Comments</th>
-							<th v-if="against == 'Work Order'">Edit</th>
+							<th v-if="docstatus == 0">Edit</th>
 						</tr>
 						<tr v-for="(j, item1_index) in i.items" :key="item1_index">
 							<td>{{ item1_index + 1 }}</td>
@@ -111,17 +28,13 @@
 										({{ attr.secondary_qty}}
 										<span v-if="j.secondary_uom">{{" " + j.secondary_uom}}</span>)
 									</span>
-									<form v-if="against == 'Purchase Order'">
-										<input class="form-control" type="number" v-model.number="attr.received"
-											@blur="update_received_qty(attr, 'received')" min="0" step="0.001"/>
-									</form>
 								</div>
 								<div v-else class="text-center">---</div>
 							</td>
 							<td>
 								<input class="form-control" type="text" v-model="j.comments" />
 							</td>
-							<td v-if="against == 'Work Order'">
+							<td v-if="docstatus == 0">
 								<div class="pull-right cursor-pointer" @click="edit_item(item_index, item1_index)"
 									v-html="frappe.utils.icon('edit', 'md', 'mr-1')"></div>
 							</td>
@@ -136,9 +49,8 @@
 							<th>Lot</th>
 							<th v-for="attr in i.attributes" :key="attr">{{ attr }}</th>
 							<th>Pending Quantity</th>
-							<th v-if="against == 'Purchase Order'">Received Quantity</th>
 							<th>Comments</th>
-							<th v-if="against == 'Work Order'">Edit</th>
+							<th v-if="docstatus == 0">Edit</th>
 						</tr>
 						<tr v-for="(j, item1_index) in i.items" :key="item1_index">
 							<td>{{ item1_index + 1 }}</td>
@@ -147,15 +59,7 @@
 							<td v-for="attr in i.attributes" :key="attr">
 								{{ j.attributes[attr] }}
 							</td>
-							<td v-if="against == 'Purchase Order'">
-								{{ j.values["default"].pending_qty}}
-								<span v-if="j.default_uom">{{ " " + j.default_uom }}</span>
-								<span v-if="j.values['default'].secondary_qty">
-									<br />({{ j.values["default"].secondary_qty}}
-									<span v-if="j.secondary_uom">{{" " + j.secondary_uom}}</span>)
-								</span>
-							</td>
-							<td v-else>
+							<td>
 								{{ j.values["default"].qty}}
 								<span v-if="j.default_uom">{{ " " + j.default_uom }}</span>
 								<span v-if="j.values['default'].secondary_qty">
@@ -163,17 +67,10 @@
 									<span v-if="j.secondary_uom">{{" " + j.secondary_uom}}</span>)
 								</span>
 							</td>
-							<td v-if="against == 'Purchase Order'">
-								<form>
-									<input class="form-control" type="number"
-										v-model.number="j.values['default'].received" step="0.001"
-										@blur="update_received_qty(j.values['default'], 'received')" min="0"/>
-								</form>
-							</td>
 							<td>
 								<input class="form-control" type="text" v-model="j.comments" />
 							</td>
-							<td v-if="against == 'Work Order'">
+							<td v-if="docstatus == 0">
 								<div class="pull-right cursor-pointer" @click="edit_item(item_index, item1_index)"
 									v-html="frappe.utils.icon('edit', 'md', 'mr-1')"></div>
 							</td>
@@ -182,13 +79,11 @@
 				</td>
 			</tr>
 		</table>
-		<div v-if='against =="Work Order"'>
-			<p>Delivered Items</p>
-		</div>
-		<table class="table table-sm table-bordered" v-if='against =="Work Order"'>
+		<p>Delivered Items</p>
+		<table class="table table-sm table-bordered">
 			<tr v-for="(i, item_index) in items1" :key="item_index">
-				<td v-if="i.primary_attribute && i.created === 1">
-					<table class="table table-sm table-bordered" v-if="i.items && i.items.length > 0">
+				<td v-if="i.primary_attribute">
+					<table class="table table-sm table-bordered" v-if="i.items && i.items.length > 0 && i.created === 1">
 						<thead>
 							<tr>
 								<th>S.No.</th>
@@ -198,28 +93,28 @@
 								<th>Type</th>
 								<th v-for="attr in i.primary_attribute_values" :key="attr">{{ attr }}</th>
 								<th>Comments</th>
+								<th v-if="docstatus == 0">Edit</th>
 							</tr>
 						</thead>
 						<tbody>
 							<template v-for="(j, item1_index) in i.items" :key='item1_index'>
-								<template v-if="i.created && j.created">
+								<template v-if="j.created">
 									<tr v-for='m in j.types' :key='m'>
 										<td>{{ get_index(item_index) }}</td>
 										<td>{{ j.name }}</td>
 										<td>{{ j.lot }}</td>
 										<td v-for="attr in i.attributes" :key="attr">{{ j.attributes[attr] }}</td>
 										<td>{{m}}</td>
-										<template v-for="attr in Object.keys(j.values)">
-											<template v-if="j.values[attr].qty == 0" :key='attr'>
-												<td>--</td>
-											</template>
-											<template v-else>
-												<template v-for="v in j.values[attr]['val']" :key='v'> 
-													<td v-if="v['received_type'] == m">{{v["received_quantity"]}}</td>
-												</template>
+										<template v-for="attr in Object.keys(j.values)" :key='attr'>
+											<template v-for="v in j.values[attr]['val']" :key='v'>
+												<td v-if='v["received_type"] == m'>{{v["received_quantity"]}}</td>
 											</template>
 										</template>
 										<td>{{ j.comments }}</td>
+										<td v-if="docstatus == 0">
+											<div class="pull-right cursor-pointer" @click="edit_delivered_item(item_index, item1_index, m)"
+												v-html="frappe.utils.icon('edit', 'md', 'mr-1')"></div>
+										</td>
 									</tr>
 								</template>  
 							</template>
@@ -237,6 +132,7 @@
 								<th>Type</th>
 								<th>Quantity</th>
 								<th>Comments</th>
+								<th v-if="docstatus == 0">Edit</th>
 							</tr>
 						</thead>
 						<tbody>
@@ -249,14 +145,15 @@
 										<td v-for="attr in i.attributes" :key="attr">{{ j.attributes[attr] }}</td>
 										<td>{{m}}</td>
 										<template v-for="attr in Object.keys(j.values)">
-											<template v-if="j.values[attr].qty == 0">--</template>
-											<template v-else>
-												<template v-for="v in j.values[attr]['val']" :key='v'>
-													<td v-if="v['received_type'] == m">{{v["received_quantity"]}}</td>
-												</template>
+											<template v-for="v in j.values[attr]['val']" :key='v'>
+												<td v-if="v['received_type'] == m">{{v["received_quantity"]}}</td>
 											</template>
 										</template>
 										<td>{{ j.comments }}</td>
+										<td v-if="docstatus == 0">
+											<div class="pull-right cursor-pointer" @click="edit_delivered_item(item_index, item1_index, m)"
+												v-html="frappe.utils.icon('edit', 'md', 'mr-1')"></div>
+										</td>
 									</tr>
 								</template>  
 							</template>
@@ -282,6 +179,9 @@
 			</div>
 			<div v-if="show_button">
 				<button class="btn btn-success pull-left" @click="add_item()">Add Item</button>
+			</div>
+			<div v-if="show_button2">
+				<button class="btn btn-success pull-left" @click="update_item()">Update Item</button>
 			</div>
 		</div>
 	</div>
@@ -312,7 +212,9 @@ const sample_doc = ref({});
 const controlRefs = ref({
  	quantities: [],
 });
+const received_type_value = ref(null)
 const show_button = ref(false);
+const show_button2 = ref(false);
 let types = null;
 let qty_parameters = [];
 let indexes = [];
@@ -328,7 +230,6 @@ function get_index(idx) {
 
 function edit_item(index, index1) {
 	let el = root.value;
-	console.log(JSON.stringify(items1.value[index].items[index1]))
 	controlRefs.value.quantities = [];
 	edit_index.value = index;
 	edit_index1.value = index1;
@@ -338,7 +239,7 @@ function edit_item(index, index1) {
 	cur_lot.value = null;
 	show_button.value = true;
 	$(el).find(".qty-parameters").html("");
-	let row = items1.value[index].items[index1];
+	let row = items.value[index].items[index1];
 	let data1 = row.values;
 	let data2 = row.attributes;
 	cur_item.value = row.name;
@@ -357,7 +258,8 @@ function edit_item(index, index1) {
 		cur_item.value,
 		cur_lot.value,
 		index,
-		index1
+		index1,
+		null,
 	);
 }
 
@@ -371,7 +273,48 @@ function getControlValues(refs) {
 	return values;
 }
 
-function create_attributes(attributes, quantities, item, lot, idx, idx1) {
+function edit_delivered_item(index, index1, received_type){
+	let el = root.value;
+	controlRefs.value.quantities = [];
+	received_type_value.value = received_type
+	edit_index.value = index;
+	edit_index1.value = index1;
+	attribute_values.value = [];
+	qty_attributes.value = [];
+	cur_item.value = null;
+	cur_lot.value = null;
+	show_button2.value = true;
+	$(el).find(".qty-parameters").html("");
+	let row = items.value[index].items[index1];
+	let row2 = items1.value[index].items[index1];
+	let data1 = row.values;
+	let data2 = row.attributes;
+	cur_item.value = row.name;
+	cur_lot.value = row.lot;
+	let data3 = row2.values;
+	Object.keys(data3).forEach((key) => {
+		data3[key]['val'].forEach((dict,idx)=> {
+			if(dict['received_type'] == received_type){
+				qty_attributes.value.push({ [key]: dict['received_quantity'] });	
+			}
+		})
+	});
+	Object.keys(data2).forEach((key) => {
+		const attr = data2[key];
+		attribute_values.value.push({ [key]: attr });
+	});
+	create_attributes(
+		attribute_values.value,
+		qty_attributes.value,
+		cur_item.value,
+		cur_lot.value,
+		index,
+		index1,
+		received_type,
+	);
+}
+
+function create_attributes(attributes, quantities, item, lot, idx, idx1, type_value) {
 	let el = root.value;
 	$(el).find(".lot-name").html("");
 	let lot_input = frappe.ui.form.make_control({
@@ -435,10 +378,9 @@ function create_attributes(attributes, quantities, item, lot, idx, idx1) {
 		});
 	});
 	$(el).find(".type-parameters").html("");
-	types = frappe.ui.form.make_control({
-		parent: $(el).find(".type-parameters"),
-		df: {
-			fieldtype: "Link",
+
+	let df = {
+		fieldtype: "Link",
 			fieldname: "types",
 			label: "Type",
 			options: "GRN Item Type",
@@ -451,15 +393,21 @@ function create_attributes(attributes, quantities, item, lot, idx, idx1) {
 					$(el).find(".qty-parameters").html("");
 				}
 			},
-			reqd: true,
-		},
+			reqd: true
+	}
+	if(type_value){
+		df['read_only'] = true
+	}
+	types = frappe.ui.form.make_control({
+		parent: $(el).find(".type-parameters"),
+		df: df,
 		doc: sample_doc.value,
 		render_input: true,
 	});
-	types.set_value("");
+	types.set_value(type_value);
 	types.refresh();
 }
-// Function to handle creation of quantity parameter controls
+
 function handleQtyParameters(quantities, value) {
 	controlRefs.value.quantities = [];
 	let el = root.value;
@@ -481,39 +429,121 @@ function handleQtyParameters(quantities, value) {
 				doc: sample_doc.value,
 				render_input: true,
 			});
+			qty_parameters[idx].set_value(row[key])
+			qty_parameters[idx].refresh()
 			controlRefs.value.quantities.push(qty_parameters[idx]);
 		});
 	});
 }
 
-function add_item() {
-	if(items.value.length == 0){
-		items.value = items1.value
-		get_items_structure()
-	}
+function update_item(){
+	cur_frm.dirty()
 	let data = getControlValues(controlRefs.value.quantities);
 	let x = 0;
 	controlRefs.value.quantities = [];
 	let type_selected = types.get_value();
+    
 	if(items1.value[edit_index.value].items[edit_index1.value]['types'].indexOf(type_selected) == -1){
 		items1.value[edit_index.value].items[edit_index1.value]['types'].push(type_selected)
 	}
-	Object.keys(items1.value[edit_index.value].items[edit_index1.value].values).forEach((row, index) => {
-		let bool = true
-		items1.value[edit_index.value].items[edit_index1.value]["values"][row]['val'].forEach((dict,idx)=> {
-			if(dict['received_type'] == type_selected){
-				dict['received_quantity'] += data[x]
-				bool = false
+	if(items1.value[edit_index.value]['primary_attribute']){
+		Object.keys(items1.value[edit_index.value].items[edit_index1.value].values).forEach((row, index) => {
+			items1.value[edit_index.value].items[edit_index1.value]["values"][row]['val'].forEach((dict,idx)=> {
+				if(dict['received_type'] == type_selected){
+					items.value[edit_index.value].items[edit_index1.value]["values"][row]['qty'] += items1.value[edit_index.value].items[edit_index1.value]["values"][row]['val'][idx]['received_quantity']
+					items.value[edit_index.value].items[edit_index1.value]["values"][row]['qty'] -= data[x]
+					items1.value[edit_index.value].items[edit_index1.value]["values"][row]['val'][idx]['received_quantity'] = data[x]
+					bool = false
+				}
+			})
+			x = x + 1;
+		});
+	}
+	else{
+		items.value[edit_index.value].items[edit_index1.value]['values']['default']['qty'] += items1.value[edit_index.value].items[edit_index1.value]['values']['default']['received']
+		items.value[edit_index.value].items[edit_index1.value]['values']['default']['qty'] -= data[x]
+		items1.value[edit_index.value].items[edit_index1.value]['values']['default']['received'] = data[x]
+		items1.value[edit_index.value].items[edit_index1.value]['values']['default']['val'].forEach((dict,idx) => {
+			if(dict['received_type'] == received_type_value){
+				items1.value[edit_index.value].items[edit_index1.value]['values']['default']['val'][idx]['received_quantity'] += data[x]
 			}
 		})
-		if(bool){
-			items1.value[edit_index.value].items[edit_index1.value]["values"][row]['val'].push({
-				'received_type':type_selected,
-				'received_quantity':data[x]
+	}	
+	make_clean()
+}
+
+async function add_item() {
+    cur_frm.dirty()
+    if(items1.value.length == 0){
+        items1.value = JSON.parse(JSON.stringify(items.value)); 
+        await get_items_structure()
+    }
+	let data = getControlValues(controlRefs.value.quantities);
+	let x = 0;
+	controlRefs.value.quantities = [];
+	let type_selected = types.get_value();
+    
+	if(items1.value[edit_index.value].items[edit_index1.value]['types'].indexOf(type_selected) == -1){
+		items1.value[edit_index.value].items[edit_index1.value]['types'].push(type_selected)
+	}
+	if(items1.value[edit_index.value]['primary_attribute']){
+		Object.keys(items1.value[edit_index.value].items[edit_index1.value].values).forEach((row, index) => {
+			let bool = true
+			items1.value[edit_index.value].items[edit_index1.value]["values"][row]['val'].forEach((dict,idx)=> {
+				if(dict['received_type'] == type_selected){
+					items.value[edit_index.value].items[edit_index1.value]["values"][row]['qty'] -= data[x]
+					// if( items.value[edit_index.value].items[edit_index1.value]["values"][row]['qty'] < 0 ){
+					// 	frappe.throw(`For ${items1.value[edit_index.value]['primary_attribute']} ${row}, Quantity ${data[x]} is not applicable`)
+					// }
+					items1.value[edit_index.value].items[edit_index1.value]["values"][row]['val'][idx]['received_quantity'] += data[x]
+					bool = false
+				}
+			})
+			if(bool){
+				items.value[edit_index.value].items[edit_index1.value]["values"][row]['qty'] -= data[x]
+				// if(items.value[edit_index.value].items[edit_index1.value]["values"][row]['qty'] < 0 ){
+				// 	frappe.throw(`For ${items1.value[edit_index.value]['primary_attribute']} ${row}, Quantity ${data[x]} is not applicable`)
+				// }
+				items1.value[edit_index.value].items[edit_index1.value]["values"][row]['val'].push({
+					'received_type':type_selected,
+					'received_quantity':data[x]
+				})
+			}
+			x = x + 1;
+		});
+	}
+	else{
+		items.value[edit_index.value].items[edit_index1.value]['values']['default']['qty'] -= data[x]
+		// if(items.value[edit_index.value].items[edit_index1.value]['values']['default']['qty'] < 0 ){
+		// 	frappe.throw(`Quantity ${data[x]} is not applicable`)
+		// }
+		items1.value[edit_index.value].items[edit_index1.value]['values']['default']['received'] += data[x]
+		let m = true
+		items1.value[edit_index.value].items[edit_index1.value]['values']['default']['val'].forEach((dict,idx) => {
+			if(dict['received_type'] == null){
+				m = false
+				items1.value[edit_index.value].items[edit_index1.value]['values']['default']['val'][idx] = {
+					"received_type":type_selected,
+					"received_quantity":data[x],
+				}
+			}
+		})
+		if(m){
+			items1.value[edit_index.value].items[edit_index1.value]['values']['default']['val'].forEach((dict,idx) => {
+				if(dict['received_type'] == type_selected){
+					m = false
+					items1.value[edit_index.value].items[edit_index1.value]['values']['default']['val'][idx]['received_quantity'] += data[x]
+				}
+			})	
+		}
+		if(m){
+			items1.value[edit_index.value].items[edit_index1.value]['values']['default']['val'].push({
+				"received_type":type_selected,
+				"received_quantity":data[x],
 			})
 		}
-		x = x + 1;
-	});
+	}
+	
 	items1.value[edit_index.value]["created"] = 1;
 	items1.value[edit_index.value].items[edit_index1.value]["created"] = 1;
 	make_clean()
@@ -528,11 +558,12 @@ function make_clean(){
 	$(el).find(".lot-name").html("");
 	$(el).find(".item-name").html("");
 	show_button.value = false;
+	show_button2.value = false;
 }
 
 onMounted(() => {
-	console.log("new-grn-item mounted");
-	EventBus.$on("update_grn_details", (data) => {
+	console.log("new-grn-work-item mounted");
+	EventBus.$on("update_grn_work_details", (data) => {
 		load_data(data);
 	});
 });
@@ -559,16 +590,10 @@ function load_data(data, skip_watch = false) {
 			docstatus.value = data["docstatus"];
 		}
 		if (data.hasOwnProperty("items")) {
-			if(against.value == "Purchase Order"){
-				items1.value = data["items"];
-			}
-			else{
-				items.value = data["items"];
-			}
+			items.value = data["items"];
 		}
-		if (data.hasOwnProperty("pending_items")) {
-			items1.value = data["pending_items"];
-			get_items_structure()
+		if (data.hasOwnProperty("delivered_items")) {
+			items1.value = data["delivered_items"];
 		}
 		if (data.hasOwnProperty("against_id") && !skip_watch) {
 			against_id_changed();
@@ -583,38 +608,24 @@ function update_status() {
   	docstatus.value = cur_frm.doc.docstatus;
 }
 
-function get_purchase_order_items() {
-	frappe.call({
-		method:"production_api.production_api.doctype.purchase_order.purchase_order.get_purchase_order_items",
-		args: {
-			purchase_order: against_id.value,
-		},
-		callback: function (r) {
-			if (r.message) {
-				items.value = r.message;
-				items1.value = r.message;
-			}
-		},
-	});
-}
-
 function get_work_order_items() {
 	frappe.call({
 		method:"production_api.production_api.doctype.work_order.work_order.get_work_order_items",
 		args: {
 			work_order: against_id.value,
+			is_grn:true,
 		},
-		callback: function (r) {
+		callback:async function (r) {
 			if (r.message) {
-				items.value = r.message;
-				items1.value = r.message
-				get_items_structure()
+				items.value = JSON.parse(JSON.stringify(r.message));
+				items1.value = JSON.parse(JSON.stringify(r.message))
+				await get_items_structure()
 			}
 		},
 	});
 }
 
-function get_items_structure(){
+async function get_items_structure(){
 	for(let i = 0 ; i < items1.value.length; i++){
 		for(let j = 0 ; j < items1.value[i]['items'].length; j++){
 			items1.value[i]['items'][j]['types'] = []
@@ -631,12 +642,7 @@ function clear_items() {
 
 function against_id_changed() {
 	if (against_id.value) {
-		if (against.value == "Purchase Order") {
-			get_purchase_order_items();
-		} 
-		else {
-			get_work_order_items();
-		}
+		get_work_order_items();
 	} 
 	else {
 		clear_items();
@@ -663,25 +669,19 @@ function get_items() {
 			}
 		}
 	}
-	if(against.value == 'Purchase Order'){
-		return items1.value
+	if(items1.value.length == 0){
+		items1.value = JSON.parse(JSON.stringify(items.value))
 	}
+
 	return [items.value, items1.value];
-}
-function update_reworks(item, key) {
- 	item[key] = item[key];
-}
-function update_received_qty(item, key) {
-	item[key] = parseFloat(parseFloat(item[key]).toFixed(3));
-	cur_frm.dirty()
 }
 
 watch(
 	items, (newVal, oldVal) => {
 		console.log("Item Updated", _skip_watch);
 		if (_skip_watch) {
-		_skip_watch = false;
-		return;
+            _skip_watch = false;
+            return;
 		}
 		EventBus.$emit("grn_updated", true);
   	},
