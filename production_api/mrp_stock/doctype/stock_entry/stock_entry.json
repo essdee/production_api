@@ -102,6 +102,7 @@
   {
    "fieldname": "items",
    "fieldtype": "Table",
+   "hidden": 1,
    "label": "Items",
    "options": "Stock Entry Detail"
   },
@@ -154,7 +155,7 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2024-11-07 10:37:53.033006",
+ "modified": "2024-11-20 12:30:42.656305",
  "modified_by": "Administrator",
  "module": "MRP Stock",
  "name": "Stock Entry",
