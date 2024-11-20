@@ -54,9 +54,9 @@
   {
    "hidden": 0,
    "is_query_report": 1,
-   "label": "Simple Item Balance",
+   "label": "Stock Balance (Simple)",
    "link_count": 0,
-   "link_to": "Item Balance (Simple)",
+   "link_to": "Item Balance",
    "link_type": "Report",
    "onboard": 0,
    "type": "Link"
@@ -72,7 +72,7 @@
    "type": "Link"
   }
  ],
- "modified": "2024-09-24 18:01:58.375281",
+ "modified": "2024-11-08 10:08:24.723398",
  "modified_by": "Administrator",
  "module": "MRP Stock",
  "name": "Stock",

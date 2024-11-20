@@ -13,7 +13,7 @@ from frappe.model.document import Document
 from production_api.production_api.doctype.item.item import create_variant, get_attribute_details, get_variant
 from production_api.production_api.doctype.item_price.item_price import get_item_variant_price
 from production_api.production_api.doctype.purchase_order.purchase_order import get_item_attribute_details, get_item_group_index
-from production_api.mrp_stock.utils import get_stock_balance
+from production_api.mrp_stock.utils import get_conversion_factor, get_stock_balance
 
 class StockEntry(Document):
 	def onload(self):
@@ -68,17 +68,28 @@ class StockEntry(Document):
 				self.validation_messages.append(_get_msg(row.table_index, row.row_index, _("Negative Valuation Rate is not allowed")))
 			if row.qty and row.rate in ["", None, 0]:
 				row.rate = get_stock_balance(
-					row.item, None, self.posting_date, self.posting_time, with_valuation_rate=True
+					row.item, None, self.posting_date, self.posting_time, with_valuation_rate=True, uom=row.uom,
 				)[1]
 				if not row.rate:
 					# try if there is a buying price list in default currency
-					buying_rate = get_item_variant_price(row.item)
+					buying_rate = get_item_variant_price(row.item, variant_uom=row.uom)
 					if buying_rate:
 						row.rate = buying_rate
-			
+
 			# if not row.rate:
 			# 	self.validation_messages.append(_get_msg(row.table_index, row.row_index, _("Could not find valuation rate.")))
-
+			
+			item_details = get_uom_details(row.item, row.uom, row.qty)
+			row.set("stock_uom", item_details.get("stock_uom"))
+			row.set("conversion_factor", item_details.get("conversion_factor"))
+			row.stock_qty = flt(
+				flt(row.qty) * flt(row.conversion_factor), self.precision("stock_qty", row)
+			)
+			row.stock_uom_rate = flt(
+				flt(row.rate) / flt(row.conversion_factor), self.precision("stock_uom_rate", row)
+			)
+			row.amount = flt(flt(row.rate) * flt(row.qty), self.precision("amount", row))
+			
 		# throw all validation messages
 		if self.validation_messages:
 			for msg in self.validation_messages:
@@ -134,7 +145,7 @@ class StockEntry(Document):
 				frappe.throw("Target Warehouse is Mandatory")
 	
 	def calculate_rate_and_amount(self):
-		self.total_amount = sum([flt(item.qty) * flt(item.rate) for item in self.get("items")]) + flt(self.additional_amount)
+		self.total_amount = sum([flt(item.amount) for item in self.get("items")]) + flt(self.additional_amount)
 
 	def on_submit(self):
 		self.update_stock_ledger()
@@ -179,9 +190,9 @@ class StockEntry(Document):
 					d, 
 					{
 						"warehouse": cstr(warehouse),
-						"qty": -flt(d.qty),
+						"qty": -flt(d.stock_qty),
 						"rate": 0,
-						"outgoing_rate": flt(d.rate)
+						"outgoing_rate": flt(d.stock_uom_rate)
 					}
 				)
 				if cstr(self.to_warehouse):
@@ -198,8 +209,8 @@ class StockEntry(Document):
 					d,
 					{
 						"warehouse": cstr(warehouse),
-						"qty": flt(d.qty),
-						"rate": flt(d.rate),
+						"qty": flt(d.stock_qty),
+						"rate": flt(d.stock_uom_rate),
 					},
 				)
 
@@ -216,8 +227,8 @@ class StockEntry(Document):
 				"voucher_type": self.doctype,
 				"voucher_no": self.name,
 				"voucher_detail_no": d.name,
-				"qty": (self.docstatus == 1 and 1 or -1) * flt(d.get("qty", 0)),
-				"uom": d.uom,
+				"qty": (self.docstatus == 1 and 1 or -1) * flt(d.get("stock_qty", 0)),
+				"uom": d.stock_uom,
 				"rate": 0,
 				"is_cancelled": 1 if self.docstatus == 2 else 0,
 				"remarks": d.remarks,
@@ -398,6 +409,23 @@ def save_stock_entry_items(item_details):
 					items.append(item1)
 			row_index += 1
 	return items
+
+def get_uom_details(item_variant, uom, qty):
+	"""Returns dict `{"conversion_factor": [value], "transfer_qty": qty * [value]}`
+	:param args: dict with `item_code`, `uom` and `qty`"""
+	detail = get_conversion_factor(item_variant, uom)
+	conversion_factor = detail.get("conversion_factor")
+
+	if not conversion_factor:
+		frappe.msgprint(_("UOM conversion factor required for UOM: {0} in Item: {1}").format(uom, item_variant))
+		ret = {"uom": ""}
+	else:
+		ret = {
+			"stock_uom": detail["stock_uom"],
+			"conversion_factor": flt(conversion_factor),
+			"stock_qty": flt(qty) * flt(conversion_factor),
+		}
+	return ret
 
 @frappe.whitelist()
 def make_stock_in_entry(source_name, target_doc=None):
