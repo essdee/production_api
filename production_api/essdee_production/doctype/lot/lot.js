@@ -24,7 +24,14 @@ frappe.ui.form.on("Lot", {
         }
 		frm.set_df_property('bom_summary','cannot_add_rows',true)
 		frm.set_df_property('bom_summary','cannot_delete_rows',true)
-
+		frm.add_custom_button("Calculate Order Items", ()=> {
+			frappe.call({
+				method:"production_api.essdee_production.doctype.lot.lot.get_order_details",
+				args : {
+					doc_name : frm.doc.name,
+				}
+			})
+		})
         $(frm.fields_dict['items_html'].wrapper).html("")
         frm.item = new frappe.production.ui.LotOrder(frm.fields_dict['items_html'].wrapper)
         if(frm.doc.__onload && frm.doc.__onload.item_details) {
@@ -49,7 +56,7 @@ frappe.ui.form.on("Lot", {
 				frm.item.load_data([])
 			}
         }
-		frm.order_detail = new frappe.production.ui.LotOrderDetail(frm.fields_dict['lot_item_order_detail_html'].wrapper)
+		frm.order_detail = new frappe.production.ui.CutPlanItems(frm.fields_dict['lot_item_order_detail_html'].wrapper)
 		if(frm.doc.__onload && frm.doc.__onload.order_item_details) {
 			frm.order_detail.load_data(frm.doc.__onload.order_item_details);
         }
@@ -60,6 +67,8 @@ frappe.ui.form.on("Lot", {
     validate(frm){
         let items = frm.item.get_data()
         frm.doc['item_details'] = JSON.stringify(items)
+		let order_items = frm.order_detail.get_items()
+        frm.doc['order_item_details'] = JSON.stringify(order_items)
     },
 	item(frm){
 		if(!frm.doc.item){

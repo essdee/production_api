@@ -15,18 +15,32 @@ class Lot(Document):
 			frappe.throw("BOM is not calculated")
 
 	def before_validate(self):
+		
+
 		if self.get('item_details'):
 			items = save_item_details(self.item_details, dependent_attr=self.get('dependent_attribute_mapping'))
 			self.set("items",items)
+
+		if self.get('order_item_details'):
+			order_items = save_order_item_details(self.order_item_details)
+			self.set('lot_order_details',order_items)
+
+		if self.is_new(): 
+			if len(self.items) > 0:
+				self.calculate_order()
+		else: 	
+			doc = frappe.get_doc("Lot",self.name)
+			if len(doc.items) == 0 and len(self.items) > 0:
+				self.calculate_order()
+
 		qty = 0
 		for item in self.items:
 			qty = qty + item.qty
 		self.total_quantity = qty
 	
-	def validate(self):	
+	def calculate_order(self):	
 		if self.production_detail:
 			items, qty = calculate_order_details(self.get('items'), self.production_detail, self.packing_uom, self.uom)
-
 			if len(items) == 0:
 				x = []
 				for item in self.items:
@@ -120,6 +134,42 @@ def calculate_order_details(items, production_detail, packing_uom, final_uom):
 					'quantity':val,
 				})		
 	return final_list, final_qty
+def save_order_item_details(item_details, dependent_attr = None):
+	if isinstance(item_details, string_types):
+		item_details = json.loads(item_details)
+	if len(item_details) == 0:
+		return []
+	items = item_details[0]
+	item_list = []
+	for item in items['items']:
+		if item['primary_attribute']:
+			attributes = item['attributes']
+			attributes[items['dependent_attribute']] = items['final_state']	
+			for value in item['values'].keys():
+				item1 = {}
+				attributes[item['primary_attribute']] = value
+				variant_name = get_variant(items['item'], attributes)
+				if not variant_name:
+					variant1 = create_variant(items['item'], attributes, dependent_attr=dependent_attr)
+					variant1.insert()
+					variant_name = variant1.name
+
+				item1['item_variant'] = variant_name
+				item1['quantity'] = item['values'][value]
+				item_list.append(item1)
+		else:
+			item1 = {}
+			attributes = item['attributes']
+			variant_name = item['item']
+			variant_name = get_variant(item['item'], attributes)
+			if not variant_name:
+				variant1 = create_variant(item['item'], attributes)
+				variant1.insert()
+				variant_name = variant1.name
+			item1['item_variant'] = variant_name
+			item1['qty'] = item['values']['qty']
+			item_list.append(item1)
+	return item_list
 
 def save_item_details(item_details, dependent_attr=None):
 	if isinstance(item_details, string_types):
@@ -401,3 +451,9 @@ def get_item_list_details(lot):
 		items.append(item.as_dict())
 
 	return items	
+
+@frappe.whitelist()
+def get_order_details(doc_name):
+	doc = frappe.get_doc("Lot", doc_name)
+	doc.calculate_order()
+	doc.save()

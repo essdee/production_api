@@ -11,6 +11,17 @@ from production_api.production_api.doctype.item_dependent_attribute_mapping.item
 from production_api.essdee_production.doctype.lot.lot import get_uom_conversion_factor
 
 class ItemProductionDetail(Document):
+	def autoname(self):
+		item = self.item
+		version = frappe.db.sql(
+			f"""
+				Select max(version) as max_version from `tabItem Production Detail` where item = '{item}'
+			""",as_dict=True
+		)
+		new_version = version[0]['max_version'] + 1
+		self.name = f"{item}-{new_version}"
+		self.version = new_version
+		
 	def load_attribute_list(self):
 		attribute_list = []
 		for attribute in self.item_attributes:
@@ -69,7 +80,31 @@ class ItemProductionDetail(Document):
 		stich_items = fetch_combination_items(self.get('stiching_item_combination_details')) 	
 		if len(stich_items['values']) > 0:
 			self.set_onload('stiching_item_detail',stich_items)
+	
+	def before_save(self):
 		
+		if self.is_new():
+			dict_values = {
+				"packing_process" : "Packing",
+				"pack_in_stage" : "Piece",
+				"pack_out_stage" : "Pack",
+				"packing_attribute" : "Color",
+				"stiching_process" : "Stiching",
+				"stiching_attribute" : "Panel",
+				"stiching_in_stage" : "Cut",
+				"stiching_out_stage" : "Piece",
+				"cutting_process" : "Cutting",
+			}
+			self.packing_process = dict_values['packing_process']
+			self.pack_in_stage = dict_values['pack_in_stage']
+			self.pack_out_stage = dict_values['pack_out_stage']
+			self.packing_attribute = dict_values['packing_attribute']
+			self.stiching_process = dict_values['stiching_process']
+			self.stiching_attribute = dict_values['stiching_attribute']
+			self.stiching_in_stage = dict_values['stiching_in_stage']
+			self.stiching_out_stage = dict_values['stiching_out_stage']
+			self.cutting_process = dict_values['cutting_process']	
+	
 	def before_validate(self):
 		if self.get('set_item_detail'):
 			set_details = save_item_details(self.set_item_detail)
@@ -101,8 +136,6 @@ class ItemProductionDetail(Document):
 		if cut_json:
 			cut_json['select_list'] = cloths		
 		self.cutting_cloths_json = cut_json
-
-
 
 	def create_new_mapping_values(self):
 		for attribute in self.get('item_attributes'):
@@ -206,9 +239,6 @@ class ItemProductionDetail(Document):
 			frappe.throw("Duplicate Attribute values are occured in Packing Attribute Details")	
 
 	def stiching_tab_validations(self):
-		if self.stiching_attribute_quantity == 0:
-			frappe.throw("Stiching Attribute Quantity should not be zero")
-		
 		if len(self.stiching_item_details) == 0:
 			frappe.throw("Enter stiching attribute details")
 		attr= set()
@@ -218,9 +248,6 @@ class ItemProductionDetail(Document):
 				frappe.throw("Enter value in Stiching Item Details, Zero is not considered as a valid quantity")
 			sum = sum + row.quantity
 			attr.add(row.stiching_attribute_value)
-
-		if sum != self.stiching_attribute_quantity:
-			frappe.throw(f"In Stiching Item Details, the sum of quantity should be {self.stiching_attribute_quantity}")
 
 		if len(attr) != len(self.stiching_item_details):
 			frappe.throw("Duplicate Attribute values are occured in Stiching Item Details")	
@@ -957,3 +984,15 @@ def get_attr_mapping_details(mapping):
 	for item in doc.values:
 		values.append(item.attribute_value)
 	return values
+
+@frappe.whitelist()
+def get_cloth_select_list(doc_name):
+	# frappe.db.sql(
+	# 	"""
+	# 		Select 
+	# 	"""
+	# )
+	doc = frappe.get_doc("Item Production Detail",doc_name)
+	for cloth in doc.cloth_detail:
+		print(cloth.name1)
+	return ["i1"]	

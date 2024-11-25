@@ -9,7 +9,6 @@ import PONewItem from "./PurchaseOrder/components/NewItem.vue"
 import POItem from "./PurchaseOrder/components/Item.vue"
 import GRNItemWrapper from "./GRN";
 import LotOrder from "./Lot/components/LotOrder.vue" 
-import LotOrderDetail from "./Lot/components/LotOrderDetail.vue"
 import CutPlanItems from "./CuttingPlan/components/CutPlanItems.vue"
 import CuttingCompletionDetail from "./CuttingPlan/components/CuttingCompletionDetail.vue"
 import CuttingIncompletionDetail from "./CuttingPlan/components/CuttingIncompletionDetail.vue"
@@ -248,22 +247,6 @@ frappe.production.ui.LotOrder = class {
     }
     load_data(item_details){
         let items = JSON.parse(JSON.stringify(item_details));
-        this.vue.load_data(items)
-    }
-}
-
-frappe.production.ui.LotOrderDetail = class {
-    constructor(wrapper){
-        this.$wrapper = $(wrapper)
-        this.make_app()
-    }
-    make_app(){
-        this.app = createApp(LotOrderDetail)
-        SetVueGlobals(this.app)
-        this.vue = this.app.mount(this.$wrapper.get(0))
-    }
-    load_data(item_details){
-        let items = JSON.parse(JSON.stringify(item_details))
         this.vue.load_data(items)
     }
 }
