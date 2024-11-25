@@ -18,7 +18,11 @@ class ItemProductionDetail(Document):
 				Select max(version) as max_version from `tabItem Production Detail` where item = '{item}'
 			""",as_dict=True
 		)
-		new_version = version[0]['max_version'] + 1
+		if version:
+			new_version = version[0]['max_version'] + 1
+		else:
+			new_version = 1	
+
 		self.name = f"{item}-{new_version}"
 		self.version = new_version
 		
@@ -975,15 +979,3 @@ def get_attr_mapping_details(mapping):
 	for item in doc.values:
 		values.append(item.attribute_value)
 	return values
-
-@frappe.whitelist()
-def get_cloth_select_list(doc_name):
-	# frappe.db.sql(
-	# 	"""
-	# 		Select 
-	# 	"""
-	# )
-	doc = frappe.get_doc("Item Production Detail",doc_name)
-	for cloth in doc.cloth_detail:
-		print(cloth.name1)
-	return ["i1"]	
