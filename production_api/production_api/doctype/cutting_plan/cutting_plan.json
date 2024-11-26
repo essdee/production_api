@@ -190,7 +190,7 @@
    "link_fieldname": "cutting_plan"
   }
  ],
- "modified": "2024-11-11 13:07:05.651272",
+ "modified": "2024-11-26 10:38:32.599597",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Cutting Plan",
@@ -238,6 +238,16 @@
    "read": 1,
    "report": 1,
    "role": "CAD User",
+   "select": 1,
+   "share": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Merchandiser",
    "select": 1,
    "share": 1
   }
