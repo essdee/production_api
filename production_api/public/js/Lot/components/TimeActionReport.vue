@@ -17,6 +17,7 @@
                 <th>Action</th>
                 <th>Department</th>
                 <th>Lead Time</th>
+                <th>Work Station</th>
                 <th>Planned Date</th>
                 <th>Rescheduled Date</th>
                 <th>Actual Date</th>
@@ -29,6 +30,10 @@
                 <td>{{ i.action }}</td>
                 <td>{{ i.department }}</td>
                 <td>{{ i.lead_time }}</td>
+                <td v-if="i.work_station">
+                    {{ i.work_station }}
+                </td>
+                <td v-else></td>
                 <td>{{ date_format(i.date) }}</td>
                 <td>{{ date_format(i.rescheduled_date) }}</td>
                 <td :class="{'bg-red': i.rescheduled_date < i.actual_date, 'bg-green': i.rescheduled_date >= i.actual_date}">
@@ -36,7 +41,7 @@
                 </td>
                 <td>{{ i.date_diff }}</td>
                 <td>{{ i.reason }}</td>
-                <td>{{ i.performance }}</td>
+                <td>{{ i.performance }}%</td>
             </tr>
         </table>
     </div>

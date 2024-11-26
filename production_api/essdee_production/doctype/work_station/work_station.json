@@ -2,35 +2,20 @@
  "actions": [],
  "allow_rename": 1,
  "autoname": "prompt",
- "creation": "2024-11-08 15:27:45.619399",
+ "creation": "2024-11-25 15:27:10.200787",
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
-  "department",
-  "capacity_planning",
-  "column_break_tzmq",
-  "lead_time",
-  "default"
+  "action",
+  "default",
+  "disabled"
  ],
  "fields": [
   {
-   "fieldname": "department",
+   "fieldname": "action",
    "fieldtype": "Link",
-   "in_list_view": 1,
-   "label": "Department",
-   "options": "Employee Department",
-   "reqd": 1
-  },
-  {
-   "fieldname": "column_break_tzmq",
-   "fieldtype": "Column Break"
-  },
-  {
-   "allow_in_quick_entry": 1,
-   "fieldname": "lead_time",
-   "fieldtype": "Int",
-   "label": "Lead Time",
-   "non_negative": 1
+   "label": "Action",
+   "options": "Action"
   },
   {
    "default": "0",
@@ -40,17 +25,17 @@
   },
   {
    "default": "0",
-   "fieldname": "capacity_planning",
+   "fieldname": "disabled",
    "fieldtype": "Check",
-   "label": "Capacity Planning"
+   "label": "Disabled"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2024-11-25 15:29:15.421914",
+ "modified": "2024-11-26 09:45:30.290036",
  "modified_by": "Administrator",
  "module": "Essdee Production",
- "name": "Action",
+ "name": "Work Station",
  "naming_rule": "Set by user",
  "owner": "Administrator",
  "permissions": [
@@ -67,9 +52,7 @@
    "write": 1
   }
  ],
- "quick_entry": 1,
  "sort_field": "modified",
  "sort_order": "DESC",
- "states": [],
- "track_changes": 1
+ "states": []
 }

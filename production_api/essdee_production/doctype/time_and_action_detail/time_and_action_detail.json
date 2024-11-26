@@ -12,11 +12,15 @@
   "date",
   "rescheduled_date",
   "actual_date",
+  "work_station",
   "date_diff",
   "reason",
   "performance",
   "completed",
-  "index2"
+  "index2",
+  "planned_start_date",
+  "rescheduled_start_date",
+  "actual_start_date"
  ],
  "fields": [
   {
@@ -102,17 +106,38 @@
    "label": "Completed"
   },
   {
-   "columns": 1,
    "fieldname": "index2",
    "fieldtype": "Int",
-   "in_list_view": 1,
    "label": "Index2"
+  },
+  {
+   "columns": 1,
+   "fieldname": "work_station",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Work Station",
+   "options": "Work Station"
+  },
+  {
+   "fieldname": "planned_start_date",
+   "fieldtype": "Date",
+   "label": "Planned Start Date"
+  },
+  {
+   "fieldname": "rescheduled_start_date",
+   "fieldtype": "Date",
+   "label": "Rescheduled Start Date"
+  },
+  {
+   "fieldname": "actual_start_date",
+   "fieldtype": "Date",
+   "label": "Actual Start Date"
   }
  ],
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2024-11-16 10:07:52.379206",
+ "modified": "2024-11-26 10:11:30.617873",
  "modified_by": "Administrator",
  "module": "Essdee Production",
  "name": "Time and Action Detail",

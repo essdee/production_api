@@ -3,7 +3,7 @@
 import frappe, json
 from frappe.model.document import Document
 from six import string_types
-from frappe.utils import flt
+from frappe.utils import flt, add_days
 from production_api.production_api.doctype.item.item import create_variant, get_variant, get_attribute_details, get_or_create_variant
 from itertools import groupby, zip_longest
 import math
@@ -504,12 +504,12 @@ def get_packing_attributes(ipd):
 	}	
 
 @frappe.whitelist()
-def create_time_and_action(lot, item_name, args , values, total_qty):
+def create_time_and_action(lot, item_name, args , values, total_qty, items):
 	if isinstance(args,string_types):
 		args = json.loads(args)
 	if isinstance(values,string_types):
 		values = json.loads(values)	
-
+	
 	sizes = args['sizes']
 	ratios = args['ratios']
 	combo = args['combo']
@@ -517,8 +517,16 @@ def create_time_and_action(lot, item_name, args , values, total_qty):
 	start_date = values['start_date']
 
 	sizes = sizes[:-1]
+	d = {}
+	if isinstance(items,string_types):
+		items = json.loads(items)
 
-	items = []
+	for item in items:
+		d[item] = {}
+		for idx,val in enumerate(items[item]):
+			d[item][val['action']] = idx
+	
+	lot_items = []
 	for idx,item in enumerate(item_list):
 		new_doc = frappe.new_doc("Time and Action")
 		new_doc.update({
@@ -533,14 +541,39 @@ def create_time_and_action(lot, item_name, args , values, total_qty):
 			new_doc.qty = math.ceil(flt(total_qty)/flt(combo))
 		else:
 			new_doc.qty = math.ceil(flt(total_qty)/flt(ratios[idx]))
+		master_doc = frappe.get_doc("Action Master",item["master"])
+		child_table = []
+		x = 1
+		day = start_date
+		day2 = start_date
+		for master in master_doc.details:
+			day = add_days(day,master.lead_time)
+			struct = {
+				"action":master.action,
+				"lead_time":master.lead_time,
+				"department":master.department,
+				"date":day,
+				"rescheduled_date":day,
+				"planned_start_date":day2,
+				"rescheduled_start_date":day2,
+				"index2":x
+			}
+			if master.work_station:
+				index = d[item['colour']][master.action]
+				struct["work_station"] = items[item['colour']][index]['work_station']
+			day2 = add_days(day2,master.lead_time)
+			x = x + 1
+			child_table.append(struct)
+
+		new_doc.set("details",child_table)
 		new_doc.save()
-		items.append({
+		lot_items.append({
 			"colour":item['colour'],
 			"master":item["master"],
 			"time_and_action":new_doc.name,	
 		})
 	lot_doc = frappe.get_doc("Lot",lot)
-	lot_doc.set("lot_time_and_action_details",items)
+	lot_doc.set("lot_time_and_action_details",lot_items)
 	lot_doc.save()
 
 @frappe.whitelist()
@@ -564,6 +597,7 @@ def undo_last_update(time_and_action):
 	for item in t_and_a.details:
 		if item.idx == index:
 			item.actual_date = None
+			item.actual_start_date = None
 			item.completed = 0
 			item.date_diff = None
 			item.reason = None
@@ -574,6 +608,10 @@ def undo_last_update(time_and_action):
 
 	if index and index != 1:
 		for item in t_and_a.details:
+			if item.idx == index + 1:
+				item.actual_start_date = None
+				break
+		for item in t_and_a.details:
 			if item.idx == index - 1:
 				item.completed = 0
 				break
@@ -581,6 +619,8 @@ def undo_last_update(time_and_action):
 		for item in t_and_a.details:
 			item.index2 = item.idx
 			item.rescheduled_date = item.date	
+			item.actual_start_date = None
+			item.actual_date = None
 			item.date_diff = None	
 			item.reason = None
 	t_and_a.save()		
@@ -606,3 +646,17 @@ def get_select_options(lot):
 	for item in lot_doc.lot_time_and_action_details:
 		select_options.append(item.colour)
 	return select_options
+
+@frappe.whitelist()
+def get_action_master_details(master_list):
+	if isinstance(master_list,string_types):
+		master_list = json.loads(master_list)
+	work_station = {}
+	for item in master_list:
+		work_station[item['colour']] = []
+		master_doc = frappe.get_doc("Action Master",item['master'])
+		for action in master_doc.details:
+			if action.work_station:
+				work_station[item['colour']].append(action.as_dict())
+	
+	return work_station

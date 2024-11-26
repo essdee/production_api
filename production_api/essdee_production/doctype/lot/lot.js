@@ -105,13 +105,40 @@ frappe.ui.form.on("Lot", {
 									}
 								}
 								frappe.call({
-									method:"production_api.essdee_production.doctype.lot.lot.create_time_and_action",
-									args: {
-										"lot":frm.doc.name,
-										"item_name":frm.doc.item,
-										"args":r.message,
-										"values":values,
-										"total_qty":frm.doc.total_order_quantity,
+									method:"production_api.essdee_production.doctype.lot.lot.get_action_master_details",
+									args : {
+										master_list : values.table
+									},
+									callback:async function(res){
+										let d = new frappe.ui.Dialog({
+											size:"large",
+											title:"Work Station List",
+											fields:[
+												{
+													"fieldtype":"HTML",
+													"fieldname":"work_station_html",
+												},
+											],
+											primary_action(){
+												let items = popupDialog.get_items()
+												frappe.call({
+													method:"production_api.essdee_production.doctype.lot.lot.create_time_and_action",
+													args: {
+														"lot":frm.doc.name,
+														"item_name":frm.doc.item,
+														"args":r.message,
+														"values":values,
+														"total_qty":frm.doc.total_order_quantity,
+														"items":items
+													}
+												})
+												d.hide()
+											}
+										})
+										d.show()
+										let popupDialog = new frappe.production.ui.WorkStation(d.fields_dict['work_station_html'].wrapper);
+										await popupDialog.load_data(res.message)
+										popupDialog.set_attributes()
 									}
 								})
 								dialog.hide()
