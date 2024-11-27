@@ -3,7 +3,8 @@
 
 import frappe
 from frappe.model.document import Document
-from frappe.utils import add_days,date_diff
+from frappe.utils import date_diff, getdate
+from production_api.essdee_production.doctype.holiday_list.holiday_list import get_events,get_next_date
 
 class TimeandAction(Document):
 	def before_validate(self):
@@ -13,9 +14,31 @@ class TimeandAction(Document):
 				if item.actual_date and not item.completed:
 					item.completed = 1
 					idx = item.idx
+					
 					d = date_diff(item.date,item.actual_date)
+					date1 = item.date
+					date2 = item.actual_date
+					if getdate(date1) > getdate(date2):
+						date1 = item.actual_date
+						date2 = item.date
+					
+					events = get_events(date1,date2)
+					events_len = len(events)
+					d = d + events_len if d < 0 else d - events_len
+					
 					item.date_diff = d
+
 					diff = date_diff(item.rescheduled_date,item.actual_date)
+					date1 = item.rescheduled_date
+					date2 = item.actual_date
+					if getdate(item.rescheduled_date) > getdate(item.actual_date):
+						date1 = item.actual_date
+						date2 = item.rescheduled_date
+
+					events2 = get_events(date1, date2)
+					events2_len = len(events2)
+					diff = diff + events2_len if diff < 0 else diff - events2_len
+
 					item.performance = get_performance(diff)					
 					actual_date = item.actual_date
 					index2 = item.index2
@@ -35,7 +58,7 @@ class TimeandAction(Document):
 						action = item.action
 						
 					if item.idx > idx:
-						actual_date = add_days(actual_date,item.lead_time)
+						actual_date = get_next_date(actual_date,item.lead_time)
 						item.rescheduled_date = actual_date
 			
 			self.action = action
@@ -54,6 +77,4 @@ def get_performance(diff):
 		perf = 85
 	else:
 		perf = 100
-	
 	return perf				
-

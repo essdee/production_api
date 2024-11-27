@@ -7,6 +7,7 @@ from frappe.utils import flt, add_days
 from production_api.production_api.doctype.item.item import create_variant, get_variant, get_attribute_details, get_or_create_variant
 from itertools import groupby, zip_longest
 import math
+from production_api.essdee_production.doctype.holiday_list.holiday_list import get_next_date
 from production_api.production_api.doctype.item_dependent_attribute_mapping.item_dependent_attribute_mapping import get_dependent_attribute_details
 
 class Lot(Document):
@@ -547,7 +548,7 @@ def create_time_and_action(lot, item_name, args , values, total_qty, items):
 		day = start_date
 		day2 = start_date
 		for master in master_doc.details:
-			day = add_days(day,master.lead_time)
+			day = get_next_date(day, master.lead_time)
 			struct = {
 				"action":master.action,
 				"lead_time":master.lead_time,
@@ -561,7 +562,7 @@ def create_time_and_action(lot, item_name, args , values, total_qty, items):
 			if master.work_station:
 				index = d[item['colour']][master.action]
 				struct["work_station"] = items[item['colour']][index]['work_station']
-			day2 = add_days(day2,master.lead_time)
+			day2 = get_next_date(day2, master.lead_time)	
 			x = x + 1
 			child_table.append(struct)
 
@@ -596,6 +597,7 @@ def undo_last_update(time_and_action):
 	
 	for item in t_and_a.details:
 		if item.idx == index:
+			item.performance = None
 			item.actual_date = None
 			item.actual_start_date = None
 			item.completed = 0
@@ -623,6 +625,7 @@ def undo_last_update(time_and_action):
 			item.actual_date = None
 			item.date_diff = None	
 			item.reason = None
+			item.performance = None
 	t_and_a.save()		
 
 @frappe.whitelist()
