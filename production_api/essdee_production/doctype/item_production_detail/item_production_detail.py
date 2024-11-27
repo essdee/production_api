@@ -17,9 +17,9 @@ class ItemProductionDetail(Document):
 			f"""
 				Select max(version) as max_version from `tabItem Production Detail` where item = '{item}'
 			""",as_dict=True
-		)
+		)[0]['max_version']
 		if version:
-			new_version = version[0]['max_version'] + 1
+			new_version = version + 1
 		else:
 			new_version = 1	
 
