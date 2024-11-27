@@ -284,8 +284,8 @@ frappe.ui.form.on("Item Production Detail", {
 	onload_post_render(frm){
 		showOrHideColumns(frm,['dependent_attribute_value'],'item_bom', frm.doc.dependent_attribute ? 0 : 1)
 		updateChildTableReqd(frm, ['dependent_attribute_value'],'item_bom', frm.doc.dependent_attribute ? 1 : 0)
-		showOrHideColumns(frm,['set_item_attribute_value'],'stiching_item_details', frm.doc.is_set_item ? 0 : 1)
-		updateChildTableReqd(frm, ['set_item_attribute_value'],'stiching_item_details', frm.doc.is_set_item ? 1 : 0)
+		showOrHideColumns(frm,['set_item_attribute_value','is_default'],'stiching_item_details', frm.doc.is_set_item ? 0 : 1)
+		updateChildTableReqd(frm, ['set_item_attribute_value',"is_default"],'stiching_item_details', frm.doc.is_set_item ? 1 : 0)
 	},
 	get_packing_attribute_values: function(frm){
 		frappe.call({

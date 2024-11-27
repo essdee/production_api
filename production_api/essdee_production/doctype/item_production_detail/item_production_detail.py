@@ -115,7 +115,7 @@ class ItemProductionDetail(Document):
 			self.set('set_item_combination_details', set_details)
 
 		if self.get('stiching_item_detail'):
-			stiching_detail = save_item_details(self.stiching_item_detail)
+			stiching_detail = save_item_details(self.stiching_item_detail,doc_name = self.name)
 			self.set('stiching_item_combination_details', stiching_detail)
 
 		if not self.is_set_item:
@@ -140,6 +140,28 @@ class ItemProductionDetail(Document):
 		if cut_json:
 			cut_json['select_list'] = cloths		
 		self.cutting_cloths_json = cut_json
+
+		if self.is_set_item:
+			mapping = None
+			for item in self.item_attributes:
+				if item.attribute == self.set_item_attribute:
+					mapping = item.mapping
+					break
+			map_doc = frappe.get_doc("Item Item Attribute Mapping",mapping)
+			map_values = []
+			for map_value in map_doc.values:
+				map_values.append(map_value.attribute_value)
+
+			check_dict = {}
+			for attr in self.stiching_item_details:
+				if attr.is_default:
+					if check_dict.get(attr.set_item_attribute_value):
+						frappe.throw(f"Select only one Is Default for {attr.set_item_attribute_value}")	
+					else:
+						check_dict[attr.set_item_attribute_value] =  1
+
+			if len(check_dict) < len(map_values):
+				frappe.throw("Select Is default for all Set Item Attributes")
 
 	def create_new_mapping_values(self):
 		for attribute in self.get('item_attributes'):
@@ -520,7 +542,6 @@ def calculate_cloth(ipd_doc, variant_attrs, qty, cloth_combination, stitching_co
 	attrs = variant_attrs.copy()
 	if stitching_combination["stitching_attribute"] in cloth_combination["cloth_attributes"] and stitching_combination["stitching_attribute"] not in cloth_combination["cutting_attributes"]:
 		frappe.throw(f"Cannot calculate cloth quantity without {stitching_combination['stitching_attribute']} in Cloth Weight Combination.")
-
 	cloth_detail = []
 
 	if stitching_combination["stitching_attribute"] in cloth_combination["cutting_attributes"]:
@@ -559,7 +580,6 @@ def calculate_cloth(ipd_doc, variant_attrs, qty, cloth_combination, stitching_co
 			accessory_colour = get_accessory_colour(ipd_doc,attrs,accessory_name)	
 			weight = accessory_weight * qty
 			cloth_detail.append(add_cloth_detail(weight, ipd_doc.additional_cloth,accessory_cloth,accessory_colour,dia,"accessory"))
-
 	return cloth_detail
 
 def get_bom_combination(bom_items):
@@ -602,9 +622,21 @@ def add_cloth_detail(weight, additional_cloth,cloth_type,cloth_colour,dia,type):
 	}
 
 def get_accessory_colour(ipd_doc,variant_attrs,accessory):
-	for acce in json.loads(ipd_doc.stiching_accessory_json)["items"]:
-		if acce[ipd_doc.stiching_major_attribute_value] == variant_attrs[ipd_doc.packing_attribute]:
-			return acce[accessory]		
+	if ipd_doc.is_set_item:
+		panel = None
+		part = variant_attrs[ipd_doc.set_item_attribute]
+		for item in ipd_doc.stiching_item_details:
+			if item.set_item_attribute_value == part and item.is_default == 1:
+				panel = item.stiching_attribute_value
+				break
+		for acce in json.loads(ipd_doc.stiching_accessory_json)["items"]:
+			if acce.get(panel):
+				if acce[panel] == variant_attrs[ipd_doc.packing_attribute]:
+					return acce[accessory]
+	else:
+		for acce in json.loads(ipd_doc.stiching_accessory_json)["items"]:
+			if acce[ipd_doc.stiching_major_attribute_value] == variant_attrs[ipd_doc.packing_attribute]:
+				return acce[accessory]
 
 def get_additional_cloth(weight, additional_cloth):
 	if additional_cloth:
@@ -625,7 +657,6 @@ def get_cloth_combination(ipd_doc):
 	cutting_combination = {}
 	cloth_combination = {}
 	accessory_combination = {}
-
 	cutting_items = json.loads(ipd_doc.cutting_items_json)
 	cutting_cloths = json.loads(ipd_doc.cutting_cloths_json)
 	accessory_items = json.loads(ipd_doc.cloth_accessory_json)
@@ -685,10 +716,28 @@ def fetch_combination_items(combination_items):
 		combination_result['values'].append(item_list)
 	return combination_result
 
-def save_item_details(combination_item_detail):
+def save_item_details(combination_item_detail, doc_name = None):
 	if isinstance(combination_item_detail, string_types):
 		combination_item_detail = json.loads(combination_item_detail)
 	item_detail = []
+	ipd_doc = None
+	if doc_name:
+		d = {}
+		f = {}
+		ipd_doc = frappe.get_doc("Item Production Detail",doc_name)
+		if ipd_doc.is_set_item:
+			for i in ipd_doc.stiching_item_details:
+				if d.get(i.set_item_attribute_value):
+					d[i.set_item_attribute_value].append(i.stiching_attribute_value)
+				else:
+					d[i.set_item_attribute_value] = [i.stiching_attribute_value]	
+			for i in ipd_doc.set_item_combination_details:
+				if f.get(i.set_item_attribute_value):
+					if i.attribute_value not in f[i.set_item_attribute_value]:
+						f[i.set_item_attribute_value].append(i.attribute_value)
+				else:
+					f[i.set_item_attribute_value] = [i.attribute_value]		
+
 	for idx,item in enumerate(combination_item_detail['values']):
 		for value in item['val']:
 			row = {}
@@ -696,6 +745,15 @@ def save_item_details(combination_item_detail):
 			row['major_attribute_value'] = item['major_attribute']
 			row['set_item_attribute_value'] = value
 			row['attribute_value'] = item['val'][value]
+			if ipd_doc and ipd_doc.is_set_item:
+				attr_val = item['major_attribute']
+				part = None
+				for m in d:
+					if value in d[m]:
+						part = m
+						break
+				if attr_val not in f[part]:
+					row['major_attribute_value'] = f[part][0]
 			item_detail.append(row)
 	return item_detail	
 
@@ -930,14 +988,16 @@ def get_stiching_accessory_combination(doc_name):
 	for key,val in x.items():
 		combination_list['attributes'].append(key)
 	combination_list['items'] = []
-	
+
+	colors = []
 	for stich_item in ipd_doc.stiching_item_combination_details:
-		if stich_item.set_item_attribute_value == ipd_doc.stiching_major_attribute_value:
+		if stich_item.attribute_value not in colors:
 			new_dict = {}
 			new_dict[stich_item.set_item_attribute_value] = stich_item.major_attribute_value
 			for key,val in x.items():
 				new_dict[key] = None
 			combination_list['items'].append(new_dict)
+			colors.append(stich_item.attribute_value)
 	
 	return combination_list		
 
