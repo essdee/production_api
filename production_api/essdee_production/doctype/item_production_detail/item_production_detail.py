@@ -722,21 +722,15 @@ def save_item_details(combination_item_detail, doc_name = None):
 	item_detail = []
 	ipd_doc = None
 	if doc_name:
-		d = {}
-		f = {}
+		set_item_stitching_attrs = {}
+		set_item_packing_combination = {}
 		ipd_doc = frappe.get_doc("Item Production Detail",doc_name)
 		if ipd_doc.is_set_item:
 			for i in ipd_doc.stiching_item_details:
-				if d.get(i.set_item_attribute_value):
-					d[i.set_item_attribute_value].append(i.stiching_attribute_value)
-				else:
-					d[i.set_item_attribute_value] = [i.stiching_attribute_value]	
+				set_item_stitching_attrs[i.stiching_attribute_value] = i.set_item_attribute_value
 			for i in ipd_doc.set_item_combination_details:
-				if f.get(i.set_item_attribute_value):
-					if i.attribute_value not in f[i.set_item_attribute_value]:
-						f[i.set_item_attribute_value].append(i.attribute_value)
-				else:
-					f[i.set_item_attribute_value] = [i.attribute_value]		
+				set_item_packing_combination.setdefault(i.major_attribute_value, {})
+				set_item_packing_combination[i.major_attribute_value][i.set_item_attribute_value] = i.attribute_value	
 
 	for idx,item in enumerate(combination_item_detail['values']):
 		for value in item['val']:
@@ -746,14 +740,8 @@ def save_item_details(combination_item_detail, doc_name = None):
 			row['set_item_attribute_value'] = value
 			row['attribute_value'] = item['val'][value]
 			if ipd_doc and ipd_doc.is_set_item:
-				attr_val = item['major_attribute']
-				part = None
-				for m in d:
-					if value in d[m]:
-						part = m
-						break
-				if attr_val not in f[part]:
-					row['major_attribute_value'] = f[part][0]
+				part = set_item_stitching_attrs[value]
+				row['major_attribute_value'] = set_item_packing_combination[item['major_attribute']][part]
 			item_detail.append(row)
 	return item_detail	
 
