@@ -15,7 +15,19 @@ frappe.query_reports["TIme and Action Pending Work"] = {
 			"fieldname":"action",
 			"options":"Action",
 			"label":"Action",
-			"reqd":1,
+		},
+		{
+			"fieldtype":"Link",
+			"fieldname":"work_station",
+			"options":"Work Station",
+			"label":"Work Station",
+			get_query:function(){
+				return {
+					filters: {
+						"action" : frappe.query_report.get_filter_value("action")
+					}
+				}
+			}
 		}
 	]
 };

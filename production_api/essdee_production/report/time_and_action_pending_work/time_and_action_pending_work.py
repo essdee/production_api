@@ -26,14 +26,19 @@ def get_columns():
 
 def get_data(filters):
 	date = filters.get("date")
-	action = filters.get("action")
+	action_cond = ""
+	if action := filters.get("action"):
+		action_cond += f"and B.action = '{action}'"
+
+	if work_station := filters.get("work_station"):
+		action_cond += f" and B.work_station = '{work_station}'"	
 
 	query_result = frappe.db.sql(
 		f"""
 			Select A.lot, A.item, A.master, A.colour, A.sizes, A.qty, B.action, B.department, B.date,
 			B.rescheduled_date , DATEDIFF(B.rescheduled_date,'{date}') as date_diff
 			from `tabTime and Action` AS A JOIN `tabTime and Action Detail` AS B 
-			ON A.name = B.parent WHERE B.action = '{action}' and B.rescheduled_date <= '{date}' and B.completed = 0
+			ON A.name = B.parent WHERE B.rescheduled_date <= '{date}' and B.completed = 0 {action_cond}
 			ORDER BY date_diff asc;
 		""",as_dict=True
 	)

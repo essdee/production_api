@@ -1,5 +1,6 @@
 {
  "actions": [],
+ "allow_import": 1,
  "allow_rename": 1,
  "autoname": "naming_series:",
  "creation": "2024-11-08 15:32:06.413061",
@@ -7,13 +8,14 @@
  "engine": "InnoDB",
  "field_order": [
   "naming_series",
-  "process_name",
-  "style",
-  "description",
+  "fabric",
+  "product_type",
+  "emblishment",
   "column_break_vloz",
-  "quantity",
   "min_qty",
   "max_qty",
+  "quantity",
+  "description",
   "section_break_wfwl",
   "details"
  ],
@@ -26,18 +28,6 @@
    "options": "Master-"
   },
   {
-   "fieldname": "process_name",
-   "fieldtype": "Data",
-   "in_list_view": 1,
-   "label": "Process Name"
-  },
-  {
-   "fieldname": "style",
-   "fieldtype": "Data",
-   "in_list_view": 1,
-   "label": "Style"
-  },
-  {
    "fieldname": "description",
    "fieldtype": "Data",
    "label": "Description"
@@ -47,11 +37,13 @@
    "fieldtype": "Column Break"
   },
   {
+   "default": "0",
    "fieldname": "min_qty",
    "fieldtype": "Int",
    "label": "Min Qty"
   },
   {
+   "default": "0",
    "fieldname": "max_qty",
    "fieldtype": "Int",
    "label": "Max Qty"
@@ -72,11 +64,32 @@
    "fieldtype": "Table",
    "label": "Details",
    "options": "Action Master Detail"
+  },
+  {
+   "fieldname": "fabric",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Fabric"
+  },
+  {
+   "fieldname": "product_type",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Product Type"
+  },
+  {
+   "fieldname": "emblishment",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Emblishment"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2024-11-28 12:07:53.487578",
+ "modified": "2024-11-28 15:27:40.051098",
  "modified_by": "Administrator",
  "module": "Essdee Production",
  "name": "Action Master",
@@ -94,9 +107,48 @@
    "role": "System Manager",
    "share": 1,
    "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "T & A Admin",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "T & A Manager",
+   "share": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "T & A User",
+   "share": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "T & A Viewer",
+   "share": 1
   }
  ],
- "search_fields": "process_name,style,description,quantity",
+ "search_fields": "fabric,product_type,emblishment,description,quantity",
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": []

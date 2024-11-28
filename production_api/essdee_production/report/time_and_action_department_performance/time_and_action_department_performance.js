@@ -12,6 +12,13 @@ frappe.query_reports["Time and Action Department Performance"] = {
 			"fieldtype":"Date",
 			"fieldname":"to_date",
 			"label":"To Date"
+		},
+		{
+			"fieldtype":"Select",
+			"fieldname":"select",
+			"options":"Department\nAction\nWork Station",
+			"label":"Select",
+			"default":"Department"
 		}
 	]
 };
