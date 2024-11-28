@@ -11,9 +11,9 @@
   "style",
   "description",
   "column_break_vloz",
+  "quantity",
   "min_qty",
   "max_qty",
-  "quantity",
   "section_break_wfwl",
   "details"
  ],
@@ -28,11 +28,13 @@
   {
    "fieldname": "process_name",
    "fieldtype": "Data",
+   "in_list_view": 1,
    "label": "Process Name"
   },
   {
    "fieldname": "style",
    "fieldtype": "Data",
+   "in_list_view": 1,
    "label": "Style"
   },
   {
@@ -57,6 +59,7 @@
   {
    "fieldname": "quantity",
    "fieldtype": "Data",
+   "in_list_view": 1,
    "label": "Quantity",
    "read_only": 1
   },
@@ -73,7 +76,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2024-11-08 18:39:11.260953",
+ "modified": "2024-11-28 12:07:53.487578",
  "modified_by": "Administrator",
  "module": "Essdee Production",
  "name": "Action Master",
@@ -93,7 +96,7 @@
    "write": 1
   }
  ],
- "search_fields": "process_name,style",
+ "search_fields": "process_name,style,description,quantity",
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": []
