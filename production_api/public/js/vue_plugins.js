@@ -10,7 +10,6 @@ import POItem from "./PurchaseOrder/components/Item.vue"
 import GRNItemWrapper from "./GRN";
 import LotOrder from "./Lot/components/LotOrder.vue" 
 import WorkStation from "./Lot/components/WorkStation.vue"
-import LotOrderDetail from "./Lot/components/LotOrderDetail.vue"
 import TimeAction from "./Lot/components/TimeAction.vue"
 import TimeActionReport from "./Lot/components/TimeActionReport.vue"
 import CutPlanItems from "./CuttingPlan/components/CutPlanItems.vue"
@@ -292,22 +291,6 @@ frappe.production.ui.TimeActionReport = class {
     }
 }
 
-
-frappe.production.ui.LotOrderDetail = class {
-    constructor(wrapper){
-        this.$wrapper = $(wrapper)
-        this.make_app()
-    }
-    make_app(){
-        this.app = createApp(LotOrderDetail)
-        SetVueGlobals(this.app)
-        this.vue = this.app.mount(this.$wrapper.get(0))
-    }
-    load_data(item_details){
-        let items = JSON.parse(JSON.stringify(item_details))
-        this.vue.load_data(items)
-    }
-}
 frappe.production.ui.WorkStation = class {
     constructor(wrapper){
         this.$wrapper = $(wrapper)

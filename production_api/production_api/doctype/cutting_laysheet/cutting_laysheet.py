@@ -26,18 +26,29 @@ class CuttingLaySheet(Document):
 			items = save_item_details(self.item_details, self.cutting_plan)
 			self.set("cutting_laysheet_details", items)
 
+		status = frappe.get_value("Cutting Plan",self.cutting_plan,"status")	
+		if status == "Completed":
+			frappe.throw("Select the Incompleted Cutting Plan")
+
+		cut_marker_cp = frappe.get_value("Cutting Marker",self.cutting_marker,"cutting_plan")		
+		if cut_marker_cp != self.cutting_plan:
+			frappe.throw(f"Select the Cutting Marker which is against {self.cutting_plan}")
+
 		if self.is_new():
 			cut_plan_doc = frappe.get_doc("Cutting Plan",self.cutting_plan)	
+			cut_marker_doc = frappe.get_doc("Cutting Marker",self.cutting_marker)		
+
 			self.lay_no = cut_plan_doc.lay_no + 1
 			self.maximum_no_of_plys = cut_plan_doc.maximum_no_of_plys
 			self.maximum_allow_percentage = cut_plan_doc.maximum_allow_percent
 			cut_plan_doc.lay_no = self.lay_no
 			cut_plan_doc.flags.ignore_permissions = 1
 			cut_plan_doc.save()
-			cut_marker_doc = frappe.get_doc("Cutting Marker",self.cutting_marker)
+			
 			marker_list = []
 			for item in cut_marker_doc.cutting_marker_ratios:
 				marker_list.append({'size':item.size,'ratio':item.ratio})
+
 			self.set("cutting_marker_ratios",marker_list)		
 		colours = set()
 		no_of_bits = 0.0
@@ -54,6 +65,9 @@ class CuttingLaySheet(Document):
 			no_of_rolls += item.no_of_rolls
 			used_weight += item.used_weight
 			colours.add(item.colour)
+
+		if weight and self.status == 'Started':
+			self.status = "Completed"
 
 		items = []
 		for colour in colours:
@@ -134,7 +148,6 @@ def get_cut_sheet_data(doc_name,cutting_marker,item_details,items, max_plys:int,
 		items = json.loads(items)
 	if isinstance(item_details, string_types):
 		item_details = json.loads(item_details)	
-	total_pieces = 0
 	maximum_plys = max_plys + (max_plys/100) * maximum_allow
 	bundle_no = 0
 	cm_doc = frappe.get_doc("Cutting Marker",cutting_marker)
@@ -144,6 +157,8 @@ def get_cut_sheet_data(doc_name,cutting_marker,item_details,items, max_plys:int,
 			continue
 		for cm_item in cm_doc.cutting_marker_ratios:
 			no_of_marks = cm_item.ratio
+			if no_of_marks == 0:
+				continue
 			max_grouping = int(maximum_plys/item['no_of_bits'])
 			total_bundles = math.ceil(no_of_marks/max_grouping)
 			avg_grouping = no_of_marks/total_bundles
@@ -155,7 +170,7 @@ def get_cut_sheet_data(doc_name,cutting_marker,item_details,items, max_plys:int,
 			minimum_count = total_bundles - maximum_count
 	
 			temp = bundle_no 
-			for part,group in items.items():
+			for part_value in items:
 				bundle_no = temp	
 				for j in range(maximum_count):
 					bundle_no = bundle_no + 1
@@ -166,7 +181,7 @@ def get_cut_sheet_data(doc_name,cutting_marker,item_details,items, max_plys:int,
 						"colour":item['colour'],
 						"shade":item['shade'],
 						"bundle_no":bundle_no,
-						"part":part,
+						"part":part_value['part'],
 						"quantity": qty,
 						"hash_value":hash_value
 					})	
@@ -179,7 +194,7 @@ def get_cut_sheet_data(doc_name,cutting_marker,item_details,items, max_plys:int,
 						"colour":item['colour'],
 						"shade":item['shade'],
 						"bundle_no":bundle_no,
-						"part":part,
+						"part":part_value['part'],
 						"quantity":qty,
 						"hash_value":hash_value
 					})		
@@ -192,38 +207,42 @@ def get_cut_sheet_data(doc_name,cutting_marker,item_details,items, max_plys:int,
 		else:
 			dictionary[item['bundle_no']] = [item]	
 
+	item_dict = {}
+	for item in items:
+		item_dict[item['part']] = item['value']
+
 	final_list = {}
 	for key,values in dictionary.items():
 		final_list[key] = []
 		group = []
 		for value in values:
 			part = value['part']
-			if items[part] not in group:
-				value['group'] = items[part]
+			if item_dict[part] not in group:
+				value['group'] = item_dict[part]
 				final_list[key].append(value)
 			else:
 				for j in final_list[key]:
-					if j['group'] == items[part]:
+					if j['group'] == item_dict[part]:
 						pt = j['part']
 						j['part'] =  pt + "," + part
-			group.append(items[part])				
+			group.append(item_dict[part])				
 
 	cut_sheet_data = []
 	for key, values in final_list.items():
 		for val in values:
 			val['bundle_no'] = key
 			cut_sheet_data.append(val)
-
+	
 	doc = frappe.get_doc("Cutting LaySheet", doc_name)
 	count = 0
 	for item in doc.cutting_marker_ratios:
-		count = count + item.ratio
+		count += item.ratio
 
 	total_pieces = count * doc.no_of_bits
-		
 	doc.maximum_no_of_plys = max_plys
 	doc.maximum_allow_percentage = maximum_allow 
 	doc.total_no_of_pieces = total_pieces
+	doc.status = "Bundles Generated"
 	doc.set("cutting_laysheet_bundles", cut_sheet_data)
 	doc.save()
 
@@ -254,7 +273,8 @@ def print_labels(print_items, lay_no, cutting_plan, doc_name):
 	if isinstance(print_items,string_types):
 		print_items = json.loads(print_items)
 	zpl = ""
-	creation = frappe.get_value("Cutting LaySheet",doc_name,"creation")
+	cls_doc = frappe.get_doc("Cutting LaySheet",doc_name)
+	creation = cls_doc.creation
 	date = get_created_date(creation)
 	for item in print_items:
 		x = f"""^XA
@@ -297,6 +317,8 @@ def print_labels(print_items, lay_no, cutting_plan, doc_name):
 			^XZ"""
 		zpl += x
 	update_cutting_plan(doc_name)
+	cls_doc.status = "Label Printed"
+	cls_doc.save()
 	return zpl	
 
 @frappe.whitelist()
@@ -479,20 +501,23 @@ def update_cutting_plan(cutting_laysheet):
 	accessory= {}
 	cloth = {}
 	for item in cls_doc.cutting_laysheet_details:
-		cloth.setdefault(item.colour,0)
-		cloth[item.colour] += item.weight - item.balance_weight
-		accessory.setdefault(item.colour,0)
-		accessory[item.colour] += item.accessory_weight
+		key = (item.colour, item.cloth_type, item.dia)
+		cloth.setdefault(key,0)
+		cloth[key] += item.weight - item.balance_weight
+		accessory.setdefault(key,0)
+		accessory[key] += item.accessory_weight
 
 	cp_doc = frappe.get_doc("Cutting Plan",cls_doc.cutting_plan)
 	for item in cp_doc.cutting_plan_cloth_details:
-		if item.colour in cloth:
-			item.used_weight += cloth[item.colour]
+		key = (item.colour, item.cloth_type, item.dia)
+		if key in cloth:
+			item.used_weight += cloth[key]
 			item.balance_weight = item.weight - item.used_weight
 
 	for item in cp_doc.cutting_plan_accessory_details:
-		if item.colour in accessory:
-			item.used_weight += accessory[item.colour]
+		key = (item.colour, item.cloth_type, item.dia)
+		if key in accessory:
+			item.used_weight += accessory[key]
 
 	cp_doc.incomplete_items_json = incomplete_items
 	cp_doc.completed_items_json = completed_items

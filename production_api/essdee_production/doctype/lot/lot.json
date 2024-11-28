@@ -328,7 +328,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2024-11-15 16:22:40.016491",
+ "modified": "2024-11-26 10:36:45.813299",
  "modified_by": "Administrator",
  "module": "Essdee Production",
  "name": "Lot",
@@ -368,6 +368,18 @@
    "role": "All",
    "select": 1,
    "share": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Merchandiser",
+   "share": 1,
+   "write": 1
   }
  ],
  "sort_field": "modified",

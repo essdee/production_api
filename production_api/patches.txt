@@ -12,3 +12,5 @@ production_api.patches.v1_0.update_purchase_invoice_billing_supplier
 production_api.patches.v1_0.item_variant_display_name
 production_api.patches.v1_0.fg_item_size
 production_api.patches.v1_0.purchase_invoice_erp_docstatus
+production_api.patches.v1_0.update_cutting_laysheets
+production_api.patches.v1_0.update_ipd_versions #2

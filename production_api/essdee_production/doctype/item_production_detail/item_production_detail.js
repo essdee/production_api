@@ -178,8 +178,6 @@ frappe.ui.form.on("Item Production Detail", {
 	},
 	make_hide_and_unhide_tabs(frm){
 		if(frm.doc.dependent_attribute){
-			frm.$wrapper.find("[data-fieldname='stiching_tab']").show();
-			frm.$wrapper.find("[data-fieldname='cutting_tab']").show();
 			frm.trigger('make_stiching_combination')
 			frm.trigger('make_cutting_combination')
 			frm.trigger('make_cloth_accessories')
@@ -189,12 +187,6 @@ frappe.ui.form.on("Item Production Detail", {
 				frm.trigger('make_clothtype_accessory_combination')
 			}
 		}
-		else{
-			setTimeout(()=> {
-				frm.$wrapper.find("[data-fieldname='stiching_tab']").hide();
-				frm.$wrapper.find("[data-fieldname='cutting_tab']").hide();
-			}, 100)
-		}
 
 		if(!frm.doc.packing_attribute){
 			frm.$wrapper.find("[data-fieldname='set_item_tab']").hide();
@@ -203,12 +195,6 @@ frappe.ui.form.on("Item Production Detail", {
 			frm.$wrapper.find("[data-fieldname='set_item_tab']").show();
 		}
 
-		if(frm.doc.stiching_item_details.length == 0){
-			frm.$wrapper.find("[data-fieldname='cutting_tab']").hide();
-		}
-		else{
-			frm.$wrapper.find("[data-fieldname='cutting_tab']").show();
-		}
 	},
 	load_item_attribute_details(frm){
 		$(frm.fields_dict['item_attribute_list_values_html'].wrapper).html("");
@@ -230,6 +216,23 @@ frappe.ui.form.on("Item Production Detail", {
 			frm.doc['set_item_detail'] = JSON.stringify(frm.doc.__onload.set_item_detail);
 			await frm.set_item.load_data(frm.doc.__onload.set_item_detail);
 			frm.set_item.set_attributes()
+		}
+	},
+	async update_cloth_items(frm){
+		if(frm.cloth_item){
+			if(frm.doc.cutting_cloths_json) {
+				let cloths = []
+				for(let i = 0 ; i < frm.doc.cloth_detail.length; i++){
+					if(frm.doc.cloth_detail[i].name1 && frm.doc.cloth_detail[i].cloth){
+						cloths.push(frm.doc.cloth_detail[i].name1)
+					}
+				}	
+				let cut_json = frm.doc.cutting_cloths_json
+				cut_json = JSON.parse(cut_json)
+				cut_json['select_list'] = cloths
+				await frm.cloth_item.load_data(cut_json);
+				frm.cloth_item.set_attributes()
+			}
 		}
 	},
 	async make_stiching_combination(frm){
@@ -281,8 +284,8 @@ frappe.ui.form.on("Item Production Detail", {
 	onload_post_render(frm){
 		showOrHideColumns(frm,['dependent_attribute_value'],'item_bom', frm.doc.dependent_attribute ? 0 : 1)
 		updateChildTableReqd(frm, ['dependent_attribute_value'],'item_bom', frm.doc.dependent_attribute ? 1 : 0)
-		showOrHideColumns(frm,['set_item_attribute_value'],'stiching_item_details', frm.doc.is_set_item ? 0 : 1)
-		updateChildTableReqd(frm, ['set_item_attribute_value'],'stiching_item_details', frm.doc.is_set_item ? 1 : 0)
+		showOrHideColumns(frm,['set_item_attribute_value','is_default'],'stiching_item_details', frm.doc.is_set_item ? 0 : 1)
+		updateChildTableReqd(frm, ['set_item_attribute_value',"is_default"],'stiching_item_details', frm.doc.is_set_item ? 1 : 0)
 	},
 	get_packing_attribute_values: function(frm){
 		frappe.call({

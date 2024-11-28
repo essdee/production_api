@@ -144,7 +144,7 @@ function get_data(){
                 frappe.throw("Cloth item not in the select list")
             }
         }
-        if(cloths.length < items.value.select_list.length){
+        if(!cur_frm.is_new() && cloths.length < items.value.select_list.length){
             frappe.throw("Some Cloth items not in the select list")
         }
     }
