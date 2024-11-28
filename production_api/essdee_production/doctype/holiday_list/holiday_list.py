@@ -206,24 +206,27 @@ def local_country_name(country_code: str) -> str:
 
 	return Locale.parse(frappe.local.lang, sep="-").territories.get(country_code, country_code)
 
-def check_is_holiday(date):
-	holiday = frappe.db.sql(f"""Select * from `tabHoliday` where holiday_date = '{date}'""",as_dict= True)
-	return len(holiday) > 0
+# def check_is_holiday(date):
+# 	holiday = frappe.db.sql(f"""Select * from `tabHoliday` where holiday_date = '{date}'""",as_dict= True)
+# 	return len(holiday) > 0
 
 def get_next_date(day,lead_time):
 	date1 = day
 	day = add_days(day,lead_time)
 	date2 = day
-
 	return_date = None
 	while True:
-		events = get_events(date1,date2)
-		events_length = len(events)
-		if check_is_holiday(date2):
-			events_length += 1
-		if events_length == 0:
+		events_l = get_events_len(date1,date2)
+		if events_l == 0:
 			return_date = date2
 			break
 		date1 = date2
-		date2 = add_days(date2,events_length)
+		date2 = add_days(date2, events_l)
 	return return_date	
+
+def get_events_len(date1,date2):
+	return len(frappe.db.sql(
+		f"""	
+			Select description from `tabHoliday` where holiday_date > '{date1}' and holiday_date <= '{date2}';   
+		""",as_dict = True
+	))

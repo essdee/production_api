@@ -4,7 +4,7 @@
 import frappe
 from frappe.model.document import Document
 from frappe.utils import date_diff, getdate
-from production_api.essdee_production.doctype.holiday_list.holiday_list import get_events,get_next_date
+from production_api.essdee_production.doctype.holiday_list.holiday_list import get_events_len,get_next_date
 
 class TimeandAction(Document):
 	def before_validate(self):
@@ -22,8 +22,7 @@ class TimeandAction(Document):
 						date1 = item.actual_date
 						date2 = item.date
 					
-					events = get_events(date1,date2)
-					events_len = len(events)
+					events_len = get_events_len(date1,date2)
 					d = d + events_len if d < 0 else d - events_len
 					
 					item.date_diff = d
@@ -35,8 +34,7 @@ class TimeandAction(Document):
 						date1 = item.actual_date
 						date2 = item.rescheduled_date
 
-					events2 = get_events(date1, date2)
-					events2_len = len(events2)
+					events2_len = get_events_len(date1,date2)
 					diff = diff + events2_len if diff < 0 else diff - events2_len
 
 					item.performance = get_performance(diff)					

@@ -20,22 +20,23 @@ class Lot(Document):
 			items = save_item_details(self.item_details, dependent_attr=self.get('dependent_attribute_mapping'))
 			self.set("items",items)
 
-		if self.get('order_item_details'):
+		if self.get('order_item_details') and len(self.lot_time_and_action_details) == 0:
 			order_items = save_order_item_details(self.order_item_details)
 			self.set('lot_order_details',order_items)
 
 		if self.is_new(): 
 			if len(self.items) > 0:
 				self.calculate_order()
-		else: 	
-			doc = frappe.get_doc("Lot",self.name)
-			if len(doc.items) == 0 and len(self.items) > 0:
-				self.calculate_order()
+		else:
+			if len(self.lot_time_and_action_details) == 0 :	
+				doc = frappe.get_doc("Lot",self.name)
+				if len(doc.items) == 0 and len(self.items) > 0:
+					self.calculate_order()
 
-			qty = 0
-			for item in self.items:
-				qty = qty + item.qty
-			self.total_quantity = qty
+				qty = 0
+				for item in self.items:
+					qty = qty + item.qty
+				self.total_quantity = qty
 
 		if self.get("action_details"):
 			update_time_and_action(self.action_details,self.lot_time_and_action_details)
@@ -208,22 +209,6 @@ def save_order_item_details(item_details, dependent_attr = None):
 def update_time_and_action(action_details,lot_action_details):
 	if isinstance(action_details,string_types):
 		action_details = json.loads(action_details)
-
-	for item1,item2 in zip_longest(action_details,lot_action_details):
-		if item1['process']:
-			doc = frappe.get_doc("Time and Action",item2.time_and_action)
-			for i in doc.details:
-				if i.name == item1['name'] and item1['actual_date']:
-					i.actual_date = item1['actual_date']
-					i.reason = item1['reason']
-					doc.save()
-					break
-
-
-def update_time_and_action(action_details,lot_action_details):
-	if isinstance(action_details,string_types):
-		action_details = json.loads(action_details)
-
 	for item1,item2 in zip_longest(action_details,lot_action_details):
 		if item1['process']:
 			doc = frappe.get_doc("Time and Action",item2.time_and_action)
