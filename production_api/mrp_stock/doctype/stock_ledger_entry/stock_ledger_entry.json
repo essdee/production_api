@@ -151,7 +151,7 @@
  "in_create": 1,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2024-07-25 12:19:31.711673",
+ "modified": "2024-11-26 10:41:57.239773",
  "modified_by": "Administrator",
  "module": "MRP Stock",
  "name": "Stock Ledger Entry",
@@ -180,6 +180,15 @@
    "read": 1,
    "report": 1,
    "role": "System Manager",
+   "share": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Merchandiser",
    "share": 1
   }
  ],

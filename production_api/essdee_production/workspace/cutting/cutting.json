@@ -1,0 +1,48 @@
+{
+ "charts": [],
+ "content": "[{\"id\":\"JXfNdLisAk\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">Cutting</span>\",\"col\":12}},{\"id\":\"ssreziCzOU\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Cutting Plan\",\"col\":3}},{\"id\":\"XJZ0cG_t0J\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Cutting Laysheet\",\"col\":3}}]",
+ "creation": "2024-11-26 10:23:38.744397",
+ "custom_blocks": [],
+ "docstatus": 0,
+ "doctype": "Workspace",
+ "for_user": "",
+ "hide_custom": 0,
+ "icon": "tool",
+ "idx": 0,
+ "indicator_color": "green",
+ "is_hidden": 0,
+ "label": "Cutting",
+ "links": [],
+ "modified": "2024-11-26 10:50:40.356215",
+ "modified_by": "Administrator",
+ "module": "Essdee Production",
+ "name": "Cutting",
+ "number_cards": [],
+ "owner": "Administrator",
+ "parent_page": "Essdee Production",
+ "public": 1,
+ "quick_lists": [],
+ "roles": [],
+ "sequence_id": 3.0,
+ "shortcuts": [
+  {
+   "color": "Grey",
+   "doc_view": "List",
+   "format": "{}",
+   "label": "Cutting Plan",
+   "link_to": "Cutting Plan",
+   "stats_filter": "[[\"Cutting Plan\",\"status\",\"=\",\"Started\",false]]",
+   "type": "DocType"
+  },
+  {
+   "color": "Grey",
+   "doc_view": "List",
+   "format": "{}",
+   "label": "Cutting Laysheet",
+   "link_to": "Cutting LaySheet",
+   "stats_filter": "[]",
+   "type": "DocType"
+  }
+ ],
+ "title": "Cutting"
+}

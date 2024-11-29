@@ -1,0 +1,28 @@
+{
+ "add_total_row": 0,
+ "columns": [],
+ "creation": "2024-11-14 09:51:18.819573",
+ "disabled": 0,
+ "docstatus": 0,
+ "doctype": "Report",
+ "filters": [],
+ "idx": 0,
+ "is_standard": "Yes",
+ "json": "{}",
+ "letter_head": "",
+ "letterhead": null,
+ "modified": "2024-11-14 09:51:22.650764",
+ "modified_by": "Administrator",
+ "module": "Essdee Production",
+ "name": "TIme and Action Pending Work",
+ "owner": "Administrator",
+ "prepared_report": 0,
+ "ref_doctype": "Time and Action",
+ "report_name": "TIme and Action Pending Work",
+ "report_type": "Script Report",
+ "roles": [
+  {
+   "role": "System Manager"
+  }
+ ]
+}

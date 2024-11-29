@@ -1,0 +1,52 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2024-11-08 15:38:36.168980",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "action",
+  "lead_time",
+  "department"
+ ],
+ "fields": [
+  {
+   "fieldname": "action",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Action",
+   "options": "Action",
+   "reqd": 1
+  },
+  {
+   "fetch_from": "action.lead_time",
+   "fetch_if_empty": 1,
+   "fieldname": "lead_time",
+   "fieldtype": "Int",
+   "in_list_view": 1,
+   "label": "Lead Time"
+  },
+  {
+   "fetch_from": "action.department",
+   "fetch_if_empty": 1,
+   "fieldname": "department",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Department",
+   "read_only": 1
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2024-11-29 09:42:44.416035",
+ "modified_by": "Administrator",
+ "module": "Essdee Production",
+ "name": "Action Master Detail",
+ "owner": "Administrator",
+ "permissions": [],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

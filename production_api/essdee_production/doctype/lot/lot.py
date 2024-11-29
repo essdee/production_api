@@ -3,10 +3,11 @@
 import frappe, json
 from frappe.model.document import Document
 from six import string_types
-from frappe.utils import flt
+from frappe.utils import flt, add_days
 from production_api.production_api.doctype.item.item import create_variant, get_variant, get_attribute_details, get_or_create_variant
-from itertools import groupby
+from itertools import groupby, zip_longest
 import math
+from production_api.essdee_production.doctype.holiday_list.holiday_list import get_next_date
 from production_api.production_api.doctype.item_dependent_attribute_mapping.item_dependent_attribute_mapping import get_dependent_attribute_details
 
 class Lot(Document):
@@ -15,18 +16,34 @@ class Lot(Document):
 			frappe.throw("BOM is not calculated")
 
 	def before_validate(self):
-		if self.get('item_details'):
+		if self.get('item_details') and len(self.lot_time_and_action_details) == 0:
 			items = save_item_details(self.item_details, dependent_attr=self.get('dependent_attribute_mapping'))
 			self.set("items",items)
-		qty = 0
-		for item in self.items:
-			qty = qty + item.qty
-		self.total_quantity = qty
-	
-	def validate(self):	
-		if self.production_detail:
-			items, qty = calculate_order_details(self.get('items'), self.production_detail, self.packing_uom, self.uom)
 
+		if self.get('order_item_details') and len(self.lot_time_and_action_details) == 0:
+			order_items = save_order_item_details(self.order_item_details)
+			self.set('lot_order_details',order_items)
+
+		if self.is_new(): 
+			if len(self.items) > 0:
+				self.calculate_order()
+		else:
+			if len(self.lot_time_and_action_details) == 0 :	
+				doc = frappe.get_doc("Lot",self.name)
+				if len(doc.items) == 0 and len(self.items) > 0:
+					self.calculate_order()
+
+				qty = 0
+				for item in self.items:
+					qty = qty + item.qty
+				self.total_quantity = qty
+
+		if self.get("action_details"):
+			update_time_and_action(self.action_details,self.lot_time_and_action_details)
+	
+	def calculate_order(self):	
+		if self.production_detail and len(self.lot_time_and_action_details) == 0:
+			items, qty = calculate_order_details(self.get('items'), self.production_detail, self.packing_uom, self.uom)
 			if len(items) == 0:
 				x = []
 				for item in self.items:
@@ -47,6 +64,37 @@ class Lot(Document):
 				x = json.dumps(items[0])
 				self.db_set('lot_order_details_json', x, update_modified=False)
 				self.set_onload('order_item_details', items)
+
+		if len(self.lot_time_and_action_details) > 0:
+			items = get_time_and_action_process(self.lot_time_and_action_details)
+			self.set_onload('action_details',items)		
+
+def get_time_and_action_process(action_details):
+	items = []
+	for item in action_details:
+		out = frappe.db.sql( 
+			""" SELECT * FROM `tabTime and Action Detail` AS t_and_a WHERE t_and_a.parent = %s AND t_and_a.completed = 0
+				ORDER BY t_and_a.idx ASC LIMIT 1 """,
+			(item.time_and_action,),
+			as_dict=1
+		)
+		if len(out) > 0:
+			out = out[0]
+			out['colour'] = item.colour
+			out['master'] = item.master
+			out['process'] = True
+			items.append(out)
+		else:
+			items.append({
+				"colour":item.colour,
+				"master":item.master,
+				"action":"Completed",
+				"department":None,
+				"date":None,
+				"rescheduled_date":None,
+				"process":False
+			})	
+	return items
 
 def calculate_order_details(items, production_detail, packing_uom, final_uom):
 	item_detail = frappe.get_doc("Item Production Detail", production_detail)
@@ -120,6 +168,56 @@ def calculate_order_details(items, production_detail, packing_uom, final_uom):
 					'quantity':val,
 				})		
 	return final_list, final_qty
+def save_order_item_details(item_details, dependent_attr = None):
+	if isinstance(item_details, string_types):
+		item_details = json.loads(item_details)
+	if len(item_details) == 0:
+		return []
+	items = item_details[0]
+	item_list = []
+	for item in items['items']:
+		if item['primary_attribute']:
+			attributes = item['attributes']
+			attributes[items['dependent_attribute']] = items['final_state']	
+			for value in item['values'].keys():
+				item1 = {}
+				attributes[item['primary_attribute']] = value
+				variant_name = get_variant(items['item'], attributes)
+				if not variant_name:
+					variant1 = create_variant(items['item'], attributes, dependent_attr=dependent_attr)
+					variant1.insert()
+					variant_name = variant1.name
+
+				item1['item_variant'] = variant_name
+				item1['quantity'] = item['values'][value]
+				item_list.append(item1)
+		else:
+			item1 = {}
+			attributes = item['attributes']
+			variant_name = item['item']
+			variant_name = get_variant(item['item'], attributes)
+			if not variant_name:
+				variant1 = create_variant(item['item'], attributes)
+				variant1.insert()
+				variant_name = variant1.name
+			item1['item_variant'] = variant_name
+			item1['qty'] = item['values']['qty']
+			item_list.append(item1)
+	return item_list
+
+
+def update_time_and_action(action_details,lot_action_details):
+	if isinstance(action_details,string_types):
+		action_details = json.loads(action_details)
+	for item1,item2 in zip_longest(action_details,lot_action_details):
+		if item1['process']:
+			doc = frappe.get_doc("Time and Action",item2.time_and_action)
+			for i in doc.details:
+				if i.name == item1['name'] and item1['actual_date']:
+					i.actual_date = item1['actual_date']
+					i.reason = item1['reason']
+					doc.save()
+					break
 
 def save_item_details(item_details, dependent_attr=None):
 	if isinstance(item_details, string_types):
@@ -401,3 +499,263 @@ def get_item_list_details(lot):
 		items.append(item.as_dict())
 
 	return items	
+
+@frappe.whitelist()
+def get_packing_attributes(ipd):
+	ipd_doc = frappe.get_doc("Item Production Detail",ipd)
+	colours = []
+	sizes = ""
+	ratios = []
+	combo = None
+
+	if ipd_doc.auto_calculate:
+		combo = ipd_doc.packing_attribute_no
+
+	for item in ipd_doc.packing_attribute_details:
+		colours.append(item.attribute_value)
+		if not combo:
+			ratios.append(ipd_doc.packing_combo/item.quantity)
+
+	if ipd_doc.is_set_item:
+		set_mapping = None
+		for item in ipd_doc.item_attributes:
+			if item.attribute == ipd_doc.set_item_attribute:
+				set_mapping = item.mapping
+				break
+		set_map_doc = frappe.get_doc("Item Item Attribute Mapping",set_mapping)
+		colour_combo = []
+		ratio_combo = []
+		index = -1		
+		for colour in colours:
+			index = index + 1
+			for part in set_map_doc.values:
+				colour_combo.append(str(colour)+"-"+str(part.attribute_value))
+				if not combo:
+					ratio_combo.append(ratios[index])
+		colours = colour_combo
+		ratios = ratio_combo
+
+	mapping = None
+	for item in ipd_doc.item_attributes:
+		if item.attribute == ipd_doc.primary_item_attribute:
+			mapping = item.mapping
+			break
+
+	map_doc = frappe.get_doc("Item Item Attribute Mapping",mapping)		
+	for item in map_doc.values:
+		sizes += item.attribute_value + ","
+
+	return {
+		"colours":colours,
+		"sizes":sizes,
+		"ratios":ratios,
+		"combo":combo
+	}	
+
+@frappe.whitelist()
+def create_time_and_action(lot, item_name, args , values, total_qty, items):
+	if isinstance(args,string_types):
+		args = json.loads(args)
+	if isinstance(values,string_types):
+		values = json.loads(values)	
+	
+	sizes = args['sizes']
+	ratios = args['ratios']
+	combo = args['combo']
+	item_list = values['table']
+	start_date = values['start_date']
+
+	sizes = sizes[:-1]
+	d = {}
+	if isinstance(items,string_types):
+		items = json.loads(items)
+
+	lot_items = []
+	for idx,item in enumerate(item_list):
+		new_doc = frappe.new_doc("Time and Action")
+		new_doc.update({
+			"lot":lot,
+			"item":item_name,
+			"sizes":sizes,
+			"colour":item['colour'],
+			"master":item["master"],
+			"start_date":start_date,
+		})
+		if combo:
+			new_doc.qty = math.ceil(flt(total_qty)/flt(combo))
+		else:
+			new_doc.qty = math.ceil(flt(total_qty)/flt(ratios[idx]))
+		child_table = []
+		x = 1
+		day = start_date
+		day2 = start_date
+		for colour_item in items[item['colour']]:
+			day = get_next_date(day, colour_item['lead_time'])
+			struct = {
+				"action":colour_item['action'],
+				"lead_time":colour_item['lead_time'],
+				"department":colour_item['department'],
+				"date":day,
+				"rescheduled_date":day,
+				"planned_start_date":day2,
+				"rescheduled_start_date":day2,
+				"index2":x
+			}
+			if colour_item.get('work_station'):
+				struct["work_station"] = colour_item['work_station']
+			day2 = get_next_date(day2, colour_item['lead_time']	)
+			x = x + 1
+			child_table.append(struct)
+
+		new_doc.set("details",child_table)
+		new_doc.save()
+		lot_items.append({
+			"colour":item['colour'],
+			"master":item["master"],
+			"time_and_action":new_doc.name,	
+		})
+	lot_doc = frappe.get_doc("Lot",lot)
+	lot_doc.set("lot_time_and_action_details",lot_items)
+	lot_doc.save()
+
+@frappe.whitelist()
+def get_time_and_action_details(docname):
+	doc = frappe.get_doc("Time and Action",docname)
+	item_list = [item.as_dict() for item in doc.details]
+	status = doc.status
+	return {
+		"item_list" : item_list,
+		"status" : status
+	}	
+
+@frappe.whitelist()
+def make_complete(time_and_action):
+	t_and_a = frappe.get_doc("Time and Action",time_and_action)
+	check = True
+	for item in t_and_a.details:
+		if not item.actual_date and not item.completed:
+			check = False
+			break
+	if check:
+		t_and_a.status = "Completed"
+		t_and_a.save()	
+	else:
+		frappe.msgprint("Not all the Actions are Completed")		
+
+@frappe.whitelist()
+def get_select_options(lot):
+	lot_doc = frappe.get_doc("Lot",lot)
+	select_options = []
+	for item in lot_doc.lot_time_and_action_details:
+		select_options.append(item.colour)
+	return select_options
+
+@frappe.whitelist()
+def get_action_master_details(master_list):
+	if isinstance(master_list,string_types):
+		master_list = json.loads(master_list)
+	work_station = {}
+	for item in master_list:
+		work_station[item['colour']] = []
+		master_doc = frappe.get_doc("Action Master",item['master'])
+		for action in master_doc.details:
+			action_data = action.as_dict()
+			capacity_planning = frappe.get_value("Action",action_data['action'],"capacity_planning")
+			if capacity_planning:
+				name_list = frappe.get_list("Work Station", filters={"action":action_data["action"],"default":True},pluck = "name")
+				if not name_list:
+					frappe.throw(f"There is no Work Station for Action {action_data['action']}")
+				action_data['work_station'] = frappe.get_value("Work Station",name_list[0],"name")
+			action_data['master'] = item['master']	
+			work_station[item['colour']].append(action_data)
+	return work_station
+
+@frappe.whitelist()
+def undo_last_update(time_and_action):
+	t_and_a = frappe.get_doc("Time and Action",time_and_action)
+	index = None
+	for item in t_and_a.details:
+		if item.completed:
+			index = item.idx
+	
+	for item in t_and_a.details:
+		if item.idx == index:
+			item.performance = None
+			item.actual_date = None
+			item.actual_start_date = None
+			item.completed = 0
+			item.date_diff = None
+			item.reason = None
+			break
+	
+	for item in t_and_a.details:
+		item.index2 = item.index2 + 2
+
+	if index and index != 1:
+		for item in t_and_a.details:
+			if item.idx == index + 1:
+				item.actual_start_date = None
+				break
+		for item in t_and_a.details:
+			if item.idx == index - 1:
+				item.completed = 0
+				break
+	else:
+		for item in t_and_a.details:
+			item.index2 = item.idx
+			item.rescheduled_date = item.date	
+			item.actual_start_date = None
+			item.actual_date = None
+			item.date_diff = None	
+			item.reason = None
+			item.performance = None
+	t_and_a.save()		
+
+@frappe.whitelist()
+def get_order_details(doc_name):
+	doc = frappe.get_doc("Lot", doc_name)
+	doc.calculate_order()
+	doc.save()
+
+@frappe.whitelist()
+def get_work_stations(items):
+	work_station = {}
+	if isinstance(items,string_types):
+		items = json.loads(items)
+	for item in items:
+		doc = frappe.get_doc("Time and Action",item['parent'])
+		work_station[item['colour']] = []
+		for child in doc.details:
+			child_data = child.as_dict()
+			child_data['master'] = doc.master
+			work_station[item['colour']].append(child_data)
+	return work_station		
+
+@frappe.whitelist()
+def update_t_and_a_ws(datas):
+	if isinstance(datas,string_types):
+		datas = json.loads(datas)
+
+	for d in datas:
+		doc = frappe.get_doc("Time and Action",datas[d][0]['parent'])
+		child_table = []
+		for data in datas[d]:
+			child_table.append({
+				"action": data['action'],
+				"department":data['department'],
+				"lead_time":data['lead_time'],
+				"date":data['date'],
+				"rescheduled_date":data['rescheduled_date'],
+				"actual_date":data['actual_date'],
+				"work_station":data['work_station'],
+				"date_diff":data['date_diff'],
+				"reason":data['reason'],
+				"performance":data['performance'],
+				"completed":data['completed'],
+				"index2":data['index2'],
+				"planned_start_date":data['planned_start_date'],
+				"rescheduled_start_date":data['rescheduled_start_date'],
+				"actual_start_date":data['actual_start_date'],
+			})	
+		doc.set("details",child_table)
+		doc.save()	

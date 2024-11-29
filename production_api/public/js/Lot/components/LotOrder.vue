@@ -14,7 +14,7 @@
               <th v-for="(j, idx) in i.primary_attribute_values" :key="idx">
                 {{ j }}
               </th>
-              <th v-if="docstatus == 0">Edit</th>
+              <th v-if="docstatus == 0 && t_and_a == 0">Edit</th>
             </tr>
             <tr v-for="(j, item1_index) in i.items" :key="item1_index">
               <td :rowspan="3">{{ item1_index + 1 }}</td>
@@ -24,7 +24,7 @@
               <td v-for="(k, idx) in Object.keys(j.values)" :key="'qty-' + idx">
                 Qty: {{ j.values[k]['qty'] }}
               </td>
-              <td :rowspan="3" v-if="docstatus == 0">
+              <td :rowspan="3" v-if="docstatus == 0 && t_and_a == 0">
                 <div
                   class="pull-left cursor-pointer"
                   @click="edit_item(item1_index)"
@@ -62,7 +62,7 @@
               <th>Qty</th>
               <th>Ratio</th>
               <th>MRP</th>
-              <th v-if='docstatus == 0'>Edit</th>
+              <th v-if='docstatus == 0 && t_and_a == 0'>Edit</th>
             </tr>
             <tr v-for="(j, item1_index) in i.items" :key="item1_index">
               <td>{{ item1_index + 1 }}</td>
@@ -73,7 +73,7 @@
               <td>{{ j.values.qty }}</td>
               <td>{{ j.values.ratio }}</td>
               <td>{{ j.values.mrp }}</td>
-              <td v-if='docstatus == 0'>
+              <td v-if='docstatus == 0 && t_and_a == 0'>
                 <div
                   class="pull-left cursor-pointer"
                   @click="edit_item(item1_index)"
@@ -91,7 +91,7 @@
       </tr>
     </table>
     <div>
-      <div v-if='!show_parameters'>
+      <div v-if='!show_parameters  && t_and_a == 0'>
         <button 
           class="btn btn-success" 
           @click="show_add_items()"
@@ -152,6 +152,7 @@ const edit = ref(false);
 const edit_index = ref(null);
 const button_show = ref(false);
 const show_parameters = ref(false)
+let t_and_a = ref(cur_frm.doc.lot_time_and_action_details.length)
 
 onMounted(() => {
   docstatus.value = cur_frm.doc.docstatus;

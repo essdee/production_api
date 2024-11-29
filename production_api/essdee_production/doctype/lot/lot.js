@@ -24,7 +24,16 @@ frappe.ui.form.on("Lot", {
         }
 		frm.set_df_property('bom_summary','cannot_add_rows',true)
 		frm.set_df_property('bom_summary','cannot_delete_rows',true)
-
+		if(frm.doc.lot_time_and_action_details.length == 0){
+			frm.add_custom_button("Calculate Order Items", ()=> {
+				frappe.call({
+					method:"production_api.essdee_production.doctype.lot.lot.get_order_details",
+					args : {
+						doc_name : frm.doc.name,
+					}
+				})
+			})
+		}
         $(frm.fields_dict['items_html'].wrapper).html("")
         frm.item = new frappe.production.ui.LotOrder(frm.fields_dict['items_html'].wrapper)
         if(frm.doc.__onload && frm.doc.__onload.item_details) {
@@ -49,17 +58,125 @@ frappe.ui.form.on("Lot", {
 				frm.item.load_data([])
 			}
         }
-		frm.order_detail = new frappe.production.ui.LotOrderDetail(frm.fields_dict['lot_item_order_detail_html'].wrapper)
+		$(frm.fields_dict['time_and_action_html'].wrapper).html("")
+		frm.time_action = new frappe.production.ui.TimeAction(frm.fields_dict['time_and_action_html'].wrapper)
+		if(frm.doc.__onload && frm.doc.__onload.action_details){
+			frm.time_action.load_data(frm.doc.__onload.action_details)
+		}
+		if(frm.doc.lot_time_and_action_details.length > 0){
+			$(frm.fields_dict['time_and_action_report_html'].wrapper).html("")
+			frm.time_action_report = new frappe.production.ui.TimeActionReport(frm.fields_dict['time_and_action_report_html'].wrapper)
+		}	
+		if(frm.doc.lot_time_and_action_details.length == 0){
+			frm.add_custom_button("Create T&A",()=> {
+				frappe.call({
+					method:"production_api.essdee_production.doctype.lot.lot.get_packing_attributes",
+					args: {
+						ipd: frm.doc.production_detail,
+					},
+					callback:function(r){
+						let data = []
+						for(let i = 0; i < r.message.colours.length ; i++){
+							data.push(
+								{'colour':r.message.colours[i],'master':null}
+							)
+						}
+						let label = "Colours"
+						if(frm.doc.is_set_item){
+							label += " - " + frm.doc.set_item_attribute
+						}
+						let dialog = new frappe.ui.Dialog({
+							size: "extra-large",
+							fields: [
+								{
+									label: label,
+									fieldname: 'table',
+									fieldtype: 'Table',
+									cannot_add_rows: true,
+									in_place_edit: false,
+									data: data,
+									fields: [
+										{ fieldname: 'colour', fieldtype: 'Data', in_list_view: 1, label: 'Colour',reqd:1 ,readonly:1},
+										{ fieldname: 'master', fieldtype: 'Link', in_list_view: 1, options:"Action Master" ,label:'Master',reqd:1}
+									]
+								},
+								{
+									label:'Start Date',
+									fieldname:"start_date",
+									fieldtype:"Date",
+									reqd:true,
+								},
+							],
+							primary_action(values){
+								for(let i = 0 ; i < values.table.length; i++){
+									if(values.table[i].master == null){
+										frappe.throw(`Mention master for colour ${values.table[i].colour }`)
+									}
+								}
+								frappe.call({
+									method:"production_api.essdee_production.doctype.lot.lot.get_action_master_details",
+									args : {
+										master_list : values.table
+									},
+									callback:async function(res){
+										let d = new frappe.ui.Dialog({
+											size:"large",
+											title:"Work Station List",
+											fields:[
+												{
+													"fieldtype":"HTML",
+													"fieldname":"work_station_html",
+												},
+											],
+											primary_action(){
+												let items = popupDialog.get_items()
+												frappe.call({
+													method:"production_api.essdee_production.doctype.lot.lot.create_time_and_action",
+													args: {
+														"lot":frm.doc.name,
+														"item_name":frm.doc.item,
+														"args":r.message,
+														"values":values,
+														"total_qty":frm.doc.total_order_quantity,
+														"items":items
+													}
+												})
+												d.hide()
+											}
+										})
+										d.show()
+										let popupDialog = new frappe.production.ui.WorkStation(d.fields_dict['work_station_html'].wrapper);
+										await popupDialog.load_data(res.message,"create")
+										popupDialog.set_attributes()
+									}
+								})
+								dialog.hide()
+							}
+						});
+						dialog.show();
+					}
+				})
+			})	
+		}
+		frm.order_detail = new frappe.production.ui.CutPlanItems(frm.fields_dict['lot_item_order_detail_html'].wrapper)
 		if(frm.doc.__onload && frm.doc.__onload.order_item_details) {
-			frm.order_detail.load_data(frm.doc.__onload.order_item_details);
+			frm.order_detail.load_data(frm.doc.__onload.order_item_details, frm.doc.lot_time_and_action_details.length);
         }
         else{
-			frm.order_detail.load_data([])
+			frm.order_detail.load_data([],0)
 		}
     },
     validate(frm){
         let items = frm.item.get_data()
         frm.doc['item_details'] = JSON.stringify(items)
+		let order_items = frm.order_detail.get_items()
+        frm.doc['order_item_details'] = JSON.stringify(order_items)
+
+		let action_items = frm.time_action.get_data()
+		if(action_items.changed){
+			frm.doc['action_details'] = JSON.stringify(action_items.items)
+		}
+		
     },
 	item(frm){
 		if(!frm.doc.item){
