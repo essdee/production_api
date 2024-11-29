@@ -3,7 +3,6 @@
 
 import math
 import frappe,json
-from itertools import groupby
 from six import string_types
 from frappe.model.document import Document
 from production_api.production_api.doctype.item.item import get_or_create_variant
@@ -11,6 +10,9 @@ from frappe.utils import getdate
 from production_api.essdee_production.doctype.item_production_detail.item_production_detail import get_stitching_combination
 from itertools import zip_longest
 import sys
+import base64
+from secrets import token_bytes as get_random_bytes
+import time
 
 class CuttingLaySheet(Document):
 	def autoname(self):
@@ -24,18 +26,29 @@ class CuttingLaySheet(Document):
 			items = save_item_details(self.item_details, self.cutting_plan)
 			self.set("cutting_laysheet_details", items)
 
+		status = frappe.get_value("Cutting Plan",self.cutting_plan,"status")	
+		if status == "Completed":
+			frappe.throw("Select the Incompleted Cutting Plan")
+
+		cut_marker_cp = frappe.get_value("Cutting Marker",self.cutting_marker,"cutting_plan")		
+		if cut_marker_cp != self.cutting_plan:
+			frappe.throw(f"Select the Cutting Marker which is against {self.cutting_plan}")
+
 		if self.is_new():
 			cut_plan_doc = frappe.get_doc("Cutting Plan",self.cutting_plan)	
+			cut_marker_doc = frappe.get_doc("Cutting Marker",self.cutting_marker)		
+
 			self.lay_no = cut_plan_doc.lay_no + 1
 			self.maximum_no_of_plys = cut_plan_doc.maximum_no_of_plys
 			self.maximum_allow_percentage = cut_plan_doc.maximum_allow_percent
 			cut_plan_doc.lay_no = self.lay_no
 			cut_plan_doc.flags.ignore_permissions = 1
 			cut_plan_doc.save()
-			cut_marker_doc = frappe.get_doc("Cutting Marker",self.cutting_marker)
+			
 			marker_list = []
 			for item in cut_marker_doc.cutting_marker_ratios:
 				marker_list.append({'size':item.size,'ratio':item.ratio})
+
 			self.set("cutting_marker_ratios",marker_list)		
 		colours = set()
 		no_of_bits = 0.0
@@ -52,6 +65,9 @@ class CuttingLaySheet(Document):
 			no_of_rolls += item.no_of_rolls
 			used_weight += item.used_weight
 			colours.add(item.colour)
+
+		if weight and self.status == 'Started':
+			self.status = "Completed"
 
 		items = []
 		for colour in colours:
@@ -132,7 +148,6 @@ def get_cut_sheet_data(doc_name,cutting_marker,item_details,items, max_plys:int,
 		items = json.loads(items)
 	if isinstance(item_details, string_types):
 		item_details = json.loads(item_details)	
-	total_pieces = 0
 	maximum_plys = max_plys + (max_plys/100) * maximum_allow
 	bundle_no = 0
 	cm_doc = frappe.get_doc("Cutting Marker",cutting_marker)
@@ -142,6 +157,8 @@ def get_cut_sheet_data(doc_name,cutting_marker,item_details,items, max_plys:int,
 			continue
 		for cm_item in cm_doc.cutting_marker_ratios:
 			no_of_marks = cm_item.ratio
+			if no_of_marks == 0:
+				continue
 			max_grouping = int(maximum_plys/item['no_of_bits'])
 			total_bundles = math.ceil(no_of_marks/max_grouping)
 			avg_grouping = no_of_marks/total_bundles
@@ -159,7 +176,6 @@ def get_cut_sheet_data(doc_name,cutting_marker,item_details,items, max_plys:int,
 					bundle_no = bundle_no + 1
 					hash_value = get_timestamp_prefix() + generate_random_string(12)
 					qty = maximum * item['no_of_bits']
-					total_pieces += qty
 					cut_sheet_data.append({
 						"size":cm_item.size,
 						"colour":item['colour'],
@@ -173,7 +189,6 @@ def get_cut_sheet_data(doc_name,cutting_marker,item_details,items, max_plys:int,
 					bundle_no = bundle_no + 1
 					hash_value = get_timestamp_prefix() + generate_random_string(12)
 					qty = minimum * item['no_of_bits']
-					total_pieces += qty
 					cut_sheet_data.append({
 						"size":cm_item.size,
 						"colour":item['colour'],
@@ -217,17 +232,19 @@ def get_cut_sheet_data(doc_name,cutting_marker,item_details,items, max_plys:int,
 		for val in values:
 			val['bundle_no'] = key
 			cut_sheet_data.append(val)
-
+	
 	doc = frappe.get_doc("Cutting LaySheet", doc_name)
+	count = 0
+	for item in doc.cutting_marker_ratios:
+		count += item.ratio
+
+	total_pieces = count * doc.no_of_bits
 	doc.maximum_no_of_plys = max_plys
 	doc.maximum_allow_percentage = maximum_allow 
 	doc.total_no_of_pieces = total_pieces
+	doc.status = "Bundles Generated"
 	doc.set("cutting_laysheet_bundles", cut_sheet_data)
 	doc.save()
-
-import base64
-from secrets import token_bytes as get_random_bytes
-import time
 
 def get_timestamp_prefix():
 	ts = int(time.time() * 10) 
@@ -256,7 +273,8 @@ def print_labels(print_items, lay_no, cutting_plan, doc_name):
 	if isinstance(print_items,string_types):
 		print_items = json.loads(print_items)
 	zpl = ""
-	creation = frappe.get_value("Cutting LaySheet",doc_name,"creation")
+	cls_doc = frappe.get_doc("Cutting LaySheet",doc_name)
+	creation = cls_doc.creation
 	date = get_created_date(creation)
 	for item in print_items:
 		x = f"""^XA
@@ -299,6 +317,8 @@ def print_labels(print_items, lay_no, cutting_plan, doc_name):
 			^XZ"""
 		zpl += x
 	update_cutting_plan(doc_name)
+	cls_doc.status = "Label Printed"
+	cls_doc.save()
 	return zpl	
 
 @frappe.whitelist()
@@ -320,7 +340,6 @@ def get_bundle_items(cutting_laysheet):
 		if item.bundle_no not in bundles:
 			items.append(item.as_dict())
 			bundles.append(item.bundle_no)
-	
 	return items
 
 @frappe.whitelist()
@@ -329,9 +348,7 @@ def get_colours(cutting_laysheet, items):
 	colours = set()
 	for item in doc.cutting_laysheet_details:
 		colours.add(item.colour)
-	
 	colour_items = {}
-
 	for colour in colours:
 		for item in items:
 			if item['colour'] == colour:
@@ -339,7 +356,6 @@ def get_colours(cutting_laysheet, items):
 					colour_items[colour].append(item)
 				else:
 					colour_items[colour] = [item]
-
 	return colours,colour_items
 	
 @frappe.whitelist()
@@ -399,7 +415,6 @@ def update_cutting_plan(cutting_laysheet):
 					else:	
 						item_panel[key] = {}
 						item_panel[key][panel] = item['values'][val][panel] 
-		
 		for item in item_panel:
 			check = True
 			min = sys.maxsize
@@ -413,7 +428,6 @@ def update_cutting_plan(cutting_laysheet):
 					panel_colour = stitching_combination['stitching_combination'][item[1]][i]
 					if set_item:
 						condition1 = i in incomplete_items[ipd_doc.stiching_attribute][part]
-
 					if condition1:	
 						m = False
 						for panel in item_panel:
@@ -449,7 +463,6 @@ def update_cutting_plan(cutting_laysheet):
 					condition4 = True
 					if set_item:
 						condition4 = i in incomplete_items[ipd_doc.stiching_attribute][part]
-
 					if condition4:	
 						for panel in item_panel:
 							condition5 = True
@@ -485,7 +498,6 @@ def update_cutting_plan(cutting_laysheet):
 					completed_items['total_qty'][val] += min
 			if total_qty != 0:		
 				item2['total_qty'] = total_qty 			
-
 	accessory= {}
 	cloth = {}
 	for item in cls_doc.cutting_laysheet_details:
@@ -510,3 +522,4 @@ def update_cutting_plan(cutting_laysheet):
 	cp_doc.incomplete_items_json = incomplete_items
 	cp_doc.completed_items_json = completed_items
 	cp_doc.save()		
+	

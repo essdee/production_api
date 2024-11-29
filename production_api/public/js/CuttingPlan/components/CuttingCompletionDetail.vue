@@ -59,7 +59,11 @@ import {ref} from 'vue';
 
 let items = ref(null)
 function load_data(item){
-    items.value = JSON.parse(item);
+    try {
+        items.value = JSON.parse(item);
+    } catch(e) {
+        console.log(e)
+    }
 }
 
 defineExpose({

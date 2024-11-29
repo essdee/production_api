@@ -15,6 +15,8 @@
   "production_detail",
   "uom",
   "expected_delivery_date",
+  "is_set_item",
+  "set_item_attribute",
   "section_break_qubc",
   "tech_pack_version",
   "pattern_version",
@@ -43,7 +45,12 @@
   "calculate_bom",
   "bom_summary",
   "bom_additional_items",
-  "bom_summary_json"
+  "bom_summary_json",
+  "time_and_action_tab",
+  "lot_time_and_action_details",
+  "time_and_action_html",
+  "section_break_cmku",
+  "time_and_action_report_html"
  ],
  "fields": [
   {
@@ -273,11 +280,55 @@
    "fieldtype": "JSON",
    "hidden": 1,
    "label": "BOM Summary JSON"
+  },
+  {
+   "fieldname": "time_and_action_tab",
+   "fieldtype": "Tab Break",
+   "label": "Time and Action"
+  },
+  {
+   "fieldname": "time_and_action_html",
+   "fieldtype": "HTML",
+   "label": "Time and Action HTML"
+  },
+  {
+   "fieldname": "lot_time_and_action_details",
+   "fieldtype": "Table",
+   "hidden": 1,
+   "label": "Lot Time and Action Details",
+   "options": "Lot Time and Action Detail"
+  },
+  {
+   "fieldname": "time_and_action_report_html",
+   "fieldtype": "HTML",
+   "label": "Time and Action Report HTML"
+  },
+  {
+   "fieldname": "section_break_cmku",
+   "fieldtype": "Section Break"
+  },
+  {
+   "default": "0",
+   "fetch_from": "production_detail.is_set_item",
+   "fetch_if_empty": 1,
+   "fieldname": "is_set_item",
+   "fieldtype": "Check",
+   "hidden": 1,
+   "label": "Is Set Item"
+  },
+  {
+   "fetch_from": "production_detail.set_item_attribute",
+   "fetch_if_empty": 1,
+   "fieldname": "set_item_attribute",
+   "fieldtype": "Link",
+   "hidden": 1,
+   "label": "Set Item Attribute",
+   "options": "Item Attribute"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2024-11-05 11:19:51.008682",
+ "modified": "2024-11-26 10:36:45.813299",
  "modified_by": "Administrator",
  "module": "Essdee Production",
  "name": "Lot",
@@ -317,6 +368,18 @@
    "role": "All",
    "select": 1,
    "share": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Merchandiser",
+   "share": 1,
+   "write": 1
   }
  ],
  "sort_field": "modified",

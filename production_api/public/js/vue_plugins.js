@@ -11,7 +11,9 @@ import GRNItemWrapper from "./GRN";
 import GRNPurchaseOrder from "./GRN/components/GRNPurchaseOrder.vue";
 import GRNWorkOrder from "./GRN/components/GRNWorkOrder.vue";
 import LotOrder from "./Lot/components/LotOrder.vue" 
-import LotOrderDetail from "./Lot/components/LotOrderDetail.vue"
+import WorkStation from "./Lot/components/WorkStation.vue"
+import TimeAction from "./Lot/components/TimeAction.vue"
+import TimeActionReport from "./Lot/components/TimeActionReport.vue"
 import CutPlanItems from "./CuttingPlan/components/CutPlanItems.vue"
 import CuttingCompletionDetail from "./CuttingPlan/components/CuttingCompletionDetail.vue"
 import CuttingIncompletionDetail from "./CuttingPlan/components/CuttingIncompletionDetail.vue"
@@ -254,19 +256,62 @@ frappe.production.ui.LotOrder = class {
     }
 }
 
-frappe.production.ui.LotOrderDetail = class {
+frappe.production.ui.TimeAction = class {
     constructor(wrapper){
         this.$wrapper = $(wrapper)
         this.make_app()
     }
     make_app(){
-        this.app = createApp(LotOrderDetail)
+        this.app = createApp(TimeAction)
         SetVueGlobals(this.app)
         this.vue = this.app.mount(this.$wrapper.get(0))
     }
+    get_data(){
+        let get_data = this.vue.get_data()
+        let items = JSON.parse(JSON.stringify(get_data.items))
+        let changed = JSON.parse(JSON.stringify(get_data.changed))
+        return {
+            "items":items,
+            "changed":changed,
+        }
+    }
     load_data(item_details){
-        let items = JSON.parse(JSON.stringify(item_details))
+        let items = JSON.parse(JSON.stringify(item_details));
         this.vue.load_data(items)
+    }
+}
+
+frappe.production.ui.TimeActionReport = class {
+    constructor(wrapper){
+        this.$wrapper = $(wrapper)
+        this.make_app()
+    }
+    make_app(){
+        this.app = createApp(TimeActionReport)
+        SetVueGlobals(this.app)
+        this.vue = this.app.mount(this.$wrapper.get(0))
+    }
+}
+
+frappe.production.ui.WorkStation = class {
+    constructor(wrapper){
+        this.$wrapper = $(wrapper)
+        this.make_app()
+    }
+    make_app(){
+        this.app = createApp(WorkStation)
+        SetVueGlobals(this.app)
+        this.vue = this.app.mount(this.$wrapper.get(0))
+    }
+    load_data(data){
+        let items = JSON.parse(JSON.stringify(data))
+        this.vue.load_data(items)
+    }
+    set_attributes(){
+        this.vue.set_attributes()
+    }
+    get_items(){
+        return this.vue.get_items()
     }
 }
 
@@ -427,7 +472,6 @@ frappe.production.ui.CutPlanClothItems = class {
     }
     get_items(){
         let items = this.vue.get_items()
-        console.log(items)
         return items
     }
 }

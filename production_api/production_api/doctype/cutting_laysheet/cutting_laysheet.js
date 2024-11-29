@@ -2,6 +2,26 @@
 // For license information, please see license.txt
 
 frappe.ui.form.on("Cutting LaySheet", {
+    setup(frm){
+        frm.set_query("cutting_marker", (doc)=> {
+            if(!doc.cutting_plan){
+                frappe.msgprint("Set the Cutting Plan First")
+                return
+            }
+            return {
+                filters:{
+                    "cutting_plan":doc.cutting_plan,
+                }
+            }
+        })
+        frm.set_query("cutting_plan", ()=> {
+            return{
+                filters: {
+                    "status":["!=","Completed"]
+                }
+            }
+        })
+    },
     refresh(frm) {
         frm.laysheet = new frappe.production.ui.LaySheetCloths(frm.fields_dict['cloths_html'].wrapper)
         if(frm.doc.__onload && frm.doc.__onload.item_details){
@@ -12,7 +32,7 @@ frappe.ui.form.on("Cutting LaySheet", {
         }
         frm.set_df_property('cutting_laysheet_bundles','cannot_add_rows',true)
 		frm.set_df_property('cutting_laysheet_bundles','cannot_delete_rows',true)
-        if(frm.doc.cutting_laysheet_details.length > 0 && frm.doc.printed_time == null){
+        if(frm.doc.cutting_laysheet_details.length > 0 && frm.doc.status != "Label Printed" ){
             frm.add_custom_button("Generate",()=> {
                 frappe.call({
                     method:"production_api.production_api.doctype.cutting_laysheet.cutting_laysheet.get_parts",
@@ -76,7 +96,7 @@ frappe.ui.form.on("Cutting LaySheet", {
                 })
             })
         }
-        if(frm.doc.cutting_laysheet_bundles.length > 0 && frm.doc.printed_time == null ){
+        if(frm.doc.cutting_laysheet_bundles.length > 0 && frm.doc.status != "Label Printed" ){
             frm.add_custom_button("Print Labels", ()=> {
                 frappe.ui.form.qz_connect()
                     .then(function () {
@@ -179,6 +199,7 @@ function print_labels(frm,printer){
                 let config = qz.configs.create(printer)
                 qz.print(config,[r.message]).then(()=> {
                     frm.set_value("printed_time",frappe.datetime.now_datetime())
+                    frm.set_value("status","Label Printed")
                     frm.save()
                 }).catch((err)=>{
                     frm.set_value("printed_time",null)
