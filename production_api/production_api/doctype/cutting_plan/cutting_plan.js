@@ -5,10 +5,10 @@ frappe.ui.form.on("Cutting Plan", {
 	refresh(frm) {
         frm.cut_plan_items = new frappe.production.ui.CutPlanItems(frm.fields_dict['items_html'].wrapper)
         if(frm.doc.__onload && frm.doc.__onload.item_details){
-            frm.cut_plan_items.load_data(frm.doc.__onload.item_details)
+            frm.cut_plan_items.load_data(frm.doc.__onload.item_details,0)
         }
         else{
-            frm.cut_plan_items.load_data([])
+            frm.cut_plan_items.load_data([],0)
         }
         if(!frm.is_new()){
             frm.completed_items = new frappe.production.ui.CuttingCompletionDetail(frm.fields_dict['completed_items_html'].wrapper)

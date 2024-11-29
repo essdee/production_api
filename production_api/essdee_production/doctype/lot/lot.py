@@ -570,11 +570,6 @@ def create_time_and_action(lot, item_name, args , values, total_qty, items):
 	if isinstance(items,string_types):
 		items = json.loads(items)
 
-	for item in items:
-		d[item] = {}
-		for idx,val in enumerate(items[item]):
-			d[item][val['action']] = idx
-	
 	lot_items = []
 	for idx,item in enumerate(item_list):
 		new_doc = frappe.new_doc("Time and Action")
@@ -590,27 +585,25 @@ def create_time_and_action(lot, item_name, args , values, total_qty, items):
 			new_doc.qty = math.ceil(flt(total_qty)/flt(combo))
 		else:
 			new_doc.qty = math.ceil(flt(total_qty)/flt(ratios[idx]))
-		master_doc = frappe.get_doc("Action Master",item["master"])
 		child_table = []
 		x = 1
 		day = start_date
 		day2 = start_date
-		for master in master_doc.details:
-			day = get_next_date(day, master.lead_time)
+		for colour_item in items[item['colour']]:
+			day = get_next_date(day, colour_item['lead_time'])
 			struct = {
-				"action":master.action,
-				"lead_time":master.lead_time,
-				"department":master.department,
+				"action":colour_item['action'],
+				"lead_time":colour_item['lead_time'],
+				"department":colour_item['department'],
 				"date":day,
 				"rescheduled_date":day,
 				"planned_start_date":day2,
 				"rescheduled_start_date":day2,
 				"index2":x
 			}
-			if master.work_station:
-				index = d[item['colour']][master.action]
-				struct["work_station"] = items[item['colour']][index]['work_station']
-			day2 = get_next_date(day2, master.lead_time)	
+			if colour_item.get('work_station'):
+				struct["work_station"] = colour_item['work_station']
+			day2 = get_next_date(day2, colour_item['lead_time']	)
 			x = x + 1
 			child_table.append(struct)
 
@@ -666,9 +659,15 @@ def get_action_master_details(master_list):
 		work_station[item['colour']] = []
 		master_doc = frappe.get_doc("Action Master",item['master'])
 		for action in master_doc.details:
-			if action.work_station:
-				work_station[item['colour']].append(action.as_dict())
-	
+			action_data = action.as_dict()
+			capacity_planning = frappe.get_value("Action",action_data['action'],"capacity_planning")
+			if capacity_planning:
+				name_list = frappe.get_list("Work Station", filters={"action":action_data["action"],"default":True},pluck = "name")
+				if not name_list:
+					frappe.throw(f"There is no Work Station for Action {action_data['action']}")
+				action_data['work_station'] = frappe.get_value("Work Station",name_list[0],"name")
+			action_data['master'] = item['master']	
+			work_station[item['colour']].append(action_data)
 	return work_station
 
 @frappe.whitelist()
@@ -717,3 +716,46 @@ def get_order_details(doc_name):
 	doc = frappe.get_doc("Lot", doc_name)
 	doc.calculate_order()
 	doc.save()
+
+@frappe.whitelist()
+def get_work_stations(items):
+	work_station = {}
+	if isinstance(items,string_types):
+		items = json.loads(items)
+	for item in items:
+		doc = frappe.get_doc("Time and Action",item['parent'])
+		work_station[item['colour']] = []
+		for child in doc.details:
+			child_data = child.as_dict()
+			child_data['master'] = doc.master
+			work_station[item['colour']].append(child_data)
+	return work_station		
+
+@frappe.whitelist()
+def update_t_and_a_ws(datas):
+	if isinstance(datas,string_types):
+		datas = json.loads(datas)
+
+	for d in datas:
+		doc = frappe.get_doc("Time and Action",datas[d][0]['parent'])
+		child_table = []
+		for data in datas[d]:
+			child_table.append({
+				"action": data['action'],
+				"department":data['department'],
+				"lead_time":data['lead_time'],
+				"date":data['date'],
+				"rescheduled_date":data['rescheduled_date'],
+				"actual_date":data['actual_date'],
+				"work_station":data['work_station'],
+				"date_diff":data['date_diff'],
+				"reason":data['reason'],
+				"performance":data['performance'],
+				"completed":data['completed'],
+				"index2":data['index2'],
+				"planned_start_date":data['planned_start_date'],
+				"rescheduled_start_date":data['rescheduled_start_date'],
+				"actual_start_date":data['actual_start_date'],
+			})	
+		doc.set("details",child_table)
+		doc.save()	
