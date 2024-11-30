@@ -14,14 +14,14 @@
                             <td>{{value.action}}</td>
                             <td>{{value.master}}</td>
                             <td>
-                                <div :class="get_input_class(item,value.action,value.parent)"></div>
+                                <div :class="get_input_class(item,value.action,value.master)"></div>
                             </td>
                         </template>
                         <template v-else-if=" types == 'update' && value.work_station && value.completed == 0">
                             <td>{{value.action}}</td>
                             <td>{{value.master}}</td>
                             <td>
-                                <div :class="get_input_class(item,value.action,value.parent)"></div>
+                                <div :class="get_input_class(item,value.action,value.master)"></div>
                             </td>
                         </template>    
                     </tr>
