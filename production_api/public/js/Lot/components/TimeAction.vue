@@ -1,7 +1,10 @@
 <template>
     <div>
         <div v-if="items && items.length > 0">
-            <h4>Time and Action Summary</h4>
+            <div style="display:flex;width:100%;">
+                <h4 style="width:85%;">Time and Action Summary</h4>
+                <button class="btn btn-success" style="width:15%;" @click="update_work_station()">Update Work Station</button>
+            </div>
             <table class="table table-sm table-bordered">
                 <tr>
                     <th>S.No</th>
@@ -28,6 +31,8 @@
 </template>
 <script setup>
 import {ref} from 'vue';
+import WorkStation from './WorkStation.vue';
+import { createApp } from 'vue';
 
 let items = ref([])
 let is_set_item = ref(cur_frm.doc.is_set_item)
@@ -100,6 +105,47 @@ function make_popup(index){
         }
     })
     d.show()
+}
+
+function update_work_station(){
+    frappe.call({
+        method:"production_api.essdee_production.doctype.lot.lot.get_work_stations",
+        args : {
+            "items": items.value,
+        },
+        callback :async function(r){
+            let d = new frappe.ui.Dialog({
+                size : "large",
+                title: "Update Work Station",
+                fields: [
+                    {
+                        fieldname: "html_field",
+                        fieldtype: "HTML",
+                    },
+                ],
+                primary_action_label : "Update",
+                primary_action: () => {
+                    d.hide();
+                    let updated_ws = app.get_items()
+                    frappe.call({
+                        method: "production_api.essdee_production.doctype.lot.lot.update_t_and_a_ws",
+                        args : {
+                            datas : updated_ws
+                        },
+                        callback: function(){
+                            cur_frm.refresh()
+                        }
+                    })
+                },
+            });
+            d.fields_dict.html_field.$wrapper.empty();
+            const vueApp = createApp(WorkStation); 
+            const app = vueApp.mount(d.fields_dict.html_field.$wrapper[0]);
+            await app.load_data(r.message,"update")
+            app.set_attributes()
+            d.show();
+        }
+    })
 }
 
 defineExpose({

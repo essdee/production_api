@@ -17,9 +17,6 @@ def get_columns():
 		{"fieldtype":"Float","fieldname":"qty","label":"Quantity","width":100},
 		{"fieldtype":"Data","fieldname":"colours","label":"Colours","width":150},
 		{"fieldtype":"Link","fieldname":"action","label":"Next Action","options":"Action","width":120},
-		# {"fieldtype":"Link","fieldname":"department","options":"Employee Department","label":"Department","width":120},
-		# {"fieldtype":"Date","fieldname":"date","label":"Planned Date","width":120},
-		# {"fieldtype":"Date","fieldname":"rescheduled_date","label":"Rescheduled Date","width":150},
 	]
 	return columns
 
