@@ -26,7 +26,7 @@
                     <td>{{ i.department }}</td>
                     <td>{{ date_format(i.date) }}</td>
                     <td>{{ date_format(i.rescheduled_date) }}</td>
-                    <td v-if="i.process"><button class="btn btn-success" @click="make_popup(index)">Update</button></td>
+                    <td v-if="i.process"><button class="btn btn-success" @click="make_popup(index,i.colour, i.action)">Update</button></td>
                 </tr>
             </table>
         </div>
@@ -82,6 +82,7 @@ function update_all(){
     })
 
     let dialog = new frappe.ui.Dialog({
+        title : `Update ${cur_action.value} for all`,
         fields : [
             {
                 "fieldname" : "actual_date",
@@ -102,9 +103,13 @@ function update_all(){
                     }
                 }
             }
+            let reason = values.reason
+            if(!reason){
+                reason = null
+            }
             items.value.forEach((row)=> {
                 row['actual_date'] = values.actual_date
-                row['reason'] = values.reason    
+                row['reason'] = reason    
                 changed.value = true
                 cur_frm.dirty()
                 cur_frm.save()
@@ -115,9 +120,9 @@ function update_all(){
     dialog.show()
 }
 
-function make_popup(index){
+function make_popup(index, colour, action){
     let d =new frappe.ui.Dialog({
-        title:"Update Actual Date",
+        title:`On ${colour}, Update Actual Date for ${action}`,
         fields:[
             {
                 fieldtype:"Date",
