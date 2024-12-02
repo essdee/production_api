@@ -10,7 +10,6 @@
  "field_order": [
   "naming_series",
   "purpose",
-  "packing_slip",
   "outgoing_stock_entry",
   "column_break_gz9cd",
   "posting_date",
@@ -44,7 +43,7 @@
    "fieldtype": "Select",
    "in_list_view": 1,
    "label": "Purpose",
-   "options": "Material Issue\nMaterial Receipt\nSend to Warehouse\nReceive at Warehouse\nMaterial Consumed\nStock Dispatch",
+   "options": "Material Issue\nMaterial Receipt\nSend to Warehouse\nReceive at Warehouse\nMaterial Consumed",
    "reqd": 1
   },
   {
@@ -151,19 +150,12 @@
   {
    "fieldname": "column_break_agyh",
    "fieldtype": "Column Break"
-  },
-  {
-   "depends_on": "eval:doc.purpose == 'Stock Dispatch'",
-   "fieldname": "packing_slip",
-   "fieldtype": "Data",
-   "label": "Packing Slip No.",
-   "mandatory_depends_on": "eval:doc.purpose == 'Stock Dispatch'"
   }
  ],
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2024-09-10 12:56:52.022143",
+ "modified": "2024-11-20 12:30:42.656305",
  "modified_by": "Administrator",
  "module": "MRP Stock",
  "name": "Stock Entry",

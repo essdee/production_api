@@ -11,7 +11,9 @@
   "colour",
   "dia",
   "required_weight",
-  "weight"
+  "weight",
+  "used_weight",
+  "balance_weight"
  ],
  "fields": [
   {
@@ -55,12 +57,22 @@
    "fieldtype": "Data",
    "in_list_view": 1,
    "label": "Cloth Type"
+  },
+  {
+   "fieldname": "used_weight",
+   "fieldtype": "Float",
+   "label": "Used Weight"
+  },
+  {
+   "fieldname": "balance_weight",
+   "fieldtype": "Float",
+   "label": "Balance Weight"
   }
  ],
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2024-10-17 15:42:29.552901",
+ "modified": "2024-11-05 18:54:40.788806",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Cutting Plan Cloth Detail",

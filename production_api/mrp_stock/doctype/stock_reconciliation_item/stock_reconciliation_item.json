@@ -8,13 +8,25 @@
  "field_order": [
   "item",
   "warehouse",
+  "column_break_adwk",
   "lot",
+  "allow_zero_valuation_rate",
+  "section_break_ugav",
   "qty",
-  "rate",
+  "stock_qty",
+  "column_break_niun",
   "uom",
+  "stock_uom",
+  "conversion_factor",
+  "section_break_yuto",
+  "rate",
+  "stock_uom_rate",
+  "column_break_bijs",
+  "amount",
+  "section_break_plxk",
   "table_index",
-  "row_index",
-  "allow_zero_valuation_rate"
+  "column_break_luxy",
+  "row_index"
  ],
  "fields": [
   {
@@ -74,12 +86,66 @@
    "fieldname": "allow_zero_valuation_rate",
    "fieldtype": "Check",
    "label": "Allow Zero Valuation Rate"
+  },
+  {
+   "fieldname": "column_break_adwk",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "section_break_ugav",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "column_break_niun",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "section_break_yuto",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "column_break_bijs",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "section_break_plxk",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "column_break_luxy",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "stock_qty",
+   "fieldtype": "Float",
+   "label": "Stock Qty"
+  },
+  {
+   "fieldname": "stock_uom",
+   "fieldtype": "Link",
+   "label": "Stock UOM",
+   "options": "UOM"
+  },
+  {
+   "fieldname": "conversion_factor",
+   "fieldtype": "Float",
+   "label": "Conversion Factor"
+  },
+  {
+   "fieldname": "stock_uom_rate",
+   "fieldtype": "Currency",
+   "label": "Stock UOM Rate"
+  },
+  {
+   "fieldname": "amount",
+   "fieldtype": "Currency",
+   "label": "Amount"
   }
  ],
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2023-07-14 19:50:01.790179",
+ "modified": "2024-11-08 10:57:36.344706",
  "modified_by": "Administrator",
  "module": "MRP Stock",
  "name": "Stock Reconciliation Item",

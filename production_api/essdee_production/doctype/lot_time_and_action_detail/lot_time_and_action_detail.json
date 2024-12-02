@@ -1,0 +1,50 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2024-11-11 10:09:28.642449",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "colour",
+  "master",
+  "time_and_action"
+ ],
+ "fields": [
+  {
+   "fieldname": "colour",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Colour",
+   "read_only": 1
+  },
+  {
+   "fieldname": "master",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Master",
+   "options": "Action Master",
+   "read_only": 1
+  },
+  {
+   "fieldname": "time_and_action",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Time and Action",
+   "options": "Time and Action",
+   "read_only": 1
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2024-11-11 10:12:04.285969",
+ "modified_by": "Administrator",
+ "module": "Essdee Production",
+ "name": "Lot Time and Action Detail",
+ "owner": "Administrator",
+ "permissions": [],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}
