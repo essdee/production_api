@@ -14,14 +14,14 @@
                             <td>{{value.action}}</td>
                             <td>{{value.master}}</td>
                             <td>
-                                <div :class="get_input_class(item,value.action,value.parent)"></div>
+                                <div :class="get_input_class(item,value.action,value.master)"></div>
                             </td>
                         </template>
                         <template v-else-if=" types == 'update' && value.work_station && value.completed == 0">
                             <td>{{value.action}}</td>
                             <td>{{value.master}}</td>
                             <td>
-                                <div :class="get_input_class(item,value.action,value.parent)"></div>
+                                <div :class="get_input_class(item,value.action,value.master)"></div>
                             </td>
                         </template>    
                     </tr>
@@ -51,14 +51,14 @@ function set_attributes() {
             for(let i = 0; i < items.value[colour].length ; i++){
                 if(types.value == "create" && items.value[colour][i]['work_station']){
                     let action = items.value[colour][i]['action']
-                    let master = items.value[colour][i]['parent']
+                    let master = items.value[colour][i]['master']
                     let work_station = items.value[colour][i]['work_station']
                     let input = createInput(colour, action, master,work_station)
                     items.value[colour][i]['work_station'] = input
                 }
                 else if(types.value == "update" && items.value[colour][i]['work_station'] && items.value[colour][i]['completed'] == 0){
                     let action = items.value[colour][i]['action']
-                    let master = items.value[colour][i]['parent']
+                    let master = items.value[colour][i]['master']
                     let work_station = items.value[colour][i]['work_station']
                     let input = createInput(colour, action, master,work_station)
                     items.value[colour][i]['work_station'] = input

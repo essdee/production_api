@@ -1,9 +1,12 @@
 <template>
     <div>
         <div v-if="items && items.length > 0">
-            <div style="display:flex;width:100%;">
-                <h4 style="width:85%;">Time and Action Summary</h4>
-                <button class="btn btn-success" style="width:15%;" @click="update_work_station()">Update Work Station</button>
+            <div style="display:flex;width:100%; justify-content: space-between;">
+                <h4>Time and Action Summary</h4>
+                <div style="display:flex; justify-content: space-between; gap: 0.75rem; ">
+                    <button  v-if="show_button" class="btn btn-success" @click="update_all()">Update All</button>
+                    <button class="btn btn-success" @click="update_work_station()">Update Work Station</button>
+                </div>
             </div>
             <table class="table table-sm table-bordered">
                 <tr>
@@ -19,7 +22,7 @@
                 <tr v-for="(i,index) in items" :key="i">
                     <td>{{ index + 1}}</td>
                     <td>{{ i.colour }}</td>
-                    <td>{{ i.action }}</td>
+                    <td>{{ check_action(i.action) }}</td>
                     <td>{{ i.department }}</td>
                     <td>{{ date_format(i.date) }}</td>
                     <td>{{ date_format(i.rescheduled_date) }}</td>
@@ -38,6 +41,9 @@ let items = ref([])
 let is_set_item = ref(cur_frm.doc.is_set_item)
 let set_item_attribute = ref(cur_frm.doc.set_item_attribute)
 let changed = ref(false)
+let show_button = ref(false)
+let cur_action = ref(null)
+let dates = ref([])
 
 function load_data(item){
     items.value = item
@@ -55,6 +61,58 @@ function date_format(date){
         let arr = date.split("-")
         return arr[2]+"-"+arr[1]+"-"+arr[0]
     }
+}
+
+function check_action(action){
+    if(cur_action.value == null){
+        cur_action.value = action
+        show_button.value = true
+    }
+    else{
+        if(action != cur_action.value){
+            show_button.value = false
+        }
+    }
+    return action
+}
+
+function update_all(){
+    items.value.forEach((row)=> {
+        dates.value.push(row.rescheduled_date)
+    })
+
+    let dialog = new frappe.ui.Dialog({
+        fields : [
+            {
+                "fieldname" : "actual_date",
+                "fieldtype" : "Date",
+                "label" : "Actual Date",
+            },
+            {
+                "fieldname" : "reason",
+                "fieldtype" : "Data",
+                "label" : "Reason"
+            },
+        ],
+        primary_action(values){
+            if(!values.reason){
+                for(let i = 0 ; i < dates.value.length ; i++){
+                    if(dates.value[i] < values.actual_date){
+                        frappe.throw("Enter the Reason")
+                    }
+                }
+            }
+            items.value.forEach((row)=> {
+                row['actual_date'] = values.actual_date
+                row['reason'] = values.reason    
+                changed.value = true
+                cur_frm.dirty()
+                cur_frm.save()
+                dialog.hide()
+            })
+        }
+    })
+    dialog.show()
 }
 
 function make_popup(index){

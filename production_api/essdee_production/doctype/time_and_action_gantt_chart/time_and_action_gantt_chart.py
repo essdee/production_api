@@ -9,8 +9,8 @@ class TimeandActionGanttChart(Document):
 
 @frappe.whitelist()
 def get_chart_data(action,work_station):
-	cond = ""
-	if work_station:
+	cond =""
+	if work_station != None and work_station != "":
 		cond += f"and A.work_station = '{work_station}'"
 
 	query = f"""
