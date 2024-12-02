@@ -137,7 +137,7 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2024-09-19 11:42:41.235591",
+ "modified": "2024-11-27 09:38:25.564214",
  "modified_by": "Administrator",
  "module": "MRP Stock",
  "name": "Stock Reservation Entry",
@@ -145,6 +145,7 @@
  "owner": "Administrator",
  "permissions": [
   {
+   "cancel": 1,
    "create": 1,
    "delete": 1,
    "email": 1,

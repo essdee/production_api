@@ -152,7 +152,7 @@ def create_stock_reservation_entries_for_so_items(
 			return {
 				"status" : 422,
 				"error" : True,
-				"message" : f"Stock is Already Reserved For {item['item_name']}",
+				"message" : f"Stock is Not Available For {item['item_name']}",
 				"warning" : warning_msg
 			}
 
