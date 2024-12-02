@@ -759,3 +759,28 @@ def update_t_and_a_ws(datas):
 			})	
 		doc.set("details",child_table)
 		doc.save()	
+
+@frappe.whitelist()
+def get_t_and_a_preview_data(start_date, table):
+	if isinstance(table, string_types):
+		table = json.loads(table)
+
+	preview_data = {}
+	for row in table:
+		preview_data[row['colour']] = []
+		doc = frappe.get_doc("Action Master",row['master'])
+		day = start_date
+		for data in doc.details:
+			day = get_next_date(day, data.lead_time)
+			struct = {
+				"action":data.action,
+				"lead_time":data.lead_time,
+				"department":data.department,
+				"date":day,
+				"rescheduled_date":day,
+			}
+			if data.get('work_station'):
+				struct["work_station"] = data.work_station
+			preview_data[row['colour']].append(struct)
+	return preview_data
+

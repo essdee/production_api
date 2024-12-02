@@ -107,11 +107,16 @@ frappe.ui.form.on("Lot", {
 									reqd:true,
 								},
 							],
+							primary_action_label : "Submit",
+							secondary_action_label : "Preview",
 							primary_action(values){
 								for(let i = 0 ; i < values.table.length; i++){
 									if(values.table[i].master == null){
 										frappe.throw(`Mention master for colour ${values.table[i].colour }`)
 									}
+								}
+								if(!values.start_date){
+									frappe.throw("Select the Start Date")
 								}
 								frappe.call({
 									method:"production_api.essdee_production.doctype.lot.lot.get_action_master_details",
@@ -151,6 +156,43 @@ frappe.ui.form.on("Lot", {
 									}
 								})
 								dialog.hide()
+							},
+							secondary_action(){
+								let table = dialog.get_value("table")
+								for(let i = 0 ; i < table.length; i++){
+									if(table[i].master == null){
+										frappe.throw(`Mention master for colour ${table[i].colour}`)
+									}
+								}
+								if(!dialog.get_value("start_date")){
+									frappe.throw("Select the Start Date")
+								}
+
+								frappe.call({
+									method : "production_api.essdee_production.doctype.lot.lot.get_t_and_a_preview_data",
+									args : {
+										"start_date" : dialog.get_value("start_date"),
+										"table" : dialog.get_value("table")
+									},
+									callback: function(r){
+										let d = new frappe.ui.Dialog({
+											size:"extra-large",
+											fields : [
+												{
+													fieldname : "preview_html",
+													fieldtype : "HTML"
+												}
+											],
+											primary_action_label:"Close",
+											primary_action(){
+												d.hide()
+											}
+										})
+										let previewDialog = new frappe.production.ui.TimeActionPreview(d.fields_dict['preview_html'].wrapper);
+										previewDialog.load_data(r.message)
+										d.show()
+									}
+								})
 							}
 						});
 						dialog.show();
