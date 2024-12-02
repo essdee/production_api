@@ -468,6 +468,7 @@ frappe.ui.form.on("Item Production Detail", {
 				packing_attribute_details : frm.doc.packing_attribute_details,
 				major_attribute_value : frm.doc.stiching_major_attribute_value,
 				is_same_packing_attribute: frm.doc.is_same_packing_attribute,
+				doc_name : frm.doc.name,
 			},
 			callback:async function(r){
 				await frm.stiching_item.load_data(r.message)
