@@ -723,12 +723,13 @@ def get_work_stations(items):
 	if isinstance(items,string_types):
 		items = json.loads(items)
 	for item in items:
-		doc = frappe.get_doc("Time and Action",item['parent'])
-		work_station[item['colour']] = []
-		for child in doc.details:
-			child_data = child.as_dict()
-			child_data['master'] = doc.master
-			work_station[item['colour']].append(child_data)
+		if item['action'] != "Completed":
+			doc = frappe.get_doc("Time and Action",item['parent'])
+			work_station[item['colour']] = []
+			for child in doc.details:
+				child_data = child.as_dict()
+				child_data['master'] = doc.master
+				work_station[item['colour']].append(child_data)
 	return work_station		
 
 @frappe.whitelist()
@@ -783,4 +784,3 @@ def get_t_and_a_preview_data(start_date, table):
 				struct["work_station"] = data.work_station
 			preview_data[row['colour']].append(struct)
 	return preview_data
-
