@@ -156,7 +156,7 @@ def get_fg_stock_entry_details(stock_entry):
     return get_stock_entry_detail(stock_entry)
 
 @frappe.whitelist()
-def get_fg_stock_entry_details(pageLength, curr_page):
+def get_fg_stock_entry_details_list(pageLength, curr_page):
 
     list_items = frappe.get_list("FG Stock Entry",
                     fields=['name','posting_date', 'posting_time', 'dc_number', 
