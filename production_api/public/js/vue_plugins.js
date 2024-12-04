@@ -21,6 +21,7 @@ import CutPlanClothItems from "./CuttingPlan/components/CutPlanClothItems.vue"
 import CombinationItemDetail from "./Item_Po_detail/CombinationItemDetail.vue"
 import CuttingItemDetail from "./Item_Po_detail/CuttingItemDetail.vue"
 import ClothAccessory from "./Item_Po_detail/ClothAccessory.vue"
+import ClothAccessoryCombination from "./Item_Po_detail/ClothAccessoryCombination.vue"
 import AccessoryItems from "./Item_Po_detail/AccessoryItems.vue"
 import { StockEntryWrapper, StockReconciliationWrapper, LotTransferWrapper } from "./Stock";
 import WorkOrderDeliverables from "./WorkOrder/components/Deliverables.vue"
@@ -169,6 +170,28 @@ frappe.production.ui.ClothAccessory = class {
     }
     make_body(){
         this.app = createApp(ClothAccessory)
+        SetVueGlobals(this.app)
+        this.vue = this.app.mount(this.$wrapper.get(0))
+    }
+    load_data(items){
+        this.vue.load_data(items)
+    }
+    set_attributes(){
+        this.vue.set_attributes();
+    }
+    get_data(){
+        let items = JSON.parse(JSON.stringify(this.vue.get_data()))
+        return items
+    }   
+}
+
+frappe.production.ui.ClothAccessoryCombination = class {
+    constructor(wrapper){
+        this.$wrapper = $(wrapper);
+        this.make_body();
+    }
+    make_body(){
+        this.app = createApp(ClothAccessoryCombination)
         SetVueGlobals(this.app)
         this.vue = this.app.mount(this.$wrapper.get(0))
     }

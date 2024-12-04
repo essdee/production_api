@@ -234,6 +234,21 @@ frappe.ui.form.on("Item Production Detail", {
 				frm.cloth_item.set_attributes()
 			}
 		}
+		if(frm.stiching_accessory){
+			if(frm.doc.stiching_accessory_json){
+				let cloths = []
+				for(let i = 0 ; i < frm.doc.cloth_detail.length; i++){
+					if(frm.doc.cloth_detail[i].name1 && frm.doc.cloth_detail[i].cloth){
+						cloths.push(frm.doc.cloth_detail[i].name1)
+					}
+				}	
+				let stich_json = frm.doc.stiching_accessory_json
+				stich_json = JSON.parse(stich_json)
+				stich_json['select_list'] = cloths
+				await frm.stiching_accessory.load_data(stich_json);
+				frm.stiching_accessory.set_attributes()
+			}
+		}
 	},
 	async make_stiching_combination(frm){
 		$(frm.fields_dict['stiching_items_html'].wrapper).html("");
@@ -268,7 +283,7 @@ frappe.ui.form.on("Item Production Detail", {
 	},
 	async make_stiching_accessory_combination(frm){
 		$(frm.fields_dict['stiching_accessory_html'].wrapper).html("");
-		frm.stiching_accessory = new frappe.production.ui.ClothAccessory(frm.fields_dict['stiching_accessory_html'].wrapper);
+		frm.stiching_accessory = new frappe.production.ui.ClothAccessoryCombination(frm.fields_dict['stiching_accessory_html'].wrapper);
 		if(frm.doc.stiching_accessory_json) {
 			await frm.stiching_accessory.load_data(frm.doc.stiching_accessory_json);
 			frm.stiching_accessory.set_attributes()

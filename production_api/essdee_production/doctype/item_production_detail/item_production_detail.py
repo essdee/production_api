@@ -462,12 +462,10 @@ def get_calculated_bom(item_production_detail, items, lot_name, process_name = N
 
 				if not mapping_bom.get(bom_item.item,False):
 					mapping_bom[bom_item.item] = {}
-				
 				xattr_values = {}
 				for x in bom_combination[bom_item.item]["keys"]:
 					if attr_values.get(x):
 						xattr_values[x] = attr_values[x]
-
 				quantity = qty / qty_of_product
 				for key, val in bom_combination[bom_item.item].items():
 					if key != "keys" and key != "same_attributes" and xattr_values == val["key"]:
@@ -572,17 +570,17 @@ def calculate_cloth(ipd_doc, variant_attrs, qty, cloth_combination, stitching_co
 			for accessory_name, accessory_cloth in cloth_accessory_json.items():
 				attrs["Accessory"] = accessory_name
 				if cloth_combination["accessory_combination"].get(get_key(attrs, cloth_combination["accessory_attributes"])):
-					accessory_weight = cloth_combination["accessory_combination"][get_key(attrs, cloth_combination["accessory_attributes"])]
-					accessory_colour = get_accessory_colour(ipd_doc,attrs,accessory_name)
+					dia, accessory_weight = cloth_combination["accessory_combination"][get_key(attrs, cloth_combination["accessory_attributes"])]
+					accessory_colour, cloth = get_accessory_colour(ipd_doc,attrs,accessory_name)
 					weight = accessory_weight * qty * attr_qty
-					cloth_detail.append(add_cloth_detail(weight, ipd_doc.additional_cloth,accessory_cloth,accessory_colour,dia,"accessory"))
+					cloth_detail.append(add_cloth_detail(weight, ipd_doc.additional_cloth,cloth,accessory_colour,dia,"accessory"))
 	elif cloth_accessory_json:
 		for accessory_name, accessory_cloth in cloth_accessory_json.items():
 			attrs["Accessory"] = accessory_name
-			accessory_weight = cloth_combination["accessory_combination"][get_key(attrs, cloth_combination["accessory_attributes"])]
-			accessory_colour = get_accessory_colour(ipd_doc,attrs,accessory_name)	
+			dia, accessory_weight = cloth_combination["accessory_combination"][get_key(attrs, cloth_combination["accessory_attributes"])]
+			accessory_colour, cloth = get_accessory_colour(ipd_doc,attrs,accessory_name)	
 			weight = accessory_weight * qty
-			cloth_detail.append(add_cloth_detail(weight, ipd_doc.additional_cloth,accessory_cloth,accessory_colour,dia,"accessory"))
+			cloth_detail.append(add_cloth_detail(weight, ipd_doc.additional_cloth,cloth,accessory_colour,dia,"accessory"))
 	return cloth_detail
 
 def get_bom_combination(bom_items):
@@ -638,8 +636,8 @@ def get_accessory_colour(ipd_doc,variant_attrs,accessory):
 					return acce[accessory]
 	else:
 		for acce in json.loads(ipd_doc.stiching_accessory_json)["items"]:
-			if acce[ipd_doc.stiching_major_attribute_value] == variant_attrs[ipd_doc.packing_attribute]:
-				return acce[accessory]
+			if acce['major_attr_value'] == variant_attrs[ipd_doc.packing_attribute]:
+				return acce['accessories'][accessory]["colour"],acce['accessories'][accessory]["cloth_type"] 
 
 def get_additional_cloth(weight, additional_cloth):
 	if additional_cloth:
@@ -671,7 +669,7 @@ def get_cloth_combination(ipd_doc):
 	accessory_attributes.append("Accessory")
 	if accessory_items:
 		for item in accessory_items["items"]:
-			accessory_combination[get_key(item, accessory_attributes)] = (item["Weight"])
+			accessory_combination[get_key(item, accessory_attributes)] = (item["Dia"],item["Weight"])
 
 	return {
 		"cutting_attributes": cutting_attributes,
@@ -873,6 +871,7 @@ def get_combination(doc_name,attributes, combination_type):
 			elif combination_type == "Accessory":
 				item_list.append({
 					attributes[0]:attr_val,
+					"Dia":None,
 					"Weight":None
 				})
 			else:
@@ -928,7 +927,7 @@ def get_combination(doc_name,attributes, combination_type):
 	if combination_type == 'Cutting':
 		additional_attr = ['Dia', 'Weight']
 	elif combination_type == "Accessory":
-		additional_attr = ['Weight']
+		additional_attr = ['Dia','Weight']
 	else:
 		additional_attr = ['Cloth']	
 
@@ -991,6 +990,7 @@ def add_combination_value(combination_type,item):
 	elif combination_type == 'Cloth':
 		item['Cloth'] = None
 	else:
+		item['Dia'] = None
 		item['Weight'] = None	
 	return item
 
@@ -1004,7 +1004,6 @@ def get_stiching_accessory_combination(doc_name):
 	x = ipd_doc.accessory_clothtype_json
 	if isinstance(x,string_types):
 		x = json.loads(x)
-
 	for key,val in x.items():
 		combination_list['attributes'].append(key)
 	combination_list['items'] = []
@@ -1013,12 +1012,19 @@ def get_stiching_accessory_combination(doc_name):
 	for stich_item in ipd_doc.stiching_item_combination_details:
 		if stich_item.attribute_value not in colors:
 			new_dict = {}
-			new_dict[stich_item.set_item_attribute_value] = stich_item.major_attribute_value
+			new_dict['major_attr_value'] = stich_item.major_attribute_value
+			new_dict['accessories'] = {}
 			for key,val in x.items():
-				new_dict[key] = None
+				new_dict['accessories'][key] = {}
+				new_dict['accessories'][key]['colour'] = None
+				new_dict['accessories'][key]['cloth_type'] = None
 			combination_list['items'].append(new_dict)
 			colors.append(stich_item.attribute_value)
-	
+			
+	cloth_list = []
+	for cloth in ipd_doc.cloth_detail:
+		cloth_list.append(cloth.name1)
+	combination_list['select_list'] = cloth_list	
 	return combination_list		
 
 def get_combination_attr_list(attributes, packing_attr, packing_attr_details, item_attributes):

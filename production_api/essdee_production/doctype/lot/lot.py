@@ -407,6 +407,18 @@ def get_item_details(item_name, uom=None, production_detail=None, dependent_stat
 	if production_detail:
 		doc = frappe.get_doc("Item Production Detail", production_detail)
 		item['packing_attr'] = doc.packing_attribute
+		primary_attr_values = []
+		mapping = None
+		for i in doc.item_attributes:
+			if i.attribute == doc.primary_item_attribute:
+				mapping = i.mapping
+				break
+		if mapping:
+			map_doc = frappe.get_doc("Item Item Attribute Mapping", mapping)	
+			for val in map_doc.values:
+				primary_attr_values.append(val.attribute_value)
+			item['primary_attribute_values'] = primary_attr_values	
+
 	return item
 
 @frappe.whitelist()
