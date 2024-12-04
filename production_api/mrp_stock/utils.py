@@ -39,7 +39,7 @@ def get_stock_balance(
 		rate = last_entry.valuation_rate
 		if uom:
 			cd = get_conversion_factor(item, uom)
-			conversion_factor = flt(cd["coversion_factor"])
+			conversion_factor = flt(cd["conversion_factor"])
 			qty = qty / conversion_factor
 			rate = rate * conversion_factor
 

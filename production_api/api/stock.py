@@ -1,6 +1,8 @@
 import frappe, json
 from production_api.mrp_stock.doctype.bin.bin import get_stock_balance_bin
+from production_api.mrp_stock.doctype.fg_stock_entry.fg_stock_entry import create_FG_ste,get_stock_entry_detail
 from six import string_types
+import math
 
 @frappe.whitelist()
 def get_stock(item, warehouse, remove_zero_balance_item=1):
@@ -131,3 +133,39 @@ def update_stock_reservation_entries(packing_slip, item_details):
         voucher_no = packing_slip,
         item_details = item_details
     )
+
+@frappe.whitelist()
+def make_fg_ste_from_sms(fg_ste_req):
+    if isinstance(fg_ste_req, string_types):
+        fg_ste_req = frappe.json.loads(fg_ste_req)
+    return create_FG_ste(
+        lot=fg_ste_req['lot'],
+        received_by=fg_ste_req['received_by'],
+        dc_number=fg_ste_req['dc_number'],
+        supplier=fg_ste_req['supplier'],
+        warehouse=fg_ste_req['warehouse'],
+        posting_date=fg_ste_req['posting_date'],
+        posting_time=fg_ste_req['posting_time'],
+        items_list=fg_ste_req['items'],
+        comments=fg_ste_req['comments'],
+        created_user=fg_ste_req['user']
+    )
+
+@frappe.whitelist()
+def get_fg_stock_entry_details(stock_entry):
+    return get_stock_entry_detail(stock_entry)
+
+@frappe.whitelist()
+def get_fg_stock_entry_details(pageLength, curr_page):
+
+    list_items = frappe.get_list("FG Stock Entry",
+                    fields=['name','posting_date', 'posting_time', 'dc_number', 
+                    'lot', 'supplier', 'warehouse', 'received_by', 'comments'], 
+                start=((curr_page-1) * pageLength), limit=pageLength, order_by='name ASC' )
+    
+    total_pages = math.ceil((frappe.db.count("FG Stock Entry"))/ pageLength)
+
+    return {
+        "rows" : list_items,
+        "total_pages" : total_pages
+    }
