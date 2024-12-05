@@ -182,7 +182,6 @@ frappe.ui.form.on("Item Production Detail", {
 			frm.trigger('make_cutting_combination')
 			frm.trigger('make_cloth_accessories')
 			frm.trigger('make_stiching_accessory_combination')
-			let accessoryClothTypeObj = JSON.parse(frm.doc.accessory_clothtype_json || '{}');
 			if (frm.doc.cloth_detail.length > 0) {
 				frm.trigger('make_clothtype_accessory_combination')
 			}

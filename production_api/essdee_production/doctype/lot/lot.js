@@ -96,7 +96,7 @@ frappe.ui.form.on("Lot", {
 									in_place_edit: false,
 									data: data,
 									fields: [
-										{ fieldname: 'colour', fieldtype: 'Data', in_list_view: 1, label: 'Colour',reqd:1 ,readonly:1},
+										{ fieldname: 'colour', fieldtype: 'Data', in_list_view: 1, label: 'Colour',reqd:1 ,read_only:1},
 										{ fieldname: 'master', fieldtype: 'Link', in_list_view: 1, options:"Action Master" ,label:'Master',reqd:1}
 									]
 								},

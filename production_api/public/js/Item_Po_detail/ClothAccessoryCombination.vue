@@ -2,14 +2,14 @@
     <div ref="root">
         <table class="table table-sm table-bordered">
             <tr>
-                <th v-for="x in items.attributes" :key="x" class="equal-width">
+                <th v-for="x in items.attributes" :key="x">
                     <div v-if='x != "Weight"'>{{ x }}</div>
                     <div v-else>{{ "Weight ( In Kg's )" }}</div>
                 </th>
             </tr>
             <tr v-for="(item, index) in items.items" :key="index">
                 <td>{{item.major_attr_value}}</td>
-                <td v-for="(value, key) in item.accessories" :key="key" class="equal-width">
+                <td v-for="(value, key) in item.accessories" :key="key">
                     <div :class="get_input_class(key, index, 'colour')"></div>
                     <div :class="get_input_class(key, index,'cloth_type')"></div>
                 </td>
@@ -159,15 +159,3 @@ defineExpose({
     get_data,
 });
 </script>
-
-<style scoped>
-table {
-    table-layout: fixed;
-    width: 100%; /* Ensures the table takes full width */
-}
-
-.equal-width {
-    word-wrap: break-word; /* Prevent overflow of long text */
-}
-
-</style>
