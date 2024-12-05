@@ -392,6 +392,7 @@ def get_calculated_bom(item_production_detail, items, lot_name, process_name = N
 		return
 	lot_doc = frappe.get_doc("Lot", lot_name)
 	cloth_combination = get_cloth_combination(item_detail)
+	print(cloth_combination)
 	stitching_combination = get_stitching_combination(item_detail)
 	bom_combination = get_bom_combination(item_detail.item_bom)
 	cloth_detail = {}
@@ -623,21 +624,9 @@ def add_cloth_detail(weight, additional_cloth,cloth_type,cloth_colour,dia,type):
 	}
 
 def get_accessory_colour(ipd_doc,variant_attrs,accessory):
-	if ipd_doc.is_set_item:
-		panel = None
-		part = variant_attrs[ipd_doc.set_item_attribute]
-		for item in ipd_doc.stiching_item_details:
-			if item.set_item_attribute_value == part and item.is_default == 1:
-				panel = item.stiching_attribute_value
-				break
-		for acce in json.loads(ipd_doc.stiching_accessory_json)["items"]:
-			if acce.get(panel):
-				if acce[panel] == variant_attrs[ipd_doc.packing_attribute]:
-					return acce[accessory]
-	else:
-		for acce in json.loads(ipd_doc.stiching_accessory_json)["items"]:
-			if acce['major_attr_value'] == variant_attrs[ipd_doc.packing_attribute]:
-				return acce['accessories'][accessory]["colour"],acce['accessories'][accessory]["cloth_type"] 
+	for acce in json.loads(ipd_doc.stiching_accessory_json)["items"]:
+		if acce['major_attr_value'] == variant_attrs[ipd_doc.packing_attribute]:
+			return acce['accessories'][accessory]["colour"],acce['accessories'][accessory]["cloth_type"] 
 
 def get_additional_cloth(weight, additional_cloth):
 	if additional_cloth:
