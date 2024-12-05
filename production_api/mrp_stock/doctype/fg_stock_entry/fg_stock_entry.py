@@ -7,11 +7,26 @@ from frappe.utils import flt
 from production_api.mrp_stock.stock_ledger import make_sl_entries
 from six import string_types
 from production_api.mrp_stock.doctype.stock_entry.stock_entry import get_uom_details
+from production_api.production_api.doctype.item_price.item_price import get_item_variant_price
+from production_api.mrp_stock.utils import get_stock_balance
 
 class FGStockEntry(Document):
 	
 	def before_submit(self):
+		self.validate_data()
 		self.make_mrp_sle_entries()
+
+	def validate_data(self):
+		for row in self.items:
+			if row.rate in ["", None, 0, '0']:
+				row.rate = get_stock_balance(
+					row.item_variant, None, self.posting_date, self.posting_time, with_valuation_rate=True, uom=row.uom,
+				)[1]
+				if not row.rate:
+					# try if there is a buying price list in default currency
+					buying_rate = get_item_variant_price(row.item_variant, variant_uom=row.uom)
+					if buying_rate:
+						row.rate = buying_rate
 	
 	def before_cancel(self):
 		self.ignore_linked_doctypes = ("Stock Ledger Entry")
@@ -36,7 +51,6 @@ class FGStockEntry(Document):
 			sl_entries.reverse()
 		make_sle_entries(sl_entries)
 
-
 def make_sle_entries(sle_details):
 	from production_api.api.stock import get_default_fg_lot
 	if isinstance(sle_details, string_types):
@@ -45,7 +59,6 @@ def make_sle_entries(sle_details):
 	for d in sle_details:
 		d['lot'] = default_lot
 	make_sl_entries(sle_details)
-
 
 @frappe.whitelist()
 def create_FG_ste(lot, received_by, supplier, dc_number, warehouse, posting_date, posting_time, items_list, comments, created_user):
@@ -60,7 +73,6 @@ def create_FG_ste(lot, received_by, supplier, dc_number, warehouse, posting_date
 	doc.set('warehouse', warehouse)
 	doc_items = []
 	for i in items_list:
-		print(i)
 		stock_details = get_uom_details(i['item_variant'], i['uom'], i['qty'])
 		doc_items.append({
 			"item_variant" : i['item_variant'],
