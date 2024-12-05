@@ -405,21 +405,24 @@ def get_item_details(item_name, uom=None, production_detail=None, dependent_stat
 		final_state_attr = final_state_attr + x
 		item['final_state_attr'] = final_state_attr
 	if production_detail:
-		doc = frappe.get_doc("Item Production Detail", production_detail)
-		item['packing_attr'] = doc.packing_attribute
-		primary_attr_values = []
-		mapping = None
-		for i in doc.item_attributes:
-			if i.attribute == doc.primary_item_attribute:
-				mapping = i.mapping
-				break
-		if mapping:
-			map_doc = frappe.get_doc("Item Item Attribute Mapping", mapping)	
-			for val in map_doc.values:
-				primary_attr_values.append(val.attribute_value)
-			item['primary_attribute_values'] = primary_attr_values	
-
+		pack_attr_value = frappe.get_value("Item Production Detail", production_detail, "packing_attribute")
+		item['packing_attr'] = pack_attr_value
+		item['primary_attribute_values'] = get_ipd_primary_values(production_detail)
 	return item
+
+def get_ipd_primary_values(production_detail):
+	doc = frappe.get_doc("Item Production Detail", production_detail)
+	primary_attr_values = []
+	mapping = None
+	for i in doc.item_attributes:
+		if i.attribute == doc.primary_item_attribute:
+			mapping = i.mapping
+			break
+	if mapping:
+		map_doc = frappe.get_doc("Item Item Attribute Mapping", mapping)	
+		for val in map_doc.values:
+			primary_attr_values.append(val.attribute_value)
+	return primary_attr_values
 
 @frappe.whitelist()
 def get_isfinal_uom(item_production_detail, get_pack_stage=None):

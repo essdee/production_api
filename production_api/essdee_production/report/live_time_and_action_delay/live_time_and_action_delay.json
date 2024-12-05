@@ -10,7 +10,7 @@
  "is_standard": "Yes",
  "letter_head": "",
  "letterhead": null,
- "modified": "2024-11-13 18:12:36.309985",
+ "modified": "2024-12-05 15:05:52.855608",
  "modified_by": "Administrator",
  "module": "Essdee Production",
  "name": "Live Time and Action Delay",
@@ -22,6 +22,18 @@
  "roles": [
   {
    "role": "System Manager"
+  },
+  {
+   "role": "T & A Admin"
+  },
+  {
+   "role": "T & A Manager"
+  },
+  {
+   "role": "T & A User"
+  },
+  {
+   "role": "T & A Viewer"
   }
  ]
 }
