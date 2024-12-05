@@ -16,7 +16,7 @@ class Lot(Document):
 			frappe.throw("BOM is not calculated")
 
 	def before_validate(self):
-		if self.get('item_details') and len(self.lot_time_and_action_details) == 0:
+		if self.get('item_details'):
 			items = save_item_details(self.item_details, dependent_attr=self.get('dependent_attribute_mapping'))
 			self.set("items",items)
 
@@ -407,6 +407,18 @@ def get_item_details(item_name, uom=None, production_detail=None, dependent_stat
 	if production_detail:
 		doc = frappe.get_doc("Item Production Detail", production_detail)
 		item['packing_attr'] = doc.packing_attribute
+		primary_attr_values = []
+		mapping = None
+		for i in doc.item_attributes:
+			if i.attribute == doc.primary_item_attribute:
+				mapping = i.mapping
+				break
+		if mapping:
+			map_doc = frappe.get_doc("Item Item Attribute Mapping", mapping)	
+			for val in map_doc.values:
+				primary_attr_values.append(val.attribute_value)
+			item['primary_attribute_values'] = primary_attr_values	
+
 	return item
 
 @frappe.whitelist()
@@ -723,12 +735,13 @@ def get_work_stations(items):
 	if isinstance(items,string_types):
 		items = json.loads(items)
 	for item in items:
-		doc = frappe.get_doc("Time and Action",item['parent'])
-		work_station[item['colour']] = []
-		for child in doc.details:
-			child_data = child.as_dict()
-			child_data['master'] = doc.master
-			work_station[item['colour']].append(child_data)
+		if item['action'] != "Completed":
+			doc = frappe.get_doc("Time and Action",item['parent'])
+			work_station[item['colour']] = []
+			for child in doc.details:
+				child_data = child.as_dict()
+				child_data['master'] = doc.master
+				work_station[item['colour']].append(child_data)
 	return work_station		
 
 @frappe.whitelist()
@@ -759,3 +772,27 @@ def update_t_and_a_ws(datas):
 			})	
 		doc.set("details",child_table)
 		doc.save()	
+
+@frappe.whitelist()
+def get_t_and_a_preview_data(start_date, table):
+	if isinstance(table, string_types):
+		table = json.loads(table)
+
+	preview_data = {}
+	for row in table:
+		preview_data[row['colour']] = []
+		doc = frappe.get_doc("Action Master",row['master'])
+		day = start_date
+		for data in doc.details:
+			day = get_next_date(day, data.lead_time)
+			struct = {
+				"action":data.action,
+				"lead_time":data.lead_time,
+				"department":data.department,
+				"date":day,
+				"rescheduled_date":day,
+			}
+			if data.get('work_station'):
+				struct["work_station"] = data.work_station
+			preview_data[row['colour']].append(struct)
+	return preview_data

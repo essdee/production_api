@@ -40,7 +40,6 @@ frappe.ui.form.on("Cutting LaySheet", {
                         cutting_marker: frm.doc.cutting_marker,
                     },
                     callback:function(r){
-                        console.log(r.message)
                         let data = []
                         for(let i = 0 ; i < r.message.length ; i++){
                             data.push(
