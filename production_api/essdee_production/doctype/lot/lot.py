@@ -16,7 +16,7 @@ class Lot(Document):
 			frappe.throw("BOM is not calculated")
 
 	def before_validate(self):
-		if self.get('item_details') and len(self.lot_time_and_action_details) == 0:
+		if self.get('item_details'):
 			items = save_item_details(self.item_details, dependent_attr=self.get('dependent_attribute_mapping'))
 			self.set("items",items)
 
