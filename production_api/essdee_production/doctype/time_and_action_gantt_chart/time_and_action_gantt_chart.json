@@ -1,0 +1,70 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2024-11-27 18:44:32.342638",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "action",
+  "column_break_fcvr",
+  "work_station",
+  "section_break_queg",
+  "generate_gantt_chart",
+  "gantt_chart_html"
+ ],
+ "fields": [
+  {
+   "fieldname": "action",
+   "fieldtype": "Link",
+   "label": "Action",
+   "options": "Action"
+  },
+  {
+   "fieldname": "column_break_fcvr",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "work_station",
+   "fieldtype": "Link",
+   "label": "Work Station",
+   "options": "Work Station"
+  },
+  {
+   "fieldname": "section_break_queg",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "gantt_chart_html",
+   "fieldtype": "HTML",
+   "label": "Gantt Chart HTML"
+  },
+  {
+   "fieldname": "generate_gantt_chart",
+   "fieldtype": "Button",
+   "label": "Generate Gantt Chart"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "issingle": 1,
+ "links": [],
+ "modified": "2024-11-30 11:54:38.993960",
+ "modified_by": "Administrator",
+ "module": "Essdee Production",
+ "name": "Time and Action Gantt Chart",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "print": 1,
+   "read": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

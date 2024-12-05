@@ -9,12 +9,21 @@
                         <th>Master</th>
                         <th>Work Station</th>
                     </tr>
-                    <tr v-for="(value,index) in items[item]" :key="index">
-                        <td>{{value.action}}</td>
-                        <td>{{value.parent}}</td>
-                        <td>
-                            <div :class="get_input_class(item,value.action,value.parent)"></div>
-                        </td>
+                    <tr  v-for="(value,index) in items[item]" :key="index">
+                        <template v-if="types == 'create' && value.work_station">
+                            <td>{{value.action}}</td>
+                            <td>{{value.master}}</td>
+                            <td>
+                                <div :class="get_input_class(item,value.action,value.master)"></div>
+                            </td>
+                        </template>
+                        <template v-else-if=" types == 'update' && value.work_station && value.completed == 0">
+                            <td>{{value.action}}</td>
+                            <td>{{value.master}}</td>
+                            <td>
+                                <div :class="get_input_class(item,value.action,value.master)"></div>
+                            </td>
+                        </template>    
                     </tr>
                 </table>
             </div>
@@ -27,8 +36,10 @@ import {ref} from 'vue';
 let root = ref(null)
 let sample_doc = ref({})
 let items = ref({})
-function load_data(item){
+let types = ref(null)
+function load_data(item, type){
     items.value = item
+    types.value = type
 }
 
 function set_attributes() {
@@ -38,11 +49,20 @@ function set_attributes() {
     if (items.value) {
         Object.keys(items.value).forEach(colour => {
             for(let i = 0; i < items.value[colour].length ; i++){
-                let action = items.value[colour][i]['action']
-                let master = items.value[colour][i]['parent']
-                let work_station = items.value[colour][i]['work_station']
-                let input =createInput(colour, action, master,work_station)
-                items.value[colour][i]['work_station'] = input
+                if(types.value == "create" && items.value[colour][i]['work_station']){
+                    let action = items.value[colour][i]['action']
+                    let master = items.value[colour][i]['master']
+                    let work_station = items.value[colour][i]['work_station']
+                    let input = createInput(colour, action, master,work_station)
+                    items.value[colour][i]['work_station'] = input
+                }
+                else if(types.value == "update" && items.value[colour][i]['work_station'] && items.value[colour][i]['completed'] == 0){
+                    let action = items.value[colour][i]['action']
+                    let master = items.value[colour][i]['master']
+                    let work_station = items.value[colour][i]['work_station']
+                    let input = createInput(colour, action, master,work_station)
+                    items.value[colour][i]['work_station'] = input
+                }
             }
         })
     }
@@ -86,8 +106,14 @@ function get_input_class(colour, action , master){
 function get_items(){
     Object.keys(items.value).forEach(colour => {
         for(let i = 0; i < items.value[colour].length ; i++){
-            let input = items.value[colour][i]['work_station']
-            items.value[colour][i]['work_station'] = input.get_value() 
+            if(types.value == 'create' && items.value[colour][i]['work_station']){
+                let input = items.value[colour][i]['work_station']
+                items.value[colour][i]['work_station'] = input.get_value() 
+            }
+            else if(types.value == 'update' && items.value[colour][i]['work_station'] && items.value[colour][i]['completed'] == 0){
+                let input = items.value[colour][i]['work_station']
+                items.value[colour][i]['work_station'] = input.get_value() 
+            }
         }
     })
     return items.value
@@ -99,7 +125,7 @@ defineExpose({
     get_items,
 })
 </script>
-<style scoped>
+<style>
 .form-group{
 	margin-bottom:0 !important;
 }

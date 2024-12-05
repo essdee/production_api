@@ -64,13 +64,7 @@
                             <td v-for="(k, idx) in j.attributes" :key="idx">{{k}}</td>
                             <td v-for="(k, idx) in Object.keys(j.values)" :key="idx">
                                 <form>
-                                    <input
-                                        class="form-control"
-                                        type="number"
-                                        v-model.number="j.values[k]"
-                                        min="0"
-                                        @blur="update_doc()"
-                                    />
+                                    <input class="form-control" type="number" v-model.number="j.values[k]" min="0" @blur="update_doc()"/>
                                 </form>
                             </td>
                         </tr>
@@ -90,13 +84,7 @@
                             </template>
                             <td>
                                 <form>
-                                    <input
-                                        class="form-control"
-                                        type="number"
-                                        v-model.number="j.values.qty"
-                                        min="0"
-                                        @blur="update_doc()"
-                                    />
+                                    <input class="form-control" type="number" v-model.number="j.values.qty" min="0" @blur="update_doc()" />
                                 </form>
                             </td>
                         </tr>
@@ -126,9 +114,13 @@ function update_doc(){
 function get_items(){
     return items.value
 }
+function update_docstatus(){
+    docstatus.value = 1
+}
 
 defineExpose({
     load_data,
     get_items,
+    update_docstatus,
 })
 </script>
