@@ -336,7 +336,7 @@ def save_stock_reconciliation_items(item_details):
 						item1['item'] = variant_name
 						item1['lot'] = item.get('lot')
 						item1['qty'] = values.get('qty')
-						item1['uom'] = values.get('default_uom')
+						item1['uom'] = item.get('default_uom')
 						item1['rate'] = values.get('rate')
 						item1['table_index'] = table_index
 						item1['row_index'] = row_index
