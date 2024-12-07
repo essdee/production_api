@@ -867,6 +867,35 @@ def get_combination(doc_name,attributes, combination_type):
 					attributes[0]:attr_val,
 					"Cloth":None,
 				})
+	elif is_set_item and pack_attr in attributes and set_attr in attributes and stich_attr in attributes:
+		x = item_attr_val_list.copy()
+		del x[pack_attr]
+		del x[stich_attr]
+
+		set_data = {set_attr : {}}
+		for i in item_attr_val_list[set_attr]:
+			set_data[set_attr][i] = {
+				pack_attr : [],
+				stich_attr : []
+			}
+
+		x[set_attr] = set_data[set_attr]
+		item_attr_list = x		
+		item_attr_list = get_set_tri_struct(ipd_doc, item_attr_list, set_attr, pack_attr, stich_attr)
+
+		set_attr_values = item_attr_list[set_attr]
+		del item_attr_list[set_attr]
+		
+		attributes = pop_attributes(attributes, [set_attr, pack_attr, stich_attr])
+
+		item_attr_val_list = item_attr_list
+		items = get_set_tri_combination(set_attr_values, set_attr, pack_attr, stich_attr)
+		item_list = make_comb_list(attributes, items, combination_type, item_attr_list)
+
+		attributes.append(set_attr)
+		attributes.append(pack_attr)
+		attributes.append(stich_attr)
+
 	elif is_set_item and pack_attr in attributes and set_attr in attributes and stich_attr not in attributes:
 		x = item_attr_val_list.copy()
 		del x[pack_attr]
@@ -884,10 +913,8 @@ def get_combination(doc_name,attributes, combination_type):
 
 		set_attr_values = item_attr_list[set_attr]
 		del item_attr_list[set_attr]
-		index1 = attributes.index(set_attr)
-		attributes.pop(index1)
-		index1 = attributes.index(pack_attr)
-		attributes.pop(index1)
+
+		attributes = pop_attributes(attributes, [set_attr, pack_attr])
 		
 		item_attr_val_list = item_attr_list
 		items = get_comb_items(set_attr_values, set_attr, pack_attr)
@@ -900,10 +927,7 @@ def get_combination(doc_name,attributes, combination_type):
 		set_attr_values = item_attr_list[set_attr]
 		del item_attr_list[set_attr]
 		
-		index1 = attributes.index(set_attr)
-		attributes.pop(index1)
-		index1 = attributes.index(stich_attr)
-		attributes.pop(index1)
+		attributes = pop_attributes(attributes, [set_attr, stich_attr])
 		
 		item_attr_val_list = item_attr_list
 		items = get_comb_items(set_attr_values, set_attr, stich_attr)
@@ -940,6 +964,35 @@ def get_combination(doc_name,attributes, combination_type):
 		'select_list':select_list
 	}
 	return final_list
+
+def pop_attributes(attributes, attr_list):
+	for attr in attr_list:
+		index = attributes.index(attr)
+		attributes.pop(index)
+	return attributes	
+
+def get_set_tri_struct(ipd_doc, item_attr_list, set_attr, pack_attr, stich_attr):
+	for i in ipd_doc.set_item_combination_details:
+		if i.attribute_value not in item_attr_list[set_attr][i.set_item_attribute_value][pack_attr]:
+			item_attr_list[set_attr][i.set_item_attribute_value][pack_attr].append(i.attribute_value) 
+
+	for i in ipd_doc.stiching_item_details:
+		item_attr_list[set_attr][i.set_item_attribute_value][stich_attr].append(i.stiching_attribute_value)
+
+	return item_attr_list	
+
+def get_set_tri_combination(set_attr_values, set_attr, pack_attr, stich_attr):
+	items = []
+	for val in set_attr_values:
+		s = {}
+		s[set_attr] = val
+		for a in set_attr_values[val][pack_attr]:
+			s[pack_attr] = a
+			for b in set_attr_values[val][stich_attr]:
+				s[stich_attr] = b
+				m = s.copy()
+				items.append(m)
+	return items			
 
 def get_comb_items(set_attr_values, attr1, attr2):
 	items = []
