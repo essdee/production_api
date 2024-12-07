@@ -227,6 +227,7 @@ def item_attribute_details(variant, item_attributes):
 
 @frappe.whitelist()
 def calculate_laysheets(cutting_plan):
+	# calc(cutting_plan)
 	frappe.enqueue(calc, "short", cutting_plan=cutting_plan)
 
 def calc(cutting_plan):	
@@ -243,6 +244,6 @@ def calc(cutting_plan):
 		item.used_weight = 0
 	cp_doc.save()
 
-	cls_list = frappe.get_list("Cutting LaySheet",filters = {"cutting_plan":cutting_plan},pluck = "name")
+	cls_list = frappe.get_list("Cutting LaySheet",filters = {"cutting_plan":cutting_plan,"status":"Label Printed"},pluck = "name")
 	for cls in cls_list:
 		update_cutting_plan(cls)

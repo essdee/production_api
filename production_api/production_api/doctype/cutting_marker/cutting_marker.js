@@ -26,12 +26,12 @@ frappe.ui.form.on("Cutting Marker", {
         frm.set_df_property('cutting_marker_ratios','cannot_add_rows',true)
 		frm.set_df_property('cutting_marker_ratios','cannot_delete_rows',true)
 	},
-    item(frm){
-        if(frm.doc.item){
+    lot(frm){
+        if(frm.doc.lot){
             frappe.call({
                 method:"production_api.production_api.doctype.cutting_marker.cutting_marker.get_primary_attributes",
                 args: {
-                    item:frm.doc.item,
+                    lot:frm.doc.lot,
                 },
                 callback:((r)=> {
                     frm.set_value("cutting_marker_ratios",r.message)

@@ -5,6 +5,7 @@ import frappe, json
 from six import string_types
 from frappe.model.document import Document
 from production_api.production_api.doctype.item.item import get_attribute_details
+from production_api.essdee_production.doctype.lot.lot import get_ipd_primary_values
 
 class CuttingMarker(Document):
 	def autoname(self):
@@ -18,15 +19,15 @@ class CuttingMarker(Document):
 			frappe.throw("The Sum of ratios should not be Zero")	
 
 @frappe.whitelist()
-def get_primary_attributes(item):
-	item_attr_details = get_attribute_details(item)
+def get_primary_attributes(lot):
+	ipd = frappe.get_value("Lot",lot,"production_detail")
+	primary_values = get_ipd_primary_values(ipd)
 	primary_attributes = []
-	if item_attr_details['primary_attribute']:
-		for attr in item_attr_details['primary_attribute_values']:
-			primary_attributes.append({
-				"size":attr,
-				"ratio":0,
-			})
+	for attr in primary_values:
+		primary_attributes.append({
+			"size":attr,
+			"ratio":0,
+		})
 	return primary_attributes	
 
 @frappe.whitelist()

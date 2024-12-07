@@ -2,14 +2,16 @@
     <div ref="root">
         <table class="table table-sm table-bordered">
             <tr>
-                <th v-for="x in items.attributes" :key="x" class="equal-width">
+                <th v-for="x in items.attributes" :key="x">
                     <div v-if='x != "Weight"'>{{ x }}</div>
                     <div v-else>{{ "Weight ( In Kg's )" }}</div>
                 </th>
             </tr>
             <tr v-for="(item, index) in items.items" :key="index">
-                <td v-for="(value, key) in item" :key="key" class="equal-width">
-                    <div :class="get_input_class(key, index)"></div>
+                <td>{{item.major_attr_value}}</td>
+                <td v-for="(value, key) in item.accessories" :key="key">
+                    <div :class="get_input_class(key, index, 'colour')"></div>
+                    <div :class="get_input_class(key, index,'cloth_type')"></div>
                 </td>
             </tr>
         </table>
@@ -39,10 +41,13 @@ function set_attributes() {
     remove_attributes()
     if (items.value) {
         for(let i = 0; i < items.value.items.length ; i++){
-            Object.keys(items.value.items[i]).forEach(row => {
-                let val = items.value.items[i][row]
-                let input =createInput(row, i, val)
-                items.value.items[i][row] = input 
+            Object.keys(items.value.items[i]['accessories']).forEach(row => {
+                let val = items.value.items[i]['accessories'][row]['colour']
+                let input1 =createInput(row, i, val,"colour")
+                items.value.items[i]['accessories'][row]['colour'] = input1
+                let val2 = items.value.items[i]['accessories'][row]['cloth_type']
+                let input2 =createInput(row, i, val2,"cloth_type")
+                items.value.items[i]['accessories'][row]['cloth_type'] = input2
             })
         }
     }
@@ -50,22 +55,21 @@ function set_attributes() {
 
 function remove_attributes(){
     for(let i = 0; i < items.value.items.length ; i++){
-        Object.keys(items.value.items[i]).forEach(row => {
+        Object.keys(items.value.items[i]['accessories']).forEach(row => {
             let el = root.value
-            let parent_class = "." + get_input_class(row, i);
+            let parent_class = "." + get_input_class(row, i, "colour");
             $(el).find(parent_class).empty();
+            let parent_class2 = "." + get_input_class(row, i, "cloth_type");
+            $(el).find(parent_class2).empty();
         })
     }
 }
 
-function createInput(attr, index, value){
-    let parent_class = "." + get_input_class(attr, index);
+function createInput(attr, index, value, type){
+    let parent_class = "." + get_input_class(attr, index, type);
     let fieldtype = 'Link'
-    if(attr == 'Weight'){
-        fieldtype = 'Float'
-    }
-    else if(attr == 'Accessory'){
-        fieldtype = 'Data'
+    if(type == 'cloth_type'){
+        fieldtype = 'Select'
     }
 
     let el = root.value
@@ -74,7 +78,7 @@ function createInput(attr, index, value){
         fieldname: attr+"_"+index,
         default: value,
     }
-    if (fieldtype == 'Link' && attr != 'Dia'){
+    if (fieldtype == 'Link'){
         df['options'] = 'Item Attribute Value'
         df['get_query'] = function(){
             return {
@@ -86,19 +90,8 @@ function createInput(attr, index, value){
         }
     }
     else{
-        df['options'] = 'Item Attribute Value'
-        df['get_query'] = function(){
-            return {
-                filters: {
-                    'attribute_name': 'Dia',
-                }
-            }
-        }
+        df['options'] = items.value.select_list
     }
-    
-    if (cur_frm.cutting_attrs.includes(attr) || attr == 'Accessory' || attr == cur_frm.doc.stiching_major_attribute_value){
-        df['read_only'] = true
-    }   
     
     let input =  frappe.ui.form.make_control({
         parent: $(el).find(parent_class),
@@ -106,7 +99,7 @@ function createInput(attr, index, value){
         doc: sample_doc.value,
         render_input: true,
     });
-
+    $(el).find(".control-label").remove();
     input.set_value(value)
     input['df']['onchange'] = ()=>{
        if(input.get_value() != input.df.default){
@@ -116,9 +109,9 @@ function createInput(attr, index, value){
     return input
 }
 
-function get_input_class(attribute, index){
+function get_input_class(attribute, index, type){
     attribute = attribute.replaceAll(" ","-")
-    return attribute+"-"+index;
+    return attribute+"-"+index+"-"+type;
 }
 
 function get_data(){
@@ -127,8 +120,8 @@ function get_data(){
     }
     const x = ref(items.value)
     for (let i = 0; i < x.value.items.length; i++) {
-        Object.keys(x.value.items[i]).forEach((row, index) => {
-            let input = x.value.items[i][row]
+        Object.keys(x.value.items[i]['accessories']).forEach((row, index) => {
+            let input = x.value.items[i]['accessories'][row]['colour']
             let value = null
             if(typeof(input) == 'object'){
                 value = input.get_value()
@@ -140,7 +133,21 @@ function get_data(){
                 frappe.throw("Fill all the combinations")    
             }
             else{
-                x.value.items[i][row] = value
+                x.value.items[i]['accessories'][row]['colour'] = value
+            }
+            let input2 = x.value.items[i]['accessories'][row]['cloth_type']
+            let value2 = null
+            if(typeof(input2) == 'object'){
+                value2 = input2.get_value()
+            }
+            else {
+                value2 = input2
+            }
+            if(value2 == null || value2 == ""){
+                frappe.throw("Fill all the combinations")    
+            }
+            else{
+                x.value.items[i]['accessories'][row]['cloth_type'] = value2
             }
         })
     }
@@ -152,15 +159,3 @@ defineExpose({
     get_data,
 });
 </script>
-
-<style scoped>
-table {
-    table-layout: fixed;
-    width: 100%; /* Ensures the table takes full width */
-}
-
-.equal-width {
-    word-wrap: break-word; /* Prevent overflow of long text */
-}
-
-</style>

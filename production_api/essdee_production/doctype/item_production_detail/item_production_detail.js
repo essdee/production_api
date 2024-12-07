@@ -182,7 +182,6 @@ frappe.ui.form.on("Item Production Detail", {
 			frm.trigger('make_cutting_combination')
 			frm.trigger('make_cloth_accessories')
 			frm.trigger('make_stiching_accessory_combination')
-			let accessoryClothTypeObj = JSON.parse(frm.doc.accessory_clothtype_json || '{}');
 			if (frm.doc.cloth_detail.length > 0) {
 				frm.trigger('make_clothtype_accessory_combination')
 			}
@@ -234,6 +233,21 @@ frappe.ui.form.on("Item Production Detail", {
 				frm.cloth_item.set_attributes()
 			}
 		}
+		if(frm.stiching_accessory){
+			if(frm.doc.stiching_accessory_json){
+				let cloths = []
+				for(let i = 0 ; i < frm.doc.cloth_detail.length; i++){
+					if(frm.doc.cloth_detail[i].name1 && frm.doc.cloth_detail[i].cloth){
+						cloths.push(frm.doc.cloth_detail[i].name1)
+					}
+				}	
+				let stich_json = frm.doc.stiching_accessory_json
+				stich_json = JSON.parse(stich_json)
+				stich_json['select_list'] = cloths
+				await frm.stiching_accessory.load_data(stich_json);
+				frm.stiching_accessory.set_attributes()
+			}
+		}
 	},
 	async make_stiching_combination(frm){
 		$(frm.fields_dict['stiching_items_html'].wrapper).html("");
@@ -268,7 +282,7 @@ frappe.ui.form.on("Item Production Detail", {
 	},
 	async make_stiching_accessory_combination(frm){
 		$(frm.fields_dict['stiching_accessory_html'].wrapper).html("");
-		frm.stiching_accessory = new frappe.production.ui.ClothAccessory(frm.fields_dict['stiching_accessory_html'].wrapper);
+		frm.stiching_accessory = new frappe.production.ui.ClothAccessoryCombination(frm.fields_dict['stiching_accessory_html'].wrapper);
 		if(frm.doc.stiching_accessory_json) {
 			await frm.stiching_accessory.load_data(frm.doc.stiching_accessory_json);
 			frm.stiching_accessory.set_attributes()
@@ -468,6 +482,7 @@ frappe.ui.form.on("Item Production Detail", {
 				packing_attribute_details : frm.doc.packing_attribute_details,
 				major_attribute_value : frm.doc.stiching_major_attribute_value,
 				is_same_packing_attribute: frm.doc.is_same_packing_attribute,
+				doc_name : frm.doc.name,
 			},
 			callback:async function(r){
 				await frm.stiching_item.load_data(r.message)

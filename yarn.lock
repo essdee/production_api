@@ -2,12 +2,7 @@
 # yarn lockfile v1
 
 
-"@vue/composition-api@^1.7.2":
-  version "1.7.2"
-  resolved "https://registry.npmjs.org/@vue/composition-api/-/composition-api-1.7.2.tgz"
-  integrity sha512-M8jm9J/laYrYT02665HkZ5l2fWTK4dcVg3BsDHm/pfz+MjDYwX+9FUaZyGwEyXEDonQYRCo0H7aLgdklcIELjw==
-
-"vue@>= 2.5 < 2.7":
-  version "2.6.14"
-  resolved "https://registry.npmjs.org/vue/-/vue-2.6.14.tgz"
-  integrity sha512-x2284lgYvjOMj3Za7kqzRcUSxBboHqtgRE2zlos1qWaOye5yUmHn42LB1250NJBLRwEcdrB0JRwyPTEPhfQjiQ==
+frappe-gantt@^0.6.1:
+  version "0.6.1"
+  resolved "https://registry.npmjs.org/frappe-gantt/-/frappe-gantt-0.6.1.tgz"
+  integrity sha512-1cSU9vLbwypjzaxnCfnEE03Xr3HlAV2S8dRtjxw62o+amkx1A8bBIFd2jp84mcDdTCM77Ij4LzZBslAKZB8oMg==

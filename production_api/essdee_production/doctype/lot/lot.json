@@ -1,5 +1,6 @@
 {
  "actions": [],
+ "allow_rename": 1,
  "autoname": "field:lot_name",
  "creation": "2021-08-25 09:40:42.087544",
  "doctype": "DocType",
@@ -328,7 +329,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2024-11-26 10:36:45.813299",
+ "modified": "2024-12-04 18:52:41.506301",
  "modified_by": "Administrator",
  "module": "Essdee Production",
  "name": "Lot",

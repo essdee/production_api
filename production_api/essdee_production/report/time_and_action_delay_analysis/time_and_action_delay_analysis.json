@@ -10,7 +10,7 @@
  "is_standard": "Yes",
  "letter_head": "",
  "letterhead": null,
- "modified": "2024-11-14 17:23:32.001014",
+ "modified": "2024-12-05 15:05:35.739141",
  "modified_by": "Administrator",
  "module": "Essdee Production",
  "name": "Time and Action Delay Analysis",
@@ -20,6 +20,18 @@
  "report_name": "Time and Action Delay Analysis",
  "report_type": "Script Report",
  "roles": [
+  {
+   "role": "T & A Admin"
+  },
+  {
+   "role": "T & A Manager"
+  },
+  {
+   "role": "T & A User"
+  },
+  {
+   "role": "T & A Viewer"
+  },
   {
    "role": "System Manager"
   }

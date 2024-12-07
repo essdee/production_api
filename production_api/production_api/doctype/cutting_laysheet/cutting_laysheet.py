@@ -374,22 +374,18 @@ def update_cutting_plan(cutting_laysheet):
 
 	incomplete_items = json.loads(cp_doc.incomplete_items_json)
 	completed_items = json.loads(cp_doc.completed_items_json)
-	
 	for item in cls_doc.cutting_laysheet_bundles:
 		parts = item.part.split(",")
 		for x in incomplete_items['items']:
-			if completed_items['is_set_item']:
-				if x['attributes'][ipd_doc.packing_attribute] == item.colour and item.part in incomplete_items[ipd_doc.stiching_attribute][x['attributes'][ipd_doc.set_item_attribute]]:
+			if x['attributes'][ipd_doc.packing_attribute] == item.colour:
 					for val in x['values']:
 						if item.size == val:
 							for part in parts:
-								x['values'][val][part] += item.quantity
-			else:
-				if x['attributes'][ipd_doc.packing_attribute] == item.colour:
-					for val in x['values']:
-						if item.size == val:
-							for part in parts:
-								x['values'][val][part] += item.quantity						
+								condition = True
+								if completed_items['is_set_item']:
+									condition = part in incomplete_items[ipd_doc.stiching_attribute][x['attributes'][ipd_doc.set_item_attribute]]
+								if condition:
+									x['values'][val][part] += item.quantity
 	
 	stitching_combination = get_stitching_combination(ipd_doc)
 	set_item = ipd_doc.is_set_item
