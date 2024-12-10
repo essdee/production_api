@@ -43,7 +43,7 @@
    "fieldtype": "Select",
    "in_list_view": 1,
    "label": "Purpose",
-   "options": "Material Issue\nMaterial Receipt\nSend to Warehouse\nReceive at Warehouse\nMaterial Consumed",
+   "options": "Material Issue\nMaterial Receipt\nSend to Warehouse\nReceive at Warehouse\nMaterial Consumed\nStock Dispatch",
    "reqd": 1
   },
   {
@@ -155,7 +155,7 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2024-11-20 12:30:42.656305",
+ "modified": "2024-12-10 11:22:49.181004",
  "modified_by": "Administrator",
  "module": "MRP Stock",
  "name": "Stock Entry",
@@ -173,7 +173,6 @@
    "read": 1,
    "report": 1,
    "role": "System Manager",
-   "set_user_permissions": 1,
    "share": 1,
    "submit": 1,
    "write": 1
@@ -203,7 +202,6 @@
    "read": 1,
    "report": 1,
    "role": "Stock Manager",
-   "set_user_permissions": 1,
    "share": 1,
    "submit": 1,
    "write": 1

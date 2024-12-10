@@ -9,6 +9,7 @@ from six import string_types
 from production_api.mrp_stock.doctype.stock_entry.stock_entry import get_uom_details
 from production_api.production_api.doctype.item_price.item_price import get_item_variant_price
 from production_api.mrp_stock.utils import get_stock_balance
+from six import string_types
 
 class FGStockEntry(Document):
 	
@@ -135,3 +136,41 @@ def get_stock_entry_detail(stock_entry):
 		"created_at" : doc.creation
 	}
 	return resp
+
+def get_inward_stock(item, warehouselist):
+
+	if isinstance(warehouselist, string_types) :
+		warehouselist = frappe.json.loads(warehouselist)
+
+	warehouseFilter = "("
+
+	ind = 0
+	for i in warehouselist:
+		warehouseFilter += f"'{i}'"
+		if ind < len(warehouselist)-1:
+			warehouseFilter += ','
+		ind += 1
+	warehouseFilter += ")"
+
+	query = f"""
+		SELECT `tabFG Stock Entry Detail`.qty as pending_qty,
+		`tabFG Stock Entry Detail`.row as row,
+		`tabFG Stock Entry Detail`.col as col,
+		`tabFG Stock Entry`.creation as st_entry_date,
+		`tabFG Stock Entry`.posting_date as posting_date,
+		`tabFG Stock Entry`.posting_time as posting_time,
+		`tabFG Stock Entry`.supplier as supplier,
+		`tabFG Stock Entry`.warehouse as warehouse,
+		`tabFG Stock Entry`.received_by as received_by,
+		`tabFG Stock Entry`.lot as lot,
+		`tabFG Stock Entry`.dc_number as dc_number,
+		`tabFG Stock Entry Detail`.item_variant as item_variant,
+		`tabFG Stock Entry Detail`.uom as uom,
+		`tabItem Variant`.item as item_name,
+		`tabFG Stock Entry`.name as stock_entry
+		FROM `tabFG Stock Entry Detail` JOIN  `tabFG Stock Entry` ON `tabFG Stock Entry Detail`.parent = `tabFG Stock Entry`.name
+		JOIN `tabItem Variant` ON `tabFG Stock Entry Detail`.item_variant=`tabItem Variant`.name  WHERE `tabItem Variant`.item = '{item}' 
+		{ f'AND `tabFG Stock Entry`.warehouse IN  {warehouseFilter}' if len(warehouselist) > 0 else "" }
+	"""
+
+	return frappe.db.sql(query, as_dict=True)
