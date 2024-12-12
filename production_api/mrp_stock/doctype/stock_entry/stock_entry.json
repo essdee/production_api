@@ -10,6 +10,7 @@
  "field_order": [
   "naming_series",
   "purpose",
+  "packing_slip",
   "outgoing_stock_entry",
   "column_break_gz9cd",
   "posting_date",
@@ -150,12 +151,19 @@
   {
    "fieldname": "column_break_agyh",
    "fieldtype": "Column Break"
+  },
+  {
+   "depends_on": "eval:doc.purpose == 'Stock Dispatch'",
+   "fieldname": "packing_slip",
+   "fieldtype": "Data",
+   "label": "Packing Slip No.",
+   "mandatory_depends_on": "eval:doc.purpose == 'Stock Dispatch'"
   }
  ],
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2024-12-10 11:22:49.181004",
+ "modified": "2024-12-12 10:14:55.557536",
  "modified_by": "Administrator",
  "module": "MRP Stock",
  "name": "Stock Entry",
