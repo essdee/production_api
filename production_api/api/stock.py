@@ -163,9 +163,11 @@ def get_fg_stock_entry_details_list(pageLength, curr_page):
                     'lot', 'supplier', 'warehouse', 'received_by', 'comments'], 
                 start=((curr_page-1) * pageLength), limit=pageLength, order_by='name ASC' )
     
-    total_pages = math.ceil((frappe.db.count("FG Stock Entry"))/ pageLength)
+    total_pages = frappe.db.count("FG Stock Entry")
 
     return {
         "rows" : list_items,
-        "total_pages" : total_pages
+        "total_pages" : math.ceil(total_pages/pageLength),
+        "total_count" : total_pages,
+        "displaying" : len(list_items)
     }
