@@ -109,7 +109,9 @@ def create_stock_reservation_entries_for_so_items(
 ) -> None:
 	"""Creates Stock Reservation Entries for Sales Order Items."""
 
+
 	from production_api.utils import get_unreserved_qty
+	from production_api.mrp_stock.doctype.stock_entry.stock_entry import get_uom_details
  
 	warning_msg = ""
 
@@ -200,9 +202,11 @@ def create_stock_reservation_entries_for_so_items(
 		sre.voucher_no = voucher_no
 		sre.voucher_detail_no = item['voucher_detail_no']
 		sre.available_qty = available_qty_to_reserve
-		sre.reserved_qty = qty_to_be_reserved
-		sre.voucher_qty = item['qty_to_reserve']
-		sre.stock_uom = item['uom']
+		
+		item_details = get_uom_details(item['item_name'], item['uom'], item['qty_to_reserve'])
+		sre.stock_uom = item_details.get('stock_uom')
+		sre.reserved_qty = item_details.get("conversion_factor") * item['qty_to_reserve']
+		sre.voucher_qty = sre.reserved_qty
 
 		sre.save()
 		sre.submit()
