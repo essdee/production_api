@@ -40,6 +40,7 @@ def get_group_by_key(row) -> str:
 
 @frappe.whitelist()
 def make_dispatch_stock_entry(items, warehouse, packing_slip):
+    from production_api.mrp_stock.doctype.stock_entry.stock_entry import get_uom_details
     if not packing_slip or not warehouse or not items:
         frappe.throw("Required Details not sent")
     if isinstance(items, string_types):
@@ -57,7 +58,8 @@ def make_dispatch_stock_entry(items, warehouse, packing_slip):
     for item in items:
         
         sre = frappe.get_doc("Stock Reservation Entry", item['sre'])
-        sre.delivered_qty += item['qty']
+        item_details = get_uom_details(sre.item_code, item['uom'], item['qty'])
+        sre.delivered_qty += item_details['conversion_factor'] * item['qty']
         
         sre.db_update()
         sre.update_status()
