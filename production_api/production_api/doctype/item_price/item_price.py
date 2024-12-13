@@ -78,13 +78,16 @@ class ItemPrice(Document):
 			return rate
 		return None
 
-def get_item_variant_price(variant: str):
+def get_item_variant_price(variant: str, variant_uom=None):
+	from production_api.essdee_production.doctype.lot.lot import get_uom_conversion_factor
 	variant = frappe.get_doc("Item Variant", variant)
 	price_list = get_all_active_price(item=variant.item)
 	print("Price List: ", price_list)
 	rate = None
+	uom = None
 	for price in price_list:
 		item_price = frappe.get_doc("Item Price", price.name)
+		uom = item_price.uom
 		if item_price.depends_on_attribute:
 			rate1 = item_price.validate_attribute_values(qty=0, attribute=item_price.attribute, attribute_value=variant.get_attribute_value(item_price.attribute), get_lowest_moq_price=True)
 			if rate1:
@@ -96,8 +99,15 @@ def get_item_variant_price(variant: str):
 				rate = rate1
 				break
 			pass
-
-	return rate
+	
+	if not rate or not variant_uom:
+		return rate
+	if variant_uom and variant_uom == uom:
+		return rate
+	item = frappe.get_doc("Item", variant.item)
+	uom_factor = get_uom_conversion_factor(item.uom_conversion_details,uom,variant_uom)
+	return rate * uom_factor
+	
 
 @frappe.whitelist()
 def get_active_price(item: str, supplier: str = None, raise_error: bool=True):

@@ -7,7 +7,9 @@
  "editable_grid": 1,
  "engine": "InnoDB",
  "field_order": [
-  "transit_warehouse"
+  "transit_warehouse",
+  "column_break_lblg",
+  "default_fg_lot"
  ],
  "fields": [
   {
@@ -17,12 +19,23 @@
    "label": "Transit Warehouse",
    "options": "Supplier",
    "reqd": 1
+  },
+  {
+   "fieldname": "column_break_lblg",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "default_fg_lot",
+   "fieldtype": "Link",
+   "label": "Default FG Lot",
+   "options": "Lot",
+   "reqd": 1
   }
  ],
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2023-07-14 19:47:40.692471",
+ "modified": "2024-09-17 22:31:05.577276",
  "modified_by": "Administrator",
  "module": "MRP Stock",
  "name": "Stock Settings",

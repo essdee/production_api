@@ -6,6 +6,7 @@ import frappe
 from frappe import _
 from frappe.utils import money_in_words, flt, cstr, date_diff
 from frappe.model.document import Document
+from production_api.mrp_stock.doctype.stock_entry.stock_entry import get_uom_details
 from six import string_types
 import json
 
@@ -119,7 +120,6 @@ class GoodsReceivedNote(Document):
 			items = save_grn_item_pending_details(self.item_pending_details, self.against)
 			self.set('items_pending', items)
 		if(self.get('item_details')):
-
 			items = save_grn_item_details(self.item_details, self.against)
 			self.set('items', items)
 		elif self.is_new() or not self.get('items'):
@@ -138,6 +138,7 @@ class GoodsReceivedNote(Document):
 				frappe.throw('Purchase order is not submitted.', title='GRN')
 		if self.against == 'Purchase Order':
 			self.validate_quantity()
+			self.validate_data()
 
 	def validate_quantity(self):
 		total_quantity = 0
@@ -145,6 +146,19 @@ class GoodsReceivedNote(Document):
 			total_quantity += item.quantity
 		if total_quantity == 0:
 			frappe.throw('Quantity cannot be zero.', title='GRN')
+	
+	def validate_data(self):
+		for row in self.items:
+			item_details = get_uom_details(row.item, row.uom, row.quantity)
+			row.set("stock_uom", item_details.get("stock_uom"))
+			row.set("conversion_factor", item_details.get("conversion_factor"))
+			row.stock_qty = flt(
+				flt(row.quantity) * flt(row.conversion_factor), self.precision("stock_qty", row)
+			)
+			row.stock_uom_rate = flt(
+				flt(row.rate) / flt(row.conversion_factor), self.precision("stock_uom_rate", row)
+			)
+			row.amount = flt(flt(row.rate) * flt(row.quantity), self.precision("amount", row))
 
 	def calculate_amount(self):
 		total_amount = 0
@@ -171,9 +185,9 @@ class GoodsReceivedNote(Document):
 				"voucher_type": self.doctype,
 				"voucher_no": self.name,
 				"voucher_detail_no": d.name,
-				"qty": flt(d.get("quantity")),
-				"uom": d.uom,
-				"rate": d.rate,
+				"qty": flt(d.get("stock_qty")),
+				"uom": d.stock_uom,
+				"rate": d.stock_uom_rate,
 				"is_cancelled": 1 if self.docstatus == 2 else 0,
 				"posting_date": self.posting_date,
 				"posting_time": self.posting_time,

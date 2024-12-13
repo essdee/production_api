@@ -16,7 +16,8 @@
    "hidden": 0,
    "is_query_report": 0,
    "label": "Report",
-   "link_count": 3,
+   "link_count": 5,
+   "link_type": "DocType",
    "onboard": 0,
    "type": "Card Break"
   },
@@ -46,6 +47,26 @@
    "label": "Stock Ageing",
    "link_count": 0,
    "link_to": "Stock Ageing",
+   "link_type": "Report",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 1,
+   "label": "Stock Balance (Simple)",
+   "link_count": 0,
+   "link_to": "Item Balance",
+   "link_type": "Report",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 1,
+   "label": "Reserved Stock",
+   "link_count": 0,
+   "link_to": "Reserved Stock",
    "link_type": "Report",
    "onboard": 0,
    "type": "Link"

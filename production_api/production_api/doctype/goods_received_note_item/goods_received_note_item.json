@@ -7,21 +7,34 @@
  "engine": "InnoDB",
  "field_order": [
   "item_variant",
-  "quantity",
-  "uom",
-  "secondary_qty",
-  "secondary_uom",
-  "rate",
   "tax",
+  "column_break_yftt",
   "lot",
-  "comments",
-  "table_index",
-  "row_index",
-  "ref_doctype",
-  "ref_docname",
+  "section_break_fuww",
+  "quantity",
+  "secondary_qty",
+  "stock_qty",
+  "column_break_qils",
+  "uom",
+  "secondary_uom",
+  "stock_uom",
+  "conversion_factor",
   "received_quantity",
-  "rework_details",
-  "received_type"
+  "section_break_xafc",
+  "rate",
+  "stock_uom_rate",
+  "column_break_pncq",
+  "amount",
+  "section_break_rvbh",
+  "received_type",
+  "section_break_valg",
+  "table_index",
+  "ref_doctype",
+  "comments",
+  "column_break_jodk",
+  "row_index",
+  "ref_docname",
+  "rework_details"
  ],
  "fields": [
   {
@@ -115,12 +128,70 @@
    "fieldtype": "Data",
    "in_list_view": 1,
    "label": "Received Type"
+  },
+  {
+   "fieldname": "column_break_yftt",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "section_break_fuww",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "stock_qty",
+   "fieldtype": "Float",
+   "label": "Stock Qty"
+  },
+  {
+   "fieldname": "column_break_qils",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "stock_uom",
+   "fieldtype": "Link",
+   "label": "Stock UOM",
+   "options": "UOM"
+  },
+  {
+   "fieldname": "conversion_factor",
+   "fieldtype": "Float",
+   "label": "Conversion Factor"
+  },
+  {
+   "fieldname": "section_break_xafc",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "stock_uom_rate",
+   "fieldtype": "Currency",
+   "label": "Stock UOM Rate"
+  },
+  {
+   "fieldname": "column_break_pncq",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "amount",
+   "fieldtype": "Currency",
+   "label": "Amount"
+  },
+  {
+   "fieldname": "section_break_rvbh",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "section_break_valg",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "column_break_jodk",
+   "fieldtype": "Column Break"
   }
  ],
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2024-10-14 16:42:13.823521",
+ "modified": "2024-11-13 23:07:35.752861",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Goods Received Note Item",

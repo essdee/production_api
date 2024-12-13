@@ -2,6 +2,7 @@
 # For license information, please see license.txt
 
 from itertools import groupby
+from production_api.mrp_stock.doctype.stock_entry.stock_entry import get_uom_details
 from six import string_types
 import json
 import frappe
@@ -66,16 +67,27 @@ class LotTransfer(Document):
 				self.validation_messages.append(_get_msg(row.table_index, row.row_index, _("Negative Valuation Rate is not allowed")))
 			if row.qty and row.rate in ["", None, 0]:
 				row.rate = get_stock_balance(
-					row.item, None, self.posting_date, self.posting_time, with_valuation_rate=True,lot=row.from_lot,
+					row.item, None, self.posting_date, self.posting_time, with_valuation_rate=True,lot=row.from_lot, uom=row.uom,
 				)[1]
 				if not row.rate:
 					# try if there is a buying price list in default currency
-					buying_rate = get_item_variant_price(row.item)
+					buying_rate = get_item_variant_price(row.item, variant_uom=row.uom)
 					if buying_rate:
 						row.rate = buying_rate
 			
 			if not row.rate and not row.allow_zero_valuation_rate:
 				self.validation_messages.append(_get_msg(row.table_index, row.row_index, _("Could not find valuation rate.")))
+			
+			item_details = get_uom_details(row.item, row.uom, row.qty)
+			row.set("stock_uom", item_details.get("stock_uom"))
+			row.set("conversion_factor", item_details.get("conversion_factor"))
+			row.stock_qty = flt(
+				flt(row.qty) * flt(row.conversion_factor), self.precision("stock_qty", row)
+			)
+			row.stock_uom_rate = flt(
+				flt(row.rate) / flt(row.conversion_factor), self.precision("stock_uom_rate", row)
+			)
+			row.amount = flt(flt(row.rate) * flt(row.qty), self.precision("amount", row))
 
 		# throw all validation messages
 		if self.validation_messages:
@@ -137,9 +149,9 @@ class LotTransfer(Document):
 				d, 
 				{
 					"warehouse": cstr(d.warehouse),
-					"qty": -flt(d.qty),
+					"qty": -flt(d.stock_qty),
 					"rate": 0,
-					"outgoing_rate": flt(d.rate),
+					"outgoing_rate": flt(d.stock_uom_rate),
 					"lot": cstr(d.from_lot),
 				}
 			)
@@ -152,8 +164,8 @@ class LotTransfer(Document):
 				d,
 				{
 					"warehouse": cstr(d.warehouse),
-					"qty": flt(d.qty),
-					"rate": flt(d.rate),
+					"qty": flt(d.stock_qty),
+					"rate": flt(d.stock_uom_rate),
 					"lot": cstr(d.to_lot),
 				},
 			)
@@ -171,7 +183,7 @@ class LotTransfer(Document):
 				"voucher_type": self.doctype,
 				"voucher_no": self.name,
 				"voucher_detail_no": d.name,
-				"uom": d.uom,
+				"uom": d.stock_uom_rate,
 				"rate": 0,
 				"is_cancelled": 1 if self.docstatus == 2 else 0,
 			}
