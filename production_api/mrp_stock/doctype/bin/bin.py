@@ -78,7 +78,7 @@ def get_stock_balance_bin(warehouse,lot,item,remove_zero_balance_item = False):
 		frappe.qb.from_(bin)
 		.select(
 			bin.item_code.as_('item'),
-			bin.actual_qty.as_("bal_qty"),
+			(bin.actual_qty - bin.reserved_qty).as_("bal_qty"),
 			bin.stock_uom.as_("uom")
 		)
 		.where((bin.lot == lot))
@@ -91,6 +91,6 @@ def get_stock_balance_bin(warehouse,lot,item,remove_zero_balance_item = False):
         
     if remove_zero_balance_item:
         
-        query = query.where(bin.actual_qty > 0)
+        query = query.where((bin.actual_qty - bin.reserved_qty) > 0)
     
     return query.run(as_dict = True)
