@@ -149,7 +149,7 @@ class GoodsReceivedNote(Document):
 	
 	def validate_data(self):
 		for row in self.items:
-			item_details = get_uom_details(row.item, row.uom, row.quantity)
+			item_details = get_uom_details(row.item_variant, row.uom, row.quantity)
 			row.set("stock_uom", item_details.get("stock_uom"))
 			row.set("conversion_factor", item_details.get("conversion_factor"))
 			row.stock_qty = flt(
