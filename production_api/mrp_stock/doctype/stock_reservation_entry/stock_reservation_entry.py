@@ -172,6 +172,8 @@ def create_stock_reservation_entries_for_so_items(
 
 		# The quantity which can be reserved.
 		qty_to_be_reserved = min(unreserved_qty, available_qty_to_reserve)
+		item_details = get_uom_details(item['item_name'], item['uom'], item['qty_to_reserve'])
+		item['qty_to_reserve'] = item_details.get("conversion_factor") * item['qty_to_reserve']
 
 		if 'qty_to_reserve' in item:
 			if item['qty_to_reserve'] <= 0:
@@ -203,9 +205,9 @@ def create_stock_reservation_entries_for_so_items(
 		sre.voucher_detail_no = item['voucher_detail_no']
 		sre.available_qty = available_qty_to_reserve
 		
-		item_details = get_uom_details(item['item_name'], item['uom'], item['qty_to_reserve'])
+		
 		sre.stock_uom = item_details.get('stock_uom')
-		sre.reserved_qty = item_details.get("conversion_factor") * item['qty_to_reserve']
+		sre.reserved_qty = item['qty_to_reserve']
 		sre.voucher_qty = sre.reserved_qty
 
 		sre.save()
