@@ -172,7 +172,7 @@ def get_fg_stock_entry_details_list(pageLength, curr_page):
     list_items = frappe.get_list("FG Stock Entry",
                     fields=['name','posting_date', 'posting_time', 'dc_number', 
                     'lot', 'supplier', 'warehouse', 'received_by', 'comments'], 
-                start=((curr_page-1) * pageLength), limit=pageLength, order_by='name ASC' )
+                start=((curr_page-1) * pageLength), limit=pageLength, order_by='creation DESC' )
     
     total_pages = frappe.db.count("FG Stock Entry")
 
