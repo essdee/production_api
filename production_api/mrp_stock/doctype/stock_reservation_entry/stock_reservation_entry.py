@@ -143,36 +143,24 @@ def create_stock_reservation_entries_for_so_items(
 	frappe.db.savepoint(savepoint)
  
 	response_dict = {}
- 
+	out_of_stock_items = set()
+	item_quantity_dict = {}
 	for item in items :
 
 		unreserved_qty = get_unreserved_qty(item, reserved_qty_details)
 
-		# Stock is already reserved for the item, notify the user and skip the item.
 		if unreserved_qty <= 0:
-			frappe.db.rollback()
-			return {
-				"status" : 422,
-				"error" : True,
-				"message" : f"Stock is Not Available For {item['item_name']}",
-				"warning" : warning_msg
-			}
+			out_of_stock_items.add(item['item_name'])
 
 		available_qty_to_reserve = get_available_qty_to_reserve(item['item_name'], item['warehouse'], item['lot'])
 
-		# No stock available to reserve, notify the user and skip the item.
 		if available_qty_to_reserve <= 0:
-			frappe.db.rollback()
-			return {
-				"status" : 422,
-				"error" : True,
-				"message" : f"Stock Not Available For {item['item_name']}",
-				"warning" : warning_msg
-			}
+	
+			out_of_stock_items.add(item['item_name'])
 
-		# The quantity which can be reserved.
 		qty_to_be_reserved = min(unreserved_qty, available_qty_to_reserve)
 		item_details = get_uom_details(item['item_name'], item['uom'], item['qty_to_reserve'])
+		item_quantity_dict[item['item_name']] = item_details
 		item['qty_to_reserve'] = item_details.get("conversion_factor") * item['qty_to_reserve']
 
 		if 'qty_to_reserve' in item:
@@ -181,38 +169,37 @@ def create_stock_reservation_entries_for_so_items(
 				continue
 
 		if item['qty_to_reserve'] > qty_to_be_reserved:
-			#rollback to before creation of sre for this packing slip
-			frappe.db.rollback()
-			
-			return {
-				"status" : 422,
-				"error" : True,
-				"message" : f"Stock Not Available For {item['item_name']}",
-				"warning" : warning_msg
-			}
+	
+			out_of_stock_items.add(item['item_name'])
 		else:
 			qty_to_be_reserved = min(qty_to_be_reserved, item['qty_to_reserve'])
+	
+	if len(out_of_stock_items) > 0:
+		frappe.db.rollback()
+		return {
+			"status" : 422,
+			"error" : True,
+			"message" : "Stock Not Available For Items <br>"+"<br>".join(list(out_of_stock_items)),
+			"warning" : warning_msg
+		}
 
-  
+	for item in items:
 		sre = frappe.new_doc("Stock Reservation Entry")
 
 		sre.item_code = item['item_name']
 		sre.warehouse = item['warehouse']
 		sre.lot = item['lot']
-
+		item_details = item_quantity_dict[item['item_name']]
 		sre.voucher_type = voucher_type
 		sre.voucher_no = voucher_no
 		sre.voucher_detail_no = item['voucher_detail_no']
 		sre.available_qty = available_qty_to_reserve
 		
-		
 		sre.stock_uom = item_details.get('stock_uom')
 		sre.reserved_qty = item['qty_to_reserve']
 		sre.voucher_qty = sre.reserved_qty
-
 		sre.save()
 		sre.submit()
-  
 		response_dict[item['voucher_detail_no']] = sre.name
   
 	return response_dict
