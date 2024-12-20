@@ -9,13 +9,15 @@ from production_api.production_api.doctype.item_price.item_price import get_item
 from production_api.mrp_stock.utils import get_incoming_outgoing_rate_for_cancel
 
 from production_api.mrp_stock.valuation import FIFOValuation, round_off_if_near_zero
+from production_api.utils import get_or_make_bin
+from production_api.mrp_stock.doctype.bin.bin import update_qty as update_bin_qty
 
 
 class NegativeStockError(frappe.ValidationError):
 	pass
 
 
-def make_sl_entries(sl_entries):
+def make_sl_entries(sl_entries, allow_negative_stock=False, via_landed_cost_voucher=False):
 	"""Create SL entries from SL entry dicts"""
 
 	if sl_entries:
@@ -60,6 +62,11 @@ def make_sl_entries(sl_entries):
 			# is_stock_item = frappe.get_cached_value("Item", item, "is_stock_item")
 			if is_stock_item:
 				repost_current_voucher(args)
+				bin_name = get_or_make_bin(args.get("item"),args.get("warehouse"),args.get("lot"))
+				args.reserved_stock = flt(frappe.db.get_value("Bin", bin_name, "reserved_qty"))
+				repost_current_voucher(args, allow_negative_stock, via_landed_cost_voucher)
+				update_bin_qty(bin_name, args)
+    
 			else:
 				frappe.msgprint(
 					_("Item {0} ignored since it is not a stock item").format(args.get("item"))
@@ -84,6 +91,7 @@ def repost_current_voucher(args, allow_negative_stock=False, via_landed_cost_vou
 					"voucher_no": args.get("voucher_no"),
 					"sle_id": args.get("name"),
 					"creation": args.get("creation"),
+					"reserved_stock": args.get("reserved_stock"),
 				},
 				# allow_negative_stock=allow_negative_stock,
 				# via_landed_cost_voucher=via_landed_cost_voucher,
@@ -196,6 +204,7 @@ class update_entries_after(object):
 		self.new_items_found = False
 		self.distinct_item_warehouses = args.get("distinct_item_warehouses", frappe._dict())
 		self.affected_transactions: Set[Tuple[str, str]] = set()
+		self.reserved_stock = flt(self.args.reserved_stock)
 
 		self.data = frappe._dict()
 		self.initialize_previous_data(self.args)

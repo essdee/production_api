@@ -1,5 +1,5 @@
 import frappe
-from frappe.utils import nowdate, nowtime
+from frappe.utils import nowdate, nowtime, flt
 
 @frappe.whitelist()
 def get_stock_balance(
@@ -9,6 +9,7 @@ def get_stock_balance(
 	posting_time=None,
 	with_valuation_rate=False,
 	lot=None,
+	uom=None
 ):
 	"""Returns stock balance quantity at given warehouse on given posting date or current date.
 
@@ -30,13 +31,24 @@ def get_stock_balance(
 	}
 
 	last_entry = get_previous_sle(args)
+	qty = 0.0
+	rate = 0.0
+
+	if last_entry:
+		qty = last_entry.qty_after_transaction
+		rate = last_entry.valuation_rate
+		if uom:
+			cd = get_conversion_factor(item, uom)
+			conversion_factor = flt(cd["conversion_factor"])
+			qty = qty / conversion_factor
+			rate = rate * conversion_factor
 
 	if with_valuation_rate:
 		return (
-            (last_entry.qty_after_transaction, last_entry.valuation_rate) if last_entry else (0.0, 0.0)
+            (qty, rate)
         )
 	else:
-		return last_entry.qty_after_transaction if last_entry else 0.0
+		return qty
 
 def get_incoming_outgoing_rate_for_cancel(item, voucher_type, voucher_no, voucher_detail_no):
 	outgoing_rate = frappe.db.sql(
@@ -51,3 +63,14 @@ def get_incoming_outgoing_rate_for_cancel(item, voucher_type, voucher_no, vouche
 	outgoing_rate = outgoing_rate[0][0] if outgoing_rate else 0.0
 
 	return outgoing_rate
+
+def get_conversion_factor(item_variant, uom):
+	variant_of = frappe.db.get_value("Item Variant", item_variant, "item", cache=True)
+	filters = {"parent": variant_of, "uom": uom}
+
+	conversion_factor = frappe.db.get_value("UOM Conversion Detail", filters, "conversion_factor")
+
+	return {
+		"conversion_factor": conversion_factor or 1.0,
+		"stock_uom": frappe.db.get_value("Item", variant_of, "default_unit_of_measure", cache=True)
+	}

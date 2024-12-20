@@ -83,12 +83,12 @@ production_api.mrp_stock.StockEntry = class StockEntry extends frappe.ui.form.Co
 
 	toggle_related_fields(doc) {
 		this.frm.toggle_enable("from_warehouse", doc.purpose!='Material Receipt');
-		this.frm.toggle_enable("to_warehouse", doc.purpose!='Material Issue' && doc.purpose!='Material Consumed');
+		this.frm.toggle_enable("to_warehouse", doc.purpose!='Material Issue' && doc.purpose!='Material Consumed' && doc.purpose!='Stock Dispatch');
 	}
 	
 	set_mandatory_fields(doc) {
 		this.frm.toggle_reqd("from_warehouse", doc.purpose!='Material Receipt');
-		this.frm.toggle_reqd("to_warehouse", doc.purpose!='Material Issue' && doc.purpose!='Material Consumed');
+		this.frm.toggle_reqd("to_warehouse", doc.purpose!='Material Issue' && doc.purpose!='Material Consumed' && doc.purpose!='Stock Dispatch');
 	}
 
 	from_warehouse(doc) {
