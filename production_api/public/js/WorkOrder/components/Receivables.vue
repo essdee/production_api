@@ -106,7 +106,11 @@ function load_data(all_items) {
 				}
 				element.items.forEach((rows,ind) => {
 					if(ind == index){
-						rows.total_cost = qty*cost[index][1]
+						let x = qty * cost[index][1];
+						if (isNaN(x)) {
+							x = 0;
+						}
+						rows.total_cost = x;
 					}
 				})
 			})

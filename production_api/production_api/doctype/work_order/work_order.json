@@ -17,6 +17,7 @@
   "process_name",
   "item",
   "production_detail",
+  "delivery_location",
   "open_status",
   "section_break_tmhn",
   "planned_start_date",
@@ -231,7 +232,8 @@
    "default": "0",
    "fieldname": "is_rework",
    "fieldtype": "Check",
-   "label": "Is Rework"
+   "label": "Is Rework",
+   "read_only": 1
   },
   {
    "depends_on": "eval: doc.is_rework",
@@ -275,12 +277,18 @@
    "mandatory_depends_on": "eval: doc.is_rework",
    "options": "No Cost\nNet Cost Nil\nAdditional Cost",
    "read_only_depends_on": "eval: !doc.__islocal"
+  },
+  {
+   "fieldname": "delivery_location",
+   "fieldtype": "Link",
+   "label": "Delivery Location",
+   "options": "Supplier"
   }
  ],
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2024-11-20 16:15:22.267780",
+ "modified": "2024-12-19 14:55:34.454537",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Work Order",

@@ -187,7 +187,7 @@
             </div>
 
             <div class="row" v-if="other_inputs">
-                <div v-for="i in other_inputs" :class="[i, other_fields_class]"></div>
+                <div v-for="i in other_inputs" :class="[i, other_fields_class]" :key="i"></div>
             </div>
             <div>
                 <button v-if="!is_edit" type="submit" class="btn btn-success pull-right">Add Item</button>

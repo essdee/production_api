@@ -329,12 +329,31 @@ def get_item_group_index(items, item_details):
 			continue
 		if not item.get('primary_attribute') == item_details.get('primary_attribute'):
 			continue
-		# if not item.get('primary_attribute_values').sort() == item_details.get('primary_attribute_values').sort():
-		# 	continue
+		primary_attr_list1 = item.get('primary_attribute_values').copy()
+		primary_attr_list2 = item_details.get('primary_attribute_values').copy()
+		if not primary_attr_list1.sort() == primary_attr_list2.sort():
+			continue
 		if not item.get('dependent_attribute') == item_details.get('dependent_attribute'):
 			continue
 		index = i
 		break
+	item_name = item_details.get("item")
+	if index != -1 and item_details.get("primary_attribute"):
+		check = True
+		for i, item in enumerate(items):
+			if item['items'][0]['name'] == item_name and i == index:
+				check = False
+				break
+		a = False
+		if check:
+			a = True
+			for i, item in enumerate(items):
+				if item['items'][0]['name'] == item_name:
+					a = False
+					index = i
+					break
+		if a:
+			index = -1			
 	return index
 
 @frappe.whitelist()

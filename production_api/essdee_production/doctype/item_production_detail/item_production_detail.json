@@ -64,6 +64,8 @@
   "cloth_attributes",
   "cloth_detail",
   "additional_cloth",
+  "update_cloth_items",
+  "section_break_uqfw",
   "section_break_eorj",
   "cutting_attributes",
   "select_attributes_html",
@@ -585,11 +587,14 @@
    "fieldtype": "Int",
    "hidden": 1,
    "label": "Version"
+  {
+   "fieldname": "section_break_uqfw",
+   "fieldtype": "Section Break"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2024-12-07 10:00:38.327478",
+ "modified": "2024-12-20 09:46:50.924717",
  "modified_by": "Administrator",
  "module": "Essdee Production",
  "name": "Item Production Detail",

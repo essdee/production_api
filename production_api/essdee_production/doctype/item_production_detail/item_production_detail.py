@@ -65,7 +65,6 @@ class ItemProductionDetail(Document):
 		self.set_onload('bom_attr_list', bom_attribute_list)
 
 	def load_dependent_attribute(self):
-		"""Load Dependent Attribute Detail into `__onload`"""
 		dependent_attribute = {}
 		if self.dependent_attribute and self.dependent_attribute_mapping:
 			dependent_attribute = get_dependent_attribute_details(self.dependent_attribute_mapping)
@@ -86,7 +85,6 @@ class ItemProductionDetail(Document):
 			self.set_onload('stiching_item_detail',stich_items)
 	
 	def before_save(self):
-		
 		if self.is_new():
 			dict_values = {
 				"packing_process" : "Packing",
@@ -346,7 +344,21 @@ def delete_docs(documents):
 		doctype = frappe.qb.DocType(key)
 		if value:
 			frappe.qb.from_(doctype).delete().where(doctype.name.isin(value)).run()
-	
+
+def get_ipd_primary_values(production_detail):
+	doc = frappe.get_doc("Item Production Detail", production_detail)
+	primary_attr_values = []
+	mapping = None
+	for i in doc.item_attributes:
+		if i.attribute == doc.primary_item_attribute:
+			mapping = i.mapping
+			break
+	if mapping:
+		map_doc = frappe.get_doc("Item Item Attribute Mapping", mapping)	
+		for val in map_doc.values:
+			primary_attr_values.append(val.attribute_value)
+	return primary_attr_values
+
 @frappe.whitelist()
 @frappe.validate_and_sanitize_search_inputs
 def get_item_attributes(doctype, txt, searchfield, start, page_len, filters):
@@ -390,7 +402,7 @@ def get_calculated_bom(item_production_detail, items, lot_name, process_name = N
 		items = json.loads(items)
 	if len(items) == 0:
 		return
-	lot_doc = frappe.get_doc("Lot", lot_name)
+	lot_doc = frappe.get_cached_doc("Lot", lot_name)
 	cloth_combination = get_cloth_combination(item_detail)
 	stitching_combination = get_stitching_combination(item_detail)
 	bom_combination = get_bom_combination(item_detail.item_bom)
@@ -433,7 +445,7 @@ def get_calculated_bom(item_production_detail, items, lot_name, process_name = N
 			continue
 		variant = item['item_variant']
 		attr_values = {}
-		variant_doc = frappe.get_doc("Item Variant", variant)
+		variant_doc = frappe.get_cached_doc("Item Variant", variant)
 
 		for x in variant_doc.attributes:
 			attr_values[x.attribute] = x.attribute_value

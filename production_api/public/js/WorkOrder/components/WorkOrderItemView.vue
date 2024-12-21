@@ -1,6 +1,6 @@
 <template>
     <div ref="root">
-        <div v-if="show_title" class="pt-5">
+        <div v-if="show_title">
             <h4>Order Items</h4>
         </div>
         <table class="table table-sm table-bordered">
@@ -61,23 +61,26 @@ function load_data(item){
         show_title.value = true
     }
 }
-async function create_input_classes(){
+
+function create_input_classes(){
     for(let i = 0 ; i < items.value[0].items.length; i++){
         items.value[0].items[i]['entered_qty'] = {}
         items.value[0].items[i]['work_order_qty'] = {}
         Object.keys(items.value[0].items[i].values).forEach((key,value)=> {
-            let input = createInput(key,i)
+            let val = items.value[0].items[i].values[key]
+            let input = createInput(key,i,val)
             items.value[0].items[i]['work_order_qty'][key] = 0
             items.value[0].items[i]['entered_qty'][key] = input
         })
     }
 }
-function createInput(key,index){
+
+function createInput(key,index,val){
     let parent_class = "." + get_input_class(key,index);
     let el = root.value
     let df = {
         fieldtype: 'Int',
-        fieldname: "entered_qty_"+key+""+index,
+        fieldname: key+""+index,
     } 
     let input =  frappe.ui.form.make_control({
         parent: $(el).find(parent_class),
@@ -85,15 +88,21 @@ function createInput(key,index){
         doc: sample_doc.value,
         render_input: true,
     });
+    $(el).find(".control-label").remove();
+    input.set_value(val)
+    input.refresh()
     input['df']['onchange'] = ()=>{
         let input_value = input.get_value()
         items.value[0].items[index]['work_order_qty'][key] = input_value;
     }
     return input
 }
+
 function get_input_class(key,index){
-    return "entered_qty"+"-"+key+"-"+index;
+    key = key.replaceAll(" ","-")
+    return key+"-"+index;
 }
+
 function get_items(){
     // for(let i = 0 ; i < items.value[0].items.length; i++){
     //     Object.keys(items.value[0].items[i].values).forEach((key,value)=> {

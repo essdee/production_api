@@ -11,7 +11,6 @@
 							<th>Lot</th>
 							<th v-for="attr in i.attributes" :key="attr">{{ attr }}</th>
 							<th v-for="attr in i.primary_attribute_values" :key="attr">{{ attr }}</th>
-							<th>Comments</th>
 							<th v-if="docstatus == 0">Edit</th>
 						</tr>
 						<tr v-for="(j, item1_index) in i.items" :key="item1_index">
@@ -31,9 +30,6 @@
 								</div>
 								<div v-else class="text-center">---</div>
 							</td>
-							<td>
-								<input class="form-control" type="text" v-model="j.comments" />
-							</td>
 							<td v-if="docstatus == 0">
 								<div class="pull-right cursor-pointer" @click="edit_item(item_index, item1_index)"
 									v-html="frappe.utils.icon('edit', 'md', 'mr-1')"></div>
@@ -49,7 +45,6 @@
 							<th>Lot</th>
 							<th v-for="attr in i.attributes" :key="attr">{{ attr }}</th>
 							<th>Pending Quantity</th>
-							<th>Comments</th>
 							<th v-if="docstatus == 0">Edit</th>
 						</tr>
 						<tr v-for="(j, item1_index) in i.items" :key="item1_index">
@@ -67,9 +62,6 @@
 									<span v-if="j.secondary_uom">{{" " + j.secondary_uom}}</span>)
 								</span>
 							</td>
-							<td>
-								<input class="form-control" type="text" v-model="j.comments" />
-							</td>
 							<td v-if="docstatus == 0">
 								<div class="pull-right cursor-pointer" @click="edit_item(item_index, item1_index)"
 									v-html="frappe.utils.icon('edit', 'md', 'mr-1')"></div>
@@ -83,16 +75,15 @@
 		<table class="table table-sm table-bordered">
 			<tr v-for="(i, item_index) in items1" :key="item_index">
 				<td v-if="i.primary_attribute">
-					<table class="table table-sm table-bordered" v-if="i.items && i.items.length > 0 && i.created === 1">
+					<table class="table table-sm table-bordered" v-if="i.items && i.items.length > 0">
 						<thead>
 							<tr>
-								<th>S.No.</th>
+								<!-- <th>S.No.</th> -->
 								<th>Item</th>
 								<th>Lot</th>
 								<th v-for="attr in i.attributes" :key="attr">{{ attr }}</th>
 								<th>Type</th>
 								<th v-for="attr in i.primary_attribute_values" :key="attr">{{ attr }}</th>
-								<th>Comments</th>
 								<th v-if="docstatus == 0">Edit</th>
 							</tr>
 						</thead>
@@ -100,7 +91,7 @@
 							<template v-for="(j, item1_index) in i.items" :key='item1_index'>
 								<template v-if="j.created">
 									<tr v-for='m in j.types' :key='m'>
-										<td>{{ get_index(item_index) }}</td>
+										<!-- <td>{{ item1_index + 1 }}</td> -->
 										<td>{{ j.name }}</td>
 										<td>{{ j.lot }}</td>
 										<td v-for="attr in i.attributes" :key="attr">{{ j.attributes[attr] }}</td>
@@ -110,8 +101,9 @@
 												<td v-if='v["received_type"] == m'>{{v["received_quantity"]}}</td>
 											</template>
 										</template>
-										<td>{{ j.comments }}</td>
 										<td v-if="docstatus == 0">
+											<div class="pull-right cursor-pointer" @click="delete_delivered_item(item_index, item1_index, m)"
+												v-html="frappe.utils.icon('delete', 'md', 'mr-1')"></div>	
 											<div class="pull-right cursor-pointer" @click="edit_delivered_item(item_index, item1_index, m)"
 												v-html="frappe.utils.icon('edit', 'md', 'mr-1')"></div>
 										</td>
@@ -122,16 +114,15 @@
 					</table>
 				</td>
 				<td v-else>
-					<table class="table table-sm table-bordered" v-if="i.items && i.items.length > 0 && i.created === 1">
+					<table class="table table-sm table-bordered" v-if="i.items && i.items.length > 0 ">
 						<thead>
 							<tr>
-								<th>S.No.</th>
+								<!-- <th>S.No.</th> -->
 								<th>Item</th>
 								<th>Lot</th>
 								<th v-for="attr in i.attributes" :key="attr">{{ attr }}</th>
 								<th>Type</th>
 								<th>Quantity</th>
-								<th>Comments</th>
 								<th v-if="docstatus == 0">Edit</th>
 							</tr>
 						</thead>
@@ -139,7 +130,7 @@
 							<template v-for="(j, item1_index) in i.items" :key='item1_index'>
 								<template v-if="i.created && j.created">
 									<tr v-for='m in j.types' :key='m'>
-										<td>{{ get_index(item_index) }}</td>
+										<!-- <td>{{ item1_index + 1 }}</td> -->
 										<td>{{ j.name }}</td>
 										<td>{{ j.lot }}</td>
 										<td v-for="attr in i.attributes" :key="attr">{{ j.attributes[attr] }}</td>
@@ -149,8 +140,9 @@
 												<td v-if="v['received_type'] == m">{{v["received_quantity"]}}</td>
 											</template>
 										</template>
-										<td>{{ j.comments }}</td>
 										<td v-if="docstatus == 0">
+											<div class="pull-right cursor-pointer" @click="delete_delivered_item(item_index, item1_index, m)"
+												v-html="frappe.utils.icon('delete', 'md', 'mr-1')"></div>	
 											<div class="pull-right cursor-pointer" @click="edit_delivered_item(item_index, item1_index, m)"
 												v-html="frappe.utils.icon('edit', 'md', 'mr-1')"></div>
 										</td>
@@ -177,11 +169,13 @@
 			<div>
 				<div class="qty-parameters row p-4" style="display: flex; gap: 10px"></div>
 			</div>
-			<div v-if="show_button">
-				<button class="btn btn-success pull-left" @click="add_item()">Add Item</button>
+			<div v-if="show_button" style="display: flex; gap: 10px;">
+				<button class="btn btn-success" @click="add_item()">Add Item</button>
+				<button class="btn btn-success" @click="make_clean()">Close</button>
 			</div>
-			<div v-if="show_button2">
-				<button class="btn btn-success pull-left" @click="update_item()">Update Item</button>
+			<div v-if="show_button2" style="display: flex; gap: 10px;">
+				<button class="btn btn-success" @click="update_item()">Update Item</button>
+				<button class="btn btn-success" @click="make_clean()">Close</button>
 			</div>
 		</div>
 	</div>
@@ -193,6 +187,7 @@ import EventBus from "../../bus";
 import { ref, onMounted, computed, watch } from "vue";
 const root = ref(null);
 let i = 0;
+const is_edited = ref(false)
 const docstatus = ref(0);
 const items = ref([]);
 const items1 = ref([])
@@ -314,6 +309,26 @@ function edit_delivered_item(index, index1, received_type){
 	);
 }
 
+function delete_delivered_item(index, index1, received_type){
+	is_edited.value = true
+	Object.keys(items1.value[index].items[index1]['values']).forEach((key) => {
+		let vals = items1.value[index].items[index1]['values'][key]['val']
+		let arrs = []
+		for(let i = 0 ; i < vals.length ; i++){
+			if(vals[i]['received_type'] == received_type){
+				items.value[index].items[index1]['values'][key]['qty'] += vals[i]['received_quantity']
+			}
+			else{
+				arrs.push(vals[i])
+			}
+		}
+		let types = items1.value[index].items[index1]['types']
+		types = types.filter(item => item !== received_type);
+		items1.value[index].items[index1]['values'][key]['val'] = arrs
+		items1.value[index].items[index1]['types'] = types
+	})
+}
+
 function create_attributes(attributes, quantities, item, lot, idx, idx1, type_value) {
 	let el = root.value;
 	$(el).find(".lot-name").html("");
@@ -386,7 +401,7 @@ function create_attributes(attributes, quantities, item, lot, idx, idx1, type_va
 			options: "GRN Item Type",
 			onchange: () => {
 				const selectedValue = types.get_value();
-				if (selectedValue !== "" && selectedValue !== null) {
+				if (selectedValue && selectedValue !== "" && selectedValue !== null) {
 					handleQtyParameters(quantities, selectedValue);
 				} 
 				else {
@@ -404,8 +419,11 @@ function create_attributes(attributes, quantities, item, lot, idx, idx1, type_va
 		doc: sample_doc.value,
 		render_input: true,
 	});
-	types.set_value(type_value);
-	types.refresh();
+	if(type_value){
+		handleQtyParameters(quantities, type_value);
+		types.set_value(type_value);
+		types.refresh();
+	}
 }
 
 function handleQtyParameters(quantities, value) {
@@ -437,6 +455,7 @@ function handleQtyParameters(quantities, value) {
 }
 
 function update_item(){
+	is_edited.value = true
 	cur_frm.dirty()
 	let data = getControlValues(controlRefs.value.quantities);
 	let x = 0;
@@ -473,6 +492,13 @@ function update_item(){
 }
 
 async function add_item() {
+	is_edited.value = true
+	let type_selected = types.get_value();
+	if(type_selected == null || type_selected == ""){
+		frappe.msgprint("Enter The Type")
+		make_clean()
+		return
+	}
     cur_frm.dirty()
     if(items1.value.length == 0){
         items1.value = JSON.parse(JSON.stringify(items.value)); 
@@ -481,7 +507,6 @@ async function add_item() {
 	let data = getControlValues(controlRefs.value.quantities);
 	let x = 0;
 	controlRefs.value.quantities = [];
-	let type_selected = types.get_value();
     
 	if(items1.value[edit_index.value].items[edit_index1.value]['types'].indexOf(type_selected) == -1){
 		items1.value[edit_index.value].items[edit_index1.value]['types'].push(type_selected)
@@ -559,6 +584,7 @@ function make_clean(){
 	$(el).find(".item-name").html("");
 	show_button.value = false;
 	show_button2.value = false;
+	types.set_value(null)
 }
 
 onMounted(() => {
@@ -660,9 +686,6 @@ function get_items() {
 				if(items.value[i].items[j].values[k].received_quantity == null || items.value[i].items[j].values[k].received_quantity == "") {
 					items.value[i].items[j].values[k].received_quantity = 0;
 				}
-				if(items.value[i].items[j].values[k].rework_details == null || items.value[i].items[j].values[k].rework_details == "") {
-					items.value[i].items[j].values[k].rework_details = "";
-				}
 				if (items.value[i].items[j].values[k].secondary_received == null ||items.value[i].items[j].values[k].secondary_received == "") {
 					items.value[i].items[j].values[k].secondary_received = 0;
 				}
@@ -672,8 +695,7 @@ function get_items() {
 	if(items1.value.length == 0){
 		items1.value = JSON.parse(JSON.stringify(items.value))
 	}
-
-	return [items.value, items1.value];
+	return [items.value, items1.value, is_edited.value];
 }
 
 watch(

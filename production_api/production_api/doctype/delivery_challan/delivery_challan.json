@@ -8,6 +8,7 @@
  "field_order": [
   "work_order",
   "naming_series",
+  "is_rework",
   "column_break_xmwj",
   "posting_date",
   "posting_time",
@@ -162,12 +163,21 @@
    "fieldname": "additional_goods_value",
    "fieldtype": "Currency",
    "label": "Additional Goods Value"
+  },
+  {
+   "default": "0",
+   "fetch_from": "work_order.is_rework",
+   "fetch_if_empty": 1,
+   "fieldname": "is_rework",
+   "fieldtype": "Check",
+   "hidden": 1,
+   "label": "Is Rework"
   }
  ],
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2024-11-18 14:10:38.138073",
+ "modified": "2024-12-13 12:02:51.544421",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Delivery Challan",

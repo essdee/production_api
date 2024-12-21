@@ -75,7 +75,6 @@ frappe.ui.form.on('Goods Received Note', {
 	refresh: function(frm) {
 		$(frm.fields_dict['item_html'].wrapper).html("");
 		if(frm.doc.against == 'Purchase Order'){
-			
 			frm.itemEditor = new frappe.production.ui.GRNPurchaseOrder(frm.fields_dict["item_html"].wrapper);
 			frm.itemEditor.load_data({
 				supplier: frm.doc.supplier,
@@ -182,6 +181,7 @@ frappe.ui.form.on('Goods Received Note', {
 			if(items && items.length > 0 && frm.doc.against == "Work Order") {
 				frm.doc['item_details'] = JSON.stringify(items[0]);
 				frm.doc['item_delivered_details'] = JSON.stringify(items[1])
+				frm.doc['is_edited'] = items[2]
 			}
 			else if(items && items.length > 0 && frm.doc.against == "Purchase Order"){
 				frm.doc['item_details'] = JSON.stringify(items);

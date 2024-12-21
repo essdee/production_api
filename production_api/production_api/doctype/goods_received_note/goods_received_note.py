@@ -1,13 +1,13 @@
 # Copyright (c) 2023, Essdee and contributors
 # For license information, please see license.txt
 
-from itertools import groupby
 import frappe,json
 from frappe import _
-from frappe.utils import money_in_words, flt, cstr, date_diff
-from frappe.model.document import Document
 from six import string_types
-from production_api.production_api.doctype.item.item import get_variant, create_variant, get_attribute_details
+from itertools import groupby
+from frappe.model.document import Document
+from frappe.utils import money_in_words, flt, cstr, date_diff
+from production_api.production_api.doctype.item.item import get_attribute_details, get_or_create_variant
 from production_api.production_api.doctype.purchase_order.purchase_order import get_item_attribute_details, get_item_group_index
 
 class GoodsReceivedNote(Document):
@@ -30,8 +30,6 @@ class GoodsReceivedNote(Document):
 		if against_docstatus != 1:
 			frappe.throw(f'{self.against} is not submitted.', title='GRN')
 		
-		# Remove all item rows quantity is zero
-		
 		if self.against == 'Purchase Order':		
 			for item in self.items:
 				if item.quantity == 0:
@@ -45,27 +43,52 @@ class GoodsReceivedNote(Document):
 			self.update_purchase_order()
 			self.update_stock_ledger()
 		else:
+			self.update_wo_stock_ledger()
 			self.update_work_order()
-			self.update_stock_ledger()	
+
+	def update_wo_stock_ledger(self):
+		from production_api.mrp_stock.stock_ledger import make_sl_entries
+		sl_entries = []
+		for item in self.items_delivered:
+			if item.received_type and item.received_quantity > 0:
+				sl_entries.append(self.get_sl_entries(item, {}, 1))
+		make_sl_entries(sl_entries)
 
 	def on_cancel(self):
-		if self.purchase_invoice_name:
-			frappe.throw(f'Please remove this GRN from Purchase Invoice {self.purchase_invoice_name} before cancelling. Please Contact Purchase Department.')
-		settings = frappe.get_single('MRP Settings')
-		cancel_before_days = settings.grn_cancellation_in_days
-		if cancel_before_days == 0:
-			frappe.throw('GRN cancellation is not allowed.', title='GRN')
-		if cancel_before_days and not settings.allow_grn_cancellation:
-			if date_diff(frappe.utils.nowdate(), self.creation) > cancel_before_days:
-				frappe.throw(f'GRN cannot be cancelled after {cancel_before_days} days of creation.', title='GRN')
-		if self.against == 'Purchase Order':
-			status = frappe.get_value('Purchase Order', self.against_id, 'open_status')
-			if status != 'Open':
-				frappe.throw('Purchase order is not open.', title='GRN')
 		self.ignore_linked_doctypes = ("Stock Ledger Entry")
 		if self.against == 'Purchase Order':
+			if self.purchase_invoice_name:
+				frappe.throw(f'Please remove this GRN from Purchase Invoice {self.purchase_invoice_name} before cancelling. Please Contact Purchase Department.')
+			settings = frappe.get_single('MRP Settings')
+			cancel_before_days = settings.grn_cancellation_in_days
+			if cancel_before_days == 0:
+				frappe.throw('GRN cancellation is not allowed.', title='GRN')
+			if cancel_before_days and not settings.allow_grn_cancellation:
+				if date_diff(frappe.utils.nowdate(), self.creation) > cancel_before_days:
+					frappe.throw(f'GRN cannot be cancelled after {cancel_before_days} days of creation.', title='GRN')
+				status = frappe.get_value('Purchase Order', self.against_id, 'open_status')
+				if status != 'Open':
+					frappe.throw('Purchase order is not open.', title='GRN')
 			self.update_purchase_order()
-			self.update_stock_ledger()
+			self.update_stock_ledger()	
+		else:
+			wo_doc = frappe.get_doc("Work Order",self.against_id)
+			for item in self.items_delivered:
+				for receivable in wo_doc.receivables:
+					if item.ref_docname == receivable.name and item.received_type and flt(item.received_quantity) > flt(0):
+						receivable.pending_quantity += item.received_quantity
+						item.received_quantity = 0
+						break
+			self.reupdate_stock_ledger()
+			wo_doc.save(ignore_permissions=True)
+
+	def reupdate_stock_ledger(self):
+		from production_api.mrp_stock.stock_ledger import make_sl_entries
+		sl_entries = []
+		for item in self.items_delivered:
+			if item.received_type and item.delivered_quantity > 0:
+				sl_entries.append(self.get_sl_entries(item, {}, -1))
+		make_sl_entries(sl_entries)	
 
 	def update_purchase_order(self):
 		if self.docstatus == 0:
@@ -88,20 +111,12 @@ class GoodsReceivedNote(Document):
 	def update_work_order(self):
 		if self.docstatus == 0:
 			return
-		multiplier = 1
-		if self.docstatus == 2:
-			multiplier = -1
 		wo = frappe.get_doc(self.against, self.against_id)
 		for item in self.items:
-			# find the po item with the same ref_docname
 			for i in wo.receivables:
 				if i.name == item.ref_docname:
-					# quantity = item.received_quantity * multiplier
-					# if self.docstatus == 1:
-					# 	validate_quantity_tolerance(i.item_variant, i.qty, i.pending_quantity, quantity)
 					i.set('pending_quantity', item.quantity)
 					break
-		
 		wo.save(ignore_permissions=True)	
 
 	def update_stock_ledger(self):
@@ -110,22 +125,30 @@ class GoodsReceivedNote(Document):
 			return
 		sl_entries = []
 		for item in self.items:
-			sl_entries.append(self.get_sl_entries(item, {}))
+			sl_entries.append(self.get_sl_entries(item, {}, 1))
+
 		if self.docstatus == 2:
 			sl_entries.reverse()
 		make_sl_entries(sl_entries)
 
 	def before_validate(self):
+		if self.delivery_date > self.posting_date:
+			frappe.throw("Delivery Date is Higher than Posting Date")
+
 		if self.against == 'Purchase Order':
 			if(self.get('item_details')):
-				items = save_grn_purchase_item_details(self.item_details, self.against)
+				items = save_grn_purchase_item_details(self.item_details)
 				self.set('items', items)
 		else:
-			if(self.get('item_details')):
+			check = self.get("is_edited")
+			if self.is_new():
+				check = True
+
+			if(self.get('item_details')) and check:
 				items = save_grn_item_details(self.item_details)
 				self.set('items', items)
-			if self.get('item_delivered_details'):
-				items = save_grn_item_delivered_details(self.item_delivered_details, self.against)
+			if self.get('item_delivered_details') and check:
+				items = save_grn_item_delivered_details(self.item_delivered_details)
 				self.set('items_delivered', items)
 
 	def validate(self):
@@ -164,7 +187,7 @@ class GoodsReceivedNote(Document):
 		self.set('grand_total', grand_total)
 		self.set('in_words', money_in_words(grand_total))
 
-	def get_sl_entries(self, d, args):
+	def get_sl_entries(self, d, args, multiplier):
 		sl_dict = frappe._dict(
 			{
 				"item": d.get("item_variant", None),
@@ -173,18 +196,18 @@ class GoodsReceivedNote(Document):
 				"voucher_type": self.doctype,
 				"voucher_no": self.name,
 				"voucher_detail_no": d.name,
-				"qty": flt(d.get("quantity")),
+				"qty": flt(d.get("quantity")) * multiplier,
 				"uom": d.uom,
 				"rate": d.rate,
 				"is_cancelled": 1 if self.docstatus == 2 else 0,
-				"posting_date": self.posting_date,
+				"posting_date": self.delivery_date,
 				"posting_time": self.posting_time,
 			}
 		)
 		sl_dict.update(args)
 		return sl_dict
 	
-def save_grn_purchase_item_details(item_details, against):
+def save_grn_purchase_item_details(item_details):
 	if isinstance(item_details, string_types):
 		item_details = json.loads(item_details)
 	items = []
@@ -198,11 +221,7 @@ def save_grn_purchase_item_details(item_details, against):
 					if values.get('qty') or values.get('pending_qty') or values.get('received'):
 						item_attributes[item.get('primary_attribute')] = attr
 						item1 = {}
-						variant_name = get_variant(item_name, item_attributes)
-						if not variant_name:
-							variant1 = create_variant(item_name, item_attributes)
-							variant1.insert()
-							variant_name = variant1.name
+						variant_name = get_or_create_variant(item_name, item_attributes)
 						validate_quantity_tolerance(variant_name, values.get('qty'), values.get('pending_qty'), values.get('received'))
 						item1['item_variant'] = variant_name
 						item1['lot'] = item.get('lot')
@@ -230,11 +249,7 @@ def save_grn_purchase_item_details(item_details, against):
 			else:
 				if item['values'].get('default'):
 					item1 = {}
-					variant_name = get_variant(item_name, item_attributes)
-					if not variant_name:
-						variant1 = create_variant(item_name, item_attributes)
-						variant1.insert()
-						variant_name = variant1.name
+					variant_name = get_or_create_variant(item_name, item_attributes)
 					validate_quantity_tolerance(variant_name, item['values']['default'].get('qty'), item['values']['default'].get('pending_qty'), item['values']['default'].get('received'))
 					item1['item_variant'] = variant_name
 					item1['lot'] = item.get('lot')
@@ -254,11 +269,14 @@ def save_grn_purchase_item_details(item_details, against):
 	return items
 
 def save_grn_item_details(item_details):
+	
 	if isinstance(item_details, string_types):
 		item_details = json.loads(item_details)
 	items = []
 	row_index = 0
-	for table_index, group in enumerate(item_details):
+	table_index = -1
+	for group in item_details:
+		table_index += 1
 		for item in group['items']:
 			item_name = item['name']
 			item_attributes = item['attributes']
@@ -267,25 +285,11 @@ def save_grn_item_details(item_details):
 					if values.get('ref_docname'):	
 						item_attributes[item.get('primary_attribute')] = attr
 						item1 = {}
-						variant_name = get_variant(item_name, item_attributes)
-						if not variant_name:
-							variant1 = create_variant(item_name, item_attributes)
-							variant1.insert()
-							variant_name = variant1.name
+						variant_name = get_or_create_variant(item_name, item_attributes)
 						item1['item_variant'] = variant_name
 						item1['lot'] = item.get('lot')
-						if isinstance(values.get('received'), string_types) and values.get('received') != '':
-							values['received'] = float(values.get('received'))
-						else:
-							values['received'] = values.get('received') or 0
-						
 						item1['quantity'] = values.get('qty')
-
 						item1['uom'] = item.get('default_uom')
-						if isinstance(values.get('secondary_received'), string_types) and values.get('secondary_received') != '':
-							values['secondary_received'] = float(values.get('secondary_received'))
-						else:
-							values['secondary_received'] = values.get('secondary_received') or 0
 						item1['secondary_qty'] = values.get('secondary_received')
 						item1['secondary_uom'] = item.get('secondary_uom')
 						item1['rate'] = values.get('rate')
@@ -299,11 +303,7 @@ def save_grn_item_details(item_details):
 			else:
 				if item['values'].get('default') and item['values']['default'].get('ref_docname'):
 					item1 = {}
-					variant_name = get_variant(item_name, item_attributes)
-					if not variant_name:
-						variant1 = create_variant(item_name, item_attributes)
-						variant1.insert()
-						variant_name = variant1.name
+					variant_name = get_or_create_variant(item_name, item_attributes)
 					item1['item_variant'] = variant_name
 					item1['lot'] = item.get('lot')
 					item1['quantity'] = item['values']['default'].get('qty')
@@ -321,7 +321,7 @@ def save_grn_item_details(item_details):
 			row_index += 1	
 	return items
 
-def save_grn_item_delivered_details(item_details, against):
+def save_grn_item_delivered_details(item_details):
 	"""
 		Save item details to purchase order
 		Item details format:
@@ -331,7 +331,9 @@ def save_grn_item_delivered_details(item_details, against):
 		item_details = json.loads(item_details)
 	items = []
 	row_index = 0
-	for table_index, group in enumerate(item_details):
+	table_index = -1
+	for group in item_details:
+		table_index += 1
 		for item in group['items']:
 			item_name = item['name']
 			item_attributes = item['attributes']
@@ -340,11 +342,7 @@ def save_grn_item_delivered_details(item_details, against):
 					if values.get('ref_docname'):
 						item_attributes[item.get('primary_attribute')] = attr
 						item1 = {}
-						variant_name = get_variant(item_name, item_attributes)
-						if not variant_name:
-							variant1 = create_variant(item_name, item_attributes)
-							variant1.insert()
-							variant_name = variant1.name
+						variant_name = get_or_create_variant(item_name, item_attributes)
 						
 						item1['item_variant'] = variant_name
 						item1['lot'] = item.get('lot')
@@ -355,12 +353,7 @@ def save_grn_item_delivered_details(item_details, against):
 
 						qty = values.get('qty')
 						item1['quantity'] = qty if qty else 0
-
 						item1['uom'] = item.get('default_uom')
-						if isinstance(values.get('secondary_received'), string_types) and values.get('secondary_received') != '':
-							values['secondary_received'] = float(values.get('secondary_received'))
-						else:
-							values['secondary_received'] = values.get('secondary_received') or 0
 						item1['secondary_qty'] = values.get('secondary_received')
 						item1['secondary_uom'] = item.get('secondary_uom')
 						item1['rate'] = values.get('rate')
@@ -375,7 +368,6 @@ def save_grn_item_delivered_details(item_details, against):
 							check = False
 							item1['received_quantity'] = v['received_quantity']
 							item1['received_type'] = v['received_type']
-							item1['rework_details'] = values.get('rework_details')
 							x = item1.copy()
 							items.append(x)
 						if check:
@@ -383,11 +375,7 @@ def save_grn_item_delivered_details(item_details, against):
 			else:
 				if item['values']['default']['ref_docname']:
 					item1 = {}
-					variant_name = get_variant(item_name, item_attributes)
-					if not variant_name:
-						variant1 = create_variant(item_name, item_attributes)
-						variant1.insert()
-						variant_name = variant1.name
+					variant_name = get_or_create_variant(item_name, item_attributes)
 					item1['item_variant'] = variant_name
 					item1['lot'] = item.get('lot')
 					item1['uom'] = item.get('default_uom')
@@ -407,11 +395,10 @@ def save_grn_item_delivered_details(item_details, against):
 						check = False
 						item1['received_quantity'] = v['received_quantity']
 						item1['received_type'] = v['received_type']
-						item1['rework_details'] = item['values']['default'].get('rework_details')
 						x = item1.copy()
 						items.append(x)
-				if check:
-					items.append(item1)		
+					if check:
+						items.append(item1)		
 			row_index += 1	
 	return items
 
@@ -428,10 +415,10 @@ def validate_quantity_tolerance(item_variant, total_qty, pending_qty, received_q
 def fetch_grn_item_details(items):
 	items = [item.as_dict() for item in items]
 	item_details = []
-	items = sorted(items, key = lambda i: i['table_index'])
+	# items = sorted(items, key = lambda i: i['table_index'])
 	for key, variants in groupby(items, lambda i: i['row_index']):
 		variants = list(variants)
-		current_variant = frappe.get_doc("Item Variant", variants[0]['item_variant'])
+		current_variant = frappe.get_cached_doc("Item Variant", variants[0]['item_variant'])
 		current_item_attribute_details = get_attribute_details(current_variant.item)
 		item = {
 			'name': current_variant.item,
@@ -448,7 +435,7 @@ def fetch_grn_item_details(items):
 			for attr in current_item_attribute_details['primary_attribute_values']:
 				item['values'][attr] = {'qty': 0, 'rate': 0}
 			for variant in variants:
-				current_variant = frappe.get_doc("Item Variant", variant['item_variant'])
+				current_variant = frappe.get_cached_doc("Item Variant", variant['item_variant'])
 				for attr in current_variant.attributes:
 					if attr.attribute == item.get('primary_attribute'):
 						item['values'][attr.attribute_value] = {
@@ -462,7 +449,6 @@ def fetch_grn_item_details(items):
 						item['values'][attr.attribute_value]['ref_docname'] = variant.ref_docname
 						break
 		else:
-
 			item['values']['default'] = {
 				'received': variants[0].quantity,
 				'secondary_received': variants[0].secondary_qty,
@@ -494,7 +480,7 @@ def fetch_grn_purchase_item_details(items, docstatus=0):
 	items = sorted(items, key = lambda i: i['row_index'])
 	for key, variants in groupby(items, lambda i: i['row_index']):
 		variants = list(variants)
-		current_variant = frappe.get_doc("Item Variant", variants[0]['item_variant'])
+		current_variant = frappe.get_cached_doc("Item Variant", variants[0]['item_variant'])
 		current_item_attribute_details = get_attribute_details(current_variant.item)
 		item = {
 			'name': current_variant.item,
@@ -558,17 +544,16 @@ def fetch_grn_purchase_item_details(items, docstatus=0):
 def fetch_grn_item_delivered_details(items):
 	items = [item.as_dict() for item in items]
 	item_details = []
-	items = sorted(items, key = lambda i: i['table_index'])
+	# items = sorted(items, key = lambda i: i['table_index'])
 	for key, variants in groupby(items, lambda i: i['row_index']):
 		variants = list(variants)
-		current_variant = frappe.get_doc("Item Variant", variants[0]['item_variant'])
+		current_variant = frappe.get_cached_doc("Item Variant", variants[0]['item_variant'])
 		current_item_attribute_details = get_attribute_details(current_variant.item)
 		created = 0
 		for v in variants:
 			if v.received_quantity > 0:
 				created = 1
 				break
-
 		item = {
 			'name': current_variant.item,
 			'lot': variants[0]['lot'],
@@ -589,7 +574,7 @@ def fetch_grn_item_delivered_details(items):
 				if variant.received_type and variant.received_type not in item['types']:
 					item['types'].append(variant.received_type)
 
-				current_variant = frappe.get_doc("Item Variant", variant['item_variant'])
+				current_variant = frappe.get_cached_doc("Item Variant", variant['item_variant'])
 				for attr in current_variant.attributes:
 					if attr.attribute == item.get('primary_attribute'):
 						if not item['values'][attr.attribute_value].get('val',False):
@@ -602,7 +587,6 @@ def fetch_grn_item_delivered_details(items):
 									'received_quantity':variant.received_quantity,
 									'received_type':variant.received_type,
 								}],
-								'rework_details': variant.rework_details,
 							}
 						else:
 							item['values'][attr.attribute_value]['val'].append({
@@ -633,14 +617,11 @@ def fetch_grn_item_delivered_details(items):
 							'received_quantity':variant.received_quantity,
 							'received_type':variant.received_type,
 						}],
-						'rework_details': variant.rework_details,
 					}
-
 				if variant.ref_docname:
 					item['values']['default']['qty'] = variant.received_quantity
 					item['values']['default']['ref_doctype'] = variant.ref_doctype
 					item['values']['default']['ref_docname'] = variant.ref_docname
-		
 		index = -1
 		if item_details:
 			index = get_item_group_index(item_details, current_item_attribute_details)

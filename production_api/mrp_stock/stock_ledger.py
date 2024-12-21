@@ -823,7 +823,7 @@ def get_stock_ledger_entries(
 	order="desc",
 	limit=None,
 	for_update=False,
-	debug=True,
+	debug=False,
 	# check_serial_no=True,
 ):
 	"""get stock ledger entries filtered by specific posting datetime conditions"""

@@ -1,13 +1,13 @@
 # Copyright (c) 2024, Essdee and contributors
 # For license information, please see license.txt
-import frappe, json
-from frappe.model.document import Document
+
+import frappe, json, math
 from six import string_types
-from frappe.utils import flt, add_days
-from production_api.production_api.doctype.item.item import create_variant, get_variant, get_attribute_details, get_or_create_variant
+from frappe.utils import flt
 from itertools import groupby, zip_longest
-import math
+from frappe.model.document import Document
 from production_api.essdee_production.doctype.holiday_list.holiday_list import get_next_date
+from production_api.production_api.doctype.item.item import get_attribute_details, get_or_create_variant
 from production_api.production_api.doctype.item_dependent_attribute_mapping.item_dependent_attribute_mapping import get_dependent_attribute_details
 
 class Lot(Document):
@@ -182,12 +182,7 @@ def save_order_item_details(item_details, dependent_attr = None):
 			for value in item['values'].keys():
 				item1 = {}
 				attributes[item['primary_attribute']] = value
-				variant_name = get_variant(items['item'], attributes)
-				if not variant_name:
-					variant1 = create_variant(items['item'], attributes, dependent_attr=dependent_attr)
-					variant1.insert()
-					variant_name = variant1.name
-
+				variant_name = get_or_create_variant(items['item'], attributes)
 				item1['item_variant'] = variant_name
 				item1['quantity'] = item['values'][value]
 				item_list.append(item1)
@@ -195,11 +190,7 @@ def save_order_item_details(item_details, dependent_attr = None):
 			item1 = {}
 			attributes = item['attributes']
 			variant_name = item['item']
-			variant_name = get_variant(item['item'], attributes)
-			if not variant_name:
-				variant1 = create_variant(item['item'], attributes)
-				variant1.insert()
-				variant_name = variant1.name
+			variant_name = get_or_create_variant(item['item'], attributes)
 			item1['item_variant'] = variant_name
 			item1['qty'] = item['values']['qty']
 			item_list.append(item1)
@@ -233,11 +224,7 @@ def save_item_details(item_details, dependent_attr=None):
 			for id2, val in enumerate(row['values'].keys()):
 				attributes[row['primary_attribute']] = val
 				item1 = {}
-				variant_name = get_variant(item['item'], attributes)
-				if not variant_name:
-					variant1 = create_variant(item['item'], attributes, dependent_attr=dependent_attr)
-					variant1.insert()
-					variant_name = variant1.name
+				variant_name = get_or_create_variant(item['item'], attributes)
 				item1['item_variant'] = variant_name
 				item1['qty'] = row['values'][val]['qty']
 				item1['ratio'] = row['values'][val]['ratio']
@@ -249,11 +236,7 @@ def save_item_details(item_details, dependent_attr=None):
 			item1 = {}
 			attributes = row['attributes']
 			variant_name = item['item']
-			variant_name = get_variant(item['item'], attributes)
-			if not variant_name:
-				variant1 = create_variant(item['item'], attributes)
-				variant1.insert()
-				variant_name = variant1.name
+			variant_name = get_or_create_variant(item['item'], attributes)
 			item1['item_variant'] = variant_name
 			item1['qty'] = row['values']['qty']
 			item1['ratio'] = row['values']['ratio']
@@ -376,6 +359,7 @@ def get_item_attribute_details(variant, item_attributes):
 
 @frappe.whitelist()
 def get_item_details(item_name, uom=None, production_detail=None, dependent_state=None, dependent_attr_mapping=None):
+	from production_api.essdee_production.doctype.item_production_detail.item_production_detail import get_ipd_primary_values
 	item = get_attribute_details(item_name, dependent_attr_mapping=dependent_attr_mapping)
 	item_detail = frappe.get_doc("Item Production Detail", production_detail)
 	if uom:
@@ -404,25 +388,12 @@ def get_item_details(item_name, uom=None, production_detail=None, dependent_stat
 		x = [attr.attribute for attr in doc.attributes]
 		final_state_attr = final_state_attr + x
 		item['final_state_attr'] = final_state_attr
+		
 	if production_detail:
 		pack_attr_value = frappe.get_value("Item Production Detail", production_detail, "packing_attribute")
 		item['packing_attr'] = pack_attr_value
 		item['primary_attribute_values'] = get_ipd_primary_values(production_detail)
 	return item
-
-def get_ipd_primary_values(production_detail):
-	doc = frappe.get_doc("Item Production Detail", production_detail)
-	primary_attr_values = []
-	mapping = None
-	for i in doc.item_attributes:
-		if i.attribute == doc.primary_item_attribute:
-			mapping = i.mapping
-			break
-	if mapping:
-		map_doc = frappe.get_doc("Item Item Attribute Mapping", mapping)	
-		for val in map_doc.values:
-			primary_attr_values.append(val.attribute_value)
-	return primary_attr_values
 
 @frappe.whitelist()
 def get_isfinal_uom(item_production_detail, get_pack_stage=None):
