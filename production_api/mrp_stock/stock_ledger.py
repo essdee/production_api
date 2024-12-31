@@ -1,12 +1,20 @@
 import json
-from typing import Set, Tuple
 
 import frappe
-from frappe import _
-from frappe.utils import now, cint, flt, nowdate, get_link_to_form
+from frappe import _, bold, scrub
+from frappe.utils import (
+	cint,
+	flt,
+	get_link_to_form,
+    now,
+	nowdate,
+)
 from frappe.query_builder.functions import CombineDatetime
 from production_api.production_api.doctype.item_price.item_price import get_item_variant_price
-from production_api.mrp_stock.utils import get_incoming_outgoing_rate_for_cancel
+from production_api.mrp_stock.utils import (
+    get_combine_datetime,
+    get_incoming_outgoing_rate_for_cancel,
+)
 
 from production_api.mrp_stock.valuation import FIFOValuation, round_off_if_near_zero
 from production_api.utils import get_or_make_bin
@@ -19,11 +27,16 @@ class NegativeStockError(frappe.ValidationError):
 
 def make_sl_entries(sl_entries, allow_negative_stock=False, via_landed_cost_voucher=False):
 	"""Create SL entries from SL entry dicts"""
+	from production_api.mrp_stock.utils import future_sle_exists
 
 	if sl_entries:
 		cancel = sl_entries[0].get("is_cancelled")
 		if cancel:
 			set_as_cancelled(sl_entries[0].get("voucher_type"), sl_entries[0].get("voucher_no"))
+
+		args = get_args_for_future_sle(sl_entries[0])
+		future_sle_exists(args, sl_entries)
+		
 		
 		for sle in sl_entries:
 			item = frappe.get_cached_value("Item Variant", sle.get("item"), "item")
@@ -53,6 +66,7 @@ def make_sl_entries(sl_entries, allow_negative_stock=False, via_landed_cost_vouc
 				sle_doc = make_entry(sle)
 			
 			args = sle_doc.as_dict()
+			args["posting_datetime"] = get_combine_datetime(args.posting_date, args.posting_time)
 
 			if sle.get("voucher_type") == "Stock Reconciliation":
 				# preserve previous_qty_after_transaction for qty reposting
@@ -61,10 +75,9 @@ def make_sl_entries(sl_entries, allow_negative_stock=False, via_landed_cost_vouc
 			# item = frappe.get_cached_value("Item Variant", args.get("item"), "item")
 			# is_stock_item = frappe.get_cached_value("Item", item, "is_stock_item")
 			if is_stock_item:
-				repost_current_voucher(args)
 				bin_name = get_or_make_bin(args.get("item"),args.get("warehouse"),args.get("lot"))
 				args.reserved_stock = flt(frappe.db.get_value("Bin", bin_name, "reserved_qty"))
-				repost_current_voucher(args, allow_negative_stock, via_landed_cost_voucher)
+				repost_current_voucher(args)
 				update_bin_qty(bin_name, args)
     
 			else:
@@ -100,6 +113,17 @@ def repost_current_voucher(args, allow_negative_stock=False, via_landed_cost_vou
 		# update qty in future sle and Validate negative qty
 		# For LCV: update future balances with -ve LCV SLE, which will be balanced by +ve LCV SLE
 		update_qty_in_future_sle(args, allow_negative_stock)
+
+
+def get_args_for_future_sle(row):
+	return frappe._dict(
+		{
+			"voucher_type": row.get("voucher_type"),
+			"voucher_no": row.get("voucher_no"),
+			"posting_date": row.get("posting_date"),
+			"posting_time": row.get("posting_time"),
+		}
+	)
 
 def make_entry(args, allow_negative_stock=False, via_landed_cost_voucher=False):
 	args["doctype"] = "Stock Ledger Entry"
@@ -182,11 +206,13 @@ class update_entries_after(object):
 		args,
 		allow_zero_rate=False,
 		# allow_negative_stock=None,
+		# via_landed_cost_voucher=False,
 		verbose=1,
 	):
 		self.exceptions = {}
 		self.verbose = verbose
 		self.allow_zero_rate = allow_zero_rate
+		# self.via_landed_cost_voucher = via_landed_cost_voucher
 		self.item = args.get("item")
 		# self.allow_negative_stock = allow_negative_stock or is_negative_stock_allowed(
 		# 	item=self.item
@@ -203,13 +229,13 @@ class update_entries_after(object):
 
 		self.new_items_found = False
 		self.distinct_item_warehouses = args.get("distinct_item_warehouses", frappe._dict())
-		self.affected_transactions: Set[Tuple[str, str]] = set()
+		self.affected_transactions: set[tuple[str, str]] = set()
 		self.reserved_stock = flt(self.args.reserved_stock)
 
 		self.data = frappe._dict()
 		self.initialize_previous_data(self.args)
 		self.build()
-    
+
 	def set_precision(self):
 		self.flt_precision = cint(frappe.db.get_default("float_precision")) or 2
 		self.currency_precision = 2
@@ -250,19 +276,61 @@ class update_entries_after(object):
 				"stock_value_difference": 0.0,
 			}
 		)
-	
+
 	def build(self):
-		entries_to_fix = self.get_future_entries_to_fix()
-		i = 0
-		while i < len(entries_to_fix):
-			sle = entries_to_fix[i]
-			i += 1
-			self.process_sle(sle)
-			# if sle.dependant_sle_voucher_detail_no:
-				# entries_to_fix = self.get_dependent_entries_to_fix(entries_to_fix, sle)
+		from production_api.mrp_stock.utils import future_sle_exists
+
+		if self.args.get("sle_id"):
+			self.process_sle_against_current_timestamp()
+			if not future_sle_exists(self.args):
+				self.update_bin()
+		else:
+			entries_to_fix = self.get_future_entries_to_fix()
+
+			i = 0
+			while i < len(entries_to_fix):
+				sle = entries_to_fix[i]
+				i += 1
+
+				self.process_sle(sle)
+				self.update_bin_data(sle)
+
+				# if sle.dependant_sle_voucher_detail_no:
+					# entries_to_fix = self.get_dependent_entries_to_fix(entries_to_fix, sle)
 
 		if self.exceptions:
 			self.raise_exceptions()
+	
+	def process_sle_against_current_timestamp(self):
+		sl_entries = self.get_sle_against_current_voucher()
+		for sle in sl_entries:
+			self.process_sle(sle)
+
+	def get_sle_against_current_voucher(self):
+		self.args["posting_datetime"] = get_combine_datetime(self.args.posting_date, self.args.posting_time)
+
+		return frappe.db.sql(
+			"""
+			select
+				*, timestamp(posting_date, posting_time) as "timestamp"
+			from
+				`tabStock Ledger Entry`
+			where
+				item = %(item)s
+				and warehouse = %(warehouse)s
+				and lot = %(lot)s
+				and is_cancelled = 0
+				and (
+					timestamp(posting_date, posting_time) = timestamp(%(posting_date)s, %(posting_time)s)
+				)
+				and creation = %(creation)s
+			order by
+				creation ASC
+			for update
+		""",
+			self.args,
+			as_dict=1,
+		)
 
 	def get_future_entries_to_fix(self):
 		# includes current entry!
@@ -342,6 +410,7 @@ class update_entries_after(object):
 		self.wh_data.stock_value = flt(self.wh_data.stock_value, self.currency_precision)
 		if not self.wh_data.qty_after_transaction:
 			self.wh_data.stock_value = 0.0
+
 		stock_value_difference = self.wh_data.stock_value - self.wh_data.prev_stock_value
 		self.wh_data.prev_stock_value = self.wh_data.stock_value
 
@@ -372,7 +441,7 @@ class update_entries_after(object):
 		validate negative stock for entries current datetime onwards
 		will not consider cancelled entries
 		"""
-		diff = self.wh_data.qty_after_transaction + flt(sle.qty)
+		diff = self.wh_data.qty_after_transaction + flt(sle.qty) - flt(self.reserved_stock)
 		diff = flt(diff, self.flt_precision)  # respect system precision
 
 		if diff < 0 and abs(diff) > 0.0001:
@@ -492,9 +561,7 @@ class update_entries_after(object):
 		stock_value_difference = stock_value - prev_stock_value
 
 		self.wh_data.stock_queue = stock_queue.state
-		self.wh_data.stock_value = round_off_if_near_zero(
-			self.wh_data.stock_value + stock_value_difference
-		)
+		self.wh_data.stock_value = round_off_if_near_zero(self.wh_data.stock_value + stock_value_difference)
 
 		if not self.wh_data.stock_queue:
 			self.wh_data.stock_queue.append(
@@ -538,9 +605,8 @@ class update_entries_after(object):
 				exceptions[0]["voucher_type"],
 				exceptions[0]["voucher_no"],
 			) in frappe.local.flags.currently_saving:
-
 				msg = _("{0} units of {1} needed in {2} to complete this transaction.").format(
-					abs(deficiency),
+					frappe.bold(abs(deficiency)),
 					frappe.get_desk_link("Item", exceptions[0]["item"]),
 					frappe.get_desk_link("Warehouse", warehouse),
 				)
@@ -548,7 +614,7 @@ class update_entries_after(object):
 				msg = _(
 					"{0} units of {1} needed in {2} on {3} {4} for {5} to complete this transaction."
 				).format(
-					abs(deficiency),
+					frappe.bold(abs(deficiency)),
 					frappe.get_desk_link("Item", exceptions[0]["item"]),
 					frappe.get_desk_link("Warehouse", warehouse),
 					exceptions[0]["posting_date"],
@@ -557,6 +623,16 @@ class update_entries_after(object):
 				)
 
 			if msg:
+				if self.reserved_stock:
+					allowed_qty = abs(exceptions[0]["qty"]) - abs(exceptions[0]["diff"])
+
+					if allowed_qty > 0:
+						msg = "{} As {} units are reserved for other sales orders, you are allowed to consume only {} units.".format(
+							msg, frappe.bold(self.reserved_stock), frappe.bold(allowed_qty)
+						)
+					else:
+						msg = f"{msg} As the full stock is reserved for other sales orders, you're not allowed to consume the stock."
+
 				msg_list.append(msg)
 
 		if msg_list:
@@ -565,6 +641,27 @@ class update_entries_after(object):
 				frappe.throw(message, NegativeStockError, title=_("Insufficient Stock"))
 			else:
 				raise NegativeStockError(message)
+
+	def update_bin_data(self, sle):
+		bin_name = get_or_make_bin(sle.item, sle.warehouse, sle.lot)
+		values_to_update = {
+			"actual_qty": sle.qty_after_transaction,
+		}
+
+		# if sle.valuation_rate is not None:
+		# 	values_to_update["valuation_rate"] = sle.valuation_rate
+
+		frappe.db.set_value("Bin", bin_name, values_to_update)
+
+	def update_bin(self):
+		# update bin for each warehouse
+		for key, data in self.data.items():
+			bin_name = get_or_make_bin(self.item, key[0], key[1])
+
+			updated_values = {"actual_qty": data.qty_after_transaction}
+			# if data.valuation_rate is not None:
+			# 	updated_values["valuation_rate"] = data.valuation_rate
+			frappe.db.set_value("Bin", bin_name, updated_values, update_modified=True)
 
 def get_valuation_rate(
 	item,
