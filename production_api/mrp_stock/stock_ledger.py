@@ -1,15 +1,14 @@
 import json
 
 import frappe
-from frappe import _, bold, scrub
+from frappe import _
 from frappe.utils import (
 	cint,
 	flt,
 	get_link_to_form,
-    now,
+	now,
 	nowdate,
 )
-from frappe.query_builder.functions import CombineDatetime
 from production_api.production_api.doctype.item_price.item_price import get_item_variant_price
 from production_api.mrp_stock.utils import (
     get_combine_datetime,
