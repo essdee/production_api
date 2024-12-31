@@ -49,6 +49,13 @@ frappe.query_reports["Stock Balance"] = {
 			"options": "Supplier",
 		},
 		{
+			"fieldname": "lot",
+			"label": __("Lot"),
+			"fieldtype": "Link",
+			"width": "80",
+			"options": "Lot",
+		},
+		{
 			"fieldname": "show_variant_attributes",
 			"label": __("Show Variant Attributes"),
 			"fieldtype": "Check"

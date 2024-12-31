@@ -1,0 +1,135 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "format:FG-STE-{YYYY}-{#####}",
+ "creation": "2024-12-02 16:41:06.154746",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "lot",
+  "dc_number",
+  "supplier",
+  "warehouse",
+  "column_break_bspt",
+  "received_by",
+  "posting_date",
+  "posting_time",
+  "section_break_m6ps",
+  "items",
+  "comments",
+  "created_sms_user",
+  "amended_from"
+ ],
+ "fields": [
+  {
+   "fieldname": "section_break_m6ps",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "amended_from",
+   "fieldtype": "Link",
+   "label": "Amended From",
+   "no_copy": 1,
+   "options": "FG Stock Entry",
+   "print_hide": 1,
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "default": "Today",
+   "fieldname": "posting_date",
+   "fieldtype": "Date",
+   "in_list_view": 1,
+   "label": "Posting Date",
+   "reqd": 1
+  },
+  {
+   "fieldname": "dc_number",
+   "fieldtype": "Data",
+   "label": "DC Number"
+  },
+  {
+   "fieldname": "items",
+   "fieldtype": "Table",
+   "label": "items",
+   "options": "FG Stock Entry Detail"
+  },
+  {
+   "fieldname": "comments",
+   "fieldtype": "Long Text",
+   "label": "Comments"
+  },
+  {
+   "fieldname": "column_break_bspt",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "Now",
+   "fieldname": "posting_time",
+   "fieldtype": "Time",
+   "label": "Posting Time",
+   "reqd": 1
+  },
+  {
+   "fieldname": "created_sms_user",
+   "fieldtype": "Data",
+   "hidden": 1,
+   "label": "created sms user",
+   "read_only": 1
+  },
+  {
+   "fieldname": "lot",
+   "fieldtype": "Link",
+   "label": "Lot",
+   "options": "Lot"
+  },
+  {
+   "fieldname": "supplier",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Supplier",
+   "options": "Supplier",
+   "reqd": 1
+  },
+  {
+   "fieldname": "warehouse",
+   "fieldtype": "Link",
+   "label": "Warehouse",
+   "options": "Supplier",
+   "reqd": 1
+  },
+  {
+   "fieldname": "received_by",
+   "fieldtype": "Data",
+   "label": "Received By"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "is_submittable": 1,
+ "links": [],
+ "modified": "2024-12-04 12:54:37.482827",
+ "modified_by": "Administrator",
+ "module": "MRP Stock",
+ "name": "FG Stock Entry",
+ "naming_rule": "Expression",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "cancel": 1,
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "submit": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

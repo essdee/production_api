@@ -6,6 +6,7 @@ from frappe import _
 from six import string_types
 from itertools import groupby
 from frappe.model.document import Document
+from production_api.mrp_stock.doctype.stock_entry.stock_entry import get_uom_details
 from frappe.utils import money_in_words, flt, cstr, date_diff, nowtime
 from production_api.production_api.doctype.work_order.work_order import get_bom_structure
 from production_api.production_api.doctype.item.item import get_attribute_details, get_or_create_variant
@@ -353,6 +354,7 @@ class GoodsReceivedNote(Document):
 			if po_docstatus != 1:
 				frappe.throw('Purchase order is not submitted.', title='GRN')
 			self.validate_quantity()
+			self.validate_data()
 
 	def validate_quantity(self):
 		total_quantity = 0
@@ -360,6 +362,19 @@ class GoodsReceivedNote(Document):
 			total_quantity += item.quantity
 		if total_quantity == 0:
 			frappe.throw('Quantity cannot be zero.', title='GRN')
+	
+	def validate_data(self):
+		for row in self.items:
+			item_details = get_uom_details(row.item_variant, row.uom, row.quantity)
+			row.set("stock_uom", item_details.get("stock_uom"))
+			row.set("conversion_factor", item_details.get("conversion_factor"))
+			row.stock_qty = flt(
+				flt(row.quantity) * flt(row.conversion_factor), self.precision("stock_qty", row)
+			)
+			row.stock_uom_rate = flt(
+				flt(row.rate) / flt(row.conversion_factor), self.precision("stock_uom_rate", row)
+			)
+			row.amount = flt(flt(row.rate) * flt(row.quantity), self.precision("amount", row))
 
 	def calculate_amount(self):
 		total_amount = 0
@@ -377,7 +392,13 @@ class GoodsReceivedNote(Document):
 		self.set('grand_total', grand_total)
 		self.set('in_words', money_in_words(grand_total))
 
-def save_grn_purchase_item_details(item_details):
+
+def save_grn_item_details(item_details):
+	"""
+		Save item details to purchase order
+		Item details format:
+		Eg: see sample_po_item.jsonc
+	"""
 	if isinstance(item_details, string_types):
 		item_details = json.loads(item_details)
 	items = []

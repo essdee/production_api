@@ -16,7 +16,7 @@ app_license = "MIT"
 
 # include js, css files in header of desk.html
 # app_include_css = "/assets/production_api/css/production_api.css"
-app_include_js = ['vue_plugin.bundle.js',"assets/production_api/node_modules/frappe-gantt/dist/frappe-gantt.min.js"]
+app_include_js = ['production_api.bundle.js',"assets/production_api/node_modules/frappe-gantt/dist/frappe-gantt.min.js"]
 
 app_include_css = ["assets/production_api/node_modules/frappe-gantt/dist/frappe-gantt.min.css"]
 # web_include_css = "/assests/"

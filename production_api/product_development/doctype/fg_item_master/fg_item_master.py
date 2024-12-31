@@ -42,17 +42,17 @@ class FGItemMaster(Document):
 		else:
 			create_or_update_item(self)
 		updated = sync_FG_item_OMS(self.name)
-		if not updated:
-			frappe.throw("Some error occurred")
-		try:
-			sync_FG_item_DC(self.name)
-		except:
-			pass
+		# if not updated:
+		# 	frappe.throw("Some error occurred")
+		# try:
+		# 	sync_FG_item_DC(self.name)
+		# except:
+		# 	pass
 
 @frappe.whitelist()
 def sync_fg_item(name):
-	doc = frappe.get_doc("FG Item Master", name)
-	doc.sync_item()
+    doc = frappe.get_doc("FG Item Master", name)
+    doc.sync_item()
 
 @frappe.whitelist()
 def sync_fg_items(names, rename=False):
@@ -203,41 +203,58 @@ def get_item_for_oms(item_name):
 	}
 
 def sync_FG_item_OMS(item):
-	item_name = item
-	item = get_item_for_oms(item)
-	oms_details = get_oms_details()
-	if not item.get("brand") or not oms_details.get(item.get("brand")):
-		return
-	
-	oms_detail = oms_details.get(item.get("brand"))
-	oms_url = oms_detail.get("url")
-	oms_api_key = oms_detail.get("api_key")
-	oms_api_secret = oms_detail.get("api_secret")
-	
-	res = None
-	create = False
-	if not item["iditem"]:
-		create = True
-		res = make_post_request({'item': item, 'get_db_name': True}, oms_url, "/api/create_item", oms_api_key, oms_api_secret)
-	else:
-		res = make_post_request({'item': item, 'get_db_name': True}, oms_url, "/api/update_item", oms_api_key, oms_api_secret)
-	
-	if not res:
-		res = {
-			"error": True,
-			"status": "",
-			"message": "Unknown Error",
-		}
+    item_name = item
+    item = get_item_for_oms(item)
+    oms_details = get_oms_details()
+    
+    if not item.get("brand") or not oms_details.get(item.get("brand")):
+        return
+    
+    oms_detail = oms_details.get(item.get("brand"))
+    oms_url = oms_detail.get("url")
+    oms_api_key = oms_detail.get("api_key")
+    oms_api_secret = oms_detail.get("api_secret")
+    
+    res = None
+    create = False
+    url_part = '/api/'
+    
+    req_data = None
+    
+    if oms_detail.get("new") == 1:
+        url_part = '/api/method/essdee_sales.api.mrp_item_master.'
+        req_data = get_new_oms_item_details(item.get("name"))
+        req_data.update({
+			"iditem" : item['iditem']
+		})
+    else:
+        req_data = item
+        
+    if not item["iditem"]:
+        create = True
+        url_part += 'create_item'
+    else:
+        url_part += 'update_item'
+    res = make_post_request({'item': req_data, 'get_db_name': True}, oms_url, url_part, oms_api_key, oms_api_secret)
+    
+    if not res:
+        res = {
+            "error": True,
+            "status": "",
+            "message": "Unknown Error",
+        }
 
-	if "error" in res and res["error"] == True:
-		error = frappe.log_error("Sync with OMS Failed", f"Status -> {res['status']}, Message -> {res['message']}", "FG Item Master", item_name)
-		frappe.throw(f"Sync with OMS Failed {get_link_to_form(error.doctype, error.name)}")
-	
-	if create:
-		doc = frappe.get_doc("FG Item Master", item_name)
-		doc.uid = f"{res['db_name']}-{res['iditem']}"
-		doc.save()
-	return True
+    if "error" in res and res["error"] == True:
+        error = frappe.log_error("Sync with OMS Failed", f"Status -> {res['status']}, Message -> {res['message']}", "FG Item Master", item_name)
+        frappe.throw(f"Sync with OMS Failed {get_link_to_form(error.doctype, error.name)}")
+        
+    if create:
+        doc = frappe.get_doc("FG Item Master", item_name)
+        doc.uid = f"{res['db_name']}-{res['iditem']}"
+        doc.save()
+    
+    return True
+
 
 def sync_FG_item_DC(item):
 	item_name = item
@@ -264,7 +281,7 @@ def sync_FG_item_DC(item):
 	else:
 		item["id"] = dc_id
 		res = make_post_request({'item': item, 'get_db_name': True}, dc_url, "/api/update_item", dc_api_key, dc_api_secret)
-	
+
 	if not res:
 		res = {
 			"error": True,
@@ -281,4 +298,33 @@ def sync_FG_item_DC(item):
 		doc.dc_uid = f"{res['db_name']}-{res['id']}"
 		doc.save()
 	return True
-		
+
+def get_new_oms_item_details(item):
+    
+    doc = frappe.get_doc("Item",{'name',item})
+    
+    return {
+		"name" : doc.name,
+		"default_unit_of_measure" : doc.default_unit_of_measure,
+		"uom_conversion_details" : [
+			{
+				"uom" : uom.uom,
+				"conversion_factor" : uom.conversion_factor
+			}
+			for uom in doc.uom_conversion_details
+		],
+		"attributes" : get_item_attribute_details(item)
+	}
+    
+def get_item_attribute_details(item):
+    
+    query = f"""
+		SELECT attribute_value from `tabFG Item Size`
+		WHERE parent = '{item}' ORDER BY idx ASC
+    """
+    
+    result = frappe.db.sql(query,as_dict=True)
+    
+    return {
+		"Size" : [i['attribute_value'] for i in result]
+	}

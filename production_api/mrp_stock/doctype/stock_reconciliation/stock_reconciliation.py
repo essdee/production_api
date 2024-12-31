@@ -4,6 +4,7 @@
 import frappe
 import json
 from itertools import groupby
+from production_api.mrp_stock.doctype.stock_entry.stock_entry import get_uom_details
 from six import string_types
 from frappe.model.document import Document
 from frappe.utils import cstr, flt
@@ -73,17 +74,28 @@ class StockReconciliation(Document):
 				self.validation_messages.append(_get_msg(row.table_index, row.row_index, _("Negative Valuation Rate is not allowed")))
 			if row.rate in ["", None, 0]:
 				row.rate = get_stock_balance(
-					row.item, None, self.posting_date, self.posting_time, with_valuation_rate=True
+					row.item, None, self.posting_date, self.posting_time, with_valuation_rate=True, uom=row.uom
 				)[1]
 				if not row.rate:
 					# try if there is a buying price list in default currency
-					buying_rate = get_item_variant_price(row.item)
+					buying_rate = get_item_variant_price(row.item, variant_uom=row.uom)
 					if buying_rate:
 						row.rate = buying_rate
 			
 			if not row.rate and not row.allow_zero_valuation_rate:
 				self.validation_messages.append(_get_msg(row.table_index, row.row_index, _("Could not find valuation rate.")))
 
+			item_details = get_uom_details(row.item, row.uom, row.qty)
+			row.set("stock_uom", item_details.get("stock_uom"))
+			row.set("conversion_factor", item_details.get("conversion_factor"))
+			row.stock_qty = flt(
+				flt(row.qty) * flt(row.conversion_factor), self.precision("stock_qty", row)
+			)
+			row.stock_uom_rate = flt(
+				flt(row.rate) / flt(row.conversion_factor), self.precision("stock_uom_rate", row)
+			)
+			row.amount = flt(flt(row.rate) * flt(row.qty), self.precision("amount", row))
+			
 		# throw all validation messages
 		if self.validation_messages:
 			for msg in self.validation_messages:
@@ -162,8 +174,8 @@ class StockReconciliation(Document):
 
 			if (
 				previous_sle
-				and row.qty == previous_sle.get("qty_after_transaction")
-				and (row.rate == previous_sle.get("valuation_rate") or row.qty == 0)
+				and row.stock_qty == previous_sle.get("qty_after_transaction")
+				and (row.stock_uom_rate == previous_sle.get("valuation_rate") or row.stock_qty == 0)
 			) or (not previous_sle and not row.qty):
 				continue
 
@@ -221,13 +233,13 @@ class StockReconciliation(Document):
 				"voucher_no": self.name,
 				"voucher_detail_no": row.name,
 				"qty": 0,
-				"uom": row.uom,
+				"uom": row.stock_uom,
 				"is_cancelled": 1 if self.docstatus == 2 else 0,
-				"valuation_rate": flt(row.rate, row.precision("rate")),
+				"valuation_rate": flt(row.stock_uom_rate, row.precision("stock_uom_rate")),
 			}
 		)
 
-		data.qty_after_transaction = flt(row.qty, row.precision("qty"))
+		data.qty_after_transaction = flt(row.stock_qty, row.precision("stock_qty"))
 
 		if self.docstatus == 2:
 			# if row.current_qty:
@@ -238,9 +250,9 @@ class StockReconciliation(Document):
 			# 	data.stock_value = data.qty_after_transaction * data.valuation_rate
 			# 	data.stock_value_difference = -1 * flt(row.amount_difference)
 			# else:
-			data.qty = row.qty
+			data.qty = row.stock_qty
 			data.qty_after_transaction = 0.0
-			data.valuation_rate = flt(row.rate)
+			data.valuation_rate = flt(row.stock_uom_rate)
 			# data.stock_value_difference = -1 * flt(row.amount_difference)
 
 		return data
@@ -324,7 +336,7 @@ def save_stock_reconciliation_items(item_details):
 						item1['item'] = variant_name
 						item1['lot'] = item.get('lot')
 						item1['qty'] = values.get('qty')
-						item1['uom'] = values.get('default_uom')
+						item1['uom'] = item.get('default_uom')
 						item1['rate'] = values.get('rate')
 						item1['table_index'] = table_index
 						item1['row_index'] = row_index

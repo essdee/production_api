@@ -13,8 +13,19 @@ class StockLedgerEntry(Document):
 		self.scrub_posting_time()
 		self.set_posting_time()
 		self.validate_mandatory()
+	
+	def set_posting_datetime(self, save=False):
+		from production_api.mrp_stock.utils import get_combine_datetime
+
+		if save:
+			posting_datetime = get_combine_datetime(self.posting_date, self.posting_time)
+			if not self.posting_datetime or self.posting_datetime != posting_datetime:
+				self.db_set("posting_datetime", posting_datetime)
+		else:
+			self.posting_datetime = get_combine_datetime(self.posting_date, self.posting_time)
 
 	def on_submit(self):
+		self.set_posting_datetime(save=True)
 		# self.check_stock_frozen_date()
 		# self.calculate_batch_qty()
 		pass
@@ -43,3 +54,9 @@ class StockLedgerEntry(Document):
 		msg = _("Individual Stock Ledger Entry cannot be cancelled.")
 		msg += "<br>" + _("Please cancel related transaction.")
 		frappe.throw(msg)
+
+def on_doctype_update():
+	frappe.db.add_index("Stock Ledger Entry", ["voucher_no", "voucher_type"])
+	frappe.db.add_index("Stock Ledger Entry", ["lot", "item", "warehouse"], "item_warehouse_lot")
+	frappe.db.add_index("Stock Ledger Entry", ["warehouse", "item"], "item_warehouse")
+	frappe.db.add_index("Stock Ledger Entry", ["posting_datetime", "creation"])

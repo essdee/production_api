@@ -1,0 +1,128 @@
+{
+ "actions": [],
+ "autoname": "hash",
+ "creation": "2024-09-18 16:19:19.637516",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "item_code",
+  "column_break_dyfj",
+  "warehouse",
+  "column_break_eukm",
+  "lot",
+  "section_break_aqte",
+  "actual_qty",
+  "column_break_prru",
+  "reserved_qty",
+  "section_break_sgrx",
+  "stock_uom"
+ ],
+ "fields": [
+  {
+   "fieldname": "item_code",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Item Code",
+   "options": "Item Variant",
+   "reqd": 1
+  },
+  {
+   "fieldname": "column_break_dyfj",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "warehouse",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Warehouse",
+   "options": "Supplier",
+   "reqd": 1
+  },
+  {
+   "fieldname": "column_break_eukm",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "lot",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Lot",
+   "options": "Lot",
+   "reqd": 1
+  },
+  {
+   "fieldname": "section_break_aqte",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "actual_qty",
+   "fieldtype": "Float",
+   "label": "Actual Qty"
+  },
+  {
+   "fieldname": "column_break_prru",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "reserved_qty",
+   "fieldtype": "Float",
+   "label": "Reserved Qty"
+  },
+  {
+   "fieldname": "section_break_sgrx",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "stock_uom",
+   "fieldtype": "Link",
+   "label": "UOM",
+   "options": "UOM"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2024-12-31 21:09:23.617963",
+ "modified_by": "Administrator",
+ "module": "MRP Stock",
+ "name": "Bin",
+ "naming_rule": "Random",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Stock Manager"
+  },
+  {
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Stock User"
+  },
+  {
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Merchandiser"
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}
