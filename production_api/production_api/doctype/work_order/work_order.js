@@ -123,9 +123,9 @@ frappe.ui.form.on("Work Order", {
 								fieldtype:'Table',fieldname: "receivable_details",label:"Receivables",readonly:true,
 								cannot_add_rows: true,cannot_delete_rows:true,in_place_edit: false,data : data,
 								fields:[
-									{fieldname:"item_variant",fieldtype:"Link",options:"Item Variant",in_list_view:true,read_only:true,label:"Item"},
-									{fieldname:"qty",fieldtype:"Float",in_list_view:true,label:"Quantity",read_only:true},
-									{fieldname:"pending_qty",fieldtype:"Float",in_list_view:true,label:"Pending Quantity",read_only:true}
+									{fieldname: "item_variant", fieldtype: "Link", options: "Item Variant", in_list_view: true, read_only: true, label: "Item"},
+									{fieldname: "qty", fieldtype: "Float", in_list_view: true, label: "Quantity", read_only: true},
+									{fieldname: "pending_qty", fieldtype: "Float", in_list_view: true, label: "Pending Quantity", read_only: true}
 								]
 							}
 						],
@@ -143,6 +143,9 @@ frappe.ui.form.on("Work Order", {
 										args : {
 											work_order: frm.doc.name,
 										},
+										callback: function(){
+											frm.refresh()
+										}
 									})
 								},
 								secondary_action:()=>{

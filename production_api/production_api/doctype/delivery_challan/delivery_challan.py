@@ -24,26 +24,16 @@ class DeliveryChallan(Document):
 		self.ignore_linked_doctypes = ('Stock Ledger Entry')
 		add_sl_entries = []
 		reduce_sl_entries = []
+		res = get_variant_stock_details()
 		for row in self.items:
-			add_sl_entries.append(self.get_sle_data(row,self.from_location,1,{}))	
-			reduce_sl_entries.append(self.get_sle_data(row,self.supplier,-1,{}))
+			if res.get(row.item_variant):
+				add_sl_entries.append(self.get_sle_data(row,self.from_location,1,{}))	
+				reduce_sl_entries.append(self.get_sle_data(row,self.supplier,-1,{}))
 		make_sl_entries(add_sl_entries)
 		make_sl_entries(reduce_sl_entries)
 		wo_doc.save(ignore_permissions=True)		
 
 	def before_submit(self):
-		add_sl_entries = []
-		reduce_sl_entries = []
-		for row in self.items:
-			add_sl_entries.append(self.get_sle_data(row,self.from_location,-1,{}))	
-			reduce_sl_entries.append(self.get_sle_data(row,self.supplier,1,{}))
-			quantity = get_stock_balance(row.item_variant, self.from_location, with_valuation_rate=False)
-			if flt(quantity) < flt(row.qty):
-				frappe.throw(f"Required quantity is {row.qty} but stock count is {quantity}")
-
-		make_sl_entries(add_sl_entries)
-		make_sl_entries(reduce_sl_entries)
-
 		doc = frappe.get_doc("Work Order", self.work_order)
 		for deliverable in doc.deliverables:
 			for item in self.items:
@@ -52,12 +42,46 @@ class DeliveryChallan(Document):
 					break
 		doc.save()
 		doc.submit()
+
+		add_sl_entries = []
+		reduce_sl_entries = []
+		res = get_variant_stock_details()
+		for row in self.items:
+			if res.get(row.item_variant):
+				quantity = get_stock_balance(row.item_variant, self.from_location, with_valuation_rate=False)
+				if flt(quantity) < flt(row.qty):
+					frappe.throw(f"Required quantity is {row.qty} but stock quantity is {quantity}")
+				
+				reduce_sl_entries.append(self.get_sle_data(row, self.from_location, -1, {}))
+				add_sl_entries.append(self.get_sle_data(row, self.supplier, 1, {}))
+		make_sl_entries(add_sl_entries)
+		make_sl_entries(reduce_sl_entries)
+	
+	def before_save(self):
+		res = get_variant_stock_details()
+		for row in self.items:
+			if row.delivered_quantity and res.get(row.item_variant):
+				quantity, rate = get_stock_balance(row.item_variant,self.from_location,with_valuation_rate = True)
+				if row.delivered_quantity < 0:
+					frappe.throw("Only positive")
+				if flt(quantity) < flt(row.delivered_quantity):
+					frappe.throw(f"Quantity is {row.delivered_quantity} but stock count is {quantity} for item {row.item_variant}")
+				row.rate = rate	
+
+		doc = frappe.get_doc("Work Order", self.work_order)
+		for deliverable in doc.deliverables:
+			for item in self.items:
+				if item.ref_docname == deliverable.name and item.get('delivered_quantity'):
+					deliverable.valuation_rate = item.get('rate')
+					break
+		doc.save()		
 	
 	def onload(self):
 		if self.get('items'):
-			deliverable_item_details = fetch_item_details(self.get('items'), is_new=False)
+			process = frappe.get_value("Work Order",self.work_order,"process_name")
+			deliverable_item_details = fetch_item_details(self.get('items'),process, is_new=False)
 			self.set_onload('deliverable_item_details', deliverable_item_details)
-
+	
 	def before_validate(self):
 		if(self.get('deliverable_item_details')):
 			deliverables,stock_value = save_deliverables(self.deliverable_item_details,self.from_location)
@@ -67,16 +91,6 @@ class DeliveryChallan(Document):
 		
 		if self.additional_goods_value:
 			self.total_value = self.stock_value + self.additional_goods_value	
-	
-	def before_save(self):
-		for row in self.items:
-			if row.delivered_quantity:
-				quantity, rate = get_stock_balance(row.item_variant,self.from_location,with_valuation_rate = True)
-				if row.delivered_quantity < 0:
-					frappe.throw("Only positive")
-				if flt(quantity) < flt(row.delivered_quantity):
-					frappe.throw(f"Quantity is {row.delivered_quantity} but stock count is {quantity} for item {row.item_variant}")
-				row.rate = rate	
 
 	def get_sle_data(self, row, location, multiplier, args):
 		sl_dict = frappe._dict(
@@ -126,9 +140,10 @@ def save_deliverables(item_details, from_location):
 						item1['row_index'] = row_index
 						item1['ref_doctype'] = values.get('ref_doctype')
 						item1['ref_docname'] = values.get('ref_docname')
-						v = get_stock_value(variant_name,item.get('lot'),from_location)
-						item1['stock_value'] = v
-						stock_value += v						
+						item1['is_calculated'] = values.get('is_calculated')
+						stock = get_stock_value(variant_name,item.get('lot'),from_location)
+						item1['stock_value'] = stock
+						stock_value += stock
 						items.append(item1)		
 			else:
 				if item['values'].get('default'):
@@ -145,18 +160,27 @@ def save_deliverables(item_details, from_location):
 					item1['row_index'] = row_index
 					item1['ref_doctype'] = item['values']['default'].get('ref_doctype')
 					item1['ref_docname'] = item['values']['default'].get('ref_docname')
-					v = get_stock_value(variant_name,item.get('lot'),from_location)
-					item1['stock_value'] = v
-					stock_value += v
+					item1['is_calculated'] = item['values']['default'].get('is_calculated')
+					stock = get_stock_value(variant_name,item.get('lot'),from_location)
+					item1['stock_value'] = stock
+					stock_value += stock
 					items.append(item1)		
 			row_index += 1	
 	return items, stock_value
 
-def fetch_item_details(items, is_new):
+def fetch_item_details(items,process_name, is_new):
 	items = [item.as_dict() for item in items]
 	if isinstance(items, string_types):
 		items = json.loads(items)
-	items = sorted(items, key = lambda i: i['row_index'])
+	
+	if process_name == "Cutting":
+		try:
+			items = sorted(items, key=lambda i: i['item_variant'] if i['is_calculated'] else i['row_index'])
+		except:
+			items = sorted(items, key=lambda i: i['item_variant'])
+	else:	
+		items = sorted(items, key = lambda i: i['row_index'])
+
 	item_details = []
 	for key, variants in groupby(items, lambda i: i['row_index']):
 		variants = list(variants)
@@ -182,7 +206,8 @@ def fetch_item_details(items, is_new):
 					if attr.attribute == item.get('primary_attribute'):
 						item['values'][attr.attribute_value] = {
 							'rate': variant['rate'],
-							'ref_doctype':"Work Order Deliverables"
+							'ref_doctype':"Work Order Deliverables",
+							"is_calculated":variant.is_calculated,
 						}
 						if is_new:
 							item['values'][attr.attribute_value]['qty'] = variant['pending_quantity']
@@ -196,7 +221,8 @@ def fetch_item_details(items, is_new):
 		else:
 			item['values']['default'] = {
 				'rate': variants[0]['rate'],
-				"ref_doctype":"Work Order Deliverables"
+				"ref_doctype":"Work Order Deliverables",
+				"is_calculated":variants[0].is_calculated,
 			}
 			if is_new:
 				item['values']['default']['qty'] = variants[0]['pending_quantity']
@@ -224,7 +250,7 @@ def fetch_item_details(items, is_new):
 @frappe.whitelist()
 def get_deliverables(work_order):
 	doc = frappe.get_doc("Work Order",work_order)
-	items = fetch_item_details(doc.deliverables, is_new=True)	
+	items = fetch_item_details(doc.deliverables,doc.process_name, is_new=True)	
 	return {
 		"items":items,
 		"supplier":doc.supplier,
@@ -233,15 +259,23 @@ def get_deliverables(work_order):
 
 def get_stock_value(variant, lot, from_location):
 	query_result = frappe.db.sql(
-        """
-        SELECT stock_value, posting_date, posting_time
-        FROM `tabStock Ledger Entry`
-        WHERE item = %s AND warehouse = %s and lot = %s
-        ORDER BY posting_date DESC, posting_time DESC LIMIT 1
-        """,
-        (variant,from_location,lot),
-        as_dict=True
+        """ 
+			SELECT stock_value, valuation_rate FROM `tabStock Ledger Entry`
+			WHERE item = %s AND warehouse = %s and lot = %s ORDER BY posting_date DESC, posting_time DESC LIMIT 1
+        """, (variant, from_location, lot), as_dict=True
     )
 	if query_result:
 		return query_result[0]['stock_value']
 	return 0
+
+def get_variant_stock_details():
+	result = frappe.db.sql(
+		"""
+			SELECT `tabItem Variant`.name as variant, `tabItem`.is_stock_item as is_stock FROM `tabItem Variant` JOIN `tabItem` 
+			ON `tabItem`.name = `tabItem Variant`.item WHERE `tabItem`.is_stock_item = 1;
+		"""
+	)		
+	res = {}
+	for row in result:
+		res[row[0]] = row[1]
+	return res	 

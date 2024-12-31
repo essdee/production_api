@@ -33,10 +33,12 @@
   "column_break_fwrcg",
   "delivery_address",
   "delivery_address_display",
+  "total_receivable_cost",
+  "total_received_quantity",
   "section_break_ve8oj",
   "items",
   "item_html",
-  "items_delivered",
+  "grn_deliverables",
   "section_break_8ncnk",
   "total",
   "total_tax",
@@ -175,6 +177,7 @@
    "fieldtype": "Section Break"
   },
   {
+   "allow_on_submit": 1,
    "fieldname": "items",
    "fieldtype": "Table",
    "hidden": 1,
@@ -315,17 +318,30 @@
    "read_only": 1
   },
   {
-   "fieldname": "items_delivered",
+   "allow_on_submit": 1,
+   "fieldname": "grn_deliverables",
    "fieldtype": "Table",
    "hidden": 1,
-   "label": "Items Delivered",
-   "options": "Goods Received Note Item"
+   "label": "GRN Deliverables",
+   "options": "GRN Deliverable"
+  },
+  {
+   "fieldname": "total_received_quantity",
+   "fieldtype": "Float",
+   "hidden": 1,
+   "label": "Total Received Quantity"
+  },
+  {
+   "fieldname": "total_receivable_cost",
+   "fieldtype": "Currency",
+   "hidden": 1,
+   "label": "Total Receivable Cost"
   }
  ],
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2024-12-20 11:18:40.381613",
+ "modified": "2024-12-31 16:13:14.035639",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Goods Received Note",

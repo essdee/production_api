@@ -1,14 +1,15 @@
 # Copyright (c) 2024, Essdee and contributors
 # For license information, please see license.txt
-import frappe, json
+
 import math
-from frappe.model.document import Document
-from frappe.utils import now_datetime
+import frappe, json
 from six import string_types
 from itertools import groupby
+from frappe.utils import now_datetime
+from frappe.model.document import Document
 from production_api.production_api.doctype.item.item import get_or_create_variant
-from production_api.production_api.doctype.item_dependent_attribute_mapping.item_dependent_attribute_mapping import get_dependent_attribute_details
 from production_api.essdee_production.doctype.lot.lot import get_uom_conversion_factor
+from production_api.production_api.doctype.item_dependent_attribute_mapping.item_dependent_attribute_mapping import get_dependent_attribute_details
 
 class ItemProductionDetail(Document):
 	def autoname(self):
@@ -395,7 +396,7 @@ def get_attribute_values(item_production_detail, attributes = None):
 
 @frappe.whitelist()
 def get_calculated_bom(item_production_detail, items, lot_name, process_name = None,doctype=None):
-	item_detail = frappe.get_doc("Item Production Detail", item_production_detail)
+	item_detail = frappe.get_cached_doc("Item Production Detail", item_production_detail)
 	bom = {}
 	bom_summary = {}
 	if isinstance(items, string_types):
@@ -412,8 +413,13 @@ def get_calculated_bom(item_production_detail, items, lot_name, process_name = N
 			cloth_detail[cloth.name1] = cloth.cloth
 		elif cloth.is_bom_item: 	
 			cloth_detail[cloth.name1] = cloth.cloth
-
-	total_quantity = lot_doc.total_order_quantity
+	total_quantity = None
+	if not process_name:
+		total_quantity = lot_doc.total_order_quantity
+	else:
+		total_quantity = 0
+		for i in items:
+			total_quantity += i['quantity']
 
 	for bom_item in item_detail.item_bom:
 		if process_name and bom_item.process_name != process_name:
@@ -458,7 +464,7 @@ def get_calculated_bom(item_production_detail, items, lot_name, process_name = N
 					dept_attr = bom_item.dependent_attribute_value
 					attr_details = get_dependent_attribute_details(item_detail.dependent_attribute_mapping)
 					dept_attr_uom = attr_details['attr_list'][dept_attr]['uom']
-					default_uom = frappe.get_cached_value("Item",bom_item.item,"default_unit_of_measure")
+					default_uom = frappe.get_value("Item",bom_item.item,"default_unit_of_measure")
 					bom_summary[bom_item.item] = [bom_item.process_name,bom_item.qty_of_product,dept_attr_uom,bom_item.qty_of_bom_item,default_uom,0]
 				
 				if not bom.get(bom_item.item, False):
@@ -491,7 +497,7 @@ def get_calculated_bom(item_production_detail, items, lot_name, process_name = N
 						else:
 							mapping_bom[bom_item.item][str(attr)][0] += math.ceil(quantity)
 
-		if item_detail.dependent_attribute:
+		if item_detail.dependent_attribute and attr_values.get(item_detail.dependent_attribute):
 			del attr_values[item_detail.dependent_attribute]
 
 		if not process_name or process_name == item_detail.cutting_process:
@@ -505,7 +511,7 @@ def get_calculated_bom(item_production_detail, items, lot_name, process_name = N
 	bom_items = []
 	if not process_name or process_name == item_detail.cutting_process:
 		for k in cloth_details:
-			uom = frappe.get_cached_value("Item",k[0],"default_unit_of_measure")
+			uom = frappe.get_value("Item",k[0],"default_unit_of_measure")
 			cloth_name = get_or_create_variant(k[0], {item_detail.packing_attribute: k[1], 'Dia': k[2]})
 			if not bom.get(k[0],False):
 				bom[k[0]] = {cloth_name:[cloth_details[k],item_detail.cutting_process,uom]}
@@ -1070,7 +1076,6 @@ def change_attr_list(item_attr_val_list, stiching_item_details, stiching_attr, s
 
 	del attr_list[stiching_attr]
 	attr_list[set_attr] = stiching_details
-
 	return attr_list
 
 def add_combination_value(combination_type,item):
@@ -1102,7 +1107,7 @@ def get_stiching_accessory_combination(doc_name):
 	for stich_item in ipd_doc.stiching_item_combination_details:
 		if stich_item.attribute_value not in colors:
 			new_dict = {}
-			new_dict['major_attr_value'] = stich_item.major_attribute_value
+			new_dict['major_attr_value'] = stich_item.attribute_value
 			new_dict['accessories'] = {}
 			for key,val in x.items():
 				new_dict['accessories'][key] = {}
@@ -1110,7 +1115,6 @@ def get_stiching_accessory_combination(doc_name):
 				new_dict['accessories'][key]['cloth_type'] = None
 			combination_list['items'].append(new_dict)
 			colors.append(stich_item.attribute_value)
-			
 	cloth_list = []
 	for cloth in ipd_doc.cloth_detail:
 		cloth_list.append(cloth.name1)

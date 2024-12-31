@@ -27,17 +27,6 @@ frappe.ui.form.on("Delivery Challan", {
 				}
 			};
 		});
-		// frm.set_query("from_location", function(doc) {
-		// 	let type = "Accepted"
-		// 	if(doc.is_rework){
-		// 		type = "Rework"
-		// 	}
-		// 	return {
-		// 		filters: {
-		// 			"type":type,
-		// 		}
-		// 	}
-		// })
     },
     refresh(frm){
         frm.set_query('work_order',() => {

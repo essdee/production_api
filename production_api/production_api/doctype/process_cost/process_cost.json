@@ -25,7 +25,8 @@
   "dependent_attribute_values",
   "section_break_midy",
   "process_cost_values",
-  "amended_from"
+  "amended_from",
+  "rework_cost_values"
  ],
  "fields": [
   {
@@ -152,12 +153,18 @@
    "fieldname": "dependent_attribute_values",
    "fieldtype": "Select",
    "label": "Dependent Attribute Values"
+  },
+  {
+   "fieldname": "rework_cost_values",
+   "fieldtype": "Table",
+   "label": "Rework Cost Values",
+   "options": "Rework Cost Value"
   }
  ],
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2024-10-16 09:54:52.679000",
+ "modified": "2024-12-21 10:34:43.912588",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Process Cost",

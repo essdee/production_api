@@ -95,12 +95,10 @@ frappe.ui.form.on('Goods Received Note', {
 				against: frm.doc.against,
 				against_id: frm.doc.against_id
 			}, true);
-			if( frm.doc.__onload && frm.doc.__onload.item_details && frm.doc.__onload.item_delivered_details) {
+			if( frm.doc.__onload && frm.doc.__onload.item_details) {
 				frm.doc['item_details'] = JSON.stringify(frm.doc.__onload.item_details);	
-				frm.doc['item_delivered_details'] = JSON.stringify(frm.doc.__onload.item_delivered_details)
 				frm.itemEditor.load_data({
 					items: frm.doc.__onload.item_details,
-					delivered_items: frm.doc.__onload.item_delivered_details
 				}, true);	
 			}
 		}
@@ -180,8 +178,7 @@ frappe.ui.form.on('Goods Received Note', {
 			let items = frm.itemEditor.get_items();
 			if(items && items.length > 0 && frm.doc.against == "Work Order") {
 				frm.doc['item_details'] = JSON.stringify(items[0]);
-				frm.doc['item_delivered_details'] = JSON.stringify(items[1])
-				frm.doc['is_edited'] = items[2]
+				frm.doc['is_edited'] = items[1]
 			}
 			else if(items && items.length > 0 && frm.doc.against == "Purchase Order"){
 				frm.doc['item_details'] = JSON.stringify(items);
@@ -352,30 +349,15 @@ function make_rework(frm, supplier, supplier_address, delivery_address, rework_t
 		method:"production_api.production_api.doctype.goods_received_note.goods_received_note.get_grn_rework_items",
 		args: {
 			doc_name:frm.doc.name,
+			supplier:supplier,
+			supplier_address: supplier_address,
+			delivery_address: delivery_address,
+			rework_type:rework_type,
+			supplier_type: supplier_type,
 		},
 		callback: function(r){
 			if(r.message){
-				let x = frappe.model.get_new_doc('Work Order');
-				x.is_rework = true;
-				x.parent_wo = frm.doc.against_id;
-				x.work_order = frm.doc.name;
-				x.naming_series = "WO-";
-				x.supplier = supplier;
-				x.process_name = r.message.process_name;
-				x.planned_start_date = r.message.planned_start_date;
-				x.planned_end_date = r.message.planned_end_date;
-				x.expected_delivery_date = r.message.expected_delivery_date;
-				x.item = r.message.item;
-				x.lot = r.message.lot;
-				x.supplier_address = supplier_address;
-				x.delivery_address = delivery_address;
-				x.open_status = r.message.open_status;
-				x.deliverables = r.message.items;
-				x.receivables = r.message.items;
-				x.wo_date = frappe.datetime.nowdate();
-				x.rework_type = rework_type;
-				x.supplier_type = supplier_type;
-				frappe.set_route("Form",x.doctype, x.name);
+				frappe.set_route("Form","Work Order", r.message);
 			}
 			else{
 				frappe.msgprint("There is no mistake items are received")

@@ -42,7 +42,8 @@
   "receivable_items",
   "section_break_axzz",
   "comments",
-  "amended_from"
+  "amended_from",
+  "total_quantity"
  ],
  "fields": [
   {
@@ -140,6 +141,7 @@
    "reqd": 1
   },
   {
+   "default": "Today",
    "fieldname": "planned_end_date",
    "fieldtype": "Date",
    "label": "Planned End Date",
@@ -147,6 +149,7 @@
   },
   {
    "allow_on_submit": 1,
+   "default": "Today",
    "fieldname": "expected_delivery_date",
    "fieldtype": "Date",
    "label": "Expected Delivery Date",
@@ -283,12 +286,29 @@
    "fieldtype": "Link",
    "label": "Delivery Location",
    "options": "Supplier"
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "total_quantity",
+   "fieldtype": "Float",
+   "hidden": 1,
+   "label": "Total Quantity",
+   "non_negative": 1
   }
  ],
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
- "links": [],
- "modified": "2024-12-19 14:55:34.454537",
+ "links": [
+  {
+   "link_doctype": "Delivery Challan",
+   "link_fieldname": "work_order"
+  },
+  {
+   "link_doctype": "Goods Received Note",
+   "link_fieldname": "against_id"
+  }
+ ],
+ "modified": "2024-12-31 14:09:01.477959",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Work Order",

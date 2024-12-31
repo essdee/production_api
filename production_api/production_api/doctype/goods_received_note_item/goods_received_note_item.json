@@ -21,7 +21,7 @@
   "ref_docname",
   "received_quantity",
   "rework_details",
-  "received_type"
+  "received_types"
  ],
  "fields": [
   {
@@ -113,6 +113,7 @@
    "label": "Rework Details"
   },
   {
+   "allow_on_submit": 1,
    "columns": 1,
    "fieldname": "received_quantity",
    "fieldtype": "Float",
@@ -120,17 +121,15 @@
    "label": "Received Quantity"
   },
   {
-   "columns": 1,
-   "fieldname": "received_type",
-   "fieldtype": "Data",
-   "in_list_view": 1,
-   "label": "Received Type"
+   "fieldname": "received_types",
+   "fieldtype": "JSON",
+   "label": "Received Types"
   }
  ],
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2024-11-20 11:58:37.404447",
+ "modified": "2024-12-30 12:37:18.752293",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Goods Received Note Item",

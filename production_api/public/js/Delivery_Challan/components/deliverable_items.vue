@@ -87,6 +87,7 @@
 							<th>Item</th>
 							<th>Lot</th>
 							<th v-for="attr in i.attributes" :key="attr">{{ attr }}</th>
+							<th>Quantity</th>
 							<th>Pending Quantity</th>
 						</tr>
 						<tr v-for="(j, item1_index) in i.items" :key="item1_index">
@@ -97,6 +98,8 @@
 							<td>
 								{{ j.values["default"].qty}}
 								<span v-if="j.default_uom">{{ " " + j.default_uom }}</span>
+							</td>
+							<td>
 								<form>
 									<input class="form-control" type="number"
 										v-model.number="j.values['default']['delivered_quantity']"

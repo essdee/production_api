@@ -368,7 +368,6 @@ frappe.production.ui.WorkOrderItemView = class {
         let items = JSON.parse(JSON.stringify(item_details))
         this.vue.load_data(items)
     }
-
     get_work_order_items(){
         let items = this.vue.get_items()
         for(let i = 0 ; i < items[0].items.length; i++){
@@ -651,6 +650,15 @@ frappe.production.ui.Delivery_Challan = class {
     }
     get_data(){
         let items = JSON.parse(JSON.stringify(this.vue.deliverables_item))
+        for(let i = 0 ; i < items.length ; i++){
+            for(let j = 0 ; j < items[i].items.length ; j++){
+                Object.keys(items[i].items[j].values).forEach(key => {
+                    if(items[i].items[j].values[key].delivered_quantity == "" || items[i].items[j].values[key].delivered_quantity == null){
+                        items[i].items[j].values[key].delivered_quantity = 0
+                    }
+                })
+            }
+        }
         return items
     }
     update_status() {

@@ -22,7 +22,9 @@
   "ref_doctype",
   "ref_docname",
   "stock_value",
-  "additional_goods_value"
+  "additional_goods_value",
+  "valuation_rate",
+  "is_calculated"
  ],
  "fields": [
   {
@@ -130,12 +132,23 @@
    "fieldname": "additional_goods_value",
    "fieldtype": "Currency",
    "label": "Additional Goods Value"
+  },
+  {
+   "fieldname": "valuation_rate",
+   "fieldtype": "Currency",
+   "label": "Valuation Rate"
+  },
+  {
+   "default": "0",
+   "fieldname": "is_calculated",
+   "fieldtype": "Check",
+   "label": "Is Calculated"
   }
  ],
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2024-11-16 13:11:32.049851",
+ "modified": "2024-12-31 18:50:16.585570",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Delivery Challan Item",

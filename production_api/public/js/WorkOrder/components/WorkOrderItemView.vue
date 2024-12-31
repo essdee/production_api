@@ -15,7 +15,7 @@
                             </th>
                         </tr>
                         <tr v-for="(j, item1_index) in i.items" :key="item1_index">
-                            <td>{{item1_index + 1}}</td>
+                            <td><input type="checkbox" v-model="checkbox_value" @change="update_qty(item_index, item1_index)">{{item1_index + 1}}</td>
                             <td v-for="(k, idx) in j.attributes" :key="idx">{{k}}</td>
                             <td v-for="(k, idx) in j.values" :key="idx">
                                 <div v-if="k > 0">
@@ -51,6 +51,7 @@
 <script setup>
 import {ref} from 'vue';
 
+let checkbox_value = true
 let items = ref(null)
 let show_title = ref(false)
 let sample_doc = ref({})
@@ -75,6 +76,22 @@ function create_input_classes(){
     }
 }
 
+function update_qty(idx1, idx2){
+    if(!checkbox_value){
+        Object.keys(items.value[idx1].items[idx2].values).forEach((key,value)=> {
+            let input = items.value[idx1].items[idx2]['entered_qty'][key]
+            input.set_value(0)
+        })
+    }
+    else{
+        Object.keys(items.value[idx1].items[idx2].values).forEach((key,value)=> {
+            let input = items.value[idx1].items[idx2]['entered_qty'][key]
+            input.set_value(items.value[idx1].items[idx2]['values'][key])
+        })
+    }
+    
+
+}
 function createInput(key,index,val){
     let parent_class = "." + get_input_class(key,index);
     let el = root.value
