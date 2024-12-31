@@ -131,6 +131,7 @@ def make_entry(args, allow_negative_stock=False, via_landed_cost_voucher=False):
 	sle.flags.ignore_permissions = 1
 	# sle.allow_negative_stock = allow_negative_stock
 	# sle.via_landed_cost_voucher = via_landed_cost_voucher
+	sle.set_posting_datetime()
 	sle.submit()
 	return sle
 
@@ -142,48 +143,7 @@ def set_as_cancelled(voucher_type, voucher_no):
 		(now(), frappe.session.user, voucher_type, voucher_no),
 	)
 
-def update_qty_in_future_sle(args, allow_negative_stock=False):
-	"""Recalculate Qty after Transaction in future SLEs based on current SLE."""
-	datetime_limit_condition = ""
-	qty_shift = args.qty
 
-	args["time_format"] = "%H:%i:%s"
-
-	# find difference/shift in qty caused by stock reconciliation
-	if args.voucher_type == "Stock Reconciliation":
-		qty_shift = get_stock_reco_qty_shift(args)
-
-	# find the next nearest stock reco so that we only recalculate SLEs till that point
-	next_stock_reco_detail = get_next_stock_reco(args)
-	if next_stock_reco_detail:
-		detail = next_stock_reco_detail[0]
-		# if detail.batch_no:
-		# 	regenerate_sle_for_batch_stock_reco(detail)
-
-		# add condition to update SLEs before this date & time
-		datetime_limit_condition = get_datetime_limit_condition(detail)
-	# frappe.db.sql(
-	# 	f"""
-	# 	update `tabStock Ledger Entry`
-	# 	set qty_after_transaction = qty_after_transaction + {qty_shift}
-	# 	where
-	# 		item = %(item)s
-	# 		and warehouse = %(warehouse)s
-	# 		and voucher_no != %(voucher_no)s
-	# 		and is_cancelled = 0
-	# 		and (
-	# 			posting_date > %(posting_date)s or
-	# 			(
-	# 				posting_date = %(posting_date)s and
-	# 				time_format(posting_time, %(time_format)s) > time_format(%(posting_time)s, %(time_format)s)
-	# 			)
-	# 		)
-	# 	{datetime_limit_condition}
-	# 	""",
-	# 	args,
-	# )
-
-	validate_negative_qty_in_future_sle(args, allow_negative_stock)
 
 class update_entries_after(object):
 	"""
@@ -312,7 +272,7 @@ class update_entries_after(object):
 		return frappe.db.sql(
 			"""
 			select
-				*, timestamp(posting_date, posting_time) as "timestamp"
+				*, posting_datetime as "timestamp"
 			from
 				`tabStock Ledger Entry`
 			where
@@ -321,7 +281,7 @@ class update_entries_after(object):
 				and lot = %(lot)s
 				and is_cancelled = 0
 				and (
-					timestamp(posting_date, posting_time) = timestamp(%(posting_date)s, %(posting_time)s)
+					posting_datetime = %(posting_datetime)s
 				)
 				and creation = %(creation)s
 			order by
@@ -663,6 +623,128 @@ class update_entries_after(object):
 			# 	updated_values["valuation_rate"] = data.valuation_rate
 			frappe.db.set_value("Bin", bin_name, updated_values, update_modified=True)
 
+
+def get_previous_sle_of_current_voucher(args, operator="<", exclude_current_voucher=False):
+	"""get stock ledger entries filtered by specific posting datetime conditions"""
+
+	if not args.get("posting_date"):
+		args["posting_datetime"] = "1900-01-01 00:00:00"
+
+	if not args.get("posting_datetime"):
+		args["posting_datetime"] = get_combine_datetime(args["posting_date"], args["posting_time"])
+
+	voucher_condition = ""
+	if exclude_current_voucher:
+		voucher_no = args.get("voucher_no")
+		voucher_condition = f"and voucher_no != '{voucher_no}'"
+
+	elif args.get("creation") and args.get("sle_id"):
+		creation = args.get("creation")
+		operator = "<="
+		voucher_condition = f"and creation < '{creation}'"
+
+	sle = frappe.db.sql(  # nosemgrep
+		f"""
+		select *, posting_datetime as "timestamp"
+		from `tabStock Ledger Entry`
+		where item = %(item)s
+			and warehouse = %(warehouse)s
+			and lot = %(lot)s
+			and is_cancelled = 0
+			{voucher_condition}
+			and (
+				posting_datetime {operator} %(posting_datetime)s
+			)
+		order by posting_datetime desc, creation desc
+		limit 1
+		for update""",
+		{
+			"item": args.get("item"),
+			"warehouse": args.get("warehouse"),
+			"lot": args.get("lot"),
+			"posting_datetime": args.get("posting_datetime"),
+		},
+		as_dict=1,
+	)
+
+	return sle[0] if sle else frappe._dict()
+
+
+def get_previous_sle(args, for_update=False, extra_cond=None):
+	"""
+	get the last sle on or before the current time-bucket,
+	to get actual qty before transaction, this function
+	is called from various transaction like stock entry, reco etc
+
+	args = {
+	        "item": "ABC",
+	        "warehouse": "XYZ",
+	        "posting_date": "2012-12-12",
+	        "posting_time": "12:00",
+	        "sle": "name of reference Stock Ledger Entry"
+	}
+	"""
+	args["name"] = args.get("sle", None) or ""
+	sle = get_stock_ledger_entries(
+		args, "<=", "desc", "limit 1", for_update=for_update, extra_cond=extra_cond
+	)
+	return sle and sle[0] or {}
+
+
+def get_stock_ledger_entries(
+	previous_sle,
+	operator=None,
+	order="desc",
+	limit=None,
+	for_update=False,
+	debug=False,
+	# check_serial_no=True,
+	extra_cond=None,
+):
+	"""get stock ledger entries filtered by specific posting datetime conditions"""
+	conditions = f" and posting_datetime {operator} %(posting_datetime)s"
+	if previous_sle.get("warehouse"):
+		conditions += " and warehouse = %(warehouse)s"
+	elif previous_sle.get("warehouse_condition"):
+		conditions += " and " + previous_sle.get("warehouse_condition")
+
+	if previous_sle.get("lot"):
+		conditions += " and lot = %(lot)s"
+
+	if not previous_sle.get("posting_date"):
+		previous_sle["posting_datetime"] = "1900-01-01 00:00:00"
+	else:
+		posting_time = previous_sle.get("posting_time")
+		if not posting_time:
+			posting_time = "00:00:00"
+
+		previous_sle["posting_datetime"] = get_combine_datetime(previous_sle["posting_date"], posting_time)
+
+	if operator in (">", "<=") and previous_sle.get("name"):
+		conditions += " and name!=%(name)s"
+
+	if extra_cond:
+		conditions += f"{extra_cond}"
+
+	# nosemgrep
+	return frappe.db.sql(
+		"""
+		select *, posting_datetime as "timestamp"
+		from `tabStock Ledger Entry`
+		where item = %(item)s
+		and is_cancelled = 0
+		{conditions}
+		order by posting_datetime {order}, creation {order}
+		{limit} {for_update}""".format(
+			conditions=conditions,
+			limit=limit or "",
+			for_update=for_update and "for update" or "",
+			order=order,
+		),
+		previous_sle,
+		as_dict=1,
+		debug=debug,
+	)
 def get_valuation_rate(
 	item,
 	warehouse,
@@ -726,47 +808,48 @@ def get_valuation_rate(
 		frappe.throw(msg=msg, title=_("Valuation Rate Missing"))
 
 	return valuation_rate
-            
-def get_previous_sle_of_current_voucher(args, operator="<", exclude_current_voucher=False):
-	"""get stock ledger entries filtered by specific posting datetime conditions"""
 
-	args["time_format"] = "%H:%i:%s"
-	if not args.get("posting_date"):
-		args["posting_date"] = "1900-01-01"
-	if not args.get("posting_time"):
-		args["posting_time"] = "00:00"
 
-	voucher_condition = ""
-	if exclude_current_voucher:
-		voucher_no = args.get("voucher_no")
-		voucher_condition = f"and voucher_no != '{voucher_no}'"
+def update_qty_in_future_sle(args, allow_negative_stock=False):
+	"""Recalculate Qty after Transaction in future SLEs based on current SLE."""
+	datetime_limit_condition = ""
+	qty_shift = args.qty
 
-	sle = frappe.db.sql(
-		"""
-		select *, timestamp(posting_date, posting_time) as "timestamp"
-		from `tabStock Ledger Entry`
-		where item = %(item)s
-			and warehouse = %(warehouse)s
-			and lot = %(lot)s
-			and is_cancelled = 0
-			{voucher_condition}
-			and (
-				posting_date < %(posting_date)s or
-				(
-					posting_date = %(posting_date)s and
-					time_format(posting_time, %(time_format)s) {operator} time_format(%(posting_time)s, %(time_format)s)
-				)
-			)
-		order by timestamp(posting_date, posting_time) desc, creation desc
-		limit 1
-		for update""".format(
-			operator=operator, voucher_condition=voucher_condition
-		),
-		args,
-		as_dict=1,
-	)
+	# args["time_format"] = "%H:%i:%s"
+	args["posting_datetime"] = get_combine_datetime(args["posting_date"], args["posting_time"])
 
-	return sle[0] if sle else frappe._dict()
+	# find difference/shift in qty caused by stock reconciliation
+	if args.voucher_type == "Stock Reconciliation":
+		qty_shift = get_stock_reco_qty_shift(args)
+
+	# find the next nearest stock reco so that we only recalculate SLEs till that point
+	next_stock_reco_detail = get_next_stock_reco(args)
+	if next_stock_reco_detail:
+		detail = next_stock_reco_detail[0]
+		# if detail.batch_no:
+		# 	regenerate_sle_for_batch_stock_reco(detail)
+
+		# add condition to update SLEs before this date & time
+		datetime_limit_condition = get_datetime_limit_condition(detail)
+	# frappe.db.sql(
+	# 	f"""
+	# 	update `tabStock Ledger Entry`
+	# 	set qty_after_transaction = qty_after_transaction + {qty_shift}
+	# 	where
+	# 		item = %(item)s
+	# 		and warehouse = %(warehouse)s
+	# 		and voucher_no != %(voucher_no)s
+	# 		and is_cancelled = 0
+	# 		and (
+	# 			posting_datetime > %(posting_datetime)s
+	# 		)
+	# 		{datetime_limit_condition}
+	# 	""",
+	# 	args,
+	# )
+
+	validate_negative_qty_in_future_sle(args, allow_negative_stock)
+
 
 def get_stock_reco_qty_shift(args):
 	stock_reco_qty_shift = 0
@@ -790,6 +873,7 @@ def get_stock_reco_qty_shift(args):
 
 	return stock_reco_qty_shift
 
+
 def get_next_stock_reco(kwargs):
 	"""Returns next nearest stock reconciliation's details."""
 
@@ -806,6 +890,7 @@ def get_next_stock_reco(kwargs):
 			sle.item,
 			sle.qty,
 		)
+		.force_index("item_warehouse_lot")
 		.where(
 			(sle.item == kwargs.get("item"))
 			& (sle.warehouse == kwargs.get("warehouse"))
@@ -813,20 +898,11 @@ def get_next_stock_reco(kwargs):
 			& (sle.voucher_no != kwargs.get("voucher_no"))
 			& (sle.is_cancelled == 0)
 			& (
-				(
-					CombineDatetime(sle.posting_date, sle.posting_time)
-					> CombineDatetime(kwargs.get("posting_date"), kwargs.get("posting_time"))
-				)
-				| (
-					(
-						CombineDatetime(sle.posting_date, sle.posting_time)
-						== CombineDatetime(kwargs.get("posting_date"), kwargs.get("posting_time"))
-					)
-					& (sle.creation > kwargs.get("creation"))
-				)
+				sle.posting_datetime
+				>= get_combine_datetime(kwargs.get("posting_date"), kwargs.get("posting_time"))
 			)
 		)
-		.orderby(CombineDatetime(sle.posting_date, sle.posting_time))
+		.orderby(sle.posting_datetime)
 		.orderby(sle.creation)
 		.limit(1)
 	)
@@ -836,12 +912,15 @@ def get_next_stock_reco(kwargs):
 
 	return query.run(as_dict=True)
 
+
 def get_datetime_limit_condition(detail):
+	posting_datetime = get_combine_datetime(detail.posting_date, detail.posting_time)
+
 	return f"""
 		and
-		(timestamp(posting_date, posting_time) < timestamp('{detail.posting_date}', '{detail.posting_time}')
+		(posting_datetime < '{posting_datetime}'
 			or (
-				timestamp(posting_date, posting_time) = timestamp('{detail.posting_date}', '{detail.posting_time}')
+				posting_datetime = '{posting_datetime}'
 				and creation < '{detail.creation}'
 			)
 		)"""
@@ -895,78 +974,13 @@ def get_future_sle_with_negative_qty(args):
 			item = %(item)s
 			and warehouse = %(warehouse)s
 			and voucher_no != %(voucher_no)s
-			and timestamp(posting_date, posting_time) >= timestamp(%(posting_date)s, %(posting_time)s)
+			and posting_datetime >= %(posting_datetime)s
 			and is_cancelled = 0
 			and qty_after_transaction < 0
-		order by timestamp(posting_date, posting_time) asc
+		order by posting_datetime asc
 		limit 1
 	""",
 		args,
 		as_dict=1,
 	)
 
-def get_previous_sle(args, for_update=False):
-	"""
-	get the last sle on or before the current time-bucket,
-	to get actual qty before transaction, this function
-	is called from various transaction like stock entry, reco etc
-
-	args = {
-	        "item": "ABC",
-	        "warehouse": "XYZ",
-	        "posting_date": "2012-12-12",
-	        "posting_time": "12:00",
-	        "sle": "name of reference Stock Ledger Entry"
-	}
-	"""
-	args["name"] = args.get("sle", None) or ""
-	sle = get_stock_ledger_entries(args, "<=", "desc", "limit 1", for_update=for_update)
-	return sle and sle[0] or {}
-
-def get_stock_ledger_entries(
-	previous_sle,
-	operator=None,
-	order="desc",
-	limit=None,
-	for_update=False,
-	debug=True,
-	# check_serial_no=True,
-):
-	"""get stock ledger entries filtered by specific posting datetime conditions"""
-	conditions = " and timestamp(posting_date, posting_time) {0} timestamp(%(posting_date)s, %(posting_time)s)".format(
-		operator
-	)
-	if previous_sle.get("warehouse"):
-		conditions += " and warehouse = %(warehouse)s"
-	elif previous_sle.get("warehouse_condition"):
-		conditions += " and " + previous_sle.get("warehouse_condition")
-	
-	if previous_sle.get("lot"):
-		conditions += " and lot = %(lot)s"
-
-	if not previous_sle.get("posting_date"):
-		previous_sle["posting_date"] = "1900-01-01"
-	if not previous_sle.get("posting_time"):
-		previous_sle["posting_time"] = "00:00"
-
-	if operator in (">", "<=") and previous_sle.get("name"):
-		conditions += " and name!=%(name)s"
-	return frappe.db.sql(
-		"""
-		select *, timestamp(posting_date, posting_time) as "timestamp"
-		from `tabStock Ledger Entry`
-		where item = %%(item)s
-		and is_cancelled = 0
-		%(conditions)s
-		order by timestamp(posting_date, posting_time) %(order)s, creation %(order)s
-		%(limit)s %(for_update)s"""
-		% {
-			"conditions": conditions,
-			"limit": limit or "",
-			"for_update": for_update and "for update" or "",
-			"order": order,
-		},
-		previous_sle,
-		as_dict=1,
-		debug=debug,
-	)

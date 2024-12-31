@@ -12,6 +12,7 @@
   "warehouse",
   "lot",
   "posting_date",
+  "posting_datetime",
   "column_break_2kvfe",
   "voucher_type",
   "voucher_no",
@@ -36,24 +37,28 @@
    "fieldname": "item",
    "fieldtype": "Link",
    "label": "Item",
-   "options": "Item Variant"
+   "options": "Item Variant",
+   "search_index": 1
   },
   {
    "fieldname": "warehouse",
    "fieldtype": "Link",
    "label": "Warehouse",
-   "options": "Supplier"
+   "options": "Supplier",
+   "search_index": 1
   },
   {
    "fieldname": "lot",
    "fieldtype": "Link",
    "label": "Lot",
-   "options": "Lot"
+   "options": "Lot",
+   "search_index": 1
   },
   {
    "fieldname": "posting_date",
    "fieldtype": "Date",
-   "label": "Posting Date"
+   "label": "Posting Date",
+   "search_index": 1
   },
   {
    "fieldname": "column_break_2kvfe",
@@ -74,7 +79,8 @@
   {
    "fieldname": "voucher_detail_no",
    "fieldtype": "Data",
-   "label": "Voucher Detail No"
+   "label": "Voucher Detail No",
+   "search_index": 1
   },
   {
    "fieldname": "posting_time",
@@ -145,13 +151,19 @@
    "fieldname": "remarks",
    "fieldtype": "Data",
    "label": "Remarks"
+  },
+  {
+   "fieldname": "posting_datetime",
+   "fieldtype": "Datetime",
+   "label": "Posting Datetime",
+   "search_index": 1
   }
  ],
  "hide_toolbar": 1,
  "in_create": 1,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2024-11-26 10:41:57.239773",
+ "modified": "2024-12-31 11:05:06.033640",
  "modified_by": "Administrator",
  "module": "MRP Stock",
  "name": "Stock Ledger Entry",
