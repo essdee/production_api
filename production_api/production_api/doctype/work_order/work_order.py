@@ -58,7 +58,7 @@ class WorkOrder(Document):
 
 			if(self.get('receivable_item_details')):
 				frappe.flags.check = False
-				items = save_item_details(self.receivable_item_details,supplier=self.supplier,process_name=self.process_name,doc=self.name,ipd=self.production_detail)
+				items = save_item_details(self.receivable_item_details, supplier=self.supplier, process_name=self.process_name)
 				self.set("receivables",items)
 
 			if frappe.flags.check and len(self.receivables) > 0:
@@ -68,20 +68,34 @@ class WorkOrder(Document):
 			self.set("receivables",[])	
 
 	def calc_receivable_rate(self):		
+		is_group = frappe.get_value("Process", self.process_name,"is_group")
+		check = False
+		if is_group:
+			first_process = None
+			final_process = None
+			process_doc = frappe.get_cached_doc("Process",self.process_name)
+			for idx, p in enumerate(process_doc.process_details):
+				if idx == 0:
+					first_process = p.process_name
+				else:
+					final_process = p.process_name
+			ipd_doc = frappe.get_doc("Item Production Detail", self.production_detail)
+			main_prs = [ipd_doc.packing_process, ipd_doc.stiching_process, ipd_doc.cutting_process]
+			if first_process not in main_prs and final_process not in main_prs:	
+				check = True				
 		for row in self.receivables:
-			# doc = frappe.get_doc("Work Order", self.name)
 			rate, cost_doc = get_rate_and_quantity(self.process_name, row.item_variant, row.qty, self, self.supplier)
 			attr_qty = get_attributes_qty(self.production_detail, self.process_name, cost_doc)
+			if check:
+				rate = rate / 2
 			rate = rate/attr_qty
 			row.cost = rate
 			row.total_cost = rate * row.qty
 
-def save_item_details(item_details, supplier=None, process_name = None, doc = None, ipd = None):
+def save_item_details(item_details, supplier=None, process_name = None):
 	if isinstance(item_details, string_types):
 		item_details = json.loads(item_details)
 	items = []
-	if doc:
-		doc = frappe.get_doc("Work Order", doc)
 	row_index = 0
 	for table_index, group in enumerate(item_details):
 		for item in group['items']:
@@ -93,7 +107,8 @@ def save_item_details(item_details, supplier=None, process_name = None, doc = No
 					if not quantity:
 						quantity = 0
 					item_attributes[item.get('primary_attribute')] = attr
-					item1 = get_data(item,item_name,item_attributes,table_index,row_index, process_name, quantity, doc, ipd, supplier)	
+					cost = values.get('cost')
+					item1 = get_data(item, item_name, item_attributes, table_index, row_index, process_name, quantity, cost)	
 					item1['secondary_qty'] = values.get('secondary_qty')
 					item1['secondary_uom'] = values.get('secondary_uom')
 					if not supplier:
@@ -102,7 +117,8 @@ def save_item_details(item_details, supplier=None, process_name = None, doc = No
 			else:
 				if item['values'].get('default') and item['values']['default'].get('qty'):
 					quantity = item['values']['default'].get('qty')
-					item1 = get_data(item,item_name,item_attributes,table_index,row_index, process_name, quantity, doc, ipd, supplier)	
+					cost = item['values']['default'].get('cost')
+					item1 = get_data(item,item_name,item_attributes,table_index,row_index, process_name, quantity,cost)	
 					item1['secondary_qty'] = item['values']['default'].get('secondary_qty')
 					if not supplier:
 						item1['is_calculated'] = item['values']['default'].get('is_calculated') or 0
@@ -111,15 +127,12 @@ def save_item_details(item_details, supplier=None, process_name = None, doc = No
 			row_index += 1
 	return items
 
-def get_data(item, item_name, item_attributes, table_index, row_index, process_name, quantity, doc, ipd, supplier):
+def get_data(item, item_name, item_attributes, table_index, row_index, process_name, quantity, cost):
 	item1 = {}
 	variant_name = get_or_create_variant(item_name, item_attributes)
 	if process_name:
-		rate, cost_doc = get_rate_and_quantity(process_name,variant_name,quantity, doc, supplier)
-		attr_qty = get_attributes_qty(ipd,process_name,cost_doc)
-		rate = rate / attr_qty
-		total_cost = flt(rate) * flt(quantity)
-		item1['cost'] = rate
+		total_cost = flt(cost) * flt(quantity)
+		item1['cost'] = cost
 		item1['total_cost'] = total_cost		
 	item1['qty'] = quantity
 	item1['item_variant'] = variant_name
@@ -128,7 +141,6 @@ def get_data(item, item_name, item_attributes, table_index, row_index, process_n
 	item1['table_index'] = table_index
 	item1['row_index'] = row_index
 	item1['comments'] = item.get('comments') 
-
 	return item1	
 
 def get_rate_and_quantity(process_name, variant_name, quantity, doc, supplier):
@@ -347,8 +359,13 @@ def get_deliverable_receivable( lot, process, items, doc_name, supplier):
 
 		bom = get_bom_structure(b,row_index, table_index)	
 		item_list2 = item_list.copy()
-		deliverables , y,x= 	calc_deliverable_and_receivable(ipd_doc, first_process, item_list, item_name, dept_attribute, ipd, lot, doc, uom, bom, lot_doc, stiching_in_stage, pack_out_stage, pack_out_uom, supplier, grp_process=process)
+		deliverables , y,z= 	calc_deliverable_and_receivable(ipd_doc, first_process, item_list, item_name, dept_attribute, ipd, lot, doc, uom, bom, lot_doc, stiching_in_stage, pack_out_stage, pack_out_uom, supplier, grp_process=process)
 		x, receivables, total_qty = calc_deliverable_and_receivable(ipd_doc, final_process, item_list2, item_name, dept_attribute, ipd, lot, doc, uom, {}, lot_doc, stiching_in_stage, pack_out_stage, pack_out_uom, supplier,grp_process=process)		
+		main_prs = [ipd_doc.packing_process, ipd_doc.stiching_process, ipd_doc.cutting_process]
+		if first_process not in main_prs and final_process not in main_prs:
+			deliverables = deliverables + x
+			receivables = receivables + y
+			total_qty = total_qty + z
 	else:
 		bom = get_calculated_bom(ipd, items, lot, process_name=process,doctype="Work Order")
 		bom = get_bom_structure(bom, row_index, table_index)
@@ -382,7 +399,7 @@ def calc_deliverable_and_receivable(ipd_doc, process, item_list, item_name, dept
 		
 	elif ipd_doc.cutting_process == process:
 		cutting_out_stage = frappe.get_value("Item Production Detail", ipd,'stiching_in_stage')
-		cutting_attributes = get_attributes(item_list, item_name, cutting_out_stage, dept_attribute,ipd, process)
+		cutting_attributes = get_attributes(item_list, item_name, cutting_out_stage, dept_attribute,ipd)
 		receivables, total_qty  = get_receivables(cutting_attributes, process_cost, lot, uom, doc, supplier, ipd)
 		deliverables  =  get_deliverables(bom, lot)
 
@@ -390,7 +407,7 @@ def calc_deliverable_and_receivable(ipd_doc, process, item_list, item_name, dept
 		for item in ipd_doc.ipd_processes:
 			if item.process_name == process:
 				if ipd_doc.stiching_in_stage == item.stage:
-					attributes = get_attributes(item_list, item_name, item.stage, dept_attribute, ipd)
+					attributes = get_attributes(item_list, item_name, item.stage, dept_attribute, ipd, process)
 					x = attributes.copy()
 					x.update(bom)
 					deliverables  = get_deliverables(x, lot)
@@ -431,9 +448,6 @@ def get_receivables(items, process,lot, uom, doc, supplier, ipd, conversion_deta
 	total_qty = 0
 	for item_name,variants in items.items():
 		for variant, details in variants.items():
-			rate, cost_doc = get_rate_and_quantity(process,variant,details['qty'],doc, supplier)
-			attr_qty = get_attributes_qty(ipd, process, cost_doc)
-			rate = rate/attr_qty
 			uom_factor = 1
 			receivable_uom = uom
 			if conversion_details:
@@ -445,12 +459,10 @@ def get_receivables(items, process,lot, uom, doc, supplier, ipd, conversion_deta
 				'item_variant': variant,
 				'lot':lot,
 				'qty': qty,
-				'cost': rate,
 				'uom':receivable_uom,
 				'table_index': details['table_index'],
 				'row_index':details['row_index'],
 				'pending_quantity':qty,
-				'total_cost':rate*details['qty'],
 			})
 	return receivables, total_qty	
 
@@ -460,17 +472,27 @@ def get_attributes_qty(ipd, process, process_cost_doc):
 		return 1
 	
 	ipd_doc = frappe.get_cached_doc("Item Production Detail",ipd)
+	emb = ipd_doc.emblishment_details_json
+	if isinstance(emb, string_types):
+		emb = json.loads(emb)
+
 	if ipd_doc.stiching_process == process or ipd_doc.packing_process == process:
 		return 1
 	elif ipd_doc.cutting_process == process:
-		return len(ipd_doc.stiching_item_details)
+		if emb.get(process):
+			return len(emb.get(process))
+		else:	
+			return len(ipd_doc.stiching_item_details)
 	else:
 		for procesess in ipd_doc.ipd_processes:
 			if procesess.process_name == process:
 				if procesess.stage == ipd_doc.pack_in_stage or procesess.stage == ipd_doc.pack_out_stage:
 					return 1
 				elif procesess.stage == ipd_doc.stiching_in_stage:
-					return len((ipd_doc.stiching_item_details))
+					if emb.get(process):
+						return len(emb.get(process))
+					else:	
+						return len((ipd_doc.stiching_item_details))
 	return 1
 
 def get_attributes(items, itemname, stage, dependent_attribute, ipd=None, process=None):
@@ -518,7 +540,19 @@ def get_attributes(items, itemname, stage, dependent_attribute, ipd=None, proces
 						set_item_stitching_attrs[i.stiching_attribute_value] = i.set_item_attribute_value
 
 					for id,item in enumerate(ipd_doc.stiching_item_details):
-						attributes[ipd_doc.stiching_attribute] = item.stiching_attribute_value
+						if process:
+							emb = ipd_doc.emblishment_details_json
+							if isinstance(emb, string_types):
+								emb = json.loads(emb)
+							if emb.get(process):	
+								if item.stiching_attribute_value in emb[process]:
+									attributes[ipd_doc.stiching_attribute] = item.stiching_attribute_value
+								else:
+									continue		
+							else:
+								attributes[ipd_doc.stiching_attribute] = item.stiching_attribute_value			
+						else:
+							attributes[ipd_doc.stiching_attribute] = item.stiching_attribute_value
 						v = True
 						panel_part = set_item_stitching_attrs[item.stiching_attribute_value]
 						if panel_part != part:
@@ -537,7 +571,19 @@ def get_attributes(items, itemname, stage, dependent_attribute, ipd=None, proces
 								}
 				else:
 					for id,item in enumerate(ipd_doc.stiching_item_details):
-						attributes[ipd_doc.stiching_attribute] = item.stiching_attribute_value
+						if process:
+							emb = ipd_doc.emblishment_details_json
+							if isinstance(emb, string_types):
+								emb = json.loads(emb)
+							if emb.get(process):	
+								if item.stiching_attribute_value in emb[process]:
+									attributes[ipd_doc.stiching_attribute] = item.stiching_attribute_value
+								else:
+									continue		
+							else:
+								attributes[ipd_doc.stiching_attribute] = item.stiching_attribute_value			
+						else:
+							attributes[ipd_doc.stiching_attribute] = item.stiching_attribute_value
 						new_variant = get_or_create_variant(itemname, attributes)
 						if item_list[itemname].get(new_variant):
 							item_list[itemname][new_variant]['qty'] += (details['qty']*item.quantity)
@@ -549,8 +595,6 @@ def get_attributes(items, itemname, stage, dependent_attribute, ipd=None, proces
 								'table_index':details['table_index'],
 								'row_index':str(details['table_index'])+""+str(details['row_index'])+""+str(id)
 							}
-							if process:
-								item_list[itemname][new_variant]['attributes'] = attributes
 	return item_list
 
 def get_receivable_item_attribute_details(variant, item_attributes, stage):

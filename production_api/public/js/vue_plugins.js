@@ -19,8 +19,8 @@ import CutPlanItems from "./CuttingPlan/components/CutPlanItems.vue"
 import CuttingCompletionDetail from "./CuttingPlan/components/CuttingCompletionDetail.vue"
 import CuttingIncompletionDetail from "./CuttingPlan/components/CuttingIncompletionDetail.vue"
 import CutPlanClothItems from "./CuttingPlan/components/CutPlanClothItems.vue"
-
 import CombinationItemDetail from "./Item_Po_detail/CombinationItemDetail.vue"
+import EmblishmentDetails from "./Item_Po_detail/EmblishmentDetails.vue"
 import CuttingItemDetail from "./Item_Po_detail/CuttingItemDetail.vue"
 import ClothAccessory from "./Item_Po_detail/ClothAccessory.vue"
 import ClothAccessoryCombination from "./Item_Po_detail/ClothAccessoryCombination.vue"
@@ -140,7 +140,23 @@ frappe.production.ui.CombinationItemDetail = class {
     get_data(){
         let items = JSON.parse(JSON.stringify(this.vue.get_data()))
         return items
-    }   
+frappe.production.ui.EmblishmentDetails = class {
+    constructor(wrapper) {
+        this.$wrapper = $(wrapper);
+        this.make_body();
+    }
+    make_body(){
+        this.app = createApp(EmblishmentDetails)
+        SetVueGlobals(this.app)
+        this.vue = this.app.mount(this.$wrapper.get(0))
+    }
+    load_data(items){
+        this.vue.load_items(JSON.parse(JSON.stringify(items)))
+    }
+    get_items(){
+        let items = JSON.parse(JSON.stringify(this.vue.get_items()))
+        return items
+    }
 }
 
 frappe.production.ui.CuttingItemDetail = class {

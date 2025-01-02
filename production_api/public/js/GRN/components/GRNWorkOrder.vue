@@ -89,7 +89,7 @@
 			</div>
 		</div>
 		<p>Delivered Items</p>
-		<table class="table table-sm table-bordered">
+		<table class="table table-sm table-bordered" v-if="check_received_qty">
 			<tr v-for="(i, item_index) in items" :key="item_index">
 				<td v-if="i.primary_attribute">
 					<table class="table table-sm table-bordered" v-if="i.items && i.items.length > 0" >
@@ -213,6 +213,24 @@ const show_button2 = ref(false);
 let types = null;
 let qty_parameters = [];
 let indexes = [];
+
+const check_received_qty = computed(()=> {
+	let x = false
+	if(items.value){
+		a: for (let i = 0; i < items.value.length; i++) {
+			for (let idx = 0; idx < items.value[i]['items'].length; idx++) {
+				const row = items.value[i]['items'][idx];
+				for (const key of Object.keys(row.values)) {
+					if (row.values[key]['received_quantity'] > 0) {
+						x = true;
+						break a;
+					}
+				}
+			}
+		}
+	}
+	return x
+})
 
 function get_index(idx) {
 	if (!indexes.includes(idx)) {

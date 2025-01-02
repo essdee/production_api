@@ -58,6 +58,9 @@
   "get_stiching_item_combination",
   "stiching_items_html",
   "stiching_item_combination_details",
+  "emblishment_tab",
+  "emblishment_details_html",
+  "emblishment_details_json",
   "cutting_tab",
   "cutting_details_section",
   "cutting_process",
@@ -590,11 +593,27 @@
   {
    "fieldname": "section_break_uqfw",
    "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "emblishment_tab",
+   "fieldtype": "Tab Break",
+   "label": "Emblishment"
+  },
+  {
+   "fieldname": "emblishment_details_html",
+   "fieldtype": "HTML",
+   "label": "Emblishment Details HTML"
+  },
+  {
+   "fieldname": "emblishment_details_json",
+   "fieldtype": "JSON",
+   "hidden": 1,
+   "label": "Emblishment Details JSON"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2024-12-20 09:46:50.924717",
+ "modified": "2025-01-01 14:33:52.803202",
  "modified_by": "Administrator",
  "module": "Essdee Production",
  "name": "Item Production Detail",

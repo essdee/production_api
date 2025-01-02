@@ -1153,6 +1153,7 @@ def update_attr_combination(initial_attrs, attributes, last_item, attrs_len):
 						initial_attrs[attributes[j]] = 0
 	return None					
 
+@frappe.whitelist()
 def get_attr_mapping_details(mapping):
 	doc = frappe.get_doc('Item Item Attribute Mapping', mapping)
 	values = []
