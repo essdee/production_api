@@ -58,6 +58,9 @@ class DeliveryChallan(Document):
 		make_sl_entries(reduce_sl_entries)
 	
 	def before_save(self):
+		if self.docstatus == 1:
+			return
+		
 		res = get_variant_stock_details()
 		for row in self.items:
 			if row.delivered_quantity and res.get(row.item_variant):
@@ -83,6 +86,9 @@ class DeliveryChallan(Document):
 			self.set_onload('deliverable_item_details', deliverable_item_details)
 	
 	def before_validate(self):
+		if self.docstatus == 1:
+			return
+		
 		if(self.get('deliverable_item_details')):
 			deliverables,stock_value = save_deliverables(self.deliverable_item_details,self.from_location)
 			self.set('items',deliverables)
