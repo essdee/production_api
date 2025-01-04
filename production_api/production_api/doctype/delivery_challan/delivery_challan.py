@@ -34,7 +34,7 @@ class DeliveryChallan(Document):
 		wo_doc.save(ignore_permissions=True)		
 
 	def before_submit(self):
-		doc = frappe.get_doc("Work Order", self.work_order)
+		doc = frappe.get_cached_doc("Work Order", self.work_order)
 		for deliverable in doc.deliverables:
 			for item in self.items:
 				if item.ref_docname == deliverable.name:
@@ -71,7 +71,7 @@ class DeliveryChallan(Document):
 					frappe.throw(f"Quantity is {row.delivered_quantity} but stock count is {quantity} for item {row.item_variant}")
 				row.rate = rate	
 
-		doc = frappe.get_doc("Work Order", self.work_order)
+		doc = frappe.get_cached_doc("Work Order", self.work_order)
 		for deliverable in doc.deliverables:
 			for item in self.items:
 				if item.ref_docname == deliverable.name and item.get('delivered_quantity'):
@@ -190,7 +190,7 @@ def fetch_item_details(items,process_name, is_new):
 	item_details = []
 	for key, variants in groupby(items, lambda i: i['row_index']):
 		variants = list(variants)
-		current_variant = frappe.get_doc("Item Variant", variants[0]['item_variant'])
+		current_variant = frappe.get_cached_doc("Item Variant", variants[0]['item_variant'])
 		current_item_attribute_details = get_attribute_details(current_variant.item)
 		item = {
 			'name': current_variant.item,
@@ -207,7 +207,7 @@ def fetch_item_details(items,process_name, is_new):
 			for attr in current_item_attribute_details['primary_attribute_values']:
 				item['values'][attr] = {'qty': 0, 'rate': 0}
 			for variant in variants:
-				current_variant = frappe.get_doc("Item Variant", variant['item_variant'])
+				current_variant = frappe.get_cached_doc("Item Variant", variant['item_variant'])
 				for attr in current_variant.attributes:
 					if attr.attribute == item.get('primary_attribute'):
 						item['values'][attr.attribute_value] = {
@@ -255,7 +255,7 @@ def fetch_item_details(items,process_name, is_new):
 			
 @frappe.whitelist()
 def get_deliverables(work_order):
-	doc = frappe.get_doc("Work Order",work_order)
+	doc = frappe.get_cached_doc("Work Order",work_order)
 	items = fetch_item_details(doc.deliverables,doc.process_name, is_new=True)	
 	return {
 		"items":items,

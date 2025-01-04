@@ -303,6 +303,9 @@ class GoodsReceivedNote(Document):
 		make_sl_entries(sl_entries)
 
 	def before_validate(self):
+		if self.docstatus == 1:
+			return
+		
 		if self.delivery_date > self.posting_date:
 			frappe.throw("Delivery Date is Higher than Posting Date")
 
@@ -392,13 +395,7 @@ class GoodsReceivedNote(Document):
 		self.set('grand_total', grand_total)
 		self.set('in_words', money_in_words(grand_total))
 
-
-def save_grn_item_details(item_details):
-	"""
-		Save item details to purchase order
-		Item details format:
-		Eg: see sample_po_item.jsonc
-	"""
+def save_grn_purchase_item_details(item_details):
 	if isinstance(item_details, string_types):
 		item_details = json.loads(item_details)
 	items = []
