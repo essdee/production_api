@@ -8,10 +8,12 @@
  "field_order": [
   "work_order",
   "naming_series",
+  "vehicle_no",
   "is_rework",
   "column_break_xmwj",
   "posting_date",
   "posting_time",
+  "process_name",
   "address_and_contact_section",
   "from_location",
   "from_address",
@@ -172,12 +174,27 @@
    "fieldtype": "Check",
    "hidden": 1,
    "label": "Is Rework"
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "vehicle_no",
+   "fieldtype": "Data",
+   "label": "Vehicle No"
+  },
+  {
+   "fetch_from": "work_order.process_name",
+   "fetch_if_empty": 1,
+   "fieldname": "process_name",
+   "fieldtype": "Link",
+   "hidden": 1,
+   "label": "Process Name",
+   "options": "Process"
   }
  ],
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2024-12-31 18:56:02.346758",
+ "modified": "2025-01-04 15:36:20.027998",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Delivery Challan",

@@ -60,7 +60,6 @@ frappe.ui.form.on("Work Order", {
 						method: 'production_api.production_api.doctype.work_order.work_order.get_lot_items',
 						args: {
 							lot: frm.doc.lot,
-							process: frm.doc.process_name
 						},
 						callback: async function(r){
 							let d = new frappe.ui.Dialog({
@@ -205,11 +204,8 @@ frappe.ui.form.on("Work Order", {
 		frappe.call({
 			method:'production_api.production_api.doctype.work_order.work_order.get_deliverable_receivable',
 			args: {
-				lot: frm.doc.lot,
-				process: frm.doc.process_name,
 				items: items,
 				doc_name: frm.doc.name,
-				supplier: frm.doc.supplier,
 			},
 			freeze:true,
 			freeze_message: __("Calculate Deliverables and Receivables..."),

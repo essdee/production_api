@@ -27,62 +27,48 @@ class DeliveryChallan(Document):
 		res = get_variant_stock_details()
 		for row in self.items:
 			if res.get(row.item_variant):
-				add_sl_entries.append(self.get_sle_data(row,self.from_location,1,{}))	
-				reduce_sl_entries.append(self.get_sle_data(row,self.supplier,-1,{}))
+				add_sl_entries.append(self.get_sle_data(row, self.from_location, 1, {}))	
+				reduce_sl_entries.append(self.get_sle_data(row, self.supplier, -1, {}))
 		make_sl_entries(add_sl_entries)
 		make_sl_entries(reduce_sl_entries)
-		wo_doc.save(ignore_permissions=True)		
+		wo_doc.save()		
 
 	def before_submit(self):
-		doc = frappe.get_cached_doc("Work Order", self.work_order)
-		for deliverable in doc.deliverables:
-			for item in self.items:
-				if item.ref_docname == deliverable.name:
-					deliverable.pending_quantity ='{0:.3f}'.format(deliverable.pending_quantity - item.get('delivered_quantity'))
-					break
-		doc.save()
-		doc.submit()
-
 		add_sl_entries = []
 		reduce_sl_entries = []
 		res = get_variant_stock_details()
 		for row in self.items:
 			if res.get(row.item_variant):
-				quantity = get_stock_balance(row.item_variant, self.from_location, with_valuation_rate=False)
+				quantity, rate = get_stock_balance(row.item_variant, self.from_location, with_valuation_rate=True)
 				if flt(quantity) < flt(row.qty):
 					frappe.throw(f"Required quantity is {row.qty} but stock quantity is {quantity}")
-				
+				row.rate = rate		
 				reduce_sl_entries.append(self.get_sle_data(row, self.from_location, -1, {}))
 				add_sl_entries.append(self.get_sle_data(row, self.supplier, 1, {}))
+
+		wo_doc = frappe.get_cached_doc("Work Order", self.work_order)
+		for deliverable in wo_doc.deliverables:
+			for item in self.items:
+				if item.ref_docname == deliverable.name:
+					deliverable.pending_quantity ='{0:.3f}'.format(deliverable.pending_quantity - item.get('delivered_quantity'))
+					if item.get('delivered_quantity'):
+						deliverable.valuation_rate = item.get('rate')
+					break
+		wo_doc.save()
 		make_sl_entries(add_sl_entries)
 		make_sl_entries(reduce_sl_entries)
 	
 	def before_save(self):
 		if self.docstatus == 1:
 			return
-		
-		res = get_variant_stock_details()
 		for row in self.items:
-			if row.delivered_quantity and res.get(row.item_variant):
-				quantity, rate = get_stock_balance(row.item_variant,self.from_location,with_valuation_rate = True)
+			if row.delivered_quantity:
 				if row.delivered_quantity < 0:
 					frappe.throw("Only positive")
-				if flt(quantity) < flt(row.delivered_quantity):
-					frappe.throw(f"Quantity is {row.delivered_quantity} but stock count is {quantity} for item {row.item_variant}")
-				row.rate = rate	
-
-		doc = frappe.get_cached_doc("Work Order", self.work_order)
-		for deliverable in doc.deliverables:
-			for item in self.items:
-				if item.ref_docname == deliverable.name and item.get('delivered_quantity'):
-					deliverable.valuation_rate = item.get('rate')
-					break
-		doc.save()		
 	
 	def onload(self):
 		if self.get('items'):
-			process = frappe.get_value("Work Order",self.work_order,"process_name")
-			deliverable_item_details = fetch_item_details(self.get('items'),process, is_new=False)
+			deliverable_item_details = fetch_item_details(self.get('items'),is_new=False)
 			self.set_onload('deliverable_item_details', deliverable_item_details)
 	
 	def before_validate(self):
@@ -99,23 +85,21 @@ class DeliveryChallan(Document):
 			self.total_value = self.stock_value + self.additional_goods_value	
 
 	def get_sle_data(self, row, location, multiplier, args):
-		sl_dict = frappe._dict(
-			{
-				"doctype": "Stock Ledger Entry",
-				"item": row.item_variant,
-				"lot": row.lot,
-				"warehouse": location,
-				"posting_date": self.posting_date,
-				"posting_time": self.posting_time,
-				"voucher_type": self.doctype,
-				"voucher_no": self.name,
-				"voucher_detail_no": row.name,
-				"qty": row.delivered_quantity * multiplier,
-				"uom": row.uom,
-				"is_cancelled": 1 if self.docstatus == 2 else 0,
-				"valuation_rate": flt(row.rate, row.precision("rate")),
-			}
-		)
+		sl_dict = frappe._dict({
+			"doctype": "Stock Ledger Entry",
+			"item": row.item_variant,
+			"lot": row.lot,
+			"warehouse": location,
+			"posting_date": self.posting_date,
+			"posting_time": self.posting_time,
+			"voucher_type": self.doctype,
+			"voucher_no": self.name,
+			"voucher_detail_no": row.name,
+			"qty": row.delivered_quantity * multiplier,
+			"uom": row.uom,
+			"is_cancelled": 1 if self.docstatus == 2 else 0,
+			"valuation_rate": flt(row.rate, row.precision("rate")),
+		})
 		sl_dict.update(args)
 		return sl_dict
 
@@ -147,7 +131,7 @@ def save_deliverables(item_details, from_location):
 						item1['ref_doctype'] = values.get('ref_doctype')
 						item1['ref_docname'] = values.get('ref_docname')
 						item1['is_calculated'] = values.get('is_calculated')
-						stock = get_stock_value(variant_name,item.get('lot'),from_location)
+						stock = get_stock_value(variant_name, item.get('lot'), from_location)
 						item1['stock_value'] = stock
 						stock_value += stock
 						items.append(item1)		
@@ -174,18 +158,12 @@ def save_deliverables(item_details, from_location):
 			row_index += 1	
 	return items, stock_value
 
-def fetch_item_details(items,process_name, is_new):
+def fetch_item_details(items, is_new=False):
 	items = [item.as_dict() for item in items]
 	if isinstance(items, string_types):
 		items = json.loads(items)
-	
-	if process_name == "Cutting":
-		try:
-			items = sorted(items, key=lambda i: i['item_variant'] if i['is_calculated'] else i['row_index'])
-		except:
-			items = sorted(items, key=lambda i: i['item_variant'])
-	else:	
-		items = sorted(items, key = lambda i: i['row_index'])
+
+	items = sorted(items, key = lambda i: i['row_index'])
 
 	item_details = []
 	for key, variants in groupby(items, lambda i: i['row_index']):
@@ -256,7 +234,7 @@ def fetch_item_details(items,process_name, is_new):
 @frappe.whitelist()
 def get_deliverables(work_order):
 	doc = frappe.get_cached_doc("Work Order",work_order)
-	items = fetch_item_details(doc.deliverables,doc.process_name, is_new=True)	
+	items = fetch_item_details(doc.deliverables, is_new=True)	
 	return {
 		"items":items,
 		"supplier":doc.supplier,
@@ -285,3 +263,16 @@ def get_variant_stock_details():
 	for row in result:
 		res[row[0]] = row[1]
 	return res	 
+
+@frappe.whitelist()
+def get_dc_structure(doc_name):
+	doc = frappe.get_doc("Delivery Challan", doc_name)
+	item_details = fetch_item_details(doc.items)
+	return item_details
+
+@frappe.whitelist()
+def get_current_user_time():
+	from datetime import datetime
+	d = datetime.now()
+	d = datetime.fromtimestamp(d.timestamp()).strftime("%c")
+	return [frappe.session.user, d]

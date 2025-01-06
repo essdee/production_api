@@ -297,14 +297,14 @@ def fetch_order_item_details(items, production_detail):
 		items = json.loads(items)
 	order_item_details = []
 	grp_variant_item = frappe.get_value("Item Variant", items[0].item_variant, 'item')	
-	doc = frappe.get_doc("Item", grp_variant_item)
+	doc = frappe.get_cached_doc("Item", grp_variant_item)
 	variant_attr_details = get_attribute_details(grp_variant_item)
 	primary_attr = variant_attr_details['primary_attribute']
 	item_structure = get_item_details(grp_variant_item, production_detail=production_detail, dependent_state=pack_in_stage,dependent_attr_mapping=dept_attr_mapping)
 
 	for item in items:
 		values = {}
-		current_variant = frappe.get_doc("Item Variant", item.item_variant)
+		current_variant = frappe.get_cached_doc("Item Variant", item.item_variant)
 		item_attribute_details = get_item_attribute_details(current_variant, variant_attr_details)
 		if doc.dependent_attribute and doc.dependent_attribute in item_attribute_details:
 			del item_attribute_details[doc.dependent_attribute]

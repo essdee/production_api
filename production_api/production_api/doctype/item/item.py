@@ -255,7 +255,7 @@ def create_variant(template, args, dependent_attr=None):
 	"""
 	if isinstance(args, string_types):
 		args = json.loads(args)
-	template = frappe.get_doc("Item", template)
+	template = frappe.get_cached_doc("Item", template)
 	variant = frappe.new_doc("Item Variant")
 	variant.item = template.name
 	variant_attributes = []
@@ -303,7 +303,7 @@ def get_variant(template, args):
 		args: A dictionary with "Attribute" as key and "Attribute Value" as value
 	"""
 
-	item_template = frappe.get_doc("Item", template)
+	item_template = frappe.get_cached_doc("Item", template)
 
 	if isinstance(args, string_types):
 		args = json.loads(args)
@@ -316,7 +316,7 @@ def find_variant(template, args):
 	possible_variants = get_variants_by_attributes(args, template)
 
 	for variant in possible_variants:
-		variant = frappe.get_doc("Item Variant", variant)
+		variant = frappe.get_cached_doc("Item Variant", variant)
 
 		if len(args.keys()) == len(variant.get("attributes")):
 			# has the same number of attributes and values

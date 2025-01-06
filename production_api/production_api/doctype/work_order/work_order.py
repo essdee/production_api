@@ -10,15 +10,15 @@ from frappe.utils import flt, nowdate, nowtime
 from production_api.mrp_stock.stock_ledger import make_sl_entries
 from production_api.production_api.doctype.purchase_order.purchase_order import get_item_group_index
 from production_api.production_api.doctype.item.item import get_attribute_details, get_or_create_variant
+from production_api.production_api.doctype.delivery_challan.delivery_challan import get_variant_stock_details
 from production_api.essdee_production.doctype.lot.lot import fetch_order_item_details, get_uom_conversion_factor
 from production_api.essdee_production.doctype.item_production_detail.item_production_detail import get_calculated_bom
-from production_api.production_api.doctype.delivery_challan.delivery_challan import get_variant_stock_details
 
 class WorkOrder(Document):
 	def on_update_after_submit(self):
 		check_quantity = True
 		for item in self.deliverables:
-			if float(item.pending_quantity) > float(0):
+			if flt(item.pending_quantity) > flt(0):
 				check_quantity = False
 				break
 
@@ -79,12 +79,18 @@ class WorkOrder(Document):
 					first_process = p.process_name
 				else:
 					final_process = p.process_name
-			ipd_doc = frappe.get_doc("Item Production Detail", self.production_detail)
+			ipd_doc = frappe.db.sql(
+				f"""
+					Select packing_process, stiching_process, cutting_process from `tabItem Production Detail`
+					Where name = '{self.production_detail}'
+				""", as_dict=True
+			)[0]
 			main_prs = [ipd_doc.packing_process, ipd_doc.stiching_process, ipd_doc.cutting_process]
 			if first_process not in main_prs and final_process not in main_prs:	
 				check = True				
+
 		for row in self.receivables:
-			rate, cost_doc = get_rate_and_quantity(self.process_name, row.item_variant, row.qty, self, self.supplier)
+			rate, cost_doc = get_rate_and_quantity(row.item_variant, row.qty, self)
 			attr_qty = get_attributes_qty(self.production_detail, self.process_name, cost_doc)
 			if check:
 				rate = rate / 2
@@ -143,18 +149,18 @@ def get_data(item, item_name, item_attributes, table_index, row_index, process_n
 	item1['comments'] = item.get('comments') 
 	return item1	
 
-def get_rate_and_quantity(process_name, variant_name, quantity, doc, supplier):
+def get_rate_and_quantity(variant_name, quantity, doc):
 	item_doc = frappe.get_cached_doc('Item Variant',variant_name)
 	item = item_doc.item
 	fil = {
-		'process_name':process_name,
+		'process_name':doc.process_name,
 		'item':item,
 		'is_expired':0,
 		'from_date':['<=',doc.wo_date],
 		'docstatus': 1,
 	}
-	if supplier:
-		fil['supplier'] = supplier
+	if doc.supplier:
+		fil['supplier'] = doc.supplier
 
 	doc_names = frappe.get_list('Process Cost',filters = fil)
 	docname = None
@@ -167,7 +173,7 @@ def get_rate_and_quantity(process_name, variant_name, quantity, doc, supplier):
 			docname = docnames[0]['name']
 
 	if not docname:
-		frappe.throw('No process cost for ' + process_name)
+		frappe.throw('No process cost for ' + doc.process_name)
 	
 	rate = 0
 	order_quantity = 0
@@ -177,7 +183,7 @@ def get_rate_and_quantity(process_name, variant_name, quantity, doc, supplier):
 
 	check_list = None
 	if doc.is_rework and doc.rework_type == 'No Cost':
-		return float(0),docname 
+		return flt(0), docname 
 	if doc.is_rework:
 		check_list = process_doc.rework_cost_values
 	else:
@@ -319,38 +325,47 @@ def get_work_order_items(work_order, is_grn = False):
 	return data
  
 @frappe.whitelist()
-def get_lot_items(lot, process):
-	doc = frappe.get_doc("Lot", lot)	
+def get_lot_items(lot):
+	doc = frappe.get_cached_doc("Lot", lot)	
 	items = fetch_order_item_details(doc.lot_order_details, doc.production_detail)
 	return items
 
 @frappe.whitelist()
-def get_deliverable_receivable( lot, process, items, doc_name, supplier):
-	lot_doc = frappe.get_cached_doc("Lot", lot)
+def get_deliverable_receivable( items, doc_name):
+	wo_doc = frappe.get_cached_doc("Work Order", doc_name)
+	lot_doc = frappe.db.sql(
+		f"""
+			Select production_detail, packing_uom, uom, pack_in_stage from `tabLot` where name = '{wo_doc.lot}'
+		""", as_dict=True
+	)[0]
 	ipd = lot_doc.production_detail
 	uom = lot_doc.packing_uom
 	pack_out_uom = lot_doc.uom
 
-	ipd_doc = frappe.get_cached_doc("Item Production Detail", ipd)
+	ipd_doc = frappe.db.sql(
+		f"""
+			Select name, dependent_attribute, pack_out_stage, stiching_in_stage, packing_process, stiching_process, cutting_process
+			from `tabItem Production Detail` Where name = '{ipd}'
+		""", as_dict=True
+	)[0]
 	dept_attribute = ipd_doc.dependent_attribute
 	pack_out_stage = ipd_doc.pack_out_stage
 	stiching_in_stage = ipd_doc.stiching_in_stage
 	items = get_items(items)
 	grp_variant = items[0]['item_variant']
 	item_name = frappe.get_value("Item Variant", grp_variant, 'item')
-	item_list, row_index, table_index = get_item_structure(items, item_name, process, uom)
+	item_list, row_index, table_index = get_item_structure(items, item_name, wo_doc.process_name, uom)
 	deliverables = []
 	receivables = []
 	total_qty = 0
-	doc = frappe.get_cached_doc("Work Order", doc_name)
-	is_group = frappe.get_value("Process",process,"is_group")
+	is_group = frappe.get_value("Process",wo_doc.process_name,"is_group")
 	if is_group:
 		b = {}
 		first_process = None
 		final_process = None
-		process_doc = frappe.get_cached_doc("Process",process)
+		process_doc = frappe.get_cached_doc("Process",wo_doc.process_name)
 		for idx, p in enumerate(process_doc.process_details):
-			m = get_calculated_bom(ipd, items, lot, process_name=p.process_name, doctype="Work Order")
+			m = get_calculated_bom(ipd, items, wo_doc.lot, process_name=p.process_name, doctype="Work Order")
 			b.update(m)
 			if idx == 0:
 				first_process = p.process_name
@@ -359,33 +374,30 @@ def get_deliverable_receivable( lot, process, items, doc_name, supplier):
 
 		bom = get_bom_structure(b,row_index, table_index)	
 		item_list2 = item_list.copy()
-		deliverables , y,z= 	calc_deliverable_and_receivable(ipd_doc, first_process, item_list, item_name, dept_attribute, ipd, lot, doc, uom, bom, lot_doc, stiching_in_stage, pack_out_stage, pack_out_uom, supplier, grp_process=process)
-		x, receivables, total_qty = calc_deliverable_and_receivable(ipd_doc, final_process, item_list2, item_name, dept_attribute, ipd, lot, doc, uom, {}, lot_doc, stiching_in_stage, pack_out_stage, pack_out_uom, supplier,grp_process=process)		
+		deliverables , y,z= 	calc_deliverable_and_receivable(ipd_doc, first_process, item_list, item_name, dept_attribute, ipd, wo_doc.lot, uom, bom, lot_doc, stiching_in_stage, pack_out_stage, pack_out_uom)
+		x, receivables, total_qty = calc_deliverable_and_receivable(ipd_doc, final_process, item_list2, item_name, dept_attribute, ipd, wo_doc.lot, uom, {}, lot_doc, stiching_in_stage, pack_out_stage, pack_out_uom)		
 		main_prs = [ipd_doc.packing_process, ipd_doc.stiching_process, ipd_doc.cutting_process]
 		if first_process not in main_prs and final_process not in main_prs:
 			deliverables = deliverables + x
 			receivables = receivables + y
 			total_qty = total_qty + z
 	else:
-		bom = get_calculated_bom(ipd, items, lot, process_name=process,doctype="Work Order")
+		bom = get_calculated_bom(ipd, items, wo_doc.lot, process_name=wo_doc.process_name,doctype="Work Order")
 		bom = get_bom_structure(bom, row_index, table_index)
-		deliverables, receivables, total_qty = calc_deliverable_and_receivable(ipd_doc, process, item_list, item_name, dept_attribute, ipd, lot, doc, uom, bom, lot_doc, stiching_in_stage, pack_out_stage, pack_out_uom, supplier)		
+		deliverables, receivables, total_qty = calc_deliverable_and_receivable(ipd_doc, wo_doc.process_name, item_list, item_name, dept_attribute, ipd, wo_doc.lot, uom, bom, lot_doc, stiching_in_stage, pack_out_stage, pack_out_uom)		
 
-	doc.set('deliverables',deliverables)
-	doc.set('receivables', receivables)
-	doc.set("total_quantity", total_qty)
-	doc.save()
+	wo_doc.set('deliverables',deliverables)
+	wo_doc.set('receivables', receivables)
+	wo_doc.set("total_quantity", total_qty)
+	wo_doc.save()
 	return None
 
-def calc_deliverable_and_receivable(ipd_doc, process, item_list, item_name, dept_attribute, ipd, lot, doc, uom, bom, lot_doc, stiching_in_stage, pack_out_stage, pack_out_uom, supplier, grp_process=None):
+def calc_deliverable_and_receivable(ipd_doc, process, item_list, item_name, dept_attribute, ipd, lot,uom, bom, lot_doc, stiching_in_stage, pack_out_stage, pack_out_uom):
 	deliverables = []
 	receivables = []
-	process_cost = process
-	if grp_process:
-		process_cost = grp_process
 	total_qty = None
 	if ipd_doc.stiching_process == process:
-		receivables, total_qty  = get_receivables(item_list, process_cost, lot, uom, doc, supplier, ipd)
+		receivables, total_qty  = get_receivables(item_list, lot, uom)
 		stiching_attributes = get_attributes(item_list, item_name, stiching_in_stage, dept_attribute, ipd)
 		stiching_attributes.update(bom)
 		deliverables  = get_deliverables(stiching_attributes, lot)
@@ -395,33 +407,38 @@ def calc_deliverable_and_receivable(ipd_doc, process, item_list, item_name, dept
 		item_list.update(bom)
 		deliverables  = get_deliverables(item_list, lot)
 		item_doc = frappe.get_cached_doc("Item", item_name)
-		receivables, total_qty  = get_receivables(packing_attributes, process_cost,lot, uom, doc, supplier, ipd, conversion_details=item_doc.uom_conversion_details, out_uom=pack_out_uom)
+		receivables, total_qty  = get_receivables(packing_attributes, lot, uom, conversion_details=item_doc.uom_conversion_details, out_uom=pack_out_uom)
 		
 	elif ipd_doc.cutting_process == process:
 		cutting_out_stage = frappe.get_value("Item Production Detail", ipd,'stiching_in_stage')
 		cutting_attributes = get_attributes(item_list, item_name, cutting_out_stage, dept_attribute,ipd)
-		receivables, total_qty  = get_receivables(cutting_attributes, process_cost, lot, uom, doc, supplier, ipd)
+		receivables, total_qty  = get_receivables(cutting_attributes, lot, uom)
 		deliverables  =  get_deliverables(bom, lot)
 
-	else:		
-		for item in ipd_doc.ipd_processes:
+	else:	
+		ipd_process = frappe.db.sql(
+			f"""
+				Select process_name, stage from `tabIPD Process` where parent = '{ipd_doc.name}' 
+			""", as_dict = True
+		)	
+		for item in ipd_process:
 			if item.process_name == process:
 				if ipd_doc.stiching_in_stage == item.stage:
 					attributes = get_attributes(item_list, item_name, item.stage, dept_attribute, ipd, process)
 					x = attributes.copy()
 					x.update(bom)
 					deliverables  = get_deliverables(x, lot)
-					receivables, total_qty  = get_receivables(attributes, process_cost, lot, uom, doc, supplier, ipd)
+					receivables, total_qty  = get_receivables(attributes, lot, uom)
 				
 				elif lot_doc.pack_in_stage == item.stage:
 					deliverables = item_list.copy()
-					receivables, total_qty  = get_receivables(deliverables, process_cost, lot, uom, doc, supplier, ipd)
+					receivables, total_qty  = get_receivables(deliverables,lot, uom)
 					item_list.update(bom)
 					deliverables = get_deliverables(item_list, lot)
 
 				else:
 					attributes = get_attributes(item_list, item_name, item.stage, dept_attribute)
-					receivables, total_qty = get_receivables(attributes, process_cost, lot, uom, doc, supplier, ipd)
+					receivables, total_qty = get_receivables(attributes,lot, uom)
 					attributes.update(bom)
 					deliverables = get_deliverables(attributes, lot)
 				break
@@ -443,7 +460,7 @@ def get_deliverables(items, lot):
 			})
     return deliverables
 
-def get_receivables(items, process,lot, uom, doc, supplier, ipd, conversion_details = None, out_uom = None):
+def get_receivables(items,lot, uom, conversion_details = None, out_uom = None):
 	receivables = []
 	total_qty = 0
 	for item_name,variants in items.items():

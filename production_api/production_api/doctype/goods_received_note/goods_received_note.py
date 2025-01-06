@@ -775,7 +775,7 @@ def calculate_deliverables(grn_doc):
 	elif process == ipd_doc.stiching_process:
 		final_value = get_stiching_process_deliverables(grn_doc, wo_doc, ipd_doc)
 	elif process == ipd_doc.cutting_process:
-		final_value = get_cutting_process_deliverables(grn_doc, wo_doc,ipd_doc)
+		final_value = get_cutting_process_deliverables(grn_doc,ipd_doc)
 	else:
 		final_value = get_other_deliverables(grn_doc, wo_doc)
 	return final_value	
@@ -794,8 +794,7 @@ def get_other_deliverables(grn_doc, wo_doc):
 	else:
 		return {}	
 
-def get_cutting_process_deliverables(grn_doc, wo_doc, ipd_doc):
-	lot_doc = frappe.get_cached_doc("Lot", wo_doc.lot)
+def get_cutting_process_deliverables(grn_doc, ipd_doc):
 	final_value = {}
 	cloth_combination = get_cloth_combination(ipd_doc)
 	panel_qty = 0
@@ -1001,7 +1000,7 @@ def get_attributes(items, itemname, stage, dependent_attribute, ipd):
 				for i in ipd_doc.stiching_item_details:
 					set_item_stitching_attrs[i.stiching_attribute_value] = i.set_item_attribute_value
 
-				for id,item in enumerate(ipd_doc.stiching_item_details):
+				for id, item in enumerate(ipd_doc.stiching_item_details):
 					attributes[ipd_doc.stiching_attribute] = item.stiching_attribute_value
 					v = True
 					panel_part = set_item_stitching_attrs[item.stiching_attribute_value]
@@ -1041,3 +1040,9 @@ def get_key(item, attrs):
 	for attr in attrs:
 		key.append(item[attr])
 	return tuple(key)	
+
+@frappe.whitelist()
+def get_grn_structure(doc_name):
+	doc = frappe.get_doc("Goods Received Note", doc_name)
+	item_details = fetch_grn_item_details(doc.items)
+	return item_details
