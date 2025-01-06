@@ -11,6 +11,7 @@
   "against",
   "delivery_location",
   "delivery_location_name",
+  "lot",
   "column_break_1",
   "rework_created",
   "against_id",
@@ -336,12 +337,19 @@
    "fieldtype": "Currency",
    "hidden": 1,
    "label": "Total Receivable Cost"
+  },
+  {
+   "fieldname": "lot",
+   "fieldtype": "Link",
+   "hidden": 1,
+   "label": "Lot",
+   "options": "Lot"
   }
  ],
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-01-06 12:09:37.802515",
+ "modified": "2025-01-06 17:49:45.360996",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Goods Received Note",

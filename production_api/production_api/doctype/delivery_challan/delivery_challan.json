@@ -14,6 +14,7 @@
   "posting_date",
   "posting_time",
   "process_name",
+  "lot",
   "address_and_contact_section",
   "from_location",
   "from_address",
@@ -189,12 +190,21 @@
    "hidden": 1,
    "label": "Process Name",
    "options": "Process"
+  },
+  {
+   "allow_on_submit": 1,
+   "fetch_from": "work_order.lot",
+   "fetch_if_empty": 1,
+   "fieldname": "lot",
+   "fieldtype": "Link",
+   "label": "Lot",
+   "options": "Lot"
   }
  ],
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-01-04 15:36:20.027998",
+ "modified": "2025-01-06 13:14:57.858847",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Delivery Challan",

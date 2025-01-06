@@ -20,7 +20,7 @@ class GoodsReceivedNote(Document):
 			item_details = fetch_grn_purchase_item_details(self.get('items'),docstatus=self.docstatus)
 			self.set_onload('item_details', item_details)
 		else:
-			item_details = fetch_grn_item_details(self.get('items'))
+			item_details = fetch_grn_item_details(self.get('items') ,self.lot)
 			self.set_onload('item_details', item_details)
 
 	def before_save(self):
@@ -314,6 +314,8 @@ class GoodsReceivedNote(Document):
 				items = save_grn_purchase_item_details(self.item_details)
 				self.set('items', items)
 		else:
+			lot = frappe.get_value(self.against, self.against_id, "lot")
+			self.lot = lot	
 			check = False
 			if self.is_new():
 				check = True
@@ -333,12 +335,13 @@ class GoodsReceivedNote(Document):
 					deliverables = calculate_deliverables(self)
 					items = []
 					for variant, attr in deliverables.items():
-						items.append({
-							"item_variant": variant,
-							"quantity": attr['qty'],
-							"uom": attr['uom'],
-							"valuation_rate": wo_deliverables[variant]
-						})
+						if wo_deliverables.get(variant):
+							items.append({
+								"item_variant": variant,
+								"quantity": attr['qty'],
+								"uom": attr['uom'],
+								"valuation_rate": wo_deliverables[variant]
+							})
 					self.set("grn_deliverables", items)
 					self.total_received_quantity = total_qty
 					self.total_receivable_cost = total_rate
@@ -529,7 +532,7 @@ def validate_quantity_tolerance(item_variant, total_qty, pending_qty, received_q
 		frappe.throw(_("Quantity tolerance exceeded for item {0}. Received Quantity must not exceed {1}").format(item, pending_qty + tolerance))
 	return True
 
-def fetch_grn_item_details(items):
+def fetch_grn_item_details(items, lot):
 	items = [item.as_dict() for item in items]
 	item_details = []
 	for key, variants in groupby(items, lambda i: i['row_index']):
@@ -602,6 +605,7 @@ def fetch_grn_item_details(items):
 		if index == -1:
 			item_details.append({
 				'attributes': current_item_attribute_details['attributes'],
+				"lot":lot,
 				'primary_attribute': current_item_attribute_details['primary_attribute'],
 				'primary_attribute_values': current_item_attribute_details['primary_attribute_values'],
 				'dependent_attribute': current_item_attribute_details['dependent_attribute'],
@@ -1044,5 +1048,5 @@ def get_key(item, attrs):
 @frappe.whitelist()
 def get_grn_structure(doc_name):
 	doc = frappe.get_doc("Goods Received Note", doc_name)
-	item_details = fetch_grn_item_details(doc.items)
+	item_details = fetch_grn_item_details(doc.items, doc.lot)
 	return item_details

@@ -68,7 +68,7 @@ class DeliveryChallan(Document):
 	
 	def onload(self):
 		if self.get('items'):
-			deliverable_item_details = fetch_item_details(self.get('items'),is_new=False)
+			deliverable_item_details = fetch_item_details(self.get('items'),self.lot,is_new=False)
 			self.set_onload('deliverable_item_details', deliverable_item_details)
 	
 	def before_validate(self):
@@ -158,7 +158,7 @@ def save_deliverables(item_details, from_location):
 			row_index += 1	
 	return items, stock_value
 
-def fetch_item_details(items, is_new=False):
+def fetch_item_details(items,lot, is_new=False):
 	items = [item.as_dict() for item in items]
 	if isinstance(items, string_types):
 		items = json.loads(items)
@@ -222,6 +222,7 @@ def fetch_item_details(items, is_new=False):
 		if index == -1:
 			item_details.append({
 				'attributes': current_item_attribute_details['attributes'],
+				"lot":lot,
 				'primary_attribute': current_item_attribute_details['primary_attribute'],
 				'primary_attribute_values': current_item_attribute_details["primary_attribute_values"],
 				'dependent_attribute': current_item_attribute_details['dependent_attribute'],
@@ -234,7 +235,7 @@ def fetch_item_details(items, is_new=False):
 @frappe.whitelist()
 def get_deliverables(work_order):
 	doc = frappe.get_cached_doc("Work Order",work_order)
-	items = fetch_item_details(doc.deliverables, is_new=True)	
+	items = fetch_item_details(doc.deliverables,doc.lot, is_new=True)	
 	return {
 		"items":items,
 		"supplier":doc.supplier,
@@ -267,7 +268,7 @@ def get_variant_stock_details():
 @frappe.whitelist()
 def get_dc_structure(doc_name):
 	doc = frappe.get_doc("Delivery Challan", doc_name)
-	item_details = fetch_item_details(doc.items)
+	item_details = fetch_item_details(doc.items, doc.lot)
 	return item_details
 
 @frappe.whitelist()
