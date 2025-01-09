@@ -16,7 +16,7 @@
    "hidden": 0,
    "is_query_report": 0,
    "label": "Report",
-   "link_count": 5,
+   "link_count": 6,
    "link_type": "DocType",
    "onboard": 0,
    "type": "Card Break"
@@ -70,9 +70,19 @@
    "link_type": "Report",
    "onboard": 0,
    "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 1,
+   "label": "Stock Item Balance Difference",
+   "link_count": 0,
+   "link_to": "Stock Item Balance Difference",
+   "link_type": "Report",
+   "onboard": 0,
+   "type": "Link"
   }
  ],
- "modified": "2024-11-16 09:46:01.609963",
+ "modified": "2025-01-09 16:47:38.475071",
  "modified_by": "Administrator",
  "module": "MRP Stock",
  "name": "Stock",
