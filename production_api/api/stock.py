@@ -50,7 +50,8 @@ def make_dispatch_stock_entry(items, warehouse, packing_slip):
     fg_lot = get_default_fg_lot()
     if frappe.db.exists("Stock Entry", {
         "packing_slip" : packing_slip,
-        "from_warehouse" : warehouse
+        "from_warehouse" : warehouse,
+        "docstatus" : 1
     }) :
         return frappe.db.get_value("Stock Entry", {
             "packing_slip" : packing_slip,
