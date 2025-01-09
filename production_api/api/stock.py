@@ -96,6 +96,8 @@ def cancel_dispatch_stock_entry(ste_name):
     ste = frappe.get_doc("Stock Entry", ste_name)
     if ste.purpose != "Stock Dispatch":
         frappe.throw("You cannot cancel other Stock Entries")
+    if ste.docstatus == 2:
+        return
     ste.cancel()
 
 def get_default_fg_lot(raise_error=True):
