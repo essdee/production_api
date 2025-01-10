@@ -27,7 +27,7 @@ frappe.ui.form.on("Lot", {
 		if(frm.doc.lot_time_and_action_details.length == 0){
 			frm.add_custom_button("Calculate Order Items", ()=> {
 				frappe.call({
-					method:"production_api.essdee_production.doctype.lot.lot.get_order_details",
+					method:"production_api.essdee_production.doctype.lot.lot.update_order_details",
 					args : {
 						doc_name : frm.doc.name,
 					}

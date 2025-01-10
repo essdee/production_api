@@ -17,7 +17,7 @@ class Lot(Document):
 
 	def before_validate(self):
 		if self.get('item_details'):
-			items = save_item_details(self.item_details, dependent_attr=self.get('dependent_attribute_mapping'))
+			items = save_item_details(self.item_details)
 			self.set("items",items)
 
 		if self.get('order_item_details') and len(self.lot_time_and_action_details) == 0:
@@ -97,9 +97,9 @@ def get_time_and_action_process(action_details):
 	return items
 
 def calculate_order_details(items, production_detail, packing_uom, final_uom):
-	item_detail = frappe.get_doc("Item Production Detail", production_detail)
+	item_detail = frappe.get_cached_doc("Item Production Detail", production_detail)
 	final_list = []
-	doc = frappe.get_doc("Item", item_detail.item)
+	doc = frappe.get_cached_doc("Item", item_detail.item)
 	dept_attr = None
 	pack_stage = None
 	if item_detail.dependent_attribute:
@@ -108,7 +108,7 @@ def calculate_order_details(items, production_detail, packing_uom, final_uom):
 	uom_factor = get_uom_conversion_factor(doc.uom_conversion_details,final_uom, packing_uom)
 	final_qty = 0
 	for item in items:
-		variant = frappe.get_doc("Item Variant", item.item_variant)
+		variant = frappe.get_cached_doc("Item Variant", item.item_variant)
 		is_not_pack_attr = True
 		for attribute in variant.attributes:
 			attribute = attribute.as_dict()
@@ -168,7 +168,8 @@ def calculate_order_details(items, production_detail, packing_uom, final_uom):
 					'quantity':val,
 				})		
 	return final_list, final_qty
-def save_order_item_details(item_details, dependent_attr = None):
+
+def save_order_item_details(item_details):
 	if isinstance(item_details, string_types):
 		item_details = json.loads(item_details)
 	if len(item_details) == 0:
@@ -210,7 +211,7 @@ def update_time_and_action(action_details,lot_action_details):
 					doc.save()
 					break
 
-def save_item_details(item_details, dependent_attr=None):
+def save_item_details(item_details):
 	if isinstance(item_details, string_types):
 		item_details = json.loads(item_details)
 	if len(item_details) == 0:
@@ -254,7 +255,7 @@ def fetch_item_details(items, production_detail):
 	variant_attr_details = get_attribute_details(grp_variant)
 	primary_attr = variant_attr_details['primary_attribute']
 	uom = get_isfinal_uom(production_detail)['uom']
-	doc = frappe.get_doc("Item", grp_variant)
+	doc = frappe.get_cached_doc("Item", grp_variant)
 	item_structure = get_item_details(grp_variant, uom=uom,production_detail=production_detail, dependent_attr_mapping=dependent_attr_map_value)
 
 	for key, variants in groupby(items, lambda i: i['table_index']):
@@ -262,7 +263,7 @@ def fetch_item_details(items, production_detail):
 		item1 = {}
 		values = {}	
 		for variant in variants:
-			current_variant = frappe.get_doc("Item Variant", variant['item_variant'])
+			current_variant = frappe.get_cached_doc("Item Variant", variant['item_variant'])
 			item_attribute_details = get_item_attribute_details(current_variant, variant_attr_details)
 			if doc.dependent_attribute and doc.dependent_attribute in item_attribute_details:
 				del item_attribute_details[doc.dependent_attribute]
@@ -340,15 +341,15 @@ def get_quantity(attr, packing_attribute_details):
 		if item.attribute_value == attr:
 			return item.quantity
 
-def get_same_index_set_item(index, set_item_details, set_attr, pack_attr):
-	attr = {}
-	attr[set_attr] = []
-	for item in set_item_details:
-		if item.index == index:
-			attr[set_attr].append({'major_attribute':item.major_attribute_value,set_attr :item.set_item_attribute_value,pack_attr : item.attribute_value})
-		if item.index > index:
-			break	
-	return attr	
+# def get_same_index_set_item(index, set_item_details, set_attr, pack_attr):
+# 	attr = {}
+# 	attr[set_attr] = []
+# 	for item in set_item_details:
+# 		if item.index == index:
+# 			attr[set_attr].append({'major_attribute':item.major_attribute_value,set_attr :item.set_item_attribute_value,pack_attr : item.attribute_value})
+# 		if item.index > index:
+# 			break	
+# 	return attr	
 
 def get_item_attribute_details(variant, item_attributes):
 	attribute_details = {}
@@ -361,14 +362,14 @@ def get_item_attribute_details(variant, item_attributes):
 def get_item_details(item_name, uom=None, production_detail=None, dependent_state=None, dependent_attr_mapping=None):
 	from production_api.essdee_production.doctype.item_production_detail.item_production_detail import get_ipd_primary_values
 	item = get_attribute_details(item_name, dependent_attr_mapping=dependent_attr_mapping)
-	item_detail = frappe.get_doc("Item Production Detail", production_detail)
+	pack_out_stage = frappe.get_value("Item Production Detail", production_detail,"pack_out_stage")
 	if uom:
 		item['default_uom'] = uom
 	final_state = None
 	final_state_attr = None
 	item['items'] = []
 	if item['dependent_attribute']:
-		attribute = dependent_state if dependent_state else item_detail.pack_out_stage
+		attribute = dependent_state if dependent_state else pack_out_stage
 		for attr in item['dependent_attribute_details']['attr_list']:
 			if attr == attribute:
 				final_state = attribute
@@ -383,7 +384,7 @@ def get_item_details(item_name, uom=None, production_detail=None, dependent_stat
 		item['final_state_attr'] = final_state_attr	
 		
 	elif not item['dependent_attribute'] and not item['primary_attribute']:
-		doc = frappe.get_doc("Item", item['item'])
+		doc = frappe.get_cached_doc("Item", item['item'])
 		final_state_attr = []
 		x = [attr.attribute for attr in doc.attributes]
 		final_state_attr = final_state_attr + x
@@ -407,7 +408,7 @@ def get_isfinal_uom(item_production_detail, get_pack_stage=None):
 				break
 	else:
 		item = doc.item
-		item_doc = frappe.get_doc("Item", item)
+		item_doc = frappe.get_cached_doc("Item", item)
 		uom = item_doc.default_unit_of_measure
 
 	if get_pack_stage:
@@ -477,14 +478,14 @@ def get_attributes(data):
 		attr_list.append(temp_attr)
 	return attribute_list, attr_list
 
-@frappe.whitelist()
-def get_item_list_details(lot):
-	doc = frappe.get_doc("Lot",lot)
-	items = []
-	for item in doc.items:
-		items.append(item.as_dict())
+# @frappe.whitelist()
+# def get_item_list_details(lot):
+# 	doc = frappe.get_doc("Lot",lot)
+# 	items = []
+# 	for item in doc.items:
+# 		items.append(item.as_dict())
 
-	return items	
+# 	return items	
 
 @frappe.whitelist()
 def get_packing_attributes(ipd):
@@ -628,13 +629,13 @@ def make_complete(time_and_action):
 	else:
 		frappe.msgprint("Not all the Actions are Completed")		
 
-@frappe.whitelist()
-def get_select_options(lot):
-	lot_doc = frappe.get_doc("Lot",lot)
-	select_options = []
-	for item in lot_doc.lot_time_and_action_details:
-		select_options.append(item.colour)
-	return select_options
+# @frappe.whitelist()
+# def get_select_options(lot):
+# 	lot_doc = frappe.get_doc("Lot",lot)
+# 	select_options = []
+# 	for item in lot_doc.lot_time_and_action_details:
+# 		select_options.append(item.colour)
+# 	return select_options
 
 @frappe.whitelist()
 def get_action_master_details(master_list):
@@ -698,7 +699,7 @@ def undo_last_update(time_and_action):
 	t_and_a.save()		
 
 @frappe.whitelist()
-def get_order_details(doc_name):
+def update_order_details(doc_name):
 	doc = frappe.get_doc("Lot", doc_name)
 	doc.calculate_order()
 	doc.save()

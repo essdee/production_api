@@ -6,8 +6,8 @@ from frappe import _
 from six import string_types
 from itertools import groupby
 from frappe.model.document import Document
-from production_api.mrp_stock.doctype.stock_entry.stock_entry import get_uom_details
 from frappe.utils import money_in_words, flt, cstr, date_diff, nowtime
+from production_api.mrp_stock.doctype.stock_entry.stock_entry import get_uom_details
 from production_api.production_api.doctype.work_order.work_order import get_bom_structure
 from production_api.production_api.doctype.item.item import get_attribute_details, get_or_create_variant
 from production_api.production_api.doctype.delivery_challan.delivery_challan import get_variant_stock_details
@@ -17,10 +17,10 @@ from production_api.essdee_production.doctype.item_production_detail.item_produc
 class GoodsReceivedNote(Document):
 	def onload(self):
 		if self.against == "Purchase Order":
-			item_details = fetch_grn_purchase_item_details(self.get('items'),docstatus=self.docstatus)
+			item_details = fetch_grn_purchase_item_details(self.get('items'), docstatus=self.docstatus)
 			self.set_onload('item_details', item_details)
 		else:
-			item_details = fetch_grn_item_details(self.get('items') ,self.lot)
+			item_details = fetch_grn_item_details(self.get('items'), self.lot)
 			self.set_onload('item_details', item_details)
 
 	def before_save(self):
@@ -54,7 +54,7 @@ class GoodsReceivedNote(Document):
 	def update_work_order_receivables(self):
 		if self.docstatus == 0:
 			return
-		wo = frappe.get_doc(self.against, self.against_id)
+		wo = frappe.get_cached_doc(self.against, self.against_id)
 		for item in self.items:
 			for i in wo.receivables:
 				if i.name == item.ref_docname:
@@ -67,7 +67,7 @@ class GoodsReceivedNote(Document):
 		for item in self.items:
 			total_received_qty += item.received_quantity
 
-		wo_doc = frappe.get_doc(self.against, self.against_id)
+		wo_doc = frappe.get_cached_doc(self.against, self.against_id)
 		diff = wo_doc.total_quantity - total_received_qty
 		percentage = (total_received_qty / wo_doc.total_quantity) * 100
 		calculated_items = {}
@@ -201,7 +201,7 @@ class GoodsReceivedNote(Document):
 			self.update_purchase_order()
 			self.update_stock_ledger()	
 		else:
-			wo_doc = frappe.get_doc(self.against, self.against_id)
+			wo_doc = frappe.get_cached_doc(self.against, self.against_id)
 			for item in self.items:
 				for receivable in wo_doc.receivables:
 					if item.ref_docname == receivable.name and flt(item.received_quantity) > flt(0):
@@ -227,7 +227,7 @@ class GoodsReceivedNote(Document):
 		for item in self.items:
 			total_received_qty += item.received_quantity
 
-		wo_doc = frappe.get_doc(self.against,self.against_id)
+		wo_doc = frappe.get_cached_doc(self.against,self.against_id)
 		wo_doc.total_quantity += total_received_qty
 		diff = wo_doc.total_quantity - total_received_qty
 		percentage = (total_received_qty / wo_doc.total_quantity) * 100

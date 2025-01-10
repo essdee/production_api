@@ -94,6 +94,7 @@
 				<td v-if="i.primary_attribute">
 					<table class="table table-sm table-bordered" v-if="i.items && i.items.length > 0" >
 						<tr>
+							<th>S.No</th>
 							<th>Item</th>
 							<th>Lot</th>
 							<th v-for="attr in i.attributes" :key="attr">{{ attr }}</th>
@@ -102,7 +103,8 @@
 							<th>Edit</th>
 						</tr>
 						<template v-for="(j, item1_index) in i.items" :key="item1_index">
-							<tr v-for="type in j.types" :key="type">
+							<tr v-for="(type, idx) in j.types" :key="idx">
+								<td>{{ get_index(item1_index)}}</td>
 								<td>{{ j.name }}</td>
 								<td>{{ j.lot }}</td>
 								<td v-for="attr in i.attributes" :key="attr">{{ j.attributes[attr] }}</td>
@@ -187,6 +189,7 @@ import EventBus from "../../bus";
 
 import { ref, onMounted, computed, watch } from "vue";
 const root = ref(null);
+let loop_index = 0
 let i = 0;
 const is_edited = ref(false);
 const docstatus = ref(0);
@@ -214,6 +217,13 @@ let types = null;
 let qty_parameters = [];
 let indexes = [];
 
+function get_index(idx){
+	if(idx == 0){
+		loop_index = 0
+	}
+	loop_index = loop_index + 1;
+	return loop_index
+}
 const check_received_qty = computed(()=> {
 	let x = false
 	if(items.value){
@@ -231,15 +241,6 @@ const check_received_qty = computed(()=> {
 	}
 	return x
 })
-
-function get_index(idx) {
-	if (!indexes.includes(idx)) {
-		indexes.push(idx);
-		i = 0;
-	}
-	i = i + 1;
-	return i;
-}
 
 function edit_item(index, index1) {
 	let el = root.value;
@@ -310,7 +311,7 @@ function edit_delivered_item(index, index1, type) {
 					qty_attributes.value.push({ [key]: qty });
 				});
 				if (selectedValue && selectedValue !== "" && selectedValue !== null) {
-					handleQtyParameters(qty_attributes.value, selectedValue);
+					handleQtyParameters(qty_attributes.value, selectedValue, true);
 				} 
 				else {
 					show_button2.value = false
@@ -364,7 +365,7 @@ function delete_delivered_item(index, index1, type){
 		items.value[edit_index.value].items[edit_index1.value].values['default']['qty'] += qty	}
 }
 
-function create_attributes( attributes, quantities, item, lot, idx, idx1, type_value) {
+function create_attributes( attributes, quantities, item, lot, idx, idx1) {
 	let el = root.value;
 	$(el).find(".lot-name").html("");
 	let lot_input = frappe.ui.form.make_control({
@@ -437,7 +438,7 @@ function create_attributes( attributes, quantities, item, lot, idx, idx1, type_v
 		onchange: () => {
 			const selectedValue = types.get_value();
 			if (selectedValue && selectedValue !== "" && selectedValue !== null) {
-				handleQtyParameters(quantities, selectedValue);
+				handleQtyParameters(quantities, selectedValue, false);
 			} 
 			else {
 				$(el).find(".qty-parameters").html("");
@@ -445,23 +446,15 @@ function create_attributes( attributes, quantities, item, lot, idx, idx1, type_v
 		},
 		reqd: true,
 	};
-	if (type_value) {
-		df["read_only"] = true;
-	}
 	types = frappe.ui.form.make_control({
 		parent: $(el).find(".type-parameters"),
 		df: df,
 		doc: sample_doc.value,
 		render_input: true,
 	});
-	if (type_value) {
-		handleQtyParameters(quantities, type_value);
-		types.set_value(type_value);
-		types.refresh();
-	}
 }
 
-function handleQtyParameters(quantities, value) {
+function handleQtyParameters(quantities, value, yes) {
 	controlRefs.value.quantities = [];
 	let el = root.value;
 	$(el).find(".qty-parameters").html("");
@@ -482,7 +475,9 @@ function handleQtyParameters(quantities, value) {
 				doc: sample_doc.value,
 				render_input: true,
 			});
-			qty_parameters[idx].set_value(row[key]);
+			if(yes){
+				qty_parameters[idx].set_value(row[key]);
+			}
 			qty_parameters[idx].refresh();
 			controlRefs.value.quantities.push(qty_parameters[idx]);
 		});
@@ -696,15 +691,15 @@ function get_items() {
 	return [items.value, is_edited.value];
 }
 
-watch(
-	items, (newVal, oldVal) => {
+watch( items, (newVal, oldVal) => {
 		console.log("Item Updated", _skip_watch);
 		if (_skip_watch) {
 			_skip_watch = false;
 			return;
 		}
 		EventBus.$emit("grn_updated", true);
-	},{ deep: true }
+	},
+	{ deep: true }
 );
 
 defineExpose({
