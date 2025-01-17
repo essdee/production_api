@@ -567,7 +567,7 @@ class update_entries_after(object):
 				msg = _("{0} units of {1} needed in {2} to complete this transaction.").format(
 					frappe.bold(abs(deficiency)),
 					frappe.get_desk_link("Item", exceptions[0]["item"]),
-					frappe.get_desk_link("Warehouse", warehouse),
+					frappe.get_desk_link("Supplier", warehouse),
 				)
 			else:
 				msg = _(
@@ -575,7 +575,7 @@ class update_entries_after(object):
 				).format(
 					frappe.bold(abs(deficiency)),
 					frappe.get_desk_link("Item", exceptions[0]["item"]),
-					frappe.get_desk_link("Warehouse", warehouse),
+					frappe.get_desk_link("Supplier", warehouse),
 					exceptions[0]["posting_date"],
 					exceptions[0]["posting_time"],
 					frappe.get_desk_link(exceptions[0]["voucher_type"], exceptions[0]["voucher_no"]),
@@ -938,7 +938,7 @@ def validate_negative_qty_in_future_sle(args, allow_negative_stock=False):
 		).format(
 			abs(neg_sle[0]["qty_after_transaction"]),
 			frappe.get_desk_link("Item", args.item),
-			frappe.get_desk_link("Warehouse", args.warehouse),
+			frappe.get_desk_link("Supplier", args.warehouse),
 			neg_sle[0]["posting_date"],
 			neg_sle[0]["posting_time"],
 			frappe.get_desk_link(neg_sle[0]["voucher_type"], neg_sle[0]["voucher_no"]),

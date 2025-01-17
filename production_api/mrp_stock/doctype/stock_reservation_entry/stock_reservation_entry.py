@@ -64,6 +64,10 @@ class StockReservationEntry(Document):
 	
 	def update_status(self, status: str | None = None, update_modified: bool = True) -> None:
 		"""Updates status based on Voucher Qty, Reserved Qty and Delivered Qty."""
+		if not self.delivered_qty :
+			self.delivered_qty = 0
+		if not self.reserved_qty:
+			self.reserved_qty = 0
 		if self.delivered_qty > self.reserved_qty :
 			frappe.throw("Can't Deliver More Than Required")
 		if not status:
