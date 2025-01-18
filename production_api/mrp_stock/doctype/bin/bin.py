@@ -94,3 +94,6 @@ def get_stock_balance_bin(warehouse,lot,item,remove_zero_balance_item = False):
         query = query.where((bin.actual_qty - bin.reserved_qty) > 0)
     
     return query.run(as_dict = True)
+
+def on_doctype_update():
+	frappe.db.add_unique("Bin", ["item_code", "warehouse", "lot"], constraint_name="unique_item_warehouse_lot")

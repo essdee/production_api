@@ -16,3 +16,4 @@ production_api.patches.v1_0.update_cutting_laysheets
 production_api.patches.v1_0.update_ipd_versions #2
 production_api.patches.v1_0.create_bin
 production_api.patches.v1_0.update_stock_uom_fields
+production_api.patches.v1_0.update_stock_datetime_field
