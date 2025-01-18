@@ -121,15 +121,16 @@ function get_input_class(key,index){
 }
 
 function get_items(){
-    // for(let i = 0 ; i < items.value[0].items.length; i++){
-    //     Object.keys(items.value[0].items[i].values).forEach((key,value)=> {
-    //         let entered = items.value[0].items[i]['work_order_qty'][key]
-    //         let limit = items.value[0].items[i]['values'][key]
-    //         if(entered > limit){
-    //             frappe.throw(`For ${key} ${items.value[0].items[i]['primary_attribute']}, Entered value was ${entered}, but the limit is ${limit}`)
-    //         }
-    //     })
-    // }
+    for(let i = 0 ; i < items.value[0].items.length; i++){
+        Object.keys(items.value[0].items[i].values).forEach((key,value)=> {
+            let entered = items.value[0].items[i]['entered_qty'][key].get_value()
+            items.value[0].items[i]['entered_qty'][key] = entered
+            // let limit = items.value[0].items[i]['values'][key]
+            // if(entered > limit){
+            //     frappe.throw(`For ${key} ${items.value[0].items[i]['primary_attribute']}, Entered value was ${entered}, but the limit is ${limit}`)
+            // }
+        })
+    }
     return items.value
 }
 

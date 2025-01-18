@@ -285,17 +285,19 @@ class ItemProductionDetail(Document):
 		ipd_cutting_attributes = [i.attribute for i in self.cutting_attributes]
 		accessory_attributes = [i.attribute for i in self.accessory_attributes]
 
-		if self.is_set_item and self.set_item_attribute not in accessory_attributes and len(accessory_attributes) > 0:
-			frappe.throw(f"{self.set_item_attribute} should be in the Accessory Combination")
-
 		if not self.is_same_packing_attribute and self.stiching_attribute not in ipd_cutting_attributes and len(ipd_cutting_attributes) > 0:
 			frappe.throw(f"{self.stiching_attribute} Should be in Cutting Combination")
 
 		if self.stiching_attribute in ipd_cloth_attributes and self.stiching_attribute not in ipd_cutting_attributes:
 			frappe.throw(f"Please mention the {self.stiching_attribute} in Cutting Combination")
-
-		if self.is_set_item and self.set_item_attribute not in ipd_cutting_attributes and len(ipd_cutting_attributes) > 0:
-			frappe.throw(f"{self.set_item_attribute} Should be in the Cutting Combination")
+		
+		pre_set_item = frappe.get_value("Item Production Detail", self.name,"is_set_item")
+		if pre_set_item:
+			if self.is_set_item and self.set_item_attribute not in accessory_attributes and len(accessory_attributes) > 0:
+				frappe.throw(f"{self.set_item_attribute} should be in the Accessory Combination")
+			
+			if self.is_set_item and self.set_item_attribute not in ipd_cutting_attributes and len(ipd_cutting_attributes) > 0:
+				frappe.throw(f"{self.set_item_attribute} Should be in the Cutting Combination")
 
 		if self.is_same_packing_attribute:
 			for item in self.stiching_item_combination_details:
@@ -395,7 +397,7 @@ def get_attribute_values(item_production_detail, attributes = None):
 	return attribute_values
 
 @frappe.whitelist()
-def get_calculated_bom(item_production_detail, items, lot_name, process_name = None,doctype=None):
+def get_calculated_bom(item_production_detail, items, lot_name, process_name = None,doctype=None, deliverable=False):
 	item_detail = frappe.get_cached_doc("Item Production Detail", item_production_detail)
 	bom = {}
 	bom_summary = {}
@@ -447,7 +449,7 @@ def get_calculated_bom(item_production_detail, items, lot_name, process_name = N
 	
 	for item in items:
 		qty = item['quantity']
-		if not qty:
+		if not qty and not deliverable:
 			continue
 		variant = item['item_variant']
 		attr_values = {}

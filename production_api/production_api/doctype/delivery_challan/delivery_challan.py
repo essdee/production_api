@@ -40,7 +40,7 @@ class DeliveryChallan(Document):
 		for row in self.items:
 			if res.get(row.item_variant):
 				quantity, rate = get_stock_balance(row.item_variant, self.from_location, with_valuation_rate=True)
-				if flt(quantity) < flt(row.qty):
+				if flt(quantity) < flt(row.delivered_quantity):
 					frappe.throw(f"Required quantity is {row.qty} but stock quantity is {quantity}")
 				row.rate = rate		
 				reduce_sl_entries.append(self.get_sle_data(row, self.from_location, -1, {}))
@@ -55,8 +55,8 @@ class DeliveryChallan(Document):
 						deliverable.valuation_rate = item.get('rate')
 					break
 		wo_doc.save()
-		make_sl_entries(add_sl_entries)
 		make_sl_entries(reduce_sl_entries)
+		make_sl_entries(add_sl_entries)
 	
 	def before_save(self):
 		if self.docstatus == 1:
@@ -277,3 +277,22 @@ def get_current_user_time():
 	d = datetime.now()
 	d = datetime.fromtimestamp(d.timestamp()).strftime("%c")
 	return [frappe.session.user, d]
+
+@frappe.whitelist()
+def get_calculated_items(work_order):
+	from production_api.production_api.doctype.work_order.work_order import fetch_calculated_items
+	doc = frappe.get_doc("Work Order", work_order)
+	stage = frappe.get_value("Lot", doc.lot, "pack_in_stage")
+	items = fetch_calculated_items(doc.work_order_calculated_items)
+	primary_attribute = items[0]['primary_attribute']
+	dependent_attributes = [stage]
+	attributes = items[0]['dependent_attribute_details']['attr_list'][stage]['attributes']
+	index = attributes.index(primary_attribute)
+	if index != -1:
+		del attributes[index]
+	dependent_attributes = dependent_attributes + attributes
+	items[0]['final_state_attr'] = dependent_attributes
+	items[0]['attributes'] = dependent_attributes
+	items[0]['final_state'] = stage
+	items[0]['item'] = doc.item
+	return items

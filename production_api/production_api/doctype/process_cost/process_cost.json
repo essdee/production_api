@@ -10,6 +10,7 @@
   "uom",
   "from_date",
   "naming_series",
+  "is_rework",
   "is_expired",
   "column_break_fsdv",
   "supplier",
@@ -25,8 +26,7 @@
   "dependent_attribute_values",
   "section_break_midy",
   "process_cost_values",
-  "amended_from",
-  "rework_cost_values"
+  "amended_from"
  ],
  "fields": [
   {
@@ -144,27 +144,30 @@
    "fieldtype": "Column Break"
   },
   {
+   "depends_on": "eval: doc.depends_on_attribute",
    "fieldname": "dependent_attribute",
    "fieldtype": "Link",
    "label": "Dependent Attribute",
+   "mandatory_depends_on": "eval: doc.depends_on_attribute",
    "options": "Item Attribute"
   },
   {
+   "depends_on": "eval: doc.depends_on_attribute",
    "fieldname": "dependent_attribute_values",
    "fieldtype": "Select",
    "label": "Dependent Attribute Values"
   },
   {
-   "fieldname": "rework_cost_values",
-   "fieldtype": "Table",
-   "label": "Rework Cost Values",
-   "options": "Rework Cost Value"
+   "default": "0",
+   "fieldname": "is_rework",
+   "fieldtype": "Check",
+   "label": "Is Rework"
   }
  ],
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2024-12-21 10:34:43.912588",
+ "modified": "2025-01-18 12:17:25.592598",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Process Cost",

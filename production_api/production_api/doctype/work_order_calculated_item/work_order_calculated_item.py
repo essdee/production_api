@@ -5,5 +5,5 @@
 from frappe.model.document import Document
 
 
-class ReworkCostValue(Document):
+class WorkOrderCalculatedItem(Document):
 	pass

@@ -2,7 +2,7 @@
 # For license information, please see license.txt
 
 import frappe,json
-from frappe import _
+from frappe import _, bold
 from six import string_types
 from itertools import groupby
 from frappe.model.document import Document
@@ -314,7 +314,8 @@ class GoodsReceivedNote(Document):
 				items = save_grn_purchase_item_details(self.item_details)
 				self.set('items', items)
 		else:
-			lot = frappe.get_value(self.against, self.against_id, "lot")
+			lot, process = frappe.get_value(self.against, self.against_id, ["lot","process_name"])
+			self.process_name = process
 			self.lot = lot	
 			check = False
 			if self.is_new():
@@ -323,7 +324,7 @@ class GoodsReceivedNote(Document):
 				check = self.get('is_edited')
 
 			if(self.get('item_details')) and check:
-				items, total_rate, total_qty = save_grn_item_details(self.item_details)
+				items, total_rate, total_qty = save_grn_item_details(self.item_details, self.process_name)
 				self.set('items', items)
 				
 				if len(self.items) > 0:
@@ -459,9 +460,10 @@ def save_grn_purchase_item_details(item_details):
 			row_index += 1
 	return items
 
-def save_grn_item_details(item_details):
+def save_grn_item_details(item_details, process_name):
 	if isinstance(item_details, string_types):
 		item_details = json.loads(item_details)
+	allowance = frappe.db.get_value("Process",process_name,"additional_allowance")
 	items = []
 	row_index = 0
 	table_index = 1
@@ -477,6 +479,14 @@ def save_grn_item_details(item_details):
 						item_attributes[item.get('primary_attribute')] = attr
 						item1 = {}
 						variant_name = get_or_create_variant(item_name, item_attributes)
+						total_qty = values.get('qty') + values.get('received_quantity')
+						received = values.get('received_quantity')
+						x = total_qty / 100
+						x = x * allowance
+						total_qty = total_qty + x
+						if total_qty < received:
+							frappe.throw(f"Received more than the allowed quantity for {bold(variant_name)}")
+
 						item1['item_variant'] = variant_name
 						item1['lot'] = item.get('lot')
 						item1['quantity'] = values.get('qty')
@@ -1050,3 +1060,34 @@ def get_grn_structure(doc_name):
 	doc = frappe.get_doc("Goods Received Note", doc_name)
 	item_details = fetch_grn_item_details(doc.items, doc.lot)
 	return item_details
+
+@frappe.whitelist()
+def update_calculated_receivables(doc_name, receivables, received_type):
+	if isinstance(receivables, string_types):
+		receivables = json.loads(receivables)
+
+	grn_doc = frappe.get_doc("Goods Received Note", doc_name)
+	for received_item in receivables:
+		for item in grn_doc.items:
+			if received_item['item_variant'] == item.item_variant:
+				received_types = item.received_types
+				if not received_types:
+					received_types = {}
+				if isinstance(received_types, string_types):
+					received_types = json.loads(received_types)
+						
+				if received_types.get(received_type):
+					item.received_quantity -= received_types.get(received_type)
+					item.quantity += received_types.get(received_type)
+					received_types[received_type] = received_item['qty']
+					item.received_quantity += received_item['qty']
+					item.quantity -= received_item['qty']
+					item.received_types = received_types
+				else:
+					received_types[received_type] = received_item['qty']
+					item.received_quantity += received_item['qty']
+					item.quantity -= received_item['qty']
+					item.received_types = received_types
+				break	
+	grn_doc.save()
+

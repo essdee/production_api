@@ -43,7 +43,8 @@
   "section_break_axzz",
   "comments",
   "amended_from",
-  "total_quantity"
+  "total_quantity",
+  "work_order_calculated_items"
  ],
  "fields": [
   {
@@ -294,6 +295,13 @@
    "hidden": 1,
    "label": "Total Quantity",
    "non_negative": 1
+  },
+  {
+   "fieldname": "work_order_calculated_items",
+   "fieldtype": "Table",
+   "hidden": 1,
+   "label": "Work Order Calculated Items",
+   "options": "Work Order Calculated Item"
   }
  ],
  "index_web_pages_for_search": 1,
@@ -308,7 +316,7 @@
    "link_fieldname": "against_id"
   }
  ],
- "modified": "2024-12-31 14:09:01.477959",
+ "modified": "2025-01-18 12:31:02.547429",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Work Order",

@@ -7,15 +7,16 @@ from production_api.production_api.doctype.item.item import get_attribute_detail
 from frappe.utils import nowdate
 from frappe import utils
 
-
 class ProcessCost(Document):
 	def before_submit(self):
+		self.approved_by = frappe.session.user
 		filters = [
 			["item", "=", self.item],
 		    ["process_name","=", self.process_name],
 			["docstatus", "=", 1],
 		    ["name","!=",self.name],
 			['is_expired','=',0],
+			['is_rework','=', self.is_rework]
 		]
 		if self.supplier != None:
 			filters.append(["supplier", "=", self.supplier])

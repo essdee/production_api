@@ -117,6 +117,42 @@ frappe.ui.form.on('Goods Received Note', {
 				print_btn[0].parentElement.removeChild(print_btn[0]);
 			}
 		}
+		if(frm.doc.against == 'Work Order' && frm.doc.docstatus == 0 && !frm.is_new()){
+			frm.add_custom_button("Calculate", function(){
+				frappe.call({
+					method: "production_api.production_api.doctype.delivery_challan.delivery_challan.get_calculated_items",
+					args: {
+						work_order: frm.doc.against_id,
+					},
+					callback: async function (r) {
+						let d = new frappe.ui.Dialog({
+							size: "large",
+							fields: [
+								{
+									fieldname: "received_type",
+									fieldtype: "Link",
+									options: "GRN Item Type",
+									label:"Received Type",
+									reqd: true
+								},
+								{
+									fieldname: "calculated_items_html",
+									fieldtype: "HTML",
+								},
+							],
+							primary_action(values) {
+								calculate_receivables(frm,values.received_type)
+								d.hide()
+							},
+						});
+						frm.calculate_receivables = new frappe.production.ui.WorkOrderItemView(d.fields_dict.calculated_items_html.wrapper)
+						await frm.calculate_receivables.load_data(r.message)
+						frm.calculate_receivables.create_input_attributes()
+						d.show()						
+					},
+				});
+			})
+		}
 		if(frm.doc.docstatus == 1 && frm.doc.against == "Work Order" && frm.doc.rework_created == 0){
 			frm.add_custom_button("Create Rework",()=> {
 				let d =new frappe.ui.Dialog({
@@ -362,6 +398,30 @@ function make_rework(frm, supplier, supplier_address, delivery_address, rework_t
 			else{
 				frappe.msgprint("There is no mistake items are received")
 			}
+		}
+	})
+}
+
+function calculate_receivables(frm, received_type){
+	let items = frm.calculate_receivables.get_work_order_items()
+	frappe.call({
+		method:'production_api.production_api.doctype.work_order.work_order.get_deliverable_receivable',
+		args: {
+			items: items,
+			doc_name: frm.doc.against_id,
+			receivable:true
+		},
+		freeze:true,
+		freeze_message: __("Calculate Deliverables..."),
+		callback: function(r){
+			frappe.call({
+				method:"production_api.production_api.doctype.goods_received_note.goods_received_note.update_calculated_receivables",
+				args: {
+					doc_name: frm.doc.name,
+					receivables: r.message,
+					received_type : received_type
+				}
+			})
 		}
 	})
 }

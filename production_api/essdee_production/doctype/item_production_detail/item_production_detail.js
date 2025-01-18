@@ -309,6 +309,10 @@ frappe.ui.form.on("Item Production Detail", {
 		showOrHideColumns(frm,['set_item_attribute_value','is_default'],'stiching_item_details', frm.doc.is_set_item ? 0 : 1)
 		updateChildTableReqd(frm, ['set_item_attribute_value',"is_default"],'stiching_item_details', frm.doc.is_set_item ? 1 : 0)
 	},
+	is_set_item(frm){
+		showOrHideColumns(frm,['set_item_attribute_value','is_default'],'stiching_item_details', frm.doc.is_set_item ? 0 : 1)
+		updateChildTableReqd(frm, ['set_item_attribute_value',"is_default"],'stiching_item_details', frm.doc.is_set_item ? 1 : 0)
+	},
 	get_packing_attribute_values: function(frm){
 		frappe.call({
 			method: 'production_api.essdee_production.doctype.item_production_detail.item_production_detail.get_mapping_attribute_values',

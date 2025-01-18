@@ -159,6 +159,11 @@ def get_rate_and_quantity(variant_name, quantity, doc):
 		'from_date':['<=',doc.wo_date],
 		'docstatus': 1,
 	}
+	if doc.is_rework:
+		fil['is_rework'] = 1
+	else:
+		fil['is_rework'] = 0
+
 	if doc.supplier:
 		fil['supplier'] = doc.supplier
 
@@ -181,18 +186,13 @@ def get_rate_and_quantity(variant_name, quantity, doc):
 	found = False
 	process_doc = frappe.get_cached_doc('Process Cost', docname)
 
-	check_list = None
 	if doc.is_rework and doc.rework_type == 'No Cost':
 		return flt(0), docname 
-	if doc.is_rework:
-		check_list = process_doc.rework_cost_values
-	else:
-		check_list = process_doc.process_cost_values	
 
 	if process_doc.depends_on_attribute:
 		attribute = process_doc.attribute
 		attribute_value = next((attr.attribute_value for attr in item_doc.attributes if attr.attribute == attribute), None)
-		for cost_values in check_list:
+		for cost_values in process_doc.process_cost_values:
 			cost = cost_values.as_dict()
 			if cost['min_order_qty'] > quantity and cost['attribute_value'] == attribute_value:
 				rate = cost['price']
@@ -202,7 +202,7 @@ def get_rate_and_quantity(variant_name, quantity, doc):
 				order_quantity = cost['min_order_qty']
 				low_price = cost['price']
 	else:
-		for cost_values in check_list:
+		for cost_values in process_doc.process_cost_values:
 			cost = cost_values.as_dict()
 			if cost['min_order_qty'] > quantity:
 				rate = cost['price']
@@ -331,7 +331,7 @@ def get_lot_items(lot):
 	return items
 
 @frappe.whitelist()
-def get_deliverable_receivable( items, doc_name):
+def get_deliverable_receivable( items, doc_name, deliverable=False, receivable=False):
 	wo_doc = frappe.get_cached_doc("Work Order", doc_name)
 	lot_doc = frappe.db.sql(
 		f"""
@@ -351,7 +351,7 @@ def get_deliverable_receivable( items, doc_name):
 	dept_attribute = ipd_doc.dependent_attribute
 	pack_out_stage = ipd_doc.pack_out_stage
 	stiching_in_stage = ipd_doc.stiching_in_stage
-	items = get_items(items)
+	items = get_items(items, deliverable=deliverable)
 	grp_variant = items[0]['item_variant']
 	item_name = frappe.get_value("Item Variant", grp_variant, 'item')
 	item_list, row_index, table_index = get_item_structure(items, item_name, wo_doc.process_name, uom)
@@ -365,7 +365,7 @@ def get_deliverable_receivable( items, doc_name):
 		final_process = None
 		process_doc = frappe.get_cached_doc("Process",wo_doc.process_name)
 		for idx, p in enumerate(process_doc.process_details):
-			m = get_calculated_bom(ipd, items, wo_doc.lot, process_name=p.process_name, doctype="Work Order")
+			m = get_calculated_bom(ipd, items, wo_doc.lot, process_name=p.process_name, doctype="Work Order", deliverable=deliverable)
 			b.update(m)
 			if idx == 0:
 				first_process = p.process_name
@@ -382,13 +382,18 @@ def get_deliverable_receivable( items, doc_name):
 			receivables = receivables + y
 			total_qty = total_qty + z
 	else:
-		bom = get_calculated_bom(ipd, items, wo_doc.lot, process_name=wo_doc.process_name,doctype="Work Order")
+		bom = get_calculated_bom(ipd, items, wo_doc.lot, process_name=wo_doc.process_name,doctype="Work Order", deliverable=deliverable)
 		bom = get_bom_structure(bom, row_index, table_index)
 		deliverables, receivables, total_qty = calc_deliverable_and_receivable(ipd_doc, wo_doc.process_name, item_list, item_name, dept_attribute, ipd, wo_doc.lot, uom, bom, lot_doc, stiching_in_stage, pack_out_stage, pack_out_uom)		
-
+	if deliverable:
+		return deliverables
+	if receivable:
+		return receivables
+	
 	wo_doc.set('deliverables',deliverables)
 	wo_doc.set('receivables', receivables)
 	wo_doc.set("total_quantity", total_qty)
+	wo_doc.set("work_order_calculated_items",items)
 	wo_doc.save()
 	return None
 
@@ -451,11 +456,12 @@ def get_deliverables(items, lot):
             deliverables.append({
 				'item_variant': variant,
 				'lot':lot,
-				'qty':details['qty'],
+				'qty': round(details['qty'],2),
 				'uom':details['uom'],
 				'table_index': details['table_index'],
 				'row_index':str(details['table_index'])+""+str(details['row_index']),
-				'pending_quantity':details['qty'],
+				'pending_quantity':round(details['qty'],2),
+				'delivered_quantity':round(details['qty'],2),
 				'is_calculated':True,
 			})
     return deliverables
@@ -475,11 +481,11 @@ def get_receivables(items,lot, uom, conversion_details = None, out_uom = None):
 			receivables.append({
 				'item_variant': variant,
 				'lot':lot,
-				'qty': qty,
+				'qty': round(qty,2),
 				'uom':receivable_uom,
 				'table_index': details['table_index'],
 				'row_index':details['row_index'],
-				'pending_quantity':qty,
+				'pending_quantity':round(qty,2),
 			})
 	return receivables, total_qty	
 
@@ -621,7 +627,7 @@ def get_receivable_item_attribute_details(variant, item_attributes, stage):
 			attribute_details[attr.attribute] = attr.attribute_value
 	return attribute_details
 
-def get_items(items):
+def get_items(items, deliverable):
 	if isinstance(items, string_types):
 		items = json.loads(items)
 	if len(items[0]['items']) == 0:
@@ -645,7 +651,7 @@ def get_items(items):
 					if row['work_order_qty'][value]:
 						i = True
 						break
-				if i:
+				if i or deliverable:
 					item_list.append(item1)
 		else:
 			item1 = {}
@@ -656,7 +662,7 @@ def get_items(items):
 			item1['quantity'] = row['work_order_qty']
 			item1['table_index'] = id1
 			item1['row_index'] = id1
-			if item1['quantity']:
+			if item1['quantity'] or deliverable:
 				item_list.append(item1)
 	return item_list
 
@@ -727,3 +733,45 @@ def update_stock(work_order):
 	doc.is_delivered = True
 	doc.total_quantity = 0
 	doc.save()
+
+@frappe.whitelist()
+def fetch_calculated_items(items):
+	items = [item.as_dict() for item in items]
+	item_details = []
+	items = sorted(items, key = lambda i: i['row_index'])
+	for key, variants in groupby(items, lambda i: i['row_index']):
+		variants = list(variants)
+		current_variant = frappe.get_cached_doc("Item Variant", variants[0]['item_variant'])
+		current_item_attribute_details = get_attribute_details(current_variant.item)
+		item = {
+			'name': current_variant.item,
+			'attributes': get_item_attribute_details(current_variant, current_item_attribute_details),
+			'primary_attribute': current_item_attribute_details['primary_attribute'],
+			"dependent_attribute": current_item_attribute_details['dependent_attribute'],
+			"dependent_attribute_details": current_item_attribute_details['dependent_attribute_details'],
+			'values': {},
+		}
+		if item['primary_attribute']:
+			for variant in variants:
+				current_variant = frappe.get_cached_doc("Item Variant", variant['item_variant'])
+				for attr in current_variant.attributes:
+					if attr.attribute == item.get('primary_attribute'):
+						item['values'][attr.attribute_value] = variant.quantity
+		else:
+			item['values']['default'] = variants[0].quantity
+			
+		index = get_item_group_index(item_details, current_item_attribute_details)
+		if index == -1:
+			item_details.append({
+				'attributes': current_item_attribute_details['attributes'],
+				'primary_attribute': current_item_attribute_details['primary_attribute'],
+				'primary_attribute_values': current_item_attribute_details['primary_attribute_values'],
+				"dependent_attribute": current_item_attribute_details['dependent_attribute'],
+				"dependent_attribute_details": current_item_attribute_details['dependent_attribute_details'],
+				'additional_parameters': current_item_attribute_details['additional_parameters'],
+				'items': [item],
+			})
+			
+		else:
+			item_details[index]['items'].append(item)
+	return item_details

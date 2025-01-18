@@ -8,29 +8,31 @@
  "field_order": [
   "work_order",
   "naming_series",
-  "vehicle_no",
+  "lot",
+  "item",
   "is_rework",
   "column_break_xmwj",
   "posting_date",
   "posting_time",
   "process_name",
-  "lot",
   "address_and_contact_section",
   "from_location",
   "from_address",
   "from_address_details",
-  "stock_value",
-  "total_value",
   "column_break_xvmi",
   "supplier",
   "supplier_address",
   "supplier_address_details",
-  "additional_goods_value",
   "section_break_uqkl",
   "items",
   "deliverable_items",
   "comments",
-  "amended_from"
+  "amended_from",
+  "section_break_jalt",
+  "vehicle_no",
+  "stock_value",
+  "additional_goods_value",
+  "total_value"
  ],
  "fields": [
   {
@@ -180,7 +182,8 @@
    "allow_on_submit": 1,
    "fieldname": "vehicle_no",
    "fieldtype": "Data",
-   "label": "Vehicle No"
+   "label": "Vehicle No",
+   "reqd": 1
   },
   {
    "fetch_from": "work_order.process_name",
@@ -192,19 +195,32 @@
    "options": "Process"
   },
   {
-   "allow_on_submit": 1,
    "fetch_from": "work_order.lot",
    "fetch_if_empty": 1,
    "fieldname": "lot",
    "fieldtype": "Link",
    "label": "Lot",
-   "options": "Lot"
+   "options": "Lot",
+   "read_only": 1
+  },
+  {
+   "fetch_from": "work_order.item",
+   "fetch_if_empty": 1,
+   "fieldname": "item",
+   "fieldtype": "Link",
+   "label": "Item",
+   "options": "Item",
+   "read_only": 1
+  },
+  {
+   "fieldname": "section_break_jalt",
+   "fieldtype": "Section Break"
   }
  ],
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-01-06 13:14:57.858847",
+ "modified": "2025-01-18 12:11:30.454367",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Delivery Challan",
