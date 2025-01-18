@@ -109,12 +109,12 @@ class ItemProductionDetail(Document):
 			self.cutting_process = dict_values['cutting_process']	
 	
 	def before_validate(self):
-		if self.get('set_item_detail'):
+		if self.get('set_item_detail') and self.is_set_item:
 			set_details = save_item_details(self.set_item_detail)
 			self.set('set_item_combination_details', set_details)
 
 		if self.get('stiching_item_detail'):
-			stiching_detail = save_item_details(self.stiching_item_detail,doc_name = self.name)
+			stiching_detail = save_item_details(self.stiching_item_detail,ipd_doc = self)
 			self.set('stiching_item_combination_details', stiching_detail)
 
 		if not self.is_set_item:
@@ -725,21 +725,18 @@ def fetch_combination_items(combination_items):
 		combination_result['values'].append(item_list)
 	return combination_result
 
-def save_item_details(combination_item_detail, doc_name = None):
+def save_item_details(combination_item_detail, ipd_doc = None):
 	if isinstance(combination_item_detail, string_types):
 		combination_item_detail = json.loads(combination_item_detail)
 	item_detail = []
-	ipd_doc = None
 	set_item_stitching_attrs = {}
 	set_item_packing_combination = {}
-	if doc_name:
-		ipd_doc = frappe.get_doc("Item Production Detail",doc_name)
-		if ipd_doc.is_set_item:
-			for i in ipd_doc.stiching_item_details:
-				set_item_stitching_attrs[i.stiching_attribute_value] = i.set_item_attribute_value
-			for i in ipd_doc.set_item_combination_details:
-				set_item_packing_combination.setdefault(i.major_attribute_value, {})
-				set_item_packing_combination[i.major_attribute_value][i.set_item_attribute_value] = i.attribute_value	
+	if ipd_doc and ipd_doc.is_set_item:
+		for i in ipd_doc.stiching_item_details:
+			set_item_stitching_attrs[i.stiching_attribute_value] = i.set_item_attribute_value
+		for i in ipd_doc.set_item_combination_details:
+			set_item_packing_combination.setdefault(i.major_attribute_value, {})
+			set_item_packing_combination[i.major_attribute_value][i.set_item_attribute_value] = i.attribute_value	
 	for idx,item in enumerate(combination_item_detail['values']):
 		for value in item['val']:
 			row = {}
