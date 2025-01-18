@@ -152,9 +152,23 @@ class StockEntry(Document):
 		self.update_transferred_qty()
 	
 	def before_cancel(self):
-		self.ignore_linked_doctypes = ("Stock Ledger Entry")
+		self.ignore_linked_doctypes = ("Stock Ledger Entry", "Stock Reservation Entry")
 		self.update_stock_ledger()
 		self.update_transferred_qty()
+		self.revert_stock_transfer_entries()
+
+	def revert_stock_transfer_entries(self):
+		sre_list = frappe.get_list("Stock Reservation Entry" , {
+			"stock_entry" : self.name
+		}, pluck = 'name')
+
+		for sre in sre_list:
+			doc = frappe.get_doc("Stock Reservation Entry", sre)
+			doc.delivered_qty = 0
+			doc.db_update()
+			doc.update_status()
+			doc.update_reserved_stock_in_bin()
+
 	
 	def update_stock_ledger(self):
 		from production_api.mrp_stock.stock_ledger import make_sl_entries
