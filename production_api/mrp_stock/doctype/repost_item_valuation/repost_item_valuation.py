@@ -192,7 +192,7 @@ class RepostItemValuation(Document):
 			return
 
 		filters = {
-			"item_code": self.item,
+			"item": self.item,
 			"warehouse": self.warehouse,
 			"lot": self.lot,
 			"name": self.name,
