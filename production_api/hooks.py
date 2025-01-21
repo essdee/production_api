@@ -127,6 +127,9 @@ scheduler_events = {
 	# "monthly": [
 	# 	"production_api.tasks.monthly"
 	# ]
+    "hourly_long": [
+		"production_api.mrp_stock.doctype.repost_item_valuation.repost_item_valuation.repost_entries"
+	],
 	"cron": {
 		"0 1 * * *": [
 			"production_api.tasks.daily"
