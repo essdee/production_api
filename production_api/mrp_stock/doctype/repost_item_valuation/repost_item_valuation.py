@@ -192,8 +192,9 @@ class RepostItemValuation(Document):
 			return
 
 		filters = {
-			"item_code": self.item_code,
+			"item_code": self.item,
 			"warehouse": self.warehouse,
+			"lot": self.lot,
 			"name": self.name,
 			"posting_date": self.posting_date,
 			"posting_time": self.posting_time,
@@ -203,8 +204,9 @@ class RepostItemValuation(Document):
 			"""
 			update `tabRepost Item Valuation`
 			set status = 'Skipped'
-			WHERE item_code = %(item_code)s
+			WHERE item = %(item)s
 				and warehouse = %(warehouse)s
+				and lot = %(lot)s
 				and name != %(name)s
 				and TIMESTAMP(posting_date, posting_time) > TIMESTAMP(%(posting_date)s, %(posting_time)s)
 				and docstatus = 1
