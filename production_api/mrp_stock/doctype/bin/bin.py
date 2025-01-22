@@ -23,7 +23,6 @@ class Bin(Document):
 		)
 
 		reserved_stock = get_sre_reserved_qty_for_item_and_warehouse(self.item_code, self.warehouse, self.lot)
-
 		self.db_set("reserved_qty", flt(reserved_stock), update_modified=True)
 
 def get_bin_details(bin_name):

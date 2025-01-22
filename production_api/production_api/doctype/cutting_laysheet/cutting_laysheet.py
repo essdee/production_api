@@ -1,18 +1,15 @@
 # Copyright (c) 2024, Essdee and contributors
 # For license information, please see license.txt
 
-import math
-import frappe,json
+from frappe import bold
 from six import string_types
-from frappe.model.document import Document
-from production_api.production_api.doctype.item.item import get_or_create_variant
 from frappe.utils import getdate
-from production_api.essdee_production.doctype.item_production_detail.item_production_detail import get_stitching_combination
 from itertools import zip_longest
-import sys
-import base64
+from frappe.model.document import Document
+import frappe, json, sys, base64, math, time
 from secrets import token_bytes as get_random_bytes
-import time
+from production_api.production_api.doctype.item.item import get_or_create_variant
+from production_api.essdee_production.doctype.item_production_detail.item_production_detail import get_stitching_combination
 
 class CuttingLaySheet(Document):
 	def autoname(self):
@@ -248,6 +245,24 @@ def get_cut_sheet_data(doc_name,cutting_marker,item_details,items, max_plys:int,
 	doc.status = "Bundles Generated"
 	doc.set("cutting_laysheet_bundles", cut_sheet_data)
 	doc.save()
+	accessory= {}
+	cloth = {}
+	for item in doc.cutting_laysheet_details:
+		key = (item.colour, item.cloth_type, item.dia)
+		cloth.setdefault(key,0)
+		cloth[key] += item.weight - item.balance_weight
+		accessory.setdefault(key,0)
+		accessory[key] += item.accessory_weight
+
+	cp_doc = frappe.get_doc("Cutting Plan",doc.cutting_plan)
+	for item in cp_doc.cutting_plan_cloth_details:
+		key = (item.colour, item.cloth_type, item.dia)
+		if key in cloth:
+			item.used_weight += cloth[key]
+			item.balance_weight = item.weight - item.used_weight
+			if item.balance_weight < 0:
+				frappe.throw(f"{bold(item.dia)} {bold(item.colour)}, {bold(item.cloth_type)} was used more than the received weight")
+				return
 
 def get_timestamp_prefix():
 	ts = int(time.time() * 10) 

@@ -226,7 +226,7 @@ frappe.ui.form.on("Item Production Detail", {
 					if(frm.doc.cloth_detail[i].name1 && frm.doc.cloth_detail[i].cloth){
 						cloths.push(frm.doc.cloth_detail[i].name1)
 					}
-				}	
+				}
 				let cut_json = frm.doc.cutting_cloths_json
 				cut_json = JSON.parse(cut_json)
 				cut_json['select_list'] = cloths
