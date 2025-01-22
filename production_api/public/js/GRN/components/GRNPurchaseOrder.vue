@@ -243,12 +243,6 @@ function get_items() {
 				if(items.value[i].items[j].values[k].received == null || items.value[i].items[j].values[k].received == "") {
 					items.value[i].items[j].values[k].received = 0;
 				}
-				if(items.value[i].items[j].values[k].received_quantity == null || items.value[i].items[j].values[k].received_quantity == "") {
-					items.value[i].items[j].values[k].received_quantity = 0;
-				}
-				if(items.value[i].items[j].values[k].rework_details == null || items.value[i].items[j].values[k].rework_details == "") {
-					items.value[i].items[j].values[k].rework_details = "";
-				}
 				if (items.value[i].items[j].values[k].secondary_received == null ||items.value[i].items[j].values[k].secondary_received == "") {
 					items.value[i].items[j].values[k].secondary_received = 0;
 				}

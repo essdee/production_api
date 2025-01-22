@@ -231,7 +231,7 @@ const check_received_qty = computed(()=> {
 			for (let idx = 0; idx < items.value[i]['items'].length; idx++) {
 				const row = items.value[i]['items'][idx];
 				for (const key of Object.keys(row.values)) {
-					if (row.values[key]['received_quantity'] > 0) {
+					if (row.values[key]['received'] > 0) {
 						x = true;
 						break a;
 					}
@@ -349,7 +349,7 @@ function delete_delivered_item(index, index1, type){
 			let qty = received_types[type]
 			delete received_types[type]
 			items.value[edit_index.value].items[edit_index1.value].values[row]['types'] = received_types
-			items.value[edit_index.value].items[edit_index1.value].values[row]['received_quantity'] -= qty
+			items.value[edit_index.value].items[edit_index1.value].values[row]['received'] -= qty
 			items.value[edit_index.value].items[edit_index1.value].values[row]['qty'] += qty
 		})
 	}
@@ -361,8 +361,9 @@ function delete_delivered_item(index, index1, type){
 		let qty = received_types[type]
 		delete received_types[type]
 		items.value[edit_index.value].items[edit_index1.value].values['default']['types'] = received_types
-		items.value[edit_index.value].items[edit_index1.value].values['default']['received_quantity'] -= qty
-		items.value[edit_index.value].items[edit_index1.value].values['default']['qty'] += qty	}
+		items.value[edit_index.value].items[edit_index1.value].values['default']['received'] -= qty
+		items.value[edit_index.value].items[edit_index1.value].values['default']['qty'] += qty
+	}
 }
 
 function create_attributes( attributes, quantities, item, lot, idx, idx1) {
@@ -508,7 +509,7 @@ async function add_item() {
 	let primary = items.value[edit_index.value].items[edit_index1.value]['primary_attribute']
 	if(primary){
 		Object.keys(items.value[edit_index.value].items[edit_index1.value].values).forEach(row => {
-			items.value[edit_index.value].items[edit_index1.value].values[row]['received_quantity'] += data[x]
+			items.value[edit_index.value].items[edit_index1.value].values[row]['received'] += data[x]
 			let dict = items.value[edit_index.value].items[edit_index1.value].values[row]['types']
 			if(!dict){
 				dict = {}
@@ -522,8 +523,8 @@ async function add_item() {
 			else{
 				dict[type_selected] = data[x]
 			}
-			items.value[edit_index.value].items[edit_index1.value].values[row]['types'] = dict
 			items.value[edit_index.value].items[edit_index1.value].values[row]['qty'] -= data[x]
+			items.value[edit_index.value].items[edit_index1.value].values[row]['types'] = dict
 			x = x + 1
 		})
 	}
@@ -542,8 +543,8 @@ async function add_item() {
 			dict[type_selected] = data[x]
 		}
 		items.value[edit_index.value].items[edit_index1.value].values['default']['types'] = dict
+		items.value[edit_index.value].items[edit_index1.value].values['default']['received'] += data[x]
 		items.value[edit_index.value].items[edit_index1.value].values['default']['qty'] -= data[x]
-		items.value[edit_index.value].items[edit_index1.value].values['default']['received_quantity'] += data[x]
 	}
 	types.set_value(null)
   make_clean();
@@ -564,10 +565,10 @@ function update_item(){
 			if(typeof(dict) == 'string'){
 				dict = JSON.parse(dict)
 			}
+			items.value[edit_index.value].items[edit_index1.value].values[row]['received'] -= dict[type]
 			items.value[edit_index.value].items[edit_index1.value].values[row]['qty'] += dict[type]
-			items.value[edit_index.value].items[edit_index1.value].values[row]['received_quantity'] -= dict[type]
+			items.value[edit_index.value].items[edit_index1.value].values[row]['received'] += data[x]
 			items.value[edit_index.value].items[edit_index1.value].values[row]['qty'] -= data[x]
-			items.value[edit_index.value].items[edit_index1.value].values[row]['received_quantity'] += data[x]
 			dict[type] = data[x]
 			items.value[edit_index.value].items[edit_index1.value].values[row]['types'] = dict
 			x = x + 1
@@ -578,10 +579,10 @@ function update_item(){
 		if(typeof(dict) == 'string'){
 			dict = JSON.parse(dict)
 		}
+		items.value[edit_index.value].items[edit_index1.value].values['default']['received'] -= dict[type]
 		items.value[edit_index.value].items[edit_index1.value].values['default']['qty'] += dict[type]
-		items.value[edit_index.value].items[edit_index1.value].values['default']['received_quantity'] -= dict[type]
+		items.value[edit_index.value].items[edit_index1.value].values['default']['received'] += data[x]
 		items.value[edit_index.value].items[edit_index1.value].values['default']['qty'] -= data[x]
-		items.value[edit_index.value].items[edit_index1.value].values['default']['received_quantity'] += data[x]
 		dict[type] = data[x]
 		items.value[edit_index.value].items[edit_index1.value].values['default']['types'] = dict
 	}
@@ -682,8 +683,8 @@ function get_items() {
 	for (let i in items.value) {
 		for (let j in items.value[i].items) {
 			for (let k in items.value[i].items[j].values) {
-				if ( items.value[i].items[j].values[k].received_quantity == null || items.value[i].items[j].values[k].received_quantity == "" ) {
-					items.value[i].items[j].values[k].received_quantity = 0;
+				if ( items.value[i].items[j].values[k].received == null || items.value[i].items[j].values[k].received == "" ) {
+					items.value[i].items[j].values[k].received = 0;
 				}
 			}
 		}

@@ -41,6 +41,7 @@
   "items",
   "item_html",
   "grn_deliverables",
+  "items_json",
   "section_break_8ncnk",
   "total",
   "total_tax",
@@ -182,6 +183,7 @@
    "allow_on_submit": 1,
    "fieldname": "items",
    "fieldtype": "Table",
+   "hidden": 1,
    "label": "Items",
    "options": "Goods Received Note Item"
   },
@@ -348,15 +350,21 @@
   {
    "fieldname": "process_name",
    "fieldtype": "Link",
+   "hidden": 1,
    "label": "Process Name",
-   "options": "Process",
-   "hidden": 1
+   "options": "Process"
+  },
+  {
+   "fieldname": "items_json",
+   "fieldtype": "JSON",
+   "hidden": 1,
+   "label": "Items JSON"
   }
  ],
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-01-18 15:05:31.991994",
+ "modified": "2025-01-22 16:50:16.611187",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Goods Received Note",

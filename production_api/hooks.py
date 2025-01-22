@@ -161,6 +161,7 @@ jinja = {
         "production_api.production_api.doctype.purchase_order.purchase_order.get_PO_print_details",
         "production_api.production_api.util.parse_string_for_SMS",
         "production_api.production_api.doctype.goods_received_note.goods_received_note.fetch_grn_item_details",
+        "production_api.production_api.doctype.goods_received_note.goods_received_note.fetch_grn_purchase_item_details",
         "production_api.production_api.util.check_key_value_in_dict_or_list_of_dict",
         "production_api.production_api.util.parse_json",
         "production_api.product_development.doctype.product.product.get_latest_product_images",

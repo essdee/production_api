@@ -389,7 +389,6 @@ def get_deliverable_receivable( items, doc_name, deliverable=False, receivable=F
 		return deliverables
 	if receivable:
 		return receivables
-	
 	wo_doc.set('deliverables',deliverables)
 	wo_doc.set('receivables', receivables)
 	wo_doc.set("total_quantity", total_qty)

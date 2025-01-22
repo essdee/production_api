@@ -41,7 +41,7 @@ class DeliveryChallan(Document):
 			if res.get(row.item_variant):
 				quantity, rate = get_stock_balance(row.item_variant, self.from_location, with_valuation_rate=True)
 				if flt(quantity) < flt(row.delivered_quantity):
-					frappe.throw(f"Required quantity is {row.qty} but stock quantity is {quantity}")
+					frappe.throw(f"Required quantity is {row.qty} but stock quantity is {quantity} for {row.item_variant}")
 				row.rate = rate		
 				reduce_sl_entries.append(self.get_sle_data(row, self.from_location, -1, {}))
 				add_sl_entries.append(self.get_sle_data(row, self.supplier, 1, {}))
@@ -98,6 +98,7 @@ class DeliveryChallan(Document):
 			"qty": row.delivered_quantity * multiplier,
 			"uom": row.uom,
 			"is_cancelled": 1 if self.docstatus == 2 else 0,
+			"rate": flt(row.rate, row.precision("rate")),
 			"valuation_rate": flt(row.rate, row.precision("rate")),
 		})
 		sl_dict.update(args)

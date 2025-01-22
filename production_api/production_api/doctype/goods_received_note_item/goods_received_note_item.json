@@ -14,12 +14,12 @@
   "quantity",
   "secondary_qty",
   "stock_qty",
+  "received_type",
   "column_break_qils",
   "uom",
   "secondary_uom",
   "stock_uom",
   "conversion_factor",
-  "received_quantity",
   "section_break_xafc",
   "rate",
   "stock_uom_rate",
@@ -119,19 +119,6 @@
    "options": "ref_doctype"
   },
   {
-   "allow_on_submit": 1,
-   "columns": 1,
-   "fieldname": "received_quantity",
-   "fieldtype": "Float",
-   "in_list_view": 1,
-   "label": "Received Quantity"
-  },
-  {
-   "fieldname": "received_types",
-   "fieldtype": "JSON",
-   "label": "Received Types"
-  },
-  {
    "fieldname": "column_break_yftt",
    "fieldtype": "Column Break"
   },
@@ -184,12 +171,24 @@
   {
    "fieldname": "column_break_jodk",
    "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "received_types",
+   "fieldtype": "JSON",
+   "label": "Received Types"
+  },
+  {
+   "fieldname": "received_type",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Received Type",
+   "options": "GRN Item Type"
   }
  ],
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2025-01-18 10:55:42.055493",
+ "modified": "2025-01-21 14:22:41.533742",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Goods Received Note Item",
