@@ -23,6 +23,10 @@ class Bin(Document):
 		)
 
 		reserved_stock = get_sre_reserved_qty_for_item_and_warehouse(self.item_code, self.warehouse, self.lot)
+		if reserved_stock < 0:
+			frappe.throw("Reserved Stock Can't Be Negative")
+		if reserved_stock > self.actual_qty :
+			frappe.throw("Reserved Stock Can't Be Greater Than The Current Stock")
 		self.db_set("reserved_qty", flt(reserved_stock), update_modified=True)
 
 def get_bin_details(bin_name):
