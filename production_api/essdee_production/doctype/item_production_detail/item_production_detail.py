@@ -727,10 +727,12 @@ def save_item_details(combination_item_detail, ipd_doc = None):
 			row['major_attribute_value'] = item['major_attribute']
 			row['set_item_attribute_value'] = value
 			row['attribute_value'] = item['val'][value]
-			if ipd_doc and ipd_doc.is_set_item:
+			if ipd_doc and ipd_doc.is_set_item and set_item_stitching_attrs.get(value):
 				part = set_item_stitching_attrs[value]
 				row['major_attribute_value'] = set_item_packing_combination[item['major_attribute']][part]
-			item_detail.append(row)
+				item_detail.append(row)
+			else:	
+				item_detail.append(row)
 	return item_detail	
 
 @frappe.whitelist()
