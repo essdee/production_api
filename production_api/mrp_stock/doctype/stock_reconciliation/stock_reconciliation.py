@@ -150,6 +150,8 @@ class StockReconciliation(Document):
 		
 		sl_entries = []
 		for row in self.items:
+			if not row.stock_qty and not row.make_qty_zero:
+				continue
 			previous_sle = get_previous_sle(
 				{
 					"item": row.item,
@@ -293,6 +295,7 @@ def fetch_stock_reconciliation_items(items):
 						break
 		else:
 			item['allow_zero_valuation_rate'] = variants[0].allow_zero_valuation_rate
+			item['make_qty_zero'] = variants[0].make_qty_zero
 			item['values']['default'] = {
 				'qty': variants[0].qty,
 				'rate': variants[0].rate,
@@ -341,6 +344,7 @@ def save_stock_reconciliation_items(item_details):
 						item1['table_index'] = table_index
 						item1['row_index'] = row_index
 						item1['allow_zero_valuation_rate'] = item.get('allow_zero_valuation_rate', False)
+						item1['make_qty_zero'] = item.get('make_qty_zero', False)
 						# item1['comments'] = item.get('comments')
 						items.append(item1)
 			else:
@@ -359,6 +363,7 @@ def save_stock_reconciliation_items(item_details):
 					item1['table_index'] = table_index
 					item1['row_index'] = row_index
 					item1['allow_zero_valuation_rate'] = item.get('allow_zero_valuation_rate', False)
+					item1['make_qty_zero'] = item.get('make_qty_zero', False)
 					# item1['comments'] = item.get('comments')
 					items.append(item1)
 			row_index += 1
