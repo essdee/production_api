@@ -225,7 +225,7 @@ frappe.ui.form.on("Item Production Detail", {
 					if(frm.doc.cloth_detail[i].name1 && frm.doc.cloth_detail[i].cloth){
 						cloths.push(frm.doc.cloth_detail[i].name1)
 					}
-				}	
+				}
 				let cut_json = frm.doc.cutting_cloths_json
 				cut_json = JSON.parse(cut_json)
 				cut_json['select_list'] = cloths
@@ -298,6 +298,10 @@ frappe.ui.form.on("Item Production Detail", {
 	onload_post_render(frm){
 		showOrHideColumns(frm,['dependent_attribute_value'],'item_bom', frm.doc.dependent_attribute ? 0 : 1)
 		updateChildTableReqd(frm, ['dependent_attribute_value'],'item_bom', frm.doc.dependent_attribute ? 1 : 0)
+		showOrHideColumns(frm,['set_item_attribute_value','is_default'],'stiching_item_details', frm.doc.is_set_item ? 0 : 1)
+		updateChildTableReqd(frm, ['set_item_attribute_value',"is_default"],'stiching_item_details', frm.doc.is_set_item ? 1 : 0)
+	},
+	is_set_item(frm){
 		showOrHideColumns(frm,['set_item_attribute_value','is_default'],'stiching_item_details', frm.doc.is_set_item ? 0 : 1)
 		updateChildTableReqd(frm, ['set_item_attribute_value',"is_default"],'stiching_item_details', frm.doc.is_set_item ? 1 : 0)
 	},

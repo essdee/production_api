@@ -33,6 +33,15 @@ const other_inputs = ref([
             label: 'Allow Zero Valuation Rate',
         },
     },
+    {
+        name: 'make_qty_zero',
+        parent: 'make-qty-zero',
+        df: {
+            fieldtype: 'Check',
+            fieldname: 'make_qty_zero',
+            label: 'Make Qty Zero',
+        },
+    },
 ])
 const table_fields = ref([
     {
