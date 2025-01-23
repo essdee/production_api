@@ -28,6 +28,7 @@ class FGStockEntry(Document):
 					buying_rate = get_item_variant_price(row.item_variant, variant_uom=row.uom)
 					if buying_rate:
 						row.rate = buying_rate
+			row.received_type = 'Accepted'
 	
 	def before_cancel(self):
 		self.ignore_linked_doctypes = ("Stock Ledger Entry")
