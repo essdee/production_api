@@ -207,6 +207,7 @@ def create_stock_reservation_entries_for_so_items(
 		}
 	
 	for item_name, item in common_item_map.items():
+		available_qty_to_reserve = get_available_qty_to_reserve(item_name, item['warehouse'], item['lot'])
 		sre = frappe.new_doc("Stock Reservation Entry")
 		sre.item_code = item_name
 		sre.warehouse = item['warehouse']
