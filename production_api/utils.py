@@ -34,12 +34,11 @@ def _create_bin(item_code, warehouse, lot):
 
 	return bin_obj
 
-def get_unreserved_qty(item,reserved_qty_details):
+def get_unreserved_qty(item):
     
-    existing_reserved_qty = reserved_qty_details.get(item['voucher_detail_no'],0)
     bin = get_or_make_bin(item['item_name'],item['warehouse'],item['lot'])
-    bin_doc = frappe.get_cached_doc("Bin",bin)
-    return bin_doc.actual_qty - existing_reserved_qty
+    bin_doc = frappe.get_doc("Bin",bin)
+    return bin_doc.actual_qty - bin_doc.reserved_qty
 
 def get_item_variant_stock(item :str, warehouse: str, lot: str) -> float:
     

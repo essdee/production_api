@@ -127,58 +127,76 @@ def create_stock_reservation_entries_for_so_items(
 			"message" : "Stock Allocation Requires Items",
 			"warning" : warning_msg
 		}
-	items = []
-	if items_details:
-		for item in items_details:
-			
-			ps_item = {}
-			ps_item['item_name'] = item.get("item_name")
-			ps_item['warehouse'] = item.get("warehouse")
-			ps_item['voucher_detail_no'] = item.get("uuid")
-			ps_item['lot'] = get_default_fg_lot()
-			ps_item['uom'] = item.get("uom")
-			ps_item['qty_to_reserve'] = (
-				flt(item.get("qty"))
-			)
-
-			items.append(ps_item)
-	reserved_qty_details = get_sre_reserved_qty_details_for_voucher(voucher_type, voucher_no)
+	common_item_map = {}
+	voucher_detail_dict = {}
 	
+	for item in items_details:
+		
+		if item.get("item_name") not in common_item_map:
+			common_item_map[item.get("item_name")] = {
+				"item_name" : item.get("item_name"),
+				"voucher_detail_no" : item.get("uuid"),
+				"qty_to_reserve" : 0,
+				"lot" : get_default_fg_lot(),
+				"uom" : item.get('uom'),
+				'warehouse' : item.get('warehouse')
+			}
+		common_item_map[item.get("item_name")]['qty_to_reserve'] += flt(item.get("qty"))
+
+		has_error = False
+		error_str = ""
+
+		if item.get("uom") != common_item_map[item.get('item_name')]['uom'] :
+			error_str += "<br>UOM Can't Be Different"
+			has_error = True
+
+		if item.get("warehouse") != common_item_map[item.get('item_name')]['warehouse']:
+			error_str += "<br>Warehouse Can't Be Different"
+			has_error = True
+		
+		if has_error:
+			return {
+			"status" : 422,
+			"error" : True,
+			"message" : error_str,
+			"warning" : warning_msg
+		}
+		
+	# reserved_qty_details = get_sre_reserved_qty_details_for_voucher(voucher_type, voucher_no)
 	savepoint = f"srecreate"
 	frappe.db.savepoint(savepoint)
  
 	response_dict = {}
 	out_of_stock_items = set()
-	item_quantity_dict = {}
-	for item in items :
 
-		unreserved_qty = get_unreserved_qty(item, reserved_qty_details)
+	for item_name, item in common_item_map.items() :
+
+		unreserved_qty = get_unreserved_qty(item)
 
 		if unreserved_qty <= 0:
-			out_of_stock_items.add(item['item_name'])
+			out_of_stock_items.add(item_name)
 
-		available_qty_to_reserve = get_available_qty_to_reserve(item['item_name'], item['warehouse'], item['lot'])
+		available_qty_to_reserve = get_available_qty_to_reserve(item_name, item['warehouse'], item['lot'])
 
 		if available_qty_to_reserve <= 0:
 	
 			out_of_stock_items.add(item['item_name'])
 
 		qty_to_be_reserved = min(unreserved_qty, available_qty_to_reserve)
-		item_details = get_uom_details(item['item_name'], item['uom'], item['qty_to_reserve'])
-		item_quantity_dict[item['item_name']] = item_details
-		item['qty_to_reserve'] = item_details.get("conversion_factor") * item['qty_to_reserve']
+		item_uom_detail = get_uom_details(item_name, item['uom'], item['qty_to_reserve'])
+		item['qty_to_reserve'] = item_uom_detail.get("conversion_factor") * item['qty_to_reserve']
 
-		if 'qty_to_reserve' in item:
-			if item['qty_to_reserve'] <= 0:
-				warning_msg += f"""<br> Quantity to reserve for the Item {item['item_name']} should be greater than 0."""
-				continue
+		
+		if item['qty_to_reserve'] <= 0:
+			frappe.db.rollback()
+			return {
+				"status" : 422,
+				"error" : True,
+				"message" : f"Quantity Can't Be Zero For Item {item['item_name']}"
+			}
 
 		if item['qty_to_reserve'] > qty_to_be_reserved:
-	
 			out_of_stock_items.add(item['item_name'])
-		else:
-			qty_to_be_reserved = min(qty_to_be_reserved, item['qty_to_reserve'])
-	
 	if len(out_of_stock_items) > 0:
 		frappe.db.rollback()
 		return {
@@ -187,26 +205,28 @@ def create_stock_reservation_entries_for_so_items(
 			"message" : "Stock Not Available For Items <br>"+"<br>".join(list(out_of_stock_items)),
 			"warning" : warning_msg
 		}
-
-	for item in items:
+	
+	for item_name, item in common_item_map.items():
+		available_qty_to_reserve = get_available_qty_to_reserve(item_name, item['warehouse'], item['lot'])
 		sre = frappe.new_doc("Stock Reservation Entry")
-
-		sre.item_code = item['item_name']
+		sre.item_code = item_name
 		sre.warehouse = item['warehouse']
 		sre.lot = item['lot']
-		item_details = item_quantity_dict[item['item_name']]
 		sre.voucher_type = voucher_type
 		sre.voucher_no = voucher_no
 		sre.voucher_detail_no = item['voucher_detail_no']
 		sre.available_qty = available_qty_to_reserve
 		
-		sre.stock_uom = item_details.get('stock_uom')
+		sre.stock_uom = item_uom_detail.get('stock_uom')
 		sre.reserved_qty = item['qty_to_reserve']
 		sre.voucher_qty = sre.reserved_qty
 		sre.save()
 		sre.submit()
-		response_dict[item['voucher_detail_no']] = sre.name
-  
+		voucher_detail_dict[item_name] = sre.name
+
+
+	for item in items_details:
+		response_dict[item.get('uuid')] = voucher_detail_dict[item.get('item_name')]  
 	return response_dict
 	
 

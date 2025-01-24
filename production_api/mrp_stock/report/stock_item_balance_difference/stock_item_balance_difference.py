@@ -12,8 +12,12 @@ def execute(filters):
 
 
 def get_report_data(filters):
-	item_bal = item_balance_report(filters)
 	_,stock_bal = stock_balance_report(filters)
+	filters.update({
+		"item" : filters.get('parent_item'),
+		"item_variant" : filters.get("item")
+	})
+	item_bal = item_balance_report(filters)
 
 	diff_dict = {}
 	for i in item_bal:

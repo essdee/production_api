@@ -81,10 +81,18 @@ def make_dispatch_stock_entry(items, warehouse, packing_slip):
     ste.flags.allow_from_sms = True
     ste.save()
 
+    item_details_dict = {}
     for item in items:
-        sre = frappe.get_doc("Stock Reservation Entry", item['sre'])
-        item_details = get_uom_details(sre.item_code, item['uom'], item['qty'])
-        sre.delivered_qty += item_details['conversion_factor'] * item['qty']
+        if item['sre'] not in item_details_dict:
+            item_details_dict[item['sre']] = {
+                "uom_conv_detail" : get_uom_details(item['item'], item['uom'], item['qty']),
+                "qty" : 0,
+                "uom" : item['uom']
+            }
+        item_details_dict[item['sre']]['qty'] += item['qty']
+    for sre, details in item_details_dict.items():
+        sre = frappe.get_doc("Stock Reservation Entry", sre)
+        sre.delivered_qty += details['uom_conv_detail']['conversion_factor'] * details['qty']
         sre.stock_entry = ste.name
         sre.db_update()
         sre.update_status()
