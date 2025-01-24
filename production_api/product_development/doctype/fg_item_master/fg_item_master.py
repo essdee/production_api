@@ -42,12 +42,12 @@ class FGItemMaster(Document):
 		else:
 			create_or_update_item(self)
 		updated = sync_FG_item_OMS(self.name)
-		# if not updated:
-		# 	frappe.throw("Some error occurred")
-		# try:
-		# 	sync_FG_item_DC(self.name)
-		# except:
-		# 	pass
+		if not updated:
+			frappe.throw("Some error occurred")
+		try:
+			sync_FG_item_DC(self.name)
+		except:
+			pass
 
 @frappe.whitelist()
 def sync_fg_item(name):
