@@ -12,7 +12,7 @@ from production_api.production_api.doctype.work_order.work_order import get_bom_
 from production_api.production_api.doctype.item.item import get_attribute_details, get_or_create_variant
 from production_api.production_api.doctype.delivery_challan.delivery_challan import get_variant_stock_details
 from production_api.production_api.doctype.purchase_order.purchase_order import get_item_attribute_details, get_item_group_index
-from production_api.essdee_production.doctype.item_production_detail.item_production_detail import get_calculated_bom, get_cloth_combination, get_stitching_combination
+from production_api.essdee_production.doctype.item_production_detail.item_production_detail import get_calculated_bom, get_cloth_combination
 
 class GoodsReceivedNote(Document):
 	def onload(self):
@@ -187,33 +187,44 @@ class GoodsReceivedNote(Document):
 		from production_api.mrp_stock.stock_ledger import make_sl_entries
 		deliverables_rate = 0
 		for item in self.grn_deliverables:
-			if res.get(item.item_variant):
+			if res.get(item.item_variant) and item.quantity:
 				deliverables_rate = deliverables_rate + (item.valuation_rate * item.quantity)
 		avg = deliverables_rate / self.total_received_quantity
+		# frappe.throw(str(avg))
 		sl_entries = []
 		for item in self.items:
 			if item.received_types and item.quantity > 0 and res.get(item.item_variant):
-				sl_entries.append(self.get_sl_entries(item, {}, 1, self.against, valuation_rate=avg))
+				received_types = item.received_types
+				if isinstance(received_types, string_types):
+					received_types = json.loads(received_types)
+				for type, qty in received_types.items():
+					x = item
+					x.quantity = qty
+					sl_entries.append(self.get_sl_entries(x, {}, 1, self.against,type, valuation_rate=avg))
 		make_sl_entries(sl_entries)
 
 	def reduce_uncalculated_stock(self, res):
 		from production_api.mrp_stock.stock_ledger import make_sl_entries
-		lot = frappe.get_value(self.against,self.against_id,"lot")
+		lot, is_rework = frappe.get_value(self.against,self.against_id,["lot","is_rework"])
+		received_type = frappe.db.get_single_value("Stock Settings", "default_received_type")
 		sl_entries = []
 		for item in self.grn_deliverables:
 			if res.get(item.item_variant):
-				sl_entries.append(self.get_deliverables_data(item, lot, {}, -1))
+				sl_entries.append(self.get_deliverables_data(item, lot, {}, -1, received_type))
 		make_sl_entries(sl_entries)
 	
-	def get_deliverables_data(self, d, lot, args, multiplier):
+	def get_deliverables_data(self, d, lot, args, multiplier, received_type):
+		print(type(multiplier))
+		print(type(d.get("quantity")))
 		sl_dict = frappe._dict({
 			"item": d.item_variant,
 			"warehouse": self.supplier,
+			"received_type":received_type,
 			"lot": lot,
 			"voucher_type": self.doctype,
 			"voucher_no": self.name,
 			"voucher_detail_no": d.name,
-			"qty": d.quantity * multiplier,
+			"qty": d.get('quantity') * multiplier,
 			"uom": d.uom,
 			"rate": d.valuation_rate,
 			"is_cancelled": 1 if self.docstatus == 2 else 0,
@@ -224,7 +235,7 @@ class GoodsReceivedNote(Document):
 		sl_dict.update(args)
 		return sl_dict
 	
-	def get_sl_entries(self, d, args, multiplier, order, valuation_rate = 0.0):
+	def get_sl_entries(self, d, args, multiplier, order, received_type, valuation_rate = 0.0):
 		qty = None
 		if order == "Work Order":
 			qty = flt(d.get("quantity")) * multiplier
@@ -236,6 +247,7 @@ class GoodsReceivedNote(Document):
 		sl_dict = frappe._dict({
 			"item": d.get("item_variant", None),
 			"warehouse": self.delivery_location,
+			"received_type":received_type,
 			"lot": cstr(d.get("lot")).strip(),
 			"voucher_type": self.doctype,
 			"voucher_no": self.name,
@@ -292,7 +304,13 @@ class GoodsReceivedNote(Document):
 			items = json.loads(items)
 		for item in items:
 			if item['quantity'] > 0 and res.get(item['item_variant']):
-				sl_entries.append(self.get_sl_entries(item, {}, -1, self.against, valuation_rate=avg))
+				received_types = item.get("received_types")
+				if isinstance(received_types, string_types):
+					received_types = json.loads(received_types)
+				for type, qty in received_types.items():
+					x = item
+					x['quantity'] = qty
+					sl_entries.append(self.get_sl_entries(item, {}, -1, self.against,type,valuation_rate=avg))
 		make_sl_entries(sl_entries)	
 
 	def reupdate_wo_deliverables(self, res):
@@ -345,9 +363,10 @@ class GoodsReceivedNote(Document):
 		lot = wo_doc.lot
 		wo_doc.save(ignore_permissions = True)	
 		sl_entries = []
+		received_type = frappe.db.get_single_value("Stock Settings", "default_received_type")
 		for item in self.grn_deliverables:
 			if res.get(item.item_variant):
-				sl_entries.append(self.get_deliverables_data(item, lot, {}, 1))
+				sl_entries.append(self.get_deliverables_data(item, lot, {}, 1, received_type))
 		make_sl_entries(sl_entries)
 
 	def update_purchase_order(self):
@@ -373,8 +392,9 @@ class GoodsReceivedNote(Document):
 		if self.docstatus == 0:
 			return
 		sl_entries = []
+		received_type = frappe.db.get_single_value("Stock Settings", "default_received_type")
 		for item in self.items:
-			sl_entries.append(self.get_sl_entries(item, {}, 1, self.against))
+			sl_entries.append(self.get_sl_entries(item, {}, 1, self.against, received_type))
 
 		if self.docstatus == 2:
 			sl_entries.reverse()
@@ -1191,7 +1211,7 @@ def update_calculated_receivables(doc_name, receivables, received_type):
 					item.quantity += received_item['qty']
 					item.received_types = received_types
 				total_cost += (item.rate * received_item['qty'])
-				total_qty += received_item['qty']
+				total_qty += item.quantity
 				break	
 	grn_doc.total_received_quantity = total_qty	
 	grn_doc.total_receivable_cost = total_cost

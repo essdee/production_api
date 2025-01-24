@@ -35,6 +35,17 @@ const otherInputs = ref([
             reqd: true,
         },
     },
+    {
+        name: 'received_type',
+        parent: 'received_type-control',
+        df: {
+            fieldtype: 'Link',
+            fieldname: 'received_type',
+            label: 'Received Type',
+            options:"GRN Item Type",
+            reqd: true,
+        },
+    },
 ])
 const table_fields = ref([
     {
@@ -45,6 +56,10 @@ const table_fields = ref([
     {
         name: 'remarks',
         label: 'Remarks',
+    },
+    {
+        name: 'received_type',
+        label: 'Received Type',
     },
 ])
 const args = ref({

@@ -5,6 +5,7 @@ from frappe.utils import flt, get_time, getdate, nowdate, nowtime
 def get_stock_balance(
 	item,
 	warehouse,
+	received_type,
 	posting_date=None,
 	posting_time=None,
 	with_valuation_rate=False,
@@ -21,10 +22,10 @@ def get_stock_balance(
 		posting_date = nowdate()
 	if posting_time is None:
 		posting_time = nowtime()
-
 	args = {
 		"item": item,
 		"warehouse": warehouse,
+		"received_type":received_type,
 		"posting_date": posting_date,
 		"posting_time": posting_time,
 		"posting_datetime": get_combine_datetime(posting_date, posting_time),

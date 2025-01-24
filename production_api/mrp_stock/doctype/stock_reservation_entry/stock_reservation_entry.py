@@ -90,7 +90,8 @@ class StockReservationEntry(Document):
 	def update_reserved_stock_in_bin(self) -> None:
 		"""Updates `Reserved Stock` in Bin."""
 		from production_api.utils import get_or_make_bin
-		bin_name = get_or_make_bin(self.item_code, self.warehouse, self.lot)
+		received_type = frappe.db.get_single_value("Stock Settings", "default_received_type")
+		bin_name = get_or_make_bin(self.item_code, self.warehouse, self.lot, received_type)
 		bin_doc = frappe.get_cached_doc("Bin", bin_name)
 		bin_doc.update_reserved_stock()
 	
@@ -205,12 +206,13 @@ def create_stock_reservation_entries_for_so_items(
 			"message" : "Stock Not Available For Items <br>"+"<br>".join(list(out_of_stock_items)),
 			"warning" : warning_msg
 		}
-	
+	received_type = frappe.db.get_single_value("Stock Settings","default_received_type")	
 	for item_name, item in common_item_map.items():
 		available_qty_to_reserve = get_available_qty_to_reserve(item_name, item['warehouse'], item['lot'])
 		sre = frappe.new_doc("Stock Reservation Entry")
 		sre.item_code = item_name
 		sre.warehouse = item['warehouse']
+		sre.received_type = received_type
 		sre.lot = item['lot']
 		sre.voucher_type = voucher_type
 		sre.voucher_no = voucher_no
@@ -283,7 +285,7 @@ def get_available_qty_to_reserve(
 
 	return available_qty
 
-def get_sre_reserved_qty_for_item_and_warehouse(item_code: str, warehouse: str | None = None, lot: str | None = None) -> float:
+def get_sre_reserved_qty_for_item_and_warehouse(item_code: str, warehouse: str | None = None, lot: str | None = None, received_type : str | None = None) -> float:
 	"""Returns current `Reserved Qty` for Item and Warehouse combination."""
 
 	sre = frappe.qb.DocType("Stock Reservation Entry")
@@ -295,13 +297,15 @@ def get_sre_reserved_qty_for_item_and_warehouse(item_code: str, warehouse: str |
 			& (sre.item_code == item_code)
 			& (sre.status.notin(["Delivered", "Cancelled"]))
 		)
-		.groupby(sre.item_code, sre.warehouse, sre.lot)
+		.groupby(sre.item_code, sre.warehouse, sre.lot, sre.received_type)
 	)
 
 	if warehouse:
 		query = query.where(sre.warehouse == warehouse)
 	if lot:
 		query = query.where(sre.lot == lot)
+	if received_type:
+		query = query.where(sre.received_type == received_type)
 
 	reserved_qty = query.run(as_list=True)
 	return flt(reserved_qty[0][0]) if reserved_qty else 0.0

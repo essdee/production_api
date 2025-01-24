@@ -12,6 +12,7 @@
   "quantity_section",
   "qty",
   "stock_qty",
+  "received_type",
   "column_break_qyqc",
   "uom",
   "stock_uom",
@@ -165,12 +166,18 @@
   {
    "fieldname": "column_break_hooq",
    "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "received_type",
+   "fieldtype": "Link",
+   "label": "Received Type",
+   "options": "GRN Item Type"
   }
  ],
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2024-11-07 09:49:04.441647",
+ "modified": "2025-01-23 09:47:12.493886",
  "modified_by": "Administrator",
  "module": "MRP Stock",
  "name": "Stock Entry Detail",

@@ -8,6 +8,7 @@
  "engine": "InnoDB",
  "field_order": [
   "transit_warehouse",
+  "default_received_type",
   "column_break_lblg",
   "default_fg_lot"
  ],
@@ -30,12 +31,19 @@
    "label": "Default FG Lot",
    "options": "Lot",
    "reqd": 1
+  },
+  {
+   "fieldname": "default_received_type",
+   "fieldtype": "Link",
+   "label": "Default Received Type",
+   "options": "GRN Item Type",
+   "reqd": 1
   }
  ],
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2024-09-17 22:31:05.577276",
+ "modified": "2025-01-23 12:36:17.913269",
  "modified_by": "Administrator",
  "module": "MRP Stock",
  "name": "Stock Settings",
