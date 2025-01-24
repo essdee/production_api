@@ -11,26 +11,25 @@ def get_bin(item_code, warehouse, lot):
 	bin_obj.flags.ignore_permissions = True
 	return bin_obj
 
-def get_or_make_bin(item_code: str, warehouse: str, lot: str) -> str:
-	bin_record = frappe.get_cached_value("Bin", {"item_code": item_code, "warehouse": warehouse, "lot": lot})
-
+def get_or_make_bin(item_code: str, warehouse: str, lot: str, received_type: str) -> str:
+	bin_record = frappe.get_cached_value("Bin", {"item_code": item_code, "warehouse": warehouse, "lot": lot, "received_type": received_type})
 	if not bin_record:
-		bin_obj = _create_bin(item_code, warehouse, lot)
+		bin_obj = _create_bin(item_code, warehouse, lot, received_type)
 		bin_record = bin_obj.name
 	return bin_record
 
-def _create_bin(item_code, warehouse, lot):
+def _create_bin(item_code, warehouse, lot, received_type):
 	"""Create a bin and take care of concurrent inserts."""
 
 	bin_creation_savepoint = "create_bin"
 	try:
 		frappe.db.savepoint(bin_creation_savepoint)
-		bin_obj = frappe.get_doc(doctype="Bin", item_code=item_code, warehouse=warehouse, lot=lot)
+		bin_obj = frappe.get_doc(doctype="Bin", item_code=item_code, warehouse=warehouse, lot=lot, received_type=received_type)
 		bin_obj.flags.ignore_permissions = 1
 		bin_obj.insert()
 	except frappe.UniqueValidationError:
 		frappe.db.rollback(save_point=bin_creation_savepoint)  # preserve transaction in postgres
-		bin_obj = frappe.get_last_doc("Bin", {"item_code": item_code, "warehouse": warehouse, 'lot' : lot})
+		bin_obj = frappe.get_last_doc("Bin", {"item_code": item_code, "warehouse": warehouse, 'lot' : lot, "received_type": received_type})
 
 	return bin_obj
 
