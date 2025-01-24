@@ -301,19 +301,20 @@ def sync_FG_item_DC(item):
 
 def get_new_oms_item_details(item):
     
-    doc = frappe.get_doc("Item",{'name',item})
+    doc = frappe.get_doc("FG Item Master", item)
     
     return {
 		"name" : doc.name,
-		"default_unit_of_measure" : doc.default_unit_of_measure,
-		"uom_conversion_details" : [
-			{
-				"uom" : uom.uom,
-				"conversion_factor" : uom.conversion_factor
-			}
-			for uom in doc.uom_conversion_details
-		],
-		"attributes" : get_item_attribute_details(item)
+		"default_unit_of_measure" : 'Pieces',
+		"uom_conversion_details" : get_default_item_uom_conversion_template(doc.pcs_per_box),
+		"attributes" : get_item_attribute_details(item),
+		"deprecated" : doc.deprecated,
+		"category" : doc.category,
+		"size_range" : doc.size_range,
+		"hsn" : doc.hsn,
+		"box_per_carton" : doc.box_per_carton,
+		"disabled" : doc.disabled,
+		"pcs_per_box" : doc.pcs_per_box
 	}
     
 def get_item_attribute_details(item):
@@ -323,8 +324,25 @@ def get_item_attribute_details(item):
 		WHERE parent = '{item}' ORDER BY idx ASC
     """
     
-    result = frappe.db.sql(query,as_dict=True)
+    result1 = frappe.db.sql(query,as_dict=True)
     
     return {
-		"Size" : [i['attribute_value'] for i in result]
+		"Size" : [i['attribute_value'] for i in result1]
 	}
+
+def get_default_item_uom_conversion_template(pcs_per_box= 5):
+
+	return [
+		{
+			"uom" : "Pieces",
+			"conversion_factor" : 1
+		},
+		{
+			"uom" : "Box",
+			"conversion_factor" : pcs_per_box
+		},
+		{
+			"uom" : "Unit",
+			"conversion_factor" : 10
+		}
+	]
