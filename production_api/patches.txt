@@ -4,6 +4,7 @@ production_api.patches.v1_0.mapping
 
 [post_model_sync]
 production_api.patches.v1_0.update_po_item_uom
+production_api.patches.v1_0.update_received_type
 production_api.patches.v1_0.update_pending_items_po #1
 production_api.patches.v1_0.updated_existing_po_status #1
 production_api.patches.v1_0.set_grn_posting_date

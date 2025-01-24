@@ -68,7 +68,7 @@ def make_sle_entries(sle_details):
 def create_FG_ste(lot, received_by, supplier, dc_number, warehouse, posting_date, posting_time, items_list, comments, created_user):
 	if isinstance(items_list, string_types):
 		items_list = frappe.json.loads(items_list)
-	
+	received_type =frappe.db.get_single_value("Stock Settings", "default_received_type")
 	doc = frappe.new_doc("FG Stock Entry")
 	doc.set('lot', lot)
 	doc.set('received_by', received_by)
@@ -80,6 +80,7 @@ def create_FG_ste(lot, received_by, supplier, dc_number, warehouse, posting_date
 		stock_details = get_uom_details(i['item_variant'], i['uom'], i['qty'])
 		doc_items.append({
 			"item_variant" : i['item_variant'],
+			"received_type":received_type,
 			"qty" : i['qty'],
 			"uom" : i['uom'],
 			"stock_qty" : flt(

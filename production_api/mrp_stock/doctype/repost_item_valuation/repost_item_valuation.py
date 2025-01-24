@@ -195,6 +195,7 @@ class RepostItemValuation(Document):
 			"item": self.item,
 			"warehouse": self.warehouse,
 			"lot": self.lot,
+			"received_type":self.received_type,
 			"name": self.name,
 			"posting_date": self.posting_date,
 			"posting_time": self.posting_time,
@@ -207,6 +208,7 @@ class RepostItemValuation(Document):
 			WHERE item = %(item)s
 				and warehouse = %(warehouse)s
 				and lot = %(lot)s
+				and received_type = %(received_type)s
 				and name != %(name)s
 				and TIMESTAMP(posting_date, posting_time) > TIMESTAMP(%(posting_date)s, %(posting_time)s)
 				and docstatus = 1
@@ -217,8 +219,7 @@ class RepostItemValuation(Document):
 		)
 
 def on_doctype_update():
-	frappe.db.add_index("Repost Item Valuation", ["warehouse", "item", "lot"], "item_warehouse_lot")
-
+	frappe.db.add_index("Repost Item Valuation", ["warehouse", "item", "lot", "received_type"], "item_warehouse_lot_received_type")
 
 def repost(doc):
 	try:
@@ -307,6 +308,7 @@ def repost_sl_entries(doc):
 						"item": doc.item,
 						"warehouse": doc.warehouse,
 						"lot": doc.lot,
+						"received_type":doc.received_type,
 						"posting_date": doc.posting_date,
 						"posting_time": doc.posting_time,
 					}

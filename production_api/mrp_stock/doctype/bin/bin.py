@@ -74,7 +74,7 @@ def update_qty(bin_name, args):
 		update_modified=True,
 	)
  
-def get_stock_balance_bin(warehouse,lot,item,remove_zero_balance_item = False):
+def get_stock_balance_bin(warehouse, lot, item, received_type, remove_zero_balance_item = False):
     
     bin = frappe.qb.DocType("Bin")
     
@@ -90,6 +90,8 @@ def get_stock_balance_bin(warehouse,lot,item,remove_zero_balance_item = False):
     
     if warehouse and len(warehouse) != 0:
         query = query.where(bin.warehouse.isin(warehouse))
+    if received_type:
+        query = query.where(bin.received_type == received_type)		
     if item and len(item) != 0:
         query = query.where(bin.item_code.isin(item))
         

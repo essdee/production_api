@@ -38,7 +38,7 @@ def make_sl_entries(sl_entries, allow_negative_stock=False, via_landed_cost_vouc
 
 		args = get_args_for_future_sle(sl_entries[0])
 		future_sle_exists(args, sl_entries)
-
+		received_type = frappe.db.get_single_value("Stock Settings","default_received_type")
 		for sle in sl_entries:
 			item = frappe.get_cached_value("Item Variant", sle.get("item"), "item")
 			is_stock_item = frappe.get_cached_value("Item", item, "is_stock_item")
@@ -48,6 +48,10 @@ def make_sl_entries(sl_entries, allow_negative_stock=False, via_landed_cost_vouc
 
 			if sle.get("voucher_type") != "Stock Reconciliation" and not sle["qty"]:
 				continue
+
+			if sle.get("received_type") in [None,""]:
+				sle.received_type = received_type
+				
 			if cancel:
 				sle["qty"] = -flt(sle.get("qty"))
 

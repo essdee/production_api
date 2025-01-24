@@ -74,7 +74,7 @@ class StockReconciliation(Document):
 				self.validation_messages.append(_get_msg(row.table_index, row.row_index, _("Negative Valuation Rate is not allowed")))
 			if row.rate in ["", None, 0]:
 				row.rate = get_stock_balance(
-					row.item, None, self.posting_date, self.posting_time, row.received_type,with_valuation_rate=True, uom=row.uom
+					row.item, None, row.received_type, self.posting_date, self.posting_time,with_valuation_rate=True, uom=row.uom
 				)[1]
 				if not row.rate:
 					# try if there is a buying price list in default currency

@@ -38,6 +38,7 @@ class StockReservationEntry(Document):
 			"warehouse",
 			"voucher_type",
 			"voucher_no",
+			"received_type",
 			"lot",
 			"available_qty",
 			"stock_uom",
@@ -113,6 +114,8 @@ def create_stock_reservation_entries_for_so_items(
 	voucher_no,
 	items_details,
 ) -> None:
+	received_type = frappe.db.get_single_value("Stock Settings","default_received_type")	
+	
 	"""Creates Stock Reservation Entries for Sales Order Items."""
 
 
@@ -139,6 +142,7 @@ def create_stock_reservation_entries_for_so_items(
 				"voucher_detail_no" : item.get("uuid"),
 				"qty_to_reserve" : 0,
 				"lot" : get_default_fg_lot(),
+				"received_type":received_type,
 				"uom" : item.get('uom'),
 				'warehouse' : item.get('warehouse')
 			}
@@ -177,7 +181,7 @@ def create_stock_reservation_entries_for_so_items(
 		if unreserved_qty <= 0:
 			out_of_stock_items.add(item_name)
 
-		available_qty_to_reserve = get_available_qty_to_reserve(item_name, item['warehouse'], item['lot'])
+		available_qty_to_reserve = get_available_qty_to_reserve(item_name, item['warehouse'], item['lot'], received_type)
 
 		if available_qty_to_reserve <= 0:
 	
@@ -206,9 +210,8 @@ def create_stock_reservation_entries_for_so_items(
 			"message" : "Stock Not Available For Items <br>"+"<br>".join(list(out_of_stock_items)),
 			"warning" : warning_msg
 		}
-	received_type = frappe.db.get_single_value("Stock Settings","default_received_type")	
 	for item_name, item in common_item_map.items():
-		available_qty_to_reserve = get_available_qty_to_reserve(item_name, item['warehouse'], item['lot'])
+		available_qty_to_reserve = get_available_qty_to_reserve(item_name, item['warehouse'], item['lot'], received_type)
 		sre = frappe.new_doc("Stock Reservation Entry")
 		sre.item_code = item_name
 		sre.warehouse = item['warehouse']
@@ -255,11 +258,11 @@ def get_sre_reserved_qty_details_for_voucher(voucher_type: str, voucher_no: str)
 	return data
 
 def get_available_qty_to_reserve(
-	item_code: str, warehouse: str,lot :str, ignore_sre=None
+	item_code: str, warehouse: str,lot :str, received_type: str,ignore_sre=None
 ) -> float:
 	"""Returns `Available Qty to Reserve (Actual Qty - Reserved Qty)` for Item, Warehouse and Batch combination."""
  
-	available_qty = get_stock_balance(item_code,warehouse=warehouse,lot=lot)
+	available_qty = get_stock_balance(item_code,warehouse=warehouse,received_type=received_type,lot=lot)
 
 	if available_qty:
 		sre = frappe.qb.DocType("Stock Reservation Entry")
@@ -270,6 +273,7 @@ def get_available_qty_to_reserve(
 				(sre.docstatus == 1)
 				& (sre.item_code == item_code)
 				& (sre.warehouse == warehouse)
+				& (sre.received_type == received_type)
 				& (sre.reserved_qty >= sre.delivered_qty)
 				& (sre.status.notin(["Delivered", "Cancelled"]))
 			)
@@ -353,6 +357,7 @@ def get_stock_reservation_entries_for_voucher(
 			"item_code",
 			"warehouse",
 			"lot",
+			"receive_type",
 			"reserved_qty",
 			"delivered_qty",
 		]

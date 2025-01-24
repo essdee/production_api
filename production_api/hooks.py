@@ -105,7 +105,10 @@ doc_events = {
 
 fixtures = [
     {
-        "dt":'Essdee Raw Print Format'
+        "dt":'Essdee Raw Print Format',
+    },
+    {
+        "dt":"GRN Item Type",
     }
 ]
 # Scheduled Tasks
