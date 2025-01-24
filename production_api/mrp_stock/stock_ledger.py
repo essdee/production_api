@@ -76,7 +76,7 @@ def make_sl_entries(sl_entries, allow_negative_stock=False, via_landed_cost_vouc
 			# item = frappe.get_cached_value("Item Variant", args.get("item"), "item")
 			# is_stock_item = frappe.get_cached_value("Item", item, "is_stock_item")
 			if is_stock_item:
-				bin_name = get_or_make_bin(args.get("item"),args.get("warehouse"),args.get("lot"))
+				bin_name = get_or_make_bin(args.get("item"),args.get("warehouse"),args.get("lot"), args.get("received_type"))
 				args.reserved_stock = flt(frappe.db.get_value("Bin", bin_name, "reserved_qty"))
 				repost_current_voucher(args)
 				update_bin_qty(bin_name, args)
@@ -98,6 +98,7 @@ def repost_current_voucher(args, allow_negative_stock=False, via_landed_cost_vou
 					"item": args.get("item"),
 					"warehouse": args.get("warehouse"),
 					"lot": args.get("lot"),
+					"received_type":args.get("received_type"),
 					"posting_date": args.get("posting_date"),
 					"posting_time": args.get("posting_time"),
 					"voucher_type": args.get("voucher_type"),
@@ -178,6 +179,7 @@ def repost_future_sle(
 				"item": args[i].get("item"),
 				"warehouse": args[i].get("warehouse"),
 				"lot": args[i].get("lot"),
+				"received_type":args[i].get("received_type"),
 				"posting_date": args[i].get("posting_date"),
 				"posting_time": args[i].get("posting_time"),
 				"creation": args[i].get("creation"),
@@ -190,7 +192,7 @@ def repost_future_sle(
 		)
 		affected_transactions.update(obj.affected_transactions)
 
-		key = (args[i].get("item"), args[i].get("warehouse"), args[i].get("lot"))
+		key = (args[i].get("item"), args[i].get("warehouse"), args[i].get("lot"), args[i].get("received_type"))
 		if distinct_item_warehouses.get(key):
 			distinct_item_warehouses[key].reposting_status = True
 
@@ -244,7 +246,7 @@ def get_reposting_data(file_path) -> dict:
 
 
 def validate_item_warehouse(args):
-	for field in ["item", "warehouse", "lot","posting_date", "posting_time"]:
+	for field in ["item", "warehouse", "lot", "received_type", "posting_date", "posting_time"]:
 		if args.get(field) in [None, ""]:
 			validation_msg = f"The field {frappe.unscrub(field)} is required for the reposting"
 			frappe.throw(_(validation_msg))
@@ -361,9 +363,9 @@ def get_items_to_be_repost(voucher_type=None, voucher_no=None, doc=None, reposti
 		items_to_be_repost = frappe.db.get_all(
 			"Stock Ledger Entry",
 			filters={"voucher_type": voucher_type, "voucher_no": voucher_no},
-			fields=["item", "warehouse", "lot", "posting_date", "posting_time", "creation"],
+			fields=["item", "warehouse", "lot", "received_type", "posting_date", "posting_time", "creation"],
 			order_by="creation asc",
-			group_by="item, warehouse, lot",
+			group_by="item, warehouse, lot, received_type",
 		)
 
 	return items_to_be_repost or []
@@ -386,7 +388,7 @@ def get_distinct_item_warehouse(args=None, doc=None, reposting_data=None):
 	else:
 		for i, d in enumerate(args):
 			distinct_item_warehouses.setdefault(
-				(d.item, d.warehouse, d.lot), frappe._dict({"reposting_status": False, "sle": d, "args_idx": i})
+				(d.item, d.warehouse, d.lot, d.received_type), frappe._dict({"reposting_status": False, "sle": d, "args_idx": i})
 			)
 
 	return distinct_item_warehouses
@@ -496,7 +498,7 @@ class update_entries_after(object):
 		}
 
 		"""
-		data_key = (args.warehouse, args.lot)
+		data_key = (args.warehouse, args.lot, args.received_type)
 		self.data.setdefault(data_key, frappe._dict())
 		warehouse_dict = self.data[data_key]
 		previous_sle = get_previous_sle_of_current_voucher(args)
@@ -555,6 +557,7 @@ class update_entries_after(object):
 				item = %(item)s
 				and warehouse = %(warehouse)s
 				and lot = %(lot)s
+				and received_type = %(received_type)s
 				and is_cancelled = 0
 				and (
 					posting_datetime = %(posting_datetime)s
@@ -570,8 +573,8 @@ class update_entries_after(object):
 
 	def get_future_entries_to_fix(self):
 		# includes current entry!
-		args = self.data[(self.args.warehouse, self.args.lot)].previous_sle or frappe._dict(
-			{"item": self.item, "warehouse": self.args.warehouse, "lot": self.args.lot}
+		args = self.data[(self.args.warehouse, self.args.lot, self.args.received_type)].previous_sle or frappe._dict(
+			{"item": self.item, "warehouse": self.args.warehouse, "lot": self.args.lot, "received_type":self.args.received_type}
 		)
 
 		return list(self.get_sle_after_datetime(args))
@@ -582,7 +585,7 @@ class update_entries_after(object):
 
 	def process_sle(self, sle):
 		# previous sle data for this warehouse
-		self.wh_data = self.data[(sle.warehouse, sle.lot)]
+		self.wh_data = self.data[(sle.warehouse, sle.lot, sle.received_type)]
 		self.affected_transactions.add((sle.voucher_type, sle.voucher_no))
 
 		# if (sle.serial_no and not self.via_landed_cost_voucher) or not cint(self.allow_negative_stock):
@@ -880,7 +883,7 @@ class update_entries_after(object):
 				raise NegativeStockError(message)
 
 	def update_bin_data(self, sle):
-		bin_name = get_or_make_bin(sle.item, sle.warehouse, sle.lot)
+		bin_name = get_or_make_bin(sle.item, sle.warehouse, sle.lot, sle.received_type)
 		values_to_update = {
 			"actual_qty": sle.qty_after_transaction,
 		}
@@ -893,7 +896,7 @@ class update_entries_after(object):
 	def update_bin(self):
 		# update bin for each warehouse
 		for key, data in self.data.items():
-			bin_name = get_or_make_bin(self.item, key[0], key[1])
+			bin_name = get_or_make_bin(self.item, key[0], key[1], key[2])
 
 			updated_values = {"actual_qty": data.qty_after_transaction}
 			# if data.valuation_rate is not None:
@@ -927,6 +930,7 @@ def get_previous_sle_of_current_voucher(args, operator="<", exclude_current_vouc
 		where item = %(item)s
 			and warehouse = %(warehouse)s
 			and lot = %(lot)s
+			and received_type = %(received_type)s
 			and is_cancelled = 0
 			{voucher_condition}
 			and (
@@ -939,6 +943,7 @@ def get_previous_sle_of_current_voucher(args, operator="<", exclude_current_vouc
 			"item": args.get("item"),
 			"warehouse": args.get("warehouse"),
 			"lot": args.get("lot"),
+			"received_type":args.get("received_type"),
 			"posting_datetime": args.get("posting_datetime"),
 		},
 		as_dict=1,
@@ -987,6 +992,9 @@ def get_stock_ledger_entries(
 
 	if previous_sle.get("lot"):
 		conditions += " and lot = %(lot)s"
+	
+	if previous_sle.get('received_type'):
+		conditions += " and received_type = %(received_type)s"
 
 	if not previous_sle.get("posting_date"):
 		previous_sle["posting_datetime"] = "1900-01-01 00:00:00"
@@ -1114,6 +1122,7 @@ def update_qty_in_future_sle(args, allow_negative_stock=False):
 			item = %(item)s
 			and warehouse = %(warehouse)s
 			and lot = %(lot)s
+			and received_type = %(received_type)s
 			and voucher_no != %(voucher_no)s
 			and is_cancelled = 0
 			and (
@@ -1185,6 +1194,9 @@ def get_next_stock_reco(kwargs):
 
 	if kwargs.get("lot"):
 		query = query.where(sle.lot == kwargs.get("lot"))
+	
+	if kwargs.get("received_type"):
+		query = query.where(sle.received_type == kwargs.get("received_type"))
 
 	return query.run(as_dict=True)
 

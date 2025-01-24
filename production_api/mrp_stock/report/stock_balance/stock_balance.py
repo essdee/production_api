@@ -65,7 +65,7 @@ def execute(filters=None):
 		item = group_by_key[0]
 		warehouse = group_by_key[1]
 		lot = group_by_key[2]
-
+		received_type = group_by_key[3]
 		if item_map.get(item):
 			qty_dict = iwb_map[group_by_key]
 			if (filters.get('remove_zero_balance_item') and qty_dict['bal_qty'] == 0):
@@ -80,13 +80,13 @@ def execute(filters=None):
 				"currency": company_currency,
 				"item": item,
 				"warehouse": warehouse,
+				"received_type":received_type,
 				"lot": lot,
 				"reorder_level": item_reorder_level,
 				"reorder_qty": item_reorder_qty,
 			}
 			report_data.update(item_map[item])
 			report_data.update(qty_dict)
-
 			if include_uom:
 				conversion_factors.setdefault(item, item_map[item].conversion_factor)
 
@@ -105,7 +105,6 @@ def execute(filters=None):
 
 				report_data.update(stock_ageing_data)
 			data.append(report_data)
-
 	# add_additional_uom_columns(columns, data, include_uom, conversion_factors)
 	return columns, data
 
@@ -160,6 +159,13 @@ def get_columns(filters):
 			"fieldtype": "Link",
 			"options": "Supplier",
 			"width": 100,
+		},
+		{
+			"fieldname":"received_type",
+			"label":"Received Type",
+			"fieldtype":"Link",
+			"options":"GRN Item Type",
+			"width":"80",
 		},
 	]
 
@@ -279,6 +285,7 @@ def get_stock_ledger_entries(filters, items: List[str]) -> List[SLEntry]:
 			sle.item,
 			sle.warehouse,
 			supplier.supplier_name.as_("warehouse_name"),
+			sle.received_type,
 			sle.posting_date,
 			sle.qty,
 			sle.valuation_rate,
@@ -305,8 +312,11 @@ def get_stock_ledger_entries(filters, items: List[str]) -> List[SLEntry]:
 			w = [warehouse]
 		if len(w)!=0:
 			query = query.where(sle.warehouse.isin(w))
+
 	if lot := filters.get("lot"):
 		query = query.where(sle.lot == lot)
+	if received_type := filters.get("received_type"):
+		query = query.where(sle.received_type == received_type)	
 	if items and len(items)!=0 :
 		query = query.where(sle.item.isin(items))
 
@@ -355,6 +365,7 @@ def get_item_warehouse_map(filters, sle: List[SLEntry]):
 			iwb_map[group_by_key] = frappe._dict(
 				{
 					"warehouse_name": d.warehouse_name,
+					"received_type":d.received_type,
 					"opening_qty": 0.0,
 					"opening_val": 0.0,
 					"in_qty": 0.0,
@@ -392,12 +403,11 @@ def get_item_warehouse_map(filters, sle: List[SLEntry]):
 		qty_dict.bal_val += value_diff
 
 	iwb_map = filter_items_with_no_transactions(iwb_map, float_precision)
-	
 	return iwb_map
 
 
 def get_group_by_key(row) -> tuple:
-	group_by_key = [row.item, row.warehouse, row.lot]
+	group_by_key = [row.item, row.warehouse, row.lot, row.received_type]
 	return tuple(group_by_key)
 
 
@@ -405,10 +415,9 @@ def filter_items_with_no_transactions(iwb_map, float_precision: float):
 	pop_keys = []
 	for group_by_key in iwb_map:
 		qty_dict = iwb_map[group_by_key]
-
 		no_transactions = True
 		for key, val in qty_dict.items():
-			if key != "warehouse_name":
+			if key != "warehouse_name" and key != "received_type":
 				val = flt(val, float_precision)
 			qty_dict[key] = val
 			if key != "val_rate" and val:
@@ -419,7 +428,6 @@ def filter_items_with_no_transactions(iwb_map, float_precision: float):
 
 	for key in pop_keys:
 		iwb_map.pop(key)
-
 	return iwb_map
 
 

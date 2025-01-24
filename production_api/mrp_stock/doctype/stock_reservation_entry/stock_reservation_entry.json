@@ -8,6 +8,7 @@
   "item_code",
   "warehouse",
   "lot",
+  "received_type",
   "column_break_mruu",
   "voucher_type",
   "voucher_no",
@@ -140,12 +141,19 @@
    "label": "Stock Entry",
    "options": "Stock Entry",
    "read_only": 1
+  },
+  {
+   "fieldname": "received_type",
+   "fieldtype": "Link",
+   "label": "Received Type",
+   "options": "GRN Item Type",
+   "read_only": 1
   }
  ],
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-01-17 15:41:36.939879",
+ "modified": "2025-01-24 15:21:01.947301",
  "modified_by": "Administrator",
  "module": "MRP Stock",
  "name": "Stock Reservation Entry",

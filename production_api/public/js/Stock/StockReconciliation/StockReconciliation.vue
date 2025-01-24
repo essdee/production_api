@@ -25,6 +25,17 @@ const docstatus = ref(cur_frm.doc.docstatus)
 const items = ref([])
 const other_inputs = ref([
     {
+        name: 'received_type',
+        parent: 'received_type-control',
+        df: {
+            fieldtype: 'Link',
+            fieldname: 'received_type',
+            label: 'Received Type',
+            options:"GRN Item Type",
+            reqd: true,
+        },
+    },
+    {
         name: 'allow_zero_valuation_rate',
         parent: 'zero-valuation-control',
         df: {
@@ -49,6 +60,10 @@ const table_fields = ref([
         label: 'Rate',
         uses_primary_attribute: 1,
     },
+    {
+        name:'received_type',
+        label:"Received Type",
+    }
 ])
 const args = ref({
     docstatus: cur_frm.doc.docstatus,

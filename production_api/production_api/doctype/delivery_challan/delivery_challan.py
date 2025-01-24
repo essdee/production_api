@@ -24,11 +24,14 @@ class DeliveryChallan(Document):
 		self.ignore_linked_doctypes = ('Stock Ledger Entry')
 		add_sl_entries = []
 		reduce_sl_entries = []
+		received_type = None
+		if not self.is_rework:
+			received_type = frappe.db.get_single_value("Stock Settings","default_received_type")
 		res = get_variant_stock_details()
 		for row in self.items:
 			if res.get(row.item_variant):
-				add_sl_entries.append(self.get_sle_data(row, self.from_location, 1, {}))	
-				reduce_sl_entries.append(self.get_sle_data(row, self.supplier, -1, {}))
+				add_sl_entries.append(self.get_sle_data(row, self.from_location, 1, {}, received_type))	
+				reduce_sl_entries.append(self.get_sle_data(row, self.supplier, -1, {}, received_type))
 		make_sl_entries(add_sl_entries)
 		make_sl_entries(reduce_sl_entries)
 		wo_doc.save()		
@@ -37,14 +40,15 @@ class DeliveryChallan(Document):
 		add_sl_entries = []
 		reduce_sl_entries = []
 		res = get_variant_stock_details()
+		received_type = frappe.db.get_single_value("Stock Settings","default_received_type")
 		for row in self.items:
 			if res.get(row.item_variant):
-				quantity, rate = get_stock_balance(row.item_variant, self.from_location, with_valuation_rate=True)
+				quantity, rate = get_stock_balance(row.item_variant, self.from_location,received_type, with_valuation_rate=True, lot=self.lot)
 				if flt(quantity) < flt(row.delivered_quantity):
-					frappe.throw(f"Required quantity is {row.qty} but stock quantity is {quantity} for {row.item_variant}")
+					frappe.throw(f"Required quantity is {row.delivered_quantity} but stock quantity is {quantity} for {row.item_variant}")
 				row.rate = rate		
-				reduce_sl_entries.append(self.get_sle_data(row, self.from_location, -1, {}))
-				add_sl_entries.append(self.get_sle_data(row, self.supplier, 1, {}))
+				reduce_sl_entries.append(self.get_sle_data(row, self.from_location, -1, {}, received_type))
+				add_sl_entries.append(self.get_sle_data(row, self.supplier, 1, {}, received_type))
 
 		wo_doc = frappe.get_cached_doc("Work Order", self.work_order)
 		for deliverable in wo_doc.deliverables:
@@ -84,12 +88,13 @@ class DeliveryChallan(Document):
 		if self.additional_goods_value:
 			self.total_value = self.stock_value + self.additional_goods_value	
 
-	def get_sle_data(self, row, location, multiplier, args):
+	def get_sle_data(self, row, location, multiplier, args, received_type):
 		sl_dict = frappe._dict({
 			"doctype": "Stock Ledger Entry",
 			"item": row.item_variant,
 			"lot": row.lot,
 			"warehouse": location,
+			"received_type":received_type,
 			"posting_date": self.posting_date,
 			"posting_time": self.posting_time,
 			"voucher_type": self.doctype,
