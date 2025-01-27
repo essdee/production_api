@@ -133,7 +133,8 @@ def get_stock_entry_detail(stock_entry):
 		"dc_number" : doc.dc_number,
 		"lot" : doc.lot,
 		"items" : items_list,
-		"created_at" : doc.creation
+		"created_at" : doc.creation,
+		"docstatus" : doc.docstatus
 	}
 	return resp
 
@@ -174,3 +175,7 @@ def get_inward_stock(item, warehouselist):
 	"""
 
 	return frappe.db.sql(query, as_dict=True)
+
+def fg_stock_entry_cancel(stock_entry):
+	doc = frappe.get_doc("FG Stock Entry", stock_entry)
+	doc.cancel()
