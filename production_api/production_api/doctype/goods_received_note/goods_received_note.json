@@ -12,6 +12,7 @@
   "delivery_location",
   "delivery_location_name",
   "lot",
+  "dc_no",
   "column_break_1",
   "rework_created",
   "against_id",
@@ -359,12 +360,18 @@
    "fieldtype": "JSON",
    "hidden": 1,
    "label": "Items JSON"
+  },
+  {
+   "depends_on": "eval: doc.against == 'Work Order'",
+   "fieldname": "dc_no",
+   "fieldtype": "Data",
+   "label": "DC No"
   }
  ],
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-01-24 16:11:00.838634",
+ "modified": "2025-01-27 16:16:14.436208",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Goods Received Note",
@@ -444,6 +451,53 @@
    "report": 1,
    "role": "Accounts Manager",
    "select": 1
+  },
+  {
+   "cancel": 1,
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Merch Manager",
+   "share": 1,
+   "submit": 1,
+   "write": 1
+  },
+  {
+   "cancel": 1,
+   "create": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Merch User",
+   "share": 1,
+   "submit": 1,
+   "write": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Stock Manager",
+   "select": 1,
+   "share": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Stock User",
+   "select": 1,
+   "share": 1
   }
  ],
  "sort_field": "modified",

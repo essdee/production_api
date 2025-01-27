@@ -60,6 +60,12 @@ frappe.query_reports["Reserved Stock"] = {
 			
 		},
 		{
+			fieldname : "received_type",
+			label : __("Received Type"),
+			fieldtype : "Link",
+			options : "GRN Item Type",
+		},
+		{
 			fieldname: "stock_reservation_entry",
 			label: __("Stock Reservation Entry"),
 			fieldtype: "Link",

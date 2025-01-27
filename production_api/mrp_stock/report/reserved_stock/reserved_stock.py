@@ -47,6 +47,8 @@ def get_data(filters):
 			sre.warehouse,
 			item.name.as_("item"),
 			sre.item_code.as_("item_code"),
+			sre.lot,
+			sre.received_type,
 			sre.stock_uom,
 			sre.voucher_qty,
 			sre.reserved_qty,
@@ -84,6 +86,12 @@ def get_data(filters):
 
 	if value := filters.get("stock_reservation_entry"):
 		query = query.where(sre.name == value)
+	
+	if lot := filters.get("lot"):
+		query = query.where(sre.lot == lot)
+
+	if received_type := filters.get("received_type"):
+		query = query.where(sre.received_type == received_type)	
 
 	data = query.run(as_dict=True)
 
@@ -117,6 +125,20 @@ def get_columns():
 			"fieldtype": "Link",
 			"options": "Item Variant",
 			"width": 100,
+		},
+		{
+			"fieldname": "lot",
+			"fieldtype":"Link",
+			"options":"Lot",
+			"label":"Lot",
+			"width":100,
+		},
+		{
+			"fieldname": "received_type",
+			"fieldtype":"Link",
+			"options":"GRN Item Type",
+			"label":"Received Type",
+			"width":100,
 		},
 		{
 			"fieldname": "stock_uom",

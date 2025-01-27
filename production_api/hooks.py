@@ -109,8 +109,25 @@ fixtures = [
     },
     {
         "dt":"GRN Item Type",
-    }
+    },
+    { 
+		"dt": 'Workflow',
+		"filters": [["name", "in",["Process Cost", "Item Price"]]]
+    },
+    {
+        "dt": 'Role',
+        "filters": [["name", "in",["Merch User","Merch Manager"]]]
+    },
+    {
+        'dt': 'Workflow State',
+        'filters':[['name','in',['Draft',"Approval Pending","Expired","Rejected","Approved","Pending"]]],
+	},
+    {
+        'dt':'Workflow Action Master',
+        'filters':[['name','in',['Submit',"Expired","Reject","Approve"]]]
+	}
 ]
+
 # Scheduled Tasks
 # ---------------
 

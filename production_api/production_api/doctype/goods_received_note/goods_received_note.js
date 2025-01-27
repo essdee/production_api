@@ -153,61 +153,61 @@ frappe.ui.form.on('Goods Received Note', {
 				});
 			})
 		}
-		if(frm.doc.docstatus == 1 && frm.doc.against == "Work Order" && frm.doc.rework_created == 0){
-			frm.add_custom_button("Create Rework",()=> {
-				let d =new frappe.ui.Dialog({
-					title : "Select the type of rework",
-					fields: [
-						{
-							"fieldname":"supplier_type",
-							"fieldtype":"Select",
-							"label":"Supplier Type",
-							"options":"Same Supplier\nDifferent Supplier",
-							"reqd":true,
-						},
-						{
-							"fieldname":"rework_type",
-							"fieldtype":"Select",
-							"label":"Rework Type",
-							"options":"No Cost\nNet Cost Nil\nAdditional Cost",
-							"reqd":true,
-						},
-					],
-					primary_action(values){
-						if(values.supplier_type == 'Different Supplier'){
-							d.hide()
-							let dialog = new frappe.ui.Dialog({
-								title:"Select Supplier",
-								fields: [
-									{
-										"fieldname":"supplier",
-										"fieldtype":"Link",
-										"options":"Supplier",
-										"label":"Supplier",
-									},
-									{
-										"fieldname":"supplier_address",
-										"fieldtype":"Link",
-										"options":"Address",
-										"label":"Supplier Address",
-									}
-								],
-								primary_action(val){
-									dialog.hide()
-									make_rework(frm, val.supplier, val.supplier_address, frm.doc.delivery_address, values.rework_type, values.supplier_type)
-								}
-							})
-							dialog.show()
-						}
-						else{
-							d.hide()
-							make_rework(frm, frm.doc.supplier, frm.doc.supplier_address, frm.doc.delivery_address, values.rework_type, values.supplier_type)
-						}
-					}
-				})
-				d.show()
-			})
-		}
+		// if(frm.doc.docstatus == 1 && frm.doc.against == "Work Order" && frm.doc.rework_created == 0){
+		// 	frm.add_custom_button("Create Rework",()=> {
+		// 		let d =new frappe.ui.Dialog({
+		// 			title : "Select the type of rework",
+		// 			fields: [
+		// 				{
+		// 					"fieldname":"supplier_type",
+		// 					"fieldtype":"Select",
+		// 					"label":"Supplier Type",
+		// 					"options":"Same Supplier\nDifferent Supplier",
+		// 					"reqd":true,
+		// 				},
+		// 				{
+		// 					"fieldname":"rework_type",
+		// 					"fieldtype":"Select",
+		// 					"label":"Rework Type",
+		// 					"options":"No Cost\nNet Cost Nil\nAdditional Cost",
+		// 					"reqd":true,
+		// 				},
+		// 			],
+		// 			primary_action(values){
+		// 				if(values.supplier_type == 'Different Supplier'){
+		// 					d.hide()
+		// 					let dialog = new frappe.ui.Dialog({
+		// 						title:"Select Supplier",
+		// 						fields: [
+		// 							{
+		// 								"fieldname":"supplier",
+		// 								"fieldtype":"Link",
+		// 								"options":"Supplier",
+		// 								"label":"Supplier",
+		// 							},
+		// 							{
+		// 								"fieldname":"supplier_address",
+		// 								"fieldtype":"Link",
+		// 								"options":"Address",
+		// 								"label":"Supplier Address",
+		// 							}
+		// 						],
+		// 						primary_action(val){
+		// 							dialog.hide()
+		// 							make_rework(frm, val.supplier, val.supplier_address, frm.doc.delivery_address, values.rework_type, values.supplier_type)
+		// 						}
+		// 					})
+		// 					dialog.show()
+		// 				}
+		// 				else{
+		// 					d.hide()
+		// 					make_rework(frm, frm.doc.supplier, frm.doc.supplier_address, frm.doc.delivery_address, values.rework_type, values.supplier_type)
+		// 				}
+		// 			}
+		// 		})
+		// 		d.show()
+		// 	})
+		// }
 	},
 	save_item_details: function(frm) {
 		if(frm.itemEditor){

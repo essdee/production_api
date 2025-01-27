@@ -9,7 +9,7 @@
  "idx": 0,
  "is_standard": "Yes",
  "letterhead": null,
- "modified": "2025-01-09 16:48:54.883717",
+ "modified": "2025-01-27 14:18:51.183149",
  "modified_by": "Administrator",
  "module": "MRP Stock",
  "name": "Stock Item Balance Difference",
@@ -30,7 +30,12 @@
   },
   {
    "role": "Merchandiser"
+  },
+  {
+   "role": "Merch Manager"
+  },
+  {
+   "role": "Merch User"
   }
- ],
- "timeout": 0
+ ]
 }

@@ -21,24 +21,26 @@ def get_report_data(filters):
 
 	diff_dict = {}
 	for i in item_bal:
-		key = get_combine_key(i['item_variant'], i['warehouse'], i['lot'])
+		key = get_combine_key(i['item_variant'], i['warehouse'], i['lot'], i['received_type'])
 		if key not in diff_dict:
 			diff_dict[key] = {
 				"item" : i['item_variant'],
 				"parent_item" : i['item'],
 				"warehouse" : i['warehouse'],
+				"received_type":i['received_type'],
 				"lot" : i['lot'],
 				"item_bal" : 0.0,
 				"stock_bal" : 0.0
 			}
 		diff_dict[key]['item_bal'] += float(i['actual_qty'])
 	for i in stock_bal:
-		key = get_combine_key(i['item'], i['warehouse'], i['lot'])
+		key = get_combine_key(i['item'], i['warehouse'], i['lot'], i['received_type'])
 		if key not in diff_dict:
 			diff_dict[key] = {
 				"item" : i['item'],
 				"parent_item" : i['item_name'],
 				"warehouse" : i['warehouse'],
+				"received_type":i['received_type'],
 				"lot" : i['lot'],
 				"item_bal" : 0.0,
 				"stock_bal" : 0.0
@@ -91,6 +93,13 @@ def get_colums(filters):
 			"options": "Supplier",
 			"width": 100,
 		},
+		{
+			"fieldname":"received_type",
+			"label":"Received Type",
+			"fieldtype":"Link",
+			"options":"GRN Item Type",
+			"width":"80",
+		},
 	]
 
 	columns.extend(
@@ -122,5 +131,5 @@ def get_colums(filters):
 	return columns
 
 
-def get_combine_key(item_variant, lot, warehouse):
-	return f"{item_variant}{lot}{warehouse}"
+def get_combine_key(item_variant, lot, warehouse, received_type):
+	return f"{item_variant}{lot}{warehouse}{received_type}"
