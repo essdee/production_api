@@ -46,4 +46,9 @@ def execute():
             update `tabStock Reservation Entry` set received_type = 'Accepted' where 1 = 1 
         """
     )
+    frappe.db.sql(
+        """
+            update `tabGoods Received Note Item` set received_type = 'Accepted' where 1 = 1
+        """
+    )
     

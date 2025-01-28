@@ -60,6 +60,7 @@ frappe.ui.form.on("Work Order", {
 						method: 'production_api.production_api.doctype.work_order.work_order.get_lot_items',
 						args: {
 							lot: frm.doc.lot,
+							doc_name : frm.doc.name,
 						},
 						callback: async function(r){
 							let d = new frappe.ui.Dialog({

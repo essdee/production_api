@@ -93,7 +93,8 @@ def get_data(filters):
 		query = query.where(bin.item_code == item_variant)
 	if item := filters.get("item"):
 		query = query.where(variant.item == item)
-
+	if received_type := filters.get("received_type"):
+		query = query.where(bin.received_type == received_type)
 	if filters.get("remove_zero_balance_item"):
 		query = query.where(bin.actual_qty != 0)
 	

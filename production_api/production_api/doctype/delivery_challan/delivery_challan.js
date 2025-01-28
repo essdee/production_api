@@ -50,6 +50,7 @@ frappe.ui.form.on("Delivery Challan", {
 				frappe.call({
 					method: "production_api.production_api.doctype.delivery_challan.delivery_challan.get_calculated_items",
 					args: {
+						doc_name: frm.doc.name,
 						work_order: frm.doc.work_order,
 					},
 					callback: async function (r) {
@@ -100,10 +101,11 @@ frappe.ui.form.on("Delivery Challan", {
 	calculate_deliverables(frm){
 		let items = frm.calculate_deliverables.get_work_order_items()
 		frappe.call({
-			method:'production_api.production_api.doctype.work_order.work_order.get_deliverable_receivable',
+			method:'production_api.production_api.doctype.delivery_challan.delivery_challan.get_calculated_deliverables',
 			args: {
 				items: items,
-				doc_name: frm.doc.work_order,
+				wo_name: frm.doc.work_order,
+				doc_name: frm.doc.name,
 				deliverable:true
 			},
 			freeze:true,

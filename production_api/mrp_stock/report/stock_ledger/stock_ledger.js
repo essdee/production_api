@@ -63,6 +63,12 @@ frappe.query_reports["Stock Ledger"] = {
 			"options": "Lot"
 		},
 		{
+			"fieldname":"received_type",
+			"label": __("Received Type"),
+			"fieldtype": "Link",
+			"options": "GRN Item Type"
+		},
+		{
 			"fieldname":"brand",
 			"label": __("Brand"),
 			"fieldtype": "Link",

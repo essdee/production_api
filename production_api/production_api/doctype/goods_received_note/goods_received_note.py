@@ -4,8 +4,10 @@
 import frappe,json
 from frappe import _, bold
 from six import string_types
+from datetime import datetime
 from itertools import groupby
 from frappe.model.document import Document
+from production_api.production_api.logger import get_module_logger
 from frappe.utils import money_in_words, flt, cstr, date_diff, nowtime
 from production_api.mrp_stock.doctype.stock_entry.stock_entry import get_uom_details
 from production_api.production_api.doctype.work_order.work_order import get_bom_structure
@@ -47,15 +49,24 @@ class GoodsReceivedNote(Document):
 		self.set('approved_by', frappe.get_user().doc.name)
 
 	def on_submit(self):
+		logger = get_module_logger("goods_received_note")
 		if self.against == 'Purchase Order':
+			logger.debug(f"Purchase Order {datetime.now()}")
 			self.update_purchase_order()
+			logger.debug(f"{self.name} PO Updated {datetime.now()}")
 			self.update_stock_ledger()
+			logger.debug(f"{self.name} SLE Updated {datetime.now()}")
 		else:
+			logger.debug(f"{self.name} Work Order {datetime.now()}")
 			res = get_variant_stock_details()
 			self.update_work_order_receivables()
+			logger.debug(f"{self.name} WO Receivables Updated {datetime.now()}")
 			self.calculate_grn_deliverables()
+			logger.debug(f"{self.name} Additional Deliverables Calculated {datetime.now()}")
 			self.update_wo_stock_ledger(res)
+			logger.debug(f"{self.name} Items Added to Delivery Location {datetime.now()}")
 			self.reduce_uncalculated_stock(res)
+			logger.debug(f"{self.name} Deliverables Reduced from Supplier {datetime.now()}")
 			self.split_items()
 	
 	def split_items(self):
@@ -264,8 +275,10 @@ class GoodsReceivedNote(Document):
 		return sl_dict
 	
 	def on_cancel(self):
+		logger = get_module_logger("goods_received_note")
 		self.ignore_linked_doctypes = ("Stock Ledger Entry")
 		if self.against == 'Purchase Order':
+			logger.debug(f"{self.name} On Cancel Purchase Order {datetime.now()}")
 			if self.purchase_invoice_name:
 				frappe.throw(f'Please remove this GRN from Purchase Invoice {self.purchase_invoice_name} before cancelling. Please Contact Purchase Department.')
 			settings = frappe.get_single('MRP Settings')
@@ -279,8 +292,11 @@ class GoodsReceivedNote(Document):
 				if status != 'Open':
 					frappe.throw('Purchase order is not open.', title='GRN')
 			self.update_purchase_order()
+			logger.debug(f"{self.name} PO Updated {datetime.now()}")
 			self.update_stock_ledger()	
+			logger.debug(f"{self.name} Stock Updated {datetime.now()}")
 		else:
+			logger.debug(f"{self.name} On Cancel {self.against} {datetime.now()}")
 			wo_doc = frappe.get_cached_doc(self.against, self.against_id)
 			items = self.items_json
 			if isinstance(items, string_types):
@@ -291,9 +307,12 @@ class GoodsReceivedNote(Document):
 						receivable.pending_quantity += item['quantity']
 						break
 			wo_doc.save(ignore_permissions=True)
+			logger.debug(f"{self.name} WO Receivable Updated {datetime.now()}")
 			res = get_variant_stock_details()
 			self.reupdate_stock_ledger(res)
+			logger.debug(f"{self.name} Stock Updated {datetime.now()}")
 			self.reupdate_wo_deliverables(res)
+			logger.debug(f"{self.name} Deliverables Updated {datetime.now()}")			
 
 	def reupdate_stock_ledger(self, res):
 		from production_api.mrp_stock.stock_ledger import make_sl_entries
@@ -394,6 +413,7 @@ class GoodsReceivedNote(Document):
 		sl_entries = []
 		received_type = frappe.db.get_single_value("Stock Settings", "default_received_type")
 		for item in self.items:
+			self.received_type = received_type
 			sl_entries.append(self.get_sl_entries(item, {}, 1, self.against, received_type))
 
 		if self.docstatus == 2:
@@ -1240,3 +1260,11 @@ def update_calculated_receivables(doc_name, receivables, received_type):
 	grn_doc.set("grn_deliverables", items)
 	grn_doc.save()
 
+@frappe.whitelist()
+def get_receivables(items,doc_name, wo_name,receivable):
+	from production_api.production_api.doctype.work_order.work_order import get_deliverable_receivable
+	logger = get_module_logger("goods_received_note")
+	logger.debug(f"{doc_name} Deliverables Calculation Started {datetime.now()}")
+	items = get_deliverable_receivable(items, wo_name, receivable=receivable)
+	logger.debug(f"{doc_name} Deliverables Calculation Completed {datetime.now()}")
+	return items

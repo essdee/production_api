@@ -1,16 +1,17 @@
 {
  "charts": [],
- "content": "[{\"id\":\"tcx875NdZN\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">Manufacturing</span>\",\"col\":12}},{\"id\":\"77aCRbFikj\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Purchase Order\",\"col\":3}},{\"id\":\"opf9TPh5-A\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Lot\",\"col\":3}},{\"id\":\"WIySpX3vQV\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Item\",\"col\":3}},{\"id\":\"VBX8mK0Z-3\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Supplier\",\"col\":3}},{\"id\":\"TRc6u3ugUT\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"GRN\",\"col\":3}},{\"id\":\"-ElAWu5ogn\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Purchase Invoice\",\"col\":3}},{\"id\":\"KQVuXiOr3d\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Item Price\",\"col\":3}},{\"id\":\"3LJP-0wFoI\",\"type\":\"spacer\",\"data\":{\"col\":12}},{\"id\":\"ZtwupzFsjZ\",\"type\":\"card\",\"data\":{\"card_name\":\"Item\",\"col\":3}},{\"id\":\"TCbrVnqsRP\",\"type\":\"card\",\"data\":{\"card_name\":\"Reports\",\"col\":4}}]",
+ "content": "[{\"id\":\"tcx875NdZN\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">Purchase<br></span>\",\"col\":12}},{\"id\":\"77aCRbFikj\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Purchase Order\",\"col\":3}},{\"id\":\"opf9TPh5-A\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Lot\",\"col\":3}},{\"id\":\"WIySpX3vQV\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Item\",\"col\":3}},{\"id\":\"VBX8mK0Z-3\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Supplier\",\"col\":3}},{\"id\":\"TRc6u3ugUT\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"GRN\",\"col\":3}},{\"id\":\"-ElAWu5ogn\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Purchase Invoice\",\"col\":3}},{\"id\":\"KQVuXiOr3d\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Item Price\",\"col\":3}},{\"id\":\"3LJP-0wFoI\",\"type\":\"spacer\",\"data\":{\"col\":12}},{\"id\":\"ZtwupzFsjZ\",\"type\":\"card\",\"data\":{\"card_name\":\"Item\",\"col\":3}},{\"id\":\"TCbrVnqsRP\",\"type\":\"card\",\"data\":{\"card_name\":\"Reports\",\"col\":4}}]",
  "creation": "2023-03-30 15:17:33.105497",
  "custom_blocks": [],
  "docstatus": 0,
  "doctype": "Workspace",
  "for_user": "",
  "hide_custom": 0,
- "icon": "shortcut",
+ "icon": "projects",
  "idx": 0,
+ "indicator_color": "",
  "is_hidden": 0,
- "label": "Manufacturing",
+ "label": "Purchase",
  "links": [
   {
    "hidden": 1,
@@ -90,17 +91,17 @@
    "type": "Link"
   }
  ],
- "modified": "2024-11-26 10:43:04.156051",
+ "modified": "2025-01-28 12:38:49.752150",
  "modified_by": "Administrator",
  "module": "Production Api",
- "name": "Manufacturing",
+ "name": "Purchase",
  "number_cards": [],
  "owner": "Administrator",
  "parent_page": "",
  "public": 1,
  "quick_lists": [],
  "roles": [],
- "sequence_id": 1.0,
+ "sequence_id": 2.0,
  "shortcuts": [
   {
    "color": "Grey",
@@ -157,5 +158,5 @@
    "type": "DocType"
   }
  ],
- "title": "Manufacturing"
+ "title": "Purchase"
 }

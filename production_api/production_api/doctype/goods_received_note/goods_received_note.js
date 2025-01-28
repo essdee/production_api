@@ -122,6 +122,7 @@ frappe.ui.form.on('Goods Received Note', {
 				frappe.call({
 					method: "production_api.production_api.doctype.delivery_challan.delivery_challan.get_calculated_items",
 					args: {
+						doc_name: frm.doc.name,
 						work_order: frm.doc.against_id,
 					},
 					callback: async function (r) {
@@ -405,10 +406,11 @@ function make_rework(frm, supplier, supplier_address, delivery_address, rework_t
 function calculate_receivables(frm, received_type){
 	let items = frm.calculate_receivables.get_work_order_items()
 	frappe.call({
-		method:'production_api.production_api.doctype.work_order.work_order.get_deliverable_receivable',
+		method:'production_api.production_api.doctype.goods_received_note.goods_received_note.get_receivables',
 		args: {
 			items: items,
-			doc_name: frm.doc.against_id,
+			doc_name: frm.doc.name,
+			wo_name: frm.doc.against_id,
 			receivable:true
 		},
 		freeze:true,

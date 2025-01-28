@@ -5,14 +5,18 @@ import frappe,json
 from six import string_types
 from frappe.utils import flt
 from itertools import groupby
+from datetime import datetime
 from frappe.model.document import Document
 from production_api.mrp_stock.utils import get_stock_balance
 from production_api.mrp_stock.stock_ledger import make_sl_entries
 from production_api.production_api.doctype.item.item import get_attribute_details, get_or_create_variant
 from production_api.production_api.doctype.purchase_order.purchase_order import get_item_attribute_details, get_item_group_index
+from production_api.production_api.logger import get_module_logger
 
 class DeliveryChallan(Document):
 	def on_cancel(self):
+		logger = get_module_logger("delivery_challan")
+		logger.debug(f"On Cancel {datetime.now()}")
 		wo_doc = frappe.get_doc("Work Order",self.work_order)
 		for item in self.items:
 			for deliverable in wo_doc.deliverables:
@@ -20,7 +24,7 @@ class DeliveryChallan(Document):
 					deliverable.pending_quantity += item.delivered_quantity
 					item.delivered_quantity = 0
 					break
-
+		logger.debug(f"{self.name} Work Order Deliverables Updated {datetime.now()}")
 		self.ignore_linked_doctypes = ('Stock Ledger Entry')
 		add_sl_entries = []
 		reduce_sl_entries = []
@@ -32,11 +36,16 @@ class DeliveryChallan(Document):
 			if res.get(row.item_variant):
 				add_sl_entries.append(self.get_sle_data(row, self.from_location, 1, {}, received_type))	
 				reduce_sl_entries.append(self.get_sle_data(row, self.supplier, -1, {}, received_type))
+		logger.debug(f"{self.name} SLE data construction {datetime.now()}")
 		make_sl_entries(add_sl_entries)
+		logger.debug(f"{self.name} Stock Added to From Location {datetime.now()}")
 		make_sl_entries(reduce_sl_entries)
+		logger.debug(f"{self.name} Stock reduced From Supplier {datetime.now()}")
 		wo_doc.save()		
 
 	def before_submit(self):
+		logger = get_module_logger("delivery_challan")
+		logger.debug(f"On Submit {datetime.now()}")
 		add_sl_entries = []
 		reduce_sl_entries = []
 		res = get_variant_stock_details()
@@ -49,7 +58,8 @@ class DeliveryChallan(Document):
 				row.rate = rate		
 				reduce_sl_entries.append(self.get_sle_data(row, self.from_location, -1, {}, received_type))
 				add_sl_entries.append(self.get_sle_data(row, self.supplier, 1, {}, received_type))
-
+		
+		logger.debug(f"{self.name} Stock check and SLE data construction {datetime.now()}")
 		wo_doc = frappe.get_cached_doc("Work Order", self.work_order)
 		for deliverable in wo_doc.deliverables:
 			for item in self.items:
@@ -59,8 +69,11 @@ class DeliveryChallan(Document):
 						deliverable.valuation_rate = item.get('rate')
 					break
 		wo_doc.save()
+		logger.debug(f"{self.name} Work Order deliverables updated {datetime.now()}")
 		make_sl_entries(reduce_sl_entries)
+		logger.debug(f"{self.name} Stock reduced from From Location {datetime.now()}")
 		make_sl_entries(add_sl_entries)
+		logger.debug(f"{self.name} Stock Added to Supplier {datetime.now()}")
 	
 	def before_save(self):
 		if self.docstatus == 1:
@@ -279,13 +292,12 @@ def get_dc_structure(doc_name):
 
 @frappe.whitelist()
 def get_current_user_time():
-	from datetime import datetime
 	d = datetime.now()
 	d = datetime.fromtimestamp(d.timestamp()).strftime("%c")
 	return [frappe.session.user, d]
 
 @frappe.whitelist()
-def get_calculated_items(work_order):
+def get_calculated_items(doc_name,work_order):
 	from production_api.production_api.doctype.work_order.work_order import fetch_calculated_items
 	doc = frappe.get_doc("Work Order", work_order)
 	stage = frappe.get_value("Lot", doc.lot, "pack_in_stage")
@@ -301,4 +313,13 @@ def get_calculated_items(work_order):
 	items[0]['attributes'] = dependent_attributes
 	items[0]['final_state'] = stage
 	items[0]['item'] = doc.item
+	return items
+
+@frappe.whitelist()
+def get_calculated_deliverables(items,wo_name, doc_name, deliverable):
+	from production_api.production_api.doctype.work_order.work_order import get_deliverable_receivable
+	logger = get_module_logger("delivery_challan")
+	logger.debug(f"{doc_name} Deliverable Calculation Started {datetime.now()}")
+	items = get_deliverable_receivable(items, wo_name, deliverable=deliverable)
+	logger.debug(f"{doc_name} Deliverables Calculated {datetime.now()}")
 	return items

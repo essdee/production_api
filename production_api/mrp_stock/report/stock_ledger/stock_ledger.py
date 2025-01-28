@@ -246,7 +246,7 @@ def get_stock_ledger_entries(filters, items):
 	if items:
 		query = query.where(sle.item.isin(items))
 
-	for field in ["voucher_no", "lot", "warehouse"]:
+	for field in ["voucher_no", "lot", "warehouse","received_type"]:
 		if filters.get(field):
 			query = query.where(sle[field] == filters.get(field))
 

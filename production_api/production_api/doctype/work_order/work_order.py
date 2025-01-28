@@ -5,9 +5,11 @@ from frappe import _
 import frappe, json, math
 from six import string_types
 from itertools import groupby
+from datetime import datetime
 from frappe.model.document import Document
 from frappe.utils import flt, nowdate, nowtime
 from production_api.mrp_stock.stock_ledger import make_sl_entries
+from production_api.production_api.logger import get_module_logger
 from production_api.production_api.doctype.purchase_order.purchase_order import get_item_group_index
 from production_api.production_api.doctype.item.item import get_attribute_details, get_or_create_variant
 from production_api.production_api.doctype.delivery_challan.delivery_challan import get_variant_stock_details
@@ -325,13 +327,18 @@ def get_work_order_items(work_order, is_grn = False):
 	return data
  
 @frappe.whitelist()
-def get_lot_items(lot):
+def get_lot_items(lot, doc_name):
+	logger = get_module_logger("work_order")
+	logger.debug(f"{doc_name} Calculation Started {datetime.now()}")
 	doc = frappe.get_cached_doc("Lot", lot)	
 	items = fetch_order_item_details(doc.lot_order_details, doc.production_detail)
+	logger.debug(f"{doc_name} Fetched Order detail from Lot {datetime.now()}")
 	return items
 
 @frappe.whitelist()
 def get_deliverable_receivable( items, doc_name, deliverable=False, receivable=False):
+	logger = get_module_logger("work_order")
+	logger.debug(f"{doc_name} Deliverable and Receivable Calculation {datetime.now()}")
 	wo_doc = frappe.get_cached_doc("Work Order", doc_name)
 	lot_doc = frappe.db.sql(
 		f"""
@@ -385,6 +392,8 @@ def get_deliverable_receivable( items, doc_name, deliverable=False, receivable=F
 		bom = get_calculated_bom(ipd, items, wo_doc.lot, process_name=wo_doc.process_name,doctype="Work Order", deliverable=deliverable)
 		bom = get_bom_structure(bom, row_index, table_index)
 		deliverables, receivables, total_qty = calc_deliverable_and_receivable(ipd_doc, wo_doc.process_name, item_list, item_name, dept_attribute, ipd, wo_doc.lot, uom, bom, lot_doc, stiching_in_stage, pack_out_stage, pack_out_uom)		
+	
+	logger.debug(f"{doc_name} Calculation Completed {datetime.now()}")
 	if deliverable:
 		return deliverables
 	if receivable:
@@ -393,6 +402,7 @@ def get_deliverable_receivable( items, doc_name, deliverable=False, receivable=F
 	wo_doc.set('receivables', receivables)
 	wo_doc.set("total_quantity", total_qty)
 	wo_doc.set("work_order_calculated_items",items)
+	logger.debug(f"{doc_name} doc saved {datetime.now()}")
 	wo_doc.save()
 	return None
 
@@ -707,6 +717,8 @@ def add_comment(doc_name, date, reason):
 	
 @frappe.whitelist()
 def update_stock(work_order):
+	logger = get_module_logger("work_order")
+	logger.debug(f"{work_order} data construction {datetime.now()}")
 	res = get_variant_stock_details()
 	sl_entries = []
 	doc = frappe.get_doc("Work Order", work_order)
@@ -735,7 +747,10 @@ def update_stock(work_order):
 					"posting_time": nowtime(),
 				})
 			data.stock_update = data.qty
+	logger.debug(f"{work_order} data construction completed {datetime.now()}")
+
 	make_sl_entries(sl_entries)
+	logger.debug(f"{work_order} SLE Updated {datetime.now()}")
 	doc.open_status = "Close"
 	doc.is_delivered = True
 	doc.total_quantity = 0
