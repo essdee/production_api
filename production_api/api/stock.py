@@ -1,6 +1,6 @@
 import frappe, json
 from production_api.mrp_stock.doctype.bin.bin import get_stock_balance_bin
-from production_api.mrp_stock.doctype.fg_stock_entry.fg_stock_entry import create_FG_ste,get_stock_entry_detail
+from production_api.mrp_stock.doctype.fg_stock_entry.fg_stock_entry import create_FG_ste,get_stock_entry_detail, fg_stock_entry_cancel
 from six import string_types
 import math
 
@@ -184,7 +184,7 @@ def get_fg_stock_entry_details_list(pageLength, curr_page):
 
     list_items = frappe.get_list("FG Stock Entry",
                     fields=['name','posting_date', 'posting_time', 'dc_number', 
-                    'lot', 'supplier', 'warehouse', 'received_by', 'comments'], 
+                    'lot', 'supplier', 'warehouse', 'received_by', 'comments', 'docstatus'], 
                 start=((curr_page-1) * pageLength), limit=pageLength, order_by='creation DESC' )
     
     total_pages = frappe.db.count("FG Stock Entry")
@@ -195,3 +195,7 @@ def get_fg_stock_entry_details_list(pageLength, curr_page):
         "total_count" : total_pages,
         "displaying" : len(list_items)
     }
+
+@frappe.whitelist()
+def cancel_fg_stock_entry(stock_entry):
+    return fg_stock_entry_cancel(stock_entry)
