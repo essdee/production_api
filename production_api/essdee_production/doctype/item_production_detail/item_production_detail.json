@@ -590,6 +590,7 @@
    "fieldtype": "Int",
    "hidden": 1,
    "label": "Version"
+  },
   {
    "fieldname": "section_break_uqfw",
    "fieldtype": "Section Break"

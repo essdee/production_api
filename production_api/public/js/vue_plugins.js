@@ -140,6 +140,9 @@ frappe.production.ui.CombinationItemDetail = class {
     get_data(){
         let items = JSON.parse(JSON.stringify(this.vue.get_data()))
         return items
+    }
+}
+
 frappe.production.ui.EmblishmentDetails = class {
     constructor(wrapper) {
         this.$wrapper = $(wrapper);
