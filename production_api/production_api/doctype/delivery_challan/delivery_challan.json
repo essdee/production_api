@@ -12,6 +12,7 @@
   "item",
   "is_rework",
   "column_break_xmwj",
+  "edit_posting_date_and_time",
   "posting_date",
   "posting_time",
   "process_name",
@@ -49,6 +50,7 @@
    "fieldname": "posting_date",
    "fieldtype": "Date",
    "label": "Posting Date",
+   "read_only_depends_on": "eval: !doc.edit_posting_date_and_time",
    "reqd": 1
   },
   {
@@ -56,6 +58,7 @@
    "fieldname": "posting_time",
    "fieldtype": "Time",
    "label": "Posting Time",
+   "read_only_depends_on": "eval: !doc.edit_posting_date_and_time",
    "reqd": 1
   },
   {
@@ -215,12 +218,18 @@
   {
    "fieldname": "section_break_jalt",
    "fieldtype": "Section Break"
+  },
+  {
+   "default": "0",
+   "fieldname": "edit_posting_date_and_time",
+   "fieldtype": "Check",
+   "label": "Edit Posting Date and Time"
   }
  ],
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-01-27 14:08:53.331898",
+ "modified": "2025-01-28 18:50:25.591218",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Delivery Challan",

@@ -225,8 +225,6 @@ class GoodsReceivedNote(Document):
 		make_sl_entries(sl_entries)
 	
 	def get_deliverables_data(self, d, lot, args, multiplier, received_type):
-		print(type(multiplier))
-		print(type(d.get("quantity")))
 		sl_dict = frappe._dict({
 			"item": d.item_variant,
 			"warehouse": self.supplier,
@@ -239,8 +237,8 @@ class GoodsReceivedNote(Document):
 			"uom": d.uom,
 			"rate": d.valuation_rate,
 			"is_cancelled": 1 if self.docstatus == 2 else 0,
-			"posting_date": self.delivery_date,
-			"posting_time": nowtime(),
+			"posting_date": self.posting_date,
+			"posting_time": self.posting_time,
 			"valuation_rate":d.valuation_rate,
 		})
 		sl_dict.update(args)
@@ -268,8 +266,8 @@ class GoodsReceivedNote(Document):
 			"rate": rate,
 			"valuation_rate":rate,
 			"is_cancelled": 1 if self.docstatus == 2 else 0,
-			"posting_date": self.delivery_date,
-			"posting_time": nowtime(),
+			"posting_date": self.posting_date,
+			"posting_time": self.posting_time,
 		})
 		sl_dict.update(args)
 		return sl_dict

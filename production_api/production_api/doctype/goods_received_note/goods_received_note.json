@@ -15,6 +15,7 @@
   "dc_no",
   "column_break_1",
   "rework_created",
+  "edit_posting_date_and_time",
   "against_id",
   "grn_date",
   "posting_date",
@@ -290,7 +291,7 @@
    "in_list_view": 1,
    "label": "Posting Date",
    "no_copy": 1,
-   "read_only": 1,
+   "read_only_depends_on": "eval: !doc.edit_posting_date_and_time",
    "reqd": 1
   },
   {
@@ -300,7 +301,7 @@
    "in_list_view": 1,
    "label": "Posting Time",
    "no_copy": 1,
-   "read_only": 1,
+   "read_only_depends_on": "eval: !doc.edit_posting_date_and_time",
    "reqd": 1
   },
   {
@@ -366,12 +367,18 @@
    "fieldname": "dc_no",
    "fieldtype": "Data",
    "label": "DC No"
+  },
+  {
+   "default": "0",
+   "fieldname": "edit_posting_date_and_time",
+   "fieldtype": "Check",
+   "label": "Edit Posting Date and Time"
   }
  ],
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-01-27 16:16:14.436208",
+ "modified": "2025-01-28 18:53:59.238878",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Goods Received Note",
