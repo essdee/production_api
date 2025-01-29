@@ -14,19 +14,17 @@
   "quantity",
   "secondary_qty",
   "stock_qty",
+  "received_type",
   "column_break_qils",
   "uom",
   "secondary_uom",
   "stock_uom",
   "conversion_factor",
-  "received_quantity",
   "section_break_xafc",
   "rate",
   "stock_uom_rate",
   "column_break_pncq",
   "amount",
-  "section_break_rvbh",
-  "received_type",
   "section_break_valg",
   "table_index",
   "ref_doctype",
@@ -34,10 +32,11 @@
   "column_break_jodk",
   "row_index",
   "ref_docname",
-  "rework_details"
+  "received_types"
  ],
  "fields": [
   {
+   "columns": 4,
    "fieldname": "item_variant",
    "fieldtype": "Link",
    "in_list_view": 1,
@@ -46,6 +45,8 @@
    "reqd": 1
   },
   {
+   "columns": 1,
+   "default": "0",
    "fieldname": "quantity",
    "fieldtype": "Float",
    "in_list_view": 1,
@@ -92,13 +93,17 @@
    "label": "Comments"
   },
   {
+   "columns": 1,
    "fieldname": "table_index",
    "fieldtype": "Int",
+   "in_list_view": 1,
    "label": "Table Index"
   },
   {
+   "columns": 1,
    "fieldname": "row_index",
    "fieldtype": "Int",
+   "in_list_view": 1,
    "label": "Row Index"
   },
   {
@@ -112,22 +117,6 @@
    "fieldtype": "Dynamic Link",
    "label": "Item Table Reference",
    "options": "ref_doctype"
-  },
-  {
-   "fieldname": "rework_details",
-   "fieldtype": "Small Text",
-   "label": "Rework Details"
-  },
-  {
-   "fieldname": "received_quantity",
-   "fieldtype": "Float",
-   "label": "Received Quantity"
-  },
-  {
-   "fieldname": "received_type",
-   "fieldtype": "Data",
-   "in_list_view": 1,
-   "label": "Received Type"
   },
   {
    "fieldname": "column_break_yftt",
@@ -176,22 +165,30 @@
    "label": "Amount"
   },
   {
-   "fieldname": "section_break_rvbh",
-   "fieldtype": "Section Break"
-  },
-  {
    "fieldname": "section_break_valg",
    "fieldtype": "Section Break"
   },
   {
    "fieldname": "column_break_jodk",
    "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "received_types",
+   "fieldtype": "JSON",
+   "label": "Received Types"
+  },
+  {
+   "fieldname": "received_type",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Received Type",
+   "options": "GRN Item Type"
   }
  ],
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2024-11-13 23:07:35.752861",
+ "modified": "2025-01-21 14:22:41.533742",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Goods Received Note Item",

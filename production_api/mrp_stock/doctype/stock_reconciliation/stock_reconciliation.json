@@ -94,7 +94,7 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2023-11-06 11:14:30.070910",
+ "modified": "2025-01-27 14:16:18.446400",
  "modified_by": "Administrator",
  "module": "MRP Stock",
  "name": "Stock Reconciliation",
@@ -130,6 +130,26 @@
    "report": 1,
    "role": "Stock User",
    "write": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Merch Manager",
+   "select": 1,
+   "share": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Merch User",
+   "select": 1,
+   "share": 1
   }
  ],
  "sort_field": "modified",

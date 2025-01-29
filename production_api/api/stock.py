@@ -4,6 +4,7 @@ from production_api.mrp_stock.doctype.fg_stock_entry.fg_stock_entry import creat
 from six import string_types
 import math
 
+received_type =frappe.db.get_single_value("Stock Settings", "default_received_type")
 @frappe.whitelist()
 def get_stock(item, warehouse, remove_zero_balance_item=1):
     
@@ -16,7 +17,9 @@ def get_stock(item, warehouse, remove_zero_balance_item=1):
         
     data  = get_stock_balance_bin(
         warehouse,
-        fg_lot,item,
+        fg_lot,
+        item,
+        received_type,
         remove_zero_balance_item
     )
 
@@ -74,6 +77,7 @@ def make_dispatch_stock_entry(items, warehouse, packing_slip):
             'lot': fg_lot,
             'table_index': index,
             'row_index': index,
+            'received_type':received_type,
         })
         index += 1
         

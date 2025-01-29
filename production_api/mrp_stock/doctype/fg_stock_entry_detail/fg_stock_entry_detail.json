@@ -13,7 +13,8 @@
   "conversion_factor",
   "rate",
   "row",
-  "col"
+  "col",
+  "received_type"
  ],
  "fields": [
   {
@@ -78,6 +79,12 @@
    "label": "col",
    "non_negative": 1,
    "read_only": 1
+  },
+  {
+   "fieldname": "received_type",
+   "fieldtype": "Link",
+   "label": "Received Type",
+   "options": "GRN Item Type"
   }
  ],
  "index_web_pages_for_search": 1,

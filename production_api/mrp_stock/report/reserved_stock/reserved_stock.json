@@ -9,7 +9,7 @@
  "idx": 0,
  "is_standard": "Yes",
  "letterhead": null,
- "modified": "2024-09-24 16:46:52.277964",
+ "modified": "2025-01-27 14:19:32.494998",
  "modified_by": "Administrator",
  "module": "MRP Stock",
  "name": "Reserved Stock",
@@ -21,7 +21,12 @@
  "roles": [
   {
    "role": "System Manager"
+  },
+  {
+   "role": "Merch Manager"
+  },
+  {
+   "role": "Merch User"
   }
- ],
- "timeout": 0
+ ]
 }

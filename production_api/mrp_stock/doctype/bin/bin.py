@@ -22,7 +22,7 @@ class Bin(Document):
 			get_sre_reserved_qty_for_item_and_warehouse,
 		)
 
-		reserved_stock = get_sre_reserved_qty_for_item_and_warehouse(self.item_code, self.warehouse, self.lot)
+		reserved_stock = get_sre_reserved_qty_for_item_and_warehouse(self.item_code, self.warehouse, self.lot, self.received_type)
 		if reserved_stock < 0:
 			frappe.throw("Reserved Stock Can't Be Negative")
 		if reserved_stock > self.actual_qty :
@@ -53,6 +53,7 @@ def update_qty(bin_name, args):
 			(sle.item == args.get("item"))
 			& (sle.warehouse == args.get("warehouse"))
 			& (sle.lot == args.get("lot"))
+			& (sle.received_type == args.get("received_type"))
 			& (sle.is_cancelled == 0)
 		)
 		.orderby(CombineDatetime(sle.posting_date, sle.posting_time), order=Order.desc)
@@ -73,7 +74,7 @@ def update_qty(bin_name, args):
 		update_modified=True,
 	)
  
-def get_stock_balance_bin(warehouse,lot,item,remove_zero_balance_item = False):
+def get_stock_balance_bin(warehouse, lot, item, received_type, remove_zero_balance_item = False):
     
     bin = frappe.qb.DocType("Bin")
     
@@ -89,6 +90,8 @@ def get_stock_balance_bin(warehouse,lot,item,remove_zero_balance_item = False):
     
     if warehouse and len(warehouse) != 0:
         query = query.where(bin.warehouse.isin(warehouse))
+    if received_type:
+        query = query.where(bin.received_type == received_type)		
     if item and len(item) != 0:
         query = query.where(bin.item_code.isin(item))
         
@@ -99,4 +102,18 @@ def get_stock_balance_bin(warehouse,lot,item,remove_zero_balance_item = False):
     return query.run(as_dict = True)
 
 def on_doctype_update():
-	frappe.db.add_unique("Bin", ["item_code", "warehouse", "lot"], constraint_name="unique_item_warehouse_lot")
+	if frappe.db.sql(
+		f"""
+			SELECT CONSTRAINT_NAME
+			FROM information_schema.TABLE_CONSTRAINTS
+			WHERE table_name= 'tabBin'
+			AND constraint_type='UNIQUE'
+			AND CONSTRAINT_NAME= 'unique_item_warehouse_lot'
+		"""
+	):
+		frappe.db.sql(
+			"""
+				ALTER TABLE `tabBin` DROP CONSTRAINT `unique_item_warehouse_lot`;
+			"""
+		)
+	frappe.db.add_unique("Bin", ["item_code", "warehouse", "lot", "received_type"], constraint_name="unique_item_warehouse_lot_type")

@@ -4,7 +4,6 @@
 import frappe
 from frappe import _
 
-
 def execute(filters=None):
 	columns, data = get_columns(filters), get_data(filters)
 	return columns, data
@@ -46,6 +45,13 @@ def get_columns(filters):
 			"width": 150,
 		},
 		{
+			"fieldname":"received_type",
+			"fieldtype":"Link",
+			"label":_("Received Type"),
+			"options":"GRN Item Type",
+			"width":80,
+		},
+		{
 			"label": _("Balance Qty"),
 			"fieldname": "actual_qty",
 			"fieldtype": "Float",
@@ -72,6 +78,7 @@ def get_data(filters):
 			bin.warehouse.as_("warehouse"),
 			supplier.supplier_name.as_("warehouse_name"),
 			bin.lot.as_("lot"),
+			bin.received_type,
 			bin.actual_qty,
 			bin.stock_uom,
 		)
@@ -86,7 +93,8 @@ def get_data(filters):
 		query = query.where(bin.item_code == item_variant)
 	if item := filters.get("item"):
 		query = query.where(variant.item == item)
-
+	if received_type := filters.get("received_type"):
+		query = query.where(bin.received_type == received_type)
 	if filters.get("remove_zero_balance_item"):
 		query = query.where(bin.actual_qty != 0)
 	

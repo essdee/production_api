@@ -18,6 +18,7 @@ class FGStockEntry(Document):
 		self.make_mrp_sle_entries()
 
 	def validate_data(self):
+		received_type = frappe.db.get_single_value("Stock Settings","default_received_type")
 		for row in self.items:
 			if row.rate in ["", None, 0, '0']:
 				row.rate = get_stock_balance(
@@ -28,6 +29,7 @@ class FGStockEntry(Document):
 					buying_rate = get_item_variant_price(row.item_variant, variant_uom=row.uom)
 					if buying_rate:
 						row.rate = buying_rate
+			row.received_type = received_type			
 	
 	def before_cancel(self):
 		self.ignore_linked_doctypes = ("Stock Ledger Entry")
@@ -38,6 +40,7 @@ class FGStockEntry(Document):
 		for d in self.items:
 			sl_entries.append(frappe._dict({
 				"item" : d.get('item_variant'),
+				"received_type": d.get('received_type'),
 				"warehouse" : self.warehouse,
 				"posting_date" : self.get("posting_date"),
 				"posting_time" : self.get("posting_time"),
@@ -65,7 +68,7 @@ def make_sle_entries(sle_details):
 def create_FG_ste(lot, received_by, supplier, dc_number, warehouse, posting_date, posting_time, items_list, comments, created_user):
 	if isinstance(items_list, string_types):
 		items_list = frappe.json.loads(items_list)
-	
+	received_type =frappe.db.get_single_value("Stock Settings", "default_received_type")
 	doc = frappe.new_doc("FG Stock Entry")
 	doc.set('lot', lot)
 	doc.set('received_by', received_by)
@@ -77,6 +80,7 @@ def create_FG_ste(lot, received_by, supplier, dc_number, warehouse, posting_date
 		stock_details = get_uom_details(i['item_variant'], i['uom'], i['qty'])
 		doc_items.append({
 			"item_variant" : i['item_variant'],
+			"received_type":received_type,
 			"qty" : i['qty'],
 			"uom" : i['uom'],
 			"stock_qty" : flt(

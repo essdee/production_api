@@ -8,6 +8,8 @@ import DDItem from "./PurchaseOrder/components/DateUpdateDialog.vue"
 import PONewItem from "./PurchaseOrder/components/NewItem.vue"
 import POItem from "./PurchaseOrder/components/Item.vue"
 import GRNItemWrapper from "./GRN";
+import GRNPurchaseOrder from "./GRN/components/GRNPurchaseOrder.vue";
+import GRNWorkOrder from "./GRN/components/GRNWorkOrder.vue";
 import LotOrder from "./Lot/components/LotOrder.vue" 
 import WorkStation from "./Lot/components/WorkStation.vue"
 import TimeActionPreview from "./Lot/components/TimeActionPreview.vue"
@@ -17,8 +19,8 @@ import CutPlanItems from "./CuttingPlan/components/CutPlanItems.vue"
 import CuttingCompletionDetail from "./CuttingPlan/components/CuttingCompletionDetail.vue"
 import CuttingIncompletionDetail from "./CuttingPlan/components/CuttingIncompletionDetail.vue"
 import CutPlanClothItems from "./CuttingPlan/components/CutPlanClothItems.vue"
-
 import CombinationItemDetail from "./Item_Po_detail/CombinationItemDetail.vue"
+import EmblishmentDetails from "./Item_Po_detail/EmblishmentDetails.vue"
 import CuttingItemDetail from "./Item_Po_detail/CuttingItemDetail.vue"
 import ClothAccessory from "./Item_Po_detail/ClothAccessory.vue"
 import ClothAccessoryCombination from "./Item_Po_detail/ClothAccessoryCombination.vue"
@@ -138,7 +140,26 @@ frappe.production.ui.CombinationItemDetail = class {
     get_data(){
         let items = JSON.parse(JSON.stringify(this.vue.get_data()))
         return items
-    }   
+    }
+}
+
+frappe.production.ui.EmblishmentDetails = class {
+    constructor(wrapper) {
+        this.$wrapper = $(wrapper);
+        this.make_body();
+    }
+    make_body(){
+        this.app = createApp(EmblishmentDetails)
+        SetVueGlobals(this.app)
+        this.vue = this.app.mount(this.$wrapper.get(0))
+    }
+    load_data(items){
+        this.vue.load_items(JSON.parse(JSON.stringify(items)))
+    }
+    get_items(){
+        let items = JSON.parse(JSON.stringify(this.vue.get_items()))
+        return items
+    }
 }
 
 frappe.production.ui.CuttingItemDetail = class {
@@ -366,7 +387,6 @@ frappe.production.ui.WorkOrderItemView = class {
         let items = JSON.parse(JSON.stringify(item_details))
         this.vue.load_data(items)
     }
-
     get_work_order_items(){
         let items = this.vue.get_items()
         for(let i = 0 ; i < items[0].items.length; i++){
@@ -401,6 +421,68 @@ frappe.production.ui.CutPlanItems = class {
         return items
     }
 }
+
+frappe.production.ui.GRNPurchaseOrder = class {
+    constructor(wrapper) {
+        this.$wrapper = $(wrapper);
+        this.make_body();
+    }
+    
+    make_body() {
+        this.app = createApp(GRNPurchaseOrder);
+        SetVueGlobals(this.app)
+        this.grn = this.app.mount(this.$wrapper.get(0));
+    }
+    
+    updateWrapper(wrapper) {
+        this.$wrapper = $(wrapper);
+        $(this.vue.$el).appendTo(this.$wrapper)
+    }
+    
+    get_items() {
+        return this.grn.get_items();
+    }
+    
+    load_data(data, skip_watch=false) {
+        this.grn.load_data(data, skip_watch);
+    }
+    update_status() {
+        this.grn.update_status();
+    }
+}
+
+frappe.production.ui.GRNWorkOrder = class {
+    constructor(wrapper) {
+        this.$wrapper = $(wrapper);
+        this.make_body();
+    }
+    
+    make_body() {
+        this.app = createApp(GRNWorkOrder);
+        SetVueGlobals(this.app)
+        this.grn = this.app.mount(this.$wrapper.get(0));
+    }
+    
+    updateWrapper(wrapper) {
+        this.$wrapper = $(wrapper);
+        $(this.vue.$el).appendTo(this.$wrapper)
+    }
+    
+    get_items() {
+        return this.grn.get_items();
+    }
+    
+    load_data(data, skip_watch=false) {
+        this.grn.load_data(data, skip_watch);
+    }
+    update_status() {
+        this.grn.update_status();
+    }
+}
+
+
+
+
 frappe.production.ui.CuttingCompletionDetail = class {
     constructor(wrapper){
         this.$wrapper = $(wrapper)
@@ -587,6 +669,15 @@ frappe.production.ui.Delivery_Challan = class {
     }
     get_data(){
         let items = JSON.parse(JSON.stringify(this.vue.deliverables_item))
+        for(let i = 0 ; i < items.length ; i++){
+            for(let j = 0 ; j < items[i].items.length ; j++){
+                Object.keys(items[i].items[j].values).forEach(key => {
+                    if(items[i].items[j].values[key].delivered_quantity == "" || items[i].items[j].values[key].delivered_quantity == null){
+                        items[i].items[j].values[key].delivered_quantity = 0
+                    }
+                })
+            }
+        }
         return items
     }
     update_status() {

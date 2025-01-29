@@ -8,9 +8,15 @@
  "field_order": [
   "work_order",
   "naming_series",
+  "lot",
+  "item",
+  "is_rework",
   "column_break_xmwj",
+  "edit_posting_date_and_time",
   "posting_date",
   "posting_time",
+  "process_name",
+  "vehicle_no",
   "address_and_contact_section",
   "from_location",
   "from_address",
@@ -23,7 +29,11 @@
   "items",
   "deliverable_items",
   "comments",
-  "amended_from"
+  "amended_from",
+  "section_break_jalt",
+  "stock_value",
+  "additional_goods_value",
+  "total_value"
  ],
  "fields": [
   {
@@ -40,6 +50,7 @@
    "fieldname": "posting_date",
    "fieldtype": "Date",
    "label": "Posting Date",
+   "read_only_depends_on": "eval: !doc.edit_posting_date_and_time",
    "reqd": 1
   },
   {
@@ -47,6 +58,7 @@
    "fieldname": "posting_time",
    "fieldtype": "Time",
    "label": "Posting Time",
+   "read_only_depends_on": "eval: !doc.edit_posting_date_and_time",
    "reqd": 1
   },
   {
@@ -141,12 +153,83 @@
    "fieldtype": "Small Text",
    "label": "Supplier Address Details",
    "read_only": 1
+  },
+  {
+   "fieldname": "stock_value",
+   "fieldtype": "Currency",
+   "label": "Stock Value",
+   "read_only": 1
+  },
+  {
+   "fieldname": "total_value",
+   "fieldtype": "Currency",
+   "label": "Total Value",
+   "non_negative": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "additional_goods_value",
+   "fieldtype": "Currency",
+   "label": "Additional Goods Value"
+  },
+  {
+   "default": "0",
+   "fetch_from": "work_order.is_rework",
+   "fetch_if_empty": 1,
+   "fieldname": "is_rework",
+   "fieldtype": "Check",
+   "hidden": 1,
+   "label": "Is Rework"
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "vehicle_no",
+   "fieldtype": "Data",
+   "label": "Vehicle No",
+   "reqd": 1
+  },
+  {
+   "fetch_from": "work_order.process_name",
+   "fetch_if_empty": 1,
+   "fieldname": "process_name",
+   "fieldtype": "Link",
+   "hidden": 1,
+   "label": "Process Name",
+   "options": "Process"
+  },
+  {
+   "fetch_from": "work_order.lot",
+   "fetch_if_empty": 1,
+   "fieldname": "lot",
+   "fieldtype": "Link",
+   "label": "Lot",
+   "options": "Lot",
+   "read_only": 1
+  },
+  {
+   "fetch_from": "work_order.item",
+   "fetch_if_empty": 1,
+   "fieldname": "item",
+   "fieldtype": "Link",
+   "label": "Item",
+   "options": "Item",
+   "read_only": 1
+  },
+  {
+   "fieldname": "section_break_jalt",
+   "fieldtype": "Section Break"
+  },
+  {
+   "default": "0",
+   "fieldname": "edit_posting_date_and_time",
+   "fieldtype": "Check",
+   "label": "Edit Posting Date and Time"
   }
  ],
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2024-10-16 09:51:19.994581",
+ "modified": "2025-01-28 18:50:25.591218",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Delivery Challan",
@@ -164,6 +247,79 @@
    "role": "System Manager",
    "share": 1,
    "write": 1
+  },
+  {
+   "cancel": 1,
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Merch Manager",
+   "share": 1,
+   "submit": 1,
+   "write": 1
+  },
+  {
+   "cancel": 1,
+   "create": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Merch User",
+   "share": 1,
+   "submit": 1,
+   "write": 1
+  },
+  {
+   "cancel": 1,
+   "create": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Store Manager",
+   "share": 1,
+   "submit": 1,
+   "write": 1
+  },
+  {
+   "cancel": 1,
+   "create": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Store User",
+   "share": 1,
+   "submit": 1,
+   "write": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Stock User",
+   "select": 1,
+   "share": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Stock Manager",
+   "select": 1,
+   "share": 1
   }
  ],
  "sort_field": "modified",

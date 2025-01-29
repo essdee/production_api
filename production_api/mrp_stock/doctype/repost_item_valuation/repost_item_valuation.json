@@ -12,6 +12,7 @@
   "item",
   "warehouse",
   "lot",
+  "received_type",
   "posting_date",
   "posting_time",
   "column_break_cgpy",
@@ -213,12 +214,20 @@
    "label": "Affected Transactions",
    "no_copy": 1,
    "read_only": 1
+  },
+  {
+   "depends_on": "eval:doc.based_on=='Item and Warehouse'",
+   "fieldname": "received_type",
+   "fieldtype": "Link",
+   "label": "Received Type",
+   "mandatory_depends_on": "eval:doc.based_on=='Item and Warehouse'",
+   "options": "GRN Item Type"
   }
  ],
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-01-21 23:17:42.058699",
+ "modified": "2025-01-27 14:13:36.534471",
  "modified_by": "Administrator",
  "module": "MRP Stock",
  "name": "Repost Item Valuation",
@@ -251,6 +260,26 @@
    "share": 1,
    "submit": 1,
    "write": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Merch Manager",
+   "select": 1,
+   "share": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Merch User",
+   "select": 1,
+   "share": 1
   }
  ],
  "sort_field": "modified",

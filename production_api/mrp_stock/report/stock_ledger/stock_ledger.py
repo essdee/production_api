@@ -129,6 +129,13 @@ def get_columns(filters):
 				"options": "Supplier",
 				"width": 150,
 			},
+			{
+				"fieldname":"received_type",
+				"label":"Received Type",
+				"fieldtype":"Link",
+				"options":"GRN Item Type",
+				"width":"80",
+			},
 			# {
 			# 	"label": _("Item Group"),
 			# 	"fieldname": "item_group",
@@ -212,6 +219,7 @@ def get_stock_ledger_entries(filters, items):
 			CombineDatetime(sle.posting_date, sle.posting_time).as_("date"),
 			sle.warehouse,
 			supplier.supplier_name.as_('warehouse_name'),
+			sle.received_type,
 			sle.posting_date,
 			sle.posting_time,
 			sle.qty,
@@ -238,7 +246,7 @@ def get_stock_ledger_entries(filters, items):
 	if items:
 		query = query.where(sle.item.isin(items))
 
-	for field in ["voucher_no", "lot", "warehouse"]:
+	for field in ["voucher_no", "lot", "warehouse","received_type"]:
 		if filters.get(field):
 			query = query.where(sle[field] == filters.get(field))
 

@@ -68,7 +68,7 @@ class StockEntry(Document):
 				self.validation_messages.append(_get_msg(row.table_index, row.row_index, _("Negative Valuation Rate is not allowed")))
 			if row.qty and row.rate in ["", None, 0]:
 				row.rate = get_stock_balance(
-					row.item, None, self.posting_date, self.posting_time, with_valuation_rate=True, uom=row.uom,
+					row.item, None, row.received_type, self.posting_date, self.posting_time, with_valuation_rate=True, uom=row.uom,
 				)[1]
 				if not row.rate:
 					# try if there is a buying price list in default currency
@@ -235,6 +235,7 @@ class StockEntry(Document):
 			{
 				"item": d.get("item", None),
 				"warehouse": d.get("warehouse", None),
+				"received_type":d.get("received_type",None),
 				"lot": d.get("lot"),
 				"posting_date": self.posting_date,
 				"posting_time": self.posting_time,
@@ -326,6 +327,7 @@ def fetch_stock_entry_items(items):
 			'values': {},
 			'default_uom': variants[0].get('uom') or current_item_attribute_details['default_uom'],
 			'secondary_uom': variants[0].get('secondary_uom') or current_item_attribute_details['secondary_uom'],
+			'received_type':variants[0]['received_type'],
 			'remarks': variants[0]['remarks'],
 		}
 
@@ -389,6 +391,7 @@ def save_stock_entry_items(item_details):
 							variant1 = create_variant(item_name, item_attributes)
 							variant1.insert()
 							variant_name = variant1.name
+						print(item)
 						item1['item'] = variant_name
 						item1['lot'] = item.get('lot')
 						item1['uom'] = item.get('default_uom')
@@ -400,6 +403,7 @@ def save_stock_entry_items(item_details):
 						item1['table_index'] = table_index
 						item1['row_index'] = row_index
 						item1['remarks'] = item.get('remarks')
+						item1['received_type'] = item.get('received_type')
 						items.append(item1)
 			else:
 				if item['values'].get('default') and item['values']['default'].get('qty'):
@@ -409,6 +413,7 @@ def save_stock_entry_items(item_details):
 						variant1 = create_variant(item_name, item_attributes)
 						variant1.insert()
 						variant_name = variant1.name
+					print(item)	
 					item1['item'] = variant_name
 					item1['lot'] = item.get('lot')
 					item1['uom'] = item.get('default_uom')
@@ -420,6 +425,7 @@ def save_stock_entry_items(item_details):
 					item1['table_index'] = table_index
 					item1['row_index'] = row_index
 					item1['remarks'] = item.get('remarks')
+					item1['received_type'] = item.get('received_type')
 					items.append(item1)
 			row_index += 1
 	return items

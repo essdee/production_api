@@ -157,6 +157,9 @@ def get_cut_sheet_data(doc_name,cutting_marker,item_details,items, max_plys:int,
 			if no_of_marks == 0:
 				continue
 			max_grouping = int(maximum_plys/item['no_of_bits'])
+			if max_grouping == 0:
+				frappe.msgprint("Max number of Plys should not be less than No of Bits")
+				return
 			total_bundles = math.ceil(no_of_marks/max_grouping)
 			avg_grouping = no_of_marks/total_bundles
 

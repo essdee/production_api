@@ -17,6 +17,8 @@
   "process_name",
   "item",
   "production_detail",
+  "delivery_location",
+  "open_status",
   "section_break_tmhn",
   "planned_start_date",
   "planned_end_date",
@@ -24,6 +26,8 @@
   "column_break_ahbf",
   "start_date",
   "end_date",
+  "supplier_type",
+  "rework_type",
   "address_and_contact_section",
   "supplier_address",
   "supplier_address_details",
@@ -38,7 +42,9 @@
   "receivable_items",
   "section_break_axzz",
   "comments",
-  "amended_from"
+  "amended_from",
+  "total_quantity",
+  "work_order_calculated_items"
  ],
  "fields": [
   {
@@ -136,12 +142,15 @@
    "reqd": 1
   },
   {
+   "default": "Today",
    "fieldname": "planned_end_date",
    "fieldtype": "Date",
    "label": "Planned End Date",
    "reqd": 1
   },
   {
+   "allow_on_submit": 1,
+   "default": "Today",
    "fieldname": "expected_delivery_date",
    "fieldtype": "Date",
    "label": "Expected Delivery Date",
@@ -227,7 +236,8 @@
    "default": "0",
    "fieldname": "is_rework",
    "fieldtype": "Check",
-   "label": "Is Rework"
+   "label": "Is Rework",
+   "read_only": 1
   },
   {
    "depends_on": "eval: doc.is_rework",
@@ -244,12 +254,69 @@
    "hidden": 1,
    "label": "Production Detail",
    "options": "Item Production Detail"
+  },
+  {
+   "allow_on_submit": 1,
+   "default": "Open",
+   "fieldname": "open_status",
+   "fieldtype": "Select",
+   "label": "Open Status",
+   "options": "Open\nClose",
+   "read_only": 1
+  },
+  {
+   "depends_on": "eval: doc.is_rework",
+   "fieldname": "supplier_type",
+   "fieldtype": "Select",
+   "label": "Supplier Type",
+   "mandatory_depends_on": "eval: doc.is_rework",
+   "options": "Same Supplier\nDifferent Supplier",
+   "read_only_depends_on": "eval: !doc.__islocal"
+  },
+  {
+   "depends_on": "eval: doc.is_rework",
+   "fieldname": "rework_type",
+   "fieldtype": "Select",
+   "label": "Rework Type",
+   "mandatory_depends_on": "eval: doc.is_rework",
+   "options": "No Cost\nNet Cost Nil\nAdditional Cost",
+   "read_only_depends_on": "eval: !doc.__islocal"
+  },
+  {
+   "fieldname": "delivery_location",
+   "fieldtype": "Link",
+   "label": "Delivery Location",
+   "options": "Supplier"
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "total_quantity",
+   "fieldtype": "Float",
+   "hidden": 1,
+   "label": "Total Quantity",
+   "non_negative": 1
+  },
+  {
+   "fieldname": "work_order_calculated_items",
+   "fieldtype": "Table",
+   "hidden": 1,
+   "label": "Work Order Calculated Items",
+   "options": "Work Order Calculated Item"
   }
  ],
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
- "links": [],
- "modified": "2024-10-16 11:20:00.751158",
+ "links": [
+  {
+   "link_doctype": "Delivery Challan",
+   "link_fieldname": "work_order"
+  },
+  {
+   "link_doctype": "Goods Received Note",
+   "link_fieldname": "against_id"
+  }
+ ],
+ "modified": "2025-01-27 14:09:21.664355",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Work Order",
@@ -267,6 +334,73 @@
    "role": "System Manager",
    "share": 1,
    "write": 1
+  },
+  {
+   "cancel": 1,
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Merch Manager",
+   "share": 1,
+   "submit": 1,
+   "write": 1
+  },
+  {
+   "cancel": 1,
+   "create": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Merch User",
+   "share": 1,
+   "submit": 1,
+   "write": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Stock Manager",
+   "select": 1,
+   "share": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Stock User",
+   "select": 1,
+   "share": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Store Manager",
+   "select": 1,
+   "share": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Store User",
+   "select": 1,
+   "share": 1
   }
  ],
  "sort_field": "modified",

@@ -20,7 +20,11 @@
   "pending_quantity",
   "additional_parameters",
   "ref_doctype",
-  "ref_docname"
+  "ref_docname",
+  "stock_value",
+  "additional_goods_value",
+  "valuation_rate",
+  "is_calculated"
  ],
  "fields": [
   {
@@ -44,6 +48,7 @@
    "fieldtype": "Float",
    "in_list_view": 1,
    "label": "Qty",
+   "precision": "3",
    "reqd": 1
   },
   {
@@ -118,12 +123,33 @@
    "fieldname": "delivered_quantity",
    "fieldtype": "Float",
    "label": "Delivered Quantity"
+  },
+  {
+   "fieldname": "stock_value",
+   "fieldtype": "Currency",
+   "label": "Stock Value"
+  },
+  {
+   "fieldname": "additional_goods_value",
+   "fieldtype": "Currency",
+   "label": "Additional Goods Value"
+  },
+  {
+   "fieldname": "valuation_rate",
+   "fieldtype": "Currency",
+   "label": "Valuation Rate"
+  },
+  {
+   "default": "0",
+   "fieldname": "is_calculated",
+   "fieldtype": "Check",
+   "label": "Is Calculated"
   }
  ],
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2024-10-15 17:13:58.268603",
+ "modified": "2025-01-17 18:58:58.779140",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Delivery Challan Item",

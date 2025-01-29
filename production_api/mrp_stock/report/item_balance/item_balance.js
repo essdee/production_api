@@ -32,6 +32,13 @@ frappe.query_reports["Item Balance"] = {
 			"options": "Lot",
 		},
 		{
+			"fieldname":"received_type",
+			"fieldtype":"Link",
+			"label":"Received Type",
+			"options":"GRN Item Type",
+			"width":80,
+		},
+		{
 			"fieldname": 'remove_zero_balance_item',
 			"label": __('Remove Zero Balance Item'),
 			"fieldtype": 'Check'

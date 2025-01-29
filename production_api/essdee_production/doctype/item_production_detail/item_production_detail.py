@@ -1,14 +1,15 @@
 # Copyright (c) 2024, Essdee and contributors
 # For license information, please see license.txt
-import frappe, json
+
 import math
-from frappe.model.document import Document
-from frappe.utils import now_datetime
+import frappe, json
 from six import string_types
 from itertools import groupby
+from frappe.utils import now_datetime
+from frappe.model.document import Document
 from production_api.production_api.doctype.item.item import get_or_create_variant
-from production_api.production_api.doctype.item_dependent_attribute_mapping.item_dependent_attribute_mapping import get_dependent_attribute_details
 from production_api.essdee_production.doctype.lot.lot import get_uom_conversion_factor
+from production_api.production_api.doctype.item_dependent_attribute_mapping.item_dependent_attribute_mapping import get_dependent_attribute_details
 
 class ItemProductionDetail(Document):
 	def autoname(self):
@@ -65,7 +66,6 @@ class ItemProductionDetail(Document):
 		self.set_onload('bom_attr_list', bom_attribute_list)
 
 	def load_dependent_attribute(self):
-		"""Load Dependent Attribute Detail into `__onload`"""
 		dependent_attribute = {}
 		if self.dependent_attribute and self.dependent_attribute_mapping:
 			dependent_attribute = get_dependent_attribute_details(self.dependent_attribute_mapping)
@@ -290,11 +290,12 @@ class ItemProductionDetail(Document):
 
 		if self.stiching_attribute in ipd_cloth_attributes and self.stiching_attribute not in ipd_cutting_attributes:
 			frappe.throw(f"Please mention the {self.stiching_attribute} in Cutting Combination")
-
-		pre_set_item = frappe.db.get_value("Item Production Detail", self.name,"is_set_item")
+		
+		pre_set_item = frappe.get_value("Item Production Detail", self.name,"is_set_item")
 		if pre_set_item:
 			if self.is_set_item and self.set_item_attribute not in accessory_attributes and len(accessory_attributes) > 0:
 				frappe.throw(f"{self.set_item_attribute} should be in the Accessory Combination")
+			
 			if self.is_set_item and self.set_item_attribute not in ipd_cutting_attributes and len(ipd_cutting_attributes) > 0:
 				frappe.throw(f"{self.set_item_attribute} Should be in the Cutting Combination")
 
@@ -346,7 +347,21 @@ def delete_docs(documents):
 		doctype = frappe.qb.DocType(key)
 		if value:
 			frappe.qb.from_(doctype).delete().where(doctype.name.isin(value)).run()
-	
+
+def get_ipd_primary_values(production_detail):
+	doc = frappe.get_doc("Item Production Detail", production_detail)
+	primary_attr_values = []
+	mapping = None
+	for i in doc.item_attributes:
+		if i.attribute == doc.primary_item_attribute:
+			mapping = i.mapping
+			break
+	if mapping:
+		map_doc = frappe.get_doc("Item Item Attribute Mapping", mapping)	
+		for val in map_doc.values:
+			primary_attr_values.append(val.attribute_value)
+	return primary_attr_values
+
 @frappe.whitelist()
 @frappe.validate_and_sanitize_search_inputs
 def get_item_attributes(doctype, txt, searchfield, start, page_len, filters):
@@ -382,24 +397,31 @@ def get_attribute_values(item_production_detail, attributes = None):
 	return attribute_values
 
 @frappe.whitelist()
-def get_calculated_bom(item_production_detail, items, lot_name, process_name = None):
-	item_detail = frappe.get_doc("Item Production Detail", item_production_detail)
+def get_calculated_bom(item_production_detail, items, lot_name, process_name = None,doctype=None, deliverable=False):
+	item_detail = frappe.get_cached_doc("Item Production Detail", item_production_detail)
 	bom = {}
 	bom_summary = {}
 	if isinstance(items, string_types):
 		items = json.loads(items)
 	if len(items) == 0:
 		return
-	lot_doc = frappe.get_doc("Lot", lot_name)
+	lot_doc = frappe.get_cached_doc("Lot", lot_name)
 	cloth_combination = get_cloth_combination(item_detail)
 	stitching_combination = get_stitching_combination(item_detail)
 	bom_combination = get_bom_combination(item_detail.item_bom)
 	cloth_detail = {}
 	for cloth in item_detail.cloth_detail:
-		if cloth.is_bom_item:
+		if doctype:
 			cloth_detail[cloth.name1] = cloth.cloth
-
-	total_quantity = lot_doc.total_order_quantity
+		elif cloth.is_bom_item: 	
+			cloth_detail[cloth.name1] = cloth.cloth
+	total_quantity = None
+	if not process_name:
+		total_quantity = lot_doc.total_order_quantity
+	else:
+		total_quantity = 0
+		for i in items:
+			total_quantity += i['quantity']
 
 	for bom_item in item_detail.item_bom:
 		if process_name and bom_item.process_name != process_name:
@@ -427,11 +449,11 @@ def get_calculated_bom(item_production_detail, items, lot_name, process_name = N
 	
 	for item in items:
 		qty = item['quantity']
-		if not qty:
+		if not qty and not deliverable:
 			continue
 		variant = item['item_variant']
 		attr_values = {}
-		variant_doc = frappe.get_doc("Item Variant", variant)
+		variant_doc = frappe.get_cached_doc("Item Variant", variant)
 
 		for x in variant_doc.attributes:
 			attr_values[x.attribute] = x.attribute_value
@@ -444,7 +466,7 @@ def get_calculated_bom(item_production_detail, items, lot_name, process_name = N
 					dept_attr = bom_item.dependent_attribute_value
 					attr_details = get_dependent_attribute_details(item_detail.dependent_attribute_mapping)
 					dept_attr_uom = attr_details['attr_list'][dept_attr]['uom']
-					default_uom = frappe.get_cached_value("Item",bom_item.item,"default_unit_of_measure")
+					default_uom = frappe.get_value("Item",bom_item.item,"default_unit_of_measure")
 					bom_summary[bom_item.item] = [bom_item.process_name,bom_item.qty_of_product,dept_attr_uom,bom_item.qty_of_bom_item,default_uom,0]
 				
 				if not bom.get(bom_item.item, False):
@@ -477,7 +499,7 @@ def get_calculated_bom(item_production_detail, items, lot_name, process_name = N
 						else:
 							mapping_bom[bom_item.item][str(attr)][0] += math.ceil(quantity)
 
-		if item_detail.dependent_attribute:
+		if item_detail.dependent_attribute and attr_values.get(item_detail.dependent_attribute):
 			del attr_values[item_detail.dependent_attribute]
 
 		if not process_name or process_name == item_detail.cutting_process:
@@ -491,7 +513,7 @@ def get_calculated_bom(item_production_detail, items, lot_name, process_name = N
 	bom_items = []
 	if not process_name or process_name == item_detail.cutting_process:
 		for k in cloth_details:
-			uom = frappe.get_cached_value("Item",k[0],"default_unit_of_measure")
+			uom = frappe.get_value("Item",k[0],"default_unit_of_measure")
 			cloth_name = get_or_create_variant(k[0], {item_detail.packing_attribute: k[1], 'Dia': k[2]})
 			if not bom.get(k[0],False):
 				bom[k[0]] = {cloth_name:[cloth_details[k],item_detail.cutting_process,uom]}
@@ -719,7 +741,6 @@ def save_item_details(combination_item_detail, ipd_doc = None):
 		for i in ipd_doc.set_item_combination_details:
 			set_item_packing_combination.setdefault(i.major_attribute_value, {})
 			set_item_packing_combination[i.major_attribute_value][i.set_item_attribute_value] = i.attribute_value	
-	
 	for idx,item in enumerate(combination_item_detail['values']):
 		for value in item['val']:
 			row = {}
@@ -1206,6 +1227,7 @@ def update_attr_combination(initial_attrs, attributes, last_item, attrs_len):
 						initial_attrs[attributes[j]] = 0
 	return None					
 
+@frappe.whitelist()
 def get_attr_mapping_details(mapping):
 	doc = frappe.get_doc('Item Item Attribute Mapping', mapping)
 	values = []

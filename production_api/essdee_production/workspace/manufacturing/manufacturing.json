@@ -1,0 +1,86 @@
+{
+ "charts": [],
+ "content": "[{\"id\":\"9NtaKEcHzB\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">Manufacturing</span>\",\"col\":12}},{\"id\":\"7Nl41d39i_\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Lot\",\"col\":3}},{\"id\":\"SffCjV3lXs\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Work Order\",\"col\":3}},{\"id\":\"dgyhm9E6c2\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"DC\",\"col\":3}},{\"id\":\"8wcboYArR9\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"GRN\",\"col\":3}},{\"id\":\"EZtp0q6_3_\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Process Cost\",\"col\":3}},{\"id\":\"OmqmAP5rlH\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Supplier\",\"col\":3}},{\"id\":\"P2bi1cXHjk\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Item\",\"col\":3}},{\"id\":\"pMft7X-9Pd\",\"type\":\"spacer\",\"data\":{\"col\":12}}]",
+ "creation": "2025-01-28 12:33:46.232932",
+ "custom_blocks": [],
+ "docstatus": 0,
+ "doctype": "Workspace",
+ "for_user": "",
+ "hide_custom": 0,
+ "icon": "sidebar-expand",
+ "idx": 0,
+ "indicator_color": "",
+ "is_hidden": 0,
+ "label": "Manufacturing",
+ "links": [],
+ "modified": "2025-01-28 12:54:36.512314",
+ "modified_by": "Administrator",
+ "module": "Essdee Production",
+ "name": "Manufacturing",
+ "number_cards": [],
+ "owner": "Administrator",
+ "parent_page": "",
+ "public": 1,
+ "quick_lists": [],
+ "roles": [],
+ "sequence_id": 1.0,
+ "shortcuts": [
+  {
+   "color": "Grey",
+   "doc_view": "List",
+   "label": "Work Order",
+   "link_to": "Work Order",
+   "stats_filter": "[]",
+   "type": "DocType"
+  },
+  {
+   "color": "Grey",
+   "doc_view": "List",
+   "label": "Lot",
+   "link_to": "Lot",
+   "stats_filter": "[]",
+   "type": "DocType"
+  },
+  {
+   "color": "Grey",
+   "doc_view": "List",
+   "label": "DC",
+   "link_to": "Delivery Challan",
+   "stats_filter": "[]",
+   "type": "DocType"
+  },
+  {
+   "color": "Grey",
+   "doc_view": "List",
+   "label": "GRN",
+   "link_to": "Goods Received Note",
+   "stats_filter": "[]",
+   "type": "DocType"
+  },
+  {
+   "color": "Grey",
+   "doc_view": "List",
+   "label": "Supplier",
+   "link_to": "Supplier",
+   "stats_filter": "[]",
+   "type": "DocType"
+  },
+  {
+   "color": "Grey",
+   "doc_view": "List",
+   "label": "Item",
+   "link_to": "Item",
+   "stats_filter": "[]",
+   "type": "DocType"
+  },
+  {
+   "color": "Grey",
+   "doc_view": "List",
+   "label": "Process Cost",
+   "link_to": "Process Cost",
+   "stats_filter": "[]",
+   "type": "DocType"
+  }
+ ],
+ "title": "Manufacturing"
+}

@@ -105,9 +105,29 @@ doc_events = {
 
 fixtures = [
     {
-        "dt":'Essdee Raw Print Format'
-    }
+        "dt":'Essdee Raw Print Format',
+    },
+    {
+        "dt":"GRN Item Type",
+    },
+    { 
+		"dt": 'Workflow',
+		"filters": [["name", "in",["Process Cost", "Item Price"]]]
+    },
+    {
+        "dt": 'Role',
+        "filters": [["name", "in",["Merch User","Merch Manager"]]]
+    },
+    {
+        'dt': 'Workflow State',
+        'filters':[['name','in',['Draft',"Approval Pending","Expired","Rejected","Approved","Pending"]]],
+	},
+    {
+        'dt':'Workflow Action Master',
+        'filters':[['name','in',['Submit',"Expired","Reject","Approve"]]]
+	}
 ]
+
 # Scheduled Tasks
 # ---------------
 
@@ -164,6 +184,7 @@ jinja = {
         "production_api.production_api.doctype.purchase_order.purchase_order.get_PO_print_details",
         "production_api.production_api.util.parse_string_for_SMS",
         "production_api.production_api.doctype.goods_received_note.goods_received_note.fetch_grn_item_details",
+        "production_api.production_api.doctype.goods_received_note.goods_received_note.fetch_grn_purchase_item_details",
         "production_api.production_api.util.check_key_value_in_dict_or_list_of_dict",
         "production_api.production_api.util.parse_json",
         "production_api.product_development.doctype.product.product.get_latest_product_images",
@@ -178,6 +199,9 @@ jinja = {
         "production_api.production_api.doctype.cutting_laysheet.cutting_laysheet.get_bundle_items",
         "production_api.production_api.doctype.cutting_laysheet.cutting_laysheet.get_colours",
         "production_api.production_api.doctype.cutting_laysheet.cutting_laysheet.get_created_date",
+        "production_api.production_api.doctype.delivery_challan.delivery_challan.get_dc_structure",
+        "production_api.production_api.doctype.goods_received_note.goods_received_note.get_grn_structure",
+        "production_api.production_api.doctype.delivery_challan.delivery_challan.get_current_user_time",
     ]
 }
 

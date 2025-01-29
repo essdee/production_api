@@ -67,7 +67,7 @@ class LotTransfer(Document):
 				self.validation_messages.append(_get_msg(row.table_index, row.row_index, _("Negative Valuation Rate is not allowed")))
 			if row.qty and row.rate in ["", None, 0]:
 				row.rate = get_stock_balance(
-					row.item, None, self.posting_date, self.posting_time, with_valuation_rate=True,lot=row.from_lot, uom=row.uom,
+					row.item, None, row.received_type, self.posting_date, self.posting_time, with_valuation_rate=True,lot=row.from_lot, uom=row.uom,
 				)[1]
 				if not row.rate:
 					# try if there is a buying price list in default currency
@@ -212,6 +212,7 @@ def fetch_lot_transfer_items(items):
 			'values': {},
 			'default_uom': variants[0].get('uom') or current_item_attribute_details['default_uom'],
 			'secondary_uom': variants[0].get('secondary_uom') or current_item_attribute_details['secondary_uom'],
+			'received_type':variants[0].get('received_type')
 			# 'comments': variants[0]['comments'],
 		}
 
@@ -276,6 +277,7 @@ def save_lot_transfer_items(item_details):
 						item1['rate'] = values.get('rate')
 						item1['table_index'] = table_index
 						item1['row_index'] = row_index
+						item1['received_type'] = values.get('received_type')
 						# item1['comments'] = item.get('comments')
 						items.append(item1)
 			else:
@@ -295,6 +297,7 @@ def save_lot_transfer_items(item_details):
 					item1['rate'] = item['values']['default'].get('rate')
 					item1['table_index'] = table_index
 					item1['row_index'] = row_index
+					item1['received_type'] = item.get('received_type')
 					# item1['comments'] = item.get('comments')
 					items.append(item1)
 			row_index += 1

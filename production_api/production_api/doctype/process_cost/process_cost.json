@@ -10,45 +10,47 @@
   "uom",
   "from_date",
   "naming_series",
+  "is_rework",
   "is_expired",
   "column_break_fsdv",
   "supplier",
-  "process_name",
+  "supplier_name",
   "to_date",
+  "process_name",
   "section_break_oriw",
   "depends_on_attribute",
-  "tax_slab",
   "attribute",
-  "approved_by",
-  "column_break_eclt",
-  "dependent_attribute",
-  "dependent_attribute_values",
-  "section_break_midy",
+  "tax_slab",
   "process_cost_values",
-  "amended_from"
+  "amended_from",
+  "approved_by"
  ],
  "fields": [
   {
    "fieldname": "item",
    "fieldtype": "Link",
    "in_list_view": 1,
+   "in_standard_filter": 1,
    "label": "Item",
    "options": "Item",
    "reqd": 1
   },
   {
-   "allow_on_submit": 1,
+   "default": "Today",
    "fieldname": "from_date",
    "fieldtype": "Date",
    "in_list_view": 1,
    "label": "From Date",
+   "no_copy": 1,
    "reqd": 1
   },
   {
    "allow_on_submit": 1,
    "fieldname": "to_date",
    "fieldtype": "Date",
-   "label": "To Date"
+   "in_list_view": 1,
+   "label": "To Date",
+   "no_copy": 1
   },
   {
    "fieldname": "process_name",
@@ -58,26 +60,25 @@
    "reqd": 1
   },
   {
+   "allow_in_quick_entry": 1,
    "fetch_from": "item.default_unit_of_measure",
    "fieldname": "uom",
    "fieldtype": "Link",
+   "in_list_view": 1,
    "label": "UOM",
    "options": "UOM",
-   "read_only": 1
+   "reqd": 1
   },
   {
    "fieldname": "column_break_fsdv",
    "fieldtype": "Column Break"
   },
   {
-   "fieldname": "section_break_midy",
-   "fieldtype": "Section Break"
-  },
-  {
    "fieldname": "tax_slab",
    "fieldtype": "Link",
    "label": "Tax Slab",
-   "options": "Tax Slab"
+   "options": "Tax Slab",
+   "reqd": 1
   },
   {
    "default": "0",
@@ -102,7 +103,8 @@
    "fieldname": "process_cost_values",
    "fieldtype": "Table",
    "label": "Process Cost Values",
-   "options": "Process Cost Value"
+   "options": "Process Cost Value",
+   "reqd": 1
   },
   {
    "default": "PC-",
@@ -139,25 +141,24 @@
    "fieldtype": "Section Break"
   },
   {
-   "fieldname": "column_break_eclt",
-   "fieldtype": "Column Break"
+   "default": "0",
+   "fieldname": "is_rework",
+   "fieldtype": "Check",
+   "label": "Is Rework"
   },
   {
-   "fieldname": "dependent_attribute",
-   "fieldtype": "Link",
-   "label": "Dependent Attribute",
-   "options": "Item Attribute"
-  },
-  {
-   "fieldname": "dependent_attribute_values",
-   "fieldtype": "Select",
-   "label": "Dependent Attribute Values"
+   "allow_in_quick_entry": 1,
+   "fetch_from": "supplier.supplier_name",
+   "fieldname": "supplier_name",
+   "fieldtype": "Data",
+   "label": "Supplier Name",
+   "read_only": 1
   }
  ],
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2024-10-16 09:54:52.679000",
+ "modified": "2025-01-27 14:12:38.754594",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Process Cost",
@@ -173,6 +174,31 @@
    "read": 1,
    "report": 1,
    "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "cancel": 1,
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Merch Manager",
+   "share": 1,
+   "submit": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Merch User",
    "share": 1,
    "write": 1
   }

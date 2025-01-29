@@ -15,7 +15,9 @@
   "column_break_prru",
   "reserved_qty",
   "section_break_sgrx",
-  "stock_uom"
+  "stock_uom",
+  "column_break_ljpt",
+  "received_type"
  ],
  "fields": [
   {
@@ -77,11 +79,21 @@
    "fieldtype": "Link",
    "label": "UOM",
    "options": "UOM"
+  },
+  {
+   "fieldname": "column_break_ljpt",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "received_type",
+   "fieldtype": "Link",
+   "label": "Received Type",
+   "options": "GRN Item Type"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2024-12-31 21:09:23.617963",
+ "modified": "2025-01-27 14:14:46.255100",
  "modified_by": "Administrator",
  "module": "MRP Stock",
  "name": "Bin",
@@ -120,6 +132,26 @@
    "read": 1,
    "report": 1,
    "role": "Merchandiser"
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Merch Manager",
+   "select": 1,
+   "share": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Merch User",
+   "select": 1,
+   "share": 1
   }
  ],
  "sort_field": "modified",

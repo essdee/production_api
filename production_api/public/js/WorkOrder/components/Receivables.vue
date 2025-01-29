@@ -9,6 +9,7 @@
 			:edit="docstatus == 0"
 			:validate-qty="true"
 			:enableAdditionalParameter="true"
+			:lot_no="lot_no"
 			@itemadded="updated"
 			@itemupdated="updated"
 			@itemremoved="updated">
@@ -24,6 +25,7 @@ import ItemLotFetcher from '../../components/ItemLotFetch.vue'
 const docstatus = ref(0);
 const items = ref([]);
 const supplier = ref(cur_frm.doc.supplier);
+const lot_no = ref(cur_frm.doc.lot)
 
 const otherInputs = ref([
 	{
@@ -104,7 +106,11 @@ function load_data(all_items) {
 				}
 				element.items.forEach((rows,ind) => {
 					if(ind == index){
-						rows.total_cost = qty*cost[index][1]
+						let x = qty * cost[index][1];
+						if (isNaN(x)) {
+							x = 0;
+						}
+						rows.total_cost = x;
 					}
 				})
 			})

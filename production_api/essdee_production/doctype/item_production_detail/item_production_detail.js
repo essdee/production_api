@@ -182,6 +182,7 @@ frappe.ui.form.on("Item Production Detail", {
 			frm.trigger('make_cutting_combination')
 			frm.trigger('make_cloth_accessories')
 			frm.trigger('make_stiching_accessory_combination')
+			frm.trigger("emblishment_details")
 			if (frm.doc.cloth_detail.length > 0) {
 				frm.trigger('make_clothtype_accessory_combination')
 			}
@@ -293,6 +294,13 @@ frappe.ui.form.on("Item Production Detail", {
 		frm.accessory_clothtype = new frappe.production.ui.AccessoryItems(frm.fields_dict['accessory_clothtype_combination_html'].wrapper);
 		if(frm.doc.accessory_clothtype_json) {
 			await frm.accessory_clothtype.load_data(frm.doc.accessory_clothtype_json);
+		}
+	},
+	emblishment_details(frm){
+		$(frm.fields_dict['emblishment_details_html'].wrapper).html("");
+		frm.emblishment = new frappe.production.ui.EmblishmentDetails(frm.fields_dict['emblishment_details_html'].wrapper);
+		if(frm.doc.emblishment_details_json){
+			frm.emblishment.load_data(frm.doc.emblishment_details_json)
 		}
 	},
 	onload_post_render(frm){
@@ -422,6 +430,15 @@ frappe.ui.form.on("Item Production Detail", {
 			}
 			else {
 				frm.doc.accessory_clothtype_json = item_details
+			}
+		}
+		if(frm.emblishment){
+			let items = frm.emblishment.get_items()
+			if(items == null || !items ){
+				frm.doc.emblishment_details_json = {}
+			}
+			else{
+				frm.doc.emblishment_details_json = items
 			}
 		}
 	},

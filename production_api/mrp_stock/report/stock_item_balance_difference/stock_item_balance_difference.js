@@ -47,6 +47,13 @@ frappe.query_reports["Stock Item Balance Difference"] = {
 			"options": "Lot",
 		},
 		{
+			"fieldname":"received_type",
+			"fieldtype":"Link",
+			"label":"Received Type",
+			"options":"GRN Item Type",
+			"width":80,
+		},
+		{
 			"fieldname": "remove_zero_diff",
 			"label": __("Remove Zero Differences"),
 			"fieldtype": "Check",

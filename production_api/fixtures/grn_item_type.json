@@ -1,0 +1,34 @@
+[
+ {
+  "docstatus": 0,
+  "doctype": "GRN Item Type",
+  "grn_type": "Accepted",
+  "modified": "2024-10-16 11:01:30.111451",
+  "name": "Accepted",
+  "type": "Accepted"
+ },
+ {
+  "docstatus": 0,
+  "doctype": "GRN Item Type",
+  "grn_type": "Rejected",
+  "modified": "2024-10-16 11:01:26.169429",
+  "name": "Rejected",
+  "type": "Rejected"
+ },
+ {
+  "docstatus": 0,
+  "doctype": "GRN Item Type",
+  "grn_type": "Oil Mark",
+  "modified": "2024-10-16 11:01:22.227076",
+  "name": "Oil Mark",
+  "type": "Mistake"
+ },
+ {
+  "docstatus": 0,
+  "doctype": "GRN Item Type",
+  "grn_type": "Adas",
+  "modified": "2024-10-16 11:01:17.670254",
+  "name": "Adas",
+  "type": "Mistake"
+ }
+]

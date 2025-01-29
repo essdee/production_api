@@ -5,7 +5,7 @@ import frappe, json
 from six import string_types
 from frappe.model.document import Document
 from production_api.production_api.doctype.item.item import get_attribute_details
-from production_api.essdee_production.doctype.lot.lot import get_ipd_primary_values
+from production_api.essdee_production.doctype.item_production_detail.item_production_detail import get_ipd_primary_values
 
 class CuttingMarker(Document):
 	def autoname(self):
@@ -42,7 +42,6 @@ def calculate_parts(ratios, cutting_plan, doc_name):
 		attribute_list.append({
 			"part": item.stiching_attribute_value,
 		})
-
 	cm_doc = frappe.get_doc("Cutting Marker", doc_name)
 	cm_doc.set("cutting_marker_parts",attribute_list)
 	cm_doc.save()		

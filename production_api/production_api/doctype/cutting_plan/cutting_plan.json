@@ -175,6 +175,7 @@
    "default": "Started",
    "fieldname": "status",
    "fieldtype": "Select",
+   "in_list_view": 1,
    "label": "Status",
    "options": "Started\nCompleted"
   }
