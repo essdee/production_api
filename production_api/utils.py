@@ -35,7 +35,7 @@ def _create_bin(item_code, warehouse, lot, received_type):
 
 def get_unreserved_qty(item):
     
-    bin = get_or_make_bin(item['item_name'],item['warehouse'],item['lot'])
+    bin = get_or_make_bin(item['item_name'],item['warehouse'],item['lot'], item['received_type'])
     bin_doc = frappe.get_doc("Bin",bin)
     return bin_doc.actual_qty - bin_doc.reserved_qty
 
