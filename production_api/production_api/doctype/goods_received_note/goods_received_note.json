@@ -21,6 +21,7 @@
   "posting_date",
   "posting_time",
   "process_name",
+  "is_manual_entry",
   "section_break_1",
   "supplier",
   "supplier_document_no",
@@ -44,6 +45,7 @@
   "item_html",
   "grn_deliverables",
   "items_json",
+  "grn_consumed_html",
   "section_break_8ncnk",
   "total",
   "total_tax",
@@ -373,12 +375,25 @@
    "fieldname": "edit_posting_date_and_time",
    "fieldtype": "Check",
    "label": "Edit Posting Date and Time"
+  },
+  {
+   "default": "0",
+   "fetch_from": "process_name.is_manual_entry_in_grn",
+   "fieldname": "is_manual_entry",
+   "fieldtype": "Check",
+   "label": "Is Manual Entry",
+   "read_only": 1
+  },
+  {
+   "fieldname": "grn_consumed_html",
+   "fieldtype": "HTML",
+   "label": "GRN Consumed HTML"
   }
  ],
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-01-28 18:53:59.238878",
+ "modified": "2025-01-30 10:46:41.196003",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Goods Received Note",

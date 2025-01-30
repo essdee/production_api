@@ -112,7 +112,7 @@ fixtures = [
     },
     { 
 		"dt": 'Workflow',
-		"filters": [["name", "in",["Process Cost", "Item Price"]]]
+		"filters": [["name", "in",["Process Cost Workflow", "Item Price Workflow"]]]
     },
     {
         "dt": 'Role',

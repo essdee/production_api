@@ -27,6 +27,10 @@ class GoodsReceivedNote(Document):
 				items = self.get('items_json')
 			item_details = fetch_grn_item_details(items, self.lot, docstatus=self.docstatus)
 			self.set_onload('item_details', item_details)
+			if self.is_manual_entry:
+				items = self.get("grn_deliverables") 
+				item_details = fetch_consumed_item_details(items)
+				self.set_onload("consumed_items", item_details)
 
 	def before_save(self):
 		if self.against == 'Purchase Order': 
@@ -61,8 +65,9 @@ class GoodsReceivedNote(Document):
 			res = get_variant_stock_details()
 			self.update_work_order_receivables()
 			logger.debug(f"{self.name} WO Receivables Updated {datetime.now()}")
-			self.calculate_grn_deliverables()
-			logger.debug(f"{self.name} Additional Deliverables Calculated {datetime.now()}")
+			if not self.is_manual_entry:
+				self.calculate_grn_deliverables()
+				logger.debug(f"{self.name} Additional Deliverables Calculated {datetime.now()}")
 			self.update_wo_stock_ledger(res)
 			logger.debug(f"{self.name} Items Added to Delivery Location {datetime.now()}")
 			self.reduce_uncalculated_stock(res)
@@ -431,7 +436,9 @@ class GoodsReceivedNote(Document):
 				self.set('items', items)
 		else:
 			lot, process = frappe.get_value(self.against, self.against_id, ["lot","process_name"])
+			is_manual_entry = frappe.get_value("Process", process, "is_manual_entry_in_grn")
 			self.process_name = process
+			self.is_manual_entry = is_manual_entry
 			self.lot = lot	
 			check = False
 			if self.is_new():
@@ -448,20 +455,24 @@ class GoodsReceivedNote(Document):
 					wo_deliverables = {}
 					for row in doc.deliverables:
 						wo_deliverables[row.item_variant] = row.valuation_rate
-
-					deliverables = calculate_deliverables(self)
-					items = []
-					for variant, attr in deliverables.items():
-						if wo_deliverables.get(variant):
-							items.append({
-								"item_variant": variant,
-								"quantity": attr['qty'],
-								"uom": attr['uom'],
-								"valuation_rate": wo_deliverables[variant]
-							})
-					self.set("grn_deliverables", items)
+					if not self.is_manual_entry:
+						deliverables = calculate_deliverables(self)
+						items = []
+						for variant, attr in deliverables.items():
+							if wo_deliverables.get(variant):
+								items.append({
+									"item_variant": variant,
+									"quantity": attr['qty'],
+									"uom": attr['uom'],
+									"valuation_rate": wo_deliverables[variant]
+								})
+						self.set("grn_deliverables", items)
 					self.total_received_quantity = total_qty
 					self.total_receivable_cost = total_rate
+
+		if self.get('consumed_item_details'):
+			items = save_grn_consumed_item_details(self.consumed_item_details)
+			self.set("grn_deliverables", items)
 
 	def validate(self):
 		if self.against == 'Purchase Order':
@@ -575,6 +586,85 @@ def save_grn_purchase_item_details(item_details):
 					items.append(item1)
 			row_index += 1
 	return items
+
+def save_grn_consumed_item_details(item_details):
+	if isinstance(item_details, string_types):
+		item_details = json.loads(item_details)
+	items = []
+	row_index = 0
+	for table_index, group in enumerate(item_details):
+		for item in group['items']:
+			item_name = item['name']
+			item_attributes = item['attributes']
+			if(item.get('primary_attribute')):
+				for attr, values in item['values'].items():
+					item_attributes[item.get('primary_attribute')] = attr
+					item1 = {}
+					variant_name = get_or_create_variant(item_name, item_attributes)
+					item1['quantity'] = values.get('qty')
+					item1['item_variant'] = variant_name
+					item1['uom'] = item.get('default_uom')
+					item1['table_index'] = table_index
+					item1['row_index'] = row_index
+					item1['comments'] = item.get('comments') 
+					items.append(item1)
+			else:
+				if item['values'].get('default') and item['values']['default'].get('qty'):
+					item1 = {}
+					variant_name = get_or_create_variant(item_name, item_attributes)
+					item1['quantity'] = item['values']['default'].get('qty')
+					item1['item_variant'] = variant_name
+					item1['uom'] = item.get('default_uom')
+					item1['table_index'] = table_index
+					item1['row_index'] = row_index
+					item1['comments'] = item.get('comments') 
+					items.append(item1)
+			row_index += 1
+	return items
+
+def fetch_consumed_item_details(items):
+	items = [item.as_dict() for item in items]
+	item_details = []
+	items = sorted(items, key = lambda i: i['row_index'])
+	for key, variants in groupby(items, lambda i: i['row_index']):
+		variants = list(variants)
+		current_variant = frappe.get_cached_doc("Item Variant", variants[0]['item_variant'])
+		current_item_attribute_details = get_attribute_details(current_variant.item)
+		item = {
+			'name': current_variant.item,
+			'attributes': get_item_attribute_details(current_variant, current_item_attribute_details),
+			'primary_attribute': current_item_attribute_details['primary_attribute'],
+			"dependent_attribute": current_item_attribute_details['dependent_attribute'],
+			"dependent_attribute_details": current_item_attribute_details['dependent_attribute_details'],
+			'values': {},
+			'default_uom': variants[0]['uom'] or current_item_attribute_details['default_uom'],
+			'comments': variants[0]['comments'],
+		}
+		if item['primary_attribute']:
+			for attr in current_item_attribute_details['primary_attribute_values']:
+				item['values'][attr] = {'qty': 0}
+			for variant in variants:
+				current_variant = frappe.get_cached_doc("Item Variant", variant['item_variant'])
+				for attr in current_variant.attributes:
+					if attr.attribute == item.get('primary_attribute'):
+						item['values'][attr.attribute_value] = {'qty': variant.quantity}
+						break
+		else:
+			item['values']['default'] = {'qty': variants[0].quantity}
+
+		index = get_item_group_index(item_details, current_item_attribute_details)
+		if index == -1:
+			item_details.append({
+				'attributes': current_item_attribute_details['attributes'],
+				'primary_attribute': current_item_attribute_details['primary_attribute'],
+				'primary_attribute_values': current_item_attribute_details['primary_attribute_values'],
+				"dependent_attribute": current_item_attribute_details['dependent_attribute'],
+				"dependent_attribute_details": current_item_attribute_details['dependent_attribute_details'],
+				'items': [item]
+			})
+		else:
+			item_details[index]['items'].append(item)
+	return item_details
 
 def save_grn_item_details(item_details, process_name):
 	if isinstance(item_details, string_types):
@@ -1234,29 +1324,30 @@ def update_calculated_receivables(doc_name, receivables, received_type):
 	grn_doc.total_received_quantity = total_qty	
 	grn_doc.total_receivable_cost = total_cost
 	grn_doc.save()
-	wo_doc = frappe.get_cached_doc(grn_doc.against, grn_doc.against_id)
-	wo_deliverables = {}
-	for row in wo_doc.deliverables:
-		wo_deliverables[row.item_variant] = row.valuation_rate
+	if not grn_doc.is_manual_entry:
+		wo_doc = frappe.get_cached_doc(grn_doc.against, grn_doc.against_id)
+		wo_deliverables = {}
+		for row in wo_doc.deliverables:
+			wo_deliverables[row.item_variant] = row.valuation_rate
 
-	deliverables = calculate_deliverables(grn_doc)
-	items = []
-	for variant, attr in deliverables.items():
-		check = True
-		x = wo_deliverables.get(variant)
-		if x == flt(0):
+		deliverables = calculate_deliverables(grn_doc)
+		items = []
+		for variant, attr in deliverables.items():
 			check = True
-		elif not x:
-			check = False
-		if check:
-			items.append({
-				"item_variant": variant,
-				"quantity": attr['qty'],
-				"uom": attr['uom'],
-				"valuation_rate": wo_deliverables[variant]
-			})
-	grn_doc.set("grn_deliverables", items)
-	grn_doc.save()
+			x = wo_deliverables.get(variant)
+			if x == flt(0):
+				check = True
+			elif not x:
+				check = False
+			if check:
+				items.append({
+					"item_variant": variant,
+					"quantity": attr['qty'],
+					"uom": attr['uom'],
+					"valuation_rate": wo_deliverables[variant]
+				})
+		grn_doc.set("grn_deliverables", items)
+		grn_doc.save()
 
 @frappe.whitelist()
 def get_receivables(items,doc_name, wo_name,receivable):
