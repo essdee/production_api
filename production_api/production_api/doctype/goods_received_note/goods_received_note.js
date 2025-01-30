@@ -154,6 +154,22 @@ frappe.ui.form.on('Goods Received Note', {
 				});
 			})
 		}
+		if(!frm.is_new()){
+			if(frm.doc.is_manual_entry){
+				frm.grn_consumed = new frappe.production.ui.GRNConsumed(frm.fields_dict['grn_consumed_html'].wrapper)
+				if(frm.doc.__onload && frm.doc.__onload.consumed_items){
+					frm.doc['grn_consumed_items'] = JSON.stringify(frm.doc.__onload.consumed_items)
+					frm.grn_consumed.load_data(frm.doc.__onload.consumed_items)
+				}
+				else{
+					frm.grn_consumed.load_data([])
+				}
+				frm.grn_consumed.update_status()
+			}
+		}
+		frappe.production.ui.eventBus.$on("grn_updated", e => {
+			frm.dirty();
+		})
 		// if(frm.doc.docstatus == 1 && frm.doc.against == "Work Order" && frm.doc.rework_created == 0){
 		// 	frm.add_custom_button("Create Rework",()=> {
 		// 		let d =new frappe.ui.Dialog({
@@ -231,6 +247,15 @@ frappe.ui.form.on('Goods Received Note', {
 		}
 		else {
 			frappe.throw(__('Please refresh and try again.'));
+		}
+		if(frm.grn_consumed){
+			let items = frm.grn_consumed.get_deliverables_data();
+			if(items){
+				frm.doc['consumed_item_details'] = JSON.stringify(items)
+			}
+			else{
+				frm.doc['consumed_item_details'] = null
+			}
 		}
 	},
 	supplier: function(frm) {
