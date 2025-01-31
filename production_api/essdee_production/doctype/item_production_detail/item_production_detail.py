@@ -555,8 +555,8 @@ def get_bom_uom(bom_item,item_detail,bom_item_doc):
 	return uom
 
 def get_doc_uom_conversion(lot_doc,bom_item):
-	dependent_attr_uom = get_uom(lot_doc.dependent_attribute_mapping,bom_item.dependent_attribute_value)
 	bom_item_doc = frappe.get_cached_doc("Item", bom_item.item)
+	dependent_attr_uom = bom_item_doc.default_unit_of_measure
 	bom_item_conv = get_uom_conversion_factor(bom_item_doc.uom_conversion_details, dependent_attr_uom ,lot_doc.packing_uom)
 	qty_of_product = bom_item_conv
 	return bom_item_doc,qty_of_product
@@ -656,12 +656,6 @@ def get_additional_cloth(weight, additional_cloth):
 		x = weight/100
 		return  x * additional_cloth
 	return 0.0
-
-def get_uom(dependent_attribute_mapping,dependent_attribute_value):
-	dept_attr_details = get_dependent_attribute_details(dependent_attribute_mapping)
-	for attr in dept_attr_details['attr_list']:
-		if attr == dependent_attribute_value:
-			return dept_attr_details['attr_list'][attr]['uom']
 
 def get_cloth_combination(ipd_doc):
 	cutting_attributes = [i.attribute for i in ipd_doc.cutting_attributes]

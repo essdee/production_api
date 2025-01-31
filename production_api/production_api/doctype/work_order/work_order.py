@@ -90,13 +90,49 @@ class WorkOrder(Document):
 			main_prs = [ipd_doc.packing_process, ipd_doc.stiching_process, ipd_doc.cutting_process]
 			if first_process not in main_prs and final_process not in main_prs:	
 				check = True				
+		
+		fil = {
+			'process_name':self.process_name,
+			'item':self.item,
+			'is_expired':0,
+			'from_date':['<=',self.wo_date],
+			'docstatus': 1,
+		}
+		if self.is_rework:
+			fil['is_rework'] = 1
+		else:
+			fil['is_rework'] = 0
+
+		if self.supplier:
+			fil['supplier'] = self.supplier
+
+		doc_names = frappe.get_list('Process Cost',filters = fil)
+		docname = None
+		if doc_names:
+			docname = doc_names[0]['name']
+		else:
+			del fil['supplier']
+			docnames = frappe.get_list('Process Cost',filters = fil)
+			if docnames:
+				docname = docnames[0]['name']
+		if not docname:
+			frappe.throw('No process cost for ' + self.process_name)
+
+		process_doc = frappe.get_doc("Process Cost", docname)
+		ipd_doc = frappe.get_cached_doc("Item Production Detail", self.production_detail)
+		stich_details = {}
+		if ipd_doc.cutting_process == self.process_name:
+			for item in ipd_doc.stiching_item_details:
+				stich_details[item.stiching_attribute_value] = item.quantity
 
 		for row in self.receivables:
-			rate, cost_doc = get_rate_and_quantity(row.item_variant, row.qty, self)
-			attr_qty = get_attributes_qty(self.production_detail, self.process_name, cost_doc)
+			rate, attributes = get_rate_and_quantity(row.item_variant, row.qty, self, process_doc)
+			attr_qty = get_attributes_qty(ipd_doc, self.process_name, process_doc.depends_on_attribute)
 			if check:
 				rate = rate / 2
 			rate = rate/attr_qty
+			if stich_details:
+				rate = rate/stich_details[attributes.get(ipd_doc.stiching_attribute)]
 			row.cost = rate
 			row.total_cost = rate * row.qty
 
@@ -151,46 +187,20 @@ def get_data(item, item_name, item_attributes, table_index, row_index, process_n
 	item1['comments'] = item.get('comments') 
 	return item1	
 
-def get_rate_and_quantity(variant_name, quantity, doc):
+def get_rate_and_quantity(variant_name, quantity, doc, process_doc):
 	item_doc = frappe.get_cached_doc('Item Variant',variant_name)
-	item = item_doc.item
-	fil = {
-		'process_name':doc.process_name,
-		'item':item,
-		'is_expired':0,
-		'from_date':['<=',doc.wo_date],
-		'docstatus': 1,
-	}
-	if doc.is_rework:
-		fil['is_rework'] = 1
-	else:
-		fil['is_rework'] = 0
-
-	if doc.supplier:
-		fil['supplier'] = doc.supplier
-
-	doc_names = frappe.get_list('Process Cost',filters = fil)
-	docname = None
-	if doc_names:
-		docname = doc_names[0]['name']
-	else:
-		del fil['supplier']
-		docnames = frappe.get_list('Process Cost',filters = fil)
-		if docnames:
-			docname = docnames[0]['name']
-
-	if not docname:
-		frappe.throw('No process cost for ' + doc.process_name)
-	
 	rate = 0
 	order_quantity = 0
 	low_price = 0
 	found = False
-	process_doc = frappe.get_cached_doc('Process Cost', docname)
+
+	attributes = {}
+	for attr in item_doc.attributes:
+		attributes[attr.attribute] = attr.attribute_value
 
 	if doc.is_rework and doc.rework_type == 'No Cost':
-		return flt(0), docname 
-
+		return flt(0) ,attributes
+	
 	if process_doc.depends_on_attribute:
 		attribute = process_doc.attribute
 		attribute_value = next((attr.attribute_value for attr in item_doc.attributes if attr.attribute == attribute), None)
@@ -214,9 +224,9 @@ def get_rate_and_quantity(variant_name, quantity, doc):
 				order_quantity = cost['min_order_qty']
 				low_price = cost['price']		
 	if not found:
-		return low_price, docname
+		return low_price, attributes
 	
-	return rate, docname	
+	return rate, attributes
 
 def fetch_item_details(items,process=None, include_id = False, is_grn= False, is_calc=False):
 	items = [item.as_dict() for item in items]
@@ -498,12 +508,10 @@ def get_receivables(items,lot, uom, conversion_details = None, out_uom = None):
 			})
 	return receivables, total_qty	
 
-def get_attributes_qty(ipd, process, process_cost_doc):
-	depends_on_attr = frappe.get_value("Process Cost", process_cost_doc,"depends_on_attribute")
+def get_attributes_qty(ipd_doc, process, depends_on_attr):
 	if depends_on_attr:
 		return 1
 	
-	ipd_doc = frappe.get_cached_doc("Item Production Detail",ipd)
 	emb = ipd_doc.emblishment_details_json
 	if isinstance(emb, string_types):
 		emb = json.loads(emb)
@@ -511,7 +519,7 @@ def get_attributes_qty(ipd, process, process_cost_doc):
 	if ipd_doc.stiching_process == process or ipd_doc.packing_process == process:
 		return 1
 	elif ipd_doc.cutting_process == process:
-		if emb.get(process):
+		if emb and emb.get(process):
 			return len(emb.get(process))
 		else:	
 			return len(ipd_doc.stiching_item_details)
@@ -521,7 +529,7 @@ def get_attributes_qty(ipd, process, process_cost_doc):
 				if procesess.stage == ipd_doc.pack_in_stage or procesess.stage == ipd_doc.pack_out_stage:
 					return 1
 				elif procesess.stage == ipd_doc.stiching_in_stage:
-					if emb.get(process):
+					if emb and emb.get(process):
 						return len(emb.get(process))
 					else:	
 						return len((ipd_doc.stiching_item_details))
