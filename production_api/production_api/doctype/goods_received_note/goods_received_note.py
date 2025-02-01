@@ -17,6 +17,18 @@ from production_api.production_api.doctype.purchase_order.purchase_order import 
 from production_api.essdee_production.doctype.item_production_detail.item_production_detail import get_calculated_bom, get_cloth_combination
 
 class GoodsReceivedNote(Document):
+	def before_cancel(self):
+		if self.against == "Work Order":
+			ste_list = frappe.get_list("Stock Entry", filters={
+				"against":self.doctype,
+				"against_id":self.name,
+				"purpose":"GRN Completion",
+				"docstatus":1,
+			}, pluck="name")
+			for name in ste_list:
+				doc = frappe.get_doc("Stock Entry", name)
+				doc.cancel()
+
 	def onload(self):
 		if self.against == "Purchase Order":
 			item_details = fetch_grn_purchase_item_details(self.get('items'), docstatus=self.docstatus)
@@ -49,6 +61,10 @@ class GoodsReceivedNote(Document):
 					self.items.remove(item)
 			self.validate_quantity()
 			self.calculate_amount()
+		else:
+			if not self.is_manual_entry:
+				self.calculate_grn_deliverables()
+			self.split_items()
 
 		self.set('approved_by', frappe.get_user().doc.name)
 
@@ -65,14 +81,10 @@ class GoodsReceivedNote(Document):
 			res = get_variant_stock_details()
 			self.update_work_order_receivables()
 			logger.debug(f"{self.name} WO Receivables Updated {datetime.now()}")
-			if not self.is_manual_entry:
-				self.calculate_grn_deliverables()
-				logger.debug(f"{self.name} Additional Deliverables Calculated {datetime.now()}")
 			self.update_wo_stock_ledger(res)
 			logger.debug(f"{self.name} Items Added to Delivery Location {datetime.now()}")
 			self.reduce_uncalculated_stock(res)
 			logger.debug(f"{self.name} Deliverables Reduced from Supplier {datetime.now()}")
-			self.split_items()
 	
 	def split_items(self):
 		items_list = []
@@ -207,22 +219,19 @@ class GoodsReceivedNote(Document):
 				deliverables_rate = deliverables_rate + (item.valuation_rate * item.quantity)
 		avg = deliverables_rate / self.total_received_quantity
 		# frappe.throw(str(avg))
+		transit_warehouse = frappe.db.get_single_value("Stock Settings","transit_warehouse")
+		supplier = transit_warehouse if self.is_internal_unit else self.delivery_location
 		sl_entries = []
 		for item in self.items:
-			if item.received_types and item.quantity > 0 and res.get(item.item_variant):
-				received_types = item.received_types
-				if isinstance(received_types, string_types):
-					received_types = json.loads(received_types)
-				for type, qty in received_types.items():
-					x = item
-					x.quantity = qty
-					sl_entries.append(self.get_sl_entries(x, {}, 1, self.against,type, valuation_rate=avg))
+			if item.quantity > 0 and res.get(item.item_variant):
+				sl_entries.append(self.get_sl_entries(item, supplier, {}, 1, self.against,item.received_type, valuation_rate=avg))
 		make_sl_entries(sl_entries)
 
 	def reduce_uncalculated_stock(self, res):
 		from production_api.mrp_stock.stock_ledger import make_sl_entries
 		lot, is_rework = frappe.get_value(self.against,self.against_id,["lot","is_rework"])
-		received_type = frappe.db.get_single_value("Stock Settings", "default_received_type")
+		stock_settings = frappe.get_single("Stock Settings")
+		received_type = stock_settings.default_received_type
 		sl_entries = []
 		for item in self.grn_deliverables:
 			if res.get(item.item_variant):
@@ -249,7 +258,7 @@ class GoodsReceivedNote(Document):
 		sl_dict.update(args)
 		return sl_dict
 	
-	def get_sl_entries(self, d, args, multiplier, order, received_type, valuation_rate = 0.0):
+	def get_sl_entries(self, d, from_location, args, multiplier, order, received_type, valuation_rate = 0.0):
 		qty = None
 		if order == "Work Order":
 			qty = flt(d.get("quantity")) * multiplier
@@ -260,7 +269,7 @@ class GoodsReceivedNote(Document):
 		
 		sl_dict = frappe._dict({
 			"item": d.get("item_variant", None),
-			"warehouse": self.delivery_location,
+			"warehouse": from_location,
 			"received_type":received_type,
 			"lot": cstr(d.get("lot")).strip(),
 			"voucher_type": self.doctype,
@@ -332,7 +341,7 @@ class GoodsReceivedNote(Document):
 				for type, qty in received_types.items():
 					x = item
 					x['quantity'] = qty
-					sl_entries.append(self.get_sl_entries(item, {}, -1, self.against,type,valuation_rate=avg))
+					sl_entries.append(self.get_sl_entries(item, self.delivery_location, {}, -1, self.against,type,valuation_rate=avg))
 		make_sl_entries(sl_entries)	
 
 	def reupdate_wo_deliverables(self, res):
@@ -417,7 +426,7 @@ class GoodsReceivedNote(Document):
 		received_type = frappe.db.get_single_value("Stock Settings", "default_received_type")
 		for item in self.items:
 			self.received_type = received_type
-			sl_entries.append(self.get_sl_entries(item, {}, 1, self.against, received_type))
+			sl_entries.append(self.get_sl_entries(item, self.delivery_location, {}, 1, self.against, received_type))
 
 		if self.docstatus == 2:
 			sl_entries.reverse()
@@ -435,10 +444,11 @@ class GoodsReceivedNote(Document):
 				items = save_grn_purchase_item_details(self.item_details)
 				self.set('items', items)
 		else:
-			lot, process = frappe.get_value(self.against, self.against_id, ["lot","process_name"])
+			lot, process, internal = frappe.get_value(self.against, self.against_id, ["lot","process_name","is_internal_unit"])
 			is_manual_entry = frappe.get_value("Process", process, "is_manual_entry_in_grn")
 			self.process_name = process
 			self.is_manual_entry = is_manual_entry
+			self.is_internal_unit = internal
 			self.lot = lot	
 			check = False
 			if self.is_new():
@@ -1357,3 +1367,40 @@ def get_receivables(items,doc_name, wo_name,receivable):
 	items = get_deliverable_receivable(items, wo_name, receivable=receivable)
 	logger.debug(f"{doc_name} Deliverables Calculation Completed {datetime.now()}")
 	return items
+
+@frappe.whitelist()
+def construct_stock_entry_data(doc_name):
+	import random
+	doc = frappe.get_doc("Goods Received Note", doc_name)
+	stock_settings = frappe.get_single("Stock Settings")
+	items = []
+	received_types = {}
+	for item in doc.items:
+		if item.quantity - item.ste_delivered_quantity > 0:
+			if item.received_type not in received_types:
+				index = random.randint(11,99)
+				received_types[item.received_type] = index
+				index = index + item.row_index
+			else:
+				index = received_types[item.received_type] + item.row_index
+			items.append({
+				"item": item.item_variant,
+				"lot": item.lot,
+				"qty": item.quantity - item.ste_delivered_quantity ,
+				"uom": item.uom,
+				"received_type": item.received_type,
+				"against_id_detail": item.name,
+				"table_index": 0,
+				"row_index": index,
+				"remarks": item.comments,
+			})
+	ste = frappe.new_doc("Stock Entry")
+	ste.purpose = "GRN Completion"
+	ste.against = "Goods Received Note"
+	ste.against_id = doc_name
+	ste.from_warehouse = doc.supplier
+	ste.to_warehouse = doc.delivery_location
+	ste.set("items", items)
+	ste.flags.allow_from_grn = True
+	ste.save()
+	return ste.name

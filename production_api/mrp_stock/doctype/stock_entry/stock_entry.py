@@ -25,7 +25,7 @@ class StockEntry(Document):
 		if(self.get('item_details')) and self._action != "submit":
 			items = save_stock_entry_items(self.item_details)
 			self.set('items', items)
-		elif not self.flags.allow_from_sms and self.is_new() or not self.get('items'):
+		elif not self.flags.allow_from_sms and not self.flags.allow_from_dc and not self.flags.allow_from_grn and self.is_new() or not self.get('items'):
 			frappe.throw('Add items to Stock Entry.', title='Stock Entry')
 
 	def validate(self):
@@ -124,13 +124,15 @@ class StockEntry(Document):
 			"Send to Warehouse",
 			"Receive at Warehouse",
 			"Material Consumed",
-			"Stock Dispatch"
+			"Stock Dispatch",
+			"DC Completion",
 		]
 
 		target_mandatory = [
 			"Material Receipt",
 			"Send to Warehouse",
-			"Receive at Warehouse"
+			"Receive at Warehouse",
+			"DC Completion",
 		]
 
 		if self.purpose in source_mandatory:
@@ -150,11 +152,83 @@ class StockEntry(Document):
 	def on_submit(self):
 		self.update_stock_ledger()
 		self.update_transferred_qty()
+		if self.purpose == "DC Completion" or self.purpose == "GRN Completion":
+			if self.purpose == "DC Completion":
+				res = frappe.db.sql(
+					f"""
+						Select sum(delivered_quantity) as total, sum(delivered_quantity - ste_delivered_quantity) as delivered from
+						`tabDelivery Challan Item` where parent = '{self.against_id}'
+					""", as_dict=True
+				)
+			else:
+				res = frappe.db.sql(
+					f"""
+						Select sum(quantity) as total, sum(ste_delivered_quantity) as delivered from
+						`tabGoods Received Note Item` where parent = '{self.against_id}'
+					""", as_dict=True
+				)
+			total_quantity = res[0].total
+			now_delivered = total_quantity - res[0].delivered
+			doc = frappe.get_doc(self.against, self.against_id)	
+			qty = 0
+			for ste_item in self.items:
+				for item in doc.items:
+					if ste_item.item == item.item_variant:
+						check = True
+						if self.purpose == "GRN Completion":
+							check = ste_item.received_type == item.received_type
+						if check:	
+							item.ste_delivered_quantity += ste_item.qty
+							qty += ste_item.qty
+							break
+			if qty - now_delivered > total_quantity:
+				frappe.throw("High Amount of Items Received")	
+			x = qty / total_quantity
+			x = x * 100
+			doc.ste_transferred = doc.ste_transferred + x
+			if round(doc.ste_transferred) >= flt(100):
+				doc.ste_transferred = 100
+				doc.transfer_complete = 1
+			doc.save()
 	
 	def before_cancel(self):
-		self.ignore_linked_doctypes = ("Stock Ledger Entry", "Stock Reservation Entry")
+		self.ignore_linked_doctypes = ("Stock Ledger Entry", "Stock Reservation Entry", "Delivery Challan")
 		self.update_stock_ledger()
 		self.update_transferred_qty()
+
+		if self.purpose == "DC Completion" or self.purpose == "GRN Completion":
+			doctype = "tabGoods Received Note Item"
+			field = "quantity"
+			if self.purpose == "DC Completion":
+				doctype = "tabDelivery Challan Item"
+				field = "delivered_quantity"
+
+			res = frappe.db.sql(
+				f"""
+					Select sum({field}) as total from `{doctype}` where parent = '{self.against_id}'
+				""", as_dict=True
+			)
+			total_quantity = res[0].total
+			doc = frappe.get_doc(self.against, self.against_id)
+			qty = 0
+			for ste_item in self.items:
+				for item in doc.items:
+					if ste_item.item == item.item_variant:
+						check = True
+						if self.purpose == "GRN Completion":
+							check = ste_item.received_type == item.received_type
+						if check:
+							item.ste_delivered_quantity -= ste_item.qty
+							qty += ste_item.qty
+							break
+
+			x = qty / total_quantity
+			x = x * 100
+			doc.ste_transferred = doc.ste_transferred - x
+			
+			if round(doc.ste_transferred) < flt(100):
+				doc.transfer_complete = 0
+			doc.save()	
 		self.revert_stock_transfer_entries()
 
 	def revert_stock_transfer_entries(self):
@@ -169,7 +243,6 @@ class StockEntry(Document):
 			doc.update_status()
 			doc.update_reserved_stock_in_bin()
 
-	
 	def update_stock_ledger(self):
 		from production_api.mrp_stock.stock_ledger import make_sl_entries
 		if self.docstatus == 0:
@@ -178,11 +251,10 @@ class StockEntry(Document):
 		sl_entries = []
 
 		from_warehouse = None
-		if self.purpose == "Receive at Warehouse":
+		if self.purpose == "Receive at Warehouse" or self.purpose == "DC Completion" or self.purpose == "GRN Completion":
 			from_warehouse = frappe.get_single("Stock Settings").transit_warehouse
 		# make sl entries for source warehouse first
 		self.get_sle_for_source_warehouse(sl_entries, warehouse=from_warehouse)
-
 		to_warehouse = None
 		if self.purpose == "Send to Warehouse":
 			to_warehouse = frappe.get_single("Stock Settings").transit_warehouse
@@ -192,7 +264,6 @@ class StockEntry(Document):
 		# reverse sl entries if cancel
 		if self.docstatus == 2:
 			sl_entries.reverse()
-		
 		make_sl_entries(sl_entries)
 
 	def get_sle_for_source_warehouse(self, sl_entries, warehouse=None):

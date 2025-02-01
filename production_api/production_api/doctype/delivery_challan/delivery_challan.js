@@ -29,6 +29,7 @@ frappe.ui.form.on("Delivery Challan", {
 		});
     },
     refresh(frm){
+		frm.page.btn_secondary.hide()
         frm.set_query('work_order',() => {
             return {
                 filters : {
@@ -73,6 +74,25 @@ frappe.ui.form.on("Delivery Challan", {
 						d.show()						
 					},
 				});
+			})
+		}
+
+		if(frm.doc.docstatus == 1){
+			if(!frm.doc.transfer_complete && frm.doc.is_internal_unit){
+				frm.add_custom_button("Transfer Complete", ()=> {
+					frappe.call({
+						method:"production_api.production_api.doctype.delivery_challan.delivery_challan.construct_stock_entry_details",
+						args: {
+							doc_name : frm.doc.name,
+						},
+						callback: function(r){
+							frappe.set_route("Form","Stock Entry",r.message)
+						}
+					})
+				})
+			}
+			frm.add_custom_button("Cancel", ()=> {
+				frm._cancel()
 			})
 		}
     },

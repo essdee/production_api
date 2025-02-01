@@ -25,6 +25,7 @@
   "stock_uom_rate",
   "column_break_pncq",
   "amount",
+  "ste_delivered_quantity",
   "section_break_valg",
   "table_index",
   "ref_doctype",
@@ -183,12 +184,18 @@
    "in_list_view": 1,
    "label": "Received Type",
    "options": "GRN Item Type"
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "ste_delivered_quantity",
+   "fieldtype": "Float",
+   "label": "STE Delivered Quantity"
   }
  ],
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2025-01-21 14:22:41.533742",
+ "modified": "2025-02-01 12:57:56.125515",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Goods Received Note Item",

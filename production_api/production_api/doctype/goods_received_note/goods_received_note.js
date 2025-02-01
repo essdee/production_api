@@ -89,6 +89,7 @@ frappe.ui.form.on('Goods Received Note', {
 			}
 		}
 		else{
+			frm.page.btn_secondary.hide()
 			frm.itemEditor = new frappe.production.ui.GRNWorkOrder(frm.fields_dict["item_html"].wrapper);
 			frm.itemEditor.load_data({
 				supplier: frm.doc.supplier,
@@ -170,6 +171,25 @@ frappe.ui.form.on('Goods Received Note', {
 		frappe.production.ui.eventBus.$on("grn_updated", e => {
 			frm.dirty();
 		})
+		if(frm.doc.docstatus == 1 && frm.doc.against == "Work Order" && frm.doc.is_internal_unit && !frm.doc.transfer_complete){
+			frm.add_custom_button("Transfer Complete", ()=> {
+				frappe.call({
+					method: "production_api.production_api.doctype.goods_received_note.goods_received_note.construct_stock_entry_data",
+					args : {
+						doc_name: frm.doc.name,
+					},
+					callback: function(r){
+						console.log(r.message)
+						frappe.set_route("Form","Stock Entry",r.message)
+					}
+				})
+			})
+		}
+		if(frm.doc.docstatus == 1 && frm.doc.against == "Work Order"){
+			frm.add_custom_button("Cancel", ()=> {
+				frm._cancel()
+			})
+		}
 		// if(frm.doc.docstatus == 1 && frm.doc.against == "Work Order" && frm.doc.rework_created == 0){
 		// 	frm.add_custom_button("Create Rework",()=> {
 		// 		let d =new frappe.ui.Dialog({
