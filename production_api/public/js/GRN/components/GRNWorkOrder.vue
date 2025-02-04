@@ -100,7 +100,7 @@
 							<th v-for="attr in i.attributes" :key="attr">{{ attr }}</th>
 							<th>Type</th>
 							<th v-for="attr in i.primary_attribute_values" :key="attr">{{ attr }}</th>
-							<th>Edit</th>
+							<th v-if="docstatus == 0">Edit</th>
 						</tr>
 						<template v-for="(j, item1_index) in i.items" :key="item1_index">
 							<tr v-for="(type, idx) in j.types" :key="idx">
@@ -147,7 +147,7 @@
 							<th>Lot</th>
 							<th v-for="attr in i.attributes" :key="attr">{{ attr }}</th>
 							<th>Quantity</th>
-							<th>Edit</th>
+							<th v-if="docstatus == 0">Edit</th>
 						</tr>
 						<tr v-for="(j, item1_index) in i.items" :key="item1_index">
 							<td>{{ j.name }}</td>

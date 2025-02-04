@@ -397,7 +397,7 @@ def get_attribute_values(item_production_detail, attributes = None):
 	return attribute_values
 
 @frappe.whitelist()
-def get_calculated_bom(item_production_detail, items, lot_name, process_name = None,doctype=None, deliverable=False):
+def get_calculated_bom(item_production_detail, items, lot_name, process_name = None, doctype=None, deliverable=False):
 	item_detail = frappe.get_cached_doc("Item Production Detail", item_production_detail)
 	item_variants = item_detail.variants_json
 	if isinstance(item_variants, string_types):
@@ -413,6 +413,7 @@ def get_calculated_bom(item_production_detail, items, lot_name, process_name = N
 	cloth_combination = get_cloth_combination(item_detail)
 	stitching_combination = get_stitching_combination(item_detail)
 	bom_combination = get_bom_combination(item_detail.item_bom)
+	lot_item_detail = frappe.get_cached_doc("Item", lot_doc.item)
 	cloth_detail = {}
 	for cloth in item_detail.cloth_detail:
 		if doctype:
@@ -435,19 +436,18 @@ def get_calculated_bom(item_production_detail, items, lot_name, process_name = N
 			qty_of_product = bom_item.qty_of_product
 			qty_of_bom = bom_item.qty_of_bom_item
 			
-			bom_item_doc = None
 			if bom_item.dependent_attribute_value and not bom_item.dependent_attribute_value == lot_doc.pack_in_stage:
-				bom_item_doc, qty_of_product = get_doc_uom_conversion(lot_doc,bom_item)
+				dependent_attr_uom = lot_item_detail.default_unit_of_measure
+				qty_of_product = get_uom_conversion_factor(lot_item_detail.uom_conversion_details, dependent_attr_uom ,lot_doc.packing_uom)
 
 			qty_of_product = qty_of_product/qty_of_bom
-			uom = get_bom_uom(bom_item,item_detail,bom_item_doc)
+			uom = frappe.get_value("Item", bom_item.item, "default_unit_of_measure")
 
 			quantity = total_quantity / qty_of_product
 			if not bom[bom_item.item].get(bom_item.item, False):
 				bom[bom_item.item][bom_item.item] = [math.ceil(quantity),bom_item.process_name, uom]
 			else:
 				bom[bom_item.item][bom_item.item][0] += math.ceil(quantity)
-	
 	mapping_bom = {}
 	cloth_details = {}
 	
@@ -479,12 +479,12 @@ def get_calculated_bom(item_production_detail, items, lot_name, process_name = N
 				qty_of_product = bom_item.qty_of_product
 				qty_of_bom = bom_item.qty_of_bom_item
 				
-				bom_item_doc = None
 				if bom_item.dependent_attribute_value and not bom_item.dependent_attribute_value == lot_doc.pack_in_stage:
-					bom_item_doc, qty_of_product = get_doc_uom_conversion(lot_doc,bom_item)
+					dependent_attr_uom = lot_item_detail.default_unit_of_measure
+					qty_of_product = get_uom_conversion_factor(lot_item_detail.uom_conversion_details, dependent_attr_uom ,lot_doc.packing_uom)
 
 				qty_of_product = qty_of_product/qty_of_bom
-				uom = get_bom_uom(bom_item,item_detail,bom_item_doc)
+				uom = frappe.get_value("Item", bom_item.item, "default_unit_of_measure")
 
 				if not mapping_bom.get(bom_item.item,False):
 					mapping_bom[bom_item.item] = {}
@@ -576,22 +576,6 @@ def get_calculated_bom(item_production_detail, items, lot_name, process_name = N
 	lot_doc.save()	
 
 ##################       BOM CALCULATION FUNCTIONS       ##################
-def get_bom_uom(bom_item,item_detail,bom_item_doc):
-	uom = None
-	if not bom_item.dependent_attribute_value or not item_detail.dependent_attribute:
-		uom = bom_item_doc.default_unit_of_measure
-	else:
-		attribute_details = get_dependent_attribute_details(item_detail.dependent_attribute_mapping)
-		uom = attribute_details['attr_list'][bom_item.dependent_attribute_value]['uom']
-	return uom
-
-def get_doc_uom_conversion(lot_doc,bom_item):
-	bom_item_doc = frappe.get_cached_doc("Item", bom_item.item)
-	dependent_attr_uom = bom_item_doc.default_unit_of_measure
-	bom_item_conv = get_uom_conversion_factor(bom_item_doc.uom_conversion_details, dependent_attr_uom ,lot_doc.packing_uom)
-	qty_of_product = bom_item_conv
-	return bom_item_doc,qty_of_product
-
 def calculate_cloth(ipd_doc, variant_attrs, qty, cloth_combination, stitching_combination):
 	attrs = variant_attrs.copy()
 	if stitching_combination["stitching_attribute"] in cloth_combination["cloth_attributes"] and stitching_combination["stitching_attribute"] not in cloth_combination["cutting_attributes"]:
