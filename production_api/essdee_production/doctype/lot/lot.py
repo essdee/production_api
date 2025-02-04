@@ -252,11 +252,11 @@ def fetch_item_details(items, production_detail):
 		return
 	dependent_attr_map_value = frappe.get_value("Item Production Detail",production_detail,'dependent_attribute_mapping')
 	grp_variant = frappe.get_value("Item Variant", items[0]['item_variant'],'item')
-	variant_attr_details = get_attribute_details(grp_variant)
+	variant_attr_details = get_attribute_details(grp_variant, dependent_attr_mapping=dependent_attr_map_value)
 	primary_attr = variant_attr_details['primary_attribute']
 	uom = get_isfinal_uom(production_detail)['uom']
 	doc = frappe.get_cached_doc("Item", grp_variant)
-	item_structure = get_item_details(grp_variant, uom=uom,production_detail=production_detail, dependent_attr_mapping=dependent_attr_map_value)
+	item_structure = get_item_details(grp_variant,attr_details=variant_attr_details, uom=uom,production_detail=production_detail, dependent_attr_mapping=dependent_attr_map_value)
 
 	for key, variants in groupby(items, lambda i: i['table_index']):
 		variants = list(variants)
@@ -299,10 +299,9 @@ def fetch_order_item_details(items, production_detail):
 	order_item_details = []
 	grp_variant_item = frappe.get_value("Item Variant", items[0].item_variant, 'item')	
 	doc = frappe.get_cached_doc("Item", grp_variant_item)
-	variant_attr_details = get_attribute_details(grp_variant_item)
+	variant_attr_details = get_attribute_details(grp_variant_item, dependent_attr_mapping=dept_attr_mapping)
 	primary_attr = variant_attr_details['primary_attribute']
-	item_structure = get_item_details(grp_variant_item, production_detail=production_detail, dependent_state=pack_in_stage,dependent_attr_mapping=dept_attr_mapping)
-
+	item_structure = get_item_details(grp_variant_item, attr_details=variant_attr_details,production_detail=production_detail, dependent_state=pack_in_stage,dependent_attr_mapping=dept_attr_mapping)
 	for item in items:
 		values = {}
 		current_variant = frappe.get_cached_doc("Item Variant", item.item_variant)
@@ -341,16 +340,6 @@ def get_quantity(attr, packing_attribute_details):
 		if item.attribute_value == attr:
 			return item.quantity
 
-# def get_same_index_set_item(index, set_item_details, set_attr, pack_attr):
-# 	attr = {}
-# 	attr[set_attr] = []
-# 	for item in set_item_details:
-# 		if item.index == index:
-# 			attr[set_attr].append({'major_attribute':item.major_attribute_value,set_attr :item.set_item_attribute_value,pack_attr : item.attribute_value})
-# 		if item.index > index:
-# 			break	
-# 	return attr	
-
 def get_item_attribute_details(variant, item_attributes):
 	attribute_details = {}
 	for attr in variant.attributes:
@@ -359,9 +348,12 @@ def get_item_attribute_details(variant, item_attributes):
 	return attribute_details
 
 @frappe.whitelist()
-def get_item_details(item_name, uom=None, production_detail=None, dependent_state=None, dependent_attr_mapping=None):
+def get_item_details(item_name, attr_details = None, uom=None, production_detail=None, dependent_state=None, dependent_attr_mapping=None):
 	from production_api.essdee_production.doctype.item_production_detail.item_production_detail import get_ipd_primary_values
-	item = get_attribute_details(item_name, dependent_attr_mapping=dependent_attr_mapping)
+	if not attr_details:
+		item = get_attribute_details(item_name, dependent_attr_mapping=dependent_attr_mapping)
+	else:
+		item = attr_details	
 	pack_out_stage = frappe.get_value("Item Production Detail", production_detail,"pack_out_stage")
 	if uom:
 		item['default_uom'] = uom
@@ -456,7 +448,7 @@ def combine_child_tables(table1, table2):
 
 @frappe.whitelist()
 def get_attributes(data):
-	grp_variant_doc = frappe.get_doc("Item Variant", data[0].item_variant)
+	grp_variant_doc = frappe.get_cached_doc("Item Variant", data[0].item_variant)
 	grp_item = grp_variant_doc.item
 	dept_attr = frappe.get_value("Item", grp_item, "dependent_attribute")
 	attribute_list = []
@@ -468,7 +460,7 @@ def get_attributes(data):
 	attr_list = []
 	for item in data:
 		item= item.as_dict()
-		doc = frappe.get_doc("Item Variant", item['item_variant'])
+		doc = frappe.get_cached_doc("Item Variant", item['item_variant'])
 		temp_attr = {}
 		for attr in doc.attributes:
 			if attr.attribute != dept_attr:

@@ -21,6 +21,7 @@
   "item_bom",
   "bom_attribute_mapping_html",
   "ipd_processes",
+  "variants_json",
   "packing_tab",
   "packing_section",
   "packing_process",
@@ -68,7 +69,6 @@
   "cloth_detail",
   "additional_cloth",
   "update_cloth_items",
-  "section_break_uqfw",
   "section_break_eorj",
   "cutting_attributes",
   "select_attributes_html",
@@ -79,7 +79,6 @@
   "column_break_gwca",
   "select_cloths_attribute_html",
   "get_cloth_combination",
-  "update_cloth_items",
   "cutting_cloths_html",
   "cutting_cloths_json",
   "cloth_accessory_tab",
@@ -592,10 +591,6 @@
    "label": "Version"
   },
   {
-   "fieldname": "section_break_uqfw",
-   "fieldtype": "Section Break"
-  },
-  {
    "fieldname": "emblishment_tab",
    "fieldtype": "Tab Break",
    "label": "Emblishment"
@@ -610,11 +605,16 @@
    "fieldtype": "JSON",
    "hidden": 1,
    "label": "Emblishment Details JSON"
+  },
+  {
+   "fieldname": "variants_json",
+   "fieldtype": "JSON",
+   "label": "Variants JSON"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-01-01 14:33:52.803202",
+ "modified": "2025-02-03 17:58:47.110866",
  "modified_by": "Administrator",
  "module": "Essdee Production",
  "name": "Item Production Detail",
@@ -647,5 +647,6 @@
  ],
  "sort_field": "modified",
  "sort_order": "DESC",
- "states": []
+ "states": [],
+ "track_changes": 1
 }

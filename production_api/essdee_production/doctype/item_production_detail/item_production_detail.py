@@ -30,10 +30,10 @@ class ItemProductionDetail(Document):
 	def load_attribute_list(self):
 		attribute_list = []
 		for attribute in self.item_attributes:
-			attribute_doc = frappe.get_doc("Item Attribute", attribute.attribute)
+			attribute_doc = frappe.get_cached_doc("Item Attribute", attribute.attribute)
 			if not attribute_doc.numeric_values:
 				if attribute.mapping != None:
-					doc = frappe.get_doc("Item Item Attribute Mapping", attribute.mapping)
+					doc = frappe.get_cached_doc("Item Item Attribute Mapping", attribute.mapping)
 					attribute_list.append({
 						'name': attribute.name,
 						'attr_name': attribute.attribute,
@@ -55,7 +55,7 @@ class ItemProductionDetail(Document):
 		bom_attribute_list = []
 		for bom in self.item_bom:
 			if bom.attribute_mapping != None:
-				doc = frappe.get_doc("Item BOM Attribute Mapping", bom.attribute_mapping)
+				doc = frappe.get_cached_doc("Item BOM Attribute Mapping", bom.attribute_mapping)
 				bom_attribute_list.append({
 					'bom_item': bom.item,
 					'bom_attr_mapping_link': bom.attribute_mapping,
@@ -349,7 +349,7 @@ def delete_docs(documents):
 			frappe.qb.from_(doctype).delete().where(doctype.name.isin(value)).run()
 
 def get_ipd_primary_values(production_detail):
-	doc = frappe.get_doc("Item Production Detail", production_detail)
+	doc = frappe.get_cached_doc("Item Production Detail", production_detail)
 	primary_attr_values = []
 	mapping = None
 	for i in doc.item_attributes:
@@ -369,7 +369,7 @@ def get_item_attributes(doctype, txt, searchfield, start, page_len, filters):
 		return []
 
 	item_production_detail_name = filters['item_production_detail']
-	item_production_detail = frappe.get_doc("Item Production Detail", item_production_detail_name)
+	item_production_detail = frappe.get_cached_doc("Item Production Detail", item_production_detail_name)
 	attributes = [attribute.attribute for attribute in item_production_detail.item_attributes]
 	return [[value] for value in attributes if value.lower().startswith(txt.lower())]
 
@@ -399,6 +399,10 @@ def get_attribute_values(item_production_detail, attributes = None):
 @frappe.whitelist()
 def get_calculated_bom(item_production_detail, items, lot_name, process_name = None,doctype=None, deliverable=False):
 	item_detail = frappe.get_cached_doc("Item Production Detail", item_production_detail)
+	item_variants = item_detail.variants_json
+	if isinstance(item_variants, string_types):
+		item_variants = json.loads(item_variants)
+
 	bom = {}
 	bom_summary = {}
 	if isinstance(items, string_types):
@@ -514,7 +518,21 @@ def get_calculated_bom(item_production_detail, items, lot_name, process_name = N
 	if not process_name or process_name == item_detail.cutting_process:
 		for k in cloth_details:
 			uom = frappe.get_value("Item",k[0],"default_unit_of_measure")
-			cloth_name = get_or_create_variant(k[0], {item_detail.packing_attribute: k[1], 'Dia': k[2]})
+			cloth_attrs = {item_detail.packing_attribute: k[1], 'Dia': k[2]}
+			tup = tuple(sorted(cloth_attrs.items()))
+			cloth_name = get_or_create_ipd_variant(item_variants, k[0], tup, cloth_attrs)
+			str_tup = str(tup)
+			if item_variants and item_variants.get(k[0]):
+				if not item_variants[k[0]].get(str_tup):
+					item_variants[k[0]][str_tup] = cloth_name	
+			else:	
+				if not item_variants:
+					item_variants = {}
+					item_variants[k[0]] = {}
+					item_variants[k[0]][str_tup] = cloth_name
+				else:
+					item_variants[k[0]] = {}
+					item_variants[k[0]][str_tup] = cloth_name
 			if not bom.get(k[0],False):
 				bom[k[0]] = {cloth_name:[cloth_details[k],item_detail.cutting_process,uom]}
 			else:	
@@ -524,12 +542,25 @@ def get_calculated_bom(item_production_detail, items, lot_name, process_name = N
 		for k,val in value.items():
 			k = k.replace("'", '"')
 			k = json.loads(k)
-			variant = get_or_create_variant(key,k)
+			tup = tuple(sorted(k.items()))
+			variant = get_or_create_ipd_variant(item_variants, key, tup, k)
+			str_tup = str(tup)
+			if item_variants and item_variants.get(key):
+				if not item_variants[key].get(str_tup):
+					item_variants[key][str_tup] = variant	
+			else:	
+				if not item_variants:
+					item_variants = {}
+					item_variants[key] = {}
+					item_variants[key][str_tup] = variant
+				else:
+					item_variants[key] = {}
+					item_variants[key][str_tup] = variant
 			if not bom.get(key,False):
 				bom[key] = {variant:val}
 			else:	
 				bom[key][variant] = val
-
+	item_detail.db_set("variants_json", json.dumps(item_variants), update_modified=False)
 	if process_name:
 		return bom
 	
@@ -569,9 +600,11 @@ def calculate_cloth(ipd_doc, variant_attrs, qty, cloth_combination, stitching_co
 	if stitching_combination["stitching_attribute"] in cloth_combination["cutting_attributes"]:
 		for stiching_attr,attr_qty in stitching_combination["stitching_attribute_count"].items():
 			attrs[ipd_doc.stiching_attribute] = stiching_attr
-			if cloth_combination["cutting_combination"].get(get_key(attrs, cloth_combination["cutting_attributes"])):
-				dia, weight = cloth_combination["cutting_combination"][get_key(attrs, cloth_combination["cutting_attributes"])]	
-				cloth_type = cloth_combination["cloth_combination"][get_key(attrs, cloth_combination["cloth_attributes"])]
+			cloth_key = get_key(attrs, cloth_combination["cloth_attributes"])
+			cutting_key = get_key(attrs, cloth_combination["cutting_attributes"])
+			if cloth_combination["cutting_combination"].get(cutting_key):
+				dia, weight = cloth_combination["cutting_combination"][cutting_key]	
+				cloth_type = cloth_combination["cloth_combination"][cloth_key]
 				weight = weight * qty * attr_qty
 				cloth_colour = stitching_combination["stitching_combination"][attrs[ipd_doc.packing_attribute]][stiching_attr]
 				cloth_detail.append(add_cloth_detail(weight, ipd_doc.additional_cloth,cloth_type,cloth_colour,dia,"cloth"))
@@ -613,7 +646,7 @@ def get_bom_combination(bom_items):
 	bom_combination = {}
 	for bom_item in bom_items:
 		if bom_item.based_on_attribute_mapping:
-			attr_doc = frappe.get_doc("Item BOM Attribute Mapping",bom_item.attribute_mapping)
+			attr_doc = frappe.get_cached_doc("Item BOM Attribute Mapping",bom_item.attribute_mapping)
 			bom_combination[bom_item.item] = {"keys":[],"same_attributes":[]}
 			for i in attr_doc.item_attributes:
 				if not i.same_attribute:
@@ -1223,8 +1256,18 @@ def update_attr_combination(initial_attrs, attributes, last_item, attrs_len):
 
 @frappe.whitelist()
 def get_attr_mapping_details(mapping):
-	doc = frappe.get_doc('Item Item Attribute Mapping', mapping)
+	doc = frappe.get_cached_doc('Item Item Attribute Mapping', mapping)
 	values = []
 	for item in doc.values:
 		values.append(item.attribute_value)
 	return values
+
+@frappe.whitelist()
+def get_or_create_ipd_variant(item_variants, item_name, tup, attributes):
+	str_tup = str(tup)
+	if item_variants and item_variants.get(item_name):
+		if item_variants[item_name].get(str_tup):
+			return item_variants[item_name][str_tup]
+	variant_name = get_or_create_variant(item_name, attributes)
+	return variant_name
+	
