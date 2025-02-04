@@ -99,6 +99,7 @@ class WorkOrder(Document):
 			'is_expired':0,
 			'from_date':['<=',self.wo_date],
 			'docstatus': 1,
+			"workflow_state":"Approved",
 		}
 		if self.is_rework:
 			fil['is_rework'] = 1
