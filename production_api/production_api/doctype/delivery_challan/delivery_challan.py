@@ -14,6 +14,18 @@ from production_api.production_api.doctype.purchase_order.purchase_order import 
 from production_api.production_api.logger import get_module_logger
 
 class DeliveryChallan(Document):
+	def before_cancel(self):
+		if self.is_internal_unit:
+			ste_list = frappe.get_list("Stock Entry", filters={
+				"against":self.doctype,
+				"against_id":self.name,
+				"purpose":"DC Completion",
+				"docstatus":1,
+			}, pluck="name")
+			for name in ste_list:
+				doc = frappe.get_doc("Stock Entry", name)
+				doc.cancel()
+	
 	def on_cancel(self):
 		logger = get_module_logger("delivery_challan")
 		logger.debug(f"On Cancel {datetime.now()}")
@@ -28,14 +40,15 @@ class DeliveryChallan(Document):
 		self.ignore_linked_doctypes = ('Stock Ledger Entry')
 		add_sl_entries = []
 		reduce_sl_entries = []
-		received_type = None
-		if not self.is_rework:
-			received_type = frappe.db.get_single_value("Stock Settings","default_received_type")
+		stock_settings = frappe.get_single("Stock Settings")
+		received_type = stock_settings.default_received_type
+		transit_warehouse = stock_settings.transit_warehouse
 		res = get_variant_stock_details()
 		for row in self.items:
 			if res.get(row.item_variant):
 				add_sl_entries.append(self.get_sle_data(row, self.from_location, 1, {}, received_type))	
-				reduce_sl_entries.append(self.get_sle_data(row, self.supplier, -1, {}, received_type))
+				supplier = transit_warehouse if self.is_internal_unit else self.supplier
+				reduce_sl_entries.append(self.get_sle_data(row, supplier, -1, {}, received_type))
 		logger.debug(f"{self.name} SLE data construction {datetime.now()}")
 		make_sl_entries(add_sl_entries)
 		logger.debug(f"{self.name} Stock Added to From Location {datetime.now()}")
@@ -49,7 +62,9 @@ class DeliveryChallan(Document):
 		add_sl_entries = []
 		reduce_sl_entries = []
 		res = get_variant_stock_details()
-		received_type = frappe.db.get_single_value("Stock Settings","default_received_type")
+		stock_settings = frappe.get_single("Stock Settings")
+		received_type = stock_settings.default_received_type
+		transit_warehouse = stock_settings.transit_warehouse
 		for row in self.items:
 			if res.get(row.item_variant):
 				quantity, rate = get_stock_balance(row.item_variant, self.from_location,received_type, with_valuation_rate=True, lot=self.lot)
@@ -57,7 +72,8 @@ class DeliveryChallan(Document):
 					frappe.throw(f"Required quantity is {row.delivered_quantity} but stock quantity is {quantity} for {row.item_variant}")
 				row.rate = rate		
 				reduce_sl_entries.append(self.get_sle_data(row, self.from_location, -1, {}, received_type))
-				add_sl_entries.append(self.get_sle_data(row, self.supplier, 1, {}, received_type))
+				supplier = transit_warehouse if self.is_internal_unit else self.supplier
+				add_sl_entries.append(self.get_sle_data(row, supplier, 1, {}, received_type))
 		
 		logger.debug(f"{self.name} Stock check and SLE data construction {datetime.now()}")
 		wo_doc = frappe.get_cached_doc("Work Order", self.work_order)
@@ -323,3 +339,33 @@ def get_calculated_deliverables(items,wo_name, doc_name, deliverable):
 	items = get_deliverable_receivable(items, wo_name, deliverable=deliverable)
 	logger.debug(f"{doc_name} Deliverables Calculated {datetime.now()}")
 	return items
+
+@frappe.whitelist()
+def construct_stock_entry_details(doc_name):
+	doc = frappe.get_doc("Delivery Challan", doc_name)
+	stock_settings = frappe.get_single("Stock Settings")
+	received_type = stock_settings.default_received_type
+	items = []
+	for item in doc.items:
+		if item.delivered_quantity - item.ste_delivered_quantity > 0:
+			items.append({
+				"item": item.item_variant,
+				"lot": item.lot,
+				"qty": item.delivered_quantity - item.ste_delivered_quantity,
+				"uom": item.uom,
+				"received_type": received_type,
+				"against_id_detail": item.name,
+				"table_index": item.table_index,
+				"row_index": item.row_index,
+				"remarks": item.comments,
+			})
+	ste = frappe.new_doc("Stock Entry")
+	ste.purpose = "DC Completion"
+	ste.against = "Delivery Challan"
+	ste.against_id = doc_name
+	ste.from_warehouse = doc.from_location
+	ste.to_warehouse = doc.supplier
+	ste.set("items", items)
+	ste.flags.allow_from_dc = True
+	ste.save()
+	return ste.name

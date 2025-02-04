@@ -187,14 +187,14 @@ def update_dependent_attribute_details(dependent_attribute_mapping, detail):
 def get_attribute_details(item_name,dependent_attr_mapping=None):
 	"""Return Attribute Details of an item"""
 
-	item = frappe.get_doc("Item", item_name)
+	item = frappe.get_cached_doc("Item", item_name)
 	attributes = [attribute.attribute for attribute in item.attributes]
 	primary_attribute_details = []
 	if item.primary_attribute:
 		attributes.remove(item.primary_attribute)
 		for attribute in item.attributes:
 			if attribute.attribute == item.primary_attribute:
-				doc = frappe.get_doc("Item Item Attribute Mapping", attribute.mapping)
+				doc = frappe.get_cached_doc("Item Item Attribute Mapping", attribute.mapping)
 				primary_attribute_details = [value.attribute_value for value in doc.values]
 	additional_parameters = [{'additional_parameter_key': a.additional_parameter_key, 'additional_parameter_value': a.additional_parameter_value} for a in item.additional_parameters]
 	dependent_attribute_details = {}

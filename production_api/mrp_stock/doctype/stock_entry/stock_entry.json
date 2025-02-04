@@ -11,10 +11,12 @@
   "naming_series",
   "purpose",
   "packing_slip",
-  "outgoing_stock_entry",
+  "against",
+  "against_id",
   "column_break_gz9cd",
   "posting_date",
   "posting_time",
+  "outgoing_stock_entry",
   "section_break_fzpy5",
   "from_warehouse",
   "column_break_a9bla",
@@ -44,7 +46,7 @@
    "fieldtype": "Select",
    "in_list_view": 1,
    "label": "Purpose",
-   "options": "Material Issue\nMaterial Receipt\nSend to Warehouse\nReceive at Warehouse\nMaterial Consumed\nStock Dispatch",
+   "options": "Material Issue\nMaterial Receipt\nSend to Warehouse\nReceive at Warehouse\nMaterial Consumed\nStock Dispatch\nDC Completion\nGRN Completion",
    "reqd": 1
   },
   {
@@ -158,12 +160,28 @@
    "fieldtype": "Data",
    "label": "Packing Slip No.",
    "mandatory_depends_on": "eval:doc.purpose == 'Stock Dispatch'"
+  },
+  {
+   "depends_on": "eval: doc.purpose == \"DC Completion\" || doc.purpose ==\"GRN Completion\"",
+   "fieldname": "against",
+   "fieldtype": "Select",
+   "label": "Against",
+   "options": "\nDelivery Challan\nGoods Received Note",
+   "read_only": 1
+  },
+  {
+   "depends_on": "eval: doc.purpose == \"DC Completion\" || doc.purpose ==\"GRN Completion\"",
+   "fieldname": "against_id",
+   "fieldtype": "Dynamic Link",
+   "label": "Against ID",
+   "options": "against",
+   "read_only": 1
   }
  ],
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-01-27 14:15:47.228971",
+ "modified": "2025-02-01 16:40:21.147802",
  "modified_by": "Administrator",
  "module": "MRP Stock",
  "name": "Stock Entry",

@@ -15,6 +15,7 @@ class ProcessCost(Document):
 		    ["process_name","=", self.process_name],
 			["docstatus", "=", 1],
 		    ["name","!=",self.name],
+			['workflow_state',"=","Approved"],
 			['is_expired','=',0],
 			['is_rework','=', self.is_rework]
 		]
