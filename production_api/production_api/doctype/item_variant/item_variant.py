@@ -54,3 +54,7 @@ def spine_set_item(payload):
 	doc.set("__onload", frappe._dict())
 	doc.run_method("set_item")
 	return payload
+
+def on_doctype_update():
+	frappe.db.add_index("Item Variant Attribute", ["attribute","attribute_value"])
+	frappe.db.add_index("Item Variant",["name","item"])

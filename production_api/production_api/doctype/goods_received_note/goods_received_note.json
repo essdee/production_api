@@ -13,6 +13,8 @@
   "delivery_location_name",
   "lot",
   "dc_no",
+  "is_internal_unit",
+  "transfer_complete",
   "column_break_1",
   "rework_created",
   "edit_posting_date_and_time",
@@ -21,6 +23,7 @@
   "posting_date",
   "posting_time",
   "process_name",
+  "is_manual_entry",
   "section_break_1",
   "supplier",
   "supplier_document_no",
@@ -34,6 +37,7 @@
   "contact_person",
   "contact_display",
   "contact_mobile",
+  "ste_transferred",
   "column_break_fwrcg",
   "delivery_address",
   "delivery_address_display",
@@ -44,6 +48,7 @@
   "item_html",
   "grn_deliverables",
   "items_json",
+  "grn_consumed_html",
   "section_break_8ncnk",
   "total",
   "total_tax",
@@ -373,12 +378,51 @@
    "fieldname": "edit_posting_date_and_time",
    "fieldtype": "Check",
    "label": "Edit Posting Date and Time"
+  },
+  {
+   "default": "0",
+   "fetch_from": "process_name.is_manual_entry_in_grn",
+   "fieldname": "is_manual_entry",
+   "fieldtype": "Check",
+   "hidden": 1,
+   "label": "Is Manual Entry",
+   "read_only": 1
+  },
+  {
+   "fieldname": "grn_consumed_html",
+   "fieldtype": "HTML",
+   "label": "GRN Consumed HTML"
+  },
+  {
+   "default": "0",
+   "fieldname": "is_internal_unit",
+   "fieldtype": "Check",
+   "hidden": 1,
+   "label": "Is Internal Unit",
+   "read_only": 1
+  },
+  {
+   "allow_on_submit": 1,
+   "default": "0",
+   "fieldname": "transfer_complete",
+   "fieldtype": "Check",
+   "hidden": 1,
+   "label": "Transfer Complete",
+   "read_only": 1
+  },
+  {
+   "allow_on_submit": 1,
+   "depends_on": "eval: doc.is_internal_unit",
+   "fieldname": "ste_transferred",
+   "fieldtype": "Percent",
+   "label": "STE Transferred",
+   "read_only": 1
   }
  ],
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-01-28 18:53:59.238878",
+ "modified": "2025-02-01 17:25:51.465704",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Goods Received Note",

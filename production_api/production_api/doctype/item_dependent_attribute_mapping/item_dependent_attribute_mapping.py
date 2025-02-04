@@ -32,7 +32,7 @@ def get_dependent_attribute_details(name):
 		}
 	"""
 	dependent_attribute = {}
-	dependent_attribute_mapping = frappe.get_doc("Item Dependent Attribute Mapping", name)
+	dependent_attribute_mapping = frappe.get_cached_doc("Item Dependent Attribute Mapping", name)
 	dependent_attribute["attribute"] = dependent_attribute_mapping.dependent_attribute
 	attr_list = {}
 	for d in dependent_attribute_mapping.details:

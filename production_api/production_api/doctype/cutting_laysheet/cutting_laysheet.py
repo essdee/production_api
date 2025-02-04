@@ -387,11 +387,11 @@ def get_created_date(creation):
 @frappe.whitelist()
 def update_cutting_plan(cutting_laysheet):
 	cls_doc = frappe.get_doc("Cutting LaySheet",cutting_laysheet)
-	cp_doc = frappe.get_doc("Cutting Plan",cls_doc.cutting_plan)
-	ipd_doc = frappe.get_doc("Item Production Detail",cp_doc.production_detail)
+	production_detail, incomplete_items_json, completed_items_json = frappe.get_value("Cutting Plan",cls_doc.cutting_plan,['production_detail',"incomplete_items_json","completed_items_json"])
+	ipd_doc = frappe.get_doc("Item Production Detail",production_detail)
 
-	incomplete_items = json.loads(cp_doc.incomplete_items_json)
-	completed_items = json.loads(cp_doc.completed_items_json)
+	incomplete_items = json.loads(incomplete_items_json)
+	completed_items = json.loads(completed_items_json)
 	for item in cls_doc.cutting_laysheet_bundles:
 		parts = item.part.split(",")
 		for x in incomplete_items['items']:
@@ -520,7 +520,7 @@ def update_cutting_plan(cutting_laysheet):
 		cloth[key] += item.weight - item.balance_weight
 		accessory.setdefault(key,0)
 		accessory[key] += item.accessory_weight
-
+	
 	cp_doc = frappe.get_doc("Cutting Plan",cls_doc.cutting_plan)
 	for item in cp_doc.cutting_plan_cloth_details:
 		key = (item.colour, item.cloth_type, item.dia)

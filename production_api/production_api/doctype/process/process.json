@@ -7,6 +7,7 @@
  "engine": "InnoDB",
  "field_order": [
   "process_name",
+  "is_manual_entry_in_grn",
   "is_group",
   "process_details",
   "additional_allowance"
@@ -36,11 +37,17 @@
    "fieldname": "additional_allowance",
    "fieldtype": "Percent",
    "label": "Additional Allowance"
+  },
+  {
+   "default": "0",
+   "fieldname": "is_manual_entry_in_grn",
+   "fieldtype": "Check",
+   "label": "Is Manual Entry in GRN"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-01-18 14:58:27.132835",
+ "modified": "2025-01-29 18:25:39.941713",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Process",

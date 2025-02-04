@@ -13,15 +13,16 @@
   "qty",
   "stock_qty",
   "received_type",
-  "column_break_qyqc",
+  "column_break_mjsy",
   "uom",
   "stock_uom",
   "conversion_factor",
   "section_break_zthm",
   "rate",
   "stock_uom_rate",
-  "column_break_dmxv",
   "amount",
+  "column_break_dmxv",
+  "against_id_detail",
   "section_break_hisv",
   "transferred_qty",
   "ste_detail",
@@ -33,6 +34,7 @@
  ],
  "fields": [
   {
+   "columns": 4,
    "fieldname": "item",
    "fieldtype": "Link",
    "in_list_view": 1,
@@ -125,10 +127,6 @@
    "reqd": 1
   },
   {
-   "fieldname": "column_break_qyqc",
-   "fieldtype": "Column Break"
-  },
-  {
    "fieldname": "stock_uom",
    "fieldtype": "Link",
    "label": "Stock UOM",
@@ -172,12 +170,21 @@
    "fieldtype": "Link",
    "label": "Received Type",
    "options": "GRN Item Type"
+  },
+  {
+   "fieldname": "against_id_detail",
+   "fieldtype": "Data",
+   "label": "Against ID Detail"
+  },
+  {
+   "fieldname": "column_break_mjsy",
+   "fieldtype": "Column Break"
   }
  ],
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2025-01-23 09:47:12.493886",
+ "modified": "2025-02-01 11:54:51.565440",
  "modified_by": "Administrator",
  "module": "MRP Stock",
  "name": "Stock Entry Detail",

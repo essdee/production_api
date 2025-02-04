@@ -10,6 +10,7 @@ import POItem from "./PurchaseOrder/components/Item.vue"
 import GRNItemWrapper from "./GRN";
 import GRNPurchaseOrder from "./GRN/components/GRNPurchaseOrder.vue";
 import GRNWorkOrder from "./GRN/components/GRNWorkOrder.vue";
+import GRNConsumedDetail from "./GRN/components/GRNConsumedDetail.vue"
 import LotOrder from "./Lot/components/LotOrder.vue" 
 import WorkStation from "./Lot/components/WorkStation.vue"
 import TimeActionPreview from "./Lot/components/TimeActionPreview.vue"
@@ -633,6 +634,28 @@ frappe.production.ui.Deliverables = class {
     }
 };
 
+frappe.production.ui.GRNConsumed = class {
+    constructor(wrapper){
+        this.$wrapper = $(wrapper);
+        this.make_table();
+    }
+    make_table(){
+        this.app = createApp(GRNConsumedDetail)
+        SetVueGlobals(this.app)
+        this.vue = this.app.mount(this.$wrapper.get(0))
+    }
+    get_deliverables_data(){
+        let items = JSON.parse(JSON.stringify(this.vue.items))
+        return items
+    }
+    load_data(item_details){
+        let items = JSON.parse(JSON.stringify(item_details));
+        this.vue.load_data(items)
+    }
+    update_status(val) {
+        this.vue.update_status(val);
+    }
+};
 frappe.production.ui.Receivables = class {
     constructor(wrapper){
         this.$wrapper = $(wrapper);

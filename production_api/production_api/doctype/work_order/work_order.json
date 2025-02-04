@@ -13,6 +13,7 @@
   "supplier",
   "is_delivered",
   "column_break_wrym",
+  "is_internal_unit",
   "parent_wo",
   "process_name",
   "item",
@@ -302,6 +303,15 @@
    "hidden": 1,
    "label": "Work Order Calculated Items",
    "options": "Work Order Calculated Item"
+  },
+  {
+   "default": "0",
+   "fetch_from": "supplier.is_company_location",
+   "fetch_if_empty": 1,
+   "fieldname": "is_internal_unit",
+   "fieldtype": "Check",
+   "hidden": 1,
+   "label": "Is Internal Unit"
   }
  ],
  "index_web_pages_for_search": 1,
@@ -316,7 +326,7 @@
    "link_fieldname": "against_id"
   }
  ],
- "modified": "2025-01-27 14:09:21.664355",
+ "modified": "2025-02-01 16:41:47.726364",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Work Order",
