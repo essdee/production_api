@@ -52,8 +52,20 @@ def get_columns(filters):
 			"width":80,
 		},
 		{
-			"label": _("Balance Qty"),
+			"label": _("Actual Qty"),
 			"fieldname": "actual_qty",
+			"fieldtype": "Float",
+			"width": 140,
+		},
+		{
+			"label": _("Reserved Qty"),
+			"fieldname": "reserved_qty",
+			"fieldtype": "Float",
+			"width": 140,
+		},
+		{
+			"label": _("Balance Qty"),
+			"fieldname": "bal_qty",
 			"fieldtype": "Float",
 			"width": 140,
 		},
@@ -81,6 +93,8 @@ def get_data(filters):
 			bin.received_type,
 			bin.actual_qty,
 			bin.stock_uom,
+			bin.reserved_qty,
+			(bin.actual_qty - bin.reserved_qty).as_("bal_qty")
 		)
 		.where((bin.item_code == variant.name) & (bin.warehouse == supplier.name))
 	)
