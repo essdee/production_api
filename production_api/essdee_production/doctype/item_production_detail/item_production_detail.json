@@ -609,12 +609,13 @@
   {
    "fieldname": "variants_json",
    "fieldtype": "JSON",
+   "hidden": 1,
    "label": "Variants JSON"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-02-03 17:58:47.110866",
+ "modified": "2025-02-04 11:31:06.751895",
  "modified_by": "Administrator",
  "module": "Essdee Production",
  "name": "Item Production Detail",
