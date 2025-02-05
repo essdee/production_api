@@ -44,6 +44,7 @@ class DeliveryChallan(Document):
 		received_type = stock_settings.default_received_type
 		transit_warehouse = stock_settings.transit_warehouse
 		res = get_variant_stock_details()
+		self.total_delivered_qty = 0
 		for row in self.items:
 			if res.get(row.item_variant):
 				add_sl_entries.append(self.get_sle_data(row, self.from_location, 1, {}, received_type))	
@@ -57,6 +58,7 @@ class DeliveryChallan(Document):
 		wo_doc.save()		
 
 	def before_submit(self):
+		self.letter_head = frappe.db.get_single_value("MRP Settings","dc_grn_letter_head")
 		logger = get_module_logger("delivery_challan")
 		logger.debug(f"On Submit {datetime.now()}")
 		add_sl_entries = []
@@ -65,16 +67,18 @@ class DeliveryChallan(Document):
 		stock_settings = frappe.get_single("Stock Settings")
 		received_type = stock_settings.default_received_type
 		transit_warehouse = stock_settings.transit_warehouse
+		total_delivered = flt(0)
 		for row in self.items:
 			if res.get(row.item_variant):
 				quantity, rate = get_stock_balance(row.item_variant, self.from_location,received_type, with_valuation_rate=True, lot=self.lot)
 				if flt(quantity) < flt(row.delivered_quantity):
 					frappe.throw(f"Required quantity is {row.delivered_quantity} but stock quantity is {quantity} for {row.item_variant}")
-				row.rate = rate		
+				row.rate = rate	
+				total_delivered += row.delivered_quantity	
 				reduce_sl_entries.append(self.get_sle_data(row, self.from_location, -1, {}, received_type))
 				supplier = transit_warehouse if self.is_internal_unit else self.supplier
 				add_sl_entries.append(self.get_sle_data(row, supplier, 1, {}, received_type))
-		
+		self.total_delivered_qty = total_delivered
 		logger.debug(f"{self.name} Stock check and SLE data construction {datetime.now()}")
 		wo_doc = frappe.get_cached_doc("Work Order", self.work_order)
 		for deliverable in wo_doc.deliverables:

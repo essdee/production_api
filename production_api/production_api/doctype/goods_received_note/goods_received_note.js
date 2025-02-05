@@ -297,8 +297,14 @@ frappe.ui.form.on('Goods Received Note', {
 					if (r.message) {
 						frm.set_value('supplier_address', r.message)
 					} 
+					else{
+						frm.set_value('supplier_address', '')
+					}
 				}
 			})
+		}
+		else{
+			frm.set_value('supplier_address', '')
 		}
 	},
 	delivery_location: function(frm) {
@@ -317,6 +323,9 @@ frappe.ui.form.on('Goods Received Note', {
 					}
 				}
 			})
+		}
+		else{
+			frm.set_value('delivery_address', '')
 		}
 	},
 	against: function(frm) {

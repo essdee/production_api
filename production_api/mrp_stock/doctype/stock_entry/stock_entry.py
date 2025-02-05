@@ -185,10 +185,11 @@ class StockEntry(Document):
 				frappe.throw("High Amount of Items Received")	
 			x = qty / total_quantity
 			x = x * 100
-			doc.ste_transferred = doc.ste_transferred + x
-			if round(doc.ste_transferred) >= flt(100):
-				doc.ste_transferred = 100
+			doc.ste_transferred_percent = doc.ste_transferred_percent + x
+			doc.ste_transferred += qty
+			if round(doc.ste_transferred,2) == round(doc.total_delivered_qty,2):
 				doc.transfer_complete = 1
+			doc.ste_transferred_percent = round(doc.ste_transferred_percent, 2)
 			doc.save()
 	
 	def before_cancel(self):
@@ -224,10 +225,12 @@ class StockEntry(Document):
 
 			x = qty / total_quantity
 			x = x * 100
-			doc.ste_transferred = doc.ste_transferred - x
+			doc.ste_transferred_percent = doc.ste_transferred_percent - x
+			doc.ste_transferred = doc.ste_transferred - qty
 			
-			if round(doc.ste_transferred) < flt(100):
+			if doc.ste_transferred < doc.total_delivered_qty:
 				doc.transfer_complete = 0
+			doc.ste_transferred_percent = round(doc.ste_transferred_percent, 2)
 			doc.save()	
 		self.revert_stock_transfer_entries()
 

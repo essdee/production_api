@@ -20,7 +20,9 @@
   "section_break_45wni",
   "grn_cancellation_in_days",
   "column_break_b4fhl",
-  "allow_grn_cancellation"
+  "allow_grn_cancellation",
+  "section_break_inin",
+  "dc_grn_letter_head"
  ],
  "fields": [
   {
@@ -114,12 +116,22 @@
    "fieldtype": "Table",
    "label": "Purchase Invoice Series Map",
    "options": "MRP Settings Series Map"
+  },
+  {
+   "fieldname": "section_break_inin",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "dc_grn_letter_head",
+   "fieldtype": "Link",
+   "label": "DC GRN Letter Head",
+   "options": "Letter Head"
   }
  ],
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2024-04-02 10:09:27.364333",
+ "modified": "2025-02-05 12:02:50.548622",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "MRP Settings",
