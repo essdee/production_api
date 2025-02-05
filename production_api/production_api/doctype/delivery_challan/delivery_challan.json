@@ -283,6 +283,7 @@
    "allow_on_submit": 1,
    "fieldname": "letter_head",
    "fieldtype": "Link",
+   "hidden": 1,
    "label": "Letter Head",
    "options": "Letter Head"
   },
@@ -312,7 +313,7 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-02-05 14:35:45.990556",
+ "modified": "2025-02-05 15:00:40.808711",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Delivery Challan",

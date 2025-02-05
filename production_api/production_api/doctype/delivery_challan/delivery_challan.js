@@ -27,18 +27,22 @@ frappe.ui.form.on("Delivery Challan", {
 				}
 			};
 		});
+		frm.set_query('work_order',(doc) => {
+            let fil = {
+				"docstatus" : 1,
+				"is_delivered" : 0,
+				"open_status":"Open",
+			}
+			if (doc.supplier){
+				fil['supplier'] = doc.supplier
+			}	
+			return {
+                filters : fil
+            }
+        })
     },
     refresh(frm){
 		frm.page.btn_secondary.hide()
-        frm.set_query('work_order',() => {
-            return {
-                filters : {
-                    "docstatus" : 1,
-                    "is_delivered" : 0,
-                    "open_status":"Open",
-                }
-            }
-        })
         $(frm.fields_dict['deliverable_items'].wrapper).html("")
         if(frm.doc.__onload && frm.doc.__onload.deliverable_item_details) {
             frm.doc['deliverable_item_details'] = JSON.stringify(frm.doc.__onload.deliverable_item_details);
