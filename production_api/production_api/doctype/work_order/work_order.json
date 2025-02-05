@@ -11,6 +11,7 @@
   "wo_date",
   "lot",
   "supplier",
+  "supplier_name",
   "is_delivered",
   "column_break_wrym",
   "is_internal_unit",
@@ -19,6 +20,7 @@
   "item",
   "production_detail",
   "delivery_location",
+  "delivery_location_name",
   "open_status",
   "section_break_tmhn",
   "planned_start_date",
@@ -312,6 +314,22 @@
    "fieldtype": "Check",
    "hidden": 1,
    "label": "Is Internal Unit"
+  },
+  {
+   "fetch_from": "supplier.supplier_name",
+   "fetch_if_empty": 1,
+   "fieldname": "supplier_name",
+   "fieldtype": "Data",
+   "label": "Supplier Name",
+   "read_only": 1
+  },
+  {
+   "fetch_from": "delivery_location.supplier_name",
+   "fetch_if_empty": 1,
+   "fieldname": "delivery_location_name",
+   "fieldtype": "Data",
+   "label": "Delivery Location Name",
+   "read_only": 1
   }
  ],
  "index_web_pages_for_search": 1,
@@ -326,7 +344,7 @@
    "link_fieldname": "against_id"
   }
  ],
- "modified": "2025-02-01 16:41:47.726364",
+ "modified": "2025-02-05 14:15:10.143917",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Work Order",
@@ -348,7 +366,6 @@
   {
    "cancel": 1,
    "create": 1,
-   "delete": 1,
    "email": 1,
    "export": 1,
    "print": 1,

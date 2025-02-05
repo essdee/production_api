@@ -172,8 +172,14 @@ frappe.ui.form.on("Delivery Challan", {
 					if (r.message) {
 						frm.set_value('from_address', r.message)
 					}
+					else{
+						frm.set_value("from_address","")
+					}
 				}
 			})
+		}
+		else{
+			frm.set_value("from_address","")
 		}
 	},
 	supplier: function(frm) {
@@ -190,8 +196,15 @@ frappe.ui.form.on("Delivery Challan", {
 					if (r.message) {
 						frm.set_value('supplier_address', r.message)
 					}
+					else{
+						frm.set_value('supplier_address', '')
+					}
 				}
 			})
+		}
+		else{
+			frm.set_value('supplier_address', '')
+
 		}
 	},
     from_address: function(frm) {
@@ -204,6 +217,9 @@ frappe.ui.form.on("Delivery Challan", {
 				callback: function(r) {
 					if (r.message) {
 						frm.set_value('from_address_details', r.message)
+					}
+					else{
+						frm.set_value('from_address_details', '');
 					}
 				}
 			})
@@ -222,6 +238,9 @@ frappe.ui.form.on("Delivery Challan", {
 				callback: function(r) {
 					if (r.message) {
 						frm.set_value('supplier_address_details', r.message)
+					}
+					else{
+						frm.set_value('supplier_address_details', '');
 					}
 				}
 			})
