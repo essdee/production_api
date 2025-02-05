@@ -106,7 +106,7 @@ class StockEntry(Document):
 
 		# using try except to catch all validation msgs and display together
 		try:
-			item = frappe.get_value("Item Variant", item, "item")
+			item = frappe.get_cached_value("Item Variant", item, "item")
 
 			# end of life and stock item
 			validate_disabled(item)

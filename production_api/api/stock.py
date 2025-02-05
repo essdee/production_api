@@ -84,7 +84,7 @@ def make_dispatch_stock_entry(items, warehouse, packing_slip):
         
         
     ste.flags.allow_from_sms = True
-    ste.save()
+    ste.submit()
 
     item_details_dict = {}
     for item in items:
@@ -103,7 +103,6 @@ def make_dispatch_stock_entry(items, warehouse, packing_slip):
         sre.update_status()
         sre.update_reserved_stock_in_bin()
 
-    ste.submit()
     return ste.name
 
 @frappe.whitelist()
