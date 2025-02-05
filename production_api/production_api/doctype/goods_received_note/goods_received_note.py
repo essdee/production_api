@@ -51,6 +51,7 @@ class GoodsReceivedNote(Document):
 			self.dump_items()	
 
 	def before_submit(self):
+		self.letter_head = frappe.db.get_single_value("MRP Settings","dc_grn_letter_head")
 		against_docstatus = frappe.get_value(self.against, self.against_id, 'docstatus')
 		if against_docstatus != 1:
 			frappe.throw(f'{self.against} is not submitted.', title='GRN')
@@ -88,7 +89,9 @@ class GoodsReceivedNote(Document):
 	
 	def split_items(self):
 		items_list = []
+		total_delivered = flt(0)
 		for item in self.items:
+			total_delivered += item.quantity
 			received_types = item.received_types
 			if isinstance(received_types, string_types):
 				received_types = json.loads(received_types)
@@ -120,6 +123,7 @@ class GoodsReceivedNote(Document):
 					x['received_type'] = type
 					m = x.copy()
 					items_list.append(m)
+		self.total_delivered_qty = total_delivered			
 		self.set("items",items_list)
 
 	def dump_items(self):
@@ -164,7 +168,7 @@ class GoodsReceivedNote(Document):
 	def calculate_grn_deliverables(self):
 		total_received_qty = 0
 		for item in self.items:
-			total_received_qty += item.quantity
+			total_received_qty += item.quantity	
 
 		wo_doc = frappe.get_cached_doc(self.against, self.against_id)
 		diff = wo_doc.total_quantity - total_received_qty

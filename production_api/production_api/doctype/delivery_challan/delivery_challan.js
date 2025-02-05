@@ -27,18 +27,22 @@ frappe.ui.form.on("Delivery Challan", {
 				}
 			};
 		});
+		frm.set_query('work_order',(doc) => {
+            let fil = {
+				"docstatus" : 1,
+				"is_delivered" : 0,
+				"open_status":"Open",
+			}
+			if (doc.supplier){
+				fil['supplier'] = doc.supplier
+			}	
+			return {
+                filters : fil
+            }
+        })
     },
     refresh(frm){
 		frm.page.btn_secondary.hide()
-        frm.set_query('work_order',() => {
-            return {
-                filters : {
-                    "docstatus" : 1,
-                    "is_delivered" : 0,
-                    "open_status":"Open",
-                }
-            }
-        })
         $(frm.fields_dict['deliverable_items'].wrapper).html("")
         if(frm.doc.__onload && frm.doc.__onload.deliverable_item_details) {
             frm.doc['deliverable_item_details'] = JSON.stringify(frm.doc.__onload.deliverable_item_details);
@@ -172,8 +176,14 @@ frappe.ui.form.on("Delivery Challan", {
 					if (r.message) {
 						frm.set_value('from_address', r.message)
 					}
+					else{
+						frm.set_value("from_address","")
+					}
 				}
 			})
+		}
+		else{
+			frm.set_value("from_address","")
 		}
 	},
 	supplier: function(frm) {
@@ -190,8 +200,15 @@ frappe.ui.form.on("Delivery Challan", {
 					if (r.message) {
 						frm.set_value('supplier_address', r.message)
 					}
+					else{
+						frm.set_value('supplier_address', '')
+					}
 				}
 			})
+		}
+		else{
+			frm.set_value('supplier_address', '')
+
 		}
 	},
     from_address: function(frm) {
@@ -204,6 +221,9 @@ frappe.ui.form.on("Delivery Challan", {
 				callback: function(r) {
 					if (r.message) {
 						frm.set_value('from_address_details', r.message)
+					}
+					else{
+						frm.set_value('from_address_details', '');
 					}
 				}
 			})
@@ -222,6 +242,9 @@ frappe.ui.form.on("Delivery Challan", {
 				callback: function(r) {
 					if (r.message) {
 						frm.set_value('supplier_address_details', r.message)
+					}
+					else{
+						frm.set_value('supplier_address_details', '');
 					}
 				}
 			})

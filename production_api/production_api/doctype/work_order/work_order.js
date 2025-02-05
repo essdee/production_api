@@ -235,8 +235,14 @@ frappe.ui.form.on("Work Order", {
 					if (r.message) {
 						frm.set_value('supplier_address', r.message)
 					}
+					else{
+						frm.set_value('supplier_address', '')
+					}
 				}
 			})
+		}
+		else{
+			frm.set_value('supplier_address', '')
 		}
 	},
 	delivery_location: function(frm) {
@@ -253,8 +259,14 @@ frappe.ui.form.on("Work Order", {
 					if (r.message) {
 						frm.set_value('delivery_address', r.message)
 					}
+					else{
+						frm.set_value('delivery_address', '')
+					}
 				}
 			})
+		}
+		else{
+			frm.set_value('delivery_address', '')
 		}
 	},
     supplier_address: function(frm) {
@@ -268,9 +280,15 @@ frappe.ui.form.on("Work Order", {
 					if (r.message) {
 						frm.set_value('supplier_address_details', r.message)
 					}
+					else{
+						frm.set_value('supplier_address_details', '')
+					}
 				}
 			})
 		} 
+		else{
+			frm.set_value('supplier_address_details', '')
+		}
 	},
     delivery_address: function(frm) {
 		if (frm.doc['delivery_address']) {

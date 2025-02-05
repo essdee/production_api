@@ -24,6 +24,7 @@
   "posting_time",
   "process_name",
   "is_manual_entry",
+  "letter_head",
   "section_break_1",
   "supplier",
   "supplier_document_no",
@@ -37,7 +38,6 @@
   "contact_person",
   "contact_display",
   "contact_mobile",
-  "ste_transferred",
   "column_break_fwrcg",
   "delivery_address",
   "delivery_address_display",
@@ -49,6 +49,10 @@
   "grn_deliverables",
   "items_json",
   "grn_consumed_html",
+  "transfer_section",
+  "total_delivered_qty",
+  "ste_transferred",
+  "ste_transferred_percent",
   "section_break_8ncnk",
   "total",
   "total_tax",
@@ -414,15 +418,41 @@
    "allow_on_submit": 1,
    "depends_on": "eval: doc.is_internal_unit",
    "fieldname": "ste_transferred",
-   "fieldtype": "Percent",
+   "fieldtype": "Float",
    "label": "STE Transferred",
+   "read_only": 1
+  },
+  {
+   "fieldname": "total_delivered_qty",
+   "fieldtype": "Float",
+   "label": "Total Delivered Qty"
+  },
+  {
+   "fieldname": "letter_head",
+   "fieldtype": "Link",
+   "hidden": 1,
+   "label": "Letter Head",
+   "options": "Letter Head"
+  },
+  {
+   "collapsible": 1,
+   "depends_on": "eval: doc.is_internal_unit",
+   "fieldname": "transfer_section",
+   "fieldtype": "Section Break",
+   "label": "Transfer"
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "ste_transferred_percent",
+   "fieldtype": "Percent",
+   "label": "STE Transferred Percent",
    "read_only": 1
   }
  ],
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-02-01 17:25:51.465704",
+ "modified": "2025-02-05 14:34:34.332450",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Goods Received Note",
@@ -446,7 +476,6 @@
   {
    "cancel": 1,
    "create": 1,
-   "delete": 1,
    "email": 1,
    "export": 1,
    "print": 1,
@@ -459,7 +488,6 @@
   },
   {
    "create": 1,
-   "delete": 1,
    "email": 1,
    "export": 1,
    "print": 1,
@@ -504,31 +532,24 @@
    "select": 1
   },
   {
-   "cancel": 1,
-   "create": 1,
-   "delete": 1,
    "email": 1,
    "export": 1,
    "print": 1,
    "read": 1,
    "report": 1,
    "role": "Merch Manager",
-   "share": 1,
-   "submit": 1,
-   "write": 1
+   "select": 1,
+   "share": 1
   },
   {
-   "cancel": 1,
-   "create": 1,
    "email": 1,
    "export": 1,
    "print": 1,
    "read": 1,
    "report": 1,
    "role": "Merch User",
-   "share": 1,
-   "submit": 1,
-   "write": 1
+   "select": 1,
+   "share": 1
   },
   {
    "email": 1,
