@@ -109,6 +109,11 @@ class StockReservationEntry(Document):
 			msg = _("Stock Reservation Entry cannot be updated as it has been delivered.")
 			frappe.throw(msg)
 
+def on_doctype_update():
+	frappe.db.add_index("Stock Reservation Entry", ['warehouse', 'lot', 'item_code', 'received_type', 'status'])
+	frappe.db.add_index("Stock Reservation Entry", ['warehouse', 'lot', 'item_code', 'received_type'])
+	frappe.db.add_index("Stock Reservation Entry", ['voucher_type', 'voucher_no', 'status'])
+
 def create_stock_reservation_entries_for_so_items(
     voucher_type,
 	voucher_no,
