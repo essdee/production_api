@@ -82,10 +82,7 @@ def make_dispatch_stock_entry(items, warehouse, packing_slip):
         })
         index += 1
         
-        
     ste.flags.allow_from_sms = True
-    ste.submit()
-
     item_details_dict = {}
     for item in items:
         if item['sre'] not in item_details_dict:
@@ -98,11 +95,12 @@ def make_dispatch_stock_entry(items, warehouse, packing_slip):
     for sre, details in item_details_dict.items():
         sre = frappe.get_doc("Stock Reservation Entry", sre)
         sre.delivered_qty += details['uom_conv_detail']['conversion_factor'] * details['qty']
-        sre.stock_entry = ste.name
         sre.db_update()
         sre.update_status()
         sre.update_reserved_stock_in_bin()
-
+    ste.submit()
+    for sre, details in item_details_dict.items():
+        frappe.db.set_value("Stock Reservation Entry", sre, 'stock_entry', ste.name)
     return ste.name
 
 @frappe.whitelist()
