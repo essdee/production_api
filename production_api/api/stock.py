@@ -4,7 +4,6 @@ from production_api.mrp_stock.doctype.fg_stock_entry.fg_stock_entry import creat
 from six import string_types
 import math
 
-received_type =frappe.db.get_single_value("Stock Settings", "default_received_type")
 @frappe.whitelist()
 def get_stock(item, warehouse, remove_zero_balance_item=1):
     
@@ -14,6 +13,7 @@ def get_stock(item, warehouse, remove_zero_balance_item=1):
         item = json.loads(item)
 
     fg_lot = get_default_fg_lot()
+    received_type =frappe.db.get_single_value("Stock Settings", "default_received_type")
         
     data  = get_stock_balance_bin(
         warehouse,
@@ -44,6 +44,7 @@ def get_group_by_key(row) -> str:
 @frappe.whitelist()
 def make_dispatch_stock_entry(items, warehouse, packing_slip):
     from production_api.mrp_stock.doctype.stock_entry.stock_entry import get_uom_details
+    received_type =frappe.db.get_single_value("Stock Settings", "default_received_type")
     if not packing_slip or not warehouse or not items:
         frappe.throw("Required Details not sent")
     if isinstance(items, string_types):
@@ -81,10 +82,7 @@ def make_dispatch_stock_entry(items, warehouse, packing_slip):
         })
         index += 1
         
-        
     ste.flags.allow_from_sms = True
-    ste.save()
-
     item_details_dict = {}
     for item in items:
         if item['sre'] not in item_details_dict:
@@ -97,12 +95,12 @@ def make_dispatch_stock_entry(items, warehouse, packing_slip):
     for sre, details in item_details_dict.items():
         sre = frappe.get_doc("Stock Reservation Entry", sre)
         sre.delivered_qty += details['uom_conv_detail']['conversion_factor'] * details['qty']
-        sre.stock_entry = ste.name
         sre.db_update()
         sre.update_status()
         sre.update_reserved_stock_in_bin()
-
     ste.submit()
+    for sre, details in item_details_dict.items():
+        frappe.db.set_value("Stock Reservation Entry", sre, 'stock_entry', ste.name)
     return ste.name
 
 @frappe.whitelist()

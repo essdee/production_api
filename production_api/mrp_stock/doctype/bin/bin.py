@@ -117,3 +117,4 @@ def on_doctype_update():
 			"""
 		)
 	frappe.db.add_unique("Bin", ["item_code", "warehouse", "lot", "received_type"], constraint_name="unique_item_warehouse_lot_type")
+	frappe.db.add_index("Bin", ["item_code", "warehouse", "lot", "received_type"])

@@ -513,21 +513,21 @@ def get_attributes(item):
 
 def validate_is_stock_item(item, is_stock_item=None):
 	if not is_stock_item:
-		is_stock_item = frappe.db.get_value("Item", item, "is_stock_item")
+		is_stock_item = frappe.get_cached_value("Item", item, "is_stock_item")
 
 	if is_stock_item != 1:
 		frappe.throw(_("Item {0} is not a stock Item").format(item))
 
 def validate_cancelled_item(item, docstatus=None):
 	if docstatus is None:
-		docstatus = frappe.db.get_value("Item", item, "docstatus")
+		docstatus = frappe.get_cached_value("Item", item, "docstatus")
 
 	if docstatus == 2:
 		frappe.throw(_("Item {0} is cancelled").format(item))
 
 def validate_disabled(item, disabled=None):
 	if (disabled is None):
-		disabled = frappe.db.get_value("Item", item, "disabled")
+		disabled = frappe.get_cached_value("Item", item, "disabled")
 
 	if disabled:
 		frappe.throw(_("Item {0} is disabled").format(item))
