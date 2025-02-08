@@ -418,7 +418,8 @@ def fetch_stock_entry_items(items):
 							'against_stock_entry': variant.get("against_stock_entry", None),
 							'ste_detail': variant.get("ste_detail", None),
 							'transferred_qty': variant.get("transferred_qty", None),
-							# 'tax': variant.tax,
+							'secondary_qty': variant.get("secondary_qty", 0),
+							'secondary_uom': variant.get('secondary_uom', None)
 						}
 						break
 		else:
@@ -428,6 +429,8 @@ def fetch_stock_entry_items(items):
 				'against_stock_entry': variants[0].get("against_stock_entry", None),
 				'ste_detail': variants[0].get("ste_detail", None),
 				'transferred_qty': variants[0].get("transferred_qty", None),
+				"secondary_qty": variants[0].get("secondary_qty", 0),
+				"secondary_uom": variants[0].get('secondary_uom', None)
 				# 'tax': variants[0].tax
 			}
 		index = get_item_group_index(item_details, current_item_attribute_details)
@@ -478,6 +481,8 @@ def save_stock_entry_items(item_details):
 						item1['row_index'] = row_index
 						item1['remarks'] = item.get('remarks')
 						item1['received_type'] = item.get('received_type')
+						item1['secondary_qty'] = values.get('secondary_qty')
+						item1['secondary_uom'] = values.get('secondary_uom')
 						items.append(item1)
 			else:
 				if item['values'].get('default') and item['values']['default'].get('qty'):
@@ -500,6 +505,8 @@ def save_stock_entry_items(item_details):
 					item1['row_index'] = row_index
 					item1['remarks'] = item.get('remarks')
 					item1['received_type'] = item.get('received_type')
+					item1['secondary_qty'] = item['values']['default'].get('secondary_qty')
+					item1['secondary_uom'] = item['values']['default'].get('secondary_uom')
 					items.append(item1)
 			row_index += 1
 	return items

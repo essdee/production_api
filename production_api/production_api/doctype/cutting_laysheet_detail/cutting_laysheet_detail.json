@@ -19,7 +19,8 @@
   "accessory_json",
   "accessory_weight",
   "used_weight",
-  "balance_weight"
+  "balance_weight",
+  "items_json"
  ],
  "fields": [
   {
@@ -113,12 +114,17 @@
    "fieldname": "balance_weight",
    "fieldtype": "Float",
    "label": "Balance Weight"
+  },
+  {
+   "fieldname": "items_json",
+   "fieldtype": "JSON",
+   "label": "Items JSON"
   }
  ],
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2024-10-29 15:14:29.794416",
+ "modified": "2025-02-07 15:00:13.240860",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Cutting LaySheet Detail",

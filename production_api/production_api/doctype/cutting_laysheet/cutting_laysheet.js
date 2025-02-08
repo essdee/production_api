@@ -23,6 +23,9 @@ frappe.ui.form.on("Cutting LaySheet", {
         })
     },
     refresh(frm) {
+        removeDefaultPrintEvent();
+        $('[data-original-title=Print]').hide();
+        $("li:has(a:has(span[data-label='Print']))").remove();
         frm.laysheet = new frappe.production.ui.LaySheetCloths(frm.fields_dict['cloths_html'].wrapper)
         if(frm.doc.__onload && frm.doc.__onload.item_details){
             frm.laysheet.load_data(frm.doc.__onload.item_details)
@@ -128,6 +131,36 @@ frappe.ui.form.on("Cutting LaySheet", {
                     });
                 })
         }
+        if(frm.doc.status == "Completed" || frm.doc.status == "Bundles Generated"){
+            frm.add_custom_button("Print Laysheet", ()=> {
+                let w = window.open(
+                    frappe.urllib.get_full_url(
+                        "/printview?" + "doctype=" + encodeURIComponent(frm.doc.doctype) + "&name=" +
+                            encodeURIComponent(frm.doc.name) + "&trigger_print=1" + "&format=" + 
+                            encodeURIComponent("Cutting LaySheet") + "&no_letterhead=1"
+                    )
+                );
+                if (!w) {
+                    frappe.msgprint(__("Please enable pop-ups"));
+                    return;
+                }
+            })
+            if(frm.doc.status == "Bundles Generated"){
+                frm.add_custom_button("Print Movement Chart", ()=> {
+                    let w = window.open(
+                        frappe.urllib.get_full_url(
+                            "/printview?" + "doctype=" + encodeURIComponent(frm.doc.doctype) + "&name=" +
+                                encodeURIComponent(frm.doc.name) + "&trigger_print=1" + "&format=" + 
+                                encodeURIComponent("Cutting Movement Chart") + "&no_letterhead=1"
+                        )
+                    );
+                    if (!w) {
+                        frappe.msgprint(__("Please enable pop-ups"));
+                        return;
+                    }
+                })
+            }
+        }
 	},
     validate(frm){
         let items = frm.laysheet.get_items()
@@ -160,6 +193,15 @@ function get_printers_html(printers){
             </table>`
 
     return htmlContent
+}
+
+function removeDefaultPrintEvent(){
+    $(document).on('keydown', function(e) {
+        if ((e.ctrlKey || e.metaKey) && (e.key == "p")) {
+            e.preventDefault();
+            e.stopImmediatePropagation();
+        }  
+    });
 }
 
 function get_printer(){

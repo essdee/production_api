@@ -2,7 +2,7 @@
 	<div>
 		<button v-if="docstatus == 0" class="btn btn-success pull-right" @click="fill_quantity()">Fill Quantity</button>
 		<table v-if="docstatus !== 0" class="table table-sm table-bordered">
-			<tr v-for="(i, item_index) in items" :key="item_index">
+			<tr v-for="(i, item_index) in deliverables_item" :key="item_index">
 				<td v-if="i.primary_attribute">
 					<table class="table table-sm table-bordered" v-if="i.items && i.items.length > 0">
 						<tr>
@@ -21,6 +21,9 @@
 								<div v-if='attr.delivered_quantity > 0'>
 									{{ attr.delivered_quantity}}
 									<span v-if="j.default_uom">{{ " " + j.default_uom }}</span>
+									<div v-if="attr.secondary_qty > 0 && attr.secondary_uom">
+										({{attr.secondary_qty}} {{attr.secondary_uom}})
+									</div>
 								</div>
 								<div v-else> -- </div>
 							</td>
@@ -45,6 +48,9 @@
 								<div v-if='j.values["default"].delivered_quantity > 0'>
 									{{ j.values["default"].delivered_quantity}}
 									<span v-if="j.default_uom">{{ " " + j.default_uom }}</span>
+									<div v-if="j.values['default'].secondary_uom && j.values['default'].secondary_qty > 0">
+										({{j.values['default'].secondary_qty}} {{j.values['default'].secondary_uom}})
+									</div>
 								</div>
 								<div v-else> -- </div>
 							</td>
@@ -56,6 +62,10 @@
 		<table v-else class="table table-sm table-bordered">
 			<tr v-for="(i, item_index) in deliverables_item" :key="item_index">
 				<td v-if="i.primary_attribute">
+					<input type="checkbox" v-model="indexes[item_index]" @click="get_check_value(item_index)"/>Update Secondary
+					<div v-if="uoms[item_index] && indexes[item_index]">
+						Secondary UOM: {{uoms[item_index]}}
+					</div>
 					<table class="table table-sm table-bordered" v-if="i.items && i.items.length > 0">
 						<tr>
 							<th>S.No.</th>
@@ -76,19 +86,32 @@
 										v-model.number="attr.delivered_quantity" min="0"
 										step="0.001" @blur="make_dirty()"/>
 								</form>
+								<div v-if="indexes[item_index]">
+									<input class="form-control pt-2" type="number"
+										v-model.number="attr.secondary_qty" min="0"
+										step="0.001" @blur="make_dirty()"/>
+								</div>
+								<div v-else-if="attr.secondary_qty > 0 && attr.secondary_uom">
+									({{attr.secondary_qty}} {{attr.secondary_uom}})
+								</div>
 							</td>
 						</tr>
 					</table>
 				</td>
 				<td v-else>
+					<input type="checkbox" v-model="indexes[item_index]" @click="get_check_value(item_index)"/>Update Secondary
+					<div v-if="uoms[item_index] && indexes[item_index]">
+						Secondary UOM: {{uoms[item_index]}}
+					</div>
 					<table class="table table-sm table-bordered" v-if="i.items && i.items.length > 0">
 						<tr>
 							<th>S.No.</th>
 							<th>Item</th>
 							<th>Lot</th>
 							<th v-for="attr in i.attributes" :key="attr">{{ attr }}</th>
-							<th>Quantity</th>
 							<th>Pending Quantity</th>
+							<th>Quantity</th>
+							<th>Secondary Qty</th>
 						</tr>
 						<tr v-for="(j, item1_index) in i.items" :key="item1_index">
 							<td>{{ item1_index + 1 }}</td>
@@ -101,10 +124,20 @@
 							</td>
 							<td>
 								<form>
-									<input class="form-control" type="number"
+									<input class="form-control pt-2" type="number"
 										v-model.number="j.values['default']['delivered_quantity']"
 										min="0" step="0.001" @blur="make_dirty()"/>
 								</form>
+							</td>
+							<td>
+								<div v-if="indexes[item_index]">
+									<input class="form-control" type="number"
+										v-model.number="j.values['default'].secondary_qty" min="0"
+										step="0.001" @blur="make_dirty()"/>
+								</div>
+								<div v-else-if="j.values['default'].secondary_uom && j.values['default'].secondary_qty > 0">
+									{{j.values['default'].secondary_qty}} {{j.values['default'].secondary_uom}}
+								</div>
 							</td>
 						</tr>
 					</table>
@@ -115,14 +148,36 @@
 </template>
 	
 <script setup>
-import { reactive, ref } from 'vue';
+import { reactive, ref, onMounted } from 'vue';
 
 const props = defineProps(['items']);
 const docstatus = ref(cur_frm.doc.docstatus);
 const deliverables_item = reactive([...props.items]);
+let indexes = ref([])
+let uoms = ref([])
 
 function update_status() {
 	docstatus.value = cur_frm.doc.docstatus;
+}
+
+onMounted(async()=> {
+	for(let i = 0 ; i < deliverables_item.length ; i++){
+		indexes.value.push(false)
+		uoms.value.push(null)
+	}
+})
+
+async function get_check_value(index){
+	item_name = deliverables_item[index]['items'][0]['name']
+	let item_detail = await frappe.db.get_value("Item", item_name, "secondary_unit_of_measure")
+	if(item_detail.message.secondary_unit_of_measure){
+		uoms.value[index] = item_detail.message.secondary_unit_of_measure
+	}
+	else{
+		frappe.msgprint("No Secondary Unit for this item")
+		indexes.value[index] = false
+		return
+	}
 }
 
 function make_dirty(){
@@ -139,9 +194,25 @@ function fill_quantity(){
 		})
 	}
 }
+function get_items(){
+	for(let i = 0 ; i < deliverables_item.length ; i++){
+		for(let j = 0 ; j < deliverables_item[i].items.length ; j++){
+			Object.keys(deliverables_item[i].items[j].values).forEach(key => {
+				if(deliverables_item[i].items[j].values[key].delivered_quantity == "" || deliverables_item[i].items[j].values[key].delivered_quantity == null){
+					deliverables_item[i].items[j].values[key].delivered_quantity = 0
+				}
+				if(uoms.value[i]){
+					deliverables_item[i].items[j].values[key]['secondary_uom'] = uoms.value[i]
+				}
+			})
+		}
+	}
+	return deliverables_item
+}
 
 defineExpose({
 	deliverables_item,
+	get_items,
 	update_status,
 })
 
