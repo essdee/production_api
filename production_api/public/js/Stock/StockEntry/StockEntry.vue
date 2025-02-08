@@ -4,7 +4,7 @@
             :items="items"
             :other-inputs="otherInputs"
             :table-fields="table_fields"
-            :allow-secondary-qty="false"
+            :allow-secondary-qty="true"
             :args="args"
             :edit="docstatus == 0"
             :validate-qty="true"

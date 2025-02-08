@@ -202,6 +202,7 @@ jinja = {
         "production_api.production_api.doctype.delivery_challan.delivery_challan.get_dc_structure",
         "production_api.production_api.doctype.goods_received_note.goods_received_note.get_grn_structure",
         "production_api.production_api.doctype.delivery_challan.delivery_challan.get_current_user_time",
+        "production_api.essdee_production.doctype.item_production_detail.item_production_detail.fetch_combination_items"
     ]
 }
 

@@ -111,18 +111,29 @@ class GoodsReceivedNote(Document):
 				"ref_docname":item.ref_docname,
 				"comments":item.comments,
 			}
+			secondary_qty_json = item.secondary_qty_json
+			if isinstance(secondary_qty_json, string_types):
+				secondary_qty_json = json.loads(secondary_qty_json)
+
 			if not received_types:
 				x['quantity'] = 0
 				x['amount'] = 0
+				if not secondary_qty_json:
+					x['secondary_qty'] = 0
+					x['secondary_uom'] = None
 				m = x.copy()
 				items_list.append(m)
 			else:
-				for type, qty in received_types.items():
-					x['quantity'] = qty
-					x['amount'] = item.rate * qty
-					x['received_type'] = type
-					m = x.copy()
-					items_list.append(m)
+				for type1, qty1 in received_types.items():
+					x['quantity'] = qty1
+					x['amount'] = item.rate * qty1
+					x['received_type'] = type1
+					for type2, qty2 in secondary_qty_json.items():
+						if type1 == type2:
+							x['secondary_qty'] = qty2
+							m = x.copy()
+							items_list.append(m)
+
 		self.total_delivered_qty = total_delivered			
 		self.set("items",items_list)
 
@@ -149,6 +160,7 @@ class GoodsReceivedNote(Document):
 				"ref_docname":item.ref_docname,
 				"comments":item.comments,
 				"received_types":item.received_types,
+				"secondary_qty_json":item.secondary_qty_json,
 			})
 		x = json.dumps(items)
 		self.items_json = x
@@ -711,6 +723,7 @@ def save_grn_item_details(item_details, process_name):
 						item1['lot'] = item.get('lot')
 						item1['quantity'] = received
 						item1['received_types'] = values.get('types')
+						item1['secondary_qty_json'] = values.get('secondary_qty_json')
 						item1['uom'] = item.get('default_uom')
 						item1['secondary_qty'] = values.get('secondary_received')
 						item1['secondary_uom'] = item.get('secondary_uom')
@@ -743,6 +756,7 @@ def save_grn_item_details(item_details, process_name):
 					item1['lot'] = item.get('lot')
 					item1['quantity'] = received
 					item1['received_types'] = item['values']['default'].get('types')
+					item1['secondary_qty_json'] = item['values']['default'].get('secondary_qty_json')
 					item1['uom'] = item.get('default_uom')
 					item1['secondary_qty'] = item['values']['default'].get('secondary_received')
 					item1['secondary_uom'] = item.get('secondary_uom')
@@ -799,10 +813,13 @@ def fetch_grn_item_details(items, lot, docstatus = 0):
 				for attr in current_variant.attributes:
 					if attr.attribute == item.get('primary_attribute'):
 						item['values'][attr.attribute_value] = {
-							'secondary_received': variant['secondary_qty'],
+							'primary_attr': attr.attribute_value,
+							'secondary_uom':variant['secondary_uom'],
+							'secondary_qty': variant['secondary_qty'],
 							'rate': variant['rate'],
 							'tax': variant['tax'],
-							'types': variant['received_types'] if variant['received_types'] else {}
+							'types': variant['received_types'] if variant['received_types'] else {},
+							'secondary_qty_json': variant['secondary_qty_json'] if variant['secondary_qty_json'] else {}
 						}
 						x = item['values'][attr.attribute_value]['types']
 						if x:
@@ -812,6 +829,7 @@ def fetch_grn_item_details(items, lot, docstatus = 0):
 						for t, qty in x.items():
 							if t not in item['types']:
 								item['types'].append(t)
+
 						qty = frappe.get_value(variant['ref_doctype'], variant['ref_docname'], "pending_quantity")
 						if docstatus == 0:
 							item['values'][attr.attribute_value]['qty'] = qty - variant['quantity'] 
@@ -823,10 +841,12 @@ def fetch_grn_item_details(items, lot, docstatus = 0):
 						break
 		else:
 			item['values']['default'] = {
-				'secondary_received': variants[0]['secondary_qty'],
+				'secondary_qty': variants[0]['secondary_qty'],
+				'secondary_uom': variants[0]['secondary_uom'],
 				'rate': variants[0]['rate'],
 				'tax': variants[0]['tax'],
-				'types': variants[0]['received_types'] if variants[0]['received_types'] else {}
+				'types': variants[0]['received_types'] if variants[0]['received_types'] else {},
+				'secondary_qty_json': variants[0]['secondary_qty_json'] if variants[0]['secondary_qty_json'] else {},
 			}
 			x = item['values']['default']['types']
 			if x:
@@ -836,6 +856,7 @@ def fetch_grn_item_details(items, lot, docstatus = 0):
 			for t, qty in x.items():
 				if t not in item['types']:
 					item['types'].append(t)
+
 			qty = frappe.get_value( variants[0]['ref_doctype'], variants[0]['ref_docname'], "pending_quantity")
 			item['values']['default']['qty'] = qty - variants[0]['quantity'] 
 			item['values']['default']['received'] = variants[0]['quantity']
@@ -1318,10 +1339,15 @@ def update_calculated_receivables(doc_name, receivables, received_type):
 		for item in grn_doc.items:
 			if received_item['item_variant'] == item.item_variant:
 				received_types = item.received_types
+				secondary_qty_json = item.secondary_qty_json
 				if not received_types:
 					received_types = {}
+				if not secondary_qty_json:
+					secondary_qty_json = {}	
 				if isinstance(received_types, string_types):
 					received_types = json.loads(received_types)
+				if isinstance(secondary_qty_json, string_types):
+					secondary_qty_json = json.loads(secondary_qty_json)	
 						
 				if received_types.get(received_type):
 					item.quantity -= received_types.get(received_type)
@@ -1329,6 +1355,8 @@ def update_calculated_receivables(doc_name, receivables, received_type):
 					item.quantity += received_item['qty']
 					item.received_types = received_types
 				else:
+					secondary_qty_json[received_type] = 0
+					item.secondary_qty_json = secondary_qty_json
 					received_types[received_type] = received_item['qty']
 					item.quantity += received_item['qty']
 					item.received_types = received_types
@@ -1393,6 +1421,8 @@ def construct_stock_entry_data(doc_name):
 				"qty": item.quantity - item.ste_delivered_quantity ,
 				"uom": item.uom,
 				"received_type": item.received_type,
+				"secondary_qty":item.secondary_qty,
+				"secondary_uom":item.secondary_uom,
 				"against_id_detail": item.name,
 				"table_index": 0,
 				"row_index": index,

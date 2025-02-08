@@ -135,9 +135,6 @@ frappe.ui.form.on("Delivery Challan", {
 			freeze:true,
 			freeze_message: __("Calculate Deliverables..."),
 			callback: function(r){
-				// frappe.call({
-				// 	// method:"production_api.production_api.doctype.delivery_challan"
-				// })
 				let items = r.message
 				for(let i = 0 ; i < frm.doc.items.length ; i++){
 					for (let j = 0 ; j < items.length ; j++){

@@ -79,12 +79,14 @@
 			<div>
 				<div class="qty-parameters row p-4" style="display: flex; gap: 10px"></div>
 			</div>
+			<div class="row">
+				<div ref="secondaryUomHtml" class="secondary-uom-html col-md-5"></div>
+			</div>
+			<div>
+				<div ref="secondaryQtyHtml" class="secondary_qty row pl-4" style="display: flex; gap: 10px"></div>
+			</div>
 			<div v-if="show_button" style="display: flex; gap: 10px">
 				<button class="btn btn-success" @click="add_item()">Add Item</button>
-				<button class="btn btn-success" @click="make_clean()">Close</button>
-			</div>
-			<div v-if="show_button2" style="display: flex; gap: 10px">
-				<button class="btn btn-success" @click="update_item()">Update Item</button>
 				<button class="btn btn-success" @click="make_clean()">Close</button>
 			</div>
 		</div>
@@ -92,6 +94,7 @@
 		<table class="table table-sm table-bordered" v-if="check_received_qty">
 			<tr v-for="(i, item_index) in items" :key="item_index">
 				<td v-if="i.primary_attribute">
+					<div v-if="edit_item_uom">Secondary UOM : {{edit_item_uom}}</div>
 					<table class="table table-sm table-bordered" v-if="i.items && i.items.length > 0" >
 						<tr>
 							<th>S.No</th>
@@ -111,20 +114,30 @@
 								<td>{{ type }}</td>
 								<td v-for="attr in j.values" :key="attr">
 									<div v-if="attr.types">
-										<div v-if='typeof(attr.types) == "string"'>
-											<div v-for="t in Object.keys(JSON.parse(attr.types))" :key='t'>
+										<div v-for="t in typeof(attr.types) == 'string' ? Object.keys(JSON.parse(attr.types)) : Object.keys(attr.types)" :key='t'>
+											<div v-if="edit_index == item_index && edit_index1 == item1_index && edit_type == t && t == type">
+												<input class="form-control" type="number" :value="JSON.parse(attr.types)[t]" @input="get_input($event.target.value,item_index, item1_index, type, attr.primary_attr)">
+												<div v-if="edit_item_uom">
+													<input class="form-control" type="number" :value="JSON.parse(attr.secondary_qty_json)[t]" @input="get_secondary_input($event.target.value,item_index, item1_index, type, attr.primary_attr)">
+												</div>
+											</div>
+											<div v-else>
 												<div v-if="t == type">
-													{{JSON.parse(attr.types)[t]}}											
+													<div v-if='typeof(attr.types) == "string"'>
+														{{JSON.parse(attr.types)[t]}}<div></div>
+														<span v-if="JSON.parse(attr.secondary_qty_json)[t] > 0 && attr.secondary_uom">
+															({{JSON.parse(attr.secondary_qty_json)[t]}} {{attr.secondary_uom}})											
+														</span>
+													</div>
+													<div v-else>
+														{{attr.types[t]}}<div></div>
+														<span v-if="attr.secondary_qty_json[t] > 0 && attr.secondary_uom">
+															({{attr.secondary_qty_json[t]}} {{attr.secondary_uom}})											
+														</span>
+													</div>	
 												</div>
 											</div>
 										</div>
-										<div v-else>
-											<div v-for="t in Object.keys(attr.types)" :key='t'>
-												<div v-if="t == type">
-													{{attr.types[t]}}											
-												</div>
-											</div>	
-										</div>	
 									</div>
 									<div v-else class="text-center">---</div>
 								</td>
@@ -199,6 +212,8 @@ const against = ref(null);
 const against_id = ref(null);
 let _skip_watch = false;
 const attribute_values = ref([]);
+const secondaryUomHtml = ref(null);
+const secondaryQtyHtml = ref(null);
 const qty_attributes = ref([]);
 const edit_index = ref(-1);
 const edit_index1 = ref(-1);
@@ -210,15 +225,64 @@ const sample_doc = ref({});
 const controlRefs = ref({
   	quantities: [],
 });
+let secondary_uom = null
+const controlRefsSecondary = ref({
+  	quantities: [],
+});
+
 let received_type = null;
 const show_button = ref(false);
 const show_button2 = ref(false);
 let types = null;
 let qty_parameters = [];
+let secondary_qty_parameters = [];
 let indexes = [];
+let edit_type = ref(null)
+let edit_item_uom = ref(null)
+let delivered_edited = ref(false)
+
+function get_input(value, idx1, idx2, type, attr){
+	if(value.length == 0){
+		value = 0
+	}
+	else{
+		value = parseFloat(value)
+	}
+	cur_frm.dirty()
+	is_edited.value = true
+	let x = items.value[idx1]['items'][idx2]['values'][attr]['types']
+	if(typeof(x) == 'string'){
+		x = JSON.parse(x)	
+	}
+	let type_qty = parseFloat(x[type])
+	x[type] = value
+	items.value[idx1]['items'][idx2]['values'][attr]['types'] = JSON.stringify(x)
+	items.value[idx1].items[idx2].values[attr]['received'] -= parseFloat(type_qty)
+	items.value[idx1].items[idx2].values[attr]['qty'] += parseFloat(type_qty)
+	items.value[idx1].items[idx2].values[attr]['received'] += parseFloat(value)
+	items.value[idx1].items[idx2].values[attr]['qty'] -= parseFloat(value)
+}
+
+function get_secondary_input(value, idx1, idx2, type, attr){
+	if(value.length == 0){
+		value = 0
+	}
+	else{
+		value = parseFloat(value)
+	}
+	cur_frm.dirty()
+	is_edited.value = true
+	let secondary_json = items.value[idx1]['items'][idx2]['values'][attr]['secondary_qty_json']
+	if(typeof(secondary_json) == "string"){
+		secondary_json = JSON.parse(secondary_json)
+	}
+	secondary_json[type] = value
+	items.value[idx1]['items'][idx2]['values'][attr]['secondary_qty_json'] = JSON.stringify(secondary_json)
+	items.value[idx1]['items'][idx2]['values'][attr]['secondary_uom'] = edit_item_uom.value
+}
 
 function get_index(idx){
-	if(idx == 0){
+	if(idx == 0 && loop_index != 1){
 		loop_index = 0
 	}
 	loop_index = loop_index + 1;
@@ -242,9 +306,11 @@ const check_received_qty = computed(()=> {
 	return x
 })
 
-function edit_item(index, index1) {
+async function edit_item(index, index1) {
+	make_clean()
 	let el = root.value;
 	controlRefs.value.quantities = [];
+	controlRefsSecondary.value.quantities = [];
 	edit_index.value = index;
 	edit_index1.value = index1;
 	attribute_values.value = [];
@@ -252,6 +318,8 @@ function edit_item(index, index1) {
 	cur_item.value = null;
 	cur_lot.value = null;
 	show_button.value = true;
+	let suom = await frappe.db.get_value("Item",items.value[index]['items'][0]['name'],"secondary_unit_of_measure")
+	edit_item_uom.value = suom.message.secondary_unit_of_measure
 	$(el).find(".qty-parameters").html("");
 	let row = items.value[index].items[index1];
 	let data1 = row.values;
@@ -279,51 +347,13 @@ function getControlValues(refs) {
 	return values;
 }
 
-function edit_delivered_item(index, index1, type) {
+async function edit_delivered_item(index, index1, type) {
+	make_clean()
+	edit_type.value = type
 	edit_index.value = index
 	edit_index1.value = index1
-	let primary_values = Object.keys(items.value[index].items[index1].values)
-	let dict = items.value[index].items[index1].values[primary_values[0]]['types']
-	if(typeof(dict) == 'string'){
-		dict = JSON.parse(dict)
-	}
-	let el = root.value;
-	$(el).find(".type-parameters").html("");
-	received_type = frappe.ui.form.make_control({
-		parent: $(el).find(".type-parameters"),
-		df: {
-			fieldtype: "Link",
-			fieldname: "types",
-			label: "Type",
-			options: "GRN Item Type",
-			read_only:true,
-			onchange: () => {
-				const selectedValue = received_type.get_value();
-				show_button2.value = true
-				qty_attributes.value = [];
-				let data1 = items.value[index].items[index1].values
-				Object.keys(data1).forEach((key) => {
-					let x = data1[key]['types']
-					if(typeof(x) == 'string'){
-						x = JSON.parse(x)
-					}
-					const qty = x[selectedValue];
-					qty_attributes.value.push({ [key]: qty });
-				});
-				if (selectedValue && selectedValue !== "" && selectedValue !== null) {
-					handleQtyParameters(qty_attributes.value, selectedValue, true);
-				} 
-				else {
-					show_button2.value = false
-					$(el).find(".qty-parameters").html("");
-				}
-			},
-			reqd: true,
-		},
-		doc: sample_doc.value,
-		render_input: true,
-	});
-	received_type.set_value(type)
+	let suom =await frappe.db.get_value("Item",items.value[index]['items'][0]['name'],"secondary_unit_of_measure")
+	edit_item_uom.value = suom.message.secondary_unit_of_measure
 }
 
 function delete_delivered_item(index, index1, type){
@@ -346,7 +376,7 @@ function delete_delivered_item(index, index1, type){
 			if(typeof(received_types) == 'string'){
 				received_types = JSON.parse(received_types)
 			}
-			let qty = received_types[type]
+			let qty = parseFloat(received_types[type])
 			delete received_types[type]
 			items.value[edit_index.value].items[edit_index1.value].values[row]['types'] = received_types
 			items.value[edit_index.value].items[edit_index1.value].values[row]['received'] -= qty
@@ -430,7 +460,7 @@ function create_attributes( attributes, quantities, item, lot, idx, idx1) {
 		});
 	});
 	$(el).find(".type-parameters").html("");
-
+	let default_uom = items.value[edit_index.value]['items'][edit_index1.value]['default_uom']
 	let df = {
 		fieldtype: "Link",
 		fieldname: "types",
@@ -439,7 +469,8 @@ function create_attributes( attributes, quantities, item, lot, idx, idx1) {
 		onchange: () => {
 			const selectedValue = types.get_value();
 			if (selectedValue && selectedValue !== "" && selectedValue !== null) {
-				handleQtyParameters(quantities, selectedValue, false);
+				get_secondary(edit_item_uom.value)
+				handleQtyParameters(quantities, selectedValue, default_uom);
 			} 
 			else {
 				$(el).find(".qty-parameters").html("");
@@ -455,11 +486,14 @@ function create_attributes( attributes, quantities, item, lot, idx, idx1) {
 	});
 }
 
-function handleQtyParameters(quantities, value, yes) {
+function handleQtyParameters(quantities, value, default_uom) {
 	controlRefs.value.quantities = [];
+	controlRefsSecondary.value.quantities = [];
 	let el = root.value;
 	$(el).find(".qty-parameters").html("");
+	$(secondaryQtyHtml.value).html("")
 	qty_parameters = [];
+	secondary_qty_parameter = [];
 	quantities.forEach((row, idx) => {
 		Object.keys(row).forEach((key, index) => {
 			let x = key;
@@ -476,13 +510,42 @@ function handleQtyParameters(quantities, value, yes) {
 				doc: sample_doc.value,
 				render_input: true,
 			});
-			if(yes){
-				qty_parameters[idx].set_value(row[key]);
-			}
 			qty_parameters[idx].refresh();
 			controlRefs.value.quantities.push(qty_parameters[idx]);
+			if(edit_item_uom.value){
+				secondary_qty_parameters[idx] = frappe.ui.form.make_control({
+					parent: secondaryQtyHtml.value,
+					df: {
+						fieldtype: "Float",
+						fieldname: key + "_" + default_uom,
+						label: key + "-" + row[x] +" "+ default_uom,
+					},
+					doc: sample_doc.value,
+					render_input: true,
+				});
+				controlRefsSecondary.value.quantities.push(secondary_qty_parameters[idx]);
+			}
 		});
 	});
+}
+
+function get_secondary(uom) {
+	$(secondaryUomHtml.value).html("");
+	if(uom){
+		secondary_uom = frappe.ui.form.make_control({
+			parent: secondaryUomHtml.value,
+			df: {
+				"fieldname": "secondary_uom",
+				"fieldtype": "Data",
+				"label": "Secondary UOM",
+				"read_only": true,
+			},
+			doc: sample_doc.value,
+			render_input: true
+		});
+		secondary_uom.set_value(uom);
+		secondary_uom.refresh();
+	}
 }
 
 async function add_item() {
@@ -547,49 +610,49 @@ async function add_item() {
 		items.value[edit_index.value].items[edit_index1.value].values['default']['qty'] -= data[x]
 	}
 	types.set_value(null)
-  make_clean();
-}
-
-function update_item(){
-	is_edited.value = true
-	cur_frm.dirty()
-	let data = getControlValues(controlRefs.value.quantities);
-	let x = 0;
-	show_button2.value = false
-	let type = received_type.get_value()
-	controlRefs.value.quantities = [];
-	let primary = items.value[edit_index.value].items[edit_index1.value]['primary_attribute']
-	if (primary){
-		Object.keys(items.value[edit_index.value].items[edit_index1.value].values).forEach(row => {
-			let dict = items.value[edit_index.value].items[edit_index1.value].values[row]['types']
+	let uom = edit_item_uom.value
+	if(uom){
+		let data1 = getControlValues(controlRefsSecondary.value.quantities);
+		x = 0;
+		controlRefsSecondary.value.quantities = [];
+		
+		if(primary){
+			Object.keys(items.value[edit_index.value].items[edit_index1.value].values).forEach(row => {
+				let dict = items.value[edit_index.value].items[edit_index1.value].values[row]['secondary_qty_json']
+				if(!dict){
+					dict = {}
+				}
+				if(typeof(dict) == 'string'){
+					dict = JSON.parse(dict)
+				}
+				dict[type_selected] = data1[x]
+				items.value[edit_index.value].items[edit_index1.value].values[row]['secondary_uom'] = uom
+				items.value[edit_index.value].items[edit_index1.value].values[row]['secondary_qty_json'] = dict
+				x = x + 1
+			})
+		}
+		else{
+			let dict = items.value[edit_index.value].items[edit_index1.value].values['default']['secondary_qty_json']
+			if(!dict){
+				dict = {}
+			}
 			if(typeof(dict) == 'string'){
 				dict = JSON.parse(dict)
 			}
-			items.value[edit_index.value].items[edit_index1.value].values[row]['received'] -= dict[type]
-			items.value[edit_index.value].items[edit_index1.value].values[row]['qty'] += dict[type]
-			items.value[edit_index.value].items[edit_index1.value].values[row]['received'] += data[x]
-			items.value[edit_index.value].items[edit_index1.value].values[row]['qty'] -= data[x]
-			dict[type] = data[x]
-			items.value[edit_index.value].items[edit_index1.value].values[row]['types'] = dict
+			dict[type_selected] = data1[x]
+			items.value[edit_index.value].items[edit_index1.value]['default']['secondary_qty'] = data1[x]
+			items.value[edit_index.value].items[edit_index1.value]['default']['secondary_uom'] = uom
+			items.value[edit_index.value].items[edit_index1.value].values['default']['secondary_qty_json'] = dict
 			x = x + 1
-		})
-	}
-	else{
-		let dict = items.value[edit_index.value].items[edit_index1.value].values['default']['types']
-		if(typeof(dict) == 'string'){
-			dict = JSON.parse(dict)
 		}
-		items.value[edit_index.value].items[edit_index1.value].values['default']['received'] -= dict[type]
-		items.value[edit_index.value].items[edit_index1.value].values['default']['qty'] += dict[type]
-		items.value[edit_index.value].items[edit_index1.value].values['default']['received'] += data[x]
-		items.value[edit_index.value].items[edit_index1.value].values['default']['qty'] -= data[x]
-		dict[type] = data[x]
-		items.value[edit_index.value].items[edit_index1.value].values['default']['types'] = dict
 	}
-	make_clean()
+  make_clean();
 }
+
 function make_clean() {
 	let el = root.value;
+	$(secondaryQtyHtml.value).html("")
+	$(secondaryUomHtml.value).html("")
 	$(el).find(".qty-parameters").html("");
 	$(el).find(".type-parameters").html("");
 	$(el).find(".attributes").html("");
@@ -601,6 +664,7 @@ function make_clean() {
 	if(types){
 		types.set_value(null);
 	}
+	edit_item_uom.value = null
 	if(received_type){
 		received_type.set_value(null)
 	}

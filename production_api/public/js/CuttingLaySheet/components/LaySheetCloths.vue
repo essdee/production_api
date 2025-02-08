@@ -66,22 +66,33 @@
                 <div class="cloth-accessory-right col-md-4"></div>
             </div>
             <div class="row">
+                <div class="pl-4" v-if="show_button4">
+                    <button class="btn btn-info pull-left" @click="add_entries()">Add Entries</button>       
+                </div>
+                <div class="pl-4"  v-if="show_button5">
+                    <button class="btn btn-info pull-left" @click="update_entries()">Update Entries</button>
+                </div>
+                <div class="items-json col-md-12"></div> 
                 <div class="cloth-comment col-md-12"></div>
             </div>
         </div>
-        <div class="row" v-if="show_button2">
-            <button class="btn btn-success pull-left" @click="add_item()">Add Item</button>
+        <div class="row" style="padding-left: 35px;" v-if="show_button2">
+            <button class="btn btn-success" @click="add_item()">Add Item</button>
+            <button class="btn btn-success ml-4" @click="make_clean()">Close</button>
         </div>
-        <div class="row" v-if="show_button3">
-            <button class="btn btn-success pull-left" @click="update_item()">Update Item</button>
+        <div class="row" style="padding-left: 35px;" v-if="show_button3">
+            <button class="btn btn-success" @click="update_item()">Update Item</button>
+            <button class="btn btn-success ml-4" @click="make_clean()">Close</button>
         </div>
     </div>
 </template>
 <script setup>
-import {ref, onMounted, computed} from 'vue';
+import {ref, onMounted, computed, watch} from 'vue';
 let show_button1 = ref(true)
 let show_button2 = ref(false)
 let show_button3 = ref(false)
+let show_button4 = ref(false)
+let show_button5 = ref(false)
 let items = ref([])
 let root = ref(null)
 let sample_doc = ref({})
@@ -98,18 +109,21 @@ let cloth_end_bit = null
 let cloth_comment = null
 let edit_index = null
 let balance_weight = null
+let items_json =  null
 let cloth_attrs = []
 let docstatus = ref(null)
 let status = cur_frm.doc.status
 
-function add_cloth_item(index){
+async function add_cloth_item(index){
     show_button1.value = false
     if(index == null){
         show_button2.value = true
+        show_button4.value = true
     }
     else{
         edit_index = index
         show_button3.value = true
+        show_button5.value = true
     }
     let el = root.value;
     cloth_type = get_input_field(".cloth-type","Select","cloth_type","Cloth Type",select_attributes['cloth_type'],true)
@@ -122,6 +136,10 @@ function add_cloth_item(index){
     cloth_end_bit = get_input_field(".cloth-end-bit","Float","cloth_end_bit","End Bit Weight",null,true)
     cloth_comment = get_input_field(".cloth-comment","Small Text","cloth_comment",'Comment',null,false)
     balance_weight = get_input_field(".cloth-balance","Float","balance_weight","Balance Weight",null,true)
+    items_json = get_input_field(".items-json","JSON","items_json","Items JSON", null, false)
+    items_json.df.hidden = true
+    items_json.set_value([])
+    items_json.refresh()
     $(el).find(".cloth-accessory-left").html("");
     $(el).find(".cloth-accessory-right").html("");
     $(el).find(".cloth-accessory-middle").html("");
@@ -140,12 +158,19 @@ function add_cloth_item(index){
         cloth_attrs[i] = get_input_field(classname + ' .input-wrapper:last',"Float","cloth_accessories_" + i,cloth_accessories[i]+" in kg's",null,false)
     }
     if(index != null){
-        let arr1 = [cloth_type,cloth_colour,cloth_dia,cloth_weight,cloth_shade,cloth_rolls,cloth_bits,cloth_end_bit,cloth_comment,balance_weight]
-        let arr2 = ["cloth_type","colour","dia","weight","shade","no_of_rolls","no_of_bits","end_bit_weight","comments","balance_weight"]
-        set_attr_values(arr1,arr2, index)
+        let arr1 = [cloth_type,cloth_colour,cloth_dia,cloth_weight,cloth_shade,cloth_rolls,cloth_bits,cloth_end_bit,cloth_comment,balance_weight, items_json]
+        let arr2 = ["cloth_type","colour","dia","weight","shade","no_of_rolls","no_of_bits","end_bit_weight","comments","balance_weight","items_json"]
+        await set_attr_values(arr1,arr2, index)
         let dict = items.value[index]['accessory_json']
         if(typeof(dict) == 'string'){
             dict = JSON.parse(dict)
+        }
+        let json = JSON.parse(items.value[index]['items_json'])
+        if(typeof(json) == "string"){
+            json = JSON.parse(json)
+        }
+        if(json.length > 0){
+            update_readonly([cloth_weight, cloth_rolls, cloth_bits, cloth_end_bit, balance_weight])
         }
         Object.keys(dict).forEach((key,value)=> {
             cloth_attrs[value].set_value(dict[key])
@@ -153,10 +178,17 @@ function add_cloth_item(index){
     }
 }
 
-function set_attr_values(variables,keys, index){
+async function set_attr_values(variables,keys, index){
     for(let i = 0 ; i < variables.length ; i++){
         variables[i].set_value(items.value[index][keys[i]])
         variables[i].refresh()
+    }
+}
+
+function update_readonly(input_fields){
+    for(let i = 0 ; i < input_fields.length ; i++){
+        input_fields[i].df.read_only = !input_fields[i].df.read_only
+        input_fields[i].refresh()
     }
 }
 
@@ -179,6 +211,7 @@ function add_item(){
         "no_of_rolls":cloth_rolls.get_value(),
         "no_of_bits":cloth_bits.get_value(),
         "end_bit_weight":cloth_end_bit.get_value(),
+        "items_json": JSON.stringify(items_json.get_value()),
         "comments":cloth_comment.get_value(),
         "balance_weight":balance_weight.get_value(),
         "used_weight": cloth_weight.get_value() - balance_weight.get_value(),
@@ -188,6 +221,154 @@ function add_item(){
     make_clean()
 }
 
+function add_entries(){
+    let d = new frappe.ui.Dialog({
+        title:"Enter Lay Details",
+        size:"extra-large",
+        fields: [
+            {
+                "fieldtype":"Table",
+                "fieldname":"cloth_table",
+                "fields": [
+                    {"fieldname":"weight","fieldtype":"Float","label":"Weight (kg's)","in_list_view":true},
+                    {"fieldname":"rolls","fieldtype":"Float","label":"No of Rolls","in_list_view":true},
+                    {"fieldname":"bits","fieldtype":"Float","label":"No of Bits","in_list_view":true},
+                    {"fieldname":"end_bit","fieldtype":"Float","label":"End Bit Weight","in_list_view":true},
+                    {"fieldname":"balance","fieldtype":"Float","label":"Balance Weight","in_list_view":true}
+                ]
+            }
+        ],
+        primray_action_label:"Enter",
+        primary_action(values){
+            if(!values.cloth_table){
+                d.hide()
+            }
+            else{
+                let tot_weight = 0
+                let tot_rolls = 0
+                let tot_bits = 0
+                let tot_end_bit = 0
+                let tot_balance = 0
+                let items = []
+                for(let i = 0 ; i < values.cloth_table.length ; i++){
+                    items.push({
+                        weight: values.cloth_table[i].weight,
+                        rolls: values.cloth_table[i].rolls,
+                        bits: values.cloth_table[i].bits,
+                        end_bit: values.cloth_table[i].end_bit,
+                        balance: values.cloth_table[i].balance    
+                    })
+                    tot_weight += values.cloth_table[i].weight
+                    tot_rolls += values.cloth_table[i].rolls
+                    tot_bits += values.cloth_table[i].bits
+                    tot_end_bit += values.cloth_table[i].end_bit
+                    tot_balance += values.cloth_table[i].balance
+                }
+                items_json.set_value(JSON.stringify(items))
+                items_json.refresh()
+                let calculated =[tot_weight, tot_rolls, tot_bits, tot_end_bit, tot_balance]
+                set_calculated_value([cloth_weight, cloth_rolls, cloth_bits, cloth_end_bit, balance_weight], calculated)
+                show_button4.value = false
+                show_button5.value = true
+                d.hide()
+            }
+        }
+    })
+    d.show()
+}
+
+function update_entries(){
+    let data = items_json.get_value()
+    if(!data){
+        data = []
+    }
+    else if(typeof(data) == "object" && data.length == 0){
+        data = []
+    }
+    else if(typeof(data) == "string"){
+        let y = JSON.parse(data)
+        if(typeof(y) == "string"){
+            y = JSON.parse(y)
+        }
+        if(y.length == 0){
+            data = []
+        }
+        else{
+            if(typeof(y) == "object" && Object.keys(y).length == 0){
+                y = []
+            }
+            data = y
+        }
+    }
+    if(typeof(data) == "string"){
+        data = JSON.parse(data)
+    }
+    let d = new frappe.ui.Dialog({
+        title:"Enter Lay Details",
+        size:"extra-large",
+        fields: [
+            {
+                "fieldtype":"Table",
+                "fieldname":"cloth_table1",
+                "data":data,
+                "fields": [
+                    {"fieldname":"weight","fieldtype":"Float","label":"Weight (kg's)","in_list_view":true},
+                    {"fieldname":"rolls","fieldtype":"Float","label":"No of Rolls","in_list_view":true},
+                    {"fieldname":"bits","fieldtype":"Float","label":"NO of Bits","in_list_view":true},
+                    {"fieldname":"end_bit","fieldtype":"Float","label":"End Bit Weight","in_list_view":true},
+                    {"fieldname":"balance","fieldtype":"Float","label":"Balance Weight","in_list_view":true}
+                ]
+            }
+        ],
+        primray_action_label:"Enter",
+        primary_action(values){
+            if(!values.cloth_table1){
+                let calculated =[0,0,0,0,0]
+                set_calculated_value([cloth_weight, cloth_rolls, cloth_bits, cloth_end_bit, balance_weight], calculated)
+                update_readonly([cloth_weight, cloth_rolls, cloth_bits, cloth_end_bit, balance_weight])
+                items_json.set_value(JSON.stringify([]))
+                items_json.refresh()
+                d.hide()
+            }
+            else{
+                let tot_weight = 0
+                let tot_rolls = 0
+                let tot_bits = 0
+                let tot_end_bit = 0
+                let tot_balance = 0
+                let items = []
+                for(let i = 0 ; i < values.cloth_table1.length ; i++){
+                    items.push({
+                        weight: values.cloth_table1[i].weight,
+                        rolls: values.cloth_table1[i].rolls,
+                        bits: values.cloth_table1[i].bits,
+                        end_bit: values.cloth_table1[i].end_bit,
+                        balance: values.cloth_table1[i].balance    
+                    })
+                    tot_weight += values.cloth_table1[i].weight
+                    tot_rolls += values.cloth_table1[i].rolls
+                    tot_bits += values.cloth_table1[i].bits
+                    tot_end_bit += values.cloth_table1[i].end_bit
+                    tot_balance += values.cloth_table1[i].balance
+                }
+                items_json.set_value(JSON.stringify(items))
+                items_json.refresh()
+                let calculated =[tot_weight, tot_rolls, tot_bits, tot_end_bit, tot_balance]
+                set_calculated_value([cloth_weight, cloth_rolls, cloth_bits, cloth_end_bit, balance_weight], calculated)
+                d.hide()
+            }
+        }
+    })
+    d.show()
+}
+
+function set_calculated_value(input_fields, calculated_value){
+    for(let i = 0 ; i < input_fields.length ; i++){
+        input_fields[i].df.read_only = true
+        input_fields[i].set_value(calculated_value[i])
+        input_fields[i].refresh()
+    }
+}
 function delete_item(index){
     cur_frm.dirty()
     let new_arr = null
@@ -203,6 +384,7 @@ function delete_item(index){
         new_arr = new_arr1.concat(new_arr2)
     }
     items.value = new_arr
+    make_clean()
 }
 
 function update_item(){
@@ -227,11 +409,13 @@ function update_item(){
         "balance_weight":balance_weight.get_value(),
         "used_weight": cloth_weight.get_value() - balance_weight.get_value(),
         "accessory_weight":total_weight,
-        "accessory_json":accessory_json,
+        "accessory_json":JSON.stringify(accessory_json),
         "comments":cloth_comment.get_value(),
+        "items_json":JSON.stringify(items_json.get_value()),
     }
     edit_index = null
     show_button3.value = false
+    show_button5.value = false
     show_button1.value = true
     make_clean()
 }
@@ -289,6 +473,9 @@ function make_clean(){
     $(el).find(".cloth-accessory-middle").html("");
     show_button1.value = true
     show_button2.value = false
+    show_button3.value = false
+    show_button4.value = false
+    show_button5.value = false
 }
 
 onMounted(()=> {

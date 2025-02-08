@@ -723,6 +723,8 @@ def get_key(item, attrs):
 	return tuple(key)	
 
 ##################       COMBINATION       ##################
+@frappe.whitelist()
+#jinja
 def fetch_combination_items(combination_items):
 	combination_items = [item.as_dict() for item in combination_items]
 	combination_result ={}
