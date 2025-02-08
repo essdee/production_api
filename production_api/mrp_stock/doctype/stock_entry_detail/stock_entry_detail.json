@@ -13,10 +13,12 @@
   "qty",
   "stock_qty",
   "received_type",
+  "secondary_qty",
   "column_break_mjsy",
   "uom",
   "stock_uom",
   "conversion_factor",
+  "secondary_uom",
   "section_break_zthm",
   "rate",
   "stock_uom_rate",
@@ -179,12 +181,23 @@
   {
    "fieldname": "column_break_mjsy",
    "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "secondary_qty",
+   "fieldtype": "Float",
+   "label": "Secondary Qty"
+  },
+  {
+   "fieldname": "secondary_uom",
+   "fieldtype": "Link",
+   "label": "Secondary UOM",
+   "options": "UOM"
   }
  ],
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2025-02-01 11:54:51.565440",
+ "modified": "2025-02-06 17:04:26.714267",
  "modified_by": "Administrator",
  "module": "MRP Stock",
  "name": "Stock Entry Detail",

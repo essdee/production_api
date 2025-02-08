@@ -30,6 +30,7 @@
   "table_index",
   "ref_doctype",
   "comments",
+  "secondary_qty_json",
   "column_break_jodk",
   "row_index",
   "ref_docname",
@@ -190,12 +191,17 @@
    "fieldname": "ste_delivered_quantity",
    "fieldtype": "Float",
    "label": "STE Delivered Quantity"
+  },
+  {
+   "fieldname": "secondary_qty_json",
+   "fieldtype": "JSON",
+   "label": "Secondary Qty JSON"
   }
  ],
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2025-02-01 12:57:56.125515",
+ "modified": "2025-02-06 16:20:50.204616",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Goods Received Note Item",

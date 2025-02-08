@@ -691,16 +691,7 @@ frappe.production.ui.Delivery_Challan = class {
         this.vue = this.app.mount(this.$wrapper.get(0))
     }
     get_data(){
-        let items = JSON.parse(JSON.stringify(this.vue.deliverables_item))
-        for(let i = 0 ; i < items.length ; i++){
-            for(let j = 0 ; j < items[i].items.length ; j++){
-                Object.keys(items[i].items[j].values).forEach(key => {
-                    if(items[i].items[j].values[key].delivered_quantity == "" || items[i].items[j].values[key].delivered_quantity == null){
-                        items[i].items[j].values[key].delivered_quantity = 0
-                    }
-                })
-            }
-        }
+        let items = this.vue.get_items()
         return items
     }
     update_status() {

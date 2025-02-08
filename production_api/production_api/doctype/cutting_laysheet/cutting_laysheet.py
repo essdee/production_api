@@ -111,8 +111,9 @@ def save_item_details(items, cutting_plan):
 			"used_weight":item['used_weight'],
 			"balance_weight":item['balance_weight'],
 			"accessory_json":item['accessory_json'],
-			"accessory_weight":item['accessory_weight']
-		})	
+			"accessory_weight":item['accessory_weight'],
+			"items_json":item['items_json'] if item.get('items_json') and len(item['items_json']) > 0 else {},
+		})
 	return item_list	
 
 @frappe.whitelist()

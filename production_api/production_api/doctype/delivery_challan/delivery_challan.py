@@ -161,6 +161,8 @@ def save_deliverables(item_details, from_location):
 						item1['item_variant'] = variant_name
 						item1['lot'] = item.get('lot')
 						item1['qty'] = values.get('qty')
+						item1['secondary_qty'] = values.get('secondary_qty')
+						item1['secondary_uom'] = values.get('secondary_uom')						
 						item1['delivered_quantity'] = values.get('delivered_quantity')
 						item1['pending_quantity'] = item1['qty'] - item1['delivered_quantity']
 						item1['uom'] = item.get('default_uom')
@@ -180,6 +182,8 @@ def save_deliverables(item_details, from_location):
 					variant_name = get_or_create_variant(item_name, item_attributes)
 					item1['item_variant'] = variant_name
 					item1['qty'] = item['values']['default'].get('qty')
+					item1['secondary_qty'] = item['values']['default'].get('secondary_qty')
+					item1['secondary_uom'] = item['values']['default'].get('secondary_uom')
 					item1['lot'] = item.get('lot')
 					item1['delivered_quantity'] = item['values']['default'].get('delivered_quantity')
 					item1['pending_quantity'] = item1['qty'] - item1['delivered_quantity']
@@ -238,6 +242,8 @@ def fetch_item_details(items,lot, is_new=False):
 							item['values'][attr.attribute_value]['ref_docname'] = variant['name']
 						else:
 							item['values'][attr.attribute_value]['qty'] = variant['qty']
+							item['values'][attr.attribute_value]['secondary_uom'] = variant['secondary_uom']
+							item['values'][attr.attribute_value]['secondary_qty'] = variant['secondary_qty']
 							item['values'][attr.attribute_value]['delivered_quantity'] = variant['delivered_quantity']							
 							item['values'][attr.attribute_value]['ref_docname'] = variant['ref_docname']
 						break
@@ -253,6 +259,8 @@ def fetch_item_details(items,lot, is_new=False):
 				item['values']['default']['ref_docname'] = variants[0]['name']
 			else:
 				item['values']['default']['qty'] = variants[0]['qty']
+				item['values']['default']['secondary_uom'] = variants[0]['secondary_uom']
+				item['values']['default']['secondary_qty'] = variants[0]['secondary_qty']
 				item['values']['default']['delivered_quantity'] = variants[0]['delivered_quantity']
 				item['values']['default']['ref_docname'] = variants[0]['ref_docname']
 
@@ -358,6 +366,8 @@ def construct_stock_entry_details(doc_name):
 				"qty": item.delivered_quantity - item.ste_delivered_quantity,
 				"uom": item.uom,
 				"received_type": received_type,
+				"secondary_qty": item.secondary_qty,
+				"secondary_uom": item.secondary_uom,
 				"against_id_detail": item.name,
 				"table_index": item.table_index,
 				"row_index": item.row_index,
