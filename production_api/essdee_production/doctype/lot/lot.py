@@ -763,3 +763,49 @@ def get_t_and_a_preview_data(start_date, table):
 				struct["work_station"] = data.work_station
 			preview_data[row['colour']].append(struct)
 	return preview_data
+
+@frappe.whitelist()
+def get_mapping_details(ipd):
+	ipd_doc = frappe.get_cached_doc("Item Production Detail", ipd)
+	bom_attribute_list = []
+	for bom in ipd_doc.item_bom:
+		if bom.attribute_mapping != None:
+			doc = frappe.get_cached_doc("Item BOM Attribute Mapping", bom.attribute_mapping)
+			bom_attribute_list.append({
+				'bom_item': bom.item,
+				'bom_attr_mapping_link': bom.attribute_mapping,
+				'bom_attr_mapping_based_on': bom.based_on_attribute_mapping,
+				'bom_attr_mapping_list': doc.values,
+				'doctype': 'Item BOM Attribute Mapping'
+			})
+
+	map_dict = {}
+	for mapping in bom_attribute_list:	
+		bom_item = mapping.get('bom_item')
+		mapping = mapping.get('bom_attr_mapping_list')
+		data = []
+		for d in mapping:
+			x = d.index
+			if len(data) <= d.index:
+				while x >= 0:
+					x = x -1
+					data.append({"item": [], "bom": []})
+			if d.type == "item":
+				data[d.index]["item"].append(d.attribute_value)
+			elif (d.type == "bom"):
+				data[d.index]["bom"].append(d.attribute_value)
+			
+		i = 0
+		while i < len(data):
+			if data[i] == None:
+				data.splice(i, 1)
+			else:
+				i = i + 1
+		items = "\n"
+		for d in data:
+			if d.get('item') and d.get('bom'):
+				item_str = ", ".join(d['item'])
+				bom_str = ", ".join(d['bom'])
+				items += f"{item_str} -> {bom_str} <br>"
+		map_dict[bom_item] = items
+	return map_dict
