@@ -131,7 +131,22 @@ frappe.ui.form.on("Cutting LaySheet", {
                     });
                 })
         }
-        if(frm.doc.status == "Completed" || frm.doc.status == "Bundles Generated"){
+        if(frm.doc.status == "Label Printed" || frm.doc.status == "Bundles Generated"){
+            frm.add_custom_button("Print Movement Chart", ()=> {
+                let w = window.open(
+                    frappe.urllib.get_full_url(
+                        "/printview?" + "doctype=" + encodeURIComponent(frm.doc.doctype) + "&name=" +
+                            encodeURIComponent(frm.doc.name) + "&trigger_print=1" + "&format=" + 
+                            encodeURIComponent("Cutting Movement Chart") + "&no_letterhead=1"
+                    )
+                );
+                if (!w) {
+                    frappe.msgprint(__("Please enable pop-ups"));
+                    return;
+                }
+            })
+        }
+        if(frm.doc.status != "Label Printed"){
             frm.add_custom_button("Print Laysheet", ()=> {
                 let w = window.open(
                     frappe.urllib.get_full_url(
@@ -145,21 +160,6 @@ frappe.ui.form.on("Cutting LaySheet", {
                     return;
                 }
             })
-            if(frm.doc.status == "Bundles Generated"){
-                frm.add_custom_button("Print Movement Chart", ()=> {
-                    let w = window.open(
-                        frappe.urllib.get_full_url(
-                            "/printview?" + "doctype=" + encodeURIComponent(frm.doc.doctype) + "&name=" +
-                                encodeURIComponent(frm.doc.name) + "&trigger_print=1" + "&format=" + 
-                                encodeURIComponent("Cutting Movement Chart") + "&no_letterhead=1"
-                        )
-                    );
-                    if (!w) {
-                        frappe.msgprint(__("Please enable pop-ups"));
-                        return;
-                    }
-                })
-            }
         }
 	},
     validate(frm){
