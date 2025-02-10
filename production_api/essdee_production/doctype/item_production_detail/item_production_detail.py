@@ -1256,4 +1256,8 @@ def get_or_create_ipd_variant(item_variants, item_name, tup, attributes):
 			return item_variants[item_name][str_tup]
 	variant_name = get_or_create_variant(item_name, attributes)
 	return variant_name
-	
+
+@frappe.whitelist()
+def get_ipd_pf_details(ipd):
+	ipd_doc = frappe.get_cached_doc("Item Production Detail", ipd)
+	return ipd_doc

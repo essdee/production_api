@@ -193,6 +193,7 @@ jinja = {
         "production_api.essdee_production.doctype.lot.lot.get_dict_object",
         "production_api.essdee_production.doctype.lot.lot.combine_child_tables",
         "production_api.essdee_production.doctype.lot.lot.get_attributes",
+        "production_api.essdee_production.doctype.lot.lot.get_mapping_details",
         "production_api.essdee_production.doctype.essdee_raw_print_format.essdee_raw_print_format.get_value_with_pad",
         "production_api.essdee_production.doctype.essdee_raw_print_format.essdee_raw_print_format.get_item_size",
         "production_api.production_api.doctype.cutting_laysheet.cutting_laysheet.get_panels",
@@ -202,7 +203,8 @@ jinja = {
         "production_api.production_api.doctype.delivery_challan.delivery_challan.get_dc_structure",
         "production_api.production_api.doctype.goods_received_note.goods_received_note.get_grn_structure",
         "production_api.production_api.doctype.delivery_challan.delivery_challan.get_current_user_time",
-        "production_api.essdee_production.doctype.item_production_detail.item_production_detail.fetch_combination_items"
+        "production_api.essdee_production.doctype.item_production_detail.item_production_detail.fetch_combination_items",
+        "production_api.essdee_production.doctype.item_production_detail.item_production_detail.get_ipd_pf_details"
     ]
 }
 
