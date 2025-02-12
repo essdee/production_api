@@ -201,3 +201,25 @@ def get_fg_stock_entry_details_list(pageLength, curr_page):
 @frappe.whitelist()
 def cancel_fg_stock_entry(stock_entry):
     return fg_stock_entry_cancel(stock_entry)
+
+@frappe.whitelist()
+def get_reserved_stock(warehouse, item):
+    from production_api.mrp_stock.doctype.stock_reservation_entry.stock_reservation_entry import get_reserved_stock_details
+    if isinstance(warehouse, string_types):
+        warehouse = frappe.json.loads(warehouse)
+    if isinstance(item, string_types):
+        item = frappe.json.loads(item)
+    fg_lot = get_default_fg_lot()
+    received_type =frappe.db.get_single_value("Stock Settings", "default_received_type")
+    stock_details = get_reserved_stock_details(lot=fg_lot, warehouses=warehouse, items=item, received_type=received_type)
+    item_wh_map = {}
+    for i in stock_details:
+        group_by_key = get_group_by_key(i)
+        if group_by_key not in item_wh_map:
+            item_wh_map[group_by_key] = {
+                "item" : i['item'],
+                "bal_qty" : 0.0,
+                "uom" : i['uom']
+            }
+        item_wh_map[group_by_key]['bal_qty'] += i['qty']
+    return item_wh_map

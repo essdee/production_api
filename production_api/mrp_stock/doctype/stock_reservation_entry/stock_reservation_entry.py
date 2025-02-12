@@ -390,3 +390,29 @@ def update_stock_reservation_entries(voucher_type, voucher_no, item_details):
     cancel_stock_reservation_entries(voucher_type,voucher_no)
     
     return create_stock_reservation_entries_for_so_items(voucher_type, voucher_no,item_details)
+
+def get_reserved_stock_details(lot, warehouses, items, received_type):
+
+	items_filter = " AND t1.item_code IN ("
+	for idx,i in enumerate(items):
+		items_filter += "'{}'".format(i)
+		if idx != len(items)-1:
+			items_filter += ","
+	items_filter += ")"
+
+	warehouse_filter = " AND t1.warehouse IN ("
+	for idx, i in enumerate(warehouses):
+		warehouse_filter += "'{}'".format(i)
+		if idx!=len(warehouses)-1:
+			warehouse_filter += ","
+	warehouse_filter += ")"
+
+	query = """
+		SELECT SUM(t1.reserved_qty) as qty, t1.stock_uom as uom, t1.item_code as item
+		FROM `tabStock Reservation Entry` t1 WHERE 1=1 {} {} AND t1.lot= '{}' 
+		AND t1.received_type = '{}'
+		AND t1.status='Reserved'
+		GROUP BY t1.item_code;
+	""".format(items_filter, warehouse_filter, lot, received_type)
+
+	return frappe.db.sql(query, as_dict=True)
