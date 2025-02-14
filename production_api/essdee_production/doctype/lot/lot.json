@@ -24,6 +24,7 @@
   "dependent_attribute_mapping",
   "packing_combo",
   "section_break_ry89l",
+  "column_break_njmh",
   "planned_qty",
   "items",
   "items_html",
@@ -325,11 +326,16 @@
    "hidden": 1,
    "label": "Set Item Attribute",
    "options": "Item Attribute"
+  },
+  {
+   "fieldname": "column_break_njmh",
+   "fieldtype": "Column Break",
+   "hidden": 1
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-02-04 11:14:50.131194",
+ "modified": "2025-02-12 16:09:21.453776",
  "modified_by": "Administrator",
  "module": "Essdee Production",
  "name": "Lot",

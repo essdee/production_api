@@ -61,6 +61,7 @@ frappe.ui.form.on("Work Order", {
 						args: {
 							lot: frm.doc.lot,
 							doc_name : frm.doc.name,
+							process: frm.doc.process_name,
 						},
 						callback: async function(r){
 							let d = new frappe.ui.Dialog({

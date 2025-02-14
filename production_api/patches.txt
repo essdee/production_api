@@ -1,6 +1,7 @@
 [pre_model_sync]
 production_api.patches.v1_0.custom_field
 production_api.patches.v1_0.mapping
+production_api.patches.v1_0.update_cutting_marker_ratios #1
 
 [post_model_sync]
 production_api.patches.v1_0.update_po_item_uom
@@ -19,3 +20,4 @@ production_api.patches.v1_0.create_bin
 production_api.patches.v1_0.update_stock_uom_fields
 production_api.patches.v1_0.update_stock_datetime_field
 production_api.patches.v1_0.stock_reservation_entry
+

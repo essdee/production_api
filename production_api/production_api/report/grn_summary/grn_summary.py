@@ -171,7 +171,7 @@ def get_data(filters):
             grn_item.comments,
             grn.modified,
             grn.modified_by,
-        )
+        ).where(grn.against == "Purchase Order")
     )
 
     if filters.get('from_date'):

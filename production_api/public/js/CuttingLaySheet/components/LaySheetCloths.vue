@@ -230,9 +230,9 @@ function add_entries(){
                 "fieldtype":"Table",
                 "fieldname":"cloth_table",
                 "fields": [
+                    {"fieldname":"rolls","fieldtype":"Int","label":"Roll No","in_list_view":true},
                     {"fieldname":"weight","fieldtype":"Float","label":"Weight (kg's)","in_list_view":true},
-                    {"fieldname":"rolls","fieldtype":"Float","label":"No of Rolls","in_list_view":true},
-                    {"fieldname":"bits","fieldtype":"Float","label":"No of Bits","in_list_view":true},
+                    {"fieldname":"bits","fieldtype":"Int","label":"No of Bits","in_list_view":true},
                     {"fieldname":"end_bit","fieldtype":"Float","label":"End Bit Weight","in_list_view":true},
                     {"fieldname":"balance","fieldtype":"Float","label":"Balance Weight","in_list_view":true}
                 ]
@@ -312,9 +312,9 @@ function update_entries(){
                 "fieldname":"cloth_table1",
                 "data":data,
                 "fields": [
+                    {"fieldname":"rolls","fieldtype":"Int","label":"Roll No","in_list_view":true},
                     {"fieldname":"weight","fieldtype":"Float","label":"Weight (kg's)","in_list_view":true},
-                    {"fieldname":"rolls","fieldtype":"Float","label":"No of Rolls","in_list_view":true},
-                    {"fieldname":"bits","fieldtype":"Float","label":"NO of Bits","in_list_view":true},
+                    {"fieldname":"bits","fieldtype":"Int","label":"NO of Bits","in_list_view":true},
                     {"fieldname":"end_bit","fieldtype":"Float","label":"End Bit Weight","in_list_view":true},
                     {"fieldname":"balance","fieldtype":"Float","label":"Balance Weight","in_list_view":true}
                 ]

@@ -10,6 +10,7 @@ import frappe, json, sys, base64, math, time
 from secrets import token_bytes as get_random_bytes
 from production_api.production_api.doctype.item.item import get_or_create_variant
 from production_api.essdee_production.doctype.item_production_detail.item_production_detail import get_stitching_combination
+from production_api.production_api.doctype.cutting_marker.cutting_marker import fetch_marker_details
 
 class CuttingLaySheet(Document):
 	def autoname(self):
@@ -17,15 +18,19 @@ class CuttingLaySheet(Document):
 
 	def onload(self):
 		self.set_onload("item_details",self.cutting_laysheet_details)
+		if self.selected_type:
+			items = fetch_marker_details(self.cutting_marker_ratios, self.selected_type)
+			self.set_onload("marker_details", items)
 
 	def before_validate(self):
 		if self.get('item_details'):
 			items = save_item_details(self.item_details, self.cutting_plan)
 			self.set("cutting_laysheet_details", items)
 
-		status = frappe.get_value("Cutting Plan",self.cutting_plan,"status")	
-		if status == "Completed":
-			frappe.throw("Select the Incompleted Cutting Plan")
+		# status = frappe.get_value("Cutting Plan",self.cutting_plan,"status")	
+		# if status == "Completed":
+		# 	frappe.msgprint("Select the Incompleted Cutting Plan")
+		# 	return
 
 		cut_marker_cp = frappe.get_value("Cutting Marker",self.cutting_marker,"cutting_plan")		
 		if cut_marker_cp != self.cutting_plan:
@@ -44,9 +49,11 @@ class CuttingLaySheet(Document):
 			
 			marker_list = []
 			for item in cut_marker_doc.cutting_marker_ratios:
-				marker_list.append({'size':item.size,'ratio':item.ratio})
+				marker_list.append({'size':item.size, "panel": item.panel, 'ratio':item.ratio})
 
-			self.set("cutting_marker_ratios",marker_list)		
+			self.set("cutting_marker_ratios",marker_list)
+			self.selected_type = cut_marker_doc.selected_type
+			self.calculated_parts = cut_marker_doc.calculated_parts	
 		colours = set()
 		no_of_bits = 0.0
 		weight = 0.0
@@ -134,106 +141,123 @@ def get_select_attributes(cutting_plan):
 
 @frappe.whitelist()
 def get_parts(cutting_marker):
-	cm_doc = frappe.get_doc("Cutting Marker",cutting_marker)
-	part_list = []
-	for item in cm_doc.cutting_marker_parts:
-		part_list.append(item.part)
-	return part_list	
+	panels = frappe.get_value("Cutting Marker",cutting_marker,"calculated_parts")
+	return panels.split(",")	
 
 @frappe.whitelist()
 def get_cut_sheet_data(doc_name,cutting_marker,item_details,items, max_plys:int,maximum_allow:int):
 	if isinstance(items, string_types):
 		items = json.loads(items)
+	items_combined = {}
+	for item in items:
+		if items_combined.get(item['value']):
+			items_combined[item['value']].append(item['part'])
+		else:
+			items_combined[item['value']] = [item['part']]	
+	items = []
+	for value, arr in items_combined.items():		
+		items.append(",".join(arr))
+
 	if isinstance(item_details, string_types):
 		item_details = json.loads(item_details)	
 	maximum_plys = max_plys + (max_plys/100) * maximum_allow
 	bundle_no = 0
 	cm_doc = frappe.get_doc("Cutting Marker",cutting_marker)
+	check_ratio_parts(items_combined, cm_doc.cutting_marker_ratios)
 	cut_sheet_data = []
 	for item in item_details:
 		if item['no_of_bits'] == 0:
 			continue
+		first_size = None
+		last_size = None
+		calc_panels = []
 		for cm_item in cm_doc.cutting_marker_ratios:
-			no_of_marks = cm_item.ratio
+			first_size = cm_item.size
+			markCount = cm_item.ratio
+			no_of_marks = int(markCount)
+			check = False
+			if markCount != no_of_marks:
+				check = True
+
 			if no_of_marks == 0:
 				continue
+
 			max_grouping = int(maximum_plys/item['no_of_bits'])
 			if max_grouping == 0:
 				frappe.msgprint("Max number of Plys should not be less than No of Bits")
 				return
 			total_bundles = math.ceil(no_of_marks/max_grouping)
 			avg_grouping = no_of_marks/total_bundles
-
 			minimum = math.floor(avg_grouping)
 			maximum = math.ceil(avg_grouping)
-
 			maximum_count = no_of_marks - (total_bundles * minimum)
 			minimum_count = total_bundles - maximum_count
 	
 			temp = bundle_no 
+			if first_size != last_size:
+				last_size = cm_item.size
+				calc_panels = []
+
 			for part_value in items:
-				bundle_no = temp	
-				for j in range(maximum_count):
-					bundle_no = bundle_no + 1
-					hash_value = get_timestamp_prefix() + generate_random_string(12)
-					qty = maximum * item['no_of_bits']
-					cut_sheet_data.append({
-						"size":cm_item.size,
-						"colour":item['colour'],
-						"shade":item['shade'],
-						"bundle_no":bundle_no,
-						"part":part_value['part'],
-						"quantity": qty,
-						"hash_value":hash_value
-					})	
-				for j in range(minimum_count):
-					bundle_no = bundle_no + 1
-					hash_value = get_timestamp_prefix() + generate_random_string(12)
-					qty = minimum * item['no_of_bits']
-					cut_sheet_data.append({
-						"size":cm_item.size,
-						"colour":item['colour'],
-						"shade":item['shade'],
-						"bundle_no":bundle_no,
-						"part":part_value['part'],
-						"quantity":qty,
-						"hash_value":hash_value
-					})		
+				parts = part_value.split(",")
+				start = True
+				for part in parts:
+					if part in calc_panels:
+						start = False
+						break
+					else:
+						calc_panels.append(part)	
+				if start:
+					bundle_no = temp	
+					update = True
+					for j in range(maximum_count):
+						bundle_no = bundle_no + 1
+						qty = maximum * item['no_of_bits']
+						last_balance = 0
+						if minimum_count == 0 and check and j == maximum_count - 1:
+							x = qty + item['no_of_bits']/2
+							update = False						
+							if x > maximum_plys:
+								last_balance = item['no_of_bits']/2
+							else:
+								qty = qty + item['no_of_bits']/2	
+						
+						d = get_cut_sheet_dict(cm_item.size, item['colour'], item['shade'], part_value , qty, bundle_no)
+						cut_sheet_data.append(d)	
+
+						if last_balance > 0:
+							bundle_no = bundle_no + 1
+							d = get_cut_sheet_dict(cm_item.size, item['colour'], item['shade'], part_value , last_balance, bundle_no)
+							cut_sheet_data.append(d)
+
+					for j in range(minimum_count):
+						bundle_no = bundle_no + 1
+						qty = minimum * item['no_of_bits']
+						last_balance = 0
+						if check and j == minimum_count - 1:
+							x = qty + item['no_of_bits']/2
+							update = False						
+							if x > maximum_plys:
+								last_balance = item['no_of_bits']/2
+							else:
+								qty = qty + item['no_of_bits']/2	
+
+						d = get_cut_sheet_dict(cm_item.size, item['colour'], item['shade'], part_value , qty, bundle_no)
+						cut_sheet_data.append(d)
+						if last_balance > 0:
+							bundle_no = bundle_no + 1
+							d = get_cut_sheet_dict(cm_item.size, item['colour'], item['shade'], part_value , last_balance, bundle_no)
+							cut_sheet_data.append(d)
+
+					if update and check:
+						bundle_no = bundle_no + 1
+						d = get_cut_sheet_dict(cm_item.size, item['colour'], item['shade'], part_value , item['no_of_bits']/2, bundle_no)
+						cut_sheet_data.append(d)
 			temp = bundle_no	
-	
-	dictionary = {}
-	for item in cut_sheet_data:
-		if dictionary.get(item['bundle_no']):
-			dictionary[item['bundle_no']].append(item)
-		else:
-			dictionary[item['bundle_no']] = [item]	
 
-	item_dict = {}
-	for item in items:
-		item_dict[item['part']] = item['value']
+	from operator import itemgetter
+	cut_sheet_data = sorted(cut_sheet_data, key=itemgetter('bundle_no'))
 
-	final_list = {}
-	for key,values in dictionary.items():
-		final_list[key] = []
-		group = []
-		for value in values:
-			part = value['part']
-			if item_dict[part] not in group:
-				value['group'] = item_dict[part]
-				final_list[key].append(value)
-			else:
-				for j in final_list[key]:
-					if j['group'] == item_dict[part]:
-						pt = j['part']
-						j['part'] =  pt + "," + part
-			group.append(item_dict[part])				
-
-	cut_sheet_data = []
-	for key, values in final_list.items():
-		for val in values:
-			val['bundle_no'] = key
-			cut_sheet_data.append(val)
-	
 	doc = frappe.get_doc("Cutting LaySheet", doc_name)
 	count = 0
 	for item in doc.cutting_marker_ratios:
@@ -264,6 +288,35 @@ def get_cut_sheet_data(doc_name,cutting_marker,item_details,items, max_plys:int,
 			if item.balance_weight < 0:
 				frappe.throw(f"{bold(item.dia)} {bold(item.colour)}, {bold(item.cloth_type)} was used more than the received weight")
 				return
+
+def check_ratio_parts(parts, marker_ratios):
+	calculated_sizes = []
+	ratios = {}
+	for marker in marker_ratios:
+		if marker.size not in calculated_sizes:
+			calculated_sizes.append(marker.size)
+			for value, panels in parts.items():
+				ratios = []
+				if len(panels) > 0:
+					for panel in panels:
+						for marker2 in marker_ratios:
+							if marker2.size == marker.size and marker2.panel == panel:
+								if marker2.ratio not in ratios and len(ratios) > 0:
+									frappe.throw("Can't combine the different ratio's as a bundle")
+								else:
+									ratios.append(marker2.ratio)	
+
+def get_cut_sheet_dict(size, colour, shade, part, qty, bundle_no):
+	hash_value = get_timestamp_prefix() + generate_random_string(12)
+	return {
+		"size": size,
+		"colour":colour,
+		"shade":shade,
+		"bundle_no":bundle_no,
+		"part": part,
+		"quantity":qty,
+		"hash_value":hash_value
+	}
 
 def get_timestamp_prefix():
 	ts = int(time.time() * 10) 

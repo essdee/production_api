@@ -46,6 +46,11 @@ frappe.ui.form.on("Cutting Plan", {
                     args: {
                         cutting_plan: frm.doc.name,
                     },
+                    freeze:true,
+                    freeze_message:"Generating Cloths",
+                    callback:function(){
+                        frm.reload_doc()
+                    }
                 })
             })
             frm.add_custom_button("Calculate LaySheets",function(){

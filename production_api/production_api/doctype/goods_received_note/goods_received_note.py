@@ -1,11 +1,11 @@
 # Copyright (c) 2023, Essdee and contributors
 # For license information, please see license.txt
 
-import frappe,json
+import frappe,json, sys
 from frappe import _, bold
 from six import string_types
 from datetime import datetime
-from itertools import groupby
+from itertools import groupby, zip_longest
 from frappe.model.document import Document
 from production_api.production_api.logger import get_module_logger
 from frappe.utils import money_in_words, flt, cstr, date_diff, nowtime
@@ -86,6 +86,11 @@ class GoodsReceivedNote(Document):
 			logger.debug(f"{self.name} Items Added to Delivery Location {datetime.now()}")
 			self.reduce_uncalculated_stock(res)
 			logger.debug(f"{self.name} Deliverables Reduced from Supplier {datetime.now()}")
+			self.piece_calculation()
+
+	def piece_calculation(self):
+		# calculate_pieces(self.name, doc_status=self.docstatus)
+		frappe.enqueue(calculate_pieces, "short", doc_name=self.name,doc_status=self.docstatus, enqueue_after_commit=True)
 	
 	def split_items(self):
 		items_list = []
@@ -340,7 +345,8 @@ class GoodsReceivedNote(Document):
 			self.reupdate_stock_ledger(res)
 			logger.debug(f"{self.name} Stock Updated {datetime.now()}")
 			self.reupdate_wo_deliverables(res)
-			logger.debug(f"{self.name} Deliverables Updated {datetime.now()}")			
+			logger.debug(f"{self.name} Deliverables Updated {datetime.now()}")	
+			self.piece_calculation()		
 
 	def reupdate_stock_ledger(self, res):
 		from production_api.mrp_stock.stock_ledger import make_sl_entries
@@ -1187,6 +1193,12 @@ def get_packing_process_deliverables(grn_doc, wo_doc, ipd_doc):
 
 	item_attr_detail_dict = {}
 	pack_combo = ipd_doc.packing_combo
+	part_list = []
+	if ipd_doc.is_set_item:
+		for stich in ipd_doc.stiching_item_details:
+			if stich.set_item_attribute_value not in part_list:
+				part_list.append(stich.set_item_attribute_value)
+
 	for item in grn_doc.items:
 		items.append({
 			"item_variant": item.item_variant,
@@ -1208,18 +1220,34 @@ def get_packing_process_deliverables(grn_doc, wo_doc, ipd_doc):
 
 		for colour in ipd_doc.packing_attribute_details:
 			attributes[ipd_doc.packing_attribute] = colour.attribute_value
-			new_variant = get_or_create_variant(variant_doc.item, attributes)
-			x = item.quantity * pack_combo
-			if ipd_doc.auto_calculate:
-				qty = x / ratio
-			else:
-				qty = x / ipd_doc.packing_attribute_no
-				qty = qty * colour.quantity
+			if ipd_doc.is_set_item:
+				for part in part_list:
+					attributes[ipd_doc.set_item_attribute] = part
+					new_variant = get_or_create_variant(variant_doc.item, attributes)
+					x = item.quantity * pack_combo
+					if ipd_doc.auto_calculate:
+						qty = x / ratio
+					else:
+						qty = x / ipd_doc.packing_attribute_no
+						qty = qty * colour.quantity
 
-			if final_value.get(new_variant):
-				final_value[new_variant]['qty'] += qty
-			else:
-				final_value[new_variant] = {"qty": qty,"uom": lot_doc.packing_uom}	
+					if final_value.get(new_variant):
+						final_value[new_variant]['qty'] += qty
+					else:
+						final_value[new_variant] = {"qty": qty,"uom": lot_doc.packing_uom}	
+			else:		
+				new_variant = get_or_create_variant(variant_doc.item, attributes)
+				x = item.quantity * pack_combo
+				if ipd_doc.auto_calculate:
+					qty = x / ratio
+				else:
+					qty = x / ipd_doc.packing_attribute_no
+					qty = qty * colour.quantity
+
+				if final_value.get(new_variant):
+					final_value[new_variant]['qty'] += qty
+				else:
+					final_value[new_variant] = {"qty": qty,"uom": lot_doc.packing_uom}	
 
 	bom = get_calculated_bom(lot_doc.production_detail, items, lot_doc.name, process_name=process, doctype="Work Order")	
 	bom = get_bom_structure(bom, 0, 0)	
@@ -1438,3 +1466,324 @@ def construct_stock_entry_data(doc_name):
 	ste.flags.allow_from_grn = True
 	ste.save()
 	return ste.name
+
+@frappe.whitelist()
+def calculate_pieces(doc_name, doc_status):
+	grn_doc = frappe.get_cached_doc("Goods Received Note",doc_name)
+	ipd = frappe.get_value("Lot", grn_doc.lot,"production_detail")
+	ipd_doc = frappe.get_doc("Item Production Detail",ipd)
+	received_types = {}
+	total_received = 0
+	process_name = grn_doc.process_name
+	prs_doc = frappe.get_cached_doc("Process", process_name)
+	final_calculation = {}
+	if prs_doc.is_group:
+		for detail in prs_doc.process_details:
+			process_name = detail.process_name
+
+	if process_name == ipd_doc.cutting_process:
+		panel_list = []
+		for panel in ipd_doc.stiching_item_details:
+			panel_list.append(panel.stiching_attribute_value)
+
+		final_calculation, received_types, total_received = calculate_cut_stage(ipd_doc, panel_list, grn_doc, received_types, doc_status, total_received, final_calculation)
+
+	elif process_name == ipd_doc.stiching_process:
+		final_calculation, received_types, total_received = calculate_piece_stage(grn_doc, received_types, doc_status, total_received, final_calculation)
+
+	elif process_name == ipd_doc.packing_process:
+		final_calculation, received_types, total_received = calculate_pack_stage(ipd_doc, grn_doc, received_types, doc_status, total_received, final_calculation)
+	else:
+		emb = ipd_doc.get("emblishment_details_json")
+		if isinstance(emb, string_types):
+			emb = json.loads(emb)
+		
+		stage = None
+		for process in ipd_doc.ipd_processes:
+			if process.process_name == process_name:
+				stage = process.stage
+				break
+		
+		check = True
+		panel_list = None
+		if emb and emb.get(process_name):
+			if len(emb.get(process_name)) == 1:
+				check = False
+				for item in grn_doc.items:
+					final_calculation.setdefault(item.item_variant, {"types": {}, "qty": 0 })
+					qty = item.quantity
+					if doc_status == 2:
+						qty = qty * -1
+					received_types.setdefault(item.received_type, 0)
+					received_types[item.received_type] += qty
+					total_received += qty
+
+					final_calculation[item.item_variant]['qty'] += qty
+					if final_calculation[item.item_variant]['types'].get(item.received_type):
+						final_calculation[item.item_variant]['types'][item.received_type] += qty
+					else:
+						final_calculation[item.item_variant]['types'][item.received_type] = qty
+			else:
+				if stage == ipd_doc.stiching_in_stage:
+					panel_list = emb.get(process_name)
+
+		if stage and check:
+			if stage == ipd_doc.pack_in_stage:
+				final_calculation, received_types, total_received = calculate_piece_stage(grn_doc, received_types, doc_status, total_received, final_calculation)
+
+			elif stage == ipd_doc.pack_out_stage:
+				final_calculation, received_types, total_received = calculate_pack_stage(ipd_doc, grn_doc, received_types, doc_status, total_received, final_calculation)
+
+			elif stage == ipd_doc.stiching_in_stage:
+				if not panel_list:	
+					panel_list = []
+					for panel in ipd_doc.stiching_item_details:
+						panel_list.append(panel.stiching_attribute_value)
+					final_calculation, received_types, total_received = calculate_cut_stage(ipd_doc, panel_list, grn_doc, received_types, doc_status, total_received, final_calculation)
+		
+
+	wo_doc = frappe.get_cached_doc("Work Order", grn_doc.against_id)
+	
+	if not wo_doc.first_grn_date:
+		wo_doc.first_grn_date = grn_doc.posting_date
+		wo_doc.last_grn_date = grn_doc.posting_date
+	else:
+		wo_doc.last_grn_date = grn_doc.posting_date
+
+	wo_doc.total_no_of_pieces_received += total_received
+
+	received_json = wo_doc.received_types_json	
+	if not received_json:
+		received_json = {}
+	elif isinstance(received_json, string_types):
+		received_json = json.loads(received_json)
+
+	for type, qty in received_types.items():
+		if received_json.get(type):
+			received_json[type] += qty
+		else:
+			received_json[type] = qty
+
+	wo_doc.received_types_json = received_json
+
+	for item in wo_doc.work_order_calculated_items:
+		if final_calculation.get(item.item_variant):
+			item.received_qty += final_calculation[item.item_variant]['qty']
+			types = final_calculation[item.item_variant]['types']
+			wo_types = item.received_type_json
+			if not wo_types:
+				wo_types = {}
+			elif isinstance(wo_types,string_types):
+				wo_types = json.loads(wo_types)
+
+			for type, qty in types.items():
+				if type:
+					if wo_types.get(type):
+						wo_types[type] += qty
+					else:
+						wo_types[type] = qty			
+			item.received_type_json = wo_types
+	wo_doc.save()
+
+	if process_name in [ipd_doc.cutting_process, ipd_doc.stiching_process, ipd_doc.packing_process]:
+		lot_doc = frappe.get_doc("Lot",wo_doc.lot)
+		field = "cut_qty" if process_name == ipd_doc.cutting_process else "stich_qty" if process_name == ipd_doc.stiching_process else "pack_qty"
+		for item in lot_doc.lot_order_details:
+			if final_calculation.get(item.item_variant):
+				qty = final_calculation[item.item_variant]['qty']	
+				current_qty = getattr(item, field, 0)
+				setattr(item, field, current_qty + qty)
+		lot_doc.save()
+
+def calculate_cut_stage(ipd_doc, panel_list, grn_doc, received_types, doc_status, total_received, final_calculation):
+	part_list = []
+	if ipd_doc.is_set_item:
+		for stich in ipd_doc.stiching_item_details:
+			if stich.set_item_attribute_value not in part_list:
+				part_list.append(stich.set_item_attribute_value)
+	completed_items = get_panels_completion(grn_doc, ipd_doc, panel_list) 	
+	total_qty = completed_items['total_qty']	
+	for primary, type_qty in total_qty.items():
+		for type, qty in type_qty.items():
+			received_types.setdefault(type, 0)
+			if doc_status == 2:
+				qty = qty * -1
+			if ipd_doc.is_set_item:
+				qty = qty / len(part_list)
+			received_types[type] += qty
+			total_received += qty
+
+	for item in completed_items['items']:
+		attrs = item['attributes']
+		attrs[ipd_doc.dependent_attribute] = ipd_doc.pack_in_stage
+		for size, received_type in item['values'].items():
+			attrs[item['primary_attribute']] = size
+			variant = get_or_create_variant(completed_items['item'], attrs)
+			total = 0
+			if received_type:
+				for received, qty in received_type.items():
+					if doc_status == 2:
+						qty = qty * -1
+						received_type[received] = qty
+					total += qty
+				final_calculation.setdefault(variant, {"types": received_type, "qty": total })
+
+	return final_calculation, received_types, total_received	
+
+def calculate_piece_stage(grn_doc, received_types, doc_status, total_received, final_calculation):
+	for item in grn_doc.items:
+		final_calculation.setdefault(item.item_variant, {"types": {}, "qty": 0 })
+		qty = item.quantity
+		if doc_status == 2:
+			qty = qty * -1
+		received_types.setdefault(item.received_type, 0)
+		received_types[item.received_type] += qty
+		total_received += qty
+		final_calculation[item.item_variant]['qty'] += qty
+		if final_calculation[item.item_variant]['types'].get(item.received_type):
+			final_calculation[item.item_variant]['types'][item.received_type] += qty
+		else:
+			final_calculation[item.item_variant]['types'][item.received_type] = qty
+
+	return final_calculation, received_types, total_received
+
+def calculate_pack_stage(ipd_doc, grn_doc, received_types, doc_status, total_received, final_calculation):
+	pack_combo = ipd_doc.packing_combo
+	for item in grn_doc.items:
+		final_calculation.setdefault(item.item_variant, {"types": {}, "qty": 0 })
+
+		qty = item.quantity * pack_combo
+		if doc_status == 2:
+			qty = qty * -1
+
+		received_types.setdefault(item.received_type, 0)
+		received_types[item.received_type] += qty
+		total_received += qty
+
+		final_calculation[item.item_variant]['qty'] += qty
+		if final_calculation[item.item_variant]['types'].get(item.received_type):
+			final_calculation[item.item_variant]['types'][item.received_type] += qty
+		else:
+			final_calculation[item.item_variant]['types'][item.received_type] = qty
+
+	return final_calculation, received_types, total_received		
+
+def get_variant_attributes(variant):
+	attribute_details = {}
+	
+	for attr in variant.attributes:
+			attribute_details[attr.attribute] = attr.attribute_value
+	return attribute_details
+
+def get_panels_completion(grn_doc, ipd_doc, panel_list):
+	lot = grn_doc.lot
+	lot_doc = frappe.get_doc("Lot", lot)
+	from production_api.production_api.doctype.cutting_plan.cutting_plan import get_complete_incomplete_structure
+	from production_api.essdee_production.doctype.lot.lot import fetch_order_item_details
+	from production_api.essdee_production.doctype.item_production_detail.item_production_detail import get_stitching_combination
+	item_details = fetch_order_item_details(lot_doc.lot_order_details, lot_doc.production_detail) 
+	completed_items, incomplete = get_complete_incomplete_structure(lot_doc.production_detail, item_details)
+	incomplete_items = incomplete.copy()
+	types = []
+	for item in grn_doc.items:
+		variant = frappe.get_cached_doc("Item Variant", item.item_variant)
+		attr_details = get_variant_attributes(variant)
+		for i in incomplete_items['items']:
+			if i['attributes'][ipd_doc.packing_attribute] == attr_details[ipd_doc.packing_attribute]:
+				y = i.copy()
+				x = y['values'][attr_details[ipd_doc.primary_item_attribute]][attr_details[ipd_doc.stiching_attribute]]
+				if item.received_type and item.received_type not in types:
+					types.append(item.received_type)
+
+				if not x:
+					i['values'][attr_details[ipd_doc.primary_item_attribute]][attr_details[ipd_doc.stiching_attribute]] = {item.received_type:item.quantity}
+				else:
+					m = x.copy()
+					if m.get(item.received_type):
+						y['values'][attr_details[ipd_doc.primary_item_attribute]][attr_details[ipd_doc.stiching_attribute]][item.received_type] += item.quantity	
+					else:
+						y['values'][attr_details[ipd_doc.primary_item_attribute]][attr_details[ipd_doc.stiching_attribute]][item.received_type] = item.quantity
+				i = y
+				break
+
+	stitching_combination = get_stitching_combination(ipd_doc)
+	set_item = ipd_doc.is_set_item
+	item_panel = {}
+	for item in incomplete_items['items']:
+		for val in item['values']:
+			for panel in item['values'][val]:
+				if set_item:
+					key = (val,item['attributes'][ipd_doc.packing_attribute],item['attributes'][ipd_doc.set_item_attribute])
+				else:
+					key = (val,item['attributes'][ipd_doc.packing_attribute])	
+				if key in item_panel:
+					if panel in item_panel[key]:
+						item_panel[key][panel] += item['values'][val][panel]
+					else:
+						item_panel[key][panel] = item['values'][val][panel]
+				else:	
+					item_panel[key] = {}
+					item_panel[key][panel] = item['values'][val][panel] 
+	
+	for item in item_panel:
+		part = None
+		condition1 = True
+		if set_item:
+			part = item[2]
+		for t in types:
+			check = True
+			min = sys.maxsize
+			for i in stitching_combination['stitching_combination'][item[1]]:
+				if i in panel_list:
+					panel_colour = stitching_combination['stitching_combination'][item[1]][i]
+					if set_item:
+						condition1 = i in incomplete_items[ipd_doc.stiching_attribute][part]
+					if condition1:	
+						m = False
+						for panel in item_panel:
+							condition2 = True
+							if set_item:
+								condition2 = panel[2] == part
+								if condition2:
+									condition2 = i in item_panel[panel]	
+							if condition2 and item_panel[panel][i] and item_panel[panel][i].get(t):	
+								if condition2 and panel[0] == item[0] and panel[1] == panel_colour:
+									m = True
+									if item_panel[panel][i].get(t) < min:
+										min = item_panel[panel][i].get(t)
+									break
+						if not m:
+							check = False
+							break
+				else:
+					check = False	
+			if check:
+				for x in completed_items['items']:
+					total_qty = 0
+					condition3 = True
+					if set_item:
+						condition3 = x['attributes'][ipd_doc.set_item_attribute] == part
+					if x['attributes'][ipd_doc.packing_attribute] == item[1] and condition3:
+						if x['values'][item[0]]:
+							if x['values'][item[0]].get(t):
+								x['values'][item[0]][t] += min									
+							else:
+								x['values'][item[0]][t] = min
+						else:
+							x['values'][item[0]] = {}
+							x['values'][item[0]] = {t :min}
+
+						if completed_items['total_qty'][item[0]]: 
+							if completed_items['total_qty'][item[0]].get(t):
+								completed_items['total_qty'][item[0]][t] += min									
+							else:
+								completed_items['total_qty'][item[0]][t] = min
+						else:	
+							completed_items['total_qty'][item[0]] = {}
+							completed_items['total_qty'][item[0]] = {t :min}
+						total_qty += min
+						break	
+					if total_qty != 0:
+						x['total_qty'] = total_qty
+
+	return completed_items

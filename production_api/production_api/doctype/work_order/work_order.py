@@ -375,11 +375,11 @@ def get_work_order_items(work_order, is_grn = False):
 	return data
  
 @frappe.whitelist()
-def get_lot_items(lot, doc_name):
+def get_lot_items(lot, doc_name, process):
 	logger = get_module_logger("work_order")
 	logger.debug(f"{doc_name} Calculation Started {datetime.now()}")
 	doc = frappe.get_cached_doc("Lot", lot)	
-	items = fetch_order_item_details(doc.lot_order_details, doc.production_detail)
+	items = fetch_order_item_details(doc.lot_order_details, doc.production_detail, process=process)
 	logger.debug(f"{doc_name} Fetched Order detail from Lot {datetime.now()}")
 	return items
 
@@ -406,6 +406,7 @@ def get_deliverable_receivable( items, doc_name, deliverable=False, receivable=F
 	dept_attribute = ipd_doc.dependent_attribute
 	pack_out_stage = ipd_doc.pack_out_stage
 	stiching_in_stage = ipd_doc.stiching_in_stage
+	wo_colour_sets = get_report_data(items)
 	items = get_items(items, ipd, deliverable=deliverable)
 	grp_variant = items[0]['item_variant']
 	item_name = frappe.get_value("Item Variant", grp_variant, 'item')
@@ -448,10 +449,16 @@ def get_deliverable_receivable( items, doc_name, deliverable=False, receivable=F
 		return deliverables
 	if receivable:
 		return receivables
+	
 	wo_doc.set('deliverables',deliverables)
 	wo_doc.set('receivables', receivables)
 	wo_doc.set("total_quantity", total_qty)
 	wo_doc.set("work_order_calculated_items",items)
+	wo_doc.set("wo_colours", wo_colour_sets)
+	total_qty = 0
+	for item in items:
+		total_qty += item['quantity']
+	wo_doc.set("total_no_of_pieces_delivered", total_qty)	
 	logger.debug(f"{doc_name} doc saved {datetime.now()}")
 	wo_doc.save()
 	return None
@@ -467,7 +474,7 @@ def calc_deliverable_and_receivable(ipd_doc, process, item_list, item_name, dept
 		deliverables  = get_deliverables(stiching_attributes, lot)
 	
 	elif ipd_doc.packing_process == process:
-		packing_attributes = get_attributes(item_list, item_name, pack_out_stage, dept_attribute)
+		packing_attributes = get_attributes(item_list, item_name, pack_out_stage, dept_attribute, pack_ipd=ipd)
 		item_list.update(bom)
 		deliverables  = get_deliverables(item_list, lot)
 		item_doc = frappe.get_cached_doc("Item", item_name)
@@ -501,7 +508,7 @@ def calc_deliverable_and_receivable(ipd_doc, process, item_list, item_name, dept
 					deliverables = get_deliverables(item_list, lot)
 
 				else:
-					attributes = get_attributes(item_list, item_name, item.stage, dept_attribute)
+					attributes = get_attributes(item_list, item_name, item.stage, dept_attribute, pack_ipd=ipd)
 					receivables, total_qty = get_receivables(attributes,lot, uom)
 					attributes.update(bom)
 					deliverables = get_deliverables(attributes, lot)
@@ -524,6 +531,33 @@ def get_deliverables(items, lot):
 				'is_calculated':True,
 			})
     return deliverables
+
+def get_report_data(items):
+	attrs = []
+	if isinstance(items, string_types):
+		items = json.loads(items)
+	wo_colour_sets = ""
+	all_attrs = True	
+	for item in items[0]['items']:
+		check = False
+		for val in item['work_order_qty']:
+			if item['work_order_qty'][val] > 0:
+				check = True
+				break
+
+		if check:
+			attrs.append(item['attributes'])
+		else:
+			all_attrs = False	
+	if all_attrs:
+		wo_colour_sets = "All"
+	else:	
+		attributes = []
+		for attr in attrs:
+			attribute = "-".join(list(attr.values()))
+			attributes.append(attribute)
+		wo_colour_sets = ", ".join(attributes)	
+	return wo_colour_sets
 
 def get_receivables(items,lot, uom, conversion_details = None, out_uom = None):
 	receivables = []
@@ -575,17 +609,26 @@ def get_attributes_qty(ipd_doc, process, depends_on_attr):
 						return len((ipd_doc.stiching_item_details))
 	return 1
 
-def get_attributes(items, itemname, stage, dependent_attribute, ipd=None, process=None):
+def get_attributes(items, itemname, stage, dependent_attribute, ipd=None, process=None, pack_ipd=None):
 	item_list = {
 		itemname: {}
 	}
 	ipd_doc = None
+	ipd_pack_doc = None
 	item_variants = None
+	part_list = []
 	if ipd:
 		ipd_doc = frappe.get_cached_doc("Item Production Detail", ipd)
 		item_variants = ipd_doc.variants_json
 		if isinstance(item_variants, string_types):
 			item_variants = json.loads(item_variants)
+
+	if pack_ipd:
+		ipd_pack_doc = frappe.get_cached_doc("Item Production Detail", pack_ipd)
+		if ipd_pack_doc.is_set_item:
+			for stich in ipd_pack_doc.stiching_item_details:
+				if stich.set_item_attribute_value not in part_list:
+					part_list.append(stich.set_item_attribute_value)
 
 	for item_name,variants in items.items():
 		item_attribute_details = get_attribute_details(item_name)
@@ -597,20 +640,24 @@ def get_attributes(items, itemname, stage, dependent_attribute, ipd=None, proces
 				attributes[dependent_attribute] = stage
 			itemname = current_variant.item
 			if not ipd_doc:
+				qty = details['qty']
+				if ipd_pack_doc.is_set_item:
+					qty = qty / len(part_list)
+
 				new_variant = get_or_create_variant(itemname, attributes)
 				if not item_list.get(itemname):
 					item_list[itemname] = {}
 					
 				if not item_list[itemname].get(new_variant, False):
 					item_list[itemname][new_variant] = {
-						'qty': details['qty'],
+						'qty': qty,
 						'process': details['process'],
 						'uom':details['uom'],
 						'table_index':details['table_index'],
 						'row_index':0
 					}
 				else:
-					item_list[itemname][new_variant]['qty'] += details['qty']	
+					item_list[itemname][new_variant]['qty'] += qty	
 			else:
 				set_item_stitching_attrs = {}
 				if ipd_doc.is_set_item:

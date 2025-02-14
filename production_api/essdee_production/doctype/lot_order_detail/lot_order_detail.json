@@ -7,7 +7,10 @@
  "engine": "InnoDB",
  "field_order": [
   "item_variant",
-  "quantity"
+  "quantity",
+  "cut_qty",
+  "stich_qty",
+  "pack_qty"
  ],
  "fields": [
   {
@@ -22,12 +25,30 @@
    "fieldtype": "Float",
    "in_list_view": 1,
    "label": "Quantity"
+  },
+  {
+   "fieldname": "cut_qty",
+   "fieldtype": "Int",
+   "in_list_view": 1,
+   "label": "Cut Qty"
+  },
+  {
+   "fieldname": "stich_qty",
+   "fieldtype": "Int",
+   "in_list_view": 1,
+   "label": "Stich Qty"
+  },
+  {
+   "fieldname": "pack_qty",
+   "fieldtype": "Int",
+   "in_list_view": 1,
+   "label": "Pack Qty"
   }
  ],
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2024-09-03 10:07:17.532578",
+ "modified": "2025-02-12 09:57:48.687123",
  "modified_by": "Administrator",
  "module": "Essdee Production",
  "name": "Lot Order Detail",

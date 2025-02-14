@@ -178,8 +178,9 @@ frappe.ui.form.on('Goods Received Note', {
 					args : {
 						doc_name: frm.doc.name,
 					},
+					freeze:true,
+					freeze_message:"Creating Stock Entry",
 					callback: function(r){
-						console.log(r.message)
 						frappe.set_route("Form","Stock Entry",r.message)
 					}
 				})
@@ -245,6 +246,15 @@ frappe.ui.form.on('Goods Received Note', {
 		// 		d.show()
 		// 	})
 		// }
+	},
+	calculate_pieces(frm){
+		frappe.call({
+			method:"production_api.production_api.doctype.goods_received_note.goods_received_note.calculate_pieces",
+			args: {
+				doc_name: frm.doc.name,
+				doc_status: frm.doc.docstatus
+			}
+		})
 	},
 	save_item_details: function(frm) {
 		if(frm.itemEditor){

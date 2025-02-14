@@ -157,6 +157,7 @@ class StockReconciliation(Document):
 					"item": row.item,
 					"lot": row.lot,
 					"warehouse": row.warehouse,
+					"received_type": row.received_type,
 					"posting_date": self.posting_date,
 					"posting_time": self.posting_time,
 				}

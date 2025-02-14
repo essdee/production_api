@@ -144,16 +144,37 @@ frappe.ui.form.on("Item Production Detail", {
 				frm.cutting_attrs.push(frm.doc.set_item_attribute)
 			}
 			make_select_attributes(frm,'select_attributes_html','select_attributes_wrapper','select_attrs_multicheck','cutting_attributes','cutting_items_json','get_cutting_combination')
-			if(frm.doc.cloth_detail.length > 0){
+			// if(frm.doc.cloth_detail.length > 0){
 				make_select_attributes(frm,'select_cloths_attribute_html','select_cloths_attributes_wrapper','select_cloth_attrs_multicheck','cloth_attributes','cutting_cloths_json', 'get_cloth_combination')
-			}
+			// }
 			let accessoryClothTypeObj = JSON.parse(frm.doc.accessory_clothtype_json || '{}');
 			if (Object.keys(accessoryClothTypeObj).length > 0) {
 				make_select_attributes(frm, 'select_cloth_accessory_html', 'select_cloths_accessory_wrapper', 'select_cloth_accessory_multicheck', 'accessory_attributes', 'cloth_accessory_json', 'get_accessory_combination');
 			}
 		}
+		frm.refresh_field('emblishment_details_json')
+		frm.refresh_field('cutting_items_json')
+		frm.refresh_field('cutting_cloths_json')
+		frm.refresh_field('cloth_accessory_json')
+		frm.refresh_field('accessory_clothtype_json')
+		frm.refresh_field('stiching_accessory_json')
+
 		if (frm.doc.__islocal) {
 			hide_field(["item_attribute_list_values_html", "bom_attribute_mapping_html",'dependent_attribute_details_html']);
+			$(frm.fields_dict['item_attribute_list_values_html'].wrapper).html("");
+			$(frm.fields_dict['dependent_attribute_details_html'].wrapper).html("");
+			$(frm.fields_dict['bom_attribute_mapping_html'].wrapper).html("");
+			$(frm.fields_dict['set_items_html'].wrapper).html("");
+			$(frm.fields_dict['stiching_items_html'].wrapper).html("");
+			$(frm.fields_dict['cutting_items_html'].wrapper).html("");
+			$(frm.fields_dict['cutting_cloths_html'].wrapper).html("");
+			$(frm.fields_dict['cloth_accessories_html'].wrapper).html("");
+			$(frm.fields_dict['stiching_accessory_html'].wrapper).html("");
+			$(frm.fields_dict['accessory_clothtype_combination_html'].wrapper).html("");
+			$(frm.fields_dict['emblishment_details_html'].wrapper).html("");
+			$(frm.fields_dict['select_cloths_attribute_html'].wrapper).html("")
+			$(frm.fields_dict['select_attributes_html'].wrapper).html("")
+			$(frm.fields_dict['select_cloth_accessory_html'].wrapper).html("")
 		} 
 		else {
 			unhide_field(["item_attribute_list_values_html", "bom_attribute_mapping_html",'dependent_attribute_details_html']);
@@ -228,7 +249,9 @@ frappe.ui.form.on("Item Production Detail", {
 					}
 				}
 				let cut_json = frm.doc.cutting_cloths_json
-				cut_json = JSON.parse(cut_json)
+				if (typeof(cut_json) == "string"){
+					cut_json = JSON.parse(cut_json)
+				}
 				cut_json['select_list'] = cloths
 				await frm.cloth_item.load_data(cut_json);
 				frm.cloth_item.set_attributes()
@@ -344,101 +367,103 @@ frappe.ui.form.on("Item Production Detail", {
 		})
 	},
 	validate:async function(frm){
-		if(frm.set_item && frm.doc.is_set_item){
-			let item_details = frm.set_item.get_data()
-			frm.doc['set_item_detail'] = JSON.stringify(item_details);
-		}
+		if(!frm.doc.__islocal){
+			if(frm.set_item && frm.doc.is_set_item){
+				let item_details = frm.set_item.get_data()
+				frm.doc['set_item_detail'] = JSON.stringify(item_details);
+			}
 
-		if(frm.stiching_item){
-			let item_details = frm.stiching_item.get_data()
-			if(item_details['values'].length > 0){
-				frm.doc['stiching_item_detail'] = JSON.stringify(item_details);
+			if(frm.stiching_item){
+				let item_details = frm.stiching_item.get_data()
+				if(item_details['values'].length > 0){
+					frm.doc['stiching_item_detail'] = JSON.stringify(item_details);
+				}
 			}
-		}
 
-		if(frm.select_attrs_multicheck){
-			let cutting_attr_list = []
-			let get_checked_attributes = frm.select_attrs_multicheck.get_checked_options()
-			for(let i = 0 ; i< get_checked_attributes.length; i++){
-				cutting_attr_list.push({'attribute':get_checked_attributes[i]})
+			if(frm.select_attrs_multicheck){
+				let cutting_attr_list = []
+				let get_checked_attributes = frm.select_attrs_multicheck.get_checked_options()
+				for(let i = 0 ; i< get_checked_attributes.length; i++){
+					cutting_attr_list.push({'attribute':get_checked_attributes[i]})
+				}
+				frm.set_value('cutting_attributes',cutting_attr_list)
 			}
-			frm.set_value('cutting_attributes',cutting_attr_list)
-		}
 
-		if(frm.select_cloth_attrs_multicheck){
-			let cutting_attr_list = []
-			let get_checked_attributes = frm.select_cloth_attrs_multicheck.get_checked_options()
-			for(let i = 0 ; i< get_checked_attributes.length; i++){
-				cutting_attr_list.push({'attribute':get_checked_attributes[i]})
+			if(frm.select_cloth_attrs_multicheck){
+				let cutting_attr_list = []
+				let get_checked_attributes = frm.select_cloth_attrs_multicheck.get_checked_options()
+				for(let i = 0 ; i< get_checked_attributes.length; i++){
+					cutting_attr_list.push({'attribute':get_checked_attributes[i]})
+				}
+				frm.set_value('cloth_attributes',cutting_attr_list)
 			}
-			frm.set_value('cloth_attributes',cutting_attr_list)
-		}
 
-		if(frm.select_cloth_accessory_multicheck){
-			let cloth_accessories_list = []
-			let get_checked_attributes = frm.select_cloth_accessory_multicheck.get_checked_options()
-			for(let i = 0 ; i< get_checked_attributes.length; i++){
-				cloth_accessories_list.push({'attribute':get_checked_attributes[i]})
+			if(frm.select_cloth_accessory_multicheck){
+				let cloth_accessories_list = []
+				let get_checked_attributes = frm.select_cloth_accessory_multicheck.get_checked_options()
+				for(let i = 0 ; i< get_checked_attributes.length; i++){
+					cloth_accessories_list.push({'attribute':get_checked_attributes[i]})
+				}
+				frm.set_value('accessory_attributes',cloth_accessories_list)
 			}
-			frm.set_value('accessory_attributes',cloth_accessories_list)
-		}
 
-		if(frm.cutting_item){
-			let item_details = frm.cutting_item.get_data()
-			if(item_details == null){
-				frm.doc.cutting_items_json = {}
+			if(frm.cutting_item){
+				let item_details = frm.cutting_item.get_data()
+				if(item_details == null){
+					frm.doc.cutting_items_json = {}
+				}
+				else if(item_details.items.length > 0){
+					frm.doc.cutting_items_json = item_details
+				}
 			}
-			else if(item_details.items.length > 0){
-				frm.doc.cutting_items_json = item_details
-			}
-		}
 
-		if(frm.cloth_item){
-			let item_details = frm.cloth_item.get_data()
-			if(item_details == null){
-				frm.doc.cutting_cloths_json = {}
+			if(frm.cloth_item){
+				let item_details = frm.cloth_item.get_data()
+				if(item_details == null){
+					frm.doc.cutting_cloths_json = {}
+				}
+				else if(item_details.items.length > 0){
+					frm.doc.cutting_cloths_json = item_details
+				}
 			}
-			else if(item_details.items.length > 0){
-				frm.doc.cutting_cloths_json = item_details
-			}
-		}
 
-		if(frm.cloth_accessories){
-			let item_details = frm.cloth_accessories.get_data()
-			if(item_details == null){
-				frm.doc.cloth_accessory_json = {}
+			if(frm.cloth_accessories){
+				let item_details = frm.cloth_accessories.get_data()
+				if(item_details == null){
+					frm.doc.cloth_accessory_json = {}
+				}
+				else if(item_details.items.length > 0){
+					frm.doc.cloth_accessory_json = item_details
+				}
 			}
-			else if(item_details.items.length > 0){
-				frm.doc.cloth_accessory_json = item_details
-			}
-		}
 
-		if(frm.stiching_accessory){
-			let item_details = frm.stiching_accessory.get_data()
-			if(item_details == null){
-				frm.doc.stiching_accessory_json = {}
+			if(frm.stiching_accessory){
+				let item_details = frm.stiching_accessory.get_data()
+				if(item_details == null){
+					frm.doc.stiching_accessory_json = {}
+				}
+				else if(item_details.items.length > 0){
+					frm.doc.stiching_accessory_json = item_details
+				}
 			}
-			else if(item_details.items.length > 0){
-				frm.doc.stiching_accessory_json = item_details
-			}
-		}
 
-		if(frm.accessory_clothtype){
-			let item_details = frm.accessory_clothtype.get_data()
-			if(item_details == null){
-				frm.doc.accessory_clothtype_json = {}
+			if(frm.accessory_clothtype){
+				let item_details = frm.accessory_clothtype.get_data()
+				if(item_details == null){
+					frm.doc.accessory_clothtype_json = {}
+				}
+				else {
+					frm.doc.accessory_clothtype_json = item_details
+				}
 			}
-			else {
-				frm.doc.accessory_clothtype_json = item_details
-			}
-		}
-		if(frm.emblishment){
-			let items = frm.emblishment.get_items()
-			if(items == null || !items ){
-				frm.doc.emblishment_details_json = {}
-			}
-			else{
-				frm.doc.emblishment_details_json = items
+			if(frm.emblishment){
+				let items = frm.emblishment.get_items()
+				if(items == null || !items ){
+					frm.doc.emblishment_details_json = {}
+				}
+				else{
+					frm.doc.emblishment_details_json = items
+				}
 			}
 		}
 	},
@@ -522,7 +547,7 @@ frappe.ui.form.on("Item Production Detail", {
 			frappe.call({
 				method: 'production_api.essdee_production.doctype.item_production_detail.item_production_detail.get_combination',
 				args: {
-					doc_name:frm.doc.name,
+					ipd_doc:frm.doc,
 					attributes: get_checked_attributes,
 					combination_type: 'Cutting',
 				},
@@ -547,7 +572,7 @@ frappe.ui.form.on("Item Production Detail", {
 		frappe.call({
 			method: 'production_api.essdee_production.doctype.item_production_detail.item_production_detail.get_combination',
 			args: {
-				doc_name:frm.doc.name,
+				ipd_doc:frm.doc,
 				attributes: get_checked_attributes,
 				combination_type:'Cloth',
 			},
@@ -567,7 +592,7 @@ frappe.ui.form.on("Item Production Detail", {
 		frappe.call({
 			method: 'production_api.essdee_production.doctype.item_production_detail.item_production_detail.get_combination',
 			args: {
-				doc_name:frm.doc.name,
+				ipd_doc:frm.doc,
 				attributes: get_checked_attributes,
 				combination_type:'Accessory',
 			},

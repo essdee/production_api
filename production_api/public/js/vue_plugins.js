@@ -32,6 +32,7 @@ import WorkOrderReceivables from "./WorkOrder/components/Receivables.vue"
 import WorkOrderItemView from "./WorkOrder/components/WorkOrderItemView.vue"
 import LaySheetCloths from "./CuttingLaySheet/components/LaySheetCloths.vue"
 import DeliveryChallan from "./Delivery_Challan/components/deliverable_items.vue"
+import CuttingMarker from "./Cutting_Marker/components/cutting_marker.vue"
 
 // Product Development
 import { ProductFileVersionsWrapper, ProductCostingListWrapper } from "./ProductDevelopment"
@@ -416,6 +417,26 @@ frappe.production.ui.CutPlanItems = class {
         if (length > 0){
             this.vue.update_docstatus()
         }
+    }
+    get_items(){
+        let items = this.vue.get_items()
+        return items
+    }
+}
+
+frappe.production.ui.CuttingMarker = class {
+    constructor(wrapper){
+        this.$wrapper = $(wrapper)
+        this.make_app()
+    }
+    make_app(){
+        this.app = createApp(CuttingMarker)
+        SetVueGlobals(this.app)
+        this.vue = this.app.mount(this.$wrapper.get(0))
+    }
+    load_data(items){
+        let items_all = JSON.parse(JSON.stringify(items))
+        this.vue.load_data(items_all)
     }
     get_items(){
         let items = this.vue.get_items()

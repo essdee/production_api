@@ -7,6 +7,7 @@
  "engine": "InnoDB",
  "field_order": [
   "size",
+  "panel",
   "ratio"
  ],
  "fields": [
@@ -20,16 +21,24 @@
   },
   {
    "fieldname": "ratio",
-   "fieldtype": "Int",
+   "fieldtype": "Float",
    "in_list_view": 1,
    "label": "Ratio",
-   "non_negative": 1
+   "non_negative": 1,
+   "precision": "1"
+  },
+  {
+   "fieldname": "panel",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Panel",
+   "options": "Item Attribute Value"
   }
  ],
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2024-10-29 14:58:38.056877",
+ "modified": "2025-02-13 17:22:52.723115",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Cutting Marker Ratio",
