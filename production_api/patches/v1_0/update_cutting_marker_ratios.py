@@ -2,7 +2,10 @@ import frappe
 
 def execute():
     frappe.reload_doctype("Cutting Marker")
+    frappe.reload_doctype("Cutting Marker Ratio")
+    frappe.reload_doctype("Cutting LaySheet")
     cm_list = frappe.get_all("Cutting Marker", pluck="name")
+    print(len(cm_list))
     for cm in cm_list:
         part_list = frappe.db.sql(
             f"""

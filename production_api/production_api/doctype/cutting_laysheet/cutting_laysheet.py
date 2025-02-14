@@ -158,7 +158,6 @@ def get_cut_sheet_data(doc_name,cutting_marker,item_details,items, max_plys:int,
 	for value, arr in items_combined.items():		
 		items.append(",".join(arr))
 
-	items_combined		
 	if isinstance(item_details, string_types):
 		item_details = json.loads(item_details)	
 	maximum_plys = max_plys + (max_plys/100) * maximum_allow
