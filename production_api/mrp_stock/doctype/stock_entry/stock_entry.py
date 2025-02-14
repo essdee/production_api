@@ -181,8 +181,10 @@ class StockEntry(Document):
 							item.ste_delivered_quantity += ste_item.qty
 							qty += ste_item.qty
 							break
-			if qty - now_delivered > total_quantity:
+						
+			if round(qty - now_delivered,3) > round(total_quantity,3):
 				frappe.throw("High Amount of Items Received")	
+
 			x = qty / total_quantity
 			x = x * 100
 			doc.ste_transferred_percent = doc.ste_transferred_percent + x

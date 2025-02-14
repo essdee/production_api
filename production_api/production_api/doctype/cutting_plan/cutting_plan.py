@@ -75,11 +75,11 @@ def get_incomplete_cut_structure(ipd_doc,panels, stiching_attrs, y):
 	if ipd_doc.is_set_item:
 		for item in y['items']:
 			for val in item['values']:
-				item['values'][val] = panels[item['attributes'][ipd_doc.set_item_attribute]]
+				item['values'][val] = panels[item['attributes'][ipd_doc.set_item_attribute]].copy()
 	else:
 		for item in y['items']:
 			for val in item['values']:
-				item['values'][val] = panels
+				item['values'][val] = panels.copy()
 	y = y | stiching_attrs
 	return y
 

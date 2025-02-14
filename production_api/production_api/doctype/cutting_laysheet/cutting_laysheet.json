@@ -15,6 +15,8 @@
   "start_datetime",
   "required_pcs_weight",
   "status",
+  "selected_type",
+  "calculated_parts",
   "column_break_rxns",
   "cutting_marker",
   "marker_name",
@@ -29,6 +31,7 @@
   "width_allowance",
   "section_break_cwpl",
   "cutting_marker_ratios",
+  "cutting_marker_ratios_html",
   "section_break_dasc",
   "cutting_laysheet_details",
   "cloths_html",
@@ -181,12 +184,15 @@
    "read_only": 1
   },
   {
+   "collapsible": 1,
    "fieldname": "section_break_cwpl",
-   "fieldtype": "Section Break"
+   "fieldtype": "Section Break",
+   "label": "Marker Details"
   },
   {
    "fieldname": "cutting_marker_ratios",
    "fieldtype": "Table",
+   "hidden": 1,
    "label": "Cutting Marker Ratios",
    "options": "Cutting Marker Ratio",
    "read_only": 1
@@ -286,11 +292,28 @@
    "in_list_view": 1,
    "label": "Status",
    "options": "Started\nCompleted\nBundles Generated\nLabel Printed"
+  },
+  {
+   "fieldname": "cutting_marker_ratios_html",
+   "fieldtype": "HTML",
+   "label": "Cutting Marker Ratios HTML"
+  },
+  {
+   "fieldname": "calculated_parts",
+   "fieldtype": "Data",
+   "hidden": 1,
+   "label": "Calculated Parts"
+  },
+  {
+   "fieldname": "selected_type",
+   "fieldtype": "Data",
+   "hidden": 1,
+   "label": "Selected Type"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-02-07 11:12:21.595842",
+ "modified": "2025-02-14 15:36:03.424151",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Cutting LaySheet",

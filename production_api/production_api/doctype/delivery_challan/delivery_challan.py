@@ -57,6 +57,15 @@ class DeliveryChallan(Document):
 		logger.debug(f"{self.name} Stock reduced From Supplier {datetime.now()}")
 		wo_doc.save()		
 
+	def on_submit(self):
+		wo_doc = frappe.get_cached_doc("Work Order", self.work_order)
+		if not wo_doc.first_dc_date:
+			wo_doc.first_dc_date = self.posting_date
+			wo_doc.last_dc_date = self.posting_date
+		else:
+			wo_doc.last_dc_date = self.posting_date
+		wo_doc.save()			
+
 	def before_submit(self):
 		self.letter_head = frappe.db.get_single_value("MRP Settings","dc_grn_letter_head")
 		logger = get_module_logger("delivery_challan")

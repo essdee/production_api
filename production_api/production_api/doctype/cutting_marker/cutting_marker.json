@@ -11,6 +11,8 @@
   "length",
   "total_no_of_plys",
   "cutting_attribute",
+  "selected_type",
+  "calculated_parts",
   "column_break_bwuo",
   "marker_name",
   "item",
@@ -20,8 +22,8 @@
   "required_piece_weight",
   "section_break_lzec",
   "cutting_marker_ratios",
-  "calculate_parts",
-  "cutting_marker_parts"
+  "cutting_marker_ratios_html",
+  "amended_from"
  ],
  "fields": [
   {
@@ -63,17 +65,20 @@
    "fieldname": "length",
    "fieldtype": "Float",
    "label": "Length (Meters)",
-   "precision": "3"
+   "precision": "3",
+   "reqd": 1
   },
   {
    "fieldname": "width",
    "fieldtype": "Float",
    "label": "Width (Inches)",
-   "precision": "3"
+   "precision": "3",
+   "reqd": 1
   },
   {
    "fieldname": "cutting_marker_ratios",
    "fieldtype": "Table",
+   "hidden": 1,
    "label": "Cutting Marker Ratios",
    "options": "Cutting Marker Ratio"
   },
@@ -84,13 +89,6 @@
   {
    "fieldname": "section_break_lzec",
    "fieldtype": "Section Break"
-  },
-  {
-   "depends_on": "eval: !doc.__islocal && doc.item",
-   "fieldname": "cutting_marker_parts",
-   "fieldtype": "Table",
-   "label": "Cutting Marker Parts",
-   "options": "Cutting Marker Part"
   },
   {
    "fetch_from": "cutting_plan.ipd_cutting_attribute",
@@ -105,12 +103,6 @@
    "fieldtype": "Data",
    "hidden": 1,
    "label": "Naming Series"
-  },
-  {
-   "depends_on": "eval: !doc.__islocal && doc.item",
-   "fieldname": "calculate_parts",
-   "fieldtype": "Button",
-   "label": "Calculate Parts"
   },
   {
    "fieldname": "marker_name",
@@ -128,11 +120,39 @@
    "fieldname": "required_piece_weight",
    "fieldtype": "Float",
    "label": "Required Piece Weight (kg)"
+  },
+  {
+   "fieldname": "cutting_marker_ratios_html",
+   "fieldtype": "HTML",
+   "label": "Cutting Marker Ratios HTML"
+  },
+  {
+   "fieldname": "selected_type",
+   "fieldtype": "Data",
+   "hidden": 1,
+   "label": "Selected Type"
+  },
+  {
+   "fieldname": "calculated_parts",
+   "fieldtype": "Data",
+   "hidden": 1,
+   "label": "Calculated Parts"
+  },
+  {
+   "fieldname": "amended_from",
+   "fieldtype": "Link",
+   "label": "Amended From",
+   "no_copy": 1,
+   "options": "Cutting Marker",
+   "print_hide": 1,
+   "read_only": 1,
+   "search_index": 1
   }
  ],
  "index_web_pages_for_search": 1,
+ "is_submittable": 1,
  "links": [],
- "modified": "2024-11-19 10:32:59.877209",
+ "modified": "2025-02-14 15:37:43.373342",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Cutting Marker",

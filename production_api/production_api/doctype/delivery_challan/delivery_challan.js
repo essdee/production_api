@@ -89,6 +89,8 @@ frappe.ui.form.on("Delivery Challan", {
 						args: {
 							doc_name : frm.doc.name,
 						},
+						freeze:true,
+						freeze_message:"Creating Stock Entry",
 						callback: function(r){
 							frappe.set_route("Form","Stock Entry",r.message)
 						}

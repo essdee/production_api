@@ -8,8 +8,10 @@
  "field_order": [
   "item_variant",
   "quantity",
+  "received_qty",
   "table_index",
-  "row_index"
+  "row_index",
+  "received_type_json"
  ],
  "fields": [
   {
@@ -23,13 +25,11 @@
   {
    "fieldname": "table_index",
    "fieldtype": "Int",
-   "in_list_view": 1,
    "label": "Table Index"
   },
   {
    "fieldname": "row_index",
    "fieldtype": "Int",
-   "in_list_view": 1,
    "label": "Row Index"
   },
   {
@@ -38,12 +38,26 @@
    "in_list_view": 1,
    "label": "Quantity",
    "reqd": 1
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "received_qty",
+   "fieldtype": "Int",
+   "in_list_view": 1,
+   "label": "Received Qty"
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "received_type_json",
+   "fieldtype": "JSON",
+   "in_list_view": 1,
+   "label": "Received Type JSON"
   }
  ],
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2025-01-17 13:08:59.147669",
+ "modified": "2025-02-12 12:09:28.596175",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Work Order Calculated Item",

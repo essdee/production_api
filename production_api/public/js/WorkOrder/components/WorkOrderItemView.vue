@@ -79,40 +79,51 @@ function create_input_classes(){
 function update_qty(idx1, idx2){
     if(!checkbox_value){
         Object.keys(items.value[idx1].items[idx2].values).forEach((key,value)=> {
-            let input = items.value[idx1].items[idx2]['entered_qty'][key]
-            input.set_value(0)
+            if(items.value[idx1].items[idx2]['entered_qty'][key]){
+                let input = items.value[idx1].items[idx2]['entered_qty'][key]
+                input.set_value(0)
+            }
         })
     }
     else{
         Object.keys(items.value[idx1].items[idx2].values).forEach((key,value)=> {
-            let input = items.value[idx1].items[idx2]['entered_qty'][key]
-            input.set_value(items.value[idx1].items[idx2]['values'][key])
+            if(items.value[idx1].items[idx2]['entered_qty'][key]){
+                let input = items.value[idx1].items[idx2]['entered_qty'][key]
+                input.set_value(items.value[idx1].items[idx2]['values'][key])
+            }
         })
     }
     
 
 }
 function createInput(key,index,val){
-    let parent_class = "." + get_input_class(key,index);
-    let el = root.value
-    let df = {
-        fieldtype: 'Int',
-        fieldname: key+""+index,
-    } 
-    let input =  frappe.ui.form.make_control({
-        parent: $(el).find(parent_class),
-        df:df,
-        doc: sample_doc.value,
-        render_input: true,
-    });
-    $(el).find(".control-label").remove();
-    input.set_value(val)
-    input.refresh()
-    input['df']['onchange'] = ()=>{
-        let input_value = input.get_value()
-        items.value[0].items[index]['work_order_qty'][key] = input_value;
+    if(val > 0){
+        let parent_class = "." + get_input_class(key,index);
+    
+        let el = root.value
+        let df = {
+            fieldtype: 'Int',
+            fieldname: key+""+index,
+        } 
+        let input =  frappe.ui.form.make_control({
+            parent: $(el).find(parent_class),
+            df:df,
+            doc: sample_doc.value,
+            render_input: true,
+        });
+
+        $(el).find(".control-label").remove();
+        if(val != 0){
+            input.set_value(val)
+            input.refresh()
+        }
+        input['df']['onchange'] = ()=>{
+            let input_value = input.get_value()
+            items.value[0].items[index]['work_order_qty'][key] = input_value;
+        }
+        return input
     }
-    return input
+    
 }
 
 function get_input_class(key,index){
@@ -123,8 +134,10 @@ function get_input_class(key,index){
 function get_items(){
     for(let i = 0 ; i < items.value[0].items.length; i++){
         Object.keys(items.value[0].items[i].values).forEach((key,value)=> {
-            let entered = items.value[0].items[i]['entered_qty'][key].get_value()
-            items.value[0].items[i]['entered_qty'][key] = entered
+            if(items.value[0].items[i]['entered_qty'][key]){
+                let entered = items.value[0].items[i]['entered_qty'][key].get_value()
+                items.value[0].items[i]['entered_qty'][key] = entered
+            }
             // let limit = items.value[0].items[i]['values'][key]
             // if(entered > limit){
             //     frappe.throw(`For ${key} ${items.value[0].items[i]['primary_attribute']}, Entered value was ${entered}, but the limit is ${limit}`)

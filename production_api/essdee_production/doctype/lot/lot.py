@@ -21,7 +21,7 @@ class Lot(Document):
 			self.set("items",items)
 
 		if self.get('order_item_details') and len(self.lot_time_and_action_details) == 0:
-			order_items = save_order_item_details(self.order_item_details)
+			order_items = save_order_item_details(self.lot_order_details, self.order_item_details)
 			self.set('lot_order_details',order_items)
 
 		if self.is_new(): 
@@ -43,15 +43,27 @@ class Lot(Document):
 	
 	def calculate_order(self):	
 		if self.production_detail and len(self.lot_time_and_action_details) == 0:
+			previous_data = {}
+			for item in self.lot_order_details:
+				previous_data[item.item_variant] = {"cut_qty":item.cut_qty,"stich_qty":item.stich_qty,"pack_qty":item.pack_qty}
 			items, qty = calculate_order_details(self.get('items'), self.production_detail, self.packing_uom, self.uom)
+			x = []
 			if len(items) == 0:
-				x = []
 				for item in self.items:
 					x.append({'item_variant': item.item_variant, 'quantity':item.qty })
 					qty += item.qty
 				self.set('lot_order_details',x)
 				self.set('total_order_quantity', qty)
 			else:
+				for item in items:
+					if previous_data.get(item.get('item_variant')):
+						item.update(
+							{
+								"cut_qty":previous_data[item['item_variant']]['cut_qty'],
+								"stich_qty":previous_data[item['item_variant']]['stich_qty'],
+								"pack_qty":previous_data[item['item_variant']]['pack_qty'],
+							}
+						)
 				self.set('lot_order_details',items)
 				self.set('total_order_quantity', qty)
 
@@ -169,7 +181,11 @@ def calculate_order_details(items, production_detail, packing_uom, final_uom):
 				})		
 	return final_list, final_qty
 
-def save_order_item_details(item_details):
+def save_order_item_details(lot_order_items, item_details):
+	previous_data = {}
+	for item in lot_order_items:
+		previous_data[item.item_variant] = {"cut_qty":item.cut_qty,"stich_qty":item.stich_qty,"pack_qty":item.pack_qty}
+	
 	if isinstance(item_details, string_types):
 		item_details = json.loads(item_details)
 	if len(item_details) == 0:
@@ -186,6 +202,10 @@ def save_order_item_details(item_details):
 				variant_name = get_or_create_variant(items['item'], attributes)
 				item1['item_variant'] = variant_name
 				item1['quantity'] = item['values'][value]
+				if previous_data.get(variant_name):
+					item1['cut_qty'] = previous_data[variant_name]['cut_qty']
+					item1['stich_qty'] = previous_data[variant_name]['stich_qty']
+					item1['pack_qty'] = previous_data[variant_name]['pack_qty']
 				item_list.append(item1)
 		else:
 			item1 = {}
@@ -194,6 +214,10 @@ def save_order_item_details(item_details):
 			variant_name = get_or_create_variant(item['item'], attributes)
 			item1['item_variant'] = variant_name
 			item1['qty'] = item['values']['qty']
+			if previous_data.get(variant_name):
+				item1['cut_qty'] = previous_data[variant_name]['cut_qty']
+				item1['stich_qty'] = previous_data[variant_name]['stich_qty']
+				item1['pack_qty'] = previous_data[variant_name]['pack_qty']
 			item_list.append(item1)
 	return item_list
 
@@ -292,16 +316,34 @@ def fetch_item_details(items, production_detail):
 	return item_structure
 
 @frappe.whitelist()
-def fetch_order_item_details(items, production_detail):
-	pack_in_stage, dept_attr_mapping = frappe.get_value("Item Production Detail", production_detail,['pack_in_stage','dependent_attribute_mapping'])
+def fetch_order_item_details(items, production_detail, process=None ):
+	ipd_doc = frappe.get_doc("Item Production Detail", production_detail)
 	if isinstance(items, string_types):
 		items = json.loads(items)
 	order_item_details = []
+	field = None
+	if process:
+		prs_doc = frappe.get_cached_doc("Process", process)
+		if prs_doc.is_group:
+			for prs in prs_doc.process_details:
+				process = prs.process_name
+				break
+			
+		field = "quantity" if process == ipd_doc.cutting_process else "cut_qty" if process == ipd_doc.stiching_process else  "stich_qty" if process == ipd_doc.packing_process else None
+		if not field:
+			stage = None
+			for prs in ipd_doc.ipd_processes:
+				if prs.process_name == process:
+					stage = prs.stage
+					break
+			if stage:
+				field = "cut_qty" if stage == ipd_doc.stiching_in_stage else "stich_qty" if stage == ipd_doc.pack_in_stage else "pack_qty"
+
 	grp_variant_item = frappe.get_value("Item Variant", items[0].item_variant, 'item')	
 	doc = frappe.get_cached_doc("Item", grp_variant_item)
-	variant_attr_details = get_attribute_details(grp_variant_item, dependent_attr_mapping=dept_attr_mapping)
+	variant_attr_details = get_attribute_details(grp_variant_item, dependent_attr_mapping=ipd_doc.dependent_attribute_mapping)
 	primary_attr = variant_attr_details['primary_attribute']
-	item_structure = get_item_details(grp_variant_item, attr_details=variant_attr_details,production_detail=production_detail, dependent_state=pack_in_stage,dependent_attr_mapping=dept_attr_mapping)
+	item_structure = get_item_details(grp_variant_item, attr_details=variant_attr_details,production_detail=production_detail, dependent_state=ipd_doc.pack_in_stage,dependent_attr_mapping=ipd_doc.dependent_attribute_mapping)
 	for item in items:
 		values = {}
 		current_variant = frappe.get_cached_doc("Item Variant", item.item_variant)
@@ -311,11 +353,16 @@ def fetch_order_item_details(items, production_detail):
 		if doc.primary_attribute:
 			for attr in current_variant.attributes:
 				if attr.attribute == primary_attr:
-					values[attr.attribute_value] = item.quantity
+					if not field:
+						values[attr.attribute_value] = item.quantity
+					else:
+						values[attr.attribute_value] = getattr(item, field, 0)
 					break
 		else:
-			values['qty'] = item.quantity
-
+			if not field:
+				values['qty'] = item.quantity
+			else:
+				values['qty'] = getattr(item, field, 0)
 		check = True
 		for x in item_structure['items']:
 			if x['attributes'] == item_attribute_details:

@@ -11,6 +11,7 @@ frappe.ui.form.on("Cutting LaySheet", {
             return {
                 filters:{
                     "cutting_plan":doc.cutting_plan,
+                    "docstatus": 1,
                 }
             }
         })
@@ -33,9 +34,15 @@ frappe.ui.form.on("Cutting LaySheet", {
         else{
             frm.laysheet.load_data([])
         }
+        $(frm.fields_dict['cutting_marker_ratios_html'].wrapper).html("")
+        if(!frm.doc.__islocal){
+            frm.marker =new frappe.production.ui.CuttingMarker(frm.fields_dict['cutting_marker_ratios_html'].wrapper)
+            frm.marker.load_data(frm.doc.__onload.marker_details)
+        }
+        
         frm.set_df_property('cutting_laysheet_bundles','cannot_add_rows',true)
 		frm.set_df_property('cutting_laysheet_bundles','cannot_delete_rows',true)
-        if(frm.doc.cutting_laysheet_details.length > 0 && frm.doc.status != "Label Printed" ){
+        if(frm.doc.cutting_laysheet_details.length > 0 && (frm.doc.status == "Bundles Generated" || frm.doc.status == "Completed") ){
             frm.add_custom_button("Generate",()=> {
                 frappe.call({
                     method:"production_api.production_api.doctype.cutting_laysheet.cutting_laysheet.get_parts",
@@ -89,6 +96,11 @@ frappe.ui.form.on("Cutting LaySheet", {
                                         max_plys:values.maximum_no_of_plys,
                                         maximum_allow : values.maximum_allow_percentage
                                     },
+                                    freeze:true,
+                                    freeze_message:"Generating Bundles",
+                                    callback: function(){
+                                        frm.reload_doc()
+                                    }
                                 })
                                 d.hide()
                             }
@@ -98,7 +110,7 @@ frappe.ui.form.on("Cutting LaySheet", {
                 })
             })
         }
-        if(frm.doc.cutting_laysheet_bundles.length > 0 && frm.doc.status != "Label Printed" ){
+        if(frm.doc.cutting_laysheet_bundles.length > 0 && frm.doc.status == "Bundles Generated" ){
             frm.add_custom_button("Print Labels", ()=> {
                 frappe.ui.form.qz_connect()
                     .then(function () {
@@ -146,21 +158,19 @@ frappe.ui.form.on("Cutting LaySheet", {
                 }
             })
         }
-        if(frm.doc.status != "Label Printed"){
-            frm.add_custom_button("Print Laysheet", ()=> {
-                let w = window.open(
-                    frappe.urllib.get_full_url(
-                        "/printview?" + "doctype=" + encodeURIComponent(frm.doc.doctype) + "&name=" +
-                            encodeURIComponent(frm.doc.name) + "&trigger_print=1" + "&format=" + 
-                            encodeURIComponent("Cutting LaySheet") + "&no_letterhead=1"
-                    )
-                );
-                if (!w) {
-                    frappe.msgprint(__("Please enable pop-ups"));
-                    return;
-                }
-            })
-        }
+        frm.add_custom_button("Print Laysheet", ()=> {
+            let w = window.open(
+                frappe.urllib.get_full_url(
+                    "/printview?" + "doctype=" + encodeURIComponent(frm.doc.doctype) + "&name=" +
+                        encodeURIComponent(frm.doc.name) + "&trigger_print=1" + "&format=" + 
+                        encodeURIComponent("Cutting LaySheet") + "&no_letterhead=1"
+                )
+            );
+            if (!w) {
+                frappe.msgprint(__("Please enable pop-ups"));
+                return;
+            }
+        })
 	},
     validate(frm){
         let items = frm.laysheet.get_items()

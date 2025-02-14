@@ -427,7 +427,13 @@ def get_calculated_bom(item_production_detail, items, lot_name, process_name = N
 		total_quantity = 0
 		for i in items:
 			total_quantity += i['quantity']
-
+	
+	part_list = []
+	if item_detail.is_set_item:
+		for stich in item_detail.stiching_item_details:
+			if stich.set_item_attribute_value not in part_list:
+				part_list.append(stich.set_item_attribute_value)
+	
 	for bom_item in item_detail.item_bom:
 		if process_name and bom_item.process_name != process_name:
 			continue
@@ -435,15 +441,18 @@ def get_calculated_bom(item_production_detail, items, lot_name, process_name = N
 			bom[bom_item.item] = {}
 			qty_of_product = bom_item.qty_of_product
 			qty_of_bom = bom_item.qty_of_bom_item
-			
+			temp_qty = total_quantity
+			if item_detail.is_set_item:
+				temp_qty = temp_qty / len(part_list)
 			if bom_item.dependent_attribute_value and not bom_item.dependent_attribute_value == lot_doc.pack_in_stage:
 				dependent_attr_uom = lot_item_detail.default_unit_of_measure
-				qty_of_product = get_uom_conversion_factor(lot_item_detail.uom_conversion_details, dependent_attr_uom ,lot_doc.packing_uom)
+				qty_of_product = get_uom_conversion_factor(lot_item_detail.uom_conversion_details, dependent_attr_uom  ,lot_doc.packing_uom)
+				if bom_item.dependent_attribute_value == lot_doc.pack_out_stage:
+					qty_of_product = qty_of_product * item_detail.packing_combo
 
 			qty_of_product = qty_of_product/qty_of_bom
 			uom = frappe.get_value("Item", bom_item.item, "default_unit_of_measure")
-
-			quantity = total_quantity / qty_of_product
+			quantity = temp_qty / qty_of_product
 			if not bom[bom_item.item].get(bom_item.item, False):
 				bom[bom_item.item][bom_item.item] = [math.ceil(quantity),bom_item.process_name, uom]
 			else:
@@ -847,15 +856,17 @@ def get_stiching_in_stage_attributes(dependent_attribute_mapping,stiching_in_sta
 
 ##################       CUTTING FUNCTIONS        ###################
 @frappe.whitelist()		
-def get_combination(doc_name,attributes, combination_type):
-	ipd_doc = frappe.get_doc("Item Production Detail",doc_name)
+def get_combination(ipd_doc,attributes, combination_type):
+	# ipd_doc = frappe.get_doc("Item Production Detail",doc_name)
+	if isinstance(ipd_doc, string_types):
+		ipd_doc = json.loads(ipd_doc)
 
 	attributes = json.loads(attributes)
-	item_attributes = ipd_doc.item_attributes
-	cloth_detail = ipd_doc.cloth_detail
-	packing_attr = ipd_doc.packing_attribute
-	packing_attr_details = ipd_doc.packing_attribute_details
-	cloth_accessories = ipd_doc.accessory_clothtype_json
+	item_attributes = ipd_doc['item_attributes']
+	cloth_detail = ipd_doc['cloth_detail']
+	packing_attr = ipd_doc['packing_attribute']
+	packing_attr_details = ipd_doc['packing_attribute_details']
+	cloth_accessories = ipd_doc['accessory_clothtype_json']
 	
 	if isinstance(item_attributes, string_types):
 		item_attributes = json.loads(item_attributes)
@@ -875,14 +886,16 @@ def get_combination(doc_name,attributes, combination_type):
 			else:
 				part_accessory_combination[cloth] = [cloth_accessory]
 	else:		
-		cloth_detail = ipd_doc.cloth_detail
+		cloth_detail = ipd_doc['cloth_detail']
 		if isinstance(cloth_detail, string_types):
 			cloth_detail = json.loads(cloth_detail)
 
-	stich_attr = ipd_doc.stiching_attribute
-	set_attr = ipd_doc.set_item_attribute
-	pack_attr = ipd_doc.packing_attribute
-	is_set_item = ipd_doc.is_set_item
+	stich_attr = ipd_doc['stiching_attribute']
+	is_set_item = ipd_doc['is_set_item']
+	set_attr = None
+	if is_set_item:
+		set_attr = ipd_doc['set_item_attribute']
+	pack_attr = ipd_doc['packing_attribute']
 	
 	item_list = []
 	if len(attributes) == 1:
@@ -957,9 +970,9 @@ def get_combination(doc_name,attributes, combination_type):
 		x[set_attr] = set_data[set_attr]
 
 		item_attr_list = x	
-		for i in ipd_doc.set_item_combination_details:
-			if i.attribute_value not in item_attr_list[set_attr][i.set_item_attribute_value]:
-				item_attr_list[set_attr][i.set_item_attribute_value].append(i.attribute_value) 
+		for i in ipd_doc['set_item_combination_details']:
+			if i['attribute_value'] not in item_attr_list[set_attr][i['set_item_attribute_value']]:
+				item_attr_list[set_attr][i['set_item_attribute_value']].append(i['attribute_value']) 
 
 		set_attr_values = item_attr_list[set_attr]
 		del item_attr_list[set_attr]
@@ -973,7 +986,7 @@ def get_combination(doc_name,attributes, combination_type):
 		attributes.append(pack_attr)
 
 	elif is_set_item and stich_attr in attributes and set_attr in attributes and pack_attr not in attributes:
-		item_attr_list = change_attr_list(item_attr_val_list,ipd_doc.stiching_item_details,stich_attr,set_attr)
+		item_attr_list = change_attr_list(item_attr_val_list,ipd_doc['stiching_item_details'],stich_attr,set_attr)
 		set_attr_values = item_attr_list[set_attr]
 		del item_attr_list[set_attr]
 		
@@ -1010,7 +1023,7 @@ def get_combination(doc_name,attributes, combination_type):
 
 	cloths = []
 	for cloth in cloth_detail:
-		cloths.append(cloth.name1)
+		cloths.append(cloth['name1'])
 	additional_attr = []
 
 	if combination_type == 'Cutting':
@@ -1040,12 +1053,12 @@ def pop_attributes(attributes, attr_list):
 	return attributes	
 
 def get_set_tri_struct(ipd_doc, item_attr_list, set_attr, pack_attr, stich_attr):
-	for i in ipd_doc.set_item_combination_details:
-		if i.attribute_value not in item_attr_list[set_attr][i.set_item_attribute_value][pack_attr]:
-			item_attr_list[set_attr][i.set_item_attribute_value][pack_attr].append(i.attribute_value) 
+	for i in ipd_doc['set_item_combination_details']:
+		if i['attribute_value'] not in item_attr_list[set_attr][i['set_item_attribute_value']][pack_attr]:
+			item_attr_list[set_attr][i['set_item_attribute_value']][pack_attr].append(i['attribute_value']) 
 
-	for i in ipd_doc.stiching_item_details:
-		item_attr_list[set_attr][i.set_item_attribute_value][stich_attr].append(i.stiching_attribute_value)
+	for i in ipd_doc['stiching_item_details']:
+		item_attr_list[set_attr][i['set_item_attribute_value']][stich_attr].append(i['stiching_attribute_value'])
 
 	return item_attr_list	
 
@@ -1134,10 +1147,10 @@ def change_attr_list(item_attr_val_list, stiching_item_details, stiching_attr, s
 	attr_list = item_attr_val_list.copy()
 	stiching_details = {}
 	for item in stiching_item_details:
-		if stiching_details.get(item.set_item_attribute_value):
-			stiching_details[item.set_item_attribute_value].append(item.stiching_attribute_value)
+		if stiching_details.get(item['set_item_attribute_value']):
+			stiching_details[item['set_item_attribute_value']].append(item['stiching_attribute_value'])
 		else:
-			stiching_details[item.set_item_attribute_value] = [item.stiching_attribute_value]	
+			stiching_details[item['set_item_attribute_value']] = [item['stiching_attribute_value']]	
 
 	del attr_list[stiching_attr]
 	attr_list[set_attr] = stiching_details
@@ -1212,12 +1225,12 @@ def get_combination_attr_list(attributes, packing_attr, packing_attr_details, it
 	item_attr_value_list = {}
 	pack_details = []
 	for pack_attr in packing_attr_details:
-		pack_details.append(pack_attr.attribute_value)
+		pack_details.append(pack_attr['attribute_value'])
 
 	for item in item_attributes:
-		if item.attribute in attributes:
-			attr_details = get_attr_mapping_details(item.mapping)
-			item_attr_value_list[item.attribute] = attr_details
+		if item['attribute'] in attributes:
+			attr_details = get_attr_mapping_details(item['mapping'])
+			item_attr_value_list[item['attribute']] = attr_details
 
 	item_attr_value_list[packing_attr] = pack_details
 	item_attr_val_list = {}
