@@ -461,111 +461,93 @@ def update_cutting_plan(cutting_laysheet):
 	
 	stitching_combination = get_stitching_combination(ipd_doc)
 	set_item = ipd_doc.is_set_item
-	if not ipd_doc.is_same_packing_attribute:
-		cm_doc = frappe.get_doc("Cutting Marker",cls_doc.cutting_marker)
-		cutting_marker_list = []
-		for mark in cm_doc.cutting_marker_parts:
-			cutting_marker_list.append(mark.part)
-
-		item_panel = {}
-		for item in incomplete_items['items']:
-			for val in item['values']:
-				for panel in item['values'][val]:
-					if set_item:
-						key = (val,item['attributes'][ipd_doc.packing_attribute],item['attributes'][ipd_doc.set_item_attribute])
+	cm_doc = frappe.get_doc("Cutting Marker",cls_doc.cutting_marker)
+	cutting_marker_list = cm_doc.calculated_parts.split(",")
+	item_panel = {}
+	for item in incomplete_items['items']:
+		for val in item['values']:
+			for panel in item['values'][val]:
+				if set_item:
+					key = (val,item['attributes'][ipd_doc.packing_attribute],item['attributes'][ipd_doc.set_item_attribute])
+				else:
+					key = (val,item['attributes'][ipd_doc.packing_attribute])	
+				if key in item_panel:
+					if panel in item_panel[key]:
+						item_panel[key][panel] += item['values'][val][panel]
 					else:
-						key = (val,item['attributes'][ipd_doc.packing_attribute])	
-					if key in item_panel:
-						if panel in item_panel[key]:
-							item_panel[key][panel] += item['values'][val][panel]
-						else:
-							item_panel[key][panel] = item['values'][val][panel]
-					else:	
-						item_panel[key] = {}
-						item_panel[key][panel] = item['values'][val][panel] 
-		for item in item_panel:
-			check = True
-			min = sys.maxsize
-			part = None
-			condition1 = True
-			if set_item:
-				part = item[2]
+						item_panel[key][panel] = item['values'][val][panel]
+				else:	
+					item_panel[key] = {}
+					item_panel[key][panel] = item['values'][val][panel] 
+	for item in item_panel:
+		check = True
+		min = sys.maxsize
+		part = None
+		condition1 = True
+		if set_item:
+			part = item[2]
+
+		for i in stitching_combination['stitching_combination'][item[1]]:
+			if i in cutting_marker_list:
+				panel_colour = stitching_combination['stitching_combination'][item[1]][i]
+				if set_item:
+					condition1 = i in incomplete_items[ipd_doc.stiching_attribute][part]
+				if condition1:	
+					m = False
+					for panel in item_panel:
+						condition2 = True
+						if set_item:
+							condition2 = panel[2] == part
+						if condition2 and panel[0] == item[0] and panel[1] == panel_colour and item_panel[panel][i] > 0:
+							m = True
+							if item_panel[panel][i] < min:
+								min = item_panel[panel][i]
+							break
+					if not m:
+						check = False
+						break
+			else:
+				check = False		
+		if check:
+			for x in completed_items['items']:
+				total_qty = 0
+				condition3 = True
+				if set_item:
+					condition3 = x['attributes'][ipd_doc.set_item_attribute] == part
+				if x['attributes'][ipd_doc.packing_attribute] == item[1] and condition3:
+					if x['completed']:
+						txt = item[1]
+						if set_item:
+							txt += "-" + part
+						frappe.throw(f"Already {txt} was completed")
+					x['values'][item[0]] += min
+					completed_items['total_qty'][item[0]] += min
+					total_qty += x['values'][item[0]]
+					break	
+				
+				if total_qty != 0:
+					x['total_qty'] = total_qty
 
 			for i in stitching_combination['stitching_combination'][item[1]]:
-				if i in cutting_marker_list:
-					panel_colour = stitching_combination['stitching_combination'][item[1]][i]
-					if set_item:
-						condition1 = i in incomplete_items[ipd_doc.stiching_attribute][part]
-					if condition1:	
-						m = False
-						for panel in item_panel:
-							condition2 = True
-							if set_item:
-								condition2 = panel[2] == part
-							if condition2 and panel[0] == item[0] and panel[1] == panel_colour and item_panel[panel][i] > 0:
-								m = True
-								if item_panel[panel][i] < min:
-									min = item_panel[panel][i]
-								break
-						if not m:
-							check = False
-							break
-				else:
-					check = False		
-			if check:
-				for x in completed_items['items']:
-					total_qty = 0
-					condition3 = True
-					if set_item:
-						condition3 = x['attributes'][ipd_doc.set_item_attribute] == part
-					if x['attributes'][ipd_doc.packing_attribute] == item[1] and condition3:
-						x['values'][item[0]] += min
-						completed_items['total_qty'][item[0]] += min
-						total_qty += x['values'][item[0]]
-						break	
-					if total_qty != 0:
-						x['total_qty'] = total_qty
+				panel_colour = stitching_combination['stitching_combination'][item[1]][i]
+				condition4 = True
+				if set_item:
+					condition4 = i in incomplete_items[ipd_doc.stiching_attribute][part]
+				if condition4:	
+					for panel in item_panel:
+						condition5 = True
+						if set_item:
+							condition5 = panel[2] == part
+						if condition5 and panel[0] == item[0] and panel[1] == panel_colour and item_panel[panel][i] > 0:
+							item_panel[panel][i] -= min
+							for x in incomplete_items['items']:
+								condition6 = True
+								if set_item:
+									condition6 =  x['attributes'][ipd_doc.set_item_attribute] == part
+								if x['attributes'][ipd_doc.packing_attribute] == panel_colour and condition6:
+									x['values'][panel[0]][i] -= min
+									break		
 
-				for i in stitching_combination['stitching_combination'][item[1]]:
-					panel_colour = stitching_combination['stitching_combination'][item[1]][i]
-					condition4 = True
-					if set_item:
-						condition4 = i in incomplete_items[ipd_doc.stiching_attribute][part]
-					if condition4:	
-						for panel in item_panel:
-							condition5 = True
-							if set_item:
-								condition5 = panel[2] == part
-							if condition5 and panel[0] == item[0] and panel[1] == panel_colour and item_panel[panel][i] > 0:
-								item_panel[panel][i] -= min
-								for x in incomplete_items['items']:
-									condition6 = True
-									if set_item:
-										condition6 =  x['attributes'][ipd_doc.set_item_attribute] == part
-									if x['attributes'][ipd_doc.packing_attribute] == panel_colour and condition6:
-										x['values'][panel[0]][i] -= min
-										break		
-	else:	
-		for item1,item2 in zip_longest(incomplete_items['items'],completed_items['items']):
-			total_qty = 0
-			for val in item1['values']:
-				check = True
-				min = sys.maxsize
-				for panel in item1['values'][val]:
-					panel_count = item1['values'][val][panel]
-					if panel_count == 0:
-						check = False
-					elif min > panel_count:
-						min = panel_count
-
-				if check:
-					for panel in item1['values'][val]:
-						item1['values'][val][panel] -= min
-					item2['values'][val] += min
-					total_qty += item2['values'][val]
-					completed_items['total_qty'][val] += min
-			if total_qty != 0:		
-				item2['total_qty'] = total_qty 			
 	accessory= {}
 	cloth = {}
 	for item in cls_doc.cutting_laysheet_details:
@@ -574,7 +556,7 @@ def update_cutting_plan(cutting_laysheet):
 		cloth[key] += item.weight - item.balance_weight
 		accessory.setdefault(key,0)
 		accessory[key] += item.accessory_weight
-	
+
 	cp_doc = frappe.get_doc("Cutting Plan",cls_doc.cutting_plan)
 	for item in cp_doc.cutting_plan_cloth_details:
 		key = (item.colour, item.cloth_type, item.dia)

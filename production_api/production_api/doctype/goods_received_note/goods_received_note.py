@@ -89,8 +89,8 @@ class GoodsReceivedNote(Document):
 			self.piece_calculation()
 
 	def piece_calculation(self):
-		# calculate_pieces(self.name, doc_status=self.docstatus)
-		frappe.enqueue(calculate_pieces, "short", doc_name=self.name,doc_status=self.docstatus, enqueue_after_commit=True)
+		# calculate_pieces(self.name)
+		frappe.enqueue(calculate_pieces, "short", doc_name=self.name, enqueue_after_commit=True)
 	
 	def split_items(self):
 		items_list = []
@@ -755,7 +755,7 @@ def save_grn_item_details(item_details, process_name):
 					total_quantity = frappe.get_value(doctype, docname, "qty")
 					x = total_quantity / 100
 					x = x * allowance
-					x = x - frappe.get_value(doctype, docname,"pending_quantity")
+					x = x - frappe.get_value(doctype, docname, "pending_quantity")
 					total_quantity = total_quantity + x
 					if total_quantity < received:
 						frappe.throw(f"Received more than the allowed quantity for {bold(variant_name)}")
@@ -1087,6 +1087,11 @@ def get_cutting_process_deliverables(grn_doc, ipd_doc):
 		cloth_detail[cloth.name1] = cloth.cloth
 	item_attr_detail_dict = {}
 	cloths = {}
+	stich_details = {}
+	if ipd_doc.is_set_item:
+		for item in ipd_doc.stiching_item_details:
+			stich_details[item.stiching_attribute_value] = item.set_item_attribute_value	
+		
 	for item in grn_doc.items:
 		variant_doc = frappe.get_cached_doc("Item Variant", item.item_variant)	
 		item_attribute_details = None
@@ -1095,8 +1100,9 @@ def get_cutting_process_deliverables(grn_doc, ipd_doc):
 		else:
 			item_attribute_details = get_attribute_details(variant_doc.item)
 			item_attr_detail_dict[variant_doc.item] = item_attribute_details
-
 		attributes = get_receivable_item_attribute_details(variant_doc, item_attribute_details, ipd_doc.stiching_in_stage)
+		if ipd_doc.is_set_item and not attributes.get(ipd_doc.set_item_attribute):
+			attributes[ipd_doc.set_item_attribute] = stich_details[attributes[ipd_doc.stiching_attribute]]
 		cut_attr_key = get_key(attributes, cloth_combination["cutting_attributes"])
 		dia, cloth_weight = cloth_combination["cutting_combination"].get(cut_attr_key)
 		cloth_attr_key = get_key(attributes, cloth_combination["cloth_attributes"])
@@ -1348,7 +1354,8 @@ def get_receivable_item_attribute_details(variant, item_attributes, stage):
 def get_key(item, attrs):
 	key = []
 	for attr in attrs:
-		key.append(item[attr])
+		if item.get(attr):
+			key.append(item[attr])
 	return tuple(key)	
 
 @frappe.whitelist()
@@ -1470,8 +1477,9 @@ def construct_stock_entry_data(doc_name):
 	return ste.name
 
 @frappe.whitelist()
-def calculate_pieces(doc_name, doc_status):
-	grn_doc = frappe.get_cached_doc("Goods Received Note",doc_name)
+def calculate_pieces(doc_name):
+	grn_doc = frappe.get_doc("Goods Received Note",doc_name)
+	doc_status = grn_doc.docstatus
 	ipd = frappe.get_value("Lot", grn_doc.lot,"production_detail")
 	ipd_doc = frappe.get_doc("Item Production Detail",ipd)
 	received_types = {}
@@ -1693,20 +1701,21 @@ def get_panels_completion(grn_doc, ipd_doc, panel_list):
 		for i in incomplete_items['items']:
 			if i['attributes'][ipd_doc.packing_attribute] == attr_details[ipd_doc.packing_attribute]:
 				y = i.copy()
-				x = y['values'][attr_details[ipd_doc.primary_item_attribute]][attr_details[ipd_doc.stiching_attribute]]
-				if item.received_type and item.received_type not in types:
-					types.append(item.received_type)
+				if attr_details[ipd_doc.stiching_attribute] in y['values'][attr_details[ipd_doc.primary_item_attribute]]:
+					x = y['values'][attr_details[ipd_doc.primary_item_attribute]][attr_details[ipd_doc.stiching_attribute]]
+					if item.received_type and item.received_type not in types:
+						types.append(item.received_type)
 
-				if not x:
-					i['values'][attr_details[ipd_doc.primary_item_attribute]][attr_details[ipd_doc.stiching_attribute]] = {item.received_type:item.quantity}
-				else:
-					m = x.copy()
-					if m.get(item.received_type):
-						y['values'][attr_details[ipd_doc.primary_item_attribute]][attr_details[ipd_doc.stiching_attribute]][item.received_type] += item.quantity	
+					if not x:
+						i['values'][attr_details[ipd_doc.primary_item_attribute]][attr_details[ipd_doc.stiching_attribute]] = {item.received_type:item.quantity}
 					else:
-						y['values'][attr_details[ipd_doc.primary_item_attribute]][attr_details[ipd_doc.stiching_attribute]][item.received_type] = item.quantity
-				i = y
-				break
+						m = x.copy()
+						if m.get(item.received_type):
+							y['values'][attr_details[ipd_doc.primary_item_attribute]][attr_details[ipd_doc.stiching_attribute]][item.received_type] += item.quantity	
+						else:
+							y['values'][attr_details[ipd_doc.primary_item_attribute]][attr_details[ipd_doc.stiching_attribute]][item.received_type] = item.quantity
+					i = y
+					break
 
 	stitching_combination = get_stitching_combination(ipd_doc)
 	set_item = ipd_doc.is_set_item

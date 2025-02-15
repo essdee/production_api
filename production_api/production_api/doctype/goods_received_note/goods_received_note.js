@@ -247,15 +247,6 @@ frappe.ui.form.on('Goods Received Note', {
 		// 	})
 		// }
 	},
-	calculate_pieces(frm){
-		frappe.call({
-			method:"production_api.production_api.doctype.goods_received_note.goods_received_note.calculate_pieces",
-			args: {
-				doc_name: frm.doc.name,
-				doc_status: frm.doc.docstatus
-			}
-		})
-	},
 	save_item_details: function(frm) {
 		if(frm.itemEditor){
 			let items = frm.itemEditor.get_items();
