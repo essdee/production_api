@@ -20,4 +20,4 @@ production_api.patches.v1_0.create_bin
 production_api.patches.v1_0.update_stock_uom_fields
 production_api.patches.v1_0.update_stock_datetime_field
 production_api.patches.v1_0.stock_reservation_entry
-production_api.patches.v1_0.update_cutting_completion
+production_api.patches.v1_0.update_cutting_completion #1
