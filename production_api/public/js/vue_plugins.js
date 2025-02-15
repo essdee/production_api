@@ -502,9 +502,6 @@ frappe.production.ui.GRNWorkOrder = class {
     }
 }
 
-
-
-
 frappe.production.ui.CuttingCompletionDetail = class {
     constructor(wrapper){
         this.$wrapper = $(wrapper)
@@ -515,10 +512,15 @@ frappe.production.ui.CuttingCompletionDetail = class {
         SetVueGlobals(this.app)
         this.vue = this.app.mount(this.$wrapper.get(0))
     }
-    load_data(item_details){
+    load_data(item_details, pop_up){
         item_details = "["+item_details+"]"
         let items = JSON.parse(JSON.stringify(item_details))
-        this.vue.load_data(items)
+        this.vue.load_data(items, pop_up)
+    }
+    get_items(){
+        let items = this.vue.get_items()
+        console.log(items)
+        return items
     }
 }
 frappe.production.ui.CuttingIncompletionDetail = class {
