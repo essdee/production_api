@@ -968,3 +968,18 @@ def fetch_calculated_items(items):
 		else:
 			item_details[index]['items'].append(item)
 	return item_details
+
+@frappe.whitelist()
+def calculate_completed_pieces(doc_name):
+	wo_doc = frappe.get_doc("Work Order", doc_name)
+	for item in wo_doc.work_order_calculated_items:
+		item.received_qty = 0
+	wo_doc.save()
+	# calc(doc_name)
+	frappe.enqueue(calc,"short", doc_name=doc_name)	
+	
+def calc(doc_name):	
+	grn_list = frappe.get_list("Goods Received Note", filters={"against_id": doc_name}, pluck="name")
+	from production_api.production_api.doctype.goods_received_note.goods_received_note import calculate_pieces
+	for grn in grn_list:
+		calculate_pieces(grn)

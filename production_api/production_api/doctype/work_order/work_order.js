@@ -201,6 +201,14 @@ frappe.ui.form.on("Work Order", {
 			})
 		}
 	},
+	calculate_pieces(frm){
+		frappe.call({
+			method:"production_api.production_api.doctype.work_order.work_order.calculate_completed_pieces",
+			args: {
+				doc_name: frm.doc.name,
+			}
+		})
+	},
 	calculate_del_and_rec(frm){
 		let items = frm.order_detail.get_work_order_items()
 		frappe.call({
