@@ -24,7 +24,7 @@ class CuttingMarker(Document):
 					str_num = str(ratio)
 					if '.' in str_num:
 						precision = int(str_num.split('.')[1]) % 10
-						if precision != 5 or precision != 0:
+						if not(precision == 5 or precision == 0):
 							frappe.throw("Only 0.5 addition is acceptable")
 					items.append({
 						"size":item['size'],
@@ -38,7 +38,7 @@ class CuttingMarker(Document):
 					str_num = str(ratio)
 					if '.' in str_num:
 						precision = int(str_num.split('.')[1]) % 10
-						if precision != 5 or precision != 0:
+						if not(precision == 5 or precision == 0):
 							frappe.throw("Only 0.5 increment is acceptable")
 					for panel in panels:
 						items.append({
