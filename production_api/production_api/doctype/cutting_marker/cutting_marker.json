@@ -152,7 +152,7 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-02-14 15:37:43.373342",
+ "modified": "2025-02-15 10:14:29.292725",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Cutting Marker",
@@ -169,6 +169,7 @@
    "report": 1,
    "role": "System Manager",
    "share": 1,
+   "submit": 1,
    "write": 1
   },
   {
@@ -181,6 +182,7 @@
    "role": "CAD User",
    "select": 1,
    "share": 1,
+   "submit": 1,
    "write": 1
   },
   {
