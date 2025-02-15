@@ -866,7 +866,6 @@ def get_combination(ipd_doc,attributes, combination_type):
 	cloth_detail = ipd_doc['cloth_detail']
 	packing_attr = ipd_doc['packing_attribute']
 	packing_attr_details = ipd_doc['packing_attribute_details']
-	cloth_accessories = ipd_doc['accessory_clothtype_json']
 	
 	if isinstance(item_attributes, string_types):
 		item_attributes = json.loads(item_attributes)
@@ -876,6 +875,7 @@ def get_combination(ipd_doc,attributes, combination_type):
 	item_attr_val_list = get_combination_attr_list(attributes,packing_attr, packing_attr_details, item_attributes)
 	part_accessory_combination = {}
 	if combination_type == "Accessory":
+		cloth_accessories = ipd_doc['accessory_clothtype_json']
 		if isinstance(cloth_accessories, string_types):
 			cloth_accessories = json.loads(cloth_accessories)	
 		accessory_list = []
