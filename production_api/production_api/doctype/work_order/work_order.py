@@ -979,7 +979,7 @@ def calculate_completed_pieces(doc_name):
 	frappe.enqueue(calc,"short", doc_name=doc_name)	
 	
 def calc(doc_name):	
-	grn_list = frappe.get_list("Goods Received Note", filters={"against_id": doc_name}, pluck="name")
+	grn_list = frappe.get_list("Goods Received Note", filters={"against_id": doc_name,"docstatus": 1}, pluck="name")
 	from production_api.production_api.doctype.goods_received_note.goods_received_note import calculate_pieces
 	for grn in grn_list:
 		calculate_pieces(grn)
