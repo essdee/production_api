@@ -15,7 +15,7 @@ def execute():
             completed = json.loads(completed)
 
         for item in completed['items']:
-            item['completed'] = True    
+            item['completed'] = False    
         cp_doc.completed_items_json = completed
         cp_doc.save()
         
