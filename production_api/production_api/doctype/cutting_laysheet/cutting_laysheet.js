@@ -112,36 +112,44 @@ frappe.ui.form.on("Cutting LaySheet", {
         }
         if(frm.doc.cutting_laysheet_bundles.length > 0 && frm.doc.status == "Bundles Generated" ){
             frm.add_custom_button("Print Labels", ()=> {
-                frappe.ui.form.qz_connect()
-                    .then(function () {
-                        return frappe.ui.form.qz_get_printer_list();
-                    })
-                    .then(function (printers) {
-                        let d = new frappe.ui.Dialog({
-                            title:"Select any one printer",
-                            fields: [
-                                {
-                                    fieldname: 'printer_list_html',
-                                    fieldtype: 'HTML',
-                                }
-                            ],
-                            size:'small',
-                            primary_action_label:"Print",
-                            primary_action:function(){
-                                d.hide()
-                                let printer = get_printer()
-                                printer = printer.slice(1, -1);
-                                print_labels(frm,printer)
-                            }
-                        })
-                        d.fields_dict.printer_list_html.$wrapper.html('');
-                        d.fields_dict.printer_list_html.$wrapper.append(get_printers_html(printers))
-                        d.show()
-                    })
-                    .catch(function (err) {
-                        frappe.ui.form.qz_fail(err);
-                    });
+                frappe.call({
+                    method:"production_api.production_api.doctype.cutting_laysheet.cutting_laysheet.check_cutting_plan",
+                    args: {
+                        cutting_laysheet: frm.doc.name, 
+                    },
+                    callback: function(){
+                        frappe.ui.form.qz_connect()
+                            .then(function () {
+                                return frappe.ui.form.qz_get_printer_list();
+                            })
+                            .then(function (printers) {
+                                let d = new frappe.ui.Dialog({
+                                    title:"Select any one printer",
+                                    fields: [
+                                        {
+                                            fieldname: 'printer_list_html',
+                                            fieldtype: 'HTML',
+                                        }
+                                    ],
+                                    size:'small',
+                                    primary_action_label:"Print",
+                                    primary_action:function(){
+                                        d.hide()
+                                        let printer = get_printer()
+                                        printer = printer.slice(1, -1);
+                                        print_labels(frm,printer)
+                                    }
+                                })
+                                d.fields_dict.printer_list_html.$wrapper.html('');
+                                d.fields_dict.printer_list_html.$wrapper.append(get_printers_html(printers))
+                                d.show()
+                            })
+                            .catch(function (err) {
+                                frappe.ui.form.qz_fail(err);
+                            });
+                    }
                 })
+            })
         }
         if(frm.doc.status == "Label Printed" || frm.doc.status == "Bundles Generated"){
             frm.add_custom_button("Print Movement Chart", ()=> {

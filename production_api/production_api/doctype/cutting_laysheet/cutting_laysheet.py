@@ -288,6 +288,98 @@ def get_cut_sheet_data(doc_name,cutting_marker,item_details,items, max_plys:int,
 			if item.balance_weight < 0:
 				frappe.throw(f"{bold(item.dia)} {bold(item.colour)}, {bold(item.cloth_type)} was used more than the received weight")
 				return
+	check_cutting_plan(doc_name)		
+
+@frappe.whitelist()
+def check_cutting_plan(cutting_laysheet):
+	cls_doc = frappe.get_doc("Cutting LaySheet",cutting_laysheet)
+	production_detail, incomplete_items_json, completed_items_json = frappe.get_value("Cutting Plan",cls_doc.cutting_plan,['production_detail',"incomplete_items_json","completed_items_json"])
+	ipd_doc = frappe.get_doc("Item Production Detail",production_detail)
+
+	incomplete_items = json.loads(incomplete_items_json)
+	completed_items = json.loads(completed_items_json)
+	for item in cls_doc.cutting_laysheet_bundles:
+		parts = item.part.split(",")
+		for x in incomplete_items['items']:
+			if x['attributes'][ipd_doc.packing_attribute] == item.colour:
+					for val in x['values']:
+						if item.size == val:
+							for part in parts:
+								condition = True
+								if completed_items['is_set_item']:
+									condition = part in incomplete_items[ipd_doc.stiching_attribute][x['attributes'][ipd_doc.set_item_attribute]]
+								if condition:
+									x['values'][val][part] += item.quantity
+	
+	stitching_combination = get_stitching_combination(ipd_doc)
+	set_item = ipd_doc.is_set_item
+	cm_doc = frappe.get_doc("Cutting Marker",cls_doc.cutting_marker)
+	cutting_marker_list = cm_doc.calculated_parts.split(",")
+	item_panel = {}
+	for item in incomplete_items['items']:
+		for val in item['values']:
+			for panel in item['values'][val]:
+				if set_item:
+					key = (val,item['attributes'][ipd_doc.packing_attribute],item['attributes'][ipd_doc.set_item_attribute])
+				else:
+					key = (val,item['attributes'][ipd_doc.packing_attribute])	
+				if key in item_panel:
+					if panel in item_panel[key]:
+						item_panel[key][panel] += item['values'][val][panel]
+					else:
+						item_panel[key][panel] = item['values'][val][panel]
+				else:	
+					item_panel[key] = {}
+					item_panel[key][panel] = item['values'][val][panel] 
+
+	for item in item_panel:
+		check = True
+		min = sys.maxsize
+		part = None
+		condition1 = True
+		if set_item:
+			part = item[2]
+
+		for i in stitching_combination['stitching_combination'][item[1]]:
+			if i in cutting_marker_list:
+				panel_colour = stitching_combination['stitching_combination'][item[1]][i]
+				if set_item:
+					condition1 = i in incomplete_items[ipd_doc.stiching_attribute][part]
+				if condition1:	
+					m = False
+					for panel in item_panel:
+						condition2 = True
+						if set_item:
+							condition2 = panel[2] == part
+						if condition2 and panel[0] == item[0] and panel[1] == panel_colour and item_panel[panel][i] > 0:
+							m = True
+							if item_panel[panel][i] < min:
+								min = item_panel[panel][i]
+							break
+					if not m:
+						check = False
+						break
+			else:
+				check = False		
+		if check:
+			for x in completed_items['items']:
+				total_qty = 0
+				condition3 = True
+				if set_item:
+					condition3 = x['attributes'][ipd_doc.set_item_attribute] == part
+				if x['attributes'][ipd_doc.packing_attribute] == item[1] and condition3:
+					if x['completed']:
+						txt = item[1]
+						if set_item:
+							txt += "-" + part
+						frappe.throw(f"Already {txt} was completed")
+					x['values'][item[0]] += min
+					completed_items['total_qty'][item[0]] += min
+					total_qty += x['values'][item[0]]
+					break	
+				
+				if total_qty != 0:
+					x['total_qty'] = total_qty
 
 def check_ratio_parts(parts, marker_ratios):
 	calculated_sizes = []

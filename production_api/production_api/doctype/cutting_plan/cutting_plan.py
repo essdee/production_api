@@ -68,6 +68,7 @@ def get_complete_cut_structure(x,stiching_attrs):
 	for item in x['items']:
 		for val in item['values']:
 			item['values'][val] = 0
+		item['completed'] = False
 	x = x | stiching_attrs
 	return x
 
@@ -244,6 +245,6 @@ def calc(cutting_plan):
 		item.used_weight = 0
 	cp_doc.save()
 
-	cls_list = frappe.get_list("Cutting LaySheet",filters = {"cutting_plan":cutting_plan,"status":"Label Printed"},pluck = "name")
+	cls_list = frappe.get_list("Cutting LaySheet",filters = {"cutting_plan":cutting_plan,"status":"Bundles Generated"},pluck = "name")
 	for cls in cls_list:
 		update_cutting_plan(cls)
