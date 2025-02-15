@@ -718,9 +718,10 @@ def save_grn_item_details(item_details, process_name):
 						item1 = {}
 						variant_name = get_or_create_variant(item_name, item_attributes)
 						received = values.get('received')
-						total_quantity = frappe.get_value(values.get('ref_doctype'), values.get('ref_docname'), "pending_quantity")
+						total_quantity = frappe.get_value(values.get('ref_doctype'), values.get('ref_docname'), "qty")
 						x = total_quantity / 100
 						x = x * allowance
+						x = x - frappe.get_value(values.get('ref_doctype'), values.get('ref_docname'), "pending_quantity")
 						total_quantity = total_quantity + x
 						if total_quantity < received:
 							frappe.throw(f"Received more than the allowed quantity for {bold(variant_name)}")
@@ -751,9 +752,10 @@ def save_grn_item_details(item_details, process_name):
 					doctype = item['values']['default'].get('ref_doctype')
 					docname = item['values']['default'].get('ref_docname')
 					received = item['values']['default'].get('received')
-					total_quantity = frappe.get_value(doctype, docname, "pending_quantity")
+					total_quantity = frappe.get_value(doctype, docname, "qty")
 					x = total_quantity / 100
 					x = x * allowance
+					x = x - frappe.get_value(doctype, docname,"pending_quantity")
 					total_quantity = total_quantity + x
 					if total_quantity < received:
 						frappe.throw(f"Received more than the allowed quantity for {bold(variant_name)}")
