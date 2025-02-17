@@ -139,11 +139,18 @@ let datetime = ref(null)
 
 onMounted(()=> {
     let today = new Date()
-    let date = today.getFullYear()+'-'+(today.getMonth()+1)+'-'+today.getDate();
-    let time = today.getHours() + ":" + today.getMinutes() + ":" +  today.getSeconds();
-    datetime.value = date + " " + time
-
+    let date = format_datetime(today.getDate()) + "-" + format_datetime(today.getMonth()+1) + "-" + today.getFullYear()
+    let time = format_datetime(today.getHours()) + ":" + format_datetime(today.getMinutes()) + ":" + format_datetime(today.getSeconds())
+    datetime.value = date+" "+time
 })
+
+function format_datetime(val){
+    if(val < 10){
+        return '0'+val
+    }
+    return val
+}
+
 function load_data(item, is_pop_up){
     try {
         items.value = JSON.parse(item);
