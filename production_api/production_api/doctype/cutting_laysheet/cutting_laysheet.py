@@ -27,10 +27,10 @@ class CuttingLaySheet(Document):
 			items = save_item_details(self.item_details, self.cutting_plan)
 			self.set("cutting_laysheet_details", items)
 
-		# status = frappe.get_value("Cutting Plan",self.cutting_plan,"status")	
-		# if status == "Completed":
-		# 	frappe.msgprint("Select the Incompleted Cutting Plan")
-		# 	return
+		status = frappe.get_value("Cutting Plan",self.cutting_plan,"status")	
+		if status == "Completed":
+			frappe.msgprint("Select the Incompleted Cutting Plan")
+			return
 
 		cut_marker_cp = frappe.get_value("Cutting Marker",self.cutting_marker,"cutting_plan")		
 		if cut_marker_cp != self.cutting_plan:
@@ -120,6 +120,8 @@ def save_item_details(items, cutting_plan):
 			"accessory_json":item['accessory_json'],
 			"accessory_weight":item['accessory_weight'],
 			"items_json":item['items_json'] if item.get('items_json') and len(item['items_json']) > 0 else {},
+			"set_colour":item['set_colour'] if item['set_colour'] else None,
+			"set_part":item['set_part'] if item['set_part'] else None,
 		})
 	return item_list	
 
@@ -129,6 +131,13 @@ def get_select_attributes(cutting_plan):
 	cloth_type = set()
 	colour = set()
 	dia = set()
+	part = set()
+
+	ipd_doc = frappe.get_doc("Item Production Detail",doc.production_detail)
+	if ipd_doc.is_set_item:
+		for row in ipd_doc.stiching_item_details:
+			part.add(row.set_item_attribute_value)
+
 	for item in doc.cutting_plan_cloth_details:
 		cloth_type.add(item.cloth_type)
 		colour.add(item.colour)
@@ -137,6 +146,7 @@ def get_select_attributes(cutting_plan):
 		"cloth_type":cloth_type,
 		"colour":colour,
 		"dia":dia,
+		"part":part,
 	}	
 
 @frappe.whitelist()

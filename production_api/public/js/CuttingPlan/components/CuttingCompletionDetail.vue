@@ -136,6 +136,7 @@ let pop_up = ref(0)
 let lot = cur_frm.doc.lot
 let item = cur_frm.doc.item
 let datetime = ref(null)
+let items2 = ref(null)
 
 onMounted(()=> {
     let today = new Date()
@@ -154,19 +155,20 @@ function format_datetime(val){
 function load_data(item, is_pop_up){
     try {
         items.value = JSON.parse(item);
+        items2.value = JSON.parse(item);
         pop_up.value = is_pop_up
-        if(is_pop_up == 2){
-            let is_system_manager = frappe.user.has_role('System Manager')
-            if(!is_system_manager){
-                pop_up.value = 1
-            }
-        }
     } catch(e) {
         console.log(e)
     }
 }
 
 function get_items(){
+    let is_system_manager = frappe.user.has_role('System Manager')
+    for(let i = 0 ; i < items.value[0]['items'].length; i++){
+        if(!is_system_manager && !items.value[0]['items'][i]['completed'] && items2.value[0]['items'][i]['completed']){
+            items.value[0]['items'][i]['completed'] = true
+        }
+    }
     return items.value
 }
 
