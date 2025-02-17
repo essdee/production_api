@@ -245,6 +245,6 @@ def calc(cutting_plan):
 		item.used_weight = 0
 	cp_doc.save()
 
-	cls_list = frappe.get_list("Cutting LaySheet",filters = {"cutting_plan":cutting_plan,"status":"Bundles Generated"},pluck = "name")
+	cls_list = frappe.get_list("Cutting LaySheet",filters = {"cutting_plan":cutting_plan,"status":"Label Printed"},pluck = "name")
 	for cls in cls_list:
 		update_cutting_plan(cls)

@@ -111,14 +111,14 @@ export default {
             return index;
         },
 
-        load_data: function(data) {
+        load_data:async function(data) {
             this.remove_attribute_inputs()
             // this.attributes = data.attributes;
             // this.item_attributes = this.get_mapping_attributes('item', this.attributes);
             // this.bom_attributes = this.get_mapping_attributes('bom', this.attributes);
             // this.attribute_values = this.get_item_attribute_values(this.attributes);
             // this.data = [];
-            this.set_attributes(data.attributes);
+            await this.set_attributes(data.attributes);
             this.$nextTick(() => {
                 data.data.sort(function(a, b) {
                     var keyA = a.index,
@@ -166,52 +166,35 @@ export default {
             // });
         },
 
-        set_attributes: function(attributes) {
+        set_attributes:async function(attributes) {
             this.remove_attribute_inputs()
-            console.log("Attributes", attributes)
 
             this.attributes = attributes;
             this.item_attributes = this.get_mapping_attributes('item', attributes);
             this.bom_attributes = this.get_mapping_attributes('bom', attributes);
             this.attribute_values = this.get_item_attribute_values(attributes);
-
             this.data = [];
+            let me = this
             if (attributes && attributes.length > 0) {
-                let data = [];
-                let attr = this.item_attributes[0]
-                let attr_values = this.attribute_values[attr]
-                for (let i = 0; i < attr_values.length; i++) {
-                    let d = {};
-                    d[this.get_attribute_name('item', attr)] = attr_values[i];
-                    data.push(d);
-                }
-                for (let i = 1; i < this.item_attributes.length; i++) {
-                    let data1 = [...data];
-                    data = [];
-                    attr = this.item_attributes[i];
-                    attr_values = this.attribute_values[attr]
-                    for (let j  = 0; j < attr_values.length; j++) {
-                        for (let k = 0; k < data1.length; k++) {
-                            let d = {...data1[k]};
-                            d[this.get_attribute_name('item', attr)] = attr_values[j];
-                            data.push(d);
+                await frappe.call({
+                    method: "production_api.production_api.doctype.item_bom_attribute_mapping.item_bom_attribute_mapping.get_item_bom_mapping_combination",
+                    args: {
+                        "item_attributes": this.item_attributes,
+                        "bom_attributes": this.bom_attributes,
+                        "attribute_values": this.attribute_values,
+                        "ipd":cur_frm.doc.item_production_detail,
+                    },
+                    callback: function(r){
+                        if (r.message) {
+                            me.data = r.message;
+                            me.$nextTick(() => {
+                                me.create_attribute_inputs();
+                                $(me.$el).find(".control-label").remove();
+                            });
                         }
                     }
-                }
-                for (let i = 0; i < data.length; i++) {
-                    for (let j = 0; j < this.bom_attributes.length; j++) {
-                        data[i][this.get_attribute_name('bom', this.bom_attributes[j])] = null;
-                    }
-                }
-                for (let i = 0; i < data.length; i++) {
-                    data[i]["included"] = true;
-                }
-                this.data = data;
+                })
             }
-            this.$nextTick(() => {
-                this.create_attribute_inputs();
-                $(this.$el).find(".control-label").remove();
-            });
         },
 
         get_mapping_attributes: function(type, attributes) {

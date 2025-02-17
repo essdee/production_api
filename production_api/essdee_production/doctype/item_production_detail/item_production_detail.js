@@ -547,7 +547,7 @@ frappe.ui.form.on("Item Production Detail", {
 			frappe.call({
 				method: 'production_api.essdee_production.doctype.item_production_detail.item_production_detail.get_combination',
 				args: {
-					ipd_doc:frm.doc,
+					doc_name: frm.doc.name,
 					attributes: get_checked_attributes,
 					combination_type: 'Cutting',
 				},
@@ -572,7 +572,7 @@ frappe.ui.form.on("Item Production Detail", {
 		frappe.call({
 			method: 'production_api.essdee_production.doctype.item_production_detail.item_production_detail.get_combination',
 			args: {
-				ipd_doc:frm.doc,
+				doc_name: frm.doc.name,
 				attributes: get_checked_attributes,
 				combination_type:'Cloth',
 			},
@@ -592,7 +592,7 @@ frappe.ui.form.on("Item Production Detail", {
 		frappe.call({
 			method: 'production_api.essdee_production.doctype.item_production_detail.item_production_detail.get_combination',
 			args: {
-				ipd_doc:frm.doc,
+				doc_name: frm.doc.name,
 				attributes: get_checked_attributes,
 				combination_type:'Accessory',
 			},
