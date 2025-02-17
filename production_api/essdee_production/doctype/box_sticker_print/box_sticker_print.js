@@ -30,47 +30,55 @@ frappe.ui.form.on("Box Sticker Print", {
                         return frappe.ui.form.qz_get_printer_list();
                     })
                     .then(function (printers) {
-                        let d = new frappe.ui.Dialog({
-                            title:"Select any one printer",
-                            fields: [
-                                {
-                                    fieldname: 'printer_list_html',
-                                    fieldtype: 'HTML',
-                                }
-                            ],
-                            size:'small',
-                            primary_action:function(){
-                                d.hide()
-                                let printer_details = get_printer()
-                                let printer = printer_details[0]
-                                let printer_type = printer_details[1]
-                                let dialog = new frappe.ui.Dialog({
-                                    title:"Enter quantity to print labels",
+                        frappe.call({
+                            method:'production_api.essdee_production.doctype.box_sticker_print.box_sticker_print.get_printer',
+                            args: {
+                                printers: printers,
+                            },
+                            callback: function(r){
+                                let d = new frappe.ui.Dialog({
+                                    title:"Select any one printer",
                                     fields: [
                                         {
-                                            fieldname: 'item_list_html',
+                                            fieldname: 'printer_list_html',
                                             fieldtype: 'HTML',
-                                        },
-                                    ],
-                                    size:'large',
-                                    primary_action_label:"Print",
-                                    primary_action:async function(){
-                                        let print_items =await get_print_items(frm)
-                                        printer = printer.slice(1, -1);
-                                        if(print_items.length > 0){
-                                            dialog.hide()
-                                            print_labels(frm,print_items, printer, printer_type)
                                         }
+                                    ],
+                                    size:'small',
+                                    primary_action:function(){
+                                        d.hide()
+                                        let printer_details = get_printer()
+                                        let printer = printer_details[0]
+                                        let printer_type = printer_details[1]
+                                        let dialog = new frappe.ui.Dialog({
+                                            title:"Enter quantity to print labels",
+                                            fields: [
+                                                {
+                                                    fieldname: 'item_list_html',
+                                                    fieldtype: 'HTML',
+                                                },
+                                            ],
+                                            size:'large',
+                                            primary_action_label:"Print",
+                                            primary_action:async function(){
+                                                let print_items =await get_print_items(frm)
+                                                printer = printer.slice(1, -1);
+                                                if(print_items.length > 0){
+                                                    dialog.hide()
+                                                    print_labels(frm,print_items, printer, printer_type)
+                                                }
+                                            }
+                                        })
+                                        dialog.show()
+                                        dialog.fields_dict.item_list_html.$wrapper.html("")
+                                        dialog.fields_dict.item_list_html.$wrapper.append(get_item_list(frm.doc.box_sticker_print_details))
                                     }
                                 })
-                                dialog.show()
-                                dialog.fields_dict.item_list_html.$wrapper.html("")
-                                dialog.fields_dict.item_list_html.$wrapper.append(get_item_list(frm.doc.box_sticker_print_details))
+                                d.fields_dict.printer_list_html.$wrapper.html('');
+                                d.fields_dict.printer_list_html.$wrapper.append(get_printers_html(r.message))
+                                d.show()
                             }
                         })
-                        d.fields_dict.printer_list_html.$wrapper.html('');
-                        d.fields_dict.printer_list_html.$wrapper.append(get_printers_html(printers))
-                        d.show()
                     })
                     .catch(function (err) {
                         frappe.ui.form.qz_fail(err);

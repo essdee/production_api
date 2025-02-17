@@ -144,3 +144,23 @@ def get_raw_code(doc_name):
 		"height": print_format_doc.height,
 		"width": print_format_doc.width,
 	}
+
+@frappe.whitelist()
+def get_printer(printers):
+	mrp_printer = frappe.db.get_single_value("MRP Settings", "printer_list")
+	printer_list = mrp_printer.split(",")
+	p = []
+	for printer in printer_list:
+		if printer and printer.strip() != "":
+			p.append(printer.strip())
+
+	final_printers_list = []
+	for printer in p:
+		if printer in printers:
+			final_printers_list.append(printer)
+
+	if final_printers_list:
+		return final_printers_list
+	else:
+		frappe.throw("No printer available")
+		
