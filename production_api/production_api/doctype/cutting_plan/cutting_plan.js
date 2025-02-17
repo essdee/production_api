@@ -77,17 +77,18 @@ frappe.ui.form.on("Cutting Plan", {
                                 "fieldtype":"HTML",
                             }
                         ],
-                        primary_action_label:"Take ScreenShot",
+                        primary_action_label:"Copy to Clipboard",
                         primary_action(){
                             let sourceDiv = d.fields_dict.pop_up_html.wrapper;
                              html2canvas(sourceDiv).then(function (canvas) {
-                                let imageURL = canvas.toDataURL("image/png");
-                                let link = document.createElement("a");
-                                link.href = imageURL;
-                                link.download = "screenshot.png";
-                                document.body.appendChild(link);
-                                link.click();
-                                document.body.removeChild(link);
+                                canvas.toBlob(async (blob)=> {
+                                    await navigator.clipboard.write([
+                                        new ClipboardItem({
+                                          'image/png': blob,
+                                        }),
+                                    ])
+                                    frappe.show_alert("Image Copied to Clipboard")
+                                });
                             });
                         }
                     })

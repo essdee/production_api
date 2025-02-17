@@ -155,6 +155,12 @@ function load_data(item, is_pop_up){
     try {
         items.value = JSON.parse(item);
         pop_up.value = is_pop_up
+        if(is_pop_up == 2){
+            let is_system_manager = frappe.user.has_role('System Manager')
+            if(!is_system_manager){
+                pop_up.value = 1
+            }
+        }
     } catch(e) {
         console.log(e)
     }
