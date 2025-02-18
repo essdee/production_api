@@ -123,8 +123,6 @@ def save_item_details(items, cutting_plan):
 			"accessory_json":item['accessory_json'],
 			"accessory_weight":item['accessory_weight'],
 			"items_json":item['items_json'] if item.get('items_json') and len(item['items_json']) > 0 else {},
-			"set_colour":item['set_colour'] if item['set_colour'] else None,
-			"set_part":item['set_part'] if item['set_part'] else None,
 		})
 	return item_list	
 
