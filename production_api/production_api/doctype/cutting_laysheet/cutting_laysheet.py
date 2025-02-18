@@ -32,12 +32,12 @@ class CuttingLaySheet(Document):
 			frappe.throw("Select the Incompleted Cutting Plan")
 		
 		cm_docstatus = frappe.get_value("Cutting Marker",self.cutting_marker,"docstatus")
-		if cm_docstatus == 0:
-			frappe.throw("Select the Submitted Cutting Marker")
+		if cm_docstatus != 1:
+			frappe.throw("Select a Submitted Cutting Marker")
 
 		cut_marker_cp = frappe.get_value("Cutting Marker",self.cutting_marker,"cutting_plan")		
 		if cut_marker_cp != self.cutting_plan:
-			frappe.throw(f"Select the Cutting Marker which is against {self.cutting_plan}")
+			frappe.throw(f"Select a Cutting Marker which is against {self.cutting_plan}")
 
 		if self.is_new():
 			cut_plan_doc = frappe.get_doc("Cutting Plan",self.cutting_plan)	
