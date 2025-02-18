@@ -148,6 +148,8 @@ def get_raw_code(doc_name):
 @frappe.whitelist()
 def get_printer(printers):
 	mrp_printer = frappe.db.get_single_value("MRP Settings", "printer_list")
+	if not mrp_printer or mrp_printer == "":
+		return printers
 	printer_list = mrp_printer.split(",")
 	final_printers_list = []
 	for printer in printer_list:
@@ -157,5 +159,5 @@ def get_printer(printers):
 	if len(final_printers_list) > 0:
 		return final_printers_list
 	else:
-		return printers
+		return []
 		
