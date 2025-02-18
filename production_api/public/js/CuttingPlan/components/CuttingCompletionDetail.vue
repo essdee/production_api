@@ -136,17 +136,26 @@ let pop_up = ref(0)
 let lot = cur_frm.doc.lot
 let item = cur_frm.doc.item
 let datetime = ref(null)
+let items2 = ref(null)
 
 onMounted(()=> {
     let today = new Date()
-    let date = today.getFullYear()+'-'+(today.getMonth()+1)+'-'+today.getDate();
-    let time = today.getHours() + ":" + today.getMinutes() + ":" +  today.getSeconds();
-    datetime.value = date + " " + time
-
+    let date = format_datetime(today.getDate()) + "-" + format_datetime(today.getMonth()+1) + "-" + today.getFullYear()
+    let time = format_datetime(today.getHours()) + ":" + format_datetime(today.getMinutes()) + ":" + format_datetime(today.getSeconds())
+    datetime.value = date+" "+time
 })
+
+function format_datetime(val){
+    if(val < 10){
+        return '0'+val
+    }
+    return val
+}
+
 function load_data(item, is_pop_up){
     try {
         items.value = JSON.parse(item);
+        items2.value = JSON.parse(item);
         pop_up.value = is_pop_up
     } catch(e) {
         console.log(e)
@@ -154,6 +163,12 @@ function load_data(item, is_pop_up){
 }
 
 function get_items(){
+    let is_system_manager = frappe.user.has_role('System Manager')
+    for(let i = 0 ; i < items.value[0]['items'].length; i++){
+        if(!is_system_manager && !items.value[0]['items'][i]['completed'] && items2.value[0]['items'][i]['completed']){
+            items.value[0]['items'][i]['completed'] = true
+        }
+    }
     return items.value
 }
 

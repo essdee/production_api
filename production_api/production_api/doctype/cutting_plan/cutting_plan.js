@@ -77,10 +77,24 @@ frappe.ui.form.on("Cutting Plan", {
                                 "fieldtype":"HTML",
                             }
                         ],
-                        primary_action_label:"Take ScreenShot",
+                        primary_action_label:"Copy to Clipboard",
+                        secondary_action_label:"Take Screenshot",
                         primary_action(){
                             let sourceDiv = d.fields_dict.pop_up_html.wrapper;
                              html2canvas(sourceDiv).then(function (canvas) {
+                                canvas.toBlob(async (blob)=> {
+                                    await navigator.clipboard.write([
+                                        new ClipboardItem({
+                                          'image/png': blob,
+                                        }),
+                                    ])
+                                    frappe.show_alert("Image Copied to Clipboard")
+                                });
+                            });
+                        },
+                        secondary_action(){
+                            let sourceDiv = d.fields_dict.pop_up_html.wrapper;
+                            html2canvas(sourceDiv).then(function (canvas) {
                                 let imageURL = canvas.toDataURL("image/png");
                                 let link = document.createElement("a");
                                 link.href = imageURL;
@@ -91,6 +105,8 @@ frappe.ui.form.on("Cutting Plan", {
                             });
                         }
                     })
+                    d.$wrapper.find(".btn-modal-secondary").css("background-color","cadetblue")
+                    d.$wrapper.find(".btn-modal-secondary").css("color","white")
                     frm.completed_popup = new frappe.production.ui.CuttingCompletionDetail(d.fields_dict.pop_up_html.wrapper)
                     frm.completed_popup.load_data(frm.doc.completed_items_json, 3)
                     d.show()

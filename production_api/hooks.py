@@ -194,6 +194,7 @@ jinja = {
         "production_api.essdee_production.doctype.lot.lot.combine_child_tables",
         "production_api.essdee_production.doctype.lot.lot.get_attributes",
         "production_api.essdee_production.doctype.lot.lot.get_mapping_details",
+        "production_api.essdee_production.doctype.lot.lot.fetch_order_item_details",
         "production_api.essdee_production.doctype.essdee_raw_print_format.essdee_raw_print_format.get_value_with_pad",
         "production_api.essdee_production.doctype.essdee_raw_print_format.essdee_raw_print_format.get_item_size",
         "production_api.production_api.doctype.cutting_laysheet.cutting_laysheet.get_panels",
