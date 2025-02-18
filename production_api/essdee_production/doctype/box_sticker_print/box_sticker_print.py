@@ -149,18 +149,13 @@ def get_raw_code(doc_name):
 def get_printer(printers):
 	mrp_printer = frappe.db.get_single_value("MRP Settings", "printer_list")
 	printer_list = mrp_printer.split(",")
-	p = []
-	for printer in printer_list:
-		if printer and printer.strip() != "":
-			p.append(printer.strip())
-
 	final_printers_list = []
-	for printer in p:
-		if printer in printers:
-			final_printers_list.append(printer)
+	for printer in printer_list:
+		if printer and printer.strip() != "" and printer.strip() in printers:
+			final_printers_list.append(printer.strip())
 
-	if final_printers_list:
+	if len(final_printers_list) > 0:
 		return final_printers_list
 	else:
-		frappe.throw("No printer available")
+		return printers
 		

@@ -78,6 +78,7 @@ frappe.ui.form.on("Cutting Plan", {
                             }
                         ],
                         primary_action_label:"Copy to Clipboard",
+                        secondary_action_label:"Take Screenshot",
                         primary_action(){
                             let sourceDiv = d.fields_dict.pop_up_html.wrapper;
                              html2canvas(sourceDiv).then(function (canvas) {
@@ -90,8 +91,22 @@ frappe.ui.form.on("Cutting Plan", {
                                     frappe.show_alert("Image Copied to Clipboard")
                                 });
                             });
+                        },
+                        secondary_action(){
+                            let sourceDiv = d.fields_dict.pop_up_html.wrapper;
+                            html2canvas(sourceDiv).then(function (canvas) {
+                                let imageURL = canvas.toDataURL("image/png");
+                                let link = document.createElement("a");
+                                link.href = imageURL;
+                                link.download = "screenshot.png";
+                                document.body.appendChild(link);
+                                link.click();
+                                document.body.removeChild(link);
+                            });
                         }
                     })
+                    d.$wrapper.find(".btn-modal-secondary").css("background-color","cadetblue")
+                    d.$wrapper.find(".btn-modal-secondary").css("color","white")
                     frm.completed_popup = new frappe.production.ui.CuttingCompletionDetail(d.fields_dict.pop_up_html.wrapper)
                     frm.completed_popup.load_data(frm.doc.completed_items_json, 3)
                     d.show()
