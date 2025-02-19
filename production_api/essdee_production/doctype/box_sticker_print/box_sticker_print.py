@@ -148,6 +148,8 @@ def get_raw_code(doc_name):
 @frappe.whitelist()
 def get_printer(printers):
 	mrp_printer = frappe.db.get_single_value("MRP Settings", "printer_list")
+	if isinstance(printers, string_types):
+		printers = json.loads(printers)
 	if not mrp_printer or mrp_printer == "":
 		return printers
 	printer_list = mrp_printer.split(",")
