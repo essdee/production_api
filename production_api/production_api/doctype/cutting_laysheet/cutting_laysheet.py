@@ -348,12 +348,14 @@ def check_cutting_plan(cutting_laysheet):
 		min = sys.maxsize
 		part = None
 		condition1 = True
+		stich_key = item[1]
 		if set_item:
 			part = item[2]
+			stich_key = (stich_key,part)
 
-		for i in stitching_combination['stitching_combination'][item[1]]:
+		for i in stitching_combination['stitching_combination'][stich_key]:
 			if i in cutting_marker_list:
-				panel_colour = stitching_combination['stitching_combination'][item[1]][i]
+				panel_colour = stitching_combination['stitching_combination'][stich_key][i]
 				if set_item:
 					condition1 = i in incomplete_items[ipd_doc.stiching_attribute][part]
 				if condition1:	
@@ -587,12 +589,14 @@ def update_cutting_plan(cutting_laysheet):
 		min = sys.maxsize
 		part = None
 		condition1 = True
+		stich_key = item[1]
 		if set_item:
 			part = item[2]
+			stich_key = (stich_key, part)
 
-		for i in stitching_combination['stitching_combination'][item[1]]:
+		for i in stitching_combination['stitching_combination'][stich_key]:
 			if i in cutting_marker_list:
-				panel_colour = stitching_combination['stitching_combination'][item[1]][i]
+				panel_colour = stitching_combination['stitching_combination'][stich_key][i]
 				if set_item:
 					condition1 = i in incomplete_items[ipd_doc.stiching_attribute][part]
 				if condition1:	
@@ -631,8 +635,8 @@ def update_cutting_plan(cutting_laysheet):
 				if total_qty != 0:
 					x['total_qty'] = total_qty
 
-			for i in stitching_combination['stitching_combination'][item[1]]:
-				panel_colour = stitching_combination['stitching_combination'][item[1]][i]
+			for i in stitching_combination['stitching_combination'][stich_key]:
+				panel_colour = stitching_combination['stitching_combination'][stich_key][i]
 				condition4 = True
 				if set_item:
 					condition4 = i in incomplete_items[ipd_doc.stiching_attribute][part]

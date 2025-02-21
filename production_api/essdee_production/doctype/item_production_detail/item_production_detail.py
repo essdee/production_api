@@ -602,11 +602,14 @@ def calculate_cloth(ipd_doc, variant_attrs, qty, cloth_combination, stitching_co
 			attrs[ipd_doc.stiching_attribute] = stiching_attr
 			cloth_key = get_key(attrs, cloth_combination["cloth_attributes"])
 			cutting_key = get_key(attrs, cloth_combination["cutting_attributes"])
-			if cloth_combination["cutting_combination"].get(cutting_key):
+			stich_key = attrs[ipd_doc.packing_attribute]
+			if ipd_doc.is_set_item:
+				stich_key = (stich_key, attrs[ipd_doc.set_item_attribute])
+			if cloth_combination["cutting_combination"].get(cutting_key) and stiching_attr in stitching_combination["stitching_combination"]["stich_key"]:
 				dia, weight = cloth_combination["cutting_combination"][cutting_key]	
 				cloth_type = cloth_combination["cloth_combination"][cloth_key]
 				weight = weight * qty * attr_qty
-				cloth_colour = stitching_combination["stitching_combination"][attrs[ipd_doc.packing_attribute]][stiching_attr]
+				cloth_colour = stitching_combination["stitching_combination"][stich_key][stiching_attr]
 				cloth_detail.append(add_cloth_detail(weight, ipd_doc.additional_cloth,cloth_type,cloth_colour,dia,"cloth"))
 	else:
 		dia, weight = cloth_combination["cutting_combination"][get_key(attrs, cloth_combination["cutting_attributes"])]
@@ -720,10 +723,19 @@ def get_cloth_combination(ipd_doc):
 	}
 
 def get_stitching_combination(ipd_doc):
+	part_panel_comb = {}
+	if ipd_doc.is_set_item:
+		for item in ipd_doc.stiching_item_details:
+			part_panel_comb[item.stiching_attribute_value] = item.set_item_attribute_value
+
 	stitching_combination = {}
 	for detail in ipd_doc.stiching_item_combination_details:
-		stitching_combination.setdefault(detail.major_attribute_value, {})
-		stitching_combination[detail.major_attribute_value][detail.set_item_attribute_value] = detail.attribute_value
+		key = detail.major_attribute_value
+		if ipd_doc.is_set_item:
+			key = (key, part_panel_comb[detail.set_item_attribute_value])
+
+		stitching_combination.setdefault(key, {})
+		stitching_combination[key][detail.set_item_attribute_value] = detail.attribute_value
 
 	return {
 		"stitching_attribute": ipd_doc.stiching_attribute,

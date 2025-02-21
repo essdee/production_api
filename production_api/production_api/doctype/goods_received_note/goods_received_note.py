@@ -1739,14 +1739,16 @@ def get_panels_completion(grn_doc, ipd_doc, panel_list):
 	for item in item_panel:
 		part = None
 		condition1 = True
+		stich_key = item[1]
 		if set_item:
 			part = item[2]
+			stich_key = (stich_key, part)
 		for t in types:
 			check = True
 			min = sys.maxsize
-			for i in stitching_combination['stitching_combination'][item[1]]:
+			for i in stitching_combination['stitching_combination'][stich_key]:
 				if i in panel_list:
-					panel_colour = stitching_combination['stitching_combination'][item[1]][i]
+					panel_colour = stitching_combination['stitching_combination'][stich_key][i]
 					if set_item:
 						condition1 = i in incomplete_items[ipd_doc.stiching_attribute][part]
 					if condition1:	
