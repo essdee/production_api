@@ -278,7 +278,8 @@ def fetch_stock_reconciliation_items(items):
 			'values': {},
 			'default_uom': variants[0].get('uom') or current_item_attribute_details['default_uom'],
 			'secondary_uom': variants[0].get('secondary_uom') or current_item_attribute_details['secondary_uom'],
-			'received_type':variants[0].get('received_type')
+			'received_type':variants[0].get('received_type'),
+			'make_qty_zero' : variants[0].get('make_qty_zero')
 			# 'comments': variants[0]['comments'],
 		}
 
@@ -298,7 +299,6 @@ def fetch_stock_reconciliation_items(items):
 						break
 		else:
 			item['allow_zero_valuation_rate'] = variants[0].allow_zero_valuation_rate
-			item['make_qty_zero'] = variants[0].make_qty_zero
 			item['values']['default'] = {
 				'qty': variants[0].qty,
 				'rate': variants[0].rate,
