@@ -605,7 +605,7 @@ def calculate_cloth(ipd_doc, variant_attrs, qty, cloth_combination, stitching_co
 			stich_key = attrs[ipd_doc.packing_attribute]
 			if ipd_doc.is_set_item:
 				stich_key = (stich_key, attrs[ipd_doc.set_item_attribute])
-			if cloth_combination["cutting_combination"].get(cutting_key) and stiching_attr in stitching_combination["stitching_combination"]["stich_key"]:
+			if cloth_combination["cutting_combination"].get(cutting_key) and stiching_attr in stitching_combination["stitching_combination"][stich_key]:
 				dia, weight = cloth_combination["cutting_combination"][cutting_key]	
 				cloth_type = cloth_combination["cloth_combination"][cloth_key]
 				weight = weight * qty * attr_qty
