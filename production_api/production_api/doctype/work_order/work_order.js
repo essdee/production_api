@@ -219,6 +219,9 @@ frappe.ui.form.on("Work Order", {
 			},
 			freeze:true,
 			freeze_message: __("Calculate Deliverables and Receivables..."),
+			callback: function(){
+				frm.reload_doc()
+			}
 		})
 	},
     validate(frm) {

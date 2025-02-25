@@ -7,6 +7,7 @@ from frappe.utils import flt
 from itertools import groupby, zip_longest
 from frappe.model.document import Document
 from production_api.essdee_production.doctype.holiday_list.holiday_list import get_next_date
+from production_api.production_api.doctype.purchase_order.purchase_order import get_item_group_index
 from production_api.production_api.doctype.item.item import get_attribute_details, get_or_create_variant
 from production_api.production_api.doctype.item_dependent_attribute_mapping.item_dependent_attribute_mapping import get_dependent_attribute_details
 
@@ -21,7 +22,7 @@ class Lot(Document):
 			self.set("items",items)
 
 		if self.get('order_item_details') and len(self.lot_time_and_action_details) == 0:
-			order_items = save_order_item_details(self.lot_order_details, self.order_item_details)
+			order_items = save_order_item_details(self.production_detail, self.lot_order_details, self.order_item_details)
 			self.set('lot_order_details',order_items)
 
 		if self.is_new(): 
@@ -45,7 +46,13 @@ class Lot(Document):
 		if self.production_detail and len(self.lot_time_and_action_details) == 0:
 			previous_data = {}
 			for item in self.lot_order_details:
-				previous_data[item.item_variant] = {"cut_qty":item.cut_qty,"stich_qty":item.stich_qty,"pack_qty":item.pack_qty}
+				set_combination = item.set_combination
+				if isinstance(set_combination, string_types):
+					set_combination = json.loads(set_combination)
+				set_combination.update({"variant":item.item_variant})
+				set_combination = frozenset(set_combination)
+
+				previous_data[set_combination] = {"cut_qty":item.cut_qty,"stich_qty":item.stich_qty,"pack_qty":item.pack_qty}
 			items, qty = calculate_order_details(self.get('items'), self.production_detail, self.packing_uom, self.uom)
 			x = []
 			if len(items) == 0:
@@ -56,12 +63,17 @@ class Lot(Document):
 				self.set('total_order_quantity', qty)
 			else:
 				for item in items:
-					if previous_data.get(item.get('item_variant')):
+					key = item['set_combination']
+					if isinstance(key, string_types):
+						key = json.loads(key)
+					key.update({"variant":item['item_variant']})
+					key = frozenset(key)
+					if previous_data.get(key):
 						item.update(
 							{
-								"cut_qty":previous_data[item['item_variant']]['cut_qty'],
-								"stich_qty":previous_data[item['item_variant']]['stich_qty'],
-								"pack_qty":previous_data[item['item_variant']]['pack_qty'],
+								"cut_qty":previous_data[key]['cut_qty'],
+								"stich_qty":previous_data[key]['stich_qty'],
+								"pack_qty":previous_data[key]['pack_qty'],
 							}
 						)
 				self.set('lot_order_details',items)
@@ -119,46 +131,29 @@ def calculate_order_details(items, production_detail, packing_uom, final_uom):
 		dept_attr = item_detail.dependent_attribute
 	uom_factor = get_uom_conversion_factor(doc.uom_conversion_details,final_uom, packing_uom)
 	final_qty = 0
-	for item in items:
-		variant = frappe.get_cached_doc("Item Variant", item.item_variant)
-		is_not_pack_attr = True
-		for attribute in variant.attributes:
-			attribute = attribute.as_dict()
-			if attribute.attribute == item_detail.packing_attribute:
-				is_not_pack_attr = False
-				break
-		if is_not_pack_attr:
-			item_list = {} 
-			qty = (item.qty * uom_factor)
-			if item_detail.auto_calculate:
-				qty = qty / item_detail.packing_attribute_no
-			else:
-				qty = qty / item_detail.packing_combo
-			if item_detail.is_set_item:
-				for attr in item_detail.set_item_combination_details:
-					attrs = {}
-					for attribute in variant.attributes:
-						attribute = attribute.as_dict()
-						if attribute.attribute == dept_attr:
-							attrs[attribute.attribute] = pack_stage
-						else:
-							attrs[attribute.attribute] = attribute['attribute_value']
-					attrs[item_detail.set_item_attribute] = attr.set_item_attribute_value
-					attrs[item_detail.packing_attribute] = attr.attribute_value	
-					if not item_detail.auto_calculate:
-						major_attr = attr.major_attribute_value
-						q = get_quantity(major_attr, item_detail.packing_attribute_details)
-					new_variant = get_or_create_variant(variant.item, attrs,dependent_attr=item_detail.dependent_attribute_mapping)
-
-					temp_qty = math.ceil(qty) if item_detail.auto_calculate else math.ceil(qty * flt(q))
-					if item_detail.major_attribute_value == attr.set_item_attribute_value:
-						final_qty += temp_qty
-					if not item_list.get(new_variant,False):
-						item_list[new_variant] = temp_qty
+	if item_detail.is_set_item:
+		attrs = {}
+		parts   = []	
+		comb_dict = {}
+		for attr in item_detail.set_item_combination_details:
+			comb_dict.setdefault(attr.major_attribute_value, {})
+			comb_dict[attr.major_attribute_value].setdefault(attr.set_item_attribute_value, attr.attribute_value)
+			if attr.set_item_attribute_value not in parts:
+				parts.append(attr.set_item_attribute_value)
+	x = 0
+	if item_detail.is_set_item:
+		major_part = item_detail.major_attribute_value
+		for attr in item_detail.packing_attribute_details:
+			for part in parts:
+				colour = comb_dict[attr.attribute_value][part]
+				item_list = [] 
+				for item in items:
+					variant = frappe.get_cached_doc("Item Variant", item.item_variant)
+					qty = (item.qty * uom_factor)
+					if item_detail.auto_calculate:
+						qty = qty / item_detail.packing_attribute_no
 					else:
-						item_list[new_variant] += temp_qty
-			else:
-				for attr in item_detail.packing_attribute_details:
+						qty = qty / item_detail.packing_combo
 					attrs = {}
 					for attribute in variant.attributes:
 						attribute = attribute.as_dict()
@@ -166,61 +161,117 @@ def calculate_order_details(items, production_detail, packing_uom, final_uom):
 							attrs[attribute.attribute] = pack_stage
 						else:	
 							attrs[attribute.attribute] = attribute['attribute_value']
-					attrs[item_detail.packing_attribute] = attr.attribute_value
+					attrs[item_detail.packing_attribute] = colour
+					attrs[item_detail.set_item_attribute] = part
+					if not item_detail.auto_calculate:
+						major_attr = attrs[item_detail.set_item_attribute]
+						q = get_quantity(major_attr, item_detail.packing_attribute_details)	
 					new_variant = get_or_create_variant(variant.item, attrs,dependent_attr=item_detail.dependent_attribute_mapping)
-					temp_qty = math.ceil(qty) if item_detail.auto_calculate else math.ceil(qty * attr.quantity)
-					final_qty += temp_qty
-					if not item_list.get(new_variant,False):
-						item_list[new_variant] = temp_qty 
+					temp_qty = math.ceil(qty) if item_detail.auto_calculate else math.ceil(qty * flt(q))
+					if item_detail.major_attribute_value == part:
+						final_qty += temp_qty
+
+					d = {
+						"item_variant": new_variant,
+						"quantity": temp_qty,
+						"row_index":x,
+						"table_index": 0,
+						"set_combination":{}
+					}
+					if part == major_part:
+						d['set_combination']['major_part'] = part
+						d['set_combination']['major_colour'] = colour
 					else:
-						item_list[new_variant] += temp_qty
-			for key, val in item_list.items():
-				final_list.append({
-					'item_variant':key,
-					'quantity':val,
-				})		
+						d['set_combination']['major_part'] = major_part
+						d['set_combination']['major_colour'] = comb_dict[attr.attribute_value][major_part]
+					item_list.append(d)
+				x = x + 1		
+				final_list = final_list + item_list
+	else:	
+		for attr in item_detail.packing_attribute_details:
+			item_list = [] 
+			for item in items:
+				variant = frappe.get_cached_doc("Item Variant", item.item_variant)
+				qty = (item.qty * uom_factor)
+				if item_detail.auto_calculate:
+					qty = qty / item_detail.packing_attribute_no
+				else:
+					qty = qty / item_detail.packing_combo
+				attrs = {}
+				for attribute in variant.attributes:
+					attribute = attribute.as_dict()
+					if attribute.attribute == dept_attr:
+						attrs[attribute.attribute] = pack_stage
+					else:	
+						attrs[attribute.attribute] = attribute['attribute_value']
+				attrs[item_detail.packing_attribute] = attr.attribute_value
+				new_variant = get_or_create_variant(variant.item, attrs,dependent_attr=item_detail.dependent_attribute_mapping)
+				temp_qty = math.ceil(qty) if item_detail.auto_calculate else math.ceil(qty * attr.quantity)
+				final_qty += temp_qty
+				item_list.append({
+					"item_variant": new_variant,
+					"quantity": temp_qty,
+					"row_index":x,
+					"table_index": 0,
+					"set_combination":{"major_colour":attr.attribute_value},
+				})
+			x = x + 1
+			final_list = final_list + item_list
+
 	return final_list, final_qty
 
-def save_order_item_details(lot_order_items, item_details):
-	previous_data = {}
-	for item in lot_order_items:
-		previous_data[item.item_variant] = {"cut_qty":item.cut_qty,"stich_qty":item.stich_qty,"pack_qty":item.pack_qty}
-	
+def save_order_item_details(name, lot_order_details, item_details):
 	if isinstance(item_details, string_types):
 		item_details = json.loads(item_details)
-	if len(item_details) == 0:
-		return []
-	items = item_details[0]
-	item_list = []
-	for item in items['items']:
-		if item['primary_attribute']:
-			attributes = item['attributes']
-			attributes[items['dependent_attribute']] = items['final_state']	
-			for value in item['values'].keys():
-				item1 = {}
-				attributes[item['primary_attribute']] = value
-				variant_name = get_or_create_variant(items['item'], attributes)
-				item1['item_variant'] = variant_name
-				item1['quantity'] = item['values'][value]
-				if previous_data.get(variant_name):
-					item1['cut_qty'] = previous_data[variant_name]['cut_qty']
-					item1['stich_qty'] = previous_data[variant_name]['stich_qty']
-					item1['pack_qty'] = previous_data[variant_name]['pack_qty']
-				item_list.append(item1)
-		else:
-			item1 = {}
-			attributes = item['attributes']
-			variant_name = item['item']
-			variant_name = get_or_create_variant(item['item'], attributes)
-			item1['item_variant'] = variant_name
-			item1['qty'] = item['values']['qty']
-			if previous_data.get(variant_name):
-				item1['cut_qty'] = previous_data[variant_name]['cut_qty']
-				item1['stich_qty'] = previous_data[variant_name]['stich_qty']
-				item1['pack_qty'] = previous_data[variant_name]['pack_qty']
-			item_list.append(item1)
-	return item_list
+	pack_attr, set_attr, is_set = frappe.get_value("Item Production Detail",name, ['packing_attribute', 'set_item_attribute', 'is_set_item'])
+	qty_dict = {}
+	for item in lot_order_details:
+		variant_doc = frappe.get_cached_doc("Item Variant", item.item_variant)
+		attrs = variant_attribute_details(variant_doc)
+		x = {
+			pack_attr : attrs[pack_attr]
+		}
+		if is_set:
+			x[set_attr] = attrs[set_attr]
+		tup = tuple(sorted(x.items()))
+		qty_dict[tup] = {
+			"cut_qty":item.cut_qty,
+			"pack_qty":item.pack_qty,
+			"stich_qty":item.stich_qty,
+		}
 
+	items = []
+	row_index = 0
+	table_index = -1
+	for group in item_details:
+		table_index += 1
+		for item in group['items']:
+			item_name = item['name']
+			item_attributes = item['attributes']
+			for attr, values in item['values'].items():
+				item1 = {}
+				quantity = values.get('qty')
+				if not quantity:
+					quantity = 0
+				item_attributes[item.get('primary_attribute')] = attr
+				variant = get_or_create_variant(item_name,item_attributes)
+				item1['item_variant'] = variant	
+				item1['quantity'] = quantity
+				item1['row_index'] = row_index
+				item1['table_index'] = 0
+				x = {
+					pack_attr : item_attributes[pack_attr]
+				}
+				if is_set:
+					x[set_attr] = item_attributes[set_attr]
+				tup = tuple(sorted(x.items()))
+				item1['cut_qty'] = qty_dict[tup]['cut_qty']
+				item1['pack_qty'] = qty_dict[tup]['pack_qty']
+				item1['stich_qty'] = qty_dict[tup]['stich_qty']
+				item1['set_combination'] = item['item_keys']
+				items.append(item1)
+			row_index += 1
+	return items
 
 def update_time_and_action(action_details,lot_action_details):
 	if isinstance(action_details,string_types):
@@ -320,8 +371,7 @@ def fetch_order_item_details(items, production_detail, process=None ):
 	ipd_doc = frappe.get_doc("Item Production Detail", production_detail)
 	if isinstance(items, string_types):
 		items = json.loads(items)
-	order_item_details = []
-	field = None
+	field = "quantity"
 	if process:
 		prs_doc = frappe.get_cached_doc("Process", process)
 		if prs_doc.is_group:
@@ -339,48 +389,68 @@ def fetch_order_item_details(items, production_detail, process=None ):
 			if stage:
 				field = "cut_qty" if stage == ipd_doc.stiching_in_stage else "stich_qty" if stage == ipd_doc.pack_in_stage else "pack_qty"
 
-	grp_variant_item = frappe.get_value("Item Variant", items[0].item_variant, 'item')	
-	doc = frappe.get_cached_doc("Item", grp_variant_item)
-	variant_attr_details = get_attribute_details(grp_variant_item, dependent_attr_mapping=ipd_doc.dependent_attribute_mapping)
-	primary_attr = variant_attr_details['primary_attribute']
-	item_structure = get_item_details(grp_variant_item, attr_details=variant_attr_details,production_detail=production_detail, dependent_state=ipd_doc.pack_in_stage,dependent_attr_mapping=ipd_doc.dependent_attribute_mapping)
-	for item in items:
-		values = {}
-		current_variant = frappe.get_cached_doc("Item Variant", item.item_variant)
-		item_attribute_details = get_item_attribute_details(current_variant, variant_attr_details)
-		if doc.dependent_attribute and doc.dependent_attribute in item_attribute_details:
-			del item_attribute_details[doc.dependent_attribute]
-		if doc.primary_attribute:
-			for attr in current_variant.attributes:
-				if attr.attribute == primary_attr:
-					if not field:
-						values[attr.attribute_value] = item.quantity
-					else:
-						values[attr.attribute_value] = getattr(item, field, 0)
-					break
-		else:
-			if not field:
-				values['qty'] = item.quantity
-			else:
-				values['qty'] = getattr(item, field, 0)
-		check = True
-		for x in item_structure['items']:
-			if x['attributes'] == item_attribute_details:
-				value_key = list(values.keys())[0]
-				if value_key in x['values']:
-					values[value_key] += x['values'][value_key]
-				x['values'].update(values)
-				check = False
-				break
-		if check:
-			item1 = {}
-			item1['primary_attribute'] = primary_attr or None
-			item1['attributes'] = item_attribute_details
-			item1['values'] = values
-			item_structure['items'].append(item1)
+	items = [item.as_dict() for item in items]
+	item_details = []
+	items = sorted(items, key = lambda i: i['row_index'])
 
-	order_item_details.append(item_structure)
-	return order_item_details
+	for key, variants in groupby(items, lambda i: i['row_index']):
+		variants = list(variants)
+		current_variant = frappe.get_cached_doc("Item Variant", variants[0]['item_variant'])
+		current_item_attribute_details = get_attribute_details(current_variant.item)
+		item = {
+			'name': current_variant.item,
+			'attributes': get_item_attribute_details(current_variant, current_item_attribute_details),
+			"item_keys": {},
+			"is_set_item": ipd_doc.is_set_item,
+			"set_attr": ipd_doc.set_item_attribute,
+			"pack_attr": ipd_doc.packing_attribute,
+			"major_attr_value": ipd_doc.major_attribute_value,
+			'primary_attribute': current_item_attribute_details['primary_attribute'],
+			"dependent_attribute": current_item_attribute_details['dependent_attribute'],
+			"dependent_attribute_details": current_item_attribute_details['dependent_attribute_details'],
+			'values': {},
+		}
+
+		if item['primary_attribute']:
+			for attr in current_item_attribute_details['primary_attribute_values']:
+				item['values'][attr] = {'qty': 0}
+			for variant in variants:
+				set_combination = variant.set_combination
+				if isinstance(set_combination, string_types):
+					set_combination = json.loads(set_combination)
+				if set_combination:
+					if set_combination.get("major_part"):
+						item['item_keys']['major_part'] = set_combination.get("major_part")
+
+					if set_combination.get("major_colour"):
+						item['item_keys']['major_colour'] = set_combination.get("major_colour")		
+
+				current_variant = frappe.get_cached_doc("Item Variant", variant['item_variant'])
+				for attr in current_variant.attributes:
+					if attr.attribute == item.get('primary_attribute'):
+						item['values'][attr.attribute_value] = {
+							'qty': getattr(variant, field, 0),
+						}
+						break
+		else:
+			item['values']['default'] = {
+				'qty': getattr(variants[0], field, 0),
+			}
+			
+		index = get_item_group_index(item_details, current_item_attribute_details)
+		if index == -1:
+			item_details.append({
+				'attributes': current_item_attribute_details['attributes'],
+				'primary_attribute': current_item_attribute_details['primary_attribute'],
+				'primary_attribute_values': current_item_attribute_details['primary_attribute_values'],
+				"dependent_attribute": current_item_attribute_details['dependent_attribute'],
+				"dependent_attribute_details": current_item_attribute_details['dependent_attribute_details'],
+				'additional_parameters': current_item_attribute_details['additional_parameters'],
+				'items': [item]
+			})
+		else:
+			item_details[index]['items'].append(item)
+	return item_details
 
 def get_quantity(attr, packing_attribute_details):
 	for item in packing_attribute_details:
@@ -392,6 +462,12 @@ def get_item_attribute_details(variant, item_attributes):
 	for attr in variant.attributes:
 		if attr.attribute in item_attributes['attributes']:
 			attribute_details[attr.attribute] = attr.attribute_value
+	return attribute_details
+
+def variant_attribute_details(variant):
+	attribute_details = {}
+	for attr in variant.attributes:
+		attribute_details[attr.attribute] = attr.attribute_value
 	return attribute_details
 
 @frappe.whitelist()

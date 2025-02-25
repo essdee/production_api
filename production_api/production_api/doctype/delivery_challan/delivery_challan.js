@@ -137,18 +137,19 @@ frappe.ui.form.on("Delivery Challan", {
 			freeze:true,
 			freeze_message: __("Calculate Deliverables..."),
 			callback: function(r){
-				let items = r.message
-				for(let i = 0 ; i < frm.doc.items.length ; i++){
-					for (let j = 0 ; j < items.length ; j++){
-						if(frm.doc.items[i]['item_variant'] == items[j]['item_variant']){
-							frm.doc.items[i]['delivered_quantity'] = items[j]['qty']
-							break
-						}
-					}
-				}
-				frm.dirty()
+				frm.reload_doc()
+				// let items = r.message
+				// for(let i = 0 ; i < frm.doc.items.length ; i++){
+				// 	for (let j = 0 ; j < items.length ; j++){
+				// 		if(frm.doc.items[i]['item_variant'] == items[j]['item_variant']){
+				// 			frm.doc.items[i]['delivered_quantity'] = items[j]['qty']
+				// 			break
+				// 		}
+				// 	}
+				// }
+				// frm.dirty()
 				frm.calculated = true
-				frm.save()
+				// frm.save()
 			}
 		})
 	},

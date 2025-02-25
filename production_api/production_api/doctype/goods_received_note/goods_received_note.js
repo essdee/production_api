@@ -469,7 +469,7 @@ function calculate_receivables(frm, received_type){
 			receivable:true
 		},
 		freeze:true,
-		freeze_message: __("Calculate Deliverables..."),
+		freeze_message: __("Calculate Receivables..."),
 		callback: function(r){
 			frappe.call({
 				method:"production_api.production_api.doctype.goods_received_note.goods_received_note.update_calculated_receivables",

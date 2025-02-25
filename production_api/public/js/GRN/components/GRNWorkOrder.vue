@@ -8,7 +8,6 @@
 						<tr>
 							<th>S.No.</th>
 							<th>Item</th>
-							<th>Lot</th>
 							<th v-for="attr in i.attributes" :key="attr">{{ attr }}</th>
 							<th v-for="attr in i.primary_attribute_values" :key="attr">{{ attr }}</th>
 							<th v-if="docstatus == 0">Edit</th>
@@ -16,8 +15,11 @@
 						<tr v-for="(j, item1_index) in i.items" :key="item1_index">
 							<td>{{ item1_index + 1 }}</td>
 							<td>{{ j.name }}</td>
-							<td>{{ j.lot }}</td>
-							<td v-for="attr in i.attributes" :key="attr">{{ j.attributes[attr] }}</td>
+							<td v-for="attr in i.attributes" :key="attr">
+								{{ j.attributes[attr] }}
+								<span v-if="attr == 'Colour' && j.is_set_item && j.attributes[j.set_attr] != j.major_attr_value && j.attributes[attr]">({{ j.item_keys['major_colour'] }})</span>
+								<span v-else-if="attr == 'Colour' && !j.is_set_item && j.attributes[attr] != j.item_keys['major_colour'] && j.attributes[attr]">({{ j.item_keys['major_colour'] }})</span>
+							</td>
 							<td v-for="attr in j.values" :key="attr">
 								<div v-if="attr.qty">
 									{{ attr.qty}}<span v-if="j.default_uom">{{ " " + j.default_uom }}</span>
@@ -39,7 +41,6 @@
 						<tr>
 							<th>S.No.</th>
 							<th>Item</th>
-							<th>Lot</th>
 							<th v-for="attr in i.attributes" :key="attr">{{ attr }}</th>
 							<th>Pending Quantity</th>
 							<th v-if="docstatus == 0">Edit</th>
@@ -47,8 +48,9 @@
 						<tr v-for="(j, item1_index) in i.items" :key="item1_index">
 							<td>{{ item1_index + 1 }}</td>
 							<td>{{ j.name }}</td>
-							<td>{{ j.lot }}</td>
-							<td v-for="attr in i.attributes" :key="attr"> {{ j.attributes[attr] }} </td>
+							<td v-for="attr in i.attributes" :key="attr"> 
+								{{ j.attributes[attr] }} 
+							</td>
 							<td>
 								{{ j.values["default"].qty }}<span v-if="j.default_uom">{{ " " + j.default_uom }}</span>
 								<span v-if="j.values['default'].secondary_qty"><br />
@@ -99,7 +101,6 @@
 						<tr>
 							<th>S.No</th>
 							<th>Item</th>
-							<th>Lot</th>
 							<th v-for="attr in i.attributes" :key="attr">{{ attr }}</th>
 							<th>Type</th>
 							<th v-for="attr in i.primary_attribute_values" :key="attr">{{ attr }}</th>
@@ -109,8 +110,11 @@
 							<tr v-for="(type, idx) in j.types" :key="idx">
 								<td>{{ get_index(item1_index)}}</td>
 								<td>{{ j.name }}</td>
-								<td>{{ j.lot }}</td>
-								<td v-for="attr in i.attributes" :key="attr">{{ j.attributes[attr] }}</td>
+								<td v-for="attr in i.attributes" :key="attr">
+									{{ j.attributes[attr] }}
+									<span v-if="attr == 'Colour' && j.is_set_item && j.attributes[j.set_attr] != j.major_attr_value && j.attributes[attr]">({{ j.item_keys['major_colour'] }})</span>
+									<span v-else-if="attr == 'Colour' && !j.is_set_item && j.attributes[attr] != j.item_keys['major_colour'] && j.attributes[attr]">({{ j.item_keys['major_colour'] }})</span>
+								</td>
 								<td>{{ type }}</td>
 								<td v-for="attr in j.values" :key="attr">
 									<div v-if="attr.types">
@@ -157,14 +161,12 @@
 					<table class="table table-sm table-bordered" v-if="i.items && i.items.length > 0" >
 						<tr>
 							<th>Item</th>
-							<th>Lot</th>
 							<th v-for="attr in i.attributes" :key="attr">{{ attr }}</th>
 							<th>Quantity</th>
 							<th v-if="docstatus == 0">Edit</th>
 						</tr>
 						<tr v-for="(j, item1_index) in i.items" :key="item1_index">
 							<td>{{ j.name }}</td>
-							<td>{{ j.lot }}</td>
 							<td v-for="attr in i.attributes" :key="attr">{{ j.attributes[attr] }}</td>
 							<td>
 								<div v-if="j.values['default']['types']">

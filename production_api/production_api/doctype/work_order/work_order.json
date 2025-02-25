@@ -48,6 +48,8 @@
   "amended_from",
   "total_quantity",
   "work_order_calculated_items",
+  "completed_items_json",
+  "incompleted_items_json",
   "section_break_lgsu",
   "column_break_ocbe",
   "first_dc_date",
@@ -421,9 +423,23 @@
   {
    "allow_on_submit": 1,
    "fieldname": "wo_colours",
-   "fieldtype": "Data",
+   "fieldtype": "Small Text",
    "hidden": 1,
    "label": "WO Colours"
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "completed_items_json",
+   "fieldtype": "JSON",
+   "hidden": 1,
+   "label": "Completed Items JSON"
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "incompleted_items_json",
+   "fieldtype": "JSON",
+   "hidden": 1,
+   "label": "Incompleted Items JSON"
   }
  ],
  "index_web_pages_for_search": 1,
@@ -438,7 +454,7 @@
    "link_fieldname": "against_id"
   }
  ],
- "modified": "2025-02-12 15:58:11.231223",
+ "modified": "2025-02-25 17:19:35.501176",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Work Order",
