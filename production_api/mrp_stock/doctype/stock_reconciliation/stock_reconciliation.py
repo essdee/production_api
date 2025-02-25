@@ -69,8 +69,8 @@ class StockReconciliation(Document):
 					"item" : row.item,
 					"warehouse" : row.warehouse,
 					"lot" : row.lot,
-					"received_type" : row.received_type
-
+					"received_type" : row.received_type,
+					"make_qty_zero" : row.make_qty_zero
  				}
 
 			self.validate_item(row.item, row)
@@ -115,6 +115,8 @@ class StockReconciliation(Document):
 
 		for key, value in item_warehouse_tot_concilations.items():
 			bin = frappe.get_doc("Bin", value['bin'])
+			if value['qty'] == 0 and not value['make_qty_zero']:
+				continue
 			if value['qty'] < bin.reserved_qty:
 				self.validation_messages.append(
 					f"Can't Reduce Stock For Item {value['item']} Because {bin.reserved_qty} Stock Is Reserved"
