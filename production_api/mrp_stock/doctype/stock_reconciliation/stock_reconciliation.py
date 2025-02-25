@@ -283,7 +283,8 @@ class StockReconciliation(Document):
 			data.qty_after_transaction = 0.0
 			data.valuation_rate = flt(row.stock_uom_rate)
 			# data.stock_value_difference = -1 * flt(row.amount_difference)
-
+		elif self.docstatus == 1:
+			data.qty = row.stock_qty
 		return data
 	
 def get_key(params):
