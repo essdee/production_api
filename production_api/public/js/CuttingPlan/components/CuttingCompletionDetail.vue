@@ -93,6 +93,11 @@
                                     <div v-else>--</div>
                                 </td>
                             </tr>
+                            <tr>
+                                <td>Total</td>
+                                <td v-for="(j, idx) in i.final_state_attr" :key="idx"></td>
+                                <td v-for="(j, idx) in completed_total" :key="idx">{{j}}</td>
+                            </tr>
                         </table>
                     </td>
                     <td v-else>
@@ -118,7 +123,11 @@
                                             <div v-else>--</div>
                                         </td>
                                     </tr>
-                                </template>    
+                                </template>  
+                                <tr>
+                                    <td v-for="(j, idx) in i.final_state_attr" :key="idx"></td>
+                                    <td v-for="(j, idx) in completed_total[part]" :key="idx">{{j}}</td>
+                                </tr>  
                             </table>
                         </template>    
                     </td>
@@ -137,6 +146,7 @@ let lot = cur_frm.doc.lot
 let item = cur_frm.doc.item
 let datetime = ref(null)
 let items2 = ref(null)
+let completed_total = ref({})
 
 onMounted(()=> {
     let today = new Date()
@@ -157,6 +167,9 @@ function load_data(item, is_pop_up){
         items.value = JSON.parse(item);
         items2.value = JSON.parse(item);
         pop_up.value = is_pop_up
+        if(pop_up.value == 3){
+            get_total()
+        }
     } catch(e) {
         console.log(e)
     }
@@ -170,6 +183,49 @@ function get_items(){
         }
     }
     return items.value
+}
+
+function get_total(){
+    let total_dict =  {}
+    for(let i = 0 ; i < items.value.length; i++){
+        let item = items.value[i]
+        if(!item.is_set_item){
+            item.items.forEach((row) => {
+                console.log(row)
+                if(row.completed){
+                    Object.keys(row.values).forEach(key => {
+                        if (total_dict[key]){
+                            total_dict[key] += row.values[key]
+                        }
+                        else{
+                            total_dict[key] = row.values[key]
+                        }
+                    })
+                }
+            })
+        }
+        else{
+            Object.keys(item.Panel).forEach(part => {
+                item.items.forEach((row) => {
+                    if(row.completed && row.attributes[item.set_item_attr] == part){
+                        Object.keys(row.values).forEach(key => {
+                            if (!total_dict[part]){
+                                total_dict[part] = {}
+                            }    
+                            if (total_dict[part][key]){
+                                total_dict[part][key] += row.values[key]
+                            }
+                            else{
+                                total_dict[part][key] = row.values[key]
+                            }
+                        })
+                    }
+                })  
+            })
+        }
+    }
+    console.log(total_dict)
+    completed_total.value = total_dict
 }
 
 function check(attributes, part){
