@@ -1534,7 +1534,7 @@ def calculate_pieces(doc_name):
 		panel_list = []
 		for panel in ipd_doc.stiching_item_details:
 			panel_list.append(panel.stiching_attribute_value)
-		incomplete_items, completed_items, received_types, total_received, qty_list = calculate_cutting_piece(grn_doc, received_types, doc_status)
+		incomplete_items, completed_items, received_types, total_received, qty_list = calculate_cutting_piece(grn_doc, received_types, panel_list)
 	elif process_name == ipd_doc.stiching_process:
 		final_calculation, received_types, total_received = calculate_piece_stage(grn_doc, received_types, doc_status, total_received, final_calculation)
 
@@ -1557,19 +1557,22 @@ def calculate_pieces(doc_name):
 			if len(emb.get(process_name)) == 1:
 				check = False
 				for item in grn_doc.items:
-					final_calculation.setdefault(item.item_variant, {"types": {}, "qty": 0 })
 					qty = item.quantity
 					if doc_status == 2:
 						qty = qty * -1
+					set_combination = item.set_combination
+					if isinstance(set_combination, string_types):
+						set_combination = json.loads(set_combination)
+					if item.received_type:
+						final_calculation.append({
+							"item_variant": item.item_variant,
+							"quantity": qty,
+							"type":item.received_type,
+							"set_combination":set_combination
+						})
 					received_types.setdefault(item.received_type, 0)
 					received_types[item.received_type] += qty
 					total_received += qty
-
-					final_calculation[item.item_variant]['qty'] += qty
-					if final_calculation[item.item_variant]['types'].get(item.received_type):
-						final_calculation[item.item_variant]['types'][item.received_type] += qty
-					else:
-						final_calculation[item.item_variant]['types'][item.received_type] = qty
 			else:
 				if stage == ipd_doc.stiching_in_stage:
 					panel_list = emb.get(process_name)
@@ -1583,10 +1586,14 @@ def calculate_pieces(doc_name):
 
 			elif stage == ipd_doc.stiching_in_stage:
 				if not panel_list:	
-					panel_list = []
 					for panel in ipd_doc.stiching_item_details:
 						panel_list.append(panel.stiching_attribute_value)
-					final_calculation, received_types, total_received = calculate_cutting_piece(grn_doc, received_types, doc_status)
+					final_calculation, received_types, total_received = calculate_cutting_piece(grn_doc, received_types, panel_list)
+				elif panel_list:
+					final_calculation, received_types, total_received = calculate_cutting_piece(grn_doc, received_types, panel_list)
+				else:
+					return
+
 
 	wo_doc = frappe.get_cached_doc("Work Order", grn_doc.against_id)
 	if not wo_doc.first_grn_date:
@@ -1772,7 +1779,10 @@ def calculate_pack_stage(ipd_doc, grn_doc, received_types, doc_status, total_rec
 
 	return final_calculation, received_types, total_received		
 
-def calculate_cutting_piece(grn_doc, received_types, doc_status):
+def calculate_cutting_piece(grn_doc, received_types, panel_list):
+	if isinstance(panel_list, string_types):
+		panel_list = json.loads(panel_list)
+		
 	production_detail, incomplete_items_json, completed_items_json = frappe.get_value("Work Order", grn_doc.against_id,['production_detail',"incompleted_items_json","completed_items_json"])
 	ipd_doc = frappe.get_cached_doc("Item Production Detail",production_detail)
 	incomplete_items = json.loads(incomplete_items_json)
@@ -1826,12 +1836,13 @@ def calculate_cutting_piece(grn_doc, received_types, doc_status):
 			for size in item2['values']:
 				min = sys.maxsize
 				for panel in item2['values'][size]:
-					if item2['values'][size][panel]:
-						if item2['values'][size][panel].get(ty):
-							if item2['values'][size][panel][ty] < min:
-								min = item2['values'][size][panel][ty]
-					else:
-						min = 0
+					if panel in panel_list:
+						if item2['values'][size][panel]:
+							if item2['values'][size][panel].get(ty):
+								if item2['values'][size][panel][ty] < min:
+									min = item2['values'][size][panel][ty]
+						else:
+							min = 0
 				if min > 0 and min != sys.maxsize:
 					if item1['values'][size]:
 						if item1['values'][size].get(ty):
@@ -1845,8 +1856,9 @@ def calculate_cutting_piece(grn_doc, received_types, doc_status):
 					total_qty += min
 
 					for panel in item2['values'][size]:
-						if item2['values'][size][panel] and item2['values'][size][panel].get(ty):
-							item2['values'][size][panel][ty] -= (min * panel_qty[panel])
+						if panel in panel_list:
+							if item2['values'][size][panel] and item2['values'][size][panel].get(ty):
+								item2['values'][size][panel][ty] -= (min * panel_qty[panel])
 
 	qty_list = []
 	for ty in types:
