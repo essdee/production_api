@@ -49,10 +49,11 @@ class Lot(Document):
 				set_combination = item.set_combination
 				if isinstance(set_combination, string_types):
 					set_combination = json.loads(set_combination)
-				set_combination.update({"variant":item.item_variant})
-				set_combination = frozenset(set_combination)
+				if set_combination not in [None, ""]:	
+					set_combination.update({"variant":item.item_variant})
+					set_combination = frozenset(set_combination)
 
-				previous_data[set_combination] = {"cut_qty":item.cut_qty,"stich_qty":item.stich_qty,"pack_qty":item.pack_qty}
+					previous_data[set_combination] = {"cut_qty":item.cut_qty,"stich_qty":item.stich_qty,"pack_qty":item.pack_qty}
 			items, qty = calculate_order_details(self.get('items'), self.production_detail, self.packing_uom, self.uom)
 			x = []
 			if len(items) == 0:
@@ -66,16 +67,17 @@ class Lot(Document):
 					key = item['set_combination']
 					if isinstance(key, string_types):
 						key = json.loads(key)
-					key.update({"variant":item['item_variant']})
-					key = frozenset(key)
-					if previous_data.get(key):
-						item.update(
-							{
-								"cut_qty":previous_data[key]['cut_qty'],
-								"stich_qty":previous_data[key]['stich_qty'],
-								"pack_qty":previous_data[key]['pack_qty'],
-							}
-						)
+					if key not in [None, ""]:
+						key.update({"variant":item['item_variant']})
+						key = frozenset(key)
+						if previous_data.get(key):
+							item.update(
+								{
+									"cut_qty":previous_data[key]['cut_qty'],
+									"stich_qty":previous_data[key]['stich_qty'],
+									"pack_qty":previous_data[key]['pack_qty'],
+								}
+							)
 				self.set('lot_order_details',items)
 				self.set('total_order_quantity', qty)
 
