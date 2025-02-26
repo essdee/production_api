@@ -2,8 +2,13 @@ import frappe
 from production_api.essdee_production.doctype.lot.lot import Lot
 
 def execute():
-    lot_list = frappe.get_list("Lot", filters= {"item":['is',"set"], "production_detail":['is','set']} pluck="name")
-    for lot in lot_list:
+    lot_list = frappe.db.sql(
+        """
+            Select name from tabLot where item is not null AND production_detail is not null
+        """, as_dict = True
+    )
+    for lot_name in lot_list:
+        lot = lot_name['name']
         doc = frappe.get_doc("Lot", lot)
         if doc.item and doc.production_detail and len(doc.items) > 0:
             doc = Lot(doc.as_dict())
