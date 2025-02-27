@@ -849,7 +849,7 @@ def fetch_grn_item_details(items, ipd, lot, docstatus = 0):
 							'tax': variant['tax'],
 							'types': variant['received_types'] if variant['received_types'] else {},
 							'secondary_qty_json': variant['secondary_qty_json'] if variant['secondary_qty_json'] else {},
-							'set_combination': variant['set_combination']
+							'set_combination': variant.get('set_combination', {})
 						}
 						x = item['values'][attr.attribute_value]['types']
 						if x:
@@ -877,7 +877,7 @@ def fetch_grn_item_details(items, ipd, lot, docstatus = 0):
 				'tax': variants[0]['tax'],
 				'types': variants[0]['received_types'] if variants[0]['received_types'] else {},
 				'secondary_qty_json': variants[0]['secondary_qty_json'] if variants[0]['secondary_qty_json'] else {},
-				'set_combination': variants[0]['set_combination']
+				'set_combination': variants[0].get('set_combination', {})
 			}
 			x = item['values']['default']['types']
 			if x:

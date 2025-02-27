@@ -591,7 +591,7 @@ def get_created_date(creation):
 @frappe.whitelist()
 def update_cutting_plan(cutting_laysheet):
 	cls_doc = frappe.get_doc("Cutting LaySheet",cutting_laysheet)
-	production_detail, incomplete_items_json, completed_items_json, version = frappe.get_value("Cutting Plan",cls_doc.cutting_plan,['production_detail',"incomplete_items_json","completed_items_json"])
+	production_detail, incomplete_items_json, completed_items_json, version = frappe.get_value("Cutting Plan",cls_doc.cutting_plan,['production_detail',"incomplete_items_json","completed_items_json", "version"])
 	ipd_doc = frappe.get_doc("Item Production Detail",production_detail)
 	incomplete_items = json.loads(incomplete_items_json)
 	completed_items = json.loads(completed_items_json)
@@ -814,8 +814,8 @@ def update_cutting_plan(cutting_laysheet):
 			if key in accessory:
 				item.used_weight += accessory[key]
 
-		cp_doc.incomplete_items_json = incomplete_items
-		cp_doc.completed_items_json = completed_items
+		cp_doc.incomplete_items_json = incomplete_items if incomplete_items else {}
+		cp_doc.completed_items_json = completed_items if completed_items else {}
 		cp_doc.save()		
 
 @frappe.whitelist()

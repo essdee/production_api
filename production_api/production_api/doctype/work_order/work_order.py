@@ -310,12 +310,12 @@ def fetch_item_details(items,ipd, process=None, include_id = False, is_grn= Fals
 				set_combination = variant.set_combination
 				if isinstance(set_combination, string_types):
 					set_combination = json.loads(set_combination)
+				if set_combination:
+					if set_combination.get("major_part"):
+						item['item_keys']['major_part'] = set_combination.get("major_part")
 
-				if set_combination.get("major_part"):
-					item['item_keys']['major_part'] = set_combination.get("major_part")
-
-				if set_combination.get("major_colour"):
-					item['item_keys']['major_colour'] = set_combination.get("major_colour")		
+					if set_combination.get("major_colour"):
+						item['item_keys']['major_colour'] = set_combination.get("major_colour")		
 
 				for attr in current_variant.attributes:
 					if attr.attribute == item.get('primary_attribute'):

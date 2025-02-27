@@ -64,7 +64,7 @@ frappe.ui.form.on("Cutting Plan", {
                 })
             })
             frm.add_custom_button("Get Completed", ()=> {
-                frappe.require("https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js", function() {
+                frappe.require("https://cdn.jsdelivr.net/npm/html2canvas-pro@1.5.8/dist/html2canvas-pro.min.js", function() {
                     let d = new frappe.ui.Dialog({
                         size:"large",
                         fields: [
