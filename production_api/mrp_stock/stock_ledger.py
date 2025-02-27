@@ -110,6 +110,8 @@ def repost_current_voucher(args, allow_negative_stock=False, via_landed_cost_vou
 					"sle_id": args.get("name"),
 					"creation": args.get("creation"),
 					"reserved_stock": args.get("reserved_stock"),
+					"is_cancelled" : args.get("is_cancelled"),
+					"sle_qty_after_transaction" : args.get("qty_after_transaction")
 				},
 				# allow_negative_stock=allow_negative_stock,
 				# via_landed_cost_voucher=via_landed_cost_voucher,
@@ -473,6 +475,9 @@ class update_entries_after(object):
 		self.distinct_item_warehouses = args.get("distinct_item_warehouses", frappe._dict())
 		self.affected_transactions: set[tuple[str, str]] = set()
 		self.reserved_stock = flt(self.args.reserved_stock)
+		self.voucher_type = self.args.voucher_type
+		self.is_cancelled = cint(self.args.is_cancelled)
+		self.sle_qty_after_transaction = flt(self.args.sle_qty_after_transaction)
 
 		self.data = frappe._dict()
 		self.initialize_previous_data(self.args)
@@ -685,7 +690,10 @@ class update_entries_after(object):
 		validate negative stock for entries current datetime onwards
 		will not consider cancelled entries
 		"""
-		diff = self.wh_data.qty_after_transaction + flt(sle.qty) - flt(self.reserved_stock)
+		qty_after_transaction = self.wh_data.qty_after_transaction
+		if self.voucher_type == 'Stock Reconciliation' and not self.is_cancelled  :
+			qty_after_transaction = self.sle_qty_after_transaction
+		diff = qty_after_transaction + flt(sle.qty) - flt(self.reserved_stock)
 		diff = flt(diff, self.flt_precision)  # respect system precision
 
 		if diff < 0 and abs(diff) > 0.0001:

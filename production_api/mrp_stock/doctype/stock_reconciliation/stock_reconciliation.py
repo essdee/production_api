@@ -117,7 +117,7 @@ class StockReconciliation(Document):
 			bin = frappe.get_doc("Bin", value['bin'])
 			if value['qty'] == 0 and not value['make_qty_zero']:
 				continue
-			if value['qty'] < bin.reserved_qty:
+			if value['qty'] < bin.reserved_qty :
 				self.validation_messages.append(
 					f"Can't Reduce Stock For Item {value['item']} Because {bin.reserved_qty} Stock Is Reserved"
 				)
@@ -283,8 +283,6 @@ class StockReconciliation(Document):
 			data.qty_after_transaction = 0.0
 			data.valuation_rate = flt(row.stock_uom_rate)
 			# data.stock_value_difference = -1 * flt(row.amount_difference)
-		elif self.docstatus == 1:
-			data.qty = row.stock_qty
 		return data
 	
 def get_key(params):
