@@ -1,14 +1,13 @@
 # Copyright (c) 2024, Essdee and contributors
 # For license information, please see license.txt
-import frappe, json
+import frappe, json, copy
 from six import string_types
-from frappe.model.document import Document
-from production_api.essdee_production.doctype.lot.lot import fetch_order_item_details
-from production_api.production_api.doctype.item.item import get_or_create_variant, get_attribute_details
-from production_api.essdee_production.doctype.item_production_detail.item_production_detail import get_cloth_combination,get_stitching_combination,calculate_cloth, get_or_create_ipd_variant
-import copy
-from production_api.production_api.doctype.cutting_laysheet.cutting_laysheet import update_cutting_plan
 from datetime import datetime
+from frappe.model.document import Document
+from production_api.production_api.doctype.item.item import get_attribute_details
+from production_api.essdee_production.doctype.lot.lot import fetch_order_item_details
+from production_api.production_api.doctype.cutting_laysheet.cutting_laysheet import update_cutting_plan
+from production_api.essdee_production.doctype.item_production_detail.item_production_detail import get_cloth_combination, get_stitching_combination, calculate_cloth, get_or_create_ipd_variant
 
 class CuttingPlan(Document):
 	def autoname(self):

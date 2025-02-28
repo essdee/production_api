@@ -191,21 +191,29 @@ class GoodsReceivedNote(Document):
 		percentage = (total_received_qty / wo_doc.total_quantity) * 100
 		calculated_items = {}
 		for item in self.grn_deliverables:
-			calculated_items[item.item_variant] = item.quantity
+			item_keys = update_if_string_instance(item.set_combination)
+			item_keys.update({"variant":item.item_variant})
+			item_keys = item_keys.copy()
+			item_keys = frozenset(item_keys)
+			calculated_items[item_keys] = item.quantity
 
 		for item in wo_doc.deliverables:
 			check = True
-			x = calculated_items.get(item.item_variant)
+			keys = update_if_string_instance(item.set_combination)
+			keys.update({"variant":item.item_variant})
+			keys = keys.copy()
+			keys = frozenset(keys)
+			x = calculated_items.get(keys)
 			if x == 0:
 				check = True
 			elif not x:
 				check = False	
 			if item.is_calculated and check:
-				if calculated_items[item.item_variant] != 0:
-					if item.qty < calculated_items[item.item_variant]:
+				if calculated_items[keys] != 0:
+					if item.qty < calculated_items[keys]:
 						item.stock_update += item.qty
 					else:
-						item.stock_update += calculated_items[item.item_variant]
+						item.stock_update += calculated_items[keys]
 					if item.stock_update > item.qty:
 						item.stock_update = item.qty
 			elif not item.is_calculated:
@@ -225,6 +233,7 @@ class GoodsReceivedNote(Document):
 					"quantity":new_delivered_qty,
 					"uom":item.uom,
 					"valuation_rate":item.valuation_rate,
+					"set_combination": item.set_combination,
 				})
 		if diff < 0:
 			diff = 0
@@ -372,18 +381,28 @@ class GoodsReceivedNote(Document):
 		percentage = (total_received_qty / wo_doc.total_quantity) * 100
 		calculated_items = {}
 		for item in self.grn_deliverables:
-			calculated_items[item.item_variant] = item.quantity
+			item_keys = update_if_string_instance(item.set_combination)
+			item_keys.update({"variant":item.item_variant})
+			item_keys = item_keys.copy()
+			item_keys = frozenset(item_keys)
+			calculated_items[item_keys] = item.quantity
 
 		for item in wo_doc.deliverables:
 			check = True
-			x = calculated_items.get(item.item_variant)
+			keys = update_if_string_instance(item.set_combination)
+			keys.update({"variant":item.item_variant})
+			keys = keys.copy()
+			keys = frozenset(keys)
+			x = calculated_items.get(keys)
 			if x == 0:
-				check = False	
-			if item.is_calculated and calculated_items.get(item.item_variant):
-				if item.qty < calculated_items[item.item_variant]:
+				check = True
+			elif not x:
+				check = False
+			if item.is_calculated and check:
+				if item.qty < calculated_items[keys]:
 					item.stock_update = 0
 				else:
-					item.stock_update -= calculated_items[item.item_variant]
+					item.stock_update -= calculated_items[keys]
 			elif check:
 				total_delivered_qty = item.qty - item.stock_update
 				new_delivered_qty = None
@@ -398,10 +417,14 @@ class GoodsReceivedNote(Document):
 				else:
 					item.stock_update -= new_delivered_qty
 
+				if item.stock_update < 0:
+					item.stock_update = 0	
+
 				self.append("grn_deliverables",{
 					"item_variant":item.item_variant,
 					"quantity":new_delivered_qty,
-					"uom":item.uom
+					"uom":item.uom,
+					"set_combination": item.set_combination
 				})
 		lot = wo_doc.lot
 		wo_doc.save(ignore_permissions = True)	
@@ -480,13 +503,14 @@ class GoodsReceivedNote(Document):
 					if not self.is_manual_entry:
 						deliverables = calculate_deliverables(self)
 						items = []
-						for variant, attr in deliverables.items():
-							if wo_deliverables.get(variant):
+						for row in deliverables:
+							if wo_deliverables.get(row['item_variant']):
 								items.append({
-									"item_variant": variant,
-									"quantity": attr['qty'],
-									"uom": attr['uom'],
-									"valuation_rate": wo_deliverables[variant]
+									"item_variant": row['item_variant'],
+									"quantity": row['qty'],
+									"uom": row['uom'],
+									"valuation_rate": wo_deliverables[row['item_variant']],
+									"set_combination": row['set_combination'],
 								})
 						self.set("grn_deliverables", items)
 					self.total_received_quantity = total_qty
@@ -1119,17 +1143,19 @@ def calculate_deliverables(grn_doc):
 
 def get_other_deliverables(grn_doc, wo_doc):
 	process = wo_doc.process_name
-	final_value = {}
+	final_value = []
 	is_group = frappe.get_value("Process",process,"is_group")
 	if not is_group:
 		for item in grn_doc.items:
-			if final_value.get(item.item_variant):
-				final_value[item.item_variant]['qty'] += item.quantity
-			else:
-				final_value[item.item_variant] = {"qty":item.quantity,"uom": item.uom}	
+			final_value.append({
+				"item_variant": item.item_variant,
+				"qty": item.quantity,
+				"uom":item.uom,
+				"set_combination": item['set_combination'],
+			})
 		return final_value
 	else:
-		return {}	
+		return []
 
 def get_cutting_process_deliverables(grn_doc, ipd_doc):
 	final_value = {}
@@ -1225,8 +1251,17 @@ def get_cutting_process_deliverables(grn_doc, ipd_doc):
 			final_value[new_variant]['qty'] += weight
 		else:
 			final_value[new_variant] = {"qty":weight,"uom": uom}	
+
+	final_list = []
+	for variant, attr in final_value.items():
+		final_list.append({
+			"item_variant": variant,
+			"quantity": attr['qty'],
+			"uom": attr['uom'],
+			"set_combination": {},
+		})	
 	ipd_doc.db_set("variants_json", json.dumps(item_variants), update_modified=False)
-	return final_value
+	return final_list
 
 def item_attribute_details(variant, item_attributes):
 	attribute_details = {}
@@ -1239,14 +1274,15 @@ def get_stiching_process_deliverables(grn_doc, wo_doc, ipd_doc):
 	lot_doc = frappe.get_cached_doc("Lot", wo_doc.lot)
 	ipd = lot_doc.production_detail
 	process = wo_doc.process_name
-	final_value = {}
+	final_value = []
 	items = []
 	for item in grn_doc.items:
 		items.append({
 			"item_variant":item.item_variant,
 			"quantity":item.quantity,
 			"row_index":item.row_index,
-			"table_index":item.table_index
+			"table_index":item.table_index,
+			"set_combination": item.set_combination,
 		})
 	variant_doc = frappe.get_cached_doc("Item Variant", items[0]['item_variant'])		
 	uom = lot_doc.packing_uom
@@ -1260,20 +1296,20 @@ def get_stiching_process_deliverables(grn_doc, wo_doc, ipd_doc):
 			variant = variant_details['item_variant']
 			qty = variant_details['qty']
 			uom = variant_details['uom']
-			if final_value.get(variant):
-				final_value[variant] +=  qty
-			else:		 
-				final_value[variant] = {
-					"qty": qty,
-					"uom": uom
-				}
+			set_combination = variant_details['set_combination']
+			final_value.append({
+				"item_variant":variant,
+				"qty": qty,
+				"uom": uom,
+				"set_combination": set_combination,
+			})
 	return final_value
 
 def get_packing_process_deliverables(grn_doc, wo_doc, ipd_doc):
 	item_variants = update_if_string_instance(ipd_doc.variants_json)
 	lot_doc = frappe.get_cached_doc("Lot", wo_doc.lot)
 	process = wo_doc.process_name
-	final_value = {}
+	final_value = []
 	items = []
 	if ipd_doc.auto_calculate:
 		ratio = len(ipd_doc.packing_attribute_details)
@@ -1281,15 +1317,23 @@ def get_packing_process_deliverables(grn_doc, wo_doc, ipd_doc):
 	item_attr_detail_dict = {}
 	pack_combo = ipd_doc.packing_combo
 	part_list = []
+	set_combination_colours = {}
+
 	if ipd_doc.is_set_item:
+		for detail in ipd_doc.set_item_combination_details:
+			key = (detail.major_attribute_value, detail.set_item_attribute_value)
+			set_combination_colours.setdefault(key, {})
+			set_combination_colours[key] = detail.attribute_value
+
 		for stich in ipd_doc.stiching_item_details:
 			if stich.set_item_attribute_value not in part_list:
 				part_list.append(stich.set_item_attribute_value)
 
+
 	for item in grn_doc.items:
 		items.append({
 			"item_variant": item.item_variant,
-			"quantity": item.quantity * pack_combo,
+			"quantity": item.quantity / pack_combo,
 			"row_index": item.row_index,
 			"table_index": item.table_index
 		})
@@ -1310,6 +1354,7 @@ def get_packing_process_deliverables(grn_doc, wo_doc, ipd_doc):
 			if ipd_doc.is_set_item:
 				for part in part_list:
 					attributes[ipd_doc.set_item_attribute] = part
+					attributes[ipd_doc.packing_attribute] = set_combination_colours[(colour.attribute_value, part)]
 					tup = tuple(sorted(attributes.items()))
 					item_name = variant_doc.item
 					new_variant = get_or_create_ipd_variant(item_variants, item_name, tup, attributes)
@@ -1325,17 +1370,19 @@ def get_packing_process_deliverables(grn_doc, wo_doc, ipd_doc):
 						else:
 							item_variants[item_name] = {}
 							item_variants[item_name][str_tup] = new_variant
-					x = item.quantity * pack_combo
+					x = item.quantity
 					if ipd_doc.auto_calculate:
 						qty = x / ratio
 					else:
 						qty = x / ipd_doc.packing_attribute_no
 						qty = qty * colour.quantity
-
-					if final_value.get(new_variant):
-						final_value[new_variant]['qty'] += qty
-					else:
-						final_value[new_variant] = {"qty": qty,"uom": lot_doc.packing_uom}	
+					set_combination = {"major_colour": colour.attribute_value, "major_part": ipd_doc.major_attribute_value}
+					final_value.append({
+						"item_variant":new_variant,
+						"qty": qty,
+						"uom": lot_doc.packing_uom, 
+						"set_combination": set_combination
+					})	
 			else:
 				tup = tuple(sorted(attributes.items()))
 				item_name = variant_doc.item
@@ -1353,17 +1400,19 @@ def get_packing_process_deliverables(grn_doc, wo_doc, ipd_doc):
 						item_variants[item_name] = {}
 						item_variants[item_name][str_tup] = new_variant
 
-				x = item.quantity * pack_combo
+				x = item.quantity
 				if ipd_doc.auto_calculate:
 					qty = x / ratio
 				else:
 					qty = x / ipd_doc.packing_attribute_no
 					qty = qty * colour.quantity
-
-				if final_value.get(new_variant):
-					final_value[new_variant]['qty'] += qty
-				else:
-					final_value[new_variant] = {"qty": qty,"uom": lot_doc.packing_uom}	
+				set_combination = {"major_colour": colour.attribute_value}
+				final_value.append({
+					"item_variant":new_variant,
+					"qty": qty,
+					"uom": lot_doc.packing_uom, 
+					"set_combination": set_combination
+				})
 
 	bom = get_calculated_bom(lot_doc.production_detail, items, lot_doc.name, process_name=process, doctype="Work Order")	
 	bom = get_bom_structure(bom, 0, 0)	
@@ -1372,10 +1421,12 @@ def get_packing_process_deliverables(grn_doc, wo_doc, ipd_doc):
 			variant_name = variant_details['item_variant']
 			qty = variant_details['qty']
 			uom = variant_details['uom']
-			if final_value.get(variant_name):
-				final_value[variant_name] += qty
-			else:
-				final_value[variant_name] = {"qty": qty, "uom": uom }	
+			final_value.append({
+				"item_variant":variant_name,
+				"qty": qty, 
+				"uom": uom, 
+				"set_combination": {} 
+			})	
 	ipd_doc.db_set("variants_json", json.dumps(item_variants), update_modified=False)			
 	return final_value	
 
@@ -1398,7 +1449,8 @@ def get_item_structure(items,item_name, process, uom):
 			"process":process,
 			"uom":uom,
 			"row_index":row_index,
-			"table_index":table_index
+			"table_index":table_index,
+			"set_combination": item['set_combination']
 		}
 	return item_list, row_index, table_index
 
@@ -1453,6 +1505,7 @@ def get_attributes(items, itemname, stage, dependent_attribute, ipd):
 							"item_variant": new_variant,
 							'qty': details['qty']*item.quantity,
 							'uom':details['uom'],
+							'set_combination': details['set_combination']
 						})
 			else:
 				for id,item in enumerate(ipd_doc.stiching_item_details):
@@ -1475,6 +1528,7 @@ def get_attributes(items, itemname, stage, dependent_attribute, ipd):
 						"item_variant": new_variant,
 						'qty': details['qty']*item.quantity,
 						'uom':details['uom'],
+						'set_combination': details['set_combination']
 					})
 	ipd_doc.db_set("variants_json", json.dumps(item_variants), update_modified=False)
 	return item_list
@@ -1539,19 +1593,20 @@ def update_calculated_receivables(doc_name, receivables, received_type):
 
 		deliverables = calculate_deliverables(grn_doc)
 		items = []
-		for variant, attr in deliverables.items():
+		for row in deliverables:
 			check = True
-			x = wo_deliverables.get(variant)
+			x = wo_deliverables.get(row['item_variant'])
 			if x == flt(0):
 				check = True
 			elif not x:
 				check = False
-			if check:
+			if check:	
 				items.append({
-					"item_variant": variant,
-					"quantity": attr['qty'],
-					"uom": attr['uom'],
-					"valuation_rate": wo_deliverables[variant]
+					"item_variant": row['item_variant'],
+					"quantity": row['qty'],
+					"uom": row['uom'],
+					"valuation_rate": wo_deliverables[row['item_variant']],
+					"set_combination": row['set_combination'],
 				})
 		grn_doc.set("grn_deliverables", items)
 		grn_doc.save()

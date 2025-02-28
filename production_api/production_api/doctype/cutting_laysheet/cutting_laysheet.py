@@ -4,13 +4,12 @@
 from frappe import bold
 from six import string_types
 from frappe.utils import getdate
-from itertools import zip_longest
 from frappe.model.document import Document
 import frappe, json, sys, base64, math, time
 from secrets import token_bytes as get_random_bytes
 from production_api.production_api.doctype.item.item import get_or_create_variant
-from production_api.essdee_production.doctype.item_production_detail.item_production_detail import get_stitching_combination
 from production_api.production_api.doctype.cutting_marker.cutting_marker import fetch_marker_details
+from production_api.essdee_production.doctype.item_production_detail.item_production_detail import get_stitching_combination
 
 class CuttingLaySheet(Document):
 	def autoname(self):
