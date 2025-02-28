@@ -8,6 +8,7 @@ from production_api.production_api.doctype.item.item import get_or_create_varian
 from production_api.essdee_production.doctype.item_production_detail.item_production_detail import get_cloth_combination,get_stitching_combination,calculate_cloth, get_or_create_ipd_variant
 import copy
 from production_api.production_api.doctype.cutting_laysheet.cutting_laysheet import update_cutting_plan
+from datetime import datetime
 
 class CuttingPlan(Document):
 	def autoname(self):
@@ -199,7 +200,7 @@ def get_cloth1(cutting_plan):
 	cutting_plan_doc = frappe.get_doc("Cutting Plan", cutting_plan)
 	ipd_doc = frappe.get_cached_doc("Item Production Detail", cutting_plan_doc.production_detail)
 	item_variants = ipd_doc.variants_json
-	if isinstance(item_variants):
+	if isinstance(item_variants, string_types):
 		item_variants = json.loads(item_variants)
 
 	item_attributes = get_attribute_details(cutting_plan_doc.item)
@@ -280,6 +281,8 @@ def get_cloth1(cutting_plan):
 	ipd_doc.db_set("variants_json", json.dumps(item_variants), update_modified=False)
 	cutting_plan_doc.set("cutting_plan_accessory_details", required_accessory_details)
 	cutting_plan_doc.set("cutting_plan_cloth_details", required_cloth_details)
+	text = f"Cloth Generated on {datetime.now()} by {frappe.session.user}"
+	cutting_plan_doc.add_comment('Comment',text=text)
 	cutting_plan_doc.save()
 
 def item_attribute_details(variant, item_attributes):
@@ -291,8 +294,8 @@ def item_attribute_details(variant, item_attributes):
 
 @frappe.whitelist()
 def calculate_laysheets(cutting_plan):
-	calc(cutting_plan)
-	# frappe.enqueue(calc, "short", cutting_plan=cutting_plan)
+	# calc(cutting_plan)
+	frappe.enqueue(calc, "short", cutting_plan=cutting_plan)
 
 def calc(cutting_plan):	
 	cp_doc = frappe.get_doc("Cutting Plan",cutting_plan)

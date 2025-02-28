@@ -576,10 +576,7 @@ def get_colours(cutting_laysheet, items):
 @frappe.whitelist()
 def get_created_date(creation):
 	created_date = getdate(creation)
-	date = created_date.day
-	month = created_date.month
-	year = created_date.year 
-	return str(date)+"/"+str(month)+"/"+str(year)
+	return created_date.strftime("%d-%m-%Y")
 
 @frappe.whitelist()
 def update_cutting_plan(cutting_laysheet):
