@@ -4,13 +4,13 @@
 frappe.ui.form.on("Cutting Plan", {
 	refresh(frm) {
         frm.cut_plan_items = new frappe.production.ui.CutPlanItems(frm.fields_dict['items_html'].wrapper)
-        if(frm.doc.__onload && frm.doc.__onload.item_details){
-            frm.cut_plan_items.load_data(frm.doc.__onload.item_details,0)
-        }
-        else{
-            frm.cut_plan_items.load_data([],0)
-        }
         if(!frm.is_new()){
+            if(frm.doc.__onload && frm.doc.__onload.item_details){
+                frm.cut_plan_items.load_data(frm.doc.__onload.item_details,0)
+            }
+            else{
+                frm.cut_plan_items.load_data([],0)
+            }
             frm.completed_items = new frappe.production.ui.CuttingCompletionDetail(frm.fields_dict['completed_items_html'].wrapper)
             frm.completed_items.load_data(frm.doc.completed_items_json, 1)
 
@@ -114,7 +114,7 @@ frappe.ui.form.on("Cutting Plan", {
             })
             frm.add_custom_button("Update Completed", ()=> {
                 let d = new frappe.ui.Dialog({
-                    size:"large",
+                    size:"extra-large",
                     fields: [
                         {
                             "fieldname":"update_pop_up_html",

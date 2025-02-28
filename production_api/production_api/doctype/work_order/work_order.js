@@ -69,7 +69,7 @@ frappe.ui.form.on("Work Order", {
 								fields: [
 									{fieldtype: "HTML",fieldname: "lot_items_html"}
 								],
-								size:"large",
+								size:"extra-large",
 								primary_action(){
 									frm.trigger("calculate_del_and_rec")
 									d.hide()

@@ -101,8 +101,7 @@ class CuttingLaySheet(Document):
 		self.set("cutting_laysheet_details",items)			
 
 def save_item_details(items, cutting_plan):
-	if isinstance(items, string_types):
-		items = json.loads(items)
+	items = update_if_string_instance(items)
 	ipd = frappe.get_value("Cutting Plan",cutting_plan,"production_detail")
 	ipd_doc = frappe.get_cached_doc("Item Production Detail",ipd)
 	item_list = []
@@ -135,8 +134,7 @@ def save_item_details(items, cutting_plan):
 	return item_list	
 
 def save_accessory_details(items, cutting_plan):
-	if isinstance(items, string_types):
-		items = json.loads(items)
+	items = update_if_string_instance(items)
 	ipd = frappe.get_value("Cutting Plan",cutting_plan,"production_detail")
 	ipd_doc = frappe.get_cached_doc("Item Production Detail",ipd)
 	item_list = []
@@ -193,8 +191,7 @@ def get_parts(cutting_marker):
 
 @frappe.whitelist()
 def get_cut_sheet_data(doc_name,cutting_marker,item_details,items, max_plys:int,maximum_allow:int):
-	if isinstance(items, string_types):
-		items = json.loads(items)
+	items = update_if_string_instance(items)
 	items_combined = {}
 	for item in items:
 		if items_combined.get(item['value']):
@@ -205,8 +202,7 @@ def get_cut_sheet_data(doc_name,cutting_marker,item_details,items, max_plys:int,
 	for value, arr in items_combined.items():		
 		items.append(",".join(arr))
 
-	if isinstance(item_details, string_types):
-		item_details = json.loads(item_details)	
+	item_details = update_if_string_instance(item_details)	
 	maximum_plys = max_plys + (max_plys/100) * maximum_allow
 	bundle_no = 0
 	cm_doc = frappe.get_doc("Cutting Marker",cutting_marker)
@@ -481,9 +477,7 @@ def get_cloth_accessories(cutting_plan):
 	ipd = frappe.get_value("Cutting Plan", cutting_plan, "production_detail")
 	ipd_doc = frappe.get_doc("Item Production Detail", ipd)
 	accessory_list = []
-	x = ipd_doc.accessory_clothtype_json
-	if isinstance(x,string_types):
-		x = json.loads(x)
+	x = update_if_string_instance(ipd_doc.accessory_clothtype_json)
 	if x:
 		for key,val in x.items():
 			accessory_list.append(key)
@@ -492,8 +486,7 @@ def get_cloth_accessories(cutting_plan):
 @frappe.whitelist()
 def print_labels(print_items, lay_no, cutting_plan, doc_name):
 	lot_no,item_name = frappe.get_value("Cutting Plan",cutting_plan,["lot","item"])
-	if isinstance(print_items,string_types):
-		print_items = json.loads(print_items)
+	print_items = update_if_string_instance(print_items)
 	zpl = ""
 	cls_doc = frappe.get_doc("Cutting LaySheet",doc_name)
 	creation = cls_doc.creation
@@ -604,9 +597,7 @@ def update_cutting_plan(cutting_laysheet):
 			
 			for item in cls_doc.cutting_laysheet_bundles:
 				parts = item.part.split(",")
-				set_combination = item.set_combination
-				if isinstance(set_combination, string_types):
-					set_combination = json.loads(set_combination)
+				set_combination = update_if_string_instance(item.set_combination)
 				set_colour = set_combination['major_colour']
 				qty = item.quantity
 				for part in parts:
@@ -629,30 +620,34 @@ def update_cutting_plan(cutting_laysheet):
 		else:
 			alter_incomplete_items = {}
 			for item in incomplete_items['items']:
-				colour = item['attributes'][ipd_doc.packing_attribute]
+				set_combination = update_if_string_instance(item['item_keys'])
+				colour = set_combination['major_colour']
 				part = item['attributes'][ipd_doc.set_item_attribute]
 				if alter_incomplete_items.get(colour):
 					alter_incomplete_items[colour][part] = item['values']
 				else:	
 					alter_incomplete_items[colour] = {}
 					alter_incomplete_items[colour][part] = item['values']
-
 			for item in cls_doc.cutting_laysheet_bundles:
 				parts = item.part.split(",")
-				set_combination = item.set_combination
-				if isinstance(set_combination, string_types):
-					set_combination = json.loads(set_combination)
+				set_combination = update_if_string_instance(item.set_combination)
 				major_part = set_combination['major_part']
 				major_colour = set_combination['major_colour']
+				d = {
+					"major_colour": major_colour,
+				}
 				if set_combination.get('set_part'):
 					major_part = set_combination['set_part']
 					major_colour = set_combination['set_colour']
+				d['major_part'] = major_part	
+
 				qty = item.quantity
 				for part in parts:
-					alter_incomplete_items[major_colour][major_part][item.size][part] += qty
+					alter_incomplete_items[d['major_colour']][d['major_part']][item.size][part] += qty
 
 			for item in completed_items['items']:
-				colour = item['attributes'][ipd_doc.packing_attribute]
+				set_combination = update_if_string_instance(item['item_keys'])
+				colour = set_combination['major_colour']
 				part = item['attributes'][ipd_doc.set_item_attribute]
 				for val in item['values']:
 					min = sys.maxsize
@@ -814,15 +809,14 @@ def update_cutting_plan(cutting_laysheet):
 			if key in accessory:
 				item.used_weight += accessory[key]
 
-		cp_doc.incomplete_items_json = incomplete_items if incomplete_items else {}
-		cp_doc.completed_items_json = completed_items if completed_items else {}
+		cp_doc.incomplete_items_json = incomplete_items
+		cp_doc.completed_items_json = completed_items
 		cp_doc.save()		
 
 @frappe.whitelist()
 def get_input_fields(cutting_marker, colour, select_attributes):
 	inputs = []
-	if isinstance(select_attributes, string_types):
-		select_attributes = json.loads(select_attributes)
+	select_attributes = update_if_string_instance(select_attributes)
 	cm_doc = frappe.get_doc("Cutting Marker",cutting_marker)
 	panels = cm_doc.calculated_parts.split(",")
 	ipd = frappe.get_value("Cutting Plan",cm_doc.cutting_plan,"production_detail")
@@ -896,3 +890,12 @@ def get_input_fields(cutting_marker, colour, select_attributes):
 			inputs.append({"fieldname":"major_colour", "fieldtype":"Select", "label":"Major Colour", "options":select_vals})
 
 	return inputs		
+
+def update_if_string_instance(obj):
+	if isinstance(obj, string_types):
+		obj = json.loads(obj)
+
+	if not obj:
+		obj = {}
+
+	return obj	

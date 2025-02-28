@@ -128,7 +128,7 @@ frappe.ui.form.on('Goods Received Note', {
 					},
 					callback: async function (r) {
 						let d = new frappe.ui.Dialog({
-							size: "large",
+							size: "extra-large",
 							fields: [
 								{
 									fieldname: "received_type",
@@ -477,6 +477,9 @@ function calculate_receivables(frm, received_type){
 					doc_name: frm.doc.name,
 					receivables: r.message,
 					received_type : received_type
+				},
+				callback: function(){
+					frm.reload_doc()
 				}
 			})
 		}

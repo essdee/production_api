@@ -5,7 +5,7 @@ from six import string_types
 from frappe.model.document import Document
 from production_api.essdee_production.doctype.lot.lot import fetch_order_item_details
 from production_api.production_api.doctype.item.item import get_or_create_variant, get_attribute_details
-from production_api.essdee_production.doctype.item_production_detail.item_production_detail import get_cloth_combination,get_stitching_combination,calculate_cloth,get_key,get_additional_cloth,get_accessory_colour, add_cloth_detail
+from production_api.essdee_production.doctype.item_production_detail.item_production_detail import get_cloth_combination,get_stitching_combination,calculate_cloth, get_or_create_ipd_variant
 import copy
 from production_api.production_api.doctype.cutting_laysheet.cutting_laysheet import update_cutting_plan
 
@@ -33,7 +33,7 @@ class CuttingPlan(Document):
 
 
 		if self.get('item_details'):
-			items = save_item_details(self.item_details)
+			items = save_item_details(self.item_details, self.production_detail)
 			self.set("items",items)
 
 		if self.get('item_cloth_details'):
@@ -125,7 +125,11 @@ def save_item_cloth_details(items):
 		})
 	return item_details	
 
-def save_item_details(item_details):
+def save_item_details(item_details, ipd):
+	ipd_doc = frappe.get_cached_doc("Item Production Detail", ipd)
+	item_variants = ipd_doc.variants_json
+	if isinstance(item_variants, string_types):
+		item_variants = json.loads(item_variants)
 	if isinstance(item_details, string_types):
 		item_details = json.loads(item_details)
 	items = []
@@ -142,7 +146,20 @@ def save_item_details(item_details):
 				if not quantity:
 					quantity = 0
 				item_attributes[item.get('primary_attribute')] = attr
-				variant = get_or_create_variant(item_name,item_attributes)
+				tup = tuple(sorted(item_attributes.items()))
+				variant = get_or_create_ipd_variant(item_variants, item_name, tup, item_attributes)
+				str_tup = str(tup) 
+				if item_variants and item_variants.get(item_name):
+					if not item_variants[item_name].get(str_tup):
+						item_variants[item_name][str_tup] = variant	
+				else:	
+					if not item_variants:
+						item_variants = {}
+						item_variants[item_name] = {}
+						item_variants[item_name][str_tup] = variant
+					else:
+						item_variants[item_name] = {}
+						item_variants[item_name][str_tup] = variant	
 				item1['item_variant'] = variant	
 				item1['quantity'] = quantity
 				item1['row_index'] = row_index
@@ -150,6 +167,7 @@ def save_item_details(item_details):
 				item1['set_combination'] = item['item_keys']
 				items.append(item1)
 			row_index += 1
+	ipd_doc.db_set("variants_json", json.dumps(item_variants), update_modified=False)		
 	return items
 
 def fetch_cloth_details(items):
@@ -179,8 +197,11 @@ def get_items(lot):
 @frappe.whitelist()
 def get_cloth1(cutting_plan):
 	cutting_plan_doc = frappe.get_doc("Cutting Plan", cutting_plan)
-	ipd_doc = frappe.get_doc("Item Production Detail", cutting_plan_doc.production_detail)
-	
+	ipd_doc = frappe.get_cached_doc("Item Production Detail", cutting_plan_doc.production_detail)
+	item_variants = ipd_doc.variants_json
+	if isinstance(item_variants):
+		item_variants = json.loads(item_variants)
+
 	item_attributes = get_attribute_details(cutting_plan_doc.item)
 	cloth_combination = get_cloth_combination(ipd_doc)
 	stitching_combination = get_stitching_combination(ipd_doc)
@@ -205,7 +226,22 @@ def get_cloth1(cutting_plan):
 
 	required_cloth_details = []
 	for k in cloth_details:
-		cloth_name = get_or_create_variant(cloth_detail[k[0]], {ipd_doc.packing_attribute: k[1], 'Dia': k[2]})
+		attributes = {ipd_doc.packing_attribute: k[1], 'Dia': k[2]}
+		item_name = cloth_detail[k[0]]
+		tup = tuple(sorted(attributes.items()))
+		cloth_name = get_or_create_ipd_variant(item_variants, item_name, tup, attributes)
+		str_tup = str(tup) 
+		if item_variants and item_variants.get(item_name):
+			if not item_variants[item_name].get(str_tup):
+				item_variants[item_name][str_tup] = cloth_name	
+		else:	
+			if not item_variants:
+				item_variants = {}
+				item_variants[item_name] = {}
+				item_variants[item_name][str_tup] = cloth_name
+			else:
+				item_variants[item_name] = {}
+				item_variants[item_name][str_tup] = cloth_name	
 		required_cloth_details.append({
 			"cloth_item_variant": cloth_name,
 			"cloth_type": k[0],
@@ -217,7 +253,22 @@ def get_cloth1(cutting_plan):
 
 	required_accessory_details = []
 	for k in accessory_detail:
-		cloth_name = get_or_create_variant(cloth_detail[k[0]], {ipd_doc.packing_attribute: k[1], 'Dia': k[2]})
+		attributes = {ipd_doc.packing_attribute: k[1], 'Dia': k[2]}
+		item_name = cloth_detail[k[0]]
+		tup = tuple(sorted(attributes.items()))
+		cloth_name = get_or_create_ipd_variant(item_variants, item_name, tup, attributes)
+		str_tup = str(tup) 
+		if item_variants and item_variants.get(item_name):
+			if not item_variants[item_name].get(str_tup):
+				item_variants[item_name][str_tup] = cloth_name	
+		else:	
+			if not item_variants:
+				item_variants = {}
+				item_variants[item_name] = {}
+				item_variants[item_name][str_tup] = cloth_name
+			else:
+				item_variants[item_name] = {}
+				item_variants[item_name][str_tup] = cloth_name
 		required_accessory_details.append({
 			"cloth_item_variant": cloth_name,
 			"cloth_type": k[0],
@@ -226,7 +277,7 @@ def get_cloth1(cutting_plan):
 			"required_weight": accessory_detail[k],
 			"weight":0.0
 		})	
-
+	ipd_doc.db_set("variants_json", json.dumps(item_variants), update_modified=False)
 	cutting_plan_doc.set("cutting_plan_accessory_details", required_accessory_details)
 	cutting_plan_doc.set("cutting_plan_cloth_details", required_cloth_details)
 	cutting_plan_doc.save()

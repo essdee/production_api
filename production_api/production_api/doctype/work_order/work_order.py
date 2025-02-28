@@ -141,12 +141,9 @@ class WorkOrder(Document):
 			row.total_cost = rate * row.qty
 
 def save_item_details(item_details, ipd, supplier=None, process_name = None):
-	if isinstance(item_details, string_types):
-		item_details = json.loads(item_details)
+	item_details = update_if_string_instance(item_details)
 	ipd_doc = frappe.get_cached_doc("Item Production Detail",ipd)
-	item_variants = ipd_doc.variants_json
-	if isinstance(item_variants, string_types):
-		item_variants = json.loads(item_variants)
+	item_variants = update_if_string_instance(ipd_doc.variants_json)
 	items = []
 	row_index = 0
 	table_index = -1
@@ -307,9 +304,7 @@ def fetch_item_details(items,ipd, process=None, include_id = False, is_grn= Fals
 				item['values'][attr] = {'qty': 0, 'rate': 0}
 			for variant in variants:
 				current_variant = frappe.get_cached_doc("Item Variant", variant['item_variant'])
-				set_combination = variant.set_combination
-				if isinstance(set_combination, string_types):
-					set_combination = json.loads(set_combination)
+				set_combination = update_if_string_instance(variant.set_combination)
 				if set_combination:
 					if set_combination.get("major_part"):
 						item['item_keys']['major_part'] = set_combination.get("major_part")
@@ -411,13 +406,7 @@ def get_deliverable_receivable( items, doc_name, deliverable=False, receivable=F
 	ipd = lot_doc.production_detail
 	uom = lot_doc.packing_uom
 	pack_out_uom = lot_doc.uom
-
-	ipd_doc = frappe.db.sql(
-		f"""
-			Select name, dependent_attribute, pack_out_stage, stiching_in_stage, packing_process, stiching_process, cutting_process
-			from `tabItem Production Detail` Where name = '{ipd}'
-		""", as_dict=True
-	)[0]
+	ipd_doc = frappe.get_cached_doc("Item Production Detail", ipd)
 	dept_attribute = ipd_doc.dependent_attribute
 	pack_out_stage = ipd_doc.pack_out_stage
 	stiching_in_stage = ipd_doc.stiching_in_stage
@@ -476,8 +465,14 @@ def get_deliverable_receivable( items, doc_name, deliverable=False, receivable=F
 	wo_doc.set("total_no_of_pieces_delivered", total_qty)	
 	logger.debug(f"{doc_name} doc saved {datetime.now()}")
 	wo_doc.save()
-	cut_process = frappe.get_value("Item Production Detail", wo_doc.production_detail, "cutting_process")	
-	if cut_process == wo_doc.process_name:
+	processes = [ipd_doc.cutting_process]
+	for item in ipd_doc.ipd_processes:
+		if item.process_name == wo_doc.process_name:
+			if ipd_doc.stiching_in_stage == item.stage:
+				processes.append(item.process_name)
+				break
+
+	if wo_doc.process_name in processes:
 		items = fetch_order_item_details(wo_doc.work_order_calculated_items, wo_doc.production_detail)
 		complete, incomplete = get_complete_incomplete_structure(wo_doc.production_detail, items)
 		wo_doc.set("completed_items_json", complete)
@@ -525,18 +520,13 @@ def calc_deliverable_and_receivable(ipd_doc, process, item_list, item_name, dept
 			receivables.append(x)	
 		
 	elif ipd_doc.cutting_process == process:
-		cutting_out_stage = frappe.get_value("Item Production Detail", ipd,'stiching_in_stage')
+		cutting_out_stage = ipd_doc.stiching_in_stage
 		cutting_attributes = get_attributes(item_list, item_name, cutting_out_stage, dept_attribute,ipd)
 		receivables, total_qty  = get_receivables(cutting_attributes, lot, uom)
 		deliverables  =  get_deliverables(bom, lot)
 
 	else:	
-		ipd_process = frappe.db.sql(
-			f"""
-				Select process_name, stage from `tabIPD Process` where parent = '{ipd_doc.name}' 
-			""", as_dict = True
-		)	
-		for item in ipd_process:
+		for item in ipd_doc.ipd_processes:
 			if item.process_name == process:
 				if ipd_doc.stiching_in_stage == item.stage:
 					attributes = get_attributes(item_list, item_name, item.stage, dept_attribute, ipd, process)
@@ -579,8 +569,7 @@ def get_deliverables(items, lot):
 
 def get_report_data(items):
 	attrs = []
-	if isinstance(items, string_types):
-		items = json.loads(items)
+	items = update_if_string_instance(items)
 	wo_colour_sets = ""
 	all_attrs = True	
 	for item in items[0]['items']:
@@ -632,10 +621,7 @@ def get_attributes_qty(ipd_doc, process, depends_on_attr):
 	if depends_on_attr:
 		return 1
 	
-	emb = ipd_doc.emblishment_details_json
-	if isinstance(emb, string_types):
-		emb = json.loads(emb)
-
+	emb = update_if_string_instance(ipd_doc.emblishment_details_json)
 	if ipd_doc.stiching_process == process or ipd_doc.packing_process == process:
 		return 1
 	elif ipd_doc.cutting_process == process:
@@ -669,9 +655,7 @@ def get_attributes(items, itemname, stage, dependent_attribute, ipd=None, proces
 		from production_api.essdee_production.doctype.item_production_detail.item_production_detail import get_stitching_combination
 		ipd_doc = frappe.get_cached_doc("Item Production Detail", ipd)
 		stiching_combination = get_stitching_combination(ipd_doc)
-		item_variants = ipd_doc.variants_json
-		if isinstance(item_variants, string_types):
-			item_variants = json.loads(item_variants)
+		item_variants = update_if_string_instance(ipd_doc.variants_json)
 
 	if pack_ipd:
 		ipd_pack_doc = frappe.get_cached_doc("Item Production Detail", pack_ipd)
@@ -721,9 +705,7 @@ def get_attributes(items, itemname, stage, dependent_attribute, ipd=None, proces
 					for item in ipd_doc.stiching_item_details:
 						id += 1
 						if process:
-							emb = ipd_doc.emblishment_details_json
-							if isinstance(emb, string_types):
-								emb = json.loads(emb)
+							emb = update_if_string_instance(ipd_doc.emblishment_details_json)
 							if emb.get(process):	
 								if item.stiching_attribute_value in emb[process]:
 									attributes[ipd_doc.stiching_attribute] = item.stiching_attribute_value
@@ -770,9 +752,7 @@ def get_attributes(items, itemname, stage, dependent_attribute, ipd=None, proces
 						id += 1
 						attributes[ipd_doc.packing_attribute] = colour
 						if process:
-							emb = ipd_doc.emblishment_details_json
-							if isinstance(emb, string_types):
-								emb = json.loads(emb)
+							emb = update_if_string_instance(ipd_doc.emblishment_details_json)
 							if emb.get(process):	
 								if panel in emb[process]:
 									attributes[ipd_doc.stiching_attribute] = panel
@@ -821,17 +801,14 @@ def get_receivable_item_attribute_details(variant, item_attributes, stage):
 	return attribute_details
 
 def get_items(items, ipd, deliverable):
-	if isinstance(items, string_types):
-		items = json.loads(items)
+	items = update_if_string_instance(items)
 	if len(items[0]['items']) == 0:
 		return []
 	ipd_doc = None
 	item_variants = None
 	if ipd:
 		ipd_doc = frappe.get_cached_doc("Item Production Detail", ipd)
-		item_variants = ipd_doc.variants_json
-		if isinstance(item_variants, string_types):
-			item_variants = json.loads(item_variants)
+		item_variants = update_if_string_instance(ipd_doc.variants_json)
 	item = items[0]
 	item_list = []
 	index = -1
@@ -1010,3 +987,12 @@ def calc(doc_name):
 	from production_api.production_api.doctype.goods_received_note.goods_received_note import calculate_pieces
 	for grn in grn_list:
 		calculate_pieces(grn)
+
+def update_if_string_instance(obj):
+	if isinstance(obj, string_types):
+		obj = json.loads(obj)
+
+	if not obj:
+		obj = {}
+
+	return obj	

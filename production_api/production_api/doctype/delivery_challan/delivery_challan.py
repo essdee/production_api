@@ -9,7 +9,7 @@ from datetime import datetime
 from frappe.model.document import Document
 from production_api.mrp_stock.utils import get_stock_balance
 from production_api.mrp_stock.stock_ledger import make_sl_entries
-from production_api.production_api.doctype.item.item import get_attribute_details, get_or_create_variant
+from production_api.production_api.doctype.item.item import get_attribute_details
 from production_api.production_api.doctype.purchase_order.purchase_order import get_item_attribute_details, get_item_group_index
 from production_api.production_api.logger import get_module_logger
 
@@ -122,7 +122,7 @@ class DeliveryChallan(Document):
 			return
 		
 		if(self.get('deliverable_item_details')):
-			deliverables,stock_value = save_deliverables(self.deliverable_item_details,self.from_location)
+			deliverables,stock_value = save_deliverables(self.deliverable_item_details,self.from_location, self.production_detail)
 			self.set('items',deliverables)
 			self.stock_value = stock_value
 			self.total_value = stock_value
@@ -151,7 +151,12 @@ class DeliveryChallan(Document):
 		sl_dict.update(args)
 		return sl_dict
 
-def save_deliverables(item_details, from_location):
+def save_deliverables(item_details, from_location, ipd):
+	from production_api.essdee_production.doctype.item_production_detail.item_production_detail import get_or_create_ipd_variant
+	ipd_doc = frappe.get_cached_doc("Item Production Detail", ipd)
+	item_variants = ipd_doc.variants_json
+	if isinstance(item_variants, string_types):
+		item_variants = json.loads(item_variants)
 	if isinstance(item_details, string_types):
 		item_details = json.loads(item_details)
 	items = []
@@ -166,7 +171,20 @@ def save_deliverables(item_details, from_location):
 					if values.get('qty') or values.get('delivered_quantity'):
 						item_attributes[item.get('primary_attribute')] = attr
 						item1 = {}
-						variant_name = get_or_create_variant(item_name, item_attributes)
+						tup = tuple(sorted(item_attributes.items()))
+						variant_name = get_or_create_ipd_variant(item_variants, item_name, tup, item_attributes)
+						str_tup = str(tup)
+						if item_variants and item_variants.get(item_name):
+							if not item_variants[item_name].get(str_tup):
+								item_variants[item_name][str_tup] = variant_name	
+						else:	
+							if not item_variants:
+								item_variants = {}
+								item_variants[item_name] = {}
+								item_variants[item_name][str_tup] = variant_name
+							else:
+								item_variants[item_name] = {}
+								item_variants[item_name][str_tup] = variant_name
 						item1['item_variant'] = variant_name
 						item1['lot'] = item.get('lot')
 						item1['qty'] = values.get('qty')
@@ -189,7 +207,20 @@ def save_deliverables(item_details, from_location):
 			else:
 				if item['values'].get('default'):
 					item1 = {}
-					variant_name = get_or_create_variant(item_name, item_attributes)
+					tup = tuple(sorted(item_attributes.items()))
+					variant_name = get_or_create_ipd_variant(item_variants, item_name, tup, item_attributes)
+					str_tup = str(tup)
+					if item_variants and item_variants.get(item_name):
+						if not item_variants[item_name].get(str_tup):
+							item_variants[item_name][str_tup] = variant_name	
+					else:	
+						if not item_variants:
+							item_variants = {}
+							item_variants[item_name] = {}
+							item_variants[item_name][str_tup] = variant_name
+						else:
+							item_variants[item_name] = {}
+							item_variants[item_name][str_tup] = variant_name
 					item1['item_variant'] = variant_name
 					item1['qty'] = item['values']['default'].get('qty')
 					item1['secondary_qty'] = item['values']['default'].get('secondary_qty')
@@ -210,6 +241,7 @@ def save_deliverables(item_details, from_location):
 					stock_value += stock
 					items.append(item1)		
 			row_index += 1	
+	ipd_doc.db_set("variants_json", json.dumps(item_variants), update_modified=False)		
 	return items, stock_value
 
 def fetch_item_details(items, ipd, lot, is_new=False):
