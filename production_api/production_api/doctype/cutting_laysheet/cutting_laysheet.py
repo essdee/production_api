@@ -380,7 +380,7 @@ def generate_random_string(length=10):
 @frappe.whitelist()
 def get_cloth_accessories(cutting_plan):
 	ipd = frappe.get_value("Cutting Plan", cutting_plan, "production_detail")
-	ipd_doc = frappe.get_doc("Item Production Detail", ipd)
+	ipd_doc = frappe.get_cached_doc("Item Production Detail", ipd)
 	accessory_list = []
 	x = update_if_string_instance(ipd_doc.accessory_clothtype_json)
 	if x:
@@ -601,14 +601,14 @@ def update_cutting_plan(cutting_laysheet, check_cp = False):
 			parts = item.part.split(",")
 			for x in incomplete_items['items']:
 				if x['attributes'][ipd_doc.packing_attribute] == item.colour:
-						for val in x['values']:
-							if item.size == val:
-								for part in parts:
-									condition = True
-									if completed_items['is_set_item']:
-										condition = part in incomplete_items[ipd_doc.stiching_attribute][x['attributes'][ipd_doc.set_item_attribute]]
-									if condition:
-										x['values'][val][part] += item.quantity
+					for val in x['values']:
+						if item.size == val:
+							for part in parts:
+								condition = True
+								if completed_items['is_set_item']:
+									condition = part in incomplete_items[ipd_doc.stiching_attribute][x['attributes'][ipd_doc.set_item_attribute]]
+								if condition:
+									x['values'][val][part] += item.quantity
 		
 		stitching_combination = get_stitching_combination(ipd_doc)
 		set_item = ipd_doc.is_set_item
