@@ -337,101 +337,7 @@ def get_cut_sheet_data(doc_name,cutting_marker,item_details,items, max_plys:int,
 			if item.balance_weight < 0:
 				frappe.throw(f"{bold(item.dia)} {bold(item.colour)}, {bold(item.cloth_type)} was used more than the received weight")
 				return
-	check_cutting_plan(doc_name)		
-
-@frappe.whitelist()
-def check_cutting_plan(cutting_laysheet):
-	cls_doc = frappe.get_doc("Cutting LaySheet",cutting_laysheet)
-	production_detail, incomplete_items_json, completed_items_json = frappe.get_value("Cutting Plan",cls_doc.cutting_plan,['production_detail',"incomplete_items_json","completed_items_json"])
-	ipd_doc = frappe.get_doc("Item Production Detail",production_detail)
-
-	incomplete_items = json.loads(incomplete_items_json)
-	completed_items = json.loads(completed_items_json)
-	for item in cls_doc.cutting_laysheet_bundles:
-		parts = item.part.split(",")
-		for x in incomplete_items['items']:
-			if x['attributes'][ipd_doc.packing_attribute] == item.colour:
-					for val in x['values']:
-						if item.size == val:
-							for part in parts:
-								condition = True
-								if completed_items['is_set_item']:
-									condition = part in incomplete_items[ipd_doc.stiching_attribute][x['attributes'][ipd_doc.set_item_attribute]]
-								if condition:
-									x['values'][val][part] += item.quantity
-	
-	stitching_combination = get_stitching_combination(ipd_doc)
-	set_item = ipd_doc.is_set_item
-	cm_doc = frappe.get_doc("Cutting Marker",cls_doc.cutting_marker)
-	cutting_marker_list = cm_doc.calculated_parts.split(",")
-	item_panel = {}
-	for item in incomplete_items['items']:
-		for val in item['values']:
-			for panel in item['values'][val]:
-				if set_item:
-					key = (val,item['attributes'][ipd_doc.packing_attribute],item['attributes'][ipd_doc.set_item_attribute])
-				else:
-					key = (val,item['attributes'][ipd_doc.packing_attribute])	
-				if key in item_panel:
-					if panel in item_panel[key]:
-						item_panel[key][panel] += item['values'][val][panel]
-					else:
-						item_panel[key][panel] = item['values'][val][panel]
-				else:	
-					item_panel[key] = {}
-					item_panel[key][panel] = item['values'][val][panel] 
-
-	for item in item_panel:
-		check = True
-		min = sys.maxsize
-		part = None
-		condition1 = True
-		stich_key = item[1]
-
-		if set_item:
-			part = item[2]
-			stich_key = (stich_key, part)
-
-		for i in stitching_combination['stitching_combination'][stich_key]:
-			if i in cutting_marker_list:
-				panel_colour = stitching_combination['stitching_combination'][stich_key][i]
-				if set_item:
-					condition1 = i in incomplete_items[ipd_doc.stiching_attribute][part]
-				if condition1:	
-					m = False
-					for panel in item_panel:
-						condition2 = True
-						if set_item:
-							condition2 = panel[2] == part
-						if condition2 and panel[0] == item[0] and panel[1] == panel_colour and item_panel[panel][i] > 0:
-							m = True
-							if item_panel[panel][i] < min:
-								min = item_panel[panel][i]
-							break
-					if not m:
-						check = False
-						break
-			else:
-				check = False		
-		if check:
-			for x in completed_items['items']:
-				total_qty = 0
-				condition3 = True
-				if set_item:
-					condition3 = x['attributes'][ipd_doc.set_item_attribute] == part
-				if x['attributes'][ipd_doc.packing_attribute] == item[1] and condition3:
-					if x['completed']:
-						txt = item[1]
-						if set_item:
-							txt += "-" + part
-						frappe.throw(f"Already {txt} was completed")
-					x['values'][item[0]] += min
-					completed_items['total_qty'][item[0]] += min
-					total_qty += x['values'][item[0]]
-					break	
-				
-				if total_qty != 0:
-					x['total_qty'] = total_qty
+	update_cutting_plan(doc_name, check_cp=True)		
 
 def check_ratio_parts(parts, marker_ratios):
 	calculated_sizes = []
@@ -578,10 +484,10 @@ def get_created_date(creation):
 	return created_date.strftime("%d-%m-%Y")
 
 @frappe.whitelist()
-def update_cutting_plan(cutting_laysheet):
+def update_cutting_plan(cutting_laysheet, check_cp = False):
 	cls_doc = frappe.get_doc("Cutting LaySheet",cutting_laysheet)
 	production_detail, incomplete_items_json, completed_items_json, version = frappe.get_value("Cutting Plan",cls_doc.cutting_plan,['production_detail',"incomplete_items_json","completed_items_json", "version"])
-	ipd_doc = frappe.get_doc("Item Production Detail",production_detail)
+	ipd_doc = frappe.get_cached_doc("Item Production Detail",production_detail)
 	incomplete_items = json.loads(incomplete_items_json)
 	completed_items = json.loads(completed_items_json)
 	if version == "V2":
@@ -606,13 +512,18 @@ def update_cutting_plan(cutting_laysheet):
 					for panel in alter_incomplete_items[colour][val]:
 						if alter_incomplete_items[colour][val][panel] < min:
 							min = alter_incomplete_items[colour][val][panel]
-					item['values'][val] += min
-					for panel in alter_incomplete_items[colour][val]:
-						alter_incomplete_items[colour][val][panel] -= min
-
-			for item in incomplete_items['items']:
-				colour = item['attributes'][ipd_doc.packing_attribute]
-				item['values'] = alter_incomplete_items[colour]
+					
+					if item['completed'] and min > 0 and check_cp:
+						frappe.throw(f"Already {colour} was completed")			
+					
+					if not check_cp:		
+						item['values'][val] += min
+						for panel in alter_incomplete_items[colour][val]:
+							alter_incomplete_items[colour][val][panel] -= min
+			if not check_cp:
+				for item in incomplete_items['items']:
+					colour = item['attributes'][ipd_doc.packing_attribute]
+					item['values'] = alter_incomplete_items[colour]
 		else:
 			alter_incomplete_items = {}
 			for item in incomplete_items['items']:
@@ -650,35 +561,41 @@ def update_cutting_plan(cutting_laysheet):
 					for panel in alter_incomplete_items[colour][part][val]:
 						if alter_incomplete_items[colour][part][val][panel] < min:
 							min = alter_incomplete_items[colour][part][val][panel]
-					item['values'][val] += min
-					for panel in alter_incomplete_items[colour][part][val]:
-						alter_incomplete_items[colour][part][val][panel] -= min		
+					
+					if item['completed'] and min > 0 and check_cp:
+						txt = colour + "-" + part
+						frappe.throw(f"Already {txt} was completed")		
+					
+					if not check_cp:
+						item['values'][val] += min
+						for panel in alter_incomplete_items[colour][part][val]:
+							alter_incomplete_items[colour][part][val][panel] -= min		
+		if not check_cp:
+			cloth = {}
+			for item in cls_doc.cutting_laysheet_details:
+				key = (item.colour, item.cloth_type, item.dia)
+				cloth.setdefault(key,0)
+				cloth[key] += item.weight - item.balance_weight
+			accessory = {}
+			for item in cls_doc.cutting_laysheet_accessory_details:
+				key = (item.colour, item.cloth_type, item.dia)
+				accessory.setdefault(key,0)
+				accessory[key] += item.weight
+			cp_doc = frappe.get_doc("Cutting Plan",cls_doc.cutting_plan)
+			for item in cp_doc.cutting_plan_cloth_details:
+				key = (item.colour, item.cloth_type, item.dia)
+				if key in cloth:
+					item.used_weight += cloth[key]
+					item.balance_weight = item.weight - item.used_weight
 
-		cloth = {}
-		for item in cls_doc.cutting_laysheet_details:
-			key = (item.colour, item.cloth_type, item.dia)
-			cloth.setdefault(key,0)
-			cloth[key] += item.weight - item.balance_weight
-		accessory = {}
-		for item in cls_doc.cutting_laysheet_accessory_details:
-			key = (item.colour, item.cloth_type, item.dia)
-			accessory.setdefault(key,0)
-			accessory[key] += item.weight
-		cp_doc = frappe.get_doc("Cutting Plan",cls_doc.cutting_plan)
-		for item in cp_doc.cutting_plan_cloth_details:
-			key = (item.colour, item.cloth_type, item.dia)
-			if key in cloth:
-				item.used_weight += cloth[key]
-				item.balance_weight = item.weight - item.used_weight
+			for item in cp_doc.cutting_plan_accessory_details:
+				key = (item.colour, item.cloth_type, item.dia)
+				if key in accessory:
+					item.used_weight += accessory[key]
 
-		for item in cp_doc.cutting_plan_accessory_details:
-			key = (item.colour, item.cloth_type, item.dia)
-			if key in accessory:
-				item.used_weight += accessory[key]
-
-		cp_doc.incomplete_items_json = incomplete_items
-		cp_doc.completed_items_json = completed_items
-		cp_doc.save()
+			cp_doc.incomplete_items_json = incomplete_items
+			cp_doc.completed_items_json = completed_items
+			cp_doc.save()
 	else:
 		for item in cls_doc.cutting_laysheet_bundles:
 			parts = item.part.split(",")
@@ -751,63 +668,65 @@ def update_cutting_plan(cutting_laysheet):
 					if set_item:
 						condition3 = x['attributes'][ipd_doc.set_item_attribute] == part
 					if x['attributes'][ipd_doc.packing_attribute] == item[1] and condition3:
-						if x['completed']:
+						if x['completed'] and check_cp:
 							txt = item[1]
 							if set_item:
 								txt += "-" + part
 							frappe.throw(f"Already {txt} was completed")
-						x['values'][item[0]] += min
-						completed_items['total_qty'][item[0]] += min
-						total_qty += x['values'][item[0]]
-						break	
-					
-					if total_qty != 0:
-						x['total_qty'] = total_qty
+						if not check_cp:
+							x['values'][item[0]] += min
+							completed_items['total_qty'][item[0]] += min
+							total_qty += x['values'][item[0]]
+							break	
+					if not check_cp:
+						if total_qty != 0:
+							x['total_qty'] = total_qty
 
-				for i in stitching_combination['stitching_combination'][stich_key]:
-					panel_colour = stitching_combination['stitching_combination'][stich_key][i]
-					condition4 = True
-					if set_item:
-						condition4 = i in incomplete_items[ipd_doc.stiching_attribute][part]
-					if condition4:	
-						for panel in item_panel:
-							condition5 = True
-							if set_item:
-								condition5 = panel[2] == part
-							if condition5 and panel[0] == item[0] and panel[1] == panel_colour and item_panel[panel][i] > 0:
-								item_panel[panel][i] -= min
-								for x in incomplete_items['items']:
-									condition6 = True
-									if set_item:
-										condition6 =  x['attributes'][ipd_doc.set_item_attribute] == part
-									if x['attributes'][ipd_doc.packing_attribute] == panel_colour and condition6:
-										x['values'][panel[0]][i] -= min
-										break		
+				if not check_cp:
+					for i in stitching_combination['stitching_combination'][stich_key]:
+						panel_colour = stitching_combination['stitching_combination'][stich_key][i]
+						condition4 = True
+						if set_item:
+							condition4 = i in incomplete_items[ipd_doc.stiching_attribute][part]
+						if condition4:	
+							for panel in item_panel:
+								condition5 = True
+								if set_item:
+									condition5 = panel[2] == part
+								if condition5 and panel[0] == item[0] and panel[1] == panel_colour and item_panel[panel][i] > 0:
+									item_panel[panel][i] -= min
+									for x in incomplete_items['items']:
+										condition6 = True
+										if set_item:
+											condition6 =  x['attributes'][ipd_doc.set_item_attribute] == part
+										if x['attributes'][ipd_doc.packing_attribute] == panel_colour and condition6:
+											x['values'][panel[0]][i] -= min
+											break		
+		if not check_cp:
+			accessory= {}
+			cloth = {}
+			for item in cls_doc.cutting_laysheet_details:
+				key = (item.colour, item.cloth_type, item.dia)
+				cloth.setdefault(key,0)
+				cloth[key] += item.weight - item.balance_weight
+				accessory.setdefault(key,0)
+				accessory[key] += item.accessory_weight
 
-		accessory= {}
-		cloth = {}
-		for item in cls_doc.cutting_laysheet_details:
-			key = (item.colour, item.cloth_type, item.dia)
-			cloth.setdefault(key,0)
-			cloth[key] += item.weight - item.balance_weight
-			accessory.setdefault(key,0)
-			accessory[key] += item.accessory_weight
+			cp_doc = frappe.get_doc("Cutting Plan",cls_doc.cutting_plan)
+			for item in cp_doc.cutting_plan_cloth_details:
+				key = (item.colour, item.cloth_type, item.dia)
+				if key in cloth:
+					item.used_weight += cloth[key]
+					item.balance_weight = item.weight - item.used_weight
 
-		cp_doc = frappe.get_doc("Cutting Plan",cls_doc.cutting_plan)
-		for item in cp_doc.cutting_plan_cloth_details:
-			key = (item.colour, item.cloth_type, item.dia)
-			if key in cloth:
-				item.used_weight += cloth[key]
-				item.balance_weight = item.weight - item.used_weight
+			for item in cp_doc.cutting_plan_accessory_details:
+				key = (item.colour, item.cloth_type, item.dia)
+				if key in accessory:
+					item.used_weight += accessory[key]
 
-		for item in cp_doc.cutting_plan_accessory_details:
-			key = (item.colour, item.cloth_type, item.dia)
-			if key in accessory:
-				item.used_weight += accessory[key]
-
-		cp_doc.incomplete_items_json = incomplete_items
-		cp_doc.completed_items_json = completed_items
-		cp_doc.save()		
+			cp_doc.incomplete_items_json = incomplete_items
+			cp_doc.completed_items_json = completed_items
+			cp_doc.save()		
 
 @frappe.whitelist()
 def get_input_fields(cutting_marker, colour, select_attributes):
@@ -816,14 +735,13 @@ def get_input_fields(cutting_marker, colour, select_attributes):
 	cm_doc = frappe.get_doc("Cutting Marker",cutting_marker)
 	panels = cm_doc.calculated_parts.split(",")
 	ipd = frappe.get_value("Cutting Plan",cm_doc.cutting_plan,"production_detail")
-	ipd_doc = frappe.get_doc("Item Production Detail", ipd)
+	ipd_doc = frappe.get_cached_doc("Item Production Detail", ipd)
 	stich_attr_value = ipd_doc.stiching_major_attribute_value
 	major_attr_value = ipd_doc.major_attribute_value
 	select_vals = select_attributes['colour']
 	if ipd_doc.is_set_item:
 		stiching_details = {}
 		default = {}
-
 		for panel in ipd_doc.stiching_item_details:
 			if panel.is_default:
 				default[panel.set_item_attribute_value] = panel.stiching_attribute_value

@@ -99,7 +99,7 @@ let cloth_rolls = null
 let cloth_bits = null
 let cloth_end_bit = null
 let cloth_comment = null
-let edit_index = null
+let edit_index = ref(null)
 let balance_weight = null
 let items_json =  null
 let docstatus = ref(null)
@@ -112,7 +112,6 @@ function onchange_event(){
         return
     }
     let val = cloth_colour.get_value()
-    console.log(val)
     if(val && val != "" && val != null){
         frappe.call({
             method:"production_api.production_api.doctype.cutting_laysheet.cutting_laysheet.get_input_fields",
@@ -143,8 +142,8 @@ function onchange_event(){
                         if(df.default){
                             set_parameters[i].set_value(inputs[i].default)
                         }
-                        if(edit_index && !df.default){
-                            let val = items.value[edit_index]['set_combination']
+                        if(edit_index.value != null && edit_index.value >= 0 && !df.default){
+                            let val = items.value[edit_index.value]['set_combination']
                             if(typeof(val) == "string"){
                                 val = JSON.parse(val)
                             }
@@ -167,7 +166,7 @@ async function add_cloth_item(index){
         show_button4.value = true
     }
     else{
-        edit_index = index
+        edit_index.value = index
         show_button3.value = true
         show_button5.value = true
     }
@@ -184,7 +183,6 @@ async function add_cloth_item(index){
     balance_weight = get_input_field(".cloth-balance","Float","balance_weight","Balance Weight",null,true)
     items_json = get_input_field(".items-json","JSON","items_json","Items JSON", null, false)
     items_json.df.hidden = true
-    items_json.set_value([])
     items_json.refresh()
    
     if(index != null){
@@ -228,6 +226,10 @@ function add_item(){
         }
         set_json[fieldnames[i]] = val
     }
+    let json_val = items_json.get_value()
+    if(!json_val || json_val == null){
+        json_val = []
+    }
     items.value.push({
         "cloth_type":cloth_type.get_value(),
         "dia":cloth_dia.get_value(),
@@ -237,7 +239,7 @@ function add_item(){
         "no_of_rolls":cloth_rolls.get_value(),
         "no_of_bits":cloth_bits.get_value(),
         "end_bit_weight":cloth_end_bit.get_value(),
-        "items_json": JSON.stringify(items_json.get_value()),
+        "items_json": JSON.stringify(json_val),
         "comments":cloth_comment.get_value(),
         "balance_weight":balance_weight.get_value(),
         "used_weight": cloth_weight.get_value() - balance_weight.get_value(),
@@ -424,7 +426,7 @@ function update_item(){
         }
         set_json[fieldnames[i]] = val
     }
-    items.value[edit_index] = {
+    items.value[edit_index.value] = {
         "cloth_type":cloth_type.get_value(),
         "dia":cloth_dia.get_value(),
         "colour":cloth_colour.get_value(),
@@ -439,7 +441,7 @@ function update_item(){
         "items_json":JSON.stringify(items_json.get_value()),
         "set_combination":JSON.stringify(set_json)
     }
-    edit_index = null
+    edit_index.value = null
     show_button3.value = false
     show_button5.value = false
     show_button1.value = true
@@ -506,6 +508,7 @@ function make_clean(){
     show_button3.value = false
     show_button4.value = false
     show_button5.value = false
+    edit_index.value = null
 }
 
 onMounted(()=> {

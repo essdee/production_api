@@ -137,8 +137,8 @@ class WorkOrder(Document):
 			rate = rate/attr_qty
 			if stich_details:
 				rate = rate/stich_details[attributes.get(ipd_doc.stiching_attribute)]
-			row.cost = rate
-			row.total_cost = rate * row.qty
+			row.cost = round(rate,2)
+			row.total_cost = round((rate * row.qty), 2)
 
 def save_item_details(item_details, ipd, supplier=None, process_name = None):
 	item_details = update_if_string_instance(item_details)
@@ -215,8 +215,8 @@ def get_data(item, table_index, row_index, process_name, quantity, cost):
 	item1 = {}
 	if process_name:
 		total_cost = flt(cost) * flt(quantity)
-		item1['cost'] = cost
-		item1['total_cost'] = total_cost		
+		item1['cost'] = round(cost,2)
+		item1['total_cost'] = round(total_cost,2)		
 	item1['qty'] = quantity
 	item1['lot'] = item.get('lot')
 	item1['uom'] = item.get('default_uom')
@@ -262,9 +262,9 @@ def get_rate_and_quantity(variant_name, quantity, doc, process_doc):
 				order_quantity = cost['min_order_qty']
 				low_price = cost['price']		
 	if not found:
-		return low_price, attributes
+		return round(low_price,2), attributes
 	
-	return rate, attributes
+	return round(rate,2), attributes
 
 def fetch_item_details(items,ipd, process=None, include_id = False, is_grn= False, is_calc=False):
 	items = [item.as_dict() for item in items]
@@ -295,9 +295,9 @@ def fetch_item_details(items,ipd, process=None, include_id = False, is_grn= Fals
 			'additional_parameters': variants[0]['additional_parameters'],
 		}
 		if variants[0].cost:
-			item['cost'] = variants[0].cost
+			item['cost'] = round(variants[0].cost,2)
 		if variants[0].total_cost:
-			item['total_cost'] = variants[0].total_cost	
+			item['total_cost'] = round(variants[0].total_cost,2)	
 
 		if item['primary_attribute']:
 			for attr in current_item_attribute_details['primary_attribute_values']:
@@ -321,14 +321,14 @@ def fetch_item_details(items,ipd, process=None, include_id = False, is_grn= Fals
 							'cancelled_qty': variant.cancelled_qty,
 							'rate': variant.rate,
 							'tax': variant.tax,
-							'cost':variant.cost,
+							'cost':round(variant.cost,2),
 							'set_combination':variant.set_combination,
 						}
 						if is_calc:
 							item['values'][attr.attribute_value]['is_calculated'] = variant.is_calculated
 						if is_grn:
 							item['values'][attr.attribute_value]['qty'] = variant.pending_quantity
-							item['values'][attr.attribute_value]['rate'] = variant.cost
+							item['values'][attr.attribute_value]['rate'] = round(variant.cost,2)
 							
 						if include_id:
 							item['values'][attr.attribute_value]['ref_doctype'] = "Work Order Receivables"
@@ -342,7 +342,7 @@ def fetch_item_details(items,ipd, process=None, include_id = False, is_grn= Fals
 				'cancelled_qty': variants[0].cancelled_qty,
 				'rate': variants[0].rate,
 				'tax': variants[0].tax,
-				'cost': variants[0].cost,
+				'cost': round(variants[0].cost,2),
 				'set_combination': variants[0].set_combination,
 			}
 			if is_calc:
@@ -352,7 +352,7 @@ def fetch_item_details(items,ipd, process=None, include_id = False, is_grn= Fals
 				item['values']['default']['ref_docname'] = variants[0].name
 			if is_grn:
 				item['values']['default']['qty'] = variants[0].pending_quantity
-				item['values']['default']['rate'] = variants[0].cost
+				item['values']['default']['rate'] = round(variants[0].cost,2)
 
 		index = get_item_group_index(item_details, current_item_attribute_details)
 		if index == -1:

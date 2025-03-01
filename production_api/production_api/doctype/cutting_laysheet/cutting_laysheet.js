@@ -129,9 +129,10 @@ frappe.ui.form.on("Cutting LaySheet", {
         if(frm.doc.cutting_laysheet_bundles.length > 0 && frm.doc.status == "Bundles Generated" ){
             frm.add_custom_button("Print Labels", ()=> {
                 frappe.call({
-                    method:"production_api.production_api.doctype.cutting_laysheet.cutting_laysheet.check_cutting_plan",
+                    method:"production_api.production_api.doctype.cutting_laysheet.cutting_laysheet.update_cutting_plan",
                     args: {
                         cutting_laysheet: frm.doc.name, 
+                        check_cp: true,
                     },
                     callback: function(){
                         frappe.ui.form.qz_connect()

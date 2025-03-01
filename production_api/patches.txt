@@ -22,7 +22,7 @@ production_api.patches.v1_0.update_stock_datetime_field
 production_api.patches.v1_0.stock_reservation_entry
 production_api.patches.v1_0.update_cutting_completion #1
 production_api.patches.v1_0.update_lot_order_detail #3
-production_api.patches.v1_0.update_cutting_plan_version #1
+production_api.patches.v1_0.update_cutting_plan_version #2
 production_api.patches.v1_0.update_cutting_plan_items #5
 production_api.patches.v1_0.update_delivery_challan_ipd
 
