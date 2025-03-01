@@ -1151,7 +1151,7 @@ def get_other_deliverables(grn_doc, wo_doc):
 				"item_variant": item.item_variant,
 				"qty": item.quantity,
 				"uom":item.uom,
-				"set_combination": item['set_combination'],
+				"set_combination": item.set_combination,
 			})
 		return final_value
 	else:
