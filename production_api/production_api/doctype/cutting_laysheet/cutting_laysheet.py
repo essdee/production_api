@@ -263,12 +263,12 @@ def get_cut_sheet_data(doc_name,cutting_marker,item_details,items, max_plys:int,
 								last_balance = item['no_of_bits']/2
 							else:
 								qty = qty + item['no_of_bits']/2	
-						d = get_cut_sheet_dict(cm_item.size, item['colour'], item['shade'], part_value , qty, bundle_no, item['set_combination'])
+						d = get_cut_sheet_dict(cm_item.size, item['colour'], item['shade'], part_value , qty, bundle_no, item.get('set_combination', {}))
 						cut_sheet_data.append(d)	
 
 						if last_balance > 0:
 							bundle_no = bundle_no + 1
-							d = get_cut_sheet_dict(cm_item.size, item['colour'], item['shade'], part_value , last_balance, bundle_no, item['set_combination'])
+							d = get_cut_sheet_dict(cm_item.size, item['colour'], item['shade'], part_value , last_balance, bundle_no, item.get('set_combination', {}))
 							cut_sheet_data.append(d)
 
 					for j in range(minimum_count):
@@ -283,16 +283,16 @@ def get_cut_sheet_data(doc_name,cutting_marker,item_details,items, max_plys:int,
 							else:
 								qty = qty + item['no_of_bits']/2	
 
-						d = get_cut_sheet_dict(cm_item.size, item['colour'], item['shade'], part_value , qty, bundle_no, item['set_combination'])
+						d = get_cut_sheet_dict(cm_item.size, item['colour'], item['shade'], part_value , qty, bundle_no, item.get('set_combination', {}))
 						cut_sheet_data.append(d)
 						if last_balance > 0:
 							bundle_no = bundle_no + 1
-							d = get_cut_sheet_dict(cm_item.size, item['colour'], item['shade'], part_value , last_balance, bundle_no, item['set_combination'])
+							d = get_cut_sheet_dict(cm_item.size, item['colour'], item['shade'], part_value , last_balance, bundle_no, item.get('set_combination', {}))
 							cut_sheet_data.append(d)
 
 					if update and check:
 						bundle_no = bundle_no + 1
-						d = get_cut_sheet_dict(cm_item.size, item['colour'], item['shade'], part_value , item['no_of_bits']/2, bundle_no, item['set_combination'])
+						d = get_cut_sheet_dict(cm_item.size, item['colour'], item['shade'], part_value , item['no_of_bits']/2, bundle_no, item.get('set_combination', {}))
 						cut_sheet_data.append(d)
 			temp = bundle_no	
 

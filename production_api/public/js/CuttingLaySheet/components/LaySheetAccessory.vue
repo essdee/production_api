@@ -30,7 +30,7 @@
                 </tr>
             </table>
         </div>
-        <div class="row pt-3" v-if="status != 'Label Printed' && show_button1 && docstatus != null">
+        <div class="row pt-3" v-if="status != 'Label Printed' && show_button1 && docstatus != null && had_accessory">
             <button class="btn btn-success pull-left" @click="add_cloth_item(null)">Add Accessory</button>
         </div>
         <div class="html-container col mt-1">
@@ -60,6 +60,7 @@
 </template>
 <script setup>
 import {ref, onMounted, computed, watch} from 'vue';
+let had_accessory = ref(true)
 let show_button1 = ref(true)
 let show_button2 = ref(false)
 let show_button3 = ref(false)
@@ -240,6 +241,9 @@ onMounted(()=> {
             },
             callback:function(r){
                 cloth_accessories = r.message
+                if(cloth_accessories.length == 0){
+                    had_accessory.value = false
+                }
             }
         })
     }

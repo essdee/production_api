@@ -16,7 +16,11 @@
                     </tr>
                     <tr v-for="(j, item1_index) in i.items" :key="item1_index">
                         <td>{{item1_index + 1}}</td>
-                        <td v-for="(k, idx) in i.attributes" :key="idx">{{j.attributes[k]}}</td>
+                        <td v-for="(k, idx) in i.attributes" :key="idx">
+                            {{j.attributes[k]}}
+                            <span v-if="k == 'Colour' && j.is_set_item && j.attributes[j.set_attr] != j.major_attr_value && j.attributes[k]">({{ j.item_keys['major_colour'] }})</span>
+                            <span v-else-if="k == 'Colour' && !j.is_set_item && j.attributes[k] != j.item_keys['major_colour'] && j.attributes[k]">({{ j.item_keys['major_colour'] }})</span>
+                        </td>
                         <td v-for="(k, idx) in Object.keys(j.values)" :key="idx">
                             <div v-for="(panel,idx2) in Object.keys(j.values[k])" :key='idx2'>
                                 <span v-if="j.values[k][panel] > 0">

@@ -56,6 +56,9 @@
                 <div class="cloth-balance col-md-4"></div>
             </div>
             <div class="row">
+                <div class="set-detail row pl-5 pb-2" style="display: flex; gap: 10px"></div>
+            </div>
+            <div class="row">
                 <div class="pl-4" v-if="show_button4">
                     <button class="btn btn-info pull-left" @click="add_entries()">Add Entries</button>       
                 </div>
@@ -64,9 +67,6 @@
                 </div>
                 <div class="items-json col-md-12"></div> 
                 <div class="cloth-comment col-md-12"></div>
-            </div>
-            <div class="row">
-                <div class="set-detail row p-4" style="display: flex; gap: 10px"></div>
             </div>
         </div>
         <div class="row" style="padding-left: 35px;" v-if="show_button2">

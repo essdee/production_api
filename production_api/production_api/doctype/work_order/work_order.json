@@ -317,7 +317,6 @@
   {
    "fieldname": "work_order_calculated_items",
    "fieldtype": "Table",
-   "hidden": 1,
    "label": "Work Order Calculated Items",
    "options": "Work Order Calculated Item"
   },
@@ -454,7 +453,7 @@
    "link_fieldname": "against_id"
   }
  ],
- "modified": "2025-02-25 17:19:35.501176",
+ "modified": "2025-03-03 11:15:23.534953",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Work Order",

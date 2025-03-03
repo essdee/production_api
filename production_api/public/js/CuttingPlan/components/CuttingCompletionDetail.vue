@@ -28,7 +28,11 @@
                         </tr>
                         <tr v-for="(j, item1_index) in i.items" :key="item1_index">
                             <td>{{item1_index + 1}}</td>
-                            <td v-for="(k, idx) in i.attributes" :key="idx">{{j.attributes[k]}}</td>
+                            <td v-for="(k, idx) in i.attributes" :key="idx">
+                                {{j.attributes[k]}}
+                                <span v-if="k == 'Colour' && j.is_set_item && j.attributes[j.set_attr] != j.major_attr_value && j.attributes[k]">({{ j.item_keys['major_colour'] }})</span>
+                                <span v-else-if="k == 'Colour' && !j.is_set_item && j.attributes[k] != j.item_keys['major_colour'] && j.attributes[k]">({{ j.item_keys['major_colour'] }})</span>
+                            </td>
                             <td v-for="(k, idx) in Object.keys(j.values)" :key="idx">
                                 <div v-if="j.values[k] > 0">
                                     {{ j.values[k] }}
@@ -75,14 +79,14 @@
                         <table v-if="i.items && i.items.length > 0" class="table table-sm table-bordered">
                             <tr>
                                 <th>S.No.</th>
-                                <th v-for="(j, idx) in i.final_state_attr" :key="idx">{{ j }}</th>
+                                <th v-for="(j, idx) in i.attributes" :key="idx">{{ j }}</th>
                                 <th v-for="(j, idx) in i.primary_attribute_values" :key="idx">
                                     {{ j }}
                                 </th>
                             </tr>
                             <tr v-for="(j, item1_index) in i.items" :key="item1_index">
                                 <td>{{item1_index + 1}}</td>
-                                <td v-for="(k, idx) in j.attributes" :key="idx">{{k}}</td>
+                                <td v-for="(k, idx) in i.attributes" :key="idx">{{j.attributes[k]}}</td>
                                 <td v-for="(k, idx) in Object.keys(j.values)" :key="idx">
                                     <div v-if="j.values[k] > 0">
                                         <div v-if="j['completed']">
@@ -95,7 +99,7 @@
                             </tr>
                             <tr>
                                 <td>Total</td>
-                                <td v-for="(j, idx) in i.final_state_attr" :key="idx"></td>
+                                <td v-for="(j, idx) in i.attributes" :key="idx"></td>
                                 <td v-for="(j, idx) in completed_total" :key="idx">{{j}}</td>
                             </tr>
                         </table>
@@ -105,14 +109,18 @@
                             <h3>{{part}}</h3>
                             <table v-if="i.items && i.items.length > 0" class="table table-sm table-bordered">
                                 <tr>
-                                    <th v-for="(j, idx) in i.final_state_attr" :key="idx">{{ j }}</th>
+                                    <th v-for="(j, idx) in i.attributes" :key="idx">{{ j }}</th>
                                     <th v-for="(j, idx) in i.primary_attribute_values" :key="idx">
                                         {{ j }}
                                     </th>
                                 </tr>
                                 <template v-for="(j, item1_index) in i.items" :key="item1_index">
                                     <tr v-if="check(j.attributes, part)">
-                                        <td v-for="(k, idx) in j.attributes" :key="idx">{{k}}</td>
+                                        <td v-for="(k, idx) in i.attributes" :key="idx">
+                                            {{j.attributes[k]}}
+                                            <span v-if="k == 'Colour' && j.is_set_item && j.attributes[j.set_attr] != j.major_attr_value && j.attributes[k]">({{ j.item_keys['major_colour'] }})</span>
+                                            <span v-else-if="k == 'Colour' && !j.is_set_item && j.attributes[k] != j.item_keys['major_colour'] && j.attributes[k]">({{ j.item_keys['major_colour'] }})</span>
+                                        </td>
                                         <td v-for="(k, idx) in Object.keys(j.values)" :key="idx">
                                             <div v-if="j.values[k] > 0">
                                                 <div v-if="j['completed']">
@@ -125,7 +133,7 @@
                                     </tr>
                                 </template>  
                                 <tr>
-                                    <td v-for="(j, idx) in i.final_state_attr" :key="idx"></td>
+                                    <td v-for="(j, idx) in i.attributes" :key="idx"></td>
                                     <td v-for="(j, idx) in completed_total[part]" :key="idx">{{j}}</td>
                                 </tr>  
                             </table>
@@ -191,7 +199,6 @@ function get_total(){
         let item = items.value[i]
         if(!item.is_set_item){
             item.items.forEach((row) => {
-                console.log(row)
                 if(row.completed){
                     Object.keys(row.values).forEach(key => {
                         if (total_dict[key]){
@@ -224,7 +231,6 @@ function get_total(){
             })
         }
     }
-    console.log(total_dict)
     completed_total.value = total_dict
 }
 
@@ -241,6 +247,6 @@ defineExpose({
 </script>
 <style scoped>
 .panel-column {
-    display: inline; /* Display items in a single line */
+    display: inline;
 }
 </style>
