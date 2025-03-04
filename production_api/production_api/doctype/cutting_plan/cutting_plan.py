@@ -123,7 +123,7 @@ def save_item_cloth_details(items):
 			"required_weight":item['required_weight'],
 			"weight":item['weight'],
 			"used_weight": item['used_weight'],
-			"balance_weight": item['balance_weight']
+			"balance_weight": item['weight'] - item['used_weight']
 		})
 	return item_details	
 
