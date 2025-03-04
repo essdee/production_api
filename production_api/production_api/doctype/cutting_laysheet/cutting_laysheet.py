@@ -601,6 +601,7 @@ def update_cutting_plan(cutting_laysheet, check_cp = False):
 			parts = item.part.split(",")
 			for x in incomplete_items['items']:
 				if x['attributes'][ipd_doc.packing_attribute] == item.colour:
+					check = False
 					for val in x['values']:
 						if item.size == val:
 							for part in parts:
@@ -608,7 +609,10 @@ def update_cutting_plan(cutting_laysheet, check_cp = False):
 								if completed_items['is_set_item']:
 									condition = part in incomplete_items[ipd_doc.stiching_attribute][x['attributes'][ipd_doc.set_item_attribute]]
 								if condition:
+									check = True
 									x['values'][val][part] += item.quantity
+					if check:
+						break
 		
 		stitching_combination = get_stitching_combination(ipd_doc)
 		set_item = ipd_doc.is_set_item
