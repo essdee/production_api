@@ -741,6 +741,7 @@ def get_input_fields(cutting_marker, colour, select_attributes):
 	stich_attr_value = ipd_doc.stiching_major_attribute_value
 	major_attr_value = ipd_doc.major_attribute_value
 	select_vals = select_attributes['colour']
+	is_same_packing_attr = ipd_doc.is_same_packing_attribute
 	if ipd_doc.is_set_item:
 		stiching_details = {}
 		default = {}
@@ -804,6 +805,8 @@ def get_input_fields(cutting_marker, colour, select_attributes):
 		else:
 			inputs.append({"fieldname":"major_panel", "fieldtype":"Data", "label":"Major Panel", "default": stich_attr_value})
 			inputs.append({"fieldname":"major_colour", "fieldtype":"Select", "label":"Major Colour", "options":select_vals})
+
+	inputs.append({"fieldname":"is_same_packing_attribute","fieldtype":"Check","label":"Is Same Packing Attribute","hidden":True,"default":is_same_packing_attr})	
 
 	return inputs		
 
