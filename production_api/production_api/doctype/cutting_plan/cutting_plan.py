@@ -328,7 +328,7 @@ def get_cutting_plan_laysheets_report(cutting_plan):
 		for row in ipd_doc.stiching_item_details:
 			panels.setdefault(row.set_item_attribute_value, [])
 
-	cls_list = frappe.get_list("Cutting LaySheet", filters={"cutting_plan":cutting_plan,"status":"Bundles Generated"}, pluck="name", order_by="lay_no asc")	
+	cls_list = frappe.get_list("Cutting LaySheet", filters={"cutting_plan":cutting_plan,"status":"Label Printed"}, pluck="name", order_by="lay_no asc")	
 	lay_details = {}
 	for cls in cls_list:
 		cls_doc = frappe.get_doc("Cutting LaySheet",cls)
