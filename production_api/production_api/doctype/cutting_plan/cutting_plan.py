@@ -166,7 +166,7 @@ def save_item_details(item_details, ipd):
 				item1['quantity'] = quantity
 				item1['row_index'] = row_index
 				item1['table_index'] = 0
-				item1['set_combination'] = item['item_keys']
+				item1['set_combination'] = item.get('item_keys', {})
 				items.append(item1)
 			row_index += 1
 	ipd_doc.db_set("variants_json", json.dumps(item_variants), update_modified=False)		

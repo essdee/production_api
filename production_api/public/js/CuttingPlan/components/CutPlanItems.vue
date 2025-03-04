@@ -13,7 +13,9 @@
 							<td>{{ item1_index + 1 }}</td>
 							<td v-for="attr in i.attributes" :key="attr">
                                 {{ j.attributes[attr] }}
-                                <span v-if="attr == 'Colour' && j.is_set_item && j.attributes[j.set_attr] != j.major_attr_value">({{ j.item_keys['major_colour'] }})</span>
+                                <span v-if="version == 'V2'">
+                                    <span v-if="attr == 'Colour' && j.is_set_item && j.attributes[j.set_attr] != j.major_attr_value">({{ j.item_keys['major_colour'] }})</span>
+                                </span>
                             </td>
 							<td v-for="attr in j.values" :key="attr">
 								<div v-if="attr.qty">
@@ -38,7 +40,9 @@
                         <td>{{ item1_index + 1 }}</td>
                         <td v-for="attr in i.attributes" :key="attr">
                             {{ j.attributes[attr] }}
-                            <span v-if="attr == 'Colour' && j.is_set_item && j.attributes[j.set_attr] != j.major_attr_value">({{ j.item_keys['major_colour'] }})</span>
+                            <span v-if="version == 'V2'">
+                                <span v-if="attr == 'Colour' && j.is_set_item && j.attributes[j.set_attr] != j.major_attr_value">({{ j.item_keys['major_colour'] }})</span>
+                            </span>
                         </td>
                         <td v-for="attr in Object.keys(j.values)" :key="attr">
                             <form>
@@ -58,6 +62,7 @@ import {ref, onMounted} from 'vue';
 let items = ref(null)
 let show_title = ref(false)
 let docstatus = ref(0)
+let version = cur_frm.doc.version
 function load_data(item){
     docstatus.value = cur_frm.doc.docstatus
     items.value = item;

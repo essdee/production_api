@@ -659,8 +659,6 @@ def update_cutting_plan(cutting_laysheet, check_cp = False):
 						if not m:
 							check = False
 							break
-				else:
-					check = False		
 			if check:
 				for x in completed_items['items']:
 					total_qty = 0

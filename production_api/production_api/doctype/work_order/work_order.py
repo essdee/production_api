@@ -321,14 +321,14 @@ def fetch_item_details(items,ipd, process=None, include_id = False, is_grn= Fals
 							'cancelled_qty': variant.cancelled_qty,
 							'rate': variant.rate,
 							'tax': variant.tax,
-							'cost': variant.cost,
+							'cost': round(variant.cost, 2) if variant.cost else variant.cost,
 							'set_combination':variant.set_combination,
 						}
 						if is_calc:
 							item['values'][attr.attribute_value]['is_calculated'] = variant.is_calculated
 						if is_grn:
 							item['values'][attr.attribute_value]['qty'] = variant.pending_quantity
-							item['values'][attr.attribute_value]['rate'] = variant.cost
+							item['values'][attr.attribute_value]['rate'] = round(variant.cost, 2) if variant.cost else variant.cost
 							
 						if include_id:
 							item['values'][attr.attribute_value]['ref_doctype'] = "Work Order Receivables"
@@ -342,7 +342,7 @@ def fetch_item_details(items,ipd, process=None, include_id = False, is_grn= Fals
 				'cancelled_qty': variants[0].cancelled_qty,
 				'rate': variants[0].rate,
 				'tax': variants[0].tax,
-				'cost': variants[0].cost,
+				'cost': round(variants[0].cost, 2) if variants[0].cost else variants[0].cost,
 				'set_combination': variants[0].set_combination,
 			}
 			if is_calc:
@@ -352,7 +352,7 @@ def fetch_item_details(items,ipd, process=None, include_id = False, is_grn= Fals
 				item['values']['default']['ref_docname'] = variants[0].name
 			if is_grn:
 				item['values']['default']['qty'] = variants[0].pending_quantity
-				item['values']['default']['rate'] = variants[0].cost
+				item['values']['default']['rate'] = round(variants[0].cost, 2) if variants[0].cost else variants[0].cost
 
 		index = get_item_group_index(item_details, current_item_attribute_details)
 		if index == -1:

@@ -30,8 +30,10 @@
                             <td>{{item1_index + 1}}</td>
                             <td v-for="(k, idx) in i.attributes" :key="idx">
                                 {{j.attributes[k]}}
-                                <span v-if="k == 'Colour' && j.is_set_item && j.attributes[j.set_attr] != j.major_attr_value && j.attributes[k]">({{ j.item_keys['major_colour'] }})</span>
-                                <span v-else-if="k == 'Colour' && !j.is_set_item && j.attributes[k] != j.item_keys['major_colour'] && j.attributes[k]">({{ j.item_keys['major_colour'] }})</span>
+                                <span v-if="version == 'V2'">
+                                    <span v-if="k == 'Colour' && j.is_set_item && j.attributes[j.set_attr] != j.major_attr_value && j.attributes[k]">({{ j.item_keys['major_colour'] }})</span>
+                                    <span v-else-if="k == 'Colour' && !j.is_set_item && j.attributes[k] != j.item_keys['major_colour'] && j.attributes[k]">({{ j.item_keys['major_colour'] }})</span>
+                                </span>
                             </td>
                             <td v-for="(k, idx) in Object.keys(j.values)" :key="idx">
                                 <div v-if="j.values[k] > 0">
@@ -118,8 +120,10 @@
                                     <tr v-if="check(j.attributes, part)">
                                         <td v-for="(k, idx) in i.attributes" :key="idx">
                                             {{j.attributes[k]}}
-                                            <span v-if="k == 'Colour' && j.is_set_item && j.attributes[j.set_attr] != j.major_attr_value && j.attributes[k]">({{ j.item_keys['major_colour'] }})</span>
-                                            <span v-else-if="k == 'Colour' && !j.is_set_item && j.attributes[k] != j.item_keys['major_colour'] && j.attributes[k]">({{ j.item_keys['major_colour'] }})</span>
+                                            <span v-if="version == 'V2'">
+                                                <span v-if="k == 'Colour' && j.is_set_item && j.attributes[j.set_attr] != j.major_attr_value && j.attributes[k]">({{ j.item_keys['major_colour'] }})</span>
+                                                <span v-else-if="k == 'Colour' && !j.is_set_item && j.attributes[k] != j.item_keys['major_colour'] && j.attributes[k]">({{ j.item_keys['major_colour'] }})</span>
+                                            </span>
                                         </td>
                                         <td v-for="(k, idx) in Object.keys(j.values)" :key="idx">
                                             <div v-if="j.values[k] > 0">
@@ -155,6 +159,7 @@ let item = cur_frm.doc.item
 let datetime = ref(null)
 let items2 = ref(null)
 let completed_total = ref({})
+let version = cur_frm.doc.version
 
 onMounted(()=> {
     let today = new Date()
