@@ -645,24 +645,26 @@ def update_cutting_plan(cutting_laysheet, check_cp = False):
 				stich_key = (stich_key, part)
 
 			for i in stitching_combination['stitching_combination'][stich_key]:
-				if i in cutting_marker_list:
-					panel_colour = stitching_combination['stitching_combination'][stich_key][i]
-					if set_item:
-						condition1 = i in incomplete_items[ipd_doc.stiching_attribute][part]
-					if condition1:	
-						m = False
-						for panel in item_panel:
-							condition2 = True
-							if set_item:
-								condition2 = panel[2] == part
-							if condition2 and panel[0] == item[0] and panel[1] == panel_colour and item_panel[panel][i] > 0:
-								m = True
-								if item_panel[panel][i] < min:
-									min = item_panel[panel][i]
-								break
-						if not m:
-							check = False
+				panel_colour = stitching_combination['stitching_combination'][stich_key][i]
+				if set_item:
+					condition1 = i in incomplete_items[ipd_doc.stiching_attribute][part]
+				if condition1:	
+					m = False
+					for panel in item_panel:
+						condition2 = True
+						if set_item:
+							condition2 = panel[2] == part
+						if condition2 and panel[0] == item[0] and panel[1] == panel_colour and item_panel[panel][i] > 0:
+							m = True
+							if item_panel[panel][i] < min:
+								min = item_panel[panel][i]
 							break
+					if not m:
+						check = False
+						break
+				else:
+					check = False
+
 			if check and min != sys.maxsize:
 				for x in completed_items['items']:
 					total_qty = 0
