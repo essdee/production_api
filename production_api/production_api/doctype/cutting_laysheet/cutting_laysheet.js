@@ -24,14 +24,14 @@ frappe.ui.form.on("Cutting LaySheet", {
         })
     },
     refresh(frm) {
-        frm.add_custom_button("Update",()=> {
-            frappe.call({
-                method: "production_api.production_api.doctype.cutting_laysheet.cutting_laysheet.update_cutting_plan",
-                args : {
-                    cutting_laysheet: frm.doc.name,
-                }
-            })
-        })
+        // frm.add_custom_button("Update",()=> {
+        //     frappe.call({
+        //         method: "production_api.production_api.doctype.cutting_laysheet.cutting_laysheet.update_cutting_plan",
+        //         args : {
+        //             cutting_laysheet: frm.doc.name,
+        //         }
+        //     })
+        // })
         removeDefaultPrintEvent();
         $('[data-original-title=Print]').hide();
         $("li:has(a:has(span[data-label='Print']))").remove();
