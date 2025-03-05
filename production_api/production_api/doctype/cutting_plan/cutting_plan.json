@@ -11,6 +11,7 @@
   "lay_no",
   "naming_series",
   "status",
+  "version",
   "column_break_nvaz",
   "item",
   "maximum_allow_percent",
@@ -178,6 +179,13 @@
    "in_list_view": 1,
    "label": "Status",
    "options": "Started\nCompleted"
+  },
+  {
+   "fieldname": "version",
+   "fieldtype": "Select",
+   "hidden": 1,
+   "label": "Version",
+   "options": "\nV1\nV2"
   }
  ],
  "index_web_pages_for_search": 1,
@@ -191,7 +199,7 @@
    "link_fieldname": "cutting_plan"
   }
  ],
- "modified": "2025-02-15 16:40:34.473497",
+ "modified": "2025-02-25 19:09:04.735599",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Cutting Plan",

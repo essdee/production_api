@@ -20,7 +20,8 @@
   "accessory_weight",
   "used_weight",
   "balance_weight",
-  "items_json"
+  "items_json",
+  "set_combination"
  ],
  "fields": [
   {
@@ -119,12 +120,17 @@
    "fieldname": "items_json",
    "fieldtype": "JSON",
    "label": "Items JSON"
+  },
+  {
+   "fieldname": "set_combination",
+   "fieldtype": "JSON",
+   "label": "Set Combination"
   }
  ],
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2025-02-07 15:00:13.240860",
+ "modified": "2025-02-18 17:08:17.792626",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Cutting LaySheet Detail",

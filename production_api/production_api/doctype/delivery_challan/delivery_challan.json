@@ -15,6 +15,7 @@
   "is_internal_unit",
   "transfer_complete",
   "naming_series",
+  "production_detail",
   "column_break_xmwj",
   "process_name",
   "supplier",
@@ -308,12 +309,20 @@
    "label": "STE Transferred Percent",
    "precision": "2",
    "read_only": 1
+  },
+  {
+   "fetch_from": "work_order.production_detail",
+   "fetch_if_empty": 1,
+   "fieldname": "production_detail",
+   "fieldtype": "Link",
+   "label": "Production Detail",
+   "options": "Item Production Detail"
   }
  ],
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-02-05 19:01:33.965995",
+ "modified": "2025-02-25 17:42:39.817060",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Delivery Challan",

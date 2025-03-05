@@ -35,6 +35,9 @@
   "section_break_dasc",
   "cutting_laysheet_details",
   "cloths_html",
+  "section_break_ujvr",
+  "cutting_laysheet_accessory_details",
+  "accessory_html",
   "section_break_yezv",
   "no_of_rolls",
   "weight",
@@ -309,11 +312,27 @@
    "fieldtype": "Data",
    "hidden": 1,
    "label": "Selected Type"
+  },
+  {
+   "fieldname": "cutting_laysheet_accessory_details",
+   "fieldtype": "Table",
+   "hidden": 1,
+   "label": "Cutting LaySheet Accessory Details",
+   "options": "Cutting LaySheet Accessory Detail"
+  },
+  {
+   "fieldname": "accessory_html",
+   "fieldtype": "HTML",
+   "label": "Accessory HTML"
+  },
+  {
+   "fieldname": "section_break_ujvr",
+   "fieldtype": "Section Break"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-02-14 15:36:03.424151",
+ "modified": "2025-02-20 13:04:50.917172",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Cutting LaySheet",

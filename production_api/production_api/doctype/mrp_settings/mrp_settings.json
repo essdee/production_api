@@ -24,7 +24,9 @@
   "section_break_inin",
   "dc_grn_letter_head",
   "raw_printing_printers_section",
-  "printer_list"
+  "printer_list",
+  "work_order_section",
+  "received_type_list"
  ],
  "fields": [
   {
@@ -138,12 +140,22 @@
    "fieldname": "printer_list",
    "fieldtype": "Small Text",
    "label": "Printer List"
+  },
+  {
+   "fieldname": "work_order_section",
+   "fieldtype": "Section Break",
+   "label": "Work Order"
+  },
+  {
+   "fieldname": "received_type_list",
+   "fieldtype": "Small Text",
+   "label": "Received Type List"
   }
  ],
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2025-02-17 14:39:25.669051",
+ "modified": "2025-03-03 12:41:58.856466",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "MRP Settings",

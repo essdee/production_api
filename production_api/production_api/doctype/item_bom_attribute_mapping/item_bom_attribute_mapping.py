@@ -121,8 +121,17 @@ def get_comb(ipd, attributes, bom_attributes, attribute_values):
 		item_attributes = json.loads(item_attributes)
 	if isinstance(packing_attr_details, string_types):
 		packing_attr_details = json.loads(packing_attr_details)
+	
+	cloth_colours = []
+	for pack_attr in packing_attr_details:
+		cloth_colours.append(pack_attr.attribute_value)
+	
+	if ipd_doc.is_set_item:
+		for row in ipd_doc.set_item_combination_details:
+			if row.attribute_value not in cloth_colours:
+				cloth_colours.append(row.attribute_value)
 
-	item_attr_val_list = get_combination_attr_list(attributes,packing_attr, packing_attr_details, item_attributes)
+	item_attr_val_list = get_combination_attr_list(attributes,packing_attr, cloth_colours, item_attributes)
 
 	stich_attr = ipd_doc.stiching_attribute
 	set_attr = ipd_doc.set_item_attribute

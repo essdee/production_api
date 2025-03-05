@@ -20,7 +20,13 @@
                             <td>{{ item1_index + 1 }}</td>
                             <td>{{ j.name }}</td>
                             <td v-if="!lot_no">{{ j.lot }}</td>
-                            <td v-for="attr in i.attributes" :key="attr">{{ j.attributes[attr] }}</td>
+                            <td v-for="attr in i.attributes" :key="attr">
+                                {{ j.attributes[attr] }}
+                                <span v-if="j.item_keys">
+                                    <span v-if="attr == 'Colour' && j.is_set_item && j.attributes[j.set_attr] != j.major_attr_value && j.attributes[attr]">({{ j.item_keys['major_colour'] }})</span>
+                                    <span v-else-if="attr == 'Colour' && !j.is_set_item && j.attributes[attr] != j.item_keys['major_colour'] && j.attributes[attr]">({{ j.item_keys['major_colour'] }})</span>
+                                </span>
+                            </td>
                             <td v-if="has_additional_parameter(i)">
                                 <p v-for="(parameter, p_index) in j.additional_parameters" :key="p_index">
                                     {{ parameter.additional_parameter_key }} : {{ parameter.additional_parameter_value }}
