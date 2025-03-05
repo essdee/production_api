@@ -1,15 +1,20 @@
 # Copyright (c) 2025, Essdee and contributors
 # For license information, please see license.txt
 
-import frappe
+import frappe, json
+from six import string_types
 
 def execute(filters=None):
-	columns = get_columns()
-	data = get_data(filters)
+	types = frappe.db.get_single_value("MRP Settings", "received_type_list")
+	received_types = types.split(",")
+	for t in received_types:
+		t = t.strip()
+	columns = get_columns(received_types)
+	data = get_data(filters, received_types)
 	return columns, data
 
-def get_columns():
-	return [
+def get_columns(received_types):
+	columns = [
 		{"fieldname":"work_order","fieldtype":"Link","options":"Work Order","label":"Work Order"},
 		{"fieldname":"wo_date","fieldtype":"Date","label":"WO Date"},
 		{"fieldname":"supplier","fieldtype":"Link","options":"Supplier","label":"Supplier"},
@@ -19,14 +24,24 @@ def get_columns():
 		{"fieldname":"process_name","fieldtype":"Link","options":"Process","label":"Process"},
 		{"fieldname":"total_no_of_pieces_delivered","fieldtype":"Int","label":"Pieces Delivered"},
 		{"fieldname":"total_no_of_pieces_received","fieldtype":"Int","label":"Pieces Received"},
-		{"fieldname":"difference","fieldtype":"Int","label":"Difference"},	
+	]
+
+	for t in received_types:
+		x = t.replace(" ", "_")
+		columns.append(
+			{"fieldname": x,"fieldtype":"Int","label":t},
+		)
+	columns = columns + [
+		{"fieldname":"others", "fieldtype":"Int","label":"Others"},
+		{"fieldname":"pending","fieldtype":"Int","label":"Pending"},	
 		{"fieldname":"first_dc_date","fieldtype":"Date","label":"First DC Date"},
 		{"fieldname":"last_dc_date","fieldtype":"Date","label":"Last DC Date"},
 		{"fieldname":"first_grn_date","fieldtype":"Date","label":"First GRN Date"},
 		{"fieldname":"last_grn_date","fieldtype":"Date","label":"Last GRN Date"},
-	]
+	]	
+	return columns
 
-def get_data(filters):
+def get_data(filters, received_types):
 	doctype = frappe.qb.DocType("Work Order")
 	query = frappe.qb.from_(doctype).select(
 		doctype.name.as_("work_order"),
@@ -38,13 +53,14 @@ def get_data(filters):
 		doctype.process_name,
 		doctype.total_no_of_pieces_delivered,
 		doctype.total_no_of_pieces_received,
-		(doctype.total_no_of_pieces_delivered - doctype.total_no_of_pieces_received).as_("difference"),
+		(doctype.total_no_of_pieces_received - doctype.total_no_of_pieces_delivered).as_("pending"),
 		doctype.first_dc_date,
 		doctype.last_dc_date,
 		doctype.first_grn_date,
 		doctype.last_grn_date,
+		doctype.received_types_json
+	).where(doctype.docstatus == 1 and doctype.wo_date >= filters.get("from_date") and doctype.wo_date <= filters.get("to_date"))
 
-	).where(doctype.docstatus == 1)
 
 	if supplier := filters.get('supplier'):
 		query = query.where(doctype.supplier == supplier)
@@ -55,8 +71,27 @@ def get_data(filters):
 	if item := filters.get("item"):
 		query = query.where(doctype.item == item)	
 	if status := filters.get("status"):
-		if status == "Closed":
+		if status == "Close":
 			query = query.where(doctype.open_status == "Close")
+		elif status == "Open":
+			query = query.where(doctype.open_status == "Open")
 
-	res = query.run(as_dict=True)
-	return res
+	result = query.run(as_dict=True)
+	for res in result:
+		received_json = res['received_types_json']
+		if isinstance(received_json, string_types):
+			received_json = json.loads(received_json)
+		others = 0	
+		for t in received_json:
+			if t not in received_types:
+				others += received_json.get(t)
+			elif t in received_types and received_json.get(t):
+				x = t.replace(" ", "_")
+				res.update({x: received_json.get(t)})
+			else:
+				x = t.replace(" ", "_")
+				res.update({x: 0})
+
+		res.update({"others":others})	
+
+	return result

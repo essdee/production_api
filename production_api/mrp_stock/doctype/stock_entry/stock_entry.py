@@ -17,7 +17,14 @@ from production_api.mrp_stock.utils import get_conversion_factor, get_stock_bala
 
 class StockEntry(Document):
 	def onload(self):
-		item_details = fetch_stock_entry_items(self.get('items'))
+		ipd = None
+		if self.purpose == "DC Completion":
+			ipd = frappe.get_value("Delivery Challan",self.against_id,"production_detail")
+		elif self.purpose == "GRN Completion":
+			wo = frappe.get_value("Goods Received Note", self.against_id, "against_id")
+			ipd = frappe.get_value("Work Order", wo, "production_detail")
+			
+		item_details = fetch_stock_entry_items(self.get('items'), ipd=ipd)
 		self.set('print_item_details', json.dumps(item_details))
 		self.set_onload('item_details', item_details)
 
@@ -173,7 +180,13 @@ class StockEntry(Document):
 			qty = 0
 			for ste_item in self.items:
 				for item in doc.items:
-					if ste_item.item == item.item_variant:
+					set1 = ste_item.set_combination
+					set2 = item.set_combination
+					if isinstance(set1, string_types):
+						set1 = json.loads(set1)
+					if isinstance(set2, string_types):
+						set2 = json.loads(set2)	
+					if ste_item.item == item.item_variant and set1 == set2:
 						check = True
 						if self.purpose == "GRN Completion":
 							check = ste_item.received_type == item.received_type
@@ -216,7 +229,13 @@ class StockEntry(Document):
 			qty = 0
 			for ste_item in self.items:
 				for item in doc.items:
-					if ste_item.item == item.item_variant:
+					set1 = ste_item.set_combination
+					set2 = item.set_combination
+					if isinstance(set1, string_types):
+						set1 = json.loads(set1)
+					if isinstance(set2, string_types):
+						set2 = json.loads(set2)	
+					if ste_item.item == item.item_variant and set1 == set2:
 						check = True
 						if self.purpose == "GRN Completion":
 							check = ste_item.received_type == item.received_type
@@ -387,9 +406,12 @@ class StockEntry(Document):
 			target_doc.save()
 
 @frappe.whitelist()
-def fetch_stock_entry_items(items):
+def fetch_stock_entry_items(items, ipd=None):
 	items = [item.as_dict() for item in items]
 	item_details = []
+	ipd_doc = None
+	if ipd:
+		ipd_doc = frappe.get_cached_doc("Item Production Detail", ipd)
 	items = sorted(items, key = lambda i: i['row_index'])
 	for key, variants in groupby(items, lambda i: i['row_index']):
 		variants = list(variants)
@@ -406,12 +428,29 @@ def fetch_stock_entry_items(items):
 			'received_type':variants[0]['received_type'],
 			'remarks': variants[0]['remarks'],
 		}
+		if ipd:
+			item['item_keys'] = {}
+			item["is_set_item"] = ipd_doc.is_set_item,
+			item["set_attr"] = ipd_doc.set_item_attribute,
+			item["pack_attr"] = ipd_doc.packing_attribute,
+			item["major_attr_value"] = ipd_doc.major_attribute_value,
 
 		if item['primary_attribute']:
 			for attr in current_item_attribute_details['primary_attribute_values']:
 				item['values'][attr] = {'qty': 0, 'rate': 0}
 			for variant in variants:
 				current_variant = frappe.get_doc("Item Variant", variant['item'])
+				
+				if ipd:
+					set_combination = variant['set_combination']
+					if isinstance(set_combination, string_types):
+						set_combination = json.loads(set_combination)
+					if set_combination:
+						if set_combination.get("major_part"):
+							item['item_keys']['major_part'] = set_combination.get("major_part")
+						if set_combination.get("major_colour"):
+							item['item_keys']['major_colour'] = set_combination.get("major_colour")		
+
 				for attr in current_variant.attributes:
 					if attr.attribute == item.get('primary_attribute'):
 						item['values'][attr.attribute_value] = {
@@ -423,6 +462,9 @@ def fetch_stock_entry_items(items):
 							'secondary_qty': variant.get("secondary_qty", 0),
 							'secondary_uom': variant.get('secondary_uom', None)
 						}
+						if ipd:
+							item['values'][attr.attribute_value]['set_combination'] = variant.get("set_combintion", {})
+
 						break
 		else:
 			item['values']['default'] = {

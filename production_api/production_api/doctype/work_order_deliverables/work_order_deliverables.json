@@ -21,7 +21,8 @@
   "additional_parameters",
   "stock_update",
   "is_calculated",
-  "valuation_rate"
+  "valuation_rate",
+  "set_combination"
  ],
  "fields": [
   {
@@ -129,12 +130,17 @@
    "fieldname": "valuation_rate",
    "fieldtype": "Currency",
    "label": "Valuation Rate"
+  },
+  {
+   "fieldname": "set_combination",
+   "fieldtype": "JSON",
+   "label": "Set Combination"
   }
  ],
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2024-12-31 09:53:59.833202",
+ "modified": "2025-02-21 11:59:29.224025",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Work Order Deliverables",

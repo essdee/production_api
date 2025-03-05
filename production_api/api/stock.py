@@ -6,6 +6,7 @@ import math
 
 @frappe.whitelist()
 def get_stock(item, warehouse, remove_zero_balance_item=1):
+    received_type =frappe.db.get_single_value("Stock Settings", "default_received_type")
     
     if isinstance(warehouse,string_types):
         warehouse = json.loads(warehouse)
@@ -69,6 +70,8 @@ def make_dispatch_stock_entry(items, warehouse, packing_slip):
         'from_warehouse': warehouse,
     })
     index = 0
+    received_type =frappe.db.get_single_value("Stock Settings", "default_received_type")
+
     for item in items:
         
         ste.append("items", {

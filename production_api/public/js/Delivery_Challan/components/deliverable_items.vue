@@ -16,7 +16,11 @@
 							<td>{{ item1_index + 1 }}</td>
 							<td>{{ j.name }}</td>
 							<td>{{ j.lot }}</td>
-							<td v-for="attr in i.attributes" :key="attr"> {{ j.attributes[attr] }} </td>
+							<td v-for="attr in i.attributes" :key="attr"> 
+								{{ j.attributes[attr] }} 
+								<span v-if="attr == 'Colour' && j.is_set_item && j.attributes[j.set_attr] != j.major_attr_value && j.attributes[attr]">({{ j.item_keys['major_colour'] }})</span>
+								<span v-else-if="attr == 'Colour' && !j.is_set_item && j.attributes[attr] != j.item_keys['major_colour'] && j.attributes[attr]">({{ j.item_keys['major_colour'] }})</span>
+							</td>
 							<td v-for="attr in j.values" :key="attr">
 								<div v-if='attr.delivered_quantity > 0'>
 									{{ attr.delivered_quantity}}
@@ -78,7 +82,10 @@
 							<td>{{ item1_index + 1 }}</td>
 							<td>{{ j.name }}</td>
 							<td>{{ j.lot }}</td>
-							<td v-for="attr in i.attributes" :key="attr"> {{ j.attributes[attr] }} </td>
+							<td v-for="attr in i.attributes" :key="attr"> 
+								{{ j.attributes[attr] }} 
+								<span v-if="attr == 'Colour' && j.is_set_item && j.attributes[j.set_attr] != j.major_attr_value">({{ j.item_keys['major_colour'] }})</span>
+							</td>
 							<td v-for="attr in j.values" :key="attr">
 								{{ attr.qty}} <span v-if="j.default_uom">{{ " " + j.default_uom }}</span>
 								<form>

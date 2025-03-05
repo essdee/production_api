@@ -69,7 +69,7 @@ frappe.ui.form.on("Work Order", {
 								fields: [
 									{fieldtype: "HTML",fieldname: "lot_items_html"}
 								],
-								size:"large",
+								size:"extra-large",
 								primary_action(){
 									frm.trigger("calculate_del_and_rec")
 									d.hide()
@@ -219,6 +219,9 @@ frappe.ui.form.on("Work Order", {
 			},
 			freeze:true,
 			freeze_message: __("Calculate Deliverables and Receivables..."),
+			callback: function(){
+				frm.reload_doc()
+			}
 		})
 	},
     validate(frm) {

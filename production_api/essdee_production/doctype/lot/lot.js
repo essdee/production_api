@@ -30,6 +30,11 @@ frappe.ui.form.on("Lot", {
 					method:"production_api.essdee_production.doctype.lot.lot.update_order_details",
 					args : {
 						doc_name : frm.doc.name,
+					},
+					freeze: true,
+					freeze_message: __("Calculating Order Items..."),
+					callback:function(r){
+						frm.reload_doc()
 					}
 				})
 			})
