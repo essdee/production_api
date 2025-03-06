@@ -1,0 +1,40 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2025-03-05 14:46:13.054271",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "report_data_html"
+ ],
+ "fields": [
+  {
+   "fieldname": "report_data_html",
+   "fieldtype": "HTML",
+   "label": "Report Data HTML"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "issingle": 1,
+ "links": [],
+ "modified": "2025-03-05 14:46:27.113153",
+ "modified_by": "Administrator",
+ "module": "Essdee Production",
+ "name": "Time and Action Weekly Review Report",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "print": 1,
+   "read": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

@@ -9,6 +9,7 @@
  "field_order": [
   "department",
   "capacity_planning",
+  "default_order",
   "column_break_tzmq",
   "lead_time",
   "default"
@@ -44,11 +45,16 @@
    "fieldname": "capacity_planning",
    "fieldtype": "Check",
    "label": "Capacity Planning"
+  },
+  {
+   "fieldname": "default_order",
+   "fieldtype": "Int",
+   "label": "Default Order"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2024-11-28 15:26:21.598016",
+ "modified": "2025-03-06 16:43:04.471961",
  "modified_by": "Administrator",
  "module": "Essdee Production",
  "name": "Action",

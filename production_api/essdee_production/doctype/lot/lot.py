@@ -713,6 +713,7 @@ def create_time_and_action(lot, item_name, args , values, total_qty, items):
 			child_table.append(struct)
 
 		new_doc.set("details",child_table)
+		new_doc.set("end_date", day)
 		new_doc.save()
 		lot_items.append({
 			"colour":item['colour'],
@@ -796,12 +797,14 @@ def undo_last_update(time_and_action):
 	for item in t_and_a.details:
 		item.index2 = item.index2 + 2
 
+	rescheduled_date = None
 	if index and index != 1:
 		for item in t_and_a.details:
 			if item.idx == index + 1:
 				item.actual_start_date = None
 				break
 		for item in t_and_a.details:
+			rescheduled_date = item.rescheduled_date
 			if item.idx == index - 1:
 				item.completed = 0
 				break
@@ -814,6 +817,8 @@ def undo_last_update(time_and_action):
 			item.date_diff = None	
 			item.reason = None
 			item.performance = None
+			rescheduled_date = item.rescheduled_date
+	t_and_a.end_date = rescheduled_date
 	t_and_a.save()		
 
 @frappe.whitelist()
