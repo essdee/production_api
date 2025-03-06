@@ -58,6 +58,7 @@ class TimeandAction(Document):
 					if item.idx > idx:
 						actual_date = get_next_date(actual_date,item.lead_time)
 						item.rescheduled_date = actual_date
+					self.end_date = item.rescheduled_date
 			
 			self.action = action
 			if d:

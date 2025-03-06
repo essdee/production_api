@@ -18,6 +18,7 @@
   "column_break_ucee",
   "master",
   "description",
+  "end_date",
   "status",
   "section_break_hshs",
   "details"
@@ -104,11 +105,16 @@
    "label": "Action",
    "options": "Action",
    "read_only": 1
+  },
+  {
+   "fieldname": "end_date",
+   "fieldtype": "Date",
+   "label": "End Date"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2024-11-28 15:30:42.082247",
+ "modified": "2025-03-06 15:01:15.342893",
  "modified_by": "Administrator",
  "module": "Essdee Production",
  "name": "Time and Action",
