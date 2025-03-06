@@ -46,7 +46,7 @@ def get_report_data(lot, item, report_date):
 			f"""
 				select t1.time_and_action, t1.master from `tabLot Time and Action Detail` as t1 join `tabTime and Action Detail` as t2 
 				on t2.parent = t1.time_and_action join `tabTime and Action` as t3 On t2.parent = t3.name 
-				where t1.parent = '{lot}' {conditions} 
+				where t1.parent = '{lot}' {conditions} Group By t1.time_and_action
 			""",con, as_dict=True
 		)
 		masters = []
