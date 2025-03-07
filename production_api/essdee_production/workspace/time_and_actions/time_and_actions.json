@@ -17,7 +17,7 @@
    "hidden": 0,
    "is_query_report": 0,
    "label": "Time and Action Reports",
-   "link_count": 8,
+   "link_count": 9,
    "link_type": "DocType",
    "onboard": 0,
    "type": "Card Break"
@@ -101,9 +101,19 @@
    "link_type": "DocType",
    "onboard": 0,
    "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 1,
+   "label": "Time and Action Dispatch Report",
+   "link_count": 0,
+   "link_to": "Time and Action Dispatch Report",
+   "link_type": "Report",
+   "onboard": 0,
+   "type": "Link"
   }
  ],
- "modified": "2025-03-06 09:42:20.142278",
+ "modified": "2025-03-07 17:08:54.478184",
  "modified_by": "Administrator",
  "module": "Essdee Production",
  "name": "Time and Actions",
