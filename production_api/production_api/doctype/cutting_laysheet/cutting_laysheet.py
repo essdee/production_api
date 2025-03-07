@@ -487,8 +487,8 @@ def print_labels(print_items, lay_no, cutting_plan, doc_name):
 			^XZ"""
 		zpl += x
 	update_cutting_plan(doc_name)
-	cls_doc.status = "Label Printed"
-	cls_doc.save()
+	# cls_doc.status = "Label Printed"
+	# cls_doc.save()
 	return zpl	
 
 @frappe.whitelist()
