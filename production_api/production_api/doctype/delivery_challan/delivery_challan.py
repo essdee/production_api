@@ -57,6 +57,7 @@ class DeliveryChallan(Document):
 		make_sl_entries(reduce_sl_entries)
 		logger.debug(f"{self.name} Stock reduced From Supplier {datetime.now()}")
 		wo_doc.save(ignore_permissions=True)		
+		frappe.enqueue(calculate_pieces,"short", doc_name=self.name, enqueue_after_commit=True )		
 
 	def on_submit(self):
 		# calculate_pieces(self.name)		
