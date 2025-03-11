@@ -55,7 +55,7 @@ class DeliveryChallan(Document):
 		logger.debug(f"{self.name} Stock Added to From Location {datetime.now()}")
 		make_sl_entries(reduce_sl_entries)
 		logger.debug(f"{self.name} Stock reduced From Supplier {datetime.now()}")
-		wo_doc.save()		
+		wo_doc.save(ignore_permissions=True)		
 
 	def on_submit(self):
 		wo_doc = frappe.get_cached_doc("Work Order", self.work_order)
@@ -64,7 +64,7 @@ class DeliveryChallan(Document):
 			wo_doc.last_dc_date = self.posting_date
 		else:
 			wo_doc.last_dc_date = self.posting_date
-		wo_doc.save()			
+		wo_doc.save(ignore_permissions=True)			
 
 	def before_submit(self):
 		self.letter_head = frappe.db.get_single_value("MRP Settings","dc_grn_letter_head")
@@ -97,7 +97,7 @@ class DeliveryChallan(Document):
 					if item.get('delivered_quantity'):
 						deliverable.valuation_rate = item.get('rate')
 					break
-		wo_doc.save()
+		wo_doc.save(ignore_permissions=True)
 		logger.debug(f"{self.name} Work Order deliverables updated {datetime.now()}")
 		make_sl_entries(reduce_sl_entries)
 		logger.debug(f"{self.name} Stock reduced from From Location {datetime.now()}")

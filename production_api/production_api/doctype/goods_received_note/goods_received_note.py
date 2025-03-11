@@ -1808,7 +1808,7 @@ def calculate_pieces(doc_name):
 						setattr(item, field, current_qty + qty)	
 		if lot_doc:
 			lot_doc.save()
-	wo_doc.save()
+	wo_doc.save(ignore_permissions=True)
 
 def calculate_piece_stage(grn_doc, received_types, doc_status, total_received, final_calculation):
 	for item in grn_doc.items:
