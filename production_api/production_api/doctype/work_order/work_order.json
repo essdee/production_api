@@ -13,6 +13,7 @@
   "supplier",
   "supplier_name",
   "is_delivered",
+  "is_manual_entry",
   "column_break_wrym",
   "is_internal_unit",
   "parent_wo",
@@ -50,6 +51,8 @@
   "work_order_calculated_items",
   "completed_items_json",
   "incompleted_items_json",
+  "wo_delivered_completed_json",
+  "wo_delivered_incompleted_json",
   "section_break_lgsu",
   "column_break_ocbe",
   "first_dc_date",
@@ -62,7 +65,9 @@
   "total_no_of_pieces_received",
   "section_break_fewo",
   "column_break_klzv",
-  "received_types_json"
+  "received_types_json",
+  "summary_tab",
+  "wo_summary_html"
  ],
  "fields": [
   {
@@ -440,6 +445,39 @@
    "fieldtype": "JSON",
    "hidden": 1,
    "label": "Incompleted Items JSON"
+  },
+  {
+   "fieldname": "summary_tab",
+   "fieldtype": "Tab Break",
+   "label": "Summary"
+  },
+  {
+   "fieldname": "wo_summary_html",
+   "fieldtype": "HTML",
+   "label": "WO Summary HTML"
+  },
+  {
+   "default": "0",
+   "fetch_from": "process_name.is_manual_entry_in_grn",
+   "fieldname": "is_manual_entry",
+   "fieldtype": "Check",
+   "label": "Is Manual Entry"
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "wo_delivered_completed_json",
+   "fieldtype": "JSON",
+   "hidden": 1,
+   "label": "WO Delivered Completed JSON",
+   "read_only": 1
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "wo_delivered_incompleted_json",
+   "fieldtype": "JSON",
+   "hidden": 1,
+   "label": "WO Delivered Incompleted JSON",
+   "read_only": 1
   }
  ],
  "index_web_pages_for_search": 1,
@@ -454,7 +492,7 @@
    "link_fieldname": "against_id"
   }
  ],
- "modified": "2025-03-04 09:58:11.253825",
+ "modified": "2025-03-11 16:54:44.765308",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Work Order",

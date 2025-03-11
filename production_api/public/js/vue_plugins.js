@@ -30,6 +30,7 @@ import { StockEntryWrapper, StockReconciliationWrapper, LotTransferWrapper } fro
 import WorkOrderDeliverables from "./WorkOrder/components/Deliverables.vue"
 import WorkOrderReceivables from "./WorkOrder/components/Receivables.vue"
 import WorkOrderItemView from "./WorkOrder/components/WorkOrderItemView.vue"
+import WOSummary from "./WorkOrder/components/WoSummary.vue"
 import LaySheetCloths from "./CuttingLaySheet/components/LaySheetCloths.vue"
 import LaySheetAccessory from "./CuttingLaySheet/components/LaySheetAccessory.vue"
 import DeliveryChallan from "./Delivery_Challan/components/deliverable_items.vue"
@@ -412,6 +413,23 @@ frappe.production.ui.WorkOrderItemView = class {
     }
     create_input_attributes(){
         this.vue.create_input_classes()
+    }
+}
+
+frappe.production.ui.WOSummary = class {
+    constructor(wrapper){
+        this.$wrapper = $(wrapper)
+        this.make_app()
+    }
+    make_app(){
+        this.app = createApp(WOSummary)
+        SetVueGlobals(this.app)
+        this.vue = this.app.mount(this.$wrapper.get(0))
+    }
+    load_data(item_details, delivered_items){
+        let items = JSON.parse(JSON.stringify(item_details))
+        let delivered = JSON.parse(JSON.stringify(delivered_items))
+        this.vue.load_data(items, delivered)
     }
 }
 

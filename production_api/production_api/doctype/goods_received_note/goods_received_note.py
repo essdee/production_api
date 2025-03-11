@@ -12,7 +12,6 @@ from frappe.utils import money_in_words, flt, cstr, date_diff, nowtime
 from production_api.mrp_stock.doctype.stock_entry.stock_entry import get_uom_details
 from production_api.production_api.doctype.work_order.work_order import get_bom_structure
 from production_api.production_api.doctype.item.item import get_attribute_details, get_or_create_variant
-from production_api.production_api.doctype.delivery_challan.delivery_challan import get_variant_stock_details
 from production_api.production_api.doctype.purchase_order.purchase_order import get_item_attribute_details, get_item_group_index
 from production_api.essdee_production.doctype.item_production_detail.item_production_detail import get_calculated_bom, get_cloth_combination, get_or_create_ipd_variant
 
@@ -79,6 +78,7 @@ class GoodsReceivedNote(Document):
 			self.update_stock_ledger()
 			logger.debug(f"{self.name} SLE Updated {datetime.now()}")
 		else:
+			from production_api.production_api.doctype.delivery_challan.delivery_challan import get_variant_stock_details
 			logger.debug(f"{self.name} Work Order {datetime.now()}")
 			res = get_variant_stock_details()
 			self.update_work_order_receivables()
@@ -347,6 +347,7 @@ class GoodsReceivedNote(Document):
 						break
 			wo_doc.save(ignore_permissions=True)
 			logger.debug(f"{self.name} WO Receivable Updated {datetime.now()}")
+			from production_api.production_api.doctype.delivery_challan.delivery_challan import get_variant_stock_details
 			res = get_variant_stock_details()
 			self.reupdate_stock_ledger(res)
 			logger.debug(f"{self.name} Stock Updated {datetime.now()}")
@@ -1296,7 +1297,7 @@ def get_stiching_process_deliverables(grn_doc, wo_doc, ipd_doc):
 			variant = variant_details['item_variant']
 			qty = variant_details['qty']
 			uom = variant_details['uom']
-			set_combination = variant_details['set_combination']
+			set_combination = variant_details.get('set_combination', {})
 			final_value.append({
 				"item_variant":variant,
 				"qty": qty,
@@ -1668,6 +1669,7 @@ def calculate_pieces(doc_name):
 	ipd_doc = frappe.get_cached_doc("Item Production Detail",ipd)
 	received_types = {}
 	total_received = 0
+	incomplete_items = {}
 	process_name = grn_doc.process_name
 	prs_doc = frappe.get_cached_doc("Process", process_name)
 	final_calculation = []
@@ -1728,9 +1730,9 @@ def calculate_pieces(doc_name):
 				if not panel_list:	
 					for panel in ipd_doc.stiching_item_details:
 						panel_list.append(panel.stiching_attribute_value)
-					final_calculation, received_types, total_received = calculate_cutting_piece(grn_doc, received_types, panel_list)
+					incomplete_items, completed_items, received_types, total_received, qty_list = calculate_cutting_piece(grn_doc, received_types, panel_list)
 				elif panel_list:
-					final_calculation, received_types, total_received = calculate_cutting_piece(grn_doc, received_types, panel_list)
+					incomplete_items, completed_items, received_types, total_received, qty_list = calculate_cutting_piece(grn_doc, received_types, panel_list)
 				else:
 					return
 
@@ -1743,7 +1745,6 @@ def calculate_pieces(doc_name):
 		wo_doc.last_grn_date = grn_doc.posting_date
 
 	wo_doc.total_no_of_pieces_received += total_received
-
 	received_json = update_if_string_instance(wo_doc.received_types_json)	
 	for type, qty in received_types.items():
 		if received_json.get(type):
@@ -1752,7 +1753,7 @@ def calculate_pieces(doc_name):
 			received_json[type] = qty
 
 	wo_doc.received_types_json = received_json
-	if process_name == ipd_doc.cutting_process:
+	if incomplete_items:
 		wo_doc.incompleted_items_json = incomplete_items
 		wo_doc.completed_items_json = completed_items			
 		lot_doc = frappe.get_cached_doc("Lot",wo_doc.lot)
@@ -1830,24 +1831,51 @@ def calculate_piece_stage(grn_doc, received_types, doc_status, total_received, f
 	return final_calculation, received_types, total_received
 
 def calculate_pack_stage(ipd_doc, grn_doc, received_types, doc_status, total_received, final_calculation):
-	pack_combo = ipd_doc.packing_combo
+	item_variants = update_if_string_instance(ipd_doc.variants_json)
+	attrs = []
+	if ipd_doc.is_set_item:
+		for row in ipd_doc.set_item_combination_details:
+			attrs.append({
+				ipd_doc.packing_attribute: row.attribute_value,
+				ipd_doc.set_item_attribute: row.set_item_attribute_value,
+				"major_attr_value": row.major_attribute_value,
+			})
+	else:
+		for row in ipd_doc.packing_attribute_details:
+			attrs.append({ipd_doc.packing_attribute: row.attribute_value})
+
 	for item in grn_doc.items:
-		qty = item.quantity * pack_combo
-		if doc_status == 2:
-			qty = qty * -1
+		for attr in attrs:
+			qty = item.quantity
+			if doc_status == 2:
+				qty = qty * -1
+			variant_doc = frappe.get_cached_doc("Item Variant", item.item_variant)
+			variant_attrs = get_variant_attributes(variant_doc)
+			major_colour = attr[ipd_doc.packing_attribute]
+			if ipd_doc.is_set_item:
+				major_colour = attr["major_attr_value"]
+				del attr['major_attr_value']
+			variant_attrs.update(attr)
+			item_name = variant_doc.item
+			variant_attrs[ipd_doc.dependent_attribute] = ipd_doc.pack_in_stage
+			tup = tuple(sorted(variant_attrs.items()))
+			new_variant = get_or_create_ipd_variant(item_variants, item_name, tup, variant_attrs)
+			set_combination = {
+				"major_colour": major_colour
+			}
+			if ipd_doc.is_set_item:
+				set_combination["major_part"] = ipd_doc.major_attribute_value
 
-		set_combination = update_if_string_instance(item.set_combination)
+			final_calculation.append({
+				"item_variant": new_variant,
+				"quantity": qty,
+				"type":item.received_type,
+				"set_combination":set_combination
+			})
 
-		final_calculation.append({
-			"item_variant": item.item_variant,
-			"quantity": qty,
-			"type":item.received_type,
-			"set_combination":set_combination
-		})
-
-		received_types.setdefault(item.received_type, 0)
-		received_types[item.received_type] += qty
-		total_received += qty
+			received_types.setdefault(item.received_type, 0)
+			received_types[item.received_type] += qty
+			total_received += qty
 
 	return final_calculation, received_types, total_received		
 
