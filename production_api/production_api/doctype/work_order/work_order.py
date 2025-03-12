@@ -436,7 +436,7 @@ def get_deliverable_receivable( items, doc_name, deliverable=False, receivable=F
 
 		bom = get_bom_structure(b, row_index, table_index)	
 		item_list2 = item_list.copy()
-		deliverables , y,z= 	calc_deliverable_and_receivable(ipd_doc, first_process, item_list, item_name, dept_attribute, ipd, wo_doc.lot, uom, bom, lot_doc, stiching_in_stage, pack_out_stage, pack_out_uom)
+		deliverables , y,z= calc_deliverable_and_receivable(ipd_doc, first_process, item_list, item_name, dept_attribute, ipd, wo_doc.lot, uom, bom, lot_doc, stiching_in_stage, pack_out_stage, pack_out_uom)
 		x, receivables, total_qty = calc_deliverable_and_receivable(ipd_doc, final_process, item_list2, item_name, dept_attribute, ipd, wo_doc.lot, uom, {}, lot_doc, stiching_in_stage, pack_out_stage, pack_out_uom)		
 		main_prs = [ipd_doc.packing_process, ipd_doc.stiching_process, ipd_doc.cutting_process]
 		if first_process not in main_prs and final_process not in main_prs:
@@ -469,7 +469,6 @@ def get_deliverable_receivable( items, doc_name, deliverable=False, receivable=F
 				processes.append(item.process_name)
 				dc_processes.append(item.process_name)
 				break
-
 
 	if wo_doc.process_name in processes or wo_doc.process_name in dc_processes:
 		from production_api.production_api.doctype.cutting_plan.cutting_plan import get_complete_incomplete_structure
