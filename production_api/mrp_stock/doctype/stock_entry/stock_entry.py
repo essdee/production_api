@@ -157,9 +157,12 @@ class StockEntry(Document):
 		self.total_amount = sum([flt(item.amount) for item in self.get("items")]) + flt(self.additional_amount)
 
 	def on_submit(self):
+		frappe.log("On Submit Stock Entry Started")
 		self.update_stock_ledger()
 		self.update_transferred_qty()
+		frappe.log("On Submit Stock Entry")
 		if self.purpose == "DC Completion" or self.purpose == "GRN Completion":
+			frappe.log(self.purpose)
 			if self.purpose == "DC Completion":
 				res = frappe.db.sql(
 					f"""
@@ -197,22 +200,27 @@ class StockEntry(Document):
 						
 			if round(qty - now_delivered,3) > round(total_quantity,3):
 				frappe.throw("High Amount of Items Received")	
-
+			frappe.log("Total Quantity: " + str(total_quantity))
 			x = qty / total_quantity
 			x = x * 100
+			frappe.log("Transferred Percent: " + str(x))
 			doc.ste_transferred_percent = doc.ste_transferred_percent + x
 			doc.ste_transferred += qty
+			frappe.log("Transferred Quantity: " + str(doc.ste_transferred))
 			if round(doc.ste_transferred,2) == round(doc.total_delivered_qty,2):
 				doc.transfer_complete = 1
 			doc.ste_transferred_percent = round(doc.ste_transferred_percent, 2)
 			doc.save()
+			frappe.log("Doc Saved")
 	
 	def before_cancel(self):
+		frappe.log("Before Cancel Stock Entry Started")
 		self.ignore_linked_doctypes = ("Stock Ledger Entry", "Stock Reservation Entry", "Delivery Challan")
 		self.update_stock_ledger()
 		self.update_transferred_qty()
-
+		frappe.log("Before Cancel Stock Entry")
 		if self.purpose == "DC Completion" or self.purpose == "GRN Completion":
+			frappe.log(self.purpose)
 			doctype = "tabGoods Received Note Item"
 			field = "quantity"
 			if self.purpose == "DC Completion":
@@ -243,16 +251,18 @@ class StockEntry(Document):
 							item.ste_delivered_quantity -= ste_item.qty
 							qty += ste_item.qty
 							break
-
+			frappe.log("Quantity: " + str(qty))
 			x = qty / total_quantity
 			x = x * 100
+			frappe.log(f"Transferred Percent: {x}")
 			doc.ste_transferred_percent = doc.ste_transferred_percent - x
 			doc.ste_transferred = doc.ste_transferred - qty
-			
+			frappe.log(f"Transferred Quantity: {doc.ste_transferred}")
 			if doc.ste_transferred < doc.total_delivered_qty:
 				doc.transfer_complete = 0
 			doc.ste_transferred_percent = round(doc.ste_transferred_percent, 2)
 			doc.save()	
+			frappe.log("Doc Saved")
 		self.revert_stock_transfer_entries()
 
 	def revert_stock_transfer_entries(self):
