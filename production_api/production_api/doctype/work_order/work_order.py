@@ -457,29 +457,41 @@ def get_deliverable_receivable( items, doc_name, deliverable=False, receivable=F
 	wo_doc.set('receivables', receivables)
 	wo_doc.set("total_quantity", total_qty)
 	wo_doc.set("work_order_calculated_items",items)
-	from production_api.production_api.doctype.cutting_plan.cutting_plan import get_complete_incomplete_structure
 	wo_doc.set("wo_colours", wo_colour_sets)
-	total_qty = 0
-	for item in items:
-		total_qty += item['quantity']
-	wo_doc.set("total_no_of_pieces_delivered", total_qty)	
 	logger.debug(f"{doc_name} doc saved {datetime.now()}")
 	wo_doc.save()
 	processes = [ipd_doc.cutting_process]
+	dc_processes = [ipd_doc.stiching_process]		
+
 	for item in ipd_doc.ipd_processes:
 		if item.process_name == wo_doc.process_name:
 			if ipd_doc.stiching_in_stage == item.stage:
 				processes.append(item.process_name)
+				dc_processes.append(item.process_name)
 				break
 
-	if wo_doc.process_name in processes:
+
+	if wo_doc.process_name in processes or wo_doc.process_name in dc_processes:
+		from production_api.production_api.doctype.cutting_plan.cutting_plan import get_complete_incomplete_structure
 		items = fetch_order_item_details(wo_doc.work_order_calculated_items, wo_doc.production_detail)
 		complete, incomplete = get_complete_incomplete_structure(wo_doc.production_detail, items)
-		wo_doc.set("completed_items_json", complete)
-		wo_doc.set("incompleted_items_json",incomplete)
+		if wo_doc.process_name in processes and wo_doc.process_name in dc_processes:
+			wo_doc.set("completed_items_json", complete)
+			wo_doc.set("incompleted_items_json",incomplete)
+			wo_doc.set("wo_delivered_completed_json", complete)
+			wo_doc.set("wo_delivered_incompleted_json",incomplete)
+		else:
+			if wo_doc.process_name in processes:
+				wo_doc.set("completed_items_json", complete)
+				wo_doc.set("incompleted_items_json",incomplete)
+			else:
+				wo_doc.set("wo_delivered_completed_json", complete)
+				wo_doc.set("wo_delivered_incompleted_json",incomplete)
 	else:
 		wo_doc.set("completed_items_json", {})
 		wo_doc.set("incompleted_items_json",{})
+		wo_doc.set("wo_delivered_completed_json", {})
+		wo_doc.set("wo_delivered_incompleted_json",{})
 	wo_doc.save() 
 	return None
 
@@ -996,3 +1008,83 @@ def update_if_string_instance(obj):
 		obj = {}
 
 	return obj	
+
+@frappe.whitelist()
+def fetch_summary_details(doc_name, production_detail):
+	ipd_doc = frappe.get_doc("Item Production Detail", production_detail)
+	wo_doc = frappe.get_doc("Work Order", doc_name)
+	item_details = []
+	items = wo_doc.work_order_calculated_items
+	items = sorted(items, key = lambda i: i.row_index)
+	for key, variants in groupby(items, lambda i: i.row_index):
+		variants = list(variants)
+		current_variant = frappe.get_cached_doc("Item Variant", variants[0].item_variant)
+		current_item_attribute_details = get_attribute_details(current_variant.item)
+		item = {
+			'name': current_variant.item,
+			'attributes': get_item_attribute_details(current_variant, current_item_attribute_details),
+			"item_keys": {},
+			"is_set_item": ipd_doc.is_set_item,
+			"set_attr": ipd_doc.set_item_attribute,
+			"pack_attr": ipd_doc.packing_attribute,
+			"major_attr_value": ipd_doc.major_attribute_value,
+			'primary_attribute': current_item_attribute_details['primary_attribute'],
+			"dependent_attribute": current_item_attribute_details['dependent_attribute'],
+			"dependent_attribute_details": current_item_attribute_details['dependent_attribute_details'],
+			'values': {},
+		}
+
+		if item['primary_attribute']:
+			for attr in current_item_attribute_details['primary_attribute_values']:
+				item['values'][attr] = {'qty': 0}
+			for variant in variants:
+				set_combination = variant.set_combination
+				if isinstance(set_combination, string_types):
+					set_combination = json.loads(set_combination)
+				if set_combination:
+					if set_combination.get("major_part"):
+						item['item_keys']['major_part'] = set_combination.get("major_part")
+
+					if set_combination.get("major_colour"):
+						item['item_keys']['major_colour'] = set_combination.get("major_colour")		
+
+				current_variant = frappe.get_cached_doc("Item Variant", variant.item_variant)
+				for attr in current_variant.attributes:
+					if attr.attribute == item.get('primary_attribute'):
+						item['values'][attr.attribute_value] = {
+							'qty': variant.quantity,
+							"delivered": variant.delivered_quantity,
+							"received": variant.received_qty
+						}
+						break
+		else:
+			item['values']['default'] = {
+				'qty': variants[0].quantity,
+				"delivered": variants[0].delivered_quantity,
+				"received": variants[0].received_qty
+			}
+			
+		index = get_item_group_index(item_details, current_item_attribute_details)
+		if index == -1:
+			item_details.append({
+				'attributes': current_item_attribute_details['attributes'],
+				'primary_attribute': current_item_attribute_details['primary_attribute'],
+				'primary_attribute_values': current_item_attribute_details['primary_attribute_values'],
+				"dependent_attribute": current_item_attribute_details['dependent_attribute'],
+				"dependent_attribute_details": current_item_attribute_details['dependent_attribute_details'],
+				'additional_parameters': current_item_attribute_details['additional_parameters'],
+				"is_set_item": ipd_doc.is_set_item,
+				"set_attr": ipd_doc.set_item_attribute,
+				"pack_attr": ipd_doc.packing_attribute,
+				"major_attr_value": ipd_doc.major_attribute_value,
+				'items': [item]
+			})
+		else:
+			item_details[index]['items'].append(item)
+
+	deliverables = fetch_item_details(wo_doc.deliverables, wo_doc.production_detail )
+
+	return {
+		"item_detail":item_details,
+		"deliverables": deliverables
+	}

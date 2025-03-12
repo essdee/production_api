@@ -26,4 +26,5 @@ production_api.patches.v1_0.update_cutting_plan_version #4
 production_api.patches.v1_0.update_cutting_plan_items #5
 production_api.patches.v1_0.update_delivery_challan_ipd
 production_api.patches.v1_0.update_end_date_t_and_a
+production_api.patches.v1_0.update_work_order_is_manual_entry
 

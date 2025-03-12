@@ -1,11 +1,12 @@
 # Copyright (c) 2024, Essdee and contributors
 # For license information, please see license.txt
 
-import frappe,json
+import frappe,json, sys
 from six import string_types
 from frappe.utils import flt
 from itertools import groupby
 from datetime import datetime
+from itertools import zip_longest
 from frappe.model.document import Document
 from production_api.mrp_stock.utils import get_stock_balance
 from production_api.mrp_stock.stock_ledger import make_sl_entries
@@ -55,16 +56,12 @@ class DeliveryChallan(Document):
 		logger.debug(f"{self.name} Stock Added to From Location {datetime.now()}")
 		make_sl_entries(reduce_sl_entries)
 		logger.debug(f"{self.name} Stock reduced From Supplier {datetime.now()}")
-		wo_doc.save()		
+		wo_doc.save(ignore_permissions=True)		
+		frappe.enqueue(calculate_pieces,"short", doc_name=self.name, enqueue_after_commit=True )		
 
 	def on_submit(self):
-		wo_doc = frappe.get_cached_doc("Work Order", self.work_order)
-		if not wo_doc.first_dc_date:
-			wo_doc.first_dc_date = self.posting_date
-			wo_doc.last_dc_date = self.posting_date
-		else:
-			wo_doc.last_dc_date = self.posting_date
-		wo_doc.save()			
+		# calculate_pieces(self.name)		
+		frappe.enqueue(calculate_pieces,"short", doc_name=self.name, enqueue_after_commit=True )
 
 	def before_submit(self):
 		self.letter_head = frappe.db.get_single_value("MRP Settings","dc_grn_letter_head")
@@ -97,7 +94,7 @@ class DeliveryChallan(Document):
 					if item.get('delivered_quantity'):
 						deliverable.valuation_rate = item.get('rate')
 					break
-		wo_doc.save()
+		wo_doc.save(ignore_permissions=True)
 		logger.debug(f"{self.name} Work Order deliverables updated {datetime.now()}")
 		make_sl_entries(reduce_sl_entries)
 		logger.debug(f"{self.name} Stock reduced from From Location {datetime.now()}")
@@ -332,6 +329,10 @@ def fetch_item_details(items, ipd, lot, is_new=False):
 				'primary_attribute': current_item_attribute_details['primary_attribute'],
 				'primary_attribute_values': current_item_attribute_details["primary_attribute_values"],
 				'dependent_attribute': current_item_attribute_details['dependent_attribute'],
+				"is_set_item": ipd_doc.is_set_item,
+				"set_attr": ipd_doc.set_item_attribute,
+				"pack_attr": ipd_doc.packing_attribute,
+				"major_attr_value": ipd_doc.major_attribute_value,
 				'items': [item]
 			})
 		else:
@@ -436,3 +437,223 @@ def construct_stock_entry_details(doc_name):
 	ste.flags.allow_from_dc = True
 	ste.save()
 	return ste.name
+
+def calculate_pieces(doc_name):
+	dc_doc = frappe.get_doc("Delivery Challan",doc_name)
+	doc_status = dc_doc.docstatus
+	ipd = frappe.get_cached_value("Lot", dc_doc.lot,"production_detail")
+	ipd_doc = frappe.get_cached_doc("Item Production Detail",ipd)
+	total_delivered = 0
+	incomplete_items = {}
+	process_name = dc_doc.process_name
+	prs_doc = frappe.get_cached_doc("Process", process_name)
+	if prs_doc.is_manual_entry_in_grn:
+		return
+	
+	final_calculation = []
+	if prs_doc.is_group:
+		for detail in prs_doc.process_details:
+			process_name = detail.process_name
+			break
+	
+	if process_name == ipd_doc.cutting_process:
+		return
+	elif process_name == ipd_doc.stiching_process:
+		panel_list = []
+		for panel in ipd_doc.stiching_item_details:
+			panel_list.append(panel.stiching_attribute_value)
+		incomplete_items, completed_items, total_delivered, qty_list = calculate_cutting_piece(dc_doc, panel_list)
+
+	elif process_name == ipd_doc.packing_process:
+		final_calculation, total_delivered = calculate_piece_stage(dc_doc, doc_status, total_delivered, final_calculation)
+	else:
+		emb = update_if_string_instance(ipd_doc.get("emblishment_details_json"))
+		stage = None
+		for process in ipd_doc.ipd_processes:
+			if process.process_name == process_name:
+				stage = process.stage
+				break
+		
+		check = True
+		panel_list = None
+		if emb and emb.get(process_name):
+			if len(emb.get(process_name)) == 1:
+				check = False
+				for item in dc_doc.items:
+					qty = item.delivered_quantity
+					if doc_status == 2:
+						qty = qty * -1
+					set_combination = update_if_string_instance(item.set_combination)
+					final_calculation.append({
+						"item_variant": item.item_variant,
+						"quantity": qty,
+						"set_combination":set_combination
+					})
+					total_delivered += qty
+			else:
+				if stage == ipd_doc.stiching_in_stage:
+					panel_list = emb.get(process_name)
+
+		if stage and check:
+			if stage == ipd_doc.pack_in_stage:
+				final_calculation, total_delivered = calculate_piece_stage(dc_doc, doc_status, total_delivered, final_calculation)
+
+			elif stage == ipd_doc.stiching_in_stage:
+				if not panel_list:	
+					for panel in ipd_doc.stiching_item_details:
+						panel_list.append(panel.stiching_attribute_value)
+					incomplete_items, completed_items, total_delivered, qty_list = calculate_cutting_piece(dc_doc, panel_list)
+				elif panel_list:
+					incomplete_items, completed_items, total_delivered, qty_list = calculate_cutting_piece(dc_doc, panel_list)
+				else:
+					return
+
+	wo_doc = frappe.get_cached_doc("Work Order", dc_doc.work_order)
+	if not wo_doc.first_grn_date:
+		wo_doc.first_grn_date = dc_doc.posting_date
+		wo_doc.last_grn_date = dc_doc.posting_date
+	else:
+		wo_doc.last_grn_date = dc_doc.posting_date
+	wo_doc.total_no_of_pieces_delivered += total_delivered
+	if incomplete_items:
+		wo_doc.wo_delivered_incompleted_json = incomplete_items
+		wo_doc.wo_delivered_completed_json = completed_items			
+		for qty_data in qty_list:
+			for item in wo_doc.work_order_calculated_items:
+				set_combination = update_if_string_instance(item.set_combination)
+				if item.item_variant == qty_data['item_variant'] and set_combination == qty_data['set_combination']:
+					qty = qty_data['quantity']
+					if doc_status == 2:
+						qty = qty * -1
+					item.delivered_quantity += qty
+					break 
+	else:
+		for data in final_calculation:
+			for item in wo_doc.work_order_calculated_items:
+				set_combination = update_if_string_instance(item.set_combination)
+				if item.item_variant == data['item_variant'] and set_combination == data['set_combination']:
+					item.delivered_quantity += data['quantity']
+	wo_doc.save(ignore_permissions=True)
+
+def calculate_piece_stage(dc_doc, doc_status, total_delivered, final_calculation):
+	for item in dc_doc.items:
+		qty = item.delivered_quantity
+		if doc_status == 2:
+			qty = qty * -1
+		set_combination = update_if_string_instance(item.set_combination)
+		final_calculation.append({
+			"item_variant": item.item_variant,
+			"quantity": qty,
+			"set_combination":set_combination
+		})
+		total_delivered += qty
+	return final_calculation, total_delivered
+
+def calculate_cutting_piece(dc_doc, panel_list):
+	from production_api.essdee_production.doctype.item_production_detail.item_production_detail import get_or_create_ipd_variant
+	panel_list = update_if_string_instance(panel_list)		
+	production_detail, incomplete_items_json, completed_items_json = frappe.get_cached_value("Work Order", dc_doc.work_order,['production_detail',"wo_delivered_incompleted_json","wo_delivered_completed_json"])
+	ipd_doc = frappe.get_cached_doc("Item Production Detail",production_detail)
+	incomplete_items = json.loads(incomplete_items_json)
+	completed_items = json.loads(completed_items_json)
+	item_variants = update_if_string_instance(ipd_doc.variants_json)
+	panel_qty = {}
+	set_comb = {}
+	for row in ipd_doc.stiching_item_details:
+		if ipd_doc.is_set_item:
+			set_comb[row.stiching_attribute_value] = row.set_item_attribute_value
+		panel_qty[row.stiching_attribute_value] = row.quantity
+
+	for item in dc_doc.items:
+		variant = frappe.get_cached_doc("Item Variant", item.item_variant)
+		attrs = get_variant_attributes(variant)
+		set_combination = update_if_string_instance(item.set_combination)
+		for i in incomplete_items['items']:
+			con1 = True
+			if ipd_doc.is_set_item:
+				con1 = i['attributes'][ipd_doc.set_item_attribute] == set_comb[attrs[ipd_doc.stiching_attribute]]
+			item_keys = update_if_string_instance(i['item_keys'])
+			set_combination = update_if_string_instance(item.set_combination)
+			con2 = item_keys == set_combination
+			if con1 and con2 and item.delivered_quantity > 0:
+				primary_attr = attrs[ipd_doc.primary_item_attribute]
+				x = i['values'][primary_attr][attrs[ipd_doc.stiching_attribute]]
+				y = i.copy()
+				if not x:
+					i['values'][attrs[ipd_doc.primary_item_attribute]][attrs[ipd_doc.stiching_attribute]] = item.delivered_quantity
+				else:
+					y['values'][attrs[ipd_doc.primary_item_attribute]][attrs[ipd_doc.stiching_attribute]] += item.delivered_quantity	
+				i = y
+
+	total_qty = 0
+	for item1, item2 in zip_longest(completed_items['items'], incomplete_items['items']):
+		for size in item2['values']:
+			min = sys.maxsize
+			for panel in item2['values'][size]:
+				if panel in panel_list:
+					if item2['values'][size][panel]:
+						if item2['values'][size][panel]:
+							if item2['values'][size][panel] < min:
+								min = item2['values'][size][panel]
+					else:
+						min = 0
+			if min > 0 and min != sys.maxsize:
+				if item1['values'][size]:
+					item1['values'][size] += min									
+				else:
+					item1['values'][size] = min
+
+				total_qty += min
+
+				for panel in item2['values'][size]:
+					if panel in panel_list:
+						if item2['values'][size][panel]:
+							item2['values'][size][panel] -= (min * panel_qty[panel])
+
+	qty_list = []
+	for item in completed_items['items']: 
+		attrs = item['attributes']
+		for val in item['values']:
+			attrs[ipd_doc.primary_item_attribute] = val
+			if item['values'][val]:
+				tup = tuple(sorted(attrs.items()))
+				item_name = item['name']
+				variant_name = get_or_create_ipd_variant(item_variants, item_name, tup, attrs)
+				str_tup = str(tup) 
+				if item_variants and item_variants.get(item_name):
+					if not item_variants[item_name].get(str_tup):
+						item_variants[item_name][str_tup] = variant_name	
+				else:	
+					if not item_variants:
+						item_variants = {}
+						item_variants[item_name] = {}
+						item_variants[item_name][str_tup] = variant_name
+					else:
+						item_variants[item_name] = {}
+						item_variants[item_name][str_tup] = variant_name	
+				qty = item['values'][val]
+				set_combination = update_if_string_instance(item['item_keys'])
+				qty_list.append({
+					"item_variant": variant_name,
+					"quantity": qty,
+					"set_combination":set_combination
+				})
+				item['values'][val] -= qty
+	ipd_doc.db_set("variants_json", json.dumps(item_variants), update_modified=False)				
+	return incomplete_items, completed_items, total_qty, qty_list
+
+def get_variant_attributes(variant):
+	attribute_details = {}
+	
+	for attr in variant.attributes:
+			attribute_details[attr.attribute] = attr.attribute_value
+	return attribute_details
+
+def update_if_string_instance(obj):
+	if isinstance(obj, string_types):
+		obj = json.loads(obj)
+
+	if not obj:
+		obj = {}
+
+	return obj	
