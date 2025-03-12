@@ -83,7 +83,7 @@ frappe.ui.form.on("Delivery Challan", {
 
 		if(frm.doc.docstatus == 1){
 			if(!frm.doc.transfer_complete && frm.doc.is_internal_unit){
-				frm.add_custom_button("Transfer Complete", ()=> {
+				frm.add_custom_button("Complete Transfer", ()=> {
 					frappe.call({
 						method:"production_api.production_api.doctype.delivery_challan.delivery_challan.construct_stock_entry_details",
 						args: {
