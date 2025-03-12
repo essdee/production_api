@@ -172,7 +172,7 @@ frappe.ui.form.on('Goods Received Note', {
 			frm.dirty();
 		})
 		if(frm.doc.docstatus == 1 && frm.doc.against == "Work Order" && frm.doc.is_internal_unit && !frm.doc.transfer_complete){
-			frm.add_custom_button("Transfer Complete", ()=> {
+			frm.add_custom_button("Complete Transfer", ()=> {
 				frappe.call({
 					method: "production_api.production_api.doctype.goods_received_note.goods_received_note.construct_stock_entry_data",
 					args : {

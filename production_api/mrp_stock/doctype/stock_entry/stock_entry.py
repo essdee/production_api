@@ -157,12 +157,9 @@ class StockEntry(Document):
 		self.total_amount = sum([flt(item.amount) for item in self.get("items")]) + flt(self.additional_amount)
 
 	def on_submit(self):
-		frappe.log("On Submit Stock Entry Started")
 		self.update_stock_ledger()
 		self.update_transferred_qty()
-		frappe.log("On Submit Stock Entry")
 		if self.purpose == "DC Completion" or self.purpose == "GRN Completion":
-			frappe.log(self.purpose)
 			if self.purpose == "DC Completion":
 				res = frappe.db.sql(
 					f"""
@@ -183,13 +180,7 @@ class StockEntry(Document):
 			qty = 0
 			for ste_item in self.items:
 				for item in doc.items:
-					set1 = ste_item.set_combination
-					set2 = item.set_combination
-					if isinstance(set1, string_types):
-						set1 = json.loads(set1)
-					if isinstance(set2, string_types):
-						set2 = json.loads(set2)	
-					if ste_item.item == item.item_variant and set1 == set2:
+					if ste_item.against_id_detail == item.name:
 						check = True
 						if self.purpose == "GRN Completion":
 							check = ste_item.received_type == item.received_type
@@ -199,28 +190,22 @@ class StockEntry(Document):
 							break
 						
 			if round(qty - now_delivered,3) > round(total_quantity,3):
-				frappe.throw("High Amount of Items Received")	
-			frappe.log("Total Quantity: " + str(total_quantity))
+				frappe.throw("High Amount of Items Received")
 			x = qty / total_quantity
 			x = x * 100
-			frappe.log("Transferred Percent: " + str(x))
+			self.per_transferred += x
 			doc.ste_transferred_percent = doc.ste_transferred_percent + x
 			doc.ste_transferred += qty
-			frappe.log("Transferred Quantity: " + str(doc.ste_transferred))
 			if round(doc.ste_transferred,2) == round(doc.total_delivered_qty,2):
 				doc.transfer_complete = 1
 			doc.ste_transferred_percent = round(doc.ste_transferred_percent, 2)
 			doc.save()
-			frappe.log("Doc Saved")
 	
 	def before_cancel(self):
-		frappe.log("Before Cancel Stock Entry Started")
 		self.ignore_linked_doctypes = ("Stock Ledger Entry", "Stock Reservation Entry", "Delivery Challan")
 		self.update_stock_ledger()
 		self.update_transferred_qty()
-		frappe.log("Before Cancel Stock Entry")
 		if self.purpose == "DC Completion" or self.purpose == "GRN Completion":
-			frappe.log(self.purpose)
 			doctype = "tabGoods Received Note Item"
 			field = "quantity"
 			if self.purpose == "DC Completion":
@@ -251,18 +236,15 @@ class StockEntry(Document):
 							item.ste_delivered_quantity -= ste_item.qty
 							qty += ste_item.qty
 							break
-			frappe.log("Quantity: " + str(qty))
 			x = qty / total_quantity
 			x = x * 100
-			frappe.log(f"Transferred Percent: {x}")
 			doc.ste_transferred_percent = doc.ste_transferred_percent - x
 			doc.ste_transferred = doc.ste_transferred - qty
-			frappe.log(f"Transferred Quantity: {doc.ste_transferred}")
+			self.per_transferred -= x
 			if doc.ste_transferred < doc.total_delivered_qty:
 				doc.transfer_complete = 0
 			doc.ste_transferred_percent = round(doc.ste_transferred_percent, 2)
-			doc.save()	
-			frappe.log("Doc Saved")
+			doc.save()
 		self.revert_stock_transfer_entries()
 
 	def revert_stock_transfer_entries(self):
@@ -466,6 +448,7 @@ def fetch_stock_entry_items(items, ipd=None):
 						item['values'][attr.attribute_value] = {
 							'qty': variant.qty,
 							'rate': variant.rate,
+							'against_id_detail': variant.get("against_id_detail", None),
 							'against_stock_entry': variant.get("against_stock_entry", None),
 							'ste_detail': variant.get("ste_detail", None),
 							'transferred_qty': variant.get("transferred_qty", None),
@@ -473,20 +456,28 @@ def fetch_stock_entry_items(items, ipd=None):
 							'secondary_uom': variant.get('secondary_uom', None)
 						}
 						if ipd:
-							item['values'][attr.attribute_value]['set_combination'] = variant.get("set_combintion", {})
-
+							if not variant.get('set_combination'):
+								item['values'][attr.attribute_value]['set_combination'] = {}
+							else:
+								item['values'][attr.attribute_value]['set_combination'] = variant.get('set_combination')
 						break
 		else:
 			item['values']['default'] = {
 				'qty': variants[0].qty,
 				'rate': variants[0].rate,
+				'against_id_detail':variants[0].get("against_id_detail",None),
 				'against_stock_entry': variants[0].get("against_stock_entry", None),
 				'ste_detail': variants[0].get("ste_detail", None),
 				'transferred_qty': variants[0].get("transferred_qty", None),
 				"secondary_qty": variants[0].get("secondary_qty", 0),
-				"secondary_uom": variants[0].get('secondary_uom', None)
+				"secondary_uom": variants[0].get('secondary_uom', None),
 				# 'tax': variants[0].tax
 			}
+			if not variants[0].get('set_combination'):
+				item['values']['default']['set_combination'] = {}
+			else:
+				item['values']['default']['set_combination'] = variants[0].get('set_combination')
+
 		index = get_item_group_index(item_details, current_item_attribute_details)
 
 		if index == -1:
@@ -522,8 +513,12 @@ def save_stock_entry_items(item_details):
 							variant1 = create_variant(item_name, item_attributes)
 							variant1.insert()
 							variant_name = variant1.name
-						print(item)
 						item1['item'] = variant_name
+						item1['against_id_detail'] = item.get('against_id_detail')
+						if item.get('set_combination'):
+							item1['set_combination'] = item.get('set_combination')
+						else:	
+							item1['set_combination'] = {}
 						item1['lot'] = item.get('lot')
 						item1['uom'] = item.get('default_uom')
 						item1['qty'] = values.get('qty')
@@ -546,11 +541,15 @@ def save_stock_entry_items(item_details):
 						variant1 = create_variant(item_name, item_attributes)
 						variant1.insert()
 						variant_name = variant1.name
-					print(item)	
 					item1['item'] = variant_name
 					item1['lot'] = item.get('lot')
 					item1['uom'] = item.get('default_uom')
 					item1['qty'] = item['values']['default'].get('qty')
+					item1['against_id_detail'] = item['values']['default'].get('against_id_detail')
+					if item['values']['default'].get('set_combination'):
+						item1['set_combination'] = item['values']['default'].get('set_combination')
+					else:	
+						item1['set_combination'] = {}
 					item1['rate'] = item['values']['default'].get('rate')
 					item1['against_stock_entry'] = item['values']['default'].get("against_stock_entry", None)
 					item1['ste_detail'] = item['values']['default'].get("ste_detail", None)
