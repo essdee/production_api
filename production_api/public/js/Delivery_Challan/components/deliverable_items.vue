@@ -84,7 +84,7 @@
 							<td>{{ j.lot }}</td>
 							<td v-for="attr in i.attributes" :key="attr"> 
 								{{ j.attributes[attr] }} 
-								<span v-if="attr == 'Colour' && j.is_set_item && j.attributes[j.set_attr] != j.major_attr_value">({{ j.item_keys['major_colour'] }})</span>
+								<span v-if="attr == i.pack_attr && j.attributes[attr] != j.item_keys['major_colour']">({{ j.item_keys['major_colour'] }})</span>
 							</td>
 							<td v-for="attr in j.values" :key="attr">
 								{{ attr.qty}} <span v-if="j.default_uom">{{ " " + j.default_uom }}</span>
