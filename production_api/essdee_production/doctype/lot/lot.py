@@ -166,14 +166,10 @@ def calculate_order_details(items, production_detail, packing_uom, final_uom):
 							attrs[attribute.attribute] = attribute['attribute_value']
 					attrs[item_detail.packing_attribute] = colour
 					attrs[item_detail.set_item_attribute] = part
-					if not item_detail.auto_calculate:
-						major_attr = attrs[item_detail.set_item_attribute]
-						q = get_quantity(major_attr, item_detail.packing_attribute_details)	
 					new_variant = get_or_create_variant(variant.item, attrs,dependent_attr=item_detail.dependent_attribute_mapping)
-					temp_qty = math.ceil(qty) if item_detail.auto_calculate else math.ceil(qty * flt(q))
+					temp_qty = math.ceil(qty) if item_detail.auto_calculate else math.ceil(qty * attr.quantity)
 					if item_detail.major_attribute_value == part:
 						final_qty += temp_qty
-
 					d = {
 						"item_variant": new_variant,
 						"quantity": temp_qty,
