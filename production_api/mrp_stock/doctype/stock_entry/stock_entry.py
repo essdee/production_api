@@ -113,7 +113,7 @@ class StockEntry(Document):
 
 		# using try except to catch all validation msgs and display together
 		try:
-			item = frappe.get_value("Item Variant", item, "item")
+			item = frappe.get_cached_value("Item Variant", item, "item")
 
 			# end of life and stock item
 			validate_disabled(item)
@@ -190,8 +190,7 @@ class StockEntry(Document):
 							break
 						
 			if round(qty - now_delivered,3) > round(total_quantity,3):
-				frappe.throw("High Amount of Items Received")	
-
+				frappe.throw("High Amount of Items Received")
 			x = qty / total_quantity
 			x = x * 100
 			self.per_transferred += x
@@ -206,7 +205,6 @@ class StockEntry(Document):
 		self.ignore_linked_doctypes = ("Stock Ledger Entry", "Stock Reservation Entry", "Delivery Challan")
 		self.update_stock_ledger()
 		self.update_transferred_qty()
-
 		if self.purpose == "DC Completion" or self.purpose == "GRN Completion":
 			doctype = "tabGoods Received Note Item"
 			field = "quantity"
@@ -238,7 +236,6 @@ class StockEntry(Document):
 							item.ste_delivered_quantity -= ste_item.qty
 							qty += ste_item.qty
 							break
-
 			x = qty / total_quantity
 			x = x * 100
 			doc.ste_transferred_percent = doc.ste_transferred_percent - x
@@ -247,7 +244,7 @@ class StockEntry(Document):
 			if doc.ste_transferred < doc.total_delivered_qty:
 				doc.transfer_complete = 0
 			doc.ste_transferred_percent = round(doc.ste_transferred_percent, 2)
-			doc.save()	
+			doc.save()
 		self.revert_stock_transfer_entries()
 
 	def revert_stock_transfer_entries(self):

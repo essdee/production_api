@@ -1,6 +1,6 @@
 import frappe, json
 from production_api.mrp_stock.doctype.bin.bin import get_stock_balance_bin
-from production_api.mrp_stock.doctype.fg_stock_entry.fg_stock_entry import create_FG_ste,get_stock_entry_detail
+from production_api.mrp_stock.doctype.fg_stock_entry.fg_stock_entry import create_FG_ste,get_stock_entry_detail, fg_stock_entry_cancel
 from six import string_types
 import math
 
@@ -14,6 +14,7 @@ def get_stock(item, warehouse, remove_zero_balance_item=1):
         item = json.loads(item)
 
     fg_lot = get_default_fg_lot()
+    received_type =frappe.db.get_single_value("Stock Settings", "default_received_type")
         
     data  = get_stock_balance_bin(
         warehouse,
@@ -44,6 +45,7 @@ def get_group_by_key(row) -> str:
 @frappe.whitelist()
 def make_dispatch_stock_entry(items, warehouse, packing_slip):
     from production_api.mrp_stock.doctype.stock_entry.stock_entry import get_uom_details
+    received_type =frappe.db.get_single_value("Stock Settings", "default_received_type")
     if not packing_slip or not warehouse or not items:
         frappe.throw("Required Details not sent")
     if isinstance(items, string_types):
@@ -83,10 +85,7 @@ def make_dispatch_stock_entry(items, warehouse, packing_slip):
         })
         index += 1
         
-        
     ste.flags.allow_from_sms = True
-    ste.save()
-
     item_details_dict = {}
     for item in items:
         if item['sre'] not in item_details_dict:
@@ -99,12 +98,12 @@ def make_dispatch_stock_entry(items, warehouse, packing_slip):
     for sre, details in item_details_dict.items():
         sre = frappe.get_doc("Stock Reservation Entry", sre)
         sre.delivered_qty += details['uom_conv_detail']['conversion_factor'] * details['qty']
-        sre.stock_entry = ste.name
         sre.db_update()
         sre.update_status()
         sre.update_reserved_stock_in_bin()
-
     ste.submit()
+    for sre, details in item_details_dict.items():
+        frappe.db.set_value("Stock Reservation Entry", sre, 'stock_entry', ste.name)
     return ste.name
 
 @frappe.whitelist()
@@ -190,7 +189,7 @@ def get_fg_stock_entry_details_list(pageLength, curr_page):
 
     list_items = frappe.get_list("FG Stock Entry",
                     fields=['name','posting_date', 'posting_time', 'dc_number', 
-                    'lot', 'supplier', 'warehouse', 'received_by', 'comments'], 
+                    'lot', 'supplier', 'warehouse', 'received_by', 'comments', 'docstatus'], 
                 start=((curr_page-1) * pageLength), limit=pageLength, order_by='creation DESC' )
     
     total_pages = frappe.db.count("FG Stock Entry")
@@ -201,3 +200,29 @@ def get_fg_stock_entry_details_list(pageLength, curr_page):
         "total_count" : total_pages,
         "displaying" : len(list_items)
     }
+
+@frappe.whitelist()
+def cancel_fg_stock_entry(stock_entry):
+    return fg_stock_entry_cancel(stock_entry)
+
+@frappe.whitelist()
+def get_reserved_stock(warehouse, item):
+    from production_api.mrp_stock.doctype.stock_reservation_entry.stock_reservation_entry import get_reserved_stock_details
+    if isinstance(warehouse, string_types):
+        warehouse = frappe.json.loads(warehouse)
+    if isinstance(item, string_types):
+        item = frappe.json.loads(item)
+    fg_lot = get_default_fg_lot()
+    received_type =frappe.db.get_single_value("Stock Settings", "default_received_type")
+    stock_details = get_reserved_stock_details(lot=fg_lot, warehouses=warehouse, items=item, received_type=received_type)
+    item_wh_map = {}
+    for i in stock_details:
+        group_by_key = get_group_by_key(i)
+        if group_by_key not in item_wh_map:
+            item_wh_map[group_by_key] = {
+                "item" : i['item'],
+                "bal_qty" : 0.0,
+                "uom" : i['uom']
+            }
+        item_wh_map[group_by_key]['bal_qty'] += i['qty']
+    return item_wh_map

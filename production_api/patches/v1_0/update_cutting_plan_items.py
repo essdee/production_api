@@ -11,7 +11,7 @@ def execute():
         doc = frappe.get_doc("Cutting Plan", cp)
         from production_api.production_api.doctype.cutting_plan.cutting_plan import get_items, save_item_details
         items = get_items(doc.lot)
-        table_data = save_item_details(items)
+        table_data = save_item_details(items, doc.production_detail)
         doc.set("items", table_data)
         doc.save()
         
