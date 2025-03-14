@@ -37,21 +37,21 @@
                                             <td rowspan="8">{{ data.colour }}</td>
                                             <td rowspan="8">{{ data.sizes }}</td>
                                             <td rowspan="8">{{ data.qty }}</td>
-                                            <td rowspan="8">{{ data.start_date }}</td>
+                                            <td rowspan="8">{{ get_date(data.start_date) }}</td>
                                             <td rowspan="8">{{ data.delay }}</td>
                                         </tr>
                                         <tr>
                                             <td>Planned Date</td>
-                                            <td v-for="d in data['actions']" :key="d.date">{{ d.date }}</td>
+                                            <td v-for="d in data['actions']" :key="d.date">{{ get_date(d.date) }}</td>
                                         </tr>
                                         <tr>
                                             <td>Rescheduled Date</td>
-                                            <td v-for="d in data['actions']" :key="d.rescheduled_date">{{ d.rescheduled_date }}</td>
+                                            <td v-for="d in data['actions']" :key="d.rescheduled_date">{{ get_date(d.rescheduled_date) }}</td>
                                         </tr>
                                         <tr>
                                             <td>Actual</td>
                                             <td v-for="d in data['actions']" :key="d.actual_date" :style="{ backgroundColor: d.actual_date > d.rescheduled_date ? '#FFCCCB' : d.actual_date ? '#90EE90' : 'White'}">
-                                                {{ d.actual_date }}
+                                                {{ get_date(d.actual_date) }}
                                             </td>
                                         </tr>
                                         <tr>
@@ -191,6 +191,15 @@ function get_cumulative_delay(actual, planned){
     }
     return 0
 }
+
+function get_date(date){
+    if(date){
+        let x = new Date(date)
+        return x.getDate() + "-" + (x.getMonth() + 1) + "-" + x.getFullYear()
+    }
+    return ""
+}
+
 </script>
 
 <style scoped>

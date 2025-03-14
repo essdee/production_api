@@ -26,7 +26,11 @@ def get_report_data(lot, item, report_date):
 
 	lot_list = frappe.db.sql(
 		f"""
-			Select lot from `tabTime and Action` where 1 = 1 {conditions} Group by lot
+			SELECT t1.lot FROM `tabTime and Action` AS t1 JOIN `tabTime and Action Detail` AS t2
+			ON t2.parent = t1.name JOIN (
+				SELECT parent, MAX(idx) AS max_idx FROM `tabTime and Action Detail` GROUP BY parent
+			) AS D ON t2.parent = D.parent AND t2.idx = D.max_idx
+			WHERE 1 = 1 {conditions} GROUP BY t1.lot ORDER BY t2.rescheduled_date;
 		""", con, as_list=True
 	)
 	data = {}
@@ -44,9 +48,10 @@ def get_report_data(lot, item, report_date):
 		data.setdefault(lot, {})
 		t_and_a_list = frappe.db.sql(
 			f"""
-				select t1.time_and_action, t1.master from `tabLot Time and Action Detail` as t1 join `tabTime and Action Detail` as t2 
-				on t2.parent = t1.time_and_action join `tabTime and Action` as t3 On t2.parent = t3.name 
-				where t1.parent = '{lot}' {conditions} Group By t1.time_and_action
+				SELECT t1.time_and_action, t1.master FROM `tabLot Time and Action Detail` as t1 JOIN 
+				`tabTime and Action Detail` as t2 ON t2.parent = t1.time_and_action JOIN 
+				`tabTime and Action` as t3 ON t2.parent = t3.name 
+				WHERE t1.parent = '{lot}' {conditions} GROUP BY t1.time_and_action
 			""",con, as_dict=True
 		)
 		masters = []
