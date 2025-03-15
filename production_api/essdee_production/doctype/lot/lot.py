@@ -936,3 +936,24 @@ def get_mapping_details(ipd):
 				items += f"{item_str} -> {bom_str} <br>"
 		map_dict[bom_item] = items
 	return map_dict
+
+@frappe.whitelist()
+def revert_t_and_a(doc_name):
+	doc = frappe.get_doc("Lot", doc_name)
+	t_and_a_list = []
+	for row in doc.lot_time_and_action_details:
+		t_and_a_list.append(row.time_and_action)
+
+	doc.set("lot_time_and_action_details", [])
+	doc.save()
+	t_and_a_list = tuple(t_and_a_list)
+	frappe.db.sql(
+		f"""
+			DELETE FROM `tabTime and Action` WHERE name in {t_and_a_list} 
+		"""
+	)	
+	frappe.db.sql(
+		f"""
+			DELETE FROM `tabTime and Action Detail` WHERE parent in {t_and_a_list} 
+		"""
+	)

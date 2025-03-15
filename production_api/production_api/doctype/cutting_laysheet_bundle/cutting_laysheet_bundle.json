@@ -13,7 +13,8 @@
   "part",
   "quantity",
   "hash_value",
-  "set_combination"
+  "set_combination",
+  "is_moved"
  ],
  "fields": [
   {
@@ -77,12 +78,20 @@
    "fieldtype": "JSON",
    "label": "Set Combination",
    "read_only": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "is_moved",
+   "fieldtype": "Check",
+   "in_list_view": 1,
+   "label": "Is Moved",
+   "read_only": 1
   }
  ],
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2025-02-18 18:27:20.511244",
+ "modified": "2025-03-12 14:45:11.096997",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Cutting LaySheet Bundle",

@@ -7,6 +7,7 @@ from six import string_types
 from itertools import groupby
 from frappe.utils import now_datetime
 from frappe.model.document import Document
+from production_api.utils import get_stich_details, get_part_list
 from production_api.production_api.doctype.item.item import get_or_create_variant
 from production_api.essdee_production.doctype.lot.lot import get_uom_conversion_factor
 from production_api.production_api.doctype.item_dependent_attribute_mapping.item_dependent_attribute_mapping import get_dependent_attribute_details
@@ -16,7 +17,7 @@ class ItemProductionDetail(Document):
 		item = self.item
 		version = frappe.db.sql(
 			f"""
-				Select max(version) as max_version from `tabItem Production Detail` where item = '{item}'
+				SELECT max(version) as max_version FROM `tabItem Production Detail` WHERE item = '{item}'
 			""",as_dict=True
 		)[0]['max_version']
 		if version:
@@ -437,9 +438,7 @@ def get_calculated_bom(item_production_detail, items, lot_name, process_name = N
 	
 	part_list = []
 	if item_detail.is_set_item:
-		for stich in item_detail.stiching_item_details:
-			if stich.set_item_attribute_value not in part_list:
-				part_list.append(stich.set_item_attribute_value)
+		part_list = get_part_list(item_detail)
 	
 	for bom_item in item_detail.item_bom:
 		if process_name and bom_item.process_name != process_name:
@@ -726,8 +725,7 @@ def get_cloth_combination(ipd_doc):
 def get_stitching_combination(ipd_doc):
 	part_panel_comb = {}
 	if ipd_doc.is_set_item:
-		for item in ipd_doc.stiching_item_details:
-			part_panel_comb[item.stiching_attribute_value] = item.set_item_attribute_value
+		part_panel_comb = get_stich_details(ipd_doc)
 
 	stitching_combination = {}
 	for detail in ipd_doc.stiching_item_combination_details:
@@ -778,8 +776,7 @@ def save_item_details(combination_item_detail, ipd_doc = None):
 	set_item_stitching_attrs = {}
 	set_item_packing_combination = {}
 	if ipd_doc and ipd_doc.is_set_item:
-		for i in ipd_doc.stiching_item_details:
-			set_item_stitching_attrs[i.stiching_attribute_value] = i.set_item_attribute_value
+		set_item_stitching_attrs = get_stich_details(ipd_doc)
 		for i in ipd_doc.set_item_combination_details:
 			set_item_packing_combination.setdefault(i.major_attribute_value, {})
 			set_item_packing_combination[i.major_attribute_value][i.set_item_attribute_value] = i.attribute_value	
@@ -876,12 +873,11 @@ def get_stiching_in_stage_attributes(dependent_attribute_mapping,stiching_in_sta
 
 ##################       CUTTING FUNCTIONS        ###################
 @frappe.whitelist()		
-def get_combination(doc_name,attributes, combination_type):
+def get_combination(doc_name,attributes, combination_type, cloth_list):
 	ipd_doc = frappe.get_doc("Item Production Detail",doc_name)
 
 	attributes = json.loads(attributes)
 	item_attributes = ipd_doc.item_attributes
-	cloth_detail = ipd_doc.cloth_detail
 	packing_attr = ipd_doc.packing_attribute
 	packing_attr_details = ipd_doc.packing_attribute_details
 	
@@ -913,9 +909,8 @@ def get_combination(doc_name,attributes, combination_type):
 			else:
 				part_accessory_combination[cloth] = [cloth_accessory]
 	else:		
-		cloth_detail = ipd_doc.cloth_detail
-		if isinstance(cloth_detail, string_types):
-			cloth_detail = json.loads(cloth_detail)
+		if isinstance(cloth_list, string_types):
+			cloth_list = json.loads(cloth_list)
 
 	stich_attr = ipd_doc.stiching_attribute
 	is_set_item = ipd_doc.is_set_item
@@ -1047,9 +1042,6 @@ def get_combination(doc_name,attributes, combination_type):
 			item = add_combination_value(combination_type,item)
 		item_list = items	
 
-	cloths = []
-	for cloth in cloth_detail:
-		cloths.append(cloth.name1)
 	additional_attr = []
 
 	if combination_type == 'Cutting':
@@ -1063,7 +1055,7 @@ def get_combination(doc_name,attributes, combination_type):
 	if combination_type == "Accessory":
 		select_list = accessory_list
 	else:
-		select_list = cloths	
+		select_list = cloth_list	
 	final_list = {
 		'combination_type': combination_type,
 		'attributes' : attributes + additional_attr,
@@ -1211,7 +1203,7 @@ def add_combination_value(combination_type,item):
 	return item
 
 @frappe.whitelist()
-def get_stiching_accessory_combination(doc_name):
+def get_stiching_accessory_combination(cloth_list, doc_name):
 	ipd_doc = frappe.get_doc("Item Production Detail",doc_name)
 	combination_list = {}
 	combination_list['combination_type'] = "Stiching Accessory"
@@ -1232,11 +1224,8 @@ def get_stiching_accessory_combination(doc_name):
 		part_list = []
 		for cloth_accessory,cloth in cloth_accessories.items():
 			part_list.append(cloth)
-
-		set_attr_details = {}
-		for item in ipd_doc.stiching_item_details:
-			set_attr_details[item.stiching_attribute_value] = item.set_item_attribute_value
-
+		
+		set_attr_details = get_stich_details(ipd_doc)
 		for item in ipd_doc.stiching_item_combination_details:
 			stich_attr = item.set_item_attribute_value
 			if set_attr_details.get(stich_attr) in part_list and item.major_attribute_value not in part_colours:
@@ -1258,9 +1247,8 @@ def get_stiching_accessory_combination(doc_name):
 					new_dict['accessories'][key]['cloth_type'] = None
 				combination_list['items'].append(new_dict)
 				colors.append(stich_item.attribute_value)
-	cloth_list = []
-	for cloth in ipd_doc.cloth_detail:
-		cloth_list.append(cloth.name1)
+	if isinstance(cloth_list, string_types):
+		cloth_list = json.loads(cloth_list)
 	combination_list['select_list'] = cloth_list	
 	return combination_list		
 

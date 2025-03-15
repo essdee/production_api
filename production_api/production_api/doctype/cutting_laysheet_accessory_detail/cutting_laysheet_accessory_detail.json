@@ -13,7 +13,8 @@
   "shade",
   "weight",
   "no_of_rolls",
-  "accessory"
+  "accessory",
+  "moved_weight"
  ],
  "fields": [
   {
@@ -65,12 +66,17 @@
    "fieldname": "accessory",
    "fieldtype": "Data",
    "label": "Accessory"
+  },
+  {
+   "fieldname": "moved_weight",
+   "fieldtype": "Float",
+   "label": "Moved Weight"
   }
  ],
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2025-02-20 12:20:51.320978",
+ "modified": "2025-03-14 12:45:11.093093",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Cutting LaySheet Accessory Detail",

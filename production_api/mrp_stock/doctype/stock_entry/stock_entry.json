@@ -181,7 +181,7 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-02-06 17:26:47.835117",
+ "modified": "2025-03-15 15:11:16.627789",
  "modified_by": "Administrator",
  "module": "MRP Stock",
  "name": "Stock Entry",
@@ -251,6 +251,19 @@
    "role": "Merch User",
    "select": 1,
    "share": 1
+  },
+  {
+   "cancel": 1,
+   "create": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Transaction User",
+   "share": 1,
+   "submit": 1,
+   "write": 1
   }
  ],
  "sort_field": "modified",

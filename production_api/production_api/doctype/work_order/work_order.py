@@ -9,6 +9,7 @@ from datetime import datetime
 from frappe.model.document import Document
 from frappe.utils import flt, nowdate, nowtime
 from production_api.mrp_stock.stock_ledger import make_sl_entries
+from production_api.utils import get_stich_details, get_part_list
 from production_api.production_api.logger import get_module_logger
 from production_api.production_api.doctype.purchase_order.purchase_order import get_item_group_index
 from production_api.production_api.doctype.item.item import get_attribute_details, get_or_create_variant
@@ -86,8 +87,8 @@ class WorkOrder(Document):
 					final_process = p.process_name
 			ipd_doc = frappe.db.sql(
 				f"""
-					Select packing_process, stiching_process, cutting_process from `tabItem Production Detail`
-					Where name = '{self.production_detail}'
+					SELECT packing_process, stiching_process, cutting_process FROM `tabItem Production Detail`
+					WHERE name = '{self.production_detail}'
 				""", as_dict=True
 			)[0]
 			main_prs = [ipd_doc.packing_process, ipd_doc.stiching_process, ipd_doc.cutting_process]
@@ -400,7 +401,7 @@ def get_deliverable_receivable( items, doc_name, deliverable=False, receivable=F
 	wo_doc = frappe.get_cached_doc("Work Order", doc_name)
 	lot_doc = frappe.db.sql(
 		f"""
-			Select production_detail, packing_uom, uom, pack_in_stage from `tabLot` where name = '{wo_doc.lot}'
+			SELECT production_detail, packing_uom, uom, pack_in_stage FROM `tabLot` WHERE name = '{wo_doc.lot}'
 		""", as_dict=True
 	)[0]
 	ipd = lot_doc.production_detail
@@ -671,9 +672,7 @@ def get_attributes(items, itemname, stage, dependent_attribute, ipd=None, proces
 	if pack_ipd:
 		ipd_pack_doc = frappe.get_cached_doc("Item Production Detail", pack_ipd)
 		if ipd_pack_doc.is_set_item:
-			for stich in ipd_pack_doc.stiching_item_details:
-				if stich.set_item_attribute_value not in part_list:
-					part_list.append(stich.set_item_attribute_value)
+			part_list = get_part_list(ipd_pack_doc)
 
 	for item_name, variants in items.items():
 		item_attribute_details = get_attribute_details(item_name)
@@ -709,9 +708,7 @@ def get_attributes(items, itemname, stage, dependent_attribute, ipd=None, proces
 						if attr.attribute == ipd_doc.set_item_attribute:
 							part = attr.attribute_value
 							break
-
-					for i in ipd_doc.stiching_item_details:
-						set_item_stitching_attrs[i.stiching_attribute_value] = i.set_item_attribute_value
+					set_item_stitching_attrs = get_stich_details(ipd_doc)
 					id = -1
 					for item in ipd_doc.stiching_item_details:
 						id += 1

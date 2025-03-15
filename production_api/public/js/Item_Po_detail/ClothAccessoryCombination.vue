@@ -119,6 +119,10 @@ function get_data(){
         return null
     }
     const x = ref(items.value)
+    let cloth_list = []
+    for(let i = 0; i < cur_frm.doc.cloth_detail.length; i++ ){
+        cloth_list.push(cur_frm.doc.cloth_detail[i]['name1'])
+    }
     for (let i = 0; i < x.value.items.length; i++) {
         Object.keys(x.value.items[i]['accessories']).forEach((row, index) => {
             let input = x.value.items[i]['accessories'][row]['colour']
@@ -142,6 +146,9 @@ function get_data(){
             }
             else {
                 value2 = input2
+            }
+            if(!cloth_list.includes(value2)){
+                frappe.throw("Some Cloths not in the Accessory Select List")
             }
             if(value2 == null || value2 == ""){
                 frappe.throw("Fill all the combinations")    

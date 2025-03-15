@@ -36,6 +36,7 @@ import LaySheetAccessory from "./CuttingLaySheet/components/LaySheetAccessory.vu
 import DeliveryChallan from "./Delivery_Challan/components/deliverable_items.vue"
 import CuttingMarker from "./Cutting_Marker/components/cutting_marker.vue"
 import TimeAndActionWeeklyReport from "./Lot/components/TimeAndActionWeeklyReport.vue"
+import CutPanelMovementBundle from "./Cut_Panel_Movement/components/CutPanelMovementBundle.vue"
 
 // Product Development
 import { ProductFileVersionsWrapper, ProductCostingListWrapper } from "./ProductDevelopment"
@@ -775,6 +776,26 @@ frappe.production.ui.Delivery_Challan = class {
     }
 
 }
+
+frappe.production.ui.CutPanelMovementBundle = class {
+    constructor(wrapper){
+        this.$wrapper = $(wrapper)
+        this.make_app()
+    }
+    make_app(){
+        this.app = createApp(CutPanelMovementBundle)
+        SetVueGlobals(this.app)
+        this.vue = this.app.mount(this.$wrapper.get(0))
+    }
+    load_data(item){
+        let items = JSON.parse(JSON.stringify(item))
+        this.vue.load_data(items)
+    }
+    get_items(){
+        return this.vue.get_items()
+    }
+}
+
 // Basic structure to integrate vue
 
 // frappe.ui.production.sampleName = class {

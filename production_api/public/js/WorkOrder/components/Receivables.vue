@@ -52,6 +52,7 @@ const table_fields = ref([
 		name: 'cost',
 		label: 'Cost',
 		uses_primary_attribute: 1,
+		show_to: ["System Manager", "Administrator", "Merchandiser", "Merch Manager"],
 	    condition: function(data, props) {
 	        return props['docstatus'] == 1;
 	    },

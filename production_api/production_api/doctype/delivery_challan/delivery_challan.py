@@ -8,6 +8,7 @@ from itertools import groupby
 from datetime import datetime
 from itertools import zip_longest
 from frappe.model.document import Document
+from production_api.utils import get_panel_list
 from production_api.mrp_stock.utils import get_stock_balance
 from production_api.mrp_stock.stock_ledger import make_sl_entries
 from production_api.production_api.logger import get_module_logger
@@ -164,6 +165,7 @@ def save_deliverables(item_details, from_location, ipd):
 			item_name = item['name']
 			item_attributes = item['attributes']
 			if(item.get('primary_attribute')):
+				comments = item.get('comments', None)
 				for attr, values in item['values'].items():	
 					if values.get('qty') or values.get('delivered_quantity'):
 						item_attributes[item.get('primary_attribute')] = attr
@@ -197,6 +199,7 @@ def save_deliverables(item_details, from_location, ipd):
 						item1['ref_docname'] = values.get('ref_docname')
 						item1['is_calculated'] = values.get('is_calculated')
 						item1['set_combination'] = values.get('set_combination', {})
+						item1['comments'] = comments
 						stock = get_stock_value(variant_name, item.get('lot'), from_location)
 						item1['stock_value'] = stock
 						stock_value += stock
@@ -233,6 +236,7 @@ def save_deliverables(item_details, from_location, ipd):
 					item1['ref_docname'] = item['values']['default'].get('ref_docname')
 					item1['is_calculated'] = item['values']['default'].get('is_calculated')
 					item1['set_combination'] = item['values']['default'].get('set_combination', {})
+					item1['comments'] = item['values']['default'].get('comments', None)
 					stock = get_stock_value(variant_name,item.get('lot'),from_location)
 					item1['stock_value'] = stock
 					stock_value += stock
@@ -302,6 +306,7 @@ def fetch_item_details(items, ipd, lot, is_new=False):
 							item['values'][attr.attribute_value]['secondary_qty'] = variant['secondary_qty']
 							item['values'][attr.attribute_value]['delivered_quantity'] = variant['delivered_quantity']							
 							item['values'][attr.attribute_value]['ref_docname'] = variant['ref_docname']
+							item['comments'] = variants[0]['comments']
 						break
 		else:
 			item['values']['default'] = {
@@ -319,6 +324,7 @@ def fetch_item_details(items, ipd, lot, is_new=False):
 				item['values']['default']['secondary_qty'] = variants[0]['secondary_qty']
 				item['values']['default']['delivered_quantity'] = variants[0]['delivered_quantity']
 				item['values']['default']['ref_docname'] = variants[0]['ref_docname']
+				item['values']['default']['comments'] = variants[0]['comments']
 
 		index = get_item_group_index(item_details, current_item_attribute_details)
 
@@ -459,9 +465,7 @@ def calculate_pieces(doc_name):
 	if process_name == ipd_doc.cutting_process:
 		return
 	elif process_name == ipd_doc.stiching_process:
-		panel_list = []
-		for panel in ipd_doc.stiching_item_details:
-			panel_list.append(panel.stiching_attribute_value)
+		panel_list = get_panel_list(ipd_doc)
 		incomplete_items, completed_items, total_delivered, qty_list = calculate_cutting_piece(dc_doc, panel_list)
 
 	elif process_name == ipd_doc.packing_process:
@@ -500,8 +504,7 @@ def calculate_pieces(doc_name):
 
 			elif stage == ipd_doc.stiching_in_stage:
 				if not panel_list:	
-					for panel in ipd_doc.stiching_item_details:
-						panel_list.append(panel.stiching_attribute_value)
+					panel_list = get_panel_list(ipd_doc)
 					incomplete_items, completed_items, total_delivered, qty_list = calculate_cutting_piece(dc_doc, panel_list)
 				elif panel_list:
 					incomplete_items, completed_items, total_delivered, qty_list = calculate_cutting_piece(dc_doc, panel_list)

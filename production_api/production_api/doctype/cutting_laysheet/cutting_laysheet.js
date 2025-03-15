@@ -196,6 +196,34 @@ frappe.ui.form.on("Cutting LaySheet", {
                 return;
             }
         })
+        if(frm.doc.status == "Label Printed" && frappe.user.has_role("System Manager")){
+            frm.add_custom_button("Revert Labels", ()=> {
+                let d = new frappe.ui.Dialog({
+                    title: "Are you sure want to Revert the Label",
+                    primary_action_label : "Yes",
+                    secondary_action_label: "No",
+                    primary_action(){
+                        d.hide()
+                        frappe.call({
+                            method: "production_api.production_api.doctype.cutting_laysheet.cutting_laysheet.revert_labels",
+                            args : {
+                                doc_name: frm.doc.name
+                            },
+                            freeze: true,
+                            freeze_message:"Reverting the Label Printed",
+                            callback: function(){
+                                frm.reload_doc()
+                            }
+                        })
+                        d.hide()
+                    },
+                    secondary_action(){
+                        d.hide()
+                    }
+                })
+                d.show()
+            })
+        }
 	},
     validate(frm){
         let items = frm.laysheet.get_items()

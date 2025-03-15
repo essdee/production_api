@@ -41,7 +41,14 @@
                                     </span>
                                     <span v-for="a in table_qty_fields" :key="a.name">
                                         <br>
-                                        {{ a.label }}: {{ a.format ? a.format(attr[a.name]) : attr[a.name] }}
+                                        <span v-if="a.show_to">
+                                            <span v-if="a.show_field">
+                                                {{ a.label }}: {{ a.format ? a.format(attr[a.name]) : attr[a.name] }}
+                                            </span>
+                                        </span>
+                                        <span v-else>
+                                            {{ a.label }}: {{ a.format ? a.format(attr[a.name]) : attr[a.name] }}
+                                        </span>
                                     </span>
                                 </div>
                                 <div v-else class="text-center">
@@ -86,7 +93,16 @@
                                     ({{ j.values['default'].secondary_qty }}<span v-if="j.secondary_uom">{{ ' ' + j.secondary_uom }}</span>)
                                 </span>
                             </td>
-                            <td v-for="a in table_qty_fields" :key="a.name">{{ a.format ? a.format(j.values['default'][a.name]) : j.values['default'][a.name] }}</td>
+                            <td v-for="a in table_qty_fields" :key="a.name">
+                                 <span v-if="a.show_to">
+                                    <span v-if="a.show_field">
+                                        {{ a.format ? a.format(j.values['default'][a.name]) : j.values['default'][a.name] }}
+                                    </span>
+                                </span>
+                                <span v-else>
+                                    {{ a.format ? a.format(j.values['default'][a.name]) : j.values['default'][a.name] }}
+                                </span>
+                            </td>
                             <td v-for="a in other_table_fields" :key="a.name">{{ a.format ? a.format(j[a.name]) : j[a.name] }}</td>
                             <td v-if="edit">
                                 <div v-if="can_remove" class="pull-right cursor-pointer" @click="remove_item(item_index, item1_index)" v-html="frappe.utils.icon('delete', 'md')"></div>
@@ -314,6 +330,19 @@
                     out.push({...props.tableFields[i]})
                 }
             }
+        }
+        for(let i = 0 ; i < out.length ; i++){
+            let temp = out[i]
+            let show_field = false
+            if(temp.hasOwnProperty("show_to")){
+                for(let j = 0; j < out[i]['show_to'].length; j++){
+                    if(frappe.user.has_role(out[i]['show_to'][j])){
+                        show_field = true
+                    }
+                }
+                out[i]["show_field"] = show_field
+                console.log(show_field)
+            } 
         }
         return out;
     });

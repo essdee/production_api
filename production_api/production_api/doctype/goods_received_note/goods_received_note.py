@@ -9,6 +9,7 @@ from itertools import groupby, zip_longest
 from frappe.model.document import Document
 from production_api.production_api.logger import get_module_logger
 from frappe.utils import money_in_words, flt, cstr, date_diff, nowtime
+from production_api.utils import get_part_list, get_panel_list, get_stich_details
 from production_api.mrp_stock.doctype.stock_entry.stock_entry import get_uom_details
 from production_api.production_api.doctype.work_order.work_order import get_bom_structure
 from production_api.production_api.doctype.item.item import get_attribute_details, get_or_create_variant
@@ -1172,8 +1173,7 @@ def get_cutting_process_deliverables(grn_doc, ipd_doc):
 	cloths = {}
 	stich_details = {}
 	if ipd_doc.is_set_item:
-		for item in ipd_doc.stiching_item_details:
-			stich_details[item.stiching_attribute_value] = item.set_item_attribute_value	
+		stich_details = get_stich_details(ipd_doc)
 
 	accessory_json = update_if_string_instance(ipd_doc.accessory_clothtype_json)
 
@@ -1325,11 +1325,7 @@ def get_packing_process_deliverables(grn_doc, wo_doc, ipd_doc):
 			key = (detail.major_attribute_value, detail.set_item_attribute_value)
 			set_combination_colours.setdefault(key, {})
 			set_combination_colours[key] = detail.attribute_value
-
-		for stich in ipd_doc.stiching_item_details:
-			if stich.set_item_attribute_value not in part_list:
-				part_list.append(stich.set_item_attribute_value)
-
+		part_list = get_part_list(ipd_doc)
 
 	for item in grn_doc.items:
 		items.append({
@@ -1477,10 +1473,7 @@ def get_attributes(items, itemname, stage, dependent_attribute, ipd):
 					if attr.attribute == ipd_doc.set_item_attribute:
 						part = attr.attribute_value
 						break
-
-				for i in ipd_doc.stiching_item_details:
-					set_item_stitching_attrs[i.stiching_attribute_value] = i.set_item_attribute_value
-
+				set_item_stitching_attrs = get_stich_details(ipd_doc)
 				for id, item in enumerate(ipd_doc.stiching_item_details):
 					attributes[ipd_doc.stiching_attribute] = item.stiching_attribute_value
 					v = True
@@ -1678,9 +1671,7 @@ def calculate_pieces(doc_name):
 			process_name = detail.process_name
 
 	if process_name == ipd_doc.cutting_process:
-		panel_list = []
-		for panel in ipd_doc.stiching_item_details:
-			panel_list.append(panel.stiching_attribute_value)
+		panel_list = get_panel_list(ipd_doc)
 		incomplete_items, completed_items, received_types, total_received, qty_list = calculate_cutting_piece(grn_doc, received_types, panel_list)
 	elif process_name == ipd_doc.stiching_process:
 		final_calculation, received_types, total_received = calculate_piece_stage(grn_doc, received_types, doc_status, total_received, final_calculation)
@@ -1728,14 +1719,12 @@ def calculate_pieces(doc_name):
 
 			elif stage == ipd_doc.stiching_in_stage:
 				if not panel_list:	
-					for panel in ipd_doc.stiching_item_details:
-						panel_list.append(panel.stiching_attribute_value)
+					panel_list = get_panel_list(ipd_doc)
 					incomplete_items, completed_items, received_types, total_received, qty_list = calculate_cutting_piece(grn_doc, received_types, panel_list)
 				elif panel_list:
 					incomplete_items, completed_items, received_types, total_received, qty_list = calculate_cutting_piece(grn_doc, received_types, panel_list)
 				else:
 					return
-
 
 	wo_doc = frappe.get_cached_doc("Work Order", grn_doc.against_id)
 	if not wo_doc.first_grn_date:

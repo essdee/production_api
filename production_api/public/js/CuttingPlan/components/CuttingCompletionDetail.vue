@@ -85,6 +85,7 @@
                                 <th v-for="(j, idx) in i.primary_attribute_values" :key="idx">
                                     {{ j }}
                                 </th>
+                                <th>Total</th>
                             </tr>
                             <tr v-for="(j, item1_index) in i.items" :key="item1_index">
                                 <td>{{item1_index + 1}}</td>
@@ -98,11 +99,12 @@
                                     </div>
                                     <div v-else>--</div>
                                 </td>
+                                <td><strong>{{j.total_qty}}</strong></td>
                             </tr>
                             <tr>
                                 <td>Total</td>
                                 <td v-for="(j, idx) in i.attributes" :key="idx"></td>
-                                <td v-for="(j, idx) in completed_total" :key="idx">{{j}}</td>
+                                <td v-for="(j, idx) in completed_total" :key="idx"><strong>{{j}}</strong></td>
                             </tr>
                         </table>
                     </td>
@@ -115,6 +117,7 @@
                                     <th v-for="(j, idx) in i.primary_attribute_values" :key="idx">
                                         {{ j }}
                                     </th>
+                                    <th>Total</th>
                                 </tr>
                                 <template v-for="(j, item1_index) in i.items" :key="item1_index">
                                     <tr v-if="check(j.attributes, part)">
@@ -134,11 +137,12 @@
                                             </div>
                                             <div v-else>--</div>
                                         </td>
+                                        <td><strong>{{j.total_qty}}</strong></td>
                                     </tr>
                                 </template>  
                                 <tr>
                                     <td v-for="(j, idx) in i.attributes" :key="idx"></td>
-                                    <td v-for="(j, idx) in completed_total[part]" :key="idx">{{j}}</td>
+                                    <td v-for="(j, idx) in completed_total[part]" :key="idx"><strong>{{j}}</strong></td>
                                 </tr>  
                             </table>
                         </template>    
@@ -183,7 +187,8 @@ function load_data(item, is_pop_up){
         if(pop_up.value == 3){
             get_total()
         }
-    } catch(e) {
+    } 
+    catch(e) {
         console.log(e)
     }
 }
@@ -205,6 +210,7 @@ function get_total(){
         if(!item.is_set_item){
             item.items.forEach((row) => {
                 if(row.completed){
+                    let x = 0
                     Object.keys(row.values).forEach(key => {
                         if (total_dict[key]){
                             total_dict[key] += row.values[key]
@@ -212,7 +218,9 @@ function get_total(){
                         else{
                             total_dict[key] = row.values[key]
                         }
+                        x += row.values[key]
                     })
+                    row.total_qty = x
                 }
             })
         }
@@ -220,7 +228,9 @@ function get_total(){
             Object.keys(item.Panel).forEach(part => {
                 item.items.forEach((row) => {
                     if(row.completed && row.attributes[item.set_item_attr] == part){
+                        let x = 0
                         Object.keys(row.values).forEach(key => {
+                            x += row.values[key]
                             if (!total_dict[part]){
                                 total_dict[part] = {}
                             }    
@@ -231,6 +241,7 @@ function get_total(){
                                 total_dict[part][key] = row.values[key]
                             }
                         })
+                        row.total_qty = x
                     }
                 })  
             })

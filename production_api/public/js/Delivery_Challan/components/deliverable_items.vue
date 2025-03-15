@@ -11,6 +11,7 @@
 							<th>Lot</th>
 							<th v-for="attr in i.attributes" :key="attr">{{ attr }}</th>
 							<th v-for="attr in i.primary_attribute_values" :key="attr"> {{ attr }} </th>
+							<th>Comments</th>
 						</tr>
 						<tr v-for="(j, item1_index) in i.items" :key="item1_index">
 							<td>{{ item1_index + 1 }}</td>
@@ -31,6 +32,7 @@
 								</div>
 								<div v-else> -- </div>
 							</td>
+							<td>{{j.comments}}</td>
 						</tr>
 					</table>
 				</td>
@@ -42,6 +44,7 @@
 							<th>Lot</th>
 							<th v-for="attr in i.attributes" :key="attr">{{ attr }}</th>
 							<th>Delivered Quantity</th>
+							<th>Comments</th>
 						</tr>
 						<tr v-for="(j, item1_index) in i.items" :key="item1_index">
 							<td>{{ item1_index + 1 }}</td>
@@ -58,6 +61,7 @@
 								</div>
 								<div v-else> -- </div>
 							</td>
+							<td>{{j.values['default'].comments}}</td>
 						</tr>
 					</table>
 				</td>
@@ -77,6 +81,7 @@
 							<th>Lot</th>
 							<th v-for="attr in i.attributes" :key="attr">{{ attr }}</th>
 							<th v-for="attr in i.primary_attribute_values" :key="attr"> {{ attr }} </th>
+							<th>Comments</th>
 						</tr>
 						<tr v-for="(j, item1_index) in i.items" :key="item1_index">
 							<td>{{ item1_index + 1 }}</td>
@@ -102,6 +107,7 @@
 									({{attr.secondary_qty}} {{attr.secondary_uom}})
 								</div>
 							</td>
+							<td><input type="text" v-model="j.comments" class="form-control" @blur="make_dirty()"/></td>
 						</tr>
 					</table>
 				</td>
@@ -119,6 +125,7 @@
 							<th>Pending Quantity</th>
 							<th>Quantity</th>
 							<th>Secondary Qty</th>
+							<th>Comments</th>
 						</tr>
 						<tr v-for="(j, item1_index) in i.items" :key="item1_index">
 							<td>{{ item1_index + 1 }}</td>
@@ -146,6 +153,7 @@
 									{{j.values['default'].secondary_qty}} {{j.values['default'].secondary_uom}}
 								</div>
 							</td>
+							<td><input type="text" v-model="j.values['default'].comments" class="form-control" @blur="make_dirty()"/></td>
 						</tr>
 					</table>
 				</td>

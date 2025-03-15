@@ -461,6 +461,7 @@
    "fetch_from": "process_name.is_manual_entry_in_grn",
    "fieldname": "is_manual_entry",
    "fieldtype": "Check",
+   "hidden": 1,
    "label": "Is Manual Entry"
   },
   {
@@ -492,7 +493,7 @@
    "link_fieldname": "against_id"
   }
  ],
- "modified": "2025-03-11 16:54:44.765308",
+ "modified": "2025-03-15 15:04:08.529329",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Work Order",
@@ -574,6 +575,16 @@
    "read": 1,
    "report": 1,
    "role": "Store User",
+   "select": 1,
+   "share": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Transaction User",
    "select": 1,
    "share": 1
   }
