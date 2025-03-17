@@ -205,7 +205,7 @@ def save_deliverables(item_details, from_location, ipd):
 						stock_value += stock
 						items.append(item1)		
 			else:
-				if item['values'].get('default'):
+				if item['values']['default'].get('qty') or item['values']['default'].get('delivered_quantity'):	
 					item1 = {}
 					tup = tuple(sorted(item_attributes.items()))
 					variant_name = get_or_create_ipd_variant(item_variants, item_name, tup, item_attributes)

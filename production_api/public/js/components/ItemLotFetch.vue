@@ -41,12 +41,7 @@
                                     </span>
                                     <span v-for="a in table_qty_fields" :key="a.name">
                                         <br>
-                                        <span v-if="a.show_to">
-                                            <span v-if="a.show_field">
-                                                {{ a.label }}: {{ a.format ? a.format(attr[a.name]) : attr[a.name] }}
-                                            </span>
-                                        </span>
-                                        <span v-else>
+                                        <span>
                                             {{ a.label }}: {{ a.format ? a.format(attr[a.name]) : attr[a.name] }}
                                         </span>
                                     </span>
@@ -94,12 +89,7 @@
                                 </span>
                             </td>
                             <td v-for="a in table_qty_fields" :key="a.name">
-                                 <span v-if="a.show_to">
-                                    <span v-if="a.show_field">
-                                        {{ a.format ? a.format(j.values['default'][a.name]) : j.values['default'][a.name] }}
-                                    </span>
-                                </span>
-                                <span v-else>
+                                <span>
                                     {{ a.format ? a.format(j.values['default'][a.name]) : j.values['default'][a.name] }}
                                 </span>
                             </td>
@@ -325,24 +315,20 @@
                 if (props.tableFields[i].condition) {
                     valid = props.tableFields[i].condition(props.items, props.args)
                 }
-                if (valid && !x.includes(props.tableFields[i].name) && props.tableFields[i].uses_primary_attribute) {
+                let show_field = true
+                if(props.tableFields[i].hasOwnProperty("has_view_permission")){
+                    show_field = false
+                    for(let j = 0; j < props.tableFields[i]['has_view_permission'].length; j++){
+                        if(frappe.user.has_role(props.tableFields[i]['has_view_permission'][j])){
+                            show_field = true
+                        }
+                    }
+                }
+                if (valid && show_field && !x.includes(props.tableFields[i].name) && props.tableFields[i].uses_primary_attribute) {
                     x.push(props.tableFields[i].name);
                     out.push({...props.tableFields[i]})
                 }
             }
-        }
-        for(let i = 0 ; i < out.length ; i++){
-            let temp = out[i]
-            let show_field = false
-            if(temp.hasOwnProperty("show_to")){
-                for(let j = 0; j < out[i]['show_to'].length; j++){
-                    if(frappe.user.has_role(out[i]['show_to'][j])){
-                        show_field = true
-                    }
-                }
-                out[i]["show_field"] = show_field
-                console.log(show_field)
-            } 
         }
         return out;
     });

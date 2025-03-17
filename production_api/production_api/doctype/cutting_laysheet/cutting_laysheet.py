@@ -570,7 +570,7 @@ def update_cutting_plan(cutting_laysheet, check_cp = False):
 						frappe.throw(f"Already {colour} was completed")			
 					
 					if not check_cp:		
-						total_qty['val'] += min
+						total_qty[val] += min
 						item['values'][val] += min
 						for panel in alter_incomplete_items[colour][val]:
 							alter_incomplete_items[colour][val][panel] -= min
