@@ -873,7 +873,7 @@ def get_stiching_in_stage_attributes(dependent_attribute_mapping,stiching_in_sta
 
 ##################       CUTTING FUNCTIONS        ###################
 @frappe.whitelist()		
-def get_combination(doc_name,attributes, combination_type, cloth_list):
+def get_combination(doc_name,attributes, combination_type, cloth_list = None):
 	ipd_doc = frappe.get_doc("Item Production Detail",doc_name)
 
 	attributes = json.loads(attributes)
