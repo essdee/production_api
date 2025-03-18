@@ -101,7 +101,6 @@ def get_item_bom_mapping_combination(item_attributes, bom_attributes, attribute_
 		check = False
 
 	if check:
-		print("YES")
 		data = get_combination(item_attributes, bom_attributes, attribute_values)
 
 	return data

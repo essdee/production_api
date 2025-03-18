@@ -25,7 +25,7 @@ class CuttingLaySheet(Document):
 
 	def before_validate(self):
 		if self.get('item_details'):
-			items = save_item_details(self.item_details, self.cutting_plan)
+			items = save_item_details(self.item_details, self.cutting_plan, self.calculated_parts)
 			self.set("cutting_laysheet_details", items)
 
 		if self.get('item_accessory_details'):
@@ -100,10 +100,13 @@ class CuttingLaySheet(Document):
 			self.piece_weight = used_weight / self.total_no_of_pieces
 		self.set("cutting_laysheet_details",items)			
 
-def save_item_details(items, cutting_plan):
+def save_item_details(items, cutting_plan, calculated_parts):
 	items = update_if_string_instance(items)
+	panels = calculated_parts.split(",")
+	panels = [panel.strip() for panel in panels]
 	ipd = frappe.get_value("Cutting Plan",cutting_plan,"production_detail")
 	ipd_doc = frappe.get_cached_doc("Item Production Detail",ipd)
+	cloth_combination, add_pack_attr = get_combined_combination(ipd_doc)
 	item_list = []
 	for item in items:
 		attributes = {}
@@ -115,6 +118,19 @@ def save_item_details(items, cutting_plan):
 				cloth_name = cloth.cloth
 				break
 		variant = get_or_create_variant(cloth_name, attributes)
+		for panel in panels:
+			d = {
+				ipd_doc.stiching_attribute: panel,
+				"Dia": item['dia'],
+				"Cloth": item['cloth_type'],
+			}
+			if add_pack_attr:
+				d[ipd_doc.packing_attribute] = item['colour']
+			
+			key = tuple(sorted(d.items()))
+			if key not in cloth_combination:
+				frappe.throw(f"{panel} is not mentioned with {item['cloth_type']}-{item['dia']}")
+
 		item_list.append({
 			"cloth_item_variant":variant,
 			"cloth_type":item['cloth_type'],
@@ -161,6 +177,47 @@ def save_accessory_details(items, cutting_plan):
 		})
 	return item_list	
 
+def get_combined_combination(ipd_doc):
+	cutting_items_json = update_if_string_instance(ipd_doc.cutting_items_json)
+	cutting_cloths_json = update_if_string_instance(ipd_doc.cutting_cloths_json)
+	cutting_attrs = [attr.attribute for attr in ipd_doc.cutting_attributes]
+	cloths_attrs = [attr.attribute for attr in ipd_doc.cloth_attributes]
+	add_pack_attr = False
+	if ipd_doc.packing_attribute in cutting_attrs or ipd_doc.packing_attribute in cloths_attrs:
+		add_pack_attr = True
+	if ipd_doc.stiching_attribute in cutting_attrs or ipd_doc.stiching_attribute in cloths_attrs:
+		cutting_items = cutting_items_json['items']
+		cutting_cloths = cutting_cloths_json['items']
+		combination = {}
+		for row1 in cutting_items:
+			for row2 in cutting_cloths:
+				row1.update(row2)
+				d = {
+					ipd_doc.stiching_attribute: row1[ipd_doc.stiching_attribute],
+					"Dia": row1['Dia'],
+					"Cloth": row1['Cloth']
+				}
+				if add_pack_attr and row1.get(ipd_doc.packing_attribute):
+					d[ipd_doc.packing_attribute] = row1[ipd_doc.packing_attribute]
+
+				key = tuple(sorted(d.items()))
+				combination[key] = None
+	else:
+		for row1 in cutting_items:
+			for row2 in cutting_cloths:
+				row1.update(row2)
+				for row in ipd_doc.stiching_item_details:
+					d = {
+						ipd_doc.stiching_attribute: row.stiching_attribute_value,
+						"Dia": row1['Dia'],
+						"Cloth": row1['Cloth']
+					}
+					if add_pack_attr and row1.get(ipd_doc.packing_attribute):
+						d[ipd_doc.packing_attribute] = row1[ipd_doc.packing_attribute]
+					key = tuple(sorted(d.items()))
+					combination[key] = None
+	return combination, add_pack_attr		
+	
 @frappe.whitelist()
 def get_select_attributes(cutting_plan):
 	doc = frappe.get_doc("Cutting Plan",cutting_plan)
@@ -320,24 +377,49 @@ def get_cut_sheet_data(doc_name,cutting_marker,item_details,items, max_plys:int,
 		cloth[key] += item.weight - item.balance_weight
 
 	for item in doc.cutting_laysheet_accessory_details:
-		key = (item.colour, item.cloth_type, item.dia)
+		key = (item.accessory, item.colour, item.cloth_type, item.dia)
 		accessory.setdefault(key,0)
 		accessory[key] += item.weight
+
 	cp_doc = frappe.get_doc("Cutting Plan",doc.cutting_plan)
-	for item in cp_doc.cutting_plan_cloth_details:
-		key = (item.colour, item.cloth_type, item.dia)
-		if key in cloth:
-			item.used_weight += cloth[key]
-			item.balance_weight = item.weight - item.used_weight
-			if item.balance_weight < 0:
-				frappe.throw(f"{bold(item.dia)} {bold(item.colour)}, {bold(item.cloth_type)} was used more than the received weight")
-				return
-		if key in accessory:
-			item.used_weight += accessory[key]
-			item.balance_weight = item.weight - item.used_weight
-			if item.balance_weight < 0:
-				frappe.throw(f"{bold(item.dia)} {bold(item.colour)}, {bold(item.cloth_type)} was used more than the received weight")
-				return
+	
+	if cp_doc.version == "V1":
+		for item in cp_doc.cutting_plan_cloth_details:
+			key = (item.colour, item.cloth_type, item.dia)
+			if key in cloth:
+				item.used_weight += cloth[key]
+				item.balance_weight = item.weight - item.used_weight
+				if item.balance_weight < 0:
+					frappe.throw(f"{bold(item.dia)} {bold(item.colour)}, {bold(item.cloth_type)} was used more than the received weight")
+					return
+				
+		for item in cp_doc.cutting_plan_accessory_details:		
+			key = (item.colour, item.cloth_type, item.dia)
+			if key in accessory:
+				item.used_weight += accessory[key]
+				item.balance_weight = item.weight - item.used_weight
+				if item.balance_weight < 0:
+					frappe.throw(f"{bold(item.dia)} {bold(item.colour)}, {bold(item.cloth_type)} was used more than the received weight")
+					return
+	else:
+		for item in cp_doc.cutting_plan_cloth_details:
+			key = (item.colour, item.cloth_type, item.dia)
+			if key in cloth:
+				item.used_weight += cloth[key]
+				item.balance_weight = item.weight - item.used_weight
+				if item.balance_weight < 0:
+					frappe.throw(f"{bold(item.dia)} {bold(item.colour)}, {bold(item.cloth_type)} was used more than the received weight")
+					return
+		
+		for item in cp_doc.cutting_plan_accessory_details:		
+			key = (item.accessory, item.colour, item.cloth_type, item.dia)
+			if key in accessory:
+				item.used_weight += accessory[key]
+				item.balance_weight = item.weight - item.used_weight
+				if item.balance_weight < 0:
+					frappe.throw(f"In Accessory {bold(item.dia)} {bold(item.colour)}, {bold(item.cloth_type)} was used more than the received weight")
+					return
+				
 	update_cutting_plan(doc_name, check_cp=True)		
 
 def check_ratio_parts(parts, marker_ratios):
@@ -637,7 +719,7 @@ def update_cutting_plan(cutting_laysheet, check_cp = False):
 			cloth.setdefault(key,0)
 			cloth[key] += item.weight - item.balance_weight
 		for item in cls_doc.cutting_laysheet_accessory_details:
-			key = (item.colour, item.cloth_type, item.dia)
+			key = (item.accessory, item.colour, item.cloth_type, item.dia)
 			accessory.setdefault(key,0)
 			accessory[key] += item.weight
 		cp_doc = frappe.get_doc("Cutting Plan",cls_doc.cutting_plan)
@@ -647,7 +729,7 @@ def update_cutting_plan(cutting_laysheet, check_cp = False):
 				cp_cloth.append((item.colour, item.cloth_type, item.dia))
 
 			for item in cp_doc.cutting_plan_accessory_details:
-				cp_accessory.append((item.colour, item.cloth_type, item.dia))
+				cp_accessory.append((item.accessory, item.colour, item.cloth_type, item.dia))
 
 			for key in cloth:
 				colour, cloth_type, dia = key
@@ -655,12 +737,11 @@ def update_cutting_plan(cutting_laysheet, check_cp = False):
 					frappe.throw(f"No cloth is mentioned with {cloth_type}, {colour}-{dia}")
 			
 			for key in accessory:
-				colour, cloth_type, dia = key
+				accessory, colour, cloth_type, dia = key
 				if key not in cp_accessory:
-					frappe.throw(f"No accessory is mentioned with {cloth_type}, {colour}-{dia}")
+					frappe.throw(f"Accessory {accessory} is not mentioned with {cloth_type}, {colour}-{dia}")
 
 		if not check_cp:
-			
 			for item in cp_doc.cutting_plan_cloth_details:
 				key = (item.colour, item.cloth_type, item.dia)
 				if key in cloth:
@@ -668,7 +749,7 @@ def update_cutting_plan(cutting_laysheet, check_cp = False):
 					item.balance_weight = item.weight - item.used_weight
 
 			for item in cp_doc.cutting_plan_accessory_details:
-				key = (item.colour, item.cloth_type, item.dia)
+				key = (item.accessory, item.colour, item.cloth_type, item.dia)
 				if key in accessory:
 					item.used_weight += accessory[key]
 
@@ -695,8 +776,6 @@ def update_cutting_plan(cutting_laysheet, check_cp = False):
 		
 		stitching_combination = get_stitching_combination(ipd_doc)
 		set_item = ipd_doc.is_set_item
-		cm_doc = frappe.get_doc("Cutting Marker",cls_doc.cutting_marker)
-		cutting_marker_list = cm_doc.calculated_parts.split(",")
 		item_panel = {}
 		for item in incomplete_items['items']:
 			for val in item['values']:

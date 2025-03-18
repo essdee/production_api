@@ -631,7 +631,7 @@ def calculate_cloth(ipd_doc, variant_attrs, qty, cloth_combination, stitching_co
 					dia, accessory_weight = cloth_combination["accessory_combination"][key]
 					accessory_colour, cloth = get_accessory_colour(ipd_doc,attrs,accessory_name)
 					weight = accessory_weight * qty * attr_qty
-					cloth_detail.append(add_cloth_detail(weight, ipd_doc.additional_cloth,cloth,accessory_colour,dia,"accessory"))
+					cloth_detail.append(add_cloth_detail(weight, ipd_doc.additional_cloth,cloth,accessory_colour,dia,"accessory", accessory_name=accessory_name))
 	elif cloth_accessory_json:
 		for accessory_name, accessory_cloth in cloth_accessory_json.items():
 			attrs["Accessory"] = accessory_name
@@ -640,7 +640,7 @@ def calculate_cloth(ipd_doc, variant_attrs, qty, cloth_combination, stitching_co
 				dia, accessory_weight = cloth_combination["accessory_combination"][key]
 				accessory_colour, cloth = get_accessory_colour(ipd_doc,attrs,accessory_name)	
 				weight = accessory_weight * qty
-				cloth_detail.append(add_cloth_detail(weight, ipd_doc.additional_cloth,cloth,accessory_colour,dia,"accessory"))
+				cloth_detail.append(add_cloth_detail(weight, ipd_doc.additional_cloth,cloth,accessory_colour,dia,"accessory", accessory_name=accessory_name))
 	return cloth_detail
 
 def get_bom_combination(bom_items):
@@ -671,16 +671,19 @@ def get_bom_combination(bom_items):
 			bom_combination[bom_item.item] = {}
 	return bom_combination
 
-def add_cloth_detail(weight, additional_cloth,cloth_type,cloth_colour,dia,type):
+def add_cloth_detail(weight, additional_cloth,cloth_type,cloth_colour,dia,type, accessory_name=None):
 	x = get_additional_cloth(weight, additional_cloth)
 	weight = weight + x
-	return {
+	d = {
 		"cloth_type": cloth_type,
 		"colour": cloth_colour,
 		"dia": dia,
 		"quantity": weight,
 		"type":type
 	}
+	if accessory_name:
+		d["accessory_name"] = accessory_name
+	return d	
 
 def get_accessory_colour(ipd_doc,variant_attrs,accessory):
 	for acce in json.loads(ipd_doc.stiching_accessory_json)["items"]:
@@ -1103,11 +1106,7 @@ def get_set_tri_combination(set_attr_values, set_attr, pack_attr, stich_attr, co
 
 def get_comb_items(set_attr_values, attr1, attr2, combination_type, accessory_combination):
 	items = []
-	print(attr1, attr2, combination_type)
-	print(accessory_combination)
 	for attribute1,attribute2 in set_attr_values.items():
-		print(attribute1)
-		print(attribute2)
 		for attr2_data in attribute2:
 			i = {}
 			if combination_type == "Accessory":

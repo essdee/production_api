@@ -135,35 +135,32 @@ frappe.ui.form.on("Cutting LaySheet", {
                         check_cp: true,
                     },
                     callback: function(){
-                        frappe.ui.form.qz_connect()
-                            .then(function () {
-                                return frappe.ui.form.qz_get_printer_list();
-                            })
-                            .then(function (printers) {
-                                let d = new frappe.ui.Dialog({
-                                    title:"Select any one printer",
-                                    fields: [
-                                        {
-                                            fieldname: 'printer_list_html',
-                                            fieldtype: 'HTML',
-                                        }
-                                    ],
-                                    size:'small',
-                                    primary_action_label:"Print",
-                                    primary_action:function(){
-                                        d.hide()
-                                        let printer = get_printer()
-                                        printer = printer.slice(1, -1);
-                                        print_labels(frm,printer)
+                        frappe.ui.form.qz_connect().then(function () {
+                            return frappe.ui.form.qz_get_printer_list();
+                        }).then(function (printers) {
+                            let d = new frappe.ui.Dialog({
+                                title:"Select any one printer",
+                                fields: [
+                                    {
+                                        fieldname: 'printer_list_html',
+                                        fieldtype: 'HTML',
                                     }
-                                })
-                                d.fields_dict.printer_list_html.$wrapper.html('');
-                                d.fields_dict.printer_list_html.$wrapper.append(get_printers_html(printers))
-                                d.show()
+                                ],
+                                size:'small',
+                                primary_action_label:"Print",
+                                primary_action:function(){
+                                    d.hide()
+                                    let printer = get_printer()
+                                    printer = printer.slice(1, -1);
+                                    print_labels(frm,printer)
+                                }
                             })
-                            .catch(function (err) {
-                                frappe.ui.form.qz_fail(err);
-                            });
+                            d.fields_dict.printer_list_html.$wrapper.html('');
+                            d.fields_dict.printer_list_html.$wrapper.append(get_printers_html(printers))
+                            d.show()
+                        }).catch(function (err) {
+                            frappe.ui.form.qz_fail(err);
+                        });
                     }
                 })
             })

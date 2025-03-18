@@ -5,6 +5,7 @@
             <table class='table table-sm table-bordered'>
                 <tr>
                     <th>S.No</th>
+                    <th>Accessory</th>
                     <th>Cloth Type</th>
                     <th>Colour</th>
                     <th>Dia</th>
@@ -15,6 +16,7 @@
                 </tr>
                 <tr v-for="(item,idx) in items" :key='idx'>
                     <td>{{idx + 1}}</td>
+                    <td>{{item.accessory}}</td>
                     <td>{{item.cloth_type}}</td>
                     <td>{{item.colour}}</td>
                     <td>{{item.dia}}</td>

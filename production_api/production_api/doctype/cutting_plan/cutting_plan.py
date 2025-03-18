@@ -178,6 +178,7 @@ def fetch_cloth_details(items):
 		variant = item.cloth_item_variant
 		variant_doc = frappe.get_doc("Item Variant",variant)
 		item_details.append({
+			"accessory": item.accessory,
 			"cloth_item_variant":item.cloth_item_variant,
 			"item":variant_doc.item,
 			"colour":item.colour,
@@ -223,6 +224,7 @@ def get_cloth1(cutting_plan):
 			cloth_details[key] += c1["quantity"]
 
 			if c1["type"] == "accessory":
+				key = (c1["cloth_type"], c1["colour"], c1["dia"], c1['accessory_name'])
 				accessory_detail.setdefault(key,0)
 				accessory_detail[key] += c1["quantity"]
 
@@ -272,6 +274,7 @@ def get_cloth1(cutting_plan):
 				item_variants[item_name] = {}
 				item_variants[item_name][str_tup] = cloth_name
 		required_accessory_details.append({
+			"accessory": k[3],
 			"cloth_item_variant": cloth_name,
 			"cloth_type": k[0],
 			"colour": k[1],

@@ -34,6 +34,7 @@
             <table v-if="items && items.length > 0" class="table table-sm table-bordered">
                 <tr>
                     <th>S.No.</th>
+                    <th v-if='type=="accessory"'>Accessory</th>
                     <th>Cloth</th>
                     <th>Cloth Type</th>
                     <th>Colour</th>
@@ -45,6 +46,7 @@
                 </tr>
                 <tr v-for="(i, item1_index) in items" :key="item1_index">
                     <td>{{item1_index + 1}}</td>
+                    <td v-if="type=='accessory'">{{i.accessory}}</td>
                     <td>{{ i.item }}</td>
                     <td>{{ i.cloth_type }}</td>
                     <td>{{ i.colour }}</td>
@@ -52,14 +54,7 @@
                     <td>{{ i.required_weight }}</td>
                     <td v-if="type=='cloth'">
                         <form>
-                            <input
-                                class="form-control"
-                                type="number"
-                                v-model.number="i.weight"
-                                min="0"
-                                step="0.001"
-                                @blur="update_doc()"
-                            />
+                            <input class="form-control" type="number" v-model.number="i.weight" min="0" step="0.001" @blur="update_doc()"/>
                         </form>
                     </td>
                     <td>{{i.used_weight}}</td>
