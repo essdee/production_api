@@ -102,8 +102,9 @@ class CuttingLaySheet(Document):
 
 def save_item_details(items, cutting_plan, calculated_parts):
 	items = update_if_string_instance(items)
-	panels = calculated_parts.split(",")
-	panels = [panel.strip() for panel in panels]
+	if calculated_parts:
+		panels = calculated_parts.split(",")
+		panels = [panel.strip() for panel in panels]
 	ipd = frappe.get_value("Cutting Plan",cutting_plan,"production_detail")
 	ipd_doc = frappe.get_cached_doc("Item Production Detail",ipd)
 	cloth_combination, add_pack_attr = get_combined_combination(ipd_doc)
