@@ -39,6 +39,8 @@ def execute():
                                 combination['accessory'] = acc
                                 combination[ipd_doc.set_item_attribute] = part
                                 combination['major_colour'] = major_colour
+                                if part != ipd_doc.major_attribute_value:
+                                    combination['major_attr_value'] = None
                                 combination['accessory_colour'] = details['colour']
                                 combination['cloth_type'] = details['cloth_type']
                                 combination_list['items'].append(combination)
