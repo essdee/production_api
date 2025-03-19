@@ -686,9 +686,21 @@ def add_cloth_detail(weight, additional_cloth,cloth_type,cloth_colour,dia,type, 
 	return d	
 
 def get_accessory_colour(ipd_doc,variant_attrs,accessory):
-	for acce in json.loads(ipd_doc.stiching_accessory_json)["items"]:
-		if acce['major_attr_value'] == variant_attrs[ipd_doc.packing_attribute]:
-			return acce['accessories'][accessory]["colour"],acce['accessories'][accessory]["cloth_type"] 
+	frappe.log(variant_attrs)
+	if ipd_doc.is_set_item:
+		part = variant_attrs[ipd_doc.set_item_attribute]
+		colour = variant_attrs[ipd_doc.packing_attribute]
+		stiching_accessory_json = json.loads(ipd_doc.stiching_accessory_json)
+		for row in stiching_accessory_json['items']:
+			if row['accessory'] == accessory and row['major_colour'] == colour and row[ipd_doc.set_item_attribute] == part:
+				return row['accessory_colour'],row['cloth_type']
+	else:
+		colour = variant_attrs[ipd_doc.packing_attribute]
+		stiching_accessory_json = json.loads(ipd_doc.stiching_accessory_json)
+		for row in stiching_accessory_json['items']:
+			if row['accessory'] == accessory and row['major_colour'] == colour:
+				return row['accessory_colour'],row['cloth_type']
+	frappe.throw("NO COLOUR")
 
 def get_additional_cloth(weight, additional_cloth):
 	if additional_cloth:
@@ -1205,50 +1217,54 @@ def add_combination_value(combination_type,item):
 def get_stiching_accessory_combination(cloth_list, doc_name):
 	ipd_doc = frappe.get_doc("Item Production Detail",doc_name)
 	combination_list = {}
-	combination_list['combination_type'] = "Stiching Accessory"
+	combination_list['select_list'] = cloth_list
 	combination_list['attributes'] = []
-	combination_list['attributes'].append(ipd_doc.stiching_major_attribute_value)
-	x = ipd_doc.accessory_clothtype_json
-	if isinstance(x,string_types):
-		x = json.loads(x)
-	for key,val in x.items():
-		combination_list['attributes'].append(key)
 	combination_list['items'] = []
-
-	part_colours = []
+	cloth_accessories = ipd_doc.accessory_clothtype_json
+	if isinstance(cloth_accessories, string_types):
+		cloth_accessories = json.loads(cloth_accessories)
 	if ipd_doc.is_set_item:
-		cloth_accessories = ipd_doc.accessory_clothtype_json
-		if isinstance(cloth_accessories, string_types):
-			cloth_accessories = json.loads(cloth_accessories)	
-		part_list = []
-		for cloth_accessory,cloth in cloth_accessories.items():
-			part_list.append(cloth)
-		
-		set_attr_details = get_stich_details(ipd_doc)
-		for item in ipd_doc.stiching_item_combination_details:
-			stich_attr = item.set_item_attribute_value
-			if set_attr_details.get(stich_attr) in part_list and item.major_attribute_value not in part_colours:
-				part_colours.append(item.major_attribute_value)
-	colors = []
-	for stich_item in ipd_doc.stiching_item_combination_details:
-		if stich_item.attribute_value not in colors:
-			check = True
-			if ipd_doc.is_set_item:
-				if stich_item.attribute_value not in part_colours:
-					check = False
-			if check:	
-				new_dict = {}
-				new_dict['major_attr_value'] = stich_item.attribute_value
-				new_dict['accessories'] = {}
-				for key,val in x.items():
-					new_dict['accessories'][key] = {}
-					new_dict['accessories'][key]['colour'] = None
-					new_dict['accessories'][key]['cloth_type'] = None
-				combination_list['items'].append(new_dict)
-				colors.append(stich_item.attribute_value)
-	if isinstance(cloth_list, string_types):
-		cloth_list = json.loads(cloth_list)
-	combination_list['select_list'] = cloth_list	
+		combination_list['is_set_item'] = 1
+		combination_list['set_attr'] = ipd_doc.set_item_attribute
+		combination_list['attributes'] = ["Accessory", ipd_doc.set_item_attribute, "Major Colour", "Accessory Colour","Cloth"]
+		part_colours = {}
+		set_colours = {}
+		for row in ipd_doc.set_item_combination_details:
+			set_colours.setdefault(row.index,{})
+			set_colours[row.index][row.set_item_attribute_value] = row.attribute_value
+			part_colours.setdefault(row.set_item_attribute_value, [])
+			part_colours[row.set_item_attribute_value].append(row.attribute_value)
+		for accessory, part in cloth_accessories.items():
+			d = {
+				"accessory" : accessory,
+				ipd_doc.set_item_attribute : part,
+			}
+				
+			for idx, colour in enumerate(part_colours[part]):
+				d["major_colour"] = colour
+				d['accessory_colour'] = None
+				d['cloth_type'] = None 
+				if part != ipd_doc.major_attribute_value:
+					d['major_attr_value'] = set_colours[idx][ipd_doc.major_attribute_value]
+				m = d.copy()
+				combination_list['items'].append(m)
+	else:
+		combination_list['is_set_item'] = 0
+		combination_list['attributes'] = ["Accessory", "Major Colour", "Accessory Colour","Cloth"]
+		colours = []
+		for row in ipd_doc.packing_attribute_details:
+			colours.append(row.attribute_value)
+
+		for accessory, part in cloth_accessories.items():
+			d = {
+				"accessory" : accessory,
+			}
+			for colour in colours:
+				d["major_colour"] = colour
+				d['accessory_colour'] = None
+				d['cloth_type'] = None 
+				m = d.copy()
+				combination_list['items'].append(m)
 	return combination_list		
 
 def get_combination_attr_list(attributes, packing_attr, pack_details, item_attributes):

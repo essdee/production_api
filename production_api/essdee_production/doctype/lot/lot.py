@@ -558,7 +558,9 @@ def get_uom_conversion_factor(uom_conversion_details, from_uom, to_uom):
 
 @frappe.whitelist()
 def get_dict_object(data):
-	return json.loads(data)
+	if isinstance(data, string_types):
+		data = json.loads(data)
+	return data
 
 @frappe.whitelist()
 def combine_child_tables(table1, table2):
@@ -957,3 +959,33 @@ def revert_t_and_a(doc_name):
 			DELETE FROM `tabTime and Action Detail` WHERE parent in {t_and_a_list} 
 		"""
 	)
+
+@frappe.whitelist()
+def get_ipd_print_accessory_combination(ipd):
+	ipd_doc = frappe.get_cached_doc("Item Production Detail", ipd)
+	stiching_accessory_json = ipd_doc.stiching_accessory_json
+	if isinstance(stiching_accessory_json, string_types):
+		stiching_accessory_json = json.loads(stiching_accessory_json)
+	items = {}
+	if ipd_doc.is_set_item:
+		for row in stiching_accessory_json['items']:
+			items.setdefault(row[ipd_doc.set_item_attribute],{})
+			colour_key = row['major_colour']
+			if row.get('major_attr_value'):
+				colour_key += "("+row['major_attr_value']+")"
+
+			items[row[ipd_doc.set_item_attribute]].setdefault(colour_key,{})
+			items[row[ipd_doc.set_item_attribute]][colour_key].setdefault(row['accessory'],{})
+			items[row[ipd_doc.set_item_attribute]][colour_key][row['accessory']] = {
+				"colour":row['accessory_colour'],
+				"cloth_type": row['cloth_type']
+			}
+	else:
+		for row in stiching_accessory_json['items']:
+			items.setdefault(row['major_colour'],{})
+			items[row['major_colour']].setdefault(row['accessory'],{})
+			items[row['major_colour']][row['accessory']] = {
+				"colour":row['accessory_colour'],
+				"cloth_type": row['cloth_type']
+			}			
+	return items
