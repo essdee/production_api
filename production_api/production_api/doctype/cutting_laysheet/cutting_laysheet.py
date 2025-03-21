@@ -258,6 +258,7 @@ def get_cut_sheet_data(doc_name,cutting_marker,item_details,items, max_plys:int,
 			items_combined[item['value']] = [item['part']]	
 	items = []
 	for value, arr in items_combined.items():		
+		arr.sort()
 		items.append(",".join(arr))
 
 	item_details = update_if_string_instance(item_details)	

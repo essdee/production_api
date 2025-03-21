@@ -358,7 +358,7 @@ def get_cutting_plan_unmoved_data(cutting_plan):
 	from operator import itemgetter
 	for colour in final_data:
 		data = final_data[colour]["data"]
-		final_data[colour]["data"] = sorted(data, key=itemgetter('lay_no', 'bundle_no'))
+		final_data[colour]["data"] = sorted(data, key=itemgetter('size', 'shade'))
 		
 	return {
 		"panels":panels,

@@ -15,10 +15,10 @@
                     </tr>
                     <tr>
                         <td class='table-data' style="width:10%;"><strong>S.No</strong></td>
-                        <td class='table-data' style="width:10%;"><strong>Lay No</strong></td>
-                        <td class='table-data' style="width:10%;"><strong>Bundle No</strong></td>
                         <td class='table-data' style="width:10%;"><strong>Size</strong></td>
                         <td class='table-data' style="width:10%;"><strong>Shade</strong></td>
+                        <td class='table-data' style="width:10%;"><strong>Lay No</strong></td>
+                        <td class='table-data' style="width:10%;"><strong>Bundle No</strong></td>
                         <td class='table-data' v-for="panel in (items.panels[items.data[colour]['part']] || [])" :key="panel"><strong>{{ panel }}</strong></td>
                         <td v-if="items.panels[items.data[colour]['part']].length > 1" class='table-data' style="width:10%;"><strong>Total</strong></td>
                     </tr>
@@ -29,10 +29,10 @@
                                 <input type='checkbox' v-model="row.bundle_moved" @change='update_row(row, colour, index)'>
                             </span>
                         </td>
-                        <td class='table-data' style="width:10%;">{{ row.lay_no }}</td>
-                        <td class='table-data' style="width:10%;">{{ row.bundle_no }}</td>
                         <td class='table-data' style="width:10%;">{{ row.size }}</td>
                         <td class='table-data' style="width:10%;">{{ row.shade }}</td>
+                        <td class='table-data' style="width:10%;">{{ row.lay_no }}</td>
+                        <td class='table-data' style="width:10%;">{{ row.bundle_no }}</td>
                         <template v-for="panel in (items.panels?.[items.data[colour]['part']] || [])" :key="panel">
                             <td class='table-data'>
                                 <span v-if="docstatus == 0">
