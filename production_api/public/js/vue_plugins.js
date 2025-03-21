@@ -37,6 +37,7 @@ import DeliveryChallan from "./Delivery_Challan/components/deliverable_items.vue
 import CuttingMarker from "./Cutting_Marker/components/cutting_marker.vue"
 import TimeAndActionWeeklyReport from "./Lot/components/TimeAndActionWeeklyReport.vue"
 import CutPanelMovementBundle from "./Cut_Panel_Movement/components/CutPanelMovementBundle.vue"
+import StockSummary from "./components/StockSummary.vue"
 
 // Product Development
 import { ProductFileVersionsWrapper, ProductCostingListWrapper } from "./ProductDevelopment"
@@ -348,6 +349,18 @@ frappe.production.ui.TimeAndActionWeeklyReport = class {
     }
     make_app(){
         this.app = createApp(TimeAndActionWeeklyReport)
+        SetVueGlobals(this.app)
+        this.vue = this.app.mount(this.$wrapper.get(0))
+    }
+}
+
+frappe.production.ui.StockSummary = class {
+    constructor(wrapper){
+        this.$wrapper = $(wrapper);
+        this.make_app()
+    }
+    make_app(){
+        this.app = createApp(StockSummary)
         SetVueGlobals(this.app)
         this.vue = this.app.mount(this.$wrapper.get(0))
     }

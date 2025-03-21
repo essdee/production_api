@@ -1,0 +1,45 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2025-03-19 15:43:04.280516",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "section_break_qwnd",
+  "stock_summary_html"
+ ],
+ "fields": [
+  {
+   "fieldname": "section_break_qwnd",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "stock_summary_html",
+   "fieldtype": "HTML",
+   "label": "Stock Summary HTML"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "issingle": 1,
+ "links": [],
+ "modified": "2025-03-19 15:45:42.501127",
+ "modified_by": "Administrator",
+ "module": "MRP Stock",
+ "name": "Stock Summary",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "print": 1,
+   "read": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

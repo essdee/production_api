@@ -48,24 +48,23 @@ class CutPanelMovement(Document):
 		is_set_item = json_data['is_set_item']
 		data = json_data['data']
 		for colour in data:
-			datas[colour] = []
-			for row in data[colour]:
+			datas[colour] = {"part":data[colour]['part'], 'data':[]}
+			for row in data[colour]['data']:
 				if row['bundle_moved']:
-					datas[colour].append(row)
+					datas[colour]['data'].append(row)
 				else:
 					if is_set_item:
-						splits = colour.split("-")
-						part = splits[len(splits) - 1]
+						part = data[colour]['part']
 						for panel in panels[part]:
 							x = panel+"_moved"
 							if x in row and row[x] == True:
-								datas[colour].append(row)
+								datas[colour]['data'].append(row)
 								break
 					else:
 						for panel in panels:
 							x = panel+"_moved"
 							if x in row and row[x] == True:
-								datas[colour].append(row)
+								datas[colour]['data'].append(row)
 								break
 		json_data['data'] = datas
 		accessory = json_data['accessory_data']
@@ -96,10 +95,9 @@ def get_total(items):
 		colour_panel[colour] = {}
 		total_bundle[colour] = 0
 		if items["is_set_item"]:
-			splits = colour.split("-")
-			pt = splits[len(splits) - 1]
-			for i in range(len(items["data"][colour])):
-				item = items["data"][colour][i]
+			pt = items["data"][colour]["part"]
+			for i in range(len(items["data"][colour]["data"])):
+				item = items["data"][colour]["data"][i]
 				qty = 0
 
 				for panel in items["panels"][pt]:
@@ -112,10 +110,10 @@ def get_total(items):
 							colour_panel[colour][panel] += item[panel]
 				item["total"] = qty
 				total_bundle[colour] += qty
-				items["data"][colour][i] = item
+				items["data"][colour]["data"][i] = item
 		else:
-			for i in range(len(items["data"][colour])):
-				item = items["data"][colour][i]
+			for i in range(len(items["data"][colour]["data"])):
+				item = items["data"][colour]["data"][i]
 				qty = 0
 
 				for panel in items["panels"]:
@@ -128,7 +126,7 @@ def get_total(items):
 							colour_panel[colour][panel] += item[panel]
 				item["total"] = qty
 				total_bundle[colour] += qty
-				items["data"][colour][i] = item
+				items["data"][colour]["data"][i] = item
 		items["total_pieces"] = colour_panel
 		items['total_bundles'] = total_bundle
 	return items
@@ -142,10 +140,9 @@ def check_panel_and_accessories(cut_panel_movement_json):
 	data = json_data['data']
 
 	for colour in data:
-		for row in data[colour]:
+		for row in data[colour]['data']:
 			if is_set_item:
-				splits = colour.split("-")
-				part = splits[len(splits) - 1]
+				part = data[colour]['part']
 				for panel in panels[part]:
 					x = panel+"_moved"
 					if x in row and row[x] == True:
@@ -171,12 +168,10 @@ def update_cls(cut_panel_movement_json, docstatus):
 	panels = json_data['panels']
 	is_set_item = json_data['is_set_item']
 	data = json_data['data']
-
 	for colour in data:
-		for row in data[colour]:
+		for row in data[colour]['data']:
 			if is_set_item:
-				splits = colour.split("-")
-				part = splits[len(splits) - 1]
+				part = data[colour]['part']
 				for panel in panels[part]:
 					x = panel+"_moved"
 					if x in row and row[x] == True:
@@ -339,7 +334,15 @@ def get_cutting_plan_unmoved_data(cutting_plan):
 					for cur_size, panel_detail in lay_details.get(lay_number).get(colour).get(bundle_no).items():
 						if cur_size == size:
 							shade = list(panel_detail.keys())[0]
-							final_data.setdefault(colour, [])
+							d = {
+								"part":None,
+								"data":[]
+							}
+							if ipd_doc.is_set_item:
+								splits = colour.split("-")
+								d['part'] = splits[len(splits) - 1]
+
+							final_data.setdefault(colour, d)
 							duplicate = {}
 							duplicate['lay_no'] = lay_number
 							duplicate['size'] = size
@@ -351,11 +354,11 @@ def get_cutting_plan_unmoved_data(cutting_plan):
 								duplicate[panel+"_moved"] = False
 								duplicate[panel+'_ref_docname'] = details['ref_docname']
 							duplicate['bundle_moved'] = False	
-							final_data[colour].append(duplicate)	
+							final_data[colour]["data"].append(duplicate)	
 	from operator import itemgetter
 	for colour in final_data:
-		data = final_data[colour]
-		final_data[colour] = sorted(data, key=itemgetter('lay_no', 'bundle_no'))
+		data = final_data[colour]["data"]
+		final_data[colour]["data"] = sorted(data, key=itemgetter('lay_no', 'bundle_no'))
 		
 	return {
 		"panels":panels,

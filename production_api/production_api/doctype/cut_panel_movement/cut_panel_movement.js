@@ -5,7 +5,7 @@ frappe.ui.form.on("Cut Panel Movement", {
 	refresh(frm) {
         $(frm.fields_dict['cut_panel_movement_html'].wrapper).html("")
         frm.cutting_movement = new frappe.production.ui.CutPanelMovementBundle(frm.fields_dict['cut_panel_movement_html'].wrapper)
-        if(frm.doc.__onload.movement_details){
+        if(frm.doc.__onload && frm.doc.__onload.movement_details){
             frm.doc['movement_data'] = JSON.stringify(frm.doc.__onload.movement_details)
             frm.cutting_movement.load_data(frm.doc.__onload.movement_details)
         }
@@ -28,6 +28,7 @@ frappe.ui.form.on("Cut Panel Movement", {
 });
 
 function fetch_panels(frm){
+    frm.cutting_movement.load_data({})
     frappe.call({
         method: "production_api.production_api.doctype.cut_panel_movement.cut_panel_movement.get_cutting_plan_unmoved_data",
         args: {

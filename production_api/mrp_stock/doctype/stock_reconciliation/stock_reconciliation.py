@@ -48,7 +48,7 @@ class StockReconciliation(Document):
 
 		for row in self.items:
 			# find duplicates
-			key = [row.item, row.warehouse, row.lot]
+			key = [row.item, row.warehouse, row.lot, row.received_type]
 
 			if key in item_warehouse_combinations:
 				self.validation_messages.append(
@@ -131,10 +131,11 @@ class StockReconciliation(Document):
 					"item": item.item,
 					"warehouse": item.warehouse,
 					"lot": item.lot,
+					"received_type": item.received_type,
 					"isCancelled": 0,
 				})
 				if exists:
-					frappe.throw(f"{item.item}, {item.warehouse}, {item.lot} Already Exists. If you are adjusting the Stock Value please use 'Stock Reconciliation' in Purpose")
+					frappe.throw(f"{item.item}, {item.warehouse}, {item.lot}, {item.received_type}  Already Exists. If you are adjusting the Stock Value please use 'Stock Reconciliation' in Purpose")
 
 	def on_submit(self):
 		self.update_stock_ledger()
