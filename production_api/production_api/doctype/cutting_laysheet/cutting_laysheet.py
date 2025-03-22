@@ -889,10 +889,10 @@ def update_cutting_plan(cutting_laysheet, check_cp = False):
 				if key not in cp_cloth:
 					frappe.throw(f"No cloth is mentioned with {cloth_type}, {colour}-{dia}")
 			
-			for key in accessory:
-				colour, cloth_type, dia = key
-				if key not in cp_accessory:
-					frappe.throw(f"No accessory is mentioned with {cloth_type}, {colour}-{dia}")
+			# for key in accessory:
+			# 	colour, cloth_type, dia = key
+			# 	if key not in cp_accessory:
+			# 		frappe.throw(f"No accessory is mentioned with {cloth_type}, {colour}-{dia}")
 
 		if not check_cp:
 			for item in cp_doc.cutting_plan_cloth_details:
