@@ -3,10 +3,11 @@
 
 from frappe import bold
 from six import string_types
-from frappe.utils import getdate
 from frappe.model.document import Document
 import frappe, json, sys, base64, math, time
 from production_api.utils import get_part_list
+from frappe.utils import getdate, nowdate, now
+from production_api.utils import get_stich_details
 from secrets import token_bytes as get_random_bytes
 from production_api.production_api.doctype.item.item import get_or_create_variant
 from production_api.production_api.doctype.cutting_marker.cutting_marker import fetch_marker_details
@@ -664,6 +665,7 @@ def update_cutting_plan(cutting_laysheet, check_cp = False):
 					colour = item['attributes'][ipd_doc.packing_attribute]
 					item['values'] = alter_incomplete_items[colour]
 		else:
+			stich_details = get_stich_details(ipd_doc)
 			alter_incomplete_items = {}
 			for item in incomplete_items['items']:
 				set_combination = update_if_string_instance(item['item_keys'])
@@ -689,7 +691,12 @@ def update_cutting_plan(cutting_laysheet, check_cp = False):
 
 				qty = item.quantity
 				for part in parts:
-					alter_incomplete_items[d['major_colour']][d['major_part']][item.size][part] += qty
+					try:
+						alter_incomplete_items[d['major_colour']][d['major_part']][item.size][part] += qty
+					except:
+						secondary_part = stich_details[part]
+						alter_incomplete_items[d['major_colour']][secondary_part][item.size][part] += qty
+			
 			total_qty = completed_items['total_qty']
 			for item in completed_items['items']:
 				set_combination = update_if_string_instance(item['item_keys'])
@@ -710,7 +717,13 @@ def update_cutting_plan(cutting_laysheet, check_cp = False):
 						item['values'][val] += min
 						for panel in alter_incomplete_items[colour][part][val]:
 							alter_incomplete_items[colour][part][val][panel] -= min		
-			completed_items["total_qty"] = total_qty
+			
+			if not check_cp:
+				completed_items["total_qty"] = total_qty
+				for item in incomplete_items['items']:
+					colour = item['attributes'][ipd_doc.packing_attribute]
+					part = item['attributes'][ipd_doc.set_item_attribute]
+					item['values'] = alter_incomplete_items[colour][part]
 		
 		cloth = {}
 		accessory = {}
@@ -875,8 +888,11 @@ def update_cutting_plan(cutting_laysheet, check_cp = False):
 			key = (item.colour, item.cloth_type, item.dia)
 			cloth.setdefault(key,0)
 			cloth[key] += item.weight - item.balance_weight
+
+		for item in cls_doc.cutting_laysheet_accessory_details:
+			key = (item.accessory, item.colour, item.cloth_type, item.dia)
 			accessory.setdefault(key,0)
-			accessory[key] += item.accessory_weight
+			accessory[key] += item.weight
 
 		if check_cp:
 			for item in cp_doc.cutting_plan_cloth_details:
@@ -890,10 +906,10 @@ def update_cutting_plan(cutting_laysheet, check_cp = False):
 				if key not in cp_cloth:
 					frappe.throw(f"No cloth is mentioned with {cloth_type}, {colour}-{dia}")
 			
-			# for key in accessory:
-			# 	colour, cloth_type, dia = key
-			# 	if key not in cp_accessory:
-			# 		frappe.throw(f"No accessory is mentioned with {cloth_type}, {colour}-{dia}")
+			for key in accessory:
+				colour, cloth_type, dia = key
+				if key not in cp_accessory:
+					frappe.throw(f"No accessory is mentioned with {cloth_type}, {colour}-{dia}")
 
 		if not check_cp:
 			for item in cp_doc.cutting_plan_cloth_details:
