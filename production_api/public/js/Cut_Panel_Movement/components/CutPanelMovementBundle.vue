@@ -75,7 +75,7 @@
         </div>
         <div v-else-if="items.data">
             <div v-for="colour in Object.keys(items.data)" :key="colour">
-                <table class="table table-sm table-bordered">
+                <table class="table table-sm table-bordered" v-if="items.data[colour]['data'] && items.data[colour]['data'].length > 0">
                     <tr>
                         <th class='table-head' :colspan="2">
                             <span v-if='docstatus == 0'>
@@ -88,10 +88,10 @@
                     </tr>
                     <tr>
                         <td class='table-data' style="width:10%;"><strong>S.No</strong></td>
-                        <td class='table-data' style="width:10%;"><strong>Lay No</strong></td>
-                        <td class='table-data' style="width:10%;"><strong>Bundle No</strong></td>
                         <td class='table-data' style="width:10%;"><strong>Size</strong></td>
                         <td class='table-data' style="width:10%;"><strong>Shade</strong></td>
+                        <td class='table-data' style="width:10%;"><strong>Lay No</strong></td>
+                        <td class='table-data' style="width:10%;"><strong>Bundle No</strong></td>
                         <td class='table-data' v-for="panel in (items.panels || [])" :key="panel"><strong>{{ panel }}</strong></td>
                         <td  v-if="items.panels.length > 1" class='table-data' style="width:10%;"><strong>Total</strong></td>
                     </tr>
@@ -102,10 +102,10 @@
                                 <input type='checkbox' v-model="row.bundle_moved" @change='update_row(row, colour, index)'>
                             </span>
                         </td>
-                        <td class='table-data' style="width:10%;">{{ row.lay_no }}</td>
-                        <td class='table-data' style="width:10%;">{{ row.bundle_no }}</td>
                         <td class='table-data' style="width:10%;">{{ row.size }}</td>
                         <td class='table-data' style="width:10%;">{{ row.shade }}</td>
+                        <td class='table-data' style="width:10%;">{{ row.lay_no }}</td>
+                        <td class='table-data' style="width:10%;">{{ row.bundle_no }}</td>
                         <template v-for="panel in (items.panels || [])" :key="panel">
                             <td class='table-data'>
                                 <span v-if="docstatus == 0">

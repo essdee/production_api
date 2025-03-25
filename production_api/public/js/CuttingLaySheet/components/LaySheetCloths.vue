@@ -427,7 +427,12 @@ function update_item(){
     for(let i = 0 ; i < set_parameters.length ; i++){
         let val = set_parameters[i].get_value()
         if(val == null || val == ""){
-            frappe.throw("Enter the Set Combination")
+            if(set_parameters[i]['df']["fieldname"] == 'is_same_packing_attribute'){
+                val = 0
+            }
+            else{
+                frappe.throw("Enter the Set Combination")
+            }
         }
         set_json[fieldnames[i]] = val
     }

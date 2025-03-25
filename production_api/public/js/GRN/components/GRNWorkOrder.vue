@@ -120,17 +120,34 @@
 									<div v-if="attr.types">
 										<div v-for="t in typeof(attr.types) == 'string' ? Object.keys(JSON.parse(attr.types)) : Object.keys(attr.types)" :key='t'>
 											<div v-if="edit_index == item_index && edit_index1 == item1_index && edit_type == t && t == type">
-												<input class="form-control" type="number" :value="JSON.parse(attr.types)[t]" @input="get_input($event.target.value,item_index, item1_index, type, attr.primary_attr)">
+												<div v-if="typeof(attr.types) == 'string'">
+													<input class="form-control" type="number" :value="JSON.parse(attr.types)[t]" @input="get_input($event.target.value,item_index, item1_index, type, attr.primary_attr)">
+												</div>
+												<div v-else>
+													<input class="form-control" type="number" :value="attr.types[t]" @input="get_input($event.target.value,item_index, item1_index, type, attr.primary_attr)">
+												</div>
 												<div v-if="edit_item_uom">
-													<input class="form-control" type="number" :value="JSON.parse(attr.secondary_qty_json)[t]" @input="get_secondary_input($event.target.value,item_index, item1_index, type, attr.primary_attr)">
+													<div v-if="typeof(attr.secondary_qty_json) == 'string'">
+														<input class="form-control" type="number" :value="JSON.parse(attr.secondary_qty_json)[t]" @input="get_secondary_input($event.target.value,item_index, item1_index, type, attr.primary_attr)">
+													</div>
+													<div v-else>
+														<input class="form-control" type="number" :value="attr.secondary_qty_json[t]" @input="get_secondary_input($event.target.value,item_index, item1_index, type, attr.primary_attr)">
+													</div>
 												</div>
 											</div>
 											<div v-else>
 												<div v-if="t == type">
 													<div v-if='typeof(attr.types) == "string"'>
 														{{JSON.parse(attr.types)[t]}}<div></div>
-														<span v-if="JSON.parse(attr.secondary_qty_json)[t] > 0 && attr.secondary_uom">
-															({{JSON.parse(attr.secondary_qty_json)[t]}} {{attr.secondary_uom}})											
+														<span v-if="typeof(attr.secondary_qty_json) == 'string'">
+															<span v-if="JSON.parse(attr.secondary_qty_json)[t] > 0 && attr.secondary_uom">
+																({{JSON.parse(attr.secondary_qty_json)[t]}} {{attr.secondary_uom}})											
+															</span>
+														</span>	
+														<span v-else>
+															<span v-if="attr.secondary_qty_json[t] > 0 && attr.secondary_uom">
+																({{attr.secondary_qty_json[t]}} {{attr.secondary_uom}})											
+															</span>
 														</span>
 													</div>
 													<div v-else>
@@ -725,7 +742,11 @@ function get_work_order_items() {
 		},
 		callback: async function (r) {
 			if (r.message) {
-				items.value = JSON.parse(JSON.stringify(r.message));
+				let x = JSON.stringify(r.message)
+				if(typeof(x) == 'string'){
+					x = JSON.parse(x)
+				}
+				items.value = x;
 			}
 		},
 	});

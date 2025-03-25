@@ -169,6 +169,7 @@ def save_accessory_details(items, cutting_plan):
 		item_list.append({
 			"accessory": item['accessory'],
 			"cloth_item_variant":variant,
+			"cloth_item": cloth_name,
 			"cloth_type":item['cloth_type'],
 			"colour":item['colour'],
 			"dia":item['dia'],
@@ -468,7 +469,7 @@ def get_cloth_accessories(cutting_plan):
 
 @frappe.whitelist()
 def print_labels(print_items, lay_no, cutting_plan, doc_name):
-	lot_no,item_name = frappe.get_value("Cutting Plan",cutting_plan,["lot","item"])
+	lot_no, item_name, work_order = frappe.get_value("Cutting Plan",cutting_plan,["lot", "item", "work_order"])
 	print_items = update_if_string_instance(print_items)
 	zpl = ""
 	cls_doc = frappe.get_doc("Cutting LaySheet",doc_name)
@@ -565,9 +566,8 @@ def print_labels(print_items, lay_no, cutting_plan, doc_name):
 			^XZ"""
 		zpl += x
 	update_cutting_plan(doc_name)
-	# make_stock_entry(doc_name)
-	# cls_doc.status = "Label Printed"
-	# cls_doc.save()
+	if work_order:
+		create_grn_entry(doc_name)
 	return zpl	
 
 @frappe.whitelist()
@@ -1027,37 +1027,121 @@ def revert_labels(doc_name):
 		frappe.throw("Some accessories are moved, can't revert the process")
 
 	cls_doc.status = "Bundles Generated"
+	if cls_doc.goods_received_note:
+		grn_doc = frappe.get_doc("Goods Received Note", cls_doc.goods_received_note)
+		grn_doc.cancel()
+	cls_doc.goods_received_note =  None
 	cls_doc.save()
 	from production_api.production_api.doctype.cutting_plan.cutting_plan import calculate_laysheets
 	calculate_laysheets(cls_doc.cutting_plan)
 
-# @frappe.whitelist(allow_guest=True)
-# def make_stock_entry(doc_name):
-# 	cls_doc = frappe.get_doc("Cutting LaySheet", doc_name)
-# 	cls_panels = {}
-# 	for row in cls_doc.cutting_laysheet_bundles:
-# 		parts = row.part.split(",")
-# 		for part in parts:
-# 			part = part.strip()
-# 			key = (row.size, row.colour, part)
-# 			if key in cls_panels:
-# 				cls_panels[key] += row.quantity
-# 			else:
-# 				cls_panels[key] = row.quantity
-# 	item, ipd = frappe.get_value("Lot", cls_doc.lot, ["item","production_detail"])
-# 	primary, pack_attr, stich_attr, stich_stage, dependent_attr, cut_process = frappe.get_value("Item Production Detail", ipd, ['primary_item_attribute', "packing_attribute", "stiching_attribute", "stiching_in_stage", "dependent_attribute", "cutting_process"])
-# 	wo_list = frappe.get_all("Work Order", filters={"lot":cls_doc.lot,"process_name":cut_process}, pluck="name")
-# 	if len(wo_list) == 0:
-# 		frappe.throw("NO WORK ORDER WAS CREATED")
+@frappe.whitelist()
+def create_grn_entry(doc_name):
+	cls_doc = frappe.get_doc("Cutting LaySheet", doc_name)
+	wo = frappe.get_value("Cutting Plan", cls_doc.cutting_plan, "work_order")
+	if not wo:
+		return
+	cls_panels = {}
+	for row in cls_doc.cutting_laysheet_bundles:
+		combination = update_if_string_instance(row.set_combination)
+		set_combination = {} 
+		set_combination['major_colour'] = combination.get("major_colour")
+		if combination.get('major_part'):
+			set_combination['major_part'] = combination.get('major_part')
 
-# 	wo = wo_list[0]
-
-# 	for key, qty in cls_panels.items():		
-# 		size, colour, panel = key
-# 		attributes = {
-# 			primary: size,
-# 			pack_attr: colour,
-# 			stich_attr: panel,
-# 			dependent_attr: stich_stage
-# 		}
-# 		variant = get_or_create_variant(item, attributes)
+		parts = row.part.split(",")
+		for part in parts:
+			part = part.strip()
+			set_comb_tuple = tuple(sorted(set_combination.items()))
+			key = (row.size, row.colour, part, set_comb_tuple)
+			if key in cls_panels:
+				cls_panels[key]["qty"] += row.quantity
+			else:
+				cls_panels[key] = {
+					"qty":row.quantity,
+					"set_combination": set_combination,
+				}
+	item_name, ipd = frappe.get_value("Lot", cls_doc.lot, ["item","production_detail"])
+	primary, pack_attr, stich_attr, stich_stage, dependent_attr = frappe.get_value("Item Production Detail", ipd, ['primary_item_attribute', "packing_attribute", "stiching_attribute", "stiching_in_stage", "dependent_attribute"])
+	
+	wo_doc = frappe.get_doc("Work Order", wo)
+	new_doc = frappe.new_doc("Goods Received Note")
+	new_doc.update({
+		"against": "Work Order",
+		"against_id": wo,
+		"posting_date": nowdate(),
+		"posting_time": now(),
+		"delivery_date": nowdate(),
+		"is_internal_unit": wo_doc.is_internal_unit,
+		"is_manual_entry": wo_doc.is_manual_entry,
+		"delivery_location": wo_doc.supplier,
+		"delivery_location_name": wo_doc.supplier_name,
+		"supplier": wo_doc.supplier,
+		"supplier_name": wo_doc.supplier_name,
+		"vehicle_no":"NA",
+		"supplier_document_no":"NA",
+		"supplier_address": wo_doc.supplier_address,
+		"supplier_address_display": wo_doc.supplier_address_details,
+		"delivery_address": wo_doc.supplier_address,
+		"deliverey_address_display": wo_doc.supplier_address_details,
+	})
+	new_doc.flags.from_cls = True
+	new_doc.total_quantity = 0
+	new_doc.save()
+	total_received_qty = 0
+	received_type = frappe.db.get_single_value("Stock Settings","default_received_type")
+	for key, details in cls_panels.items():		
+		size, colour, panel, set_comb_tuple = key
+		attributes = {
+			primary: size,
+			pack_attr: colour,
+			stich_attr: panel,
+			dependent_attr: stich_stage
+		}
+		variant = get_or_create_variant(item_name, attributes)
+		set_combination = update_if_string_instance(details['set_combination'])
+		for item in new_doc.items:
+			item_set = update_if_string_instance(item.set_combination)
+			if item.item_variant == variant and item_set == set_combination:
+				item.quantity += details['qty']
+				received_types = update_if_string_instance(item.received_types)
+				total_received_qty += details['qty']
+				if received_type in received_types:
+					received_types[received_type] += details['qty']
+				else:
+					received_types[received_type] = details['qty']
+				item.received_types = received_types	
+				break
+	new_doc.total_received_quantity =  total_received_qty
+	deliverables_dict = {}
+	for item in cls_doc.cutting_laysheet_details:
+		if item.cloth_item_variant in deliverables_dict:
+			deliverables_dict[item.cloth_item_variant] += item.used_weight	
+		else:
+			deliverables_dict[item.cloth_item_variant] = item.used_weight	
+	
+	for item in cls_doc.cutting_laysheet_accessory_details:
+		if item.cloth_item_variant in deliverables_dict:
+			deliverables_dict[item.cloth_item_variant] += item.weight	
+		else:
+			deliverables_dict[item.cloth_item_variant] = item.weight	
+	
+	items = []
+	row_index = 0
+	for variant in deliverables_dict:
+		item_name = frappe.get_cached_value("Item Variant", variant, "item")
+		uom = frappe.get_cached_value("Item", item_name, "default_unit_of_measure")
+		items.append({
+			"item_variant": variant,
+			"quantity": deliverables_dict[variant],
+			"uom": uom,
+			"valuation_rate": 0.0,
+			"table_index": 0,
+			"row_index": row_index,
+			"set_combination": {},
+		})
+		row_index += 1
+	new_doc.set("grn_deliverables", items)
+	new_doc.save()
+	new_doc.submit()
+	cls_doc.db_set("goods_received_note", new_doc.name)

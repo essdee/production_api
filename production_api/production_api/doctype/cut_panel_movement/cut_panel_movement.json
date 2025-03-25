@@ -6,12 +6,13 @@
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
+  "lot",
+  "item",
+  "process_name",
+  "column_break_dcpm",
   "cutting_plan",
   "movement_date",
   "naming_series",
-  "column_break_dcpm",
-  "lot",
-  "item",
   "section_break_rnao",
   "cut_panel_movement_html",
   "cut_panel_movement_json",
@@ -36,15 +37,13 @@
    "fieldtype": "Column Break"
   },
   {
-   "fetch_from": "cutting_plan.lot",
    "fieldname": "lot",
    "fieldtype": "Link",
    "label": "Lot",
-   "options": "Lot",
-   "read_only": 1
+   "options": "Lot"
   },
   {
-   "fetch_from": "cutting_plan.item",
+   "fetch_from": "lot.item",
    "fieldname": "item",
    "fieldtype": "Link",
    "label": "Item",
@@ -82,12 +81,20 @@
    "fieldtype": "Data",
    "hidden": 1,
    "label": "Naming Series"
+  },
+  {
+   "fieldname": "process_name",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Process Name",
+   "options": "Process",
+   "reqd": 1
   }
  ],
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-03-14 17:48:29.914165",
+ "modified": "2025-03-25 16:47:51.576403",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Cut Panel Movement",

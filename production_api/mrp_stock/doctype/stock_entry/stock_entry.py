@@ -399,7 +399,8 @@ class StockEntry(Document):
 
 @frappe.whitelist()
 def fetch_stock_entry_items(items, ipd=None):
-	items = [item.as_dict() for item in items]
+	if len(items) > 0 and type(items[0]) != dict:
+		items = [item.as_dict() for item in items]
 	item_details = []
 	ipd_doc = None
 	if ipd:
@@ -418,7 +419,7 @@ def fetch_stock_entry_items(items, ipd=None):
 			'default_uom': variants[0].get('uom') or current_item_attribute_details['default_uom'],
 			'secondary_uom': variants[0].get('secondary_uom') or current_item_attribute_details['secondary_uom'],
 			'received_type':variants[0]['received_type'],
-			'remarks': variants[0]['remarks'],
+			'remarks': variants[0].get('remarks', None),
 		}
 		if ipd:
 			item['item_keys'] = {}
@@ -446,8 +447,8 @@ def fetch_stock_entry_items(items, ipd=None):
 				for attr in current_variant.attributes:
 					if attr.attribute == item.get('primary_attribute'):
 						item['values'][attr.attribute_value] = {
-							'qty': variant.qty,
-							'rate': variant.rate,
+							'qty': variant.get('qty',0),
+							'rate': variant.get('rate',0),
 							'against_id_detail': variant.get("against_id_detail", None),
 							'against_stock_entry': variant.get("against_stock_entry", None),
 							'ste_detail': variant.get("ste_detail", None),
@@ -463,8 +464,8 @@ def fetch_stock_entry_items(items, ipd=None):
 						break
 		else:
 			item['values']['default'] = {
-				'qty': variants[0].qty,
-				'rate': variants[0].rate,
+				'qty': variants[0].get('qty', 0),
+				'rate': variants[0].get('rate', 0),
 				'against_id_detail':variants[0].get("against_id_detail",None),
 				'against_stock_entry': variants[0].get("against_stock_entry", None),
 				'ste_detail': variants[0].get("ste_detail", None),

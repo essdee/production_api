@@ -7,6 +7,7 @@
  "engine": "InnoDB",
  "field_order": [
   "cloth_item_variant",
+  "cloth_item",
   "cloth_type",
   "colour",
   "dia",
@@ -71,12 +72,18 @@
    "fieldname": "moved_weight",
    "fieldtype": "Float",
    "label": "Moved Weight"
+  },
+  {
+   "fieldname": "cloth_item",
+   "fieldtype": "Link",
+   "label": "Cloth Item",
+   "options": "Item"
   }
  ],
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2025-03-14 12:45:11.093093",
+ "modified": "2025-03-25 14:49:04.512649",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Cutting LaySheet Accessory Detail",

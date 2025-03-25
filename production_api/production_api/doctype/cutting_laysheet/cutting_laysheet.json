@@ -43,6 +43,7 @@
   "weight",
   "accessory_weight",
   "total_no_of_pieces",
+  "goods_received_note",
   "column_break_honq",
   "no_of_bits",
   "end_bit_weight",
@@ -328,11 +329,17 @@
   {
    "fieldname": "section_break_ujvr",
    "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "goods_received_note",
+   "fieldtype": "Link",
+   "label": "Goods Received Note",
+   "options": "Goods Received Note"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-03-14 17:44:22.443806",
+ "modified": "2025-03-24 17:34:05.470692",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Cutting LaySheet",

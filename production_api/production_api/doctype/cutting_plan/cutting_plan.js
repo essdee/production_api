@@ -2,6 +2,15 @@
 // For license information, please see license.txt
 
 frappe.ui.form.on("Cutting Plan", {
+    setup(frm){
+        frm.set_query('work_order', (doc)=> {
+            return {
+                filters: {
+                    "lot": doc.lot,
+                }
+            }
+        })
+    },
 	refresh(frm) {
         frappe.require("https://cdn.jsdelivr.net/npm/html2canvas-pro@1.5.8/dist/html2canvas-pro.min.js");
         frm.cut_plan_items = new frappe.production.ui.CutPlanItems(frm.fields_dict['items_html'].wrapper)
