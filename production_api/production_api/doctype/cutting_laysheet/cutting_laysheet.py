@@ -721,7 +721,8 @@ def update_cutting_plan(cutting_laysheet, check_cp = False):
 			if not check_cp:
 				completed_items["total_qty"] = total_qty
 				for item in incomplete_items['items']:
-					colour = item['attributes'][ipd_doc.packing_attribute]
+					set_combination = update_if_string_instance(item['item_keys'])
+					colour = set_combination['major_colour']
 					part = item['attributes'][ipd_doc.set_item_attribute]
 					item['values'] = alter_incomplete_items[colour][part]
 		
