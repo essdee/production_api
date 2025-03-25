@@ -400,10 +400,6 @@ def get_cut_sheet_data(doc_name,cutting_marker,item_details,items, max_plys:int,
 			key = (item.colour, item.cloth_type, item.dia)
 			if key in accessory:
 				item.used_weight += accessory[key]
-				item.balance_weight = item.required_weight - item.used_weight
-				if item.balance_weight < 0:
-					frappe.throw(f"{bold(item.dia)} {bold(item.colour)}, {bold(item.cloth_type)} was used more than the received weight")
-					return
 	else:
 		for item in cp_doc.cutting_plan_cloth_details:
 			key = (item.colour, item.cloth_type, item.dia)
@@ -418,10 +414,6 @@ def get_cut_sheet_data(doc_name,cutting_marker,item_details,items, max_plys:int,
 			key = (item.accessory, item.colour, item.cloth_type, item.dia)
 			if key in accessory:
 				item.used_weight += accessory[key]
-				item.balance_weight = item.required_weight - item.used_weight
-				if item.balance_weight < 0:
-					frappe.throw(f"In Accessory {bold(item.dia)} {bold(item.colour)}, {bold(item.cloth_type)} was used more than the received weight")
-					return
 				
 	update_cutting_plan(doc_name, check_cp=True)		
 
