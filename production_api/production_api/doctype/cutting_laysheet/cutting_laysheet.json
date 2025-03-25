@@ -333,13 +333,14 @@
   {
    "fieldname": "goods_received_note",
    "fieldtype": "Link",
+   "hidden": 1,
    "label": "Goods Received Note",
    "options": "Goods Received Note"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-03-24 17:34:05.470692",
+ "modified": "2025-03-25 18:58:05.401057",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Cutting LaySheet",
