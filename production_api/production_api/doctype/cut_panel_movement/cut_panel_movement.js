@@ -40,10 +40,12 @@ frappe.ui.form.on("Cut Panel Movement", {
                     args: {
                         doc_name: frm.doc.name,
                     },
+                    freeze: true,
+                    freeze_message:"Creating Stock Entry",
                     callback: function(r){
                         let y = r.message
                         sessionStorage.setItem("cut_panel_stock", true)
-                        sessionStorage.setItem("onload_data", JSON.stringify(y))
+                        sessionStorage.setItem("stock_entry_onload_data", JSON.stringify(y))
                         let x = frappe.model.get_new_doc("Stock Entry")
                         x.purpose = "Send to Warehouse"
                         x.posting_date = frappe.datetime.nowdate()
@@ -51,7 +53,67 @@ frappe.ui.form.on("Cut Panel Movement", {
                         frappe.set_route("Form", x.doctype, x.name);
                     }   
                 })
-            })
+            },"Create")
+            frm.add_custom_button("Create DC", ()=> {
+                let d = new frappe.ui.Dialog({
+                    title:"Select Work Order",
+                    fields: [
+                        {
+                            "fieldname":"work_order",
+                            "fieldtype":"Link",
+                            "options":"Work Order",
+                            "label":"Work Order",
+                            "reqd": true,
+                            get_query:()=> {
+                                return {
+                                    filters: {
+                                        "lot": frm.doc.lot,
+                                        "process_name": frm.doc.process_name
+                                    }
+                                }
+                            }
+                        },
+                        {
+                            "fieldname": "from_location",
+                            "fieldtype": "Link",
+                            "options": "Supplier",
+                            "label": "From Location",
+                            "reqd": true,
+                        }
+                    ],
+                    primary_action(values){
+                        d.hide()
+                        frappe.call({
+                            method:"production_api.production_api.doctype.cut_panel_movement.cut_panel_movement.create_delivery_challan",
+                            args: {
+                                doc_name: frm.doc.name,
+                                work_order: values.work_order,
+                                process_name: frm.doc.process_name
+                            },
+                            callback: function(r){
+                                let data = r.message
+                                sessionStorage.setItem("cut_panel_dc", true)
+                                sessionStorage.setItem("delivery_challan_onload_data", JSON.stringify(data.item_details))
+                                let x = frappe.model.get_new_doc("Delivery Challan")
+                                x.work_order = values.work_order
+                                x.naming_series = "DC-"
+                                x.from_location = values.from_location
+                                x.posting_date = frappe.datetime.nowdate()
+                                x.posting_time = new Date().toTimeString().split(' ')[0]
+                                x.lot = frm.doc.lot
+                                x.process_name = frm.doc.process_name,
+                                x.supplier = data.supplier
+                                x.supplier_name = data.supplier_name
+                                x.supplier_address = data.supplier_address
+                                x.supplier_address_details = data.supplier_address_details
+                                x.vehicle_no = "NA"
+                                frappe.set_route("Form", x.doctype, x.name);
+                            }   
+                        })
+                    }
+                })
+                d.show()
+            },"Create")
         }
 	},
     validate(frm){

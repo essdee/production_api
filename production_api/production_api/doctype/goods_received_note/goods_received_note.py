@@ -9,10 +9,10 @@ from itertools import groupby, zip_longest
 from frappe.model.document import Document
 from production_api.production_api.logger import get_module_logger
 from frappe.utils import money_in_words, flt, cstr, date_diff, nowtime
-from production_api.utils import get_part_list, get_panel_list, get_stich_details
 from production_api.mrp_stock.doctype.stock_entry.stock_entry import get_uom_details
-from production_api.production_api.doctype.work_order.work_order import get_bom_structure
 from production_api.production_api.doctype.item.item import get_attribute_details, get_or_create_variant
+from production_api.utils import get_part_list, get_panel_list, get_stich_details, update_if_string_instance
+from production_api.production_api.doctype.work_order.work_order import get_bom_structure, get_work_order_items
 from production_api.production_api.doctype.purchase_order.purchase_order import get_item_attribute_details, get_item_group_index
 from production_api.essdee_production.doctype.item_production_detail.item_production_detail import get_calculated_bom, get_cloth_combination, get_or_create_ipd_variant
 
@@ -64,7 +64,7 @@ class GoodsReceivedNote(Document):
 			self.validate_quantity()
 			self.calculate_amount()
 		else:
-			if not self.is_manual_entry:
+			if not self.is_manual_entry and not self.flags.from_cls:
 				self.calculate_grn_deliverables()
 			self.split_items()
 
@@ -132,12 +132,16 @@ class GoodsReceivedNote(Document):
 					x['quantity'] = qty1
 					x['amount'] = item.rate * qty1
 					x['received_type'] = type1
-					for type2, qty2 in secondary_qty_json.items():
-						if type1 == type2:
-							x['secondary_qty'] = qty2
-							m = x.copy()
-							items_list.append(m)
-
+					if secondary_qty_json:
+						for type2, qty2 in secondary_qty_json.items():
+							if type1 == type2:
+								x['secondary_qty'] = qty2
+								m = x.copy()
+								items_list.append(m)
+					else:
+						m = x.copy()
+						items_list.append(m)
+						
 		self.total_delivered_qty = total_delivered			
 		self.set("items",items_list)
 
@@ -481,6 +485,10 @@ class GoodsReceivedNote(Document):
 				items = save_grn_purchase_item_details(self.item_details)
 				self.set('items', items)
 		else:
+			if self.flags.from_cls:
+				wo_items = get_work_order_items(self.against_id, True)
+				self.item_details = wo_items				
+
 			lot, process, internal, ipd = frappe.get_cached_value(self.against, self.against_id, ["lot","process_name","is_internal_unit", "production_detail"])
 			is_manual_entry = frappe.get_value("Process", process, "is_manual_entry_in_grn")
 			self.process_name = process
@@ -502,7 +510,7 @@ class GoodsReceivedNote(Document):
 					wo_deliverables = {}
 					for row in doc.deliverables:
 						wo_deliverables[row.item_variant] = row.valuation_rate
-					if not self.is_manual_entry:
+					if not self.is_manual_entry and not self.flags.from_cls:
 						deliverables = calculate_deliverables(self)
 						items = []
 						for row in deliverables:
@@ -774,7 +782,7 @@ def save_grn_item_details(item_details, process_name, ipd):
 							else:
 								item_variants[item_name] = {}
 								item_variants[item_name][str_tup] = variant_name
-						received = values.get('received')
+						received = values.get('received', 0)
 						total_quantity, pending_qty = frappe.get_cached_value(values.get('ref_doctype'), values.get('ref_docname'), ["qty","pending_quantity"])
 						x = total_quantity / 100
 						x = x * allowance
@@ -826,7 +834,6 @@ def save_grn_item_details(item_details, process_name, ipd):
 					total_quantity, pending_qty = frappe.get_cached_value(doctype, docname, ["qty","pending_quantity"])
 					x = total_quantity / 100
 					x = x * allowance
-					x = x - pending_qty
 					total_quantity = total_quantity + x
 					if total_quantity < received:
 						frappe.throw(f"Received more than the allowed quantity for {bold(variant_name)}")
@@ -1983,12 +1990,3 @@ def get_variant_attributes(variant):
 	for attr in variant.attributes:
 			attribute_details[attr.attribute] = attr.attribute_value
 	return attribute_details
-
-def update_if_string_instance(obj):
-	if isinstance(obj, string_types):
-		obj = json.loads(obj)
-
-	if not obj:
-		obj = {}
-
-	return obj	

@@ -4,6 +4,7 @@ import frappe, json, copy
 from six import string_types
 from datetime import datetime
 from frappe.model.document import Document
+from production_api.utils import update_if_string_instance
 from production_api.production_api.doctype.item.item import get_attribute_details
 from production_api.essdee_production.doctype.lot.lot import fetch_order_item_details
 from production_api.production_api.doctype.cutting_laysheet.cutting_laysheet import update_cutting_plan
@@ -44,9 +45,7 @@ def get_complete_incomplete_structure(ipd,item_details):
 	ipd_doc = frappe.get_doc("Item Production Detail",ipd)
 	stiching_attrs = None
 	panels = {}
-	
-	if isinstance(item_details,string_types):
-		item_details = json.loads(item_details)
+	item_details = update_if_string_instance(item_details)
 	x = item_details
 	x = x[0]
 	x = add_additional_attributes(ipd_doc,x)
@@ -111,8 +110,7 @@ def get_set_item_panels(ipd_doc,panels):
 	return panels,m
 
 def save_item_cloth_details(items):
-	if isinstance(items, string_types):
-		items = json.loads(items)
+	items = update_if_string_instance(items)
 	item_details = []
 	for item in items:
 		item_details.append({
@@ -129,11 +127,8 @@ def save_item_cloth_details(items):
 
 def save_item_details(item_details, ipd):
 	ipd_doc = frappe.get_cached_doc("Item Production Detail", ipd)
-	item_variants = ipd_doc.variants_json
-	if isinstance(item_variants, string_types):
-		item_variants = json.loads(item_variants)
-	if isinstance(item_details, string_types):
-		item_details = json.loads(item_details)
+	item_variants = update_if_string_instance(ipd_doc.variants_json)
+	item_details = update_if_string_instance(item_details)
 	items = []
 	row_index = 0
 	table_index = -1
@@ -201,10 +196,7 @@ def get_items(lot):
 def get_cloth1(cutting_plan):
 	cutting_plan_doc = frappe.get_doc("Cutting Plan", cutting_plan)
 	ipd_doc = frappe.get_cached_doc("Item Production Detail", cutting_plan_doc.production_detail)
-	item_variants = ipd_doc.variants_json
-	if isinstance(item_variants, string_types):
-		item_variants = json.loads(item_variants)
-
+	item_variants = update_if_string_instance(ipd_doc.variants_json)
 	item_attributes = get_attribute_details(cutting_plan_doc.item)
 	cloth_combination = get_cloth_combination(ipd_doc)
 	stitching_combination = get_stitching_combination(ipd_doc)
@@ -340,9 +332,7 @@ def get_cutting_plan_laysheets_report(cutting_plan):
 		for row in cls_doc.cutting_laysheet_bundles:
 			parts = row.part.split(",")
 			parts = ", ".join(parts)
-			set_combination = row.set_combination
-			if isinstance(set_combination, string_types):
-				set_combination = json.loads(set_combination)
+			set_combination = update_if_string_instance(row.set_combination)
 			major_colour = set_combination['major_colour']
 			if ipd_doc.is_set_item:
 				if set_combination.get('set_part'):

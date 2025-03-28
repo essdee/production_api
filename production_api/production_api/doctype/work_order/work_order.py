@@ -9,13 +9,13 @@ from datetime import datetime
 from frappe.model.document import Document
 from frappe.utils import flt, nowdate, nowtime
 from production_api.mrp_stock.stock_ledger import make_sl_entries
-from production_api.utils import get_stich_details, get_part_list
 from production_api.production_api.logger import get_module_logger
+from production_api.utils import get_stich_details, get_part_list, update_if_string_instance
 from production_api.production_api.doctype.purchase_order.purchase_order import get_item_group_index
 from production_api.production_api.doctype.item.item import get_attribute_details, get_or_create_variant
 from production_api.production_api.doctype.delivery_challan.delivery_challan import get_variant_stock_details
 from production_api.essdee_production.doctype.lot.lot import fetch_order_item_details, get_uom_conversion_factor
-from production_api.essdee_production.doctype.item_production_detail.item_production_detail import get_calculated_bom, get_or_create_ipd_variant
+from production_api.essdee_production.doctype.item_production_detail.item_production_detail import get_calculated_bom, get_or_create_ipd_variant, calculate_accessory, get_cloth_combination, get_stitching_combination
 
 class WorkOrder(Document):
 	def on_update_after_submit(self):
@@ -137,7 +137,8 @@ class WorkOrder(Document):
 				rate = rate / 2
 			rate = rate/attr_qty
 			if stich_details:
-				rate = rate/stich_details[attributes.get(ipd_doc.stiching_attribute)]
+				if attributes.get(ipd_doc.stiching_attribute):
+					rate = rate/stich_details[attributes.get(ipd_doc.stiching_attribute)]
 			row.cost = round(rate,2)
 			row.total_cost = round((rate * row.qty), 2)
 
@@ -316,10 +317,10 @@ def fetch_item_details(items,ipd, process=None, include_id = False, is_grn= Fals
 				for attr in current_variant.attributes:
 					if attr.attribute == item.get('primary_attribute'):
 						item['values'][attr.attribute_value] = {
-							'qty': variant.qty,
-							'secondary_qty': variant.secondary_qty,
-							'pending_qty': variant.pending_quantity,
-							'cancelled_qty': variant.cancelled_qty,
+							'qty': round(variant.qty) if variant.qty else 0,
+							'secondary_qty': round(variant.secondary_qty) if variant.secondary_qty else 0,
+							'pending_qty': round(variant.pending_quantity) if variant.pending_quantity else 0,
+							'cancelled_qty': round(variant.cancelled_qty) if variant.cancelled_qty else 0,
 							'rate': variant.rate,
 							'tax': variant.tax,
 							'cost': round(variant.cost, 2) if variant.cost else variant.cost,
@@ -328,7 +329,7 @@ def fetch_item_details(items,ipd, process=None, include_id = False, is_grn= Fals
 						if is_calc:
 							item['values'][attr.attribute_value]['is_calculated'] = variant.is_calculated
 						if is_grn:
-							item['values'][attr.attribute_value]['qty'] = variant.pending_quantity
+							item['values'][attr.attribute_value]['qty'] = round(variant.pending_quantity,0)
 							item['values'][attr.attribute_value]['rate'] = round(variant.cost, 2) if variant.cost else variant.cost
 							
 						if include_id:
@@ -337,10 +338,10 @@ def fetch_item_details(items,ipd, process=None, include_id = False, is_grn= Fals
 						break
 		else:
 			item['values']['default'] = {
-				'qty': variants[0].qty,
-				'secondary_qty': variants[0].secondary_qty,
-				'pending_qty': variants[0].pending_quantity,
-				'cancelled_qty': variants[0].cancelled_qty,
+				'qty': round(variants[0].qty) if variants[0].qty else variants[0].qty,
+				'secondary_qty': round(variants[0].secondary_qty) if variants[0].secondary_qty else 0,
+				'pending_qty': round(variants[0].pending_quantity) if variants[0].pending_quantity else 0,
+				'cancelled_qty': round(variants[0].cancelled_qty) if variants[0].cancelled_qty else 0,
 				'rate': variants[0].rate,
 				'tax': variants[0].tax,
 				'cost': round(variants[0].cost, 2) if variants[0].cost else variants[0].cost,
@@ -500,17 +501,20 @@ def calc_deliverable_and_receivable(ipd_doc, process, item_list, item_name, dept
 	receivables = []
 	total_qty = None
 	if ipd_doc.stiching_process == process:
-		receivables, total_qty  = get_receivables(item_list, lot, uom)
+		receivables, total_qty, table_index, row_index = get_receivables(item_list, lot, uom)
 		stiching_attributes = get_attributes(item_list, item_name, stiching_in_stage, dept_attribute, ipd)
 		stiching_attributes.update(bom)
 		deliverables  = get_deliverables(stiching_attributes, lot)
+		accessory = get_accessories(item_list, ipd_doc)
+		accessory = get_converted_accessory(ipd_doc, accessory, lot, table_index, row_index)
+		deliverables = deliverables + accessory
 	
 	elif ipd_doc.packing_process == process:
 		packing_attributes = get_attributes(item_list, item_name, pack_out_stage, dept_attribute, pack_ipd=ipd)
 		item_list.update(bom)
 		deliverables  = get_deliverables(item_list, lot)
 		item_doc = frappe.get_cached_doc("Item", item_name)
-		receivables, total_qty  = get_receivables(packing_attributes, lot, uom, conversion_details=item_doc.uom_conversion_details, out_uom=pack_out_uom)
+		receivables, total_qty, table_index, row_index = get_receivables(packing_attributes, lot, uom, conversion_details=item_doc.uom_conversion_details, out_uom=pack_out_uom)
 		combine_dict = {}
 		for item in receivables:
 			combine_dict.setdefault(item['item_variant'], {
@@ -534,9 +538,11 @@ def calc_deliverable_and_receivable(ipd_doc, process, item_list, item_name, dept
 	elif ipd_doc.cutting_process == process:
 		cutting_out_stage = ipd_doc.stiching_in_stage
 		cutting_attributes = get_attributes(item_list, item_name, cutting_out_stage, dept_attribute,ipd)
-		receivables, total_qty  = get_receivables(cutting_attributes, lot, uom)
+		accessory = get_accessories(item_list, ipd_doc)
+		receivables, total_qty, table_index, row_index = get_receivables(cutting_attributes, lot, uom)
+		accessory = get_converted_accessory(ipd_doc, accessory, lot, table_index, row_index)
+		receivables = receivables + accessory
 		deliverables  =  get_deliverables(bom, lot)
-
 	else:	
 		for item in ipd_doc.ipd_processes:
 			if item.process_name == process:
@@ -545,17 +551,17 @@ def calc_deliverable_and_receivable(ipd_doc, process, item_list, item_name, dept
 					x = attributes.copy()
 					x.update(bom)
 					deliverables  = get_deliverables(x, lot)
-					receivables, total_qty  = get_receivables(attributes, lot, uom)
+					receivables, total_qty, table_index, row_index = get_receivables(attributes, lot, uom)
 				
 				elif lot_doc.pack_in_stage == item.stage:
 					deliverables = item_list.copy()
-					receivables, total_qty  = get_receivables(deliverables,lot, uom)
+					receivables, total_qty, table_index, row_index = get_receivables(deliverables,lot, uom)
 					item_list.update(bom)
 					deliverables = get_deliverables(item_list, lot)
 
 				else:
 					attributes = get_attributes(item_list, item_name, item.stage, dept_attribute, pack_ipd=ipd)
-					receivables, total_qty = get_receivables(attributes,lot, uom)
+					receivables, total_qty, table_index, row_index = get_receivables(attributes,lot, uom)
 					attributes.update(bom)
 					deliverables = get_deliverables(attributes, lot)
 				break
@@ -578,6 +584,35 @@ def get_deliverables(items, lot):
 				'is_calculated':True,
 			})
     return deliverables
+
+def get_converted_accessory(ipd_doc, accessory, lot, table_index, row_index):
+	accessories = []
+	cloth_detail = {}
+	for cloth in ipd_doc.cloth_detail:
+		cloth_detail[cloth.name1] = cloth.cloth
+	accessory_detail = {}
+	for acc, qty in accessory.items():
+		cloth_type, colour, dia = acc
+		cloth_name = cloth_detail[cloth_type]
+		uom = frappe.get_value("Item", cloth_name,"default_unit_of_measure")
+		variant_name = get_or_create_variant(cloth_name, {ipd_doc.packing_attribute: colour, "Dia": dia})
+		accessory_detail.setdefault(variant_name, {"uom": uom, "qty": 0})
+		accessory_detail[variant_name]["qty"] += qty
+
+	for variant, details in accessory_detail.items():
+		accessories.append({
+			'item_variant': variant , 
+			'lot': lot, 
+			'qty': details['qty'], 
+			'uom': details['uom'], 
+			'table_index': table_index, 
+			'row_index': row_index, 
+			'pending_quantity': details['qty'], 
+			'set_combination': {},
+		})
+		table_index += 1
+		row_index += 1
+	return accessories	
 
 def get_report_data(items):
 	attrs = []
@@ -608,6 +643,8 @@ def get_report_data(items):
 def get_receivables(items,lot, uom, conversion_details = None, out_uom = None):
 	receivables = []
 	total_qty = 0
+	table_index = 0
+	row_index = 0
 	for item_name,variants in items.items():
 		for variant in variants:
 			uom_factor = 1
@@ -627,7 +664,10 @@ def get_receivables(items,lot, uom, conversion_details = None, out_uom = None):
 				'pending_quantity':round(qty,3),
 				'set_combination':variant['set_combination'],
 			})
-	return receivables, total_qty	
+			table_index = variant['table_index']
+			row_index = variant['row_index']
+
+	return receivables, total_qty, int(table_index)+1, int(row_index)+1	
 
 def get_attributes_qty(ipd_doc, process, depends_on_attr):
 	if depends_on_attr:
@@ -996,15 +1036,6 @@ def calc(doc_name):
 	for grn in grn_list:
 		calculate_pieces(grn)
 
-def update_if_string_instance(obj):
-	if isinstance(obj, string_types):
-		obj = json.loads(obj)
-
-	if not obj:
-		obj = {}
-
-	return obj	
-
 @frappe.whitelist()
 def fetch_summary_details(doc_name, production_detail):
 	ipd_doc = frappe.get_doc("Item Production Detail", production_detail)
@@ -1034,9 +1065,7 @@ def fetch_summary_details(doc_name, production_detail):
 			for attr in current_item_attribute_details['primary_attribute_values']:
 				item['values'][attr] = {'qty': 0}
 			for variant in variants:
-				set_combination = variant.set_combination
-				if isinstance(set_combination, string_types):
-					set_combination = json.loads(set_combination)
+				set_combination = update_if_string_instance(variant.set_combination)
 				if set_combination:
 					if set_combination.get("major_part"):
 						item['item_keys']['major_part'] = set_combination.get("major_part")
@@ -1084,3 +1113,23 @@ def fetch_summary_details(doc_name, production_detail):
 		"item_detail":item_details,
 		"deliverables": deliverables
 	}
+
+def get_accessories(item_list, ipd_doc):
+	cloth_combination = get_cloth_combination(ipd_doc)
+	attrs = None
+	stitching_combination = get_stitching_combination(ipd_doc)
+	cloth_detail = []
+	from production_api.production_api.doctype.goods_received_note.goods_received_note import get_variant_attributes
+	for item in item_list:
+		for variant in item_list[item]:
+			variant_doc = frappe.get_cached_doc("Item Variant", variant['item_variant'])
+			attrs = get_variant_attributes(variant_doc)
+			accessory_detail = calculate_accessory(ipd_doc, cloth_combination, stitching_combination, attrs, variant['qty'])
+			cloth_detail = cloth_detail + accessory_detail
+
+	cloth_dict = {}
+	for cloth in cloth_detail:
+		key = (cloth['cloth_type'], cloth['colour'], cloth['dia'])
+		cloth_dict.setdefault(key, 0)
+		cloth_dict[key] += cloth['quantity']
+	return cloth_dict

@@ -1,17 +1,17 @@
 # Copyright (c) 2024, Essdee and contributors
 # For license information, please see license.txt
 
-import frappe,json, sys
+import frappe, json, sys
 from six import string_types
 from frappe.utils import flt
 from itertools import groupby
 from datetime import datetime
 from itertools import zip_longest
 from frappe.model.document import Document
-from production_api.utils import get_panel_list
 from production_api.mrp_stock.utils import get_stock_balance
 from production_api.mrp_stock.stock_ledger import make_sl_entries
 from production_api.production_api.logger import get_module_logger
+from production_api.utils import get_panel_list, update_if_string_instance
 from production_api.production_api.doctype.item.item import get_attribute_details
 from production_api.production_api.doctype.purchase_order.purchase_order import get_item_attribute_details, get_item_group_index
 
@@ -152,11 +152,8 @@ class DeliveryChallan(Document):
 def save_deliverables(item_details, from_location, ipd):
 	from production_api.essdee_production.doctype.item_production_detail.item_production_detail import get_or_create_ipd_variant
 	ipd_doc = frappe.get_cached_doc("Item Production Detail", ipd)
-	item_variants = ipd_doc.variants_json
-	if isinstance(item_variants, string_types):
-		item_variants = json.loads(item_variants)
-	if isinstance(item_details, string_types):
-		item_details = json.loads(item_details)
+	item_variants = update_if_string_instance(ipd_doc.variants_json)
+	item_details = update_if_string_instance(item_details)
 	items = []
 	row_index = 0
 	stock_value = 0
@@ -247,9 +244,7 @@ def save_deliverables(item_details, from_location, ipd):
 
 def fetch_item_details(items, ipd, lot, is_new=False):
 	items = [item.as_dict() for item in items]
-	if isinstance(items, string_types):
-		items = json.loads(items)
-
+	items = update_if_string_instance(items)
 	items = sorted(items, key = lambda i: i['row_index'])
 	ipd_doc = frappe.get_cached_doc("Item Production Detail", ipd)
 	item_details = []
@@ -278,9 +273,7 @@ def fetch_item_details(items, ipd, lot, is_new=False):
 				item['values'][attr] = {'qty': 0, 'rate': 0}
 			for variant in variants:
 				current_variant = frappe.get_cached_doc("Item Variant", variant['item_variant'])
-				set_combination = variant['set_combination']
-				if isinstance(set_combination, string_types):
-					set_combination = json.loads(set_combination)
+				set_combination = update_if_string_instance(variant['set_combination'])
 				if set_combination:
 					if set_combination.get("major_part"):
 						item['item_keys']['major_part'] = set_combination.get("major_part")
@@ -652,11 +645,8 @@ def get_variant_attributes(variant):
 			attribute_details[attr.attribute] = attr.attribute_value
 	return attribute_details
 
-def update_if_string_instance(obj):
-	if isinstance(obj, string_types):
-		obj = json.loads(obj)
-
-	if not obj:
-		obj = {}
-
-	return obj	
+@frappe.whitelist()
+def get_return_delivery_items(doc_name):
+	doc = frappe.get_doc("Delivery Challan", doc_name)
+	item_details = fetch_item_details(doc.items, doc.production_detail, doc.lot)
+	return item_details

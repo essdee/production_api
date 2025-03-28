@@ -1,4 +1,5 @@
-import frappe
+import frappe, json
+from six import string_types
 from frappe.utils import flt
 from frappe.query_builder.builder import Order as OrderBy
 
@@ -75,3 +76,12 @@ def get_part_list(ipd_doc):
 		if stich.set_item_attribute_value not in part_list:
 			part_list.append(stich.set_item_attribute_value)
 	return part_list
+
+def update_if_string_instance(obj):
+	if isinstance(obj, string_types):
+		obj = json.loads(obj)
+
+	if not obj:
+		obj = {}
+
+	return obj

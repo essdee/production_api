@@ -3,17 +3,19 @@
 
 import frappe, json
 from six import string_types
+from itertools import groupby
+from operator import itemgetter
 from frappe.model.document import Document
-from production_api.production_api.doctype.item.item import get_or_create_variant
+from production_api.utils import update_if_string_instance
 from production_api.mrp_stock.doctype.stock_entry.stock_entry import fetch_stock_entry_items
+from production_api.production_api.doctype.item.item import get_or_create_variant, get_attribute_details
+from production_api.production_api.doctype.purchase_order.purchase_order import get_item_attribute_details, get_item_group_index
 from production_api.production_api.doctype.item_dependent_attribute_mapping.item_dependent_attribute_mapping import get_dependent_attribute_details
 
 class CutPanelMovement(Document):
 	def onload(self):
 		if self.cut_panel_movement_json and len(self.cut_panel_movement_json) > 0:
-			json_data = self.cut_panel_movement_json
-			if isinstance(json_data, string_types):
-				json_data = json.loads(json_data)
+			json_data = update_if_string_instance(self.cut_panel_movement_json)
 			self.set_onload("movement_details", json_data)
 
 	def before_validate(self):
@@ -30,9 +32,7 @@ class CutPanelMovement(Document):
 				frappe.throw(f"Already a Cut Panel Movement was not Submitted for Cutting Plan {self.cutting_plan}")
 		
 		if self.get('movement_data'):
-			items = self.movement_data
-			if isinstance(items, string_types):
-				items = json.loads(items)
+			items = update_if_string_instance(self.movement_data)
 			if items['accessory_data']:
 				for item in items['accessory_data']:
 					if not item['moved_weight']:
@@ -44,9 +44,7 @@ class CutPanelMovement(Document):
 	
 	def before_submit(self):
 		datas = {}
-		json_data = self.cut_panel_movement_json
-		if isinstance(json_data, string_types):
-			json_data = json.loads(json_data)
+		json_data = update_if_string_instance(self.cut_panel_movement_json)
 		panels = json_data['panels']
 		is_set_item = json_data['is_set_item']
 		data = json_data['data']
@@ -135,9 +133,7 @@ def get_total(items):
 	return items
 
 def check_panel_and_accessories(cut_panel_movement_json):
-	json_data = cut_panel_movement_json
-	if isinstance(json_data, string_types):
-		json_data = json.loads(json_data)
+	json_data = update_if_string_instance(cut_panel_movement_json)
 	panels = json_data['panels']
 	is_set_item = json_data['is_set_item']
 	data = json_data['data']
@@ -169,9 +165,7 @@ def update_cls(cut_panel_movement_json, docstatus, cutting_plan, process_name):
 	if process != process_name:
 		return
 	ref_doclist = set()
-	json_data = cut_panel_movement_json
-	if isinstance(json_data, string_types):
-		json_data = json.loads(json_data)
+	json_data = update_if_string_instance(cut_panel_movement_json)
 	panels = json_data['panels']
 	is_set_item = json_data['is_set_item']
 	data = json_data['data']
@@ -207,8 +201,7 @@ def update_accessory(cutting_plan, cut_panel_movement_json, docstatus, process_n
 	if process != process_name:
 		return
 	
-	if isinstance(cut_panel_movement_json, string_types):
-		cut_panel_movement_json = json.loads(cut_panel_movement_json)
+	cut_panel_movement_json = update_if_string_instance(cut_panel_movement_json)
 	
 	if cut_panel_movement_json and cut_panel_movement_json['accessory_data']:
 		accessory_data = cut_panel_movement_json['accessory_data']
@@ -288,9 +281,7 @@ def get_cutting_plan_unmoved_data(cutting_plan, process_name):
 				bundle_no = row.bundle_no
 				parts = row.part.split(",")
 				parts = ", ".join(parts)
-				set_combination = row.set_combination
-				if isinstance(set_combination, string_types):
-					set_combination = json.loads(set_combination)
+				set_combination = update_if_string_instance(row.set_combination)
 				major_colour = set_combination['major_colour']
 				panel_colour = row.colour
 				if ipd_doc.is_set_item:
@@ -310,17 +301,26 @@ def get_cutting_plan_unmoved_data(cutting_plan, process_name):
 				else:
 					if parts not in panels:
 						panels.append(parts)
+
+				comb = {
+					"major_colour": set_combination.get("major_colour")
+				}
+				if set_combination.get("major_part"):
+					comb['major_part'] = set_combination.get("major_part")
+
+				sorted_key = tuple(sorted(comb.items()))
 				lay_details[lay_no].setdefault(major_colour, {})
 				lay_details[lay_no][major_colour].setdefault(bundle_no, {})
 				lay_details[lay_no][major_colour][bundle_no].setdefault(row.size, {})	
 				lay_details[lay_no][major_colour][bundle_no][row.size].setdefault(row.shade, {})
-				lay_details[lay_no][major_colour][bundle_no][row.size][row.shade].setdefault(parts, {
+				lay_details[lay_no][major_colour][bundle_no][row.size][row.shade].setdefault(sorted_key, {})
+				lay_details[lay_no][major_colour][bundle_no][row.size][row.shade][sorted_key].setdefault(parts ,{
 					"qty":0,
 					"ref_docname": None,
 					"colour": panel_colour,
 				})
-				lay_details[lay_no][major_colour][bundle_no][row.size][row.shade][parts]["qty"] += row.quantity
-				lay_details[lay_no][major_colour][bundle_no][row.size][row.shade][parts]["ref_docname"] = row.name
+				lay_details[lay_no][major_colour][bundle_no][row.size][row.shade][sorted_key][parts]["qty"] += row.quantity
+				lay_details[lay_no][major_colour][bundle_no][row.size][row.shade][sorted_key][parts]["ref_docname"] = row.name
 		
 		for row in cls_doc.cutting_laysheet_accessory_details:
 			if is_moved:
@@ -370,20 +370,22 @@ def get_cutting_plan_unmoved_data(cutting_plan, process_name):
 								d['part'] = splits[len(splits) - 1]
 
 							final_data.setdefault(colour, d)
-							duplicate = {}
-							duplicate['lay_no'] = lay_number
-							duplicate['size'] = size
-							duplicate['shade'] = shade
-							duplicate['bundle_no'] = bundle_no
-							for panel, details in panel_detail[shade].items():
-								doc_names.add(details['ref_docname'])
-								duplicate[panel] = details['qty']
-								duplicate[panel+"_colour"] = details["colour"]
-								duplicate[panel+"_moved"] = False
-								duplicate[panel+'_ref_docname'] = details['ref_docname']
-							duplicate['bundle_moved'] = False	
-							final_data[colour]["data"].append(duplicate)	
-	from operator import itemgetter
+
+							for comb, panels_list in panel_detail[shade].items():
+								duplicate = {}
+								for panel in panels_list:
+									duplicate['lay_no'] = lay_number
+									duplicate['size'] = size
+									duplicate['shade'] = shade
+									duplicate['bundle_no'] = bundle_no
+									doc_names.add(panel_detail[shade][comb][panel]['ref_docname'])
+									duplicate[panel] = panel_detail[shade][comb][panel]['qty']
+									duplicate[panel+"_colour"] = panel_detail[shade][comb][panel]["colour"]
+									duplicate[panel+"_moved"] = False
+									duplicate[panel+'_ref_docname'] = panel_detail[shade][comb][panel]['ref_docname']
+								duplicate['set_combination'] = get_tuple_attributes(comb)
+								duplicate['bundle_moved'] = False
+								final_data[colour]["data"].append(duplicate)
 	for colour in final_data:
 		data = final_data[colour]["data"]
 		final_data[colour]["data"] = sorted(data, key=itemgetter('size', 'shade'))
@@ -397,17 +399,105 @@ def get_cutting_plan_unmoved_data(cutting_plan, process_name):
 
 @frappe.whitelist()
 def create_stock_entry(doc_name):
+	stock_entry_item_list, ipd = get_grouped_data(doc_name, "Stock Entry")
+	data = fetch_stock_entry_items(stock_entry_item_list, ipd=ipd)
+	return data
+
+from frappe.utils import nowdate, now
+@frappe.whitelist()
+def create_delivery_challan(doc_name, work_order, process_name):
+	delivery_challan_item_list, ipd = get_grouped_data(doc_name, "delivery Challan")
+	doc = frappe.get_cached_doc("Work Order", work_order)
+	if doc.process_name != process_name:
+		frappe.throw("Work Order's process and Cut panel movement's process are different")
+	items = []
+	for item in doc.deliverables:
+		item = item.as_dict()
+		for data in delivery_challan_item_list:
+			set1 = update_if_string_instance(data['set_combination'])
+			set2 = update_if_string_instance(item['set_combination'])
+			if item['item_variant'] == data['item_variant'] and set1 == set2:
+				item['delivered_quantity'] = data['qty']
+				items.append(item)
+				break
+	
+	items = sorted(items, key = lambda i: i['row_index'])
+	item_details = []
+	for key, variants in groupby(items, lambda i: i['row_index']):
+		variants = list(variants)
+		current_variant = frappe.get_cached_doc("Item Variant", variants[0]['item_variant'])
+		current_item_attribute_details = get_attribute_details(current_variant.item)
+		item = {
+			'name': current_variant.item,
+			'lot': variants[0]['lot'],
+			'attributes': get_item_attribute_details(current_variant, current_item_attribute_details),
+			'primary_attribute': current_item_attribute_details['primary_attribute'],
+			'values': {},
+			'default_uom': variants[0]['uom'] or current_item_attribute_details['default_uom'],
+			'secondary_uom': variants[0]['secondary_uom'] or current_item_attribute_details['secondary_uom'],
+			'comments': None,
+		}
+		if item['primary_attribute']:
+			for attr in current_item_attribute_details['primary_attribute_values']:
+				item['values'][attr] = {'qty': 0, 'rate': 0}
+			for variant in variants:
+				current_variant = frappe.get_cached_doc("Item Variant", variant['item_variant'])
+				set_combination = update_if_string_instance(variant['set_combination'])
+				for attr in current_variant.attributes:
+					if attr.attribute == item.get('primary_attribute'):
+						item['values'][attr.attribute_value] = {
+							'rate': variant['rate'],
+							'ref_doctype':"Work Order Deliverables",
+							"is_calculated":variant.is_calculated,
+							'set_combination':set_combination,
+							'qty': variant['qty'],
+							'delivered_quantity': variant.get('delivered_quantity', 0),
+						}
+						break
+		else:
+			item['values']['default'] = {
+				'rate': variants[0]['rate'],
+				"ref_doctype":"Work Order Deliverables",
+				"is_calculated":variants[0].is_calculated,
+				'qty': variants[0]['qty'],
+				'delivered_quantity': variants[0].get('delivered_quantity', 0),
+				'ref_docname': variants[0]['ref_docname']
+			}
+		index = get_item_group_index(item_details, current_item_attribute_details)
+		if index == -1:
+			item_details.append({
+				'attributes': current_item_attribute_details['attributes'],
+				"lot":doc.lot,
+				'primary_attribute': current_item_attribute_details['primary_attribute'],
+				'primary_attribute_values': current_item_attribute_details["primary_attribute_values"],
+				'dependent_attribute': current_item_attribute_details['dependent_attribute'],
+				'items': [item]
+			})
+		else:
+			item_details[index]['items'].append(item)
+	return {
+		"item_details": item_details,
+		"supplier": doc.supplier,
+		"supplier_name": doc.supplier_name,
+		"supplier_address": doc.supplier_address,
+		"supplier_address_details": doc.supplier_address_details,
+	}
+
+def get_tuple_attributes(tuple_data):
+	attrs = {}
+	for data in tuple_data:
+		attrs[data[0]] = data[1]
+	return attrs	
+
+def get_grouped_data(doc_name, doctype):
 	cpm_doc = frappe.get_doc("Cut Panel Movement", doc_name)
 	ipd = frappe.get_value("Cutting Plan", cpm_doc.cutting_plan, "production_detail")
 	ipd_doc = frappe.get_doc("Item Production Detail", ipd)
-	cpm_json = cpm_doc.cut_panel_movement_json
+	cpm_json = update_if_string_instance(cpm_doc.cut_panel_movement_json)
 	stock_entry_dict = {}
 	group_dict = {}
 	attr_details = get_dependent_attribute_details(ipd_doc.dependent_attribute_mapping)
 	uom = attr_details['attr_list'][ipd_doc.stiching_in_stage]['uom']
-	if isinstance(cpm_json, string_types):
-		cpm_json = json.loads(cpm_json)
-
 	for colour in cpm_json['data']:
 		if ipd_doc.is_set_item:
 			part = cpm_json['data'][colour]['part']
@@ -425,25 +515,29 @@ def create_stock_entry(doc_name):
 							group_dict[grp_key] = []
 						key = {
 							ipd_doc.primary_item_attribute: data['size'],
-							ipd_doc.packing_attribute: data[panel+'_colour'],
+							ipd_doc.packing_attribute: data[grp_panel+'_colour'],
 							ipd_doc.dependent_attribute: ipd_doc.stiching_in_stage,
 							ipd_doc.stiching_attribute: panel,
+							"set_combination": tuple(sorted(data['set_combination'].items())),
 						}
 						key = tuple(sorted(key.items()))
 						if key in stock_entry_dict:
-							stock_entry_dict[key]["qty"] += data[panel]
+							stock_entry_dict[key]["qty"] += data[grp_panel]
 						else:
-							stock_entry_dict[key] = { "qty": data[panel], "group_key": grp_key }
+							stock_entry_dict[key] = { "qty": data[grp_panel], "group_key": grp_key }
+
 	for attrs_tuple in stock_entry_dict:
 		attrs = get_tuple_attributes(attrs_tuple)
 		qty = stock_entry_dict[attrs_tuple]['qty']
 		grp_key = stock_entry_dict[attrs_tuple]['group_key']
+		set_combination = get_tuple_attributes(attrs['set_combination'])
+		del attrs['set_combination']
 		variant = get_or_create_variant(cpm_doc.item, attrs)
-		group_dict[grp_key].append( { "item_variant": variant, "qty": qty })
-
+		group_dict[grp_key].append( {"item_variant": variant, "qty": qty, "set_combination": set_combination })
+	
 	table_index = -1
 	row_index = -1
-	stock_entry_item_list = []
+	item_list = []
 	lot = cpm_doc.lot
 	received_type = frappe.db.get_single_value("Stock Settings", "default_received_type")
 	for (panel, colour), items in group_dict.items():
@@ -451,36 +545,54 @@ def create_stock_entry(doc_name):
 		table_index += 1
 		row_index += 1
 		for item in sorted_items:
-			stock_entry_item_list.append({
-                "item": item['item_variant'],
-                "qty": item['qty'],
-                "lot": lot,
-                "received_type": received_type,
-                "uom": uom,
-				'table_index': table_index,
-				'row_index': row_index,
-            })
+			if doctype == 'Stock Entry':
+				item_list.append({
+					"item": item['item_variant'],
+					"qty": item['qty'],
+					"lot": lot,
+					"received_type": received_type,
+					"uom": uom,
+					'table_index': table_index,
+					'row_index': row_index,
+					'set_combination': item['set_combination'],
+				})
+			else:
+				item_list.append({
+					"item_variant": item['item_variant'],
+					"lot": lot,
+					"qty": item['qty'],
+					'set_combination': item['set_combination'],
+					"uom": uom,
+					'table_index': table_index,
+					'row_index': row_index,
+				})
 	table_index += 1
 	row_index += 1
 	for acc in cpm_json['accessory_data']:
 		variant = get_or_create_variant(acc['cloth_name'], { ipd_doc.packing_attribute: acc['colour'], "Dia": acc['dia'] })
 		uom = frappe.get_value("Item", acc['cloth_name'], "default_unit_of_measure")
-		stock_entry_item_list.append({
-			"item": variant,
-			"qty": acc['moved_weight'],
-			"lot": lot,
-			"received_type": received_type,
-			"uom": uom,
-			'table_index': table_index,
-			'row_index': row_index,
-		})
+		if doctype == 'Stock Entry':
+			item_list.append({
+				"item": variant,
+				"qty": acc['moved_weight'],
+				"lot": lot,
+				"received_type": received_type,
+				"uom": uom,
+				'table_index': table_index,
+				'row_index': row_index,
+				'set_combination': {},
+			})
+		else:
+			item_list.append({
+				"item_variant": variant,
+				"lot": lot,
+				"qty": acc['moved_weight'],
+				'set_combination': {},
+				"uom": uom,
+				'table_index': table_index,
+				'row_index': row_index,
+			})
 		row_index += 1
-	data = fetch_stock_entry_items(stock_entry_item_list)
-	return data
 
-def get_tuple_attributes(tuple_data):
-	attrs = {}
-	for data in tuple_data:
-		attrs[data[0]] = data[1]
-	return attrs	
+	return item_list, ipd 
 

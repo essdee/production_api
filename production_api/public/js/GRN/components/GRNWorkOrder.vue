@@ -23,9 +23,6 @@
 							<td v-for="attr in j.values" :key="attr">
 								<div v-if="attr.qty">
 									{{ attr.qty}}<span v-if="j.default_uom">{{ " " + j.default_uom }}</span>
-									<span v-if="attr.secondary_qty">
-										({{ attr.secondary_qty }}<span v-if="j.secondary_uom">{{" " + j.secondary_uom}}</span>)
-									</span>
 								</div>
 								<div v-else class="text-center">---</div>
 							</td>
@@ -53,13 +50,10 @@
 							</td>
 							<td>
 								{{ j.values["default"].qty }}<span v-if="j.default_uom">{{ " " + j.default_uom }}</span>
-								<span v-if="j.values['default'].secondary_qty"><br />
-									({{ j.values["default"].secondary_qty }} <span v-if="j.secondary_uom">{{ " " + j.secondary_uom }}</span>)
-								</span>
 							</td>
 							<td v-if="docstatus == 0">
-								<div class="pull-right cursor-pointer" @click="edit_item(item_index, item1_index)"
-									v-html="frappe.utils.icon('edit', 'md', 'mr-1')"></div>
+								<div class="cursor-pointer" @click="edit_item(item_index, item1_index)"
+									v-html="frappe.utils.icon('edit', 'md')"></div>
 							</td>
 						</tr>
 					</table>
@@ -177,38 +171,79 @@
 				<td v-else>
 					<table class="table table-sm table-bordered" v-if="i.items && i.items.length > 0" >
 						<tr>
+							<th>S.No</th>
 							<th>Item</th>
 							<th v-for="attr in i.attributes" :key="attr">{{ attr }}</th>
 							<th>Quantity</th>
 							<th v-if="docstatus == 0">Edit</th>
 						</tr>
-						<tr v-for="(j, item1_index) in i.items" :key="item1_index">
-							<td>{{ j.name }}</td>
-							<td v-for="attr in i.attributes" :key="attr">{{ j.attributes[attr] }}</td>
-							<td>
-								<div v-if="j.values['default']['types']">
-									<div v-if='typeof(j.values["default"]["types"]) == "string"'>
-										<div v-for="type in Object.keys(JSON.parse(j.values['default']['types']))" :key='type'>
-											{{type}}-{{JSON.parse(j.values['default']['types'])[type]}}
-										</div>
-									</div>
-									<div v-else>
-										<div v-for="type in Object.keys(j.values['default']['types'])" :key='type'>
-											{{type}}-{{j.values['default']['types'][type]}}
-										</div>	
-									</div>	
-								</div>
-								<div v-else class="text-center">---</div>
-							</td>
-							<td v-if="docstatus == 0">
-								<div class="d-flex justify-content-between">
-									<div class="cursor-pointer" @click="edit_delivered_item(item_index, item1_index, type)" 
-										v-html="frappe.utils.icon('edit', 'md', 'mr-1')"></div>
-									<div class="cursor-pointer" @click="delete_delivered_item(item_index, item1_index, type)" 
-										v-html="frappe.utils.icon('delete', 'md', 'mr-1')"></div>
-								</div>
-							</td>
-						</tr>
+						<template v-for="(j, item1_index) in i.items" :key="item1_index">
+							<template v-if="j.values['default']['types'] && j.values['default']['types'] != '{}'">
+								<template v-for="(qty, type) in typeof(j.values['default']['types']) == 'string' ? JSON.parse(j.values['default']['types']) : j.values['default']['types']" :key='type'>
+									<tr>
+										<td>{{ get_index(item1_index)}}</td>
+										<td>{{ j.name }}</td>
+										<td v-for="attr in i.attributes" :key="attr">{{ j.attributes[attr] }}</td>
+										<td>
+											<div v-if='typeof(j.values["default"]["types"]) == "string"'>
+												{{type}}-{{JSON.parse(j.values['default']['types'])[type]}}
+												<div v-if="edit_item_uom">
+													<div v-if="typeof(j.values['default'].secondary_qty_json) == 'string'">
+														<input class="form-control" type="number" :value="JSON.parse(j.values['default'].secondary_qty_json)[type]" @input="get_secondary_input($event.target.value,item_index, item1_index, type, null)">
+													</div>
+													<div v-else>
+														<input class="form-control" type="number" :value="j.values['default'].secondary_qty_json[type]" @input="get_secondary_input($event.target.value,item_index, item1_index, type, null)">
+													</div>
+												</div>
+												<div v-else>
+													<span v-if="typeof(j.values['default'].secondary_qty_json) == 'string'">
+														<span v-if="JSON.parse(j.values['default'].secondary_qty_json)[type] > 0 && j.values['default'].secondary_uom">
+															({{JSON.parse(j.values['default'].secondary_qty_json)[type]}} {{j.values['default'].secondary_uom}})											
+														</span>
+													</span>	
+													<span v-else>
+														<span v-if="j.values['default'].secondary_qty_json[type] > 0 && j.values['default'].secondary_uom">
+															({{j.values['default'].secondary_qty_json[type]}} {{j.values['default'].secondary_uom}})											
+														</span>
+													</span>
+												</div>	
+											</div>
+											<div v-else>
+												{{type}}-{{j.values['default']['types'][type]}}
+												<div v-if="edit_item_uom">
+													<div v-if="typeof(j.values['default'].secondary_qty_json) == 'string'">
+														<input class="form-control" type="number" :value="JSON.parse(j.values['default'].secondary_qty_json)[type]" @input="get_secondary_input($event.target.value,item_index, item1_index, type, null)">
+													</div>
+													<div v-else>
+														<input class="form-control" type="number" :value="j.values['default'].secondary_qty_json[type]" @input="get_secondary_input($event.target.value,item_index, item1_index, type, null)">
+													</div>
+												</div>
+												<div v-else>
+													<span v-if="typeof(j.values['default'].secondary_qty_json) == 'string'">
+														<span v-if="JSON.parse(j.values['default'].secondary_qty_json)[type] > 0 && j.values['default'].secondary_uom">
+															({{JSON.parse(j.values['default'].secondary_qty_json)[type]}} {{j.values['default'].secondary_uom}})											
+														</span>
+													</span>	
+													<span v-else>
+														<span v-if="j.values['default'].secondary_qty_json[type] > 0 && j.values['default'].secondary_uom">
+															({{j.values['default'].secondary_qty_json[type]}} {{j.values['default'].secondary_uom}})											
+														</span>
+													</span>
+												</div>	
+											</div>	
+										</td>
+										<td v-if="docstatus == 0">
+											<div class="d-flex">
+												<div class="cursor-pointer" @click="edit_delivered_item(item_index, item1_index, type)" 
+													v-html="frappe.utils.icon('edit', 'md')"></div>
+												<div class="cursor-pointer" @click="delete_delivered_item(item_index, item1_index, type)" 
+													v-html="frappe.utils.icon('delete', 'md')"></div>
+											</div>
+										</td>
+									</tr>
+								</template>	
+							</template>	
+						</template>	
 					</table>
 				</td>
 			</tr>
@@ -291,13 +326,25 @@ function get_secondary_input(value, idx1, idx2, type, attr){
 	}
 	cur_frm.dirty()
 	is_edited.value = true
-	let secondary_json = items.value[idx1]['items'][idx2]['values'][attr]['secondary_qty_json']
-	if(typeof(secondary_json) == "string"){
-		secondary_json = JSON.parse(secondary_json)
+	if(attr){
+		let secondary_json = items.value[idx1]['items'][idx2]['values'][attr]['secondary_qty_json']
+		if(typeof(secondary_json) == "string"){
+			secondary_json = JSON.parse(secondary_json)
+		}
+		secondary_json[type] = value
+		items.value[idx1]['items'][idx2]['values'][attr]['secondary_qty_json'] = JSON.stringify(secondary_json)
+		items.value[idx1]['items'][idx2]['values'][attr]['secondary_uom'] = edit_item_uom.value
 	}
-	secondary_json[type] = value
-	items.value[idx1]['items'][idx2]['values'][attr]['secondary_qty_json'] = JSON.stringify(secondary_json)
-	items.value[idx1]['items'][idx2]['values'][attr]['secondary_uom'] = edit_item_uom.value
+	else{
+		let secondary_json = items.value[idx1]['items'][idx2]['values']['default']['secondary_qty_json']
+		if(typeof(secondary_json) == "string"){
+			secondary_json = JSON.parse(secondary_json)
+		}
+		secondary_json[type] = value
+		items.value[idx1]['items'][idx2]['values']['default']['secondary_qty_json'] = JSON.stringify(secondary_json)
+		items.value[idx1]['items'][idx2]['values']['default']['secondary_uom'] = edit_item_uom.value
+	}
+	
 }
 
 function get_index(idx){
@@ -392,14 +439,22 @@ function delete_delivered_item(index, index1, type){
 	if(primary){
 		Object.keys(items.value[edit_index.value].items[edit_index1.value].values).forEach(row => {
 			let received_types = items.value[edit_index.value].items[edit_index1.value].values[row]['types']
+			let secondary_received = items.value[edit_index.value].items[edit_index1.value].values[row]['secondary_qty_json']
 			if(typeof(received_types) == 'string'){
 				received_types = JSON.parse(received_types)
 			}
+			if (typeof(secondary_received) == 'string' ){
+				secondary_received = JSON.parse(secondary_received)
+			}
 			let qty = parseFloat(received_types[type])
 			delete received_types[type]
+			if(secondary_received.hasOwnProperty(type)){
+				delete secondary_received[type]
+			}
 			items.value[edit_index.value].items[edit_index1.value].values[row]['types'] = received_types
 			items.value[edit_index.value].items[edit_index1.value].values[row]['received'] -= qty
 			items.value[edit_index.value].items[edit_index1.value].values[row]['qty'] += qty
+			items.value[edit_index.value].items[edit_index1.value].values[row]['secondary_qty_json'] = secondary_received
 		})
 	}
 	else{
@@ -407,11 +462,19 @@ function delete_delivered_item(index, index1, type){
 		if(typeof(received_types) == 'string'){
 			received_types = JSON.parse(received_types)
 		}
+		let secondary_received = items.value[edit_index.value].items[edit_index1.value].values['default']['secondary_qty_json']
+		if(typeof(secondary_received) == 'string'){
+			secondary_received = JSON.parse(secondary_received)
+		}
+		if(secondary_received.hasOwnProperty(type)){
+			delete secondary_received[type]
+		}
 		let qty = received_types[type]
 		delete received_types[type]
 		items.value[edit_index.value].items[edit_index1.value].values['default']['types'] = received_types
 		items.value[edit_index.value].items[edit_index1.value].values['default']['received'] -= qty
 		items.value[edit_index.value].items[edit_index1.value].values['default']['qty'] += qty
+		items.value[edit_index.value].items[edit_index1.value].values['default']['secondary_qty_json'] = secondary_received
 	}
 }
 
@@ -644,7 +707,12 @@ async function add_item() {
 				if(typeof(dict) == 'string'){
 					dict = JSON.parse(dict)
 				}
-				dict[type_selected] = data1[x]
+				if (dict.hasOwnProperty(type_selected)){
+					dict[type_selected] += data1[x]
+				}
+				else{
+					dict[type_selected] = data1[x]
+				}
 				items.value[edit_index.value].items[edit_index1.value].values[row]['secondary_uom'] = uom
 				items.value[edit_index.value].items[edit_index1.value].values[row]['secondary_qty_json'] = dict
 				x = x + 1
@@ -658,9 +726,13 @@ async function add_item() {
 			if(typeof(dict) == 'string'){
 				dict = JSON.parse(dict)
 			}
-			dict[type_selected] = data1[x]
-			items.value[edit_index.value].items[edit_index1.value]['default']['secondary_qty'] = data1[x]
-			items.value[edit_index.value].items[edit_index1.value]['default']['secondary_uom'] = uom
+			if (dict.hasOwnProperty(type_selected)){
+				dict[type_selected] += data1[x]
+			}
+			else{
+				dict[type_selected] = data1[x]
+			}
+			items.value[edit_index.value].items[edit_index1.value].values['default']['secondary_uom'] = uom
 			items.value[edit_index.value].items[edit_index1.value].values['default']['secondary_qty_json'] = dict
 			x = x + 1
 		}

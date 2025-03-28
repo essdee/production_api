@@ -222,13 +222,7 @@ class StockEntry(Document):
 			qty = 0
 			for ste_item in self.items:
 				for item in doc.items:
-					set1 = ste_item.set_combination
-					set2 = item.set_combination
-					if isinstance(set1, string_types):
-						set1 = json.loads(set1)
-					if isinstance(set2, string_types):
-						set2 = json.loads(set2)	
-					if ste_item.item == item.item_variant and set1 == set2:
+					if ste_item.against_id_detail == item.name:
 						check = True
 						if self.purpose == "GRN Completion":
 							check = ste_item.received_type == item.received_type
@@ -516,8 +510,8 @@ def save_stock_entry_items(item_details):
 							variant_name = variant1.name
 						item1['item'] = variant_name
 						item1['against_id_detail'] = item.get('against_id_detail')
-						if item.get('set_combination'):
-							item1['set_combination'] = item.get('set_combination')
+						if values.get('set_combination'):
+							item1['set_combination'] = values.get('set_combination')
 						else:	
 							item1['set_combination'] = {}
 						item1['lot'] = item.get('lot')

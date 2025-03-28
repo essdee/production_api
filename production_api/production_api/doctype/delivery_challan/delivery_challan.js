@@ -115,19 +115,27 @@ frappe.ui.form.on("Delivery Challan", {
             return;
         }
         else{
-            frappe.call({
-                method:"production_api.production_api.doctype.delivery_challan.delivery_challan.get_deliverables",
-                args:{
-                    "work_order": frm.doc.work_order,
-                },
-                callback: function(response){
-                    if(response.message){
-                        frm.deliverable_items = new frappe.production.ui.Delivery_Challan(frm.fields_dict['deliverable_items'].wrapper, response.message.items)
-                        frm.set_value('supplier',response.message.supplier)
-                        frm.set_value('supplier_address',response.message.supplier_address)        
-                    }
-                }
-            })
+			if(frm.is_new() && sessionStorage.getItem("cut_panel_dc")){
+				frm.deliverable_items = new frappe.production.ui.Delivery_Challan(frm.fields_dict['deliverable_items'].wrapper, JSON.parse(sessionStorage.getItem("delivery_challan_onload_data")))
+				sessionStorage.removeItem("cut_panel_dc")
+				sessionStorage.removeItem("delivery_challan_onload_data")
+			}
+			else{
+				frappe.call({
+					method:"production_api.production_api.doctype.delivery_challan.delivery_challan.get_deliverables",
+					args:{
+						"work_order": frm.doc.work_order,
+					},
+					callback: function(response){
+						if(response.message){
+							console.log(JSON.stringify(response.message.items))
+							frm.deliverable_items = new frappe.production.ui.Delivery_Challan(frm.fields_dict['deliverable_items'].wrapper, response.message.items)
+							frm.set_value('supplier',response.message.supplier)
+							frm.set_value('supplier_address',response.message.supplier_address)
+						}
+					}
+				})
+			}
         }
 	},
 	calculate_deliverables(frm){

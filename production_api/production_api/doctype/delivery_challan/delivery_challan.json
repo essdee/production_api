@@ -49,8 +49,10 @@
  "fields": [
   {
    "default": "DC-",
+   "fetch_if_empty": 1,
    "fieldname": "naming_series",
-   "fieldtype": "Data",
+   "fieldtype": "Select",
+   "hidden": 1,
    "in_list_view": 1,
    "label": "Naming Series",
    "options": "DC-",
@@ -315,6 +317,7 @@
    "fetch_if_empty": 1,
    "fieldname": "production_detail",
    "fieldtype": "Link",
+   "hidden": 1,
    "label": "Production Detail",
    "options": "Item Production Detail"
   }
@@ -322,7 +325,7 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-03-15 15:10:20.650583",
+ "modified": "2025-03-27 13:06:08.575589",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Delivery Challan",

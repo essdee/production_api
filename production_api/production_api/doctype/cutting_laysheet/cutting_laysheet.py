@@ -9,6 +9,7 @@ from production_api.utils import get_part_list
 from frappe.utils import getdate, nowdate, now
 from production_api.utils import get_stich_details
 from secrets import token_bytes as get_random_bytes
+from production_api.utils import update_if_string_instance
 from production_api.production_api.doctype.item.item import get_or_create_variant
 from production_api.production_api.doctype.cutting_marker.cutting_marker import fetch_marker_details
 from production_api.essdee_production.doctype.item_production_detail.item_production_detail import get_stitching_combination
@@ -386,35 +387,14 @@ def get_cut_sheet_data(doc_name,cutting_marker,item_details,items, max_plys:int,
 		accessory[key] += item.weight
 
 	cp_doc = frappe.get_doc("Cutting Plan",doc.cutting_plan)
-	
-	if cp_doc.version == "V1":
-		for item in cp_doc.cutting_plan_cloth_details:
-			key = (item.colour, item.cloth_type, item.dia)
-			if key in cloth:
-				item.used_weight += cloth[key]
-				item.balance_weight = item.weight - item.used_weight
-				if item.balance_weight < 0:
-					frappe.throw(f"{bold(item.dia)} {bold(item.colour)}, {bold(item.cloth_type)} was used more than the received weight")
-					return
-				
-		for item in cp_doc.cutting_plan_accessory_details:		
-			key = (item.colour, item.cloth_type, item.dia)
-			if key in accessory:
-				item.used_weight += accessory[key]
-	else:
-		for item in cp_doc.cutting_plan_cloth_details:
-			key = (item.colour, item.cloth_type, item.dia)
-			if key in cloth:
-				item.used_weight += cloth[key]
-				item.balance_weight = item.weight - item.used_weight
-				if item.balance_weight < 0:
-					frappe.throw(f"{bold(item.dia)} {bold(item.colour)}, {bold(item.cloth_type)} was used more than the received weight")
-					return
-		
-		for item in cp_doc.cutting_plan_accessory_details:		
-			key = (item.accessory, item.colour, item.cloth_type, item.dia)
-			if key in accessory:
-				item.used_weight += accessory[key]
+	for item in cp_doc.cutting_plan_cloth_details:
+		key = (item.colour, item.cloth_type, item.dia)
+		if key in cloth:
+			item.used_weight += cloth[key]
+			item.balance_weight = item.weight - item.used_weight
+			if item.balance_weight < 0:
+				frappe.throw(f"{bold(item.dia)} {bold(item.colour)}, {bold(item.cloth_type)} was used more than the received weight")
+				return
 				
 	update_cutting_plan(doc_name, check_cp=True)		
 
@@ -998,13 +978,6 @@ def get_input_fields(cutting_marker, colour, select_attributes):
 	inputs.append({"fieldname":"is_same_packing_attribute","fieldtype":"Check","label":"Is Same Packing Attribute","hidden":True,"default":is_same_packing_attr})	
 
 	return inputs		
-
-def update_if_string_instance(obj):
-	if isinstance(obj, string_types):
-		obj = json.loads(obj)
-	if not obj:
-		obj = {}
-	return obj	
 
 @frappe.whitelist()
 def revert_labels(doc_name):

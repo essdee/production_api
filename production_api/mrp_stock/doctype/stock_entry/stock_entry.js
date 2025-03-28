@@ -45,10 +45,10 @@ production_api.mrp_stock.StockEntry = class StockEntry extends frappe.ui.form.Co
 	refresh() {
 		if(sessionStorage.getItem("cut_panel_stock")){
 			sessionStorage.removeItem("cut_panel_stock")
-			let data = sessionStorage.getItem("onload_data")
+			let data = sessionStorage.getItem("stock_entry_onload_data")
 			this.frm.doc.__onload = {} 
 			this.frm.doc.__onload.item_details = JSON.parse(data)
-			sessionStorage.removeItem("onload_data")
+			sessionStorage.removeItem("stock_entry_onload_data")
 		}
 		this.toggle_related_fields(this.frm.doc);
 		this.set_mandatory_fields(this.frm.doc);

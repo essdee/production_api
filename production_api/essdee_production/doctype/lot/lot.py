@@ -6,6 +6,7 @@ from six import string_types
 from frappe.utils import flt
 from itertools import groupby, zip_longest
 from frappe.model.document import Document
+from production_api.utils import update_if_string_instance
 from production_api.essdee_production.doctype.holiday_list.holiday_list import get_next_date
 from production_api.production_api.doctype.purchase_order.purchase_order import get_item_group_index
 from production_api.production_api.doctype.item.item import get_attribute_details, get_or_create_variant
@@ -45,9 +46,7 @@ class Lot(Document):
 	def calculate_order(self):	
 		previous_data = {}
 		for item in self.lot_order_details:
-			set_combination = item.set_combination
-			if isinstance(set_combination, string_types):
-				set_combination = json.loads(set_combination)
+			set_combination = update_if_string_instance(item.set_combination)
 			if set_combination not in [None, ""]:	
 				set_combination = set_combination.copy()
 				set_combination.update({"variant":item.item_variant})
@@ -64,9 +63,7 @@ class Lot(Document):
 			self.set('total_order_quantity', qty)
 		else:
 			for item in items:
-				key = item['set_combination']
-				if isinstance(key, string_types):
-					key = json.loads(key)
+				key = update_if_string_instance(item['set_combination'])
 				if key not in [None, ""]:
 					key = key.copy()
 					key.update({"variant":item['item_variant']})
@@ -220,8 +217,7 @@ def calculate_order_details(items, production_detail, packing_uom, final_uom):
 	return final_list, final_qty
 
 def save_order_item_details(name, lot_order_details, item_details):
-	if isinstance(item_details, string_types):
-		item_details = json.loads(item_details)
+	item_details = update_if_string_instance(item_details)
 	pack_attr, set_attr, is_set = frappe.get_value("Item Production Detail",name, ['packing_attribute', 'set_item_attribute', 'is_set_item'])
 	qty_dict = {}
 	for item in lot_order_details:
@@ -273,8 +269,7 @@ def save_order_item_details(name, lot_order_details, item_details):
 	return items
 
 def update_time_and_action(action_details,lot_action_details):
-	if isinstance(action_details,string_types):
-		action_details = json.loads(action_details)
+	action_details = update_if_string_instance(action_details)
 	for item1,item2 in zip_longest(action_details,lot_action_details):
 		if item1['process']:
 			doc = frappe.get_doc("Time and Action",item2.time_and_action)
@@ -286,8 +281,7 @@ def update_time_and_action(action_details,lot_action_details):
 					break
 
 def save_item_details(item_details):
-	if isinstance(item_details, string_types):
-		item_details = json.loads(item_details)
+	item_details = update_if_string_instance(item_details)
 	if len(item_details) == 0:
 		return []
 	item = item_details[0]
@@ -368,8 +362,7 @@ def fetch_item_details(items, production_detail):
 @frappe.whitelist()
 def fetch_order_item_details(items, production_detail, process=None ):
 	ipd_doc = frappe.get_doc("Item Production Detail", production_detail)
-	if isinstance(items, string_types):
-		items = json.loads(items)
+	items = update_if_string_instance(items)
 	field = "quantity"
 	if process:
 		prs_doc = frappe.get_cached_doc("Process", process)
@@ -414,9 +407,7 @@ def fetch_order_item_details(items, production_detail, process=None ):
 			for attr in current_item_attribute_details['primary_attribute_values']:
 				item['values'][attr] = {'qty': 0}
 			for variant in variants:
-				set_combination = variant.set_combination
-				if isinstance(set_combination, string_types):
-					set_combination = json.loads(set_combination)
+				set_combination = update_if_string_instance(variant.set_combination)
 				if set_combination:
 					if set_combination.get("major_part"):
 						item['item_keys']['major_part'] = set_combination.get("major_part")
@@ -657,10 +648,8 @@ def get_packing_attributes(ipd):
 
 @frappe.whitelist()
 def create_time_and_action(lot, item_name, args , values, total_qty, items):
-	if isinstance(args,string_types):
-		args = json.loads(args)
-	if isinstance(values,string_types):
-		values = json.loads(values)	
+	args = update_if_string_instance(args)
+	values = update_if_string_instance(values)	
 	
 	sizes = args['sizes']
 	ratios = args['ratios']
@@ -670,8 +659,7 @@ def create_time_and_action(lot, item_name, args , values, total_qty, items):
 
 	sizes = sizes[:-1]
 	d = {}
-	if isinstance(items,string_types):
-		items = json.loads(items)
+	items = update_if_string_instance(items)
 
 	lot_items = []
 	for idx,item in enumerate(item_list):
@@ -756,8 +744,7 @@ def make_complete(time_and_action):
 
 @frappe.whitelist()
 def get_action_master_details(master_list):
-	if isinstance(master_list,string_types):
-		master_list = json.loads(master_list)
+	master_list = update_if_string_instance(master_list)
 	work_station = {}
 	for item in master_list:
 		work_station[item['colour']] = []
@@ -828,8 +815,7 @@ def update_order_details(doc_name):
 @frappe.whitelist()
 def get_work_stations(items):
 	work_station = {}
-	if isinstance(items,string_types):
-		items = json.loads(items)
+	items = update_if_string_instance(items)
 	for item in items:
 		if item['action'] != "Completed":
 			doc = frappe.get_doc("Time and Action",item['parent'])
@@ -842,9 +828,7 @@ def get_work_stations(items):
 
 @frappe.whitelist()
 def update_t_and_a_ws(datas):
-	if isinstance(datas,string_types):
-		datas = json.loads(datas)
-
+	datas = update_if_string_instance(datas)
 	for d in datas:
 		doc = frappe.get_doc("Time and Action",datas[d][0]['parent'])
 		child_table = []
@@ -871,9 +855,7 @@ def update_t_and_a_ws(datas):
 
 @frappe.whitelist()
 def get_t_and_a_preview_data(start_date, table):
-	if isinstance(table, string_types):
-		table = json.loads(table)
-
+	table = update_if_string_instance(table)
 	preview_data = {}
 	for row in table:
 		preview_data[row['colour']] = []
@@ -963,9 +945,7 @@ def revert_t_and_a(doc_name):
 @frappe.whitelist()
 def get_ipd_print_accessory_combination(ipd):
 	ipd_doc = frappe.get_cached_doc("Item Production Detail", ipd)
-	stiching_accessory_json = ipd_doc.stiching_accessory_json
-	if isinstance(stiching_accessory_json, string_types):
-		stiching_accessory_json = json.loads(stiching_accessory_json)
+	stiching_accessory_json = update_if_string_instance(ipd_doc.stiching_accessory_json)
 	items = {}
 	if ipd_doc.is_set_item:
 		for row in stiching_accessory_json['items']:
