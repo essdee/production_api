@@ -65,14 +65,14 @@ class CuttingLaySheet(Document):
 			self.selected_type = cut_marker_doc.selected_type
 			self.calculated_parts = cut_marker_doc.calculated_parts	
 		colours = set()
-		no_of_bits = 0.0
+		total_bits = 0.0
 		weight = 0.0
 		end_bit_weight = 0.0
 		accessory_weight = 0.0
 		no_of_rolls = 0
 		used_weight = 0.0
 		for item in self.cutting_laysheet_details:
-			no_of_bits += item.no_of_bits
+			total_bits += item.effective_bits
 			weight += item.weight
 			end_bit_weight += item.end_bit_weight
 			no_of_rolls += item.no_of_rolls
@@ -93,7 +93,7 @@ class CuttingLaySheet(Document):
 				if item.colour == colour:
 					items.append(item)
 		self.no_of_rolls = no_of_rolls
-		self.no_of_bits = no_of_bits
+		self.no_of_bits = total_bits
 		self.weight = weight
 		self.end_bit_weight = end_bit_weight
 		self.accessory_weight = accessory_weight
@@ -133,7 +133,10 @@ def save_item_details(items, cutting_plan, calculated_parts):
 			key = tuple(sorted(d.items()))
 			if key not in cloth_combination:
 				frappe.throw(f"{panel} is not mentioned with {item['cloth_type']}-{item['dia']}")
-
+		
+		effective_bits = item['no_of_bits']
+		if item['fabric_type'] == "Tubler":
+			effective_bits = effective_bits * 2
 		item_list.append({
 			"cloth_item_variant":variant,
 			"cloth_type":item['cloth_type'],
@@ -143,6 +146,7 @@ def save_item_details(items, cutting_plan, calculated_parts):
 			"weight":item['weight'],
 			"no_of_rolls":item['no_of_rolls'],
 			"no_of_bits":item['no_of_bits'],
+			"effective_bits": effective_bits,
 			"end_bit_weight":item['end_bit_weight'],
 			"comments":item['comments'],
 			"fabric_type": item['fabric_type'],
@@ -272,11 +276,9 @@ def get_cut_sheet_data(doc_name,cutting_marker,item_details,items, max_plys:int,
 	check_ratio_parts(items_combined, cm_doc.cutting_marker_ratios)
 	cut_sheet_data = []
 	for item in item_details:
-		if item['no_of_bits'] == 0:
+		if item['effective_bits'] == 0:
 			continue
-		no_of_bits = item['no_of_bits']
-		if item['fabric_type'] == "Tubler":
-			no_of_bits = no_of_bits * 2
+		effective_bits = item['effective_bits']
 		first_size = None
 		last_size = None
 		calc_panels = []
@@ -291,7 +293,7 @@ def get_cut_sheet_data(doc_name,cutting_marker,item_details,items, max_plys:int,
 			if no_of_marks == 0:
 				continue
 			
-			max_grouping = int(maximum_plys/no_of_bits)
+			max_grouping = int(maximum_plys/effective_bits)
 			if max_grouping == 0:
 				frappe.msgprint("Max number of Plys should not be less than No of Bits")
 				return
@@ -321,15 +323,15 @@ def get_cut_sheet_data(doc_name,cutting_marker,item_details,items, max_plys:int,
 					update = True
 					for j in range(maximum_count):
 						bundle_no = bundle_no + 1
-						qty = maximum * no_of_bits
+						qty = maximum * effective_bits
 						last_balance = 0
 						if minimum_count == 0 and check and j == maximum_count - 1:
-							x = qty + no_of_bits/2
+							x = qty + effective_bits/2
 							update = False						
 							if x > maximum_plys:
-								last_balance = no_of_bits/2
+								last_balance = effective_bits/2
 							else:
-								qty = qty + no_of_bits/2	
+								qty = qty + effective_bits/2	
 						d = get_cut_sheet_dict(cm_item.size, item['colour'], item['shade'], part_value , qty, bundle_no, item.get('set_combination', {}))
 						cut_sheet_data.append(d)	
 
@@ -340,15 +342,15 @@ def get_cut_sheet_data(doc_name,cutting_marker,item_details,items, max_plys:int,
 
 					for j in range(minimum_count):
 						bundle_no = bundle_no + 1
-						qty = minimum * no_of_bits
+						qty = minimum * effective_bits
 						last_balance = 0
 						if check and j == minimum_count - 1:
-							x = qty + no_of_bits/2
+							x = qty + effective_bits/2
 							update = False						
 							if x > maximum_plys:
-								last_balance = no_of_bits/2
+								last_balance = effective_bits/2
 							else:
-								qty = qty + no_of_bits/2	
+								qty = qty + effective_bits/2	
 
 						d = get_cut_sheet_dict(cm_item.size, item['colour'], item['shade'], part_value , qty, bundle_no, item.get('set_combination', {}))
 						cut_sheet_data.append(d)
@@ -359,7 +361,7 @@ def get_cut_sheet_data(doc_name,cutting_marker,item_details,items, max_plys:int,
 
 					if update and check:
 						bundle_no = bundle_no + 1
-						d = get_cut_sheet_dict(cm_item.size, item['colour'], item['shade'], part_value , no_of_bits/2, bundle_no, item.get('set_combination', {}))
+						d = get_cut_sheet_dict(cm_item.size, item['colour'], item['shade'], part_value , effective_bits/2, bundle_no, item.get('set_combination', {}))
 						cut_sheet_data.append(d)
 			temp = bundle_no	
 

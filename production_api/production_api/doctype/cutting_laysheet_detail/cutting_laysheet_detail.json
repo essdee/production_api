@@ -22,7 +22,8 @@
   "balance_weight",
   "items_json",
   "set_combination",
-  "fabric_type"
+  "fabric_type",
+  "effective_bits"
  ],
  "fields": [
   {
@@ -133,12 +134,17 @@
    "fieldtype": "Select",
    "label": "Fabric Type",
    "options": "Open Width\nTubler"
+  },
+  {
+   "fieldname": "effective_bits",
+   "fieldtype": "Int",
+   "label": "Effective Bits"
   }
  ],
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2025-03-28 14:42:50.233827",
+ "modified": "2025-03-28 19:00:16.772869",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Cutting LaySheet Detail",
