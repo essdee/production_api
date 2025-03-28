@@ -21,7 +21,8 @@
   "used_weight",
   "balance_weight",
   "items_json",
-  "set_combination"
+  "set_combination",
+  "fabric_type"
  ],
  "fields": [
   {
@@ -125,12 +126,19 @@
    "fieldname": "set_combination",
    "fieldtype": "JSON",
    "label": "Set Combination"
+  },
+  {
+   "default": "Open Width",
+   "fieldname": "fabric_type",
+   "fieldtype": "Select",
+   "label": "Fabric Type",
+   "options": "Open Width\nTubler"
   }
  ],
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2025-02-18 17:08:17.792626",
+ "modified": "2025-03-28 14:42:50.233827",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Cutting LaySheet Detail",
