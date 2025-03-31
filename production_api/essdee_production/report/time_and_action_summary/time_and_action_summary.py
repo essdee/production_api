@@ -25,10 +25,10 @@ def get_data(filters=None):
 	query_result = frappe.db.sql(
 		f"""
 		Select D.action, sum(D.no_of_completed) as no_of_completed from 
-			(Select B.lot,A.action,min(A.completed) as no_of_completed from `tabTime and Action Detail` As A , 
+			(Select B.lot,A.action,min(A.completed) as no_of_completed, C.default_order from `tabTime and Action Detail` As A , 
 			`tabTime and Action` As B, `tabAction` As C where A.parent = B.name AND A.action = C.name AND C.default = 1 {conditions}
 			GROUP BY B.lot, A.action) as D
-			GROUP BY D.action; 
+			GROUP BY D.action Order By D.default_order; 
 		""" , con, as_dict=True
 	)
 	return query_result

@@ -17,7 +17,14 @@ from production_api.mrp_stock.utils import get_conversion_factor, get_stock_bala
 
 class StockEntry(Document):
 	def onload(self):
-		item_details = fetch_stock_entry_items(self.get('items'))
+		ipd = None
+		if self.purpose == "DC Completion":
+			ipd = frappe.get_value("Delivery Challan",self.against_id,"production_detail")
+		elif self.purpose == "GRN Completion":
+			wo = frappe.get_value("Goods Received Note", self.against_id, "against_id")
+			ipd = frappe.get_value("Work Order", wo, "production_detail")
+			
+		item_details = fetch_stock_entry_items(self.get('items'), ipd=ipd)
 		self.set('print_item_details', json.dumps(item_details))
 		self.set_onload('item_details', item_details)
 
@@ -25,7 +32,7 @@ class StockEntry(Document):
 		if(self.get('item_details')) and self._action != "submit":
 			items = save_stock_entry_items(self.item_details)
 			self.set('items', items)
-		elif not self.flags.allow_from_sms and not self.flags.allow_from_dc and not self.flags.allow_from_grn and self.is_new() or not self.get('items'):
+		elif not self.flags.allow_from_sms and not self.flags.allow_from_dc and not self.flags.allow_from_summary and not self.flags.allow_from_grn and self.is_new() or not self.get('items'):
 			frappe.throw('Add items to Stock Entry.', title='Stock Entry')
 
 	def validate(self):
@@ -173,7 +180,7 @@ class StockEntry(Document):
 			qty = 0
 			for ste_item in self.items:
 				for item in doc.items:
-					if ste_item.item == item.item_variant:
+					if ste_item.against_id_detail == item.name:
 						check = True
 						if self.purpose == "GRN Completion":
 							check = ste_item.received_type == item.received_type
@@ -183,10 +190,10 @@ class StockEntry(Document):
 							break
 						
 			if round(qty - now_delivered,3) > round(total_quantity,3):
-				frappe.throw("High Amount of Items Received")	
-
+				frappe.throw("High Amount of Items Received")
 			x = qty / total_quantity
 			x = x * 100
+			self.per_transferred += x
 			doc.ste_transferred_percent = doc.ste_transferred_percent + x
 			doc.ste_transferred += qty
 			if round(doc.ste_transferred,2) == round(doc.total_delivered_qty,2):
@@ -198,7 +205,6 @@ class StockEntry(Document):
 		self.ignore_linked_doctypes = ("Stock Ledger Entry", "Stock Reservation Entry", "Delivery Challan")
 		self.update_stock_ledger()
 		self.update_transferred_qty()
-
 		if self.purpose == "DC Completion" or self.purpose == "GRN Completion":
 			doctype = "tabGoods Received Note Item"
 			field = "quantity"
@@ -216,7 +222,13 @@ class StockEntry(Document):
 			qty = 0
 			for ste_item in self.items:
 				for item in doc.items:
-					if ste_item.item == item.item_variant:
+					set1 = ste_item.set_combination
+					set2 = item.set_combination
+					if isinstance(set1, string_types):
+						set1 = json.loads(set1)
+					if isinstance(set2, string_types):
+						set2 = json.loads(set2)	
+					if ste_item.item == item.item_variant and set1 == set2:
 						check = True
 						if self.purpose == "GRN Completion":
 							check = ste_item.received_type == item.received_type
@@ -224,16 +236,15 @@ class StockEntry(Document):
 							item.ste_delivered_quantity -= ste_item.qty
 							qty += ste_item.qty
 							break
-
 			x = qty / total_quantity
 			x = x * 100
 			doc.ste_transferred_percent = doc.ste_transferred_percent - x
 			doc.ste_transferred = doc.ste_transferred - qty
-			
+			self.per_transferred -= x
 			if doc.ste_transferred < doc.total_delivered_qty:
 				doc.transfer_complete = 0
 			doc.ste_transferred_percent = round(doc.ste_transferred_percent, 2)
-			doc.save()	
+			doc.save()
 		self.revert_stock_transfer_entries()
 
 	def revert_stock_transfer_entries(self):
@@ -387,9 +398,13 @@ class StockEntry(Document):
 			target_doc.save()
 
 @frappe.whitelist()
-def fetch_stock_entry_items(items):
-	items = [item.as_dict() for item in items]
+def fetch_stock_entry_items(items, ipd=None):
+	if len(items) > 0 and type(items[0]) != dict:
+		items = [item.as_dict() for item in items]
 	item_details = []
+	ipd_doc = None
+	if ipd:
+		ipd_doc = frappe.get_cached_doc("Item Production Detail", ipd)
 	items = sorted(items, key = lambda i: i['row_index'])
 	for key, variants in groupby(items, lambda i: i['row_index']):
 		variants = list(variants)
@@ -404,37 +419,66 @@ def fetch_stock_entry_items(items):
 			'default_uom': variants[0].get('uom') or current_item_attribute_details['default_uom'],
 			'secondary_uom': variants[0].get('secondary_uom') or current_item_attribute_details['secondary_uom'],
 			'received_type':variants[0]['received_type'],
-			'remarks': variants[0]['remarks'],
+			'remarks': variants[0].get('remarks', None),
 		}
+		if ipd:
+			item['item_keys'] = {}
+			item["is_set_item"] = ipd_doc.is_set_item,
+			item["set_attr"] = ipd_doc.set_item_attribute,
+			item["pack_attr"] = ipd_doc.packing_attribute,
+			item["major_attr_value"] = ipd_doc.major_attribute_value,
 
 		if item['primary_attribute']:
 			for attr in current_item_attribute_details['primary_attribute_values']:
 				item['values'][attr] = {'qty': 0, 'rate': 0}
 			for variant in variants:
 				current_variant = frappe.get_doc("Item Variant", variant['item'])
+				
+				if ipd:
+					set_combination = variant['set_combination']
+					if isinstance(set_combination, string_types):
+						set_combination = json.loads(set_combination)
+					if set_combination:
+						if set_combination.get("major_part"):
+							item['item_keys']['major_part'] = set_combination.get("major_part")
+						if set_combination.get("major_colour"):
+							item['item_keys']['major_colour'] = set_combination.get("major_colour")		
+
 				for attr in current_variant.attributes:
 					if attr.attribute == item.get('primary_attribute'):
 						item['values'][attr.attribute_value] = {
-							'qty': variant.qty,
-							'rate': variant.rate,
+							'qty': variant.get('qty',0),
+							'rate': variant.get('rate',0),
+							'against_id_detail': variant.get("against_id_detail", None),
 							'against_stock_entry': variant.get("against_stock_entry", None),
 							'ste_detail': variant.get("ste_detail", None),
 							'transferred_qty': variant.get("transferred_qty", None),
 							'secondary_qty': variant.get("secondary_qty", 0),
 							'secondary_uom': variant.get('secondary_uom', None)
 						}
+						if ipd:
+							if not variant.get('set_combination'):
+								item['values'][attr.attribute_value]['set_combination'] = {}
+							else:
+								item['values'][attr.attribute_value]['set_combination'] = variant.get('set_combination')
 						break
 		else:
 			item['values']['default'] = {
-				'qty': variants[0].qty,
-				'rate': variants[0].rate,
+				'qty': variants[0].get('qty', 0),
+				'rate': variants[0].get('rate', 0),
+				'against_id_detail':variants[0].get("against_id_detail",None),
 				'against_stock_entry': variants[0].get("against_stock_entry", None),
 				'ste_detail': variants[0].get("ste_detail", None),
 				'transferred_qty': variants[0].get("transferred_qty", None),
 				"secondary_qty": variants[0].get("secondary_qty", 0),
-				"secondary_uom": variants[0].get('secondary_uom', None)
+				"secondary_uom": variants[0].get('secondary_uom', None),
 				# 'tax': variants[0].tax
 			}
+			if not variants[0].get('set_combination'):
+				item['values']['default']['set_combination'] = {}
+			else:
+				item['values']['default']['set_combination'] = variants[0].get('set_combination')
+
 		index = get_item_group_index(item_details, current_item_attribute_details)
 
 		if index == -1:
@@ -470,8 +514,12 @@ def save_stock_entry_items(item_details):
 							variant1 = create_variant(item_name, item_attributes)
 							variant1.insert()
 							variant_name = variant1.name
-						print(item)
 						item1['item'] = variant_name
+						item1['against_id_detail'] = item.get('against_id_detail')
+						if item.get('set_combination'):
+							item1['set_combination'] = item.get('set_combination')
+						else:	
+							item1['set_combination'] = {}
 						item1['lot'] = item.get('lot')
 						item1['uom'] = item.get('default_uom')
 						item1['qty'] = values.get('qty')
@@ -494,11 +542,15 @@ def save_stock_entry_items(item_details):
 						variant1 = create_variant(item_name, item_attributes)
 						variant1.insert()
 						variant_name = variant1.name
-					print(item)	
 					item1['item'] = variant_name
 					item1['lot'] = item.get('lot')
 					item1['uom'] = item.get('default_uom')
 					item1['qty'] = item['values']['default'].get('qty')
+					item1['against_id_detail'] = item['values']['default'].get('against_id_detail')
+					if item['values']['default'].get('set_combination'):
+						item1['set_combination'] = item['values']['default'].get('set_combination')
+					else:	
+						item1['set_combination'] = {}
 					item1['rate'] = item['values']['default'].get('rate')
 					item1['against_stock_entry'] = item['values']['default'].get("against_stock_entry", None)
 					item1['ste_detail'] = item['values']['default'].get("ste_detail", None)

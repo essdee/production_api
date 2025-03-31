@@ -19,7 +19,7 @@
                     <table v-if="i.items && i.items.length > 0" class="table table-sm table-bordered">
                         <tr>
                             <th>S.No.</th>
-                            <th v-for="(j, idx) in i.final_state_attr" :key="idx">{{ j }}</th>
+                            <th v-for="(j, idx) in i.attributes" :key="idx">{{ j }}</th>
                             <th v-for="(j, idx) in i.primary_attribute_values" :key="idx">
                                 {{ j }}
                             </th>
@@ -28,7 +28,13 @@
                         </tr>
                         <tr v-for="(j, item1_index) in i.items" :key="item1_index">
                             <td>{{item1_index + 1}}</td>
-                            <td v-for="(k, idx) in j.attributes" :key="idx">{{k}}</td>
+                            <td v-for="(k, idx) in i.attributes" :key="idx">
+                                {{j.attributes[k]}}
+                                <span v-if="version == 'V2'">
+                                    <span v-if="k == 'Colour' && j.is_set_item && j.attributes[j.set_attr] != j.major_attr_value && j.attributes[k]">({{ j.item_keys['major_colour'] }})</span>
+                                    <span v-else-if="k == 'Colour' && !j.is_set_item && j.attributes[k] != j.item_keys['major_colour'] && j.attributes[k]">({{ j.item_keys['major_colour'] }})</span>
+                                </span>
+                            </td>
                             <td v-for="(k, idx) in Object.keys(j.values)" :key="idx">
                                 <div v-if="j.values[k] > 0">
                                     {{ j.values[k] }}
@@ -45,7 +51,7 @@
                         </tr>
                         <tr v-if="pop_up == 1">
                             <td>Total</td>
-                            <td v-for="(j, idx) in i.final_state_attr" :key="idx"></td>
+                            <td v-for="(j, idx) in i.attributes" :key="idx"></td>
                             <td v-for="(j, idx) in i.total_qty" :key="idx">{{j}}</td>
                             <td></td>
                         </tr>
@@ -75,14 +81,15 @@
                         <table v-if="i.items && i.items.length > 0" class="table table-sm table-bordered">
                             <tr>
                                 <th>S.No.</th>
-                                <th v-for="(j, idx) in i.final_state_attr" :key="idx">{{ j }}</th>
+                                <th v-for="(j, idx) in i.attributes" :key="idx">{{ j }}</th>
                                 <th v-for="(j, idx) in i.primary_attribute_values" :key="idx">
                                     {{ j }}
                                 </th>
+                                <th>Total</th>
                             </tr>
                             <tr v-for="(j, item1_index) in i.items" :key="item1_index">
                                 <td>{{item1_index + 1}}</td>
-                                <td v-for="(k, idx) in j.attributes" :key="idx">{{k}}</td>
+                                <td v-for="(k, idx) in i.attributes" :key="idx">{{j.attributes[k]}}</td>
                                 <td v-for="(k, idx) in Object.keys(j.values)" :key="idx">
                                     <div v-if="j.values[k] > 0">
                                         <div v-if="j['completed']">
@@ -92,6 +99,12 @@
                                     </div>
                                     <div v-else>--</div>
                                 </td>
+                                <td><strong>{{j.total_qty}}</strong></td>
+                            </tr>
+                            <tr>
+                                <td>Total</td>
+                                <td v-for="(j, idx) in i.attributes" :key="idx"></td>
+                                <td v-for="(j, idx) in completed_total" :key="idx"><strong>{{j}}</strong></td>
                             </tr>
                         </table>
                     </td>
@@ -100,14 +113,21 @@
                             <h3>{{part}}</h3>
                             <table v-if="i.items && i.items.length > 0" class="table table-sm table-bordered">
                                 <tr>
-                                    <th v-for="(j, idx) in i.final_state_attr" :key="idx">{{ j }}</th>
+                                    <th v-for="(j, idx) in i.attributes" :key="idx">{{ j }}</th>
                                     <th v-for="(j, idx) in i.primary_attribute_values" :key="idx">
                                         {{ j }}
                                     </th>
+                                    <th>Total</th>
                                 </tr>
                                 <template v-for="(j, item1_index) in i.items" :key="item1_index">
                                     <tr v-if="check(j.attributes, part)">
-                                        <td v-for="(k, idx) in j.attributes" :key="idx">{{k}}</td>
+                                        <td v-for="(k, idx) in i.attributes" :key="idx">
+                                            {{j.attributes[k]}}
+                                            <span v-if="version == 'V2'">
+                                                <span v-if="k == 'Colour' && j.is_set_item && j.attributes[j.set_attr] != j.major_attr_value && j.attributes[k]">({{ j.item_keys['major_colour'] }})</span>
+                                                <span v-else-if="k == 'Colour' && !j.is_set_item && j.attributes[k] != j.item_keys['major_colour'] && j.attributes[k]">({{ j.item_keys['major_colour'] }})</span>
+                                            </span>
+                                        </td>
                                         <td v-for="(k, idx) in Object.keys(j.values)" :key="idx">
                                             <div v-if="j.values[k] > 0">
                                                 <div v-if="j['completed']">
@@ -117,8 +137,13 @@
                                             </div>
                                             <div v-else>--</div>
                                         </td>
+                                        <td><strong>{{j.total_qty}}</strong></td>
                                     </tr>
-                                </template>    
+                                </template>  
+                                <tr>
+                                    <td v-for="(j, idx) in i.attributes" :key="idx"></td>
+                                    <td v-for="(j, idx) in completed_total[part]" :key="idx"><strong>{{j}}</strong></td>
+                                </tr>  
                             </table>
                         </template>    
                     </td>
@@ -137,6 +162,8 @@ let lot = cur_frm.doc.lot
 let item = cur_frm.doc.item
 let datetime = ref(null)
 let items2 = ref(null)
+let completed_total = ref({})
+let version = cur_frm.doc.version
 
 onMounted(()=> {
     let today = new Date()
@@ -157,7 +184,11 @@ function load_data(item, is_pop_up){
         items.value = JSON.parse(item);
         items2.value = JSON.parse(item);
         pop_up.value = is_pop_up
-    } catch(e) {
+        if(pop_up.value == 3){
+            get_total()
+        }
+    } 
+    catch(e) {
         console.log(e)
     }
 }
@@ -170,6 +201,53 @@ function get_items(){
         }
     }
     return items.value
+}
+
+function get_total(){
+    let total_dict =  {}
+    for(let i = 0 ; i < items.value.length; i++){
+        let item = items.value[i]
+        if(!item.is_set_item){
+            item.items.forEach((row) => {
+                if(row.completed){
+                    let x = 0
+                    Object.keys(row.values).forEach(key => {
+                        if (total_dict[key]){
+                            total_dict[key] += row.values[key]
+                        }
+                        else{
+                            total_dict[key] = row.values[key]
+                        }
+                        x += row.values[key]
+                    })
+                    row.total_qty = x
+                }
+            })
+        }
+        else{
+            Object.keys(item.Panel).forEach(part => {
+                item.items.forEach((row) => {
+                    if(row.completed && row.attributes[item.set_item_attr] == part){
+                        let x = 0
+                        Object.keys(row.values).forEach(key => {
+                            x += row.values[key]
+                            if (!total_dict[part]){
+                                total_dict[part] = {}
+                            }    
+                            if (total_dict[part][key]){
+                                total_dict[part][key] += row.values[key]
+                            }
+                            else{
+                                total_dict[part][key] = row.values[key]
+                            }
+                        })
+                        row.total_qty = x
+                    }
+                })  
+            })
+        }
+    }
+    completed_total.value = total_dict
 }
 
 function check(attributes, part){
@@ -185,6 +263,6 @@ defineExpose({
 </script>
 <style scoped>
 .panel-column {
-    display: inline; /* Display items in a single line */
+    display: inline;
 }
 </style>

@@ -20,7 +20,13 @@
                             <td>{{ item1_index + 1 }}</td>
                             <td>{{ j.name }}</td>
                             <td v-if="!lot_no">{{ j.lot }}</td>
-                            <td v-for="attr in i.attributes" :key="attr">{{ j.attributes[attr] }}</td>
+                            <td v-for="attr in i.attributes" :key="attr">
+                                {{ j.attributes[attr] }}
+                                <span v-if="j.item_keys">
+                                    <span v-if="attr == 'Colour' && j.is_set_item && j.attributes[j.set_attr] != j.major_attr_value && j.attributes[attr]">({{ j.item_keys['major_colour'] }})</span>
+                                    <span v-else-if="attr == 'Colour' && !j.is_set_item && j.attributes[attr] != j.item_keys['major_colour'] && j.attributes[attr]">({{ j.item_keys['major_colour'] }})</span>
+                                </span>
+                            </td>
                             <td v-if="has_additional_parameter(i)">
                                 <p v-for="(parameter, p_index) in j.additional_parameters" :key="p_index">
                                     {{ parameter.additional_parameter_key }} : {{ parameter.additional_parameter_value }}
@@ -35,7 +41,9 @@
                                     </span>
                                     <span v-for="a in table_qty_fields" :key="a.name">
                                         <br>
-                                        {{ a.label }}: {{ a.format ? a.format(attr[a.name]) : attr[a.name] }}
+                                        <span>
+                                            {{ a.label }}: {{ a.format ? a.format(attr[a.name]) : attr[a.name] }}
+                                        </span>
                                     </span>
                                 </div>
                                 <div v-else class="text-center">
@@ -80,7 +88,11 @@
                                     ({{ j.values['default'].secondary_qty }}<span v-if="j.secondary_uom">{{ ' ' + j.secondary_uom }}</span>)
                                 </span>
                             </td>
-                            <td v-for="a in table_qty_fields" :key="a.name">{{ a.format ? a.format(j.values['default'][a.name]) : j.values['default'][a.name] }}</td>
+                            <td v-for="a in table_qty_fields" :key="a.name">
+                                <span>
+                                    {{ a.format ? a.format(j.values['default'][a.name]) : j.values['default'][a.name] }}
+                                </span>
+                            </td>
                             <td v-for="a in other_table_fields" :key="a.name">{{ a.format ? a.format(j[a.name]) : j[a.name] }}</td>
                             <td v-if="edit">
                                 <div v-if="can_remove" class="pull-right cursor-pointer" @click="remove_item(item_index, item1_index)" v-html="frappe.utils.icon('delete', 'md')"></div>
@@ -303,7 +315,16 @@
                 if (props.tableFields[i].condition) {
                     valid = props.tableFields[i].condition(props.items, props.args)
                 }
-                if (valid && !x.includes(props.tableFields[i].name) && props.tableFields[i].uses_primary_attribute) {
+                let show_field = true
+                if(props.tableFields[i].hasOwnProperty("has_view_permission")){
+                    show_field = false
+                    for(let j = 0; j < props.tableFields[i]['has_view_permission'].length; j++){
+                        if(frappe.user.has_role(props.tableFields[i]['has_view_permission'][j])){
+                            show_field = true
+                        }
+                    }
+                }
+                if (valid && show_field && !x.includes(props.tableFields[i].name) && props.tableFields[i].uses_primary_attribute) {
                     x.push(props.tableFields[i].name);
                     out.push({...props.tableFields[i]})
                 }

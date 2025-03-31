@@ -8,6 +8,11 @@ frappe.query_reports["Live Time and Action Delay"] = {
 			"fieldname":"lot",
 			"options":"Lot",
 			"label":"Lot"
+		},
+		{
+			"fieldtype":"Check",
+			"fieldname":"show_style_summary",
+			"label":"Show Style Summary",
 		}
 	]
 };

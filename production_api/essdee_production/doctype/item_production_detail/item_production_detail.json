@@ -615,7 +615,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-02-17 14:23:24.370761",
+ "modified": "2025-03-15 15:04:42.623172",
  "modified_by": "Administrator",
  "module": "Essdee Production",
  "name": "Item Production Detail",
@@ -644,6 +644,16 @@
    "role": "Merchandiser",
    "share": 1,
    "write": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Transaction User",
+   "select": 1,
+   "share": 1
   }
  ],
  "sort_field": "modified",

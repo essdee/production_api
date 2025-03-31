@@ -139,13 +139,14 @@ function get_data(){
         let cloths = []
         for(let i = 0 ; i < cur_frm.doc.cloth_detail.length; i++){
             cloths.push(cur_frm.doc.cloth_detail[i].name1)
-            let cloth =  cur_frm.doc.cloth_detail[i].name1
-            if (!items.value.select_list.includes(cloth)){
-                frappe.throw("Cloth item not in the select list")
-            }
         }
-        if(!cur_frm.is_new() && cloths.length < items.value.select_list.length){
-            frappe.throw("Some Cloth items not in the select list")
+        if(!cur_frm.is_new()){
+            for(let i = 0 ; i < items.value['items'].length ; i++){
+                let c = items.value['items'][i]['Cloth'].get_value()
+                if(!cloths.includes(c)){
+                    frappe.throw("Some Cloth items not in the select list")
+                }
+            }
         }
     }
     let ind = -1

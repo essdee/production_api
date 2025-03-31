@@ -30,9 +30,14 @@ import { StockEntryWrapper, StockReconciliationWrapper, LotTransferWrapper } fro
 import WorkOrderDeliverables from "./WorkOrder/components/Deliverables.vue"
 import WorkOrderReceivables from "./WorkOrder/components/Receivables.vue"
 import WorkOrderItemView from "./WorkOrder/components/WorkOrderItemView.vue"
+import WOSummary from "./WorkOrder/components/WoSummary.vue"
 import LaySheetCloths from "./CuttingLaySheet/components/LaySheetCloths.vue"
+import LaySheetAccessory from "./CuttingLaySheet/components/LaySheetAccessory.vue"
 import DeliveryChallan from "./Delivery_Challan/components/deliverable_items.vue"
 import CuttingMarker from "./Cutting_Marker/components/cutting_marker.vue"
+import TimeAndActionWeeklyReport from "./Lot/components/TimeAndActionWeeklyReport.vue"
+import CutPanelMovementBundle from "./Cut_Panel_Movement/components/CutPanelMovementBundle.vue"
+import StockSummary from "./components/StockSummary.vue"
 
 // Product Development
 import { ProductFileVersionsWrapper, ProductCostingListWrapper } from "./ProductDevelopment"
@@ -337,6 +342,30 @@ frappe.production.ui.TimeActionReport = class {
     }
 }
 
+frappe.production.ui.TimeAndActionWeeklyReport = class {
+    constructor(wrapper){
+        this.$wrapper = $(wrapper);
+        this.make_app()
+    }
+    make_app(){
+        this.app = createApp(TimeAndActionWeeklyReport)
+        SetVueGlobals(this.app)
+        this.vue = this.app.mount(this.$wrapper.get(0))
+    }
+}
+
+frappe.production.ui.StockSummary = class {
+    constructor(wrapper){
+        this.$wrapper = $(wrapper);
+        this.make_app()
+    }
+    make_app(){
+        this.app = createApp(StockSummary)
+        SetVueGlobals(this.app)
+        this.vue = this.app.mount(this.$wrapper.get(0))
+    }
+}
+
 frappe.production.ui.WorkStation = class {
     constructor(wrapper){
         this.$wrapper = $(wrapper)
@@ -398,6 +427,23 @@ frappe.production.ui.WorkOrderItemView = class {
     }
     create_input_attributes(){
         this.vue.create_input_classes()
+    }
+}
+
+frappe.production.ui.WOSummary = class {
+    constructor(wrapper){
+        this.$wrapper = $(wrapper)
+        this.make_app()
+    }
+    make_app(){
+        this.app = createApp(WOSummary)
+        SetVueGlobals(this.app)
+        this.vue = this.app.mount(this.$wrapper.get(0))
+    }
+    load_data(item_details, delivered_items){
+        let items = JSON.parse(JSON.stringify(item_details))
+        let delivered = JSON.parse(JSON.stringify(delivered_items))
+        this.vue.load_data(items, delivered)
     }
 }
 
@@ -580,6 +626,27 @@ frappe.production.ui.LaySheetCloths = class {
     }
 }
 
+frappe.production.ui.LaySheetAccessory = class {
+    constructor(wrapper){
+        this.$wrapper = $(wrapper)
+        this.make_app()
+    }
+    make_app(){
+        this.app = createApp(LaySheetAccessory)
+        SetVueGlobals(this.app)
+        this.vue = this.app.mount(this.$wrapper.get(0))
+    }
+    load_data(item_details){
+        let items = JSON.parse(JSON.stringify(item_details))
+        this.vue.load_data(items)
+    }
+    get_items(){
+        let items = this.vue.get_items()
+        return items
+    }
+}
+
+
 frappe.production.ui.PurchaseOrderItem = class {
     constructor(wrapper) {
         this.$wrapper = $(wrapper);
@@ -722,6 +789,26 @@ frappe.production.ui.Delivery_Challan = class {
     }
 
 }
+
+frappe.production.ui.CutPanelMovementBundle = class {
+    constructor(wrapper){
+        this.$wrapper = $(wrapper)
+        this.make_app()
+    }
+    make_app(){
+        this.app = createApp(CutPanelMovementBundle)
+        SetVueGlobals(this.app)
+        this.vue = this.app.mount(this.$wrapper.get(0))
+    }
+    load_data(item){
+        let items = JSON.parse(JSON.stringify(item))
+        this.vue.load_data(items)
+    }
+    get_items(){
+        return this.vue.get_items()
+    }
+}
+
 // Basic structure to integrate vue
 
 // frappe.ui.production.sampleName = class {

@@ -17,14 +17,14 @@
    "hidden": 0,
    "is_query_report": 0,
    "label": "Time and Action Reports",
-   "link_count": 7,
+   "link_count": 9,
    "link_type": "DocType",
    "onboard": 0,
    "type": "Card Break"
   },
   {
    "hidden": 0,
-   "is_query_report": 0,
+   "is_query_report": 1,
    "label": "Time and Action Report",
    "link_count": 0,
    "link_to": "Time and Action Report",
@@ -34,7 +34,7 @@
   },
   {
    "hidden": 0,
-   "is_query_report": 0,
+   "is_query_report": 1,
    "label": "Time and Action Summary",
    "link_count": 0,
    "link_to": "Time and Action Summary",
@@ -44,7 +44,7 @@
   },
   {
    "hidden": 0,
-   "is_query_report": 0,
+   "is_query_report": 1,
    "label": "Live Time and Action Delay",
    "link_count": 0,
    "link_to": "Live Time and Action Delay",
@@ -54,7 +54,7 @@
   },
   {
    "hidden": 0,
-   "is_query_report": 0,
+   "is_query_report": 1,
    "label": "TIme and Action Pending Work",
    "link_count": 0,
    "link_to": "TIme and Action Pending Work",
@@ -64,7 +64,7 @@
   },
   {
    "hidden": 0,
-   "is_query_report": 0,
+   "is_query_report": 1,
    "label": "Time and Action Delay Analysis",
    "link_count": 0,
    "link_to": "Time and Action Delay Analysis",
@@ -74,7 +74,7 @@
   },
   {
    "hidden": 0,
-   "is_query_report": 0,
+   "is_query_report": 1,
    "label": "Cumulative Time and Action Delay",
    "link_count": 0,
    "link_to": "Cumulative Time and Action Delay",
@@ -84,16 +84,36 @@
   },
   {
    "hidden": 0,
-   "is_query_report": 0,
+   "is_query_report": 1,
    "label": "Time and Action Department Performance",
    "link_count": 0,
    "link_to": "Time and Action Department Performance",
    "link_type": "Report",
    "onboard": 0,
    "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Time and Action Weekly Review Report",
+   "link_count": 0,
+   "link_to": "Time and Action Weekly Review Report",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 1,
+   "label": "Time and Action Dispatch Report",
+   "link_count": 0,
+   "link_to": "Time and Action Dispatch Report",
+   "link_type": "Report",
+   "onboard": 0,
+   "type": "Link"
   }
  ],
- "modified": "2025-01-28 13:11:03.370326",
+ "modified": "2025-03-07 17:08:54.478184",
  "modified_by": "Administrator",
  "module": "Essdee Production",
  "name": "Time and Actions",

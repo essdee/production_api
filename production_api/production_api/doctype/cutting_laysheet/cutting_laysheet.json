@@ -35,11 +35,15 @@
   "section_break_dasc",
   "cutting_laysheet_details",
   "cloths_html",
+  "section_break_ujvr",
+  "cutting_laysheet_accessory_details",
+  "accessory_html",
   "section_break_yezv",
   "no_of_rolls",
   "weight",
   "accessory_weight",
   "total_no_of_pieces",
+  "goods_received_note",
   "column_break_honq",
   "no_of_bits",
   "end_bit_weight",
@@ -309,11 +313,34 @@
    "fieldtype": "Data",
    "hidden": 1,
    "label": "Selected Type"
+  },
+  {
+   "fieldname": "cutting_laysheet_accessory_details",
+   "fieldtype": "Table",
+   "hidden": 1,
+   "label": "Cutting LaySheet Accessory Details",
+   "options": "Cutting LaySheet Accessory Detail"
+  },
+  {
+   "fieldname": "accessory_html",
+   "fieldtype": "HTML",
+   "label": "Accessory HTML"
+  },
+  {
+   "fieldname": "section_break_ujvr",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "goods_received_note",
+   "fieldtype": "Link",
+   "hidden": 1,
+   "label": "Goods Received Note",
+   "options": "Goods Received Note"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-02-14 15:36:03.424151",
+ "modified": "2025-03-25 18:58:05.401057",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Cutting LaySheet",

@@ -128,7 +128,7 @@ frappe.ui.form.on('Goods Received Note', {
 					},
 					callback: async function (r) {
 						let d = new frappe.ui.Dialog({
-							size: "large",
+							size: "extra-large",
 							fields: [
 								{
 									fieldname: "received_type",
@@ -172,7 +172,7 @@ frappe.ui.form.on('Goods Received Note', {
 			frm.dirty();
 		})
 		if(frm.doc.docstatus == 1 && frm.doc.against == "Work Order" && frm.doc.is_internal_unit && !frm.doc.transfer_complete){
-			frm.add_custom_button("Transfer Complete", ()=> {
+			frm.add_custom_button("Complete Transfer", ()=> {
 				frappe.call({
 					method: "production_api.production_api.doctype.goods_received_note.goods_received_note.construct_stock_entry_data",
 					args : {
@@ -469,7 +469,7 @@ function calculate_receivables(frm, received_type){
 			receivable:true
 		},
 		freeze:true,
-		freeze_message: __("Calculate Deliverables..."),
+		freeze_message: __("Calculate Receivables..."),
 		callback: function(r){
 			frappe.call({
 				method:"production_api.production_api.doctype.goods_received_note.goods_received_note.update_calculated_receivables",
@@ -477,6 +477,9 @@ function calculate_receivables(frm, received_type){
 					doc_name: frm.doc.name,
 					receivables: r.message,
 					received_type : received_type
+				},
+				callback: function(){
+					frm.reload_doc()
 				}
 			})
 		}

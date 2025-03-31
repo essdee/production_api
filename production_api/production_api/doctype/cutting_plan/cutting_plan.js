@@ -2,15 +2,25 @@
 // For license information, please see license.txt
 
 frappe.ui.form.on("Cutting Plan", {
+    setup(frm){
+        frm.set_query('work_order', (doc)=> {
+            return {
+                filters: {
+                    "lot": doc.lot,
+                }
+            }
+        })
+    },
 	refresh(frm) {
+        frappe.require("https://cdn.jsdelivr.net/npm/html2canvas-pro@1.5.8/dist/html2canvas-pro.min.js");
         frm.cut_plan_items = new frappe.production.ui.CutPlanItems(frm.fields_dict['items_html'].wrapper)
-        if(frm.doc.__onload && frm.doc.__onload.item_details){
-            frm.cut_plan_items.load_data(frm.doc.__onload.item_details,0)
-        }
-        else{
-            frm.cut_plan_items.load_data([],0)
-        }
         if(!frm.is_new()){
+            if(frm.doc.__onload && frm.doc.__onload.item_details){
+                frm.cut_plan_items.load_data(frm.doc.__onload.item_details,0)
+            }
+            else{
+                frm.cut_plan_items.load_data([],0)
+            }
             frm.completed_items = new frappe.production.ui.CuttingCompletionDetail(frm.fields_dict['completed_items_html'].wrapper)
             frm.completed_items.load_data(frm.doc.completed_items_json, 1)
 
@@ -63,58 +73,48 @@ frappe.ui.form.on("Cutting Plan", {
                     },
                 })
             })
-            frm.add_custom_button("Get Completed", ()=> {
-                frappe.require("https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js", function() {
-                    let d = new frappe.ui.Dialog({
-                        size:"large",
-                        fields: [
-                            {
-                                "fieldname":"pop_up_html",
-                                "fieldtype":"HTML",
-                            },
-                            {
-                                "fieldname":"output_html",
-                                "fieldtype":"HTML",
-                            }
-                        ],
-                        primary_action_label:"Copy to Clipboard",
-                        secondary_action_label:"Take Screenshot",
-                        primary_action(){
-                            let sourceDiv = d.fields_dict.pop_up_html.wrapper;
-                             html2canvas(sourceDiv).then(function (canvas) {
-                                canvas.toBlob(async (blob)=> {
-                                    await navigator.clipboard.write([
-                                        new ClipboardItem({
-                                          'image/png': blob,
-                                        }),
-                                    ])
-                                    frappe.show_alert("Image Copied to Clipboard")
-                                });
-                            });
-                        },
-                        secondary_action(){
-                            let sourceDiv = d.fields_dict.pop_up_html.wrapper;
-                            html2canvas(sourceDiv).then(function (canvas) {
-                                let imageURL = canvas.toDataURL("image/png");
-                                let link = document.createElement("a");
-                                link.href = imageURL;
-                                link.download = "screenshot.png";
-                                document.body.appendChild(link);
-                                link.click();
-                                document.body.removeChild(link);
-                            });
-                        }
-                    })
-                    d.$wrapper.find(".btn-modal-secondary").css("background-color","cadetblue")
-                    d.$wrapper.find(".btn-modal-secondary").css("color","white")
-                    frm.completed_popup = new frappe.production.ui.CuttingCompletionDetail(d.fields_dict.pop_up_html.wrapper)
-                    frm.completed_popup.load_data(frm.doc.completed_items_json, 3)
-                    d.show()
-                })
-            })
+            
+            frm.add_custom_button("Get Completed", () => {
+                let d = new frappe.ui.Dialog({
+                    size: "large",
+                    fields: [
+                        { fieldname: "pop_up_html", fieldtype: "HTML" },
+                        { fieldname: "output_html", fieldtype: "HTML" },
+                    ],
+                    primary_action_label: "Copy to Clipboard",
+                    secondary_action_label: "Take Screenshot",
+                    async primary_action() {
+                        let sourceDiv = d.fields_dict.pop_up_html.wrapper;
+                        let canvas = await html2canvas(sourceDiv, { scale: 1, useCORS: true });
+                        canvas.toBlob(async (blob) => {
+                            await navigator.clipboard.write([
+                                new ClipboardItem({ "image/png": blob }),
+                            ]);
+                            frappe.show_alert("Image Copied to Clipboard");
+                        });
+                    },
+                    secondary_action() {
+                        let sourceDiv = d.fields_dict.pop_up_html.wrapper;
+                        html2canvas(sourceDiv, { scale: 1, useCORS: true }).then((canvas) => {
+                            let link = document.createElement("a");
+                            link.href = canvas.toDataURL("image/png");
+                            link.download = "screenshot.png";
+                            link.click();
+                        });
+                    },
+                });
+                d.$wrapper.find(".btn-modal-secondary").css({
+                    "background-color": "cadetblue",
+                    color: "white",
+                });
+                frm.completed_popup = new frappe.production.ui.CuttingCompletionDetail(d.fields_dict.pop_up_html.wrapper);
+                frm.completed_popup.load_data(frm.doc.completed_items_json, 3);
+                d.show();
+            });
+
             frm.add_custom_button("Update Completed", ()=> {
                 let d = new frappe.ui.Dialog({
-                    size:"large",
+                    size:"extra-large",
                     fields: [
                         {
                             "fieldname":"update_pop_up_html",

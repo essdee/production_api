@@ -30,6 +30,11 @@ frappe.ui.form.on("Lot", {
 					method:"production_api.essdee_production.doctype.lot.lot.update_order_details",
 					args : {
 						doc_name : frm.doc.name,
+					},
+					freeze: true,
+					freeze_message: __("Calculating Order Items..."),
+					callback:function(r){
+						frm.reload_doc()
 					}
 				})
 			})
@@ -66,6 +71,34 @@ frappe.ui.form.on("Lot", {
 		if(frm.doc.lot_time_and_action_details.length > 0){
 			$(frm.fields_dict['time_and_action_report_html'].wrapper).html("")
 			frm.time_action_report = new frappe.production.ui.TimeActionReport(frm.fields_dict['time_and_action_report_html'].wrapper)
+			if(frappe.user.has_role("T & A Admin")){
+				frm.add_custom_button("Revert T & A", ()=> {
+					let d = new frappe.ui.Dialog({
+						title: "Are you sure want to Revert the T & A",
+						primary_action_label : "Yes",
+						secondary_action_label: "No",
+						primary_action(){
+							d.hide()
+							frappe.call({
+								method: "production_api.essdee_production.doctype.lot.lot.revert_t_and_a",
+								args : {
+									doc_name: frm.doc.name
+								},
+								freeze: true,
+								freeze_message:"Reverting T & A",
+								callback: function(){
+									frm.reload_doc()
+								}
+							})
+							d.hide()
+						},
+						secondary_action(){
+							d.hide()
+						}
+					})
+					d.show()
+				})
+			}
 		}	
 		if(frm.doc.lot_time_and_action_details.length == 0){
 			frm.add_custom_button("Create T&A",()=> {

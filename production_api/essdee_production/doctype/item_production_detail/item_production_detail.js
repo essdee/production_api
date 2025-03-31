@@ -308,7 +308,16 @@ frappe.ui.form.on("Item Production Detail", {
 		$(frm.fields_dict['stiching_accessory_html'].wrapper).html("");
 		frm.stiching_accessory = new frappe.production.ui.ClothAccessoryCombination(frm.fields_dict['stiching_accessory_html'].wrapper);
 		if(frm.doc.stiching_accessory_json) {
-			await frm.stiching_accessory.load_data(frm.doc.stiching_accessory_json);
+			let acc = frm.doc.stiching_accessory_json
+			let cloth_list = []
+			for(let i = 0; i < frm.doc.cloth_detail.length; i++ ){
+				cloth_list.push(frm.doc.cloth_detail[i]['name1'])
+			}
+			if(typeof(acc) == "string"){
+				acc = JSON.parse(acc)
+			}
+			acc['select_list'] = cloth_list
+			await frm.stiching_accessory.load_data(acc);
 			frm.stiching_accessory.set_attributes()
 		}
 	},
@@ -563,6 +572,10 @@ frappe.ui.form.on("Item Production Detail", {
 			frappe.msgprint("Fill The Cloth Details")
 			return
 		}
+		cloth_list = []
+		for(let i = 0; i < frm.doc.cloth_detail.length; i++ ){
+			cloth_list.push(frm.doc.cloth_detail[i]['name1'])
+		}
 		let get_checked_attributes = frm.select_cloth_attrs_multicheck.get_checked_options()
 		if(get_checked_attributes.length == 0){
 			frappe.msgprint("Select the attributes to make combination")
@@ -575,6 +588,7 @@ frappe.ui.form.on("Item Production Detail", {
 				doc_name: frm.doc.name,
 				attributes: get_checked_attributes,
 				combination_type:'Cloth',
+				cloth_list: cloth_list
 			},
 			callback:(async (r)=> {
 				await frm.cloth_item.load_data(r.message)
@@ -603,9 +617,14 @@ frappe.ui.form.on("Item Production Detail", {
 		})
 	},
 	get_stiching_accessory_combination(frm){
+		cloth_list = []
+		for(let i = 0; i < frm.doc.cloth_detail.length; i++ ){
+			cloth_list.push(frm.doc.cloth_detail[i]['name1'])
+		}
 		frappe.call({
 			method:"production_api.essdee_production.doctype.item_production_detail.item_production_detail.get_stiching_accessory_combination",
 			args: {
+				cloth_list: cloth_list,
 				doc_name:frm.doc.name,
 			},
 			callback:async function(r){

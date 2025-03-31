@@ -205,7 +205,9 @@ jinja = {
         "production_api.production_api.doctype.goods_received_note.goods_received_note.get_grn_structure",
         "production_api.production_api.doctype.delivery_challan.delivery_challan.get_current_user_time",
         "production_api.essdee_production.doctype.item_production_detail.item_production_detail.fetch_combination_items",
-        "production_api.essdee_production.doctype.item_production_detail.item_production_detail.get_ipd_pf_details"
+        "production_api.essdee_production.doctype.item_production_detail.item_production_detail.get_ipd_pf_details",
+        "production_api.production_api.doctype.cutting_plan.cutting_plan.get_cutting_plan_laysheets_report",
+        "production_api.essdee_production.doctype.lot.lot.get_ipd_print_accessory_combination",
     ]
 }
 

@@ -24,6 +24,14 @@ frappe.ui.form.on("Cutting LaySheet", {
         })
     },
     refresh(frm) {
+        // frm.add_custom_button("Update",()=> {
+        //     frappe.call({
+        //         method: "production_api.production_api.doctype.cutting_laysheet.cutting_laysheet.update_cutting_plan",
+        //         args : {
+        //             cutting_laysheet: frm.doc.name,
+        //         }
+        //     })
+        // })
         removeDefaultPrintEvent();
         $('[data-original-title=Print]').hide();
         $("li:has(a:has(span[data-label='Print']))").remove();
@@ -33,6 +41,14 @@ frappe.ui.form.on("Cutting LaySheet", {
         }
         else{
             frm.laysheet.load_data([])
+        }
+
+        frm.accessory = new frappe.production.ui.LaySheetAccessory(frm.fields_dict['accessory_html'].wrapper)
+        if(frm.doc.__onload && frm.doc.__onload.item_accessories){
+            frm.accessory.load_data(frm.doc.__onload.item_accessories)
+        }
+        else{
+            frm.accessory.load_data([])
         }
         $(frm.fields_dict['cutting_marker_ratios_html'].wrapper).html("")
         if(!frm.doc.__islocal){
@@ -113,40 +129,38 @@ frappe.ui.form.on("Cutting LaySheet", {
         if(frm.doc.cutting_laysheet_bundles.length > 0 && frm.doc.status == "Bundles Generated" ){
             frm.add_custom_button("Print Labels", ()=> {
                 frappe.call({
-                    method:"production_api.production_api.doctype.cutting_laysheet.cutting_laysheet.check_cutting_plan",
+                    method:"production_api.production_api.doctype.cutting_laysheet.cutting_laysheet.update_cutting_plan",
                     args: {
                         cutting_laysheet: frm.doc.name, 
+                        check_cp: true,
                     },
                     callback: function(){
-                        frappe.ui.form.qz_connect()
-                            .then(function () {
-                                return frappe.ui.form.qz_get_printer_list();
-                            })
-                            .then(function (printers) {
-                                let d = new frappe.ui.Dialog({
-                                    title:"Select any one printer",
-                                    fields: [
-                                        {
-                                            fieldname: 'printer_list_html',
-                                            fieldtype: 'HTML',
-                                        }
-                                    ],
-                                    size:'small',
-                                    primary_action_label:"Print",
-                                    primary_action:function(){
-                                        d.hide()
-                                        let printer = get_printer()
-                                        printer = printer.slice(1, -1);
-                                        print_labels(frm,printer)
+                        frappe.ui.form.qz_connect().then(function () {
+                            return frappe.ui.form.qz_get_printer_list();
+                        }).then(function (printers) {
+                            let d = new frappe.ui.Dialog({
+                                title:"Select any one printer",
+                                fields: [
+                                    {
+                                        fieldname: 'printer_list_html',
+                                        fieldtype: 'HTML',
                                     }
-                                })
-                                d.fields_dict.printer_list_html.$wrapper.html('');
-                                d.fields_dict.printer_list_html.$wrapper.append(get_printers_html(printers))
-                                d.show()
+                                ],
+                                size:'small',
+                                primary_action_label:"Print",
+                                primary_action:function(){
+                                    d.hide()
+                                    let printer = get_printer()
+                                    printer = printer.slice(1, -1);
+                                    print_labels(frm,printer)
+                                }
                             })
-                            .catch(function (err) {
-                                frappe.ui.form.qz_fail(err);
-                            });
+                            d.fields_dict.printer_list_html.$wrapper.html('');
+                            d.fields_dict.printer_list_html.$wrapper.append(get_printers_html(printers))
+                            d.show()
+                        }).catch(function (err) {
+                            frappe.ui.form.qz_fail(err);
+                        });
                     }
                 })
             })
@@ -179,10 +193,40 @@ frappe.ui.form.on("Cutting LaySheet", {
                 return;
             }
         })
+        if(frm.doc.status == "Label Printed" && frappe.user.has_role("System Manager")){
+            frm.add_custom_button("Revert Labels", ()=> {
+                let d = new frappe.ui.Dialog({
+                    title: "Are you sure want to Revert the Label",
+                    primary_action_label : "Yes",
+                    secondary_action_label: "No",
+                    primary_action(){
+                        d.hide()
+                        frappe.call({
+                            method: "production_api.production_api.doctype.cutting_laysheet.cutting_laysheet.revert_labels",
+                            args : {
+                                doc_name: frm.doc.name
+                            },
+                            freeze: true,
+                            freeze_message:"Reverting the Label Printed",
+                            callback: function(){
+                                frm.reload_doc()
+                            }
+                        })
+                        d.hide()
+                    },
+                    secondary_action(){
+                        d.hide()
+                    }
+                })
+                d.show()
+            })
+        }
 	},
     validate(frm){
         let items = frm.laysheet.get_items()
         frm.doc['item_details'] = JSON.stringify(items)
+        let items2 = frm.accessory.get_items()
+        frm.doc['item_accessory_details'] = JSON.stringify(items2)
     }
 });
 

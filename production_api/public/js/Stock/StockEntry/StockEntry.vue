@@ -52,6 +52,7 @@ const table_fields = ref([
         name: 'rate',
         label: 'Rate',
         uses_primary_attribute: 1,
+        has_view_permission: ["System Manager", "Administrator", "Merchandiser"],
     },
     {
         name: 'remarks',

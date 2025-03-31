@@ -46,32 +46,17 @@ class StockReconciliation(Document):
 
 		self.validation_messages = []
 		item_warehouse_combinations = []
-		item_warehouse_tot_concilations = {}
 
 		for row in self.items:
 			# find duplicates
 			key = [row.item, row.warehouse, row.lot, row.received_type]
-			key_str = get_key(key)
+
 			if key in item_warehouse_combinations:
 				self.validation_messages.append(
 					_get_msg(row.table_index, row.row_index, _("Same item, lot, warehouse and received type combination already entered."))
 				)
 			else:
 				item_warehouse_combinations.append(key)
-				item_warehouse_tot_concilations[key_str] = {
-					"qty" : 0,
-					"bin" : get_or_make_bin(
-						item_code=row.item,
-						warehouse=row.warehouse,
-						lot=row.lot,
-						received_type=row.received_type
-					),
-					"item" : row.item,
-					"warehouse" : row.warehouse,
-					"lot" : row.lot,
-					"received_type" : row.received_type,
-					"make_qty_zero" : row.make_qty_zero
- 				}
 
 			self.validate_item(row.item, row)
 
@@ -111,16 +96,6 @@ class StockReconciliation(Document):
 				flt(row.rate) / flt(row.conversion_factor), self.precision("stock_uom_rate", row)
 			)
 			row.amount = flt(flt(row.rate) * flt(row.qty), self.precision("amount", row))
-			item_warehouse_tot_concilations[key_str]['qty'] += row.stock_qty
-
-		for key, value in item_warehouse_tot_concilations.items():
-			bin = frappe.get_doc("Bin", value['bin'])
-			if value['qty'] == 0 and not value['make_qty_zero']:
-				continue
-			if value['qty'] < bin.reserved_qty :
-				self.validation_messages.append(
-					f"Can't Reduce Stock For Item {value['item']} Because {bin.reserved_qty} Stock Is Reserved"
-				)
 		# throw all validation messages
 		if self.validation_messages:
 			for msg in self.validation_messages:
@@ -156,10 +131,11 @@ class StockReconciliation(Document):
 					"item": item.item,
 					"warehouse": item.warehouse,
 					"lot": item.lot,
+					"received_type": item.received_type,
 					"isCancelled": 0,
 				})
 				if exists:
-					frappe.throw(f"{item.item}, {item.warehouse}, {item.lot} Already Exists. If you are adjusting the Stock Value please use 'Stock Reconciliation' in Purpose")
+					frappe.throw(f"{item.item}, {item.warehouse}, {item.lot}, {item.received_type}  Already Exists. If you are adjusting the Stock Value please use 'Stock Reconciliation' in Purpose")
 
 	def on_submit(self):
 		self.update_stock_ledger()

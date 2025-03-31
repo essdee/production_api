@@ -52,6 +52,7 @@ const table_fields = ref([
 		name: 'cost',
 		label: 'Cost',
 		uses_primary_attribute: 1,
+		has_view_permission: ["System Manager", "Administrator", "Merchandiser", "Merch Manager"],
 	    condition: function(data, props) {
 	        return props['docstatus'] == 1;
 	    },
@@ -110,7 +111,7 @@ function load_data(all_items) {
 						if (isNaN(x)) {
 							x = 0;
 						}
-						rows.total_cost = x;
+						rows.total_cost = Math.round(x*100)/100;
 					}
 				})
 			})

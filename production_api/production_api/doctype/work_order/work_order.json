@@ -13,6 +13,7 @@
   "supplier",
   "supplier_name",
   "is_delivered",
+  "is_manual_entry",
   "column_break_wrym",
   "is_internal_unit",
   "parent_wo",
@@ -48,6 +49,10 @@
   "amended_from",
   "total_quantity",
   "work_order_calculated_items",
+  "completed_items_json",
+  "incompleted_items_json",
+  "wo_delivered_completed_json",
+  "wo_delivered_incompleted_json",
   "section_break_lgsu",
   "column_break_ocbe",
   "first_dc_date",
@@ -60,7 +65,9 @@
   "total_no_of_pieces_received",
   "section_break_fewo",
   "column_break_klzv",
-  "received_types_json"
+  "received_types_json",
+  "summary_tab",
+  "wo_summary_html"
  ],
  "fields": [
   {
@@ -424,6 +431,54 @@
    "fieldtype": "Small Text",
    "hidden": 1,
    "label": "WO Colours"
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "completed_items_json",
+   "fieldtype": "JSON",
+   "hidden": 1,
+   "label": "Completed Items JSON"
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "incompleted_items_json",
+   "fieldtype": "JSON",
+   "hidden": 1,
+   "label": "Incompleted Items JSON"
+  },
+  {
+   "fieldname": "summary_tab",
+   "fieldtype": "Tab Break",
+   "label": "Summary"
+  },
+  {
+   "fieldname": "wo_summary_html",
+   "fieldtype": "HTML",
+   "label": "WO Summary HTML"
+  },
+  {
+   "default": "0",
+   "fetch_from": "process_name.is_manual_entry_in_grn",
+   "fieldname": "is_manual_entry",
+   "fieldtype": "Check",
+   "hidden": 1,
+   "label": "Is Manual Entry"
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "wo_delivered_completed_json",
+   "fieldtype": "JSON",
+   "hidden": 1,
+   "label": "WO Delivered Completed JSON",
+   "read_only": 1
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "wo_delivered_incompleted_json",
+   "fieldtype": "JSON",
+   "hidden": 1,
+   "label": "WO Delivered Incompleted JSON",
+   "read_only": 1
   }
  ],
  "index_web_pages_for_search": 1,
@@ -438,7 +493,7 @@
    "link_fieldname": "against_id"
   }
  ],
- "modified": "2025-02-24 16:06:43.137728",
+ "modified": "2025-03-15 15:04:08.529329",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Work Order",
@@ -520,6 +575,16 @@
    "read": 1,
    "report": 1,
    "role": "Store User",
+   "select": 1,
+   "share": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Transaction User",
    "select": 1,
    "share": 1
   }

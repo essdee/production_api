@@ -95,7 +95,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2023-09-21 12:12:51.114409",
+ "modified": "2025-03-15 15:07:49.678825",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Supplier",
@@ -160,13 +160,22 @@
    "report": 1,
    "role": "System Manager",
    "select": 1,
-   "set_user_permissions": 1,
    "share": 1,
    "write": 1
   },
   {
    "role": "All",
    "select": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Transaction User",
+   "select": 1,
+   "share": 1
   }
  ],
  "show_title_field_in_link": 1,

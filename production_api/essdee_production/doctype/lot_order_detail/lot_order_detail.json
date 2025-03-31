@@ -10,7 +10,10 @@
   "quantity",
   "cut_qty",
   "stich_qty",
-  "pack_qty"
+  "pack_qty",
+  "row_index",
+  "table_index",
+  "set_combination"
  ],
  "fields": [
   {
@@ -43,12 +46,27 @@
    "fieldtype": "Int",
    "in_list_view": 1,
    "label": "Pack Qty"
+  },
+  {
+   "fieldname": "row_index",
+   "fieldtype": "Int",
+   "label": "Row Index"
+  },
+  {
+   "fieldname": "table_index",
+   "fieldtype": "Int",
+   "label": "Table Index"
+  },
+  {
+   "fieldname": "set_combination",
+   "fieldtype": "JSON",
+   "label": "Set Combination"
   }
  ],
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2025-02-12 09:57:48.687123",
+ "modified": "2025-02-21 15:17:11.610545",
  "modified_by": "Administrator",
  "module": "Essdee Production",
  "name": "Lot Order Detail",

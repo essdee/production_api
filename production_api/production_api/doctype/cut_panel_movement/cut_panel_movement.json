@@ -1,0 +1,120 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "naming_series:",
+ "creation": "2025-03-12 14:39:27.296613",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "lot",
+  "item",
+  "process_name",
+  "column_break_dcpm",
+  "cutting_plan",
+  "movement_date",
+  "naming_series",
+  "section_break_rnao",
+  "cut_panel_movement_html",
+  "cut_panel_movement_json",
+  "amended_from"
+ ],
+ "fields": [
+  {
+   "fieldname": "cutting_plan",
+   "fieldtype": "Link",
+   "label": "Cutting Plan",
+   "options": "Cutting Plan"
+  },
+  {
+   "default": "Today",
+   "fieldname": "movement_date",
+   "fieldtype": "Date",
+   "label": "Movement Date",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_dcpm",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "lot",
+   "fieldtype": "Link",
+   "label": "Lot",
+   "options": "Lot"
+  },
+  {
+   "fetch_from": "lot.item",
+   "fieldname": "item",
+   "fieldtype": "Link",
+   "label": "Item",
+   "options": "Item",
+   "read_only": 1
+  },
+  {
+   "fieldname": "section_break_rnao",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "amended_from",
+   "fieldtype": "Link",
+   "label": "Amended From",
+   "no_copy": 1,
+   "options": "Cut Panel Movement",
+   "print_hide": 1,
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "cut_panel_movement_html",
+   "fieldtype": "HTML",
+   "label": "Cut Panel Movement HTML"
+  },
+  {
+   "fieldname": "cut_panel_movement_json",
+   "fieldtype": "JSON",
+   "hidden": 1,
+   "label": "Cut Panel Movement JSON"
+  },
+  {
+   "default": "CPM-.YY..MM.-.{#####}",
+   "fieldname": "naming_series",
+   "fieldtype": "Data",
+   "hidden": 1,
+   "label": "Naming Series"
+  },
+  {
+   "fieldname": "process_name",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Process Name",
+   "options": "Process",
+   "reqd": 1
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "is_submittable": 1,
+ "links": [],
+ "modified": "2025-03-25 16:47:51.576403",
+ "modified_by": "Administrator",
+ "module": "Production Api",
+ "name": "Cut Panel Movement",
+ "naming_rule": "By \"Naming Series\" field",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

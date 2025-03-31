@@ -56,4 +56,22 @@ def get_item_variant_stock(item :str, warehouse: str, lot: str) -> float:
     if len(sle_ent) == 0:
         return 0
     return flt(sle_ent[0]['qty_after_transaction'])
-    
+
+def get_panel_list(ipd_doc):
+	panel_list = []
+	for panel in ipd_doc.stiching_item_details:
+		panel_list.append(panel.stiching_attribute_value)
+	return panel_list
+
+def get_stich_details(ipd_doc):
+	stich_details = {}
+	for i in ipd_doc.stiching_item_details:
+		stich_details[i.stiching_attribute_value] = i.set_item_attribute_value
+	return stich_details	
+
+def get_part_list(ipd_doc):
+	part_list = []
+	for stich in ipd_doc.stiching_item_details:
+		if stich.set_item_attribute_value not in part_list:
+			part_list.append(stich.set_item_attribute_value)
+	return part_list

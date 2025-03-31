@@ -27,7 +27,7 @@ def get_data(filters):
 	query_result = frappe.db.sql(
 		f""" SELECT A.action, A.department, A.date, A.rescheduled_date, A.actual_date, DATEDIFF(A.rescheduled_date, A.actual_date) AS date_diff, 
 			DATEDIFF(A.date, A.actual_date) AS cumulative_diff FROM `tabTime and Action Detail` AS A JOIN `tabTime and Action` AS B 
-			ON A.parent = B.name WHERE B.lot = '{lot}' AND B.name = '{time_and_action}' AND A.completed = 1;""", as_dict=True
+			ON A.parent = B.name WHERE B.lot = '{lot}' AND B.name = '{time_and_action}' AND A.completed = 1 Order By A.idx;""", as_dict=True
 	)
 	return query_result
 

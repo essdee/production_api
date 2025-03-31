@@ -8,7 +8,6 @@
 						<tr>
 							<th>S.No.</th>
 							<th>Item</th>
-							<th>Lot</th>
 							<th v-for="attr in i.attributes" :key="attr">{{ attr }}</th>
 							<th v-for="attr in i.primary_attribute_values" :key="attr">{{ attr }}</th>
 							<th v-if="docstatus == 0">Edit</th>
@@ -16,8 +15,11 @@
 						<tr v-for="(j, item1_index) in i.items" :key="item1_index">
 							<td>{{ item1_index + 1 }}</td>
 							<td>{{ j.name }}</td>
-							<td>{{ j.lot }}</td>
-							<td v-for="attr in i.attributes" :key="attr">{{ j.attributes[attr] }}</td>
+							<td v-for="attr in i.attributes" :key="attr">
+								{{ j.attributes[attr] }}
+								<span v-if="attr == 'Colour' && j.is_set_item && j.attributes[j.set_attr] != j.major_attr_value && j.attributes[attr]">({{ j.item_keys['major_colour'] }})</span>
+								<span v-else-if="attr == 'Colour' && !j.is_set_item && j.attributes[attr] != j.item_keys['major_colour'] && j.attributes[attr]">({{ j.item_keys['major_colour'] }})</span>
+							</td>
 							<td v-for="attr in j.values" :key="attr">
 								<div v-if="attr.qty">
 									{{ attr.qty}}<span v-if="j.default_uom">{{ " " + j.default_uom }}</span>
@@ -39,7 +41,6 @@
 						<tr>
 							<th>S.No.</th>
 							<th>Item</th>
-							<th>Lot</th>
 							<th v-for="attr in i.attributes" :key="attr">{{ attr }}</th>
 							<th>Pending Quantity</th>
 							<th v-if="docstatus == 0">Edit</th>
@@ -47,8 +48,9 @@
 						<tr v-for="(j, item1_index) in i.items" :key="item1_index">
 							<td>{{ item1_index + 1 }}</td>
 							<td>{{ j.name }}</td>
-							<td>{{ j.lot }}</td>
-							<td v-for="attr in i.attributes" :key="attr"> {{ j.attributes[attr] }} </td>
+							<td v-for="attr in i.attributes" :key="attr"> 
+								{{ j.attributes[attr] }} 
+							</td>
 							<td>
 								{{ j.values["default"].qty }}<span v-if="j.default_uom">{{ " " + j.default_uom }}</span>
 								<span v-if="j.values['default'].secondary_qty"><br />
@@ -99,7 +101,6 @@
 						<tr>
 							<th>S.No</th>
 							<th>Item</th>
-							<th>Lot</th>
 							<th v-for="attr in i.attributes" :key="attr">{{ attr }}</th>
 							<th>Type</th>
 							<th v-for="attr in i.primary_attribute_values" :key="attr">{{ attr }}</th>
@@ -109,24 +110,44 @@
 							<tr v-for="(type, idx) in j.types" :key="idx">
 								<td>{{ get_index(item1_index)}}</td>
 								<td>{{ j.name }}</td>
-								<td>{{ j.lot }}</td>
-								<td v-for="attr in i.attributes" :key="attr">{{ j.attributes[attr] }}</td>
+								<td v-for="attr in i.attributes" :key="attr">
+									{{ j.attributes[attr] }}
+									<span v-if="attr == 'Colour' && j.is_set_item && j.attributes[j.set_attr] != j.major_attr_value && j.attributes[attr]">({{ j.item_keys['major_colour'] }})</span>
+									<span v-else-if="attr == 'Colour' && !j.is_set_item && j.attributes[attr] != j.item_keys['major_colour'] && j.attributes[attr]">({{ j.item_keys['major_colour'] }})</span>
+								</td>
 								<td>{{ type }}</td>
 								<td v-for="attr in j.values" :key="attr">
 									<div v-if="attr.types">
 										<div v-for="t in typeof(attr.types) == 'string' ? Object.keys(JSON.parse(attr.types)) : Object.keys(attr.types)" :key='t'>
 											<div v-if="edit_index == item_index && edit_index1 == item1_index && edit_type == t && t == type">
-												<input class="form-control" type="number" :value="JSON.parse(attr.types)[t]" @input="get_input($event.target.value,item_index, item1_index, type, attr.primary_attr)">
+												<div v-if="typeof(attr.types) == 'string'">
+													<input class="form-control" type="number" :value="JSON.parse(attr.types)[t]" @input="get_input($event.target.value,item_index, item1_index, type, attr.primary_attr)">
+												</div>
+												<div v-else>
+													<input class="form-control" type="number" :value="attr.types[t]" @input="get_input($event.target.value,item_index, item1_index, type, attr.primary_attr)">
+												</div>
 												<div v-if="edit_item_uom">
-													<input class="form-control" type="number" :value="JSON.parse(attr.secondary_qty_json)[t]" @input="get_secondary_input($event.target.value,item_index, item1_index, type, attr.primary_attr)">
+													<div v-if="typeof(attr.secondary_qty_json) == 'string'">
+														<input class="form-control" type="number" :value="JSON.parse(attr.secondary_qty_json)[t]" @input="get_secondary_input($event.target.value,item_index, item1_index, type, attr.primary_attr)">
+													</div>
+													<div v-else>
+														<input class="form-control" type="number" :value="attr.secondary_qty_json[t]" @input="get_secondary_input($event.target.value,item_index, item1_index, type, attr.primary_attr)">
+													</div>
 												</div>
 											</div>
 											<div v-else>
 												<div v-if="t == type">
 													<div v-if='typeof(attr.types) == "string"'>
 														{{JSON.parse(attr.types)[t]}}<div></div>
-														<span v-if="JSON.parse(attr.secondary_qty_json)[t] > 0 && attr.secondary_uom">
-															({{JSON.parse(attr.secondary_qty_json)[t]}} {{attr.secondary_uom}})											
+														<span v-if="typeof(attr.secondary_qty_json) == 'string'">
+															<span v-if="JSON.parse(attr.secondary_qty_json)[t] > 0 && attr.secondary_uom">
+																({{JSON.parse(attr.secondary_qty_json)[t]}} {{attr.secondary_uom}})											
+															</span>
+														</span>	
+														<span v-else>
+															<span v-if="attr.secondary_qty_json[t] > 0 && attr.secondary_uom">
+																({{attr.secondary_qty_json[t]}} {{attr.secondary_uom}})											
+															</span>
 														</span>
 													</div>
 													<div v-else>
@@ -157,14 +178,12 @@
 					<table class="table table-sm table-bordered" v-if="i.items && i.items.length > 0" >
 						<tr>
 							<th>Item</th>
-							<th>Lot</th>
 							<th v-for="attr in i.attributes" :key="attr">{{ attr }}</th>
 							<th>Quantity</th>
 							<th v-if="docstatus == 0">Edit</th>
 						</tr>
 						<tr v-for="(j, item1_index) in i.items" :key="item1_index">
 							<td>{{ j.name }}</td>
-							<td>{{ j.lot }}</td>
 							<td v-for="attr in i.attributes" :key="attr">{{ j.attributes[attr] }}</td>
 							<td>
 								<div v-if="j.values['default']['types']">
@@ -723,7 +742,11 @@ function get_work_order_items() {
 		},
 		callback: async function (r) {
 			if (r.message) {
-				items.value = JSON.parse(JSON.stringify(r.message));
+				let x = JSON.stringify(r.message)
+				if(typeof(x) == 'string'){
+					x = JSON.parse(x)
+				}
+				items.value = x;
 			}
 		},
 	});

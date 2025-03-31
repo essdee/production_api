@@ -40,15 +40,17 @@ let items = ref({})
 let panel_values = []
 
 onMounted(()=> {
-    frappe.call({
-        method:"production_api.essdee_production.doctype.item_production_detail.item_production_detail.get_attr_mapping_details",
-        args : {
-            mapping:cur_frm.stiching_attribute_mapping,
-        },
-        callback:function(r){
-            panels.value = r.message
-        }
-    })
+    if(cur_frm.stiching_attribute_mapping){
+        frappe.call({
+            method:"production_api.essdee_production.doctype.item_production_detail.item_production_detail.get_attr_mapping_details",
+            args : {
+                mapping:cur_frm.stiching_attribute_mapping,
+            },
+            callback:function(r){
+                panels.value = r.message
+            }
+        })
+    }
 })
 
 function create_inputs(){

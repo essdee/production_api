@@ -19,7 +19,8 @@
   "row_index",
   "additional_parameters",
   "cost",
-  "total_cost"
+  "total_cost",
+  "set_combination"
  ],
  "fields": [
   {
@@ -107,12 +108,17 @@
    "fieldname": "pending_quantity",
    "fieldtype": "Float",
    "label": "Pending Quantity"
+  },
+  {
+   "fieldname": "set_combination",
+   "fieldtype": "JSON",
+   "label": "Set Combination"
   }
  ],
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2024-10-16 10:07:30.955939",
+ "modified": "2025-02-21 11:59:55.242855",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Work Order Receivables",
