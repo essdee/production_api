@@ -124,6 +124,17 @@ def submit_erp_invoice(name):
 		data = res.json()
 		error = frappe.log_error("Purchase Inv Submit Error", json.dumps(data), inv.doctype, inv.name)
 		frappe.throw(res.json().get('exception') or f"Unknown Error - {frappe.get_desk_link(error.doctype, error.name)}")
+
+
+def get_item_variant_item_group(item_variant):
+	item_group = frappe.db.sql("""SELECT t2.item_group FROM `tabItem Variant` t1
+			   		JOIN `tabItem` t2 on t2.name = t1.item where t1.name=%(item_variant)s
+			   """, {
+				   "item_variant" : item_variant
+			   }, as_dict=True)
+	if not item_group:
+		return None
+	return item_group[0]['item_group']
 	
 
 @frappe.whitelist()
@@ -131,9 +142,9 @@ def fetch_grn_details(grns):
 	if isinstance(grns, string_types):
 		grns = json.loads(grns)
 	grns = list(set(grns))
-	print(grns)
 	items = {}
 
+	exceptions = []
 	for grn in grns:
 		grn_doc = frappe.get_doc("Goods Received Note", grn)
 		for grn_item in grn_doc.items:
@@ -143,17 +154,23 @@ def fetch_grn_details(grns):
 			if discount_percentage:
 				rate = rate - (rate * (discount_percentage / 100))
 			key = (grn_item.item_variant, grn_item.uom, rate, grn_item.tax)
+			item_group = get_item_variant_item_group(grn_item.item_variant)
+			if not item_group:
+				exceptions.append(f"Item Group Not Available For Item of Item Variant {grn_item.item_variant}")
 			items.setdefault(key, {
 				"item": grn_item.item_variant,
+				"item_group" : item_group,
 				"qty": 0,
 				"uom": grn_item.uom,
 				"rate": rate,
 				"amount": 0,
 				"tax": grn_item.tax,
+
 			})
 			items[key]["qty"] += grn_item.quantity
 			items[key]["amount"] += (grn_item.quantity * rate)
-	
+	if exceptions and len(exceptions) > 0:
+		frappe.throw("<br>".join(exceptions))
 	return list(items.values())
 
 @frappe.whitelist()

@@ -134,7 +134,8 @@
    "fieldname": "item_group",
    "fieldtype": "Link",
    "label": "Item Group",
-   "options": "Item Group"
+   "options": "Item Group",
+   "reqd": 1
   },
   {
    "default": "0",
@@ -182,7 +183,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2024-11-26 10:37:40.741361",
+ "modified": "2025-03-31 14:20:03.641334",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Item",
