@@ -523,9 +523,11 @@ class GoodsReceivedNote(Document):
 									"set_combination": row['set_combination'],
 								})
 						self.set("grn_deliverables", items)
-					self.total_received_quantity = total_qty
 					self.total_receivable_cost = total_rate
-
+			total_qty = 0
+			for item in self.items:
+				total_qty += item.quantity
+			self.total_received_quantity = total_qty
 			if self.get('consumed_item_details'):
 				items = save_grn_consumed_item_details(self.consumed_item_details, ipd)
 				self.set("grn_deliverables", items)
