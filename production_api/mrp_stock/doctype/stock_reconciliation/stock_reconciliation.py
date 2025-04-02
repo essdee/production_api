@@ -1,7 +1,6 @@
 # Copyright (c) 2023, Essdee and contributors
 # For license information, please see license.txt
 
-from production_api.utils import get_or_make_bin
 import frappe
 import json
 from itertools import groupby
@@ -53,7 +52,7 @@ class StockReconciliation(Document):
 
 			if key in item_warehouse_combinations:
 				self.validation_messages.append(
-					_get_msg(row.table_index, row.row_index, _("Same item, lot, warehouse and received type combination already entered."))
+					_get_msg(row.table_index, row.row_index, _("Same item, lot and warehouse combination already entered."))
 				)
 			else:
 				item_warehouse_combinations.append(key)
@@ -96,6 +95,7 @@ class StockReconciliation(Document):
 				flt(row.rate) / flt(row.conversion_factor), self.precision("stock_uom_rate", row)
 			)
 			row.amount = flt(flt(row.rate) * flt(row.qty), self.precision("amount", row))
+			
 		# throw all validation messages
 		if self.validation_messages:
 			for msg in self.validation_messages:
@@ -259,13 +259,8 @@ class StockReconciliation(Document):
 			data.qty_after_transaction = 0.0
 			data.valuation_rate = flt(row.stock_uom_rate)
 			# data.stock_value_difference = -1 * flt(row.amount_difference)
+
 		return data
-	
-def get_key(params):
-	temp_str = ""
-	for i in params:
-		temp_str += f"{i}"
-	return temp_str
 
 @frappe.whitelist()
 def fetch_stock_reconciliation_items(items):
