@@ -30,7 +30,7 @@ frappe.ui.form.on('Item', {
 		frm.set_query('item_group', function () {
             return {
                 filters: {
-                    is_group: 0 // only leaf item groups
+                    is_group: 0 
                 }
             };
         });
