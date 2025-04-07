@@ -167,7 +167,7 @@ def fetch_grn_details(grns):
 			items[key]["qty"] += grn_item.quantity
 			items[key]["amount"] += (grn_item.quantity * rate)
 	if exception_item_set and len(exception_item_set) > 0:
-		exception = "The Below Item Does Not Have Item Group<br>"
+		exception = "The Below Items Does Not Have Item Group<br>"
 		exception += "<br>".join([ f"<a href='/app/item/{_}' target='_blank'>{_}</a>" for _ in list(exception_item_set)])
 		frappe.throw(exception)
 
