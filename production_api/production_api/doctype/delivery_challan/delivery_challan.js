@@ -106,6 +106,48 @@ frappe.ui.form.on("Delivery Challan", {
 			frm.add_custom_button("Cancel", ()=> {
 				frm._cancel()
 			})
+			frm.add_custom_button("Return", ()=> {
+				let return_items = null
+				frappe.call({
+					method:"production_api.production_api.doctype.delivery_challan.delivery_challan.get_return_delivery_items",
+					args: {
+						doc_name : frm.doc.name,
+					},
+					freeze:true,
+					callback: function(r){
+						let d = new frappe.ui.Dialog({
+							title: __("Return Items"),
+							fields: [
+								{
+									"fieldname": 'return_pop_up_html',
+									"fieldtype": 'HTML',
+								},
+							],
+							size: "extra-large",
+							primary_action_label: __("Return"),
+							primary_action: function(){
+								let returned_items = return_items.get_data()
+								d.hide()
+								frappe.call({
+									method: "production_api.production_api.doctype.delivery_challan.delivery_challan.create_return_grn",
+									args: {
+										doc_name: frm.doc.name,
+										items: returned_items,
+										ipd: frm.doc.production_detail,
+									},
+									callback: function(r){
+										frappe.set_route("Form", "Goods Received Note", r.message)
+									}
+								})
+							}
+						})
+						d.fields_dict['return_pop_up_html'].$wrapper.html("")
+						return_items = new frappe.production.ui.ReturnItemsPopUp(d.fields_dict['return_pop_up_html'].wrapper)
+						return_items.load_data(r.message)
+						d.show()
+					}
+				})
+			})
 		}
     },
 	work_order:function(frm) {
