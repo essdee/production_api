@@ -285,7 +285,7 @@
    "fieldname": "piece_weight",
    "fieldtype": "Float",
    "label": "Piece Weight",
-   "precision": "3",
+   "precision": "4",
    "read_only": 1
   },
   {
@@ -340,7 +340,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-03-25 18:58:05.401057",
+ "modified": "2025-04-07 19:05:31.746291",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Cutting LaySheet",

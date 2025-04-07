@@ -13,6 +13,7 @@
                     <th>No of Rolls</th>
                     <th>No of Bits</th>
                     <th>End Bit Weight</th>
+                    <th>Balance Weight</th>
                     <th>Fabric Type</th>
                     <th>Comments</th>
                     <th v-if="status != 'Label Printed'">Edit</th>
@@ -25,8 +26,9 @@
                     <td>{{item.shade}}</td>
                     <td>{{item.weight}}</td>
                     <td>{{item.no_of_rolls}}</td>
-                    <td>{{item.no_of_bits}}</td>
+                    <td>{{item.no_of_bits}}<span v-if="item.effective_bits">({{item.effective_bits}})</span></td>
                     <td>{{item.end_bit_weight}}</td>
+                    <td>{{item.balance_weight}}</td>
                     <td>{{item.fabric_type}}</td>
                     <td>{{item.comments}}</td>
                     <td v-if="status != 'Label Printed'">

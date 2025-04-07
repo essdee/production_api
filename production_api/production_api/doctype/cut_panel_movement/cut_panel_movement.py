@@ -1,8 +1,7 @@
 # Copyright (c) 2025, Essdee and contributors
 # For license information, please see license.txt
 
-import frappe, json
-from six import string_types
+import frappe
 from itertools import groupby
 from operator import itemgetter
 from frappe.model.document import Document
