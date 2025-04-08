@@ -15,6 +15,7 @@
   "dc_no",
   "is_internal_unit",
   "transfer_complete",
+  "is_return",
   "column_break_1",
   "rework_created",
   "edit_posting_date_and_time",
@@ -449,12 +450,19 @@
    "fieldtype": "Percent",
    "label": "STE Transferred Percent",
    "read_only": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "is_return",
+   "fieldtype": "Check",
+   "label": "Is Return",
+   "read_only": 1
   }
  ],
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-03-15 15:13:19.314259",
+ "modified": "2025-03-28 17:35:48.902261",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Goods Received Note",
