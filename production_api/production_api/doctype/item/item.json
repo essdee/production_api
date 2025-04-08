@@ -37,19 +37,22 @@
    "fieldtype": "Data",
    "in_list_view": 1,
    "label": "Name",
+   "permlevel": 1,
    "read_only_depends_on": "eval:!doc.__islocal",
    "reqd": 1
   },
   {
    "fieldname": "hsn_code",
    "fieldtype": "Data",
-   "label": "HSN Code"
+   "label": "HSN Code",
+   "permlevel": 1
   },
   {
    "fieldname": "categories",
    "fieldtype": "Table MultiSelect",
    "label": "Categories",
-   "options": "Item Item Category"
+   "options": "Item Item Category",
+   "permlevel": 1
   },
   {
    "fieldname": "column_break_4",
@@ -59,7 +62,8 @@
    "default": "0",
    "fieldname": "disabled",
    "fieldtype": "Check",
-   "label": "Disabled"
+   "label": "Disabled",
+   "permlevel": 1
   },
   {
    "fieldname": "uom_section",
@@ -70,13 +74,15 @@
    "fieldname": "default_unit_of_measure",
    "fieldtype": "Link",
    "label": "Default Unit of Measure",
-   "options": "UOM"
+   "options": "UOM",
+   "permlevel": 1
   },
   {
    "fieldname": "uom_conversion_details",
    "fieldtype": "Table",
    "label": "UOM Conversion Details",
-   "options": "UOM Conversion Detail"
+   "options": "UOM Conversion Detail",
+   "permlevel": 1
   },
   {
    "fieldname": "attributes_section",
@@ -86,7 +92,8 @@
   {
    "fieldname": "attribute_list_html",
    "fieldtype": "HTML",
-   "label": "Attribute List Values"
+   "label": "Attribute List Values",
+   "permlevel": 1
   },
   {
    "fieldname": "price_section",
@@ -96,31 +103,36 @@
   {
    "fieldname": "price_html",
    "fieldtype": "HTML",
-   "label": "Price"
+   "label": "Price",
+   "permlevel": 1
   },
   {
    "fieldname": "attributes",
    "fieldtype": "Table",
    "label": "Attributes",
-   "options": "Item Item Attribute"
+   "options": "Item Item Attribute",
+   "permlevel": 1
   },
   {
    "fieldname": "secondary_unit_of_measure",
    "fieldtype": "Link",
    "label": "Secondary Unit of Measure",
-   "options": "UOM"
+   "options": "UOM",
+   "permlevel": 1
   },
   {
    "fieldname": "primary_attribute",
    "fieldtype": "Link",
    "label": "Primary Attribute",
-   "options": "Item Attribute"
+   "options": "Item Attribute",
+   "permlevel": 1
   },
   {
    "fieldname": "brand",
    "fieldtype": "Link",
    "label": "Brand",
    "options": "Brand",
+   "permlevel": 1,
    "read_only_depends_on": "eval:!doc.__islocal"
   },
   {
@@ -128,6 +140,7 @@
    "fieldname": "over_delivery_receipt_allowance",
    "fieldtype": "Float",
    "label": "Over Delivery/Receipt Allowance (%)",
+   "permlevel": 1,
    "precision": "1"
   },
   {
@@ -141,19 +154,22 @@
    "default": "0",
    "fieldname": "is_stock_item",
    "fieldtype": "Check",
-   "label": "Is Stock Item"
+   "label": "Is Stock Item",
+   "permlevel": 1
   },
   {
    "fieldname": "additional_parameters",
    "fieldtype": "Table",
    "label": "Additional Parameters",
-   "options": "Additional Parameter"
+   "options": "Additional Parameter",
+   "permlevel": 1
   },
   {
    "fieldname": "dependent_attribute",
    "fieldtype": "Link",
    "label": "Dependent Attribute",
-   "options": "Item Attribute"
+   "options": "Item Attribute",
+   "permlevel": 1
   },
   {
    "fieldname": "dependent_attribute_mapping",
@@ -161,29 +177,33 @@
    "hidden": 1,
    "label": "Dependent Attribute Mapping",
    "options": "Item Dependent Attribute Mapping",
+   "permlevel": 1,
    "read_only": 1
   },
   {
    "fieldname": "dependent_attribute_details_html",
    "fieldtype": "HTML",
-   "label": "Dependent Attribute Details"
+   "label": "Dependent Attribute Details",
+   "permlevel": 1
   },
   {
    "default": "1",
    "fieldname": "is_purchase_item",
    "fieldtype": "Check",
-   "label": "Is Purchase Item"
+   "label": "Is Purchase Item",
+   "permlevel": 1
   },
   {
    "default": "0",
    "fieldname": "is_sales_item",
    "fieldtype": "Check",
-   "label": "Is Sales Item"
+   "label": "Is Sales Item",
+   "permlevel": 1
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-04-07 16:14:58.582943",
+ "modified": "2025-04-08 10:42:25.921303",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Item",
@@ -194,6 +214,19 @@
    "delete": 1,
    "email": 1,
    "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "select": 1,
+   "share": 1,
+   "write": 1
+  },
+  {
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "permlevel": 1,
    "print": 1,
    "read": 1,
    "report": 1,
@@ -216,8 +249,32 @@
    "write": 1
   },
   {
+   "delete": 1,
    "email": 1,
    "export": 1,
+   "permlevel": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Item Master Manager",
+   "select": 1,
+   "share": 1,
+   "write": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "All",
+   "select": 1,
+   "share": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "permlevel": 1,
    "print": 1,
    "read": 1,
    "report": 1,
@@ -234,6 +291,28 @@
    "role": "Merchandiser",
    "select": 1,
    "share": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "permlevel": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Merchandiser",
+   "select": 1,
+   "share": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Accounts User",
+   "select": 1,
+   "share": 1,
+   "write": 1
   }
  ],
  "sort_field": "modified",
