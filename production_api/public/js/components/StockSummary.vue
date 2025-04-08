@@ -131,6 +131,7 @@ onMounted(() => {
 
 function get_filters() {
     show_table.value = false;
+    selectedItems.value = []
     frappe.call({
         method: "production_api.mrp_stock.doctype.stock_summary.stock_summary.get_stock_summary",
         args: {
