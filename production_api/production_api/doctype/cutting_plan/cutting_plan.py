@@ -418,10 +418,11 @@ def get_ccr(doc_name):
 						markers[mark][key]['received_weight'] = markers[mark][key]['used_weight']
 						markers[mark][key]['balance_weight'] = 0
 						cp_doc_colours[key]['received_weight'] -= markers[mark][key]['used_weight']
-	return {
-		"marker_data": markers,
-		"sizes": sizes,
-	}					
+	if markers:
+		return {
+			"marker_data": markers,
+			"sizes": sizes,
+		}					
 
 @frappe.whitelist()
 def remove_empty_rows(cutting_json, json_type):

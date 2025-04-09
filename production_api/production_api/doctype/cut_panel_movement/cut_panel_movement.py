@@ -5,7 +5,7 @@ import frappe
 from itertools import groupby
 from operator import itemgetter
 from frappe.model.document import Document
-from production_api.utils import update_if_string_instance
+from production_api.utils import update_if_string_instance, get_tuple_attributes
 from production_api.mrp_stock.doctype.stock_entry.stock_entry import fetch_stock_entry_items
 from production_api.production_api.doctype.item.item import get_or_create_variant, get_attribute_details
 from production_api.production_api.doctype.purchase_order.purchase_order import get_item_attribute_details, get_item_group_index
@@ -481,12 +481,6 @@ def create_delivery_challan(doc_name, work_order, process_name):
 		"supplier_address": doc.supplier_address,
 		"supplier_address_details": doc.supplier_address_details,
 	}
-
-def get_tuple_attributes(tuple_data):
-	attrs = {}
-	for data in tuple_data:
-		attrs[data[0]] = data[1]
-	return attrs	
 
 def get_grouped_data(doc_name, doctype):
 	cpm_doc = frappe.get_doc("Cut Panel Movement", doc_name)
