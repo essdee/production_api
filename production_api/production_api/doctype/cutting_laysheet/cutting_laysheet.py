@@ -389,12 +389,16 @@ def get_cut_sheet_data(doc_name,cutting_marker,item_details,items, max_plys:int,
 		key = (item.colour, item.cloth_type, item.dia)
 		cloth.setdefault(key,0)
 		cloth[key] += item.weight - item.balance_weight
-
+	
+	accessory_cloth = {}
 	for item in doc.cutting_laysheet_accessory_details:
 		key = (item.accessory, item.colour, item.cloth_type, item.dia)
 		accessory.setdefault(key,0)
 		accessory[key] += item.weight
-
+		key = (item.colour, item.cloth_type, item.dia)
+		accessory_cloth.setdefault(key,0)
+		accessory_cloth[key] += item.weight
+	
 	cp_doc = frappe.get_doc("Cutting Plan",doc.cutting_plan)
 	for item in cp_doc.cutting_plan_cloth_details:
 		key = (item.colour, item.cloth_type, item.dia)
@@ -404,6 +408,12 @@ def get_cut_sheet_data(doc_name,cutting_marker,item_details,items, max_plys:int,
 			if item.balance_weight < 0:
 				frappe.throw(f"{bold(item.dia)} {bold(item.colour)}, {bold(item.cloth_type)} was used more than the received weight")
 				return
+		if key in accessory_cloth:
+			item.used_weight += accessory_cloth[key]
+			item.balance_weight = item.weight - item.used_weight
+			if item.balance_weight < 0:
+				frappe.throw(f"{bold(item.dia)} {bold(item.colour)}, {bold(item.cloth_type)} was used more than the received weight")
+				return	
 				
 	update_cutting_plan(doc_name, check_cp=True)		
 
@@ -709,6 +719,7 @@ def update_cutting_plan(cutting_laysheet, check_cp = False):
 		
 		cloth = {}
 		accessory = {}
+		accessory_cloth = {}
 		cp_cloth = []
 		cp_accessory = []
 		for item in cls_doc.cutting_laysheet_details:
@@ -719,6 +730,10 @@ def update_cutting_plan(cutting_laysheet, check_cp = False):
 			key = (item.accessory, item.colour, item.cloth_type, item.dia)
 			accessory.setdefault(key,0)
 			accessory[key] += item.weight
+			key = (item.colour, item.cloth_type, item.dia)
+			accessory_cloth.setdefault(key,0)
+			accessory_cloth[key] += item.weight
+
 		cp_doc = frappe.get_doc("Cutting Plan",cls_doc.cutting_plan)
 
 		if check_cp:
@@ -744,6 +759,9 @@ def update_cutting_plan(cutting_laysheet, check_cp = False):
 				if key in cloth:
 					item.used_weight += cloth[key]
 					item.balance_weight = item.weight - item.used_weight
+				if key in accessory_cloth:
+					item.used_weight += accessory_cloth[key]
+					item.balance_weight = item.weight - item.used_weight	
 
 			for item in cp_doc.cutting_plan_accessory_details:
 				key = (item.accessory, item.colour, item.cloth_type, item.dia)
@@ -899,6 +917,9 @@ def update_cutting_plan(cutting_laysheet, check_cp = False):
 				if key in cloth:
 					item.used_weight += cloth[key]
 					item.balance_weight = item.weight - item.used_weight
+				if key in accessory:
+					item.used_weight += accessory[key]
+					item.balance_weight = item.weight - item.used_weight	
 
 			for item in cp_doc.cutting_plan_accessory_details:
 				key = (item.colour, item.cloth_type, item.dia)
