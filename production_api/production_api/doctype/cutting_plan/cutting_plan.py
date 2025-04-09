@@ -350,7 +350,7 @@ def get_cutting_plan_laysheets_report(cutting_plan):
 @frappe.whitelist()
 def get_ccr(doc_name):
 	cp_doc = frappe.get_doc("Cutting Plan", doc_name)
-	cls_list = frappe.get_all("Cutting LaySheet", filters={"cutting_plan": doc_name}, pluck="name", order_by="lay_no asc")
+	cls_list = frappe.get_all("Cutting LaySheet", filters={"cutting_plan": doc_name, "status": "Label Printed"}, pluck="name", order_by="lay_no asc")
 	markers = {}
 	for cls in cls_list:
 		cls_doc = frappe.get_doc("Cutting LaySheet", cls)
