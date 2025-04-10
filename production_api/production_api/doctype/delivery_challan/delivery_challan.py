@@ -2,7 +2,6 @@
 # For license information, please see license.txt
 
 import frappe, json, sys
-from six import string_types
 from itertools import groupby
 from datetime import datetime
 from itertools import zip_longest
@@ -11,8 +10,8 @@ from frappe.utils import flt, nowdate, now
 from production_api.mrp_stock.utils import get_stock_balance
 from production_api.mrp_stock.stock_ledger import make_sl_entries
 from production_api.production_api.logger import get_module_logger
-from production_api.utils import get_panel_list, update_if_string_instance
 from production_api.production_api.doctype.item.item import get_attribute_details
+from production_api.utils import get_panel_list, update_if_string_instance, update_variant
 from production_api.production_api.doctype.purchase_order.purchase_order import get_item_attribute_details, get_item_group_index
 
 class DeliveryChallan(Document):
@@ -170,17 +169,7 @@ def save_deliverables(item_details, from_location, ipd):
 						tup = tuple(sorted(item_attributes.items()))
 						variant_name = get_or_create_ipd_variant(item_variants, item_name, tup, item_attributes)
 						str_tup = str(tup)
-						if item_variants and item_variants.get(item_name):
-							if not item_variants[item_name].get(str_tup):
-								item_variants[item_name][str_tup] = variant_name	
-						else:	
-							if not item_variants:
-								item_variants = {}
-								item_variants[item_name] = {}
-								item_variants[item_name][str_tup] = variant_name
-							else:
-								item_variants[item_name] = {}
-								item_variants[item_name][str_tup] = variant_name
+						item_variants = update_variant(item_variants, variant_name, item_name, str_tup)
 						item1['item_variant'] = variant_name
 						item1['lot'] = item.get('lot')
 						item1['qty'] = values.get('qty')
@@ -207,17 +196,7 @@ def save_deliverables(item_details, from_location, ipd):
 					tup = tuple(sorted(item_attributes.items()))
 					variant_name = get_or_create_ipd_variant(item_variants, item_name, tup, item_attributes)
 					str_tup = str(tup)
-					if item_variants and item_variants.get(item_name):
-						if not item_variants[item_name].get(str_tup):
-							item_variants[item_name][str_tup] = variant_name	
-					else:	
-						if not item_variants:
-							item_variants = {}
-							item_variants[item_name] = {}
-							item_variants[item_name][str_tup] = variant_name
-						else:
-							item_variants[item_name] = {}
-							item_variants[item_name][str_tup] = variant_name
+					item_variants = update_variant(item_variants, variant_name, item_name, str_tup)
 					item1['item_variant'] = variant_name
 					item1['qty'] = item['values']['default'].get('qty')
 					item1['secondary_qty'] = item['values']['default'].get('secondary_qty')
@@ -621,17 +600,7 @@ def calculate_cutting_piece(dc_doc, panel_list):
 				item_name = item['name']
 				variant_name = get_or_create_ipd_variant(item_variants, item_name, tup, attrs)
 				str_tup = str(tup) 
-				if item_variants and item_variants.get(item_name):
-					if not item_variants[item_name].get(str_tup):
-						item_variants[item_name][str_tup] = variant_name	
-				else:	
-					if not item_variants:
-						item_variants = {}
-						item_variants[item_name] = {}
-						item_variants[item_name][str_tup] = variant_name
-					else:
-						item_variants[item_name] = {}
-						item_variants[item_name][str_tup] = variant_name	
+				item_variants = update_variant(item_variants, variant_name, item_name, str_tup)
 				qty = item['values'][val]
 				set_combination = update_if_string_instance(item['item_keys'])
 				qty_list.append({
@@ -731,20 +700,20 @@ def fetch_return_popup_items(items, lot):
 							'ref_doctype':"Work Order Deliverables",
 							"is_calculated":variant.is_calculated,
 							'set_combination':set_combination,
+							"delivered_quantity" : variant['delivered_quantity'],		
+							"return_quantity" : 0,
+							"ref_docname" : variant['ref_docname'],
 						}
-						item['values'][attr.attribute_value]['delivered_quantity'] = variant['delivered_quantity']		
-						item['values'][attr.attribute_value]['return_quantity'] = 0
-						item['values'][attr.attribute_value]['ref_docname'] = variant['ref_docname']
 						break
 		else:
 			item['values']['default'] = {
 				"ref_doctype":"Work Order Deliverables",
 				"is_calculated":variants[0].is_calculated,
 				"set_combination": {},
+				'delivered_quantity' : variants[0]['delivered_quantity'],
+				'return_quantity' : 0,
+				'ref_docname' : variants[0]['ref_docname'],
 			}
-			item['values']['default']['delivered_quantity'] = variants[0]['delivered_quantity']
-			item['values']['default']['return_quantity'] = 0
-			item['values']['default']['ref_docname'] = variants[0]['ref_docname']
 		index = get_item_group_index(item_details, current_item_attribute_details)
 		if index == -1:
 			item_details.append({
@@ -762,8 +731,8 @@ def fetch_return_popup_items(items, lot):
 
 def get_return_popup_items(item_details, ipd):
 	from production_api.essdee_production.doctype.item_production_detail.item_production_detail import get_ipd_variant
-	ipd_doc = frappe.get_cached_doc("Item Production Detail", ipd)
-	item_variants = update_if_string_instance(ipd_doc.variants_json)
+	variants_json = frappe.get_cached_value("Item Production Detail", ipd, "variants_json")
+	item_variants = update_if_string_instance(variants_json)
 	item_details = update_if_string_instance(item_details)
 	items = []
 	row_index = 0

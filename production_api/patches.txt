@@ -29,4 +29,5 @@ production_api.patches.v1_0.update_end_date_t_and_a
 production_api.patches.v1_0.update_work_order_is_manual_entry
 production_api.patches.v1_0.update_ipd_stiching_accessory_json
 production_api.patches.v1_0.update_cls_fabric_type
+production_api.patches.v1_0.update_packing_attr_cutting_plan_json
 
