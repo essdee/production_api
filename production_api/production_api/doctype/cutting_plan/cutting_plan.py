@@ -377,18 +377,6 @@ def get_ccr(doc_name):
 				markers[tup_panels][key][size]["bits"] += bits
 				markers[tup_panels][key]["total_pieces"] += bits
 
-		for row in cls_doc.cutting_laysheet_accessory_details:
-			key = (row.colour, row.cloth_type)
-			if not markers[tup_panels].get(key):
-				markers[tup_panels].setdefault(key, {
-					"used_weight": 0,
-					"received_weight": 0,
-					"balance_weight": 0,
-					"total_pieces": 0,
-				})	
-				for size in sizes:
-					markers[tup_panels][key].setdefault(size, { "bits": 0 })
-			markers[tup_panels][key]["used_weight"] += row.weight	
 	cp_doc_colours = {}
 	for row in cp_doc.cutting_plan_cloth_details:
 		key = (row.colour, row.cloth_type)
