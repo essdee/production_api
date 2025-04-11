@@ -30,5 +30,6 @@ production_api.patches.v1_0.update_work_order_is_manual_entry
 production_api.patches.v1_0.update_ipd_stiching_accessory_json
 production_api.patches.v1_0.update_cls_fabric_type
 production_api.patches.v1_0.update_packing_attr_cutting_plan_json
+production_api.patches.v1_0.item_item_group
 production_api.patches.v1_0.update_cls_effective_bits
 
