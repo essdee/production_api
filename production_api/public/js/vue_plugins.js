@@ -10,6 +10,7 @@ import POItem from "./PurchaseOrder/components/Item.vue"
 import GRNItemWrapper from "./GRN";
 import GRNPurchaseOrder from "./GRN/components/GRNPurchaseOrder.vue";
 import GRNWorkOrder from "./GRN/components/GRNWorkOrder.vue";
+import GRNReturnItem from "./GRN/components/GRNReturnItem.vue"
 import GRNConsumedDetail from "./GRN/components/GRNConsumedDetail.vue"
 import LotOrder from "./Lot/components/LotOrder.vue" 
 import WorkStation from "./Lot/components/WorkStation.vue"
@@ -38,6 +39,7 @@ import CuttingMarker from "./Cutting_Marker/components/cutting_marker.vue"
 import TimeAndActionWeeklyReport from "./Lot/components/TimeAndActionWeeklyReport.vue"
 import CutPanelMovementBundle from "./Cut_Panel_Movement/components/CutPanelMovementBundle.vue"
 import StockSummary from "./components/StockSummary.vue"
+import ReturnItemsPopUp from "./components/ReturnItemsPopUp.vue"
 
 // Product Development
 import { ProductFileVersionsWrapper, ProductCostingListWrapper } from "./ProductDevelopment"
@@ -548,6 +550,22 @@ frappe.production.ui.GRNWorkOrder = class {
     }
 }
 
+frappe.production.ui.GRNReturnItem = class {
+    constructor(wrapper) {
+        this.$wrapper = $(wrapper);
+        this.make_body();
+    }
+    
+    make_body() {
+        this.app = createApp(GRNReturnItem);
+        SetVueGlobals(this.app)
+        this.grn = this.app.mount(this.$wrapper.get(0));
+    }
+    load_data(data, skip_watch=false) {
+        this.grn.load_data(data, skip_watch);
+    }
+}
+
 frappe.production.ui.CuttingCompletionDetail = class {
     constructor(wrapper){
         this.$wrapper = $(wrapper)
@@ -788,6 +806,26 @@ frappe.production.ui.Delivery_Challan = class {
         this.vue.update_status();
     }
 
+}
+
+frappe.production.ui.ReturnItemsPopUp = class {
+    constructor(wrapper){
+        this.$wrapper = $(wrapper);
+        this.make_table();
+    }
+    make_table(){
+        this.app = createApp(ReturnItemsPopUp);
+        SetVueGlobals(this.app)
+        this.vue = this.app.mount(this.$wrapper.get(0))
+    }
+    load_data(item){
+        let items = JSON.parse(JSON.stringify(item));
+        this.vue.load_data(items);
+    }
+    get_data(){
+        let items = this.vue.get_items()
+        return items
+    }
 }
 
 frappe.production.ui.CutPanelMovementBundle = class {

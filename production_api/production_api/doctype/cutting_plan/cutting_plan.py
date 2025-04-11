@@ -4,7 +4,7 @@ import frappe, json, copy
 from six import string_types
 from datetime import datetime
 from frappe.model.document import Document
-from production_api.utils import update_if_string_instance
+from production_api.utils import update_if_string_instance, update_variant
 from production_api.production_api.doctype.item.item import get_attribute_details
 from production_api.essdee_production.doctype.lot.lot import fetch_order_item_details
 from production_api.production_api.doctype.cutting_laysheet.cutting_laysheet import update_cutting_plan
@@ -89,6 +89,7 @@ def add_additional_attributes(ipd_doc,x):
 	x['is_set_item'] = ipd_doc.is_set_item
 	x['set_item_attr'] = ipd_doc.set_item_attribute
 	x["stiching_attr"] = ipd_doc.stiching_attribute
+	x['pack_attr'] = ipd_doc.packing_attribute
 	total_qty = {}
 	for item in x['primary_attribute_values']:
 		total_qty[item] = 0
@@ -121,7 +122,7 @@ def save_item_cloth_details(items):
 			"required_weight":item['required_weight'],
 			"weight":item['weight'],
 			"used_weight": item['used_weight'],
-			"balance_weight": item['weight'] - item['used_weight']
+			"balance_weight": round(item['weight'] - item['used_weight'], 3)
 		})
 	return item_details	
 
@@ -146,17 +147,7 @@ def save_item_details(item_details, ipd):
 				tup = tuple(sorted(item_attributes.items()))
 				variant = get_or_create_ipd_variant(item_variants, item_name, tup, item_attributes)
 				str_tup = str(tup) 
-				if item_variants and item_variants.get(item_name):
-					if not item_variants[item_name].get(str_tup):
-						item_variants[item_name][str_tup] = variant	
-				else:	
-					if not item_variants:
-						item_variants = {}
-						item_variants[item_name] = {}
-						item_variants[item_name][str_tup] = variant
-					else:
-						item_variants[item_name] = {}
-						item_variants[item_name][str_tup] = variant	
+				item_variants = update_variant(item_variants, variant, item_name, str_tup)
 				item1['item_variant'] = variant	
 				item1['quantity'] = quantity
 				item1['row_index'] = row_index
@@ -227,17 +218,7 @@ def get_cloth1(cutting_plan):
 		tup = tuple(sorted(attributes.items()))
 		cloth_name = get_or_create_ipd_variant(item_variants, item_name, tup, attributes)
 		str_tup = str(tup) 
-		if item_variants and item_variants.get(item_name):
-			if not item_variants[item_name].get(str_tup):
-				item_variants[item_name][str_tup] = cloth_name	
-		else:	
-			if not item_variants:
-				item_variants = {}
-				item_variants[item_name] = {}
-				item_variants[item_name][str_tup] = cloth_name
-			else:
-				item_variants[item_name] = {}
-				item_variants[item_name][str_tup] = cloth_name	
+		item_variants = update_variant(item_variants, cloth_name, item_name, str_tup)
 		required_cloth_details.append({
 			"cloth_item_variant": cloth_name,
 			"cloth_type": k[0],
@@ -254,17 +235,7 @@ def get_cloth1(cutting_plan):
 		tup = tuple(sorted(attributes.items()))
 		cloth_name = get_or_create_ipd_variant(item_variants, item_name, tup, attributes)
 		str_tup = str(tup) 
-		if item_variants and item_variants.get(item_name):
-			if not item_variants[item_name].get(str_tup):
-				item_variants[item_name][str_tup] = cloth_name	
-		else:	
-			if not item_variants:
-				item_variants = {}
-				item_variants[item_name] = {}
-				item_variants[item_name][str_tup] = cloth_name
-			else:
-				item_variants[item_name] = {}
-				item_variants[item_name][str_tup] = cloth_name
+		item_variants = update_variant(item_variants, cloth_name, item_name, str_tup)
 		required_accessory_details.append({
 			"accessory": k[3],
 			"cloth_item_variant": cloth_name,
@@ -375,3 +346,94 @@ def get_cutting_plan_laysheets_report(cutting_plan):
 							duplicate[panel+"_Bundle"] = panel_details['bundles']
 						final_data[colour].append(duplicate)	
 	return panels, final_data, ipd_doc.is_set_item
+
+@frappe.whitelist()
+def get_ccr(doc_name):
+	cp_doc = frappe.get_doc("Cutting Plan", doc_name)
+	cls_list = frappe.get_all("Cutting LaySheet", filters={"cutting_plan": doc_name, "status": "Label Printed"}, pluck="name", order_by="lay_no asc")
+	markers = {}
+	for cls in cls_list:
+		cls_doc = frappe.get_doc("Cutting LaySheet", cls)
+		sizes = {}
+		for row in cls_doc.cutting_marker_ratios:
+			if row.size not in sizes:
+				sizes[row.size] = row.ratio
+		panels = cls_doc.calculated_parts.split(",")
+		panels.sort()
+		tup_panels = ", ".join(panels)
+		markers.setdefault(tup_panels, {})
+		for row in cls_doc.cutting_laysheet_details:
+			key = (row.colour, row.cloth_type)
+			markers[tup_panels].setdefault(key, {
+				"used_weight": 0,
+				"received_weight": 0,
+				"balance_weight": 0,
+				"total_pieces": 0,
+			})
+			markers[tup_panels][key]["used_weight"] += row.used_weight
+			for size in sizes:
+				markers[tup_panels][key].setdefault(size, { "bits": 0 })
+				bits = sizes[size] * row.effective_bits
+				markers[tup_panels][key][size]["bits"] += bits
+				markers[tup_panels][key]["total_pieces"] += bits
+
+	cp_doc_colours = {}
+	for row in cp_doc.cutting_plan_cloth_details:
+		key = (row.colour, row.cloth_type)
+		cp_doc_colours.setdefault(key, { "received_weight": 0 })
+		cp_doc_colours[key]["received_weight"] += row.weight
+
+	for key in cp_doc_colours:
+		colour_count = 0
+		final_index = 0
+		final_mark = None
+		for idx, mark in enumerate(markers):
+			if markers[mark].get(key):
+				colour_count += 1
+				final_index = idx
+				final_mark = mark
+		
+		if colour_count == 1:
+			markers[final_mark][key]['received_weight'] = cp_doc_colours[key]['received_weight']
+			markers[final_mark][key]['balance_weight'] = cp_doc_colours[key]['received_weight'] - markers[final_mark][key]['used_weight']
+		elif colour_count > 1:
+			for idx, mark in enumerate(markers):
+				if markers[mark].get(key):
+					if idx == final_index:
+						markers[final_mark][key]['received_weight'] = cp_doc_colours[key]['received_weight']
+						markers[final_mark][key]['balance_weight'] = cp_doc_colours[key]['received_weight'] - markers[final_mark][key]['used_weight']
+					else:
+						markers[mark][key]['received_weight'] = markers[mark][key]['used_weight']
+						markers[mark][key]['balance_weight'] = 0
+						cp_doc_colours[key]['received_weight'] -= markers[mark][key]['used_weight']
+	if markers:
+		return {
+			"marker_data": markers,
+			"sizes": sizes,
+		}					
+
+@frappe.whitelist()
+def remove_empty_rows(cutting_json, json_type):
+	cutting_json = update_if_string_instance(cutting_json)
+	output_json = cutting_json.copy()
+	output_json['items'] = []
+	for row in cutting_json['items']:
+		check = False
+		for val in row['values']:
+			if json_type == "completed":
+				if row['values'][val]:
+					check = True
+					break
+			else:
+				for panel in row['values'][val]:
+					if row['values'][val][panel]:
+						check = True
+						break
+			if check:
+				break		
+		if check:	
+			output_json['items'].append(row)
+
+	if len(output_json['items']) > 0:
+		return [output_json]
+	return None

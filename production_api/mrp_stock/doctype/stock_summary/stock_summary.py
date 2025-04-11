@@ -70,7 +70,11 @@ def create_bulk_stock_entry(locations, selected_items, purpose):
 
 	grouped_items = {}
 	for item in selected_items:
-		key = (item['lot'], item['item'], item['received_type'])
+		variant = item['item_variant']
+		doc = frappe.get_cached_doc("Item Variant", variant)
+		primary_attr = frappe.get_cached_value("Item", doc.item, "primary_attribute")
+		attr_details = get_variant_attr_values(doc, primary_attr)
+		key = (item['lot'], item['item'], item['received_type'], attr_details)
 		if key not in grouped_items:
 			grouped_items[key] = []
 		grouped_items[key].append(item)
@@ -78,7 +82,7 @@ def create_bulk_stock_entry(locations, selected_items, purpose):
 	final_list = []
 	table_index = -1
 	row_index = -1
-	for (lot, item, received_type), items in grouped_items.items():
+	for (lot, item, received_type, stage), items in grouped_items.items():
 		sorted_items = sorted(items, key=lambda x: x['item_variant'])
 		table_index += 1
 		row_index += 1
@@ -99,3 +103,15 @@ def create_bulk_stock_entry(locations, selected_items, purpose):
 	new_doc.flags.allow_from_summary = True		
 	new_doc.save()
 	return new_doc.name
+
+def get_variant_attr_values(doc, primary_attr):
+	attrs = []
+	for attr in doc.attributes:
+		if attr.attribute != primary_attr:
+			attrs.append(attr.attribute_value)
+	attrs.sort()
+	if attrs:
+		attrs = tuple(attrs)
+	else:
+		attrs = None			
+	return attrs

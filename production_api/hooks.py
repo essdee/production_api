@@ -208,6 +208,9 @@ jinja = {
         "production_api.essdee_production.doctype.item_production_detail.item_production_detail.get_ipd_pf_details",
         "production_api.production_api.doctype.cutting_plan.cutting_plan.get_cutting_plan_laysheets_report",
         "production_api.essdee_production.doctype.lot.lot.get_ipd_print_accessory_combination",
+        "production_api.production_api.doctype.cutting_plan.cutting_plan.get_ccr",
+        "production_api.utils.get_item_from_variant",
+        "production_api.production_api.doctype.cutting_plan.cutting_plan.remove_empty_rows",
     ]
 }
 

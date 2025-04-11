@@ -9,7 +9,7 @@ from frappe.utils import now_datetime
 from frappe.model.document import Document
 from production_api.production_api.doctype.item.item import get_or_create_variant
 from production_api.essdee_production.doctype.lot.lot import get_uom_conversion_factor
-from production_api.utils import get_stich_details, get_part_list, update_if_string_instance
+from production_api.utils import get_stich_details, get_part_list, update_if_string_instance, update_variant
 from production_api.production_api.doctype.item_dependent_attribute_mapping.item_dependent_attribute_mapping import get_dependent_attribute_details
 
 class ItemProductionDetail(Document):
@@ -531,17 +531,7 @@ def get_calculated_bom(item_production_detail, items, lot_name, process_name = N
 			tup = tuple(sorted(cloth_attrs.items()))
 			cloth_name = get_or_create_ipd_variant(item_variants, k[0], tup, cloth_attrs)
 			str_tup = str(tup)
-			if item_variants and item_variants.get(k[0]):
-				if not item_variants[k[0]].get(str_tup):
-					item_variants[k[0]][str_tup] = cloth_name	
-			else:	
-				if not item_variants:
-					item_variants = {}
-					item_variants[k[0]] = {}
-					item_variants[k[0]][str_tup] = cloth_name
-				else:
-					item_variants[k[0]] = {}
-					item_variants[k[0]][str_tup] = cloth_name
+			item_variants = update_variant(item_variants, cloth_name, k[0], str_tup)
 			if not bom.get(k[0],False):
 				bom[k[0]] = {cloth_name:[cloth_details[k],item_detail.cutting_process,uom]}
 			else:	
@@ -554,17 +544,7 @@ def get_calculated_bom(item_production_detail, items, lot_name, process_name = N
 			tup = tuple(sorted(k.items()))
 			variant = get_or_create_ipd_variant(item_variants, key, tup, k)
 			str_tup = str(tup)
-			if item_variants and item_variants.get(key):
-				if not item_variants[key].get(str_tup):
-					item_variants[key][str_tup] = variant	
-			else:	
-				if not item_variants:
-					item_variants = {}
-					item_variants[key] = {}
-					item_variants[key][str_tup] = variant
-				else:
-					item_variants[key] = {}
-					item_variants[key][str_tup] = variant
+			item_variants = update_variant(item_variants, variant, key, str_tup)
 			if not bom.get(key,False):
 				bom[key] = {variant:val}
 			else:	
@@ -1293,6 +1273,11 @@ def get_or_create_ipd_variant(item_variants, item_name, tup, attributes):
 			return item_variants[item_name][str_tup]
 	variant_name = get_or_create_variant(item_name, attributes)
 	return variant_name
+
+@frappe.whitelist()
+def get_ipd_variant(item_variants, item_name, tup):
+	str_tup = str(tup)
+	return item_variants[item_name][str_tup]
 
 @frappe.whitelist()
 def get_ipd_pf_details(ipd):
