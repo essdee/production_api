@@ -285,14 +285,9 @@ def get_cutting_plan_unmoved_data(cutting_plan, process_name):
 				panel_colour = row.colour
 				if ipd_doc.is_set_item:
 					if set_combination.get('set_part'):
-						if set_combination.get('is_same_packing_attribute'):
-							if parts not in panels[set_combination['set_part']]:
-								panels[set_combination['set_part']].append(parts)
-							major_colour = major_colour +"-"+set_combination.get('set_part')
-						else:
-							if parts not in panels[set_combination['set_part']]:
-								panels[set_combination['set_part']].append(parts)
-							major_colour = "("+ major_colour +")" + set_combination["set_colour"] +"-"+set_combination.get('set_part')
+						if parts not in panels[set_combination['set_part']]:
+							panels[set_combination['set_part']].append(parts)
+						major_colour = "("+ major_colour +")" + set_combination["set_colour"] +"-"+set_combination.get('set_part')
 					else:
 						if parts not in panels[set_combination['major_part']]:
 							panels[set_combination['major_part']].append(parts)
