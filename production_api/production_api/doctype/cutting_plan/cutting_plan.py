@@ -326,7 +326,6 @@ def get_cutting_plan_laysheets_report(cutting_plan):
 			lay_details[lay_no][major_colour][row.size][row.shade][parts]["qty"] += row.quantity
 			lay_details[lay_no][major_colour][row.size][row.shade][parts].setdefault("bundles", 0)
 			lay_details[lay_no][major_colour][row.size][row.shade][parts]['bundles'] += 1
-	
 	final_data = {}
 	for size in sizes:
 		for lay_number, colour_dict in lay_details.items():
@@ -335,16 +334,16 @@ def get_cutting_plan_laysheets_report(cutting_plan):
 			for colour, colour_detail in colour_dict.items():
 				for cur_size, panel_detail in lay_details.get(lay_number).get(colour).items():
 					if cur_size == size:
-						shade = list(panel_detail.keys())[0]
 						final_data.setdefault(colour, [])
-						duplicate = {}
-						duplicate['lay_no'] = lay_number
-						duplicate['size'] = size
-						duplicate['shade'] = shade
-						for panel, panel_details in panel_detail[shade].items():
-							duplicate[panel] = panel_details['qty']
-							duplicate[panel+"_Bundle"] = panel_details['bundles']
-						final_data[colour].append(duplicate)	
+						for shade in panel_detail:
+							duplicate = {}
+							duplicate['lay_no'] = lay_number
+							duplicate['size'] = size
+							duplicate['shade'] = shade
+							for panel, panel_details in panel_detail[shade].items():
+								duplicate[panel] = panel_details['qty']
+								duplicate[panel+"_Bundle"] = panel_details['bundles']
+							final_data[colour].append(duplicate)	
 	return panels, final_data, ipd_doc.is_set_item
 
 @frappe.whitelist()
@@ -437,3 +436,58 @@ def remove_empty_rows(cutting_json, json_type):
 	if len(output_json['items']) > 0:
 		return [output_json]
 	return None
+
+@frappe.whitelist(allow_guest=True)
+def get_cutting_plan_size_reports(cutting_plan):
+	cp_doc = frappe.get_doc("Cutting Plan", cutting_plan)
+	ipd_doc = frappe.get_cached_doc("Item Production Detail", cp_doc.production_detail)
+	from production_api.essdee_production.doctype.item_production_detail.item_production_detail import get_ipd_primary_values
+	sizes = get_ipd_primary_values(cp_doc.production_detail)
+	panels = []
+	if ipd_doc.is_set_item:
+		panels = {}
+		for row in ipd_doc.stiching_item_details:
+			panels.setdefault(row.set_item_attribute_value, [])
+
+	cls_list = frappe.get_list("Cutting LaySheet", filters={"cutting_plan":cutting_plan,"status":"Label Printed"}, pluck="name", order_by="lay_no asc")	
+	size_details = {}
+	for cls in cls_list:
+		cls_doc = frappe.get_doc("Cutting LaySheet",cls)
+		for row in cls_doc.cutting_laysheet_bundles:
+			parts = row.part.split(",")
+			parts = ", ".join(parts)
+			set_combination = update_if_string_instance(row.set_combination)
+			major_colour = set_combination['major_colour']
+			if ipd_doc.is_set_item:
+				if set_combination.get('set_part'):
+					if parts not in panels[set_combination['set_part']]:
+						panels[set_combination['set_part']].append(parts)
+					major_colour = "("+ major_colour +")" + set_combination["set_colour"] +"-"+set_combination.get('set_part')
+				else:
+					if parts not in panels[set_combination['major_part']]:
+						panels[set_combination['major_part']].append(parts)
+					major_colour = major_colour +"-"+set_combination.get('major_part')
+			else:
+				if parts not in panels:
+					panels.append(parts)
+			size_details.setdefault(major_colour, {})
+			size_details[major_colour].setdefault(row.size, {})	
+			size_details[major_colour][row.size].setdefault(parts, {})
+			size_details[major_colour][row.size][parts].setdefault("qty", 0)
+			size_details[major_colour][row.size][parts]["qty"] += row.quantity
+			size_details[major_colour][row.size][parts].setdefault("bundles", 0)
+			size_details[major_colour][row.size][parts]['bundles'] += 1
+
+	final_data = {}
+	for size in sizes:
+		for colour, colour_details in size_details.items():
+			for dict_size, panel_detail in colour_details.items():
+				if dict_size == size:
+					final_data.setdefault(colour, [])
+					duplicate = {}
+					duplicate['size'] = size
+					for panel in panel_detail:
+						duplicate[panel] = panel_detail[panel]['qty']
+						duplicate[panel+"_Bundle"] = panel_detail[panel]['bundles']
+					final_data[colour].append(duplicate)
+	return panels, final_data, ipd_doc.is_set_item
