@@ -170,6 +170,7 @@ def create_item(fg_item):
 	doc.update({
 		"name1": fg_item.name,
 		"brand": fg_item.brand,
+		"item_group" : "Products"
 	})
 	doc.insert()
 	return doc
