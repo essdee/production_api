@@ -93,11 +93,11 @@ def get_prev_fg_stock_entries(filters, stock):
 
 		item_stock[i['item']] -= i['qty']
 	
-	old_data = get_old_sms_data(item_stock, filters['warehouse'])
+	old_data = get_old_sms_data(item_stock, filters['warehouse'], filter_date=filters['filter_date'])
 	
 	return report+old_data
 
-def get_old_sms_data(stock_detail, warehouse):
+def get_old_sms_data(stock_detail, warehouse, filter_date):
 
 	warehouse_map = old_warehouse_mapping(warehouse)
 	item_list = set()
@@ -122,7 +122,7 @@ def get_old_sms_data(stock_detail, warehouse):
 			from stockentrydetails t1 
 			join stockentryitems t2 ON t1.idstockentry = t2.idstockentry
 			join iteminfo t3 ON t3.iditem = t2.iditem
-			WHERE 1=1 {items_filter} AND t1.idlocation = {warehouse_map[0]}
+			WHERE 1=1 {items_filter} AND t1.idlocation = {warehouse_map[0]} AND t1.creationdate <= '{filter_date}'
 			group by t3.name, t1.lotnumber order by t1.creationdate desc;
 		""")
 		data = cursor.fetchall()
