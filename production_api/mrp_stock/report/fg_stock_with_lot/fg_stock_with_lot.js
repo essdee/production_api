@@ -25,38 +25,5 @@ frappe.query_reports["FG Stock With Lot"] = {
                 };
             }
 		}
-		// {
-		// 	"fieldname": "item",
-		// 	"label": __("Item"),
-		// 	"fieldtype": "Link",
-		// 	"width": "80",
-		// 	"options": "Item",
-		// },
-		// {
-		// 	"fieldname": "warehouse",
-		// 	"label": __("Warehouse"),
-		// 	"fieldtype": "Link",
-		// 	"width": "80",
-		// 	"options": "Supplier",
-		// },
-		// {
-		// 	"fieldname": "lot",
-		// 	"label": __("Lot"),
-		// 	"fieldtype": "Link",
-		// 	"width": "80",
-		// 	"options": "Lot",
-		// },
-		// {
-		// 	"fieldname":"received_type",
-		// 	"fieldtype":"Link",
-		// 	"label":"Received Type",
-		// 	"options":"GRN Item Type",
-		// 	"width":80,
-		// },
-		// {
-		// 	"fieldname": 'remove_zero_balance_item',
-		// 	"label": __('Remove Zero Balance Item'),
-		// 	"fieldtype": 'Check'
-		// },
 	]
 };
