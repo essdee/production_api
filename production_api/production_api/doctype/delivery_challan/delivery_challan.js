@@ -32,6 +32,7 @@ frappe.ui.form.on("Delivery Challan", {
 				"docstatus" : 1,
 				"is_delivered" : 0,
 				"open_status":"Open",
+				"is_rework": doc.is_rework
 			}
 			if (doc.supplier){
 				fil['supplier'] = doc.supplier
@@ -52,10 +53,11 @@ frappe.ui.form.on("Delivery Challan", {
 		if(!frm.is_new()){
 			if(frm.doc.__onload && frm.doc.__onload.deliverable_item_details) {
 				frm.doc['deliverable_item_details'] = JSON.stringify(frm.doc.__onload.deliverable_item_details);
-				frm.deliverable_items = new frappe.production.ui.Delivery_Challan(frm.fields_dict['deliverable_items'].wrapper,frm.doc.__onload.deliverable_item_details )
+				frm.deliverable_items = new frappe.production.ui.Delivery_Challan(frm.fields_dict['deliverable_items'].wrapper)
+				frm.deliverable_items.load_data(frm.doc.__onload.deliverable_item_details)
 				frm.deliverable_items.update_status();
 			}
-			if(frm.doc.docstatus == 0){
+			if(frm.doc.docstatus == 0 && !frm.doc.is_rework){
 				frm.add_custom_button("Calculate", function(){
 					frappe.call({
 						method: "production_api.production_api.doctype.delivery_challan.delivery_challan.get_calculated_items",
@@ -170,8 +172,8 @@ frappe.ui.form.on("Delivery Challan", {
 					},
 					callback: function(response){
 						if(response.message){
-							console.log(JSON.stringify(response.message.items))
-							frm.deliverable_items = new frappe.production.ui.Delivery_Challan(frm.fields_dict['deliverable_items'].wrapper, response.message.items)
+							frm.deliverable_items = new frappe.production.ui.Delivery_Challan(frm.fields_dict['deliverable_items'].wrapper)
+							frm.deliverable_items.load_data(response.message.items)
 							frm.set_value('supplier',response.message.supplier)
 							frm.set_value('supplier_address',response.message.supplier_address)
 						}

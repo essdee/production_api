@@ -127,7 +127,7 @@ frappe.ui.form.on('Goods Received Note', {
 				print_btn[0].parentElement.removeChild(print_btn[0]);
 			}
 		}
-		if(frm.doc.against == 'Work Order' && frm.doc.docstatus == 0 && !frm.is_new() && !frm.doc.is_return){
+		if(frm.doc.against == 'Work Order' && frm.doc.docstatus == 0 && !frm.is_new() && !frm.doc.is_return && !frm.doc.is_rework){
 			frm.add_custom_button("Calculate", function(){
 				frappe.call({
 					method: "production_api.production_api.doctype.delivery_challan.delivery_challan.get_calculated_items",
@@ -315,12 +315,14 @@ frappe.ui.form.on('Goods Received Note', {
 				frappe.db.get_doc(frm.doc.against, frm.doc.against_id).then(doc => {
 					frm.set_value('supplier', doc.supplier);
 					frm.set_value('supplier_address', doc.supplier_address);
+					frm.set_value("is_rework", doc.is_rework)
 				})
 			}
 		} 
 		else {
 			frm.set_value('supplier', '');
 			frm.set_value('delivery_location', '');
+			frm.set_value("is_rework", 0);
 		}
 	},
 	supplier_address: function(frm) {

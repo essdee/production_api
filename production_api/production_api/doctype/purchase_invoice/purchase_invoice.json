@@ -27,6 +27,7 @@
   "total",
   "total_tax",
   "grand_total",
+  "grn_grand_total",
   "in_words",
   "amended_from",
   "erp_inv_name",
@@ -223,12 +224,18 @@
    "hidden": 1,
    "label": "ERP Purchase Invoice Docstatus",
    "read_only": 1
+  },
+  {
+   "fieldname": "grn_grand_total",
+   "fieldtype": "Currency",
+   "hidden": 1,
+   "label": "GRN Grand Total"
   }
  ],
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2024-03-08 20:17:16.427099",
+ "modified": "2025-04-28 14:26:36.076933",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Purchase Invoice",

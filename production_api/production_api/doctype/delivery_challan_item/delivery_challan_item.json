@@ -26,7 +26,8 @@
   "additional_goods_value",
   "valuation_rate",
   "is_calculated",
-  "set_combination"
+  "set_combination",
+  "item_type"
  ],
  "fields": [
   {
@@ -157,12 +158,18 @@
    "fieldname": "set_combination",
    "fieldtype": "JSON",
    "label": "Set Combination"
+  },
+  {
+   "fieldname": "item_type",
+   "fieldtype": "Link",
+   "label": "Item Type",
+   "options": "GRN Item Type"
   }
  ],
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2025-02-21 14:20:20.841863",
+ "modified": "2025-04-11 11:04:46.462646",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Delivery Challan Item",
