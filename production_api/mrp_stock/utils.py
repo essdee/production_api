@@ -189,3 +189,17 @@ def get_combine_datetime(posting_date, posting_time):
 		posting_time = (datetime.datetime.min + posting_time).time()
 
 	return datetime.datetime.combine(posting_date, posting_time).replace(microsecond=0)
+
+def sanitize_sql_input(input_str: str) -> str:
+    escape_chars = {
+        "\\": "\\\\",  # Escape backslash
+        "'": "''",     # Escape single quote for SQL
+        "\"": "\\\"",  # Escape double quotes
+        ";": "\\;",    # Escape semicolon
+        "--": "\\--",  # Escape SQL comment syntax
+    }
+    
+    for char, escaped_char in escape_chars.items():
+        input_str = input_str.replace(char, escaped_char)
+    
+    return input_str.strip()
