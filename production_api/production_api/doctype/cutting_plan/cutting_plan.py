@@ -359,6 +359,9 @@ def get_ccr(doc_name):
 				sizes[row.size] = row.ratio
 		panels = cls_doc.calculated_parts.split(",")
 		panels.sort()
+		for idx, panel in enumerate(panels):
+			panels[idx] = panel.strip()
+
 		tup_panels = ", ".join(panels)
 		markers.setdefault(tup_panels, {})
 		for row in cls_doc.cutting_laysheet_details:
