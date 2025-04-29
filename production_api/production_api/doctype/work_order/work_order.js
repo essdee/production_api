@@ -35,6 +35,21 @@ frappe.ui.form.on("Work Order", {
 		})
 	},
 	async refresh(frm) {
+		if(frm.doc.docstatus == 1 && frm.doc.is_rework){
+			frappe.realtime.on("get_receivables_data", ()=> {
+				let receivables = frm.receivable_items.get_receivables_data();
+				frappe.call({
+					method:"production_api.production_api.doctype.work_order.work_order.update_receivables",
+					args : {
+						"receivables_data": receivables,
+						"doc_name": frm.doc.name,
+					},
+					callback: function(){
+						frm.reload_doc()
+					}
+				})
+			})
+		}
 		frm.val = null
 		if(frm.is_new()){
 			hide_field(["deliverable_items", "receivable_items"]);
@@ -307,8 +322,10 @@ frappe.ui.form.on("Work Order", {
 				frm.doc['deliverable_item_details'] = JSON.stringify(deliverables);
 			}
 		}
-		let receivables = frm.receivable_items.get_receivables_data();
-		frm.doc['receivable_item_details'] = JSON.stringify(receivables);
+		if(!frm.is_new()){
+			let receivables = frm.receivable_items.get_receivables_data();
+			frm.doc['receivable_item_details'] = JSON.stringify(receivables);
+		}
     },
     supplier:async function(frm) {
 		if (frm.doc.supplier) {

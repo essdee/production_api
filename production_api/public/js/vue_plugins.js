@@ -797,7 +797,6 @@ frappe.production.ui.WOReworkReceivables = class {
     }
     get_receivables_data(){
         let items = JSON.parse(JSON.stringify(this.vue.get_items()))
-        console.log(items)
         return items
     }
 };

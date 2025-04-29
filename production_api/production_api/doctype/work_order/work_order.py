@@ -19,6 +19,8 @@ from production_api.essdee_production.doctype.item_production_detail.item_produc
 
 class WorkOrder(Document):
 	def on_update_after_submit(self):
+		if self.is_rework:
+			frappe.publish_realtime("get_receivables_data")
 		check_quantity = True
 		for item in self.deliverables:
 			if flt(item.pending_quantity) > flt(0):
@@ -64,7 +66,7 @@ class WorkOrder(Document):
 			deliverable_item_details = fetch_item_details(self.get('deliverables'),self.production_detail, is_calc=True)
 			self.set_onload('deliverable_item_details', deliverable_item_details)
 
-		receivable_item_details = fetch_item_details(self.get('receivables'),self.production_detail)
+		receivable_item_details = fetch_item_details(self.get('receivables'),self.production_detail, include_id=True)
 		self.set_onload('receivable_item_details', receivable_item_details)
 
 	def before_save(self):
@@ -1415,3 +1417,20 @@ def get_variant_attr_values(doc, primary_attr):
 	else:
 		attrs = None			
 	return attrs
+
+@frappe.whitelist()
+def update_receivables(receivables_data, doc_name):
+	receivables_data = update_if_string_instance(receivables_data)
+	for receivable in receivables_data:
+		for item in receivable['items']:
+			for val in item['values']:
+				cost = item['values'][val]['cost']
+				ref_docname = item['values'][val]['ref_docname'] 
+				frappe.db.sql(
+					"""
+						UPDATE `tabWork Order Receivables` set cost = %(cost)s WHERE name = %(ref_docname)s
+					""", {
+						"cost": cost,
+						"ref_docname": ref_docname,
+					}
+				)
