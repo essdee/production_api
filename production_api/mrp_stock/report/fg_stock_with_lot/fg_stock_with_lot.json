@@ -10,12 +10,12 @@
  "idx": 0,
  "is_standard": "Yes",
  "letterhead": null,
- "modified": "2025-04-28 16:09:02.487568",
+ "modified": "2025-04-29 10:49:23.752307",
  "modified_by": "Administrator",
  "module": "MRP Stock",
  "name": "FG Stock With Lot",
  "owner": "Administrator",
- "prepared_report": 1,
+ "prepared_report": 0,
  "ref_doctype": "FG Stock Entry",
  "report_name": "FG Stock With Lot",
  "report_type": "Script Report",
@@ -24,10 +24,10 @@
    "role": "System Manager"
   },
   {
-   "role": "Merch User"
+   "role": "Accounts User"
   },
   {
-   "role": "Merch Manager"
+   "role": "Accounts Manager"
   }
  ],
  "timeout": 0
