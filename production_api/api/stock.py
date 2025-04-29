@@ -14,7 +14,6 @@ def get_stock(item, warehouse, remove_zero_balance_item=1):
         item = json.loads(item)
 
     fg_lot = get_default_fg_lot()
-    received_type =frappe.db.get_single_value("Stock Settings", "default_received_type")
         
     data  = get_stock_balance_bin(
         warehouse,

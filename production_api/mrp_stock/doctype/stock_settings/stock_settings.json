@@ -10,7 +10,14 @@
   "transit_warehouse",
   "default_received_type",
   "column_break_lblg",
-  "default_fg_lot"
+  "default_fg_lot",
+  "section_break_lupm",
+  "sms_old_database_host",
+  "sms_old_database_name",
+  "sms_old_database_port",
+  "sms_old_database_user",
+  "sms_old_database_password",
+  "location_mapping"
  ],
  "fields": [
   {
@@ -38,12 +45,49 @@
    "label": "Default Received Type",
    "options": "GRN Item Type",
    "reqd": 1
+  },
+  {
+   "fieldname": "section_break_lupm",
+   "fieldtype": "Section Break",
+   "label": "SMS Old Database Details"
+  },
+  {
+   "fieldname": "sms_old_database_host",
+   "fieldtype": "Data",
+   "label": "Hostname"
+  },
+  {
+   "fieldname": "sms_old_database_name",
+   "fieldtype": "Data",
+   "label": "Database Name"
+  },
+  {
+   "fieldname": "sms_old_database_port",
+   "fieldtype": "Int",
+   "label": "Port"
+  },
+  {
+   "fieldname": "sms_old_database_user",
+   "fieldtype": "Data",
+   "label": "User"
+  },
+  {
+   "fieldname": "sms_old_database_password",
+   "fieldtype": "Password",
+   "label": "DB Password"
+  },
+  {
+   "fieldname": "location_mapping",
+   "fieldtype": "Table",
+   "label": "Location Mapping",
+   "options": "Stock Settings Old Warehouse Mapping"
   }
  ],
+ "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2025-01-23 12:36:17.913269",
+ "modified": "2025-04-28 14:48:35.284251",
  "modified_by": "Administrator",
  "module": "MRP Stock",
  "name": "Stock Settings",
@@ -64,6 +108,7 @@
    "role": "All"
   }
  ],
+ "row_format": "Dynamic",
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": []
