@@ -37,7 +37,6 @@ class PurchaseInvoice(Document):
 	def calculate_total(self):
 		total_amount = 0
 		total_tax = 0
-		total_discount = 0
 		grand_total = 0
 		for item in self.items:
 			# Item Total
@@ -49,6 +48,8 @@ class PurchaseInvoice(Document):
 			# Item Total after tax
 			total = item_total + tax
 			grand_total += total
+		if grand_total > self.grn_grand_total:
+			frappe.throw("Total amount is greater than GRN total amount")	
 		self.set('total', total_amount)
 		self.set('total_tax', total_tax)
 		self.set('grand_total', grand_total)
@@ -170,8 +171,18 @@ def fetch_grn_details(grns):
 		exception = "The Below Items Does Not Have Item Group<br>"
 		exception += "<br>".join([ f"<a href='/app/item/{_}' target='_blank'>{_}</a>" for _ in list(exception_item_set)])
 		frappe.throw(exception)
-
-	return list(items.values())
+		
+	grand_total = 0
+	for item in items.values():
+		item_total = item['rate'] * item['qty']
+		tax = (item_total * (float(item['tax'] or 0) / 100))
+		total = item_total + tax
+		grand_total += total
+	
+	return {
+		"items": list(items.values()),
+		"total": grand_total
+	}
 
 @frappe.whitelist()
 def get_erp_inv_link(name):

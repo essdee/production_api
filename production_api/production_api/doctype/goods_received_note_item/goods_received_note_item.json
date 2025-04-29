@@ -31,6 +31,7 @@
   "ref_doctype",
   "comments",
   "secondary_qty_json",
+  "rework_quantity",
   "column_break_jodk",
   "row_index",
   "ref_docname",
@@ -202,12 +203,17 @@
    "fieldname": "set_combination",
    "fieldtype": "JSON",
    "label": "Set Combination"
+  },
+  {
+   "fieldname": "rework_quantity",
+   "fieldtype": "Float",
+   "label": "Rework Quantity"
   }
  ],
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2025-04-01 12:04:58.543172",
+ "modified": "2025-04-09 18:37:51.925035",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Goods Received Note Item",

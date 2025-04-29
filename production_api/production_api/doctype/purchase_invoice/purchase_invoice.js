@@ -85,8 +85,8 @@ frappe.ui.form.on('Purchase Invoice', {
 			},
 			callback: function(r){
 				if (r.message){
-					frm.set_value('items', r.message)
-
+					frm.set_value('items', r.message.items)
+					frm.set_value("grn_grand_total", r.message.total)
 				}
 			}
 		})

@@ -359,6 +359,9 @@ def get_ccr(doc_name):
 				sizes[row.size] = row.ratio
 		panels = cls_doc.calculated_parts.split(",")
 		panels.sort()
+		for idx, panel in enumerate(panels):
+			panels[idx] = panel.strip()
+
 		tup_panels = ", ".join(panels)
 		markers.setdefault(tup_panels, {})
 		for row in cls_doc.cutting_laysheet_details:
@@ -375,7 +378,8 @@ def get_ccr(doc_name):
 				bits = sizes[size] * row.effective_bits
 				markers[tup_panels][key][size]["bits"] += bits
 				markers[tup_panels][key]["total_pieces"] += bits
-
+		sizes = {}
+	
 	cp_doc_colours = {}
 	for row in cp_doc.cutting_plan_cloth_details:
 		key = (row.colour, row.cloth_type)
@@ -405,6 +409,8 @@ def get_ccr(doc_name):
 						markers[mark][key]['received_weight'] = markers[mark][key]['used_weight']
 						markers[mark][key]['balance_weight'] = 0
 						cp_doc_colours[key]['received_weight'] -= markers[mark][key]['used_weight']
+	from production_api.essdee_production.doctype.item_production_detail.item_production_detail import get_ipd_primary_values
+	sizes = get_ipd_primary_values(cp_doc.production_detail)
 	if markers:
 		return {
 			"marker_data": markers,

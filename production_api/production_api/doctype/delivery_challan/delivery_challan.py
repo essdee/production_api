@@ -71,11 +71,14 @@ class DeliveryChallan(Document):
 		reduce_sl_entries = []
 		res = get_variant_stock_details()
 		stock_settings = frappe.get_single("Stock Settings")
-		received_type = stock_settings.default_received_type
+		default_received_type = stock_settings.default_received_type
 		transit_warehouse = stock_settings.transit_warehouse
 		total_delivered = flt(0)
 		for row in self.items:
 			if res.get(row.item_variant):
+				received_type = default_received_type
+				if row.item_type:
+					received_type = row.item_type
 				quantity, rate = get_stock_balance(row.item_variant, self.from_location,received_type, with_valuation_rate=True, lot=self.lot)
 				if flt(quantity) < flt(row.delivered_quantity):
 					frappe.throw(f"Required quantity is {row.delivered_quantity} but stock quantity is {quantity} for {row.item_variant}")
@@ -111,7 +114,10 @@ class DeliveryChallan(Document):
 	
 	def onload(self):
 		if self.get('items'):
-			deliverable_item_details = fetch_item_details(self.get('items'), self.production_detail,self.lot,is_new=False)
+			if self.is_rework:
+				deliverable_item_details = fetch_rework_dc_item_details(self.get('items'), self.production_detail,self.lot)
+			else:	
+				deliverable_item_details = fetch_item_details(self.get('items'), self.production_detail,self.lot)
 			self.set_onload('deliverable_item_details', deliverable_item_details)
 	
 	def before_validate(self):
@@ -119,7 +125,11 @@ class DeliveryChallan(Document):
 			return
 		
 		if(self.get('deliverable_item_details')):
-			deliverables,stock_value = save_deliverables(self.deliverable_item_details,self.from_location, self.production_detail)
+			deliverables = stock_value = None
+			if self.is_rework:
+				deliverables,stock_value = save_rework_deliverables(self.deliverable_item_details,self.from_location, self.production_detail)
+			else:	
+				deliverables,stock_value = save_deliverables(self.deliverable_item_details,self.from_location, self.production_detail)
 			self.set('items',deliverables)
 			self.stock_value = stock_value
 			self.total_value = stock_value
@@ -148,7 +158,17 @@ class DeliveryChallan(Document):
 		sl_dict.update(args)
 		return sl_dict
 
-def save_deliverables(item_details, from_location, ipd):
+def save_rework_deliverables(item_details, from_location, ipd):
+	item_details = update_if_string_instance(item_details)
+	items_list = []
+	total_stock_value = 0
+	for received_type in item_details:
+		items, stock_value = save_deliverables(item_details[received_type], from_location, ipd, received_type=received_type)
+		items_list = items_list + items
+		total_stock_value += stock_value
+	return items_list, total_stock_value
+
+def save_deliverables(item_details, from_location, ipd, received_type=None):
 	from production_api.essdee_production.doctype.item_production_detail.item_production_detail import get_or_create_ipd_variant
 	ipd_doc = frappe.get_cached_doc("Item Production Detail", ipd)
 	item_variants = update_if_string_instance(ipd_doc.variants_json)
@@ -181,11 +201,17 @@ def save_deliverables(item_details, from_location, ipd):
 						item1['rate'] = values.get('rate')
 						item1['table_index'] = table_index
 						item1['row_index'] = row_index
+						if values.get("row_index"):
+							item1['row_index'] = values.get("row_index")
+						if values.get("table_index"):
+							item1['table_index'] = values.get("table_index")
 						item1['ref_doctype'] = values.get('ref_doctype')
 						item1['ref_docname'] = values.get('ref_docname')
 						item1['is_calculated'] = values.get('is_calculated')
 						item1['set_combination'] = values.get('set_combination', {})
 						item1['comments'] = comments
+						if received_type:
+							item1['item_type'] = received_type
 						stock = get_stock_value(variant_name, item.get('lot'), from_location)
 						item1['stock_value'] = stock
 						stock_value += stock
@@ -221,8 +247,18 @@ def save_deliverables(item_details, from_location, ipd):
 	ipd_doc.db_set("variants_json", json.dumps(item_variants), update_modified=False)		
 	return items, stock_value
 
-def fetch_item_details(items, ipd, lot, is_new=False):
+def fetch_rework_dc_item_details(items, ipd, lot):
 	items = [item.as_dict() for item in items]
+	items = update_if_string_instance(items)
+	grouped_items = {}
+	for received_type, grp_variants in groupby(items, lambda i: i['item_type']):
+		item_details = fetch_item_details(grp_variants, ipd, lot, is_rework=True)
+		grouped_items[received_type] = item_details
+	return grouped_items
+
+def fetch_item_details(items, ipd, lot, is_new=False, is_rework=False):
+	if not is_rework:
+		items = [item.as_dict() for item in items]
 	items = update_if_string_instance(items)
 	items = sorted(items, key = lambda i: i['row_index'])
 	ipd_doc = frappe.get_cached_doc("Item Production Detail", ipd)
@@ -256,7 +292,6 @@ def fetch_item_details(items, ipd, lot, is_new=False):
 				if set_combination:
 					if set_combination.get("major_part"):
 						item['item_keys']['major_part'] = set_combination.get("major_part")
-
 					if set_combination.get("major_colour"):
 						item['item_keys']['major_colour'] = set_combination.get("major_colour")		
 
@@ -267,6 +302,8 @@ def fetch_item_details(items, ipd, lot, is_new=False):
 							'ref_doctype':"Work Order Deliverables",
 							"is_calculated":variant.is_calculated,
 							'set_combination':variant.set_combination,
+							"table_index": variant.table_index,
+							"row_index": variant.row_index,
 						}
 						if is_new:
 							item['values'][attr.attribute_value]['qty'] = variant['pending_quantity']
@@ -285,6 +322,8 @@ def fetch_item_details(items, ipd, lot, is_new=False):
 				'rate': variants[0]['rate'],
 				"ref_doctype":"Work Order Deliverables",
 				"is_calculated":variants[0].is_calculated,
+				"table_index": variants[0].table_index,
+				"row_index": variants[0].row_index,
 			}
 			if is_new:
 				item['values']['default']['qty'] = variants[0]['pending_quantity']
@@ -320,8 +359,12 @@ def fetch_item_details(items, ipd, lot, is_new=False):
 			
 @frappe.whitelist()
 def get_deliverables(work_order):
+	from production_api.production_api.doctype.work_order.work_order import fetch_rework_item_details
 	doc = frappe.get_cached_doc("Work Order",work_order)
-	items = fetch_item_details(doc.deliverables, doc.production_detail, doc.lot, is_new=True)	
+	if doc.is_rework:
+		items = fetch_rework_item_details(doc.deliverables, doc.production_detail, is_dc=True)
+	else:	
+		items = fetch_item_details(doc.deliverables, doc.production_detail, doc.lot, is_new=True)	
 	return {
 		"items":items,
 		"supplier":doc.supplier,
@@ -639,6 +682,7 @@ def create_return_grn(doc_name, items, ipd):
 				"quantity": item['return_quantity'],
 				"uom": item['uom'],
 				"valuation_rate": 0.0,
+				"received_type": item['received_type'],
 				"ref_docname": item['ref_docname'],
 				"ref_doctype": item['ref_doctype'],
 				"table_index": item['table_index'],
@@ -649,6 +693,7 @@ def create_return_grn(doc_name, items, ipd):
 	new_doc.update({
 		"against": "Work Order",
 		"is_return": 1,
+		"is_rework": dc_doc.is_rework,
 		"against_id": dc_doc.work_order,
 		"posting_date": nowdate(),
 		"posting_time": now(),
@@ -686,6 +731,7 @@ def fetch_return_popup_items(items, lot):
 			'attributes': get_item_attribute_details(current_variant, current_item_attribute_details),
 			'primary_attribute': current_item_attribute_details['primary_attribute'],
 			'values': {},
+			"item_type": variants[0].get('item_type', None),
 			'default_uom': variants[0]['uom'] or current_item_attribute_details['default_uom'],
 		}
 		if item['primary_attribute']:
@@ -735,6 +781,7 @@ def get_return_popup_items(item_details, ipd):
 	item_variants = update_if_string_instance(variants_json)
 	item_details = update_if_string_instance(item_details)
 	items = []
+	default_received_type = frappe.db.get_single_value("Stock Settings", "default_received_type")
 	row_index = 0
 	for table_index, group in enumerate(item_details):
 		for item in group['items']:
@@ -757,6 +804,7 @@ def get_return_popup_items(item_details, ipd):
 						item1['ref_docname'] = values.get('ref_docname')
 						item1['is_calculated'] = values.get('is_calculated')
 						item1['set_combination'] = values.get('set_combination', {})
+						item1['received_type'] = item.get("item_type", default_received_type)
 						items.append(item1)		
 			else:
 				if item['values']['default'].get('return_quantity'):	
@@ -770,6 +818,7 @@ def get_return_popup_items(item_details, ipd):
 					item1['table_index'] = table_index
 					item1['row_index'] = row_index
 					item1['ref_doctype'] = item['values']['default'].get('ref_doctype')
+					item1['received_type'] = item.get("item_type", default_received_type)
 					item1['ref_docname'] = item['values']['default'].get('ref_docname')
 					item1['is_calculated'] = item['values']['default'].get('is_calculated')
 					item1['set_combination'] = item['values']['default'].get('set_combination', {})

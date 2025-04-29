@@ -6,12 +6,12 @@
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
+  "is_rework",
   "work_order",
   "from_location",
   "from_location_name",
   "lot",
   "item",
-  "is_rework",
   "is_internal_unit",
   "transfer_complete",
   "naming_series",
@@ -191,7 +191,6 @@
    "fetch_if_empty": 1,
    "fieldname": "is_rework",
    "fieldtype": "Check",
-   "hidden": 1,
    "label": "Is Rework"
   },
   {
@@ -325,7 +324,7 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-03-27 13:06:08.575589",
+ "modified": "2025-04-10 17:05:09.897435",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Delivery Challan",

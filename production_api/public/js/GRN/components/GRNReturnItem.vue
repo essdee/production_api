@@ -9,6 +9,7 @@
 							<th>Item</th>
 							<th>Lot</th>
 							<th v-for="attr in i.attributes" :key="attr">{{ attr }}</th>
+							<th>Received Type</th>
 							<th v-for="attr in i.primary_attribute_values" :key="attr">{{ attr }}</th>
 							<th>Comments</th>
 						</tr>
@@ -18,6 +19,9 @@
 							<td>{{ j.lot }}</td>
 							<td v-for="attr in i.attributes" :key="attr">
 								{{ j.attributes[attr] }}
+							</td>
+							<td>
+								{{j.received_type}}
 							</td>
 							<td v-for="attr in j.values" :key="attr">
 								<div v-if="attr.received">
@@ -37,6 +41,7 @@
 							<th>Item</th>
 							<th>Lot</th>
 							<th v-for="attr in i.attributes" :key="attr">{{ attr }}</th>
+							<th>Received Type</th>
 							<th>Quantity</th>
 							<th>Comments</th>
 						</tr>
@@ -47,6 +52,7 @@
 							<td v-for="attr in i.attributes" :key="attr">
 								{{ j.attributes[attr] }}
 							</td>
+							<td>{{j.received_type}}</td>
 							<td>
 								{{ j.values["default"].received}}
 								<span v-if="j.default_uom">{{ " " + j.default_uom }}</span>
@@ -67,6 +73,7 @@ import { ref, onMounted, computed, watch } from "vue";
 const root = ref(null);
 let i = 0;
 const items = ref([]);
+let is_rework = cur_frm.doc.is_rework
 
 function load_data(data) {
   	if (data) {

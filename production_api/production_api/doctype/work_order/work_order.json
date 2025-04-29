@@ -268,7 +268,8 @@
    "fieldtype": "Link",
    "label": "Parent WO",
    "mandatory_depends_on": "eval: doc.is_rework",
-   "options": "Work Order"
+   "options": "Work Order",
+   "read_only": 1
   },
   {
    "fetch_from": "lot.production_detail",
@@ -493,7 +494,7 @@
    "link_fieldname": "against_id"
   }
  ],
- "modified": "2025-03-15 15:04:08.529329",
+ "modified": "2025-04-10 13:08:22.387129",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Work Order",
