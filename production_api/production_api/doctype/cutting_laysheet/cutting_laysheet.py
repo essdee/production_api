@@ -298,80 +298,100 @@ def get_cut_sheet_data(doc_name,cutting_marker,item_details,items, max_plys:int,
 			check = False
 			if markCount != no_of_marks:
 				check = True
+				if item['effective_bits'] % 2 == 1:
+					frappe.throw(f"You cannot divide this lay by 2 (effective bits = {effective_bits})")
 
 			if no_of_marks == 0:
-				continue
-			
-			max_grouping = int(maximum_plys/effective_bits)
-			if max_grouping == 0:
-				frappe.msgprint("Max number of Plys should not be less than No of Bits")
-				return
-			total_bundles = math.ceil(no_of_marks/max_grouping)
-			avg_grouping = no_of_marks/total_bundles
-			minimum = math.floor(avg_grouping)
-			maximum = math.ceil(avg_grouping)
-			maximum_count = no_of_marks - (total_bundles * minimum)
-			minimum_count = total_bundles - maximum_count
-	
-			temp = bundle_no 
-			if first_size != last_size:
-				last_size = cm_item.size
-				calc_panels = []
-
-			for part_value in items:
-				parts = part_value.split(",")
-				start = True
-				for part in parts:
-					if part in calc_panels:
-						start = False
-						break
-					else:
-						calc_panels.append(part)	
-				if start:
-					bundle_no = temp	
-					update = True
-					for j in range(maximum_count):
+				if markCount > 0:
+					if first_size != last_size:
+						last_size = cm_item.size
+						calc_panels = []
 						bundle_no = bundle_no + 1
-						qty = maximum * effective_bits
-						last_balance = 0
-						if minimum_count == 0 and check and j == maximum_count - 1:
-							x = qty + effective_bits/2
-							update = False						
-							if x > maximum_plys:
-								last_balance = effective_bits/2
+
+					qty = markCount * effective_bits
+					for part_value in items:
+						parts = part_value.split(",")
+						start = True
+						for part in parts:
+							if part in calc_panels:
+								start = False
+								break
 							else:
-								qty = qty + effective_bits/2	
-						d = get_cut_sheet_dict(cm_item.size, item['colour'], item['shade'], part_value , qty, bundle_no, item.get('set_combination', {}))
-						cut_sheet_data.append(d)	
-
-						if last_balance > 0:
-							bundle_no = bundle_no + 1
-							d = get_cut_sheet_dict(cm_item.size, item['colour'], item['shade'], part_value , last_balance, bundle_no, item.get('set_combination', {}))
+								calc_panels.append(part)
+						if start:		
+							d = get_cut_sheet_dict(cm_item.size, item['colour'], item['shade'], part_value , qty, bundle_no, item.get('set_combination', {}))
 							cut_sheet_data.append(d)
+			else:
+				max_grouping = int(maximum_plys/effective_bits)
+				if max_grouping == 0:
+					frappe.msgprint("Max number of Plys should not be less than No of Bits")
+					return
+				total_bundles = math.ceil(no_of_marks/max_grouping)
+				avg_grouping = no_of_marks/total_bundles
+				minimum = math.floor(avg_grouping)
+				maximum = math.ceil(avg_grouping)
+				maximum_count = no_of_marks - (total_bundles * minimum)
+				minimum_count = total_bundles - maximum_count
+		
+				temp = bundle_no 
+				if first_size != last_size:
+					last_size = cm_item.size
+					calc_panels = []
 
-					for j in range(minimum_count):
-						bundle_no = bundle_no + 1
-						qty = minimum * effective_bits
-						last_balance = 0
-						if check and j == minimum_count - 1:
-							x = qty + effective_bits/2
-							update = False						
-							if x > maximum_plys:
-								last_balance = effective_bits/2
-							else:
-								qty = qty + effective_bits/2	
-
-						d = get_cut_sheet_dict(cm_item.size, item['colour'], item['shade'], part_value , qty, bundle_no, item.get('set_combination', {}))
-						cut_sheet_data.append(d)
-						if last_balance > 0:
+				for part_value in items:
+					parts = part_value.split(",")
+					start = True
+					for part in parts:
+						if part in calc_panels:
+							start = False
+							break
+						else:
+							calc_panels.append(part)	
+					if start:
+						bundle_no = temp	
+						update = True
+						for j in range(maximum_count):
 							bundle_no = bundle_no + 1
-							d = get_cut_sheet_dict(cm_item.size, item['colour'], item['shade'], part_value , last_balance, bundle_no, item.get('set_combination', {}))
-							cut_sheet_data.append(d)
+							qty = maximum * effective_bits
+							last_balance = 0
+							if minimum_count == 0 and check and j == maximum_count - 1:
+								x = qty + effective_bits/2
+								update = False						
+								if x > maximum_plys:
+									last_balance = effective_bits/2
+								else:
+									qty = qty + effective_bits/2	
+							d = get_cut_sheet_dict(cm_item.size, item['colour'], item['shade'], part_value , qty, bundle_no, item.get('set_combination', {}))
+							cut_sheet_data.append(d)	
 
-					if update and check:
-						bundle_no = bundle_no + 1
-						d = get_cut_sheet_dict(cm_item.size, item['colour'], item['shade'], part_value , effective_bits/2, bundle_no, item.get('set_combination', {}))
-						cut_sheet_data.append(d)
+							if last_balance > 0:
+								bundle_no = bundle_no + 1
+								d = get_cut_sheet_dict(cm_item.size, item['colour'], item['shade'], part_value , last_balance, bundle_no, item.get('set_combination', {}))
+								cut_sheet_data.append(d)
+
+						for j in range(minimum_count):
+							bundle_no = bundle_no + 1
+							qty = minimum * effective_bits
+							last_balance = 0
+							if check and j == minimum_count - 1:
+								x = qty + effective_bits/2
+								update = False						
+								if x > maximum_plys:
+									last_balance = effective_bits/2
+								else:
+									qty = qty + effective_bits/2	
+
+							d = get_cut_sheet_dict(cm_item.size, item['colour'], item['shade'], part_value , qty, bundle_no, item.get('set_combination', {}))
+							cut_sheet_data.append(d)
+							if last_balance > 0:
+								bundle_no = bundle_no + 1
+								d = get_cut_sheet_dict(cm_item.size, item['colour'], item['shade'], part_value , last_balance, bundle_no, item.get('set_combination', {}))
+								cut_sheet_data.append(d)
+
+						if update and check:
+							bundle_no = bundle_no + 1
+							d = get_cut_sheet_dict(cm_item.size, item['colour'], item['shade'], part_value , effective_bits/2, bundle_no, item.get('set_combination', {}))
+							cut_sheet_data.append(d)
 			temp = bundle_no	
 
 	from operator import itemgetter
