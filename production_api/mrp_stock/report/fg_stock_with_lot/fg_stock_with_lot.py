@@ -70,22 +70,6 @@ def get_prev_fg_stock_entries(filters, stock):
 		JOIN `tabSupplier` t3 ON t3.name=t1.warehouse 
 		WHERE t1.docstatus=1 AND t0.received_type = %(received_type)s AND t1.warehouse = %(warehouse)s
 		AND t1.posting_date <= %(filter_date)s
-		AND t1.lot not in ('Not Applicable', '', %(lot)s)
-		GROUP BY t2.item, t1.name
-		ORDER BY t1.posting_date DESC, t1.posting_time DESC
-	"""
-
-	other_fg_entries_query = """
-		SELECT 
-			t0.item_variant, SUM(t0.qty) as qty, t1.warehouse, t3.supplier_name as warehouse_name, t2.item
-		FROM
-		`tabFG Stock Entry Detail` t0 JOIN
-		 `tabFG Stock Entry` t1 ON t0.parent=t1.name
-		JOIN `tabItem Variant` t2 ON t0.item_variant=t2.name
-		JOIN `tabSupplier` t3 ON t3.name=t1.warehouse 
-		WHERE t1.docstatus=1 AND t0.received_type = %(received_type)s AND t1.warehouse = %(warehouse)s
-		AND t1.posting_date <= %(filter_date)s
-		AND t1.lot in ('Not Applicable', '', %(lot)s)
 		GROUP BY t2.item, t1.name
 		ORDER BY t1.posting_date DESC, t1.posting_time DESC
 	"""
@@ -101,15 +85,12 @@ def get_prev_fg_stock_entries(filters, stock):
 
 	item_stock = construct_item_wise_stock_detail(stock)
 
-	other_resp = frappe.db.sql(other_fg_entries_query, {
-		"received_type" : received_type,
-		"warehouse" : filters['warehouse'],
-		"filter_date" : filters['filter_date'],
-		"lot" : default_fg_lot
-	}, as_dict=True)
-
-	for i in resp:
-
+	for index,i in enumerate(resp):
+		if not i['lot'] or i['lot'] in ['Not Applicable', default_fg_lot]:
+			if index != len(resp)-1:
+				i['lot'] = resp[index+1]['lot']
+			elif index !=0 :
+				i['lot'] = resp[index-1]['lot']
 		if i['item'] not in item_stock or item_stock[i['item']] <= 0:
 			continue
 		report.append({
@@ -124,16 +105,6 @@ def get_prev_fg_stock_entries(filters, stock):
 	
 	old_data = get_old_sms_data(item_stock, filters['warehouse'], filter_date=filters['filter_date'])
 
-	if other_resp:
-		for i in other_resp:
-			report.append({
-				"item" : i['item'],
-				"qty" : i['qty'],
-				"lot" : default_fg_lot,
-				"warehouse" : i['warehouse'],
-				"warehouse_name" : i['warehouse_name']
-			})
-	
 	report = report+old_data
 
 	return duplicate_removed_data(report)
