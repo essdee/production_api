@@ -89,10 +89,14 @@ def get_prev_fg_stock_entries(filters, stock):
 		if not i['lot'] or i['lot'] in ['Not Applicable', default_fg_lot]:
 			if index != len(resp)-1:
 				i['lot'] = resp[index+1]['lot']
-			elif index !=0 :
-				i['lot'] = resp[index-1]['lot']
+			else :
+				i['lot'] = default_fg_lot
 		if i['item'] not in item_stock or item_stock[i['item']] <= 0:
 			continue
+	
+		item_stock[i['item']] -= i['qty']
+		if item_stock[i['item']] <= 0:
+			i['qty'] += item_stock[i['item']]
 		report.append({
 			"item" : i['item'],
 			"qty" : i['qty'],
@@ -101,7 +105,6 @@ def get_prev_fg_stock_entries(filters, stock):
 			"warehouse_name" : i['warehouse_name']
 		})
 
-		item_stock[i['item']] -= i['qty']
 	
 	old_data = get_old_sms_data(item_stock, filters['warehouse'], filter_date=filters['filter_date'])
 
@@ -153,6 +156,10 @@ def get_old_sms_data(stock_detail, warehouse, filter_date):
 			i['qty'] = int(i['qty'])
 			if i['item'] not in stock_detail or stock_detail[i['item']] <=0:
 				continue
+			stock_detail[i['item']] -= i['qty']
+			if stock_detail[i['item']] <= 0:
+				i['qty'] += stock_detail[i['item']]
+	
 			report_data.append({
 				"item" : i['item'],
 				"qty" : i['qty'],
@@ -160,7 +167,6 @@ def get_old_sms_data(stock_detail, warehouse, filter_date):
 				"warehouse" : warehouse_map[1],
 				"warehouse_name" : warehouse_map[2]
 			})
-			stock_detail[i['item']] -= i['qty']
 	
 	return report_data
 
