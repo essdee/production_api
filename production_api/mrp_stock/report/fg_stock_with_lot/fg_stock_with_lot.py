@@ -58,6 +58,7 @@ def getData(filters=None):
 def get_prev_fg_stock_entries(filters, stock):
 
 	received_type =frappe.db.get_single_value("Stock Settings", "default_received_type")
+	default_fg_lot = frappe.db.get_single_value("Stock Settings", 'default_fg_lot')
 
 	query = """
 		SELECT 
@@ -68,20 +69,47 @@ def get_prev_fg_stock_entries(filters, stock):
 		JOIN `tabItem Variant` t2 ON t0.item_variant=t2.name
 		JOIN `tabSupplier` t3 ON t3.name=t1.warehouse 
 		WHERE t1.docstatus=1 AND t0.received_type = %(received_type)s AND t1.warehouse = %(warehouse)s
+		AND t1.posting_date <= %(filter_date)s
+		AND t1.lot not in ('Not Applicable', '', %(lot)s)
 		GROUP BY t2.item, t1.lot
-		ORDER BY t1.posting_date DESC
+		ORDER BY t1.posting_date, t1.posting_time DESC
+	"""
+
+	other_fg_entries_query = """
+		SELECT 
+			t0.item_variant, SUM(t0.qty) as qty, t1.warehouse, t3.supplier_name as warehouse_name, t2.item
+		FROM
+		`tabFG Stock Entry Detail` t0 JOIN
+		 `tabFG Stock Entry` t1 ON t0.parent=t1.name
+		JOIN `tabItem Variant` t2 ON t0.item_variant=t2.name
+		JOIN `tabSupplier` t3 ON t3.name=t1.warehouse 
+		WHERE t1.docstatus=1 AND t0.received_type = %(received_type)s AND t1.warehouse = %(warehouse)s
+		AND t1.posting_date <= %(filter_date)s
+		AND t1.lot in ('Not Applicable', '', %(lot)s)
+		GROUP BY t2.item
+		ORDER BY t1.posting_date, t1.posting_time DESC
 	"""
 
 	resp = frappe.db.sql(query, {
 		"received_type" : received_type,
-		"warehouse" : filters['warehouse']
+		"warehouse" : filters['warehouse'],
+		"filter_date" : filters['filter_date'],
+		"lot" : default_fg_lot
 	}, as_dict=True)
 
 	report = []
 
 	item_stock = construct_item_wise_stock_detail(stock)
 
+	other_resp = frappe.db.sql(other_fg_entries_query, {
+		"received_type" : received_type,
+		"warehouse" : filters['warehouse'],
+		"filter_date" : filters['filter_date'],
+		"lot" : default_fg_lot
+	}, as_dict=True)
+
 	for i in resp:
+
 		if i['item'] not in item_stock or item_stock[i['item']] <= 0:
 			continue
 		report.append({
@@ -95,8 +123,31 @@ def get_prev_fg_stock_entries(filters, stock):
 		item_stock[i['item']] -= i['qty']
 	
 	old_data = get_old_sms_data(item_stock, filters['warehouse'], filter_date=filters['filter_date'])
+
+	if other_resp:
+		for i in other_resp:
+			report.append({
+				"item" : i['item'],
+				"qty" : i['qty'],
+				"lot" : default_fg_lot,
+				"warehouse" : i['warehouse'],
+				"warehouse_name" : i['warehouse_name']
+			})
 	
-	return report+old_data
+	report = report+old_data
+
+	return duplicate_removed_data(report)
+
+def duplicate_removed_data(data):
+	result = {}
+	for i in data:
+		key = (i['item'], i['lot'])
+		if key not in result:
+			result[key] = i
+		else :
+			result[key]['qty'] += i['qty']
+
+	return [v for k,v in result.items()]
 
 def get_old_sms_data(stock_detail, warehouse, filter_date):
 
@@ -107,6 +158,9 @@ def get_old_sms_data(stock_detail, warehouse, filter_date):
 			item_list.add(i)
 	
 	item_list = list(item_list)
+
+	items_filter = ",".join([ f"'{sanitize_sql_input(i)}'" for i in item_list])
+	items_filter = f" AND t3.name in ({items_filter}) "
 
 	if not item_list:
 		return []
@@ -120,7 +174,7 @@ def get_old_sms_data(stock_detail, warehouse, filter_date):
 			from stockentrydetails t1 
 			join stockentryitems t2 ON t1.idstockentry = t2.idstockentry
 			join iteminfo t3 ON t3.iditem = t2.iditem
-			WHERE 1=1 AND t1.idlocation = {warehouse_map[0]} AND t1.creationdate <= '{filter_date}'
+			WHERE 1=1  {items_filter}  AND t1.idlocation = {warehouse_map[0]} AND t1.creationdate <= '{filter_date}'
 			group by t3.name, t1.lotnumber order by t1.creationdate desc;
 		""")
 		data = cursor.fetchall()
@@ -177,7 +231,7 @@ def get_stock(filters):
 		        warehouse,
 		        lot,
 		        ROW_NUMBER() OVER (
-		            PARTITION BY item, warehouse, lot 
+		            PARTITION BY item
 		            ORDER BY posting_date DESC, posting_time DESC, creation DESC
 		        ) AS rn
 		    FROM `tabStock Ledger Entry`
