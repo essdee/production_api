@@ -72,7 +72,7 @@ def get_prev_fg_stock_entries(filters, stock):
 		AND t1.posting_date <= %(filter_date)s
 		AND t1.lot not in ('Not Applicable', '', %(lot)s)
 		GROUP BY t2.item, t1.name
-		ORDER BY t1.posting_date, t1.posting_time DESC
+		ORDER BY t1.posting_date DESC, t1.posting_time DESC
 	"""
 
 	other_fg_entries_query = """
