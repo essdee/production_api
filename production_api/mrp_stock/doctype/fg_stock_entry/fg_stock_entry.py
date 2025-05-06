@@ -175,6 +175,7 @@ def get_inward_stock(item, warehouselist):
 		`tabFG Stock Entry`.name as stock_entry
 		FROM `tabFG Stock Entry Detail` JOIN  `tabFG Stock Entry` ON `tabFG Stock Entry Detail`.parent = `tabFG Stock Entry`.name
 		JOIN `tabItem Variant` ON `tabFG Stock Entry Detail`.item_variant=`tabItem Variant`.name  WHERE `tabItem Variant`.item = '{item}' 
+		AND `tabFG Stock Entry`.docstatus = 1
 		{ f'AND `tabFG Stock Entry`.warehouse IN  {warehouseFilter}' if len(warehouselist) > 0 else "" }
 	"""
 
