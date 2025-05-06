@@ -71,7 +71,7 @@ def get_prev_fg_stock_entries(filters, stock):
 		WHERE t1.docstatus=1 AND t0.received_type = %(received_type)s AND t1.warehouse = %(warehouse)s
 		AND t1.posting_date <= %(filter_date)s
 		AND t1.lot not in ('Not Applicable', '', %(lot)s)
-		GROUP BY t2.item, t1.lot
+		GROUP BY t2.item, t1.name
 		ORDER BY t1.posting_date, t1.posting_time DESC
 	"""
 
@@ -86,7 +86,7 @@ def get_prev_fg_stock_entries(filters, stock):
 		WHERE t1.docstatus=1 AND t0.received_type = %(received_type)s AND t1.warehouse = %(warehouse)s
 		AND t1.posting_date <= %(filter_date)s
 		AND t1.lot in ('Not Applicable', '', %(lot)s)
-		GROUP BY t2.item
+		GROUP BY t2.item, t1.name
 		ORDER BY t1.posting_date DESC, t1.posting_time DESC
 	"""
 
@@ -170,12 +170,12 @@ def get_old_sms_data(stock_detail, warehouse, filter_date):
 	with connection.cursor(pymysql.cursors.DictCursor) as cursor:
 		cursor.execute(f"""
 			select 
-			    t3.name as item, sum(t2.size1 + t2.size2 + t2.size3 + t2.size4 + t2.size5 + t2.size6 + t2.size7 + t2.size8 + t2.size9 + t2.size10) as qty, t1.lotnumber as lot, t1.creationdate, t1.idlocation
+			    t3.name as item, t2.size1 + t2.size2 + t2.size3 + t2.size4 + t2.size5 + t2.size6 + t2.size7 + t2.size8 + t2.size9 + t2.size10 as qty, t1.lotnumber as lot, t1.creationdate, t1.idlocation
 			from stockentrydetails t1 
 			join stockentryitems t2 ON t1.idstockentry = t2.idstockentry
 			join iteminfo t3 ON t3.iditem = t2.iditem
 			WHERE 1=1  {items_filter}  AND t1.idlocation = {warehouse_map[0]} AND t1.creationdate <= '{filter_date}'
-			group by t3.name, t1.lotnumber order by t1.creationdate desc;
+			order by t1.creationdate desc;
 		""")
 		data = cursor.fetchall()
 		for i in data:
