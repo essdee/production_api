@@ -86,11 +86,7 @@ def get_prev_fg_stock_entries(filters, stock):
 	item_stock = construct_item_wise_stock_detail(stock)
 
 	for index,i in enumerate(resp):
-		if not i['lot'] or i['lot'] in ['Not Applicable', default_fg_lot]:
-			if index != len(resp)-1:
-				i['lot'] = resp[index+1]['lot']
-			else :
-				i['lot'] = default_fg_lot
+		i['lot'] = get_next_non_fg_lot(default_fg_lot, resp, index)
 		if i['item'] not in item_stock or item_stock[i['item']] <= 0:
 			continue
 	
@@ -111,6 +107,18 @@ def get_prev_fg_stock_entries(filters, stock):
 	report = report+old_data
 
 	return duplicate_removed_data(report)
+
+def get_next_non_fg_lot(fg_lot, list_items, curr_index):
+	if curr_index >= len(list_items)-1:
+		return list_items[curr_index]['lot']
+	
+	if not list_items[curr_index]['lot'] or list_items[curr_index]['lot'] in ['Not Applicable', fg_lot]:
+		for i in range(curr_index +1, len(list_items)):
+			if list_items[i]['lot'] and list_items[i]['lot'] not in ['Not Applicable', fg_lot]:
+				return list_items[i]['lot']
+		return fg_lot
+	else :
+		return list_items[curr_index]['lot']
 
 def duplicate_removed_data(data):
 	result = {}
