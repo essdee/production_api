@@ -200,6 +200,11 @@ def get_cloth1(cutting_plan):
 	for item in cutting_plan_doc.items:
 		variant = frappe.get_doc("Item Variant", item.item_variant)
 		attr_details = item_attribute_details(variant, item_attributes)
+		if item.set_combination:
+			set_combination = update_if_string_instance(item.set_combination)
+			if set_colour:= set_combination.get("major_colour"):
+				attr_details['set_colour'] = set_colour
+
 		c = calculate_cloth(ipd_doc, attr_details, item.quantity, cloth_combination, stitching_combination)
 		for c1 in c:
 			key = (c1["cloth_type"], c1["colour"], c1["dia"])
