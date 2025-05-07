@@ -667,7 +667,10 @@ def get_accessory_colour(ipd_doc,variant_attrs,accessory):
 		colour = variant_attrs[ipd_doc.packing_attribute]
 		stiching_accessory_json = json.loads(ipd_doc.stiching_accessory_json)
 		for row in stiching_accessory_json['items']:
-			if row['accessory'] == accessory and row['major_colour'] == colour and row[ipd_doc.set_item_attribute] == part:
+			check = True
+			if variant_attrs.get('set_colour') and row.get('major_attr_value'):
+				check = variant_attrs.get('set_colour') == row['major_attr_value']
+			if row['accessory'] == accessory and row['major_colour'] == colour and row[ipd_doc.set_item_attribute] == part and check:
 				return row['accessory_colour'],row['cloth_type']
 	else:
 		colour = variant_attrs[ipd_doc.packing_attribute]
