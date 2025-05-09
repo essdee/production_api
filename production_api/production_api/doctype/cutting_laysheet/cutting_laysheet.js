@@ -24,22 +24,24 @@ frappe.ui.form.on("Cutting LaySheet", {
         })
     },
     refresh(frm) {
-        frm.add_custom_button("Update",()=> {
-            frappe.call({
-                method: "production_api.production_api.doctype.cutting_laysheet.cutting_laysheet.update_cutting_plan",
-                args : {
-                    cutting_laysheet: frm.doc.name,
-                }
+        if (frappe.user.has_role('System Manager')){
+            frm.add_custom_button("Update",()=> {
+                frappe.call({
+                    method: "production_api.production_api.doctype.cutting_laysheet.cutting_laysheet.update_cutting_plan",
+                    args : {
+                        cutting_laysheet: frm.doc.name,
+                    }
+                })
             })
-        })
-        frm.add_custom_button("Make GRN Entry",()=> {
-            frappe.call({
-                method: "production_api.production_api.doctype.cutting_laysheet.cutting_laysheet.create_grn_entry",
-                args : {
-                    cutting_laysheet: frm.doc.name,
-                }
+            frm.add_custom_button("Make GRN Entry",()=> {
+                frappe.call({
+                    method: "production_api.production_api.doctype.cutting_laysheet.cutting_laysheet.create_grn_entry",
+                    args : {
+                        doc_name: frm.doc.name,
+                    }
+                })
             })
-        })
+        }
         removeDefaultPrintEvent();
         $('[data-original-title=Print]').hide();
         $("li:has(a:has(span[data-label='Print']))").remove();

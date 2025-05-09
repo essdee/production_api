@@ -1000,7 +1000,7 @@ def get_input_fields(cutting_marker, colour, select_attributes):
 			if marker_parts[0] == major_attr_value:
 				inputs.append({"fieldname":"major_part", "fieldtype":"Data", "label":"Major Part", "default": marker_parts[0]})		
 				inputs.append({"fieldname":"major_panel", "fieldtype":"Data", "label":"Major Panel", "default": default[marker_parts[0]]})
-				if is_same or default[marker_parts[0]] in panels:
+				if is_same_packing_attr:
 					inputs.append({"fieldname":"major_colour", "fieldtype":"Data", "label":"Major Colour", "default":colour})
 				else:
 					inputs.append({"fieldname":"major_colour", "fieldtype":"Select", "label":"Major Colour", "options":select_vals})
