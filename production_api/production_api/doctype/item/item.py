@@ -550,6 +550,11 @@ def rename_item(docname, name, brand = None):
 	return doc.name
 
 def sync_updated_item_variant(doc, event):
+	ivs = frappe.get_all("Item Variant", {
+		"item" : doc.name
+	}, pluck = 'name')
+	for i in ivs:
+		frappe.db.set_value("Item Variant", i, 'is_ineligible_for_itc', doc.get('is_ineligible_for_itc'))
 	from spine.spine_adapter.doctype.spine_producer_config.spine_producer_config import trigger_event
 	if event == "on_update":
 		trigger_event("Item Variant", event, filters={"item": doc.name}, enqueue_after_commit=True)

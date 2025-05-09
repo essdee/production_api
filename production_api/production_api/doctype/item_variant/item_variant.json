@@ -6,7 +6,8 @@
  "engine": "InnoDB",
  "field_order": [
   "item",
-  "attributes"
+  "attributes",
+  "is_ineligible_for_itc"
  ],
  "fields": [
   {
@@ -20,11 +21,19 @@
    "fieldtype": "Table",
    "label": "Attributes",
    "options": "Item Variant Attribute"
+  },
+  {
+   "default": "0",
+   "fieldname": "is_ineligible_for_itc",
+   "fieldtype": "Check",
+   "label": "Is Ineligible For Itc",
+   "read_only": 1
   }
  ],
+ "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-02-01 18:07:01.287000",
+ "modified": "2025-05-09 17:38:24.667430",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Item Variant",
@@ -65,6 +74,7 @@
    "write": 1
   }
  ],
+ "row_format": "Dynamic",
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": [],
