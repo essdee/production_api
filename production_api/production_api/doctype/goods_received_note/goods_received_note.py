@@ -1942,6 +1942,8 @@ def calculate_cutting_piece(grn_doc, received_types, panel_list):
 	for item in grn_doc.items:
 		variant = frappe.get_cached_doc("Item Variant", item.item_variant)
 		attrs = get_variant_attributes(variant)
+		if not attrs.get(ipd_doc.stiching_attribute):
+			continue
 		set_combination = update_if_string_instance(item.set_combination)
 		for i in incomplete_items['items']:
 			con1 = True

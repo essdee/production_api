@@ -1061,9 +1061,14 @@ def revert_labels(doc_name):
 @frappe.whitelist()
 def create_grn_entry(doc_name):
 	cls_doc = frappe.get_doc("Cutting LaySheet", doc_name)
-	wo = frappe.get_value("Cutting Plan", cls_doc.cutting_plan, "work_order")
+	wo, ipd = frappe.get_value("Cutting Plan", cls_doc.cutting_plan, ["work_order", "production_detail"])
 	if not wo:
 		return
+	ipd_doc = frappe.get_cached_doc("Item Production Detail", ipd)
+	panel_qty_dict = {}
+	for item in ipd_doc.stiching_item_details:
+		panel_qty_dict[item.stiching_attribute_value] = item.quantity
+
 	cls_panels = {}
 	for row in cls_doc.cutting_laysheet_bundles:
 		combination = update_if_string_instance(row.set_combination)
@@ -1077,11 +1082,12 @@ def create_grn_entry(doc_name):
 			part = part.strip()
 			set_comb_tuple = tuple(sorted(set_combination.items()))
 			key = (row.size, row.colour, part, set_comb_tuple)
+			qty = row.quantity * panel_qty_dict[part]
 			if key in cls_panels:
-				cls_panels[key]["qty"] += row.quantity
+				cls_panels[key]["qty"] += qty
 			else:
 				cls_panels[key] = {
-					"qty":row.quantity,
+					"qty":qty,
 					"set_combination": set_combination,
 				}
 	item_name, ipd = frappe.get_value("Lot", cls_doc.lot, ["item","production_detail"])
