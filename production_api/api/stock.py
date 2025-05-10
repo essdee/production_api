@@ -3,7 +3,6 @@ from production_api.mrp_stock.doctype.bin.bin import get_stock_balance_bin
 from production_api.mrp_stock.doctype.fg_stock_entry.fg_stock_entry import create_FG_ste,get_stock_entry_detail, fg_stock_entry_cancel
 from six import string_types
 import math
-
 @frappe.whitelist()
 def get_stock(item, warehouse, remove_zero_balance_item=1):
     received_type =frappe.db.get_single_value("Stock Settings", "default_received_type")

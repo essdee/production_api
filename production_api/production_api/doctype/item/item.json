@@ -29,7 +29,9 @@
   "dependent_attribute_details_html",
   "additional_parameters",
   "price_section",
-  "price_html"
+  "price_html",
+  "tax_section",
+  "is_ineligible_for_itc"
  ],
  "fields": [
   {
@@ -199,11 +201,22 @@
    "fieldtype": "Check",
    "label": "Is Sales Item",
    "permlevel": 1
+  },
+  {
+   "fieldname": "tax_section",
+   "fieldtype": "Section Break",
+   "label": "Tax"
+  },
+  {
+   "default": "0",
+   "fieldname": "is_ineligible_for_itc",
+   "fieldtype": "Check",
+   "label": "Is Ineligible for Input Tax Credit"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-04-08 10:42:25.921303",
+ "modified": "2025-05-09 12:59:15.312123",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Item",
@@ -315,6 +328,7 @@
    "write": 1
   }
  ],
+ "row_format": "Dynamic",
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": [],
