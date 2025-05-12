@@ -975,27 +975,11 @@ def get_input_fields(cutting_marker, colour, select_attributes):
 		for panel in panels:
 			marker_parts.add(stiching_details[panel])
 		marker_parts = list(marker_parts)	
-		part_colours = {}
-		index = -1
-		last_colour = None
-		is_same = True
-		for row in ipd_doc.set_item_combination_details:
-			if row.index != index:
-				index = row.index
-				last_colour = row.attribute_value
-			
-			if last_colour != row.attribute_value:
-				is_same = False
-			part_colours.setdefault(row.set_item_attribute_value, set())
-			part_colours[row.set_item_attribute_value].add(row.attribute_value)
 
 		if len(marker_parts) > 1:
 			inputs.append({"fieldname":"major_part", "fieldtype":"Data", "label":"Major Part", "default": major_attr_value})
 			inputs.append({"fieldname":"major_panel", "fieldtype":"Data", "label":"Major Panel", "default": default[major_attr_value]})
-			if is_same:
-				inputs.append({"fieldname":"major_colour", "fieldtype":"Data", "label":"Major Colour", "default":colour})
-			else:
-				inputs.append({"fieldname":"major_colour", "fieldtype":"Select", "label":"Major Colour", "options":select_vals})
+			inputs.append({"fieldname":"major_colour", "fieldtype":"Select", "label":"Major Colour", "options":select_vals})
 		else:
 			if marker_parts[0] == major_attr_value:
 				inputs.append({"fieldname":"major_part", "fieldtype":"Data", "label":"Major Part", "default": marker_parts[0]})		
@@ -1007,8 +991,8 @@ def get_input_fields(cutting_marker, colour, select_attributes):
 			else:
 				inputs.append({"fieldname":"major_part", "fieldtype":"Data", "label":"Major Part", "default": major_attr_value})
 				inputs.append({"fieldname":"major_panel", "fieldtype":"Data", "label":"Major Panel", "default": default[major_attr_value]})
-				if is_same:
-					inputs.append({"fieldname":"major_colour", "fieldtype":"Data", "label":"Major Colour", "default":colour})
+				if is_same_packing_attr:
+					inputs.append({"fieldname":"major_colour", "fieldtype":"Data", "label":"Major Colour", "options":select_vals})
 					inputs.append({"fieldname":"set_part", "fieldtype":"Data", "label":"Set Part", "default": marker_parts[0]})
 					inputs.append({"fieldname":"set_panel", "fieldtype":"Data", "label":"Set Panel", "default": default[marker_parts[0]]})
 					inputs.append({"fieldname":"set_colour", "fieldtype":"Data", "label":"Set Colour", "default":colour})
