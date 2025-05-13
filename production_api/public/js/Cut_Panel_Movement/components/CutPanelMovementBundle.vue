@@ -19,7 +19,16 @@
                         <td class='table-data' style="width:10%;"><strong>Shade</strong></td>
                         <td class='table-data' style="width:10%;"><strong>Lay No</strong></td>
                         <td class='table-data' style="width:10%;"><strong>Bundle No</strong></td>
-                        <td class='table-data' v-for="panel in (items.panels[items.data[colour]['part']] || [])" :key="panel"><strong>{{ panel }}</strong></td>
+                        <td class='table-data' v-for="panel in (items.panels[items.data[colour]['part']] || [])" :key="panel">
+                            <div style="display:flex;justify-content:center;">
+                                <div>
+                                    <strong>{{ panel }}</strong>
+                                </div>
+                                <div style="padding: 2px 0 0 5px;">
+                                    <input type='checkbox' @change="update_panel_column(colour, panel, $event)">
+                                </div>
+                            </div>
+                        </td>
                         <td v-if="items.panels[items.data[colour]['part']].length > 1" class='table-data' style="width:10%;"><strong>Total</strong></td>
                     </tr>
                     <tr v-for="(row, index) in items.data[colour]['data']" :key="index">
@@ -92,8 +101,17 @@
                         <td class='table-data' style="width:10%;"><strong>Shade</strong></td>
                         <td class='table-data' style="width:10%;"><strong>Lay No</strong></td>
                         <td class='table-data' style="width:10%;"><strong>Bundle No</strong></td>
-                        <td class='table-data' v-for="panel in (items.panels || [])" :key="panel"><strong>{{ panel }}</strong></td>
-                        <td  v-if="items.panels.length > 1" class='table-data' style="width:10%;"><strong>Total</strong></td>
+                        <td class='table-data' v-for="panel in (items.panels || [])" :key="panel">
+                            <div style="display:flex;justify-content:center;">
+                                <div>
+                                    <strong>{{ panel }}</strong>
+                                </div>
+                                <div style="padding: 2px 0 0 5px;">
+                                    <input type='checkbox' @change='update_panel_column(colour, panel, $event)'>
+                                </div>
+                            </div>
+                        </td>
+                        <td v-if="items.panels.length > 1" class='table-data' style="width:10%;"><strong>Total</strong></td>
                     </tr>
                     <tr v-for="(row, index) in items.data[colour]['data']" :key="index">
                         <td class='table-data' style="width:10%;">
@@ -166,7 +184,7 @@
                     <td>
                         <div v-if="docstatus == 0">
                             Accessory Used: {{ data.weight }} Kg's
-                            <input type="number" step="0.001" class="form-control" v-model="data.moved_weight" @blur="update_doc()"/>
+                            <input type="number" step="0.001" class="form-control" v-model="data.moved_weight" @blur="make_dirty()"/>
                         </div>
                         <div v-else>
                             Accessory Moved: {{data.moved_weight}} Kg's
@@ -190,6 +208,15 @@ function load_data(data) {
     items.value = data;
     lot = cur_frm.doc.lot;
     item = cur_frm.doc.item;
+}
+
+function update_panel_column(colour, panel, event){
+    let val = event.target.checked
+    for(let i = 0; i < items.value['data'][colour]['data'].length; i++){
+        let d = items.value['data'][colour]['data'][i]
+        d[panel+"_moved"] = val
+    }
+    make_dirty()
 }
 
 function update_row(item, colour, index, bundle_moved = 0){
@@ -241,12 +268,12 @@ function update_row(item, colour, index, bundle_moved = 0){
             }
         }
     }
-    update_doc()
+    make_dirty()
     return return_val
 }
 
 function update_panel(item, panel){
-    update_doc()
+    make_dirty()
     if(item.panel == 1 || item.panel == true){
         return true
     }
@@ -260,7 +287,7 @@ function update_table(colour, val){
     }
 }
 
-function update_doc(){
+function make_dirty(){
     if(!cur_frm.is_dirty()){
         cur_frm.dirty()
     }

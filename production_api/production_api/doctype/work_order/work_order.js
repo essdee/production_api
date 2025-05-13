@@ -35,6 +35,7 @@ frappe.ui.form.on("Work Order", {
 		})
 	},
 	async refresh(frm) {
+		$(".layout-side-section").css("display", "None");
 		if(frm.doc.docstatus == 1 && frm.doc.is_rework){
 			frappe.realtime.on("get_receivables_data", ()=> {
 				let receivables = frm.receivable_items.get_receivables_data();

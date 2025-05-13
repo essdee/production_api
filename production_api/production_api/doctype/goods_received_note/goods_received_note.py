@@ -250,7 +250,7 @@ class GoodsReceivedNote(Document):
 	def update_work_order_receivables(self):
 		if self.docstatus == 0:
 			return
-		wo = frappe.get_cached_doc(self.against, self.against_id)
+		wo = frappe.get_doc(self.against, self.against_id)
 		for item in self.items:
 			for i in wo.receivables:
 				if i.name == item.ref_docname:
@@ -455,7 +455,7 @@ class GoodsReceivedNote(Document):
 				make_sl_entries(add_stock_list)
 			else:	
 				logger.debug(f"{self.name} On Cancel {self.against} {datetime.now()}")
-				wo_doc = frappe.get_cached_doc(self.against, self.against_id)
+				wo_doc = frappe.get_doc(self.against, self.against_id)
 				items = update_if_string_instance(self.items_json)
 				for item in items:
 					for receivable in wo_doc.receivables:
@@ -1794,7 +1794,7 @@ def calculate_pieces(doc_name):
 				else:
 					return
 
-	wo_doc = frappe.get_cached_doc("Work Order", grn_doc.against_id)
+	wo_doc = frappe.get_doc("Work Order", grn_doc.against_id)
 	if not wo_doc.first_grn_date:
 		wo_doc.first_grn_date = grn_doc.posting_date
 		wo_doc.last_grn_date = grn_doc.posting_date
