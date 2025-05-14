@@ -12,7 +12,7 @@
                     <th>Shade</th>
                     <th>Weight</th>
                     <th>No of Rolls</th>
-                    <th v-if="status != 'Label Printed'">Edit</th>
+                    <th v-if="status != 'Label Printed' && status != 'Cancelled'">Edit</th>
                 </tr>
                 <tr v-for="(item,idx) in items" :key='idx'>
                     <td>{{idx + 1}}</td>
@@ -23,7 +23,7 @@
                     <td>{{item.shade}}</td>
                     <td>{{item.weight}}</td>
                     <td>{{item.no_of_rolls}}</td>
-                    <td v-if="status != 'Label Printed'">
+                    <td v-if="status != 'Label Printed' && status != 'Cancelled'">
                         <div class="pull-right cursor-pointer" @click="add_cloth_item(idx)"
                             v-html="frappe.utils.icon('edit', 'md', 'mr-1')"></div>
                         <div class="pull-right cursor-pointer" @click="delete_item(idx)"
@@ -32,7 +32,7 @@
                 </tr>
             </table>
         </div>
-        <div class="row pt-3" v-if="status != 'Label Printed' && show_button1 && docstatus != null && had_accessory">
+        <div class="row pt-3" v-if="status != 'Label Printed' && status != 'Cancelled' && show_button1 && docstatus != null && had_accessory">
             <button class="btn btn-success pull-left" @click="add_cloth_item(null)">Add Accessory</button>
         </div>
         <div class="html-container col mt-1">

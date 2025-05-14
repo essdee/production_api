@@ -26,6 +26,9 @@ class CuttingLaySheet(Document):
 			self.set_onload("marker_details", items)
 
 	def before_validate(self):
+		if self.status == "Cancelled":
+			frappe.throw("Can't update the Cancelled Laysheet")
+
 		if self.get('item_details'):
 			items = save_item_details(self.item_details, self.cutting_plan, self.calculated_parts)
 			self.set("cutting_laysheet_details", items)
@@ -976,47 +979,50 @@ def get_input_fields(cutting_marker, colour, select_attributes):
 			marker_parts.add(stiching_details[panel])
 		marker_parts = list(marker_parts)	
 		part_colours = {}
+		part_set_colours = {}
 		index = -1
 		last_colour = None
-		is_same = True
 		for row in ipd_doc.set_item_combination_details:
 			if row.index != index:
+				part_colours[row.attribute_value] = {}
 				index = row.index
 				last_colour = row.attribute_value
-			
-			if last_colour != row.attribute_value:
-				is_same = False
-			part_colours.setdefault(row.set_item_attribute_value, set())
-			part_colours[row.set_item_attribute_value].add(row.attribute_value)
+			part_colours[last_colour][row.set_item_attribute_value] = row.attribute_value 		
+			part_set_colours.setdefault(row.set_item_attribute_value, set())
+			part_set_colours[row.set_item_attribute_value].add(row.attribute_value)
 
 		if len(marker_parts) > 1:
 			inputs.append({"fieldname":"major_part", "fieldtype":"Data", "label":"Major Part", "default": major_attr_value})
 			inputs.append({"fieldname":"major_panel", "fieldtype":"Data", "label":"Major Panel", "default": default[major_attr_value]})
-			if is_same:
-				inputs.append({"fieldname":"major_colour", "fieldtype":"Data", "label":"Major Colour", "default":colour})
-			else:
-				inputs.append({"fieldname":"major_colour", "fieldtype":"Select", "label":"Major Colour", "options":select_vals})
+			inputs.append({"fieldname":"major_colour", "fieldtype":"Select", "label":"Major Colour", "options":select_vals})
 		else:
 			if marker_parts[0] == major_attr_value:
-				inputs.append({"fieldname":"major_part", "fieldtype":"Data", "label":"Major Part", "default": marker_parts[0]})		
+				inputs.append({"fieldname":"major_part", "fieldtype":"Data", "label":"Major Part", "default": major_attr_value})		
 				inputs.append({"fieldname":"major_panel", "fieldtype":"Data", "label":"Major Panel", "default": default[marker_parts[0]]})
-				if is_same or default[marker_parts[0]] in panels:
+				if is_same_packing_attr:
 					inputs.append({"fieldname":"major_colour", "fieldtype":"Data", "label":"Major Colour", "default":colour})
 				else:
-					inputs.append({"fieldname":"major_colour", "fieldtype":"Select", "label":"Major Colour", "options":select_vals})
+					inputs.append({"fieldname":"major_colour", "fieldtype":"Select", "label":"Major Colour", "options":list(part_set_colours[major_attr_value])})
 			else:
 				inputs.append({"fieldname":"major_part", "fieldtype":"Data", "label":"Major Part", "default": major_attr_value})
 				inputs.append({"fieldname":"major_panel", "fieldtype":"Data", "label":"Major Panel", "default": default[major_attr_value]})
-				if is_same:
-					inputs.append({"fieldname":"major_colour", "fieldtype":"Data", "label":"Major Colour", "default":colour})
+				if is_same_packing_attr:
+					v = []
+					for c in part_colours:
+						if part_colours[c][marker_parts[0]] == colour:
+							v.append(part_colours[c][major_attr_value])
+					if len(v) == 1:
+						inputs.append({"fieldname":"major_colour", "fieldtype":"Data", "label":"Major Colour", "default": v[0]})
+					else:
+						inputs.append({"fieldname":"major_colour", "fieldtype":"Select", "label":"Major Colour", "options": v})
 					inputs.append({"fieldname":"set_part", "fieldtype":"Data", "label":"Set Part", "default": marker_parts[0]})
 					inputs.append({"fieldname":"set_panel", "fieldtype":"Data", "label":"Set Panel", "default": default[marker_parts[0]]})
 					inputs.append({"fieldname":"set_colour", "fieldtype":"Data", "label":"Set Colour", "default":colour})
 				else:
-					inputs.append({"fieldname":"major_colour", "fieldtype":"Select", "label":"Major Colour", "options":select_vals})
+					inputs.append({"fieldname":"major_colour", "fieldtype":"Select", "label":"Major Colour", "options":list(part_set_colours[major_attr_value])})
 					inputs.append({"fieldname":"set_part", "fieldtype":"Data", "label":"Set Part", "default": marker_parts[0]})
 					inputs.append({"fieldname":"set_panel", "fieldtype":"Data", "label":"Set Panel", "default": default[marker_parts[0]]})
-					inputs.append({"fieldname":"set_colour", "fieldtype":"Select", "label":"Set Colour", "options":select_vals})
+					inputs.append({"fieldname":"set_colour", "fieldtype":"Select", "label":"Set Colour", "options":list(part_set_colours[marker_parts[0]])})
 	else:
 		if ipd_doc.is_same_packing_attribute or stich_attr_value in panels:
 			inputs.append({"fieldname":"major_panel", "fieldtype":"Data", "label":"Major Panel", "default": stich_attr_value})
@@ -1027,7 +1033,10 @@ def get_input_fields(cutting_marker, colour, select_attributes):
 
 	inputs.append({"fieldname":"is_same_packing_attribute","fieldtype":"Check","label":"Is Same Packing Attribute","hidden":True,"default":is_same_packing_attr})	
 
-	return inputs		
+	return {
+		"input_fields":inputs, 
+		"part_colours": part_colours if part_colours else None
+	}	
 
 @frappe.whitelist()
 def revert_labels(doc_name):
@@ -1054,6 +1063,7 @@ def revert_labels(doc_name):
 		grn_doc = frappe.get_doc("Goods Received Note", cls_doc.goods_received_note)
 		grn_doc.cancel()
 	cls_doc.goods_received_note =  None
+	cls_doc.reverted = 1
 	cls_doc.save()
 	from production_api.production_api.doctype.cutting_plan.cutting_plan import calculate_laysheets
 	calculate_laysheets(cls_doc.cutting_plan)
@@ -1061,9 +1071,14 @@ def revert_labels(doc_name):
 @frappe.whitelist()
 def create_grn_entry(doc_name):
 	cls_doc = frappe.get_doc("Cutting LaySheet", doc_name)
-	wo = frappe.get_value("Cutting Plan", cls_doc.cutting_plan, "work_order")
+	wo, ipd = frappe.get_value("Cutting Plan", cls_doc.cutting_plan, ["work_order", "production_detail"])
 	if not wo:
 		return
+	ipd_doc = frappe.get_cached_doc("Item Production Detail", ipd)
+	panel_qty_dict = {}
+	for item in ipd_doc.stiching_item_details:
+		panel_qty_dict[item.stiching_attribute_value] = item.quantity
+
 	cls_panels = {}
 	for row in cls_doc.cutting_laysheet_bundles:
 		combination = update_if_string_instance(row.set_combination)
@@ -1077,11 +1092,12 @@ def create_grn_entry(doc_name):
 			part = part.strip()
 			set_comb_tuple = tuple(sorted(set_combination.items()))
 			key = (row.size, row.colour, part, set_comb_tuple)
+			qty = row.quantity * panel_qty_dict[part]
 			if key in cls_panels:
-				cls_panels[key]["qty"] += row.quantity
+				cls_panels[key]["qty"] += qty
 			else:
 				cls_panels[key] = {
-					"qty":row.quantity,
+					"qty":qty,
 					"set_combination": set_combination,
 				}
 	item_name, ipd = frappe.get_value("Lot", cls_doc.lot, ["item","production_detail"])
@@ -1168,3 +1184,18 @@ def create_grn_entry(doc_name):
 	new_doc.save()
 	new_doc.submit()
 	cls_doc.db_set("goods_received_note", new_doc.name)
+
+@frappe.whitelist()
+def cancel_laysheet(doc_name):
+	doc = frappe.get_doc("Cutting LaySheet", doc_name)
+	doc.status = "Cancelled"
+	doc.save()
+
+@frappe.whitelist()
+def update_label_print_status(doc_name):
+	doc = frappe.get_doc("Cutting LaySheet", doc_name)
+	doc.status = "Label Printed"
+	doc.reverted = 0
+	doc.save()
+	from production_api.production_api.doctype.cutting_plan.cutting_plan import calculate_laysheets
+	calculate_laysheets(doc.cutting_plan)

@@ -73,6 +73,7 @@ frappe.ui.form.on('Goods Received Note', {
 		}
 	},
 	refresh: function(frm) {
+		$(".layout-side-section").css("display", "None");
 		$(frm.fields_dict['item_html'].wrapper).html("");
 		if(frm.doc.against == 'Purchase Order'){
 			frm.itemEditor = new frappe.production.ui.GRNPurchaseOrder(frm.fields_dict["item_html"].wrapper);

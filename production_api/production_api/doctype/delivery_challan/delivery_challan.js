@@ -43,6 +43,7 @@ frappe.ui.form.on("Delivery Challan", {
         })
     },
     refresh(frm){
+		$(".layout-side-section").css("display", "None");
 		frm.page.btn_secondary.hide()
         $(frm.fields_dict['deliverable_items'].wrapper).html("")
 		if(frm.is_new()){

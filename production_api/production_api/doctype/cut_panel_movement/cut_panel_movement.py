@@ -5,11 +5,12 @@ import frappe
 from itertools import groupby
 from operator import itemgetter
 from frappe.model.document import Document
-from production_api.utils import update_if_string_instance, get_tuple_attributes
 from production_api.mrp_stock.doctype.stock_entry.stock_entry import fetch_stock_entry_items
+from production_api.utils import update_if_string_instance, get_tuple_attributes, update_variant
 from production_api.production_api.doctype.item.item import get_or_create_variant, get_attribute_details
 from production_api.production_api.doctype.purchase_order.purchase_order import get_item_attribute_details, get_item_group_index
 from production_api.production_api.doctype.item_dependent_attribute_mapping.item_dependent_attribute_mapping import get_dependent_attribute_details
+from production_api.essdee_production.doctype.item_production_detail.item_production_detail import get_or_create_ipd_variant
 
 class CutPanelMovement(Document):
 	def onload(self):
@@ -481,6 +482,7 @@ def get_grouped_data(doc_name, doctype):
 	cpm_doc = frappe.get_doc("Cut Panel Movement", doc_name)
 	ipd = frappe.get_value("Cutting Plan", cpm_doc.cutting_plan, "production_detail")
 	ipd_doc = frappe.get_doc("Item Production Detail", ipd)
+	item_variants = update_if_string_instance(ipd_doc.variants_json)
 	cpm_json = update_if_string_instance(cpm_doc.cut_panel_movement_json)
 	stock_entry_dict = {}
 	group_dict = {}
@@ -498,6 +500,7 @@ def get_grouped_data(doc_name, doctype):
 				if data.get(grp_panel) and data[grp_panel+"_moved"]:
 					panel_list = grp_panel.split(",")
 					for panel in panel_list:	
+						panel = panel.strip()
 						grp_key = (panel, colour)
 						if grp_key not in group_dict:
 							group_dict[grp_key] = []
@@ -520,7 +523,10 @@ def get_grouped_data(doc_name, doctype):
 		grp_key = stock_entry_dict[attrs_tuple]['group_key']
 		set_combination = get_tuple_attributes(attrs['set_combination'])
 		del attrs['set_combination']
-		variant = get_or_create_variant(cpm_doc.item, attrs)
+		tup = tuple(sorted(attrs.items()))
+		variant = get_or_create_ipd_variant(item_variants, cpm_doc.item, tup, attrs)
+		str_tup = str(tup)
+		item_variants = update_variant(item_variants, variant, cpm_doc.item, str_tup)
 		group_dict[grp_key].append( {"item_variant": variant, "qty": qty, "set_combination": set_combination })
 	
 	table_index = -1

@@ -40,6 +40,11 @@ class Lot(Document):
 					qty = qty + item.qty
 				self.total_quantity = qty
 
+		total_qty = 0
+		for item in self.lot_order_details:
+			total_qty += vars(item)['quantity']
+		self.total_order_quantity = total_qty
+		
 		if self.get("action_details"):
 			update_time_and_action(self.action_details,self.lot_time_and_action_details)
 	
