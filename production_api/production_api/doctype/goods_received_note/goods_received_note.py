@@ -110,6 +110,10 @@ class GoodsReceivedNote(Document):
 			else:
 				self.reduce_uncalculated_stock(res)
 				logger.debug(f"{self.name} Deliverables Reduced from Supplier {datetime.now()}")
+				if self.supplier_address == self.delivery_address and self.is_internal_unit:
+					self.db_set("ste_transferred_percent", 100)
+					self.db_set("ste_transferred", self.total_delivered_qty)
+					self.db_set("transfer_complete", 1)
 				self.piece_calculation()
 
 	def piece_calculation(self):
@@ -246,7 +250,7 @@ class GoodsReceivedNote(Document):
 	def update_work_order_receivables(self):
 		if self.docstatus == 0:
 			return
-		wo = frappe.get_cached_doc(self.against, self.against_id)
+		wo = frappe.get_doc(self.against, self.against_id)
 		for item in self.items:
 			for i in wo.receivables:
 				if i.name == item.ref_docname:
@@ -322,8 +326,11 @@ class GoodsReceivedNote(Document):
 				deliverables_rate = deliverables_rate + (item.valuation_rate * item.quantity)
 		avg = deliverables_rate / self.total_received_quantity
 		# frappe.throw(str(avg))
-		transit_warehouse = frappe.db.get_single_value("Stock Settings","transit_warehouse")
-		supplier = transit_warehouse if self.is_internal_unit else self.delivery_location
+		supplier = self.delivery_location
+		if self.supplier_address != self.delivery_address and self.is_internal_unit:
+			transit_warehouse = frappe.db.get_single_value("Stock Settings","transit_warehouse")
+			supplier = transit_warehouse
+
 		sl_entries = []
 		for item in self.items:
 			if item.quantity > 0 and res.get(item.item_variant):
@@ -448,7 +455,7 @@ class GoodsReceivedNote(Document):
 				make_sl_entries(add_stock_list)
 			else:	
 				logger.debug(f"{self.name} On Cancel {self.against} {datetime.now()}")
-				wo_doc = frappe.get_cached_doc(self.against, self.against_id)
+				wo_doc = frappe.get_doc(self.against, self.against_id)
 				items = update_if_string_instance(self.items_json)
 				for item in items:
 					for receivable in wo_doc.receivables:
@@ -466,7 +473,12 @@ class GoodsReceivedNote(Document):
 				else:	
 					self.reupdate_wo_deliverables(res)
 					logger.debug(f"{self.name} Deliverables Updated {datetime.now()}")	
-					self.piece_calculation()	
+				
+				if self.supplier_address == self.delivery_address and self.is_internal_unit:
+					self.db_set("ste_transferred_percent", 0)
+					self.db_set("ste_transferred", 0)
+					self.db_set("transfer_complete", 0)
+				self.piece_calculation()	
 
 	def reupdate_rework_stock(self):
 		wo_doc = frappe.get_doc(self.against, self.against_id)
@@ -893,7 +905,7 @@ def save_grn_item_details(item_details, process_name, ipd):
 						str_tup = str(tup)
 						item_variants = update_variant(item_variants, variant_name, item_name, str_tup)
 						received = values.get('received', 0)
-						total_quantity, pending_qty = frappe.get_cached_value(values.get('ref_doctype'), values.get('ref_docname'), ["qty","pending_quantity"])
+						total_quantity, pending_qty = frappe.get_value(values.get('ref_doctype'), values.get('ref_docname'), ["qty","pending_quantity"])
 						x = total_quantity / 100
 						x = x * allowance
 						total_quantity = pending_qty + x
@@ -930,7 +942,7 @@ def save_grn_item_details(item_details, process_name, ipd):
 					doctype = item['values']['default'].get('ref_doctype')
 					docname = item['values']['default'].get('ref_docname')
 					received = item['values']['default'].get('received', 0)
-					total_quantity, pending_qty = frappe.get_cached_value(doctype, docname, ["qty","pending_quantity"])
+					total_quantity, pending_qty = frappe.get_value(doctype, docname, ["qty","pending_quantity"])
 					x = total_quantity / 100
 					x = x * allowance
 					total_quantity = total_quantity + x
@@ -1031,7 +1043,7 @@ def fetch_grn_item_details(items, ipd, lot, docstatus = 0):
 							if t not in item['types']:
 								item['types'].append(t)
 
-						qty = frappe.get_cached_value(variant['ref_doctype'], variant['ref_docname'], "pending_quantity")
+						qty = frappe.get_value(variant['ref_doctype'], variant['ref_docname'], "pending_quantity")
 						if docstatus == 0:
 							item['values'][attr.attribute_value]['qty'] = round(qty - variant['quantity'], 3) 
 						else:
@@ -1058,7 +1070,7 @@ def fetch_grn_item_details(items, ipd, lot, docstatus = 0):
 				if t not in item['types']:
 					item['types'].append(t)
 
-			qty = frappe.get_cached_value( variants[0]['ref_doctype'], variants[0]['ref_docname'], "pending_quantity")
+			qty = frappe.get_value( variants[0]['ref_doctype'], variants[0]['ref_docname'], "pending_quantity")
 			if docstatus == 0:
 				item['values']['default']['qty'] = round(qty - variants[0]['quantity'], 3) 
 			else:
@@ -1782,7 +1794,7 @@ def calculate_pieces(doc_name):
 				else:
 					return
 
-	wo_doc = frappe.get_cached_doc("Work Order", grn_doc.against_id)
+	wo_doc = frappe.get_doc("Work Order", grn_doc.against_id)
 	if not wo_doc.first_grn_date:
 		wo_doc.first_grn_date = grn_doc.posting_date
 		wo_doc.last_grn_date = grn_doc.posting_date
@@ -1942,6 +1954,8 @@ def calculate_cutting_piece(grn_doc, received_types, panel_list):
 	for item in grn_doc.items:
 		variant = frappe.get_cached_doc("Item Variant", item.item_variant)
 		attrs = get_variant_attributes(variant)
+		if not attrs.get(ipd_doc.stiching_attribute):
+			continue
 		set_combination = update_if_string_instance(item.set_combination)
 		for i in incomplete_items['items']:
 			con1 = True

@@ -108,6 +108,12 @@ class ItemProductionDetail(Document):
 			self.stiching_in_stage = dict_values['stiching_in_stage']
 			self.stiching_out_stage = dict_values['stiching_out_stage']
 			self.cutting_process = dict_values['cutting_process']	
+
+	def on_update(self):	
+		docs = frappe.flags.delete_bom_mapping
+		if docs:
+			for mapping in docs:
+				frappe.delete_doc("Item BOM Attribute Mapping", mapping)
 	
 	def before_validate(self):
 		if self.get('set_item_detail') and self.is_set_item:
@@ -202,7 +208,7 @@ class ItemProductionDetail(Document):
 				doc.attribute_name= attribute.attribute 
 				doc.save()
 				attribute.mapping = doc.name
-
+		frappe.flags.delete_bom_mapping = []
 		for bom in self.get('item_bom'):
 			if bom.based_on_attribute_mapping and not bom.attribute_mapping:
 				doc = frappe.new_doc("Item BOM Attribute Mapping")
@@ -224,7 +230,7 @@ class ItemProductionDetail(Document):
 			elif not bom.based_on_attribute_mapping and bom.attribute_mapping:
 				name = bom.attribute_mapping
 				bom.attribute_mapping = None
-				frappe.delete_doc("Item BOM Attribute Mapping", name)
+				frappe.flags.delete_bom_mapping.append(name)
 	
 	def packing_tab_validations(self):
 		if self.packing_combo == 0:

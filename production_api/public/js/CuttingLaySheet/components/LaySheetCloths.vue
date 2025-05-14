@@ -16,7 +16,7 @@
                     <th>Balance Weight</th>
                     <th>Fabric Type</th>
                     <th>Comments</th>
-                    <th v-if="status != 'Label Printed'">Edit</th>
+                    <th v-if="status != 'Label Printed' && status != 'Cancelled'">Edit</th>
                 </tr>
                 <tr v-for="(item,idx) in items" :key='idx'>
                     <td>{{idx + 1}}</td>
@@ -31,7 +31,7 @@
                     <td>{{item.balance_weight}}</td>
                     <td>{{item.fabric_type}}</td>
                     <td>{{item.comments}}</td>
-                    <td v-if="status != 'Label Printed'">
+                    <td v-if="status != 'Label Printed' && status != 'Cancelled'">
                         <div class="pull-right cursor-pointer" @click="add_cloth_item(idx)"
                             v-html="frappe.utils.icon('edit', 'md', 'mr-1')"></div>
                         <div class="pull-right cursor-pointer" @click="delete_item(idx)"
@@ -40,7 +40,7 @@
                 </tr>
             </table>
         </div>
-        <div class="row pt-3" v-if="status != 'Label Printed' && show_button1 && docstatus != null">
+        <div class="row pt-3" v-if="status != 'Label Printed' && status != 'Cancelled' && show_button1 && docstatus != null">
             <button class="btn btn-success pull-left" @click="add_cloth_item(null)">Add Cloth Items</button>
         </div>
         <div class="html-container col mt-1">
@@ -114,6 +114,7 @@ let docstatus = ref(null)
 let status = cur_frm.doc.status
 let set_parameters = []
 let fieldnames = []
+let part_set_colours = null
 
 function onchange_event(){
     if (!cloth_colour){
@@ -129,8 +130,9 @@ function onchange_event(){
                 select_attributes: select_attributes
             },
             callback:function(r){
-                if(r.message.length > 0){
-                    let inputs = r.message
+                if(r.message.input_fields.length > 0){
+                    part_set_colours = r.message.part_colours
+                    let inputs = r.message.input_fields
                     let el = root.value;
                     $(el).find(".set-detail").html("");
                     set_parameters = [];
@@ -231,7 +233,7 @@ function update_readonly(input_fields){
 function add_item(){
     check_values()
     cur_frm.dirty()
-    
+
     let set_json = {}
     for(let i = 0 ; i < set_parameters.length ; i++){
         let val = set_parameters[i].get_value()
@@ -245,6 +247,7 @@ function add_item(){
         }
         set_json[fieldnames[i]] = val
     }
+    check_combination(set_json)
     let json_val = items_json.get_value()
     if(!json_val || json_val == null){
         json_val = []
@@ -451,6 +454,7 @@ function update_item(){
         }
         set_json[fieldnames[i]] = val
     }
+    check_combination(set_json)
     items.value[edit_index.value] = {
         "cloth_type":cloth_type.get_value(),
         "dia":cloth_dia.get_value(),
@@ -480,6 +484,22 @@ function check_values(){
         let val = arr[i].get_value()
         if(val == null || val == ""){
             frappe.throw("Enter All the Values to Add an Item")
+        }
+    }        
+}
+
+function check_combination(set_json){
+    if(set_json['set_part']){
+        let check = false
+        Object.keys(part_set_colours).forEach((c)=> {
+            let c1 = part_set_colours[c][set_json['major_part']]
+            let c2 = part_set_colours[c][set_json['set_part']]
+            if(set_json['major_colour'] == c1 && set_json['set_colour'] == c2){
+                check = true
+            }
+        })
+        if(!check){
+            frappe.throw("Set Combination was Wrong")
         }
     }
 }

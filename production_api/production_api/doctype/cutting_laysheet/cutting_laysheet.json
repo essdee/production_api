@@ -17,6 +17,7 @@
   "status",
   "selected_type",
   "calculated_parts",
+  "reverted",
   "column_break_rxns",
   "cutting_marker",
   "marker_name",
@@ -295,7 +296,7 @@
    "hidden": 1,
    "in_list_view": 1,
    "label": "Status",
-   "options": "Started\nCompleted\nBundles Generated\nLabel Printed"
+   "options": "Started\nCompleted\nBundles Generated\nLabel Printed\nCancelled"
   },
   {
    "fieldname": "cutting_marker_ratios_html",
@@ -336,11 +337,19 @@
    "hidden": 1,
    "label": "Goods Received Note",
    "options": "Goods Received Note"
+  },
+  {
+   "default": "0",
+   "fieldname": "reverted",
+   "fieldtype": "Check",
+   "hidden": 1,
+   "label": "Reverted"
   }
  ],
+ "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-04-08 13:06:45.529000",
+ "modified": "2025-05-13 12:43:31.003085",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Cutting LaySheet",
@@ -392,6 +401,7 @@
    "share": 1
   }
  ],
+ "row_format": "Dynamic",
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": [],
