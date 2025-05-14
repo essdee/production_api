@@ -398,7 +398,6 @@ def create_stock_entry(doc_name):
 	data = fetch_stock_entry_items(stock_entry_item_list, ipd=ipd)
 	return data
 
-from frappe.utils import nowdate, now
 @frappe.whitelist()
 def create_delivery_challan(doc_name, work_order, process_name):
 	delivery_challan_item_list, ipd = get_grouped_data(doc_name, "delivery Challan")

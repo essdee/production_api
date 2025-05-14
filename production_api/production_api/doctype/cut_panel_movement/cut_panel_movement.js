@@ -49,6 +49,7 @@ frappe.ui.form.on("Cut Panel Movement", {
                         let x = frappe.model.get_new_doc("Stock Entry")
                         x.purpose = "Send to Warehouse"
                         x.posting_date = frappe.datetime.nowdate()
+                        x.cut_panel_movement = frm.doc.name
                         x.posting_time = new Date().toTimeString().split(' ')[0]
                         frappe.set_route("Form", x.doctype, x.name);
                     }   
