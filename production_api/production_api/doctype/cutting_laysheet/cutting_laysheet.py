@@ -965,6 +965,7 @@ def get_input_fields(cutting_marker, colour, select_attributes):
 	major_attr_value = ipd_doc.major_attribute_value
 	select_vals = select_attributes['colour']
 	is_same_packing_attr = ipd_doc.is_same_packing_attribute
+	part_colours = {}
 	if ipd_doc.is_set_item:
 		stiching_details = {}
 		default = {}
@@ -978,7 +979,6 @@ def get_input_fields(cutting_marker, colour, select_attributes):
 		for panel in panels:
 			marker_parts.add(stiching_details[panel])
 		marker_parts = list(marker_parts)	
-		part_colours = {}
 		part_set_colours = {}
 		index = -1
 		last_colour = None

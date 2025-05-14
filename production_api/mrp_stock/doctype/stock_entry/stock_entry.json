@@ -17,6 +17,7 @@
   "posting_date",
   "posting_time",
   "outgoing_stock_entry",
+  "cut_panel_movement",
   "section_break_fzpy5",
   "from_warehouse",
   "column_break_a9bla",
@@ -176,12 +177,20 @@
    "label": "Against ID",
    "options": "against",
    "read_only": 1
+  },
+  {
+   "fieldname": "cut_panel_movement",
+   "fieldtype": "Link",
+   "hidden": 1,
+   "label": "Cut Panel Movement",
+   "options": "Cut Panel Movement"
   }
  ],
+ "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-03-15 15:11:16.627789",
+ "modified": "2025-05-14 11:46:57.979092",
  "modified_by": "Administrator",
  "module": "MRP Stock",
  "name": "Stock Entry",
@@ -266,6 +275,7 @@
    "write": 1
   }
  ],
+ "row_format": "Dynamic",
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": []
