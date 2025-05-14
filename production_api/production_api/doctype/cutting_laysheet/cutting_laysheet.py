@@ -26,7 +26,7 @@ class CuttingLaySheet(Document):
 			self.set_onload("marker_details", items)
 
 	def before_validate(self):
-		if self.status == "Cancelled":
+		if frappe.get_value("Cutting LaySheet", self.name, "status") == "Cancelled" and self.status == "Cancelled":
 			frappe.throw("Can't update the Cancelled Laysheet")
 
 		if self.get('item_details'):
@@ -41,11 +41,10 @@ class CuttingLaySheet(Document):
 		if status == "Completed":
 			frappe.throw("Select the Incompleted Cutting Plan")
 		
-		cm_docstatus = frappe.get_value("Cutting Marker",self.cutting_marker,"docstatus")
+		cm_docstatus, cut_marker_cp  = frappe.get_value("Cutting Marker",self.cutting_marker,["docstatus","cutting_plan"])
 		if cm_docstatus != 1:
 			frappe.throw("Select a Submitted Cutting Marker")
 
-		cut_marker_cp = frappe.get_value("Cutting Marker",self.cutting_marker,"cutting_plan")		
 		if cut_marker_cp != self.cutting_plan:
 			frappe.throw(f"Select a Cutting Marker which is against {self.cutting_plan}")
 
