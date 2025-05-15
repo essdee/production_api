@@ -29,7 +29,9 @@
   "dependent_attribute_details_html",
   "additional_parameters",
   "price_section",
-  "price_html"
+  "price_html",
+  "tax_section",
+  "is_ineligible_for_itc"
  ],
  "fields": [
   {
@@ -201,6 +203,17 @@
    "fieldtype": "Check",
    "label": "Is Sales Item",
    "permlevel": 1
+  },
+  {
+   "fieldname": "tax_section",
+   "fieldtype": "Section Break",
+   "label": "Tax"
+  },
+  {
+   "default": "0",
+   "fieldname": "is_ineligible_for_itc",
+   "fieldtype": "Check",
+   "label": "Is Ineligible for Input Tax Credit"
   }
  ],
  "grid_page_length": 50,
