@@ -114,6 +114,8 @@
    "permlevel": 1
   },
   {
+   "fetch_from": "item_group.secondary_unit_of_measure",
+   "fetch_if_empty": 1,
    "fieldname": "secondary_unit_of_measure",
    "fieldtype": "Link",
    "label": "Secondary Unit of Measure",
@@ -201,9 +203,10 @@
    "permlevel": 1
   }
  ],
+ "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-04-08 10:42:25.921303",
+ "modified": "2025-05-15 15:08:55.717722",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Item",
@@ -315,6 +318,7 @@
    "write": 1
   }
  ],
+ "row_format": "Dynamic",
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": [],

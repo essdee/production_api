@@ -82,15 +82,16 @@ def get_data(filters, received_types):
 		if isinstance(received_json, string_types):
 			received_json = json.loads(received_json)
 		others = 0	
-		for t in received_json:
-			if t not in received_types:
-				others += received_json.get(t)
-			elif t in received_types and received_json.get(t):
-				x = t.replace(" ", "_")
-				res.update({x: received_json.get(t)})
-			else:
-				x = t.replace(" ", "_")
-				res.update({x: 0})
+		if received_json:
+			for t in received_json:
+				if t not in received_types:
+					others += received_json.get(t)
+				elif t in received_types and received_json.get(t):
+					x = t.replace(" ", "_")
+					res.update({x: received_json.get(t)})
+				else:
+					x = t.replace(" ", "_")
+					res.update({x: 0})
 
 		res.update({"others":others})	
 

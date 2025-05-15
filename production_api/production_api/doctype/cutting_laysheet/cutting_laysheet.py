@@ -1188,11 +1188,18 @@ def create_grn_entry(doc_name):
 def cancel_laysheet(doc_name):
 	doc = frappe.get_doc("Cutting LaySheet", doc_name)
 	doc.status = "Cancelled"
+	if doc.goods_received_note:
+		grn_doc = frappe.get_doc("Goods Received Note", doc.goods_received_note)
+		grn_doc.cancel()
+	doc.goods_received_note =  None
 	doc.save()
 
 @frappe.whitelist()
 def update_label_print_status(doc_name):
 	doc = frappe.get_doc("Cutting LaySheet", doc_name)
+	wo = frappe.get_value("Cutting Plan", doc.cutting_plan, "work_order")
+	if wo:
+		create_grn_entry(doc_name)
 	doc.status = "Label Printed"
 	doc.reverted = 0
 	doc.save()
