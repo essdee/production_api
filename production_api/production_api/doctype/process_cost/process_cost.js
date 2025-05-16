@@ -69,6 +69,7 @@ function updateChildTableReqd(frm, fields, table, reqd) {
         for (let fieldname of fields) {
 			let df = row.docfields.find(field => field.fieldname === fieldname)
             df && (df.reqd = reqd)
+            df && (df.read_only = 0)
         }
         
         delete row.columns;

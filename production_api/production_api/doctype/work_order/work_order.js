@@ -178,6 +178,16 @@ frappe.ui.form.on("Work Order", {
 					})
 					d.show()
 				})
+				if(frm.doc.__onload && frm.doc.__onload.is_cutting){
+					frm.add_custom_button(__('Make Cutting Plan'), function() {
+						let x = frappe.model.get_new_doc('Cutting Plan')
+						x.work_order = frm.doc.name
+						x.lot = frm.doc.lot
+						x.item = frm.doc.item
+						x.maximum_no_of_plys = 100
+						frappe.set_route("Form",x.doctype, x.name);
+					}, __("Create"));
+				}
 				frm.add_custom_button(__('Make DC'), function() {
 					let x = frappe.model.get_new_doc('Delivery Challan')
 					x.work_order = frm.doc.name
@@ -195,6 +205,7 @@ frappe.ui.form.on("Work Order", {
 					y.supplier = frm.doc.supplier
 					y.supplier_address = frm.doc.supplier_address
 					y.posting_date = frappe.datetime.nowdate()
+					y.delivery_date = frappe.datetime.nowdate()
 					y.posting_time = new Date().toTimeString().split(' ')[0]
 					y.is_rework = frm.doc.is_rework
 					frappe.set_route("Form",y.doctype, y.name);
@@ -213,7 +224,6 @@ frappe.ui.form.on("Work Order", {
 			}
 			if(frm.doc.__onload && frm.doc.__onload.receivable_item_details) {
 				frm.doc['receivable_item_details'] = JSON.stringify(frm.doc.__onload.receivable_item_details);
-				console.log("ONLOADED")
 				frm.receivable_items.load_data(frm.doc.__onload.receivable_item_details);
 			}
 			else{
