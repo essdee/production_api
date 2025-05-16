@@ -116,6 +116,8 @@
    "permlevel": 1
   },
   {
+   "fetch_from": "item_group.secondary_unit_of_measure",
+   "fetch_if_empty": 1,
    "fieldname": "secondary_unit_of_measure",
    "fieldtype": "Link",
    "label": "Secondary Unit of Measure",
@@ -214,9 +216,10 @@
    "label": "Is Ineligible for Input Tax Credit"
   }
  ],
+ "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-05-09 12:59:15.312123",
+ "modified": "2025-05-15 15:08:55.717722",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Item",
