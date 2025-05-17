@@ -7,6 +7,7 @@ frappe.ui.form.on("Cutting Plan", {
             return {
                 filters: {
                     "lot": doc.lot,
+                    "docstatus": 1,
                 }
             }
         })
