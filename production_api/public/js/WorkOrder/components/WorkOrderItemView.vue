@@ -2,8 +2,9 @@
     <div ref="root">
         <div v-if="show_title">
             <h4>Order Items</h4>
-            <div style="display:flex;">
-                <div>Select</div> <div style="padding: 2px 0 0 5px;"><input type="checkbox" v-model="checkbox_value" @change="update_checkbox($event)"></div>
+            <div style="display: flex;">
+                <div><button class="btn btn-default" @click="update_checkbox(true)">Select All</button></div>
+                <div style="margin-left:5px;"><button class="btn btn-default" @click="update_checkbox(false)">Unselect All</button></div>
             </div>
         </div>
         <table class="table table-sm table-bordered" >
@@ -66,8 +67,7 @@ function create_input_classes(){
     }
 }
 
-function update_checkbox(event){
-    let val = event.target.checked
+function update_checkbox(val){
     for(let i = 0 ; i < items.value[0].items.length; i++){
         checkboxes.value[i] = val
         Object.keys(items.value[0].items[i].values).forEach((key,value)=> {

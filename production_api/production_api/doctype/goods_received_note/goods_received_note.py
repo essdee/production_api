@@ -125,6 +125,8 @@ class GoodsReceivedNote(Document):
 		variant_received_types = {}
 		for item in self.items:
 			quantity = item.quantity
+			if quantity <= 0:
+				continue
 			for wo_item in wo_doc.deliverables:
 				set1 = update_if_string_instance(item.set_combination)
 				set2 = update_if_string_instance(wo_item.set_combination)
@@ -252,6 +254,8 @@ class GoodsReceivedNote(Document):
 			return
 		wo = frappe.get_doc(self.against, self.against_id)
 		for item in self.items:
+			if item.quantity <= 0:
+				continue
 			for i in wo.receivables:
 				if i.name == item.ref_docname:
 					qty = i.pending_quantity - item.quantity 
@@ -485,6 +489,8 @@ class GoodsReceivedNote(Document):
 		variant_received_types = {}
 		for item in self.items:
 			quantity = item.quantity
+			if quantity <= 0:
+				continue
 			for wo_item in wo_doc.deliverables:
 				set1 = update_if_string_instance(item.set_combination)
 				set2 = update_if_string_instance(wo_item.set_combination)
@@ -1254,6 +1260,8 @@ def get_other_deliverables(grn_doc, wo_doc):
 	is_group = frappe.get_value("Process",process,"is_group")
 	if not is_group:
 		for item in grn_doc.items:
+			if item.quantity <= 0:
+				continue
 			final_value.append({
 				"item_variant": item.item_variant,
 				"qty": item.quantity,
@@ -1373,6 +1381,8 @@ def get_stiching_process_deliverables(grn_doc, wo_doc, ipd_doc):
 	final_value = []
 	items = []
 	for item in grn_doc.items:
+		if item.quantity <= 0:
+			continue
 		items.append({
 			"item_variant":item.item_variant,
 			"quantity":item.quantity,
@@ -1423,6 +1433,8 @@ def get_packing_process_deliverables(grn_doc, wo_doc, ipd_doc):
 		part_list = get_part_list(ipd_doc)
 
 	for item in grn_doc.items:
+		if item.quantity <= 0:
+			continue
 		items.append({
 			"item_variant": item.item_variant,
 			"quantity": item.quantity / pack_combo,
@@ -1760,6 +1772,8 @@ def calculate_pieces(doc_name):
 			if len(emb.get(process_name)) == 1:
 				check = False
 				for item in grn_doc.items:
+					if item.quantity <= 0:
+						continue
 					qty = item.quantity
 					if doc_status == 2:
 						qty = qty * -1
@@ -1870,6 +1884,8 @@ def calculate_pieces(doc_name):
 
 def calculate_piece_stage(grn_doc, received_types, doc_status, total_received, final_calculation):
 	for item in grn_doc.items:
+		if item.quantity <= 0:
+			continue
 		# final_calculation.setdefault(item.item_variant, {"types": {}, "qty": 0 })
 		qty = item.quantity
 		if doc_status == 2:
@@ -1902,6 +1918,8 @@ def calculate_pack_stage(ipd_doc, grn_doc, received_types, doc_status, total_rec
 			attrs.append({ipd_doc.packing_attribute: row.attribute_value})
 
 	for item in grn_doc.items:
+		if item.quantity <= 0:
+			continue
 		for attr in attrs:
 			qty = item.quantity
 			if doc_status == 2:
@@ -1952,6 +1970,8 @@ def calculate_cutting_piece(grn_doc, received_types, panel_list):
 
 	types = []
 	for item in grn_doc.items:
+		if item.quantity <= 0:
+			continue
 		variant = frappe.get_cached_doc("Item Variant", item.item_variant)
 		attrs = get_variant_attributes(variant)
 		if not attrs.get(ipd_doc.stiching_attribute):
@@ -1965,7 +1985,7 @@ def calculate_cutting_piece(grn_doc, received_types, panel_list):
 			item_keys = update_if_string_instance(i['item_keys'])
 			set_combination = update_if_string_instance(item.set_combination)
 			con2 = item_keys == set_combination
-			if con1 and con2 and item.quantity > 0:
+			if con1 and con2:
 				if item.received_type and item.received_type not in types:
 					types.append(item.received_type)
 				received_types.setdefault(item.received_type, 0)
