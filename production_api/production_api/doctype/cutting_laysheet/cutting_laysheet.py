@@ -1122,6 +1122,7 @@ def create_grn_entry(doc_name):
 		"supplier_address_display": wo_doc.supplier_address_details,
 		"delivery_address": wo_doc.supplier_address,
 		"deliverey_address_display": wo_doc.supplier_address_details,
+		"cutting_laysheet": doc_name
 	})
 	new_doc.flags.from_cls = True
 	new_doc.total_quantity = 0
