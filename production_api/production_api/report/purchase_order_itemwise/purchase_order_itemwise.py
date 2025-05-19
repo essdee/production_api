@@ -150,14 +150,14 @@ def get_columns():
             "width": 100
         },
         {
-            "fieldname": "comments1",
-            "label": "Comments1",
+            "fieldname": "item_comments",
+            "label": "Item Comments",
             "fieldtype": "Data",
             "width": 100
         },
         {
-            "fieldname": "comments2",
-            "label": "Comments2",
+            "fieldname": "po_comments",
+            "label": "PO Comments",
             "fieldtype": "Data",
             "width": 100
         },
@@ -192,7 +192,7 @@ def get_data(filters):
             supplier.supplier_name.as_('delivery_location_name'),
             po_item.delivery_date,
             po_item.lot,
-            po_item.comments.as_("comments1"),
+            po_item.comments.as_("item_comments"),
             po.name,
             po.creation,
             po.modified,
@@ -200,7 +200,7 @@ def get_data(filters):
             po.supplier,
             po.supplier_name,
             po.po_date,
-            po.comments.as_("comments2"),
+            po.comments.as_("po_comments"),
             po.status
         )
     )
