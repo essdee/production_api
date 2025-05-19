@@ -937,9 +937,9 @@
         clear_item_attribute_inputs();
         clear_other_inputs();
         clear_item_values();
-        if(!deto.value || force){
-            clear_lot_item_inputs();
-        }
+        // if(!deto.value || force){
+        //     clear_lot_item_inputs();
+        // }
     }
 
     function clear_dependent_attribute_inputs() {
@@ -1091,10 +1091,10 @@
         edit_index.value = -1;
         edit_index1.value = -1;
         clear_inputs(true);
-        lot_input.df.read_only = 0;
-        item_input.df.read_only = 0;
-        item_input.refresh();
-        lot_input.refresh();
+        // lot_input.df.read_only = 0;
+        // item_input.df.read_only = 0;
+        // item_input.refresh();
+        // lot_input.refresh();
     }
 
 </script> 
