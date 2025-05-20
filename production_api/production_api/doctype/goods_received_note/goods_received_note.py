@@ -1851,7 +1851,7 @@ def calculate_pieces(doc_name):
 						qty = qty * -1
 					current_qty = getattr(item, "cut_qty", 0)
 					setattr(item, "cut_qty", current_qty + qty)
-		lot_doc.save()	
+		lot_doc.save(ignore_permissions=True)	
 	else:
 		lot_doc = None
 		if process_name in [ipd_doc.cutting_process, ipd_doc.stiching_process, ipd_doc.packing_process]:
@@ -1879,7 +1879,7 @@ def calculate_pieces(doc_name):
 						current_qty = getattr(item, field, 0)
 						setattr(item, field, current_qty + qty)	
 		if lot_doc:
-			lot_doc.save()
+			lot_doc.save(ignore_permissions=True)
 	wo_doc.save(ignore_permissions=True)
 
 def calculate_piece_stage(grn_doc, received_types, doc_status, total_received, final_calculation):
