@@ -13,6 +13,7 @@
   "delivery_location_name",
   "lot",
   "dc_no",
+  "cutting_laysheet",
   "is_internal_unit",
   "transfer_complete",
   "is_return",
@@ -465,12 +466,20 @@
    "fieldtype": "Check",
    "label": "Is Rework",
    "read_only": 1
+  },
+  {
+   "fieldname": "cutting_laysheet",
+   "fieldtype": "Link",
+   "hidden": 1,
+   "label": "Cutting Laysheet",
+   "options": "Cutting LaySheet"
   }
  ],
+ "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-04-11 12:20:10.594614",
+ "modified": "2025-05-19 18:19:12.763835",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Goods Received Note",
@@ -604,6 +613,7 @@
    "write": 1
   }
  ],
+ "row_format": "Dynamic",
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": [],

@@ -59,6 +59,13 @@ class WorkOrder(Document):
 					frappe.db.sql(f"UPDATE `tabGoods Received Note Item` SET rework_quantity = {update_qty} WHERE name = '{grn}'")
 
 	def onload(self):
+		if not self.is_new():
+			cp = frappe.get_value("Item Production Detail", self.production_detail, "cutting_process")
+			if cp == self.process_name:
+				self.set_onload("is_cutting", True)
+			else:
+				self.set_onload("is_cutting", False)
+
 		if self.is_rework:
 			deliverable_item_details = fetch_rework_item_details(self.get('deliverables'),self.production_detail)
 			self.set_onload('deliverable_item_details', deliverable_item_details)
@@ -1067,6 +1074,9 @@ def calculate_completed_pieces(doc_name):
 	from production_api.production_api.doctype.cutting_plan.cutting_plan import get_complete_incomplete_structure
 	for item in wo_doc.work_order_calculated_items:
 		item.received_qty = 0
+		item.received_type_json = {}
+	wo_doc.total_no_of_pieces_received = 0	
+	wo_doc.received_types_json = {}
 	cut_process = frappe.get_value("Item Production Detail", wo_doc.production_detail, "cutting_process")	
 	if cut_process == wo_doc.process_name:
 		items = fetch_order_item_details(wo_doc.work_order_calculated_items, wo_doc.production_detail)

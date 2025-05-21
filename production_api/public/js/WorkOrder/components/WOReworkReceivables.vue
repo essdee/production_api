@@ -30,7 +30,7 @@
                             <td>{{j.total_cost}}</td>
                             <td>
                                 <div v-if="indexes[item_index][item1_index]">
-                                    <input type="number" class="form-control" @blur="get_input($event)"/>
+                                    <input type="number" class="form-control" step="0.01" @blur="get_input($event)"/>
                                 </div>
                                 <div v-else>
                                     <div class="pull-right cursor-pointer" @click="edit_item(item_index, item1_index)"
@@ -60,11 +60,12 @@ function get_items(){
 	return items.value
 }
 function get_input(event){
-    let value = parseInt(event.target.value)
+    let value = parseFloat(event.target.value)
     let total = 0
     indexes.value[edit_index1][edit_index2] = false
     Object.keys(items.value[edit_index1].items[edit_index2].values).forEach(key => {
-        total = total + value
+        let tot_val = items.value[edit_index1].items[edit_index2].values[key].qty * value
+        total = total + tot_val
         items.value[edit_index1].items[edit_index2].values[key].cost = value
     })
     items.value[edit_index1].items[edit_index2].total_cost = total

@@ -43,14 +43,18 @@ frappe.ui.form.on("Delivery Challan", {
         })
     },
     refresh(frm){
+		$(".layout-side-section").css("display", "None");
 		frm.page.btn_secondary.hide()
         $(frm.fields_dict['deliverable_items'].wrapper).html("")
+		frm.calculated = false
 		if(frm.is_new()){
+			if(frm.doc.work_order){
+				frm.trigger("work_order")
+			}
 			frm.deliverable_items = new frappe.production.ui.Delivery_Challan(frm.fields_dict['deliverable_items'].wrapper,[] )
 			frm.deliverable_items.update_status();
 		}
-		frm.calculated = false
-		if(!frm.is_new()){
+		else {
 			if(frm.doc.__onload && frm.doc.__onload.deliverable_item_details) {
 				frm.doc['deliverable_item_details'] = JSON.stringify(frm.doc.__onload.deliverable_item_details);
 				frm.deliverable_items = new frappe.production.ui.Delivery_Challan(frm.fields_dict['deliverable_items'].wrapper)

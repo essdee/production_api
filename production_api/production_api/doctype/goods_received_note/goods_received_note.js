@@ -73,6 +73,7 @@ frappe.ui.form.on('Goods Received Note', {
 		}
 	},
 	refresh: function(frm) {
+		$(".layout-side-section").css("display", "None");
 		$(frm.fields_dict['item_html'].wrapper).html("");
 		if(frm.doc.against == 'Purchase Order'){
 			frm.itemEditor = new frappe.production.ui.GRNPurchaseOrder(frm.fields_dict["item_html"].wrapper);
@@ -110,7 +111,10 @@ frappe.ui.form.on('Goods Received Note', {
 				frm.itemEditor.load_data(frm.doc.__onload.item_details);	
 			}
 		}
-		if(!frm.doc.is_return){
+		if(frm.is_new() && frm.doc.against_id){
+			frm.trigger("against_id")
+		}
+		if(!frm.doc.is_return && !frm.is_new()){
 			frm.itemEditor.update_status();
 			frappe.production.ui.eventBus.$on("grn_updated", e => {
 				frm.dirty();
@@ -176,11 +180,6 @@ frappe.ui.form.on('Goods Received Note', {
 				}
 				frm.grn_consumed.update_status()
 			}
-		}
-		if(!frm.doc.is_return){
-			frappe.production.ui.eventBus.$on("grn_updated", e => {
-				frm.dirty();
-			})
 		}
 		if(frm.doc.docstatus == 1 && frm.doc.against == "Work Order" && frm.doc.is_internal_unit && !frm.doc.transfer_complete && !frm.doc.is_return){
 			frm.add_custom_button("Complete Transfer", ()=> {

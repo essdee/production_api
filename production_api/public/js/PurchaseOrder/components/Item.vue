@@ -124,6 +124,11 @@ const table_fields = ref([
         uses_primary_attribute: 1,
     },
     {
+        name: 'tax',
+        label: 'Tax',
+        uses_primary_attribute: 1,
+    },
+    {
         name: 'discount_percentage',
         label: 'Discount %',
     },

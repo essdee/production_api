@@ -64,8 +64,9 @@
   },
   {
    "fieldname": "secondary_qty",
-   "fieldtype": "Int",
-   "label": "Secondary Qty"
+   "fieldtype": "Float",
+   "label": "Secondary Qty",
+   "precision": "3"
   },
   {
    "fieldname": "secondary_uom",
@@ -166,15 +167,17 @@
    "options": "GRN Item Type"
   }
  ],
+ "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2025-04-11 11:04:46.462646",
+ "modified": "2025-05-15 11:02:51.746434",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Delivery Challan Item",
  "owner": "Administrator",
  "permissions": [],
+ "row_format": "Dynamic",
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": []
