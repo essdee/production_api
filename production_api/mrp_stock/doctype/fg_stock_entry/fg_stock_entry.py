@@ -46,6 +46,7 @@ class FGStockEntry(Document):
 				"posting_time" : self.get("posting_time"),
 				"recieved_by" : self.get("recieved_by"),
 				"qty" :  flt(d.get('stock_qty')),
+				"uom": d.get('stock_uom'),
 				"voucher_type" : "FG Stock Entry",
 				"voucher_no" : self.get('name'),
 				"voucher_detail_no" : d.get('name'),
