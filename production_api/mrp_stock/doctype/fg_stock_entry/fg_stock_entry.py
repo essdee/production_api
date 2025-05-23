@@ -46,6 +46,7 @@ class FGStockEntry(Document):
 				"posting_time" : self.get("posting_time"),
 				"recieved_by" : self.get("recieved_by"),
 				"qty" :  flt(d.get('stock_qty')),
+				"uom": d.get('stock_uom'),
 				"voucher_type" : "FG Stock Entry",
 				"voucher_no" : self.get('name'),
 				"voucher_detail_no" : d.get('name'),
@@ -142,7 +143,7 @@ def get_stock_entry_detail(stock_entry):
 	}
 	return resp
 
-def get_inward_stock(item, warehouselist):
+def get_inward_stock(item, warehouselist, start_date = None, end_date = None):
 
 	if isinstance(warehouselist, string_types) :
 		warehouselist = frappe.json.loads(warehouselist)
@@ -156,6 +157,10 @@ def get_inward_stock(item, warehouselist):
 			warehouseFilter += ','
 		ind += 1
 	warehouseFilter += ")"
+
+	date_filter = ""
+	if start_date and end_date:
+		date_filter = f" AND `tabFG Stock Entry`.creation BETWEEN '{start_date}' AND '{end_date}' "
 
 	query = f"""
 		SELECT `tabFG Stock Entry Detail`.qty as pending_qty,
@@ -177,6 +182,7 @@ def get_inward_stock(item, warehouselist):
 		JOIN `tabItem Variant` ON `tabFG Stock Entry Detail`.item_variant=`tabItem Variant`.name  WHERE `tabItem Variant`.item = '{item}' 
 		AND `tabFG Stock Entry`.docstatus = 1
 		{ f'AND `tabFG Stock Entry`.warehouse IN  {warehouseFilter}' if len(warehouselist) > 0 else "" }
+		{ date_filter }
 	"""
 
 	return frappe.db.sql(query, as_dict=True)
