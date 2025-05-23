@@ -224,3 +224,27 @@ def get_reserved_stock(warehouse, item):
             }
         item_wh_map[group_by_key]['bal_qty'] += i['qty']
     return item_wh_map
+
+@frappe.whitelist()
+def get_fg_stock_entry_datewise_inward(start_date, end_date, item, warehouse):
+    if isinstance(item, string_types):
+        item = json.loads(item)
+    if isinstance(warehouse, string_types):
+        warehouse = json.loads(warehouse)
+    
+    query = """
+        SELECT SUM(t2.qty) as qty, t2.item_variant, t4.item as item_name FROM
+        `tabFG Stock Entry` t1 JOIN `tabFG Stock Entry Detail` t2 ON t2.parent = t1.name
+        JOIN `tabSupplier` t3 ON t3.name = t1.warehouse
+        JOIN `tabItem Variant` t4 ON t4.name = t2.item_variant
+        WHERE t1.docstatus = 1 AND t1.posting_date BETWEEN '{start_date}' AND '{end_date}'
+        AND t1.warehouse IN ({warehouse})
+        AND t2.item_variant IN ({item})
+        GROUP BY t2.item_variant
+    """.format(
+        start_date=start_date,
+        end_date=end_date,
+        warehouse=",".join([f"'{w}'" for w in warehouse]),
+        item=",".join([f"'{i}'" for i in item])
+    )
+    return frappe.db.sql(query, as_dict=True)
