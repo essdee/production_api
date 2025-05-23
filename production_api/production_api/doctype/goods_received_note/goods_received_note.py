@@ -595,7 +595,7 @@ class GoodsReceivedNote(Document):
 		received_type = frappe.db.get_single_value("Stock Settings", "default_received_type")
 		for item in self.grn_deliverables:
 			if res.get(item.item_variant):
-				sl_entries.append(self.get_deliverables_data(item, lot, {}, 1, received_type))
+				sl_entries.append(self.get_deliverables_data(item, lot, {}, -1, received_type))
 		make_sl_entries(sl_entries)
 
 	def update_purchase_order(self):
