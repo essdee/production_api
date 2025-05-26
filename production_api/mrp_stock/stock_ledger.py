@@ -271,7 +271,7 @@ def repost_required_for_queue(doc) -> bool:
 		filters={
 			"voucher_type": doc.doctype,
 			"voucher_no": doc.name,
-			"actual_qty": ("<", 0),
+			"qty": ("<", 0),
 			"is_cancelled": 0,
 		},
 		fields=["item", "warehouse", "stock_queue", "lot", "received_type"],
