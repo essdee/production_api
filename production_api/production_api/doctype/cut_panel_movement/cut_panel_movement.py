@@ -58,13 +58,13 @@ class CutPanelMovement(Document):
 						part = data[colour]['part']
 						for panel in panels[part]:
 							x = panel+"_moved"
-							if x in row and row[x] == True:
+							if panel in row and x in row and row[x] == True:
 								datas[colour]['data'].append(row)
 								break
 					else:
 						for panel in panels:
 							x = panel+"_moved"
-							if x in row and row[x] == True:
+							if panel in row and x in row and row[x] == True:
 								datas[colour]['data'].append(row)
 								break
 		json_data['data'] = datas
@@ -144,12 +144,12 @@ def check_panel_and_accessories(cut_panel_movement_json):
 				part = data[colour]['part']
 				for panel in panels[part]:
 					x = panel+"_moved"
-					if x in row and row[x] == True:
+					if panel in row and x in row and row[x] == True:
 						return True
 			else:
 				for panel in panels:
 					x = panel+"_moved"
-					if x in row and row[x] == True:
+					if panel in row and x in row and row[x] == True:
 						return True
 					
 	accessory_data = cut_panel_movement_json['accessory_data']
@@ -175,12 +175,12 @@ def update_cls(cut_panel_movement_json, docstatus, cutting_plan, process_name):
 				part = data[colour]['part']
 				for panel in panels[part]:
 					x = panel+"_moved"
-					if x in row and row[x] == True:
+					if panel in row and x in row and row[x] == True:
 						ref_doclist.add(row[panel+'_ref_docname'])
 			else:
 				for panel in panels:
 					x = panel+"_moved"
-					if x in row and row[x] == True:
+					if panel in row and x in row and row[x] == True:
 						ref_doclist.add(row[panel+'_ref_docname'])
 
 	ref_doclist = tuple(ref_doclist)
@@ -191,7 +191,7 @@ def update_cls(cut_panel_movement_json, docstatus, cutting_plan, process_name):
 	if len(ref_doclist) > 0:
 		frappe.db.sql(
 			f"""
-				Update `tabCutting LaySheet Bundle` SET is_moved = {moved} WHERE name IN {(ref_doclist)}
+				Update `tabCutting LaySheet Bundle` SET is_moved = {moved} WHERE name IN {ref_doclist}
 			"""
 		)
 
