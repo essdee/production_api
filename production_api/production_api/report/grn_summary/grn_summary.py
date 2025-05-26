@@ -92,6 +92,18 @@ def get_columns():
             "width": 100
         },
         {
+            "fieldname": "po_qty",
+            "label": "Purchase Order Quantity",
+            "fieldtype": "Int",
+            "width": 100
+        },
+        {
+            "fieldname": "po_rate",
+            "label": "Purchase Order Rate",
+            "fieldtype": "Currency",
+            "width": 100
+        },
+        {
             "fieldname": "expected_delivery_date",
             "label": "Expected Delivery Date",
             "fieldtype": "Date",
@@ -166,6 +178,8 @@ def get_data(filters):
             grn_item.uom,
             grn_item.lot,
             po_item.delivery_date.as_('expected_delivery_date'),
+            po_item.qty.as_("po_qty"),
+            po_item.rate.as_("po_rate"),
             grn.delivery_date,
             grn.docstatus.as_('status'),
             grn_item.comments,

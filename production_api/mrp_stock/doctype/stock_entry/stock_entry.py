@@ -158,6 +158,7 @@ class StockEntry(Document):
 
 	def on_submit(self):
 		self.update_stock_ledger()
+		self.make_repost_action()
 		self.update_transferred_qty()
 		if self.purpose == "DC Completion" or self.purpose == "GRN Completion":
 			if self.purpose == "DC Completion":
@@ -202,8 +203,9 @@ class StockEntry(Document):
 			doc.save()
 	
 	def before_cancel(self):
-		self.ignore_linked_doctypes = ("Stock Ledger Entry", "Stock Reservation Entry", "Delivery Challan")
+		self.ignore_linked_doctypes = ("Stock Ledger Entry", "Stock Reservation Entry", "Delivery Challan", "Repost Item Valuation")
 		self.update_stock_ledger()
+		self.make_repost_action()
 		self.update_transferred_qty()
 		if self.purpose == "DC Completion" or self.purpose == "GRN Completion":
 			doctype = "tabGoods Received Note Item"
@@ -240,6 +242,10 @@ class StockEntry(Document):
 			doc.ste_transferred_percent = round(doc.ste_transferred_percent, 2)
 			doc.save()
 		self.revert_stock_transfer_entries()
+	
+	def make_repost_action(self):
+		from production_api.mrp_stock.stock_ledger import repost_future_sle_and_gle
+		repost_future_sle_and_gle(self)
 
 	def revert_stock_transfer_entries(self):
 		sre_list = frappe.get_list("Stock Reservation Entry" , {

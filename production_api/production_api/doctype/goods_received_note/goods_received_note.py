@@ -88,6 +88,10 @@ class GoodsReceivedNote(Document):
 				self.split_items()
 
 		self.set('approved_by', frappe.get_user().doc.name)
+	
+	def make_repost_action(self):
+		from production_api.mrp_stock.stock_ledger import repost_future_sle_and_gle
+		repost_future_sle_and_gle(self)
 
 	def on_submit(self):
 		logger = get_module_logger("goods_received_note")
@@ -115,6 +119,8 @@ class GoodsReceivedNote(Document):
 					self.db_set("ste_transferred", self.total_delivered_qty)
 					self.db_set("transfer_complete", 1)
 				self.piece_calculation()
+		self.make_repost_action()
+		
 
 	def piece_calculation(self):
 		# calculate_pieces(self.name)
@@ -422,7 +428,7 @@ class GoodsReceivedNote(Document):
 	
 	def on_cancel(self):
 		logger = get_module_logger("goods_received_note")
-		self.ignore_linked_doctypes = ("Stock Ledger Entry")
+		self.ignore_linked_doctypes = ("Stock Ledger Entry", "Repost Item Valuation")
 		if self.against == 'Purchase Order':
 			logger.debug(f"{self.name} On Cancel Purchase Order {datetime.now()}")
 			if self.purchase_invoice_name:
@@ -482,8 +488,9 @@ class GoodsReceivedNote(Document):
 					self.db_set("ste_transferred_percent", 0)
 					self.db_set("ste_transferred", 0)
 					self.db_set("transfer_complete", 0)
-				self.piece_calculation()	
-
+				self.piece_calculation()
+		self.make_repost_action()
+			
 	def reupdate_rework_stock(self):
 		wo_doc = frappe.get_doc(self.against, self.against_id)
 		variant_received_types = {}
