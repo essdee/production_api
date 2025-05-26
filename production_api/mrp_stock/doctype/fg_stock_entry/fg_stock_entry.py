@@ -4,7 +4,7 @@
 import frappe
 from frappe.model.document import Document
 from frappe.utils import flt
-from production_api.mrp_stock.stock_ledger import make_sl_entries
+from production_api.mrp_stock.stock_ledger import make_sl_entries, repost_future_stock_ledger_entry
 from six import string_types
 from production_api.mrp_stock.doctype.stock_entry.stock_entry import get_uom_details
 from production_api.production_api.doctype.item_price.item_price import get_item_variant_price
@@ -16,6 +16,7 @@ class FGStockEntry(Document):
 	def before_submit(self):
 		self.validate_data()
 		self.make_mrp_sle_entries()
+		self.make_repost_action()
 
 	def validate_data(self):
 		received_type = frappe.db.get_single_value("Stock Settings","default_received_type")
@@ -32,8 +33,12 @@ class FGStockEntry(Document):
 			row.received_type = received_type			
 	
 	def before_cancel(self):
-		self.ignore_linked_doctypes = ("Stock Ledger Entry")
+		self.ignore_linked_doctypes = ("Stock Ledger Entry", "Repost Item Valuation")
 		self.make_mrp_sle_entries()
+		self.make_repost_action()
+
+	def make_repost_action(self):
+		repost_future_stock_ledger_entry(self)
 
 	def make_mrp_sle_entries(self):
 		sl_entries = []

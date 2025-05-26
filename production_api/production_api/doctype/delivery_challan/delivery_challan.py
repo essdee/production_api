@@ -8,7 +8,7 @@ from itertools import zip_longest
 from frappe.model.document import Document
 from frappe.utils import flt, nowdate, now
 from production_api.mrp_stock.utils import get_stock_balance
-from production_api.mrp_stock.stock_ledger import make_sl_entries
+from production_api.mrp_stock.stock_ledger import make_sl_entries, repost_future_stock_ledger_entry
 from production_api.production_api.logger import get_module_logger
 from production_api.production_api.doctype.item.item import get_attribute_details
 from production_api.utils import get_panel_list, update_if_string_instance, update_variant
@@ -38,7 +38,7 @@ class DeliveryChallan(Document):
 					item.delivered_quantity = 0
 					break
 		logger.debug(f"{self.name} Work Order Deliverables Updated {datetime.now()}")
-		self.ignore_linked_doctypes = ('Stock Ledger Entry')
+		self.ignore_linked_doctypes = ('Stock Ledger Entry', 'Repost Item Valuation')
 		add_sl_entries = []
 		reduce_sl_entries = []
 		stock_settings = frappe.get_single("Stock Settings")
@@ -56,6 +56,7 @@ class DeliveryChallan(Document):
 		logger.debug(f"{self.name} Stock Added to From Location {datetime.now()}")
 		make_sl_entries(reduce_sl_entries)
 		logger.debug(f"{self.name} Stock reduced From Supplier {datetime.now()}")
+		self.make_repost_action()
 		wo_doc.save(ignore_permissions=True)		
 		frappe.enqueue(calculate_pieces,"short", doc_name=self.name, enqueue_after_commit=True )		
 
@@ -103,6 +104,10 @@ class DeliveryChallan(Document):
 		logger.debug(f"{self.name} Stock reduced from From Location {datetime.now()}")
 		make_sl_entries(add_sl_entries)
 		logger.debug(f"{self.name} Stock Added to Supplier {datetime.now()}")
+		self.make_repost_action()
+
+	def make_repost_action(self):
+		repost_future_stock_ledger_entry(self)
 	
 	def before_save(self):
 		if self.docstatus == 1:

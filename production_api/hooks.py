@@ -215,4 +215,8 @@ jinja = {
     ]
 }
 
+default_log_clearing_doctypes = {
+	"Repost Item Valuation": 60,
+}
+
 auto_cancel_exempted_doctypes = ["Goods Received Note"]

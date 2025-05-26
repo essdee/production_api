@@ -34,6 +34,7 @@ def make_sl_entries(sl_entries, allow_negative_stock=False, via_landed_cost_vouc
 	if sl_entries:
 		cancel = sl_entries[0].get("is_cancelled")
 		if cancel:
+			validate_cancellation(sl_entries)
 			set_as_cancelled(sl_entries[0].get("voucher_type"), sl_entries[0].get("voucher_no"))
 
 		args = get_args_for_future_sle(sl_entries[0])
@@ -129,6 +130,247 @@ def get_args_for_future_sle(row):
 			"posting_time": row.get("posting_time"),
 		}
 	)
+
+def repost_future_stock_ledger_entry(self, force=False, via_landed_cost_voucher=False):
+		args = frappe._dict(
+			{
+				"posting_date": self.posting_date,
+				"posting_time": self.posting_time,
+				"voucher_type": self.doctype,
+				"voucher_no": self.name,
+				"via_landed_cost_voucher": via_landed_cost_voucher,
+			}
+		)
+
+		if self.docstatus == 2:
+			force = True
+
+		if force or future_sle_exists(args) or repost_required_for_queue(self):
+			item_based_reposting = cint(
+				frappe.db.get_single_value("Stock Reposting Settings", "item_based_reposting")
+			)
+			if item_based_reposting:
+				create_item_wise_repost_entries(
+					voucher_type=self.doctype,
+					voucher_no=self.name,
+					via_landed_cost_voucher=via_landed_cost_voucher,
+				)
+			else:
+				create_repost_item_valuation_entry(args)
+
+def future_sle_exists(args, sl_entries=None, allow_force_reposting=True):
+	from production_api.mrp_stock.utils import get_combine_datetime
+
+	if allow_force_reposting and frappe.db.get_single_value(
+		"Stock Reposting Settings", "do_reposting_for_each_stock_transaction"
+	):
+		return True
+
+	key = (args.voucher_type, args.voucher_no)
+	if not hasattr(frappe.local, "future_sle"):
+		frappe.local.future_sle = {}
+
+	if validate_future_sle_not_exists(args, key, sl_entries):
+		return False
+	elif get_cached_data(args, key):
+		return True
+
+	if not sl_entries:
+		sl_entries = get_sle_entries_against_voucher(args)
+		if not sl_entries:
+			return
+
+	or_conditions = get_conditions_to_validate_future_sle(sl_entries)
+
+	args["posting_datetime"] = get_combine_datetime(args["posting_date"], args["posting_time"])
+
+	data = frappe.db.sql(
+		"""
+		select item, warehouse, lot, received_type, count(name) as total_row
+		from `tabStock Ledger Entry`
+		where
+			({})
+			and posting_datetime >= %(posting_datetime)s
+			and voucher_no != %(voucher_no)s
+			and is_cancelled = 0
+		GROUP BY
+			item, warehouse, lot, received_type
+		""".format(" or ".join(or_conditions)),
+		args,
+		as_dict=1,
+	)
+
+	for d in data:
+		frappe.local.future_sle[key][(d.item, d.warehouse, d.lot, d.received_type)] = d.total_row
+
+	return len(data)
+
+def validate_future_sle_not_exists(args, key, sl_entries=None):
+	item_key = ""
+	if args.get("item"):
+		item_key = (args.get("item"), args.get("warehouse"), args.get("lot"), args.get("received_type"))
+
+	if not sl_entries and hasattr(frappe.local, "future_sle"):
+		if key not in frappe.local.future_sle:
+			return False
+
+		if not frappe.local.future_sle.get(key) or (
+			item_key and item_key not in frappe.local.future_sle.get(key)
+		):
+			return True
+
+def get_cached_data(args, key):
+	if key not in frappe.local.future_sle:
+		frappe.local.future_sle[key] = frappe._dict({})
+
+	if args.get("item"):
+		item_key = (args.get("item"), args.get("warehouse"), args.get("lot"), args.get("received_type"))
+		count = frappe.local.future_sle[key].get(item_key)
+
+		return True if (count or count == 0) else False
+	else:
+		return frappe.local.future_sle[key]
+
+def get_conditions_to_validate_future_sle(sl_entries):
+	warehouse_items_map = {}
+	for entry in sl_entries:
+		key = (entry.get("warehouse"), entry.get("lot"), entry.get("received_type"))
+		if key not in warehouse_items_map:
+			warehouse_items_map[key] = set()
+
+		warehouse_items_map[key].add(entry.item)
+
+	or_conditions = []
+	for key, items in warehouse_items_map.items():
+		warehouse, lot, received_type = key
+		or_conditions.append(
+			f"""warehouse = {frappe.db.escape(warehouse)}
+				and lot = {frappe.db.escape(lot)}
+				and received_type = {frappe.db.escape(received_type)}
+				and item in ({', '.join(frappe.db.escape(item) for item in items)})"""
+		)
+
+	return or_conditions
+	
+def get_sle_entries_against_voucher(args):
+	return frappe.get_all(
+		"Stock Ledger Entry",
+		filters={"voucher_type": args.voucher_type, "voucher_no": args.voucher_no},
+		fields=["item", "warehouse", "lot", "received_type"],
+		order_by="creation asc",
+	)
+
+def repost_required_for_queue(doc) -> bool:
+	"""check if stock document contains repeated item-warehouse with queue based valuation.
+
+	if queue exists for repeated items then SLEs need to reprocessed in background again.
+	"""
+
+	consuming_sles = frappe.db.get_all(
+		"Stock Ledger Entry",
+		filters={
+			"voucher_type": doc.doctype,
+			"voucher_no": doc.name,
+			"actual_qty": ("<", 0),
+			"is_cancelled": 0,
+		},
+		fields=["item", "warehouse", "stock_queue", "lot", "received_type"],
+	)
+	item_warehouses = [(sle.item, sle.warehouse, sle.lot, sle.received_type) for sle in consuming_sles]
+
+	unique_item_warehouses = set(item_warehouses)
+
+	if len(unique_item_warehouses) == len(item_warehouses):
+		return False
+
+	for sle in consuming_sles:
+		if sle.stock_queue != "[]":  # using FIFO/LIFO valuation
+			return True
+	return False
+
+
+def validate_cancellation(kargs):
+	if kargs[0].get("is_cancelled"):
+		repost_entry = frappe.db.get_value(
+			"Repost Item Valuation",
+			{
+				"voucher_type": kargs[0].voucher_type,
+				"voucher_no": kargs[0].voucher_no,
+				"docstatus": 1,
+			},
+			["name", "status"],
+			as_dict=1,
+		)
+
+		if repost_entry:
+			if repost_entry.status == "In Progress":
+				frappe.throw(
+					_(
+						"Cannot cancel the transaction. Reposting of item valuation on submission is not completed yet."
+					)
+				)
+			if repost_entry.status == "Queued":
+				doc = frappe.get_doc("Repost Item Valuation", repost_entry.name)
+				doc.status = "Skipped"
+				doc.flags.ignore_permissions = True
+				doc.cancel()
+
+
+def create_repost_item_valuation_entry(args):
+	args = frappe._dict(args)
+	repost_entry = frappe.new_doc("Repost Item Valuation")
+	repost_entry.based_on = args.based_on
+	if not args.based_on:
+		repost_entry.based_on = "Transaction" if args.voucher_no else "Item and Warehouse"
+	repost_entry.voucher_type = args.voucher_type
+	repost_entry.voucher_no = args.voucher_no
+	repost_entry.item = args.item
+	repost_entry.warehouse = args.warehouse
+	repost_entry.lot = args.lot
+	repost_entry.received_type = args.received_type
+	repost_entry.posting_date = args.posting_date
+	repost_entry.posting_time = args.posting_time
+	repost_entry.allow_zero_rate = args.allow_zero_rate
+	repost_entry.flags.ignore_links = True
+	repost_entry.flags.ignore_permissions = True
+	repost_entry.via_landed_cost_voucher = args.via_landed_cost_voucher
+	repost_entry.save()
+	repost_entry.submit()
+
+
+def create_item_wise_repost_entries(
+	voucher_type, voucher_no, allow_zero_rate=False, via_landed_cost_voucher=False
+):
+	"""Using a voucher create repost item valuation records for all item-warehouse pairs."""
+
+	stock_ledger_entries = get_items_to_be_repost(voucher_type, voucher_no)
+
+	distinct_item_warehouses = set()
+	repost_entries = []
+
+	for sle in stock_ledger_entries:
+		item_wh = (sle.item, sle.warehouse, sle.lot, sle.received_type)
+		if item_wh in distinct_item_warehouses:
+			continue
+		distinct_item_warehouses.add(item_wh)
+
+		repost_entry = frappe.new_doc("Repost Item Valuation")
+		repost_entry.based_on = "Item and Warehouse"
+
+		repost_entry.item = sle.item
+		repost_entry.warehouse = sle.warehouse
+		repost_entry.lot = sle.lot
+		repost_entry.received_type = sle.received_type
+		repost_entry.posting_date = sle.posting_date
+		repost_entry.posting_time = sle.posting_time
+		repost_entry.allow_zero_rate = allow_zero_rate
+		repost_entry.flags.ignore_links = True
+		repost_entry.flags.ignore_permissions = True
+		repost_entry.via_landed_cost_voucher = via_landed_cost_voucher
+		repost_entry.submit()
+		repost_entries.append(repost_entry)
+
+	return repost_entries
 
 def set_as_cancelled(voucher_type, voucher_no):
 	frappe.db.sql(

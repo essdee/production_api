@@ -139,10 +139,16 @@ class StockReconciliation(Document):
 
 	def on_submit(self):
 		self.update_stock_ledger()
+		self.make_report_action()
 	
 	def on_cancel(self):
-		self.ignore_linked_doctypes = ("Stock Ledger Entry")
+		self.ignore_linked_doctypes = ("Stock Ledger Entry", "Repost Item Valuation")
 		self.make_sle_on_cancel()
+		self.make_report_action()
+
+	def make_report_action(self):
+		from production_api.mrp_stock.stock_ledger import repost_future_stock_ledger_entry
+		repost_future_stock_ledger_entry(self)
 	
 	def update_stock_ledger(self):
 		from production_api.mrp_stock.stock_ledger import make_sl_entries
