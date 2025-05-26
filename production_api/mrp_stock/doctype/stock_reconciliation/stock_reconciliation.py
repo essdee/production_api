@@ -147,8 +147,8 @@ class StockReconciliation(Document):
 		self.make_report_action()
 
 	def make_report_action(self):
-		from production_api.mrp_stock.stock_ledger import repost_future_sle_and_gle
-		repost_future_sle_and_gle(self)
+		from production_api.mrp_stock.stock_ledger import repost_future_stock_ledger_entry
+		repost_future_stock_ledger_entry(self)
 	
 	def update_stock_ledger(self):
 		from production_api.mrp_stock.stock_ledger import make_sl_entries

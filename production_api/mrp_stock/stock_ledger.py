@@ -131,7 +131,7 @@ def get_args_for_future_sle(row):
 		}
 	)
 
-def repost_future_sle_and_gle(self, force=False, via_landed_cost_voucher=False):
+def repost_future_stock_ledger_entry(self, force=False, via_landed_cost_voucher=False):
 		args = frappe._dict(
 			{
 				"posting_date": self.posting_date,
