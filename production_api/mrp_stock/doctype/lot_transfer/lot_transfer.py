@@ -119,10 +119,16 @@ class LotTransfer(Document):
 	
 	def on_submit(self):
 		self.update_stock_ledger()
+		self.make_repost_action()
 	
 	def before_cancel(self):
-		self.ignore_linked_doctypes = ("Stock Ledger Entry")
+		self.ignore_linked_doctypes = ("Stock Ledger Entry", "Repost Item Valuation")
 		self.update_stock_ledger()
+		self.make_repost_action()
+
+	def make_repost_action(self):
+		from production_api.mrp_stock.stock_ledger import repost_future_sle_and_gle
+		repost_future_sle_and_gle(self)
 
 	def update_stock_ledger(self):
 		from production_api.mrp_stock.stock_ledger import make_sl_entries
