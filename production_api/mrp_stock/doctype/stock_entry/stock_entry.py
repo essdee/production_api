@@ -244,8 +244,8 @@ class StockEntry(Document):
 		self.revert_stock_transfer_entries()
 	
 	def make_repost_action(self):
-		from production_api.mrp_stock.stock_ledger import repost_future_sle_and_gle
-		repost_future_sle_and_gle(self)
+		from production_api.mrp_stock.stock_ledger import repost_future_stock_ledger_entry
+		repost_future_stock_ledger_entry(self)
 
 	def revert_stock_transfer_entries(self):
 		sre_list = frappe.get_list("Stock Reservation Entry" , {

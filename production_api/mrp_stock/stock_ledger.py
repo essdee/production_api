@@ -131,7 +131,7 @@ def get_args_for_future_sle(row):
 		}
 	)
 
-def repost_future_sle_and_gle(self, force=False, via_landed_cost_voucher=False):
+def repost_future_stock_ledger_entry(self, force=False, via_landed_cost_voucher=False):
 		args = frappe._dict(
 			{
 				"posting_date": self.posting_date,
@@ -271,7 +271,7 @@ def repost_required_for_queue(doc) -> bool:
 		filters={
 			"voucher_type": doc.doctype,
 			"voucher_no": doc.name,
-			"actual_qty": ("<", 0),
+			"qty": ("<", 0),
 			"is_cancelled": 0,
 		},
 		fields=["item", "warehouse", "stock_queue", "lot", "received_type"],
