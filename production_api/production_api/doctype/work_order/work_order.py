@@ -1109,7 +1109,6 @@ def calculate_completed_pieces(doc_name):
 def calc(doc_name):	
 	grn_list = frappe.get_list("Goods Received Note", filters={"against_id": doc_name,"docstatus": 1}, pluck="name")
 	from production_api.production_api.doctype.goods_received_note.goods_received_note import calculate_pieces
-	# grn_list = ["GRN-2526-00676","GRN-2526-00677","GRN-2526-00682","GRN-2526-00683","GRN-2526-00719","GRN-2526-00720","GRN-2526-00721","GRN-2526-00722"]
 	for grn in grn_list:
 		calculate_pieces(grn)
 
