@@ -81,11 +81,13 @@
    "reqd": 1
   },
   {
+   "allow_on_submit": 1,
    "fieldname": "start_date",
    "fieldtype": "Date",
    "label": "Start Date"
   },
   {
+   "allow_on_submit": 1,
    "fieldname": "end_date",
    "fieldtype": "Date",
    "label": "End Date"
@@ -482,6 +484,7 @@
    "read_only": 1
   }
  ],
+ "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [
@@ -494,7 +497,7 @@
    "link_fieldname": "against_id"
   }
  ],
- "modified": "2025-04-10 13:08:22.387129",
+ "modified": "2025-05-28 11:57:58.381727",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Work Order",
@@ -590,6 +593,7 @@
    "share": 1
   }
  ],
+ "row_format": "Dynamic",
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": []

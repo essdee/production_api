@@ -1183,7 +1183,11 @@ def create_grn_entry(doc_name):
 	new_doc.set("grn_deliverables", items)
 	new_doc.save()
 	new_doc.submit()
-	frappe.db.set_value("Cutting LaySheet", doc_name, "goods_received_note", new_doc.name, update_modified=False)
+	frappe.db.sql(
+		"""
+			UPDATE `tabCutting LaySheet` SET goods_received_note = %s WHERE name = %s
+		""", (new_doc.name, doc_name, )
+	)
 
 @frappe.whitelist()
 def cancel_laysheet(doc_name):

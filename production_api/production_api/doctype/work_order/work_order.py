@@ -102,12 +102,15 @@ class WorkOrder(Document):
 					self.set("deliverables",items)
 
 			if(self.get('receivable_item_details')):
-				frappe.flags.check = False
 				items = save_item_details(self.receivable_item_details, self.production_detail, supplier=self.supplier, process_name=self.process_name)
 				self.set("receivables",items)
-
-			if frappe.flags.check and len(self.receivables) > 0:
+			
+			if len(self.receivables) > 0:
 				self.calc_receivable_rate()
+			planned_qty = 0	
+			for row in self.work_order_calculated_items:
+				planned_qty += row.get('quantity', 0)
+			self.planned_quantity = planned_qty	
 		else:
 			self.set("deliverables",[])
 			self.set("receivables",[])	
@@ -510,7 +513,7 @@ def get_deliverable_receivable( items, doc_name, deliverable=False, receivable=F
 	dept_attribute = ipd_doc.dependent_attribute
 	pack_out_stage = ipd_doc.pack_out_stage
 	stiching_in_stage = ipd_doc.stiching_in_stage
-	wo_colour_sets = get_report_data(items)
+	wo_colour_sets = get_report_data(items, dept_attribute)
 	items = get_items(items, ipd, deliverable=deliverable)
 	grp_variant = items[0]['item_variant']
 	item_name = frappe.get_value("Item Variant", grp_variant, 'item')
@@ -713,7 +716,7 @@ def get_converted_accessory(ipd_doc, accessory, lot, table_index, row_index):
 		row_index += 1
 	return accessories	
 
-def get_report_data(items):
+def get_report_data(items, dept_attribute):
 	attrs = []
 	items = update_if_string_instance(items)
 	wo_colour_sets = ""
@@ -724,7 +727,6 @@ def get_report_data(items):
 			if item['work_order_qty'][val] > 0:
 				check = True
 				break
-
 		if check:
 			attrs.append(item['attributes'])
 		else:
@@ -734,8 +736,13 @@ def get_report_data(items):
 	else:	
 		attributes = []
 		for attr in attrs:
-			attribute = "-".join(list(attr.values()))
-			attributes.append(attribute)
+			attribute = ""
+			for key in attr:
+				if key != dept_attribute:
+					attribute += attr[key] + "-"
+			if attribute:		
+				attribute = attribute[:-1]		
+				attributes.append(attribute)
 		wo_colour_sets = ", ".join(attributes)	
 	return wo_colour_sets
 
@@ -1072,6 +1079,15 @@ def update_stock(work_order):
 def calculate_completed_pieces(doc_name):
 	wo_doc = frappe.get_doc("Work Order", doc_name)
 	from production_api.production_api.doctype.cutting_plan.cutting_plan import get_complete_incomplete_structure
+	process_name = wo_doc.process_name
+	ipd_doc = frappe.get_doc("Item Production Detail", wo_doc.production_detail)
+	if process_name in [ipd_doc.cutting_process, ipd_doc.stiching_process, ipd_doc.packing_process]:
+		lot_doc = frappe.get_cached_doc("Lot",wo_doc.lot)
+		field = "cut_qty" if process_name == ipd_doc.cutting_process else "stich_qty" if process_name == ipd_doc.stiching_process else "pack_qty"
+		for item in lot_doc.lot_order_details:
+			setattr(item, field, 0)	
+		lot_doc.save(ignore_permissions=True)
+			
 	for item in wo_doc.work_order_calculated_items:
 		item.received_qty = 0
 		item.received_type_json = {}
@@ -1093,6 +1109,7 @@ def calculate_completed_pieces(doc_name):
 def calc(doc_name):	
 	grn_list = frappe.get_list("Goods Received Note", filters={"against_id": doc_name,"docstatus": 1}, pluck="name")
 	from production_api.production_api.doctype.goods_received_note.goods_received_note import calculate_pieces
+	# grn_list = ["GRN-2526-00676","GRN-2526-00677","GRN-2526-00682","GRN-2526-00683","GRN-2526-00719","GRN-2526-00720","GRN-2526-00721","GRN-2526-00722"]
 	for grn in grn_list:
 		calculate_pieces(grn)
 
