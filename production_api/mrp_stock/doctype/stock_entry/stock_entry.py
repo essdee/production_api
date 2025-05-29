@@ -201,7 +201,12 @@ class StockEntry(Document):
 				doc.transfer_complete = 1
 			doc.ste_transferred_percent = round(doc.ste_transferred_percent, 2)
 			doc.save()
-	
+		if self.cut_panel_movement:
+			cpm_doc = frappe.get_doc("Cut Panel Movement", self.cut_panel_movement)	
+			cpm_doc.against = self.doctype
+			cpm_doc.against_id = self.name
+			cpm_doc.save()
+
 	def before_cancel(self):
 		self.ignore_linked_doctypes = ("Stock Ledger Entry", "Stock Reservation Entry", "Delivery Challan", "Repost Item Valuation")
 		self.update_stock_ledger()
@@ -241,6 +246,11 @@ class StockEntry(Document):
 				doc.transfer_complete = 0
 			doc.ste_transferred_percent = round(doc.ste_transferred_percent, 2)
 			doc.save()
+		if self.cut_panel_movement:
+			cpm_doc = frappe.get_doc("Cut Panel Movement", self.cut_panel_movement)	
+			cpm_doc.against = None
+			cpm_doc.against_id = None
+			cpm_doc.save()
 		self.revert_stock_transfer_entries()
 	
 	def make_repost_action(self):
@@ -272,7 +282,7 @@ class StockEntry(Document):
 		# make sl entries for source warehouse first
 		self.get_sle_for_source_warehouse(sl_entries, warehouse=from_warehouse)
 		to_warehouse = None
-		if self.purpose == "Send to Warehouse":
+		if self.purpose == "Send to Warehouse" and not self.skip_transit:
 			to_warehouse = frappe.get_single("Stock Settings").transit_warehouse
 		# SLE for target warehouse
 		self.get_sle_for_target_warehouse(sl_entries, warehouse=to_warehouse)

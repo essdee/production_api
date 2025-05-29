@@ -14,6 +14,7 @@
   "against",
   "against_id",
   "column_break_gz9cd",
+  "skip_transit",
   "posting_date",
   "posting_time",
   "outgoing_stock_entry",
@@ -184,13 +185,19 @@
    "hidden": 1,
    "label": "Cut Panel Movement",
    "options": "Cut Panel Movement"
+  },
+  {
+   "default": "0",
+   "fieldname": "skip_transit",
+   "fieldtype": "Check",
+   "label": "Skip Transit"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-05-14 11:46:57.979092",
+ "modified": "2025-05-29 17:58:18.472152",
  "modified_by": "Administrator",
  "module": "MRP Stock",
  "name": "Stock Entry",
