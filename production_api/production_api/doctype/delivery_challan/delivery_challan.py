@@ -57,14 +57,27 @@ class DeliveryChallan(Document):
 		make_sl_entries(reduce_sl_entries)
 		logger.debug(f"{self.name} Stock reduced From Supplier {datetime.now()}")
 		self.make_repost_action()
-		wo_doc.save(ignore_permissions=True)		
+		wo_doc.save(ignore_permissions=True)	
+		if self.cut_panel_movement:
+			cpm_doc = frappe.get_doc("Cut Panel Movement", self.cut_panel_movement)	
+			cpm_doc.against = None
+			cpm_doc.against_id = None
+			cpm_doc.save()	
 		frappe.enqueue(calculate_pieces,"short", doc_name=self.name, enqueue_after_commit=True )		
 
 	def on_submit(self):
-		# calculate_pieces(self.name)		
+		# calculate_pieces(self.name)
+		if self.cut_panel_movement:
+			cpm_doc = frappe.get_doc("Cut Panel Movement", self.cut_panel_movement)	
+			cpm_doc.against = self.doctype
+			cpm_doc.against_id = self.name
+			cpm_doc.save()		
 		frappe.enqueue(calculate_pieces,"short", doc_name=self.name, enqueue_after_commit=True )
 
 	def before_submit(self):
+		if not self.vehicle_no:
+			frappe.throw("Enter the Vehicle Number")
+
 		self.letter_head = frappe.db.get_single_value("MRP Settings","dc_grn_letter_head")
 		logger = get_module_logger("delivery_challan")
 		logger.debug(f"On Submit {datetime.now()}")
@@ -75,8 +88,10 @@ class DeliveryChallan(Document):
 		default_received_type = stock_settings.default_received_type
 		transit_warehouse = stock_settings.transit_warehouse
 		total_delivered = flt(0)
+		items = []
 		for row in self.items:
-			if res.get(row.item_variant):
+			if res.get(row.item_variant) and row.delivered_quantity > 0:
+				items.append(row.as_dict())
 				received_type = default_received_type
 				if row.item_type:
 					received_type = row.item_type
@@ -88,6 +103,7 @@ class DeliveryChallan(Document):
 				reduce_sl_entries.append(self.get_sle_data(row, self.from_location, -1, {}, received_type))
 				supplier = transit_warehouse if self.is_internal_unit else self.supplier
 				add_sl_entries.append(self.get_sle_data(row, supplier, 1, {}, received_type))
+		self.set("items", items)
 		self.total_delivered_qty = total_delivered
 		logger.debug(f"{self.name} Stock check and SLE data construction {datetime.now()}")
 		wo_doc = frappe.get_cached_doc("Work Order", self.work_order)
@@ -469,6 +485,7 @@ def construct_stock_entry_details(doc_name):
 	ste.save()
 	return ste.name
 
+@frappe.whitelist()
 def calculate_pieces(doc_name):
 	dc_doc = frappe.get_doc("Delivery Challan",doc_name)
 	doc_status = dc_doc.docstatus

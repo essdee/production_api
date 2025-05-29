@@ -194,6 +194,7 @@
   {
    "fieldname": "process_name",
    "fieldtype": "Link",
+   "in_standard_filter": 1,
    "label": "Process Name",
    "options": "Process",
    "reqd": 1
@@ -248,6 +249,7 @@
   {
    "fieldname": "lot",
    "fieldtype": "Link",
+   "in_standard_filter": 1,
    "label": "Lot",
    "options": "Lot"
   },
@@ -306,7 +308,7 @@
    "fieldtype": "Select",
    "label": "Rework Type",
    "mandatory_depends_on": "eval: doc.is_rework",
-   "options": "No Cost\nNet Cost Nil\nAdditional Cost",
+   "options": "\nNo Cost\nNet Cost Nil\nAdditional Cost",
    "read_only_depends_on": "eval: !doc.__islocal"
   },
   {
@@ -344,6 +346,7 @@
    "fetch_if_empty": 1,
    "fieldname": "supplier_name",
    "fieldtype": "Data",
+   "in_standard_filter": 1,
    "label": "Supplier Name",
    "read_only": 1
   },
@@ -503,7 +506,7 @@
    "link_fieldname": "against_id"
   }
  ],
- "modified": "2025-05-28 12:13:54.315936",
+ "modified": "2025-05-29 13:18:45.133478",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Work Order",

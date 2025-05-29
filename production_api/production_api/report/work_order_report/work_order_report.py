@@ -63,7 +63,7 @@ def get_data(filters, received_types):
 		doctype.first_grn_date,
 		doctype.last_grn_date,
 		doctype.received_types_json
-	).where(doctype.docstatus == 1 and doctype.wo_date >= filters.get("from_date") and doctype.wo_date <= filters.get("to_date"))
+	).where((doctype.docstatus == 1) & (doctype.wo_date >= filters.get("from_date")) & (doctype.wo_date <= filters.get("to_date")))
 
 
 	if supplier := filters.get('supplier'):

@@ -67,6 +67,12 @@ class GoodsReceivedNote(Document):
 			self.validate_quantity()
 			self.calculate_amount()
 		else:
+			items = []
+			for item in self.items:
+				if item.quantity > 0:
+					items.append(item.as_dict())
+			self.set("items", items)	
+			self.dump_items()	
 			if self.is_return:
 				from production_api.mrp_stock.stock_ledger import make_sl_entries
 				lot = frappe.get_cached_value(self.against, self.against_id, "lot")
@@ -921,8 +927,9 @@ def save_grn_item_details(item_details, process_name, ipd):
 						total_quantity, pending_qty = frappe.get_value(values.get('ref_doctype'), values.get('ref_docname'), ["qty","pending_quantity"])
 						x = total_quantity / 100
 						x = x * allowance
-						total_quantity = pending_qty + x
-						if total_quantity < received:
+						max_qty = total_quantity + x
+						before_received = total_quantity - pending_qty
+						if max_qty - before_received < received:
 							frappe.throw(f"Received more than the allowed quantity for {bold(variant_name)}")
 
 						item1['item_variant'] = variant_name
@@ -958,8 +965,9 @@ def save_grn_item_details(item_details, process_name, ipd):
 					total_quantity, pending_qty = frappe.get_value(doctype, docname, ["qty","pending_quantity"])
 					x = total_quantity / 100
 					x = x * allowance
-					total_quantity = total_quantity + x
-					if total_quantity < received:
+					max_qty = total_quantity + x
+					before_received = total_quantity - pending_qty
+					if max_qty - before_received < received:
 						frappe.throw(f"Received more than the allowed quantity for {bold(variant_name)}")
 
 					item1['item_variant'] = variant_name

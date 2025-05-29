@@ -9,9 +9,12 @@
   "lot",
   "item",
   "process_name",
+  "against",
+  "against_id",
   "column_break_dcpm",
   "cutting_plan",
   "movement_date",
+  "movement_from_cutting",
   "naming_series",
   "section_break_rnao",
   "cut_panel_movement_html",
@@ -89,12 +92,35 @@
    "label": "Process Name",
    "options": "Process",
    "reqd": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "movement_from_cutting",
+   "fieldtype": "Check",
+   "label": "Movement From Cutting"
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "against",
+   "fieldtype": "Select",
+   "label": "Against",
+   "options": "\nStock Entry\nDelivery Challan",
+   "read_only": 1
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "against_id",
+   "fieldtype": "Dynamic Link",
+   "label": "Against ID",
+   "options": "against",
+   "read_only": 1
   }
  ],
+ "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-03-27 13:06:41.752277",
+ "modified": "2025-05-29 17:03:30.105793",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Cut Panel Movement",
@@ -114,6 +140,7 @@
    "write": 1
   }
  ],
+ "row_format": "Dynamic",
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": []

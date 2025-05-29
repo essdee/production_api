@@ -1091,6 +1091,9 @@ def calculate_completed_pieces(doc_name):
 	for item in wo_doc.work_order_calculated_items:
 		item.received_qty = 0
 		item.received_type_json = {}
+		item.delivered_quantity = 0
+
+	wo_doc.total_no_of_pieces_delivered = 0
 	wo_doc.total_no_of_pieces_received = 0	
 	wo_doc.received_types_json = {}
 	cut_process = frappe.get_value("Item Production Detail", wo_doc.production_detail, "cutting_process")	
@@ -1111,6 +1114,10 @@ def calc(doc_name):
 	from production_api.production_api.doctype.goods_received_note.goods_received_note import calculate_pieces
 	for grn in grn_list:
 		calculate_pieces(grn)
+	dc_list = frappe.get_list("Delivery Challan", filters={"work_order": doc_name,"docstatus": 1}, pluck="name")
+	from production_api.production_api.doctype.delivery_challan.delivery_challan import calculate_pieces
+	for dc in dc_list:
+		calculate_pieces(dc)
 
 @frappe.whitelist()
 def fetch_summary_details(doc_name, production_detail):

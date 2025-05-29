@@ -250,14 +250,14 @@ def update_accessory(cutting_plan, cut_panel_movement_json, docstatus, process_n
 				cls_doc.save()
 
 @frappe.whitelist()
-def get_cutting_plan_unmoved_data(cutting_plan, process_name):
+def get_cutting_plan_unmoved_data(cutting_plan, process_name, movement_from_cutting: int):
 	cp_doc = frappe.get_doc("Cutting Plan", cutting_plan)
 	if cp_doc.version == "V1":
 		frappe.throw("Can't create Cutting Movement for Version V1 Cutting Plan's")
 
 	ipd_doc = frappe.get_cached_doc("Item Production Detail", cp_doc.production_detail)
 	is_moved = True
-	if ipd_doc.cutting_process == process_name:
+	if movement_from_cutting:
 		is_moved = False
 
 	from production_api.essdee_production.doctype.item_production_detail.item_production_detail import get_ipd_primary_values
@@ -414,7 +414,7 @@ def create_delivery_challan(doc_name, work_order, process_name):
 				item['delivered_quantity'] = data['qty']
 				items.append(item)
 				break
-	
+	ipd_doc = frappe.get_cached_doc("Item Production Detail", ipd)
 	items = sorted(items, key = lambda i: i['row_index'])
 	item_details = []
 	for key, variants in groupby(items, lambda i: i['row_index']):
@@ -426,6 +426,11 @@ def create_delivery_challan(doc_name, work_order, process_name):
 			'lot': variants[0]['lot'],
 			'attributes': get_item_attribute_details(current_variant, current_item_attribute_details),
 			'primary_attribute': current_item_attribute_details['primary_attribute'],
+			"is_set_item": ipd_doc.is_set_item,
+			"set_attr": ipd_doc.set_item_attribute,
+			"pack_attr": ipd_doc.packing_attribute,
+			"major_attr_value": ipd_doc.major_attribute_value,
+			"item_keys": {},
 			'values': {},
 			'default_uom': variants[0]['uom'] or current_item_attribute_details['default_uom'],
 			'secondary_uom': variants[0]['secondary_uom'] or current_item_attribute_details['secondary_uom'],
@@ -437,6 +442,12 @@ def create_delivery_challan(doc_name, work_order, process_name):
 			for variant in variants:
 				current_variant = frappe.get_cached_doc("Item Variant", variant['item_variant'])
 				set_combination = update_if_string_instance(variant['set_combination'])
+				if set_combination:
+					if set_combination.get("major_part"):
+						item['item_keys']['major_part'] = set_combination.get("major_part")
+					if set_combination.get("major_colour"):
+						item['item_keys']['major_colour'] = set_combination.get("major_colour")		
+
 				for attr in current_variant.attributes:
 					if attr.attribute == item.get('primary_attribute'):
 						item['values'][attr.attribute_value] = {
@@ -445,7 +456,8 @@ def create_delivery_challan(doc_name, work_order, process_name):
 							"is_calculated":variant.is_calculated,
 							'set_combination':set_combination,
 							'qty': variant['qty'],
-							'delivered_quantity': variant.get('delivered_quantity', 0),
+							'delivered_quantity': variant['qty'],
+							'ref_docname': variant['name']
 						}
 						break
 		else:
@@ -454,8 +466,8 @@ def create_delivery_challan(doc_name, work_order, process_name):
 				"ref_doctype":"Work Order Deliverables",
 				"is_calculated":variants[0].is_calculated,
 				'qty': variants[0]['qty'],
-				'delivered_quantity': variants[0].get('delivered_quantity', 0),
-				'ref_docname': variants[0]['ref_docname']
+				'delivered_quantity': variants[0]['qty'],
+				'ref_docname': variants[0]['name']
 			}
 		index = get_item_group_index(item_details, current_item_attribute_details)
 		if index == -1:

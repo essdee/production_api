@@ -25,6 +25,7 @@
   "edit_posting_date_and_time",
   "vehicle_no",
   "letter_head",
+  "cut_panel_movement",
   "address_and_contact_section",
   "from_address",
   "from_address_details",
@@ -197,8 +198,7 @@
    "allow_on_submit": 1,
    "fieldname": "vehicle_no",
    "fieldtype": "Data",
-   "label": "Vehicle No",
-   "reqd": 1
+   "label": "Vehicle No"
   },
   {
    "fetch_from": "work_order.process_name",
@@ -319,13 +319,20 @@
    "hidden": 1,
    "label": "Production Detail",
    "options": "Item Production Detail"
+  },
+  {
+   "fieldname": "cut_panel_movement",
+   "fieldtype": "Link",
+   "hidden": 1,
+   "label": "Cut Panel Movement",
+   "options": "Cut Panel Movement"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-05-28 11:56:20.162882",
+ "modified": "2025-05-29 17:08:18.958345",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Delivery Challan",
