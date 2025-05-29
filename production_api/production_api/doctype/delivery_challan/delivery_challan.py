@@ -537,11 +537,17 @@ def calculate_pieces(doc_name):
 					return
 
 	wo_doc = frappe.get_cached_doc("Work Order", dc_doc.work_order)
-	if not wo_doc.first_grn_date:
-		wo_doc.first_grn_date = dc_doc.posting_date
-		wo_doc.last_grn_date = dc_doc.posting_date
-	else:
-		wo_doc.last_grn_date = dc_doc.posting_date
+	if doc_status == 2:
+		if wo_doc.start_date == dc_doc.posting_date:
+			wo_doc.start_date = None
+	else:	
+		if not wo_doc.first_dc_date:
+			wo_doc.start_date = dc_doc.posting_date
+			wo_doc.first_dc_date = dc_doc.posting_date
+			wo_doc.last_dc_date = dc_doc.posting_date
+		else:
+			wo_doc.last_dc_date = dc_doc.posting_date
+
 	wo_doc.total_no_of_pieces_delivered += total_delivered
 	if incomplete_items:
 		wo_doc.wo_delivered_incompleted_json = incomplete_items

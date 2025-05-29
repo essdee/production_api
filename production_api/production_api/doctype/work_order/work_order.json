@@ -57,11 +57,12 @@
   "column_break_ocbe",
   "first_dc_date",
   "last_dc_date",
-  "total_no_of_pieces_delivered",
+  "planned_quantity",
   "wo_colours",
   "column_break_uwsv",
   "first_grn_date",
   "last_grn_date",
+  "total_no_of_pieces_delivered",
   "total_no_of_pieces_received",
   "section_break_fewo",
   "column_break_klzv",
@@ -81,11 +82,13 @@
    "reqd": 1
   },
   {
+   "allow_on_submit": 1,
    "fieldname": "start_date",
    "fieldtype": "Date",
    "label": "Start Date"
   },
   {
+   "allow_on_submit": 1,
    "fieldname": "end_date",
    "fieldtype": "Date",
    "label": "End Date"
@@ -480,8 +483,14 @@
    "hidden": 1,
    "label": "WO Delivered Incompleted JSON",
    "read_only": 1
+  },
+  {
+   "fieldname": "planned_quantity",
+   "fieldtype": "Int",
+   "label": "Planned Quantity"
   }
  ],
+ "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [
@@ -494,7 +503,7 @@
    "link_fieldname": "against_id"
   }
  ],
- "modified": "2025-04-10 13:08:22.387129",
+ "modified": "2025-05-28 12:13:54.315936",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Work Order",
@@ -590,6 +599,7 @@
    "share": 1
   }
  ],
+ "row_format": "Dynamic",
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": []

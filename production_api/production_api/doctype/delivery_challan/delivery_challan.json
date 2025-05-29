@@ -321,10 +321,11 @@
    "options": "Item Production Detail"
   }
  ],
+ "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-04-10 17:05:09.897435",
+ "modified": "2025-05-28 11:56:20.162882",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Delivery Challan",
@@ -424,6 +425,7 @@
    "write": 1
   }
  ],
+ "row_format": "Dynamic",
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": []

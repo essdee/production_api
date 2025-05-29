@@ -1816,11 +1816,16 @@ def calculate_pieces(doc_name):
 					return
 
 	wo_doc = frappe.get_doc("Work Order", grn_doc.against_id)
-	if not wo_doc.first_grn_date:
-		wo_doc.first_grn_date = grn_doc.posting_date
-		wo_doc.last_grn_date = grn_doc.posting_date
-	else:
-		wo_doc.last_grn_date = grn_doc.posting_date
+	if doc_status == 2:
+		if wo_doc.end_date == grn_doc.posting_date:
+			wo_doc.end_date = None
+	else:	
+		if not wo_doc.first_grn_date:
+			wo_doc.first_grn_date = grn_doc.posting_date
+			wo_doc.last_grn_date = grn_doc.posting_date
+		else:
+			wo_doc.last_grn_date = grn_doc.posting_date
+		wo_doc.end_date = grn_doc.posting_date	
 
 	wo_doc.total_no_of_pieces_received += total_received
 	received_json = update_if_string_instance(wo_doc.received_types_json)	
@@ -2008,6 +2013,7 @@ def calculate_cutting_piece(grn_doc, received_types, panel_list):
 					else:
 						y['values'][attrs[ipd_doc.primary_item_attribute]][attrs[ipd_doc.stiching_attribute]][item.received_type] = item.quantity
 				i = y
+				break
 
 	total_qty = 0
 	for ty in types:
@@ -2036,7 +2042,7 @@ def calculate_cutting_piece(grn_doc, received_types, panel_list):
 
 					for panel in item2['values'][size]:
 						if panel in panel_list:
-							if item2['values'][size][panel] and item2['values'][size][panel].get(ty):
+							if item2['values'][size][panel] and ty in item2['values'][size][panel]:
 								item2['values'][size][panel][ty] -= (min * panel_qty[panel])
 
 	qty_list = []
