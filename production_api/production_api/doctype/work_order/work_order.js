@@ -362,6 +362,15 @@ frappe.ui.form.on("Work Order", {
 			frm.set_value('supplier_address', '')
 		}
 	},
+	planned_end_date(frm){
+		if(frm.doc.planned_end_date){
+			frm.doc.expected_delivery_date = frm.doc.planned_end_date
+		}
+		else{
+			frm.doc.expected_delivery_date = null
+		}
+		frm.refresh_field("expected_delivery_date")
+	},
 	delivery_location: function(frm) {
 		if (frm.doc.delivery_location) {
 			frappe.production.ui.eventBus.$emit("supplier_updated", frm.doc.delivery_location)

@@ -58,8 +58,13 @@ const table_fields = ref([
 	    },
 	},
 	{
+		name: 'total_qty',
+		label: 'Total Qty',
+	},
+	{
 		name: 'total_cost',
 		label: 'Total Cost',
+		has_view_permission: ["System Manager", "Administrator", "Merchandiser", "Merch Manager"],
 	},
 	{
 		name: 'comments',
@@ -112,8 +117,14 @@ function load_data(all_items) {
 							x = 0;
 						}
 						rows.total_cost = Math.round(x*100)/100;
+						rows.total_qty = qty
 					}
 				})
+			})
+		}
+		else{
+			element.items.forEach((row,index) => {
+				row['total_qty'] = row['values']['default']['qty']
 			})
 		}
 	});

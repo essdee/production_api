@@ -58,6 +58,10 @@ const table_fields = ref([
             return props['docstatus'] == 1;
         },
     },
+    {
+		name: 'total_qty',
+		label: 'Total Qty',
+	},
     // {
     //     name: 'cancelled_qty',
     //     label: 'Cancelled Qty',
@@ -94,6 +98,24 @@ function update_status(val) {
 }
 
 function load_data(all_items) {
+    all_items.forEach(element => {	
+		if(element.primary_attribute){
+			details = []
+			element.items.forEach((row,index) => {
+				details.push(row.values)
+                let qty = 0;
+                Object.keys(row.values).forEach((key, idx) => {
+                    qty += row.values[key].qty;
+                })
+                row.total_qty = qty
+			})
+		}
+		else{
+			element.items.forEach((row,index) => {
+				row['total_qty'] = row['values']['default']['qty']
+			})
+		}
+	});
     items.value = all_items;
 }
 

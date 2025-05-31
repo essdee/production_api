@@ -84,13 +84,15 @@
    "allow_on_submit": 1,
    "fieldname": "start_date",
    "fieldtype": "Date",
-   "label": "Start Date"
+   "label": "Start Date",
+   "read_only": 1
   },
   {
    "allow_on_submit": 1,
    "fieldname": "end_date",
    "fieldtype": "Date",
-   "label": "End Date"
+   "label": "End Date",
+   "read_only": 1
   },
   {
    "fieldname": "supplier",
@@ -169,7 +171,6 @@
    "reqd": 1
   },
   {
-   "default": "Today",
    "fieldname": "planned_end_date",
    "fieldtype": "Date",
    "label": "Planned End Date",
@@ -177,7 +178,6 @@
   },
   {
    "allow_on_submit": 1,
-   "default": "Today",
    "fieldname": "expected_delivery_date",
    "fieldtype": "Date",
    "label": "Expected Delivery Date",
@@ -508,7 +508,7 @@
    "link_fieldname": "against_id"
   }
  ],
- "modified": "2025-05-31 09:59:23.526250",
+ "modified": "2025-05-31 16:13:30.212170",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Work Order",

@@ -654,6 +654,10 @@ class GoodsReceivedNote(Document):
 				items = save_grn_purchase_item_details(self.item_details)
 				self.set('items', items)
 		elif not self.is_return and self.against == "Work Order":
+			docstatus = frappe.get_value("Work Order", self.against_id, "docstatus")
+			if docstatus != 1:
+				frappe.throw("Select the Valid Work Order")
+			
 			if self.flags.from_cls:
 				wo_items = get_work_order_items(self.against_id, True)
 				self.item_details = wo_items				
@@ -1832,16 +1836,12 @@ def calculate_pieces(doc_name):
 					return
 
 	wo_doc = frappe.get_doc("Work Order", grn_doc.against_id)
-	if doc_status == 2:
-		if wo_doc.end_date == grn_doc.posting_date:
-			wo_doc.end_date = None
-	else:	
-		if not wo_doc.first_grn_date:
-			wo_doc.first_grn_date = grn_doc.posting_date
-			wo_doc.last_grn_date = grn_doc.posting_date
-		else:
-			wo_doc.last_grn_date = grn_doc.posting_date
-		wo_doc.end_date = grn_doc.posting_date	
+	if not wo_doc.first_grn_date:
+		wo_doc.first_grn_date = grn_doc.posting_date
+		wo_doc.last_grn_date = grn_doc.posting_date
+	else:
+		wo_doc.last_grn_date = grn_doc.posting_date
+	wo_doc.end_date = grn_doc.posting_date	
 
 	wo_doc.total_no_of_pieces_received += total_received
 	received_json = update_if_string_instance(wo_doc.received_types_json)	
@@ -1852,10 +1852,15 @@ def calculate_pieces(doc_name):
 			received_json[type] = qty
 
 	wo_doc.received_types_json = received_json
+	field = None
+	lot_doc = None
+	if process_name in [ipd_doc.cutting_process, ipd_doc.stiching_process, ipd_doc.packing_process]:
+		lot_doc = frappe.get_cached_doc("Lot",wo_doc.lot)
+		field = "cut_qty" if process_name == ipd_doc.cutting_process else "stich_qty" if process_name == ipd_doc.stiching_process else "pack_qty"
+
 	if incomplete_items:
 		wo_doc.incompleted_items_json = incomplete_items
-		wo_doc.completed_items_json = completed_items			
-		lot_doc = frappe.get_cached_doc("Lot",wo_doc.lot)
+		wo_doc.completed_items_json = completed_items
 		for qty_data in qty_list:
 			for item in wo_doc.work_order_calculated_items:
 				set_combination = update_if_string_instance(item.set_combination)
@@ -1871,21 +1876,18 @@ def calculate_pieces(doc_name):
 						wo_types[qty_data['type']] = qty		
 					item.received_type_json = wo_types
 					break 
-			for item in lot_doc.lot_order_details:
-				set_combination = update_if_string_instance(item.set_combination)
-				if item.item_variant == qty_data['item_variant'] and set_combination == qty_data['set_combination']:
-					qty = qty_data['quantity']
-					if doc_status == 2:
-						qty = qty * -1
-					current_qty = getattr(item, "cut_qty", 0)
-					setattr(item, "cut_qty", current_qty + qty)
-		lot_doc.save(ignore_permissions=True)	
+			if lot_doc:
+				for item in lot_doc.lot_order_details:
+					set_combination = update_if_string_instance(item.set_combination)
+					if item.item_variant == qty_data['item_variant'] and set_combination == qty_data['set_combination']:
+						qty = qty_data['quantity']
+						if doc_status == 2:
+							qty = qty * -1
+						current_qty = getattr(item, "cut_qty", 0)
+						setattr(item, "cut_qty", current_qty + qty)
+		if lot_doc:
+			lot_doc.save(ignore_permissions=True)	
 	else:
-		lot_doc = None
-		if process_name in [ipd_doc.cutting_process, ipd_doc.stiching_process, ipd_doc.packing_process]:
-			lot_doc = frappe.get_cached_doc("Lot",wo_doc.lot)
-			field = "cut_qty" if process_name == ipd_doc.cutting_process else "stich_qty" if process_name == ipd_doc.stiching_process else "pack_qty"
-
 		for data in final_calculation:
 			for item in wo_doc.work_order_calculated_items:
 				set_combination = update_if_string_instance(item.set_combination)

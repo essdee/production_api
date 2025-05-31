@@ -72,7 +72,6 @@
   {
    "fieldname": "naming_series",
    "fieldtype": "Select",
-   "in_list_view": 1,
    "label": "GRN Series",
    "options": "GRN-",
    "reqd": 1
@@ -120,6 +119,7 @@
    "fieldname": "supplier",
    "fieldtype": "Link",
    "in_list_view": 1,
+   "in_standard_filter": 1,
    "label": "Supplier",
    "options": "Supplier",
    "reqd": 1
@@ -301,7 +301,6 @@
    "default": "Today",
    "fieldname": "posting_date",
    "fieldtype": "Date",
-   "in_list_view": 1,
    "label": "Posting Date",
    "no_copy": 1,
    "read_only_depends_on": "eval: !doc.edit_posting_date_and_time",
@@ -311,7 +310,6 @@
    "default": "Now",
    "fieldname": "posting_time",
    "fieldtype": "Time",
-   "in_list_view": 1,
    "label": "Posting Time",
    "no_copy": 1,
    "read_only_depends_on": "eval: !doc.edit_posting_date_and_time",
@@ -359,6 +357,7 @@
    "fieldname": "lot",
    "fieldtype": "Link",
    "hidden": 1,
+   "in_list_view": 1,
    "in_standard_filter": 1,
    "label": "Lot",
    "options": "Lot"
@@ -367,6 +366,7 @@
    "fieldname": "process_name",
    "fieldtype": "Link",
    "hidden": 1,
+   "in_list_view": 1,
    "in_standard_filter": 1,
    "label": "Process Name",
    "options": "Process"
@@ -482,7 +482,7 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-05-31 10:55:22.258633",
+ "modified": "2025-05-31 16:07:40.651302",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Goods Received Note",
