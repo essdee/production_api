@@ -617,11 +617,12 @@ def get_colours(cutting_laysheet, items):
 	doc = frappe.get_doc("Cutting LaySheet",cutting_laysheet)
 	colours = set()
 	for item in doc.cutting_laysheet_details:
-		colours.add(item.colour)
+		colours.add(f"{item.colour}({json.loads(item.set_combination)['major_colour']})")
 	colour_items = {}
 	for colour in colours:
 		for item in items:
-			if item['colour'] == colour:
+			item_colour = f"{item.colour}({json.loads(item.set_combination)['major_colour']})"
+			if item_colour == colour:
 				if colour in colour_items:
 					colour_items[colour].append(item)
 				else:
