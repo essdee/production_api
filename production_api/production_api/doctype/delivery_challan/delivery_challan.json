@@ -6,6 +6,7 @@
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
+  "naming_series",
   "is_rework",
   "work_order",
   "from_location",
@@ -14,7 +15,6 @@
   "item",
   "is_internal_unit",
   "transfer_complete",
-  "naming_series",
   "production_detail",
   "column_break_xmwj",
   "process_name",
@@ -49,11 +49,9 @@
  ],
  "fields": [
   {
-   "default": "DC-",
    "fetch_if_empty": 1,
    "fieldname": "naming_series",
    "fieldtype": "Select",
-   "hidden": 1,
    "in_list_view": 1,
    "label": "Naming Series",
    "options": "DC-",
@@ -341,7 +339,7 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-05-31 10:54:22.953656",
+ "modified": "2025-05-31 11:48:59.613235",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Delivery Challan",
