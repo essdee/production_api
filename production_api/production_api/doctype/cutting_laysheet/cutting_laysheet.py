@@ -1031,7 +1031,7 @@ def get_input_fields(cutting_marker, colour, select_attributes):
 			inputs.append({"fieldname":"major_colour", "fieldtype":"Select", "label":"Major Colour", "options":select_vals})
 
 	inputs.append({"fieldname":"is_same_packing_attribute","fieldtype":"Check","label":"Is Same Packing Attribute","hidden":True,"default":is_same_packing_attr})	
-
+	inputs.append({"fieldname":"is_set_item","fieldtype":"Check","label":"Is Set Item","hidden":True,"default":ipd_doc.is_set_item})	
 	return {
 		"input_fields":inputs, 
 		"part_colours": part_colours if part_colours else None
@@ -1099,6 +1099,12 @@ def create_grn_entry(doc_name):
 					"qty":qty,
 					"set_combination": set_combination,
 				}
+	cls_cloths = {}
+	for row in cls_doc.cutting_laysheet_accessory_details:
+		set_combination = {}
+		cls_cloths.setdefault(row.cloth_item_variant, 0)
+		cls_cloths[row.cloth_item_variant] += row.weight
+
 	item_name, ipd = frappe.get_value("Lot", cls_doc.lot, ["item","production_detail"])
 	primary, pack_attr, stich_attr, stich_stage, dependent_attr = frappe.get_value("Item Production Detail", ipd, ['primary_item_attribute', "packing_attribute", "stiching_attribute", "stiching_in_stage", "dependent_attribute"])
 	
@@ -1151,6 +1157,20 @@ def create_grn_entry(doc_name):
 					received_types[received_type] = details['qty']
 				item.received_types = received_types	
 				break
+
+	for cloth, weight in cls_cloths.items():
+		for item in new_doc.items:
+			if item.item_variant == cloth:
+				item.quantity += weight
+				received_types = update_if_string_instance(item.received_types)
+				total_received_qty += weight
+				if received_type in received_types:
+					received_types[received_type] += weight
+				else:
+					received_types[received_type] = weight
+				item.received_types = received_types	
+				break
+
 	new_doc.total_received_quantity =  total_received_qty
 	deliverables_dict = {}
 	for item in cls_doc.cutting_laysheet_details:

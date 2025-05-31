@@ -18,6 +18,7 @@
 								<th>Lot</th>
 								<th v-for="attr in i.attributes" :key="attr">{{ attr }}</th>
 								<th v-for="attr in i.primary_attribute_values" :key="attr"> {{ attr }} </th>
+								<th>Total Qty</th>
 								<th>Comments</th>
 							</tr>
 							<tr v-for="(j, item1_index) in i.items" :key="item1_index">
@@ -54,6 +55,7 @@
 										<div v-else> -- </div>
 									</div>
 								</td>
+								<td><strong>{{j.sum_qty}} <span v-if="j.default_uom">{{ " " + j.default_uom }}</span></strong></td>
 								<td>
 									<div v-if="docstatus == 0">
 										<input type="text" v-model="j.comments" class="form-control" @blur="make_dirty()"/>
@@ -307,6 +309,15 @@ function load_data(item){
 		for(let i = 0 ; i < deliverables_item.value.length ; i++){
 			indexes.value.push(false)
 			uoms.value.push(null)
+			for(let j = 0 ; j < deliverables_item.value[i].items.length ; j++){
+				let total = 0
+				Object.keys(deliverables_item.value[i].items[j].values).forEach(key => {
+					if(deliverables_item.value[i].items[j].values[key].delivered_quantity > 0){
+						total += deliverables_item.value[i].items[j].values[key].delivered_quantity
+					}
+				})
+				deliverables_item.value[i].items[j]['sum_qty'] = total
+			}
 		}
 	}
 	else{

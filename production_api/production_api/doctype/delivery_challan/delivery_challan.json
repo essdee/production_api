@@ -105,6 +105,7 @@
   {
    "fieldname": "supplier",
    "fieldtype": "Link",
+   "in_standard_filter": 1,
    "label": "Supplier(Receiver)",
    "options": "Supplier",
    "reqd": 1
@@ -112,6 +113,8 @@
   {
    "fieldname": "work_order",
    "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
    "label": "Work Order",
    "options": "Work Order",
    "reqd": 1
@@ -205,6 +208,8 @@
    "fetch_if_empty": 1,
    "fieldname": "process_name",
    "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
    "label": "Process Name",
    "options": "Process",
    "read_only": 1
@@ -214,6 +219,8 @@
    "fetch_if_empty": 1,
    "fieldname": "lot",
    "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
    "label": "Lot",
    "options": "Lot",
    "read_only": 1
@@ -223,6 +230,8 @@
    "fetch_if_empty": 1,
    "fieldname": "item",
    "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
    "label": "Item",
    "options": "Item",
    "read_only": 1
@@ -332,7 +341,7 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-05-29 17:08:18.958345",
+ "modified": "2025-05-31 10:54:22.953656",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Delivery Challan",
