@@ -683,15 +683,16 @@ class GoodsReceivedNote(Document):
 					if not self.is_manual_entry and not self.flags.from_cls and not self.is_rework:
 						deliverables = calculate_deliverables(self)
 						items = []
-						for row in deliverables:
-							if wo_deliverables.get(row['item_variant']):
-								items.append({
-									"item_variant": row['item_variant'],
-									"quantity": row['qty'],
-									"uom": row['uom'],
-									"valuation_rate": wo_deliverables[row['item_variant']],
-									"set_combination": row['set_combination'],
-								})
+						if deliverables:
+							for row in deliverables:
+								if wo_deliverables.get(row['item_variant']):
+									items.append({
+										"item_variant": row['item_variant'],
+										"quantity": row['qty'],
+										"uom": row['uom'],
+										"valuation_rate": wo_deliverables[row['item_variant']],
+										"set_combination": row['set_combination'],
+									})
 						self.set("grn_deliverables", items)
 					self.total_receivable_cost = total_rate
 			total_qty = 0
@@ -1112,7 +1113,12 @@ def fetch_grn_item_details(items, ipd, lot, docstatus = 0):
 				'primary_attribute_values': current_item_attribute_details['primary_attribute_values'],
 				'dependent_attribute': current_item_attribute_details['dependent_attribute'],
 				"dependent_attribute_details": current_item_attribute_details['dependent_attribute_details'],
-				'items': [item]
+				"is_set_item": ipd_doc.is_set_item,
+				"set_attr": ipd_doc.set_item_attribute,
+				"pack_attr": ipd_doc.packing_attribute,
+				"major_attr_value": ipd_doc.major_attribute_value,
+				'items': [item],
+				"types": item['types'],
 			})
 		else:
 			item_details[index]['items'].append(item)	
@@ -1405,6 +1411,8 @@ def get_stiching_process_deliverables(grn_doc, wo_doc, ipd_doc):
 			"table_index":item.table_index,
 			"set_combination": item.set_combination,
 		})
+	if not items:
+		return	
 	variant_doc = frappe.get_cached_doc("Item Variant", items[0]['item_variant'])		
 	uom = lot_doc.packing_uom
 	item_list, row_index, table_index = get_item_structure(items, variant_doc.item, process, uom)	
