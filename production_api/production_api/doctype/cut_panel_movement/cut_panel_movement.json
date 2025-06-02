@@ -42,6 +42,8 @@
   {
    "fieldname": "lot",
    "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
    "label": "Lot",
    "options": "Lot"
   },
@@ -49,6 +51,8 @@
    "fetch_from": "lot.item",
    "fieldname": "item",
    "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
    "label": "Item",
    "options": "Item",
    "read_only": 1
@@ -89,6 +93,7 @@
    "fieldname": "process_name",
    "fieldtype": "Link",
    "in_list_view": 1,
+   "in_standard_filter": 1,
    "label": "Process Name",
    "options": "Process",
    "reqd": 1
@@ -103,6 +108,7 @@
    "allow_on_submit": 1,
    "fieldname": "against",
    "fieldtype": "Select",
+   "in_list_view": 1,
    "label": "Against",
    "options": "\nStock Entry\nDelivery Challan",
    "read_only": 1
@@ -120,7 +126,7 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-05-29 17:03:30.105793",
+ "modified": "2025-05-31 18:58:04.335346",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Cut Panel Movement",

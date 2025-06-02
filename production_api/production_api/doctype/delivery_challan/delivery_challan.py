@@ -103,6 +103,8 @@ class DeliveryChallan(Document):
 				reduce_sl_entries.append(self.get_sle_data(row, self.from_location, -1, {}, received_type))
 				supplier = transit_warehouse if self.is_internal_unit else self.supplier
 				add_sl_entries.append(self.get_sle_data(row, supplier, 1, {}, received_type))
+		if len(items) == 0:
+			frappe.throw("There is no deliverables in this DC")
 		self.set("items", items)
 		self.total_delivered_qty = total_delivered
 		logger.debug(f"{self.name} Stock check and SLE data construction {datetime.now()}")
@@ -309,7 +311,7 @@ def fetch_item_details(items, ipd, lot, is_new=False, is_rework=False):
 
 		if item['primary_attribute']:
 			for attr in current_item_attribute_details['primary_attribute_values']:
-				item['values'][attr] = {'qty': 0, 'rate': 0}
+				item['values'][attr] = {'qty': 0, 'rate': 0, 'delivered_quantity': 0}
 			for variant in variants:
 				current_variant = frappe.get_cached_doc("Item Variant", variant['item_variant'])
 				set_combination = update_if_string_instance(variant['set_combination'])
@@ -337,7 +339,7 @@ def fetch_item_details(items, ipd, lot, is_new=False, is_rework=False):
 							item['values'][attr.attribute_value]['qty'] = variant['qty']
 							item['values'][attr.attribute_value]['secondary_uom'] = variant['secondary_uom']
 							item['values'][attr.attribute_value]['secondary_qty'] = variant['secondary_qty']
-							item['values'][attr.attribute_value]['delivered_quantity'] = variant['delivered_quantity']							
+							item['values'][attr.attribute_value]['delivered_quantity'] = variant.get("delivered_quantity", 0)							
 							item['values'][attr.attribute_value]['ref_docname'] = variant['ref_docname']
 							item['comments'] = variants[0]['comments']
 						break
@@ -357,7 +359,7 @@ def fetch_item_details(items, ipd, lot, is_new=False, is_rework=False):
 				item['values']['default']['qty'] = variants[0]['qty']
 				item['values']['default']['secondary_uom'] = variants[0]['secondary_uom']
 				item['values']['default']['secondary_qty'] = variants[0]['secondary_qty']
-				item['values']['default']['delivered_quantity'] = variants[0]['delivered_quantity']
+				item['values']['default']['delivered_quantity'] = variants[0].get("delivered_quantity", 0)
 				item['values']['default']['ref_docname'] = variants[0]['ref_docname']
 				item['values']['default']['comments'] = variants[0]['comments']
 
@@ -379,6 +381,7 @@ def fetch_item_details(items, ipd, lot, is_new=False, is_rework=False):
 			})
 		else:
 			item_details[index]['items'].append(item)
+	print(item_details)
 	return item_details
 			
 @frappe.whitelist()

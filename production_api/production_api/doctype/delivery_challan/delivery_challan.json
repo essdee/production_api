@@ -52,7 +52,6 @@
    "fetch_if_empty": 1,
    "fieldname": "naming_series",
    "fieldtype": "Select",
-   "in_list_view": 1,
    "label": "Naming Series",
    "options": "DC-",
    "reqd": 1
@@ -103,6 +102,7 @@
   {
    "fieldname": "supplier",
    "fieldtype": "Link",
+   "in_list_view": 1,
    "in_standard_filter": 1,
    "label": "Supplier(Receiver)",
    "options": "Supplier",
@@ -339,7 +339,7 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-05-31 11:48:59.613235",
+ "modified": "2025-05-31 18:56:41.013227",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Delivery Challan",

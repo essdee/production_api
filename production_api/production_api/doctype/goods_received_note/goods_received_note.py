@@ -71,6 +71,8 @@ class GoodsReceivedNote(Document):
 			for item in self.items:
 				if item.quantity > 0:
 					items.append(item.as_dict())
+			if len(items) == 0:
+				frappe.throw("There is No Received Items in this GRN")		
 			self.set("items", items)	
 			self.dump_items()	
 			if self.is_return:
@@ -1126,7 +1128,16 @@ def fetch_grn_item_details(items, ipd, lot, docstatus = 0):
 			})
 		else:
 			item_details[index]['items'].append(item)	
-
+	for item in item_details:
+		for row_item in item['items']:
+			total_json = {}
+			for key in row_item['values']:
+				types_json = update_if_string_instance(row_item['values'][key]["types"])
+				for type in row_item['types']:
+					if types_json.get(type):
+						total_json.setdefault(type, 0)
+						total_json[type] += types_json.get(type)
+			row_item['total_qty'] = total_json
 	return item_details
 
 def fetch_grn_purchase_item_details(items, docstatus=0):

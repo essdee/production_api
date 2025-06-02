@@ -98,6 +98,7 @@
 							<th v-for="attr in i.attributes" :key="attr">{{ attr }}</th>
 							<th>Type</th>
 							<th v-for="attr in i.primary_attribute_values" :key="attr">{{ attr }}</th>
+							<th>Total Qty</th>
 							<th v-if="docstatus == 0">Edit</th>
 						</tr>
 						<template v-for="(j, item1_index) in i.items" :key="item1_index">
@@ -156,6 +157,7 @@
 									</div>
 									<div v-else class="text-center">---</div>
 								</td>
+								<td>{{j.total_qty[type]}}</td>
 								<td v-if="docstatus == 0">
 									<div class="d-flex justify-content-between">
 										<div class="cursor-pointer" @click="edit_delivered_item(item_index, item1_index, type)" 
