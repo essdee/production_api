@@ -30,6 +30,13 @@ class WorkOrder(Document):
 		if check_quantity and self.deliverables:
 			self.set('is_delivered',1)
 
+	def before_submit(self):
+		if len(self.deliverables) == 0:
+			frappe.throw("There is no deliverables on the Work Order")
+		
+		if len(self.receivables) == 0:
+			frappe.throw("There is no receivables on the Work Order")
+
 	def on_submit(self):
 		self.update_deliverables()
 
@@ -1111,13 +1118,13 @@ def calculate_completed_pieces(doc_name):
 	
 def calc(doc_name):	
 	grn_list = frappe.get_list("Goods Received Note", filters={"against_id": doc_name,"docstatus": 1}, pluck="name")
-	from production_api.production_api.doctype.goods_received_note.goods_received_note import calculate_pieces
+	from production_api.production_api.doctype.goods_received_note.goods_received_note import calculate_pieces as calculate_grn_pieces
 	for grn in grn_list:
-		calculate_pieces(grn)
+		calculate_grn_pieces(grn)
 	dc_list = frappe.get_list("Delivery Challan", filters={"work_order": doc_name,"docstatus": 1}, pluck="name")
-	from production_api.production_api.doctype.delivery_challan.delivery_challan import calculate_pieces
+	from production_api.production_api.doctype.delivery_challan.delivery_challan import calculate_pieces as calculate_dc_pieces
 	for dc in dc_list:
-		calculate_pieces(dc)
+		calculate_dc_pieces(dc)
 
 @frappe.whitelist()
 def fetch_summary_details(doc_name, production_detail):

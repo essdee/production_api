@@ -103,6 +103,8 @@ class DeliveryChallan(Document):
 				reduce_sl_entries.append(self.get_sle_data(row, self.from_location, -1, {}, received_type))
 				supplier = transit_warehouse if self.is_internal_unit else self.supplier
 				add_sl_entries.append(self.get_sle_data(row, supplier, 1, {}, received_type))
+		if len(items) == 0:
+			frappe.throw("There is no deliverables in this DC")
 		self.set("items", items)
 		self.total_delivered_qty = total_delivered
 		logger.debug(f"{self.name} Stock check and SLE data construction {datetime.now()}")
