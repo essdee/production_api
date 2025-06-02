@@ -493,6 +493,9 @@ def get_grouped_data(doc_name, doctype):
 	cpm_doc = frappe.get_doc("Cut Panel Movement", doc_name)
 	ipd = frappe.get_value("Cutting Plan", cpm_doc.cutting_plan, "production_detail")
 	ipd_doc = frappe.get_doc("Item Production Detail", ipd)
+	panel_qty_dict = {}
+	for item in ipd_doc.stiching_item_details:
+		panel_qty_dict[item.stiching_attribute_value] = item.quantity
 	item_variants = update_if_string_instance(ipd_doc.variants_json)
 	cpm_json = update_if_string_instance(cpm_doc.cut_panel_movement_json)
 	stock_entry_dict = {}
@@ -523,10 +526,11 @@ def get_grouped_data(doc_name, doctype):
 							"set_combination": tuple(sorted(data['set_combination'].items())),
 						}
 						key = tuple(sorted(key.items()))
+						panel_qty = data[grp_panel] * panel_qty_dict[panel]
 						if key in stock_entry_dict:
-							stock_entry_dict[key]["qty"] += data[grp_panel]
+							stock_entry_dict[key]["qty"] += panel_qty
 						else:
-							stock_entry_dict[key] = { "qty": data[grp_panel], "group_key": grp_key }
+							stock_entry_dict[key] = { "qty": panel_qty, "group_key": grp_key }
 
 	for attrs_tuple in stock_entry_dict:
 		attrs = get_tuple_attributes(attrs_tuple)

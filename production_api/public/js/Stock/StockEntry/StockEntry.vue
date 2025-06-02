@@ -55,6 +55,10 @@ const table_fields = ref([
         has_view_permission: ["System Manager", "Administrator", "Merchandiser"],
     },
     {
+        name: "total_qty",
+        label: "Total Qty",
+    },
+    {
         name: 'remarks',
         label: 'Remarks',
     },
@@ -110,8 +114,26 @@ function update_status() {
     args.value['docstatus'] = cur_frm.doc.docstatus;
 }
 
-function load_data(i) {
-    items.value = i;
+function load_data(all_items) {
+    all_items.forEach(element => {	
+		if(element.primary_attribute){
+			details = []
+			element.items.forEach((row,index) => {
+				details.push(row.values)
+                let qty = 0;
+                Object.keys(row.values).forEach((key, idx) => {
+                    qty += row.values[key].qty;
+                })
+                row.total_qty = qty
+			})
+		}
+		else{
+			element.items.forEach((row,index) => {
+				row['total_qty'] = row['values']['default']['qty']
+			})
+		}
+	});
+	items.value = all_items;
 }
 
 function get_items() {

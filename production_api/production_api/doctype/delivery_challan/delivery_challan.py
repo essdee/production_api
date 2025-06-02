@@ -144,7 +144,10 @@ class DeliveryChallan(Document):
 	def before_validate(self):
 		if self.docstatus == 1:
 			return
-		
+		docstatus = frappe.get_value("Work Order", self.work_order, "docstatus")
+		if docstatus != 1:
+			frappe.throw("Select the Valid Work Order")
+
 		if(self.get('deliverable_item_details')):
 			deliverables = stock_value = None
 			if self.is_rework:
@@ -554,16 +557,12 @@ def calculate_pieces(doc_name):
 					return
 
 	wo_doc = frappe.get_cached_doc("Work Order", dc_doc.work_order)
-	if doc_status == 2:
-		if wo_doc.start_date == dc_doc.posting_date:
-			wo_doc.start_date = None
-	else:	
-		if not wo_doc.first_dc_date:
-			wo_doc.start_date = dc_doc.posting_date
-			wo_doc.first_dc_date = dc_doc.posting_date
-			wo_doc.last_dc_date = dc_doc.posting_date
-		else:
-			wo_doc.last_dc_date = dc_doc.posting_date
+	if not wo_doc.first_dc_date:
+		wo_doc.start_date = dc_doc.posting_date
+		wo_doc.first_dc_date = dc_doc.posting_date
+		wo_doc.last_dc_date = dc_doc.posting_date
+	else:
+		wo_doc.last_dc_date = dc_doc.posting_date
 
 	wo_doc.total_no_of_pieces_delivered += total_delivered
 	if incomplete_items:
@@ -618,6 +617,8 @@ def calculate_cutting_piece(dc_doc, panel_list):
 	for item in dc_doc.items:
 		variant = frappe.get_cached_doc("Item Variant", item.item_variant)
 		attrs = get_variant_attributes(variant)
+		if not attrs.get(ipd_doc.stiching_attribute):
+			continue
 		set_combination = update_if_string_instance(item.set_combination)
 		for i in incomplete_items['items']:
 			con1 = True
