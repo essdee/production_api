@@ -13,8 +13,10 @@
   {
    "fieldname": "item",
    "fieldtype": "Link",
+   "in_list_view": 1,
    "label": "Item",
-   "options": "Item"
+   "options": "Item",
+   "reqd": 1
   },
   {
    "fieldname": "attributes",
@@ -24,14 +26,14 @@
   },
   {
    "fieldname": "item_tuple_attribute",
-   "fieldtype": "Small Text",
+   "fieldtype": "Data",
    "label": "Item Tuple Attribute"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-06-02 12:55:15.346824",
+ "modified": "2025-06-03 12:17:07.542686",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Item Variant",
