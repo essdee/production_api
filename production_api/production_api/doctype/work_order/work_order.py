@@ -1077,12 +1077,30 @@ def calculate_completed_pieces(doc_name):
 		item.received_type_json = {}
 	wo_doc.total_no_of_pieces_received = 0	
 	wo_doc.received_types_json = {}
-	cut_process = frappe.get_value("Item Production Detail", wo_doc.production_detail, "cutting_process")	
-	if cut_process == wo_doc.process_name:
+	processes = [ipd_doc.cutting_process]
+	dc_processes = [ipd_doc.stiching_process]		
+	for item in ipd_doc.ipd_processes:
+		if item.process_name == wo_doc.process_name:
+			if ipd_doc.stiching_in_stage == item.stage:
+				processes.append(item.process_name)
+				dc_processes.append(item.process_name)
+				break
+	all_process = processes + dc_processes
+	if wo_doc.process_name in all_process:
 		items = fetch_order_item_details(wo_doc.work_order_calculated_items, wo_doc.production_detail)
 		complete, incomplete = get_complete_incomplete_structure(wo_doc.production_detail, items)
-		wo_doc.set("completed_items_json", complete)
-		wo_doc.set("incompleted_items_json",incomplete)
+		if wo_doc.process_name in processes and wo_doc.process_name in dc_processes:
+			wo_doc.set("completed_items_json", complete)
+			wo_doc.set("incompleted_items_json",incomplete)
+			wo_doc.set("wo_delivered_completed_json", complete)
+			wo_doc.set("wo_delivered_incompleted_json",incomplete)
+		else:
+			if wo_doc.process_name in processes:
+				wo_doc.set("completed_items_json", complete)
+				wo_doc.set("incompleted_items_json",incomplete)
+			else:
+				wo_doc.set("wo_delivered_completed_json", complete)
+				wo_doc.set("wo_delivered_incompleted_json",incomplete)
 	else:
 		wo_doc.set("completed_items_json", {})
 		wo_doc.set("incompleted_items_json",{})	
