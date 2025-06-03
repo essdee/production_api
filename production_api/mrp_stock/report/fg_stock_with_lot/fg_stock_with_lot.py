@@ -178,7 +178,6 @@ def get_old_sms_data(stock_detail, warehouse, filter_date):
 		data = cursor.fetchall()
 		for i in data:
 			i['qty'] = int(i['qty'])
-			i['stock_in_pcs'] = i['qty'] * int(i['pcs_per_box'])
 			if i['item'] not in stock_detail or stock_detail[i['item']] <=0:
 				continue
 			stock_detail[i['item']] -= i['qty']
@@ -191,7 +190,7 @@ def get_old_sms_data(stock_detail, warehouse, filter_date):
 				"lot" : i['lot'],
 				"warehouse" : warehouse_map[1],
 				"warehouse_name" : warehouse_map[2],
-				"stock_in_pcs" : i['stock_in_pcs'],
+				"stock_in_pcs" : i['qty'] * i['pcs_per_box'],
 				"pcs_per_box" : i['pcs_per_box']
 			})
 	
