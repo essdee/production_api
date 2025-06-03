@@ -21,7 +21,7 @@
                 <tr v-for="(item,idx) in items" :key='idx'>
                     <td>{{idx + 1}}</td>
                     <td>{{item.cloth_type}}</td>
-                    <td>{{item.colour}}</td>
+                    <td>{{item.colour}} ({{JSON.parse(item['set_combination'])['major_colour']}})</td>
                     <td>{{item.dia}}</td>
                     <td>{{item.shade}}</td>
                     <td>{{item.weight}}</td>
@@ -238,7 +238,7 @@ function add_item(){
     for(let i = 0 ; i < set_parameters.length ; i++){
         let val = set_parameters[i].get_value()
         if(val == null || val == ""){
-            if(set_parameters[i]['df']["fieldname"] == 'is_same_packing_attribute'){
+            if(set_parameters[i]['df']["fieldname"] == 'is_same_packing_attribute' || set_parameters[i]['df']["fieldname"] == 'is_set_item'){
                 val = 0
             }
             else{
@@ -445,7 +445,7 @@ function update_item(){
     for(let i = 0 ; i < set_parameters.length ; i++){
         let val = set_parameters[i].get_value()
         if(val == null || val == ""){
-            if(set_parameters[i]['df']["fieldname"] == 'is_same_packing_attribute'){
+            if(set_parameters[i]['df']["fieldname"] == 'is_same_packing_attribute' || set_parameters[i]['df']["fieldname"] == 'is_set_item'){
                 val = 0
             }
             else{
@@ -463,9 +463,9 @@ function update_item(){
         "weight":cloth_weight.get_value(),
         "no_of_rolls":cloth_rolls.get_value(),
         "no_of_bits":cloth_bits.get_value(),
-        "end_bit_weight":cloth_end_bit.get_value(),
-        "balance_weight":balance_weight.get_value(),
-        "used_weight": cloth_weight.get_value() - balance_weight.get_value(),
+        "end_bit_weight":cloth_end_bit.get_value() || 0,
+        "balance_weight":balance_weight.get_value() || 0,
+        "used_weight": cloth_weight.get_value() - balance_weight.get_value() || 0,
         "comments":cloth_comment.get_value(),
         "fabric_type": fabric_type.get_value(),
         "items_json":JSON.stringify(items_json.get_value()),

@@ -5,8 +5,9 @@ frappe.provide("production_api.mrp_stock");
 
 frappe.ui.form.on('Stock Entry', {
 	refresh: function(frm) {
+		frm.page.btn_secondary.hide()
 		if (frm.doc.docstatus === 1) {
-			if (frm.doc.purpose=='Send to Warehouse' && frm.doc.per_transferred < 100) {
+			if (frm.doc.purpose=='Send to Warehouse' && frm.doc.per_transferred < 100 && !frm.doc.skip_transit) {
 				frm.add_custom_button(__('End Transit'), function() {
 					frappe.model.open_mapped_doc({
 						method: "production_api.mrp_stock.doctype.stock_entry.stock_entry.make_stock_in_entry",
@@ -25,6 +26,9 @@ frappe.ui.form.on('Stock Entry', {
 					frappe.set_route('List', 'Stock Entry');
 				}, __("View"));
 			}
+			frm.add_custom_button("Cancel", ()=> {
+				frm._cancel()
+			})
 		}
 	},
 

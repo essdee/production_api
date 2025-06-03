@@ -42,11 +42,23 @@ def getColumns():
 			"width": 150,
 		},
 		{
-			"label": _("Quantity"),
+			"label": _("Quantity (Boxes)"),
 			"fieldname": "qty",
 			"fieldtype": "Float",
 			"width": 140,
 		},
+		{
+			"label" : _('Pieces Per Box'),
+			"fieldname" : "pcs_per_box",
+			"fieldtype" : "int",
+			"width" : 140
+		},
+		{
+			"label" : _('Stock Qty (Pieces)'),
+			"fieldname" : "stock_in_pcs",
+			"fieldtype" : "Float",
+			"width" : 140
+		}
 	]
 
 def getData(filters=None):
@@ -62,12 +74,13 @@ def get_prev_fg_stock_entries(filters, stock):
 
 	query = """
 		SELECT 
-			t0.item_variant, SUM(t0.qty) as qty, t1.lot, t1.warehouse, t3.supplier_name as warehouse_name, t2.item
+			t0.item_variant, SUM(t0.qty) as qty, t1.lot, t1.warehouse, t3.supplier_name as warehouse_name, t2.item, t4.pcs_per_box
 		FROM
 		`tabFG Stock Entry Detail` t0 JOIN
 		 `tabFG Stock Entry` t1 ON t0.parent=t1.name
 		JOIN `tabItem Variant` t2 ON t0.item_variant=t2.name
 		JOIN `tabSupplier` t3 ON t3.name=t1.warehouse 
+		JOIN `tabFG Item Master` t4 ON t4.item = t2.item
 		WHERE t1.docstatus=1 AND t0.received_type = %(received_type)s AND t1.warehouse = %(warehouse)s
 		AND t1.posting_date <= %(filter_date)s
 		GROUP BY t2.item, t1.name
@@ -98,7 +111,9 @@ def get_prev_fg_stock_entries(filters, stock):
 			"qty" : i['qty'],
 			"lot" : i['lot'],
 			"warehouse" : i['warehouse'],
-			"warehouse_name" : i['warehouse_name']
+			"warehouse_name" : i['warehouse_name'],
+			"stock_in_pcs" : i['qty'] * i['pcs_per_box'],
+			"pcs_per_box" : i['pcs_per_box']
 		})
 
 	
@@ -128,6 +143,7 @@ def duplicate_removed_data(data):
 			result[key] = i
 		else :
 			result[key]['qty'] += i['qty']
+			result[key]['stock_in_pcs'] += i['stock_in_pcs']
 
 	return [v for k,v in result.items()]
 
@@ -152,7 +168,7 @@ def get_old_sms_data(stock_detail, warehouse, filter_date):
 	with connection.cursor(pymysql.cursors.DictCursor) as cursor:
 		cursor.execute(f"""
 			select 
-			    t3.name as item, t2.size1 + t2.size2 + t2.size3 + t2.size4 + t2.size5 + t2.size6 + t2.size7 + t2.size8 + t2.size9 + t2.size10 as qty, t1.lotnumber as lot, t1.creationdate, t1.idlocation
+			    t3.name as item, t2.size1 + t2.size2 + t2.size3 + t2.size4 + t2.size5 + t2.size6 + t2.size7 + t2.size8 + t2.size9 + t2.size10 as qty, t1.lotnumber as lot, t1.creationdate, t1.idlocation, t3.pieces as pcs_per_box
 			from stockentrydetails t1 
 			join stockentryitems t2 ON t1.idstockentry = t2.idstockentry
 			join iteminfo t3 ON t3.iditem = t2.iditem
@@ -173,7 +189,9 @@ def get_old_sms_data(stock_detail, warehouse, filter_date):
 				"qty" : i['qty'],
 				"lot" : i['lot'],
 				"warehouse" : warehouse_map[1],
-				"warehouse_name" : warehouse_map[2]
+				"warehouse_name" : warehouse_map[2],
+				"stock_in_pcs" : i['qty'] * i['pcs_per_box'],
+				"pcs_per_box" : i['pcs_per_box']
 			})
 	
 	return report_data

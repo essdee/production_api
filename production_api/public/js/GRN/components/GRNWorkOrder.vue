@@ -98,6 +98,7 @@
 							<th v-for="attr in i.attributes" :key="attr">{{ attr }}</th>
 							<th>Type</th>
 							<th v-for="attr in i.primary_attribute_values" :key="attr">{{ attr }}</th>
+							<th>Total Qty</th>
 							<th v-if="docstatus == 0">Edit</th>
 						</tr>
 						<template v-for="(j, item1_index) in i.items" :key="item1_index">
@@ -156,6 +157,7 @@
 									</div>
 									<div v-else class="text-center">---</div>
 								</td>
+								<td>{{j.total_qty[type]}}</td>
 								<td v-if="docstatus == 0">
 									<div class="d-flex justify-content-between">
 										<div class="cursor-pointer" @click="edit_delivered_item(item_index, item1_index, type)" 
@@ -186,7 +188,7 @@
 										<td v-for="attr in i.attributes" :key="attr">{{ j.attributes[attr] }}</td>
 										<td>
 											<div v-if='typeof(j.values["default"]["types"]) == "string"'>
-												{{type}}-{{JSON.parse(j.values['default']['types'])[type]}}
+												{{type}}-{{JSON.parse(j.values['default']['types'])[type]}} <span v-if="j['default_uom']">{{j['default_uom']}}</span>
 												<div v-if="edit_item_uom">
 													<div v-if="typeof(j.values['default'].secondary_qty_json) == 'string'">
 														<input class="form-control" type="number" :value="JSON.parse(j.values['default'].secondary_qty_json)[type]" @input="get_secondary_input($event.target.value,item_index, item1_index, type, null)">
@@ -209,7 +211,7 @@
 												</div>	
 											</div>
 											<div v-else>
-												{{type}}-{{j.values['default']['types'][type]}}
+												{{type}}-{{j.values['default']['types'][type]}} <span v-if="j['default_uom']">{{j['default_uom']}}</span>
 												<div v-if="edit_item_uom">
 													<div v-if="typeof(j.values['default'].secondary_qty_json) == 'string'">
 														<input class="form-control" type="number" :value="JSON.parse(j.values['default'].secondary_qty_json)[type]" @input="get_secondary_input($event.target.value,item_index, item1_index, type, null)">
