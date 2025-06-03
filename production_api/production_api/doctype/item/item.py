@@ -291,6 +291,12 @@ def create_variant(template, args, dependent_attr=None):
 			"attribute_value": args.get(d),
 			"display_name": args.get(d),
 		})
+	d = {}
+	for attribute in variant_attributes:
+		d[attribute['attribute']] = attribute['attribute_value']	
+	tup = tuple(sorted(d.items()))    
+	if tup:
+		variant.item_tuple_attribute = str(tup)	
 	variant.set("attributes", variant_attributes)
 
 	return variant
@@ -302,14 +308,25 @@ def get_variant(template, args):
 		template: Item name
 		args: A dictionary with "Attribute" as key and "Attribute Value" as value
 	"""
+	enable = frappe.db.get_single_value("MRP Settings", "enable_tuple_attribute")
+	if enable:
+		tup = str(tuple(sorted(args.items())))  
+		names = frappe.db.sql(
+			"""
+				SELECT name from `tabItem Variant` WHERE item = %s AND item_tuple_attribute = %s
+			""", (template, tup)
+		)
+		if not names:
+			return None
+		return names[0]
+	else:
+		item_template = frappe.get_cached_doc("Item", template)
 
-	item_template = frappe.get_cached_doc("Item", template)
-
-	if isinstance(args, string_types):
-		args = json.loads(args)
-	if not args and item_template.attributes:
-		frappe.throw("Please specify at least one attribute in the Attributes table")
-	return find_variant(template, args)
+		if isinstance(args, string_types):
+			args = json.loads(args)
+		if not args and item_template.attributes:
+			frappe.throw("Please specify at least one attribute in the Attributes table")
+		return find_variant(template, args)
 
 def find_variant(template, args):
 	

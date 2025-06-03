@@ -6,6 +6,7 @@
  "engine": "InnoDB",
  "field_order": [
   "item",
+  "item_tuple_attribute",
   "attributes"
  ],
  "fields": [
@@ -20,12 +21,17 @@
    "fieldtype": "Table",
    "label": "Attributes",
    "options": "Item Variant Attribute"
+  },
+  {
+   "fieldname": "item_tuple_attribute",
+   "fieldtype": "Small Text",
+   "label": "Item Tuple Attribute"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-05-10 12:49:49.374882",
+ "modified": "2025-06-02 12:55:15.346824",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Item Variant",

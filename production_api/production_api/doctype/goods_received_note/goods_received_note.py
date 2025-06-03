@@ -835,9 +835,10 @@ def save_grn_consumed_item_details(item_details, ipd):
 				for attr, values in item['values'].items():
 					item_attributes[item.get('primary_attribute')] = attr
 					item1 = {}
-					tup = tuple(sorted(item_attributes.items()))
-					variant_name = get_or_create_ipd_variant(item_variants, item_name, tup, item_attributes)
-					item_variants = update_variant(item_variants, variant_name, item_name, str_tup)
+					# tup = tuple(sorted(item_attributes.items()))
+					variant_name = get_or_create_variant(item_name, item_attributes)
+					# variant_name = get_or_create_ipd_variant(item_variants, item_name, tup, item_attributes)
+					# item_variants = update_variant(item_variants, variant_name, item_name, str_tup)
 					item1['quantity'] = values.get('qty')
 					item1['item_variant'] = variant_name
 					item1['uom'] = item.get('default_uom')
@@ -848,10 +849,11 @@ def save_grn_consumed_item_details(item_details, ipd):
 			else:
 				if item['values'].get('default') and item['values']['default'].get('qty'):
 					item1 = {}
-					tup = tuple(sorted(item_attributes.items()))
-					variant_name = get_or_create_ipd_variant(item_variants, item_name, tup, item_attributes)
-					str_tup = str(tup) 
-					item_variants = update_variant(item_variants, variant_name, item_name, str_tup)
+					# tup = tuple(sorted(item_attributes.items()))
+					variant_name = get_or_create_variant(item_name, item_attributes)
+					# variant_name = get_or_create_ipd_variant(item_variants, item_name, tup, item_attributes)
+					# str_tup = str(tup) 
+					# item_variants = update_variant(item_variants, variant_name, item_name, str_tup)
 					item1['quantity'] = item['values']['default'].get('qty')
 					item1['item_variant'] = variant_name
 					item1['uom'] = item.get('default_uom')
@@ -926,10 +928,11 @@ def save_grn_item_details(item_details, process_name, ipd):
 					if values.get('ref_docname'):	
 						item_attributes[item.get('primary_attribute')] = attr
 						item1 = {}
-						tup = tuple(sorted(item_attributes.items()))
-						variant_name = get_or_create_ipd_variant(item_variants, item_name, tup, item_attributes)
-						str_tup = str(tup)
-						item_variants = update_variant(item_variants, variant_name, item_name, str_tup)
+						# tup = tuple(sorted(item_attributes.items()))
+						variant_name = get_or_create_variant(item_name, item_attributes)
+						# variant_name = get_or_create_ipd_variant(item_variants, item_name, tup, item_attributes)
+						# str_tup = str(tup)
+						# item_variants = update_variant(item_variants, variant_name, item_name, str_tup)
 						received = values.get('received', 0)
 						total_quantity, pending_qty = frappe.get_value(values.get('ref_doctype'), values.get('ref_docname'), ["qty","pending_quantity"])
 						x = total_quantity / 100
@@ -962,10 +965,11 @@ def save_grn_item_details(item_details, process_name, ipd):
 			else:
 				if item['values'].get('default') and item['values']['default'].get('ref_docname'):
 					item1 = {}
-					tup = tuple(sorted(item_attributes.items()))
-					variant_name = get_or_create_ipd_variant(item_variants, item_name, tup, item_attributes)
-					str_tup = str(tup)
-					item_variants = update_variant(item_variants, variant_name, item_name, str_tup)
+					# tup = tuple(sorted(item_attributes.items()))
+					variant_name = get_or_create_variant(item_name, item_attributes)
+					# variant_name = get_or_create_ipd_variant(item_variants, item_name, tup, item_attributes)
+					# str_tup = str(tup)
+					# item_variants = update_variant(item_variants, variant_name, item_name, str_tup)
 					doctype = item['values']['default'].get('ref_doctype')
 					docname = item['values']['default'].get('ref_docname')
 					received = item['values']['default'].get('received', 0)
@@ -1378,10 +1382,11 @@ def get_cutting_process_deliverables(grn_doc, ipd_doc):
 		name, colour, dia = cloth
 		attributes = {ipd_doc.packing_attribute:colour,"Dia":dia}
 		item_name = name
-		tup = tuple(sorted(attributes.items()))
-		new_variant = get_or_create_ipd_variant(item_variants, item_name, tup, attributes)
-		str_tup = str(tup) 
-		item_variants = update_variant(item_variants, new_variant, item_name, str_tup)
+		# tup = tuple(sorted(attributes.items()))
+		new_variant = get_or_create_variant(item_name, attributes)
+		# new_variant = get_or_create_ipd_variant(item_variants, item_name, tup, attributes)
+		# str_tup = str(tup) 
+		# item_variants = update_variant(item_variants, new_variant, item_name, str_tup)
 		uom = frappe.get_cached_value("Item",name,"default_unit_of_measure")
 		if additional:
 			x = weight / 100
@@ -1497,11 +1502,12 @@ def get_packing_process_deliverables(grn_doc, wo_doc, ipd_doc):
 				for part in part_list:
 					attributes[ipd_doc.set_item_attribute] = part
 					attributes[ipd_doc.packing_attribute] = set_combination_colours[(colour.attribute_value, part)]
-					tup = tuple(sorted(attributes.items()))
+					# tup = tuple(sorted(attributes.items()))
 					item_name = variant_doc.item
-					new_variant = get_or_create_ipd_variant(item_variants, item_name, tup, attributes)
-					str_tup = str(tup) 
-					item_variants = update_variant(item_variants, new_variant, item_name, str_tup)
+					new_variant = get_or_create_variant(item_name, attributes)
+					# new_variant = get_or_create_ipd_variant(item_variants, item_name, tup, attributes)
+					# str_tup = str(tup) 
+					# item_variants = update_variant(item_variants, new_variant, item_name, str_tup)
 					x = item.quantity
 					if ipd_doc.auto_calculate:
 						qty = x / ratio
@@ -1516,11 +1522,12 @@ def get_packing_process_deliverables(grn_doc, wo_doc, ipd_doc):
 						"set_combination": set_combination
 					})	
 			else:
-				tup = tuple(sorted(attributes.items()))
+				# tup = tuple(sorted(attributes.items()))
 				item_name = variant_doc.item
-				new_variant = get_or_create_ipd_variant(item_variants, item_name, tup, attributes)
-				str_tup = str(tup) 
-				item_variants = update_variant(item_variants, new_variant, item_name, str_tup)
+				new_variant = get_or_create_variant(item_name, attributes)
+				# new_variant = get_or_create_ipd_variant(item_variants, item_name, tup, attributes)
+				# str_tup = str(tup) 
+				# item_variants = update_variant(item_variants, new_variant, item_name, str_tup)
 				x = item.quantity
 				if ipd_doc.auto_calculate:
 					qty = x / ratio
@@ -1605,10 +1612,11 @@ def get_attributes(items, itemname, stage, dependent_attribute, ipd):
 					if panel_part != part:
 						v = False							
 					if v:
-						tup = tuple(sorted(attributes.items()))
-						new_variant = get_or_create_ipd_variant(item_variants, itemname, tup, attributes)
-						str_tup = str(tup) 
-						item_variants = update_variant(item_variants, new_variant, itemname, str_tup)
+						# tup = tuple(sorted(attributes.items()))
+						new_variant = get_or_create_variant(itemname, attributes)
+						# new_variant = get_or_create_ipd_variant(item_variants, itemname, tup, attributes)
+						# str_tup = str(tup) 
+						# item_variants = update_variant(item_variants, new_variant, itemname, str_tup)
 						item_list[itemname].append({
 							"item_variant": new_variant,
 							'qty': details['qty']*item.quantity,
@@ -1618,10 +1626,11 @@ def get_attributes(items, itemname, stage, dependent_attribute, ipd):
 			else:
 				for id,item in enumerate(ipd_doc.stiching_item_details):
 					attributes[ipd_doc.stiching_attribute] = item.stiching_attribute_value
-					tup = tuple(sorted(attributes.items()))
-					new_variant = get_or_create_ipd_variant(item_variants, itemname, tup, attributes)
-					str_tup = str(tup) 
-					item_variants = update_variant(item_variants, new_variant, itemname, str_tup)
+					# tup = tuple(sorted(attributes.items()))
+					new_variant = get_or_create_variant(itemname, attributes)
+					# new_variant = get_or_create_ipd_variant(item_variants, itemname, tup, attributes)
+					# str_tup = str(tup) 
+					# item_variants = update_variant(item_variants, new_variant, itemname, str_tup)
 					item_list[itemname].append({
 						"item_variant": new_variant,
 						'qty': details['qty']*item.quantity,
@@ -1974,8 +1983,9 @@ def calculate_pack_stage(ipd_doc, grn_doc, received_types, doc_status, total_rec
 			variant_attrs.update(attr)
 			item_name = variant_doc.item
 			variant_attrs[ipd_doc.dependent_attribute] = ipd_doc.pack_in_stage
-			tup = tuple(sorted(variant_attrs.items()))
-			new_variant = get_or_create_ipd_variant(item_variants, item_name, tup, variant_attrs)
+			# tup = tuple(sorted(variant_attrs.items()))
+			new_variant = get_or_create_variant(item_name, variant_attrs)
+			# new_variant = get_or_create_ipd_variant(item_variants, item_name, tup, variant_attrs)
 			set_combination = {
 				"major_colour": major_colour
 			}
@@ -2082,11 +2092,12 @@ def calculate_cutting_piece(grn_doc, received_types, panel_list):
 				attrs[ipd_doc.primary_item_attribute] = val
 				if item['values'][val]:
 					if item['values'][val].get(ty):
-						tup = tuple(sorted(attrs.items()))
+						# tup = tuple(sorted(attrs.items()))
 						item_name = item['name']
-						variant_name = get_or_create_ipd_variant(item_variants, item_name, tup, attrs)
-						str_tup = str(tup) 
-						item_variants = update_variant(item_variants, variant_name, item_name, str_tup)
+						variant_name = get_or_create_variant(item_name, attrs)
+						# variant_name = get_or_create_ipd_variant(item_variants, item_name, tup, attrs)
+						# str_tup = str(tup) 
+						# item_variants = update_variant(item_variants, variant_name, item_name, str_tup)
 						qty = item['values'][val][ty]
 						set_combination = update_if_string_instance(item['item_keys'])
 						qty_list.append({
