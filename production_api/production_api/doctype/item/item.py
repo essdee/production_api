@@ -310,15 +310,21 @@ def get_variant(template, args):
 	"""
 	enable = frappe.db.get_single_value("MRP Settings", "enable_tuple_attribute")
 	if enable:
-		tup = str(tuple(sorted(args.items())))  
-		names = frappe.db.sql(
-			"""
-				SELECT name from `tabItem Variant` WHERE item = %s AND item_tuple_attribute = %s
-			""", (template, tup)
-		)
-		if not names:
-			return None
-		return names[0]
+		variant_name = None
+		if args:
+			tup = str(tuple(sorted(args.items())))  
+			variants = frappe.db.sql(
+				"""
+					SELECT name from `tabItem Variant` WHERE item = %s AND item_tuple_attribute = %s
+				""", (template, tup)
+			)
+			if variants:
+				variant_name = variants[0]
+		else:
+			variants = frappe.get_all("Item Variant", filters={"name": template}, pluck="name")
+			if variants:
+				variant_name = variants[0]
+		return variant_name		
 	else:
 		item_template = frappe.get_cached_doc("Item", template)
 
