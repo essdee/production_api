@@ -7,6 +7,8 @@
             <div class="warehouse col-md-2"></div>
             <div class="received-type col-md-2"></div>
             <button class="btn btn-success ml-3" @click="get_filters()">Generate</button>
+            <button class="btn btn-success ml-3" @click="select_all()">Select All</button>
+            <button class="btn btn-success ml-3" @click="unselect_all()">Unselect All</button>
         </div>
         <div v-if="items.length > 0 && show_table">
             <button class="btn btn-primary" @click="create_bulk_stock_entry()">Create Bulk Stock Entry</button>                            
@@ -146,6 +148,17 @@ function get_filters() {
             show_table.value = true;
         }
     });
+}
+
+function select_all(){
+    selectedItems.value = []
+    for(let i = 0; i < items.value.length; i++){
+        selectedItems.value.push(items.value[i])
+    }
+}
+
+function unselect_all(){
+    selectedItems.value = []
 }
 
 function create_stock_entry(item) {

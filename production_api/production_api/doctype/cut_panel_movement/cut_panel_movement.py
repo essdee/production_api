@@ -538,10 +538,11 @@ def get_grouped_data(doc_name, doctype):
 		grp_key = stock_entry_dict[attrs_tuple]['group_key']
 		set_combination = get_tuple_attributes(attrs['set_combination'])
 		del attrs['set_combination']
-		tup = tuple(sorted(attrs.items()))
-		variant = get_or_create_ipd_variant(item_variants, cpm_doc.item, tup, attrs)
-		str_tup = str(tup)
-		item_variants = update_variant(item_variants, variant, cpm_doc.item, str_tup)
+		# tup = tuple(sorted(attrs.items()))
+		variant = get_or_create_variant(cpm_doc.item, attrs)
+		# variant = get_or_create_ipd_variant(item_variants, cpm_doc.item, tup, attrs)
+		# str_tup = str(tup)
+		# item_variants = update_variant(item_variants, variant, cpm_doc.item, str_tup)
 		group_dict[grp_key].append( {"item_variant": variant, "qty": qty, "set_combination": set_combination })
 	
 	table_index = -1

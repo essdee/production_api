@@ -6,26 +6,35 @@
  "engine": "InnoDB",
  "field_order": [
   "item",
+  "item_tuple_attribute",
   "attributes"
  ],
  "fields": [
   {
    "fieldname": "item",
    "fieldtype": "Link",
+   "in_list_view": 1,
    "label": "Item",
-   "options": "Item"
+   "options": "Item",
+   "reqd": 1
   },
   {
    "fieldname": "attributes",
    "fieldtype": "Table",
    "label": "Attributes",
    "options": "Item Variant Attribute"
+  },
+  {
+   "fieldname": "item_tuple_attribute",
+   "fieldtype": "Data",
+   "label": "Item Tuple Attribute",
+   "read_only": 1
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-05-10 12:49:49.374882",
+ "modified": "2025-06-04 10:14:02.944276",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Item Variant",

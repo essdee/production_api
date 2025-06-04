@@ -534,10 +534,11 @@ def get_calculated_bom(item_production_detail, items, lot_name, process_name = N
 		for k in cloth_details:
 			uom = frappe.get_value("Item",k[0],"default_unit_of_measure")
 			cloth_attrs = {item_detail.packing_attribute: k[1], 'Dia': k[2]}
-			tup = tuple(sorted(cloth_attrs.items()))
-			cloth_name = get_or_create_ipd_variant(item_variants, k[0], tup, cloth_attrs)
-			str_tup = str(tup)
-			item_variants = update_variant(item_variants, cloth_name, k[0], str_tup)
+			# tup = tuple(sorted(cloth_attrs.items()))
+			cloth_name = get_or_create_variant(k[0], cloth_attrs)
+			# cloth_name = get_or_create_ipd_variant(item_variants, k[0], tup, cloth_attrs)
+			# str_tup = str(tup)
+			# item_variants = update_variant(item_variants, cloth_name, k[0], str_tup)
 			if not bom.get(k[0],False):
 				bom[k[0]] = {cloth_name:[cloth_details[k],item_detail.cutting_process,uom]}
 			else:	
@@ -547,10 +548,11 @@ def get_calculated_bom(item_production_detail, items, lot_name, process_name = N
 		for k,val in value.items():
 			k = k.replace("'", '"')
 			k = json.loads(k)
-			tup = tuple(sorted(k.items()))
-			variant = get_or_create_ipd_variant(item_variants, key, tup, k)
-			str_tup = str(tup)
-			item_variants = update_variant(item_variants, variant, key, str_tup)
+			# tup = tuple(sorted(k.items()))
+			variant = get_or_create_variant(key, k)
+			# variant = get_or_create_ipd_variant(item_variants, key, tup, k)
+			# str_tup = str(tup)
+			# item_variants = update_variant(item_variants, variant, key, str_tup)
 			if not bom.get(key,False):
 				bom[key] = {variant:val}
 			else:	

@@ -13,6 +13,7 @@
   "column_break_d1dky",
   "enable_purchase_invoice_sync",
   "erp_site_url",
+  "enable_tuple_attribute",
   "url_shortner_settings_section",
   "shortned_url_domain",
   "link_expiry_days",
@@ -150,12 +151,19 @@
    "fieldname": "received_type_list",
    "fieldtype": "Small Text",
    "label": "Received Type List"
+  },
+  {
+   "default": "0",
+   "fieldname": "enable_tuple_attribute",
+   "fieldtype": "Check",
+   "label": "Enable Tuple Attribute"
   }
  ],
+ "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2025-03-03 12:41:58.856466",
+ "modified": "2025-06-03 10:50:22.386819",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "MRP Settings",
@@ -182,6 +190,7 @@
    "write": 1
   }
  ],
+ "row_format": "Dynamic",
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": [],
