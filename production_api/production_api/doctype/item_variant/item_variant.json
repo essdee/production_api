@@ -27,13 +27,14 @@
   {
    "fieldname": "item_tuple_attribute",
    "fieldtype": "Data",
-   "label": "Item Tuple Attribute"
+   "label": "Item Tuple Attribute",
+   "read_only": 1
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-06-03 12:17:07.542686",
+ "modified": "2025-06-04 10:14:02.944276",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Item Variant",
