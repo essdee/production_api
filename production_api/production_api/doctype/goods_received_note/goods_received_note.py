@@ -1044,7 +1044,7 @@ def fetch_grn_item_details(items, ipd, lot, docstatus = 0):
 		}
 		if item['primary_attribute']:
 			for attr in current_item_attribute_details['primary_attribute_values']:
-				item['values'][attr] = {'qty': 0, 'rate': 0}
+				item['values'][attr] = {'qty': 0, 'rate': 0, "types": {}}
 			for variant in variants:
 				current_variant = frappe.get_cached_doc("Item Variant", variant['item_variant'])
 				set_combination = update_if_string_instance(variant.get('set_combination', {}))
