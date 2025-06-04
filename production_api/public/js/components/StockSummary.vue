@@ -153,7 +153,6 @@ function get_filters() {
 function select_all(){
     selectedItems.value = []
     for(let i = 0; i < items.value.length; i++){
-        console.log(items.value[i])
         selectedItems.value.push(items.value[i])
     }
 }
@@ -200,7 +199,6 @@ function create_bulk_stock_entry(){
         frappe.msgprint("Please select at least one item.");
         return;
     }
-    console.log(selectedItems.value)
     let selected = selectedItems.value
     let location = selected[0]['warehouse']
     for(let i = 0 ; i < selected.length ; i++){
