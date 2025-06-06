@@ -295,15 +295,34 @@ def create_variant(template, args, dependent_attr=None):
 
 	return variant
 
-def get_variant(template, args):
+def get_variant(template, args: dict):
 	"""
 		Get variant of Item
 
 		template: Item name
 		args: A dictionary with "Attribute" as key and "Attribute Value" as value
 	"""
-
-	item_template = frappe.get_cached_doc("Item", template)
+	enable = frappe.db.get_single_value("MRP Settings", "enable_tuple_attribute")
+	if enable:
+		variant_name = None
+		if args:
+			tup = str(tuple(sorted(args.items())))  
+			variants = frappe.db.sql(
+				"""
+					SELECT name from `tabItem Variant` WHERE item = %s AND item_tuple_attribute = %s
+				""", (template, tup)
+			)
+			if variants:
+				variant_name = variants[0]
+		else:
+			variants = frappe.get_all("Item Variant", filters={"name": template}, pluck="name")
+			if variants:
+				variant_name = variants[0]
+		if variant_name:
+			return variant_name[0]
+		return None		
+	else:
+		item_template = frappe.get_cached_doc("Item", template)
 
 	if isinstance(args, string_types):
 		args = json.loads(args)
