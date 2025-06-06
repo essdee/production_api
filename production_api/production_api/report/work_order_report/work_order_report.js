@@ -32,7 +32,7 @@ frappe.query_reports["Work Order Report"] = {
 		{
 			"fieldname":"item",
 			"fieldtype":"Link",
-			"options":"Link",
+			"options":"Item",
 			"label":"Item",
 		},
 		{

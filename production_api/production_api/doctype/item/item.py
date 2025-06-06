@@ -291,6 +291,12 @@ def create_variant(template, args, dependent_attr=None):
 			"attribute_value": args.get(d),
 			"display_name": args.get(d),
 		})
+	d = {}
+	for attribute in variant_attributes:
+		d[attribute['attribute']] = attribute['attribute_value']	
+	tup = tuple(sorted(d.items()))    
+	if tup:
+		variant.item_tuple_attribute = str(tup)	
 	variant.set("attributes", variant_attributes)
 
 	return variant
@@ -318,17 +324,15 @@ def get_variant(template, args: dict):
 			variants = frappe.get_all("Item Variant", filters={"name": template}, pluck="name")
 			if variants:
 				variant_name = variants[0]
-		if variant_name:
-			return variant_name[0]
-		return None		
+		return variant_name		
 	else:
 		item_template = frappe.get_cached_doc("Item", template)
 
-	if isinstance(args, string_types):
-		args = json.loads(args)
-	if not args and item_template.attributes:
-		frappe.throw("Please specify at least one attribute in the Attributes table")
-	return find_variant(template, args)
+		if isinstance(args, string_types):
+			args = json.loads(args)
+		if not args and item_template.attributes:
+			frappe.throw("Please specify at least one attribute in the Attributes table")
+		return find_variant(template, args)
 
 def find_variant(template, args):
 	

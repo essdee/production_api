@@ -35,4 +35,5 @@ production_api.patches.v1_0.update_cls_effective_bits
 production_api.patches.v1_0.fg_stock_entry
 production_api.patches.v1_0.update_grn_in_cls #3
 production_api.patches.v1_0.update_wo_planned_qty 
+production_api.patches.v1_0.update_item_variant_tuple
 

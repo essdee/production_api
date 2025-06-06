@@ -10,7 +10,7 @@ from frappe.utils import flt, nowdate, now
 from production_api.mrp_stock.utils import get_stock_balance
 from production_api.mrp_stock.stock_ledger import make_sl_entries, repost_future_stock_ledger_entry
 from production_api.production_api.logger import get_module_logger
-from production_api.production_api.doctype.item.item import get_attribute_details
+from production_api.production_api.doctype.item.item import get_attribute_details, get_or_create_variant
 from production_api.utils import get_panel_list, update_if_string_instance, update_variant
 from production_api.production_api.doctype.purchase_order.purchase_order import get_item_attribute_details, get_item_group_index
 
@@ -212,10 +212,11 @@ def save_deliverables(item_details, from_location, ipd, received_type=None):
 					if values.get('qty') or values.get('delivered_quantity'):
 						item_attributes[item.get('primary_attribute')] = attr
 						item1 = {}
-						tup = tuple(sorted(item_attributes.items()))
-						variant_name = get_or_create_ipd_variant(item_variants, item_name, tup, item_attributes)
-						str_tup = str(tup)
-						item_variants = update_variant(item_variants, variant_name, item_name, str_tup)
+						# tup = tuple(sorted(item_attributes.items()))
+						variant_name = get_or_create_variant(item_name, item_attributes)
+						# variant_name = get_or_create_ipd_variant(item_variants, item_name, tup, item_attributes)
+						# str_tup = str(tup)
+						# item_variants = update_variant(item_variants, variant_name, item_name, str_tup)
 						item1['item_variant'] = variant_name
 						item1['lot'] = item.get('lot')
 						item1['qty'] = values.get('qty')
@@ -245,10 +246,12 @@ def save_deliverables(item_details, from_location, ipd, received_type=None):
 			else:
 				if item['values']['default'].get('qty') or item['values']['default'].get('delivered_quantity'):	
 					item1 = {}
-					tup = tuple(sorted(item_attributes.items()))
-					variant_name = get_or_create_ipd_variant(item_variants, item_name, tup, item_attributes)
-					str_tup = str(tup)
-					item_variants = update_variant(item_variants, variant_name, item_name, str_tup)
+					# tup = tuple(sorted(item_attributes.items()))
+					variant_name = get_or_create_variant(item_name, item_attributes)
+
+					# variant_name = get_or_create_ipd_variant(item_variants, item_name, tup, item_attributes)
+					# str_tup = str(tup)
+					# item_variants = update_variant(item_variants, variant_name, item_name, str_tup)
 					item1['item_variant'] = variant_name
 					item1['qty'] = item['values']['default'].get('qty')
 					item1['secondary_qty'] = item['values']['default'].get('secondary_qty')
@@ -671,11 +674,12 @@ def calculate_cutting_piece(dc_doc, panel_list):
 		for val in item['values']:
 			attrs[ipd_doc.primary_item_attribute] = val
 			if item['values'][val]:
-				tup = tuple(sorted(attrs.items()))
+				# tup = tuple(sorted(attrs.items()))
 				item_name = item['name']
-				variant_name = get_or_create_ipd_variant(item_variants, item_name, tup, attrs)
-				str_tup = str(tup) 
-				item_variants = update_variant(item_variants, variant_name, item_name, str_tup)
+				variant_name = get_or_create_variant(item_name, attrs)
+				# variant_name = get_or_create_ipd_variant(item_variants, item_name, tup, attrs)
+				# str_tup = str(tup) 
+				# item_variants = update_variant(item_variants, variant_name, item_name, str_tup)
 				qty = item['values'][val]
 				set_combination = update_if_string_instance(item['item_keys'])
 				qty_list.append({

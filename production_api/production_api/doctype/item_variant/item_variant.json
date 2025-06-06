@@ -6,20 +6,29 @@
  "engine": "InnoDB",
  "field_order": [
   "item",
+  "item_tuple_attribute",
   "attributes"
  ],
  "fields": [
   {
    "fieldname": "item",
    "fieldtype": "Link",
+   "in_list_view": 1,
    "label": "Item",
-   "options": "Item"
+   "options": "Item",
+   "reqd": 1
   },
   {
    "fieldname": "attributes",
    "fieldtype": "Table",
    "label": "Attributes",
    "options": "Item Variant Attribute"
+  },
+  {
+   "fieldname": "item_tuple_attribute",
+   "fieldtype": "Data",
+   "label": "Item Tuple Attribute",
+   "read_only": 1
   }
  ],
  "grid_page_length": 50,

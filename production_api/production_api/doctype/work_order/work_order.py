@@ -216,10 +216,11 @@ def save_item_details(item_details, ipd, supplier=None, process_name = None):
 						quantity = 0
 					item_attributes[item.get('primary_attribute')] = attr
 					cost = values.get('cost')
-					tup = tuple(sorted(item_attributes.items()))
-					variant = get_or_create_ipd_variant(item_variants, item_name, tup, item_attributes)
-					str_tup = str(tup)
-					item_variants = update_variant(item_variants, variant, item_name, str_tup)
+					# tup = tuple(sorted(item_attributes.items()))
+					variant = get_or_create_variant(item_name, item_attributes)
+					# variant = get_or_create_ipd_variant(item_variants, item_name, tup, item_attributes)
+					# str_tup = str(tup)
+					# item_variants = update_variant(item_variants, variant, item_name, str_tup)
 					item1 = get_data(item, table_index, row_index, process_name, quantity, cost)
 					item1['item_variant'] = variant	
 					item1['set_combination'] = values.get("set_combination", {})
@@ -232,10 +233,11 @@ def save_item_details(item_details, ipd, supplier=None, process_name = None):
 				if item['values'].get('default') and item['values']['default'].get('qty'):
 					quantity = item['values']['default'].get('qty')
 					cost = item['values']['default'].get('cost')
-					tup = tuple(sorted(item_attributes.items()))
-					variant = get_or_create_ipd_variant(item_variants, item_name, tup, item_attributes)
-					str_tup = str(tup)
-					item_variants = update_variant(item_variants, variant, item_name, str_tup)
+					# tup = tuple(sorted(item_attributes.items()))
+					variant = get_or_create_variant(item_name, item_attributes)
+					# variant = get_or_create_ipd_variant(item_variants, item_name, tup, item_attributes)
+					# str_tup = str(tup)
+					# item_variants = update_variant(item_variants, variant, item_name, str_tup)
 					item1 = get_data(item,table_index,row_index, process_name, quantity,cost)	
 					item1['item_variant'] = variant
 					item1['set_combination'] = item['values']['default'].get('set_combination', {})
@@ -507,7 +509,7 @@ def get_lot_items(lot, doc_name, process):
 def get_deliverable_receivable( items, doc_name, deliverable=False, receivable=False):
 	logger = get_module_logger("work_order")
 	logger.debug(f"{doc_name} Deliverable and Receivable Calculation {datetime.now()}")
-	wo_doc = frappe.get_cached_doc("Work Order", doc_name)
+	wo_doc = frappe.get_doc("Work Order", doc_name)
 	lot_doc = frappe.db.sql(
 		f"""
 			SELECT production_detail, packing_uom, uom, pack_in_stage FROM `tabLot` WHERE name = '{wo_doc.lot}'
@@ -881,10 +883,11 @@ def get_attributes(items, itemname, stage, dependent_attribute, ipd=None, proces
 						if panel_part != part:
 							v = False							
 						if v:
-							tup = tuple(sorted(attributes.items()))
-							str_tup = str(tup)
-							new_variant = get_or_create_ipd_variant(item_variants, itemname, tup, attributes)
-							item_variants = update_variant(item_variants, new_variant, itemname, str_tup)
+							# tup = tuple(sorted(attributes.items()))
+							# str_tup = str(tup)
+							new_variant = get_or_create_variant(itemname, attributes)
+							# new_variant = get_or_create_ipd_variant(item_variants, itemname, tup, attributes)
+							# item_variants = update_variant(item_variants, new_variant, itemname, str_tup)
 							if not item_list.get(itemname):
 								item_list[itemname] = []
 							item_list[itemname].append({
@@ -913,10 +916,11 @@ def get_attributes(items, itemname, stage, dependent_attribute, ipd=None, proces
 						else:
 							attributes[ipd_doc.stiching_attribute] = panel
 						
-						tup = tuple(sorted(attributes.items()))
-						str_tup = str(tup)
-						new_variant = get_or_create_ipd_variant(item_variants, itemname, tup, attributes)
-						item_variants = update_variant(item_variants, new_variant, itemname, str_tup)
+						# tup = tuple(sorted(attributes.items()))
+						# str_tup = str(tup)
+						new_variant = get_or_create_variant(itemname, attributes)
+						# new_variant = get_or_create_ipd_variant(item_variants, itemname, tup, attributes)
+						# item_variants = update_variant(item_variants, new_variant, itemname, str_tup)
 						if not item_list.get(itemname):
 							item_list[itemname] = []
 						item_list[itemname].append({
@@ -959,10 +963,11 @@ def get_items(items, ipd, deliverable):
 				attributes[row['primary_attribute']] = val
 				item1 = {}
 				item_name = row['name']
-				tup = tuple(sorted(attributes.items()))
-				variant_name = get_or_create_ipd_variant(item_variants, item_name, tup, attributes)
-				str_tup = str(tup) 
-				item_variants = update_variant(item_variants, variant_name, item_name, str_tup)
+				# tup = tuple(sorted(attributes.items()))
+				variant_name = get_or_create_variant(item_name, attributes)
+				# variant_name = get_or_create_ipd_variant(item_variants, item_name, tup, attributes)
+				# str_tup = str(tup) 
+				# item_variants = update_variant(item_variants, variant_name, item_name, str_tup)
 				item1['item_variant'] = variant_name
 				item1['quantity'] = row['work_order_qty'][val]
 				item1['row_index'] = index
@@ -979,10 +984,11 @@ def get_items(items, ipd, deliverable):
 			item1 = {}
 			item_name = row['name']
 			attributes = row['attributes']
-			tup = tuple(sorted(attributes.items()))
-			variant_name = get_or_create_ipd_variant(item_variants, item_name, tup, attributes)
-			str_tup = str(tup) 
-			item_variants = update_variant(item_variants, variant_name, item_name, str_tup)
+			# tup = tuple(sorted(attributes.items()))
+			variant_name = get_or_create_variant(item_name, attributes)
+			# variant_name = get_or_create_ipd_variant(item_variants, item_name, tup, attributes)
+			# str_tup = str(tup) 
+			# item_variants = update_variant(item_variants, variant_name, item_name, str_tup)
 			item1['item_variant'] = variant_name
 			item1['quantity'] = row['work_order_qty']
 			item1['table_index'] = index
@@ -1396,10 +1402,11 @@ def create_rework(doc_name, items, ipd, supplier,supplier_address, rework_type, 
 							continue
 						item_attributes[item.get('primary_attribute')] = attr
 						cost = values.get('cost', 0)
-						tup = tuple(sorted(item_attributes.items()))
-						variant = get_or_create_ipd_variant(item_variants, item_name, tup, item_attributes)
-						str_tup = str(tup)
-						item_variants = update_variant(item_variants, variant, item_name, str_tup)
+						# tup = tuple(sorted(item_attributes.items()))
+						variant = get_or_create_variant(item_name, item_attributes)
+						# variant = get_or_create_ipd_variant(item_variants, item_name, tup, item_attributes)
+						# str_tup = str(tup)
+						# item_variants = update_variant(item_variants, variant, item_name, str_tup)
 						item1 = get_data(item, values.get("table_index"), values.get("row_index"), process_name, quantity, cost)
 						item1['item_variant'] = variant	
 						item1['set_combination'] = values.get("set_combination", {})
