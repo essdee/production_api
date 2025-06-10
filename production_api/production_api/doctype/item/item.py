@@ -316,17 +316,17 @@ def get_variant(template, args: dict):
 			variants = frappe.db.sql(
 				"""
 					SELECT name from `tabItem Variant` WHERE item = %s AND item_tuple_attribute = %s
-				""", (template, tup), as_dict=True
+				""", (template, tup)
 			)
 			if variants:
-				variant_name = variants[0]['name']
+				variant_name = variants[0]
 		else:
 			variants = frappe.get_all("Item Variant", filters={"name": template}, pluck="name")
-		if variants:
-			variant_name = variants[0]
-		if not variant_name:
-			return None
-		return variant_name  
+			if variants:
+				variant_name = variants[0]
+		if variant_name:
+			return variant_name[0]
+		return None		
 	else:
 		item_template = frappe.get_cached_doc("Item", template)
 
