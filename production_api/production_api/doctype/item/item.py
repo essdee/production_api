@@ -301,7 +301,7 @@ def create_variant(template, args, dependent_attr=None):
 
 	return variant
 
-def get_variant(template, args):
+def get_variant(template, args: dict):
 	"""
 		Get variant of Item
 
@@ -316,15 +316,17 @@ def get_variant(template, args):
 			variants = frappe.db.sql(
 				"""
 					SELECT name from `tabItem Variant` WHERE item = %s AND item_tuple_attribute = %s
-				""", (template, tup)
+				""", (template, tup), as_dict=True
 			)
 			if variants:
-				variant_name = variants[0]
+				variant_name = variants[0]['name']
 		else:
 			variants = frappe.get_all("Item Variant", filters={"name": template}, pluck="name")
 			if variants:
 				variant_name = variants[0]
-		return variant_name		
+		if not variant_name:
+			return None
+		return variant_name  
 	else:
 		item_template = frappe.get_cached_doc("Item", template)
 
