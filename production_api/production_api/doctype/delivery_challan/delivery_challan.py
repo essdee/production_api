@@ -428,7 +428,8 @@ def get_variant_stock_details():
 def get_dc_structure(doc_name):
 	doc = frappe.get_doc("Delivery Challan", doc_name)
 	item_details = fetch_item_details(doc.items, doc.production_detail, doc.lot)
-	return item_details
+	exp_date = frappe.get_value("Work Order", doc.work_order, "expected_delivery_date")
+	return item_details, exp_date
 
 @frappe.whitelist()
 def get_current_user_time():

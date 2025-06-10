@@ -522,8 +522,10 @@ def get_deliverable_receivable( items, doc_name, deliverable=False, receivable=F
 	dept_attribute = ipd_doc.dependent_attribute
 	pack_out_stage = ipd_doc.pack_out_stage
 	stiching_in_stage = ipd_doc.stiching_in_stage
-	wo_colour_sets = get_report_data(items, dept_attribute)
+	wo_colour_sets = get_report_data(items, dept_attribute, ipd_doc.packing_attribute)
 	items = get_items(items, ipd, deliverable=deliverable)
+	if not items:
+		frappe.throw("Enter the Qty to Calculate the Items")
 	grp_variant = items[0]['item_variant']
 	item_name = frappe.get_value("Item Variant", grp_variant, 'item')
 	item_list, row_index, table_index = get_item_structure(items, item_name, wo_doc.process_name, uom)
@@ -725,8 +727,9 @@ def get_converted_accessory(ipd_doc, accessory, lot, table_index, row_index):
 		row_index += 1
 	return accessories	
 
-def get_report_data(items, dept_attribute):
+def get_report_data(items, dept_attribute, pack_attr):
 	attrs = []
+	set_attrs = []
 	items = update_if_string_instance(items)
 	wo_colour_sets = ""
 	all_attrs = True	
@@ -738,20 +741,29 @@ def get_report_data(items, dept_attribute):
 				break
 		if check:
 			attrs.append(item['attributes'])
+			set_attrs.append(item['item_keys']['major_colour'])
 		else:
 			all_attrs = False	
 	if all_attrs:
 		wo_colour_sets = "All"
 	else:	
 		attributes = []
+		idx = 0
 		for attr in attrs:
 			attribute = ""
+			colour = None
 			for key in attr:
 				if key != dept_attribute:
 					attribute += attr[key] + "-"
+				if key == pack_attr:
+					colour = attr[key]
+
 			if attribute:		
-				attribute = attribute[:-1]		
+				attribute = attribute[:-1]
+				if colour != set_attrs[idx]:
+					attribute += f"({set_attrs[idx]})"		
 				attributes.append(attribute)
+			idx += 1
 		wo_colour_sets = ", ".join(attributes)	
 	return wo_colour_sets
 

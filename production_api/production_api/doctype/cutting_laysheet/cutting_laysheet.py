@@ -205,9 +205,10 @@ def get_combined_combination(ipd_doc):
 	add_pack_attr = False
 	if ipd_doc.packing_attribute in cutting_attrs or ipd_doc.packing_attribute in cloths_attrs:
 		add_pack_attr = True
+	
+	cutting_items = cutting_items_json['items']
+	cutting_cloths = cutting_cloths_json['items']
 	if ipd_doc.stiching_attribute in cutting_attrs or ipd_doc.stiching_attribute in cloths_attrs:
-		cutting_items = cutting_items_json['items']
-		cutting_cloths = cutting_cloths_json['items']
 		combination = {}
 		for row1 in cutting_items:
 			for row2 in cutting_cloths:
