@@ -1816,28 +1816,8 @@ def calculate_pieces(doc_name):
 		check = True
 		panel_list = None
 		if emb and emb.get(process_name):
-			if len(emb.get(process_name)) == 1:
-				check = False
-				for item in grn_doc.items:
-					if item.quantity <= 0:
-						continue
-					qty = item.quantity
-					if doc_status == 2:
-						qty = qty * -1
-					set_combination = update_if_string_instance(item.set_combination)
-					if item.received_type:
-						final_calculation.append({
-							"item_variant": item.item_variant,
-							"quantity": qty,
-							"type":item.received_type,
-							"set_combination":set_combination
-						})
-					received_types.setdefault(item.received_type, 0)
-					received_types[item.received_type] += qty
-					total_received += qty
-			else:
-				if stage == ipd_doc.stiching_in_stage:
-					panel_list = emb.get(process_name)
+			if stage == ipd_doc.stiching_in_stage:
+				panel_list = emb.get(process_name)
 
 		if stage and check:
 			if stage == ipd_doc.pack_in_stage:
