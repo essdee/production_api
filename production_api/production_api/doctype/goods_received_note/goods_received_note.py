@@ -1813,13 +1813,12 @@ def calculate_pieces(doc_name):
 				stage = process.stage
 				break
 		
-		check = True
 		panel_list = None
 		if emb and emb.get(process_name):
 			if stage == ipd_doc.stiching_in_stage:
 				panel_list = emb.get(process_name)
 
-		if stage and check:
+		if stage:
 			if stage == ipd_doc.pack_in_stage:
 				final_calculation, received_types, total_received = calculate_piece_stage(grn_doc, received_types, doc_status, total_received, final_calculation)
 
