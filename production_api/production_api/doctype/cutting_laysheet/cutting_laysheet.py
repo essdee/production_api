@@ -208,8 +208,8 @@ def get_combined_combination(ipd_doc):
 	
 	cutting_items = cutting_items_json['items']
 	cutting_cloths = cutting_cloths_json['items']
+	combination = {}
 	if ipd_doc.stiching_attribute in cutting_attrs or ipd_doc.stiching_attribute in cloths_attrs:
-		combination = {}
 		for row1 in cutting_items:
 			for row2 in cutting_cloths:
 				row1.update(row2)
