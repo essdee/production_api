@@ -428,7 +428,8 @@ def get_variant_stock_details():
 def get_dc_structure(doc_name):
 	doc = frappe.get_doc("Delivery Challan", doc_name)
 	item_details = fetch_item_details(doc.items, doc.production_detail, doc.lot)
-	return item_details
+	exp_date = frappe.get_value("Work Order", doc.work_order, "expected_delivery_date")
+	return item_details, exp_date
 
 @frappe.whitelist()
 def get_current_user_time():
@@ -529,27 +530,11 @@ def calculate_pieces(doc_name):
 				stage = process.stage
 				break
 		
-		check = True
 		panel_list = None
-		if emb and emb.get(process_name):
-			if len(emb.get(process_name)) == 1:
-				check = False
-				for item in dc_doc.items:
-					qty = item.delivered_quantity
-					if doc_status == 2:
-						qty = qty * -1
-					set_combination = update_if_string_instance(item.set_combination)
-					final_calculation.append({
-						"item_variant": item.item_variant,
-						"quantity": qty,
-						"set_combination":set_combination
-					})
-					total_delivered += qty
-			else:
-				if stage == ipd_doc.stiching_in_stage:
-					panel_list = emb.get(process_name)
+		if emb and emb.get(process_name) and stage == ipd_doc.stiching_in_stage:
+			panel_list = emb.get(process_name)
 
-		if stage and check:
+		if stage:
 			if stage == ipd_doc.pack_in_stage:
 				final_calculation, total_delivered = calculate_piece_stage(dc_doc, doc_status, total_delivered, final_calculation)
 
