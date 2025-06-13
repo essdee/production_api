@@ -6,6 +6,7 @@
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
+  "is_manual_entry",
   "lot",
   "maximum_no_of_plys",
   "lay_no",
@@ -186,15 +187,23 @@
    "fieldtype": "Select",
    "hidden": 1,
    "label": "Version",
-   "options": "\nV1\nV2"
+   "options": "\nV1\nV2\nV3"
   },
   {
    "fieldname": "work_order",
    "fieldtype": "Link",
    "label": "Work Order",
    "options": "Work Order"
+  },
+  {
+   "default": "0",
+   "fieldname": "is_manual_entry",
+   "fieldtype": "Check",
+   "label": "Is Manual Entry",
+   "set_only_once": 1
   }
  ],
+ "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [
   {
@@ -206,7 +215,7 @@
    "link_fieldname": "cutting_plan"
   }
  ],
- "modified": "2025-04-09 15:22:45.094897",
+ "modified": "2025-06-13 09:42:11.699764",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Cutting Plan",
@@ -268,6 +277,7 @@
    "share": 1
   }
  ],
+ "row_format": "Dynamic",
  "search_fields": "lot,item",
  "sort_field": "modified",
  "sort_order": "DESC",
