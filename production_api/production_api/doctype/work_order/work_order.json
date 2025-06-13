@@ -57,11 +57,12 @@
   "column_break_ocbe",
   "first_dc_date",
   "last_dc_date",
-  "total_no_of_pieces_delivered",
+  "planned_quantity",
   "wo_colours",
   "column_break_uwsv",
   "first_grn_date",
   "last_grn_date",
+  "total_no_of_pieces_delivered",
   "total_no_of_pieces_received",
   "section_break_fewo",
   "column_break_klzv",
@@ -74,25 +75,30 @@
    "default": "WO-",
    "fieldname": "naming_series",
    "fieldtype": "Select",
-   "hidden": 1,
    "in_list_view": 1,
    "label": "WO Series",
    "options": "WO-",
    "reqd": 1
   },
   {
+   "allow_on_submit": 1,
    "fieldname": "start_date",
    "fieldtype": "Date",
-   "label": "Start Date"
+   "label": "Start Date",
+   "read_only": 1
   },
   {
+   "allow_on_submit": 1,
    "fieldname": "end_date",
    "fieldtype": "Date",
-   "label": "End Date"
+   "label": "End Date",
+   "read_only": 1
   },
   {
    "fieldname": "supplier",
    "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
    "label": "Supplier",
    "options": "Supplier"
   },
@@ -165,7 +171,6 @@
    "reqd": 1
   },
   {
-   "default": "Today",
    "fieldname": "planned_end_date",
    "fieldtype": "Date",
    "label": "Planned End Date",
@@ -173,7 +178,6 @@
   },
   {
    "allow_on_submit": 1,
-   "default": "Today",
    "fieldname": "expected_delivery_date",
    "fieldtype": "Date",
    "label": "Expected Delivery Date",
@@ -191,6 +195,7 @@
   {
    "fieldname": "process_name",
    "fieldtype": "Link",
+   "in_standard_filter": 1,
    "label": "Process Name",
    "options": "Process",
    "reqd": 1
@@ -245,6 +250,7 @@
   {
    "fieldname": "lot",
    "fieldtype": "Link",
+   "in_standard_filter": 1,
    "label": "Lot",
    "options": "Lot"
   },
@@ -252,6 +258,8 @@
    "fetch_from": "lot.item",
    "fieldname": "item",
    "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
    "label": "Item",
    "options": "Item"
   },
@@ -268,7 +276,8 @@
    "fieldtype": "Link",
    "label": "Parent WO",
    "mandatory_depends_on": "eval: doc.is_rework",
-   "options": "Work Order"
+   "options": "Work Order",
+   "read_only": 1
   },
   {
    "fetch_from": "lot.production_detail",
@@ -302,7 +311,7 @@
    "fieldtype": "Select",
    "label": "Rework Type",
    "mandatory_depends_on": "eval: doc.is_rework",
-   "options": "No Cost\nNet Cost Nil\nAdditional Cost",
+   "options": "\nNo Cost\nNet Cost Nil\nAdditional Cost",
    "read_only_depends_on": "eval: !doc.__islocal"
   },
   {
@@ -479,8 +488,14 @@
    "hidden": 1,
    "label": "WO Delivered Incompleted JSON",
    "read_only": 1
+  },
+  {
+   "fieldname": "planned_quantity",
+   "fieldtype": "Int",
+   "label": "Planned Quantity"
   }
  ],
+ "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [
@@ -493,7 +508,7 @@
    "link_fieldname": "against_id"
   }
  ],
- "modified": "2025-03-15 15:04:08.529329",
+ "modified": "2025-05-31 16:13:30.212170",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Work Order",
@@ -589,6 +604,7 @@
    "share": 1
   }
  ],
+ "row_format": "Dynamic",
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": []

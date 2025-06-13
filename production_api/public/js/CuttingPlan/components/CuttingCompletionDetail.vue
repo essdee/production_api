@@ -30,7 +30,7 @@
                             <td>{{item1_index + 1}}</td>
                             <td v-for="(k, idx) in i.attributes" :key="idx">
                                 {{j.attributes[k]}}
-                                <span v-if="version == 'V2'">
+                                <span v-if="version == 'V2' || version == 'V3'">
                                     <span v-if="k == 'Colour' && j.is_set_item && j.attributes[j.set_attr] != j.major_attr_value && j.attributes[k]">({{ j.item_keys['major_colour'] }})</span>
                                     <span v-else-if="k == 'Colour' && !j.is_set_item && j.attributes[k] != j.item_keys['major_colour'] && j.attributes[k]">({{ j.item_keys['major_colour'] }})</span>
                                 </span>
@@ -105,6 +105,7 @@
                                 <td>Total</td>
                                 <td v-for="(j, idx) in i.attributes" :key="idx"></td>
                                 <td v-for="(j, idx) in completed_total" :key="idx"><strong>{{j}}</strong></td>
+                                <td v-if="total_cut_qty['qty']"><strong>{{total_cut_qty['qty']}}</strong></td>
                             </tr>
                         </table>
                     </td>
@@ -123,7 +124,7 @@
                                     <tr v-if="check(j.attributes, part)">
                                         <td v-for="(k, idx) in i.attributes" :key="idx">
                                             {{j.attributes[k]}}
-                                            <span v-if="version == 'V2'">
+                                            <span v-if="version == 'V2' || version == 'V3'">
                                                 <span v-if="k == 'Colour' && j.is_set_item && j.attributes[j.set_attr] != j.major_attr_value && j.attributes[k]">({{ j.item_keys['major_colour'] }})</span>
                                                 <span v-else-if="k == 'Colour' && !j.is_set_item && j.attributes[k] != j.item_keys['major_colour'] && j.attributes[k]">({{ j.item_keys['major_colour'] }})</span>
                                             </span>
@@ -143,6 +144,7 @@
                                 <tr>
                                     <td v-for="(j, idx) in i.attributes" :key="idx"></td>
                                     <td v-for="(j, idx) in completed_total[part]" :key="idx"><strong>{{j}}</strong></td>
+                                    <td v-if="total_cut_qty[part]"><strong>{{total_cut_qty[part]}}</strong></td>
                                 </tr>  
                             </table>
                         </template>    
@@ -164,6 +166,7 @@ let datetime = ref(null)
 let items2 = ref(null)
 let completed_total = ref({})
 let version = cur_frm.doc.version
+let total_cut_qty = {}
 
 onMounted(()=> {
     let today = new Date()
@@ -208,6 +211,7 @@ function get_total(){
     for(let i = 0 ; i < items.value.length; i++){
         let item = items.value[i]
         if(!item.is_set_item){
+            total_cut_qty['qty'] = 0
             item.items.forEach((row) => {
                 if(row.completed){
                     let x = 0
@@ -221,11 +225,13 @@ function get_total(){
                         x += row.values[key]
                     })
                     row.total_qty = x
+                    total_cut_qty['qty'] += x
                 }
             })
         }
         else{
             Object.keys(item.Panel).forEach(part => {
+                total_cut_qty[part] = 0
                 item.items.forEach((row) => {
                     if(row.completed && row.attributes[item.set_item_attr] == part){
                         let x = 0
@@ -242,6 +248,7 @@ function get_total(){
                             }
                         })
                         row.total_qty = x
+                        total_cut_qty[part] += x
                     }
                 })  
             })

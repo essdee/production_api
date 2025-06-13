@@ -4,8 +4,8 @@ import frappe, json, copy
 from six import string_types
 from datetime import datetime
 from frappe.model.document import Document
-from production_api.utils import update_if_string_instance
-from production_api.production_api.doctype.item.item import get_attribute_details
+from production_api.utils import update_if_string_instance, update_variant
+from production_api.production_api.doctype.item.item import get_attribute_details, get_or_create_variant
 from production_api.essdee_production.doctype.lot.lot import fetch_order_item_details
 from production_api.production_api.doctype.cutting_laysheet.cutting_laysheet import update_cutting_plan
 from production_api.essdee_production.doctype.item_production_detail.item_production_detail import get_cloth_combination, get_stitching_combination, calculate_cloth, get_or_create_ipd_variant
@@ -26,7 +26,7 @@ class CuttingPlan(Document):
 	
 	def before_validate(self):
 		if self.is_new():
-			self.version = "V2"
+			self.version = "V3"
 			if self.get('item_details'):
 				x, y = get_complete_incomplete_structure(self.production_detail,self.item_details)
 				self.completed_items_json = x
@@ -89,6 +89,7 @@ def add_additional_attributes(ipd_doc,x):
 	x['is_set_item'] = ipd_doc.is_set_item
 	x['set_item_attr'] = ipd_doc.set_item_attribute
 	x["stiching_attr"] = ipd_doc.stiching_attribute
+	x['pack_attr'] = ipd_doc.packing_attribute
 	total_qty = {}
 	for item in x['primary_attribute_values']:
 		total_qty[item] = 0
@@ -121,7 +122,7 @@ def save_item_cloth_details(items):
 			"required_weight":item['required_weight'],
 			"weight":item['weight'],
 			"used_weight": item['used_weight'],
-			"balance_weight": item['weight'] - item['used_weight']
+			"balance_weight": round(item['weight'] - item['used_weight'], 3)
 		})
 	return item_details	
 
@@ -143,20 +144,11 @@ def save_item_details(item_details, ipd):
 				if not quantity:
 					quantity = 0
 				item_attributes[item.get('primary_attribute')] = attr
-				tup = tuple(sorted(item_attributes.items()))
-				variant = get_or_create_ipd_variant(item_variants, item_name, tup, item_attributes)
-				str_tup = str(tup) 
-				if item_variants and item_variants.get(item_name):
-					if not item_variants[item_name].get(str_tup):
-						item_variants[item_name][str_tup] = variant	
-				else:	
-					if not item_variants:
-						item_variants = {}
-						item_variants[item_name] = {}
-						item_variants[item_name][str_tup] = variant
-					else:
-						item_variants[item_name] = {}
-						item_variants[item_name][str_tup] = variant	
+				# tup = tuple(sorted(item_attributes.items()))
+				variant = get_or_create_variant(item_name, item_attributes)
+				# variant = get_or_create_ipd_variant(item_variants, item_name, tup, item_attributes)
+				# str_tup = str(tup) 
+				# item_variants = update_variant(item_variants, variant, item_name, str_tup)
 				item1['item_variant'] = variant	
 				item1['quantity'] = quantity
 				item1['row_index'] = row_index
@@ -209,6 +201,11 @@ def get_cloth1(cutting_plan):
 	for item in cutting_plan_doc.items:
 		variant = frappe.get_doc("Item Variant", item.item_variant)
 		attr_details = item_attribute_details(variant, item_attributes)
+		if item.set_combination:
+			set_combination = update_if_string_instance(item.set_combination)
+			if set_colour:= set_combination.get("major_colour"):
+				attr_details['set_colour'] = set_colour
+
 		c = calculate_cloth(ipd_doc, attr_details, item.quantity, cloth_combination, stitching_combination)
 		for c1 in c:
 			key = (c1["cloth_type"], c1["colour"], c1["dia"])
@@ -224,20 +221,11 @@ def get_cloth1(cutting_plan):
 	for k in cloth_details:
 		attributes = {ipd_doc.packing_attribute: k[1], 'Dia': k[2]}
 		item_name = cloth_detail[k[0]]
-		tup = tuple(sorted(attributes.items()))
-		cloth_name = get_or_create_ipd_variant(item_variants, item_name, tup, attributes)
-		str_tup = str(tup) 
-		if item_variants and item_variants.get(item_name):
-			if not item_variants[item_name].get(str_tup):
-				item_variants[item_name][str_tup] = cloth_name	
-		else:	
-			if not item_variants:
-				item_variants = {}
-				item_variants[item_name] = {}
-				item_variants[item_name][str_tup] = cloth_name
-			else:
-				item_variants[item_name] = {}
-				item_variants[item_name][str_tup] = cloth_name	
+		# tup = tuple(sorted(attributes.items()))
+		cloth_name = get_or_create_variant(item_name, attributes)
+		# cloth_name = get_or_create_ipd_variant(item_variants, item_name, tup, attributes)
+		# str_tup = str(tup) 
+		# item_variants = update_variant(item_variants, cloth_name, item_name, str_tup)
 		required_cloth_details.append({
 			"cloth_item_variant": cloth_name,
 			"cloth_type": k[0],
@@ -251,20 +239,11 @@ def get_cloth1(cutting_plan):
 	for k in accessory_detail:
 		attributes = {ipd_doc.packing_attribute: k[1], 'Dia': k[2]}
 		item_name = cloth_detail[k[0]]
-		tup = tuple(sorted(attributes.items()))
-		cloth_name = get_or_create_ipd_variant(item_variants, item_name, tup, attributes)
-		str_tup = str(tup) 
-		if item_variants and item_variants.get(item_name):
-			if not item_variants[item_name].get(str_tup):
-				item_variants[item_name][str_tup] = cloth_name	
-		else:	
-			if not item_variants:
-				item_variants = {}
-				item_variants[item_name] = {}
-				item_variants[item_name][str_tup] = cloth_name
-			else:
-				item_variants[item_name] = {}
-				item_variants[item_name][str_tup] = cloth_name
+		# tup = tuple(sorted(attributes.items()))
+		cloth_name = get_or_create_variant(item_name, attributes)
+		# cloth_name = get_or_create_ipd_variant(item_variants, item_name, tup, attributes)
+		# str_tup = str(tup) 
+		# item_variants = update_variant(item_variants, cloth_name, item_name, str_tup)
 		required_accessory_details.append({
 			"accessory": k[3],
 			"cloth_item_variant": cloth_name,
@@ -355,7 +334,6 @@ def get_cutting_plan_laysheets_report(cutting_plan):
 			lay_details[lay_no][major_colour][row.size][row.shade][parts]["qty"] += row.quantity
 			lay_details[lay_no][major_colour][row.size][row.shade][parts].setdefault("bundles", 0)
 			lay_details[lay_no][major_colour][row.size][row.shade][parts]['bundles'] += 1
-	
 	final_data = {}
 	for size in sizes:
 		for lay_number, colour_dict in lay_details.items():
@@ -364,14 +342,166 @@ def get_cutting_plan_laysheets_report(cutting_plan):
 			for colour, colour_detail in colour_dict.items():
 				for cur_size, panel_detail in lay_details.get(lay_number).get(colour).items():
 					if cur_size == size:
-						shade = list(panel_detail.keys())[0]
 						final_data.setdefault(colour, [])
-						duplicate = {}
-						duplicate['lay_no'] = lay_number
-						duplicate['size'] = size
-						duplicate['shade'] = shade
-						for panel, panel_details in panel_detail[shade].items():
-							duplicate[panel] = panel_details['qty']
-							duplicate[panel+"_Bundle"] = panel_details['bundles']
-						final_data[colour].append(duplicate)	
+						for shade in panel_detail:
+							duplicate = {}
+							duplicate['lay_no'] = lay_number
+							duplicate['size'] = size
+							duplicate['shade'] = shade
+							for panel, panel_details in panel_detail[shade].items():
+								duplicate[panel] = panel_details['qty']
+								duplicate[panel+"_Bundle"] = panel_details['bundles']
+							final_data[colour].append(duplicate)	
+	return panels, final_data, ipd_doc.is_set_item
+
+@frappe.whitelist()
+def get_ccr(doc_name):
+	cp_doc = frappe.get_doc("Cutting Plan", doc_name)
+	cls_list = frappe.get_all("Cutting LaySheet", filters={"cutting_plan": doc_name, "status": "Label Printed"}, pluck="name", order_by="lay_no asc")
+	markers = {}
+	for cls in cls_list:
+		cls_doc = frappe.get_doc("Cutting LaySheet", cls)
+		sizes = {}
+		for row in cls_doc.cutting_marker_ratios:
+			if row.size not in sizes:
+				sizes[row.size] = row.ratio
+		panels = cls_doc.calculated_parts.split(",")
+		panels.sort()
+		for idx, panel in enumerate(panels):
+			panels[idx] = panel.strip()
+
+		tup_panels = ", ".join(panels)
+		markers.setdefault(tup_panels, {})
+		for row in cls_doc.cutting_laysheet_details:
+			key = (row.colour, row.cloth_type)
+			markers[tup_panels].setdefault(key, {
+				"used_weight": 0,
+				"received_weight": 0,
+				"balance_weight": 0,
+				"total_pieces": 0,
+			})
+			markers[tup_panels][key]["used_weight"] += row.used_weight
+			for size in sizes:
+				markers[tup_panels][key].setdefault(size, { "bits": 0 })
+				bits = sizes[size] * row.effective_bits
+				markers[tup_panels][key][size]["bits"] += bits
+				markers[tup_panels][key]["total_pieces"] += bits
+		sizes = {}
+	
+	cp_doc_colours = {}
+	for row in cp_doc.cutting_plan_cloth_details:
+		key = (row.colour, row.cloth_type)
+		cp_doc_colours.setdefault(key, { "received_weight": 0 })
+		cp_doc_colours[key]["received_weight"] += row.weight
+
+	for key in cp_doc_colours:
+		colour_count = 0
+		final_index = 0
+		final_mark = None
+		for idx, mark in enumerate(markers):
+			if markers[mark].get(key):
+				colour_count += 1
+				final_index = idx
+				final_mark = mark
+		
+		if colour_count == 1:
+			markers[final_mark][key]['received_weight'] = cp_doc_colours[key]['received_weight']
+			markers[final_mark][key]['balance_weight'] = cp_doc_colours[key]['received_weight'] - markers[final_mark][key]['used_weight']
+		elif colour_count > 1:
+			for idx, mark in enumerate(markers):
+				if markers[mark].get(key):
+					if idx == final_index:
+						markers[final_mark][key]['received_weight'] = cp_doc_colours[key]['received_weight']
+						markers[final_mark][key]['balance_weight'] = cp_doc_colours[key]['received_weight'] - markers[final_mark][key]['used_weight']
+					else:
+						markers[mark][key]['received_weight'] = markers[mark][key]['used_weight']
+						markers[mark][key]['balance_weight'] = 0
+						cp_doc_colours[key]['received_weight'] -= markers[mark][key]['used_weight']
+	from production_api.essdee_production.doctype.item_production_detail.item_production_detail import get_ipd_primary_values
+	sizes = get_ipd_primary_values(cp_doc.production_detail)
+	if markers:
+		return {
+			"marker_data": markers,
+			"sizes": sizes,
+		}					
+
+@frappe.whitelist()
+def remove_empty_rows(cutting_json, json_type):
+	cutting_json = update_if_string_instance(cutting_json)
+	output_json = cutting_json.copy()
+	output_json['items'] = []
+	for row in cutting_json['items']:
+		check = False
+		for val in row['values']:
+			if json_type == "completed":
+				if row['values'][val]:
+					check = True
+					break
+			else:
+				for panel in row['values'][val]:
+					if row['values'][val][panel]:
+						check = True
+						break
+			if check:
+				break		
+		if check:	
+			output_json['items'].append(row)
+
+	if len(output_json['items']) > 0:
+		return [output_json]
+	return None
+
+@frappe.whitelist(allow_guest=True)
+def get_cutting_plan_size_reports(cutting_plan):
+	cp_doc = frappe.get_doc("Cutting Plan", cutting_plan)
+	ipd_doc = frappe.get_cached_doc("Item Production Detail", cp_doc.production_detail)
+	from production_api.essdee_production.doctype.item_production_detail.item_production_detail import get_ipd_primary_values
+	sizes = get_ipd_primary_values(cp_doc.production_detail)
+	panels = []
+	if ipd_doc.is_set_item:
+		panels = {}
+		for row in ipd_doc.stiching_item_details:
+			panels.setdefault(row.set_item_attribute_value, [])
+
+	cls_list = frappe.get_list("Cutting LaySheet", filters={"cutting_plan":cutting_plan,"status":"Label Printed"}, pluck="name", order_by="lay_no asc")	
+	size_details = {}
+	for cls in cls_list:
+		cls_doc = frappe.get_doc("Cutting LaySheet",cls)
+		for row in cls_doc.cutting_laysheet_bundles:
+			parts = row.part.split(",")
+			parts = ", ".join(parts)
+			set_combination = update_if_string_instance(row.set_combination)
+			major_colour = set_combination['major_colour']
+			if ipd_doc.is_set_item:
+				if set_combination.get('set_part'):
+					if parts not in panels[set_combination['set_part']]:
+						panels[set_combination['set_part']].append(parts)
+					major_colour = "("+ major_colour +")" + set_combination["set_colour"] +"-"+set_combination.get('set_part')
+				else:
+					if parts not in panels[set_combination['major_part']]:
+						panels[set_combination['major_part']].append(parts)
+					major_colour = major_colour +"-"+set_combination.get('major_part')
+			else:
+				if parts not in panels:
+					panels.append(parts)
+			size_details.setdefault(major_colour, {})
+			size_details[major_colour].setdefault(row.size, {})	
+			size_details[major_colour][row.size].setdefault(parts, {})
+			size_details[major_colour][row.size][parts].setdefault("qty", 0)
+			size_details[major_colour][row.size][parts]["qty"] += row.quantity
+			size_details[major_colour][row.size][parts].setdefault("bundles", 0)
+			size_details[major_colour][row.size][parts]['bundles'] += 1
+
+	final_data = {}
+	for size in sizes:
+		for colour, colour_details in size_details.items():
+			for dict_size, panel_detail in colour_details.items():
+				if dict_size == size:
+					final_data.setdefault(colour, [])
+					duplicate = {}
+					duplicate['size'] = size
+					for panel in panel_detail:
+						duplicate[panel] = panel_detail[panel]['qty']
+						duplicate[panel+"_Bundle"] = panel_detail[panel]['bundles']
+					final_data[colour].append(duplicate)
 	return panels, final_data, ipd_doc.is_set_item

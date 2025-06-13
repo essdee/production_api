@@ -291,25 +291,50 @@ def create_variant(template, args, dependent_attr=None):
 			"attribute_value": args.get(d),
 			"display_name": args.get(d),
 		})
+	d = {}
+	for attribute in variant_attributes:
+		d[attribute['attribute']] = attribute['attribute_value']	
+	tup = tuple(sorted(d.items()))    
+	if tup:
+		variant.item_tuple_attribute = str(tup)	
 	variant.set("attributes", variant_attributes)
 
 	return variant
 
-def get_variant(template, args):
+def get_variant(template, args: dict):
 	"""
 		Get variant of Item
 
 		template: Item name
 		args: A dictionary with "Attribute" as key and "Attribute Value" as value
 	"""
+	enable = frappe.db.get_single_value("MRP Settings", "enable_tuple_attribute")
+	if enable:
+		variant_name = None
+		if args:
+			tup = str(tuple(sorted(args.items())))  
+			variants = frappe.db.sql(
+				"""
+					SELECT name from `tabItem Variant` WHERE item = %s AND item_tuple_attribute = %s
+				""", (template, tup), as_dict=True
+			)
+			if variants:
+				variant_name = variants[0]['name']
+		else:
+			variants = frappe.get_all("Item Variant", filters={"name": template}, pluck="name")
+			if variants:
+				variant_name = variants[0]
+		if not variant_name:
+			return None
+		return variant_name  
+	else:
+		item_template = frappe.get_cached_doc("Item", template)
 
-	item_template = frappe.get_cached_doc("Item", template)
-
-	if isinstance(args, string_types):
-		args = json.loads(args)
-	if not args and item_template.attributes:
-		frappe.throw("Please specify at least one attribute in the Attributes table")
-	return find_variant(template, args)
+		if isinstance(args, string_types):
+			args = json.loads(args)
+		if not args and item_template.attributes:
+			frappe.throw("Please specify at least one attribute in the Attributes table")
+		return find_variant(template, args)
 
 def find_variant(template, args):
 	

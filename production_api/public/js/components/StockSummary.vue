@@ -7,9 +7,12 @@
             <div class="warehouse col-md-2"></div>
             <div class="received-type col-md-2"></div>
             <button class="btn btn-success ml-3" @click="get_filters()">Generate</button>
+            <button class="btn btn-success ml-3" @click="select_all()">Select All</button>
+            <button class="btn btn-success ml-3" @click="unselect_all()">Unselect All</button>
         </div>
         <div v-if="items.length > 0 && show_table">
-            <button class="btn btn-primary" @click="create_bulk_stock_entry()">Create Bulk Stock Entry</button>                            
+            <button class="btn btn-primary" @click="create_bulk_stock_entry()">Create Bulk Stock Entry</button> 
+            <button class="btn btn-primary" @click="reduce_stock()">Reduce Stock</button>                            
             <table class="table table-sm table-bordered">
                 <thead>
                     <tr>
@@ -131,6 +134,7 @@ onMounted(() => {
 
 function get_filters() {
     show_table.value = false;
+    selectedItems.value = []
     frappe.call({
         method: "production_api.mrp_stock.doctype.stock_summary.stock_summary.get_stock_summary",
         args: {
@@ -145,6 +149,17 @@ function get_filters() {
             show_table.value = true;
         }
     });
+}
+
+function select_all(){
+    selectedItems.value = []
+    for(let i = 0; i < items.value.length; i++){
+        selectedItems.value.push(items.value[i])
+    }
+}
+
+function unselect_all(){
+    selectedItems.value = []
 }
 
 function create_stock_entry(item) {
@@ -223,6 +238,43 @@ function create_bulk_stock_entry(){
         }
     })
     type_dialog.show()
+}
+
+function reduce_stock(){
+    if(selectedItems.value.length === 0){
+        frappe.msgprint("Please select at least one item.");
+        return;
+    }
+    let selected = selectedItems.value
+    let location = selected[0]['warehouse']
+    for(let i = 0 ; i < selected.length ; i++){
+        let cur_location = selected[i]['warehouse']
+        if(location != cur_location){
+            frappe.throw("Please select Item from same location")
+        }
+    }
+    let d = new frappe.ui.Dialog({
+        title: "Are you sure wanna reduce the stock to zero",
+        primary_action_label: __("Yes"),
+        secondary_action_label: __("No"),
+        primary_action: function () {
+            d.hide()
+            frappe.call({
+                method:"production_api.mrp_stock.doctype.stock_summary.stock_summary.reduce_stock",
+                args:{
+                    selected_items: selected,
+                    warehouse: location,
+                },
+                callback: function(){
+                    frappe.set_route("Form", "Stock Reconciliation", r.message)
+                }
+            })
+        },
+        secodary_action(){
+            d.hide()
+        }
+    })
+    d.show()
 }
 
 function get_fields(purpose, item){

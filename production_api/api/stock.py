@@ -3,7 +3,6 @@ from production_api.mrp_stock.doctype.bin.bin import get_stock_balance_bin
 from production_api.mrp_stock.doctype.fg_stock_entry.fg_stock_entry import create_FG_ste,get_stock_entry_detail, fg_stock_entry_cancel
 from six import string_types
 import math
-
 @frappe.whitelist()
 def get_stock(item, warehouse, remove_zero_balance_item=1):
     received_type =frappe.db.get_single_value("Stock Settings", "default_received_type")
@@ -14,7 +13,6 @@ def get_stock(item, warehouse, remove_zero_balance_item=1):
         item = json.loads(item)
 
     fg_lot = get_default_fg_lot()
-    received_type =frappe.db.get_single_value("Stock Settings", "default_received_type")
         
     data  = get_stock_balance_bin(
         warehouse,
@@ -226,3 +224,27 @@ def get_reserved_stock(warehouse, item):
             }
         item_wh_map[group_by_key]['bal_qty'] += i['qty']
     return item_wh_map
+
+@frappe.whitelist()
+def get_fg_stock_entry_datewise_inward(start_date, end_date, item, warehouse):
+    if isinstance(item, string_types):
+        item = json.loads(item)
+    if isinstance(warehouse, string_types):
+        warehouse = json.loads(warehouse)
+    
+    query = """
+        SELECT SUM(t2.qty) as qty, t2.item_variant, t4.item as item_name FROM
+        `tabFG Stock Entry` t1 JOIN `tabFG Stock Entry Detail` t2 ON t2.parent = t1.name
+        JOIN `tabSupplier` t3 ON t3.name = t1.warehouse
+        JOIN `tabItem Variant` t4 ON t4.name = t2.item_variant
+        WHERE t1.docstatus = 1 AND t1.posting_date BETWEEN '{start_date}' AND '{end_date}'
+        AND t1.warehouse IN ({warehouse})
+        AND t2.item_variant IN ({item})
+        GROUP BY t2.item_variant
+    """.format(
+        start_date=start_date,
+        end_date=end_date,
+        warehouse=",".join([f"'{w}'" for w in warehouse]),
+        item=",".join([f"'{i}'" for i in item])
+    )
+    return frappe.db.sql(query, as_dict=True)

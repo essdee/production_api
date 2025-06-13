@@ -14,9 +14,11 @@
   "against",
   "against_id",
   "column_break_gz9cd",
+  "skip_transit",
   "posting_date",
   "posting_time",
   "outgoing_stock_entry",
+  "cut_panel_movement",
   "section_break_fzpy5",
   "from_warehouse",
   "column_break_a9bla",
@@ -176,12 +178,26 @@
    "label": "Against ID",
    "options": "against",
    "read_only": 1
+  },
+  {
+   "fieldname": "cut_panel_movement",
+   "fieldtype": "Link",
+   "hidden": 1,
+   "label": "Cut Panel Movement",
+   "options": "Cut Panel Movement"
+  },
+  {
+   "default": "0",
+   "fieldname": "skip_transit",
+   "fieldtype": "Check",
+   "label": "Skip Transit"
   }
  ],
+ "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-03-15 15:11:16.627789",
+ "modified": "2025-05-29 17:58:18.472152",
  "modified_by": "Administrator",
  "module": "MRP Stock",
  "name": "Stock Entry",
@@ -266,6 +282,7 @@
    "write": 1
   }
  ],
+ "row_format": "Dynamic",
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": []

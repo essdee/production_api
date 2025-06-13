@@ -37,7 +37,6 @@ class PurchaseInvoice(Document):
 	def calculate_total(self):
 		total_amount = 0
 		total_tax = 0
-		total_discount = 0
 		grand_total = 0
 		for item in self.items:
 			# Item Total
@@ -49,6 +48,8 @@ class PurchaseInvoice(Document):
 			# Item Total after tax
 			total = item_total + tax
 			grand_total += total
+		if grand_total > self.grn_grand_total:
+			frappe.throw("Total amount is greater than GRN total amount")	
 		self.set('total', total_amount)
 		self.set('total_tax', total_tax)
 		self.set('grand_total', grand_total)
@@ -124,6 +125,17 @@ def submit_erp_invoice(name):
 		data = res.json()
 		error = frappe.log_error("Purchase Inv Submit Error", json.dumps(data), inv.doctype, inv.name)
 		frappe.throw(res.json().get('exception') or f"Unknown Error - {frappe.get_desk_link(error.doctype, error.name)}")
+
+
+def get_item_variant_item_group(item_variant):
+	item_group = frappe.db.sql("""SELECT t2.item_group, t1.item FROM `tabItem Variant` t1
+			   		JOIN `tabItem` t2 on t2.name = t1.item where t1.name=%(item_variant)s
+			   """, {
+				   "item_variant" : item_variant
+			   }, as_dict=True)
+	if not item_group:
+		return None, None
+	return item_group[0]['item_group'], item_group[0]['item']
 	
 
 @frappe.whitelist()
@@ -131,20 +143,22 @@ def fetch_grn_details(grns):
 	if isinstance(grns, string_types):
 		grns = json.loads(grns)
 	grns = list(set(grns))
-	print(grns)
 	items = {}
-
+	exception_item_set = set()
 	for grn in grns:
 		grn_doc = frappe.get_doc("Goods Received Note", grn)
 		for grn_item in grn_doc.items:
 			rate = grn_item.rate
 			discount_percentage = frappe.get_value(grn_item.ref_doctype, grn_item.ref_docname, "discount_percentage")
-			print("Discount Percentage", discount_percentage)
 			if discount_percentage:
 				rate = rate - (rate * (discount_percentage / 100))
 			key = (grn_item.item_variant, grn_item.uom, rate, grn_item.tax)
+			item_group, item = get_item_variant_item_group(grn_item.item_variant)
+			if not item_group:
+				exception_item_set.add(item)
 			items.setdefault(key, {
 				"item": grn_item.item_variant,
+				"item_group" : item_group,
 				"qty": 0,
 				"uom": grn_item.uom,
 				"rate": rate,
@@ -153,8 +167,22 @@ def fetch_grn_details(grns):
 			})
 			items[key]["qty"] += grn_item.quantity
 			items[key]["amount"] += (grn_item.quantity * rate)
+	if exception_item_set and len(exception_item_set) > 0:
+		exception = "The Below Items Does Not Have Item Group<br>"
+		exception += "<br>".join([ f"<a href='/app/item/{_}' target='_blank'>{_}</a>" for _ in list(exception_item_set)])
+		frappe.throw(exception)
+		
+	grand_total = 0
+	for item in items.values():
+		item_total = item['rate'] * item['qty']
+		tax = (item_total * (float(item['tax'] or 0) / 100))
+		total = item_total + tax
+		grand_total += total
 	
-	return list(items.values())
+	return {
+		"items": list(items.values()),
+		"total": grand_total
+	}
 
 @frappe.whitelist()
 def get_erp_inv_link(name):

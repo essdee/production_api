@@ -341,7 +341,16 @@
                 if (props.tableFields[i].condition) {
                     valid = props.tableFields[i].condition(props.items, props.args)
                 }
-                if (valid && !x.includes(props.tableFields[i].name) && !props.tableFields[i].uses_primary_attribute) {
+                let show_field = true
+                if(props.tableFields[i].hasOwnProperty("has_view_permission")){
+                    show_field = false
+                    for(let j = 0; j < props.tableFields[i]['has_view_permission'].length; j++){
+                        if(frappe.user.has_role(props.tableFields[i]['has_view_permission'][j])){
+                            show_field = true
+                        }
+                    }
+                }
+                if (valid && show_field && !x.includes(props.tableFields[i].name) && !props.tableFields[i].uses_primary_attribute) {
                     x.push(props.tableFields[i].name);
                     out.push({...props.tableFields[i]})
                 }
@@ -937,9 +946,9 @@
         clear_item_attribute_inputs();
         clear_other_inputs();
         clear_item_values();
-        if(!deto.value || force){
-            clear_lot_item_inputs();
-        }
+        // if(!deto.value || force){
+        //     clear_lot_item_inputs();
+        // }
     }
 
     function clear_dependent_attribute_inputs() {
@@ -1091,10 +1100,10 @@
         edit_index.value = -1;
         edit_index1.value = -1;
         clear_inputs(true);
-        lot_input.df.read_only = 0;
-        item_input.df.read_only = 0;
-        item_input.refresh();
-        lot_input.refresh();
+        // lot_input.df.read_only = 0;
+        // item_input.df.read_only = 0;
+        // item_input.refresh();
+        // lot_input.refresh();
     }
 
 </script> 

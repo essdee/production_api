@@ -91,6 +91,7 @@ def create_or_update_item(fg_item):
 		doc = create_item(fg_item)
 		fg_item.item = doc.name
 		fg_item.save()
+	secondary_unit = frappe.get_value("FG Item Master Template", fg_item.template, "secondary_unit_of_measure")
 	doc.update({
 		"item_group": "Products",
 		"hsn_code": fg_item.hsn,
@@ -98,6 +99,7 @@ def create_or_update_item(fg_item):
 		"is_stock_item": 1,
 		"is_purchase_item": 1,
 		"is_sales_item": 1,
+		"secondary_unit_of_measure": secondary_unit
 	})
 
 	# Update Size
@@ -170,6 +172,7 @@ def create_item(fg_item):
 	doc.update({
 		"name1": fg_item.name,
 		"brand": fg_item.brand,
+		"item_group" : "Products"
 	})
 	doc.insert()
 	return doc

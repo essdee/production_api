@@ -9,7 +9,7 @@ from frappe.utils import now_datetime
 from frappe.model.document import Document
 from production_api.production_api.doctype.item.item import get_or_create_variant
 from production_api.essdee_production.doctype.lot.lot import get_uom_conversion_factor
-from production_api.utils import get_stich_details, get_part_list, update_if_string_instance
+from production_api.utils import get_stich_details, get_part_list, update_if_string_instance, update_variant
 from production_api.production_api.doctype.item_dependent_attribute_mapping.item_dependent_attribute_mapping import get_dependent_attribute_details
 
 class ItemProductionDetail(Document):
@@ -108,6 +108,12 @@ class ItemProductionDetail(Document):
 			self.stiching_in_stage = dict_values['stiching_in_stage']
 			self.stiching_out_stage = dict_values['stiching_out_stage']
 			self.cutting_process = dict_values['cutting_process']	
+
+	def on_update(self):	
+		docs = frappe.flags.delete_bom_mapping
+		if docs:
+			for mapping in docs:
+				frappe.delete_doc("Item BOM Attribute Mapping", mapping)
 	
 	def before_validate(self):
 		if self.get('set_item_detail') and self.is_set_item:
@@ -202,7 +208,7 @@ class ItemProductionDetail(Document):
 				doc.attribute_name= attribute.attribute 
 				doc.save()
 				attribute.mapping = doc.name
-
+		frappe.flags.delete_bom_mapping = []
 		for bom in self.get('item_bom'):
 			if bom.based_on_attribute_mapping and not bom.attribute_mapping:
 				doc = frappe.new_doc("Item BOM Attribute Mapping")
@@ -224,7 +230,7 @@ class ItemProductionDetail(Document):
 			elif not bom.based_on_attribute_mapping and bom.attribute_mapping:
 				name = bom.attribute_mapping
 				bom.attribute_mapping = None
-				frappe.delete_doc("Item BOM Attribute Mapping", name)
+				frappe.flags.delete_bom_mapping.append(name)
 	
 	def packing_tab_validations(self):
 		if self.packing_combo == 0:
@@ -442,8 +448,8 @@ def get_calculated_bom(item_production_detail, items, lot_name, process_name = N
 			qty_of_product = bom_item.qty_of_product
 			qty_of_bom = bom_item.qty_of_bom_item
 			temp_qty = total_quantity
-			if item_detail.is_set_item:
-				temp_qty = temp_qty / len(part_list)
+			# if item_detail.is_set_item:
+			# 	temp_qty = temp_qty / len(part_list)
 			if bom_item.dependent_attribute_value and not bom_item.dependent_attribute_value == lot_doc.pack_in_stage:
 				dependent_attr_uom = lot_item_detail.default_unit_of_measure
 				qty_of_product = get_uom_conversion_factor(lot_item_detail.uom_conversion_details, dependent_attr_uom  ,lot_doc.packing_uom)
@@ -528,20 +534,11 @@ def get_calculated_bom(item_production_detail, items, lot_name, process_name = N
 		for k in cloth_details:
 			uom = frappe.get_value("Item",k[0],"default_unit_of_measure")
 			cloth_attrs = {item_detail.packing_attribute: k[1], 'Dia': k[2]}
-			tup = tuple(sorted(cloth_attrs.items()))
-			cloth_name = get_or_create_ipd_variant(item_variants, k[0], tup, cloth_attrs)
-			str_tup = str(tup)
-			if item_variants and item_variants.get(k[0]):
-				if not item_variants[k[0]].get(str_tup):
-					item_variants[k[0]][str_tup] = cloth_name	
-			else:	
-				if not item_variants:
-					item_variants = {}
-					item_variants[k[0]] = {}
-					item_variants[k[0]][str_tup] = cloth_name
-				else:
-					item_variants[k[0]] = {}
-					item_variants[k[0]][str_tup] = cloth_name
+			# tup = tuple(sorted(cloth_attrs.items()))
+			cloth_name = get_or_create_variant(k[0], cloth_attrs)
+			# cloth_name = get_or_create_ipd_variant(item_variants, k[0], tup, cloth_attrs)
+			# str_tup = str(tup)
+			# item_variants = update_variant(item_variants, cloth_name, k[0], str_tup)
 			if not bom.get(k[0],False):
 				bom[k[0]] = {cloth_name:[cloth_details[k],item_detail.cutting_process,uom]}
 			else:	
@@ -551,20 +548,11 @@ def get_calculated_bom(item_production_detail, items, lot_name, process_name = N
 		for k,val in value.items():
 			k = k.replace("'", '"')
 			k = json.loads(k)
-			tup = tuple(sorted(k.items()))
-			variant = get_or_create_ipd_variant(item_variants, key, tup, k)
-			str_tup = str(tup)
-			if item_variants and item_variants.get(key):
-				if not item_variants[key].get(str_tup):
-					item_variants[key][str_tup] = variant	
-			else:	
-				if not item_variants:
-					item_variants = {}
-					item_variants[key] = {}
-					item_variants[key][str_tup] = variant
-				else:
-					item_variants[key] = {}
-					item_variants[key][str_tup] = variant
+			# tup = tuple(sorted(k.items()))
+			variant = get_or_create_variant(key, k)
+			# variant = get_or_create_ipd_variant(item_variants, key, tup, k)
+			# str_tup = str(tup)
+			# item_variants = update_variant(item_variants, variant, key, str_tup)
 			if not bom.get(key,False):
 				bom[key] = {variant:val}
 			else:	
@@ -687,7 +675,10 @@ def get_accessory_colour(ipd_doc,variant_attrs,accessory):
 		colour = variant_attrs[ipd_doc.packing_attribute]
 		stiching_accessory_json = json.loads(ipd_doc.stiching_accessory_json)
 		for row in stiching_accessory_json['items']:
-			if row['accessory'] == accessory and row['major_colour'] == colour and row[ipd_doc.set_item_attribute] == part:
+			check = True
+			if variant_attrs.get('set_colour') and row.get('major_attr_value'):
+				check = variant_attrs.get('set_colour') == row['major_attr_value']
+			if row['accessory'] == accessory and row['major_colour'] == colour and row[ipd_doc.set_item_attribute] == part and check:
 				return row['accessory_colour'],row['cloth_type']
 	else:
 		colour = variant_attrs[ipd_doc.packing_attribute]

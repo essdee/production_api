@@ -14,7 +14,6 @@ frappe.ui.form.on("Work Order", {
 				}
 			};
 		});
-		
 		frm.set_query('delivery_address', function(doc) {
 			if(!doc.delivery_location) {
 				frappe.throw(__("Please set {0}",[__(frappe.meta.get_label(doc.doctype, 'delivery_location', doc.name))]));
@@ -36,6 +35,22 @@ frappe.ui.form.on("Work Order", {
 		})
 	},
 	async refresh(frm) {
+		$(".layout-side-section").css("display", "None");
+		if(frm.doc.docstatus == 1 && frm.doc.is_rework){
+			frappe.realtime.on("get_receivables_data", ()=> {
+				let receivables = frm.receivable_items.get_receivables_data();
+				frappe.call({
+					method:"production_api.production_api.doctype.work_order.work_order.update_receivables",
+					args : {
+						"receivables_data": receivables,
+						"doc_name": frm.doc.name,
+					},
+					callback: function(){
+						frm.reload_doc()
+					}
+				})
+			})
+		}
 		frm.val = null
 		if(frm.is_new()){
 			hide_field(["deliverable_items", "receivable_items"]);
@@ -43,10 +58,15 @@ frappe.ui.form.on("Work Order", {
 		else{
 			unhide_field(["deliverable_items", "receivable_items"]);
 			$(frm.fields_dict['deliverable_items'].wrapper).html("")
-			frm.deliverable_items = new frappe.production.ui.Deliverables(frm.fields_dict["deliverable_items"].wrapper);
-			
 			$(frm.fields_dict['receivable_items'].wrapper).html("")
-			frm.receivable_items = new frappe.production.ui.Receivables(frm.fields_dict["receivable_items"].wrapper)
+			if(!frm.doc.is_rework){
+				frm.deliverable_items = new frappe.production.ui.Deliverables(frm.fields_dict["deliverable_items"].wrapper);
+				frm.receivable_items = new frappe.production.ui.Receivables(frm.fields_dict["receivable_items"].wrapper)			
+			}
+			else{
+				frm.deliverable_items = new frappe.production.ui.WOReworkDeliverables(frm.fields_dict["deliverable_items"].wrapper);
+				frm.receivable_items = new frappe.production.ui.WOReworkReceivables(frm.fields_dict["receivable_items"].wrapper)
+			}
 			if(frm.doc.is_rework){
 				frm.val = true
 			}
@@ -158,12 +178,23 @@ frappe.ui.form.on("Work Order", {
 					})
 					d.show()
 				})
+				if(frm.doc.__onload && frm.doc.__onload.is_cutting){
+					frm.add_custom_button(__('Make Cutting Plan'), function() {
+						let x = frappe.model.get_new_doc('Cutting Plan')
+						x.work_order = frm.doc.name
+						x.lot = frm.doc.lot
+						x.item = frm.doc.item
+						x.maximum_no_of_plys = 100
+						frappe.set_route("Form",x.doctype, x.name);
+					}, __("Create"));
+				}
 				frm.add_custom_button(__('Make DC'), function() {
 					let x = frappe.model.get_new_doc('Delivery Challan')
 					x.work_order = frm.doc.name
 					x.naming_series = "DC-"
 					x.posting_date = frappe.datetime.nowdate()
 					x.posting_time = new Date().toTimeString().split(' ')[0]
+					x.is_rework = frm.doc.is_rework
 					frappe.set_route("Form",x.doctype, x.name);
 				}, __("Create"));
 				frm.add_custom_button(__('Make GRN'), function() {
@@ -174,7 +205,9 @@ frappe.ui.form.on("Work Order", {
 					y.supplier = frm.doc.supplier
 					y.supplier_address = frm.doc.supplier_address
 					y.posting_date = frappe.datetime.nowdate()
+					y.delivery_date = frappe.datetime.nowdate()
 					y.posting_time = new Date().toTimeString().split(' ')[0]
+					y.is_rework = frm.doc.is_rework
 					frappe.set_route("Form",y.doctype, y.name);
 				}, __("Create"));
 			}
@@ -185,20 +218,22 @@ frappe.ui.form.on("Work Order", {
 			else{
 				frm.deliverable_items.load_data([])
 			}
-			frm.deliverable_items.update_status(frm.val);
-			
+			if(!frm.doc.is_rework){
+				frm.deliverable_items.update_status(frm.val);
+				frm.receivable_items.update_status(true)
+			}
 			if(frm.doc.__onload && frm.doc.__onload.receivable_item_details) {
 				frm.doc['receivable_item_details'] = JSON.stringify(frm.doc.__onload.receivable_item_details);
 				frm.receivable_items.load_data(frm.doc.__onload.receivable_item_details);
 			}
 			else{
-				frm.deliverable_items.load_data([])
+				frm.receivable_items.load_data([])
 			}
-			frm.receivable_items.update_status(true)
-			
-			frappe.production.ui.eventBus.$on("wo_updated", e => {
-				frm.dirty();
-			})
+			if(!frm.doc.is_rework){
+				frappe.production.ui.eventBus.$on("wo_updated", e => {
+					frm.dirty();
+				})
+			}
 			frappe.call({
 				method: "production_api.production_api.doctype.work_order.work_order.fetch_summary_details",
 				args : {
@@ -211,7 +246,61 @@ frappe.ui.form.on("Work Order", {
 					frm.summary.load_data(r.message.item_detail, r.message.deliverables)
 				}
 			})
-			
+			if(frm.doc.docstatus == 1 && !frm.doc.is_rework && frm.doc.open_status == 'Open'){
+				frm.add_custom_button("Create Rework",()=> {
+					let d =new frappe.ui.Dialog({
+						title : "Select the type of rework",
+						fields: [
+							{
+								"fieldname":"supplier_type",
+								"fieldtype":"Select",
+								"label":"Supplier Type",
+								"options":"Same Supplier\nDifferent Supplier",
+								"reqd":true,
+							},
+							{
+								"fieldname":"rework_type",
+								"fieldtype":"Select",
+								"label":"Rework Type",
+								"options":"No Cost\nNet Cost Nil\nAdditional Cost",
+								"reqd":true,
+							},
+						],
+						primary_action(values){
+							if(values.supplier_type == 'Different Supplier'){
+								d.hide()
+								let dialog = new frappe.ui.Dialog({
+									title:"Select Supplier",
+									fields: [
+										{
+											"fieldname":"supplier",
+											"fieldtype":"Link",
+											"options":"Supplier",
+											"label":"Supplier",
+										},
+										{
+											"fieldname":"supplier_address",
+											"fieldtype":"Link",
+											"options":"Address",
+											"label":"Supplier Address",
+										}
+									],
+									primary_action(val){
+										dialog.hide()
+										make_rework(frm, val.supplier, val.supplier_address, values.rework_type, values.supplier_type)
+									}
+								})
+								dialog.show()
+							}
+							else{
+								d.hide()
+								make_rework(frm, frm.doc.supplier, frm.doc.supplier_address, values.rework_type, values.supplier_type)
+							}
+						}
+					})
+					d.show()
+				})
+			}
 		}
 	},
 	calculate_pieces(frm){
@@ -239,9 +328,12 @@ frappe.ui.form.on("Work Order", {
 	},
     validate(frm) {
 		if(frm.val == null && !frm.is_new()){
-			let deliverables = frm.deliverable_items.get_deliverables_data();
-			frm.doc['deliverable_item_details'] = JSON.stringify(deliverables);
-			
+			if(!frm.doc.is_rework){
+				let deliverables = frm.deliverable_items.get_deliverables_data();
+				frm.doc['deliverable_item_details'] = JSON.stringify(deliverables);
+			}
+		}
+		if(!frm.is_new()){
 			let receivables = frm.receivable_items.get_receivables_data();
 			frm.doc['receivable_item_details'] = JSON.stringify(receivables);
 		}
@@ -269,6 +361,15 @@ frappe.ui.form.on("Work Order", {
 		else{
 			frm.set_value('supplier_address', '')
 		}
+	},
+	planned_end_date(frm){
+		if(frm.doc.planned_end_date){
+			frm.doc.expected_delivery_date = frm.doc.planned_end_date
+		}
+		else{
+			frm.doc.expected_delivery_date = null
+		}
+		frm.refresh_field("expected_delivery_date")
 	},
 	delivery_location: function(frm) {
 		if (frm.doc.delivery_location) {
@@ -334,3 +435,48 @@ frappe.ui.form.on("Work Order", {
 		}
 	},
 });
+
+function make_rework(frm, supplier, supplier_address, rework_type, supplier_type){
+	frappe.call({
+		method:"production_api.production_api.doctype.work_order.work_order.get_grn_rework_items",
+		args: {
+			doc_name:frm.doc.name,
+		},
+		callback: function(r){
+			if(Object.keys(r.message).length == 0){
+				frappe.msgprint("No Rework Items")
+			}
+			else{
+				let d = new frappe.ui.Dialog({
+					title: "Rework Items",
+					fields: [
+						{fieldtype: "HTML",fieldname: "rework_items_html"}
+					],
+					size:"extra-large",
+					primary_action(){
+						let items = frm.rework_items.get_items()
+						frappe.call({
+							method: "production_api.production_api.doctype.work_order.work_order.create_rework",
+							args: {
+								doc_name: frm.doc.name,
+								items: items,
+								ipd: frm.doc.production_detail,
+								supplier:supplier,
+								supplier_address: supplier_address,
+								rework_type:rework_type,
+								supplier_type: supplier_type,
+							},
+							callback: function(r){
+								frappe.set_route("Form", "Work Order", r.message)
+							}
+						})
+						d.hide()
+					} 
+				})
+				frm.rework_items = new frappe.production.ui.WOReworkPopUp(d.fields_dict.rework_items_html.wrapper)
+				frm.rework_items.load_data(r.message)
+				d.show()
+			}
+		}
+	})
+}

@@ -2,6 +2,10 @@
     <div ref="root">
         <div v-if="show_title">
             <h4>Order Items</h4>
+            <div style="display: flex;">
+                <div><button class="btn btn-default" @click="update_checkbox(true)">Select All</button></div>
+                <div style="margin-left:5px;"><button class="btn btn-default" @click="update_checkbox(false)">Unselect All</button></div>
+            </div>
         </div>
         <table class="table table-sm table-bordered" >
             <tr v-for="(i, item_index) in items" :key="item_index">
@@ -12,7 +16,7 @@
                         <th v-for="attr in i.primary_attribute_values" :key="attr">{{ attr }}</th>
                     </tr>
                     <tr v-for="(j, item1_index) in i.items" :key="item1_index">
-                        <td><input type="checkbox" v-model="checkbox_value" @change="update_qty(item_index, item1_index)">{{item1_index + 1}}</td>
+                        <td><input type="checkbox" v-model="checkboxes[item1_index]" @change="update_qty(item_index, item1_index)">{{item1_index + 1}}</td>
                         <td v-for="attr in i.attributes" :key="attr">
                             {{ j.attributes[attr] }}
                             <span v-if="attr == 'Colour' && j.is_set_item && j.attributes[j.set_attr] != j.major_attr_value && j.attributes[attr]">({{ j.item_keys['major_colour'] }})</span>
@@ -39,10 +43,14 @@ let items = ref(null)
 let show_title = ref(false)
 let sample_doc = ref({})
 let root= ref(null)
+let checkboxes = ref([])
 function load_data(item){
     items.value = item;
     if(item.length > 0){
         show_title.value = true
+        for(let i = 0 ; i < items.value[0].items.length; i++){
+            checkboxes.value.push(true)
+        }
     }
 }
 
@@ -59,8 +67,26 @@ function create_input_classes(){
     }
 }
 
+function update_checkbox(val){
+    for(let i = 0 ; i < items.value[0].items.length; i++){
+        checkboxes.value[i] = val
+        Object.keys(items.value[0].items[i].values).forEach((key,value)=> {
+            if(items.value[0].items[i]['entered_qty'][key]){
+                if(val){
+                    let input = items.value[0].items[i]['entered_qty'][key]
+                    input.set_value(items.value[0].items[i]['values'][key]['qty'])
+                }
+                else{
+                    let input = items.value[0].items[i]['entered_qty'][key]
+                    input.set_value(0)
+                }
+            }
+        })
+    }
+}
+
 function update_qty(idx1, idx2){
-    if(!checkbox_value){
+    if(!checkboxes.value[idx2]){
         Object.keys(items.value[idx1].items[idx2].values).forEach((key,value)=> {
             if(items.value[idx1].items[idx2]['entered_qty'][key]){
                 let input = items.value[idx1].items[idx2]['entered_qty'][key]

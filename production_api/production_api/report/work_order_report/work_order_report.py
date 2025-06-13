@@ -18,10 +18,12 @@ def get_columns(received_types):
 		{"fieldname":"work_order","fieldtype":"Link","options":"Work Order","label":"Work Order"},
 		{"fieldname":"wo_date","fieldtype":"Date","label":"WO Date"},
 		{"fieldname":"supplier","fieldtype":"Link","options":"Supplier","label":"Supplier"},
+		{"fieldname":"supplier_name","fieldtype":"Data","label":"Supplier Name"},
 		{"fieldname":"lot","fieldtype":"Link","options":"Lot","label":"Lot"},
 		{"fieldname":"item","fieldtype":"Link","options":"Item","label":"Item"},
 		{"fieldname":"wo_colours","fieldtype":"Data","label":"WO Colours"},
 		{"fieldname":"process_name","fieldtype":"Link","options":"Process","label":"Process"},
+		{"fieldname":"planned_quantity","fieldtype":"Int","label":"Pieces Planned"},
 		{"fieldname":"total_no_of_pieces_delivered","fieldtype":"Int","label":"Pieces Delivered"},
 		{"fieldname":"total_no_of_pieces_received","fieldtype":"Int","label":"Pieces Received"},
 	]
@@ -47,10 +49,12 @@ def get_data(filters, received_types):
 		doctype.name.as_("work_order"),
 		doctype.wo_date,
 		doctype.supplier,
+		doctype.supplier_name,
 		doctype.lot,
 		doctype.item,
 		doctype.wo_colours,
 		doctype.process_name,
+		doctype.planned_quantity,
 		doctype.total_no_of_pieces_delivered,
 		doctype.total_no_of_pieces_received,
 		(doctype.total_no_of_pieces_received - doctype.total_no_of_pieces_delivered).as_("pending"),
@@ -59,7 +63,7 @@ def get_data(filters, received_types):
 		doctype.first_grn_date,
 		doctype.last_grn_date,
 		doctype.received_types_json
-	).where(doctype.docstatus == 1 and doctype.wo_date >= filters.get("from_date") and doctype.wo_date <= filters.get("to_date"))
+	).where((doctype.docstatus == 1) & (doctype.wo_date >= filters.get("from_date")) & (doctype.wo_date <= filters.get("to_date")))
 
 
 	if supplier := filters.get('supplier'):
@@ -82,15 +86,16 @@ def get_data(filters, received_types):
 		if isinstance(received_json, string_types):
 			received_json = json.loads(received_json)
 		others = 0	
-		for t in received_json:
-			if t not in received_types:
-				others += received_json.get(t)
-			elif t in received_types and received_json.get(t):
-				x = t.replace(" ", "_")
-				res.update({x: received_json.get(t)})
-			else:
-				x = t.replace(" ", "_")
-				res.update({x: 0})
+		if received_json:
+			for t in received_json:
+				if t not in received_types:
+					others += received_json.get(t)
+				elif t in received_types and received_json.get(t):
+					x = t.replace(" ", "_")
+					res.update({x: received_json.get(t)})
+				else:
+					x = t.replace(" ", "_")
+					res.update({x: 0})
 
 		res.update({"others":others})	
 

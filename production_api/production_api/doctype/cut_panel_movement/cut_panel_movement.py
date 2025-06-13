@@ -1,16 +1,16 @@
 # Copyright (c) 2025, Essdee and contributors
 # For license information, please see license.txt
 
-import frappe, json
-from six import string_types
+import frappe
 from itertools import groupby
 from operator import itemgetter
 from frappe.model.document import Document
-from production_api.utils import update_if_string_instance
 from production_api.mrp_stock.doctype.stock_entry.stock_entry import fetch_stock_entry_items
+from production_api.utils import update_if_string_instance, get_tuple_attributes, update_variant
 from production_api.production_api.doctype.item.item import get_or_create_variant, get_attribute_details
 from production_api.production_api.doctype.purchase_order.purchase_order import get_item_attribute_details, get_item_group_index
 from production_api.production_api.doctype.item_dependent_attribute_mapping.item_dependent_attribute_mapping import get_dependent_attribute_details
+from production_api.essdee_production.doctype.item_production_detail.item_production_detail import get_or_create_ipd_variant
 
 class CutPanelMovement(Document):
 	def onload(self):
@@ -58,13 +58,13 @@ class CutPanelMovement(Document):
 						part = data[colour]['part']
 						for panel in panels[part]:
 							x = panel+"_moved"
-							if x in row and row[x] == True:
+							if panel in row and x in row and row[x] == True:
 								datas[colour]['data'].append(row)
 								break
 					else:
 						for panel in panels:
 							x = panel+"_moved"
-							if x in row and row[x] == True:
+							if panel in row and x in row and row[x] == True:
 								datas[colour]['data'].append(row)
 								break
 		json_data['data'] = datas
@@ -144,12 +144,12 @@ def check_panel_and_accessories(cut_panel_movement_json):
 				part = data[colour]['part']
 				for panel in panels[part]:
 					x = panel+"_moved"
-					if x in row and row[x] == True:
+					if panel in row and x in row and row[x] == True:
 						return True
 			else:
 				for panel in panels:
 					x = panel+"_moved"
-					if x in row and row[x] == True:
+					if panel in row and x in row and row[x] == True:
 						return True
 					
 	accessory_data = cut_panel_movement_json['accessory_data']
@@ -175,12 +175,12 @@ def update_cls(cut_panel_movement_json, docstatus, cutting_plan, process_name):
 				part = data[colour]['part']
 				for panel in panels[part]:
 					x = panel+"_moved"
-					if x in row and row[x] == True:
+					if panel in row and x in row and row[x] == True:
 						ref_doclist.add(row[panel+'_ref_docname'])
 			else:
 				for panel in panels:
 					x = panel+"_moved"
-					if x in row and row[x] == True:
+					if panel in row and x in row and row[x] == True:
 						ref_doclist.add(row[panel+'_ref_docname'])
 
 	ref_doclist = tuple(ref_doclist)
@@ -191,7 +191,7 @@ def update_cls(cut_panel_movement_json, docstatus, cutting_plan, process_name):
 	if len(ref_doclist) > 0:
 		frappe.db.sql(
 			f"""
-				Update `tabCutting LaySheet Bundle` SET is_moved = {moved} WHERE name IN {(ref_doclist)}
+				Update `tabCutting LaySheet Bundle` SET is_moved = {moved} WHERE name IN {ref_doclist}
 			"""
 		)
 
@@ -250,14 +250,14 @@ def update_accessory(cutting_plan, cut_panel_movement_json, docstatus, process_n
 				cls_doc.save()
 
 @frappe.whitelist()
-def get_cutting_plan_unmoved_data(cutting_plan, process_name):
+def get_cutting_plan_unmoved_data(cutting_plan, process_name, movement_from_cutting: int):
 	cp_doc = frappe.get_doc("Cutting Plan", cutting_plan)
 	if cp_doc.version == "V1":
 		frappe.throw("Can't create Cutting Movement for Version V1 Cutting Plan's")
 
 	ipd_doc = frappe.get_cached_doc("Item Production Detail", cp_doc.production_detail)
 	is_moved = True
-	if ipd_doc.cutting_process == process_name:
+	if movement_from_cutting:
 		is_moved = False
 
 	from production_api.essdee_production.doctype.item_production_detail.item_production_detail import get_ipd_primary_values
@@ -286,14 +286,9 @@ def get_cutting_plan_unmoved_data(cutting_plan, process_name):
 				panel_colour = row.colour
 				if ipd_doc.is_set_item:
 					if set_combination.get('set_part'):
-						if set_combination.get('is_same_packing_attribute'):
-							if parts not in panels[set_combination['set_part']]:
-								panels[set_combination['set_part']].append(parts)
-							major_colour = major_colour +"-"+set_combination.get('set_part')
-						else:
-							if parts not in panels[set_combination['set_part']]:
-								panels[set_combination['set_part']].append(parts)
-							major_colour = "("+ major_colour +")" + set_combination["set_colour"] +"-"+set_combination.get('set_part')
+						if parts not in panels[set_combination['set_part']]:
+							panels[set_combination['set_part']].append(parts)
+						major_colour = "("+ major_colour +")" + set_combination["set_colour"] +"-"+set_combination.get('set_part')
 					else:
 						if parts not in panels[set_combination['major_part']]:
 							panels[set_combination['major_part']].append(parts)
@@ -403,7 +398,6 @@ def create_stock_entry(doc_name):
 	data = fetch_stock_entry_items(stock_entry_item_list, ipd=ipd)
 	return data
 
-from frappe.utils import nowdate, now
 @frappe.whitelist()
 def create_delivery_challan(doc_name, work_order, process_name):
 	delivery_challan_item_list, ipd = get_grouped_data(doc_name, "delivery Challan")
@@ -420,7 +414,7 @@ def create_delivery_challan(doc_name, work_order, process_name):
 				item['delivered_quantity'] = data['qty']
 				items.append(item)
 				break
-	
+	ipd_doc = frappe.get_cached_doc("Item Production Detail", ipd)
 	items = sorted(items, key = lambda i: i['row_index'])
 	item_details = []
 	for key, variants in groupby(items, lambda i: i['row_index']):
@@ -432,6 +426,11 @@ def create_delivery_challan(doc_name, work_order, process_name):
 			'lot': variants[0]['lot'],
 			'attributes': get_item_attribute_details(current_variant, current_item_attribute_details),
 			'primary_attribute': current_item_attribute_details['primary_attribute'],
+			"is_set_item": ipd_doc.is_set_item,
+			"set_attr": ipd_doc.set_item_attribute,
+			"pack_attr": ipd_doc.packing_attribute,
+			"major_attr_value": ipd_doc.major_attribute_value,
+			"item_keys": {},
 			'values': {},
 			'default_uom': variants[0]['uom'] or current_item_attribute_details['default_uom'],
 			'secondary_uom': variants[0]['secondary_uom'] or current_item_attribute_details['secondary_uom'],
@@ -443,6 +442,12 @@ def create_delivery_challan(doc_name, work_order, process_name):
 			for variant in variants:
 				current_variant = frappe.get_cached_doc("Item Variant", variant['item_variant'])
 				set_combination = update_if_string_instance(variant['set_combination'])
+				if set_combination:
+					if set_combination.get("major_part"):
+						item['item_keys']['major_part'] = set_combination.get("major_part")
+					if set_combination.get("major_colour"):
+						item['item_keys']['major_colour'] = set_combination.get("major_colour")		
+
 				for attr in current_variant.attributes:
 					if attr.attribute == item.get('primary_attribute'):
 						item['values'][attr.attribute_value] = {
@@ -451,7 +456,8 @@ def create_delivery_challan(doc_name, work_order, process_name):
 							"is_calculated":variant.is_calculated,
 							'set_combination':set_combination,
 							'qty': variant['qty'],
-							'delivered_quantity': variant.get('delivered_quantity', 0),
+							'delivered_quantity': variant['qty'],
+							'ref_docname': variant['name']
 						}
 						break
 		else:
@@ -460,8 +466,8 @@ def create_delivery_challan(doc_name, work_order, process_name):
 				"ref_doctype":"Work Order Deliverables",
 				"is_calculated":variants[0].is_calculated,
 				'qty': variants[0]['qty'],
-				'delivered_quantity': variants[0].get('delivered_quantity', 0),
-				'ref_docname': variants[0]['ref_docname']
+				'delivered_quantity': variants[0]['qty'],
+				'ref_docname': variants[0]['name']
 			}
 		index = get_item_group_index(item_details, current_item_attribute_details)
 		if index == -1:
@@ -483,16 +489,14 @@ def create_delivery_challan(doc_name, work_order, process_name):
 		"supplier_address_details": doc.supplier_address_details,
 	}
 
-def get_tuple_attributes(tuple_data):
-	attrs = {}
-	for data in tuple_data:
-		attrs[data[0]] = data[1]
-	return attrs	
-
 def get_grouped_data(doc_name, doctype):
 	cpm_doc = frappe.get_doc("Cut Panel Movement", doc_name)
 	ipd = frappe.get_value("Cutting Plan", cpm_doc.cutting_plan, "production_detail")
 	ipd_doc = frappe.get_doc("Item Production Detail", ipd)
+	panel_qty_dict = {}
+	for item in ipd_doc.stiching_item_details:
+		panel_qty_dict[item.stiching_attribute_value] = item.quantity
+	item_variants = update_if_string_instance(ipd_doc.variants_json)
 	cpm_json = update_if_string_instance(cpm_doc.cut_panel_movement_json)
 	stock_entry_dict = {}
 	group_dict = {}
@@ -510,6 +514,7 @@ def get_grouped_data(doc_name, doctype):
 				if data.get(grp_panel) and data[grp_panel+"_moved"]:
 					panel_list = grp_panel.split(",")
 					for panel in panel_list:	
+						panel = panel.strip()
 						grp_key = (panel, colour)
 						if grp_key not in group_dict:
 							group_dict[grp_key] = []
@@ -521,10 +526,11 @@ def get_grouped_data(doc_name, doctype):
 							"set_combination": tuple(sorted(data['set_combination'].items())),
 						}
 						key = tuple(sorted(key.items()))
+						panel_qty = data[grp_panel] * panel_qty_dict[panel]
 						if key in stock_entry_dict:
-							stock_entry_dict[key]["qty"] += data[grp_panel]
+							stock_entry_dict[key]["qty"] += panel_qty
 						else:
-							stock_entry_dict[key] = { "qty": data[grp_panel], "group_key": grp_key }
+							stock_entry_dict[key] = { "qty": panel_qty, "group_key": grp_key }
 
 	for attrs_tuple in stock_entry_dict:
 		attrs = get_tuple_attributes(attrs_tuple)
@@ -532,7 +538,11 @@ def get_grouped_data(doc_name, doctype):
 		grp_key = stock_entry_dict[attrs_tuple]['group_key']
 		set_combination = get_tuple_attributes(attrs['set_combination'])
 		del attrs['set_combination']
+		# tup = tuple(sorted(attrs.items()))
 		variant = get_or_create_variant(cpm_doc.item, attrs)
+		# variant = get_or_create_ipd_variant(item_variants, cpm_doc.item, tup, attrs)
+		# str_tup = str(tup)
+		# item_variants = update_variant(item_variants, variant, cpm_doc.item, str_tup)
 		group_dict[grp_key].append( {"item_variant": variant, "qty": qty, "set_combination": set_combination })
 	
 	table_index = -1

@@ -6,6 +6,7 @@
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
+  "is_manual_entry",
   "cutting_plan",
   "lot",
   "length",
@@ -17,6 +18,7 @@
   "status",
   "selected_type",
   "calculated_parts",
+  "reverted",
   "column_break_rxns",
   "cutting_marker",
   "marker_name",
@@ -29,12 +31,14 @@
   "naming_series",
   "length_allowance",
   "width_allowance",
+  "is_set_item",
   "section_break_cwpl",
   "cutting_marker_ratios",
   "cutting_marker_ratios_html",
   "section_break_dasc",
   "cutting_laysheet_details",
   "cloths_html",
+  "cutting_laysheet_manual_items",
   "section_break_ujvr",
   "cutting_laysheet_accessory_details",
   "accessory_html",
@@ -285,7 +289,7 @@
    "fieldname": "piece_weight",
    "fieldtype": "Float",
    "label": "Piece Weight",
-   "precision": "3",
+   "precision": "4",
    "read_only": 1
   },
   {
@@ -295,7 +299,7 @@
    "hidden": 1,
    "in_list_view": 1,
    "label": "Status",
-   "options": "Started\nCompleted\nBundles Generated\nLabel Printed"
+   "options": "Started\nCompleted\nBundles Generated\nLabel Printed\nCancelled"
   },
   {
    "fieldname": "cutting_marker_ratios_html",
@@ -336,11 +340,41 @@
    "hidden": 1,
    "label": "Goods Received Note",
    "options": "Goods Received Note"
+  },
+  {
+   "default": "0",
+   "fieldname": "reverted",
+   "fieldtype": "Check",
+   "hidden": 1,
+   "label": "Reverted"
+  },
+  {
+   "default": "0",
+   "fetch_from": "cutting_plan.is_manual_entry",
+   "fieldname": "is_manual_entry",
+   "fieldtype": "Check",
+   "label": "Is Manual Entry",
+   "read_only": 1
+  },
+  {
+   "fieldname": "cutting_laysheet_manual_items",
+   "fieldtype": "Table",
+   "hidden": 1,
+   "label": "Cutting LaySheet Manual Items",
+   "options": "Cutting LaySheet Manual Item"
+  },
+  {
+   "default": "0",
+   "fieldname": "is_set_item",
+   "fieldtype": "Check",
+   "hidden": 1,
+   "label": "Is Set Item"
   }
  ],
+ "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-03-25 18:58:05.401057",
+ "modified": "2025-06-06 10:33:34.606650",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Cutting LaySheet",
@@ -392,6 +426,7 @@
    "share": 1
   }
  ],
+ "row_format": "Dynamic",
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": [],

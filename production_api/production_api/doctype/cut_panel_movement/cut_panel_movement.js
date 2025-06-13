@@ -33,7 +33,7 @@ frappe.ui.form.on("Cut Panel Movement", {
                 frm.dirty()
             }
         }
-        if(frm.doc.docstatus == 1){
+        if(frm.doc.docstatus == 1 && !frm.doc.against){
             frm.add_custom_button("Create Stock Entry", ()=> {
                 frappe.call({
                     method:"production_api.production_api.doctype.cut_panel_movement.cut_panel_movement.create_stock_entry",
@@ -49,6 +49,7 @@ frappe.ui.form.on("Cut Panel Movement", {
                         let x = frappe.model.get_new_doc("Stock Entry")
                         x.purpose = "Send to Warehouse"
                         x.posting_date = frappe.datetime.nowdate()
+                        x.cut_panel_movement = frm.doc.name
                         x.posting_time = new Date().toTimeString().split(' ')[0]
                         frappe.set_route("Form", x.doctype, x.name);
                     }   
@@ -68,7 +69,8 @@ frappe.ui.form.on("Cut Panel Movement", {
                                 return {
                                     filters: {
                                         "lot": frm.doc.lot,
-                                        "process_name": frm.doc.process_name
+                                        "process_name": frm.doc.process_name,
+                                        "docstatus": 1,
                                     }
                                 }
                             }
@@ -105,8 +107,8 @@ frappe.ui.form.on("Cut Panel Movement", {
                                 x.supplier = data.supplier
                                 x.supplier_name = data.supplier_name
                                 x.supplier_address = data.supplier_address
-                                x.supplier_address_details = data.supplier_address_details
-                                x.vehicle_no = "NA"
+                                x.supplier_address_details = data.supplier_address_details,
+                                x.cut_panel_movement = frm.doc.name
                                 frappe.set_route("Form", x.doctype, x.name);
                             }   
                         })
@@ -131,6 +133,7 @@ function fetch_panels(frm){
         args: {
             cutting_plan: frm.doc.cutting_plan,
             process_name: frm.doc.process_name,
+            movement_from_cutting: frm.doc.movement_from_cutting,
         },
         callback: function(r){
             frm.cutting_movement.load_data(r.message)
