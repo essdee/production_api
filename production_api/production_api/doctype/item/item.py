@@ -316,7 +316,7 @@ def get_variant(template, args: dict):
 			variants = frappe.db.sql(
 				"""
 					SELECT name from `tabItem Variant` WHERE item = %s AND item_tuple_attribute = %s
-				""", (template, tup)
+				""", (template, tup) 
 			)
 			if variants:
 				variant_name = variants[0]
