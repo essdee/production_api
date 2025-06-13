@@ -319,7 +319,7 @@ def get_variant(template, args: dict):
 				""", (template, tup), as_dict=True
 			)
 			if variants:
-				variant_name = variants[0]['name']
+				variant_name = variants[0]['name']	
 		else:
 			variants = frappe.get_all("Item Variant", filters={"name": template}, pluck="name")
 			if variants:

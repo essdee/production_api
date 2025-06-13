@@ -56,13 +56,26 @@ class PurchaseInvoice(Document):
 		self.set('in_words', money_in_words(grand_total))
 	
 	def after_insert(self):
+		if self.vendor_bill_tracking:
+			self.set_vendor_bill_purchase_invoice()
 		grns = [g.grn for g in self.grn]
 		for g in grns:
 			grn = frappe.get_doc("Goods Received Note", g)
 			grn.purchase_invoice_name = self.name
 			grn.save(ignore_permissions=True)
 	
+	def set_vendor_bill_purchase_invoice(self):
+		doc = frappe.get_doc("Vendor Bill Tracking", self.vendor_bill_tracking)
+		doc.mrp_purchase_invoice = self.name
+		doc.save(ignore_permissions = True)
+
+	def remove_vendor_bill_purchase_invoce(self):
+		doc = frappe.get_doc("Vendor Bill Tracking", self.vendor_bill_tracking)
+		doc.mrp_purchase_invoice = None
+		doc.save(ignore_permissions = True)
+	
 	def before_cancel(self):
+		self.ignore_linked_doctypes = ("Vendor Bill Tracking")
 		grns = [g.grn for g in self.grn]
 		for g in grns:
 			grn = frappe.get_doc("Goods Received Note", g)
@@ -77,6 +90,8 @@ class PurchaseInvoice(Document):
 				data = res.json()
 				error = frappe.log_error("Purchase Inv Cancel Error", json.dumps(data), self.doctype, self.name)
 				frappe.throw(data.get('exception') or f"Unknown Error - {frappe.get_desk_link(error.doctype, error.name)}")
+		if self.vendor_bill_tracking:
+			self.remove_vendor_bill_purchase_invoce()
 	
 	def before_submit(self):
 		if not len(self.grn) or not len(self.items):

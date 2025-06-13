@@ -19,6 +19,7 @@
   "billing_supplier",
   "column_break_njb2s",
   "bill_date",
+  "vendor_bill_tracking",
   "section_break_q9k0j",
   "grn",
   "fetch_grn",
@@ -230,12 +231,19 @@
    "fieldtype": "Currency",
    "hidden": 1,
    "label": "GRN Grand Total"
+  },
+  {
+   "fieldname": "vendor_bill_tracking",
+   "fieldtype": "Data",
+   "label": "Vendor Bill Tracking",
+   "options": "Vendor Bill Tracking",
+   "read_only": 1
   }
  ],
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-04-28 14:26:36.076933",
+ "modified": "2025-06-13 17:32:12.205458",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Purchase Invoice",
@@ -334,6 +342,7 @@
    "write": 1
   }
  ],
+ "row_format": "Dynamic",
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": [],
