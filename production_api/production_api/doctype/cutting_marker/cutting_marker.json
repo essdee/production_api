@@ -6,6 +6,7 @@
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
+  "is_manual_entry",
   "cutting_plan",
   "lot",
   "length",
@@ -20,10 +21,12 @@
   "naming_series",
   "efficiency",
   "required_piece_weight",
+  "version",
   "section_break_lzec",
   "cutting_marker_ratios",
   "cutting_marker_ratios_html",
-  "amended_from"
+  "amended_from",
+  "cutting_marker_groups"
  ],
  "fields": [
   {
@@ -147,12 +150,41 @@
    "print_hide": 1,
    "read_only": 1,
    "search_index": 1
+  },
+  {
+   "fetch_from": "cutting_plan.version",
+   "fieldname": "version",
+   "fieldtype": "Select",
+   "label": "Version",
+   "options": "\nV1\nV2\nV3",
+   "read_only": 1
+  },
+  {
+   "fieldname": "cutting_marker_groups",
+   "fieldtype": "Table",
+   "hidden": 1,
+   "label": "Cutting Marker Groups",
+   "options": "Cutting Marker Group"
+  },
+  {
+   "default": "0",
+   "fetch_from": "cutting_plan.is_manual_entry",
+   "fieldname": "is_manual_entry",
+   "fieldtype": "Check",
+   "label": "Is Manual Entry",
+   "read_only": 1
   }
  ],
+ "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
- "links": [],
- "modified": "2025-02-15 10:14:29.292725",
+ "links": [
+  {
+   "link_doctype": "Cutting LaySheet",
+   "link_fieldname": "cutting_marker"
+  }
+ ],
+ "modified": "2025-06-06 10:27:44.614057",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Cutting Marker",
@@ -206,6 +238,7 @@
    "share": 1
   }
  ],
+ "row_format": "Dynamic",
  "search_fields": "marker_name",
  "sort_field": "modified",
  "sort_order": "DESC",

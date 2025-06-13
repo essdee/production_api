@@ -26,7 +26,7 @@ class CuttingPlan(Document):
 	
 	def before_validate(self):
 		if self.is_new():
-			self.version = "V2"
+			self.version = "V3"
 			if self.get('item_details'):
 				x, y = get_complete_incomplete_structure(self.production_detail,self.item_details)
 				self.completed_items_json = x

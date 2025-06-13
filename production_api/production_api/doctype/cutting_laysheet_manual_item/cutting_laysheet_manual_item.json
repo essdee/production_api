@@ -1,0 +1,74 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2025-06-05 10:25:52.209966",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "colour",
+  "major_colour",
+  "shade",
+  "size",
+  "quantity",
+  "multiplier",
+  "set_combination"
+ ],
+ "fields": [
+  {
+   "fieldname": "colour",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Colour"
+  },
+  {
+   "fieldname": "size",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Size"
+  },
+  {
+   "fieldname": "quantity",
+   "fieldtype": "Int",
+   "in_list_view": 1,
+   "label": "Quantity"
+  },
+  {
+   "fieldname": "multiplier",
+   "fieldtype": "Int",
+   "in_list_view": 1,
+   "label": "Multiplier"
+  },
+  {
+   "fieldname": "shade",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Shade"
+  },
+  {
+   "fieldname": "major_colour",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Major Colour"
+  },
+  {
+   "fieldname": "set_combination",
+   "fieldtype": "JSON",
+   "label": "Set Combination"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2025-06-06 09:50:22.413737",
+ "modified_by": "Administrator",
+ "module": "Production Api",
+ "name": "Cutting LaySheet Manual Item",
+ "owner": "Administrator",
+ "permissions": [],
+ "row_format": "Dynamic",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

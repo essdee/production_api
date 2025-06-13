@@ -13,7 +13,7 @@
 							<td>{{ item1_index + 1 }}</td>
 							<td v-for="attr in i.attributes" :key="attr">
                                 {{ j.attributes[attr] }}
-                                <span v-if="version == 'V2'">
+                                <span v-if="version == 'V2' || version == 'V3'">
                                     <span v-if="attr == 'Colour' && j.is_set_item && j.attributes[j.set_attr] != j.major_attr_value">({{ j.item_keys['major_colour'] }})</span>
                                 </span>
                             </td>
@@ -40,7 +40,7 @@
                         <td>{{ item1_index + 1 }}</td>
                         <td v-for="attr in i.attributes" :key="attr">
                             {{ j.attributes[attr] }}
-                            <span v-if="version == 'V2'">
+                            <span v-if="version == 'V2' || version == 'V3'">
                                 <span v-if="attr == 'Colour' && j.is_set_item && j.attributes[j.set_attr] != j.major_attr_value">({{ j.item_keys['major_colour'] }})</span>
                             </span>
                         </td>

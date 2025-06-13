@@ -324,9 +324,9 @@ def get_variant(template, args: dict):
 			variants = frappe.get_all("Item Variant", filters={"name": template}, pluck="name")
 			if variants:
 				variant_name = variants[0]
-		if variant_name:
-			return variant_name[0]
-		return None		
+		if not variant_name:
+			return None
+		return variant_name  
 	else:
 		item_template = frappe.get_cached_doc("Item", template)
 

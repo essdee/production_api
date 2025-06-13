@@ -24,6 +24,7 @@ frappe.ui.form.on("Cutting LaySheet", {
         })
     },
     refresh(frm) {
+        $(".layout-side-section").css("display", "None")
         // if (frappe.user.has_role('System Manager')){
         //     frm.add_custom_button("Update",()=> {
         //         frappe.call({
@@ -70,7 +71,11 @@ frappe.ui.form.on("Cutting LaySheet", {
 		frm.set_df_property('cutting_laysheet_bundles','cannot_delete_rows',true)
         
         if(frm.doc.status != "Cancelled"){
-            if(frm.doc.cutting_laysheet_details.length > 0 && (frm.doc.status == "Bundles Generated" || frm.doc.status == "Completed") ){
+            let x = frm.doc.cutting_laysheet_details.length > 0
+            if(frm.doc.is_manual_entry){
+                x = true
+            } 
+            if(x && (frm.doc.status == "Bundles Generated" || frm.doc.status == "Completed") ){
                 frm.add_custom_button("Generate",()=> {
                     frappe.call({
                         method:"production_api.production_api.doctype.cutting_laysheet.cutting_laysheet.get_parts",
@@ -78,26 +83,22 @@ frappe.ui.form.on("Cutting LaySheet", {
                             cutting_marker: frm.doc.cutting_marker,
                         },
                         callback:function(r){
-                            let data = []
-                            for(let i = 0 ; i < r.message.length ; i++){
-                                data.push(
-                                    {"part":r.message[i],"value":i+1},
-                                )
-                            }    
-                            let d =  new frappe.ui.Dialog({
-                                title : "Enter Details",
-                                fields: [
-                                    {
-                                        fieldname:"parts_table",
-                                        fieldtype:"Table",
-                                        fields:[
-                                            {"fieldname":'part',"fieldtype":"Data","read_only":true,"label":"Part","in_list_view":true},
-                                            {"fieldname":"value","fieldtype":"Int","label":"Value","in_list_view":true}
-                                        ],
-                                        data:data,
-                                        cannot_add_rows:true,
-                                        cannot_delete_rows:true,
-                                    },
+                            let data = r.message
+                            let fields = [
+                                {
+                                    fieldname:"parts_table",
+                                    fieldtype:"Table",
+                                    fields:[
+                                        {"fieldname":'part',"fieldtype":"Data","read_only":true,"label":"Part","in_list_view":true},
+                                        {"fieldname":"value","fieldtype":"Int","label":"Value","in_list_view":true}
+                                    ],
+                                    data:data,
+                                    cannot_add_rows:true,
+                                    cannot_delete_rows:true,
+                                },
+                            ]
+                            if(!frm.doc.is_manual_entry){
+                                fields = fields.concat([
                                     {
                                         fieldtype:"Int",
                                         fieldname:"maximum_no_of_plys",
@@ -111,18 +112,23 @@ frappe.ui.form.on("Cutting LaySheet", {
                                         label:"Maximum Allow Percent",
                                         default: frm.doc.maximum_allow_percentage,
                                         reqd:true,
-                                    },
-                                ],
+                                    }
+                                ])
+                            }
+                            let d =  new frappe.ui.Dialog({
+                                title : "Enter Details",
+                                fields: fields,
                                 primary_action:async function (values){
                                     frappe.call({
                                         method:"production_api.production_api.doctype.cutting_laysheet.cutting_laysheet.get_cut_sheet_data",
                                         args: {
                                             doc_name : frm.doc.name,
                                             cutting_marker:frm.doc.cutting_marker,
-                                            item_details:frm.doc.cutting_laysheet_details,
+                                            laysheet_details: frm.doc.cutting_laysheet_details,
+                                            manual_item_details: frm.doc.cutting_laysheet_manual_items,
                                             items:values.parts_table,
-                                            max_plys:values.maximum_no_of_plys,
-                                            maximum_allow : values.maximum_allow_percentage
+                                            max_plys:values.maximum_no_of_plys || 0,
+                                            maximum_allow : values.maximum_allow_percentage || 0
                                         },
                                         freeze:true,
                                         freeze_message:"Generating Bundles",
@@ -280,10 +286,12 @@ frappe.ui.form.on("Cutting LaySheet", {
         }
 	},
     validate(frm){
-        let items = frm.laysheet.get_items()
-        frm.doc['item_details'] = JSON.stringify(items)
-        let items2 = frm.accessory.get_items()
-        frm.doc['item_accessory_details'] = JSON.stringify(items2)
+        if(!frm.doc.__islocal){
+            let items = frm.laysheet.get_items()
+            frm.doc['item_details'] = JSON.stringify(items)
+            let items2 = frm.accessory.get_items()
+            frm.doc['item_accessory_details'] = JSON.stringify(items2)
+        }
     }
 });
 
