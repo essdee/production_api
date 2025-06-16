@@ -4,6 +4,7 @@
 import frappe
 from frappe.model.document import Document
 import frappe.utils
+from six import string_types
 
 class VendorBillTracking(Document):
 
@@ -38,6 +39,7 @@ class VendorBillTracking(Document):
 			frappe.throw("Vendor Bill Already Closed")
 		self.append('vendor_bill_tracking_history', {
 			"assigned_by" : frappe.session.user,
+			'assigned_on' : frappe.utils.now_datetime(),
 			"remarks" : remarks,
 			"action" : 'Close'
 		})
@@ -47,6 +49,7 @@ class VendorBillTracking(Document):
 	def reopen_vendor_bill(self,remarks):
 		self.append('vendor_bill_tracking_history', {
 			"assigned_by" : frappe.session.user,
+			'assigned_on' : frappe.utils.now_datetime(),
 			"remarks" : remarks,
 			"action" : 'Reopen'
 		})
@@ -56,6 +59,7 @@ class VendorBillTracking(Document):
 	def assign_bill_to_user(self, user, remarks = None):
 		self.append("vendor_bill_tracking_history", {
 			"assigned_to" : user,
+			'assigned_on' : frappe.utils.now_datetime(),
 			"assigned_by" : frappe.session.user,
 			"remarks" : remarks,
 			"action" : 'Assign'
@@ -65,6 +69,8 @@ class VendorBillTracking(Document):
 @frappe.whitelist()
 def assign_vendor_bill(name, assigned_to, remarks = None):
 	doc = frappe.get_doc("Vendor Bill Tracking", name)
+	if doc.docstatus != 1 or doc.form_status not in ['Reopen', "Open", "Assigned"]:
+		frappe.throw(f"Can't Assign Vendor Bill {doc.name}")
 	doc.assign_bill_to_user(assigned_to, remarks)
 	doc.save(ignore_permissions = True)
 
@@ -127,3 +133,16 @@ def get_accounting_system_purchase_invoice(doc_name):
 		"vendor_bill_tracking" : doc.name,
 		"url" : url
 	}
+
+@frappe.whitelist()
+def bulk_assign_bills(assign_to, selected_docs, remarks = None):
+	if isinstance(selected_docs, string_types):
+		selected_docs = frappe.json.loads(selected_docs)
+	error = False
+	for i in selected_docs:
+		try:
+			assign_vendor_bill(i['name'], assign_to, remarks)
+		except Exception as e:
+			error = True
+	if error:
+		frappe.db.rollback()

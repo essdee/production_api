@@ -21,11 +21,10 @@
    "options": "User"
   },
   {
-   "default": "now",
+   "default": "Now",
    "fieldname": "assigned_on",
    "fieldtype": "Datetime",
-   "label": "Assigned On",
-   "reqd": 1
+   "label": "Assigned On"
   },
   {
    "fieldname": "assigned_by",
@@ -54,7 +53,7 @@
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2025-06-13 17:47:24.052249",
+ "modified": "2025-06-16 12:47:15.129272",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Vendor Bill Tracking Assignment Detail",
