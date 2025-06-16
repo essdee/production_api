@@ -1068,29 +1068,23 @@ def update_stock(work_order):
 	doc = frappe.get_doc("Work Order", work_order)
 	received_type = frappe.db.get_single_value("Stock Settings","default_received_type")
 	for data in doc.deliverables:
-		if (data.qty - data.stock_update) > 0 and res.get(data.item_variant):
-			reduce_qty = 0
-			if data.stock_update == 0:
-				reduce_qty = data.qty - data.pending_quantity
-			else:
-				reduce_qty = data.qty - data.pending_quantity - data.stock_update
-			if reduce_qty > 0:	
-				sl_entries.append({
-					"item": data.item_variant,
-					"warehouse": doc.supplier,
-					"lot": doc.lot,
-					"received_type":received_type,
-					"voucher_type": doc.doctype,
-					"voucher_no": work_order,
-					"voucher_detail_no": data.name,
-					"qty": reduce_qty * -1,
-					"uom": data.uom,
-					"rate": data.rate,
-					"is_cancelled": 1 if data.docstatus == 2 else 0,
-					"posting_date": nowdate(),
-					"posting_time": nowtime(),
-				})
-			data.stock_update = data.qty
+		if (data.qty - data.pending_quantity - data.stock_update) > 0 and res.get(data.item_variant):
+			reduce_qty = data.qty - data.pending_quantity - data.stock_update
+			sl_entries.append({
+				"item": data.item_variant,
+				"warehouse": doc.supplier,
+				"lot": doc.lot,
+				"received_type":received_type,
+				"voucher_type": doc.doctype,
+				"voucher_no": work_order,
+				"voucher_detail_no": data.name,
+				"qty": reduce_qty * -1,
+				"uom": data.uom,
+				"rate": data.rate,
+				"is_cancelled": 1 if data.docstatus == 2 else 0,
+				"posting_date": nowdate(),
+				"posting_time": nowtime(),
+			})
 	logger.debug(f"{work_order} data construction completed {datetime.now()}")
 
 	make_sl_entries(sl_entries)
