@@ -10,6 +10,7 @@
   "assigned_on",
   "assigned_by",
   "action",
+  "received",
   "remarks"
  ],
  "fields": [
@@ -45,15 +46,23 @@
    "fieldtype": "Select",
    "in_list_view": 1,
    "label": "Action",
-   "options": "Open\nAssign\nReopen\nClose\nCancel",
+   "options": "Open\nAssign\nReopen\nClose\nCancel\nAmend",
    "reqd": 1
+  },
+  {
+   "allow_on_submit": 1,
+   "default": "0",
+   "fieldname": "received",
+   "fieldtype": "Check",
+   "in_list_view": 1,
+   "label": "Received"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2025-06-16 12:47:15.129272",
+ "modified": "2025-06-17 13:03:59.400114",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Vendor Bill Tracking Assignment Detail",

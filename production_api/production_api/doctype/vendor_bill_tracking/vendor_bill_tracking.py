@@ -12,6 +12,29 @@ class VendorBillTracking(Document):
 		if not self.amended_from:
 			self.set_first_history()
 
+	def before_cancel(self):
+		self.set_cancelled_log()
+
+	def before_insert(self):
+		if self.amended_from:
+			self.set_amended_log()
+
+	def set_amended_log(self):
+		self.append('vendor_bill_tracking_history', {
+			"assigned_by" : frappe.session.user,
+			"assigned_on" : frappe.utils.now_datetime(),
+			"action" : "Amend"
+		})
+		self.set('form_status', 'Amended')
+
+	def set_cancelled_log(self):
+		self.append('vendor_bill_tracking_history', {
+			"assigned_by" : frappe.session.user,
+			"assigned_on" : frappe.utils.now_datetime(),
+			"action" : "Cancel"
+		})
+		self.set('form_status', 'Cancelled')
+
 	def set_first_history(self):
 		if not self.vendor_bill_tracking_history:
 			self.append('vendor_bill_tracking_history', {
@@ -57,7 +80,10 @@ class VendorBillTracking(Document):
 @frappe.whitelist()
 def assign_vendor_bill(name, assigned_to, remarks = None):
 	doc = frappe.get_doc("Vendor Bill Tracking", name)
-	if doc.docstatus != 1 or doc.form_status not in ['Reopen', "Open", "Assigned"]:
+	last = doc.vendor_bill_tracking_history[len(doc.vendor_bill_tracking_history)-1]
+	if last.assigned_to and not last.received:
+		frappe.throw(f"{last.assigned_to} not received the bill {doc.name}")
+	if doc.docstatus != 1 or doc.form_status not in ['Reopen', "Open", "Assigned", "Amended"]:
 		frappe.throw(f"Can't Assign Vendor Bill {doc.name}")
 	doc.assign_bill_to_user(assigned_to, remarks)
 	doc.save(ignore_permissions = True)
@@ -100,6 +126,22 @@ def get_accounting_system_purchase_invoice(doc_name):
 	}
 
 @frappe.whitelist()
+def make_bill_recieved_acknowledgement(doc_name):
+	user = frappe.session.user
+	vbt_doc = frappe.get_doc("Vendor Bill Tracking", doc_name)
+	if not vbt_doc.assigned_to == user:
+		frappe.throw("This Bill is Assigned To You")
+	last_doc = None
+	for idx, i in enumerate(vbt_doc.vendor_bill_tracking_history):
+		if i.get('assigned_to') == user:
+			last_doc = i
+	if not last_doc:
+		frappe.throw("Invalid Operation")
+	last_doc.received = 1
+	vbt_doc.save(ignore_permissions = True)
+	
+
+@frappe.whitelist()
 def bulk_assign_bills(assign_to, selected_docs, remarks = None):
 	if isinstance(selected_docs, string_types):
 		selected_docs = frappe.json.loads(selected_docs)
@@ -109,5 +151,3 @@ def bulk_assign_bills(assign_to, selected_docs, remarks = None):
 			assign_vendor_bill(i['name'], assign_to, remarks)
 		except Exception as e:
 			error = True
-	if error:
-		frappe.db.rollback()

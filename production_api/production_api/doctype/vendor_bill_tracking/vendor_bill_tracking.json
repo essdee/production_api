@@ -14,7 +14,6 @@
   "bill_no",
   "bill_date",
   "invoice_value",
-  "assigned_to",
   "delivery_details_section",
   "received_date",
   "delivery_mob_no",
@@ -25,6 +24,7 @@
   "section_break_fwkq",
   "vendor_bill_tracking_history",
   "cancel_reason",
+  "assigned_to",
   "form_status",
   "amended_from"
  ],
@@ -32,6 +32,8 @@
   {
    "fieldname": "supplier",
    "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
    "label": "Supplier",
    "mandatory_depends_on": "eval: !doc.new_supplier",
    "options": "Supplier"
@@ -52,6 +54,8 @@
   {
    "fieldname": "bill_no",
    "fieldtype": "Data",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
    "label": "Bill No",
    "reqd": 1
   },
@@ -97,6 +101,7 @@
   },
   {
    "allow_on_submit": 1,
+   "depends_on": "eval: doc.docstatus != 0",
    "fieldname": "vendor_bill_tracking_history",
    "fieldtype": "Table",
    "label": "Vendor Bill Tracking History",
@@ -111,7 +116,7 @@
    "in_list_view": 1,
    "in_standard_filter": 1,
    "label": "Form Status",
-   "options": "Open\nAssigned\nClosed\nReopen"
+   "options": "Open\nAssigned\nClosed\nReopen\nCancelled\nAmended"
   },
   {
    "fieldname": "received_via",
@@ -170,7 +175,7 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-06-17 11:04:02.755188",
+ "modified": "2025-06-17 13:09:22.348085",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Vendor Bill Tracking",
