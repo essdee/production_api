@@ -68,16 +68,7 @@ def create_bulk_stock_entry(locations, selected_items, purpose):
 	if locations.get('from_warehouse'):
 		new_doc.from_warehouse = locations['from_warehouse']
 
-	grouped_items = {}
-	for item in selected_items:
-		variant = item['item_variant']
-		doc = frappe.get_cached_doc("Item Variant", variant)
-		primary_attr = frappe.get_cached_value("Item", doc.item, "primary_attribute")
-		attr_details = get_variant_attr_values(doc, primary_attr)
-		key = (item['lot'], item['item'], item['received_type'], attr_details)
-		if key not in grouped_items:
-			grouped_items[key] = []
-		grouped_items[key].append(item)
+	grouped_items = get_grouped_items(selected_items)
 		
 	final_list = []
 	table_index = -1
@@ -103,6 +94,54 @@ def create_bulk_stock_entry(locations, selected_items, purpose):
 	new_doc.flags.allow_from_summary = True		
 	new_doc.save()
 	return new_doc.name
+
+@frappe.whitelist()
+def reduce_stock(selected_items, warehouse):
+	if isinstance(selected_items, string_types):
+		selected_items = frappe.json.loads(selected_items)
+	grouped_items = get_grouped_items(selected_items)
+	final_list = []
+	table_index = -1
+	row_index = -1
+	for (lot, item, received_type, stage), items in grouped_items.items():
+		sorted_items = sorted(items, key=lambda x: x['item_variant'])
+		table_index += 1
+		row_index += 1
+		primary = frappe.get_cached_value("Item", sorted_items[0]['item'], "primary_attribute")
+		for item in sorted_items:
+			if not primary:
+				row_index += 1
+			final_list.append({
+                "item": item['item_variant'],
+                "qty": 0,
+                "lot": lot,
+                "received_type": received_type,
+                "uom": item['stock_uom'],
+				'table_index': table_index,
+				'row_index': row_index,
+				"make_qty_zero": 1,
+				"warehouse": warehouse
+            })
+
+	doc = frappe.new_doc("Stock Reconciliation")
+	doc.purpose = "Stock Reconciliation"
+	doc.default_warehouse = warehouse
+	doc.set("items", final_list)
+	doc.save(ignore_permissions=True)
+	return doc.name
+
+def get_grouped_items(selected_items):
+	grouped_items = {}
+	for item in selected_items:
+		variant = item['item_variant']
+		doc = frappe.get_cached_doc("Item Variant", variant)
+		primary_attr = frappe.get_cached_value("Item", doc.item, "primary_attribute")
+		attr_details = get_variant_attr_values(doc, primary_attr)
+		key = (item['lot'], item['item'], item['received_type'], attr_details)
+		if key not in grouped_items:
+			grouped_items[key] = []
+		grouped_items[key].append(item)
+	return grouped_items	
 
 def get_variant_attr_values(doc, primary_attr):
 	attrs = []

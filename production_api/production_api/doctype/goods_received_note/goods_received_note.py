@@ -284,7 +284,6 @@ class GoodsReceivedNote(Document):
 
 		wo_doc = frappe.get_cached_doc(self.against, self.against_id)
 		diff = wo_doc.total_quantity - total_received_qty
-		percentage = (total_received_qty / wo_doc.total_quantity) * 100
 		calculated_items = {}
 		for item in self.grn_deliverables:
 			item_keys = update_if_string_instance(item.set_combination)
@@ -305,32 +304,8 @@ class GoodsReceivedNote(Document):
 			elif not x:
 				check = False	
 			if item.is_calculated and check:
-				if calculated_items[keys] != 0:
-					if item.qty < calculated_items[keys]:
-						item.stock_update += item.qty
-					else:
-						item.stock_update += calculated_items[keys]
-					if item.stock_update > item.qty:
-						item.stock_update = item.qty
-			elif not item.is_calculated:
-				total_delivered_qty = item.qty  - item.pending_quantity - item.stock_update
-				new_delivered_qty = None
-				if diff < 0:
-					new_delivered_qty = total_delivered_qty
-				else:
-					new_delivered_qty = total_delivered_qty / 100
-					new_delivered_qty = new_delivered_qty * percentage
-				
-				item.stock_update += new_delivered_qty
-				if item.stock_update > item.qty:
-					item.stock_update = item.qty
-				self.append("grn_deliverables",{
-					"item_variant":item.item_variant,
-					"quantity":new_delivered_qty,
-					"uom":item.uom,
-					"valuation_rate":item.valuation_rate,
-					"set_combination": item.set_combination,
-				})
+				item.stock_update += calculated_items[keys]
+
 		if diff < 0:
 			diff = 0
 		wo_doc.total_quantity = diff
@@ -577,33 +552,8 @@ class GoodsReceivedNote(Document):
 			elif not x:
 				check = False
 			if item.is_calculated and check:
-				if item.qty < calculated_items[keys]:
-					item.stock_update = 0
-				else:
-					item.stock_update -= calculated_items[keys]
-			elif check:
-				total_delivered_qty = item.qty - item.stock_update
-				new_delivered_qty = None
-				if diff < 0:
-					new_delivered_qty = total_delivered_qty
-				else:
-					new_delivered_qty = total_delivered_qty / 100
-					new_delivered_qty = new_delivered_qty * percentage
+				item.stock_update -= calculated_items[keys]
 
-				if item.qty < new_delivered_qty:
-					item.stock_update = 0
-				else:
-					item.stock_update -= new_delivered_qty
-
-				if item.stock_update < 0:
-					item.stock_update = 0	
-
-				self.append("grn_deliverables",{
-					"item_variant":item.item_variant,
-					"quantity":new_delivered_qty,
-					"uom":item.uom,
-					"set_combination": item.set_combination
-				})
 		lot = wo_doc.lot
 		wo_doc.save(ignore_permissions = True)	
 		sl_entries = []
@@ -1706,7 +1656,7 @@ def update_calculated_receivables(doc_name, receivables, received_type):
 	grn_doc.total_received_quantity = total_qty	
 	grn_doc.total_receivable_cost = total_cost
 	grn_doc.save()
-	if not grn_doc.is_manual_entry:
+	if not grn_doc.is_manual_entry and not grn_doc.is_rework:
 		wo_doc = frappe.get_cached_doc(grn_doc.against, grn_doc.against_id)
 		wo_deliverables = {}
 		for row in wo_doc.deliverables:
