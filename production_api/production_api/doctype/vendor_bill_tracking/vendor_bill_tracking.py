@@ -7,23 +7,10 @@ import frappe.utils
 from six import string_types
 
 class VendorBillTracking(Document):
-
-	def before_insert(self):
-		if self.new_supplier:
-			self.create_new_supplier()
 	
 	def before_submit(self):
 		if not self.amended_from:
 			self.set_first_history()
-
-	def create_new_supplier(self):
-		# default_sup_grp = frappe.db.get_value("MRP Settings", "MRP Settings", "default_supplier_group")
-		# if not default_sup_grp:
-		# 	frappe.throw("Setup Default Supplier Group")
-		sup = frappe.new_doc("Supplier")
-		sup.supplier_name = self.new_supplier_name
-		sup.save(ignore_permissions = True)
-		self.supplier = sup.name
 
 	def set_first_history(self):
 		if not self.vendor_bill_tracking_history:
@@ -65,6 +52,7 @@ class VendorBillTracking(Document):
 			"action" : 'Assign'
 		})
 		self.set('form_status', 'Assigned')
+		self.set('assigned_to', user)
 
 @frappe.whitelist()
 def assign_vendor_bill(name, assigned_to, remarks = None):
@@ -92,29 +80,6 @@ def cancel_vendor_bill(name, cancel_reason):
 	doc.cancel_reason = cancel_reason
 	doc.flags.ignore_permissions = True
 	doc.cancel()
-
-@frappe.whitelist()
-def get_bills_assigned_to_me():
-    cur_user = frappe.session.user
-
-    names = frappe.db.sql("""
-        SELECT t1.name
-        FROM `tabVendor Bill Tracking` t1
-        JOIN `tabVendor Bill Tracking Assignment Detail` t2
-            ON t1.name = t2.parent
-        WHERE t1.docstatus = 1
-          AND t1.form_status = 'Assigned'
-          AND t2.idx = (
-              SELECT MAX(idx)
-              FROM `tabVendor Bill Tracking Assignment Detail`
-              WHERE parent = t1.name
-          )
-          AND t2.assigned_to = %(cur_user)s
-    """, {
-        "cur_user": cur_user
-    }, as_dict=True)
-
-    return [i["name"] for i in names]
 
 @frappe.whitelist()
 def get_accounting_system_purchase_invoice(doc_name):
