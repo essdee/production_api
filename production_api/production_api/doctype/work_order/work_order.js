@@ -36,6 +36,8 @@ frappe.ui.form.on("Work Order", {
 	},
 	async refresh(frm) {
 		$(".layout-side-section").css("display", "None");
+		frm.set_df_property('work_order_tracking_logs','cannot_add_rows',true)
+		frm.set_df_property('work_order_tracking_logs','cannot_delete_rows',true)
 		if(frm.doc.docstatus == 1 && frm.doc.is_rework){
 			frappe.realtime.on("get_receivables_data", ()=> {
 				let receivables = frm.receivable_items.get_receivables_data();
@@ -104,28 +106,6 @@ frappe.ui.form.on("Work Order", {
 				})
 			}
 			if(frm.doc.open_status == 'Open' && frm.doc.docstatus == 1){
-				frm.add_custom_button('Change Delivery Date',()=>{
-					var d = new frappe.ui.Dialog({
-						title : 'Change Delivery Date',
-						fields : [
-							{fieldname :'date',fieldtype :'Date',label :"Delivery Date","default" :frm.doc.expected_delivery_date,"reqd" :1},
-							{fieldname : 'reason',fieldtype : 'Data',label : 'Reason',reqd : 1}
-						],
-						primary_action_label : "Submit",
-						primary_action(values){
-							frappe.call({
-								method : 'production_api.production_api.doctype.work_order.work_order.add_comment',
-								args : {
-									doc_name : frm.doc.name,
-									date : values.date,
-									reason : values.reason,
-								}
-							})
-							d.hide()
-						}
-					})
-					d.show()
-				})
 				frm.add_custom_button('Close', ()=> {
 					let receivables = frm.doc.receivables
 					let data = []
@@ -210,6 +190,18 @@ frappe.ui.form.on("Work Order", {
 					y.is_rework = frm.doc.is_rework
 					frappe.set_route("Form",y.doctype, y.name);
 				}, __("Create"));
+				if(!frm.doc.is_rework){
+					frm.add_custom_button(__('Make Additional GRN'), function() {
+						let y = frappe.model.get_new_doc('Additional GRN')
+						y.work_order = frm.doc.name
+						y.supplier = frm.doc.supplier
+						y.supplier_address = frm.doc.supplier_address
+						y.posting_date = frappe.datetime.nowdate()
+						y.delivery_date = frappe.datetime.nowdate()
+						y.posting_time = new Date().toTimeString().split(' ')[0]
+						frappe.set_route("Form",y.doctype, y.name);
+					}, __("Create"));
+				}
 			}
 			if(frm.doc.__onload && frm.doc.__onload.deliverable_item_details) {
 				frm.doc['deliverable_item_details'] = JSON.stringify(frm.doc.__onload.deliverable_item_details);

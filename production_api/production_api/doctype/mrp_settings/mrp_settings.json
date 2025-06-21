@@ -27,7 +27,9 @@
   "raw_printing_printers_section",
   "printer_list",
   "work_order_section",
-  "received_type_list"
+  "received_type_list",
+  "time_and_action_tracking_order_report_days",
+  "additional_grn_submit_role"
  ],
  "fields": [
   {
@@ -157,13 +159,25 @@
    "fieldname": "enable_tuple_attribute",
    "fieldtype": "Check",
    "label": "Enable Tuple Attribute"
+  },
+  {
+   "default": "7",
+   "fieldname": "time_and_action_tracking_order_report_days",
+   "fieldtype": "Int",
+   "label": "Time and Action Tracking Order Report Days"
+  },
+  {
+   "fieldname": "additional_grn_submit_role",
+   "fieldtype": "Link",
+   "label": "Additional GRN Submit Role",
+   "options": "Role"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2025-06-03 10:50:22.386819",
+ "modified": "2025-06-20 16:47:13.024065",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "MRP Settings",

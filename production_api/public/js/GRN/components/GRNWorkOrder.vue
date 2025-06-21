@@ -425,6 +425,7 @@ async function edit_delivered_item(index, index1, type) {
 }
 
 function delete_delivered_item(index, index1, type){
+	cur_frm.dirty()
 	is_edited.value = true
 	edit_index.value = index
 	edit_index1.value = index1 
@@ -656,6 +657,9 @@ async function add_item() {
 	let primary = items.value[edit_index.value].items[edit_index1.value]['primary_attribute']
 	if(primary){
 		Object.keys(items.value[edit_index.value].items[edit_index1.value].values).forEach(row => {
+			if(!data[x]){
+				data[x] = 0
+			}
 			items.value[edit_index.value].items[edit_index1.value].values[row]['received'] += data[x]
 			let dict = items.value[edit_index.value].items[edit_index1.value].values[row]['types']
 			if(!dict){
@@ -676,6 +680,9 @@ async function add_item() {
 		})
 	}
 	else{
+		if(!data[x]){
+			data[x] = 0
+		}
 		let dict = items.value[edit_index.value].items[edit_index1.value].values['default']['types']
 		if(!dict){
 			dict = {}
@@ -703,6 +710,9 @@ async function add_item() {
 		if(primary){
 			Object.keys(items.value[edit_index.value].items[edit_index1.value].values).forEach(row => {
 				let dict = items.value[edit_index.value].items[edit_index1.value].values[row]['secondary_qty_json']
+				if(!data1[x]){
+					data1[x] = 0
+				}
 				if(!dict){
 					dict = {}
 				}
@@ -722,6 +732,9 @@ async function add_item() {
 		}
 		else{
 			let dict = items.value[edit_index.value].items[edit_index1.value].values['default']['secondary_qty_json']
+			if(!data1[x]){
+				data1[x] = 0
+			}	
 			if(!dict){
 				dict = {}
 			}
