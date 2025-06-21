@@ -448,8 +448,6 @@ def get_calculated_bom(item_production_detail, items, lot_name, process_name = N
 			qty_of_product = bom_item.qty_of_product
 			qty_of_bom = bom_item.qty_of_bom_item
 			temp_qty = total_quantity
-			# if item_detail.is_set_item:
-			# 	temp_qty = temp_qty / len(part_list)
 			if bom_item.dependent_attribute_value and not bom_item.dependent_attribute_value == lot_doc.pack_in_stage:
 				dependent_attr_uom = lot_item_detail.default_unit_of_measure
 				qty_of_product = get_uom_conversion_factor(lot_item_detail.uom_conversion_details, dependent_attr_uom  ,lot_doc.packing_uom)
@@ -496,7 +494,9 @@ def get_calculated_bom(item_production_detail, items, lot_name, process_name = N
 				
 				if bom_item.dependent_attribute_value and not bom_item.dependent_attribute_value == lot_doc.pack_in_stage:
 					dependent_attr_uom = lot_item_detail.default_unit_of_measure
-					qty_of_product = get_uom_conversion_factor(lot_item_detail.uom_conversion_details, dependent_attr_uom ,lot_doc.packing_uom)
+					qty_of_product = get_uom_conversion_factor(lot_item_detail.uom_conversion_details, dependent_attr_uom  ,lot_doc.packing_uom)
+					if bom_item.dependent_attribute_value == lot_doc.pack_out_stage:
+						qty_of_product = qty_of_product * item_detail.packing_combo
 
 				qty_of_product = qty_of_product/qty_of_bom
 				uom = frappe.get_value("Item", bom_item.item, "default_unit_of_measure")
