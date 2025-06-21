@@ -12,6 +12,7 @@
                     <th>Shade</th>
                     <th>Weight</th>
                     <th>No of Rolls</th>
+                    <th>Actual Dia</th>
                     <th v-if="status != 'Label Printed' && status != 'Cancelled'">Edit</th>
                 </tr>
                 <tr v-for="(item,idx) in items" :key='idx'>
@@ -23,6 +24,7 @@
                     <td>{{item.shade}}</td>
                     <td>{{item.weight}}</td>
                     <td>{{item.no_of_rolls}}</td>
+                    <td>{{item.actual_dia}}</td>
                     <td v-if="status != 'Label Printed' && status != 'Cancelled'">
                         <div class="pull-right cursor-pointer" @click="add_cloth_item(idx)"
                             v-html="frappe.utils.icon('edit', 'md', 'mr-1')"></div>
@@ -48,6 +50,9 @@
                 <div class="cloth-shade col-md-4"></div>
                 <div class="cloth-weight col-md-4"></div>
                 <div class="cloth-rolls col-md-4"></div>
+            </div>
+            <div>
+                <div class="actual-dia col-md-4"></div>
             </div>
         </div>
         <div class="row" style="padding-left: 35px;" v-if="show_button2">
@@ -79,10 +84,19 @@ let cloth_dia = null
 let cloth_shade = null
 let cloth_weight = null
 let cloth_rolls = null
+let actual_dia = null
 let edit_index = null
 let cloth_accessories = []
 let docstatus = ref(null)
 let status = cur_frm.doc.status
+
+function on_change_event(){
+    let cloth_dia_value = cloth_dia.get_value()
+    if(cloth_dia_value){
+        actual_dia.set_value(cloth_dia_value)
+        actual_dia.refresh()
+    }
+}
 
 function add_cloth_item(index){
     show_button1.value = false
@@ -98,10 +112,11 @@ function add_cloth_item(index){
     accessory = get_input_field('.accessory-type', 'Select', "accessory", "Accessory", cloth_accessories,true)
     cloth_type = get_input_field(".cloth-type","Select","cloth_type","Cloth Type",select_attributes['cloth_type'],true)
     cloth_colour = get_input_field(".cloth-colour","Select","cloth_colour","Colour",select_attributes['colour'],true)
-    cloth_dia = get_input_field(".cloth-dia","Select","cloth_dia","Dia",select_attributes['dia'],true)
+    cloth_dia = get_input_field(".cloth-dia","Select","cloth_dia","Dia",select_attributes['dia'],true, change=on_change_event)
     cloth_shade = get_input_field(".cloth-shade","Data","cloth_shade","Shade",null,true)
     cloth_weight = get_input_field(".cloth-weight","Float","cloth_weight","Weight in kg's",null,true)
     cloth_rolls = get_input_field(".cloth-rolls","Int","cloth_rolls","No of Rolls",null,true)
+    actual_dia = get_input_field(".actual-dia","Select","actual_dia","Actual Dia",select_attributes['dia'],true)
     if(index != null){
         let arr1 = [accessory, cloth_type,cloth_colour,cloth_dia,cloth_weight,cloth_shade,cloth_rolls]
         let arr2 = ["accessory","cloth_type","colour","dia","weight","shade","no_of_rolls"]
@@ -127,6 +142,7 @@ function add_item(){
         "shade":cloth_shade.get_value(),
         "weight":cloth_weight.get_value(),
         "no_of_rolls":cloth_rolls.get_value(),
+        "actual_dia":actual_dia.get_value(),
     })
     make_clean()
 }
@@ -160,6 +176,7 @@ function update_item(){
         "shade":cloth_shade.get_value(),
         "weight":cloth_weight.get_value(),
         "no_of_rolls":cloth_rolls.get_value(),
+        "actual_dia":actual_dia.get_value(),
     }
     edit_index = null
     show_button3.value = false
@@ -169,7 +186,7 @@ function update_item(){
 }
 
 function check_values(){
-    let arr = [cloth_type, cloth_dia, cloth_colour, cloth_shade, cloth_weight, cloth_rolls]
+    let arr = [cloth_type, cloth_dia, cloth_colour, cloth_shade, cloth_weight, cloth_rolls, actual_dia]
     for(let i = 0 ; i < arr.length ; i++){
         let val = arr[i].get_value()
         if(val == null || val == ""){
@@ -189,7 +206,10 @@ function get_input_field(classname,fieldtype,fieldname,label,options,reqd, chang
     }
     if(options){
         df['options'] = options
-    }    
+    }  
+    if(change){
+        df['onchange'] = change
+    }  
     return frappe.ui.form.make_control({
         parent: $(el).find(classname),
         df: df,
@@ -199,7 +219,7 @@ function get_input_field(classname,fieldtype,fieldname,label,options,reqd, chang
 }
 function make_clean(){
     let el = root.value
-    let arr1 = [accessory, cloth_type,cloth_dia,cloth_colour,cloth_shade,cloth_weight,cloth_rolls]
+    let arr1 = [accessory, cloth_type, cloth_dia, cloth_colour, cloth_shade, cloth_weight, cloth_rolls, actual_dia]
     for(let i = 0 ; i < arr1.length; i++){
         if(arr1[i]){
             arr1[i].set_value(null)
@@ -212,6 +232,7 @@ function make_clean(){
     $(el).find(".cloth-colour").html("");
     $(el).find(".cloth-rolls").html("");
     $(el).find(".cloth-dia").html("");
+    $(el).find(".actual-dia").html("");
     show_button1.value = true
     show_button2.value = false
     show_button3.value = false
