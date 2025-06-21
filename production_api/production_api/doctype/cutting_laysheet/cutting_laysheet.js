@@ -46,6 +46,8 @@ frappe.ui.form.on("Cutting LaySheet", {
         removeDefaultPrintEvent();
         $('[data-original-title=Print]').hide();
         $("li:has(a:has(span[data-label='Print']))").remove();
+        $(frm.fields_dict['cloths_html'].wrapper).html("")
+        $(frm.fields_dict['accessory_html'].wrapper).html("")
         frm.laysheet = new frappe.production.ui.LaySheetCloths(frm.fields_dict['cloths_html'].wrapper)
         if(frm.doc.__onload && frm.doc.__onload.item_details){
             frm.laysheet.load_data(frm.doc.__onload.item_details)
@@ -365,9 +367,10 @@ function print_labels(frm,printer){
         callback: function(r){
             if(r.message){
                 let config = qz.configs.create(printer)
-                qz.print(config,[r.message]).then(()=> {
+                qz.print(config,[r.message.zpl]).then(()=> {
                     frm.set_value("printed_time",frappe.datetime.now_datetime())
                     frm.set_value("status","Label Printed")
+                    frm.set_value("goods_received_note", r.message.grn)
                     frm.save()
                 }).catch((err)=>{
                     frm.set_value("printed_time",null)

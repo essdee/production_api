@@ -65,7 +65,7 @@
                         <th>No of Rolls</th>
                         <th v-if="!is_manual_entry">No of Bits</th>
                         <th v-if="!is_manual_entry">End Bit Weight</th>
-                        <th v-if="!is_manual_entry">Balance Weight</th>
+                        <th>Balance Weight</th>
                         <th>Fabric Type</th>
                         <th>Actual Dia</th>
                         <th v-if="!is_manual_entry">Comments</th>
@@ -81,7 +81,7 @@
                         <td>{{item.no_of_rolls}}</td>
                         <td v-if="!is_manual_entry">{{item.no_of_bits}}<span v-if="item.effective_bits">({{item.effective_bits}})</span></td>
                         <td v-if="!is_manual_entry">{{item.end_bit_weight}}</td>
-                        <td v-if="!is_manual_entry">{{item.balance_weight}}</td>
+                        <td>{{item.balance_weight}}</td>
                         <td>{{item.fabric_type}}</td>
                         <td>{{item.actual_dia}}</td>
                         <td v-if="!is_manual_entry">{{item.comments}}</td>
@@ -108,7 +108,7 @@
                     <div class="cloth-weight col-md-4"></div>
                     <div class="cloth-rolls col-md-4"></div>
                 </div>
-                <div class="row">
+                <div v-if="!is_manual_entry" class="row">
                     <div class="cloth-bits col-md-4"></div>
                     <div class="cloth-end-bit col-md-4"></div>
                     <div class="cloth-balance col-md-4"></div>
@@ -116,6 +116,7 @@
                 <div class="row">
                     <div class="fabric-type col-md-4"></div>
                     <div class="actual-dia col-md-4"></div>
+                    <div v-if="is_manual_entry" class="cloth-balance col-md-4"></div>
                 </div>
                 <div class="row">
                     <div class="set-detail row pl-5 pb-2" style="display: flex; gap: 10px"></div>
@@ -274,11 +275,11 @@ async function add_cloth_item(index){
     cloth_weight = get_input_field(".cloth-weight", "Float", "cloth_weight", "Weight in kg's", no_options, reqd)
     cloth_rolls = get_input_field(".cloth-rolls", "Int", "cloth_rolls", "No of Rolls", no_options, reqd)
     actual_dia = get_input_field(".actual-dia", "Select", "actual_dia", "Actual Dia", select_attributes.value['dia'], reqd)
+    balance_weight = get_input_field(".cloth-balance", "Float", "balance_weight", "Balance Weight", no_options, reqd)
     if(!cur_frm.doc.is_manual_entry){
         cloth_comment = get_input_field(".cloth-comment", "Small Text", "cloth_comment",'Comment', no_options, not_reqd)
         cloth_bits = get_input_field(".cloth-bits", "Int", "cloth_bits", "No of Bits", no_options, reqd)
         cloth_end_bit = get_input_field(".cloth-end-bit", "Float", "cloth_end_bit", "End Bit Weight", no_options, reqd)
-        balance_weight = get_input_field(".cloth-balance", "Float", "balance_weight", "Balance Weight", no_options, reqd)
         items_json = get_input_field(".items-json", "JSON", "items_json", "Items JSON", no_options, not_reqd)
         items_json.df.hidden = true
         items_json.refresh()
@@ -291,8 +292,8 @@ async function add_cloth_item(index){
         let arr1 = [cloth_type,cloth_colour,cloth_dia,cloth_weight,cloth_shade,cloth_rolls,cloth_bits,cloth_end_bit,cloth_comment,balance_weight, items_json, fabric_type]
         let arr2 = ["cloth_type","colour","dia","weight","shade","no_of_rolls","no_of_bits","end_bit_weight","comments","balance_weight","items_json", "fabric_type"]
         if(cur_frm.doc.is_manual_entry){
-            arr1 = [cloth_type, cloth_colour, cloth_dia, cloth_weight, cloth_shade, cloth_rolls, fabric_type]
-            arr2 = ["cloth_type", "colour", "dia", "weight", "shade", "no_of_rolls", "fabric_type"]
+            arr1 = [cloth_type, cloth_colour, cloth_dia, cloth_weight, cloth_shade, cloth_rolls, fabric_type, balance_weight]
+            arr2 = ["cloth_type", "colour", "dia", "weight", "shade", "no_of_rolls", "fabric_type", "balance_weight"]
         }
         await set_attr_values(arr1,arr2, index)
         if(!cur_frm.doc.is_manual_entry){
@@ -355,7 +356,9 @@ function add_item(){
         "fabric_type": fabric_type.get_value(),
         "no_of_rolls":cloth_rolls.get_value(),
         "actual_dia": actual_dia.get_value(),
-        "set_combination":JSON.stringify(set_json)
+        "set_combination":JSON.stringify(set_json),
+        "balance_weight":balance_weight.get_value(),
+        "used_weight": cloth_weight.get_value() - balance_weight.get_value(),
     }
 
     if(!is_manual_entry){
@@ -364,8 +367,6 @@ function add_item(){
             "no_of_bits":cloth_bits.get_value(),
             "end_bit_weight":cloth_end_bit.get_value(),
             "items_json": JSON.stringify(json_val),
-            "balance_weight":balance_weight.get_value(),
-            "used_weight": cloth_weight.get_value() - balance_weight.get_value()
         }
         Object.assign(d, x) 
     }
@@ -579,7 +580,9 @@ function update_item(){
         "no_of_rolls":cloth_rolls.get_value(),
         "fabric_type": fabric_type.get_value(),
         "actual_dia": actual_dia.get_value(),
-        "set_combination":JSON.stringify(set_json)
+        "set_combination":JSON.stringify(set_json),
+        "balance_weight":balance_weight.get_value(),
+        "used_weight": cloth_weight.get_value() - balance_weight.get_value()
     }
     if(!is_manual_entry){
         let x = {
@@ -587,8 +590,6 @@ function update_item(){
             "no_of_bits":cloth_bits.get_value(),
             "end_bit_weight":cloth_end_bit.get_value(),
             "items_json": JSON.stringify(json_val),
-            "balance_weight":balance_weight.get_value(),
-            "used_weight": cloth_weight.get_value() - balance_weight.get_value()
         }
         Object.assign(d, x) 
     }
@@ -745,7 +746,6 @@ function get_set_colour(item, colour){
     if(item['colour']){
         make_dirty()
         let val = item['colour']
-        console.log(item['colour'])
         frappe.call({
             method:"production_api.production_api.doctype.cutting_laysheet.cutting_laysheet.get_input_fields",
             args: {

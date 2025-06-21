@@ -3,7 +3,7 @@
         <div v-if="show && docstatus == 0 && doctype=='Cutting Marker' ">
             <div ref="select_field_ref" class="select-field col-md-5"></div>
             <div ref="panel_list" class="panel-list pl-3"></div>
-            <button class="btn btn-success" @click="get_combination()">Get Combination</button>
+            <button class="btn btn-success" @click="get_combination(true)">Get Combination</button>
         </div>
 
         <div v-if="items && items.length > 0" class="pt-5">
@@ -222,7 +222,7 @@ function create_attributes(){
     })
 }
 
-function get_combination(){
+function get_combination(user_input=null){
     make_dirty()
     let selected_value = select_field.get_value()
     if(!selected_value || selected_value == "" || selected_value == null){
@@ -232,7 +232,7 @@ function get_combination(){
     let panels = select_attrs.get_value()
     grp_panel = panels
     create_options(panels)
-    if(panels.length == 0){
+    if(panels.length == 0 && user_input){
         frappe.msgprint("Select a panel")
         return
     }

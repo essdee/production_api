@@ -42,9 +42,9 @@ class CuttingLaySheet(Document):
 
 		if self.get('item_details'):
 			if self.is_manual_entry:
-				items = save_manual_item_details(self.item_details, self.cutting_plan, self.calculated_parts, self.name)
+				items = save_manual_item_details(self.item_details, self.name)
 				self.set("cutting_laysheet_manual_items", items)
-			items = save_item_details(self.item_details, self.cutting_plan, self.calculated_parts)
+			items = save_item_details(self.item_details, self.cutting_plan, self.calculated_parts, self.is_manual_entry)
 			self.set("cutting_laysheet_details", items)
 
 		if self.get('item_accessory_details'):
@@ -171,7 +171,7 @@ def get_grouped_items(manual_items, cutting_laysheet):
 	]
 	return grouped_items
 
-def save_item_details(items, cutting_plan, calculated_parts):
+def save_item_details(items, cutting_plan, calculated_parts, is_manual_entry):
 	items = update_if_string_instance(items)
 	items = items['cloth_items']
 	if calculated_parts:
@@ -191,18 +191,19 @@ def save_item_details(items, cutting_plan, calculated_parts):
 				cloth_name = cloth.cloth
 				break
 		variant = get_or_create_variant(cloth_name, attributes)
-		for panel in panels:
-			d = {
-				ipd_doc.stiching_attribute: panel,
-				"Dia": item['dia'],
-				"Cloth": item['cloth_type'],
-			}
-			if add_pack_attr:
-				d[ipd_doc.packing_attribute] = item['colour']
-			
-			key = tuple(sorted(d.items()))
-			if key not in cloth_combination:
-				frappe.throw(f"{panel} is not mentioned with {item['cloth_type']}-{item['dia']}")
+		if not is_manual_entry:
+			for panel in panels:
+				d = {
+					ipd_doc.stiching_attribute: panel,
+					"Dia": item['dia'],
+					"Cloth": item['cloth_type'],
+				}
+				if add_pack_attr:
+					d[ipd_doc.packing_attribute] = item['colour']
+				
+				key = tuple(sorted(d.items()))
+				if key not in cloth_combination:
+					frappe.throw(f"{panel} is not mentioned with {item['cloth_type']}-{item['dia']}")
 		
 		effective_bits = item.get('no_of_bits', 0)
 		if item['fabric_type'] == "Tubler":
@@ -228,7 +229,7 @@ def save_item_details(items, cutting_plan, calculated_parts):
 		})
 	return item_list	
 
-def save_manual_item_details(items, cutting_plan, calculated_parts, cutting_laysheet):
+def save_manual_item_details(items, cutting_laysheet):
 	items = update_if_string_instance(items)
 	items = items['manual_items']
 	primary_values = get_primary_values(cutting_laysheet)
@@ -559,19 +560,15 @@ def get_cut_sheet_data(doc_name,cutting_marker,laysheet_details, manual_item_det
 	doc.status = "Bundles Generated"
 	doc.set("cutting_laysheet_bundles", cut_sheet_data)
 	doc.save()
-	accessory= {}
 	cloth = {}
 	for item in doc.cutting_laysheet_details:
-		key = (item.colour, item.cloth_type, item.dia)
+		key = (item.colour, item.cloth_type, item.actual_dia)
 		cloth.setdefault(key,0)
-		cloth[key] += item.weight - item.balance_weight
+		cloth[key] += item.used_weight
 	
 	accessory_cloth = {}
 	for item in doc.cutting_laysheet_accessory_details:
-		key = (item.accessory, item.colour, item.cloth_type, item.dia)
-		accessory.setdefault(key,0)
-		accessory[key] += item.weight
-		key = (item.colour, item.cloth_type, item.dia)
+		key = (item.colour, item.cloth_type, item.actual_dia)
 		accessory_cloth.setdefault(key,0)
 		accessory_cloth[key] += item.weight
 	
@@ -741,10 +738,14 @@ def print_labels(print_items, lay_no, cutting_plan, doc_name):
 			^XZ"""
 		zpl += x
 	update_cutting_plan(doc_name)
+	grn = None
 	if work_order:
 		update_cloth_stock(cls_doc, -1, 1)
-		create_grn_entry(doc_name)
-	return zpl	
+		grn = create_grn_entry(doc_name)
+	return {
+		"zpl": zpl,
+		"grn": grn,
+	}	
 
 @frappe.whitelist()
 def get_panels(cutting_laysheet):
@@ -910,14 +911,14 @@ def update_cutting_plan(cutting_laysheet, check_cp = False):
 		cp_cloth = []
 		cp_accessory = []
 		for item in cls_doc.cutting_laysheet_details:
-			key = (item.colour, item.cloth_type, item.dia)
+			key = (item.colour, item.cloth_type, item.actual_dia)
 			cloth.setdefault(key,0)
 			cloth[key] += item.weight - item.balance_weight
 		for item in cls_doc.cutting_laysheet_accessory_details:
 			key = (item.accessory, item.colour, item.cloth_type, item.dia)
 			accessory.setdefault(key,0)
 			accessory[key] += item.weight
-			key = (item.colour, item.cloth_type, item.dia)
+			key = (item.colour, item.cloth_type, item.actual_dia)
 			accessory_cloth.setdefault(key,0)
 			accessory_cloth[key] += item.weight
 
@@ -934,11 +935,12 @@ def update_cutting_plan(cutting_laysheet, check_cp = False):
 				colour, cloth_type, dia = key
 				if key not in cp_cloth:
 					frappe.throw(f"No cloth is mentioned with {cloth_type}, {colour}-{dia}")
-			
-			for key in accessory:
-				accessory, colour, cloth_type, dia = key
-				if key not in cp_accessory:
-					frappe.throw(f"Accessory {accessory} is not mentioned with {cloth_type}, {colour}-{dia}")
+
+			if not cls_doc.is_manual_entry:
+				for key in accessory:
+					accessory, colour, cloth_type, dia = key
+					if key not in cp_accessory:
+						frappe.throw(f"Accessory {accessory} is not mentioned with {cloth_type}, {colour}-{dia}")
 
 		if not check_cp:
 			for item in cp_doc.cutting_plan_cloth_details:
@@ -1093,10 +1095,11 @@ def update_cutting_plan(cutting_laysheet, check_cp = False):
 				if key not in cp_cloth:
 					frappe.throw(f"No cloth is mentioned with {cloth_type}, {colour}-{dia}")
 			
-			for key in accessory:
-				colour, cloth_type, dia = key
-				if key not in cp_accessory:
-					frappe.throw(f"No accessory is mentioned with {cloth_type}, {colour}-{dia}")
+			if not cls_doc.is_manual_entry:
+				for key in accessory:
+					colour, cloth_type, dia = key
+					if key not in cp_accessory:
+						frappe.throw(f"No accessory is mentioned with {cloth_type}, {colour}-{dia}")
 
 		if not check_cp:
 			for item in cp_doc.cutting_plan_cloth_details:
@@ -1265,9 +1268,6 @@ def get_table_entries(cls_table, ipd_doc, supplier, lot, doc_name, received_type
 	return sl_entries		
 
 def get_sl_entries(variant, supplier, lot, item, uom, doc_name, received_type, multiplier):
-	weight = item.weight
-	if item.get('used_weight'):
-		weight = item.used_weight
 	return {
 		"item": variant,
 		"warehouse": supplier,
@@ -1276,7 +1276,7 @@ def get_sl_entries(variant, supplier, lot, item, uom, doc_name, received_type, m
 		"voucher_type": "Cutting LaySheet",
 		"voucher_no": doc_name,
 		"voucher_detail_no": item.name,
-		"qty": weight * multiplier,
+		"qty": item.used_weight * multiplier,
 		"uom": uom,
 		"is_cancelled": 0,
 		"posting_date": item.creation,
@@ -1419,11 +1419,7 @@ def create_grn_entry(doc_name):
 	new_doc.set("grn_deliverables", items)
 	new_doc.save()
 	new_doc.submit()
-	frappe.db.sql(
-		"""
-			UPDATE `tabCutting LaySheet` SET goods_received_note = %s WHERE name = %s
-		""", (new_doc.name, doc_name, )
-	)
+	return new_doc.name
 
 @frappe.whitelist()
 def cancel_laysheet(doc_name):
@@ -1441,7 +1437,8 @@ def update_label_print_status(doc_name):
 	doc = frappe.get_doc("Cutting LaySheet", doc_name)
 	wo = frappe.get_value("Cutting Plan", doc.cutting_plan, "work_order")
 	if wo:
-		create_grn_entry(doc_name)
+		grn = create_grn_entry(doc_name)
+		doc.goods_received_note = grn
 	doc.status = "Label Printed"
 	doc.reverted = 0
 	doc.save()
