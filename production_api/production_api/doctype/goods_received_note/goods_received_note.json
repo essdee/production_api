@@ -7,6 +7,7 @@
  "editable_grid": 1,
  "engine": "InnoDB",
  "field_order": [
+  "additional_grn",
   "naming_series",
   "against",
   "delivery_location",
@@ -476,13 +477,19 @@
    "hidden": 1,
    "label": "Cutting Laysheet",
    "options": "Cutting LaySheet"
+  },
+  {
+   "default": "0",
+   "fieldname": "additional_grn",
+   "fieldtype": "Check",
+   "label": "Additional GRN"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-05-31 16:07:40.651302",
+ "modified": "2025-06-20 12:48:36.165106",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Goods Received Note",

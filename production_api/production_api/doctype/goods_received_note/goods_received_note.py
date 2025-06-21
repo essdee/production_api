@@ -43,7 +43,7 @@ class GoodsReceivedNote(Document):
 			ipd = frappe.get_cached_value("Work Order", self.against_id, "production_detail")	
 			item_details = fetch_grn_item_details(items, ipd, self.lot, docstatus=self.docstatus)
 			self.set_onload('item_details', item_details)
-			if self.is_manual_entry:
+			if self.is_manual_entry and not self.additional_grn:
 				items = self.get("grn_deliverables") 
 				item_details = fetch_consumed_item_details(items)
 				self.set_onload("consumed_items", item_details)
@@ -55,6 +55,14 @@ class GoodsReceivedNote(Document):
 			self.dump_items()	
 
 	def before_submit(self):
+		if self.against == "Work Order" and self.additional_grn:
+			role = frappe.db.get_single_value("MRP Settings", "additional_grn_submit_role")
+			if not role:
+				frappe.throw("Set the role for additional GRN submit in MRP Settings", title='GRN')
+			user_roles = frappe.get_roles(frappe.session.user)
+			if role not in user_roles:
+				frappe.throw(f"Only {role} can submit this document.", title='GRN')
+
 		self.letter_head = frappe.db.get_single_value("MRP Settings","dc_grn_letter_head")
 		against_docstatus = frappe.get_value(self.against, self.against_id, 'docstatus')
 		if against_docstatus != 1:
@@ -67,6 +75,8 @@ class GoodsReceivedNote(Document):
 			self.validate_quantity()
 			self.calculate_amount()
 		else:
+			if self.additional_grn:
+				self.set("grn_deliverables", [])
 			items = []
 			for item in self.items:
 				if item.quantity > 0:
@@ -91,7 +101,7 @@ class GoodsReceivedNote(Document):
 				make_sl_entries(reduce_stock_list)
 				make_sl_entries(add_stock_list)
 			else:		
-				if not self.is_manual_entry and not self.flags.from_cls and not self.is_rework:
+				if not self.is_manual_entry and not self.flags.from_cls and not self.is_rework and not self.additionl_grn:
 					self.calculate_grn_deliverables()
 				self.split_items()
 
@@ -356,6 +366,8 @@ class GoodsReceivedNote(Document):
 		make_sl_entries(sl_entries)
 
 	def reduce_uncalculated_stock(self, res):
+		if not self.additional_grn:
+			return
 		from production_api.mrp_stock.stock_ledger import make_sl_entries
 		lot = frappe.get_cached_value(self.against, self.against_id, "lot")
 		stock_settings = frappe.get_single("Stock Settings")
@@ -606,6 +618,8 @@ class GoodsReceivedNote(Document):
 				})
 		lot = wo_doc.lot
 		wo_doc.save(ignore_permissions = True)	
+		if self.additional_grn:
+			return
 		sl_entries = []
 		received_type = frappe.db.get_single_value("Stock Settings", "default_received_type")
 		for item in self.grn_deliverables:
@@ -686,7 +700,7 @@ class GoodsReceivedNote(Document):
 					wo_deliverables = {}
 					for row in doc.deliverables:
 						wo_deliverables[row.item_variant] = row.valuation_rate
-					if not self.is_manual_entry and not self.flags.from_cls and not self.is_rework:
+					if not self.is_manual_entry and not self.flags.from_cls and not self.is_rework and not self.additional_grn:
 						deliverables = calculate_deliverables(self)
 						items = []
 						if deliverables:
@@ -1706,7 +1720,7 @@ def update_calculated_receivables(doc_name, receivables, received_type):
 	grn_doc.total_received_quantity = total_qty	
 	grn_doc.total_receivable_cost = total_cost
 	grn_doc.save()
-	if not grn_doc.is_manual_entry:
+	if not grn_doc.is_manual_entry and not grn_doc.additional_grn:
 		wo_doc = frappe.get_cached_doc(grn_doc.against, grn_doc.against_id)
 		wo_deliverables = {}
 		for row in wo_doc.deliverables:
