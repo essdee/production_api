@@ -38,6 +38,13 @@ class WorkOrder(Document):
 			frappe.throw("There is no receivables on the Work Order")
 
 	def on_submit(self):
+		d = [{
+			"from_date": self.planned_start_date,
+			"to_date": self.expected_delivery_date,
+			"reason": None,
+			"user": frappe.session.user
+		}]
+		self.set("work_order_tracking_logs", d)
 		self.update_deliverables()
 
 	def on_cancel(self):
@@ -1054,9 +1061,13 @@ def get_bom_structure(items, row_index, table_index):
 @frappe.whitelist()
 def add_comment(doc_name, date, reason):
 	doc = frappe.get_doc('Work Order', doc_name)
-	text = f"Delivery date changed from {doc.expected_delivery_date} to {date} <br> Reason: {reason}"
+	doc.append("work_order_tracking_logs", {
+		"from_date": nowdate(),
+		"to_date": date,
+		"reason": reason,
+		"user": frappe.session.user,
+	})
 	doc.expected_delivery_date = date
-	doc.add_comment('Comment',text=text)
 	doc.save()
 	
 @frappe.whitelist()
