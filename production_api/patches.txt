@@ -33,8 +33,9 @@ production_api.patches.v1_0.update_packing_attr_cutting_plan_json
 production_api.patches.v1_0.item_item_group
 production_api.patches.v1_0.update_cls_effective_bits
 production_api.patches.v1_0.fg_stock_entry
-production_api.patches.v1_0.update_grn_in_cls #3
+production_api.patches.v1_0.update_grn_in_cls #4
 production_api.patches.v1_0.update_wo_planned_qty 
 production_api.patches.v1_0.update_item_variant_tuple
 production_api.patches.v1_0.delete_dict_variants_c0425_05
 production_api.patches.v1_0.work_order_stock_update
+production_api.patches.v1_0.update_actual_dia
