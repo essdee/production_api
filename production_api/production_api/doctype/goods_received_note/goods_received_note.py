@@ -101,7 +101,7 @@ class GoodsReceivedNote(Document):
 				make_sl_entries(reduce_stock_list)
 				make_sl_entries(add_stock_list)
 			else:		
-				if not self.is_manual_entry and not self.flags.from_cls and not self.is_rework and not self.additionl_grn:
+				if not self.is_manual_entry and not self.flags.from_cls and not self.is_rework and not self.additional_grn:
 					self.calculate_grn_deliverables()
 				self.split_items()
 
