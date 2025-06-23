@@ -5,12 +5,11 @@ import frappe
 from itertools import groupby
 from operator import itemgetter
 from frappe.model.document import Document
+from production_api.utils import update_if_string_instance, get_tuple_attributes
 from production_api.mrp_stock.doctype.stock_entry.stock_entry import fetch_stock_entry_items
-from production_api.utils import update_if_string_instance, get_tuple_attributes, update_variant
 from production_api.production_api.doctype.item.item import get_or_create_variant, get_attribute_details
 from production_api.production_api.doctype.purchase_order.purchase_order import get_item_attribute_details, get_item_group_index
 from production_api.production_api.doctype.item_dependent_attribute_mapping.item_dependent_attribute_mapping import get_dependent_attribute_details
-from production_api.essdee_production.doctype.item_production_detail.item_production_detail import get_or_create_ipd_variant
 
 class CutPanelMovement(Document):
 	def onload(self):
@@ -496,7 +495,6 @@ def get_grouped_data(doc_name, doctype):
 	panel_qty_dict = {}
 	for item in ipd_doc.stiching_item_details:
 		panel_qty_dict[item.stiching_attribute_value] = item.quantity
-	item_variants = update_if_string_instance(ipd_doc.variants_json)
 	cpm_json = update_if_string_instance(cpm_doc.cut_panel_movement_json)
 	stock_entry_dict = {}
 	group_dict = {}
@@ -538,11 +536,7 @@ def get_grouped_data(doc_name, doctype):
 		grp_key = stock_entry_dict[attrs_tuple]['group_key']
 		set_combination = get_tuple_attributes(attrs['set_combination'])
 		del attrs['set_combination']
-		# tup = tuple(sorted(attrs.items()))
 		variant = get_or_create_variant(cpm_doc.item, attrs)
-		# variant = get_or_create_ipd_variant(item_variants, cpm_doc.item, tup, attrs)
-		# str_tup = str(tup)
-		# item_variants = update_variant(item_variants, variant, cpm_doc.item, str_tup)
 		group_dict[grp_key].append( {"item_variant": variant, "qty": qty, "set_combination": set_combination })
 	
 	table_index = -1

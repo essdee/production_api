@@ -136,6 +136,20 @@ frappe.ui.form.on("Cutting Plan", {
                 frm.update_completed.load_data(frm.doc.completed_items_json, 2)
                 d.show()
             })
+            if(frm.doc.work_order){
+                frappe.call({
+                    method: "production_api.production_api.doctype.work_order.work_order.fetch_summary_details",
+                    args : {
+                        doc_name: frm.doc.work_order,
+                        production_detail: frm.doc.production_detail,
+                    },
+                    callback: function(r){
+                        $(frm.fields_dict['planned_details_html'].wrapper).html("")
+                        frm.summary = new frappe.production.ui.WOSummary(frm.fields_dict["planned_details_html"].wrapper);
+                        frm.summary.load_data(r.message.item_detail, r.message.deliverables)
+                    }
+                })
+            }
         }
 	},
     validate(frm){

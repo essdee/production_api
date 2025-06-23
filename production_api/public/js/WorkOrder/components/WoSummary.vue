@@ -34,7 +34,7 @@
                                     <div v-else>--</div>
                                 </td>
                             </tr>
-                            <tr v-if="!is_manual">
+                            <tr v-if="!is_manual && doctype == 'Work Order'">
                                 <td>Delivered</td>
                                 <td v-for="attr in Object.keys(j.values)" :key="attr">
                                     <div v-if="j.values[attr]['delivered'] > 0">{{ j.values[attr]['delivered'] }}</div>
@@ -42,7 +42,8 @@
                                 </td>
                             </tr>
                             <tr>
-                                <td>Received</td>
+                                <td v-if="doctype=='Work Order'">Received</td>
+                                <td v-else>Completed</td>
                                 <td v-for="attr in Object.keys(j.values)" :key="attr">
                                     <div v-if="j.values[attr]['received'] > 0">{{ j.values[attr]['received'] }}</div>
                                     <div v-else>--</div>
@@ -53,7 +54,7 @@
                 </table>
             </tr>
         </table>
-
+        <div v-if="doctype == 'Work Order'">
         <h3>Additional Deliverables</h3>
         <table class="table table-sm table-bordered">
 			<tr v-for="(i, item_index) in deliverables_item" :key="item_index">
@@ -111,16 +112,27 @@
 				</td>
 			</tr>
 		</table>
+        </div>    
     </div>
 </template>
 
 <script setup>
-import { ref } from 'vue';
+import { ref, onMounted } from 'vue';
 
-let is_manual = cur_frm.doc.is_manual_entry;
+let is_manual = ref(true);
 let items = ref([]);
 let show_title = ref(false);
 let deliverables_item = ref([])
+let doctype = cur_frm.doc.doctype
+
+onMounted(()=> {
+    if(cur_frm.doc.doctype == "Work Order"){
+        is_manual.value = cur_frm.doc.is_manual_entry;
+    }
+    else{
+        is_manual.value = true;
+    }
+})
 
 function load_data(item, delivered_items) {
     items.value = item;
