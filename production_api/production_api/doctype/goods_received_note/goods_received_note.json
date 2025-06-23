@@ -357,20 +357,20 @@
   {
    "fieldname": "lot",
    "fieldtype": "Link",
-   "hidden": 1,
    "in_list_view": 1,
    "in_standard_filter": 1,
    "label": "Lot",
-   "options": "Lot"
+   "options": "Lot",
+   "read_only": 1
   },
   {
    "fieldname": "process_name",
    "fieldtype": "Link",
-   "hidden": 1,
    "in_list_view": 1,
    "in_standard_filter": 1,
    "label": "Process Name",
-   "options": "Process"
+   "options": "Process",
+   "read_only": 1
   },
   {
    "fieldname": "items_json",
@@ -489,7 +489,7 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-06-20 12:48:36.165106",
+ "modified": "2025-06-23 13:00:16.097684",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Goods Received Note",

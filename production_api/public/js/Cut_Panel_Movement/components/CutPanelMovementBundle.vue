@@ -24,7 +24,7 @@
                                 <div>
                                     <strong>{{ panel }}</strong>
                                 </div>
-                                <div style="padding: 2px 0 0 5px;">
+                                <div v-if="docstatus == 0" style="padding: 2px 0 0 5px;">
                                     <input type='checkbox' @change="update_panel_column(colour, panel, $event)">
                                 </div>
                             </div>
@@ -106,7 +106,7 @@
                                 <div>
                                     <strong>{{ panel }}</strong>
                                 </div>
-                                <div style="padding: 2px 0 0 5px;">
+                                <div  v-if="docstatus == 0" style="padding: 2px 0 0 5px;">
                                     <input type='checkbox' @change='update_panel_column(colour, panel, $event)'>
                                 </div>
                             </div>

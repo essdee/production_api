@@ -452,7 +452,6 @@ function make_rework(frm, supplier, supplier_address, rework_type, supplier_type
 							args: {
 								doc_name: frm.doc.name,
 								items: items,
-								ipd: frm.doc.production_detail,
 								supplier:supplier,
 								supplier_address: supplier_address,
 								rework_type:rework_type,
