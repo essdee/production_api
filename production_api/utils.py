@@ -86,21 +86,6 @@ def update_if_string_instance(obj):
 
 	return obj
 
-def update_variant(item_variants, variant_name, item_name, str_tup):
-	if item_variants and item_variants.get(item_name):
-		if not item_variants[item_name].get(str_tup):
-			item_variants[item_name][str_tup] = variant_name	
-	else:	
-		if not item_variants:
-			item_variants = {}
-			item_variants[item_name] = {}
-			item_variants[item_name][str_tup] = variant_name
-		else:
-			item_variants[item_name] = {}
-			item_variants[item_name][str_tup] = variant_name
-
-	return item_variants	
-
 @frappe.whitelist()
 def get_item_from_variant(variant):
 	return frappe.get_cached_value("Item Variant", variant, "item")	

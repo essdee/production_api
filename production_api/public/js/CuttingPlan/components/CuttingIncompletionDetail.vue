@@ -1,7 +1,7 @@
 <template>
     <div ref="root">
         <div v-if="items">
-            <h4>Incompleted Cut Quantity</h4>        
+            <h4>Excess Cut Quantity</h4>        
         </div>
         <table class="table table-sm table-bordered">
             <tr v-for="(i, item_index) in items" :key="item_index">

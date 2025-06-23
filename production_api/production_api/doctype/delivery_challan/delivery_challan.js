@@ -141,7 +141,6 @@ frappe.ui.form.on("Delivery Challan", {
 									args: {
 										doc_name: frm.doc.name,
 										items: returned_items,
-										ipd: frm.doc.production_detail,
 									},
 									callback: function(r){
 										frappe.set_route("Form", "Goods Received Note", r.message)
