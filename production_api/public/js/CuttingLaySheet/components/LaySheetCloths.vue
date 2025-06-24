@@ -65,8 +65,9 @@
                         <th>No of Rolls</th>
                         <th v-if="!is_manual_entry">No of Bits</th>
                         <th v-if="!is_manual_entry">End Bit Weight</th>
-                        <th v-if="!is_manual_entry">Balance Weight</th>
+                        <th>Balance Weight</th>
                         <th>Fabric Type</th>
+                        <th>Actual Dia</th>
                         <th v-if="!is_manual_entry">Comments</th>
                         <th v-if="status != 'Label Printed' && status != 'Cancelled'">Edit</th>
                     </tr>
@@ -80,8 +81,9 @@
                         <td>{{item.no_of_rolls}}</td>
                         <td v-if="!is_manual_entry">{{item.no_of_bits}}<span v-if="item.effective_bits">({{item.effective_bits}})</span></td>
                         <td v-if="!is_manual_entry">{{item.end_bit_weight}}</td>
-                        <td v-if="!is_manual_entry">{{item.balance_weight}}</td>
+                        <td>{{item.balance_weight}}</td>
                         <td>{{item.fabric_type}}</td>
+                        <td>{{item.actual_dia}}</td>
                         <td v-if="!is_manual_entry">{{item.comments}}</td>
                         <td v-if="status != 'Label Printed' && status != 'Cancelled'">
                             <div class="pull-right cursor-pointer" @click="add_cloth_item(idx)"
@@ -106,13 +108,15 @@
                     <div class="cloth-weight col-md-4"></div>
                     <div class="cloth-rolls col-md-4"></div>
                 </div>
-                <div class="row">
+                <div v-if="!is_manual_entry" class="row">
                     <div class="cloth-bits col-md-4"></div>
                     <div class="cloth-end-bit col-md-4"></div>
                     <div class="cloth-balance col-md-4"></div>
                 </div>
                 <div class="row">
                     <div class="fabric-type col-md-4"></div>
+                    <div class="actual-dia col-md-4"></div>
+                    <div v-if="is_manual_entry" class="cloth-balance col-md-4"></div>
                 </div>
                 <div class="row">
                     <div class="set-detail row pl-5 pb-2" style="display: flex; gap: 10px"></div>
@@ -168,6 +172,7 @@ let cloth_comment = null
 let fabric_type = null
 let edit_index = ref(null)
 let balance_weight = null
+let actual_dia = null
 let items_json =  null
 let docstatus = ref(null)
 let status = cur_frm.doc.status
@@ -185,6 +190,14 @@ function delete_group_item(item){
     let idx = item['manual_index']
     delete manual_items.value[idx]
     make_dirty()
+}
+
+function update_actual_dia(){
+    if(cloth_dia){
+        let dia = cloth_dia.get_value()
+        actual_dia.set_value(dia)
+        actual_dia.refresh()
+    }
 }
 
 function onchange_event(){
@@ -257,15 +270,16 @@ async function add_cloth_item(index){
     let not_reqd = false
     cloth_type = get_input_field(".cloth-type", "Select", "cloth_type","Cloth Type", select_attributes.value['cloth_type'], reqd)
     cloth_colour = get_input_field(".cloth-colour", "Select", "cloth_colour", "Colour", select_attributes.value['colour'], reqd, change=onchange_event)
-    cloth_dia = get_input_field(".cloth-dia", "Select", "cloth_dia", "Dia", select_attributes.value['dia'], reqd)
+    cloth_dia = get_input_field(".cloth-dia", "Select", "cloth_dia", "Dia", select_attributes.value['dia'], reqd, change=update_actual_dia)
     cloth_shade = get_input_field(".cloth-shade", "Data", "cloth_shade", "Shade", no_options, reqd)
     cloth_weight = get_input_field(".cloth-weight", "Float", "cloth_weight", "Weight in kg's", no_options, reqd)
     cloth_rolls = get_input_field(".cloth-rolls", "Int", "cloth_rolls", "No of Rolls", no_options, reqd)
+    actual_dia = get_input_field(".actual-dia", "Select", "actual_dia", "Actual Dia", select_attributes.value['dia'], reqd)
+    balance_weight = get_input_field(".cloth-balance", "Float", "balance_weight", "Balance Weight", no_options, reqd)
     if(!cur_frm.doc.is_manual_entry){
         cloth_comment = get_input_field(".cloth-comment", "Small Text", "cloth_comment",'Comment', no_options, not_reqd)
         cloth_bits = get_input_field(".cloth-bits", "Int", "cloth_bits", "No of Bits", no_options, reqd)
         cloth_end_bit = get_input_field(".cloth-end-bit", "Float", "cloth_end_bit", "End Bit Weight", no_options, reqd)
-        balance_weight = get_input_field(".cloth-balance", "Float", "balance_weight", "Balance Weight", no_options, reqd)
         items_json = get_input_field(".items-json", "JSON", "items_json", "Items JSON", no_options, not_reqd)
         items_json.df.hidden = true
         items_json.refresh()
@@ -278,8 +292,8 @@ async function add_cloth_item(index){
         let arr1 = [cloth_type,cloth_colour,cloth_dia,cloth_weight,cloth_shade,cloth_rolls,cloth_bits,cloth_end_bit,cloth_comment,balance_weight, items_json, fabric_type]
         let arr2 = ["cloth_type","colour","dia","weight","shade","no_of_rolls","no_of_bits","end_bit_weight","comments","balance_weight","items_json", "fabric_type"]
         if(cur_frm.doc.is_manual_entry){
-            arr1 = [cloth_type, cloth_colour, cloth_dia, cloth_weight, cloth_shade, cloth_rolls, fabric_type]
-            arr2 = ["cloth_type", "colour", "dia", "weight", "shade", "no_of_rolls", "fabric_type"]
+            arr1 = [cloth_type, cloth_colour, cloth_dia, cloth_weight, cloth_shade, cloth_rolls, fabric_type, balance_weight]
+            arr2 = ["cloth_type", "colour", "dia", "weight", "shade", "no_of_rolls", "fabric_type", "balance_weight"]
         }
         await set_attr_values(arr1,arr2, index)
         if(!cur_frm.doc.is_manual_entry){
@@ -341,7 +355,10 @@ function add_item(){
         "weight":cloth_weight.get_value(),
         "fabric_type": fabric_type.get_value(),
         "no_of_rolls":cloth_rolls.get_value(),
-        "set_combination":JSON.stringify(set_json)
+        "actual_dia": actual_dia.get_value(),
+        "set_combination":JSON.stringify(set_json),
+        "balance_weight":balance_weight.get_value(),
+        "used_weight": cloth_weight.get_value() - balance_weight.get_value(),
     }
 
     if(!is_manual_entry){
@@ -350,8 +367,6 @@ function add_item(){
             "no_of_bits":cloth_bits.get_value(),
             "end_bit_weight":cloth_end_bit.get_value(),
             "items_json": JSON.stringify(json_val),
-            "balance_weight":balance_weight.get_value(),
-            "used_weight": cloth_weight.get_value() - balance_weight.get_value()
         }
         Object.assign(d, x) 
     }
@@ -564,7 +579,10 @@ function update_item(){
         "weight":cloth_weight.get_value(),
         "no_of_rolls":cloth_rolls.get_value(),
         "fabric_type": fabric_type.get_value(),
-        "set_combination":JSON.stringify(set_json)
+        "actual_dia": actual_dia.get_value(),
+        "set_combination":JSON.stringify(set_json),
+        "balance_weight":balance_weight.get_value(),
+        "used_weight": cloth_weight.get_value() - balance_weight.get_value()
     }
     if(!is_manual_entry){
         let x = {
@@ -572,8 +590,6 @@ function update_item(){
             "no_of_bits":cloth_bits.get_value(),
             "end_bit_weight":cloth_end_bit.get_value(),
             "items_json": JSON.stringify(json_val),
-            "balance_weight":balance_weight.get_value(),
-            "used_weight": cloth_weight.get_value() - balance_weight.get_value()
         }
         Object.assign(d, x) 
     }
@@ -586,9 +602,9 @@ function update_item(){
 }
 
 function check_values(){
-    let arr = [cloth_type, cloth_dia, cloth_colour, cloth_shade, cloth_weight, cloth_rolls, cloth_bits, fabric_type]
+    let arr = [cloth_type, cloth_dia, cloth_colour, cloth_shade, cloth_weight, cloth_rolls, cloth_bits, fabric_type, actual_dia]
     if(is_manual_entry){
-        arr = [cloth_type, cloth_dia, cloth_colour, cloth_shade, cloth_weight, cloth_rolls, fabric_type]
+        arr = [cloth_type, cloth_dia, cloth_colour, cloth_shade, cloth_weight, cloth_rolls, fabric_type, actual_dia]
     }
     for(let i = 0 ; i < arr.length ; i++){
         let val = arr[i].get_value()
@@ -638,7 +654,7 @@ function get_input_field(classname,fieldtype,fieldname,label,options,reqd, chang
 }
 function make_clean(){
     let el = root.value
-    let arr1 = [cloth_type,cloth_dia,cloth_colour,cloth_shade,cloth_weight,cloth_rolls,cloth_bits,cloth_end_bit,cloth_comment,balance_weight, fabric_type]
+    let arr1 = [cloth_type,cloth_dia,cloth_colour,cloth_shade,cloth_weight,cloth_rolls,cloth_bits,cloth_end_bit,cloth_comment,balance_weight, fabric_type, actual_dia]
     for(let i = 0 ; i < arr1.length; i++){
         if(arr1[i]){
             arr1[i].set_value(null)
@@ -660,6 +676,7 @@ function make_clean(){
     $(el).find(".items-json").html("");
     $(el).find(".set-detail").html("");
     $(el).find(".fabric-type").html("")
+    $(el).find(".actual-dia").html("")
     show_button1.value = true
     show_button2.value = false
     show_button3.value = false
@@ -729,7 +746,6 @@ function get_set_colour(item, colour){
     if(item['colour']){
         make_dirty()
         let val = item['colour']
-        console.log(item['colour'])
         frappe.call({
             method:"production_api.production_api.doctype.cutting_laysheet.cutting_laysheet.get_input_fields",
             args: {

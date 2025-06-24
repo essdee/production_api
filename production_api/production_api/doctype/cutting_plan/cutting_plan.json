@@ -32,7 +32,9 @@
   "completed_items_json",
   "completed_items_html",
   "incomplete_items_json",
-  "incompleted_items_html"
+  "incompleted_items_html",
+  "planned_detail_tab",
+  "planned_details_html"
  ],
  "fields": [
   {
@@ -201,6 +203,16 @@
    "fieldtype": "Check",
    "label": "Is Manual Entry",
    "set_only_once": 1
+  },
+  {
+   "fieldname": "planned_detail_tab",
+   "fieldtype": "Tab Break",
+   "label": "Planned Detail"
+  },
+  {
+   "fieldname": "planned_details_html",
+   "fieldtype": "HTML",
+   "label": "Planned Details HTML"
   }
  ],
  "grid_page_length": 50,
@@ -215,7 +227,7 @@
    "link_fieldname": "cutting_plan"
   }
  ],
- "modified": "2025-06-13 09:42:11.699764",
+ "modified": "2025-06-23 14:41:44.082549",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Cutting Plan",

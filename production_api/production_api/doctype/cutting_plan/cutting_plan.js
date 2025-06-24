@@ -15,7 +15,11 @@ frappe.ui.form.on("Cutting Plan", {
 	refresh(frm) {
         frappe.require("https://cdn.jsdelivr.net/npm/html2canvas-pro@1.5.8/dist/html2canvas-pro.min.js");
         frm.cut_plan_items = new frappe.production.ui.CutPlanItems(frm.fields_dict['items_html'].wrapper)
-        if(!frm.is_new()){
+        if(frm.is_new()){
+            ["items_html", "completed_items_html", "incompleted_items_html", "accessory_html", "cloths_html"]
+            .forEach(field => $(frm.fields_dict[field].wrapper).html(""));
+        }
+        else{
             if(frm.doc.__onload && frm.doc.__onload.item_details){
                 frm.cut_plan_items.load_data(frm.doc.__onload.item_details,0)
             }
@@ -44,9 +48,6 @@ frappe.ui.form.on("Cutting Plan", {
             else{
                 frm.cut_plan_accessory_items.load_data([],null)
             }
-        }
-
-        if(!frm.is_new()){
             frm.add_custom_button("Generate",function(){
                 if (frm.is_dirty()) {
                     return;
@@ -135,6 +136,20 @@ frappe.ui.form.on("Cutting Plan", {
                 frm.update_completed.load_data(frm.doc.completed_items_json, 2)
                 d.show()
             })
+            if(frm.doc.work_order){
+                frappe.call({
+                    method: "production_api.production_api.doctype.work_order.work_order.fetch_summary_details",
+                    args : {
+                        doc_name: frm.doc.work_order,
+                        production_detail: frm.doc.production_detail,
+                    },
+                    callback: function(r){
+                        $(frm.fields_dict['planned_details_html'].wrapper).html("")
+                        frm.summary = new frappe.production.ui.WOSummary(frm.fields_dict["planned_details_html"].wrapper);
+                        frm.summary.load_data(r.message.item_detail, r.message.deliverables)
+                    }
+                })
+            }
         }
 	},
     validate(frm){

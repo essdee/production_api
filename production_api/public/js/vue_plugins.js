@@ -40,6 +40,7 @@ import LaySheetAccessory from "./CuttingLaySheet/components/LaySheetAccessory.vu
 import DeliveryChallan from "./Delivery_Challan/components/deliverable_items.vue"
 import CuttingMarker from "./Cutting_Marker/components/cutting_marker.vue"
 import TimeAndActionWeeklyReport from "./Lot/components/TimeAndActionWeeklyReport.vue"
+import TimeAndActionOrderTracking from "./Lot/components/TimeAndActionTracking.vue"
 import CutPanelMovementBundle from "./Cut_Panel_Movement/components/CutPanelMovementBundle.vue"
 import StockSummary from "./components/StockSummary.vue"
 import ReturnItemsPopUp from "./Delivery_Challan/components/ReturnItemsPopUp.vue"
@@ -355,6 +356,18 @@ frappe.production.ui.TimeAndActionWeeklyReport = class {
     }
     make_app(){
         this.app = createApp(TimeAndActionWeeklyReport)
+        SetVueGlobals(this.app)
+        this.vue = this.app.mount(this.$wrapper.get(0))
+    }
+}
+
+frappe.production.ui.TimeAndActionOrderTracking = class {
+    constructor(wrapper){
+        this.$wrapper = $(wrapper);
+        this.make_app()
+    }
+    make_app(){
+        this.app = createApp(TimeAndActionOrderTracking)
         SetVueGlobals(this.app)
         this.vue = this.app.mount(this.$wrapper.get(0))
     }

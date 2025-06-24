@@ -1,7 +1,7 @@
 import frappe, json
 from six import string_types
-from frappe.utils import flt
 from frappe.query_builder.builder import Order as OrderBy
+from frappe.utils import getdate, add_days, flt
 
 def get_bin(item_code, warehouse, lot):
 	bin = frappe.db.get_value("Bin", {"item_code": item_code, "warehouse": warehouse, "lot": lot})
@@ -86,21 +86,6 @@ def update_if_string_instance(obj):
 
 	return obj
 
-def update_variant(item_variants, variant_name, item_name, str_tup):
-	if item_variants and item_variants.get(item_name):
-		if not item_variants[item_name].get(str_tup):
-			item_variants[item_name][str_tup] = variant_name	
-	else:	
-		if not item_variants:
-			item_variants = {}
-			item_variants[item_name] = {}
-			item_variants[item_name][str_tup] = variant_name
-		else:
-			item_variants[item_name] = {}
-			item_variants[item_name][str_tup] = variant_name
-
-	return item_variants	
-
 @frappe.whitelist()
 def get_item_from_variant(variant):
 	return frappe.get_cached_value("Item Variant", variant, "item")	
@@ -110,3 +95,157 @@ def get_tuple_attributes(tuple_data):
 	for data in tuple_data:
 		attrs[data[0]] = data[1]
 	return attrs	
+
+@frappe.whitelist()
+def get_t_and_a_report_data(lot, item, process_name):
+	filters = {
+		"docstatus": 1,
+		"open_status": "Open",
+	}
+	if lot:
+		filters['lot'] = lot
+	if item:
+		filters['item'] = item
+	if process_name:
+		filters['process_name'] = process_name
+
+	wo_names = frappe.get_all("Work Order", filters=filters, pluck="name")
+	min_date = None
+	max_date = None
+	report_data = [] 
+	for wo in wo_names:
+		doc = frappe.db.sql(
+			f""" 
+				SELECT item, lot, process_name, planned_quantity, planned_end_date, expected_delivery_date FROM `tabWork Order` 
+				WHERE name = '{wo}' 
+			""", as_dict=True
+		)
+		delay = getdate(doc[0]['planned_end_date'], parse_day_first=True) - getdate(doc[0]['expected_delivery_date'], parse_day_first=True)
+		d = {
+			'item': doc[0]['item'],
+			'lot': doc[0]['lot'],
+			'process_name': doc[0]['process_name'],
+			'qty': doc[0]['planned_quantity'],
+			'reason': None,
+			'planned_end_date': getdate(doc[0]['planned_end_date'], parse_day_first=True),
+			"delay": delay.days
+		}
+		row_max_date = None
+		rows = frappe.db.sql(
+			f""" SELECT from_date, to_date, reason FROM `tabWork Order Tracking Log` WHERE parent = '{wo}' """, as_dict=True
+		)
+		for row in rows:
+			from_date = getdate(row['from_date'])
+			if not min_date or not max_date:
+				min_date = from_date
+				max_date = from_date
+			else:
+				if from_date > max_date:
+					max_date = from_date
+				if from_date < min_date:
+					min_date = from_date
+
+			to_date = getdate(row['to_date'])
+			if not row_max_date:
+				row_max_date = to_date
+			else:
+				if to_date > row_max_date:
+					row_max_date = to_date
+
+			from_date = from_date.strftime("%d-%m-%Y")
+			to_date = to_date.strftime("%d-%m-%Y")
+			d[from_date] = to_date 
+			d['reason'] = row['reason']	
+		report_data.append(d)
+	data = {}
+	for row in report_data:
+		d = {"lot": row['lot'], "item": row['item'], "process_name": row['process_name']}
+		key =  tuple(sorted(d.items()))
+		if key not in data:
+			data[key] = row.copy()
+			row_keys = ["lot", "item", "process_name", "qty", "reason", "delay", "planned_end_date"]	
+			for k in row_keys:
+				del row[k]
+			for ky in row:	
+				data[key]['min_reason_date'] = getdate(row[ky], parse_day_first=True)
+		else:
+			end_date = getdate(row['planned_end_date'], parse_day_first=True)
+			if data[key]['planned_end_date'] < end_date:
+				data[key]['planned_end_date'] = end_date
+			data[key]['qty'] += row['qty']
+			row_keys = ["lot", "item", "process_name", "qty", "reason", "delay", "planned_end_date"]	
+			reason = row['reason']
+			if data[key]['delay'] < row['delay']:
+				data[key]['delay'] = row['delay']
+			for k in row_keys:
+				del row[k]
+			for d in row:
+				if d == "min_reason_date":
+					continue
+				if data[key].get(d):
+					date1 = getdate(data[key][d], parse_day_first=True)
+					date2 = getdate(row[d], parse_day_first=True)
+					x = date1 if date1 >= date2 else date2
+					if x > data[key].get('min_reason_date'):
+						data[key]['min_reason_date'] = x
+						data[key]['reason'] = reason
+					x = x.strftime("%d-%m-%Y")
+					data[key][d] = x
+				else:
+					y = getdate(row[d], parse_day_first=True)
+					if y > data[key].get('min_reason_date'):
+						data[key]['min_reason_date'] = y
+						data[key]['reason'] = reason
+					data[key][d] = row[d]	
+	date_keys = []
+	if min_date and max_date:
+		if not lot and not item and not process_name:
+			max_date = getdate(frappe.utils.nowdate(), parse_day_first=True)
+			days = frappe.db.get_single_value("MRP Settings", "time_and_action_tracking_order_report_days")
+			if days == 0 or not days:
+				days = 6
+			else:
+				days = days - 1	
+			days = days * -1	
+			min_date = add_days(max_date, days)
+		while min_date < max_date:
+			x = min_date.strftime("%d-%m-%Y")
+			date_keys.append(x)
+			min_date = add_days(min_date, 1)
+		date_keys.append(max_date.strftime("%d-%m-%Y"))	
+
+	keys = ["item", "lot", "process_name", "qty"] + date_keys + ["reason", "delay", "planned_end_date"]
+	x = []
+	for d in data:
+		end_data = data[d]['planned_end_date'].strftime("%d-%m-%Y")
+		data[d]['planned_end_date'] = end_data
+		x.append(data[d])
+	d = {"row_keys": keys, "dates": date_keys, "datas": x}
+
+	return d
+
+@frappe.whitelist()
+def get_work_order_details(detail):
+	detail = update_if_string_instance(detail)
+	filters = {
+		"lot": detail['lot'], 
+		"item": detail['item'], 
+		"process_name": detail['process_name'],
+		"docstatus": 1,
+		"open_status": "Open"
+	}
+	work_orders = frappe.get_all("Work Order", filters=filters, fields=["name", "wo_colours"])
+	return work_orders
+
+@frappe.whitelist()
+def update_expected_date(work_order, expected_date, reason):
+	from production_api.production_api.doctype.work_order.work_order import add_comment
+	expected_date = getdate(expected_date)
+	add_comment(work_order, expected_date, reason)
+
+@frappe.whitelist()
+def update_all_work_orders(work_order_details, expected_date, reason):
+	work_order_details = update_if_string_instance(work_order_details)
+	expected_date = getdate(expected_date)
+	for detail in work_order_details:
+		update_expected_date(detail['name'], expected_date, reason)
