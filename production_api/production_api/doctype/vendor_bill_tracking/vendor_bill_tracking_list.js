@@ -8,7 +8,7 @@ frappe.listview_settings["Vendor Bill Tracking"] = {
             label: "Assign To",
             fieldname: "assign_to",
             fieldtype: "Link",
-            options: "User",
+            options: "Department",
             reqd: 1,
           },
           {
@@ -42,12 +42,18 @@ frappe.listview_settings["Vendor Bill Tracking"] = {
   refresh: (frm) => {
     frm.page.add_inner_button(__("Show Assigned To Me"), async () => {
       await frm.filter_area.clear();
-      await frm.filter_area.set([
-        ["Vendor Bill Tracking", "assigned_to", "=", frappe.user.name],
-        ["Vendor Bill Tracking", "docstatus", "=", 1],
-        ["Vendor Bill Tracking", "form_status", "!=", "Closed"]
-      ]);
-      frm.refresh();
+      frappe.call({
+        method:
+          "production_api.production_api.doctype.department.department.get_user_departments",
+        callback: async (r) => {
+          await frm.filter_area.set([
+            ["Vendor Bill Tracking", "assigned_to", "in", r.message],
+            ["Vendor Bill Tracking", "docstatus", "=", 1],
+            ["Vendor Bill Tracking", "form_status", "!=", "Closed"],
+          ]);
+          frm.refresh();
+        },
+      });
     });
   },
 };
