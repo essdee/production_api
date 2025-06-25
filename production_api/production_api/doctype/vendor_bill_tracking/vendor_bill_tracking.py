@@ -67,7 +67,7 @@ class VendorBillTracking(Document):
 		self.set('form_status', 'Reopen')
 		self.set('purchase_invoice', None)
 	
-	def assign_bill_to_user(self, user, remarks = None):
+	def assign_bill_to_department(self, user, remarks = None):
 		self.append("vendor_bill_tracking_history", {
 			"assigned_to" : user,
 			'assigned_on' : frappe.utils.now_datetime(),
@@ -80,10 +80,12 @@ class VendorBillTracking(Document):
 
 @frappe.whitelist()
 def assign_vendor_bill(name, assigned_to, remarks = None):
+	from production_api.production_api.doctype.supplier.supplier import update_supplier_department_on_vbt
 	doc = frappe.get_doc("Vendor Bill Tracking", name)
 	if doc.docstatus != 1 or doc.form_status not in ['Reopen', "Open", "Assigned", "Amended"]:
 		frappe.throw(f"Can't Assign Vendor Bill {doc.name}")
-	doc.assign_bill_to_user(assigned_to, remarks)
+	doc.assign_bill_to_department(assigned_to, remarks)
+	update_supplier_department_on_vbt(doc.supplier, assigned_to)
 	doc.save(ignore_permissions = True)
 
 @frappe.whitelist()
