@@ -260,3 +260,15 @@ def handle_rename(payload):
 	else:
 		from spine.spine_adapter.handler.default_consumer_handler import IncorrectData
 		raise IncorrectData("Incorrect Data Passed")
+	
+def update_supplier_department_on_vbt(supplier, dept):
+	
+	suppliers = frappe.get_all("Supplier", filters = [
+		['name', '=', supplier]
+	], fields = ['name', 'department'])
+	if not suppliers:
+		frappe.throw(f"Can't found supplier -> {supplier}")
+	_supplier = suppliers[0]['name']
+	_dept = suppliers[0]['department']
+	if not _dept:
+		frappe.db.set_value("Supplier", _supplier, 'department', dept)
