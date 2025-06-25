@@ -432,10 +432,12 @@ def get_cut_sheet_data(doc_name,cutting_marker,laysheet_details, manual_item_det
 				frappe.throw(f"There is no detail for Colour {item['colour']}")
 
 			for part_value in items:
-				qty = item['quantity'] * item['multiplier']
-				d = get_cut_sheet_dict(item['size'], item['colour'], item['shade'], part_value , qty, bundle_no, item.get('set_combination', {}))
-				cut_sheet_data.append(d)
-				bundle_no += 1
+				bundle_count = item['multiplier']
+				for i in range(bundle_count):
+					qty = item['quantity']
+					d = get_cut_sheet_dict(item['size'], item['colour'], item['shade'], part_value , qty, bundle_no, item.get('set_combination', {}))
+					cut_sheet_data.append(d)
+					bundle_no += 1
 	else:	
 		for item in item_details:
 			if item['effective_bits'] == 0:
