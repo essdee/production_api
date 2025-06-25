@@ -190,18 +190,6 @@ frappe.ui.form.on("Work Order", {
 					y.is_rework = frm.doc.is_rework
 					frappe.set_route("Form",y.doctype, y.name);
 				}, __("Create"));
-				if(!frm.doc.is_rework){
-					frm.add_custom_button(__('Make Additional GRN'), function() {
-						let y = frappe.model.get_new_doc('Additional GRN')
-						y.work_order = frm.doc.name
-						y.supplier = frm.doc.supplier
-						y.supplier_address = frm.doc.supplier_address
-						y.posting_date = frappe.datetime.nowdate()
-						y.delivery_date = frappe.datetime.nowdate()
-						y.posting_time = new Date().toTimeString().split(' ')[0]
-						frappe.set_route("Form",y.doctype, y.name);
-					}, __("Create"));
-				}
 			}
 			if(frm.doc.__onload && frm.doc.__onload.deliverable_item_details) {
 				frm.doc['deliverable_item_details'] = JSON.stringify(frm.doc.__onload.deliverable_item_details);

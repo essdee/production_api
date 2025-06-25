@@ -19,6 +19,7 @@
     "parent": "Item Price Workflow",
     "parentfield": "states",
     "parenttype": "Workflow",
+    "send_email": 0,
     "state": "Draft",
     "update_field": "workflow_state",
     "update_value": "Draft",
@@ -34,6 +35,7 @@
     "parent": "Item Price Workflow",
     "parentfield": "states",
     "parenttype": "Workflow",
+    "send_email": 0,
     "state": "Approval Pending",
     "update_field": "workflow_state",
     "update_value": "Approval Pending",
@@ -49,6 +51,7 @@
     "parent": "Item Price Workflow",
     "parentfield": "states",
     "parenttype": "Workflow",
+    "send_email": 0,
     "state": "Approved",
     "update_field": "workflow_state",
     "update_value": "Approved",
@@ -64,6 +67,7 @@
     "parent": "Item Price Workflow",
     "parentfield": "states",
     "parenttype": "Workflow",
+    "send_email": 0,
     "state": "Rejected",
     "update_field": "workflow_state",
     "update_value": "Rejected",
@@ -79,6 +83,7 @@
     "parent": "Item Price Workflow",
     "parentfield": "states",
     "parenttype": "Workflow",
+    "send_email": 0,
     "state": "Expired",
     "update_field": "workflow_state",
     "update_value": "Expired",
@@ -95,6 +100,7 @@
     "parent": "Item Price Workflow",
     "parentfield": "transitions",
     "parenttype": "Workflow",
+    "send_email_to_creator": 0,
     "state": "Draft",
     "workflow_builder_id": null
    },
@@ -107,6 +113,7 @@
     "parent": "Item Price Workflow",
     "parentfield": "transitions",
     "parenttype": "Workflow",
+    "send_email_to_creator": 0,
     "state": "Approval Pending",
     "workflow_builder_id": null
    },
@@ -119,6 +126,7 @@
     "parent": "Item Price Workflow",
     "parentfield": "transitions",
     "parenttype": "Workflow",
+    "send_email_to_creator": 0,
     "state": "Approval Pending",
     "workflow_builder_id": null
    },
@@ -131,6 +139,7 @@
     "parent": "Item Price Workflow",
     "parentfield": "transitions",
     "parenttype": "Workflow",
+    "send_email_to_creator": 0,
     "state": "Approved",
     "workflow_builder_id": null
    }
@@ -159,6 +168,7 @@
     "parent": "Process Cost Workflow",
     "parentfield": "states",
     "parenttype": "Workflow",
+    "send_email": 0,
     "state": "Draft",
     "update_field": "workflow_state",
     "update_value": "Draft",
@@ -174,6 +184,7 @@
     "parent": "Process Cost Workflow",
     "parentfield": "states",
     "parenttype": "Workflow",
+    "send_email": 0,
     "state": "Approval Pending",
     "update_field": "workflow_state",
     "update_value": "Approval Pending",
@@ -189,6 +200,7 @@
     "parent": "Process Cost Workflow",
     "parentfield": "states",
     "parenttype": "Workflow",
+    "send_email": 0,
     "state": "Approved",
     "update_field": "workflow_state",
     "update_value": "Approved",
@@ -204,6 +216,7 @@
     "parent": "Process Cost Workflow",
     "parentfield": "states",
     "parenttype": "Workflow",
+    "send_email": 0,
     "state": "Rejected",
     "update_field": "workflow_state",
     "update_value": "Rejected",
@@ -219,6 +232,7 @@
     "parent": "Process Cost Workflow",
     "parentfield": "states",
     "parenttype": "Workflow",
+    "send_email": 0,
     "state": "Expired",
     "update_field": "workflow_state",
     "update_value": "Expired",
@@ -235,6 +249,7 @@
     "parent": "Process Cost Workflow",
     "parentfield": "transitions",
     "parenttype": "Workflow",
+    "send_email_to_creator": 0,
     "state": "Draft",
     "workflow_builder_id": null
    },
@@ -247,6 +262,7 @@
     "parent": "Process Cost Workflow",
     "parentfield": "transitions",
     "parenttype": "Workflow",
+    "send_email_to_creator": 0,
     "state": "Approval Pending",
     "workflow_builder_id": null
    },
@@ -259,6 +275,7 @@
     "parent": "Process Cost Workflow",
     "parentfield": "transitions",
     "parenttype": "Workflow",
+    "send_email_to_creator": 0,
     "state": "Approval Pending",
     "workflow_builder_id": null
    },
@@ -271,6 +288,7 @@
     "parent": "Process Cost Workflow",
     "parentfield": "transitions",
     "parenttype": "Workflow",
+    "send_email_to_creator": 0,
     "state": "Approved",
     "workflow_builder_id": null
    }
