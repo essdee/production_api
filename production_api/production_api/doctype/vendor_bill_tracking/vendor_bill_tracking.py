@@ -5,6 +5,7 @@ import frappe
 from frappe.model.document import Document
 import frappe.utils
 from six import string_types
+from production_api.production_api.doctype.department.department import get_user_departments
 
 class VendorBillTracking(Document):
 	
@@ -80,9 +81,6 @@ class VendorBillTracking(Document):
 @frappe.whitelist()
 def assign_vendor_bill(name, assigned_to, remarks = None):
 	doc = frappe.get_doc("Vendor Bill Tracking", name)
-	last = doc.vendor_bill_tracking_history[len(doc.vendor_bill_tracking_history)-1]
-	if last.assigned_to and not last.received:
-		frappe.throw(f"{last.assigned_to} not received the bill {doc.name}")
 	if doc.docstatus != 1 or doc.form_status not in ['Reopen', "Open", "Assigned", "Amended"]:
 		frappe.throw(f"Can't Assign Vendor Bill {doc.name}")
 	doc.assign_bill_to_user(assigned_to, remarks)
@@ -127,13 +125,13 @@ def get_accounting_system_purchase_invoice(doc_name):
 
 @frappe.whitelist()
 def make_bill_recieved_acknowledgement(doc_name):
-	user = frappe.session.user
+	departments = get_user_departments()
 	vbt_doc = frappe.get_doc("Vendor Bill Tracking", doc_name)
-	if not vbt_doc.assigned_to == user:
-		frappe.throw("This Bill is Assigned To You")
+	if vbt_doc.assigned_to not in departments:
+		frappe.throw("This Bill is Assigned To Your Department")
 	last_doc = None
 	for idx, i in enumerate(vbt_doc.vendor_bill_tracking_history):
-		if i.get('assigned_to') == user:
+		if i.get('assigned_to') == vbt_doc.get('assigned_to'):
 			last_doc = i
 	if not last_doc:
 		frappe.throw("Invalid Operation")
@@ -151,3 +149,11 @@ def bulk_assign_bills(assign_to, selected_docs, remarks = None):
 			assign_vendor_bill(i['name'], assign_to, remarks)
 		except Exception as e:
 			error = True
+
+@frappe.whitelist()
+def check_for_can_show_receive_btn(name):
+	department = frappe.get_value("Vendor Bill Tracking", name, 'assigned_to')
+	exists = get_user_departments(department)
+	if exists:
+		return True
+	return False

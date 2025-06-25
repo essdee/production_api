@@ -44,6 +44,7 @@ import TimeAndActionOrderTracking from "./Lot/components/TimeAndActionTracking.v
 import CutPanelMovementBundle from "./Cut_Panel_Movement/components/CutPanelMovementBundle.vue"
 import StockSummary from "./components/StockSummary.vue"
 import ReturnItemsPopUp from "./Delivery_Challan/components/ReturnItemsPopUp.vue"
+import SuggestedVendorBillDeliveryPerson from "./VendorBillTracking/components/SuggestedVendorBillDeliveryPerson.vue";
 
 // Product Development
 import { ProductFileVersionsWrapper, ProductCostingListWrapper } from "./ProductDevelopment"
@@ -953,6 +954,21 @@ frappe.production.ui.DateDialog = class {
     get_items(){
         let items = JSON.parse(JSON.stringify(this.vue.item_data));
         return items
+    }
+}
+
+frappe.production.ui.SuggestedVendorBillDeliveryPerson = class {
+    constructor(wrapper){
+        this.$wrapper = $(wrapper)
+        this.make_body()
+    }
+    make_body(){
+        this.app = createApp(SuggestedVendorBillDeliveryPerson)
+        SetVueGlobals(this.app)
+        this.vue = this.app.mount(this.$wrapper.get(0))
+    }
+    update_for_new_supplier(supplier){
+        this.vue.update_for_new_supplier(supplier);
     }
 }
 
