@@ -1,6 +1,6 @@
 {
  "charts": [],
- "content": "[{\"id\":\"9NtaKEcHzB\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">Manufacturing</span>\",\"col\":12}},{\"id\":\"7Nl41d39i_\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Lot\",\"col\":3}},{\"id\":\"SffCjV3lXs\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Work Order\",\"col\":3}},{\"id\":\"dgyhm9E6c2\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"DC\",\"col\":3}},{\"id\":\"8wcboYArR9\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"GRN\",\"col\":3}},{\"id\":\"EZtp0q6_3_\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Process Cost\",\"col\":3}},{\"id\":\"OmqmAP5rlH\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Supplier\",\"col\":3}},{\"id\":\"P2bi1cXHjk\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Item\",\"col\":3}},{\"id\":\"pMft7X-9Pd\",\"type\":\"spacer\",\"data\":{\"col\":12}},{\"id\":\"Wvusy2q6Go\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\"><b>Report</b></span>\",\"col\":12}},{\"id\":\"z04DYo6ngU\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Work Order Report\",\"col\":3}},{\"id\":\"6eqcQAwg04\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Time and Action Order Tracking\",\"col\":3}}]",
+ "content": "[{\"id\":\"9NtaKEcHzB\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">Manufacturing</span>\",\"col\":12}},{\"id\":\"7Nl41d39i_\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Lot\",\"col\":3}},{\"id\":\"SffCjV3lXs\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Work Order\",\"col\":3}},{\"id\":\"dgyhm9E6c2\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"DC\",\"col\":3}},{\"id\":\"8wcboYArR9\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"GRN\",\"col\":3}},{\"id\":\"EZtp0q6_3_\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Process Cost\",\"col\":3}},{\"id\":\"OmqmAP5rlH\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Supplier\",\"col\":3}},{\"id\":\"P2bi1cXHjk\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Item\",\"col\":3}},{\"id\":\"pMft7X-9Pd\",\"type\":\"spacer\",\"data\":{\"col\":12}},{\"id\":\"Wvusy2q6Go\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\"><b>Report</b></span>\",\"col\":12}},{\"id\":\"z04DYo6ngU\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Work Order Report\",\"col\":3}},{\"id\":\"z6ePoIGaTP\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Time and Action Order Tracking\",\"col\":3}},{\"id\":\"vgtc90b-Q3\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Time and Action Weekly Review Report\",\"col\":3}}]",
  "creation": "2025-01-28 12:33:46.232932",
  "custom_blocks": [],
  "docstatus": 0,
@@ -13,7 +13,7 @@
  "is_hidden": 0,
  "label": "Manufacturing",
  "links": [],
- "modified": "2025-06-20 16:23:06.987322",
+ "modified": "2025-06-26 17:20:52.097030",
  "modified_by": "Administrator",
  "module": "Essdee Production",
  "name": "Manufacturing",
@@ -28,10 +28,24 @@
   {
    "color": "Grey",
    "doc_view": "List",
+   "label": "Time and Action Order Tracking",
+   "link_to": "time-and-action-orde",
+   "type": "Page"
+  },
+  {
+   "color": "Grey",
+   "doc_view": "List",
    "label": "Work Order",
    "link_to": "Work Order",
    "stats_filter": "[]",
    "type": "DocType"
+  },
+  {
+   "color": "Grey",
+   "doc_view": "List",
+   "label": "Time and Action Weekly Review Report",
+   "link_to": "t-and-a-weekly-revie",
+   "type": "Page"
   },
   {
    "color": "Grey",
@@ -48,13 +62,6 @@
    "link_to": "Lot",
    "stats_filter": "[]",
    "type": "DocType"
-  },
-  {
-   "color": "Grey",
-   "doc_view": "List",
-   "label": "Time and Action Order Tracking",
-   "link_to": "time-and-action-orde",
-   "type": "Page"
   },
   {
    "color": "Grey",
