@@ -327,8 +327,6 @@ class GoodsReceivedNote(Document):
 			if item.is_calculated and check:
 				item.stock_update += calculated_items[keys]
 
-		if diff < 0:
-			diff = 0
 		wo_doc.save(ignore_permissions = True)	
 
 	def update_wo_stock_ledger(self, res):
