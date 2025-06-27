@@ -127,13 +127,13 @@ class CuttingLaySheet(Document):
 		self.end_bit_weight = end_bit_weight
 		self.accessory_weight = accessory_weight
 		if self.is_manual_entry:
-			self.total_used_weight = weight
+			self.total_used_weight = used_weight
 			total_pieces = 0
 			for row in self.cutting_laysheet_bundles:
 				total_pieces += row.quantity
 			self.total_no_of_pieces = total_pieces
 			if self.total_no_of_pieces:
-				self.piece_weight = weight / self.total_no_of_pieces
+				self.piece_weight = used_weight / self.total_no_of_pieces
 		else:
 			self.total_used_weight = used_weight
 			self.total_no_of_pieces = total_bits * ratio_sum
@@ -1432,6 +1432,8 @@ def cancel_laysheet(doc_name):
 		grn_doc = frappe.get_doc("Goods Received Note", doc.goods_received_note)
 		grn_doc.cancel()
 	doc.goods_received_note =  None
+	from production_api.production_api.doctype.cutting_plan.cutting_plan import calculate_laysheets
+	calculate_laysheets(doc.cutting_plan)
 	doc.save()
 
 @frappe.whitelist()

@@ -13,13 +13,14 @@
                     <thead>
                         <tr>
                             <th class="sticky-col col1">S.No</th>
-                            <th class="sticky-col col2">Item</th>
-                            <th class="sticky-col col3">Lot</th>
-                            <th class="sticky-col col4">Process</th>
-                            <th class="sticky-col col5">Quantity</th>
-                            <th class="sticky-col col6">Reason</th>
-                            <th class="sticky-col col7">Delay</th>
-                            <th class="sticky-col col8">Planned Date</th>
+                            <th class="sticky-col col2">Assigned to</th>
+                            <th class="sticky-col col3">Item</th>
+                            <th class="sticky-col col4">Lot</th>
+                            <th class="sticky-col col5">Process</th>
+                            <th class="sticky-col col6">Quantity</th>
+                            <th class="sticky-col col7">Planned Date</th>
+                            <th class="sticky-col col8">Delay</th>
+                            <th class="sticky-col col9">Reason</th>
                             <th style="width:110px;" v-for="d in items['dates']" :key="d">{{ d }}</th>
                         </tr>
                     </thead>
@@ -27,31 +28,40 @@
                         <template v-for="(item, idx) in items.datas" :key="idx">
                             <tr @click="toggle_row(item, idx)">
                                 <td class="sticky-col col1">{{ idx + 1 }}</td>
-                                <td class="sticky-col col2">{{ item['item'] }}</td>
-                                <td class="sticky-col col3">{{ item['lot'] }}</td>
-                                <td class="sticky-col col4">{{ item['process_name'] }}</td>
-                                <td class="sticky-col col5">{{ item['qty'] }}</td>
-                                <td class="sticky-col col6">{{ item['reason'] || '' }}</td>
-                                <td class="sticky-col col7">{{ item['delay'] || '' }}</td>
-                                <td class="sticky-col col8">{{ item['planned_end_date'] || '' }}</td>
+                                <td class="sticky-col col2">{{ item['assigned'] || '' }}</td>
+                                <td class="sticky-col col3">{{ item['item'] }}</td>
+                                <td class="sticky-col col4">{{ item['lot'] }}</td>
+                                <td class="sticky-col col5">{{ item['process_name'] }}</td>
+                                <td class="sticky-col col6">{{ item['qty'] }}</td>
+                                <td class="sticky-col col7">{{ item['planned_end_date'] || '' }}</td>
+                                <td class="sticky-col col8">{{ item['delay'] || '' }}</td>
+                                <td class="sticky-col col9">{{ item['reason'] || '' }}</td>
                                 <td v-for="d in items['dates']" :key="d">{{ item[d] || '' }}</td>
                             </tr>
                             <tr v-if="expandedRowIndex === idx">
-                                <td :colspan="6" class="p-0 sticky-col col6">
+                                <td :colspan="1000" class="p-0 expanded-row-content">
                                     <div style="display:flex;padding-top:10px;justify-content:center;">
                                         <div>
                                             <table class="table table-bordered">
                                                 <thead>
                                                     <tr>
-                                                        <th style="min-width: 250px;">Work Order</th>
-                                                        <th style="min-width: 250px;">Colours</th>
-                                                        <th style="min-width: 200px;">Update</th>
+                                                        <th style="min-width:150px;">Work Order</th>
+                                                        <th style="min-width:100px;">Colours</th>
+                                                        <th style="min-width:100px;">Supplier</th>
+                                                        <th style="min-width:100px;">Supplier Name</th>
+                                                        <th style="min-width:100px;">Planned Quantity</th>
+                                                        <th style="min-width:100px;">Pending</th>
+                                                        <th style="min-width:200px;">Update</th>
                                                     </tr>
                                                 </thead>
                                                 <tbody>
                                                     <tr style="cursor:pointer;" v-for="(row, i) in work_order_details" :key="i">
                                                         <td @click="map_to_work_order(row.name)">{{ row.name }}</td>
                                                         <td>{{ row.wo_colours }}</td>
+                                                        <td>{{ row.supplier }}</td>
+                                                        <td>{{ row.supplier_name }}</td>
+                                                        <td>{{ row.total_quantity }}</td>
+                                                        <td>{{ row.total_quantity - row.total_no_of_pieces_received }}</td>
                                                         <td>
                                                             <button class="btn btn-secondary" @click="update_expected_date(row.name)">Update Expected Date</button>
                                                         </td>
@@ -288,21 +298,34 @@ table th, td {
     box-shadow: 2px 0 5px -2px black;
 }
 
+.expanded-row-content {
+    position: relative;
+    z-index: 0;
+    background: white;
+}
 
-.col1 { left: 0;     width: 60px; }
-.col2 { left: 60px;  width: 250px; }
-.col3 { left: 310px; width: 100px;}
-.col4 { left: 410px; width: 80px;}
-.col5 { left: 490px; width: 80px; }
-.col6 { left: 570px; width: 100px; }
-.col7 { left: 670px; width: 50px; } 
-.col8 { left: 720px; width: 110px; }
+.col1 { left: 0;     box-shadow: inset 0 0 0 0.001rem black; width: 60px; }
+.col2 { left: 60px;  box-shadow: inset 0 0 0 0.001rem black; width: 150px; }
+.col3 { left: 210px; box-shadow: inset 0 0 0 0.001rem black; width: 250px;}
+.col4 { left: 460px; box-shadow: inset 0 0 0 0.001rem black; width: 100px;}
+.col5 { left: 560px; box-shadow: inset 0 0 0 0.001rem black; width: 80px; }
+.col6 { left: 640px; box-shadow: inset 0 0 0 0.001rem black; width: 100px; }
+.col7 { left: 740px; box-shadow: inset 0 0 0 0.001rem black; width: 110px; } 
+.col8 { left: 850px; box-shadow: inset 0 0 0 0.001rem black; width: 60px; }
+.col9 { left: 910px; box-shadow: inset 0 0 0 0.001rem black; width: 110px; }
 
 .scroll-container {
     max-height: 700px;
     overflow-y: auto;
     overflow-x: auto;
     position: relative; 
+}
+
+.inner-table {
+    width: max-content;
+    table-layout: fixed;
+    border-collapse: separate; /* Change to separate to avoid border merging issues */
+    border-spacing: 0; /* Ensure no gaps between cells */
 }
 
 </style>
