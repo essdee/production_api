@@ -106,6 +106,28 @@ frappe.ui.form.on("Work Order", {
 				})
 			}
 			if(frm.doc.open_status == 'Open' && frm.doc.docstatus == 1){
+				frm.add_custom_button('Change Delivery Date',()=>{
+					var d = new frappe.ui.Dialog({
+						title : 'Change Delivery Date',
+						fields : [
+							{fieldname :'date',fieldtype :'Date',label :"Delivery Date","default" :frm.doc.expected_delivery_date,"reqd" :1},
+							{fieldname : 'reason',fieldtype : 'Data',label : 'Reason',reqd : 1}
+						],
+						primary_action_label : "Submit",
+						primary_action(values){
+							frappe.call({
+								method : 'production_api.production_api.doctype.work_order.work_order.add_comment',
+								args : {
+									doc_name : frm.doc.name,
+									date : values.date,
+									reason : values.reason,
+								}
+							})
+							d.hide()
+						}
+					})
+					d.show()
+				})
 				frm.add_custom_button('Close', ()=> {
 					let receivables = frm.doc.receivables
 					let data = []

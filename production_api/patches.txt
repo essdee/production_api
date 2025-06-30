@@ -40,3 +40,4 @@ production_api.patches.v1_0.delete_dict_variants_c0425_05
 production_api.patches.v1_0.work_order_stock_update
 production_api.patches.v1_0.update_actual_dia
 production_api.patches.v1_0.update_wo_total_quantity #1
+production_api.patches.v1_0.update_qty_in_bom_attribute_mapping
