@@ -133,7 +133,7 @@ def get_t_and_a_report_data(lot, item, process_name):
 		}
 		row_max_date = None
 		rows = frappe.db.sql(
-			f""" SELECT from_date, to_date, reason FROM `tabWork Order Tracking Log` WHERE parent = '{wo}' """, as_dict=True
+			f""" SELECT from_date, to_date, reason, check_point FROM `tabWork Order Tracking Log` WHERE parent = '{wo}' """, as_dict=True
 		)
 		for row in rows:
 			from_date = getdate(row['from_date'])
@@ -155,6 +155,8 @@ def get_t_and_a_report_data(lot, item, process_name):
 
 			from_date = from_date.strftime("%d-%m-%Y")
 			to_date = to_date.strftime("%d-%m-%Y")
+			if row['check_point'] == 1:
+				d['check_point'] = to_date
 			d[from_date] = to_date 
 			d['reason'] = row['reason']	
 		report_data.append(d)
@@ -164,8 +166,10 @@ def get_t_and_a_report_data(lot, item, process_name):
 		key =  tuple(sorted(d.items()))
 		if key not in data:
 			data[key] = row.copy()
-			row_keys = ["lot", "item", "process_name", "qty", "reason", "delay", "planned_end_date", "assigned"]	
+			row_keys = ["lot", "item", "process_name", "qty", "reason", "delay", "planned_end_date", "assigned", "check_point"]	
 			for k in row_keys:
+				if not k in row:
+					continue
 				del row[k]
 			for ky in row:	
 				data[key]['min_reason_date'] = getdate(row[ky], parse_day_first=True)
@@ -174,11 +178,13 @@ def get_t_and_a_report_data(lot, item, process_name):
 			if data[key]['planned_end_date'] < end_date:
 				data[key]['planned_end_date'] = end_date
 			data[key]['qty'] += row['qty']
-			row_keys = ["lot", "item", "process_name", "qty", "reason", "delay", "planned_end_date", "assigned"]	
+			row_keys = ["lot", "item", "process_name", "qty", "reason", "delay", "planned_end_date", "assigned", "check_point"]	
 			reason = row['reason']
 			if data[key]['delay'] < row['delay']:
 				data[key]['delay'] = row['delay']
 			for k in row_keys:
+				if not k in row:
+					continue
 				del row[k]
 			for d in row:
 				if d == "min_reason_date":
@@ -215,7 +221,7 @@ def get_t_and_a_report_data(lot, item, process_name):
 			min_date = add_days(min_date, 1)
 		date_keys.append(max_date.strftime("%d-%m-%Y"))	
 
-	keys = ["item", "lot", "process_name", "qty"] + date_keys + ["reason", "delay", "planned_end_date", "assigned"]
+	keys = ["item", "lot", "process_name", "qty"] + date_keys + ["reason", "delay", "planned_end_date", "assigned", "check_point"]
 	x = []
 	for d in data:
 		end_data = data[d]['planned_end_date'].strftime("%d-%m-%Y")
@@ -240,17 +246,23 @@ def get_work_order_details(detail):
 	return work_orders
 
 @frappe.whitelist()
-def update_expected_date(work_order, expected_date, reason):
+def update_expected_date(work_order, expected_date, reason, _return=True):
 	from production_api.production_api.doctype.work_order.work_order import add_comment
 	expected_date = getdate(expected_date)
 	add_comment(work_order, expected_date, reason)
+	if _return:
+		wo_doc = frappe.get_doc("Work Order", work_order)
+		report_data = get_t_and_a_report_data(wo_doc.lot, wo_doc.item, wo_doc.process_name)
+		return report_data['datas'][0]
 
 @frappe.whitelist()
-def update_all_work_orders(work_order_details, expected_date, reason):
+def update_all_work_orders(lot, item, process_name, work_order_details, expected_date, reason):
 	work_order_details = update_if_string_instance(work_order_details)
 	expected_date = getdate(expected_date)
 	for detail in work_order_details:
-		update_expected_date(detail['name'], expected_date, reason)
+		update_expected_date(detail['name'], expected_date, reason, _return=False)
+	report_data = get_t_and_a_report_data(lot, item, process_name)
+	return report_data['datas'][0]	
 
 @frappe.whitelist()
 def get_t_and_a_review_report_data(lot, item, report_date):
@@ -334,3 +346,39 @@ def get_t_and_a_review_report_data(lot, item, report_date):
 						})
 					data[lot][master]['datas'].append(d)
 	return data
+
+@frappe.whitelist()
+def update_wo_checkpoint(datas):
+	data = update_if_string_instance(datas)
+	for row in data:
+		if not row.get("changed"):
+			continue
+		filters = {
+			"item": row['item'],
+			"process_name": row['process_name'],
+			"lot": row['lot'],
+			"docstatus": 1,
+			"open_status": "Open",
+		}
+		keys = ['item', 'lot', 'process_name', 'qty', 'reason', 'planned_end_date', 'delay', 'assigned', "min_reason_date"]
+		for key in keys:
+			if not key in row:
+				continue
+			del row[key]
+
+		if row:
+			row = sorted(row.items())
+			row = dict(row)
+			work_orders = frappe.get_all("Work Order", filters=filters, pluck="name")
+			for work_order in work_orders:
+				to_date = None
+				for key in row:
+					to_date = row[key]
+				to_date = getdate(to_date, parse_day_first=True)
+				wo_doc = frappe.get_doc("Work Order", work_order)
+				for tracking_log in wo_doc.work_order_tracking_logs:
+					if to_date == tracking_log.to_date:
+						tracking_log.check_point = 1
+					else:
+						tracking_log.check_point = 0
+				wo_doc.save(ignore_permissions=True)			

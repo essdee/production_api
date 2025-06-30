@@ -78,7 +78,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-02-17 10:04:07.019058",
+ "modified": "2025-06-26 11:16:16.576547",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Item BOM Attribute Mapping",
@@ -119,6 +119,7 @@
    "share": 1
   }
  ],
+ "row_format": "Dynamic",
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": [],

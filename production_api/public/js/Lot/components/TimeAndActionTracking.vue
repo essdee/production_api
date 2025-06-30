@@ -2,12 +2,20 @@
     <div ref="root">
         <div style="padding:25px;">
             <div class="row pb-4">
-                <div class="lot-name col-md-4"></div>
+                <div class="lot-name col-md-3"></div>
                 <div class="item-name col-md-4"></div>
                 <div class="process-name col-md-4"></div>
-                <button class="btn btn-success ml-3" @click="get_filters()">Show Report</button>
+                <div style="padding-top:27px;">
+                    <button class="btn btn-secondary" @click="clear_filters()">Clear Filters</button>
+                </div>
+                <div></div>
+                <div class="d-flex w-100 mt-3 pr-3 pl-3">
+                    <div><button class="btn btn-success" @click="get_filters()">Show Report</button></div>
+                    <div style="padding-left:15px;">
+                        <button class="btn btn-success" @click="create_checkpoint(items.datas)">Create Check Point</button>
+                    </div>
+                </div>
             </div>
-
             <div class="scroll-container" v-if="show_table && items.datas && items.datas.length > 0">
                 <table class="table table-md table-md-bordered inner-table">
                     <thead>
@@ -21,6 +29,7 @@
                             <th class="sticky-col col7">Planned Date</th>
                             <th class="sticky-col col8">Delay</th>
                             <th class="sticky-col col9">Reason</th>
+                            <th class="sticky-col col10">Check Point</th>
                             <th style="width:110px;" v-for="d in items['dates']" :key="d">{{ d }}</th>
                         </tr>
                     </thead>
@@ -36,6 +45,9 @@
                                 <td class="sticky-col col7">{{ item['planned_end_date'] || '' }}</td>
                                 <td class="sticky-col col8">{{ item['delay'] || '' }}</td>
                                 <td class="sticky-col col9">{{ item['reason'] || '' }}</td>
+                                <td class="sticky-col col10" :style="getCheckPointStyle(item)" >
+                                    {{ item['check_point'] || '' }}
+                                </td>
                                 <td v-for="d in items['dates']" :key="d">{{ item[d] || '' }}</td>
                             </tr>
                             <tr v-if="expandedRowIndex === idx">
@@ -63,7 +75,7 @@
                                                         <td>{{ row.total_quantity }}</td>
                                                         <td>{{ row.total_quantity - row.total_no_of_pieces_received }}</td>
                                                         <td>
-                                                            <button class="btn btn-secondary" @click="update_expected_date(row.name)">Update Expected Date</button>
+                                                            <button class="btn btn-secondary" @click="update_expected_date(row.name, idx)">Update Expected Date</button>
                                                         </td>
                                                     </tr>
                                                 </tbody>
@@ -78,7 +90,7 @@
                                         </div>
                                     </div>
                                     <div style="padding-bottom:15px;text-align:center;padding-right:75px;">
-                                        <button class="btn btn-success" @click="update_all_work_orders()">Update All Work Order Date</button>
+                                        <button class="btn btn-success" @click="update_all_work_orders(item, idx)">Update All Work Order Date</button>
                                     </div>
                                 </td>
                             </tr>
@@ -158,6 +170,28 @@ onMounted(() => {
     });
 });
 
+function parseDMYtoDate(dmyStr) {
+    const [dd, mm, yyyy] = dmyStr.split("-");
+    return new Date(`${yyyy}-${mm}-${dd}`);
+}
+
+function getCheckPointStyle(item) {
+    if (!item['check_point']) return {};
+
+    const lastDateKey = items.value['dates'][items.value['dates'].length - 1];
+    const checkPoint = new Date(parseDMYtoDate(item['check_point']));
+    const lastDate = new Date(parseDMYtoDate(item[lastDateKey]));
+    return {
+        backgroundColor: checkPoint <= lastDate ? 'rgb(249, 194, 195)' : 'rgb(180, 244, 170)',
+    };
+}
+
+function clear_filters(){
+    lot.set_value(null)
+    item.set_value(null)
+    process.set_value(null)
+}
+
 function get_filters() {
     show_table.value = false
     expandedRowIndex.value = null
@@ -171,6 +205,28 @@ function get_filters() {
         callback: function(r){
             items.value = r.message
             show_table.value = true
+        }
+    })
+}
+
+function create_checkpoint(data){
+    if(!data || data.length == 0){
+        frappe.msgprint("There is no items in the page")
+        return   
+    }
+    let check = false
+    for(let i = 0; i < data.length ; i++){
+        if(data[i].hasOwnProperty("changed")){
+            check = true
+        }
+    }
+    if(!check){
+        frappe.msgprint("There is nothing updated in this page");
+    }
+    frappe.call({
+        method: "production_api.utils.update_wo_checkpoint",
+        args: {
+            datas: data,
         }
     })
 }
@@ -223,7 +279,7 @@ function get_date_and_reason() {
     });
 }
 
-function update_expected_date(work_order) {
+function update_expected_date(work_order, idx) {
     get_date_and_reason().then((values) => {
         if (values) {
             frappe.call({
@@ -233,21 +289,32 @@ function update_expected_date(work_order) {
                     expected_date: values.date,
                     reason: values.reason,
                 },
+                callback: function(r){
+                    items.value.datas[idx] = r.message
+                    items.value.datas[idx]['changed'] = true
+                }
             });
         }
     });
 }
 
-function update_all_work_orders(){
+function update_all_work_orders(row_data, idx){
     get_date_and_reason().then((values) => {
         if (values) {
             frappe.call({
                 method: "production_api.utils.update_all_work_orders",
                 args: {
+                    lot: row_data['lot'],
+                    item: row_data['item'],
+                    process_name: row_data['process_name'],
                     work_order_details: work_order_details.value,
                     expected_date: values.date,
                     reason: values.reason,
                 },
+                callback: function(r){
+                    items.value.datas[idx] = r.message
+                    items.value.datas[idx]['changed'] = true
+                }
             })
         }
     });
@@ -309,10 +376,11 @@ table th, td {
 .col3 { left: 210px; box-shadow: inset 0 0 0 0.001rem black; width: 250px;}
 .col4 { left: 460px; box-shadow: inset 0 0 0 0.001rem black; width: 100px;}
 .col5 { left: 560px; box-shadow: inset 0 0 0 0.001rem black; width: 80px; }
-.col6 { left: 640px; box-shadow: inset 0 0 0 0.001rem black; width: 100px; }
-.col7 { left: 740px; box-shadow: inset 0 0 0 0.001rem black; width: 110px; } 
-.col8 { left: 850px; box-shadow: inset 0 0 0 0.001rem black; width: 60px; }
-.col9 { left: 910px; box-shadow: inset 0 0 0 0.001rem black; width: 110px; }
+.col6 { left: 640px; box-shadow: inset 0 0 0 0.001rem black; width: 80px; }
+.col7 { left: 720px; box-shadow: inset 0 0 0 0.001rem black; width: 110px; } 
+.col8 { left: 830px; box-shadow: inset 0 0 0 0.001rem black; width: 60px; }
+.col9 { left: 890px; box-shadow: inset 0 0 0 0.001rem black; width: 110px; }
+.col10 { left: 1000px; box-shadow: inset 0 0 0 0.001rem black; width: 110px; }
 
 .scroll-container {
     max-height: 700px;
