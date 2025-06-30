@@ -17,6 +17,10 @@ class CutPanelMovement(Document):
 			json_data = update_if_string_instance(self.cut_panel_movement_json)
 			self.set_onload("movement_details", json_data)
 
+	def before_cancel(self):
+		if self.against_id:
+			frappe.throw("Can't cancel this document")
+
 	def before_validate(self):
 		if self.docstatus == 1:
 			return
