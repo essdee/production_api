@@ -19,7 +19,7 @@
    "fieldtype": "Link",
    "in_list_view": 1,
    "label": "Assigned To",
-   "options": "User"
+   "options": "Department"
   },
   {
    "default": "Now",
@@ -62,7 +62,7 @@
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2025-06-17 13:03:59.400114",
+ "modified": "2025-06-23 16:39:53.009425",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Vendor Bill Tracking Assignment Detail",

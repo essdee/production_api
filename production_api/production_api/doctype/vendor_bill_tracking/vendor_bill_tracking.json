@@ -15,16 +15,17 @@
   "bill_date",
   "invoice_value",
   "delivery_details_section",
+  "delivery_person_suggestion_html",
   "received_date",
   "delivery_mob_no",
   "delivery_person",
   "column_break_waiw",
   "received_via",
   "receive_comment",
+  "assigned_to",
   "section_break_fwkq",
   "vendor_bill_tracking_history",
   "cancel_reason",
-  "assigned_to",
   "form_status",
   "amended_from"
  ],
@@ -43,13 +44,15 @@
    "fieldtype": "Link",
    "label": "Delivery Person Mobile No",
    "options": "Vendor Bill Delivery Person",
+   "read_only": 1,
    "reqd": 1
   },
   {
    "fetch_from": "delivery_mob_no.person_name",
    "fieldname": "delivery_person",
    "fieldtype": "Data",
-   "label": "Delivery Person"
+   "label": "Delivery Person",
+   "read_only": 1
   },
   {
    "fieldname": "bill_no",
@@ -167,15 +170,20 @@
    "fieldname": "assigned_to",
    "fieldtype": "Link",
    "label": "Assigned To",
-   "options": "User",
+   "options": "Department",
    "read_only": 1
+  },
+  {
+   "fieldname": "delivery_person_suggestion_html",
+   "fieldtype": "HTML",
+   "label": "delivery_person_suggestion_html"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-06-17 13:09:22.348085",
+ "modified": "2025-06-24 16:00:36.838359",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Vendor Bill Tracking",
