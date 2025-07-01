@@ -102,7 +102,8 @@ def get_item_bom_mapping_combination(item_attributes, bom_attributes, attribute_
 
 	if check:
 		data = get_combination(item_attributes, bom_attributes, attribute_values)
-
+	for d in data:
+		d['quantity'] = 0
 	return data
 
 def get_attribute_name(type, attribute):

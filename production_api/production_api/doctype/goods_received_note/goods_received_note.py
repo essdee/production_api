@@ -305,7 +305,6 @@ class GoodsReceivedNote(Document):
 			total_received_qty += item.quantity	
 
 		wo_doc = frappe.get_cached_doc(self.against, self.against_id)
-		diff = wo_doc.total_quantity - total_received_qty
 		calculated_items = {}
 		for item in self.grn_deliverables:
 			item_keys = update_if_string_instance(item.set_combination)
@@ -328,9 +327,6 @@ class GoodsReceivedNote(Document):
 			if item.is_calculated and check:
 				item.stock_update += calculated_items[keys]
 
-		if diff < 0:
-			diff = 0
-		wo_doc.total_quantity = diff
 		wo_doc.save(ignore_permissions = True)	
 
 	def update_wo_stock_ledger(self, res):
@@ -564,9 +560,6 @@ class GoodsReceivedNote(Document):
 			total_received_qty += item['quantity']
 
 		wo_doc = frappe.get_cached_doc(self.against,self.against_id)
-		wo_doc.total_quantity += total_received_qty
-		diff = wo_doc.total_quantity - total_received_qty
-		percentage = (total_received_qty / wo_doc.total_quantity) * 100
 		calculated_items = {}
 		for item in self.grn_deliverables:
 			item_keys = update_if_string_instance(item.set_combination)

@@ -127,13 +127,13 @@ class CuttingLaySheet(Document):
 		self.end_bit_weight = end_bit_weight
 		self.accessory_weight = accessory_weight
 		if self.is_manual_entry:
-			self.total_used_weight = weight
+			self.total_used_weight = used_weight
 			total_pieces = 0
 			for row in self.cutting_laysheet_bundles:
 				total_pieces += row.quantity
 			self.total_no_of_pieces = total_pieces
 			if self.total_no_of_pieces:
-				self.piece_weight = weight / self.total_no_of_pieces
+				self.piece_weight = used_weight / self.total_no_of_pieces
 		else:
 			self.total_used_weight = used_weight
 			self.total_no_of_pieces = total_bits * ratio_sum
@@ -432,10 +432,12 @@ def get_cut_sheet_data(doc_name,cutting_marker,laysheet_details, manual_item_det
 				frappe.throw(f"There is no detail for Colour {item['colour']}")
 
 			for part_value in items:
-				qty = item['quantity'] * item['multiplier']
-				d = get_cut_sheet_dict(item['size'], item['colour'], item['shade'], part_value , qty, bundle_no, item.get('set_combination', {}))
-				cut_sheet_data.append(d)
-				bundle_no += 1
+				bundle_count = item['multiplier']
+				for i in range(bundle_count):
+					qty = item['quantity']
+					d = get_cut_sheet_dict(item['size'], item['colour'], item['shade'], part_value , qty, bundle_no, item.get('set_combination', {}))
+					cut_sheet_data.append(d)
+					bundle_no += 1
 	else:	
 		for item in item_details:
 			if item['effective_bits'] == 0:
@@ -1430,6 +1432,8 @@ def cancel_laysheet(doc_name):
 		grn_doc = frappe.get_doc("Goods Received Note", doc.goods_received_note)
 		grn_doc.cancel()
 	doc.goods_received_note =  None
+	from production_api.production_api.doctype.cutting_plan.cutting_plan import calculate_laysheets
+	calculate_laysheets(doc.cutting_plan)
 	doc.save()
 
 @frappe.whitelist()

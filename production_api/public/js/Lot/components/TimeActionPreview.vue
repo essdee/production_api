@@ -16,7 +16,7 @@
                        <td>{{value.lead_time}}</td>
                        <td>{{value.department}}</td>
                        <td>{{date_format(value.date)}}</td>
-                       <td>{{value.rescheduled_date}}</td>
+                       <td>{{date_format(value.rescheduled_date)}}</td>
                     </tr>
                 </table>
             </div>
