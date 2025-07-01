@@ -8,6 +8,8 @@
  "field_order": [
   "vendor_details_section",
   "supplier",
+  "gstin",
+  "pan",
   "purchase_invoice",
   "mrp_purchase_invoice",
   "column_break_vmeq",
@@ -44,8 +46,7 @@
    "fieldtype": "Link",
    "label": "Delivery Person Mobile No",
    "options": "Vendor Bill Delivery Person",
-   "read_only": 1,
-   "reqd": 1
+   "read_only": 1
   },
   {
    "fetch_from": "delivery_mob_no.person_name",
@@ -177,13 +178,25 @@
    "fieldname": "delivery_person_suggestion_html",
    "fieldtype": "HTML",
    "label": "delivery_person_suggestion_html"
+  },
+  {
+   "fetch_from": "supplier.gstin",
+   "fieldname": "gstin",
+   "fieldtype": "Data",
+   "label": "GSTIN / UIN"
+  },
+  {
+   "fetch_from": "supplier.pan",
+   "fieldname": "pan",
+   "fieldtype": "Data",
+   "label": "PAN"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-06-24 16:00:36.838359",
+ "modified": "2025-07-01 12:00:57.515478",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Vendor Bill Tracking",
@@ -200,6 +213,7 @@
    "report": 1,
    "role": "System Manager",
    "share": 1,
+   "submit": 1,
    "write": 1
   },
   {
@@ -211,6 +225,7 @@
    "report": 1,
    "role": "Accounts Manager",
    "share": 1,
+   "submit": 1,
    "write": 1
   },
   {
@@ -222,6 +237,7 @@
    "report": 1,
    "role": "HR User",
    "share": 1,
+   "submit": 1,
    "write": 1
   },
   {
@@ -237,6 +253,5 @@
  "row_format": "Dynamic",
  "sort_field": "modified",
  "sort_order": "DESC",
- "states": [],
- "track_changes": 1
+ "states": []
 }

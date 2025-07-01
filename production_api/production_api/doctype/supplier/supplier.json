@@ -8,6 +8,7 @@
  "field_order": [
   "supplier_name",
   "uid",
+  "gstin",
   "pan",
   "address_html",
   "column_break_4",
@@ -91,12 +92,17 @@
    "fieldtype": "Link",
    "label": "Department",
    "options": "Department"
+  },
+  {
+   "fieldname": "gstin",
+   "fieldtype": "Data",
+   "label": "GSTIN / UIN"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-06-25 12:51:37.746211",
+ "modified": "2025-07-01 11:45:41.955755",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Supplier",
