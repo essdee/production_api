@@ -38,7 +38,9 @@
   {
    "fieldname": "pan",
    "fieldtype": "Data",
-   "label": "PAN"
+   "in_list_view": 1,
+   "label": "PAN",
+   "unique": 1
   },
   {
    "fieldname": "address_html",
@@ -96,13 +98,15 @@
   {
    "fieldname": "gstin",
    "fieldtype": "Data",
-   "label": "GSTIN / UIN"
+   "in_list_view": 1,
+   "label": "GSTIN / UIN",
+   "unique": 1
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-07-01 11:45:41.955755",
+ "modified": "2025-07-03 11:58:15.863111",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Supplier",
@@ -186,6 +190,7 @@
   }
  ],
  "row_format": "Dynamic",
+ "search_fields": "gstin, pan",
  "show_title_field_in_link": 1,
  "sort_field": "modified",
  "sort_order": "DESC",
