@@ -1201,6 +1201,21 @@ def fetch_summary_details(doc_name, production_detail):
 		else:
 			item_details[index]['items'].append(item)
 
+	for item in item_details[0]['items']:
+		total_qty = 0
+		total_delivered = 0
+		total_received = 0
+		for primary_attr in item_details[0]['primary_attribute_values']:
+			if item['values'][primary_attr].get("qty"):
+				total_qty += item['values'][primary_attr]['qty']
+			if item['values'][primary_attr].get("delivered"):
+				total_delivered += item['values'][primary_attr]['delivered']
+			if item['values'][primary_attr].get("received"):
+				total_received += item['values'][primary_attr]['received']
+		item['total_qty'] = total_qty
+		item['total_delivered'] = total_delivered
+		item['total_received'] = total_received	
+
 	deliverables = fetch_item_details(wo_doc.deliverables, wo_doc.production_detail )
 
 	return {
