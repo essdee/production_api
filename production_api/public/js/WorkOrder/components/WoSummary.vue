@@ -13,6 +13,7 @@
                             <th v-if="i.is_set_item">{{ i.set_attr }}</th>
                             <th>Details</th>
                             <th v-for="attr in i.primary_attribute_values" :key="attr">{{ attr }}</th>
+                            <th>Total</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -33,6 +34,7 @@
                                     <div v-if="j.values[attr]['qty'] > 0">{{ j.values[attr]['qty'] }}</div>
                                     <div v-else>--</div>
                                 </td>
+                                <td>{{ j.total_qty }}</td>
                             </tr>
                             <tr v-if="!is_manual && doctype == 'Work Order'">
                                 <td>Delivered</td>
@@ -40,6 +42,7 @@
                                     <div v-if="j.values[attr]['delivered'] > 0">{{ j.values[attr]['delivered'] }}</div>
                                     <div v-else>--</div>
                                 </td>
+                                <td>{{ j.total_delivered }}</td>
                             </tr>
                             <tr>
                                 <td v-if="doctype=='Work Order'">Received</td>
@@ -48,6 +51,7 @@
                                     <div v-if="j.values[attr]['received'] > 0">{{ j.values[attr]['received'] }}</div>
                                     <div v-else>--</div>
                                 </td>
+                                <td>{{ j.total_received }}</td>
                             </tr>
                         </template>
                     </tbody>
