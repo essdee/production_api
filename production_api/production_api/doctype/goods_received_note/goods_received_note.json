@@ -29,6 +29,7 @@
   "process_name",
   "is_manual_entry",
   "letter_head",
+  "cut_panel_movement",
   "section_break_1",
   "supplier",
   "supplier_document_no",
@@ -282,14 +283,12 @@
   {
    "fieldname": "supplier_document_no",
    "fieldtype": "Data",
-   "label": "Supplier Document Number",
-   "reqd": 1
+   "label": "Supplier Document Number"
   },
   {
    "fieldname": "vehicle_no",
    "fieldtype": "Data",
-   "label": "Vehicle Number",
-   "reqd": 1
+   "label": "Vehicle Number"
   },
   {
    "fetch_from": "delivery_location.supplier_name",
@@ -483,13 +482,20 @@
    "fieldname": "additional_grn",
    "fieldtype": "Check",
    "label": "Additional GRN"
+  },
+  {
+   "fieldname": "cut_panel_movement",
+   "fieldtype": "Link",
+   "hidden": 1,
+   "label": "Cut Panel Movement",
+   "options": "Cut Panel Movement"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-06-23 13:00:16.097684",
+ "modified": "2025-07-05 14:06:48.051610",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Goods Received Note",

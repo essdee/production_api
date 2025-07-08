@@ -41,3 +41,4 @@ production_api.patches.v1_0.work_order_stock_update
 production_api.patches.v1_0.update_actual_dia
 production_api.patches.v1_0.update_wo_total_quantity #1
 production_api.patches.v1_0.update_qty_in_bom_attribute_mapping
+production_api.patches.v1_0.update_posting_datetime_in_cls

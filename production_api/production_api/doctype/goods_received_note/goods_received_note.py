@@ -15,6 +15,11 @@ from production_api.utils import get_part_list, get_panel_list, get_stich_detail
 from production_api.production_api.doctype.work_order.work_order import get_bom_structure, get_work_order_items
 from production_api.production_api.doctype.purchase_order.purchase_order import get_item_attribute_details, get_item_group_index
 from production_api.essdee_production.doctype.item_production_detail.item_production_detail import get_calculated_bom, get_cloth_combination
+from production_api.production_api.doctype.cut_bundle_movement_ledger.cut_bundle_movement_ledger import (
+	get_cut_bundle_entry,
+	make_cut_bundle_ledger,
+	cancel_cut_bundle_ledger
+)
 
 class GoodsReceivedNote(Document):
 	def before_cancel(self):
@@ -55,6 +60,11 @@ class GoodsReceivedNote(Document):
 			self.dump_items()	
 
 	def before_submit(self):
+		if not self.vehicle_no:
+			frappe.throw("Enter Vehicle No")
+		if not self.supplier_document_no:
+			frappe.throw("Enter Supplier Document No")
+
 		if self.against == "Work Order" and self.additional_grn:
 			role = frappe.db.get_single_value("MRP Settings", "additional_grn_submit_role")
 			if not role:
@@ -84,6 +94,12 @@ class GoodsReceivedNote(Document):
 			if len(items) == 0:
 				frappe.throw("There is No Received Items in this GRN")		
 			self.set("items", items)	
+			check = False
+			if not self.cut_panel_movement and not self.cutting_laysheet and not self.is_return:
+				check = check_cut_stage_items(self.items, self.lot)
+				if check:
+					frappe.throw("Create this Using Cut Panel Movement")			
+
 			self.dump_items()	
 			if self.is_return:
 				from production_api.mrp_stock.stock_ledger import make_sl_entries
@@ -112,6 +128,7 @@ class GoodsReceivedNote(Document):
 					add_stock_list.append(self.get_return_deliverables(item, lot, {}, 1, received_type, self.delivery_location))
 				make_sl_entries(reduce_stock_list)
 				make_sl_entries(add_stock_list)
+				
 			else:		
 				if not self.is_manual_entry and not self.flags.from_cls and not self.is_rework and not self.additional_grn:
 					self.calculate_grn_deliverables()
@@ -149,8 +166,42 @@ class GoodsReceivedNote(Document):
 					self.db_set("ste_transferred", self.total_delivered_qty)
 					self.db_set("transfer_complete", 1)
 				self.piece_calculation()
+
+		if not self.additional_grn and self.against == "Work Order":
+			from production_api.production_api.doctype.cut_bundle_movement_ledger.cut_bundle_movement_ledger import (
+				update_collapsed_bundle
+			)	
+			if self.is_return and not self.cut_panel_movement:
+				check = check_cut_stage_items(self.items, self.lot)
+				if check:
+					update_collapsed_bundle(self.doctype, self.name, "on_submit")
+			elif self.cut_panel_movement:
+				cpm_doc = frappe.get_doc("Cut Panel Movement", self.cut_panel_movement)	
+				cpm_doc.against = self.doctype
+				cpm_doc.against_id = self.name
+				cpm_doc.save()
+				from_warehouse = self.supplier
+				to_warehouse = self.get_to_warehouse()
+
+				bundles, collapsed_details = get_cut_bundle_entry(cpm_doc, self, from_warehouse, -1)
+				make_cut_bundle_ledger(bundles, collapsed_details)
+				bundles, collapsed_details = get_cut_bundle_entry(cpm_doc, self, to_warehouse, 1)
+				make_cut_bundle_ledger(bundles, collapsed_details)
+			else:
+				ipd = frappe.get_value("Lot", self.lot, "production_detail")	
+				stich_process = frappe.get_value("Item Production Detail", ipd, "stiching_process")
+				if stich_process == self.process_name:
+					update_collapsed_bundle(self.doctype, self.name, "on_submit")
 		self.make_repost_action()
+
+	def get_to_warehouse(self):
+		to_warehouse = None
+		if self.is_internal_unit:
+			to_warehouse = frappe.get_single("Stock Settings").transit_warehouse
+		else:
+			to_warehouse = self.delivery_location
 		
+		return to_warehouse	
 
 	def piece_calculation(self):
 		# calculate_pieces(self.name)
@@ -431,7 +482,7 @@ class GoodsReceivedNote(Document):
 	
 	def on_cancel(self):
 		logger = get_module_logger("goods_received_note")
-		self.ignore_linked_doctypes = ("Stock Ledger Entry", "Repost Item Valuation")
+		self.ignore_linked_doctypes = ("Stock Ledger Entry", "Repost Item Valuation", "Cut Panel Movement", "Cut Bundle Movement Ledger")
 		if self.against == 'Purchase Order':
 			logger.debug(f"{self.name} On Cancel Purchase Order {datetime.now()}")
 			if self.purchase_invoice_name:
@@ -469,12 +520,13 @@ class GoodsReceivedNote(Document):
 						if item.item_variant == wo_item.item_variant and set1 == set2:
 							wo_item.pending_quantity -= quantity
 							break
+				wo_doc.save(ignore_permissions=True)		
 				for item in self.items:
 					received_type = default_received_type
 					if item.received_type:
 						received_type = item.received_type
-					reduce_stock_list.append(self.get_return_deliverables(item, lot, {}, -1, received_type, self.delivery_location))
-					add_stock_list.append(self.get_return_deliverables(item, lot, {}, 1, received_type, self.supplier))
+					reduce_stock_list.append(self.get_return_deliverables(item, lot, {}, 1, received_type, self.delivery_location))
+					add_stock_list.append(self.get_return_deliverables(item, lot, {}, -1, received_type, self.supplier))
 				make_sl_entries(reduce_stock_list)
 				make_sl_entries(add_stock_list)
 			else:	
@@ -503,6 +555,34 @@ class GoodsReceivedNote(Document):
 					self.db_set("ste_transferred", 0)
 					self.db_set("transfer_complete", 0)
 				self.piece_calculation()
+
+		if not self.additional_grn and self.against == "Work Order":	
+			from production_api.production_api.doctype.cut_bundle_movement_ledger.cut_bundle_movement_ledger import (
+				update_collapsed_bundle
+			)
+			if self.is_return and not self.cut_panel_movement:
+				check = check_cut_stage_items(self.items, self.lot)
+				if check:
+					update_collapsed_bundle(self.doctype, self.name, "on_cancel")
+
+			elif self.cut_panel_movement:
+				cpm_doc = frappe.get_doc("Cut Panel Movement", self.cut_panel_movement)	
+				cpm_doc.against = None
+				cpm_doc.against_id = None
+				cpm_doc.save()
+				from_warehouse = self.supplier
+				to_warehouse = self.get_to_warehouse()
+
+				bundles, collapsed_bundles = get_cut_bundle_entry(cpm_doc, self, to_warehouse, -1, cancelled=1)
+				cancel_cut_bundle_ledger(bundles)
+				bundles, collapsed_bundles = get_cut_bundle_entry(cpm_doc, self, from_warehouse, 1, cancelled=1)
+				cancel_cut_bundle_ledger(bundles)
+			else:
+				ipd = frappe.get_value("Lot", self.lot, "production_detail")	
+				stich_process = frappe.get_value("Item Production Detail", ipd, "stiching_process")
+				if stich_process == self.process_name:
+					update_collapsed_bundle(self.doctype, self.name, "on_cancel")						
+
 		self.make_repost_action()
 			
 	def reupdate_rework_stock(self):
@@ -549,7 +629,7 @@ class GoodsReceivedNote(Document):
 				for type, qty in received_types.items():
 					x = item
 					x['quantity'] = qty
-					sl_entries.append(self.get_sl_entries(item, self.delivery_location, {}, -1, self.against,type,valuation_rate=avg))
+					sl_entries.append(self.get_sl_entries(item, self.delivery_location, {}, 1, self.against,type,valuation_rate=avg))
 		make_sl_entries(sl_entries)	
 
 	def reupdate_wo_deliverables(self, res):
@@ -590,7 +670,7 @@ class GoodsReceivedNote(Document):
 		received_type = frappe.db.get_single_value("Stock Settings", "default_received_type")
 		for item in self.grn_deliverables:
 			if res.get(item.item_variant):
-				sl_entries.append(self.get_deliverables_data(item, lot, {}, -1, received_type))
+				sl_entries.append(self.get_deliverables_data(item, lot, {}, 1, received_type))
 		make_sl_entries(sl_entries)
 
 	def update_purchase_order(self):
@@ -740,6 +820,28 @@ class GoodsReceivedNote(Document):
 		self.set('total_tax', total_tax)
 		self.set('grand_total', grand_total)
 		self.set('in_words', money_in_words(grand_total))
+
+def check_cut_stage_items(items, lot):
+	ipd = frappe.get_value("Lot", lot, "production_detail")
+	stich_stage = frappe.get_value("Item Production Detail", ipd, "stiching_in_stage")
+	for item in items:
+		item_name = frappe.get_value("Item Variant", item.item_variant, "item")
+		dept_attr = frappe.get_value("Item", item_name, "dependent_attribute")
+		if not dept_attr:
+			continue
+		attr_details = frappe.db.sql(
+			"""
+				SELECT name FROM `tabItem Variant Attribute` WHERE parent = %(parent)s
+				AND attribute = %(dependent)s AND attribute_value = %(dependent_value)s
+			""", {
+				"parent": item.item_variant,
+				"dependent" : dept_attr,
+				"dependent_value": stich_stage
+			}, as_dict=True
+		)	
+		if attr_details:
+			return True
+	return False
 
 def save_grn_purchase_item_details(item_details):
 	item_details = update_if_string_instance(item_details)
@@ -1708,6 +1810,7 @@ def construct_stock_entry_data(doc_name):
 	ste = frappe.new_doc("Stock Entry")
 	ste.purpose = "GRN Completion"
 	ste.against = "Goods Received Note"
+	ste.cut_panel_movement = doc.cut_panel_movement
 	ste.against_id = doc_name
 	ste.from_warehouse = doc.supplier
 	ste.to_warehouse = doc.delivery_location

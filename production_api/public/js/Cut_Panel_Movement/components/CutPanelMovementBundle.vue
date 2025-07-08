@@ -193,6 +193,30 @@
                 </tr>
             </table>
         </div>
+        <div v-if="items.collapsed_details && items.collapsed_details.length > 0">
+            <h3>Collapsed Bundles</h3>
+            <table class="table table-sm table-bordered" style="width:100%;">
+                <tr>
+                    <th class='table-head'><strong>S.No</strong></th>
+                    <th class='table-head'><strong>Size</strong></th>
+                    <th class='table-head'><strong>Colour</strong></th>
+                    <th class='table-head'><strong>Panel</strong></th>
+                    <th class='table-head'><strong>Quantity</strong></th>
+                </tr>
+                <tr v-for="(data, idx) in items.collapsed_details" :key="data">
+                    <td class='table-data'>
+                        <span v-if='docstatus == 0'>
+                            <input type='checkbox' v-model='data.moved' @change="make_dirty()">
+                        </span>
+                        {{ idx + 1 }}
+                    </td>
+                    <td class='table-data'>{{ data.size }}</td>
+                    <td class='table-data'>{{ data.colour }}</td>
+                    <td class='table-data'>{{ data.panel }}</td>
+                    <td class='table-data'>{{ data.quantity }}</td>
+                </tr>
+            </table>
+        </div>
     </div>
 </template>
 
@@ -225,7 +249,7 @@ function update_row(item, colour, index, bundle_moved = 0){
         let pt = items.value['data'][colour]['part']
         for(let i = 0 ; i < items.value['panels'][pt].length ; i++){
             let panel = items.value['panels'][pt][i]
-            if(item.hasOwnProperty(panel)){
+            if(item.hasOwnProperty(panel) && item[panel] > 0){
                 if(bundle_moved == 0){
                     if(item.bundle_moved == 1 || item.bundle_moved == true){
                         return_val = true
@@ -242,6 +266,9 @@ function update_row(item, colour, index, bundle_moved = 0){
                 else{
                     items.value['data'][colour]['data'][index][panel+"_moved"] = false
                 }
+            }
+            else{
+                items.value['data'][colour]['data'][index][panel+"_moved"] = false
             }
         }
     }
@@ -282,9 +309,26 @@ function update_panel(item, panel){
 
 function update_table(colour, val){
     for(let i = 0 ; i < items.value['data'][colour]['data'].length ; i++){
-        items.value['data'][colour]['data'][i]['bundle_moved'] = val
+        if(qty_in_bundle(items.value['data'][colour]['data'][i], items.value['data'][colour], items.value["panels"])){
+            items.value['data'][colour]['data'][i]['bundle_moved'] = val
+        }
+        else{
+            items.value['data'][colour]['data'][i]['bundle_moved'] = false
+        }
         update_row(items.value['data'][colour]['data'][i],colour, i, val)
     }
+}
+
+function qty_in_bundle(row, colour_detail, panels){
+    if (colour_detail['part']){
+        panels = panels[colour_detail['part']]  
+    }
+    for(let i = 0; i < panels.length; i++){
+        if(row[panels[i]] > 0){
+            return true
+        }
+    }
+    return false
 }
 
 function make_dirty(){

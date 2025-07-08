@@ -12,10 +12,19 @@ from production_api.production_api.logger import get_module_logger
 from production_api.utils import get_panel_list, update_if_string_instance
 from production_api.mrp_stock.stock_ledger import make_sl_entries, repost_future_stock_ledger_entry
 from production_api.production_api.doctype.item.item import get_attribute_details, get_or_create_variant
-from production_api.production_api.doctype.purchase_order.purchase_order import get_item_attribute_details, get_item_group_index
+from production_api.production_api.doctype.purchase_order.purchase_order import (
+    								get_item_attribute_details, 
+                                    get_item_group_index
+								)
+from production_api.production_api.doctype.cut_bundle_movement_ledger.cut_bundle_movement_ledger import (
+    								make_cut_bundle_ledger, 
+                                    cancel_cut_bundle_ledger, 
+                                    get_cut_bundle_entry
+								)
 
 class DeliveryChallan(Document):
 	def before_cancel(self):
+		self.ignore_linked_doctypes = ('Stock Ledger Entry', 'Repost Item Valuation',"Cut Bundle Movement Ledger",)
 		if self.is_internal_unit:
 			ste_list = frappe.get_list("Stock Entry", filters={
 				"against":self.doctype,
@@ -38,7 +47,6 @@ class DeliveryChallan(Document):
 					item.delivered_quantity = 0
 					break
 		logger.debug(f"{self.name} Work Order Deliverables Updated {datetime.now()}")
-		self.ignore_linked_doctypes = ('Stock Ledger Entry', 'Repost Item Valuation')
 		add_sl_entries = []
 		reduce_sl_entries = []
 		stock_settings = frappe.get_single("Stock Settings")
@@ -62,7 +70,14 @@ class DeliveryChallan(Document):
 			cpm_doc = frappe.get_doc("Cut Panel Movement", self.cut_panel_movement)	
 			cpm_doc.against = None
 			cpm_doc.against_id = None
-			cpm_doc.save()	
+			cpm_doc.save()
+			from_warehouse = self.from_location
+			to_warehouse = self.get_to_warehouse()
+
+			bundles, collapsed_bundles = get_cut_bundle_entry(cpm_doc, self, to_warehouse, -1, cancelled=1)
+			cancel_cut_bundle_ledger(bundles)
+			bundles, collapsed_bundles = get_cut_bundle_entry(cpm_doc, self, from_warehouse, 1, cancelled=1)
+			cancel_cut_bundle_ledger(bundles)	
 		frappe.enqueue(calculate_pieces,"short", doc_name=self.name, enqueue_after_commit=True )		
 
 	def on_submit(self):
@@ -71,7 +86,14 @@ class DeliveryChallan(Document):
 			cpm_doc = frappe.get_doc("Cut Panel Movement", self.cut_panel_movement)	
 			cpm_doc.against = self.doctype
 			cpm_doc.against_id = self.name
-			cpm_doc.save()		
+			cpm_doc.save()
+			from_warehouse = self.from_location
+			to_warehouse = self.get_to_warehouse()
+
+			bundles, collapsed_details = get_cut_bundle_entry(cpm_doc, self, from_warehouse, -1)
+			make_cut_bundle_ledger(bundles, collapsed_details)
+			bundles, collapsed_details = get_cut_bundle_entry(cpm_doc, self, to_warehouse, 1)
+			make_cut_bundle_ledger(bundles, collapsed_details)
 		frappe.enqueue(calculate_pieces,"short", doc_name=self.name, enqueue_after_commit=True )
 
 	def before_submit(self):
@@ -106,6 +128,12 @@ class DeliveryChallan(Document):
 		if len(items) == 0:
 			frappe.throw("There is no deliverables in this DC")
 		self.set("items", items)
+		if not self.cut_panel_movement:
+			from production_api.production_api.doctype.goods_received_note.goods_received_note import check_cut_stage_items
+			check = check_cut_stage_items(self.items, self.lot)
+			if check:
+				frappe.throw("Create this Using Cut Panel Movement")
+
 		self.total_delivered_qty = total_delivered
 		logger.debug(f"{self.name} Stock check and SLE data construction {datetime.now()}")
 		wo_doc = frappe.get_cached_doc("Work Order", self.work_order)
@@ -183,6 +211,15 @@ class DeliveryChallan(Document):
 		})
 		sl_dict.update(args)
 		return sl_dict
+	
+	def get_to_warehouse(self):
+		to_warehouse = None
+		if self.is_internal_unit:
+			to_warehouse = frappe.get_single("Stock Settings").transit_warehouse
+		else:
+			to_warehouse = self.supplier
+
+		return to_warehouse
 
 def save_rework_deliverables(item_details, from_location):
 	item_details = update_if_string_instance(item_details)
@@ -472,6 +509,7 @@ def construct_stock_entry_details(doc_name):
 			})
 	ste = frappe.new_doc("Stock Entry")
 	ste.purpose = "DC Completion"
+	ste.cut_panel_movement = doc.cut_panel_movement
 	ste.against = "Delivery Challan"
 	ste.against_id = doc_name
 	ste.from_warehouse = doc.from_location
@@ -667,6 +705,41 @@ def get_return_delivery_items(doc_name):
 	doc = frappe.get_doc("Delivery Challan", doc_name)
 	item_details = fetch_return_popup_items(doc.items, doc.lot)
 	return item_details
+
+@frappe.whitelist()
+def create_bundle_return_grn(doc_name, cpm, work_order):
+	from production_api.production_api.doctype.cut_panel_movement.cut_panel_movement import create_goods_received_note
+	items = create_goods_received_note(cpm, work_order, return_items=True)
+	dc_doc = frappe.get_doc("Delivery Challan", doc_name)
+	new_doc = frappe.new_doc("Goods Received Note")
+	new_doc.update({
+		"against": "Work Order",
+		"is_return": 1,
+		"is_rework": dc_doc.is_rework,
+		"against_id": dc_doc.work_order,
+		"lot": dc_doc.lot,
+		"process_name": dc_doc.process_name,
+		"posting_date": nowdate(),
+		"posting_time": now(),
+		"delivery_date": nowdate(),
+		"is_internal_unit": 0,
+		"is_manual_entry": 0,
+		"delivery_location": dc_doc.from_location,
+		"delivery_location_name": dc_doc.from_location_name,
+		"supplier": dc_doc.supplier,
+		"supplier_name": dc_doc.supplier_name,
+		"vehicle_no":"NA",
+		"supplier_document_no":"NA",
+		"dc_no": dc_doc.name,
+		"supplier_address": dc_doc.supplier_address,
+		"supplier_address_display": dc_doc.supplier_address_details,
+		"delivery_address": dc_doc.from_address,
+		"deliverey_address_display": dc_doc.from_address_details,
+		"cut_panel_movement": cpm,
+	})
+	new_doc.set("items", items)
+	new_doc.save()
+	return new_doc.name
 
 @frappe.whitelist()
 def create_return_grn(doc_name, items):

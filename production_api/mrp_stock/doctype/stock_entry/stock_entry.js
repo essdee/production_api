@@ -47,6 +47,7 @@ frappe.ui.form.on('Stock Entry Detail', {
 
 production_api.mrp_stock.StockEntry = class StockEntry extends frappe.ui.form.Controller {
 	refresh() {
+		$(".layout-side-section").css("display", "None")
 		if(sessionStorage.getItem("cut_panel_stock")){
 			sessionStorage.removeItem("cut_panel_stock")
 			let data = sessionStorage.getItem("stock_entry_onload_data")
