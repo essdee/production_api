@@ -70,9 +70,7 @@ class PurchaseInvoice(Document):
 		doc.save(ignore_permissions = True)
 
 	def remove_vendor_bill_purchase_invoce(self):
-		doc = frappe.get_doc("Vendor Bill Tracking", self.vendor_bill_tracking)
-		doc.mrp_purchase_invoice = None
-		doc.save(ignore_permissions = True)
+		frappe.db.set_value("Vendor Bill Tracking", self.vendor_bill_tracking, 'mrp_purchase_invoice', None, update_modified=False)
 	
 	def before_cancel(self):
 		self.ignore_linked_doctypes = ("Vendor Bill Tracking")

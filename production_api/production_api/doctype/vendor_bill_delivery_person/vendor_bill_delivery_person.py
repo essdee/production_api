@@ -23,15 +23,16 @@ def get_last_ten_delivery_persons(supplier=None, search=''):
 		return []
 	if not search:
 		sql = """
-			SELECT delivery_person, delivery_mob_no
-			FROM (
-				SELECT delivery_person, delivery_mob_no, creation
+			SELECT t1.delivery_person, t1.delivery_mob_no
+			FROM `tabVendor Bill Tracking` t1
+			INNER JOIN (
+				SELECT delivery_mob_no, MAX(creation) AS max_creation
 				FROM `tabVendor Bill Tracking`
 				WHERE supplier = %(supplier)s
-				ORDER BY creation DESC
-			) AS ordered
-			GROUP BY delivery_mob_no
-			ORDER BY creation DESC
+				GROUP BY delivery_mob_no
+			) t2
+			ON t1.delivery_mob_no = t2.delivery_mob_no AND t1.creation = t2.max_creation
+			ORDER BY t1.creation DESC
 			LIMIT 5
 		"""
 		return frappe.db.sql(sql, {"supplier": supplier}, as_dict=True)
