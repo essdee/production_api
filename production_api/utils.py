@@ -3,6 +3,13 @@ from six import string_types
 from frappe.query_builder.builder import Order as OrderBy
 from frappe.utils import getdate, add_days, flt
 
+class MyCustomException(Exception):
+    def __init__(self, message):
+        super().__init__(message)
+
+    def __str__(self):
+        return f"{self.message}"
+
 def get_bin(item_code, warehouse, lot):
 	bin = frappe.db.get_value("Bin", {"item_code": item_code, "warehouse": warehouse, "lot": lot})
 	if not bin:

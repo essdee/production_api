@@ -8,13 +8,15 @@
  "field_order": [
   "lot",
   "item",
-  "process_name",
   "against",
-  "against_id",
-  "column_break_dcpm",
-  "cutting_plan",
-  "movement_date",
+  "posting_date",
   "movement_from_cutting",
+  "cutting_plan",
+  "column_break_dcpm",
+  "from_warehouse",
+  "movement_date",
+  "against_id",
+  "posting_time",
   "naming_series",
   "section_break_rnao",
   "cut_panel_movement_html",
@@ -22,12 +24,6 @@
   "amended_from"
  ],
  "fields": [
-  {
-   "fieldname": "cutting_plan",
-   "fieldtype": "Link",
-   "label": "Cutting Plan",
-   "options": "Cutting Plan"
-  },
   {
    "default": "Today",
    "fieldname": "movement_date",
@@ -45,7 +41,8 @@
    "in_list_view": 1,
    "in_standard_filter": 1,
    "label": "Lot",
-   "options": "Lot"
+   "options": "Lot",
+   "reqd": 1
   },
   {
    "fetch_from": "lot.item",
@@ -90,27 +87,12 @@
    "label": "Naming Series"
   },
   {
-   "fieldname": "process_name",
-   "fieldtype": "Link",
-   "in_list_view": 1,
-   "in_standard_filter": 1,
-   "label": "Process Name",
-   "options": "Process",
-   "reqd": 1
-  },
-  {
-   "default": "0",
-   "fieldname": "movement_from_cutting",
-   "fieldtype": "Check",
-   "label": "Movement From Cutting"
-  },
-  {
    "allow_on_submit": 1,
    "fieldname": "against",
    "fieldtype": "Select",
    "in_list_view": 1,
    "label": "Against",
-   "options": "\nStock Entry\nDelivery Challan",
+   "options": "\nStock Entry\nDelivery Challan\nGoods Received Note",
    "read_only": 1
   },
   {
@@ -120,13 +102,48 @@
    "label": "Against ID",
    "options": "against",
    "read_only": 1
+  },
+  {
+   "fieldname": "from_warehouse",
+   "fieldtype": "Link",
+   "label": "From Warehouse",
+   "options": "Supplier",
+   "reqd": 1
+  },
+  {
+   "default": "Today",
+   "fieldname": "posting_date",
+   "fieldtype": "Date",
+   "label": "Posting Date",
+   "read_only": 1
+  },
+  {
+   "default": "Now",
+   "fieldname": "posting_time",
+   "fieldtype": "Time",
+   "label": "Posting Time",
+   "read_only": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "movement_from_cutting",
+   "fieldtype": "Check",
+   "label": "Movement From Cutting"
+  },
+  {
+   "depends_on": "eval: doc.movement_from_cutting",
+   "fieldname": "cutting_plan",
+   "fieldtype": "Link",
+   "label": "Cutting Plan",
+   "mandatory_depends_on": "eval: doc.movement_from_cutting",
+   "options": "Cutting Plan"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-05-31 18:58:04.335346",
+ "modified": "2025-07-07 12:10:09.550561",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Cut Panel Movement",

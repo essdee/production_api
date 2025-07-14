@@ -142,7 +142,13 @@ function get_data(){
         }
         if(!cur_frm.is_new()){
             for(let i = 0 ; i < items.value['items'].length ; i++){
-                let c = items.value['items'][i]['Cloth'].get_value()
+                let c = null
+                if(typeof(items.value['items'][i]['Cloth']) == 'string'){
+                    c = items.value['items'][i]['Cloth']
+                }
+                else{
+                    c = items.value['items'][i]['Cloth'].get_value()
+                }
                 if(!cloths.includes(c)){
                     frappe.throw("Some Cloth items not in the select list")
                 }

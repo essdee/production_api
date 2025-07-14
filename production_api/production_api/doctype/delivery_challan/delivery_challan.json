@@ -17,6 +17,7 @@
   "transfer_complete",
   "production_detail",
   "column_break_xmwj",
+  "allow_non_bundle",
   "process_name",
   "supplier",
   "supplier_name",
@@ -333,13 +334,19 @@
    "hidden": 1,
    "label": "Cut Panel Movement",
    "options": "Cut Panel Movement"
+  },
+  {
+   "default": "0",
+   "fieldname": "allow_non_bundle",
+   "fieldtype": "Check",
+   "label": "Allow Non Bundle"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-05-31 18:56:41.013227",
+ "modified": "2025-07-08 12:18:27.991961",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Delivery Challan",

@@ -19,6 +19,7 @@
   "selected_type",
   "calculated_parts",
   "reverted",
+  "posting_date",
   "column_break_rxns",
   "cutting_marker",
   "marker_name",
@@ -32,6 +33,7 @@
   "length_allowance",
   "width_allowance",
   "is_set_item",
+  "posting_time",
   "section_break_cwpl",
   "cutting_marker_ratios",
   "cutting_marker_ratios_html",
@@ -369,12 +371,26 @@
    "fieldtype": "Check",
    "hidden": 1,
    "label": "Is Set Item"
+  },
+  {
+   "default": "Today",
+   "fieldname": "posting_date",
+   "fieldtype": "Date",
+   "label": "Posting Date",
+   "read_only": 1
+  },
+  {
+   "default": "Now",
+   "fieldname": "posting_time",
+   "fieldtype": "Time",
+   "label": "Posting Time",
+   "read_only": 1
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-06-06 10:33:34.606650",
+ "modified": "2025-07-02 12:53:41.288578",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Cutting LaySheet",

@@ -12,6 +12,7 @@ from production_api.production_api.doctype.item.item import get_or_create_varian
 from production_api.utils import get_part_list, get_stich_details, update_if_string_instance
 from production_api.production_api.doctype.cutting_marker.cutting_marker import fetch_marker_details
 from production_api.essdee_production.doctype.item_production_detail.item_production_detail import get_stitching_combination
+from production_api.production_api.doctype.cut_bundle_movement_ledger.cut_bundle_movement_ledger import make_cut_bundle_ledger, cancel_cut_bundle_ledger
 
 class CuttingLaySheet(Document):
 	def autoname(self):
@@ -37,6 +38,8 @@ class CuttingLaySheet(Document):
 				self.set_onload("marker_details", details)
 
 	def before_validate(self):
+		if frappe.flags.in_patch:
+			return
 		if frappe.get_value("Cutting LaySheet", self.name, "status") == "Cancelled" and self.status == "Cancelled":
 			frappe.throw("Can't update the Cancelled Laysheet")
 
@@ -744,10 +747,50 @@ def print_labels(print_items, lay_no, cutting_plan, doc_name):
 	if work_order:
 		update_cloth_stock(cls_doc, -1, 1)
 		grn = create_grn_entry(doc_name)
+		create_cut_bundle_ledger(cls_doc)
 	return {
 		"zpl": zpl,
 		"grn": grn,
 	}	
+
+def cancel_cut_bundle(cls_doc, is_cancelled=1):
+	cancel_bundle_ledger(cls_doc, is_cancelled)
+
+def cancel_bundle_ledger(cls_doc, is_cancelled):
+	entries = get_cut_bundle_struct(cls_doc, is_cancelled)
+	cancel_cut_bundle_ledger(entries)
+
+def create_cut_bundle_ledger(cls_doc, is_cancelled=0):
+	cut_bundle_ledger(cls_doc, is_cancelled)
+
+def cut_bundle_ledger(cls_doc, is_cancelled=0):
+	entries = get_cut_bundle_struct(cls_doc, is_cancelled)
+	make_cut_bundle_ledger(entries)
+
+def get_cut_bundle_struct(cls_doc, is_cancelled):
+	wo = frappe.get_value("Cutting Plan", cls_doc.cutting_plan, "work_order")
+	supplier = frappe.get_value("Work Order", wo, "supplier")
+	entries = []	
+	for row in cls_doc.cutting_laysheet_bundles:
+		entries.append({
+			"lot": cls_doc.lot,
+			"supplier": supplier,
+			"lay_no": cls_doc.lay_no,
+			"bundle_no": row.bundle_no,
+			"panel": row.part,
+			"shade": row.shade,
+			"posting_date": cls_doc.posting_date,
+			"posting_time": cls_doc.posting_time,
+			"size": row.size,
+			"colour": row.colour,
+			"quantity": row.quantity,
+			"item": cls_doc.item,
+			"voucher_type": cls_doc.doctype,
+			"voucher_no": cls_doc.name,
+			"is_cancelled": is_cancelled,
+			"set_combination": row.set_combination,
+		})
+	return entries	
 
 @frappe.whitelist()
 def get_panels(cutting_laysheet):
@@ -1232,6 +1275,7 @@ def revert_labels(doc_name):
 		update_cloth_stock(cls_doc, 1, -1)
 		grn_doc = frappe.get_doc("Goods Received Note", cls_doc.goods_received_note)
 		grn_doc.cancel()
+		cancel_cut_bundle(cls_doc, is_cancelled=1)
 	cls_doc.goods_received_note =  None
 	cls_doc.reverted = 1
 	cls_doc.save()
@@ -1443,6 +1487,7 @@ def update_label_print_status(doc_name):
 	if wo:
 		grn = create_grn_entry(doc_name)
 		doc.goods_received_note = grn
+		create_cut_bundle_ledger(doc)
 	doc.status = "Label Printed"
 	doc.reverted = 0
 	doc.save()

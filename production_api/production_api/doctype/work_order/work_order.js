@@ -236,18 +236,20 @@ frappe.ui.form.on("Work Order", {
 					frm.dirty();
 				})
 			}
-			frappe.call({
-				method: "production_api.production_api.doctype.work_order.work_order.fetch_summary_details",
-				args : {
-					doc_name: frm.doc.name,
-					production_detail: frm.doc.production_detail,
-				},
-				callback: function(r){
-					$(frm.fields_dict['wo_summary_html'].wrapper).html("")
-					frm.summary = new frappe.production.ui.WOSummary(frm.fields_dict["wo_summary_html"].wrapper);
-					frm.summary.load_data(r.message.item_detail, r.message.deliverables)
-				}
-			})
+			if(frm.doc.docstatus == 1){
+				frappe.call({
+					method: "production_api.production_api.doctype.work_order.work_order.fetch_summary_details",
+					args : {
+						doc_name: frm.doc.name,
+						production_detail: frm.doc.production_detail,
+					},
+					callback: function(r){
+						$(frm.fields_dict['wo_summary_html'].wrapper).html("")
+						frm.summary = new frappe.production.ui.WOSummary(frm.fields_dict["wo_summary_html"].wrapper);
+						frm.summary.load_data(r.message.item_detail, r.message.deliverables)
+					}
+				})
+			}
 			if(frm.doc.docstatus == 1 && !frm.doc.is_rework && frm.doc.open_status == 'Open'){
 				frm.add_custom_button("Create Rework",()=> {
 					let d =new frappe.ui.Dialog({
