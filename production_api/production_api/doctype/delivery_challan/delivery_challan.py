@@ -66,7 +66,7 @@ class DeliveryChallan(Document):
 		logger.debug(f"{self.name} Stock reduced From Supplier {datetime.now()}")
 		self.make_repost_action()
 		wo_doc.save(ignore_permissions=True)	
-		if self.cut_panel_movement:
+		if self.cut_panel_movement and not self.allow_non_bundle:
 			cpm_doc = frappe.get_doc("Cut Panel Movement", self.cut_panel_movement)	
 			cpm_doc.against = None
 			cpm_doc.against_id = None
@@ -78,11 +78,18 @@ class DeliveryChallan(Document):
 			cancel_cut_bundle_ledger(bundles)
 			bundles, collapsed_bundles = get_cut_bundle_entry(cpm_doc, self, from_warehouse, 1, cancelled=1)
 			cancel_cut_bundle_ledger(bundles)	
+
+		if self.allow_non_bundle:	
+			from production_api.production_api.doctype.cut_bundle_movement_ledger.cut_bundle_movement_ledger import (
+				update_collapsed_bundle
+			)
+			update_collapsed_bundle(self.doctype, self.name, "on_cancel")
+
 		frappe.enqueue(calculate_pieces,"short", doc_name=self.name, enqueue_after_commit=True )		
 
 	def on_submit(self):
 		# calculate_pieces(self.name)
-		if self.cut_panel_movement:
+		if self.cut_panel_movement and not self.allow_non_bundle:
 			cpm_doc = frappe.get_doc("Cut Panel Movement", self.cut_panel_movement)	
 			cpm_doc.against = self.doctype
 			cpm_doc.against_id = self.name
@@ -94,11 +101,25 @@ class DeliveryChallan(Document):
 			make_cut_bundle_ledger(bundles, collapsed_details)
 			bundles, collapsed_details = get_cut_bundle_entry(cpm_doc, self, to_warehouse, 1)
 			make_cut_bundle_ledger(bundles, collapsed_details)
+		
+		if self.allow_non_bundle:	
+			from production_api.production_api.doctype.cut_bundle_movement_ledger.cut_bundle_movement_ledger import (
+				update_collapsed_bundle
+			)
+			update_collapsed_bundle(self.doctype, self.name, "on_submit")
+
 		frappe.enqueue(calculate_pieces,"short", doc_name=self.name, enqueue_after_commit=True )
 
 	def before_submit(self):
 		if not self.vehicle_no:
 			frappe.throw("Enter the Vehicle Number")
+		if self.allow_non_bundle:
+			role = frappe.db.get_single_value("MRP Settings", "additional_grn_submit_role")
+			if not role:
+				frappe.throw("Set the role for Non Bundle DC submit in MRP Settings", title='GRN')
+			user_roles = frappe.get_roles(frappe.session.user)
+			if role not in user_roles:
+				frappe.throw(f"Only {role} can submit this document.", title='DC')
 
 		self.letter_head = frappe.db.get_single_value("MRP Settings","dc_grn_letter_head")
 		logger = get_module_logger("delivery_challan")
@@ -128,7 +149,7 @@ class DeliveryChallan(Document):
 		if len(items) == 0:
 			frappe.throw("There is no deliverables in this DC")
 		self.set("items", items)
-		if not self.cut_panel_movement:
+		if not self.cut_panel_movement and not self.allow_non_bundle:
 			from production_api.production_api.doctype.goods_received_note.goods_received_note import check_cut_stage_items
 			check = check_cut_stage_items(self.items, self.lot)
 			if check:
@@ -183,7 +204,8 @@ class DeliveryChallan(Document):
 			if self.is_rework:
 				deliverables,stock_value = save_rework_deliverables(self.deliverable_item_details,self.from_location)
 			else:	
-				deliverables,stock_value = save_deliverables(self.deliverable_item_details,self.from_location)
+				rec_type = frappe.db.get_single_value("Stock Settings", "default_received_type")
+				deliverables, stock_value = save_deliverables(self.deliverable_item_details,self.from_location, received_type=rec_type)
 			self.set('items',deliverables)
 			self.stock_value = stock_value
 			self.total_value = stock_value

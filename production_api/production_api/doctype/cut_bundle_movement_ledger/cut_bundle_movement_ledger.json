@@ -15,9 +15,9 @@
   "panel",
   "shade",
   "is_cancelled",
-  "is_accessory",
   "is_collapsed",
   "collapsed_bundle",
+  "transformed",
   "posting_datetime",
   "cbm_key",
   "column_break_gltp",
@@ -30,7 +30,9 @@
   "colour",
   "quantity",
   "quantity_after_transaction",
-  "set_combination"
+  "set_combination",
+  "transformed_from",
+  "amended_from"
  ],
  "fields": [
   {
@@ -128,12 +130,6 @@
   },
   {
    "default": "0",
-   "fieldname": "is_accessory",
-   "fieldtype": "Check",
-   "label": "Is Accessory"
-  },
-  {
-   "default": "0",
    "fieldname": "is_collapsed",
    "fieldtype": "Check",
    "label": "Is Collapsed"
@@ -177,6 +173,27 @@
    "fieldtype": "Data",
    "label": "Supplier Name",
    "read_only": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "transformed",
+   "fieldtype": "Check",
+   "label": "Transformed"
+  },
+  {
+   "fieldname": "transformed_from",
+   "fieldtype": "Data",
+   "label": "Transformed From"
+  },
+  {
+   "fieldname": "amended_from",
+   "fieldtype": "Link",
+   "label": "Amended From",
+   "no_copy": 1,
+   "options": "Cut Bundle Movement Ledger",
+   "print_hide": 1,
+   "read_only": 1,
+   "search_index": 1
   }
  ],
  "grid_page_length": 50,
@@ -184,7 +201,7 @@
  "in_create": 1,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-07-05 14:21:01.480034",
+ "modified": "2025-07-11 10:57:36.875197",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Cut Bundle Movement Ledger",

@@ -184,7 +184,7 @@ def update_accessory(cutting_plan, cut_panel_movement_json, docstatus):
 				cls_doc.save()
 
 @frappe.whitelist()
-def get_cut_bundle_unmoved_data(from_location, lot, posting_date, posting_time, movement_from_cutting, cutting_plan=None):
+def get_cut_bundle_unmoved_data(from_location, lot, posting_date, posting_time, movement_from_cutting, cutting_plan=None, bundle_colour=None, get_collapsed=False):
 	if cutting_plan:
 		version = frappe.get_value("Cutting Plan", cutting_plan, "version")
 		if version == "V1":
@@ -206,7 +206,7 @@ def get_cut_bundle_unmoved_data(from_location, lot, posting_date, posting_time, 
 			INNER JOIN (
 				SELECT cbm_key, MAX(posting_datetime) AS max_posting_datetime, lay_no FROM `tabCut Bundle Movement Ledger`
 				WHERE posting_datetime <= %(datetime_value)s AND is_cancelled = 0 AND collapsed_bundle = 0
-				AND is_collapsed = 0 AND is_accessory = 0  AND supplier = %(from_location)s  AND lot = %(lot)s
+				AND is_collapsed = 0 AND transformed = 0 AND supplier = %(from_location)s  AND lot = %(lot)s
 				GROUP BY cbm_key
 			) latest_cbml
 		ON cbml.cbm_key = latest_cbml.cbm_key AND cbml.posting_datetime = latest_cbml.max_posting_datetime
@@ -241,6 +241,10 @@ def get_cut_bundle_unmoved_data(from_location, lot, posting_date, posting_time, 
 		else:
 			if parts not in panels:
 				panels.append(parts)
+		
+		if bundle_colour:
+			if major_colour != bundle_colour:
+				continue
 
 		comb = {
 			"major_colour": set_combination.get("major_colour")
@@ -280,17 +284,17 @@ def get_cut_bundle_unmoved_data(from_location, lot, posting_date, posting_time, 
 					else:
 						accessories[key] = weight
 
-	for key, weight in accessories.items():
-		cloth_item, cloth_type, colour, dia, shade = key
-		accessory_details.append({
-			"cloth_name":cloth_item,
-			"cloth_type":cloth_type,
-			"colour":colour,
-			"shade":shade,
-			"dia":dia,
-			"weight": weight,
-			"moved_weight": 0,
-		}) 			
+		for key, weight in accessories.items():
+			cloth_item, cloth_type, colour, dia, shade = key
+			accessory_details.append({
+				"cloth_name":cloth_item,
+				"cloth_type":cloth_type,
+				"colour":colour,
+				"shade":shade,
+				"dia":dia,
+				"weight": weight,
+				"moved_weight": 0,
+			}) 			
 
 	final_data = {}
 	for size in sizes:
@@ -328,34 +332,40 @@ def get_cut_bundle_unmoved_data(from_location, lot, posting_date, posting_time, 
 	for colour in final_data:
 		data = final_data[colour]["data"]
 		final_data[colour]["data"] = sorted(data, key=itemgetter('size', 'shade'))
-	
-	# cbm_list = frappe.db.sql("""
-	# 	SELECT cbml.name FROM `tabCut Bundle Movement Ledger` cbml
-	# 		INNER JOIN (
-	# 			SELECT cbm_key, MAX(posting_datetime) AS max_posting_datetime, lay_no FROM `tabCut Bundle Movement Ledger`
-	# 			WHERE posting_datetime <= %(datetime_value)s AND is_cancelled = 0 AND collapsed_bundle = 1
-	# 			AND supplier = %(from_location)s  AND lot = %(lot)s GROUP BY cbm_key
-	# 		) latest_cbml
-	# 	ON cbml.cbm_key = latest_cbml.cbm_key AND cbml.posting_datetime = latest_cbml.max_posting_datetime
-	# 	WHERE cbml.posting_datetime <= %(datetime_value)s AND cbml.collapsed_bundle = 1
-	# 	ORDER BY latest_cbml.lay_no asc
-	# """, {
-	# 	"datetime_value": posting_datetime,
-	# 	"from_location": from_location,
-	# 	"lot": lot,
-	# }, as_dict=True)
 
 	collapsed_bundles = []
-	# for cbm in cbm_list:
-	# 	doc = frappe.get_doc("Cut Bundle Movement Ledger", cbm['name']) 
-	# 	collapsed_bundles.append({
-	# 		"moved": False,
-	# 		"size": doc.size,
-	# 		"colour": doc.colour,
-	# 		"panel": doc.panel,
-	# 		"quantity": doc.quantity_after_transaction,
-	# 	})
+	if get_collapsed:
+		cbm_list = frappe.db.sql("""
+			SELECT cbml.name FROM `tabCut Bundle Movement Ledger` cbml
+				INNER JOIN (
+					SELECT cbm_key, MAX(posting_datetime) AS max_posting_datetime, lay_no FROM `tabCut Bundle Movement Ledger`
+					WHERE posting_datetime <= %(datetime_value)s AND is_cancelled = 0 AND collapsed_bundle = 1 AND transformed = 0 
+					AND supplier = %(from_location)s  AND lot = %(lot)s GROUP BY cbm_key
+				) latest_cbml
+			ON cbml.cbm_key = latest_cbml.cbm_key AND cbml.posting_datetime = latest_cbml.max_posting_datetime
+			WHERE cbml.posting_datetime <= %(datetime_value)s AND cbml.collapsed_bundle = 1
+			ORDER BY latest_cbml.lay_no asc
+		""", {
+			"datetime_value": posting_datetime,
+			"from_location": from_location,
+			"lot": lot,
+		}, as_dict=True)
 
+		for cbm in cbm_list:
+			doc = frappe.get_doc("Cut Bundle Movement Ledger", cbm['name']) 
+			collapsed_bundles.append({
+				"moved": False,
+				"size": doc.size,
+				"colour": doc.colour,
+				"panel": doc.panel,
+				"quantity": doc.quantity_after_transaction,
+				"shade": doc.shade,
+				"lay_no": doc.lay_no,
+				"bundle_no": doc.bundle_no,
+				"set_combination": update_if_string_instance(doc.set_combination),
+				"move_qty": 0,
+			})
+			
 	return {
 		"panels": panels,
 		"data": final_data,

@@ -67,9 +67,7 @@ def get_cut_bundle_entry(cpm_doc, doc, target_warehouse, multiplier, cancelled=0
 						"is_cancelled": cancelled,
 						"set_combination": frappe.json.dumps(row['set_combination']),	
 					})
-	collapsed_details = None
-	if x['collapsed_details']:
-		collapsed_details = []
+	collapsed_details = []
 
 	return items, collapsed_details				
 
@@ -89,7 +87,10 @@ def make_cut_bundle_ledger(entries, collapsed_entries=[]):
 				entry['quantity_after_transaction'] = entry['quantity'] + previous[0]['quantity_after_transaction']
 			else:
 				entry['quantity_after_transaction'] = entry['quantity']
-
+			
+			if entry['quantity_after_transaction'] < 0:
+				frappe.throw("Stock is not Avaliable in Source")
+			
 			make_cut_bundle_entry(entry)
 
 def make_cut_bundle_entry(entry):
@@ -100,32 +101,34 @@ def make_cut_bundle_entry(entry):
 	new_doc.set_key()
 	new_doc.submit()
 
-def get_future_entry(entry):
+def get_future_entry(entry, collapsed_bundle=0):
 	posting_datetime = get_combine_datetime(entry['posting_date'], entry['posting_time'])
 	key = get_cbm_key(entry)
 	future = frappe.db.sql(
 		"""
 			SELECT name, quantity_after_transaction FROM `tabCut Bundle Movement Ledger`
-			WHERE cbm_key = %(key)s AND posting_datetime > %(datetime)s AND is_cancelled = 0 AND is_collapsed = 0
-			ORDER BY posting_datetime DESC
+			WHERE cbm_key = %(key)s AND posting_datetime > %(datetime)s AND is_cancelled = 0 AND is_collapsed = 0 
+			AND collapsed_bundle = %(collapsed)s AND transformed = 0 ORDER BY posting_datetime DESC
 		""",{
 			"key": key,
 			"datetime": posting_datetime,
+			"collapsed": collapsed_bundle,
 		}, as_dict=True 
 	)
 	return future if future else None
 
-def get_previous_entry(entry):
+def get_previous_entry(entry, collapsed_bundle=0):
 	posting_datetime = get_combine_datetime(entry['posting_date'], entry['posting_time'])
 	key = get_cbm_key(entry)
 	previous = frappe.db.sql(
 		"""
 			SELECT name, quantity_after_transaction FROM `tabCut Bundle Movement Ledger`
 			WHERE cbm_key = %(key)s AND posting_datetime <= %(datetime)s AND is_cancelled = 0 AND is_collapsed = 0 
-			ORDER BY posting_datetime DESC LIMIT 1
+			AND collapsed_bundle = %(collapsed)s AND transformed = 0 ORDER BY posting_datetime DESC LIMIT 1
 		""", {
 			"key": key,
 			"datetime": posting_datetime,
+			"collapsed": collapsed_bundle,
 		}, as_dict=True
 	)
 	return previous if previous else None
@@ -162,14 +165,15 @@ def cancel_cut_bundle_ledger(entries):
 						"name": previous[0]['name'],
 					}
 				)
-			elif not previous and not future:
-				frappe.throw("Cancel the GRN's against this Work Order to Cancel this Document")
 			else:
 				frappe.throw("Stock is Not Available")
 
-def update_collapsed_bundle(doctype, docname, event):
+def update_collapsed_bundle(doctype, docname, event, non_stich_process=False):
 	doc = frappe.get_doc(doctype, docname)
 	from_location = doc.supplier
+	if doctype == "Delivery Challan":
+		from_location = doc.from_location
+
 	new_bundles = {}
 	ipd = frappe.get_value("Lot", doc.lot, "production_detail")
 	if not ipd:
@@ -185,10 +189,20 @@ def update_collapsed_bundle(doctype, docname, event):
 		return
 	ipd_fields = ["primary_item_attribute", "packing_attribute", "stiching_attribute", "stiching_in_stage"]
 	primary_attr, pack_attr, stich_attr, stich_stage = frappe.get_value("Item Production Detail", ipd, ipd_fields)
-
-	items = doc.grn_deliverables
-	if doc.is_return:
+	attrs = {
+		"primary": primary_attr,
+		"pack": pack_attr,
+		"stich": stich_attr,
+	}
+	items = None
+	if doctype == "Delivery Challan":
 		items = doc.items
+	elif non_stich_process:
+		items = doc.items	
+	else:	
+		items = doc.grn_deliverables
+		if doc.is_return:
+			items = doc.items
 
 	for row in items:
 		item = frappe.get_value("Item Variant", row.item_variant, "item")
@@ -196,71 +210,133 @@ def update_collapsed_bundle(doctype, docname, event):
 		if not dept_attr:
 			continue
 		if check_cut_stage_variant(row.item_variant, dept_attr, stich_stage):
+			quantity = 0
+			if doctype == "Delivery Challan":
+				quantity = row.qty
+			else:
+				quantity = row.quantity
+
 			d = get_variant_attr_details(row.item_variant)
 			if event == "on_submit":
-				cb_future_entries = get_future_cbm_list(doc.posting_date, doc.posting_time, doc.supplier, row.item_variant, limit=False)
-				cb_previous_entries = get_previous_cbm_list(doc.posting_date, doc.posting_time, doc.supplier, row.item_variant)
-				if not cb_previous_entries and not cb_future_entries:
-					row_panel = d[stich_attr]
-					d[stich_attr] = "%"+d[stich_attr]+"%"
-
-					cbm_list = get_latest_cbml_for_variant(from_location, doc.lot, d[primary_attr], d[pack_attr], d[stich_attr], item)
-					for bundle in cbm_list:
-						cbm_doc = frappe.get_doc("Cut Bundle Movement Ledger", bundle['name'])	
-						panels = cbm_doc.panel.split(",")	
-						for panel in panels:
-							panel = panel.strip()
-							key = [ str(cbm_doc.lot), str(cbm_doc.item), str(cbm_doc.size), str(cbm_doc.colour), str(panel)]		
-							key = "|".join(key)
-							if key not in new_bundles:
-								new_bundles[key] = { "qty": 0, "bundle_qty": 0 }
-							new_bundles[key]['bundle_qty'] += cbm_doc.quantity_after_transaction
-
-					key = [ str(doc.lot), str(item), str(d[primary_attr]), str(d[pack_attr]), str(row_panel)]		
-					key = "|".join(key)
-					new_bundles[key]['qty'] += row.quantity
-					if cbm_list:
-						update_is_collapsed(from_location, doc.lot, d[primary_attr], d[pack_attr], d[stich_attr], item)
-		
-				elif cb_previous_entries and not cb_future_entries:
-					create_inter_cbml_doc(cb_previous_entries[0]['name'], doctype, docname, row.quantity, -1, doc.posting_date, doc.posting_time)
-
-				elif not cb_previous_entries and cb_future_entries:
-					frappe.throw("Stock is not Available")	
-
-				elif cb_previous_entries and cb_future_entries:
-					if cb_future_entries[0]['quantity_after_transaction'] >= row.quantity:
-						for entry in cb_future_entries:
-							qty = entry['quantity_after_transaction'] - row.quantity
-							update_future_entries_qty_after_transaction(entry['name'], qty)
-
-						create_inter_cbml_doc(cb_previous_entries[0]['name'], doctype, docname, row.quantity, -1, doc.posting_date, doc.posting_time)	
-					else:
-						frappe.throw("Stock is not Available")	
+				new_bundles = on_submit_collapsed_bundles(doc, doctype, docname, to_location, row.item_variant, d, attrs, item, quantity, new_bundles)
 			else:
-				cb_future_entries = get_future_cbm_list(doc.posting_date, doc.posting_time, doc.supplier, row.item_variant, limit=False)
-				cb_previous_entries = get_previous_cbm_list(doc.posting_date, doc.posting_time, doc.supplier, row.item_variant, limit=False)
-				if cb_previous_entries and not cb_future_entries:
-					if len(cb_previous_entries) == 1:
-						update_is_collapsed(from_location, doc.lot, d[primary_attr], d[pack_attr], d[stich_attr], item, is_collapsed=0)
-						update_is_cancelled_cbml(cb_previous_entries[0]['name'])
-					else:
-						update_is_cancelled_cbml(cb_previous_entries[0]['name'])
-						
-				elif cb_previous_entries and cb_future_entries:
-					if len(cb_previous_entries) == 1:
-						frappe.throw("Stock Not Available")
-					else:
-						update_is_cancelled_cbml(cb_previous_entries[0]['name'])
-						previous_qty = row.quantity * -1
-						for entry in cb_future_entries:
-							qty = entry['quantity_after_transaction'] + previous_qty
-							update_future_entries_qty_after_transaction(entry['name'], qty)
+				cancel_collapse_bundles(doc, row.item_variant, quantity, from_location, d, attrs, item)
+
+	to_new_bundles = {}
+	to_location = None
+	if doctype == "Delivery Challan":
+		to_location = doc.supplier
+		for row in items:
+			item = frappe.get_value("Item Variant", row.item_variant, "item")
+			dept_attr = frappe.get_value("Item", item, "dependent_attribute")
+			if not dept_attr:
+				continue
+
+			if check_cut_stage_variant(row.item_variant, dept_attr, stich_stage):
+				quantity = row.qty
+				d = get_variant_attr_details(row.item_variant)
+				if event == "on_submit":
+					to_new_bundles = on_submit_collapsed_bundles(doc, doctype, docname, to_location, row.item_variant, d, attrs, item, quantity, to_new_bundles, add=True)
+				else:
+					cancel_collapse_bundles(doc, row.item_variant, quantity, to_location, d, attrs, item)
+
+	if non_stich_process:
+		to_location = doc.delivery_location
+		for row in items:
+			item = frappe.get_value("Item Variant", row.item_variant, "item")
+			dept_attr = frappe.get_value("Item", item, "dependent_attribute")
+			if not dept_attr:
+				continue
+
+			if check_cut_stage_variant(row.item_variant, dept_attr, stich_stage):
+				quantity = row.qty
+				d = get_variant_attr_details(row.item_variant)
+				if event == "on_submit":
+					to_new_bundles = on_submit_collapsed_bundles(doc, doctype, docname, to_location, row.item_variant, d, attrs, item, quantity, to_new_bundles, add=True)
+				else:
+					cancel_collapse_bundles(doc, row.item_variant, quantity, to_location, d, attrs, item)
 
 	for bundle_key in new_bundles.keys():
 		bundle_total_qty = new_bundles[bundle_key]['bundle_qty']
 		stock_moved_qty = new_bundles[bundle_key]['qty']
 		create_new_collapsed_bundle(bundle_key, bundle_total_qty, stock_moved_qty, from_location, doc)
+	
+	if doctype == "Delivery Challan":
+		for bundle_key in to_new_bundles.keys():
+			bundle_total_qty = to_new_bundles[bundle_key]['bundle_qty']
+			stock_moved_qty = to_new_bundles[bundle_key]['qty']
+			create_new_collapsed_bundle(bundle_key, bundle_total_qty, stock_moved_qty, to_location, doc)	
+
+def on_submit_collapsed_bundles(doc, doctype, docname, location, item_variant, d, attrs, item, quantity, bundles_dict, add=False):
+	cb_future_entries = get_collapsed_future_cbm_list(doc.posting_date, doc.posting_time, location, item_variant, limit=False)
+	cb_previous_entries = get_collapsed_previous_cbm_list(doc.posting_date, doc.posting_time, location, item_variant)
+	if not cb_previous_entries and not cb_future_entries:
+		row_panel = d[attrs['stich']]
+		d[attrs['stich']] = "%"+d[attrs['stich']]+"%"
+		cbm_list = get_latest_cbml_for_variant(location, doc.lot, d[attrs['primary']], d[attrs['pack']], d[attrs['stich']], item)
+		for bundle in cbm_list:
+			cbm_doc = frappe.get_doc("Cut Bundle Movement Ledger", bundle['name'])	
+			panels = cbm_doc.panel.split(",")	
+			for panel in panels:
+				panel = panel.strip()
+				key = [ str(cbm_doc.lot), str(cbm_doc.item), str(cbm_doc.size), str(cbm_doc.colour), str(panel)]		
+				key = "|".join(key)
+				if key not in bundles_dict:
+					bundles_dict[key] = { "qty": 0, "bundle_qty": 0 }
+				bundles_dict[key]['bundle_qty'] += cbm_doc.quantity_after_transaction
+
+		bundles_dict = [ str(doc.lot), str(item), str(d[attrs['primary']]), str(d[attrs['pack']]), str(row_panel)]		
+		key = "|".join(key)
+		if key not in bundles_dict:
+			bundles_dict[key] = { "qty": 0, "bundle_qty": 0 }
+		bundles_dict[key]['qty'] += quantity
+		if cbm_list:
+			update_is_collapsed(location, doc.lot, d[attrs['primary']], d[attrs['pack']], d[attrs['stich']], item)
+
+	elif cb_previous_entries and not cb_future_entries:
+		x = -1
+		if add:
+			x = 1
+		create_inter_cbml_doc(cb_previous_entries[0]['name'], doctype, docname, quantity, x, doc.posting_date, doc.posting_time)
+
+	elif not cb_previous_entries and cb_future_entries:
+		frappe.throw("Change the Date and Time for Panel Movement")	
+
+	elif cb_previous_entries and cb_future_entries:
+		if cb_future_entries[0]['quantity_after_transaction'] >= quantity:
+			for entry in cb_future_entries:
+				qty = entry['quantity_after_transaction'] - quantity
+				if add:
+					qty = entry['quantity_after_transaction'] + quantity
+				update_future_entries_qty_after_transaction(entry['name'], qty)
+			x = -1
+			if add:
+				x = 1
+			create_inter_cbml_doc(cb_previous_entries[0]['name'], doctype, docname, quantity, x, doc.posting_date, doc.posting_time)	
+		else:
+			frappe.throw("Stock is not Available")	
+
+	return bundles_dict		
+
+def cancel_collapse_bundles(doc, item_variant, quantity, location, d, attrs, item):
+	cb_future_entries = get_collapsed_future_cbm_list(doc.posting_date, doc.posting_time, location, item_variant, limit=False)
+	cb_previous_entries = get_collapsed_previous_cbm_list(doc.posting_date, doc.posting_time, location, item_variant, limit=False)
+	if cb_previous_entries and not cb_future_entries:
+		if len(cb_previous_entries) == 1:
+			update_is_collapsed(location, doc.lot, d[attrs['primary']], d[attrs['pack']], d[attrs['stich']], item, is_collapsed=0)
+			update_is_cancelled_cbml(cb_previous_entries[0]['name'])
+		else:
+			update_is_cancelled_cbml(cb_previous_entries[0]['name'])
+			
+	elif cb_previous_entries and cb_future_entries:
+		if len(cb_previous_entries) == 1:
+			frappe.throw("Stock Not Available")
+		else:
+			update_is_cancelled_cbml(cb_previous_entries[0]['name'])
+			previous_qty = quantity * -1
+			for entry in cb_future_entries:
+				qty = entry['quantity_after_transaction'] + previous_qty
+				update_future_entries_qty_after_transaction(entry['name'], qty)	
 
 def create_new_collapsed_bundle(bundle_key, bundle_total_qty, stock_moved_qty, from_location, doc):
 	lot, item, size, colour, panel = bundle_key.split("|")
@@ -273,7 +349,14 @@ def create_new_collapsed_bundle(bundle_key, bundle_total_qty, stock_moved_qty, f
 	
 	panel_qty = panel_qty_dict[panel]
 	stock_moved_qty = stock_moved_qty / panel_qty
-	bundle_qty = bundle_total_qty - stock_moved_qty
+	bundle_qty = 0
+	if doc.doctype == "Delivery Challan":
+		bundle_qty = bundle_total_qty + stock_moved_qty
+	else:	
+		bundle_qty = bundle_total_qty - stock_moved_qty
+
+	if bundle_qty < 0:
+		frappe.throw("Stock is not Available")
 
 	lay_no = bundle_no = 0
 	d = {
@@ -303,11 +386,11 @@ def create_new_collapsed_bundle(bundle_key, bundle_total_qty, stock_moved_qty, f
 	new_doc.update_item_variant()
 	new_doc.submit()
 
-def get_future_cbm_list(posting_date, posting_time, supplier, variant, limit=True):
+def get_collapsed_future_cbm_list(posting_date, posting_time, supplier, variant, limit=True):
 	query = """
 		SELECT name, quantity_after_transaction, quantity FROM `tabCut Bundle Movement Ledger` WHERE collapsed_bundle = 1 
-		AND is_cancelled = 0 AND posting_datetime > %(datetime)s AND supplier = %(supplier)s AND item_variant = %(variant)s
-		ORDER BY posting_datetime DESC
+		AND is_cancelled = 0 AND transformed = 0 AND posting_datetime > %(datetime)s AND supplier = %(supplier)s 
+		AND item_variant = %(variant)s ORDER BY posting_datetime DESC
 	"""	
 	if limit:
 		query += " LIMIT 1"
@@ -321,11 +404,11 @@ def get_future_cbm_list(posting_date, posting_time, supplier, variant, limit=Tru
 
 	return cbm_list
 
-def get_previous_cbm_list(posting_date, posting_time, supplier, variant, limit=True):
+def get_collapsed_previous_cbm_list(posting_date, posting_time, supplier, variant, limit=True):
 	query = """
 		SELECT name, quantity_after_transaction, quantity FROM `tabCut Bundle Movement Ledger` WHERE collapsed_bundle = 1 
-		AND is_cancelled = 0 AND posting_datetime <= %(datetime)s AND supplier = %(supplier)s AND item_variant = %(variant)s
-		ORDER BY posting_datetime DESC
+		AND is_cancelled = 0 AND transformed = 0 AND posting_datetime <= %(datetime)s AND supplier = %(supplier)s 
+		AND item_variant = %(variant)s ORDER BY posting_datetime DESC
 	"""
 	if limit:
 		query += " LIMIT 1"
@@ -355,7 +438,7 @@ def update_is_collapsed(from_location, lot, primary_val, pack_val, stich_val, it
 	frappe.db.sql(
 		"""
 			UPDATE `tabCut Bundle Movement Ledger` SET is_collapsed = %(collapsed)s WHERE size = %(size)s 
-			AND colour = %(colour)s AND item = %(item)s AND lot = %(lot)s 
+			AND colour = %(colour)s AND item = %(item)s AND lot = %(lot)s AND transformed = 0 
 			AND panel like %(panel)s AND is_cancelled = 0 AND is_collapsed = %(collapsed_val)s
 		""", {
 			"lot": lot, 
@@ -411,9 +494,9 @@ def get_latest_cbml_for_variant(from_location,lot, primary_value, pack_value, st
 		SELECT cbml.name FROM `tabCut Bundle Movement Ledger` cbml
 			INNER JOIN (
 				SELECT cbm_key, MAX(posting_datetime) AS max_posting_datetime, lay_no FROM `tabCut Bundle Movement Ledger`
-				WHERE is_cancelled = 0 AND is_collapsed = 0 AND is_accessory = 0  AND supplier = %(from_location)s  
-				AND lot = %(lot)s AND size = %(size)s AND colour = %(colour)s AND item = %(item)s AND panel like %(panel)s 
-				GROUP BY cbm_key
+				WHERE is_cancelled = 0 AND is_collapsed = 0 AND transformed = 0 AND collapsed_bundle = 0 
+				AND supplier = %(from_location)s AND lot = %(lot)s AND size = %(size)s AND colour = %(colour)s 
+				AND item = %(item)s AND panel like %(panel)s GROUP BY cbm_key
 			) latest_cbml
 		ON cbml.cbm_key = latest_cbml.cbm_key AND cbml.posting_datetime = latest_cbml.max_posting_datetime
 		ORDER BY latest_cbml.lay_no asc

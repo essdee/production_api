@@ -65,7 +65,7 @@ class GoodsReceivedNote(Document):
 		if not self.supplier_document_no:
 			frappe.throw("Enter Supplier Document No")
 
-		if self.against == "Work Order" and self.additional_grn:
+		if self.against == "Work Order" and self.additional_grn or self.allow_non_bundle:
 			role = frappe.db.get_single_value("MRP Settings", "additional_grn_submit_role")
 			if not role:
 				frappe.throw("Set the role for additional GRN submit in MRP Settings", title='GRN')
@@ -95,7 +95,7 @@ class GoodsReceivedNote(Document):
 				frappe.throw("There is No Received Items in this GRN")		
 			self.set("items", items)	
 			check = False
-			if not self.cut_panel_movement and not self.cutting_laysheet and not self.is_return:
+			if not self.cut_panel_movement and not self.cutting_laysheet and not self.is_return and not self.allow_non_bundle:
 				check = check_cut_stage_items(self.items, self.lot)
 				if check:
 					frappe.throw("Create this Using Cut Panel Movement")			
@@ -171,27 +171,31 @@ class GoodsReceivedNote(Document):
 			from production_api.production_api.doctype.cut_bundle_movement_ledger.cut_bundle_movement_ledger import (
 				update_collapsed_bundle
 			)	
-			if self.is_return and not self.cut_panel_movement:
-				check = check_cut_stage_items(self.items, self.lot)
-				if check:
-					update_collapsed_bundle(self.doctype, self.name, "on_submit")
-			elif self.cut_panel_movement:
-				cpm_doc = frappe.get_doc("Cut Panel Movement", self.cut_panel_movement)	
-				cpm_doc.against = self.doctype
-				cpm_doc.against_id = self.name
-				cpm_doc.save()
-				from_warehouse = self.supplier
-				to_warehouse = self.get_to_warehouse()
+			if not self.allow_non_bundle:
+				if self.is_return and not self.cut_panel_movement:
+					check = check_cut_stage_items(self.items, self.lot)
+					if check:
+						update_collapsed_bundle(self.doctype, self.name, "on_submit")
+				elif self.cut_panel_movement:
+					cpm_doc = frappe.get_doc("Cut Panel Movement", self.cut_panel_movement)	
+					cpm_doc.against = self.doctype
+					cpm_doc.against_id = self.name
+					cpm_doc.save()
+					from_warehouse = self.supplier
+					to_warehouse = self.get_to_warehouse()
 
-				bundles, collapsed_details = get_cut_bundle_entry(cpm_doc, self, from_warehouse, -1)
-				make_cut_bundle_ledger(bundles, collapsed_details)
-				bundles, collapsed_details = get_cut_bundle_entry(cpm_doc, self, to_warehouse, 1)
-				make_cut_bundle_ledger(bundles, collapsed_details)
+					bundles, collapsed_details = get_cut_bundle_entry(cpm_doc, self, from_warehouse, -1)
+					make_cut_bundle_ledger(bundles, collapsed_details)
+					bundles, collapsed_details = get_cut_bundle_entry(cpm_doc, self, to_warehouse, 1)
+					make_cut_bundle_ledger(bundles, collapsed_details)
+				else:
+					ipd = frappe.get_value("Lot", self.lot, "production_detail")	
+					stich_process = frappe.get_value("Item Production Detail", ipd, "stiching_process")
+					if stich_process == self.process_name:
+						update_collapsed_bundle(self.doctype, self.name, "on_submit")
 			else:
-				ipd = frappe.get_value("Lot", self.lot, "production_detail")	
-				stich_process = frappe.get_value("Item Production Detail", ipd, "stiching_process")
-				if stich_process == self.process_name:
-					update_collapsed_bundle(self.doctype, self.name, "on_submit")
+				update_collapsed_bundle(self.doctype, self.name, "on_submit", non_stich_process=True)
+
 		self.make_repost_action()
 
 	def get_to_warehouse(self):
@@ -400,7 +404,7 @@ class GoodsReceivedNote(Document):
 		make_sl_entries(sl_entries)
 
 	def reduce_uncalculated_stock(self, res):
-		if not self.additional_grn:
+		if self.additional_grn:
 			return
 		from production_api.mrp_stock.stock_ledger import make_sl_entries
 		lot = frappe.get_cached_value(self.against, self.against_id, "lot")
@@ -560,28 +564,31 @@ class GoodsReceivedNote(Document):
 			from production_api.production_api.doctype.cut_bundle_movement_ledger.cut_bundle_movement_ledger import (
 				update_collapsed_bundle
 			)
-			if self.is_return and not self.cut_panel_movement:
-				check = check_cut_stage_items(self.items, self.lot)
-				if check:
-					update_collapsed_bundle(self.doctype, self.name, "on_cancel")
+			if not self.allow_non_bundle:
+				if self.is_return and not self.cut_panel_movement:
+					check = check_cut_stage_items(self.items, self.lot)
+					if check:
+						update_collapsed_bundle(self.doctype, self.name, "on_cancel")
 
-			elif self.cut_panel_movement:
-				cpm_doc = frappe.get_doc("Cut Panel Movement", self.cut_panel_movement)	
-				cpm_doc.against = None
-				cpm_doc.against_id = None
-				cpm_doc.save()
-				from_warehouse = self.supplier
-				to_warehouse = self.get_to_warehouse()
+				elif self.cut_panel_movement:
+					cpm_doc = frappe.get_doc("Cut Panel Movement", self.cut_panel_movement)	
+					cpm_doc.against = None
+					cpm_doc.against_id = None
+					cpm_doc.save()
+					from_warehouse = self.supplier
+					to_warehouse = self.get_to_warehouse()
 
-				bundles, collapsed_bundles = get_cut_bundle_entry(cpm_doc, self, to_warehouse, -1, cancelled=1)
-				cancel_cut_bundle_ledger(bundles)
-				bundles, collapsed_bundles = get_cut_bundle_entry(cpm_doc, self, from_warehouse, 1, cancelled=1)
-				cancel_cut_bundle_ledger(bundles)
+					bundles, collapsed_bundles = get_cut_bundle_entry(cpm_doc, self, to_warehouse, -1, cancelled=1)
+					cancel_cut_bundle_ledger(bundles)
+					bundles, collapsed_bundles = get_cut_bundle_entry(cpm_doc, self, from_warehouse, 1, cancelled=1)
+					cancel_cut_bundle_ledger(bundles)
+				else:
+					ipd = frappe.get_value("Lot", self.lot, "production_detail")	
+					stich_process = frappe.get_value("Item Production Detail", ipd, "stiching_process")
+					if stich_process == self.process_name:
+						update_collapsed_bundle(self.doctype, self.name, "on_cancel")						
 			else:
-				ipd = frappe.get_value("Lot", self.lot, "production_detail")	
-				stich_process = frappe.get_value("Item Production Detail", ipd, "stiching_process")
-				if stich_process == self.process_name:
-					update_collapsed_bundle(self.doctype, self.name, "on_cancel")						
+				update_collapsed_bundle(self.doctype, self.name, "on_cancel")						
 
 		self.make_repost_action()
 			

@@ -45,6 +45,7 @@ import CutPanelMovementBundle from "./Cut_Panel_Movement/components/CutPanelMove
 import StockSummary from "./components/StockSummary.vue"
 import ReturnItemsPopUp from "./Delivery_Challan/components/ReturnItemsPopUp.vue"
 import SuggestedVendorBillDeliveryPerson from "./VendorBillTracking/components/SuggestedVendorBillDeliveryPerson.vue";
+import CutBundleEdit from "./Cut_Bundle_Edit/components/CutBundleEdit.vue";
 
 // Product Development
 import { ProductFileVersionsWrapper, ProductCostingListWrapper } from "./ProductDevelopment"
@@ -910,6 +911,25 @@ frappe.production.ui.CutPanelMovementBundle = class {
     }
     make_app(){
         this.app = createApp(CutPanelMovementBundle)
+        SetVueGlobals(this.app)
+        this.vue = this.app.mount(this.$wrapper.get(0))
+    }
+    load_data(item){
+        let items = JSON.parse(JSON.stringify(item))
+        this.vue.load_data(items)
+    }
+    get_items(){
+        return this.vue.get_items()
+    }
+}
+
+frappe.production.ui.CutBundleEdit = class {
+    constructor(wrapper){
+        this.$wrapper = $(wrapper)
+        this.make_app()
+    }
+    make_app(){
+        this.app = createApp(CutBundleEdit)
         SetVueGlobals(this.app)
         this.vue = this.app.mount(this.$wrapper.get(0))
     }

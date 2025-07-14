@@ -185,6 +185,7 @@ function fetch_panels(frm){
             posting_time: frm.doc.posting_time,
             movement_from_cutting: frm.doc.movement_from_cutting,
             cutting_plan: frm.doc.cutting_plan,
+            get_collapsed: true,
         },
         callback: function(r){
             frm.cutting_movement.load_data(r.message)

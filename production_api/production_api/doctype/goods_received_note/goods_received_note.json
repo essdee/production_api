@@ -8,6 +8,7 @@
  "engine": "InnoDB",
  "field_order": [
   "additional_grn",
+  "allow_non_bundle",
   "naming_series",
   "against",
   "delivery_location",
@@ -489,13 +490,19 @@
    "hidden": 1,
    "label": "Cut Panel Movement",
    "options": "Cut Panel Movement"
+  },
+  {
+   "default": "0",
+   "fieldname": "allow_non_bundle",
+   "fieldtype": "Check",
+   "label": "Allow Non Bundle"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-07-05 14:06:48.051610",
+ "modified": "2025-07-10 17:03:52.166044",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Goods Received Note",
