@@ -96,9 +96,12 @@ class GoodsReceivedNote(Document):
 			self.set("items", items)	
 			check = False
 			if not self.cut_panel_movement and not self.cutting_laysheet and not self.is_return and not self.allow_non_bundle:
-				check = check_cut_stage_items(self.items, self.lot)
-				if check:
-					frappe.throw("Create this Using Cut Panel Movement")			
+				cancelled_str = frappe.db.get_single_value("MRP Settings", "cut_bundle_cancelled_lot")
+				cancelled_list = cancelled_str.split(",")
+				if self.lot not in cancelled_list:
+					check = check_cut_stage_items(self.items, self.lot)
+					if check:
+						frappe.throw("Create this Using Cut Panel Movement")			
 
 			self.dump_items()	
 			if self.is_return:
@@ -167,35 +170,37 @@ class GoodsReceivedNote(Document):
 					self.db_set("transfer_complete", 1)
 				self.piece_calculation()
 
-		if not self.additional_grn and self.against == "Work Order":
-			from production_api.production_api.doctype.cut_bundle_movement_ledger.cut_bundle_movement_ledger import (
-				update_collapsed_bundle
-			)	
-			if not self.allow_non_bundle:
-				if self.is_return and not self.cut_panel_movement:
-					check = check_cut_stage_items(self.items, self.lot)
-					if check:
-						update_collapsed_bundle(self.doctype, self.name, "on_submit")
-				elif self.cut_panel_movement:
-					cpm_doc = frappe.get_doc("Cut Panel Movement", self.cut_panel_movement)	
-					cpm_doc.against = self.doctype
-					cpm_doc.against_id = self.name
-					cpm_doc.save()
-					from_warehouse = self.supplier
-					to_warehouse = self.get_to_warehouse()
+		cancelled_str = frappe.db.get_single_value("MRP Settings", "cut_bundle_cancelled_lot")
+		cancelled_list = cancelled_str.split(",")
+		if self.lot not in cancelled_list:
+			if not self.additional_grn and self.against == "Work Order":
+				from production_api.production_api.doctype.cut_bundle_movement_ledger.cut_bundle_movement_ledger import (
+					update_collapsed_bundle
+				)	
+				if not self.allow_non_bundle:
+					if self.is_return and not self.cut_panel_movement:
+						check = check_cut_stage_items(self.items, self.lot)
+						if check:
+							update_collapsed_bundle(self.doctype, self.name, "on_submit")
+					elif self.cut_panel_movement:
+						cpm_doc = frappe.get_doc("Cut Panel Movement", self.cut_panel_movement)	
+						cpm_doc.against = self.doctype
+						cpm_doc.against_id = self.name
+						cpm_doc.save()
+						from_warehouse = self.supplier
+						to_warehouse = self.get_to_warehouse()
 
-					bundles, collapsed_details = get_cut_bundle_entry(cpm_doc, self, from_warehouse, -1)
-					make_cut_bundle_ledger(bundles, collapsed_details)
-					bundles, collapsed_details = get_cut_bundle_entry(cpm_doc, self, to_warehouse, 1)
-					make_cut_bundle_ledger(bundles, collapsed_details)
+						bundles, collapsed_details = get_cut_bundle_entry(cpm_doc, self, from_warehouse, -1)
+						make_cut_bundle_ledger(bundles, collapsed_details)
+						bundles, collapsed_details = get_cut_bundle_entry(cpm_doc, self, to_warehouse, 1)
+						make_cut_bundle_ledger(bundles, collapsed_details)
+					else:
+						ipd = frappe.get_value("Lot", self.lot, "production_detail")	
+						stich_process = frappe.get_value("Item Production Detail", ipd, "stiching_process")
+						if stich_process == self.process_name:
+							update_collapsed_bundle(self.doctype, self.name, "on_submit")
 				else:
-					ipd = frappe.get_value("Lot", self.lot, "production_detail")	
-					stich_process = frappe.get_value("Item Production Detail", ipd, "stiching_process")
-					if stich_process == self.process_name:
-						update_collapsed_bundle(self.doctype, self.name, "on_submit")
-			else:
-				update_collapsed_bundle(self.doctype, self.name, "on_submit", non_stich_process=True)
-
+					update_collapsed_bundle(self.doctype, self.name, "on_submit", non_stich_process=True)
 		self.make_repost_action()
 
 	def get_to_warehouse(self):
@@ -560,35 +565,38 @@ class GoodsReceivedNote(Document):
 					self.db_set("transfer_complete", 0)
 				self.piece_calculation()
 
-		if not self.additional_grn and self.against == "Work Order":	
-			from production_api.production_api.doctype.cut_bundle_movement_ledger.cut_bundle_movement_ledger import (
-				update_collapsed_bundle
-			)
-			if not self.allow_non_bundle:
-				if self.is_return and not self.cut_panel_movement:
-					check = check_cut_stage_items(self.items, self.lot)
-					if check:
-						update_collapsed_bundle(self.doctype, self.name, "on_cancel")
+		cancelled_str = frappe.db.get_single_value("MRP Settings", "cut_bundle_cancelled_lot")
+		cancelled_list = cancelled_str.split(",")
+		if self.lot not in cancelled_list:
+			if not self.additional_grn and self.against == "Work Order":	
+				from production_api.production_api.doctype.cut_bundle_movement_ledger.cut_bundle_movement_ledger import (
+					update_collapsed_bundle
+				)
+				if not self.allow_non_bundle:
+					if self.is_return and not self.cut_panel_movement:
+						check = check_cut_stage_items(self.items, self.lot)
+						if check:
+							update_collapsed_bundle(self.doctype, self.name, "on_cancel")
 
-				elif self.cut_panel_movement:
-					cpm_doc = frappe.get_doc("Cut Panel Movement", self.cut_panel_movement)	
-					cpm_doc.against = None
-					cpm_doc.against_id = None
-					cpm_doc.save()
-					from_warehouse = self.supplier
-					to_warehouse = self.get_to_warehouse()
+					elif self.cut_panel_movement:
+						cpm_doc = frappe.get_doc("Cut Panel Movement", self.cut_panel_movement)	
+						cpm_doc.against = None
+						cpm_doc.against_id = None
+						cpm_doc.save()
+						from_warehouse = self.supplier
+						to_warehouse = self.get_to_warehouse()
 
-					bundles, collapsed_bundles = get_cut_bundle_entry(cpm_doc, self, to_warehouse, -1, cancelled=1)
-					cancel_cut_bundle_ledger(bundles)
-					bundles, collapsed_bundles = get_cut_bundle_entry(cpm_doc, self, from_warehouse, 1, cancelled=1)
-					cancel_cut_bundle_ledger(bundles)
+						bundles, collapsed_bundles = get_cut_bundle_entry(cpm_doc, self, to_warehouse, -1, cancelled=1)
+						cancel_cut_bundle_ledger(bundles)
+						bundles, collapsed_bundles = get_cut_bundle_entry(cpm_doc, self, from_warehouse, 1, cancelled=1)
+						cancel_cut_bundle_ledger(bundles)
+					else:
+						ipd = frappe.get_value("Lot", self.lot, "production_detail")	
+						stich_process = frappe.get_value("Item Production Detail", ipd, "stiching_process")
+						if stich_process == self.process_name:
+							update_collapsed_bundle(self.doctype, self.name, "on_cancel")						
 				else:
-					ipd = frappe.get_value("Lot", self.lot, "production_detail")	
-					stich_process = frappe.get_value("Item Production Detail", ipd, "stiching_process")
-					if stich_process == self.process_name:
-						update_collapsed_bundle(self.doctype, self.name, "on_cancel")						
-			else:
-				update_collapsed_bundle(self.doctype, self.name, "on_cancel")						
+					update_collapsed_bundle(self.doctype, self.name, "on_cancel")						
 
 		self.make_repost_action()
 			
@@ -758,7 +766,7 @@ class GoodsReceivedNote(Document):
 						items = []
 						if deliverables:
 							for row in deliverables:
-								if wo_deliverables.get(row['item_variant']):
+								if row['item_variant'] in wo_deliverables:
 									items.append({
 										"item_variant": row['item_variant'],
 										"quantity": row['qty'],
@@ -1641,6 +1649,7 @@ def get_attributes(items, itemname, stage, dependent_attribute, ipd):
 		itemname: []
 	}
 	ipd_doc = frappe.get_cached_doc("Item Production Detail", ipd)
+	panel_colour_comb = get_panel_colour(ipd_doc)
 	for item_name,variants in items.items():
 		item_attribute_details = get_attribute_details(item_name)
 		for variant, details in variants.items():
@@ -1658,6 +1667,7 @@ def get_attributes(items, itemname, stage, dependent_attribute, ipd):
 						part = attr.attribute_value
 						break
 				set_item_stitching_attrs = get_stich_details(ipd_doc)
+				variant_colour = attributes[ipd_doc.packing_attribute]
 				for id, item in enumerate(ipd_doc.stiching_item_details):
 					attributes[ipd_doc.stiching_attribute] = item.stiching_attribute_value
 					v = True
@@ -1665,6 +1675,7 @@ def get_attributes(items, itemname, stage, dependent_attribute, ipd):
 					if panel_part != part:
 						v = False							
 					if v:
+						attributes[ipd_doc.packing_attribute] = panel_colour_comb[part][variant_colour][item.stiching_attribute_value]
 						new_variant = get_or_create_variant(itemname, attributes)
 						item_list[itemname].append({
 							"item_variant": new_variant,
@@ -1673,8 +1684,10 @@ def get_attributes(items, itemname, stage, dependent_attribute, ipd):
 							'set_combination': details['set_combination']
 						})
 			else:
+				variant_colour = attributes[ipd_doc.packing_attribute]
 				for id,item in enumerate(ipd_doc.stiching_item_details):
 					attributes[ipd_doc.stiching_attribute] = item.stiching_attribute_value
+					attributes[ipd_doc.packing_attribute] = panel_colour_comb[variant_colour][item.stiching_attribute_value]
 					new_variant = get_or_create_variant(itemname, attributes)
 					item_list[itemname].append({
 						"item_variant": new_variant,
@@ -1683,6 +1696,21 @@ def get_attributes(items, itemname, stage, dependent_attribute, ipd):
 						'set_combination': details['set_combination']
 					})
 	return item_list
+
+def get_panel_colour(ipd_doc):
+	d = {}
+	if ipd_doc.is_set_item:
+		stich_panel_set_comb = get_stich_details(ipd_doc)
+		for row in ipd_doc.stiching_item_combination_details:
+			part = stich_panel_set_comb[row.set_item_attribute_value]
+			d.setdefault(part, {})
+			d[part].setdefault(row.major_attribute_value, {})
+			d[part][row.major_attribute_value].setdefault(row.set_item_attribute_value, row.attribute_value)
+	else:
+		for row in ipd_doc.stiching_item_combination_details:
+			d.setdefault(row.major_attribute_value, {})
+			d[row.major_attribute_value].setdefault(row.set_item_attribute_value, row.attribute_value)
+	return d
 
 def get_receivable_item_attribute_details(variant, item_attributes, stage):
 	attribute_details = {}

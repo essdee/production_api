@@ -29,7 +29,8 @@
   "work_order_section",
   "received_type_list",
   "time_and_action_tracking_order_report_days",
-  "additional_grn_submit_role"
+  "additional_grn_submit_role",
+  "cut_bundle_cancelled_lot"
  ],
  "fields": [
   {
@@ -171,14 +172,20 @@
    "fieldtype": "Link",
    "label": "Additional GRN Submit Role",
    "options": "Role"
+  },
+  {
+   "fieldname": "cut_bundle_cancelled_lot",
+   "fieldtype": "Text",
+   "label": "Cut Bundle Cancelled Lot",
+   "read_only": 1
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2025-06-20 16:47:13.024065",
- "modified_by": "Administrator",
+ "modified": "2025-07-15 14:44:17.489867",
+ "modified_by": "mohammedanasman123@gmail.com",
  "module": "Production Api",
  "name": "MRP Settings",
  "owner": "Administrator",

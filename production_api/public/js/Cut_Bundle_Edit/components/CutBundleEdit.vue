@@ -159,6 +159,8 @@ function fetch_bundles(){
         frappe.msgprint("Select the Colour")
         return
     }
+    input_bundles.value = []
+    output_bundles.value = []
     make_dirty()
     frappe.call({
         method: "production_api.production_api.doctype.cut_panel_movement.cut_panel_movement.get_cut_bundle_unmoved_data",
@@ -255,7 +257,10 @@ function fetch_selected_bundles(){
             }
         }
     }
-    
+    if(inputs.length == 0){
+        frappe.msgprint("Select Bundles")
+        return
+    }
     make_dirty()
     input_bundles.value = inputs
 }

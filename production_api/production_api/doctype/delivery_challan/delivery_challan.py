@@ -66,49 +66,56 @@ class DeliveryChallan(Document):
 		logger.debug(f"{self.name} Stock reduced From Supplier {datetime.now()}")
 		self.make_repost_action()
 		wo_doc.save(ignore_permissions=True)	
-		if self.cut_panel_movement and not self.allow_non_bundle:
-			cpm_doc = frappe.get_doc("Cut Panel Movement", self.cut_panel_movement)	
-			cpm_doc.against = None
-			cpm_doc.against_id = None
-			cpm_doc.save()
-			from_warehouse = self.from_location
-			to_warehouse = self.get_to_warehouse()
+		cancelled_str = frappe.db.get_single_value("MRP Settings", "cut_bundle_cancelled_lot")
+		cancelled_list = cancelled_str.split(",")
+		if self.lot not in cancelled_list:
+			if self.cut_panel_movement and not self.allow_non_bundle:
+				cpm_doc = frappe.get_doc("Cut Panel Movement", self.cut_panel_movement)	
+				cpm_doc.against = None
+				cpm_doc.against_id = None
+				cpm_doc.save()
+				from_warehouse = self.from_location
+				to_warehouse = self.get_to_warehouse()
 
-			bundles, collapsed_bundles = get_cut_bundle_entry(cpm_doc, self, to_warehouse, -1, cancelled=1)
-			cancel_cut_bundle_ledger(bundles)
-			bundles, collapsed_bundles = get_cut_bundle_entry(cpm_doc, self, from_warehouse, 1, cancelled=1)
-			cancel_cut_bundle_ledger(bundles)	
+				bundles, collapsed_bundles = get_cut_bundle_entry(cpm_doc, self, to_warehouse, -1, cancelled=1)
+				cancel_cut_bundle_ledger(bundles)
+				bundles, collapsed_bundles = get_cut_bundle_entry(cpm_doc, self, from_warehouse, 1, cancelled=1)
+				cancel_cut_bundle_ledger(bundles)	
 
-		if self.allow_non_bundle:	
-			from production_api.production_api.doctype.cut_bundle_movement_ledger.cut_bundle_movement_ledger import (
-				update_collapsed_bundle
-			)
-			update_collapsed_bundle(self.doctype, self.name, "on_cancel")
-
-		frappe.enqueue(calculate_pieces,"short", doc_name=self.name, enqueue_after_commit=True )		
+			if self.allow_non_bundle:	
+				from production_api.production_api.doctype.cut_bundle_movement_ledger.cut_bundle_movement_ledger import (
+					update_collapsed_bundle
+				)
+				update_collapsed_bundle(self.doctype, self.name, "on_cancel")
+		frappe.enqueue(calculate_pieces,"short", doc_name=self.name, enqueue_after_commit=True )	
+		self.make_repost_action()
 
 	def on_submit(self):
 		# calculate_pieces(self.name)
-		if self.cut_panel_movement and not self.allow_non_bundle:
-			cpm_doc = frappe.get_doc("Cut Panel Movement", self.cut_panel_movement)	
-			cpm_doc.against = self.doctype
-			cpm_doc.against_id = self.name
-			cpm_doc.save()
-			from_warehouse = self.from_location
-			to_warehouse = self.get_to_warehouse()
+		cancelled_str = frappe.db.get_single_value("MRP Settings", "cut_bundle_cancelled_lot")
+		cancelled_list = cancelled_str.split(",")
+		if self.lot not in cancelled_list:
+			if self.cut_panel_movement and not self.allow_non_bundle:
+				cpm_doc = frappe.get_doc("Cut Panel Movement", self.cut_panel_movement)	
+				cpm_doc.against = self.doctype
+				cpm_doc.against_id = self.name
+				cpm_doc.save()
+				from_warehouse = self.from_location
+				to_warehouse = self.get_to_warehouse()
 
-			bundles, collapsed_details = get_cut_bundle_entry(cpm_doc, self, from_warehouse, -1)
-			make_cut_bundle_ledger(bundles, collapsed_details)
-			bundles, collapsed_details = get_cut_bundle_entry(cpm_doc, self, to_warehouse, 1)
-			make_cut_bundle_ledger(bundles, collapsed_details)
-		
-		if self.allow_non_bundle:	
-			from production_api.production_api.doctype.cut_bundle_movement_ledger.cut_bundle_movement_ledger import (
-				update_collapsed_bundle
-			)
-			update_collapsed_bundle(self.doctype, self.name, "on_submit")
+				bundles, collapsed_details = get_cut_bundle_entry(cpm_doc, self, from_warehouse, -1)
+				make_cut_bundle_ledger(bundles, collapsed_details)
+				bundles, collapsed_details = get_cut_bundle_entry(cpm_doc, self, to_warehouse, 1)
+				make_cut_bundle_ledger(bundles, collapsed_details)
+			
+			if self.allow_non_bundle:	
+				from production_api.production_api.doctype.cut_bundle_movement_ledger.cut_bundle_movement_ledger import (
+					update_collapsed_bundle
+				)
+				update_collapsed_bundle(self.doctype, self.name, "on_submit")
 
 		frappe.enqueue(calculate_pieces,"short", doc_name=self.name, enqueue_after_commit=True )
+		self.make_repost_action()
 
 	def before_submit(self):
 		if not self.vehicle_no:
@@ -150,10 +157,13 @@ class DeliveryChallan(Document):
 			frappe.throw("There is no deliverables in this DC")
 		self.set("items", items)
 		if not self.cut_panel_movement and not self.allow_non_bundle:
-			from production_api.production_api.doctype.goods_received_note.goods_received_note import check_cut_stage_items
-			check = check_cut_stage_items(self.items, self.lot)
-			if check:
-				frappe.throw("Create this Using Cut Panel Movement")
+			cancelled_str = frappe.db.get_single_value("MRP Settings", "cut_bundle_cancelled_lot")
+			cancelled_list = cancelled_str.split(",")
+			if self.lot not in cancelled_list:
+				from production_api.production_api.doctype.goods_received_note.goods_received_note import check_cut_stage_items
+				check = check_cut_stage_items(self.items, self.lot)
+				if check:
+					frappe.throw("Create this Using Cut Panel Movement")
 
 		self.total_delivered_qty = total_delivered
 		logger.debug(f"{self.name} Stock check and SLE data construction {datetime.now()}")
@@ -171,7 +181,6 @@ class DeliveryChallan(Document):
 		logger.debug(f"{self.name} Stock reduced from From Location {datetime.now()}")
 		make_sl_entries(add_sl_entries)
 		logger.debug(f"{self.name} Stock Added to Supplier {datetime.now()}")
-		self.make_repost_action()
 
 	def make_repost_action(self):
 		repost_future_stock_ledger_entry(self)
