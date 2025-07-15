@@ -331,7 +331,7 @@ def get_cut_bundle_unmoved_data(from_location, lot, posting_date, posting_time, 
 								final_data[colour]["data"].append(duplicate)
 	for colour in final_data:
 		data = final_data[colour]["data"]
-		final_data[colour]["data"] = sorted(data, key=itemgetter('size', 'shade'))
+		final_data[colour]["data"] = sorted(data, key=itemgetter('size', 'shade', 'lay_no'))
 
 	collapsed_bundles = []
 	if get_collapsed:
@@ -340,7 +340,7 @@ def get_cut_bundle_unmoved_data(from_location, lot, posting_date, posting_time, 
 				INNER JOIN (
 					SELECT cbm_key, MAX(posting_datetime) AS max_posting_datetime, lay_no FROM `tabCut Bundle Movement Ledger`
 					WHERE posting_datetime <= %(datetime_value)s AND is_cancelled = 0 AND collapsed_bundle = 1 AND transformed = 0 
-					AND supplier = %(from_location)s  AND lot = %(lot)s GROUP BY cbm_key
+					AND supplier = %(from_location)s AND colour = %(colour)s AND lot = %(lot)s GROUP BY cbm_key
 				) latest_cbml
 			ON cbml.cbm_key = latest_cbml.cbm_key AND cbml.posting_datetime = latest_cbml.max_posting_datetime
 			WHERE cbml.posting_datetime <= %(datetime_value)s AND cbml.collapsed_bundle = 1
@@ -349,6 +349,7 @@ def get_cut_bundle_unmoved_data(from_location, lot, posting_date, posting_time, 
 			"datetime_value": posting_datetime,
 			"from_location": from_location,
 			"lot": lot,
+			"colour": bundle_colour,
 		}, as_dict=True)
 
 		for cbm in cbm_list:
@@ -480,6 +481,7 @@ def create_goods_received_note(doc_name, work_order, return_items=False):
 	grn_item_list, ipd = get_grouped_data(doc_name, "Goods Received Note")
 	doc = frappe.get_cached_doc("Work Order", work_order)
 	items = []
+	check_one_panel = True
 	for item in doc.receivables:
 		item = item.as_dict()
 		check = True
@@ -489,11 +491,14 @@ def create_goods_received_note(doc_name, work_order, return_items=False):
 			set2 = update_if_string_instance(item['set_combination'])
 			if item['item_variant'] == data['item_variant'] and set1 == set2:
 				check = False
+				check_one_panel = False
 				item['delivered_quantity'] = data['qty']
 				items.append(item)
 				break
 		if check:
 			items.append(item)
+	if check_one_panel:
+		frappe.throw("No Items for this Work Order")
 
 	if return_items:
 		return items

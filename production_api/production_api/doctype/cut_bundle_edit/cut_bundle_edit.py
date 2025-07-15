@@ -236,18 +236,17 @@ def get_major_colours(posting_date, posting_time, from_location, lot):
 			sizes.append(cb_doc.size)
 
 		set_combination = update_if_string_instance(cb_doc.set_combination)
-		if not set_combination:
-			continue
-
-		major_colour = set_combination['major_colour']
-		parts = cb_doc.panel
-		if parts not in panels:
-			panels.append(parts)
-		if ipd_doc.is_set_item:
-			if set_combination.get('set_part'):
-				major_colour = "("+ major_colour +")" + set_combination["set_colour"] +"-"+set_combination.get('set_part')
-			else:
-				major_colour = major_colour +"-"+set_combination.get('major_part')
+		major_colour = cb_doc.colour
+		if set_combination:
+			major_colour = set_combination['major_colour']
+			parts = cb_doc.panel
+			if parts not in panels:
+				panels.append(parts)
+			if ipd_doc.is_set_item:
+				if set_combination.get('set_part'):
+					major_colour = "("+ major_colour +")" + set_combination["set_colour"] +"-"+set_combination.get('set_part')
+				else:
+					major_colour = major_colour +"-"+set_combination.get('major_part')
 
 		if major_colour not in colours:
 			colours.append(major_colour)
