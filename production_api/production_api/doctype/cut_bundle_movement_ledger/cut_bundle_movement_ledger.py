@@ -95,9 +95,9 @@ def make_cut_bundle_ledger(entries, collapsed_entries=[]):
 			make_cut_bundle_entry(entry)
 
 def make_cut_bundle_entry(entry):
-	new_doc = frappe.new_doc("Cut Bundle Movement Ledger")
-	new_doc.update(entry)
-	new_doc.save()
+	entry['doctype'] = "Cut Bundle Movement Ledger"
+	new_doc = frappe.get_doc(entry)
+	new_doc.flags.ignore_permissions = 1
 	new_doc.set_posting_datetime()
 	new_doc.set_key()
 	new_doc.submit()
