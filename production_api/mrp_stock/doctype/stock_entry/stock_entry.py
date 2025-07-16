@@ -1,19 +1,19 @@
 # Copyright (c) 2023, Essdee and contributors
 # For license information, please see license.txt
 
-from itertools import groupby
+import frappe, json
 from six import string_types
-import json
-import frappe
+from itertools import groupby
 from frappe import _, msgprint
 from frappe.utils import cstr, flt
-from frappe.model.mapper import get_mapped_doc
 from frappe.model.document import Document
-
-from production_api.production_api.doctype.item.item import create_variant, get_attribute_details, get_variant
-from production_api.production_api.doctype.item_price.item_price import get_item_variant_price
-from production_api.production_api.doctype.purchase_order.purchase_order import get_item_attribute_details, get_item_group_index
+from frappe.model.mapper import get_mapped_doc
+from production_api.utils import update_if_string_instance
 from production_api.mrp_stock.utils import get_conversion_factor, get_stock_balance
+from production_api.production_api.doctype.item_price.item_price import get_item_variant_price
+from production_api.production_api.doctype.item.item import create_variant, get_attribute_details, get_variant
+from production_api.production_api.doctype.purchase_order.purchase_order import get_item_attribute_details, get_item_group_index
+from production_api.production_api.doctype.cut_bundle_movement_ledger.cut_bundle_movement_ledger import make_cut_bundle_ledger, cancel_cut_bundle_ledger
 
 class StockEntry(Document):
 	def onload(self):
@@ -29,6 +29,9 @@ class StockEntry(Document):
 		self.set_onload('item_details', item_details)
 
 	def before_validate(self):
+		if self.cut_panel_movement and self.purpose not in ["Send to Warehouse", "Receive at Warehouse", "DC Completion", "GRN Completion"]:
+			frappe.throw(f"For Bundle Movement Purpose {self.purpose} is not Applicable")
+
 		if(self.get('item_details')) and self._action != "submit":
 			items = save_stock_entry_items(self.item_details)
 			self.set('items', items)
@@ -206,9 +209,31 @@ class StockEntry(Document):
 			cpm_doc.against = self.doctype
 			cpm_doc.against_id = self.name
 			cpm_doc.save()
+			from_warehouse, to_warehouse = self.get_from_and_to_warehouse()
+
+			from production_api.production_api.doctype.cut_bundle_movement_ledger.cut_bundle_movement_ledger import get_cut_bundle_entry
+			bundles, collapsed_details = get_cut_bundle_entry(cpm_doc, self, from_warehouse, -1)
+			make_cut_bundle_ledger(bundles, collapsed_details)
+			bundles, collapsed_details = get_cut_bundle_entry(cpm_doc, self, to_warehouse, 1)
+			make_cut_bundle_ledger(bundles, collapsed_details)
+
+	def get_from_and_to_warehouse(self):
+		from_warehouse = None
+		to_warehouse = None
+		if self.purpose == "Send to Warehouse":
+			from_warehouse = self.from_warehouse
+			if self.skip_transit:
+				to_warehouse = self.to_warehouse
+			else:	
+				to_warehouse = frappe.get_single("Stock Settings").transit_warehouse
+		else:
+			from_warehouse = frappe.get_single("Stock Settings").transit_warehouse
+			to_warehouse = self.to_warehouse
+
+		return from_warehouse, to_warehouse
 
 	def before_cancel(self):
-		self.ignore_linked_doctypes = ("Stock Ledger Entry", "Stock Reservation Entry", "Delivery Challan", "Repost Item Valuation")
+		self.ignore_linked_doctypes = ("Stock Ledger Entry", "Stock Reservation Entry", "Delivery Challan", "Repost Item Valuation", "Cut Bundle Movement Ledger")
 		self.update_stock_ledger()
 		self.make_repost_action()
 		self.update_transferred_qty()
@@ -248,9 +273,18 @@ class StockEntry(Document):
 			doc.save()
 		if self.cut_panel_movement:
 			cpm_doc = frappe.get_doc("Cut Panel Movement", self.cut_panel_movement)	
-			cpm_doc.against = None
-			cpm_doc.against_id = None
-			cpm_doc.save()
+			if self.purpose == "Send to Warehouse":
+				cpm_doc.against = None
+				cpm_doc.against_id = None
+				cpm_doc.save()
+			from_warehouse, to_warehouse = self.get_from_and_to_warehouse()
+
+			from production_api.production_api.doctype.cut_bundle_movement_ledger.cut_bundle_movement_ledger import get_cut_bundle_entry
+			bundles, collapsed_bundles = get_cut_bundle_entry(cpm_doc, self, from_warehouse, -1, cancelled=1)
+			cancel_cut_bundle_ledger(bundles)
+			bundles, collapsed_bundles = get_cut_bundle_entry(cpm_doc, self, to_warehouse, 1, cancelled=1)
+			cancel_cut_bundle_ledger(bundles)
+
 		self.revert_stock_transfer_entries()
 	
 	def make_repost_action(self):
@@ -445,9 +479,7 @@ def fetch_stock_entry_items(items, ipd=None):
 				current_variant = frappe.get_doc("Item Variant", variant['item'])
 				
 				if ipd:
-					set_combination = variant['set_combination']
-					if isinstance(set_combination, string_types):
-						set_combination = json.loads(set_combination)
+					set_combination = update_if_string_instance(variant['set_combination'])
 					if set_combination:
 						if set_combination.get("major_part"):
 							item['item_keys']['major_part'] = set_combination.get("major_part")
@@ -506,8 +538,7 @@ def save_stock_entry_items(item_details):
 	"""
 		Save item details to stock entry
 	"""
-	if isinstance(item_details, string_types):
-		item_details = json.loads(item_details)
+	item_details = update_if_string_instance(item_details)
 	items = []
 	row_index = 0
 	for table_index, group in enumerate(item_details):

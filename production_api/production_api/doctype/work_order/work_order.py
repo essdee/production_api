@@ -423,10 +423,10 @@ def fetch_item_details(items,ipd, include_id = False, is_grn= False, is_calc=Fal
 				for attr in current_variant.attributes:
 					if attr.attribute == item.get('primary_attribute'):
 						item['values'][attr.attribute_value] = {
-							'qty': round(variant.qty) if variant.qty else 0,
-							'secondary_qty': round(variant.secondary_qty) if variant.secondary_qty else 0,
-							'pending_qty': round(variant.pending_quantity) if variant.pending_quantity else 0,
-							'cancelled_qty': round(variant.cancelled_qty) if variant.cancelled_qty else 0,
+							'qty': round(variant.qty, 3) if variant.qty else 0,
+							'secondary_qty': round(variant.secondary_qty, 3) if variant.secondary_qty else 0,
+							'pending_qty': round(variant.pending_quantity, 3) if variant.pending_quantity else 0,
+							'cancelled_qty': round(variant.cancelled_qty, 3) if variant.cancelled_qty else 0,
 							'rate': variant.rate,
 							'tax': variant.tax,
 							'cost': round(variant.cost, 2) if variant.cost else variant.cost,
@@ -444,10 +444,10 @@ def fetch_item_details(items,ipd, include_id = False, is_grn= False, is_calc=Fal
 						break
 		else:
 			item['values']['default'] = {
-				'qty': round(variants[0].qty) if variants[0].qty else variants[0].qty,
-				'secondary_qty': round(variants[0].secondary_qty) if variants[0].secondary_qty else 0,
-				'pending_qty': round(variants[0].pending_quantity) if variants[0].pending_quantity else 0,
-				'cancelled_qty': round(variants[0].cancelled_qty) if variants[0].cancelled_qty else 0,
+				'qty': round(variants[0].qty, 3) if variants[0].qty else variants[0].qty,
+				'secondary_qty': round(variants[0].secondary_qty, 3) if variants[0].secondary_qty else 0,
+				'pending_qty': round(variants[0].pending_quantity, 3) if variants[0].pending_quantity else 0,
+				'cancelled_qty': round(variants[0].cancelled_qty, 3) if variants[0].cancelled_qty else 0,
 				'rate': variants[0].rate,
 				'tax': variants[0].tax,
 				'cost': round(variants[0].cost, 2) if variants[0].cost else variants[0].cost,

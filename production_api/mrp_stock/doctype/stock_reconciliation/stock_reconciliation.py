@@ -7,6 +7,7 @@ from itertools import groupby
 from production_api.mrp_stock.doctype.stock_entry.stock_entry import get_uom_details
 from six import string_types
 from frappe.model.document import Document
+from production_api.utils import MyCustomException
 from frappe.utils import cstr, flt
 from frappe import _, msgprint
 
@@ -191,7 +192,8 @@ class StockReconciliation(Document):
 
 			sl_entries.append(self.get_sle_for_items(row))
 		if not len(sl_entries):
-			frappe.throw("Empty")
+			raise MyCustomException("Empty")
+		
 		make_sl_entries(sl_entries)
 
 	def make_sle_on_cancel(self):

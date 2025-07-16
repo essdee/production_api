@@ -77,7 +77,7 @@
                                 </strong>
                             </td>
                         </template>
-                        <td class='table-data'  v-if="items.panels[items.data[colour]['part']].length > 1" ><strong>{{items.total_bundles[colour]}}</strong></td>
+                        <td class='table-data' v-if="items.panels[items.data[colour]['part']].length > 1" ><strong>{{items.total_bundles[colour]}}</strong></td>
                     </tr>
                 </table>
             </div>
@@ -193,21 +193,78 @@
                 </tr>
             </table>
         </div>
+        <div v-if="items.collapsed_details && items.collapsed_details.length > 0">
+            <h3>Collapsed Bundles</h3>
+            <table class="table table-sm table-bordered" style="width:100%;">
+                <tr>
+                    <th class='table-head'><strong>S.No</strong></th>
+                    <th class='table-head'><strong>Size</strong></th>
+                    <th class='table-head'><strong>Colour</strong></th>
+                    <th class='table-head'><strong>Panel</strong></th>
+                    <th class='table-head'><strong>Quantity</strong></th>
+                    <th v-if="doc == 'Cut Panel Movement'" class="table-head"><strong>Move Qty</strong></th>
+                </tr>
+                <tr v-for="(data, idx) in items.collapsed_details" :key="data">
+                    <td class='table-data'>
+                        <span v-if='docstatus == 0'>
+                            <input type='checkbox' v-model='data.moved' @change="update_collapsed_move_qty(data.moved, data.quantity, idx)">
+                        </span>
+                        {{ idx + 1 }}
+                    </td>
+                    <td class='table-data'>{{ data.size }}</td>
+                    <td class='table-data'>{{ data.colour }}</td>
+                    <td class='table-data'>{{ data.panel }}</td>
+                    <td class='table-data'>{{ data.quantity }}</td>
+                    <td v-if="doc == 'Cut Panel Movement' && docstatus == 0">
+                        <input class="form-control" type="number" v-model="data.move_qty"/>
+                    </td>
+                    <td v-else-if="doc == 'Cut Panel Movement' && docstatus != 0" class='table-data'>
+                        {{ data.move_qty }}
+                    </td>
+                </tr>
+            </table>
+        </div>
     </div>
 </template>
 
 <script setup>
-import { ref } from 'vue';
+import { ref, watch } from 'vue';
+
+const props = defineProps({
+    data: {
+        type: Array,
+        default: () => []
+    }
+})
 
 let items = ref({});
 let lot = null;
 let item = null;
 let docstatus = cur_frm.doc.docstatus
+let doc = cur_frm.doc.doctype
 
 function load_data(data) {
     items.value = data;
     lot = cur_frm.doc.lot;
     item = cur_frm.doc.item;
+}
+
+watch(() => props.data, (newVal) => {
+    items.value = newVal
+    lot = cur_frm.doc.lot;
+    item = cur_frm.doc.item;
+})
+
+function update_collapsed_move_qty(moved, quantity, idx){
+    if(moved){
+        items.value['collapsed_details'][idx]["moved"] = moved
+        items.value['collapsed_details'][idx]['move_qty'] = quantity
+    }
+    else{
+        items.value['collapsed_details'][idx]["moved"] = moved
+        items.value['collapsed_details'][idx]['move_qty'] = 0
+    }
+    make_dirty()
 }
 
 function update_panel_column(colour, panel, event){
@@ -225,7 +282,7 @@ function update_row(item, colour, index, bundle_moved = 0){
         let pt = items.value['data'][colour]['part']
         for(let i = 0 ; i < items.value['panels'][pt].length ; i++){
             let panel = items.value['panels'][pt][i]
-            if(item.hasOwnProperty(panel)){
+            if(item.hasOwnProperty(panel) && item[panel] > 0){
                 if(bundle_moved == 0){
                     if(item.bundle_moved == 1 || item.bundle_moved == true){
                         return_val = true
@@ -243,12 +300,18 @@ function update_row(item, colour, index, bundle_moved = 0){
                     items.value['data'][colour]['data'][index][panel+"_moved"] = false
                 }
             }
+            else{
+                items.value['data'][colour]['data'][index][panel+"_moved"] = false
+            }
         }
     }
     else{
         for(let i = 0 ; i < items.value['panels'].length ; i++){
             let panel = items.value['panels'][i]
             if(item.hasOwnProperty(panel)){
+                if (items.value['data'][colour]['data'][index][panel] <= 0){
+                    continue
+                }
                 if(bundle_moved == 0){
                     if(item.bundle_moved == 1 || item.bundle_moved == true){
                         return_val = true
@@ -282,9 +345,26 @@ function update_panel(item, panel){
 
 function update_table(colour, val){
     for(let i = 0 ; i < items.value['data'][colour]['data'].length ; i++){
-        items.value['data'][colour]['data'][i]['bundle_moved'] = val
+        if(qty_in_bundle(items.value['data'][colour]['data'][i], items.value['data'][colour], items.value["panels"])){
+            items.value['data'][colour]['data'][i]['bundle_moved'] = val
+        }
+        else{
+            items.value['data'][colour]['data'][i]['bundle_moved'] = false
+        }
         update_row(items.value['data'][colour]['data'][i],colour, i, val)
     }
+}
+
+function qty_in_bundle(row, colour_detail, panels){
+    if (colour_detail['part']){
+        panels = panels[colour_detail['part']]  
+    }
+    for(let i = 0; i < panels.length; i++){
+        if(row[panels[i]] > 0){
+            return true
+        }
+    }
+    return false
 }
 
 function make_dirty(){
@@ -297,9 +377,14 @@ function get_items(){
     return items.value
 }
 
+function getData(){
+    return items.value
+}
+
 defineExpose({
     load_data,
-    get_items
+    get_items,
+    getData,
 });
 
 </script>

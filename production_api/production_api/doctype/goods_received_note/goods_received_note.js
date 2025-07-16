@@ -67,7 +67,7 @@ frappe.ui.form.on('Goods Received Note', {
 		});
 	},
 	onload:async function(frm) {
-		if (frm.is_new() && frm.doc.against_id && frm.doc.against == "Work Order" && !frm.doc.is_return) {
+		if (frm.is_new() && frm.doc.against_id && frm.doc.against == "Work Order" && !frm.doc.is_return  && !sessionStorage.getItem("cut_panel_grn")) {
 			await frm.trigger("against")
 			frm.trigger("against_id")
 		}
@@ -92,16 +92,27 @@ frappe.ui.form.on('Goods Received Note', {
 		else if(!frm.doc.is_return){
 			frm.page.btn_secondary.hide()
 			frm.itemEditor = new frappe.production.ui.GRNWorkOrder(frm.fields_dict["item_html"].wrapper);
-			frm.itemEditor.load_data({
-				supplier: frm.doc.supplier,
-				against: frm.doc.against,
-				against_id: frm.doc.against_id
-			}, true);
-			if( frm.doc.__onload && frm.doc.__onload.item_details) {
-				frm.doc['item_details'] = JSON.stringify(frm.doc.__onload.item_details);	
+			if(frm.is_new() && frm.doc.against_id && sessionStorage.getItem("cut_panel_grn")){
+				frm.doc['item_details'] = JSON.parse(sessionStorage.getItem("grn_onload_data"));	
 				frm.itemEditor.load_data({
-					items: frm.doc.__onload.item_details,
+					supplier: frm.doc.supplier,
+					against: frm.doc.against,
+					against_id: frm.doc.against_id,
+					items: frm.doc['item_details'],
 				}, true);	
+			}
+			else{
+				frm.itemEditor.load_data({
+					supplier: frm.doc.supplier,
+					against: frm.doc.against,
+					against_id: frm.doc.against_id
+				}, true);
+				if( frm.doc.__onload && frm.doc.__onload.item_details) {
+					frm.doc['item_details'] = JSON.stringify(frm.doc.__onload.item_details);	
+					frm.itemEditor.load_data({
+						items: frm.doc.__onload.item_details,
+					}, true);	
+				}
 			}
 		}
 		else{
@@ -111,7 +122,7 @@ frappe.ui.form.on('Goods Received Note', {
 				frm.itemEditor.load_data(frm.doc.__onload.item_details);	
 			}
 		}
-		if(frm.is_new() && frm.doc.against_id){
+		if(frm.is_new() && frm.doc.against_id && !sessionStorage.getItem("cut_panel_grn")){
 			frm.trigger("against_id")
 		}
 		if(!frm.doc.is_return && !frm.is_new()){
@@ -131,7 +142,7 @@ frappe.ui.form.on('Goods Received Note', {
 				print_btn[0].parentElement.removeChild(print_btn[0]);
 			}
 		}
-		if(frm.doc.against == 'Work Order' && frm.doc.docstatus == 0 && !frm.is_new() && !frm.doc.is_return && !frm.doc.is_rework){
+		if(frm.doc.against == 'Work Order' && frm.doc.docstatus == 0 && !frm.is_new() && !frm.doc.is_return && !frm.doc.is_rework && !frm.doc.cut_panel_movement){
 			frm.add_custom_button("Calculate", function(){
 				frappe.call({
 					method: "production_api.production_api.doctype.delivery_challan.delivery_challan.get_calculated_items",
@@ -233,6 +244,10 @@ frappe.ui.form.on('Goods Received Note', {
 				else{
 					frm.doc['consumed_item_details'] = null
 				}
+			}
+			if(sessionStorage.getItem("cut_panel_grn")){
+				sessionStorage.removeItem("cut_panel_grn")
+				sessionStorage.removeItem("grn_onload_data")
 			}
 		}
 	},
