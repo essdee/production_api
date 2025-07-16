@@ -747,13 +747,7 @@ class GoodsReceivedNote(Document):
 			self.is_manual_entry = is_manual_entry
 			self.is_internal_unit = internal
 			self.lot = lot	
-			check = False
-			if self.is_new():
-				check = True
-			else:
-				check = self.get('is_edited')
-
-			if(self.get('item_details')) and check:
+			if(self.get('item_details')):
 				items, total_rate, total_qty = save_grn_item_details(self.item_details, self.process_name)
 				self.set('items', items)
 				if len(self.items) > 0:
