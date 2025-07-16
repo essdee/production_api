@@ -44,4 +44,4 @@ production_api.patches.v1_0.update_qty_in_bom_attribute_mapping
 production_api.patches.v1_0.update_posting_datetime_in_cls
 production_api.patches.v1_0.reduce_deliverable_stock_from_supplier
 production_api.patches.v1_0.update_null_dc_received_types
-production_api.patches.v1_0.create_cbml_against_cls #1
+production_api.patches.v1_0.create_cbml_against_cls #2
