@@ -3,6 +3,11 @@ from production_api.production_api.doctype.cut_bundle_movement_ledger.cut_bundle
 from production_api.production_api.doctype.cutting_laysheet.cutting_laysheet import create_cut_bundle_ledger
 
 def execute():
+    frappe.db.sql(
+        """
+            DELETE FROM `tabCut Bundle Movement Ledger` WHERE 1 = 1 
+        """
+    )
     lot_list = frappe.db.sql(
         """
             SELECT distinct(lot) as lot FROM `tabDelivery Challan` WHERE docstatus = 1
@@ -28,7 +33,7 @@ def execute():
             cp_lot_list.append(lot)
 
     for lot in cp_lot_list:
-        cutting_plans = frappe.get_all("Cutting Plan", filters={"lot": lot}, pluck="name")
+        cutting_plans = frappe.get_all("Cutting Plan", filters={"lot": lot, "work_order": ['is', 'set']}, pluck="name")
         for cutting_plan in cutting_plans:
             cls_list = frappe.get_all("Cutting LaySheet", filters={
                 "cutting_plan": cutting_plan,
