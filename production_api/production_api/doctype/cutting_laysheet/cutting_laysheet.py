@@ -747,7 +747,10 @@ def print_labels(print_items, lay_no, cutting_plan, doc_name):
 	if work_order:
 		update_cloth_stock(cls_doc, -1, 1)
 		grn = create_grn_entry(doc_name)
-		create_cut_bundle_ledger(cls_doc)
+		cancelled_str = frappe.db.get_single_value("MRP Settings", "cut_bundle_cancelled_lot")
+		cancelled_list = cancelled_str.split(",")
+		if lot_no not in cancelled_list:
+			create_cut_bundle_ledger(cls_doc)
 	return {
 		"zpl": zpl,
 		"grn": grn,
