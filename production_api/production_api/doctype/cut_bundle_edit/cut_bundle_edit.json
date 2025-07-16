@@ -8,6 +8,7 @@
   "lot",
   "warehouse",
   "colour",
+  "printed_time",
   "column_break_kgxm",
   "item",
   "posting_date",
@@ -106,13 +107,20 @@
    "print_hide": 1,
    "read_only": 1,
    "search_index": 1
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "printed_time",
+   "fieldtype": "Datetime",
+   "label": "Printed Time",
+   "read_only": 1
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-07-10 12:15:39.086293",
+ "modified": "2025-07-16 09:58:25.020467",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Cut Bundle Edit",
