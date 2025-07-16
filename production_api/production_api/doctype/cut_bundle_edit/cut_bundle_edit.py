@@ -5,8 +5,13 @@ import frappe
 from frappe.model.document import Document
 from production_api.utils import update_if_string_instance
 from production_api.mrp_stock.utils import get_combine_datetime
+from production_api.production_api.doctype.cutting_laysheet.cutting_laysheet import get_created_date, get_timestamp_prefix, generate_random_string
 
 class CutBundleEdit(Document):
+	def before_cancel(self):
+		if(self.printed_time):
+			frappe.throw("Can't Cancel this Document")
+	
 	def onload(self):
 		onload_data = {
 			"json_data": {},
@@ -46,6 +51,41 @@ class CutBundleEdit(Document):
 				frappe.throw("Combination Mismatch Between Input and Output")
 			if input_qty[key] != output_qty[key]:
 				frappe.throw("Quantity Mismatch Between Input and Output")
+
+		datas = {}
+		json_data = update_if_string_instance(self.cut_panel_movement_json)
+		panels = json_data['panels']
+		is_set_item = json_data['is_set_item']
+		data = json_data['data']
+		for colour in data:
+			datas[colour] = {"part":data[colour]['part'], 'data':[]}
+			for row in data[colour]['data']:
+				if row['bundle_moved']:
+					datas[colour]['data'].append(row)
+				else:
+					if is_set_item:
+						part = data[colour]['part']
+						for panel in panels[part]:
+							x = panel+"_moved"
+							if panel in row and x in row and row[x] == True:
+								datas[colour]['data'].append(row)
+								break
+					else:
+						for panel in panels:
+							x = panel+"_moved"
+							if panel in row and x in row and row[x] == True:
+								datas[colour]['data'].append(row)
+								break
+		json_data['data'] = datas
+		accessory = json_data['accessory_data']
+		if accessory:
+			accessories = []
+			for acc in accessory:
+				if acc['moved_weight'] > 0:
+					accessories.append(acc)
+			json_data['accessory_data'] = accessories		
+
+		self.set("cut_panel_movement_json", json_data)		
 
 	def before_cancel(self):
 		self.ignore_linked_doctypes = ("Cut Bundle Movement Ledger",)
@@ -237,6 +277,9 @@ def get_major_colours(posting_date, posting_time, from_location, lot):
 
 		set_combination = update_if_string_instance(cb_doc.set_combination)
 		major_colour = cb_doc.colour
+		if major_colour not in colours:
+			colours.append(major_colour)
+
 		if set_combination:
 			major_colour = set_combination['major_colour']
 			parts = cb_doc.panel
@@ -300,4 +343,54 @@ def get_major_set_colours(colour, panel, lot):
 		else:
 			d['major_colour'] = None
 
-	return d		
+	return d	
+
+@frappe.whitelist()
+def print_labels(doctype, doc_name):
+	cbe_doc = frappe.get_doc(doctype, doc_name)
+	print_items = update_if_string_instance(cbe_doc.output_json)
+	zpl = ""
+	date = get_created_date(cbe_doc.creation)
+	for item in print_items:
+		hash_value = get_timestamp_prefix() + generate_random_string(12)
+		x = f"""^XA
+			^FO70,30^GFA,2736,2736,38,,:::::::::::::::P0FI0MF803MFC01MFC0NFI0MF803LFEF8,0018001006B001MF807MFC07MFC0NF801MF807LFEB8,001C00300EI03MF80NFC07MFC0NFC03MF80MFE,001E00701EI07MF81NFC0NFC0NFE07MF81MFE,001F00F03EI07MF81NFC0NFC0NFE07MF81MFE,001F01F07EI07MF81NFC1NFC0NFE07MF81MFE,001F83F07EI07MF81NFC1NFC0NFE07MF81MFE,001F83F0FEI07MF81NFC1NFC0NFE07MF81MFE,001FC3F0FEI07MF01NF81NFC0NFE07MF01MFC,001FC3F0FEI07FCL01FFM01FF8M0FF8I07FE07FCL01FF,001FC3F0FEI07FCL01FFM01FF8M0FF8I03FE07FCL01FF,:::001FC3F0FEI07MF81MFE01MFE00FF8I03FE07MF81MFE,001FC3F0FEI07MF81NF01NF80FF8I03FE07MF81MFE,001FC3F0FEI07MF81NF81NF80FF8I03FE07MF81MFE,001FC3F0FEI07MF81NF80NFC0FF8I03FE07MF81MFE,I0FC3F0FCI07MF81NFC0NFC0FF8I03FE07MF81MFE,I07C3F0F8I07MF80NFC0NFC0FF8I03FE07MF81MFE,I03C3F0FJ07MF807MFC07MFC0FF8I03FE07MF81MFE,I01C3F0EJ07MF803MFC01MFC0FF8I03FE07MF81MFE,J0C3F0CJ07FCS0FFCM07FC0FF8I03FE07FCL01FF,J043F08J07FCS0FFCM07FC0FF8I03FE07FCL01FF,K03FL07FCS0FFCM07FC0FF8I03FE07FCL01FF,::::::K03FL07FCS0FFCM07FC0FF8I07FE07FCL01FF,K03FL07MF81NFC1NFC0NFE07MF81MFE,:K03EL07MF81NFC1NFC0NFE07MF81MFE,K03CL07MF81NFC1NFC0NFE07MF81MFE,K038L07MF81NF81NFC0NFE07MF81MFE,K03M03MF81NF81NFC0NFC03MF80MFE,K02M03MF81NF01NF80NFC01MF80MFE,K02N0MF81MFE01NF00NFI0MF803LFE,,:::::::::::::::^FS
+			^PW1000
+			^FO720,50^A0,40,40^FD{date}^FS
+			^FO108,35^A0,15,15^FDTM^FS
+			^FO350,35^A0,15,15^FDTM^FS
+
+			^FO30,15^GB910,435,5^FS
+			^FO30,110^GB910,70,5^FS
+			^FO30,245^GB910,70,5^FS
+			^FO30,380^GB910,70,5^FS
+			^FO30,447^GB475,70,5^FS
+			^FO500,245^GB2,205,5^FS
+
+			^FO40,130^A0,40,40^FDStyle^FS
+			^FO40,195^A0,40,40^FDPanel^FS
+			^FO40,267^A0,40,40^FDLay No^FS
+			^FO40,335^A0,40,40^FDColour^FS
+			^FO40,403^A0,40,40^FDSize^FS
+			^FO40,470^A0,40,40^FDLot No^FS
+			^FO510,267^A0,40,40^FDBundle No^FS
+			^FO510,335^A0,40,40^FDShade^FS
+			^FO510,403^A0,40,40^FDQty^FS
+
+			^FO150,130^A0,40,40^FD: {cbe_doc.item}^FS
+			^FO150,195^A0,40,40^FD: {item['panel']}^FS
+			^FO150,267^A0,40,40^FD: {item['lay_no']}^FS
+			^FO150,335^A0,40,40^FD: {item['colour']}^FS
+			^FO150,403^A0,40,40^FD: {item['size']}^FS
+			^FO150,470^A0,40,40^FD: {cbe_doc.lot}^FS
+			^FO680,267^A0,40,40^FD: {item['bundle_no']}^FS
+			^FO610,335^A0,40,40^FD: {item['shade']}^FS
+			^FO610,403^A0,40,40^FD: {item['qty']}^FS
+
+			^BY2,1,60
+			^FO510,455^BC^FD{hash_value}^FS
+
+			^XZ"""
+		zpl += x
+
+	return zpl
