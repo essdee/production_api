@@ -317,7 +317,6 @@ def on_submit_collapsed_bundles(doc, doctype, docname, location, item_variant, s
 		if key not in bundles_dict:
 			bundles_dict[key] = { "qty": 0, "bundle_qty": 0 }
 		bundles_dict[key]['qty'] += quantity
-		print(bundles_dict)
 
 	elif cb_previous_entries and not cb_future_entries:
 		x = -1
