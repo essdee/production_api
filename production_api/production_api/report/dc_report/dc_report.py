@@ -39,71 +39,24 @@ def get_data(filters):
 			WHERE t1.docstatus = 1 AND t1.qty > 0 {conditions}
 		""", d, as_dict=True
 	)
+	for row in data:
+		item = frappe.get_cached_value("Item Variant", row['item_variant'], "item")
+		row['item'] = item
+		
 	return data
 
 def get_columns():
 	return [
-		{
-			"fieldname": "delivery_challan",
-			"fieldtype": "Link",
-			"options": "Delivery Challan",
-			"label": "Delivery Challan",
-		},
-		{
-			"fieldname": "from_location",
-			"fieldtype": "Link",
-			"options": "Supplier",
-			"label": "From Location",
-		},
-		{
-			"fieldname": "from_location_name",
-			"fieldtype": "Data",
-			"label": "From Location Name",
-		},
-		{
-			"fieldname": "supplier",
-			"fieldtype": "Link",
-			"options": "Supplier",
-			"label": "Supplier",
-		},
-		{
-			"fieldname": "supplier_name",
-			"fieldtype": "Data",
-			"label": "Supplier Name",
-		},
-		{
-			"fieldname": "lot",
-			"fieldtype": "Link",
-			"options": "Lot",
-			"label": "Lot",
-		},
-		{
-			"fieldname": "process_name",
-			"fieldtype": "Link",
-			"options": "Process",
-			"label": "Process",
-		},
-		{
-			"fieldname": "item_variant",
-			"fieldtype": "Link",
-			"options": "Item Variant",
-			"label": "Item",
-		},
-		{
-			"fieldname": "qty",
-			"fieldtype": "Float",
-			"label": "Qty",
-		},
-		{
-			"fieldname": "received_type",
-			"fieldtype": "Link",
-			"options": "GRN Item Type",
-			"label": "Received Type",
-		},
-		{
-			"fieldname": "uom",
-			"fieldtype": "Link",
-			"options": "UOM",
-			"label": "UOM",
-		},
+		{"fieldname": "delivery_challan","fieldtype": "Link","options": "Delivery Challan","label": "Delivery Challan", "width": 150},
+		{"fieldname": "from_location","fieldtype": "Link","options": "Supplier","label": "From Location", "width": 100},
+		{"fieldname": "from_location_name","fieldtype": "Data","label": "From Location Name", "width": 150},
+		{"fieldname": "supplier","fieldtype": "Link","options": "Supplier","label": "Supplier", "width": 100},
+		{"fieldname": "supplier_name","fieldtype": "Data","label": "Supplier Name", "width": 150},
+		{"fieldname": "lot","fieldtype": "Link","options": "Lot","label": "Lot", "width": 100},
+		{"fieldname": "process_name","fieldtype": "Link","options": "Process","label": "Process", "width": 100},
+		{"fieldname": "item","fieldtype": "Link","options": "Item","label": "Item", "width": 200},
+		{"fieldname": "item_variant","fieldtype": "Link","options": "Item Variant","label": "Item Variant", "width": 200},
+		{"fieldname": "qty","fieldtype": "Float","label": "Qty", "width": 100},
+		{"fieldname": "received_type","fieldtype": "Link","options": "GRN Item Type","label": "Received Type", "width": 100},
+		{"fieldname": "uom","fieldtype": "Link","options": "UOM","label": "UOM", "width": 100},
 	]

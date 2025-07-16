@@ -33,77 +33,31 @@ def get_data(filters):
 
 	data = frappe.db.sql(
 		f"""
-			SELECT t2.name as delivery_challan, t2.supplier, t2.supplier_name, t2.delivery_location, 
+			SELECT t2.name as goods_received_note, t2.supplier, t2.supplier_name, t2.delivery_location, 
 			t2.delivery_location_name, t2.lot, t2.process_name, t1.item_variant, t1.quantity, t1.uom, t1.received_type
 			FROM `tabGoods Received Note Item` as t1 JOIN `tabGoods Received Note` as t2 ON t2.name = t1.parent 
 			WHERE t2.against = 'Work Order' AND t2.docstatus = 1 AND t1.quantity > 0 {conditions}
 		""", d, as_dict=True
 	)
+	for row in data:
+		item = frappe.get_cached_value("Item Variant", row['item_variant'], "item")
+		row['item'] = item
+		
 	return data
 
 def get_columns():
 	return [
-		{
-			"fieldname": "delivery_challan",
-			"fieldtype": "Link",
-			"options": "Delivery Challan",
-			"label": "Delivery Challan",
-		},
-		{
-			"fieldname": "supplier",
-			"fieldtype": "Link",
-			"options": "Supplier",
-			"label": "Supplier",
-		},
-		{
-			"fieldname": "supplier_name",
-			"fieldtype": "Data",
-			"label": "Supplier Name",
-		},
-		{
-			"fieldname": "delivery_location",
-			"fieldtype": "Link",
-			"options": "Supplier",
-			"label": "Delivery Location",
-		},
-		{
-			"fieldname": "delivery_location_name",
-			"fieldtype": "Data",
-			"label": "Delivery Location Name",
-		},
-		{
-			"fieldname": "lot",
-			"fieldtype": "Link",
-			"options": "Lot",
-			"label": "Lot",
-		},
-		{
-			"fieldname": "process_name",
-			"fieldtype": "Link",
-			"options": "Process",
-			"label": "Process",
-		},
-		{
-			"fieldname": "item_variant",
-			"fieldtype": "Link",
-			"options": "Item Variant",
-			"label": "Item",
-		},
-		{
-			"fieldname": "quantity",
-			"fieldtype": "Float",
-			"label": "Quantity",
-		},
-		{
-			"fieldname": "received_type",
-			"fieldtype": "Link",
-			"options": "GRN Item Type",
-			"label": "Received Type",
-		},
-		{
-			"fieldname": "uom",
-			"fieldtype": "Link",
-			"options": "UOM",
-			"label": "UOM",
-		},
+		{"fieldname": "goods_received_note","fieldtype": "Link","options": "Goods Received Note", 
+   			"label": "Goods Received Note", "width": 100},
+		{"fieldname": "supplier","fieldtype": "Link","options": "Supplier","label": "Supplier", "width": 100},
+		{"fieldname": "supplier_name","fieldtype": "Data","label": "Supplier Name", "width": 150},
+		{"fieldname": "delivery_location","fieldtype": "Link","options": "Supplier","label": "Delivery Location", "width": 100},
+		{"fieldname": "delivery_location_name","fieldtype": "Data","label": "Delivery Location Name", "width": 150},
+		{"fieldname": "lot","fieldtype": "Link","options": "Lot","label": "Lot", "width": 100},
+		{"fieldname": "process_name","fieldtype": "Link","options": "Process","label": "Process", "width": 100},
+		{"fieldname": "item","fieldtype": "Link","options": "Item","label": "Item", "width": 200},
+		{"fieldname": "item_variant","fieldtype": "Link","options": "Item Variant","label": "Item Variant", "width": 200},
+		{"fieldname": "quantity","fieldtype": "Float","label": "Quantity", "width": 100},
+		{"fieldname": "received_type","fieldtype": "Link","options": "GRN Item Type","label": "Received Type", "width": 100},
+		{"fieldname": "uom","fieldtype": "Link","options": "UOM","label": "UOM", "width": 100},
 	]
