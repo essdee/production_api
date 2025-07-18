@@ -1,0 +1,19 @@
+{
+ "content": null,
+ "creation": "2025-07-17 18:49:31.781357",
+ "docstatus": 0,
+ "doctype": "Page",
+ "idx": 0,
+ "modified": "2025-07-17 18:49:31.781357",
+ "modified_by": "Administrator",
+ "module": "Production Api",
+ "name": "daily-production-rep",
+ "owner": "Administrator",
+ "page_name": "daily-production-rep",
+ "roles": [],
+ "script": null,
+ "standard": "Yes",
+ "style": null,
+ "system_page": 0,
+ "title": "Daily Production Report"
+}

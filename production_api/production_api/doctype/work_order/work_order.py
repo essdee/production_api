@@ -1035,6 +1035,7 @@ def add_comment(doc_name, date, reason):
 	
 @frappe.whitelist()
 def update_stock(work_order):
+	from production_api.mrp_stock.utils import get_stock_balance
 	logger = get_module_logger("work_order")
 	logger.debug(f"{work_order} data construction {datetime.now()}")
 	res = get_variant_stock_details()
@@ -1044,6 +1045,9 @@ def update_stock(work_order):
 	for data in doc.deliverables:
 		if (data.qty - data.pending_quantity - data.stock_update) > 0 and res.get(data.item_variant):
 			reduce_qty = data.qty - data.pending_quantity - data.stock_update
+			balance = get_stock_balance(data.item_variant, doc.supplier, received_type)
+			if reduce_qty > balance:
+				reduce_qty = balance
 			sl_entries.append({
 				"item": data.item_variant,
 				"warehouse": doc.supplier,

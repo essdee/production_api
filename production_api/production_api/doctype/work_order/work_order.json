@@ -508,7 +508,8 @@
    "fieldname": "work_order_tracking_logs",
    "fieldtype": "Table",
    "label": "Work Order Tracking Logs",
-   "options": "Work Order Tracking Log"
+   "options": "Work Order Tracking Log",
+   "read_only": 1
   }
  ],
  "grid_page_length": 50,
@@ -524,7 +525,7 @@
    "link_fieldname": "against_id"
   }
  ],
- "modified": "2025-07-04 17:14:45.606296",
+ "modified": "2025-07-18 17:50:25.506844",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Work Order",

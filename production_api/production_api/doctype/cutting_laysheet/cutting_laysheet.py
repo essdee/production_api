@@ -40,6 +40,10 @@ class CuttingLaySheet(Document):
 	def before_validate(self):
 		if frappe.flags.in_patch:
 			return
+		if self.lay_no == 1:
+			wo = frappe.get_value("Cutting Plan", self.cutting_plan, "work_order")
+			frappe.db.set_value("Work Order", wo, "start_date", self.posting_date, update_modified=False)
+
 		if frappe.get_value("Cutting LaySheet", self.name, "status") == "Cancelled" and self.status == "Cancelled":
 			frappe.throw("Can't update the Cancelled Laysheet")
 
@@ -645,9 +649,12 @@ def get_cloth_accessories(cutting_plan):
 	return accessory_list	
 
 @frappe.whitelist()
-def print_labels(print_items, lay_no, cutting_plan, doc_name):
+def print_labels(print_items, lay_no, cutting_plan, doc_name, print_order):
 	lot_no, item_name, work_order = frappe.get_value("Cutting Plan",cutting_plan,["lot", "item", "work_order"])
 	print_items = update_if_string_instance(print_items)
+	if print_order == "Panel":
+		from operator import itemgetter
+		print_items = sorted(print_items, key=itemgetter('part'))	
 	zpl = ""
 	cls_doc = frappe.get_doc("Cutting LaySheet",doc_name)
 	creation = cls_doc.creation

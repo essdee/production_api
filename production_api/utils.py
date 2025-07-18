@@ -1,4 +1,4 @@
-import frappe, json
+import frappe, json, sys
 from six import string_types
 from frappe.query_builder.builder import Order as OrderBy
 from frappe.utils import getdate, add_days, flt
@@ -179,7 +179,10 @@ def get_t_and_a_report_data(lot, item, process_name):
 					continue
 				del row[k]
 			for ky in row:	
-				data[key]['min_reason_date'] = getdate(row[ky], parse_day_first=True)
+				m = getdate(row[ky], parse_day_first=True)
+				data[key]['min_reason_date'] = m
+				m = m.strftime("%d-%m-%Y") 
+				data[key]['expected_date'] = m 
 		else:
 			end_date = getdate(row['planned_end_date'], parse_day_first=True)
 			if data[key]['planned_end_date'] < end_date:
@@ -187,15 +190,32 @@ def get_t_and_a_report_data(lot, item, process_name):
 			data[key]['qty'] += row['qty']
 			row_keys = ["lot", "item", "process_name", "qty", "reason", "delay", "planned_end_date", "assigned", "check_point"]	
 			reason = row['reason']
+			old_check_point = data[key].get('check_point')
+			if not old_check_point:
+				if row.get('check_point'):
+					data[key]['check_point'] = row['check_point']
+			elif row.get('check_point'):
+				if getdate(row['check_point']) > getdate(old_check_point):
+					data[key]['check_point'] = row['check_point']
+
 			if data[key]['delay'] < row['delay']:
 				data[key]['delay'] = row['delay']
 			for k in row_keys:
 				if not k in row:
 					continue
 				del row[k]
+
+			if "min_reason_date" not in data[key]:
+				for ky in row:	
+					m = getdate(row[ky], parse_day_first=True)
+					data[key]['min_reason_date'] = m
+					m = m.strftime("%d-%m-%Y")
+					data[key]['expected_date'] = m
+			
 			for d in row:
-				if d == "min_reason_date":
+				if d == "min_reason_date" or d == "expected_date":
 					continue
+
 				if data[key].get(d):
 					date1 = getdate(data[key][d], parse_day_first=True)
 					date2 = getdate(row[d], parse_day_first=True)
@@ -205,6 +225,9 @@ def get_t_and_a_report_data(lot, item, process_name):
 						data[key]['reason'] = reason
 					x = x.strftime("%d-%m-%Y")
 					data[key][d] = x
+					if date1 > getdate(data[key]['expected_date']):
+						date1 = date1.strftime("%d-%m-%Y")
+						data[key]['expected_date'] = date1
 				else:
 					y = getdate(row[d], parse_day_first=True)
 					if y > data[key].get('min_reason_date'):
@@ -213,15 +236,14 @@ def get_t_and_a_report_data(lot, item, process_name):
 					data[key][d] = row[d]	
 	date_keys = []
 	if min_date and max_date:
-		if not lot and not item and not process_name:
-			max_date = getdate(frappe.utils.nowdate(), parse_day_first=True)
-			days = frappe.db.get_single_value("MRP Settings", "time_and_action_tracking_order_report_days")
-			if days == 0 or not days:
-				days = 6
-			else:
-				days = days - 1	
-			days = days * -1	
-			min_date = add_days(max_date, days)
+		max_date = getdate(frappe.utils.nowdate(), parse_day_first=True)
+		days = frappe.db.get_single_value("MRP Settings", "time_and_action_tracking_order_report_days")
+		if days == 0 or not days:
+			days = 6
+		else:
+			days = days - 1	
+		days = days * -1	
+		min_date = add_days(max_date, days)
 		while min_date < max_date:
 			x = min_date.strftime("%d-%m-%Y")
 			date_keys.append(x)
@@ -358,8 +380,6 @@ def get_t_and_a_review_report_data(lot, item, report_date):
 def update_wo_checkpoint(datas):
 	data = update_if_string_instance(datas)
 	for row in data:
-		if not row.get("changed"):
-			continue
 		filters = {
 			"item": row['item'],
 			"process_name": row['process_name'],
@@ -383,9 +403,169 @@ def update_wo_checkpoint(datas):
 					to_date = row[key]
 				to_date = getdate(to_date, parse_day_first=True)
 				wo_doc = frappe.get_doc("Work Order", work_order)
+				check = True
 				for tracking_log in wo_doc.work_order_tracking_logs:
 					if to_date == tracking_log.to_date:
 						tracking_log.check_point = 1
+						check = False
 					else:
 						tracking_log.check_point = 0
+				if check:
+					tracking_log = wo_doc.append("work_order_tracking_logs", {})
+					tracking_log.from_date = to_date
+					tracking_log.to_date = to_date
+					tracking_log.check_point = 1
+					tracking_log.user =	frappe.session.user	
 				wo_doc.save(ignore_permissions=True)			
+
+@frappe.whitelist()
+def get_daily_production_report(date):
+	from production_api.essdee_production.doctype.lot.lot import fetch_order_item_details
+	from production_api.production_api.doctype.cutting_plan.cutting_plan import get_complete_incomplete_structure
+	cls = frappe.db.sql(
+		"""
+			SELECT name FROM `tabCutting LaySheet` WHERE DATE(printed_time) = %(date)s
+		""", {
+			"date": getdate(date, parse_day_first=True).strftime("%Y-%m-%d")
+		}, as_dict=True
+	)
+	cutting_plans = frappe.db.sql(
+		"""
+			SELECT distinct(cutting_plan) as cutting_plan FROM `tabCutting LaySheet` 
+			WHERE DATE(printed_time) = %(date)s
+		""", {
+			"date": getdate(date, parse_day_first=True).strftime("%Y-%m-%d")
+		}, as_dict=True
+
+	)
+	report = {}
+	for cutting_plan in cutting_plans:
+		cp_doc = frappe.get_doc("Cutting Plan",cutting_plan['cutting_plan'])
+		if cp_doc.version == "V1":
+			frappe.throw("Can't get report for Cutting Plan Version V1")
+
+		item_details = fetch_order_item_details(cp_doc.items,cp_doc.production_detail)
+		completed, incomplete = get_complete_incomplete_structure(cp_doc.production_detail,item_details)
+		cls_list = frappe.db.sql(
+			"""
+				SELECT name FROM `tabCutting LaySheet` WHERE DATE(printed_time) = %(date)s  
+				AND cutting_plan = %(cutting_plan)s AND status = 'Label Printed'
+			""", {
+				"date": getdate(date, parse_day_first=True).strftime("%Y-%m-%d"),
+				"cutting_plan": cutting_plan['cutting_plan']
+			}, as_dict=True
+		)	
+		incomplete_items = update_if_string_instance(incomplete)
+		completed_items = update_if_string_instance(completed)
+		production_detail = cp_doc.production_detail
+		ipd_doc = frappe.get_cached_doc("Item Production Detail",production_detail)
+
+		for cls in cls_list:
+			cls_doc = frappe.get_doc("Cutting LaySheet",cls['name'])
+			if not ipd_doc.is_set_item:
+				alter_incomplete_items = {}
+				for item in incomplete_items['items']:
+					colour = item['attributes'][ipd_doc.packing_attribute]
+					alter_incomplete_items[colour] = item['values']
+				
+				for item in cls_doc.cutting_laysheet_bundles:
+					parts = item.part.split(",")
+					set_combination = update_if_string_instance(item.set_combination)
+					set_colour = set_combination['major_colour']
+					qty = item.quantity
+					for part in parts:
+						alter_incomplete_items[set_colour][item.size][part] += qty	
+				
+				total_qty = completed_items['total_qty']
+				for item in completed_items['items']:
+					colour = item['attributes'][ipd_doc.packing_attribute]
+					for val in item['values']:
+						min = sys.maxsize
+						for panel in alter_incomplete_items[colour][val]:
+							if alter_incomplete_items[colour][val][panel] < min:
+								min = alter_incomplete_items[colour][val][panel]
+						
+						total_qty[val] += min
+						item['values'][val] += min
+						for panel in alter_incomplete_items[colour][val]:
+							alter_incomplete_items[colour][val][panel] -= min
+
+				completed_items['total_qty'] = total_qty				
+				for item in incomplete_items['items']:
+					colour = item['attributes'][ipd_doc.packing_attribute]
+					item['values'] = alter_incomplete_items[colour]
+			else:
+				stich_details = get_stich_details(ipd_doc)
+				alter_incomplete_items = {}
+				for item in incomplete_items['items']:
+					set_combination = update_if_string_instance(item['item_keys'])
+					colour = set_combination['major_colour']
+					part = item['attributes'][ipd_doc.set_item_attribute]
+					if alter_incomplete_items.get(colour):
+						alter_incomplete_items[colour][part] = item['values']
+					else:	
+						alter_incomplete_items[colour] = {}
+						alter_incomplete_items[colour][part] = item['values']
+				for item in cls_doc.cutting_laysheet_bundles:
+					parts = item.part.split(",")
+					set_combination = update_if_string_instance(item.set_combination)
+					major_part = set_combination['major_part']
+					major_colour = set_combination['major_colour']
+					d = {
+						"major_colour": major_colour,
+					}
+					if set_combination.get('set_part'):
+						major_part = set_combination['set_part']
+						major_colour = set_combination['set_colour']
+					d['major_part'] = major_part	
+
+					qty = item.quantity
+					for part in parts:
+						try:
+							alter_incomplete_items[d['major_colour']][d['major_part']][item.size][part] += qty
+						except:
+							secondary_part = stich_details[part]
+							alter_incomplete_items[d['major_colour']][secondary_part][item.size][part] += qty
+				
+				total_qty = completed_items['total_qty']
+				for item in completed_items['items']:
+					set_combination = update_if_string_instance(item['item_keys'])
+					colour = set_combination['major_colour']
+					part = item['attributes'][ipd_doc.set_item_attribute]
+					for val in item['values']:
+						min = sys.maxsize
+						for panel in alter_incomplete_items[colour][part][val]:
+							if alter_incomplete_items[colour][part][val][panel] < min:
+								min = alter_incomplete_items[colour][part][val][panel]
+						
+						total_qty[val] += min
+						item['values'][val] += min
+						for panel in alter_incomplete_items[colour][part][val]:
+							alter_incomplete_items[colour][part][val][panel] -= min		
+				
+				completed_items["total_qty"] = total_qty
+				for item in incomplete_items['items']:
+					set_combination = update_if_string_instance(item['item_keys'])
+					colour = set_combination['major_colour']
+					part = item['attributes'][ipd_doc.set_item_attribute]
+					item['values'] = alter_incomplete_items[colour][part]
+
+		items_list = []
+		total = 0
+		for row in completed_items['items']:
+			total_qty = 0
+			for val in row['values']:
+				if row['values'][val] > 0:
+					total_qty += row['values'][val]
+			if total_qty > 0:	
+				row['total_qty'] = total_qty	
+				items_list.append(row)
+				total += total_qty
+		if len(items_list) == 0:
+			continue
+		else:
+			completed_items['items'] = items_list
+		completed_items['total_sum'] = total
+		report[cp_doc.lot + " - " + cp_doc.name] = [completed_items]
+
+	return report
