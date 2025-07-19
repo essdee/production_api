@@ -26,10 +26,11 @@
                             <th class="sticky-col col4">Lot</th>
                             <th class="sticky-col col5">Process</th>
                             <th class="sticky-col col6">Quantity</th>
-                            <th class="sticky-col col7">Planned Date</th>
+                            <th class="sticky-col col7">Planned End Date</th>
                             <th class="sticky-col col8">Delay</th>
                             <th class="sticky-col col9">Reason</th>
                             <th class="sticky-col col10">Check Point</th>
+                            <th class="sticky-col col11">Expected Date</th>
                             <th style="width:110px;" v-for="d in items['dates']" :key="d">{{ d }}</th>
                         </tr>
                     </thead>
@@ -45,9 +46,10 @@
                                 <td class="sticky-col col7">{{ item['planned_end_date'] || '' }}</td>
                                 <td class="sticky-col col8">{{ item['delay'] || '' }}</td>
                                 <td class="sticky-col col9">{{ item['reason'] || '' }}</td>
-                                <td class="sticky-col col10" :style="getCheckPointStyle(item)" >
+                                <td class="sticky-col col10" :style="getCheckPointStyle(item['check_point'], item['expected_date'])" >
                                     {{ item['check_point'] || '' }}
                                 </td>
+                                <td class="sticky-col col11">{{ item['expected_date'] || '' }}</td>
                                 <td v-for="d in items['dates']" :key="d">{{ item[d] || '' }}</td>
                             </tr>
                             <tr v-if="expandedRowIndex === idx">
@@ -175,15 +177,20 @@ function parseDMYtoDate(dmyStr) {
     return new Date(`${yyyy}-${mm}-${dd}`);
 }
 
-function getCheckPointStyle(item) {
-    if (!item['check_point']) return {};
+function getCheckPointStyle(check_point, expected_date) {
+    if (!check_point || !expected_date) return {};
 
-    const lastDateKey = items.value['dates'][items.value['dates'].length - 1];
-    const checkPoint = new Date(parseDMYtoDate(item['check_point']));
-    const lastDate = new Date(parseDMYtoDate(item[lastDateKey]));
+    const checkPoint = new Date(parseDMYtoDate(check_point));
+    const expectedDate = new Date(parseDMYtoDate(expected_date));
     return {
-        backgroundColor: checkPoint <= lastDate ? 'rgb(249, 194, 195)' : 'rgb(180, 244, 170)',
+        backgroundColor: isSameDate(checkPoint, expectedDate) ? 'rgb(157, 193, 250)' : checkPoint < expectedDate ? 'rgb(249, 194, 195)' : 'rgb(180, 244, 170)'
     };
+}
+
+function isSameDate(d1, d2) {
+    return d1.getFullYear() === d2.getFullYear() &&
+           d1.getMonth() === d2.getMonth() &&
+           d1.getDate() === d2.getDate();
 }
 
 function clear_filters(){
@@ -214,17 +221,10 @@ function create_checkpoint(data){
         frappe.msgprint("There is no items in the page")
         return   
     }
-    let check = false
-    for(let i = 0; i < data.length ; i++){
-        if(data[i].hasOwnProperty("changed")){
-            check = true
-        }
-    }
-    if(!check){
-        frappe.msgprint("There is nothing updated in this page");
-    }
     frappe.call({
         method: "production_api.utils.update_wo_checkpoint",
+        freeze: true,
+        freeze_message: "Updating Check Points",
         args: {
             datas: data,
         }
@@ -377,10 +377,11 @@ table th, td {
 .col4 { left: 460px; box-shadow: inset 0 0 0 0.001rem black; width: 100px;}
 .col5 { left: 560px; box-shadow: inset 0 0 0 0.001rem black; width: 80px; }
 .col6 { left: 640px; box-shadow: inset 0 0 0 0.001rem black; width: 80px; }
-.col7 { left: 720px; box-shadow: inset 0 0 0 0.001rem black; width: 110px; } 
-.col8 { left: 830px; box-shadow: inset 0 0 0 0.001rem black; width: 60px; }
-.col9 { left: 890px; box-shadow: inset 0 0 0 0.001rem black; width: 110px; }
-.col10 { left: 1000px; box-shadow: inset 0 0 0 0.001rem black; width: 110px; }
+.col7 { left: 720px; box-shadow: inset 0 0 0 0.001rem black; width: 150px; } 
+.col8 { left: 870px; box-shadow: inset 0 0 0 0.001rem black; width: 60px; }
+.col9 { left: 930px; box-shadow: inset 0 0 0 0.001rem black; width: 110px; }
+.col10 { left: 1040px; box-shadow: inset 0 0 0 0.001rem black; width: 110px; }
+.col11 { left: 1150px; box-shadow: inset 0 0 0 0.001rem black; width: 110px; }
 
 .scroll-container {
     max-height: 700px;

@@ -1,6 +1,6 @@
 <template>
     <div ref="root">
-        <div v-if="items && pop_up == 1">
+        <div v-if="items && pop_up == 1 && !from_page">
             <h4>Completed Cut Quantity</h4>        
         </div>
         <table v-if="pop_up == 1 || pop_up == 2" class="table table-sm table-bordered">
@@ -24,7 +24,8 @@
                                 {{ j }}
                             </th>
                             <th v-if="i.is_set_item">Panels</th>
-                            <th  v-if="pop_up == 1 || pop_up == 2">Completed</th>
+                            <th v-if="!from_page && pop_up == 1 || pop_up == 2">Completed</th>
+                            <th v-if="from_page">Total</th>
                         </tr>
                         <tr v-for="(j, item1_index) in i.items" :key="item1_index">
                             <td>{{item1_index + 1}}</td>
@@ -46,14 +47,16 @@
                                     {{panel}}
                                 </div>
                             </td>
-                            <td v-if="pop_up == 1"><input type="checkbox" v-model="j['completed']" disabled></td>
-                            <td v-else-if="pop_up == 2"><input type="checkbox" v-model="j['completed']"></td>
+                            <td v-if="pop_up == 1 && !from_page"><input type="checkbox" v-model="j['completed']" disabled></td>
+                            <td v-else-if="pop_up == 2 && !from_page"><input type="checkbox" v-model="j['completed']"></td>
+                            <td v-if="from_page">{{ j['total_qty'] }}</td>
                         </tr>
                         <tr v-if="pop_up == 1">
                             <td>Total</td>
                             <td v-for="(j, idx) in i.attributes" :key="idx"></td>
                             <td v-for="(j, idx) in i.total_qty" :key="idx">{{j}}</td>
-                            <td></td>
+                            <td v-if="!from_page"></td>
+                            <td v-else>{{ i['total_sum'] }}</td>
                         </tr>
                     </table>
                 </td>
@@ -160,15 +163,29 @@ import {ref, onMounted} from 'vue';
 
 let items = ref(null)
 let pop_up = ref(0)
-let lot = cur_frm.doc.lot
-let item = cur_frm.doc.item
+let lot = null
+let item = null
 let datetime = ref(null)
 let items2 = ref(null)
 let completed_total = ref({})
-let version = cur_frm.doc.version
+let version = null
 let total_cut_qty = {}
+let from_page = false
+
+const props = defineProps({
+    data: {
+        type: Array,
+        default: () => []
+    }
+})
 
 onMounted(()=> {
+    if(props.data){
+        from_page = true
+        items.value = props.data;
+        items2.value = props.data;
+        pop_up.value = 1
+    }
     let today = new Date()
     let date = format_datetime(today.getDate()) + "-" + format_datetime(today.getMonth()+1) + "-" + today.getFullYear()
     let time = format_datetime(today.getHours()) + ":" + format_datetime(today.getMinutes()) + ":" + format_datetime(today.getSeconds())
@@ -182,10 +199,13 @@ function format_datetime(val){
     return val
 }
 
-function load_data(item, is_pop_up){
+function load_data(item_data, is_pop_up){
+    lot = cur_frm.doc.lot
+    item = cur_frm.doc.item
+    version = cur_frm.doc.version
     try {
-        items.value = JSON.parse(item);
-        items2.value = JSON.parse(item);
+        items.value = JSON.parse(item_data);
+        items2.value = JSON.parse(item_data);
         pop_up.value = is_pop_up
         if(pop_up.value == 3){
             get_total()

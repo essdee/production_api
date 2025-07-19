@@ -1035,6 +1035,7 @@ def add_comment(doc_name, date, reason):
 	
 @frappe.whitelist()
 def update_stock(work_order):
+	from production_api.mrp_stock.utils import get_stock_balance
 	logger = get_module_logger("work_order")
 	logger.debug(f"{work_order} data construction {datetime.now()}")
 	res = get_variant_stock_details()
@@ -1044,6 +1045,9 @@ def update_stock(work_order):
 	for data in doc.deliverables:
 		if (data.qty - data.pending_quantity - data.stock_update) > 0 and res.get(data.item_variant):
 			reduce_qty = data.qty - data.pending_quantity - data.stock_update
+			balance = get_stock_balance(data.item_variant, doc.supplier, received_type)
+			if reduce_qty > balance:
+				reduce_qty = balance
 			sl_entries.append({
 				"item": data.item_variant,
 				"warehouse": doc.supplier,
@@ -1077,15 +1081,17 @@ def calculate_completed_pieces(doc_name):
 	if process_name in [ipd_doc.cutting_process, ipd_doc.stiching_process, ipd_doc.packing_process]:
 		lot_doc = frappe.get_cached_doc("Lot",wo_doc.lot)
 		field = "cut_qty" if process_name == ipd_doc.cutting_process else "stich_qty" if process_name == ipd_doc.stiching_process else "pack_qty"
-		for item in lot_doc.lot_order_details:
-			setattr(item, field, 0)	
+		for item in wo_doc.work_order_calculated_items:
+			for lot_item in lot_doc.lot_order_details:
+				if lot_item.item_variant == item.item_variant:
+					setattr(lot_item, field, 0)	
+					break
+			item.received_qty = 0
+			item.received_type_json = {}
+			item.delivered_quantity = 0	
+
 		lot_doc.save(ignore_permissions=True)
 			
-	for item in wo_doc.work_order_calculated_items:
-		item.received_qty = 0
-		item.received_type_json = {}
-		item.delivered_quantity = 0
-
 	wo_doc.total_no_of_pieces_delivered = 0
 	wo_doc.total_no_of_pieces_received = 0	
 	wo_doc.received_types_json = {}

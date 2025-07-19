@@ -49,6 +49,13 @@ def get_columns():
             "width": 200
         },
         {
+            "fieldname": "item",
+            "label": "Item",
+            "fieldtype": "Link",
+            "options": "Item",
+            "width": 150
+        },
+        {
             "fieldname": "item_variant",
             "label": "Item Variant",
             "fieldtype": "Link",
@@ -181,6 +188,7 @@ def get_data(filters):
         .on(po_item.item_variant == item_variant.name)
         .select(
             po_item.item_variant,
+            item_variant.item.as_('item'),
             po_item.qty,
             po_item.pending_qty,
             po_item.cancelled_qty,

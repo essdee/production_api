@@ -442,10 +442,12 @@ def get_calculated_bom(item_production_detail, items, lot_name, process_name = N
 			qty_of_product = bom_item.qty_of_product
 			qty_of_bom = bom_item.qty_of_bom_item
 			temp_qty = total_quantity
-			if bom_item.dependent_attribute_value and not bom_item.dependent_attribute_value == lot_doc.pack_in_stage:
+			if bom_item.dependent_attribute_value and bom_item.dependent_attribute_value != lot_doc.pack_in_stage:
 				dependent_attr_uom = lot_item_detail.default_unit_of_measure
 				qty_of_product = get_uom_conversion_factor(lot_item_detail.uom_conversion_details, dependent_attr_uom  ,lot_doc.packing_uom)
 				if bom_item.dependent_attribute_value == lot_doc.pack_out_stage:
+					if item_detail.is_set_item:
+						temp_qty = temp_qty / 2
 					qty_of_product = qty_of_product * item_detail.packing_combo
 
 			qty_of_product = qty_of_product/qty_of_bom
@@ -1010,6 +1012,17 @@ def get_combination(doc_name,attributes, combination_type, cloth_list = None):
 		attributes.append(set_attr)
 		attributes.append(stich_attr)
 
+	elif not is_set_item and pack_attr in attributes and stich_attr in attributes:
+		item_attr_list = change_pack_stich_attr_list(item_attr_val_list, ipd_doc.stiching_item_combination_details, stich_attr, pack_attr)
+		pack_attr_values = item_attr_list[pack_attr]
+		del item_attr_list[pack_attr]
+		attributes = pop_attributes(attributes, [pack_attr, stich_attr])
+		item_attr_val_list = item_attr_list
+		items = get_comb_items(pack_attr_values, stich_attr, pack_attr, combination_type, part_accessory_combination)
+		item_list = make_comb_list(attributes, items, combination_type, item_attr_list)
+		attributes.append(stich_attr)
+		attributes.append(pack_attr)
+	
 	else:
 		item_list = get_item_list(item_attr_val_list,attributes)
 		items = []
@@ -1170,11 +1183,9 @@ def change_pack_stich_attr_list(item_attr_val_list, stiching_item_combination_de
 	attr_list = item_attr_val_list.copy()
 	panel_details = {}
 	for item in stiching_item_combination_details:
-		if panel_details.get(item.set_item_attribute_value) and item.attribute_value not in panel_details[item.set_item_attribute_value]:
+		panel_details.setdefault(item.set_item_attribute_value, [])
+		if item.attribute_value not in panel_details[item.set_item_attribute_value]:
 			panel_details[item.set_item_attribute_value].append(item.attribute_value)
-		else:
-			panel_details[item.set_item_attribute_value] = [item.attribute_value]	
-
 	del attr_list[stiching_attr]
 	attr_list[pack_attr] = panel_details
 	return attr_list

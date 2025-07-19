@@ -46,6 +46,7 @@ import StockSummary from "./components/StockSummary.vue"
 import ReturnItemsPopUp from "./Delivery_Challan/components/ReturnItemsPopUp.vue"
 import SuggestedVendorBillDeliveryPerson from "./VendorBillTracking/components/SuggestedVendorBillDeliveryPerson.vue";
 import CutBundleEdit from "./Cut_Bundle_Edit/components/CutBundleEdit.vue";
+import DailyProductionReport from "./CuttingLaySheet/components/DailyProductionReport.vue";
 
 // Product Development
 import { ProductFileVersionsWrapper, ProductCostingListWrapper } from "./ProductDevelopment"
@@ -369,6 +370,18 @@ frappe.production.ui.TimeAndActionOrderTracking = class {
     }
     make_app(){
         this.app = createApp(TimeAndActionOrderTracking)
+        SetVueGlobals(this.app)
+        this.vue = this.app.mount(this.$wrapper.get(0))
+    }
+}
+
+frappe.production.ui.DailyProductionReport = class {
+    constructor(wrapper){
+        this.$wrapper = $(wrapper);
+        this.make_app()
+    }
+    make_app(){
+        this.app = createApp(DailyProductionReport)
         SetVueGlobals(this.app)
         this.vue = this.app.mount(this.$wrapper.get(0))
     }
