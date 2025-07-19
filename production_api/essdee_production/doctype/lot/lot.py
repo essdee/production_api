@@ -368,6 +368,7 @@ def fetch_item_details(items, production_detail):
 def fetch_order_item_details(items, production_detail, process=None ):
 	ipd_doc = frappe.get_doc("Item Production Detail", production_detail)
 	items = update_if_string_instance(items)
+	from production_api.essdee_production.doctype.item_production_detail.item_production_detail import get_ipd_primary_values
 	field = "quantity"
 	if process:
 		prs_doc = frappe.get_cached_doc("Process", process)
@@ -389,7 +390,7 @@ def fetch_order_item_details(items, production_detail, process=None ):
 	items = [item.as_dict() for item in items]
 	item_details = []
 	items = sorted(items, key = lambda i: i['row_index'])
-
+	primary_values = get_ipd_primary_values(production_detail)
 	for key, variants in groupby(items, lambda i: i['row_index']):
 		variants = list(variants)
 		current_variant = frappe.get_cached_doc("Item Variant", variants[0]['item_variant'])
@@ -407,7 +408,7 @@ def fetch_order_item_details(items, production_detail, process=None ):
 			"dependent_attribute_details": current_item_attribute_details['dependent_attribute_details'],
 			'values': {},
 		}
-
+		current_item_attribute_details['primary_attribute_values'] = primary_values
 		if item['primary_attribute']:
 			for attr in current_item_attribute_details['primary_attribute_values']:
 				item['values'][attr] = {'qty': 0}

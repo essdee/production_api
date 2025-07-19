@@ -6,6 +6,7 @@
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
+  "is_manual_entry",
   "cutting_plan",
   "lot",
   "length",
@@ -18,6 +19,7 @@
   "selected_type",
   "calculated_parts",
   "reverted",
+  "posting_date",
   "column_break_rxns",
   "cutting_marker",
   "marker_name",
@@ -30,12 +32,15 @@
   "naming_series",
   "length_allowance",
   "width_allowance",
+  "is_set_item",
+  "posting_time",
   "section_break_cwpl",
   "cutting_marker_ratios",
   "cutting_marker_ratios_html",
   "section_break_dasc",
   "cutting_laysheet_details",
   "cloths_html",
+  "cutting_laysheet_manual_items",
   "section_break_ujvr",
   "cutting_laysheet_accessory_details",
   "accessory_html",
@@ -344,12 +349,48 @@
    "fieldtype": "Check",
    "hidden": 1,
    "label": "Reverted"
+  },
+  {
+   "default": "0",
+   "fetch_from": "cutting_plan.is_manual_entry",
+   "fieldname": "is_manual_entry",
+   "fieldtype": "Check",
+   "label": "Is Manual Entry",
+   "read_only": 1
+  },
+  {
+   "fieldname": "cutting_laysheet_manual_items",
+   "fieldtype": "Table",
+   "hidden": 1,
+   "label": "Cutting LaySheet Manual Items",
+   "options": "Cutting LaySheet Manual Item"
+  },
+  {
+   "default": "0",
+   "fieldname": "is_set_item",
+   "fieldtype": "Check",
+   "hidden": 1,
+   "label": "Is Set Item"
+  },
+  {
+   "default": "Today",
+   "fieldname": "posting_date",
+   "fieldtype": "Date",
+   "label": "Posting Date",
+   "read_only": 1
+  },
+  {
+   "default": "Now",
+   "fieldname": "posting_time",
+   "fieldtype": "Time",
+   "label": "Posting Time",
+   "read_only": 1
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-05-31 11:46:35.332120",
+ "modified": "2025-07-02 12:53:41.288578",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Cutting LaySheet",

@@ -116,45 +116,97 @@ frappe.ui.form.on("Delivery Challan", {
 			})
 			frm.add_custom_button("Return", ()=> {
 				let return_items = null
-				frappe.call({
-					method:"production_api.production_api.doctype.delivery_challan.delivery_challan.get_return_delivery_items",
-					args: {
-						doc_name : frm.doc.name,
-					},
-					freeze:true,
-					callback: function(r){
-						let d = new frappe.ui.Dialog({
-							title: __("Return Items"),
-							fields: [
-								{
-									"fieldname": 'return_pop_up_html',
-									"fieldtype": 'HTML',
-								},
-							],
-							size: "extra-large",
-							primary_action_label: __("Return"),
-							primary_action: function(){
-								let returned_items = return_items.get_data()
-								d.hide()
-								frappe.call({
-									method: "production_api.production_api.doctype.delivery_challan.delivery_challan.create_return_grn",
-									args: {
-										doc_name: frm.doc.name,
-										items: returned_items,
-										ipd: frm.doc.production_detail,
-									},
-									callback: function(r){
-										frappe.set_route("Form", "Goods Received Note", r.message)
+				let x = new frappe.ui.Dialog({
+					title: "If Return Items are Bundles Check the Box",
+					fields: [
+						{
+							fieldname: "is_bundle",
+							fieldtype: "Check",
+							label: "Is Bundle"
+						}
+					], 
+					primary_action: function(val){
+						x.hide()
+						if (val.is_bundle){
+							let y = new frappe.ui.Dialog({
+								title: "Select the Cut Panel Movement",
+								fields: [
+									{
+										fieldname: "cut_panel_movement",
+										fieldtype: "Link",
+										options: "Cut Panel Movement",
+										label: "Cut Panel Movement",
+										get_query: function() {
+											return {
+												filters: {
+													lot: frm.doc.lot,
+													from_warehouse: frm.doc.supplier,
+													against_id: ['is', 'not set']
+												}
+											};
+										}
 									}
-								})
-							}
-						})
-						d.fields_dict['return_pop_up_html'].$wrapper.html("")
-						return_items = new frappe.production.ui.ReturnItemsPopUp(d.fields_dict['return_pop_up_html'].wrapper)
-						return_items.load_data(r.message)
-						d.show()
+								],
+								primary_action(values) {
+									y.hide();
+									frappe.call({
+										method: "production_api.production_api.doctype.delivery_challan.delivery_challan.create_bundle_return_grn",
+										args: {
+											doc_name: frm.doc.name,
+											cpm: values.cut_panel_movement,
+											work_order: frm.doc.work_order
+										},
+										callback: function(r){
+											frappe.set_route("Form", "Goods Received Note", r.message)
+										}
+									})
+								}
+							});
+							y.show();
+						}
+						else{
+							frappe.call({
+								method:"production_api.production_api.doctype.delivery_challan.delivery_challan.get_return_delivery_items",
+								args: {
+									doc_name : frm.doc.name,
+								},
+								freeze:true,
+								callback: function(r){
+									let d = new frappe.ui.Dialog({
+										title: __("Return Items"),
+										fields: [
+											{
+												"fieldname": 'return_pop_up_html',
+												"fieldtype": 'HTML',
+											},
+										],
+										size: "extra-large",
+										primary_action_label: __("Return"),
+										primary_action: function(){
+											let returned_items = return_items.get_data()
+											d.hide()
+											frappe.call({
+												method: "production_api.production_api.doctype.delivery_challan.delivery_challan.create_return_grn",
+												args: {
+													doc_name: frm.doc.name,
+													items: returned_items,
+												},
+												callback: function(r){
+													frappe.set_route("Form", "Goods Received Note", r.message)
+												}
+											})
+										}
+									})
+									d.fields_dict['return_pop_up_html'].$wrapper.html("")
+									return_items = new frappe.production.ui.ReturnItemsPopUp(d.fields_dict['return_pop_up_html'].wrapper)
+									return_items.load_data(r.message)
+									d.show()
+								}
+							})
+						}
 					}
 				})
+				x.show()
 			})
 		}
     },

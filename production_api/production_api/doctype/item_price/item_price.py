@@ -82,7 +82,6 @@ def get_item_variant_price(variant: str, variant_uom=None):
 	from production_api.essdee_production.doctype.lot.lot import get_uom_conversion_factor
 	variant = frappe.get_doc("Item Variant", variant)
 	price_list = get_all_active_price(item=variant.item)
-	print("Price List: ", price_list)
 	rate = None
 	uom = None
 	for price in price_list:

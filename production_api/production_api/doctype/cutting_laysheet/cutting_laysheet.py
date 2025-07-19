@@ -5,32 +5,49 @@ from frappe import bold
 from six import string_types
 from frappe.model.document import Document
 import frappe, json, sys, base64, math, time
-from production_api.utils import get_part_list
 from frappe.utils import getdate, nowdate, now
-from production_api.utils import get_stich_details
 from secrets import token_bytes as get_random_bytes
-from production_api.utils import update_if_string_instance
+from production_api.mrp_stock.stock_ledger import make_sl_entries
 from production_api.production_api.doctype.item.item import get_or_create_variant
+from production_api.utils import get_part_list, get_stich_details, update_if_string_instance
 from production_api.production_api.doctype.cutting_marker.cutting_marker import fetch_marker_details
 from production_api.essdee_production.doctype.item_production_detail.item_production_detail import get_stitching_combination
+from production_api.production_api.doctype.cut_bundle_movement_ledger.cut_bundle_movement_ledger import make_cut_bundle_ledger, cancel_cut_bundle_ledger
 
 class CuttingLaySheet(Document):
 	def autoname(self):
 		self.naming_series = "CLS-.YY..MM.-.{#####}."
 
 	def onload(self):
-		self.set_onload("item_details",self.cutting_laysheet_details)
-		self.set_onload("item_accessories", self.cutting_laysheet_accessory_details)
-		if self.selected_type:
-			items = fetch_marker_details(self.cutting_marker_ratios, self.selected_type)
-			self.set_onload("marker_details", items)
+		if not self.is_new():
+			item_detail = {}
+			if self.is_manual_entry:
+				item_detail = fetch_manual_item_details(self.cutting_laysheet_manual_items, self.name)
+			details = {
+				"manual_items": item_detail,
+				"cloth_items": self.cutting_laysheet_details,
+			}	
+			self.set_onload("item_details", details)
+			self.set_onload("item_accessories", self.cutting_laysheet_accessory_details)
+			if self.selected_type:
+				items = fetch_marker_details(self.cutting_marker_ratios, self.selected_type)
+				details = {
+					"cutting_marker_ratios": items,
+					"cutting_marker_groups": [],
+				}
+				self.set_onload("marker_details", details)
 
 	def before_validate(self):
+		if frappe.flags.in_patch:
+			return
 		if frappe.get_value("Cutting LaySheet", self.name, "status") == "Cancelled" and self.status == "Cancelled":
 			frappe.throw("Can't update the Cancelled Laysheet")
 
 		if self.get('item_details'):
-			items = save_item_details(self.item_details, self.cutting_plan, self.calculated_parts)
+			if self.is_manual_entry:
+				items = save_manual_item_details(self.item_details, self.name)
+				self.set("cutting_laysheet_manual_items", items)
+			items = save_item_details(self.item_details, self.cutting_plan, self.calculated_parts, self.is_manual_entry)
 			self.set("cutting_laysheet_details", items)
 
 		if self.get('item_accessory_details'):
@@ -51,7 +68,8 @@ class CuttingLaySheet(Document):
 		if self.is_new():
 			cut_plan_doc = frappe.get_doc("Cutting Plan",self.cutting_plan)	
 			cut_marker_doc = frappe.get_doc("Cutting Marker",self.cutting_marker)		
-
+			is_set_item = frappe.get_value("Item Production Detail", cut_plan_doc.production_detail, "is_set_item")
+			self.is_set_item = is_set_item
 			self.lay_no = cut_plan_doc.lay_no + 1
 			self.maximum_no_of_plys = cut_plan_doc.maximum_no_of_plys
 			self.maximum_allow_percentage = cut_plan_doc.maximum_allow_percent
@@ -73,6 +91,11 @@ class CuttingLaySheet(Document):
 		accessory_weight = 0.0
 		no_of_rolls = 0
 		used_weight = 0.0
+
+		if self.is_manual_entry:
+			if len(self.cutting_laysheet_manual_items) > 0 and self.status == "Started":
+				self.status = "Completed"
+
 		for item in self.cutting_laysheet_details:
 			total_bits += item.effective_bits
 			weight += item.weight
@@ -93,7 +116,6 @@ class CuttingLaySheet(Document):
 				ratio_sum += row.ratio
 				sizes[row.size] = row.ratio
 
-
 		if weight and self.status == 'Started':
 			self.status = "Completed"
 
@@ -107,14 +129,54 @@ class CuttingLaySheet(Document):
 		self.weight = weight
 		self.end_bit_weight = end_bit_weight
 		self.accessory_weight = accessory_weight
-		self.total_used_weight = used_weight
-		self.total_no_of_pieces = total_bits * ratio_sum
-		if self.total_no_of_pieces:
-			self.piece_weight = used_weight / self.total_no_of_pieces
+		if self.is_manual_entry:
+			self.total_used_weight = used_weight
+			total_pieces = 0
+			for row in self.cutting_laysheet_bundles:
+				total_pieces += row.quantity
+			self.total_no_of_pieces = total_pieces
+			if self.total_no_of_pieces:
+				self.piece_weight = used_weight / self.total_no_of_pieces
+		else:
+			self.total_used_weight = used_weight
+			self.total_no_of_pieces = total_bits * ratio_sum
+			if self.total_no_of_pieces:
+				self.piece_weight = used_weight / self.total_no_of_pieces
 		self.set("cutting_laysheet_details",items)			
 
-def save_item_details(items, cutting_plan, calculated_parts):
+def fetch_manual_item_details(manual_items, cutting_laysheet):
+	grouped_items = get_grouped_items(manual_items, cutting_laysheet)
+	manual_items = {}
+	idx = 0
+	for items in grouped_items:
+		manual_items[idx] = {}
+		manual_items[idx]['colour'] = items[0].colour
+		manual_items[idx]['major_colour'] = items[0].major_colour
+		manual_items[idx]['shade'] = items[0].shade
+		manual_items[idx]['quantity'] = items[0].quantity
+		manual_items[idx]['manual_index'] =  idx
+		for item in items:
+			manual_items[idx][item.size] = item.multiplier
+		set_combination = update_if_string_instance(items[0].set_combination)
+		for key in set_combination:
+			manual_items[idx][key] = set_combination[key]	
+		idx += 1
+	return manual_items
+
+def get_grouped_items(manual_items, cutting_laysheet):
+	primary_values = get_primary_values(cutting_laysheet)
+	group_size = len(primary_values)
+	if group_size == 0:
+		return []
+	grouped_items = [
+        manual_items[i:i + group_size] 
+        for i in range(0, len(manual_items), group_size)
+	]
+	return grouped_items
+
+def save_item_details(items, cutting_plan, calculated_parts, is_manual_entry):
 	items = update_if_string_instance(items)
+	items = items['cloth_items']
 	if calculated_parts:
 		panels = calculated_parts.split(",")
 		panels = [panel.strip() for panel in panels]
@@ -132,20 +194,21 @@ def save_item_details(items, cutting_plan, calculated_parts):
 				cloth_name = cloth.cloth
 				break
 		variant = get_or_create_variant(cloth_name, attributes)
-		for panel in panels:
-			d = {
-				ipd_doc.stiching_attribute: panel,
-				"Dia": item['dia'],
-				"Cloth": item['cloth_type'],
-			}
-			if add_pack_attr:
-				d[ipd_doc.packing_attribute] = item['colour']
-			
-			key = tuple(sorted(d.items()))
-			if key not in cloth_combination:
-				frappe.throw(f"{panel} is not mentioned with {item['cloth_type']}-{item['dia']}")
+		if not is_manual_entry:
+			for panel in panels:
+				d = {
+					ipd_doc.stiching_attribute: panel,
+					"Dia": item['dia'],
+					"Cloth": item['cloth_type'],
+				}
+				if add_pack_attr:
+					d[ipd_doc.packing_attribute] = item['colour']
+				
+				key = tuple(sorted(d.items()))
+				if key not in cloth_combination:
+					frappe.throw(f"{panel} is not mentioned with {item['cloth_type']}-{item['dia']}")
 		
-		effective_bits = item['no_of_bits']
+		effective_bits = item.get('no_of_bits', 0)
 		if item['fabric_type'] == "Tubler":
 			effective_bits = effective_bits * 2
 		item_list.append({
@@ -155,18 +218,49 @@ def save_item_details(items, cutting_plan, calculated_parts):
 			"dia":item['dia'],
 			"shade":item['shade'],
 			"weight":item['weight'],
-			"no_of_rolls":item['no_of_rolls'],
-			"no_of_bits":item['no_of_bits'],
+			'actual_dia': item['actual_dia'],
+			"no_of_rolls":item.get('no_of_rolls', 0),
+			"no_of_bits":item.get('no_of_bits',0),
 			"effective_bits": effective_bits,
-			"end_bit_weight":item['end_bit_weight'],
-			"comments":item['comments'],
+			"end_bit_weight":item.get('end_bit_weight', 0),
+			"comments":item.get('comments', None),
 			"fabric_type": item['fabric_type'],
-			"used_weight":item['used_weight'],
-			"balance_weight":item['balance_weight'],
+			"used_weight":item.get('used_weight', 0),
+			"balance_weight":item.get('balance_weight', 0),
 			"items_json":item['items_json'] if item.get('items_json') and len(item['items_json']) > 0 else {},
 			"set_combination": item['set_combination'] if item.get('set_combination') and len(item['set_combination']) > 0 else {}
 		})
 	return item_list	
+
+def save_manual_item_details(items, cutting_laysheet):
+	items = update_if_string_instance(items)
+	items = items['manual_items']
+	primary_values = get_primary_values(cutting_laysheet)
+	manual_items = []
+	for key, detail in items.items():
+		d_list = []
+		for pv in primary_values:
+			d_list.append({
+				"colour": detail['colour'],
+				"major_colour": detail['major_colour'],
+				"shade": detail['shade'],
+				"multiplier": int(detail[pv]),
+				"size": pv,
+				"quantity": int(detail['quantity']),
+			})
+		del detail['colour']
+		del detail['shade']
+		del detail['quantity']
+		del detail['manual_index']
+		for pv in primary_values:
+			del detail[pv]
+		for d in d_list:
+			x = {
+				"set_combination": detail
+			}
+			d.update(x)
+			manual_items.append(d)
+	return manual_items		
 
 def save_accessory_details(items, cutting_plan):
 	items = update_if_string_instance(items)
@@ -188,6 +282,7 @@ def save_accessory_details(items, cutting_plan):
 			"cloth_item_variant":variant,
 			"cloth_item": cloth_name,
 			"cloth_type":item['cloth_type'],
+			"actual_dia": item['actual_dia'],
 			"colour":item['colour'],
 			"dia":item['dia'],
 			"shade":item['shade'],
@@ -264,11 +359,24 @@ def get_select_attributes(cutting_plan):
 
 @frappe.whitelist()
 def get_parts(cutting_marker):
-	panels = frappe.get_value("Cutting Marker",cutting_marker,"calculated_parts")
-	return panels.split(",")	
+	doc = frappe.get_doc("Cutting Marker",cutting_marker)
+	panel_list = []
+	idx = 1
+	if doc.version and doc.version == "V3" and len(doc.cutting_marker_groups) > 0:
+		for row in doc.cutting_marker_groups:
+			group = row.group_panels.split(",")
+			for panel in group:
+				panel_list.append({ "part": panel, "value": idx})	
+			idx += 1
+	else:
+		panels = doc.calculated_parts.split(",")	
+		for panel in panels:
+			panel_list.append({ "part": panel, "value": idx })
+			idx += 1
+	return panel_list
 
 @frappe.whitelist()
-def get_cut_sheet_data(doc_name,cutting_marker,item_details,items, max_plys:int,maximum_allow:int):
+def get_cut_sheet_data(doc_name,cutting_marker,laysheet_details, manual_item_details,items, max_plys:int,maximum_allow:int):
 	items = update_if_string_instance(items)
 	items_combined = {}
 	for item in items:
@@ -281,37 +389,113 @@ def get_cut_sheet_data(doc_name,cutting_marker,item_details,items, max_plys:int,
 		arr.sort()
 		items.append(",".join(arr))
 
-	item_details = update_if_string_instance(item_details)	
+	item_details = update_if_string_instance(laysheet_details)	
+	manual_details = update_if_string_instance(manual_item_details)
 	maximum_plys = max_plys + (max_plys/100) * maximum_allow
 	bundle_no = 0
 	cm_doc = frappe.get_doc("Cutting Marker",cutting_marker)
+	grouped_items = []
+	group_length = {}
+	if cm_doc.version and cm_doc.version == 'V3':
+		for row in cm_doc.cutting_marker_groups:
+			grouped_items.append(row.group_panels)
+			grp_panels = row.group_panels.split(",")
+			if len(grp_panels) > 1:
+				final_check = False
+				for item in items:
+					check = True
+					p = item.split(",")
+					for panel in grp_panels:
+						if panel not in p:
+							check = False
+					if check:
+						group_length[item] = len(grp_panels)
+						final_check = True		
+				if not final_check:
+					frappe.throw("Make the Group Correctly")
+			else:
+				group_length[row.group_panels] = 1	
+				for item in items:
+					if item not in group_length:
+						group_length[item] = 1	
+
 	check_ratio_parts(items_combined, cm_doc.cutting_marker_ratios)
 	cut_sheet_data = []
-	for item in item_details:
-		if item['effective_bits'] == 0:
-			continue
-		effective_bits = item['effective_bits']
-		first_size = None
-		last_size = None
-		calc_panels = []
-		for cm_item in cm_doc.cutting_marker_ratios:
-			first_size = cm_item.size
-			markCount = cm_item.ratio
-			no_of_marks = int(markCount)
-			check = False
-			if markCount != no_of_marks:
-				check = True
-				if item['effective_bits'] % 2 == 1:
-					frappe.throw(f"You cannot divide this lay by 2 (effective bits = {effective_bits})")
+	if cm_doc.is_manual_entry:
+		bundle_no = 1
+		cut_sheet_data = []
+		colours = []
+		for item in item_details:
+			colours.append(item['colour'])
 
-			if no_of_marks == 0:
-				if markCount > 0:
+		for item in manual_details:
+			if item['multiplier'] == 0:
+				continue
+			if item['colour'] not in colours:
+				frappe.throw(f"There is no detail for Colour {item['colour']}")
+
+			for part_value in items:
+				bundle_count = item['multiplier']
+				for i in range(bundle_count):
+					qty = item['quantity']
+					d = get_cut_sheet_dict(item['size'], item['colour'], item['shade'], part_value , qty, bundle_no, item.get('set_combination', {}))
+					cut_sheet_data.append(d)
+					bundle_no += 1
+	else:	
+		for item in item_details:
+			if item['effective_bits'] == 0:
+				continue
+			effective_bits = item['effective_bits']
+			first_size = None
+			last_size = None
+			calc_panels = []
+			for cm_item in cm_doc.cutting_marker_ratios:
+				first_size = cm_item.size
+				markCount = cm_item.ratio
+				no_of_marks = int(markCount)
+				check = False
+				if markCount != no_of_marks:
+					check = True
+					if item['effective_bits'] % 2 == 1:
+						frappe.throw(f"You cannot divide this lay by 2 (effective bits = {effective_bits})")
+
+				if no_of_marks == 0:
+					if markCount > 0:
+						if first_size != last_size:
+							last_size = cm_item.size
+							calc_panels = []
+							bundle_no = bundle_no + 1
+
+						qty = markCount * effective_bits
+						for part_value in items:
+							parts = part_value.split(",")
+							start = True
+							for part in parts:
+								if part in calc_panels:
+									start = False
+									break
+								else:
+									calc_panels.append(part)
+							if start:		
+								d = get_cut_sheet_dict(cm_item.size, item['colour'], item['shade'], part_value , qty, bundle_no, item.get('set_combination', {}))
+								cut_sheet_data.append(d)
+				else:
+					max_grouping = int(maximum_plys/effective_bits)
+					if max_grouping == 0:
+						frappe.msgprint("Max number of Plys should not be less than No of Bits")
+						return
+					total_bundles = math.ceil(no_of_marks/max_grouping)
+					avg_grouping = no_of_marks/total_bundles
+					minimum = math.floor(avg_grouping)
+					maximum = math.ceil(avg_grouping)
+					maximum_count = no_of_marks - (total_bundles * minimum)
+					minimum_count = total_bundles - maximum_count
+			
+					temp = bundle_no 
 					if first_size != last_size:
 						last_size = cm_item.size
 						calc_panels = []
-						bundle_no = bundle_no + 1
 
-					qty = markCount * effective_bits
 					for part_value in items:
 						parts = part_value.split(",")
 						start = True
@@ -320,82 +504,57 @@ def get_cut_sheet_data(doc_name,cutting_marker,item_details,items, max_plys:int,
 								start = False
 								break
 							else:
-								calc_panels.append(part)
-						if start:		
-							d = get_cut_sheet_dict(cm_item.size, item['colour'], item['shade'], part_value , qty, bundle_no, item.get('set_combination', {}))
-							cut_sheet_data.append(d)
-			else:
-				max_grouping = int(maximum_plys/effective_bits)
-				if max_grouping == 0:
-					frappe.msgprint("Max number of Plys should not be less than No of Bits")
-					return
-				total_bundles = math.ceil(no_of_marks/max_grouping)
-				avg_grouping = no_of_marks/total_bundles
-				minimum = math.floor(avg_grouping)
-				maximum = math.ceil(avg_grouping)
-				maximum_count = no_of_marks - (total_bundles * minimum)
-				minimum_count = total_bundles - maximum_count
-		
-				temp = bundle_no 
-				if first_size != last_size:
-					last_size = cm_item.size
-					calc_panels = []
-
-				for part_value in items:
-					parts = part_value.split(",")
-					start = True
-					for part in parts:
-						if part in calc_panels:
-							start = False
-							break
-						else:
-							calc_panels.append(part)	
-					if start:
-						bundle_no = temp	
-						update = True
-						for j in range(maximum_count):
-							bundle_no = bundle_no + 1
-							qty = maximum * effective_bits
-							last_balance = 0
-							if minimum_count == 0 and check and j == maximum_count - 1:
-								x = qty + effective_bits/2
-								update = False						
-								if x > maximum_plys:
-									last_balance = effective_bits/2
-								else:
-									qty = qty + effective_bits/2	
-							d = get_cut_sheet_dict(cm_item.size, item['colour'], item['shade'], part_value , qty, bundle_no, item.get('set_combination', {}))
-							cut_sheet_data.append(d)	
-
-							if last_balance > 0:
+								calc_panels.append(part)	
+						if start:
+							bundle_no = temp	
+							update = True
+							for j in range(maximum_count):
 								bundle_no = bundle_no + 1
-								d = get_cut_sheet_dict(cm_item.size, item['colour'], item['shade'], part_value , last_balance, bundle_no, item.get('set_combination', {}))
-								cut_sheet_data.append(d)
+								qty = maximum * effective_bits
+								if cm_doc.version and cm_doc.version == 'V3':
+									qty = qty/group_length[part_value]		
+								last_balance = 0
+								if minimum_count == 0 and check and j == maximum_count - 1:
+									x = qty + effective_bits/2
+									update = False						
+									if x > maximum_plys:
+										last_balance = effective_bits/2
+									else:
+										qty = qty + effective_bits/2	
+								d = get_cut_sheet_dict(cm_item.size, item['colour'], item['shade'], part_value , qty, bundle_no, item.get('set_combination', {}))
+								cut_sheet_data.append(d)	
 
-						for j in range(minimum_count):
-							bundle_no = bundle_no + 1
-							qty = minimum * effective_bits
-							last_balance = 0
-							if check and j == minimum_count - 1:
-								x = qty + effective_bits/2
-								update = False						
-								if x > maximum_plys:
-									last_balance = effective_bits/2
-								else:
-									qty = qty + effective_bits/2	
+								if last_balance > 0:
+									bundle_no = bundle_no + 1
+									d = get_cut_sheet_dict(cm_item.size, item['colour'], item['shade'], part_value , last_balance, bundle_no, item.get('set_combination', {}))
+									cut_sheet_data.append(d)
 
-							d = get_cut_sheet_dict(cm_item.size, item['colour'], item['shade'], part_value , qty, bundle_no, item.get('set_combination', {}))
-							cut_sheet_data.append(d)
-							if last_balance > 0:
+							for j in range(minimum_count):
 								bundle_no = bundle_no + 1
-								d = get_cut_sheet_dict(cm_item.size, item['colour'], item['shade'], part_value , last_balance, bundle_no, item.get('set_combination', {}))
-								cut_sheet_data.append(d)
+								qty = minimum * effective_bits
+								if cm_doc.version and cm_doc.version == 'V3':
+									qty = qty/group_length[part_value]			
+								last_balance = 0
+								if check and j == minimum_count - 1:
+									x = qty + effective_bits/2
+									update = False						
+									if x > maximum_plys:
+										last_balance = effective_bits/2
+									else:
+										qty = qty + effective_bits/2	
 
-						if update and check:
-							bundle_no = bundle_no + 1
-							d = get_cut_sheet_dict(cm_item.size, item['colour'], item['shade'], part_value , effective_bits/2, bundle_no, item.get('set_combination', {}))
-							cut_sheet_data.append(d)
-			temp = bundle_no	
+								d = get_cut_sheet_dict(cm_item.size, item['colour'], item['shade'], part_value , qty, bundle_no, item.get('set_combination', {}))
+								cut_sheet_data.append(d)
+								if last_balance > 0:
+									bundle_no = bundle_no + 1
+									d = get_cut_sheet_dict(cm_item.size, item['colour'], item['shade'], part_value , last_balance, bundle_no, item.get('set_combination', {}))
+									cut_sheet_data.append(d)
+
+							if update and check:
+								bundle_no = bundle_no + 1
+								d = get_cut_sheet_dict(cm_item.size, item['colour'], item['shade'], part_value , effective_bits/2, bundle_no, item.get('set_combination', {}))
+								cut_sheet_data.append(d)
+				temp = bundle_no	
 
 	from operator import itemgetter
 	cut_sheet_data = sorted(cut_sheet_data, key=itemgetter('bundle_no'))
@@ -406,19 +565,15 @@ def get_cut_sheet_data(doc_name,cutting_marker,item_details,items, max_plys:int,
 	doc.status = "Bundles Generated"
 	doc.set("cutting_laysheet_bundles", cut_sheet_data)
 	doc.save()
-	accessory= {}
 	cloth = {}
 	for item in doc.cutting_laysheet_details:
-		key = (item.colour, item.cloth_type, item.dia)
+		key = (item.colour, item.cloth_type, item.actual_dia)
 		cloth.setdefault(key,0)
-		cloth[key] += item.weight - item.balance_weight
+		cloth[key] += item.used_weight
 	
 	accessory_cloth = {}
 	for item in doc.cutting_laysheet_accessory_details:
-		key = (item.accessory, item.colour, item.cloth_type, item.dia)
-		accessory.setdefault(key,0)
-		accessory[key] += item.weight
-		key = (item.colour, item.cloth_type, item.dia)
+		key = (item.colour, item.cloth_type, item.actual_dia)
 		accessory_cloth.setdefault(key,0)
 		accessory_cloth[key] += item.weight
 	
@@ -588,9 +743,57 @@ def print_labels(print_items, lay_no, cutting_plan, doc_name):
 			^XZ"""
 		zpl += x
 	update_cutting_plan(doc_name)
+	grn = None
 	if work_order:
-		create_grn_entry(doc_name)
-	return zpl	
+		update_cloth_stock(cls_doc, -1, 1)
+		grn = create_grn_entry(doc_name)
+		cancelled_str = frappe.db.get_single_value("MRP Settings", "cut_bundle_cancelled_lot")
+		cancelled_list = cancelled_str.split(",")
+		if lot_no not in cancelled_list:
+			create_cut_bundle_ledger(cls_doc)
+	return {
+		"zpl": zpl,
+		"grn": grn,
+	}	
+
+def cancel_cut_bundle(cls_doc, is_cancelled=1):
+	cancel_bundle_ledger(cls_doc, is_cancelled)
+
+def cancel_bundle_ledger(cls_doc, is_cancelled):
+	entries = get_cut_bundle_struct(cls_doc, is_cancelled)
+	cancel_cut_bundle_ledger(entries)
+
+def create_cut_bundle_ledger(cls_doc, is_cancelled=0):
+	cut_bundle_ledger(cls_doc, is_cancelled)
+
+def cut_bundle_ledger(cls_doc, is_cancelled=0):
+	entries = get_cut_bundle_struct(cls_doc, is_cancelled)
+	make_cut_bundle_ledger(entries)
+
+def get_cut_bundle_struct(cls_doc, is_cancelled):
+	wo = frappe.get_value("Cutting Plan", cls_doc.cutting_plan, "work_order")
+	supplier = frappe.get_value("Work Order", wo, "supplier")
+	entries = []	
+	for row in cls_doc.cutting_laysheet_bundles:
+		entries.append({
+			"lot": cls_doc.lot,
+			"supplier": supplier,
+			"lay_no": cls_doc.lay_no,
+			"bundle_no": row.bundle_no,
+			"panel": row.part,
+			"shade": row.shade,
+			"posting_date": cls_doc.posting_date,
+			"posting_time": cls_doc.posting_time,
+			"size": row.size,
+			"colour": row.colour,
+			"quantity": row.quantity,
+			"item": cls_doc.item,
+			"voucher_type": cls_doc.doctype,
+			"voucher_no": cls_doc.name,
+			"is_cancelled": is_cancelled,
+			"set_combination": row.set_combination,
+		})
+	return entries	
 
 @frappe.whitelist()
 def get_panels(cutting_laysheet):
@@ -642,7 +845,16 @@ def update_cutting_plan(cutting_laysheet, check_cp = False):
 	ipd_doc = frappe.get_cached_doc("Item Production Detail",production_detail)
 	incomplete_items = json.loads(incomplete_items_json)
 	completed_items = json.loads(completed_items_json)
-	if version == "V2":
+	if cls_doc.is_manual_entry:
+		colours = []
+		for item in cls_doc.cutting_laysheet_details:
+			colours.append(item.colour)
+
+		for item in cls_doc.cutting_laysheet_manual_items:
+			if item.colour not in colours:
+				frappe.throw(f"There is no detail for Colour {item.colour}")
+
+	if version == "V2" or version == "V3":
 		if not ipd_doc.is_set_item:
 			alter_incomplete_items = {}
 			for item in incomplete_items['items']:
@@ -747,14 +959,14 @@ def update_cutting_plan(cutting_laysheet, check_cp = False):
 		cp_cloth = []
 		cp_accessory = []
 		for item in cls_doc.cutting_laysheet_details:
-			key = (item.colour, item.cloth_type, item.dia)
+			key = (item.colour, item.cloth_type, item.actual_dia)
 			cloth.setdefault(key,0)
 			cloth[key] += item.weight - item.balance_weight
 		for item in cls_doc.cutting_laysheet_accessory_details:
 			key = (item.accessory, item.colour, item.cloth_type, item.dia)
 			accessory.setdefault(key,0)
 			accessory[key] += item.weight
-			key = (item.colour, item.cloth_type, item.dia)
+			key = (item.colour, item.cloth_type, item.actual_dia)
 			accessory_cloth.setdefault(key,0)
 			accessory_cloth[key] += item.weight
 
@@ -771,11 +983,12 @@ def update_cutting_plan(cutting_laysheet, check_cp = False):
 				colour, cloth_type, dia = key
 				if key not in cp_cloth:
 					frappe.throw(f"No cloth is mentioned with {cloth_type}, {colour}-{dia}")
-			
-			for key in accessory:
-				accessory, colour, cloth_type, dia = key
-				if key not in cp_accessory:
-					frappe.throw(f"Accessory {accessory} is not mentioned with {cloth_type}, {colour}-{dia}")
+
+			if not cls_doc.is_manual_entry:
+				for key in accessory:
+					accessory, colour, cloth_type, dia = key
+					if key not in cp_accessory:
+						frappe.throw(f"Accessory {accessory} is not mentioned with {cloth_type}, {colour}-{dia}")
 
 		if not check_cp:
 			for item in cp_doc.cutting_plan_cloth_details:
@@ -930,10 +1143,11 @@ def update_cutting_plan(cutting_laysheet, check_cp = False):
 				if key not in cp_cloth:
 					frappe.throw(f"No cloth is mentioned with {cloth_type}, {colour}-{dia}")
 			
-			for key in accessory:
-				colour, cloth_type, dia = key
-				if key not in cp_accessory:
-					frappe.throw(f"No accessory is mentioned with {cloth_type}, {colour}-{dia}")
+			if not cls_doc.is_manual_entry:
+				for key in accessory:
+					colour, cloth_type, dia = key
+					if key not in cp_accessory:
+						frappe.throw(f"No accessory is mentioned with {cloth_type}, {colour}-{dia}")
 
 		if not check_cp:
 			for item in cp_doc.cutting_plan_cloth_details:
@@ -1061,13 +1275,62 @@ def revert_labels(doc_name):
 
 	cls_doc.status = "Bundles Generated"
 	if cls_doc.goods_received_note:
+		update_cloth_stock(cls_doc, 1, -1)
 		grn_doc = frappe.get_doc("Goods Received Note", cls_doc.goods_received_note)
 		grn_doc.cancel()
+		cancel_cut_bundle(cls_doc, is_cancelled=1)
 	cls_doc.goods_received_note =  None
 	cls_doc.reverted = 1
 	cls_doc.save()
 	from production_api.production_api.doctype.cutting_plan.cutting_plan import calculate_laysheets
 	calculate_laysheets(cls_doc.cutting_plan)
+
+def update_cloth_stock(cls_doc, multiplier1, multiplier2):
+	work_order = frappe.get_value("Cutting Plan", cls_doc.cutting_plan, "work_order")
+	sl_entries = []
+	received_type = frappe.db.get_single_value("Stock Settings", "default_received_type")
+	ipd, supplier = frappe.get_value("Work Order", work_order, ["production_detail", "supplier"])
+	ipd_doc = frappe.get_doc("Item Production Detail", ipd)
+	table = cls_doc.cutting_laysheet_details
+	sl_entries = sl_entries + get_table_entries(table, ipd_doc, supplier, cls_doc.lot, cls_doc.name, received_type, multiplier1, multiplier2)
+	table = cls_doc.cutting_laysheet_accessory_details
+	sl_entries = sl_entries + get_table_entries(table, ipd_doc, supplier, cls_doc.lot, cls_doc.name, received_type, multiplier1, multiplier2)
+	make_sl_entries(sl_entries)	
+
+def get_table_entries(cls_table, ipd_doc, supplier, lot, doc_name, received_type, multiplier1, multiplier2):
+	sl_entries = []
+	for item in cls_table:
+		if item.dia != item.actual_dia:
+			attributes = {}
+			attributes[ipd_doc.packing_attribute] = item.colour
+			attributes['Dia'] = item.actual_dia
+			cloth_name = None
+			for cloth in ipd_doc.cloth_detail:
+				if cloth.name1 == item.cloth_type:
+					cloth_name = cloth.cloth
+					break
+			uom = frappe.get_cached_value("Item", cloth_name, "default_unit_of_measure")
+			variant = get_or_create_variant(cloth_name, attributes)
+			sl_entries.append(get_sl_entries(variant, supplier, lot, item, uom, doc_name, received_type, multiplier1))
+			variant = item.cloth_item_variant
+			sl_entries.append(get_sl_entries(variant, supplier, lot, item, uom, doc_name, received_type, multiplier2))
+	return sl_entries		
+
+def get_sl_entries(variant, supplier, lot, item, uom, doc_name, received_type, multiplier):
+	return {
+		"item": variant,
+		"warehouse": supplier,
+		"received_type":received_type,
+		"lot": lot,
+		"voucher_type": "Cutting LaySheet",
+		"voucher_no": doc_name,
+		"voucher_detail_no": item.name,
+		"qty": item.used_weight * multiplier,
+		"uom": uom,
+		"is_cancelled": 0,
+		"posting_date": item.creation,
+		"posting_time": frappe.utils.nowtime(),
+	}
 
 @frappe.whitelist()
 def create_grn_entry(doc_name):
@@ -1205,20 +1468,19 @@ def create_grn_entry(doc_name):
 	new_doc.set("grn_deliverables", items)
 	new_doc.save()
 	new_doc.submit()
-	frappe.db.sql(
-		"""
-			UPDATE `tabCutting LaySheet` SET goods_received_note = %s WHERE name = %s
-		""", (new_doc.name, doc_name, )
-	)
+	return new_doc.name
 
 @frappe.whitelist()
 def cancel_laysheet(doc_name):
 	doc = frappe.get_doc("Cutting LaySheet", doc_name)
 	doc.status = "Cancelled"
 	if doc.goods_received_note:
+		update_cloth_stock(doc, 1, -1)
 		grn_doc = frappe.get_doc("Goods Received Note", doc.goods_received_note)
 		grn_doc.cancel()
 	doc.goods_received_note =  None
+	from production_api.production_api.doctype.cutting_plan.cutting_plan import calculate_laysheets
+	calculate_laysheets(doc.cutting_plan)
 	doc.save()
 
 @frappe.whitelist()
@@ -1226,9 +1488,19 @@ def update_label_print_status(doc_name):
 	doc = frappe.get_doc("Cutting LaySheet", doc_name)
 	wo = frappe.get_value("Cutting Plan", doc.cutting_plan, "work_order")
 	if wo:
-		create_grn_entry(doc_name)
+		grn = create_grn_entry(doc_name)
+		doc.goods_received_note = grn
+		create_cut_bundle_ledger(doc)
 	doc.status = "Label Printed"
 	doc.reverted = 0
 	doc.save()
 	from production_api.production_api.doctype.cutting_plan.cutting_plan import calculate_laysheets
 	calculate_laysheets(doc.cutting_plan)
+
+@frappe.whitelist()
+def get_primary_values(cutting_laysheet):
+	lot = frappe.get_value("Cutting LaySheet", cutting_laysheet, "lot")
+	ipd = frappe.get_value("Lot", lot, "production_detail")
+	from production_api.essdee_production.doctype.item_production_detail.item_production_detail import get_ipd_primary_values
+	primary_values = get_ipd_primary_values(ipd)
+	return primary_values

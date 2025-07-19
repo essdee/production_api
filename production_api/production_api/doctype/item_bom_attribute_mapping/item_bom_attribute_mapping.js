@@ -36,7 +36,6 @@ frappe.ui.form.on('Item BOM Attribute Mapping', {
 	validate: function(frm) {
 		if(frm.bomEditor){
 			let items = frm.bomEditor.get_items();
-			console.log("Items ---->", items)
 			if (items && items.attributes && items.attributes.length == 0) {
 				frm.doc.values = []
 				frm.refresh_field('values');

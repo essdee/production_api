@@ -36,6 +36,8 @@ frappe.ui.form.on("Work Order", {
 	},
 	async refresh(frm) {
 		$(".layout-side-section").css("display", "None");
+		frm.set_df_property('work_order_tracking_logs','cannot_add_rows',true)
+		frm.set_df_property('work_order_tracking_logs','cannot_delete_rows',true)
 		if(frm.doc.docstatus == 1 && frm.doc.is_rework){
 			frappe.realtime.on("get_receivables_data", ()=> {
 				let receivables = frm.receivable_items.get_receivables_data();
@@ -234,18 +236,20 @@ frappe.ui.form.on("Work Order", {
 					frm.dirty();
 				})
 			}
-			frappe.call({
-				method: "production_api.production_api.doctype.work_order.work_order.fetch_summary_details",
-				args : {
-					doc_name: frm.doc.name,
-					production_detail: frm.doc.production_detail,
-				},
-				callback: function(r){
-					$(frm.fields_dict['wo_summary_html'].wrapper).html("")
-					frm.summary = new frappe.production.ui.WOSummary(frm.fields_dict["wo_summary_html"].wrapper);
-					frm.summary.load_data(r.message.item_detail, r.message.deliverables)
-				}
-			})
+			if(frm.doc.docstatus == 1){
+				frappe.call({
+					method: "production_api.production_api.doctype.work_order.work_order.fetch_summary_details",
+					args : {
+						doc_name: frm.doc.name,
+						production_detail: frm.doc.production_detail,
+					},
+					callback: function(r){
+						$(frm.fields_dict['wo_summary_html'].wrapper).html("")
+						frm.summary = new frappe.production.ui.WOSummary(frm.fields_dict["wo_summary_html"].wrapper);
+						frm.summary.load_data(r.message.item_detail, r.message.deliverables)
+					}
+				})
+			}
 			if(frm.doc.docstatus == 1 && !frm.doc.is_rework && frm.doc.open_status == 'Open'){
 				frm.add_custom_button("Create Rework",()=> {
 					let d =new frappe.ui.Dialog({
@@ -460,7 +464,6 @@ function make_rework(frm, supplier, supplier_address, rework_type, supplier_type
 							args: {
 								doc_name: frm.doc.name,
 								items: items,
-								ipd: frm.doc.production_detail,
 								supplier:supplier,
 								supplier_address: supplier_address,
 								rework_type:rework_type,

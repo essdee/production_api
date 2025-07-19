@@ -1,0 +1,257 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "VBT-.#####",
+ "creation": "2025-06-11 18:04:58.363368",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "vendor_details_section",
+  "supplier",
+  "gstin",
+  "pan",
+  "purchase_invoice",
+  "mrp_purchase_invoice",
+  "column_break_vmeq",
+  "bill_no",
+  "bill_date",
+  "invoice_value",
+  "delivery_details_section",
+  "delivery_person_suggestion_html",
+  "received_date",
+  "delivery_mob_no",
+  "delivery_person",
+  "column_break_waiw",
+  "received_via",
+  "receive_comment",
+  "assigned_to",
+  "section_break_fwkq",
+  "vendor_bill_tracking_history",
+  "cancel_reason",
+  "form_status",
+  "amended_from"
+ ],
+ "fields": [
+  {
+   "fieldname": "supplier",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Supplier",
+   "mandatory_depends_on": "eval: !doc.new_supplier",
+   "options": "Supplier"
+  },
+  {
+   "fieldname": "delivery_mob_no",
+   "fieldtype": "Link",
+   "label": "Delivery Person Mobile No",
+   "options": "Vendor Bill Delivery Person",
+   "read_only": 1
+  },
+  {
+   "fetch_from": "delivery_mob_no.person_name",
+   "fieldname": "delivery_person",
+   "fieldtype": "Data",
+   "label": "Delivery Person",
+   "read_only": 1
+  },
+  {
+   "fieldname": "bill_no",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Bill No",
+   "reqd": 1
+  },
+  {
+   "fieldname": "bill_date",
+   "fieldtype": "Date",
+   "label": "Bill Date",
+   "reqd": 1
+  },
+  {
+   "default": "Today",
+   "fieldname": "received_date",
+   "fieldtype": "Date",
+   "label": "Received Date",
+   "reqd": 1
+  },
+  {
+   "fieldname": "vendor_details_section",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "column_break_waiw",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "delivery_details_section",
+   "fieldtype": "Section Break",
+   "label": "Delivery Details"
+  },
+  {
+   "fieldname": "invoice_value",
+   "fieldtype": "Currency",
+   "label": "Invoice Value",
+   "reqd": 1
+  },
+  {
+   "fieldname": "column_break_vmeq",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "section_break_fwkq",
+   "fieldtype": "Section Break"
+  },
+  {
+   "allow_on_submit": 1,
+   "depends_on": "eval: doc.docstatus != 0",
+   "fieldname": "vendor_bill_tracking_history",
+   "fieldtype": "Table",
+   "label": "Vendor Bill Tracking History",
+   "options": "Vendor Bill Tracking Assignment Detail",
+   "read_only": 1
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "form_status",
+   "fieldtype": "Select",
+   "hidden": 1,
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Form Status",
+   "options": "Open\nAssigned\nClosed\nReopen\nCancelled\nAmended"
+  },
+  {
+   "fieldname": "received_via",
+   "fieldtype": "Select",
+   "label": "Received Via",
+   "options": "\nHO\nPost\nEmail\nWarehouse\nOthers",
+   "reqd": 1
+  },
+  {
+   "fieldname": "receive_comment",
+   "fieldtype": "Small Text",
+   "label": "Receive Comment",
+   "mandatory_depends_on": "eval:doc.received_via=='Others'"
+  },
+  {
+   "fieldname": "amended_from",
+   "fieldtype": "Link",
+   "label": "Amended From",
+   "no_copy": 1,
+   "options": "Vendor Bill Tracking",
+   "print_hide": 1,
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "cancel_reason",
+   "fieldtype": "Small Text",
+   "label": "Cancel Reason",
+   "read_only": 1
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "purchase_invoice",
+   "fieldtype": "Data",
+   "label": "Purchase Invoice",
+   "read_only": 1
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "mrp_purchase_invoice",
+   "fieldtype": "Data",
+   "label": "MRP Purchase Invoice",
+   "options": "Purchase Invoice",
+   "read_only": 1
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "assigned_to",
+   "fieldtype": "Link",
+   "label": "Assigned To",
+   "options": "Department",
+   "read_only": 1
+  },
+  {
+   "fieldname": "delivery_person_suggestion_html",
+   "fieldtype": "HTML",
+   "label": "delivery_person_suggestion_html"
+  },
+  {
+   "fetch_from": "supplier.gstin",
+   "fieldname": "gstin",
+   "fieldtype": "Data",
+   "label": "GSTIN / UIN"
+  },
+  {
+   "fetch_from": "supplier.pan",
+   "fieldname": "pan",
+   "fieldtype": "Data",
+   "label": "PAN"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "is_submittable": 1,
+ "links": [],
+ "modified": "2025-07-03 11:59:24.750159",
+ "modified_by": "Administrator",
+ "module": "Production Api",
+ "name": "Vendor Bill Tracking",
+ "naming_rule": "Expression (old style)",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "submit": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Accounts Manager",
+   "share": 1,
+   "submit": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "HR User",
+   "share": 1,
+   "submit": 1,
+   "write": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "All",
+   "share": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

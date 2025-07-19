@@ -8,12 +8,13 @@
  "field_order": [
   "supplier_name",
   "uid",
+  "gstin",
   "pan",
   "address_html",
   "column_break_4",
   "disabled",
   "is_company_location",
-  "deparments",
+  "department",
   "contact_html",
   "section_break_8",
   "account_mappings",
@@ -37,13 +38,8 @@
   {
    "fieldname": "pan",
    "fieldtype": "Data",
+   "in_list_view": 1,
    "label": "PAN"
-  },
-  {
-   "fieldname": "deparments",
-   "fieldtype": "Table MultiSelect",
-   "label": "Deparments",
-   "options": "Supplier Department"
   },
   {
    "fieldname": "address_html",
@@ -91,11 +87,24 @@
    "label": "UID",
    "read_only": 1,
    "unique": 1
+  },
+  {
+   "fieldname": "department",
+   "fieldtype": "Link",
+   "label": "Department",
+   "options": "Department"
+  },
+  {
+   "fieldname": "gstin",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "GSTIN / UIN"
   }
  ],
+ "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-03-15 15:07:49.678825",
+ "modified": "2025-07-05 11:20:04.765124",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Supplier",
@@ -178,6 +187,8 @@
    "share": 1
   }
  ],
+ "row_format": "Dynamic",
+ "search_fields": "supplier_name, gstin, pan",
  "show_title_field_in_link": 1,
  "sort_field": "modified",
  "sort_order": "DESC",

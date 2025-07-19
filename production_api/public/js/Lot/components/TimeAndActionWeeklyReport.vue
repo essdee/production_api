@@ -1,92 +1,93 @@
 <template>
-    <div ref="root">
+    <div ref="root" style="padding: 20px;">
         <div class="row pb-4">
             <div class="report-date col-md-4"></div>
             <div class="lot-name col-md-4"></div>
             <div class="item-name col-md-4"></div>
             <button class="btn btn-success ml-3" @click="get_filters()">Show Report</button>
         </div>
-
-        <div class="scroll-container" v-if="show_table">
-            <div v-for="lot in Object.keys(items)" :key="lot">
-                <table class="outer-table">
-                    <tr v-for="master in Object.keys(items[lot])" :key="master">
-                        <td>
-                            <span class="lot-title">{{ lot }} ({{ master }})</span>
-                            <table class="inner-table">
-                                <thead>
-                                    <tr>
-                                        <th style="width:70px;">S.No</th>
-                                        <th style="width:100px;">Item</th>
-                                        <th style="width:100px;">Colour</th>
-                                        <th style="width:150px;">Sizes</th>
-                                        <th style="width:100px;">Quantity</th>
-                                        <th style="width:100px;">Start Date</th>
-                                        <th style="width:60px;">Delay</th>
-                                        <th style="width:200px;">Activity</th>
-                                        <th v-for="action in items[lot][master]['actions']" :key="action">
-                                            {{ action }}
-                                        </th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <template v-for="(data, idx) in items[lot][master]['datas']" :key="data">
-                                        <tr>
-                                            <td rowspan="8">{{ idx + 1 }}</td>
-                                            <td rowspan="8">{{ data.item }}</td>
-                                            <td rowspan="8">{{ data.colour }}</td>
-                                            <td rowspan="8">{{ data.sizes }}</td>
-                                            <td rowspan="8">{{ data.qty }}</td>
-                                            <td rowspan="8">{{ get_date(data.start_date) }}</td>
-                                            <td rowspan="8">{{ data.delay }}</td>
-                                        </tr>
-                                        <tr>
-                                            <td>Planned Date</td>
-                                            <td v-for="d in data['actions']" :key="d.date">{{ get_date(d.date) }}</td>
-                                        </tr>
-                                        <tr>
-                                            <td>Rescheduled Date</td>
-                                            <td v-for="d in data['actions']" :key="d.rescheduled_date">{{ get_date(d.rescheduled_date) }}</td>
-                                        </tr>
-                                        <tr>
-                                            <td>Actual</td>
-                                            <td v-for="d in data['actions']" :key="d.actual_date" :style="{ backgroundColor: d.actual_date > d.rescheduled_date ? '#FFCCCB' : d.actual_date ? '#90EE90' : 'White'}">
-                                                {{ get_date(d.actual_date) }}
-                                            </td>
-                                        </tr>
-                                        <tr>
-                                            <td>Reason for Delay</td>
-                                            <td v-for="d in data['actions']" :key="d.reason">{{ d.reason }}</td>
-                                        </tr>
-                                        <tr>
-                                            <td>Performance</td>
-                                            <td v-for="d in data['actions']" :key="d.performance">{{ d.performance }}</td>
-                                        </tr>
-                                        <tr>
-                                            <td>Delay</td>
-                                            <td v-for="d in data['actions']" :key="d">
-                                                {{get_cumulative_delay(d.actual_date, d.date)}}
-                                            </td>
-                                        </tr>
-                                        <tr>
-                                            <td>Cumulative Delay</td>
-                                            <td v-for="d in data['actions']" :key="d">
-                                                {{ d.delay }}
-                                            </td>
-                                        </tr>
-                                    </template>
-                                </tbody>
-                            </table>
-                        </td>
-                    </tr>
-                </table>
+        <div class="scroll-container1" v-show="show_table">
+            <div v-for="lot in Object.keys(items)" :key="lot" class="lot-container">
+                    <div v-for="master in Object.keys(items[lot])" :key="master">
+                        <div>
+                            <div class="lot-title">{{ lot }} ({{ master }})</div>
+                            <div class="scroll-container2">
+                                <div class="outer-table">
+                                    <table class="inner-table">
+                                        <thead>
+                                            <tr>
+                                                <th class="sticky-col col1">S.No</th>
+                                                <th class="sticky-col col2">Item</th>
+                                                <th class="sticky-col col3">Colour</th>
+                                                <th class="sticky-col col4">Sizes</th>
+                                                <th class="sticky-col col5">Quantity</th>
+                                                <th class="sticky-col col6">Start Date</th>
+                                                <th class="sticky-col col7">Delay</th>
+                                                <th class="sticky-col col8">Activity</th>
+                                                <th v-for="action in items[lot][master]['actions']" :key="action">
+                                                    {{ action }}
+                                                </th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <template v-for="(data, idx) in items[lot][master]['datas']" :key="data">
+                                                <tr>
+                                                    <td class="sticky-col col1" rowspan="8">{{ idx + 1 }}</td>
+                                                    <td class="sticky-col col2" rowspan="8">{{ data.item }}</td>
+                                                    <td class="sticky-col col3" rowspan="8">{{ data.colour }}</td>
+                                                    <td class="sticky-col col4" rowspan="8">{{ data.sizes }}</td>
+                                                    <td class="sticky-col col5" rowspan="8">{{ data.qty }}</td>
+                                                    <td class="sticky-col col6" rowspan="8">{{ get_date(data.start_date) }}</td>
+                                                    <td class="sticky-col col7" rowspan="8">{{ data.delay }}</td>
+                                                </tr>
+                                                <tr>
+                                                    <td class="sticky-col col8">Planned Date</td>
+                                                    <td v-for="d in data['actions']" :key="d.date">{{ get_date(d.date) }}</td>
+                                                </tr>
+                                                <tr>
+                                                    <td class="sticky-col col8">Rescheduled Date</td>
+                                                    <td v-for="d in data['actions']" :key="d.rescheduled_date">{{ get_date(d.rescheduled_date) }}</td>
+                                                </tr>
+                                                <tr>
+                                                    <td class="sticky-col col8">Actual</td>
+                                                    <td v-for="d in data['actions']" :key="d.actual_date" :style="{ backgroundColor: d.actual_date > d.rescheduled_date ? '#FFCCCB' : d.actual_date ? '#90EE90' : 'White'}">
+                                                        {{ get_date(d.actual_date) }}
+                                                    </td>
+                                                </tr>
+                                                <tr>
+                                                    <td class="sticky-col col8">Reason for Delay</td>
+                                                    <td v-for="d in data['actions']" :key="d.reason">{{ d.reason }}</td>
+                                                </tr>
+                                                <tr>
+                                                    <td class="sticky-col col8">Performance</td>
+                                                    <td v-for="d in data['actions']" :key="d.performance">{{ d.performance }}</td>
+                                                </tr>
+                                                <tr>
+                                                    <td class="sticky-col col8">Delay</td>
+                                                    <td v-for="d in data['actions']" :key="d">
+                                                        {{get_cumulative_delay(d.actual_date, d.date)}}
+                                                    </td>
+                                                </tr>
+                                                <tr>
+                                                    <td class="sticky-col col8">Cumulative Delay</td>
+                                                    <td v-for="d in data['actions']" :key="d">
+                                                        {{ d.delay }}
+                                                    </td>
+                                                </tr>
+                                            </template>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>    
+                        </div>
+                    </div>
             </div>
         </div>
     </div>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ref, onMounted} from 'vue';
 
 let date = null;
 let lot = null;
@@ -143,23 +144,6 @@ onMounted(() => {
         doc: sample_doc.value,
         render_input: true,
     });
-    const container = document.querySelector('.scroll-container');
-    const headers = container.querySelectorAll('.inner-table thead');
-
-    container.addEventListener('scroll', () => {
-        let lastHeader = null;
-
-        headers.forEach((header) => {
-            const { top } = header.getBoundingClientRect();
-            if (top <= 0 && top > -header.clientHeight) {
-                lastHeader = header;
-            }
-        });
-
-        headers.forEach((header) => {
-            header.style.zIndex = header === lastHeader ? '2' : '1';
-        });
-    });
 });
 
 function get_filters() {
@@ -169,7 +153,7 @@ function get_filters() {
     }
     show_table.value = false
     frappe.call({
-        method: "production_api.essdee_production.doctype.time_and_action_weekly_review_report.time_and_action_weekly_review_report.get_report_data",
+        method: "production_api.utils.get_t_and_a_review_report_data",
         args: {
             "lot":lot.get_value(),
             "item": item.get_value(),
@@ -203,29 +187,40 @@ function get_date(date){
 </script>
 
 <style scoped>
-.scroll-container {
+.scroll-container1 {
+    width: 100%;
+    overflow-x: hidden;
+    border: 1px solid #ddd;
+    position: relative;
+    height:700px;
+    overflow-y: scroll;
+}
+
+.scroll-container2 {
+    width: 100%;
     max-height: 700px;
-    overflow-y: auto; 
-    border: 1px solid #ddd; 
-    overflow-x: auto;
+    overflow: auto;
     position: relative;
 }
 
-.outer-table {
-    width: 100%;
-    border-collapse: collapse;
-}
-
 .inner-table {
-    width: 100%;
     min-width: 3200px;
-    table-layout: fixed; 
-    border-collapse: collapse;
 }
 
-.inner-table th, .inner-table td {
+.inner-table thead th.sticky-col {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  background: white;
+}
+
+.inner-table th, .inner-table td, .inner-table thead, .inner-table tbody{
     text-align: center;
     word-wrap: break-word; 
+    border: 1px solid black;
+}
+
+.inner-table tr{
     border: 1px solid black;
 }
 
@@ -234,11 +229,12 @@ function get_date(date){
 }
 
 .lot-title {
-    padding-left: 10px;
-    font-size: 25px;
-    font-weight: 600;
-    display: inline-block;
-    width: 100%;
+    width: fit-content;
+    position: sticky;
+    z-index: 3;
+    left: 0;
+    background: white;
+    padding: 10px;
 }
 
 table td {
@@ -248,8 +244,26 @@ table td {
 .inner-table thead {
     position: sticky;
     top: 0;
-    z-index: 2;
+    z-index: 5;
     background: white; 
 }
+
+.sticky-col {
+    border: 1px solid black;
+    position: sticky;
+    background: white;
+    z-index: 1;
+    border-right: 1px solid black;
+    box-shadow: 2px 0 5px -2px black;
+}
+
+.col1 { left: 0;     box-shadow: inset 0 0 0 0.05rem black; width: 60px; }
+.col2 { left: 60px;  box-shadow: inset 0 0 0 0.05rem black; width: 150px; }
+.col3 { left: 210px; box-shadow: inset 0 0 0 0.05rem black; width: 100px;}
+.col4 { left: 310px; box-shadow: inset 0 0 0 0.05rem black; width: 150px;}
+.col5 { left: 460px; box-shadow: inset 0 0 0 0.05rem black; width: 80px; }
+.col6 { left: 540px; box-shadow: inset 0 0 0 0.05rem black; width: 100px; }
+.col7 { left: 640px; box-shadow: inset 0 0 0 0.05rem black; width: 110px; } 
+.col8 { left: 750px; box-shadow: inset 0 0 0 0.05rem black; width: 150px; } 
 
 </style>

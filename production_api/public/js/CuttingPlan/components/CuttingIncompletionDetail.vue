@@ -1,7 +1,7 @@
 <template>
     <div ref="root">
         <div v-if="items">
-            <h4>Incompleted Cut Quantity</h4>        
+            <h4>Excess Cut Quantity</h4>        
         </div>
         <table class="table table-sm table-bordered">
             <tr v-for="(i, item_index) in items" :key="item_index">
@@ -18,7 +18,7 @@
                         <td>{{item1_index + 1}}</td>
                         <td v-for="(k, idx) in i.attributes" :key="idx">
                             {{j.attributes[k]}}
-                            <span v-if="version == 'V2'">
+                            <span v-if="version == 'V2' || version == 'V3'">
                                 <span v-if="k == 'Colour' && j.is_set_item && j.attributes[j.set_attr] != j.major_attr_value && j.attributes[k]">({{ j.item_keys['major_colour'] }})</span>
                                 <span v-else-if="k == 'Colour' && !j.is_set_item && j.attributes[k] != j.item_keys['major_colour'] && j.attributes[k]">({{ j.item_keys['major_colour'] }})</span>
                             </span>

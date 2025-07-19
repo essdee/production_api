@@ -40,9 +40,12 @@ import LaySheetAccessory from "./CuttingLaySheet/components/LaySheetAccessory.vu
 import DeliveryChallan from "./Delivery_Challan/components/deliverable_items.vue"
 import CuttingMarker from "./Cutting_Marker/components/cutting_marker.vue"
 import TimeAndActionWeeklyReport from "./Lot/components/TimeAndActionWeeklyReport.vue"
+import TimeAndActionOrderTracking from "./Lot/components/TimeAndActionTracking.vue"
 import CutPanelMovementBundle from "./Cut_Panel_Movement/components/CutPanelMovementBundle.vue"
 import StockSummary from "./components/StockSummary.vue"
 import ReturnItemsPopUp from "./Delivery_Challan/components/ReturnItemsPopUp.vue"
+import SuggestedVendorBillDeliveryPerson from "./VendorBillTracking/components/SuggestedVendorBillDeliveryPerson.vue";
+import CutBundleEdit from "./Cut_Bundle_Edit/components/CutBundleEdit.vue";
 
 // Product Development
 import { ProductFileVersionsWrapper, ProductCostingListWrapper } from "./ProductDevelopment"
@@ -354,6 +357,18 @@ frappe.production.ui.TimeAndActionWeeklyReport = class {
     }
     make_app(){
         this.app = createApp(TimeAndActionWeeklyReport)
+        SetVueGlobals(this.app)
+        this.vue = this.app.mount(this.$wrapper.get(0))
+    }
+}
+
+frappe.production.ui.TimeAndActionOrderTracking = class {
+    constructor(wrapper){
+        this.$wrapper = $(wrapper);
+        this.make_app()
+    }
+    make_app(){
+        this.app = createApp(TimeAndActionOrderTracking)
         SetVueGlobals(this.app)
         this.vue = this.app.mount(this.$wrapper.get(0))
     }
@@ -908,6 +923,25 @@ frappe.production.ui.CutPanelMovementBundle = class {
     }
 }
 
+frappe.production.ui.CutBundleEdit = class {
+    constructor(wrapper){
+        this.$wrapper = $(wrapper)
+        this.make_app()
+    }
+    make_app(){
+        this.app = createApp(CutBundleEdit)
+        SetVueGlobals(this.app)
+        this.vue = this.app.mount(this.$wrapper.get(0))
+    }
+    load_data(item){
+        let items = JSON.parse(JSON.stringify(item))
+        this.vue.load_data(items)
+    }
+    get_items(){
+        return this.vue.get_items()
+    }
+}
+
 // Basic structure to integrate vue
 
 // frappe.ui.production.sampleName = class {
@@ -940,6 +974,21 @@ frappe.production.ui.DateDialog = class {
     get_items(){
         let items = JSON.parse(JSON.stringify(this.vue.item_data));
         return items
+    }
+}
+
+frappe.production.ui.SuggestedVendorBillDeliveryPerson = class {
+    constructor(wrapper){
+        this.$wrapper = $(wrapper)
+        this.make_body()
+    }
+    make_body(){
+        this.app = createApp(SuggestedVendorBillDeliveryPerson)
+        SetVueGlobals(this.app)
+        this.vue = this.app.mount(this.$wrapper.get(0))
+    }
+    update_for_new_supplier(supplier){
+        this.vue.update_for_new_supplier(supplier);
     }
 }
 

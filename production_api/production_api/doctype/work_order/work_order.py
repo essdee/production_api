@@ -14,8 +14,8 @@ from production_api.production_api.doctype.purchase_order.purchase_order import 
 from production_api.production_api.doctype.item.item import get_attribute_details, get_or_create_variant
 from production_api.production_api.doctype.delivery_challan.delivery_challan import get_variant_stock_details
 from production_api.essdee_production.doctype.lot.lot import fetch_order_item_details, get_uom_conversion_factor
-from production_api.utils import get_stich_details, get_part_list, update_if_string_instance, update_variant, get_tuple_attributes
-from production_api.essdee_production.doctype.item_production_detail.item_production_detail import get_calculated_bom, get_or_create_ipd_variant, calculate_accessory, get_cloth_combination, get_stitching_combination
+from production_api.utils import get_stich_details, get_part_list, update_if_string_instance, get_tuple_attributes
+from production_api.essdee_production.doctype.item_production_detail.item_production_detail import get_calculated_bom, calculate_accessory, get_cloth_combination, get_stitching_combination
 
 class WorkOrder(Document):
 	def on_update_after_submit(self):
@@ -38,6 +38,13 @@ class WorkOrder(Document):
 			frappe.throw("There is no receivables on the Work Order")
 
 	def on_submit(self):
+		d = [{
+			"from_date": self.planned_start_date,
+			"to_date": self.expected_delivery_date,
+			"reason": None,
+			"user": frappe.session.user
+		}]
+		self.set("work_order_tracking_logs", d)
 		self.update_deliverables()
 
 	def on_cancel(self):
@@ -105,11 +112,11 @@ class WorkOrder(Document):
 		if calculate:		
 			if not self.is_rework:
 				if(self.get('deliverable_item_details')):
-					items = save_item_details(self.deliverable_item_details, self.production_detail)
+					items = save_item_details(self.deliverable_item_details)
 					self.set("deliverables",items)
 
 			if(self.get('receivable_item_details')):
-				items = save_item_details(self.receivable_item_details, self.production_detail, supplier=self.supplier, process_name=self.process_name)
+				items = save_item_details(self.receivable_item_details, supplier=self.supplier, process_name=self.process_name)
 				self.set("receivables",items)
 			
 			if len(self.receivables) > 0:
@@ -197,10 +204,8 @@ class WorkOrder(Document):
 			row.cost = round(rate,2)
 			row.total_cost = round((rate * row.qty), 2)
 
-def save_item_details(item_details, ipd, supplier=None, process_name = None):
+def save_item_details(item_details, supplier=None, process_name = None):
 	item_details = update_if_string_instance(item_details)
-	ipd_doc = frappe.get_cached_doc("Item Production Detail",ipd)
-	item_variants = update_if_string_instance(ipd_doc.variants_json)
 	items = []
 	row_index = 0
 	table_index = -1
@@ -216,11 +221,7 @@ def save_item_details(item_details, ipd, supplier=None, process_name = None):
 						quantity = 0
 					item_attributes[item.get('primary_attribute')] = attr
 					cost = values.get('cost')
-					# tup = tuple(sorted(item_attributes.items()))
 					variant = get_or_create_variant(item_name, item_attributes)
-					# variant = get_or_create_ipd_variant(item_variants, item_name, tup, item_attributes)
-					# str_tup = str(tup)
-					# item_variants = update_variant(item_variants, variant, item_name, str_tup)
 					item1 = get_data(item, table_index, row_index, process_name, quantity, cost)
 					item1['item_variant'] = variant	
 					item1['set_combination'] = values.get("set_combination", {})
@@ -233,11 +234,7 @@ def save_item_details(item_details, ipd, supplier=None, process_name = None):
 				if item['values'].get('default') and item['values']['default'].get('qty'):
 					quantity = item['values']['default'].get('qty')
 					cost = item['values']['default'].get('cost')
-					# tup = tuple(sorted(item_attributes.items()))
 					variant = get_or_create_variant(item_name, item_attributes)
-					# variant = get_or_create_ipd_variant(item_variants, item_name, tup, item_attributes)
-					# str_tup = str(tup)
-					# item_variants = update_variant(item_variants, variant, item_name, str_tup)
 					item1 = get_data(item,table_index,row_index, process_name, quantity,cost)	
 					item1['item_variant'] = variant
 					item1['set_combination'] = item['values']['default'].get('set_combination', {})
@@ -247,7 +244,6 @@ def save_item_details(item_details, ipd, supplier=None, process_name = None):
 					item1['secondary_uom'] = item.get('secondary_uom')
 					items.append(item1)
 			row_index += 1
-	ipd_doc.db_set("variants_json", json.dumps(item_variants), update_modified=False)
 	return items
 
 def get_data(item, table_index, row_index, process_name, quantity, cost):
@@ -427,10 +423,10 @@ def fetch_item_details(items,ipd, include_id = False, is_grn= False, is_calc=Fal
 				for attr in current_variant.attributes:
 					if attr.attribute == item.get('primary_attribute'):
 						item['values'][attr.attribute_value] = {
-							'qty': round(variant.qty) if variant.qty else 0,
-							'secondary_qty': round(variant.secondary_qty) if variant.secondary_qty else 0,
-							'pending_qty': round(variant.pending_quantity) if variant.pending_quantity else 0,
-							'cancelled_qty': round(variant.cancelled_qty) if variant.cancelled_qty else 0,
+							'qty': round(variant.qty, 3) if variant.qty else 0,
+							'secondary_qty': round(variant.secondary_qty, 3) if variant.secondary_qty else 0,
+							'pending_qty': round(variant.pending_quantity, 3) if variant.pending_quantity else 0,
+							'cancelled_qty': round(variant.cancelled_qty, 3) if variant.cancelled_qty else 0,
 							'rate': variant.rate,
 							'tax': variant.tax,
 							'cost': round(variant.cost, 2) if variant.cost else variant.cost,
@@ -448,10 +444,10 @@ def fetch_item_details(items,ipd, include_id = False, is_grn= False, is_calc=Fal
 						break
 		else:
 			item['values']['default'] = {
-				'qty': round(variants[0].qty) if variants[0].qty else variants[0].qty,
-				'secondary_qty': round(variants[0].secondary_qty) if variants[0].secondary_qty else 0,
-				'pending_qty': round(variants[0].pending_quantity) if variants[0].pending_quantity else 0,
-				'cancelled_qty': round(variants[0].cancelled_qty) if variants[0].cancelled_qty else 0,
+				'qty': round(variants[0].qty, 3) if variants[0].qty else variants[0].qty,
+				'secondary_qty': round(variants[0].secondary_qty, 3) if variants[0].secondary_qty else 0,
+				'pending_qty': round(variants[0].pending_quantity, 3) if variants[0].pending_quantity else 0,
+				'cancelled_qty': round(variants[0].cancelled_qty, 3) if variants[0].cancelled_qty else 0,
 				'rate': variants[0].rate,
 				'tax': variants[0].tax,
 				'cost': round(variants[0].cost, 2) if variants[0].cost else variants[0].cost,
@@ -523,7 +519,7 @@ def get_deliverable_receivable( items, doc_name, deliverable=False, receivable=F
 	pack_out_stage = ipd_doc.pack_out_stage
 	stiching_in_stage = ipd_doc.stiching_in_stage
 	wo_colour_sets = get_report_data(items, dept_attribute, ipd_doc.packing_attribute)
-	items = get_items(items, ipd, deliverable=deliverable)
+	items = get_items(items, deliverable=deliverable)
 	if not items:
 		frappe.throw("Enter the Qty to Calculate the Items")
 	grp_variant = items[0]['item_variant']
@@ -827,14 +823,12 @@ def get_attributes(items, itemname, stage, dependent_attribute, ipd=None, proces
 
 	ipd_doc = None
 	ipd_pack_doc = None
-	item_variants = None
 	part_list = []
 	stiching_combination = None
 	if ipd:
 		from production_api.essdee_production.doctype.item_production_detail.item_production_detail import get_stitching_combination
 		ipd_doc = frappe.get_cached_doc("Item Production Detail", ipd)
 		stiching_combination = get_stitching_combination(ipd_doc)
-		item_variants = update_if_string_instance(ipd_doc.variants_json)
 
 	if pack_ipd:
 		ipd_pack_doc = frappe.get_cached_doc("Item Production Detail", pack_ipd)
@@ -895,11 +889,7 @@ def get_attributes(items, itemname, stage, dependent_attribute, ipd=None, proces
 						if panel_part != part:
 							v = False							
 						if v:
-							# tup = tuple(sorted(attributes.items()))
-							# str_tup = str(tup)
 							new_variant = get_or_create_variant(itemname, attributes)
-							# new_variant = get_or_create_ipd_variant(item_variants, itemname, tup, attributes)
-							# item_variants = update_variant(item_variants, new_variant, itemname, str_tup)
 							if not item_list.get(itemname):
 								item_list[itemname] = []
 							item_list[itemname].append({
@@ -928,11 +918,7 @@ def get_attributes(items, itemname, stage, dependent_attribute, ipd=None, proces
 						else:
 							attributes[ipd_doc.stiching_attribute] = panel
 						
-						# tup = tuple(sorted(attributes.items()))
-						# str_tup = str(tup)
 						new_variant = get_or_create_variant(itemname, attributes)
-						# new_variant = get_or_create_ipd_variant(item_variants, itemname, tup, attributes)
-						# item_variants = update_variant(item_variants, new_variant, itemname, str_tup)
 						if not item_list.get(itemname):
 							item_list[itemname] = []
 						item_list[itemname].append({
@@ -944,8 +930,6 @@ def get_attributes(items, itemname, stage, dependent_attribute, ipd=None, proces
 							'row_index':str(variant['table_index'])+""+str(variant['row_index'])+""+str(id),
 							"set_combination":variant['set_combination']
 						})
-	if ipd_doc:						
-		ipd_doc.db_set("variants_json", json.dumps(item_variants), update_modified=False)
 	return item_list
 
 def get_receivable_item_attribute_details(variant, item_attributes, stage):
@@ -955,15 +939,10 @@ def get_receivable_item_attribute_details(variant, item_attributes, stage):
 			attribute_details[attr.attribute] = attr.attribute_value
 	return attribute_details
 
-def get_items(items, ipd, deliverable):
+def get_items(items, deliverable):
 	items = update_if_string_instance(items)
 	if len(items[0]['items']) == 0:
 		return []
-	ipd_doc = None
-	item_variants = None
-	if ipd:
-		ipd_doc = frappe.get_cached_doc("Item Production Detail", ipd)
-		item_variants = update_if_string_instance(ipd_doc.variants_json)
 	item = items[0]
 	item_list = []
 	index = -1
@@ -975,11 +954,7 @@ def get_items(items, ipd, deliverable):
 				attributes[row['primary_attribute']] = val
 				item1 = {}
 				item_name = row['name']
-				# tup = tuple(sorted(attributes.items()))
 				variant_name = get_or_create_variant(item_name, attributes)
-				# variant_name = get_or_create_ipd_variant(item_variants, item_name, tup, attributes)
-				# str_tup = str(tup) 
-				# item_variants = update_variant(item_variants, variant_name, item_name, str_tup)
 				item1['item_variant'] = variant_name
 				item1['quantity'] = row['work_order_qty'][val]
 				item1['row_index'] = index
@@ -996,11 +971,7 @@ def get_items(items, ipd, deliverable):
 			item1 = {}
 			item_name = row['name']
 			attributes = row['attributes']
-			# tup = tuple(sorted(attributes.items()))
 			variant_name = get_or_create_variant(item_name, attributes)
-			# variant_name = get_or_create_ipd_variant(item_variants, item_name, tup, attributes)
-			# str_tup = str(tup) 
-			# item_variants = update_variant(item_variants, variant_name, item_name, str_tup)
 			item1['item_variant'] = variant_name
 			item1['quantity'] = row['work_order_qty']
 			item1['table_index'] = index
@@ -1008,7 +979,6 @@ def get_items(items, ipd, deliverable):
 			item1['set_combination'] = row['item_keys']
 			if item1['quantity'] or deliverable:
 				item_list.append(item1)
-	ipd_doc.db_set("variants_json", json.dumps(item_variants), update_modified=False)
 	return item_list
 
 def get_item_structure(items,item_name, process, uom):
@@ -1054,9 +1024,13 @@ def get_bom_structure(items, row_index, table_index):
 @frappe.whitelist()
 def add_comment(doc_name, date, reason):
 	doc = frappe.get_doc('Work Order', doc_name)
-	text = f"Delivery date changed from {doc.expected_delivery_date} to {date} <br> Reason: {reason}"
+	doc.append("work_order_tracking_logs", {
+		"from_date": nowdate(),
+		"to_date": date,
+		"reason": reason,
+		"user": frappe.session.user,
+	})
 	doc.expected_delivery_date = date
-	doc.add_comment('Comment',text=text)
 	doc.save()
 	
 @frappe.whitelist()
@@ -1227,6 +1201,21 @@ def fetch_summary_details(doc_name, production_detail):
 		else:
 			item_details[index]['items'].append(item)
 
+	for item in item_details[0]['items']:
+		total_qty = 0
+		total_delivered = 0
+		total_received = 0
+		for primary_attr in item_details[0]['primary_attribute_values']:
+			if item['values'][primary_attr].get("qty"):
+				total_qty += item['values'][primary_attr]['qty']
+			if item['values'][primary_attr].get("delivered"):
+				total_delivered += item['values'][primary_attr]['delivered']
+			if item['values'][primary_attr].get("received"):
+				total_received += item['values'][primary_attr]['received']
+		item['total_qty'] = total_qty
+		item['total_delivered'] = total_delivered
+		item['total_received'] = total_received	
+
 	deliverables = fetch_item_details(wo_doc.deliverables, wo_doc.production_detail )
 
 	return {
@@ -1386,12 +1375,10 @@ def fetch_rework_popup_items(items, ipd):
 	return item_details
 
 @frappe.whitelist()
-def create_rework(doc_name, items, ipd, supplier,supplier_address, rework_type, supplier_type):
+def create_rework(doc_name, items, supplier,supplier_address, rework_type, supplier_type):
 	items = update_if_string_instance(items)
-	ipd_doc = frappe.get_cached_doc("Item Production Detail",ipd)
 	wo_doc = frappe.get_doc("Work Order", doc_name)
 	process_name = wo_doc.process_name
-	item_variants = update_if_string_instance(ipd_doc.variants_json)
 	deliverables = []
 	for received_type in items:
 		item_details = update_if_string_instance(items[received_type])
@@ -1408,11 +1395,7 @@ def create_rework(doc_name, items, ipd, supplier,supplier_address, rework_type, 
 							continue
 						item_attributes[item.get('primary_attribute')] = attr
 						cost = values.get('cost', 0)
-						# tup = tuple(sorted(item_attributes.items()))
 						variant = get_or_create_variant(item_name, item_attributes)
-						# variant = get_or_create_ipd_variant(item_variants, item_name, tup, item_attributes)
-						# str_tup = str(tup)
-						# item_variants = update_variant(item_variants, variant, item_name, str_tup)
 						item1 = get_data(item, values.get("table_index"), values.get("row_index"), process_name, quantity, cost)
 						item1['item_variant'] = variant	
 						item1['set_combination'] = values.get("set_combination", {})

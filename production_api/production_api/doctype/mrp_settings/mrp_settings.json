@@ -27,7 +27,10 @@
   "raw_printing_printers_section",
   "printer_list",
   "work_order_section",
-  "received_type_list"
+  "received_type_list",
+  "time_and_action_tracking_order_report_days",
+  "additional_grn_submit_role",
+  "cut_bundle_cancelled_lot"
  ],
  "fields": [
   {
@@ -157,14 +160,32 @@
    "fieldname": "enable_tuple_attribute",
    "fieldtype": "Check",
    "label": "Enable Tuple Attribute"
+  },
+  {
+   "default": "7",
+   "fieldname": "time_and_action_tracking_order_report_days",
+   "fieldtype": "Int",
+   "label": "Time and Action Tracking Order Report Days"
+  },
+  {
+   "fieldname": "additional_grn_submit_role",
+   "fieldtype": "Link",
+   "label": "Additional GRN Submit Role",
+   "options": "Role"
+  },
+  {
+   "fieldname": "cut_bundle_cancelled_lot",
+   "fieldtype": "Text",
+   "label": "Cut Bundle Cancelled Lot",
+   "read_only": 1
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2025-06-03 10:50:22.386819",
- "modified_by": "Administrator",
+ "modified": "2025-07-15 14:44:17.489867",
+ "modified_by": "mohammedanasman123@gmail.com",
  "module": "Production Api",
  "name": "MRP Settings",
  "owner": "Administrator",

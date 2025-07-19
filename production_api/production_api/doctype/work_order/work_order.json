@@ -38,6 +38,8 @@
   "column_break_ztqp",
   "delivery_address",
   "delivery_address_details",
+  "work_order_tracking_section",
+  "work_order_tracking_logs",
   "section_break_oufa",
   "deliverables",
   "deliverable_items",
@@ -181,6 +183,7 @@
    "fieldname": "expected_delivery_date",
    "fieldtype": "Date",
    "label": "Expected Delivery Date",
+   "read_only": 1,
    "reqd": 1
   },
   {
@@ -493,6 +496,19 @@
    "fieldname": "planned_quantity",
    "fieldtype": "Int",
    "label": "Planned Quantity"
+  },
+  {
+   "collapsible": 1,
+   "fieldname": "work_order_tracking_section",
+   "fieldtype": "Section Break",
+   "label": "Work Order Tracking"
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "work_order_tracking_logs",
+   "fieldtype": "Table",
+   "label": "Work Order Tracking Logs",
+   "options": "Work Order Tracking Log"
   }
  ],
  "grid_page_length": 50,
@@ -508,7 +524,7 @@
    "link_fieldname": "against_id"
   }
  ],
- "modified": "2025-05-31 16:13:30.212170",
+ "modified": "2025-07-04 17:14:45.606296",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Work Order",

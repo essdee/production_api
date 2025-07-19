@@ -8,8 +8,8 @@ frappe.ui.form.on("Cutting Marker", {
         $(frm.fields_dict['cutting_marker_ratios_html'].wrapper).html("")
         if(!frm.doc.__islocal){
             frm.marker_ratios = new frappe.production.ui.CuttingMarker($(frm.fields_dict['cutting_marker_ratios_html'].wrapper))
-            if( frm.doc.__onload && frm.doc.__onload.marker_ratio_detail){
-                frm.marker_ratios.load_data(frm.doc.__onload.marker_ratio_detail)
+            if( frm.doc.__onload && frm.doc.__onload.marker_detail){
+                frm.marker_ratios.load_data(frm.doc.__onload.marker_detail)
             }   
             else{
                 frm.marker_ratios.load_data([])

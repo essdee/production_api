@@ -7,6 +7,8 @@
  "editable_grid": 1,
  "engine": "InnoDB",
  "field_order": [
+  "additional_grn",
+  "allow_non_bundle",
   "naming_series",
   "against",
   "delivery_location",
@@ -28,6 +30,7 @@
   "process_name",
   "is_manual_entry",
   "letter_head",
+  "cut_panel_movement",
   "section_break_1",
   "supplier",
   "supplier_document_no",
@@ -281,14 +284,12 @@
   {
    "fieldname": "supplier_document_no",
    "fieldtype": "Data",
-   "label": "Supplier Document Number",
-   "reqd": 1
+   "label": "Supplier Document Number"
   },
   {
    "fieldname": "vehicle_no",
    "fieldtype": "Data",
-   "label": "Vehicle Number",
-   "reqd": 1
+   "label": "Vehicle Number"
   },
   {
    "fetch_from": "delivery_location.supplier_name",
@@ -356,20 +357,20 @@
   {
    "fieldname": "lot",
    "fieldtype": "Link",
-   "hidden": 1,
    "in_list_view": 1,
    "in_standard_filter": 1,
    "label": "Lot",
-   "options": "Lot"
+   "options": "Lot",
+   "read_only": 1
   },
   {
    "fieldname": "process_name",
    "fieldtype": "Link",
-   "hidden": 1,
    "in_list_view": 1,
    "in_standard_filter": 1,
    "label": "Process Name",
-   "options": "Process"
+   "options": "Process",
+   "read_only": 1
   },
   {
    "fieldname": "items_json",
@@ -476,13 +477,32 @@
    "hidden": 1,
    "label": "Cutting Laysheet",
    "options": "Cutting LaySheet"
+  },
+  {
+   "default": "0",
+   "fieldname": "additional_grn",
+   "fieldtype": "Check",
+   "label": "Additional GRN"
+  },
+  {
+   "fieldname": "cut_panel_movement",
+   "fieldtype": "Link",
+   "hidden": 1,
+   "label": "Cut Panel Movement",
+   "options": "Cut Panel Movement"
+  },
+  {
+   "default": "0",
+   "fieldname": "allow_non_bundle",
+   "fieldtype": "Check",
+   "label": "Allow Non Bundle"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-05-31 16:07:40.651302",
+ "modified": "2025-07-10 17:03:52.166044",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Goods Received Note",

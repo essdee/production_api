@@ -1,6 +1,6 @@
 {
  "charts": [],
- "content": "[{\"id\":\"tcx875NdZN\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">Purchase<br></span>\",\"col\":12}},{\"id\":\"77aCRbFikj\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Purchase Order\",\"col\":3}},{\"id\":\"opf9TPh5-A\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Lot\",\"col\":3}},{\"id\":\"WIySpX3vQV\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Item\",\"col\":3}},{\"id\":\"VBX8mK0Z-3\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Supplier\",\"col\":3}},{\"id\":\"TRc6u3ugUT\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"GRN\",\"col\":3}},{\"id\":\"-ElAWu5ogn\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Purchase Invoice\",\"col\":3}},{\"id\":\"KQVuXiOr3d\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Item Price\",\"col\":3}},{\"id\":\"3LJP-0wFoI\",\"type\":\"spacer\",\"data\":{\"col\":12}},{\"id\":\"ZtwupzFsjZ\",\"type\":\"card\",\"data\":{\"card_name\":\"Item\",\"col\":3}},{\"id\":\"TCbrVnqsRP\",\"type\":\"card\",\"data\":{\"card_name\":\"Reports\",\"col\":4}}]",
+ "content": "[{\"id\":\"tcx875NdZN\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">Purchase<br></span>\",\"col\":12}},{\"id\":\"77aCRbFikj\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Purchase Order\",\"col\":3}},{\"id\":\"opf9TPh5-A\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Lot\",\"col\":3}},{\"id\":\"WIySpX3vQV\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Item\",\"col\":3}},{\"id\":\"VBX8mK0Z-3\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Supplier\",\"col\":3}},{\"id\":\"TRc6u3ugUT\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"GRN\",\"col\":3}},{\"id\":\"-ElAWu5ogn\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Purchase Invoice\",\"col\":3}},{\"id\":\"KQVuXiOr3d\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Item Price\",\"col\":3}},{\"id\":\"m0z5gZLQNC\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Vendor Bill Tracking\",\"col\":3}},{\"id\":\"3LJP-0wFoI\",\"type\":\"spacer\",\"data\":{\"col\":12}},{\"id\":\"ZtwupzFsjZ\",\"type\":\"card\",\"data\":{\"card_name\":\"Item\",\"col\":3}},{\"id\":\"TCbrVnqsRP\",\"type\":\"card\",\"data\":{\"card_name\":\"Reports\",\"col\":4}}]",
  "creation": "2023-03-30 15:17:33.105497",
  "custom_blocks": [],
  "docstatus": 0,
@@ -45,7 +45,7 @@
    "hidden": 0,
    "is_query_report": 0,
    "label": "Reports",
-   "link_count": 4,
+   "link_count": 5,
    "link_type": "DocType",
    "onboard": 0,
    "type": "Card Break"
@@ -89,9 +89,19 @@
    "link_type": "Report",
    "onboard": 0,
    "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 1,
+   "label": "Vendor Bill Pending Report",
+   "link_count": 0,
+   "link_to": "Vendor Bill Pending Report",
+   "link_type": "Report",
+   "onboard": 0,
+   "type": "Link"
   }
  ],
- "modified": "2025-01-28 12:38:49.752150",
+ "modified": "2025-07-02 13:15:39.475061",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Purchase",
@@ -108,6 +118,14 @@
    "doc_view": "List",
    "label": "Supplier",
    "link_to": "Supplier",
+   "type": "DocType"
+  },
+  {
+   "color": "Grey",
+   "doc_view": "List",
+   "label": "Vendor Bill Tracking",
+   "link_to": "Vendor Bill Tracking",
+   "stats_filter": "[]",
    "type": "DocType"
   },
   {
