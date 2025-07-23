@@ -194,11 +194,15 @@ frappe.ui.form.on("Cutting LaySheet", {
             }
             if(frm.doc.status == "Label Printed" || frm.doc.status == "Bundles Generated"){
                 frm.add_custom_button("Print Movement Chart", ()=> {
+                    let pf = "Cutting Movement Chart"
+                    if(frm.doc.calculated_parts.split(",").length > 5){
+                        pf = "Cutting Movement Chart 2"
+                    }
                     let w = window.open(
                         frappe.urllib.get_full_url(
                             "/printview?" + "doctype=" + encodeURIComponent(frm.doc.doctype) + "&name=" +
                                 encodeURIComponent(frm.doc.name) + "&trigger_print=1" + "&format=" + 
-                                encodeURIComponent("Cutting Movement Chart") + "&no_letterhead=1"
+                                encodeURIComponent(pf) + "&no_letterhead=1"
                         )
                     );
                     if (!w) {

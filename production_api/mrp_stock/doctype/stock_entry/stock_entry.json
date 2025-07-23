@@ -181,6 +181,7 @@
    "read_only": 1
   },
   {
+   "allow_on_submit": 1,
    "fieldname": "cut_panel_movement",
    "fieldtype": "Link",
    "hidden": 1,
@@ -204,7 +205,7 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-07-17 15:11:58.295632",
+ "modified": "2025-07-19 14:55:25.651504",
  "modified_by": "Administrator",
  "module": "MRP Stock",
  "name": "Stock Entry",

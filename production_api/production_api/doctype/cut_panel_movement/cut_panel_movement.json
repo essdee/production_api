@@ -104,6 +104,7 @@
    "read_only": 1
   },
   {
+   "allow_on_submit": 1,
    "fieldname": "from_warehouse",
    "fieldtype": "Link",
    "label": "From Warehouse",
@@ -143,7 +144,7 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-07-07 12:10:09.550561",
+ "modified": "2025-07-19 15:05:38.175517",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Cut Panel Movement",

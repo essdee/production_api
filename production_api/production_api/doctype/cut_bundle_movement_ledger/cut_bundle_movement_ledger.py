@@ -541,7 +541,8 @@ def get_latest_cbml_for_variant(from_location,lot, primary_value, pack_value, st
 				AND supplier = %(from_location)s AND lot = %(lot)s AND size = %(size)s AND colour = %(colour)s 
 				AND item = %(item)s AND panel like %(panel)s GROUP BY cbm_key
 			) latest_cbml
-		ON cbml.cbm_key = latest_cbml.cbm_key AND cbml.posting_datetime = latest_cbml.max_posting_datetime
+		ON cbml.cbm_key = latest_cbml.cbm_key AND cbml.posting_datetime = latest_cbml.max_posting_datetime 
+		AND cbml.is_cancelled = 0 AND cbml.is_collapsed = 0 AND cbml.transformed = 0 AND cbml.collapsed_bundle = 0 
 		ORDER BY latest_cbml.lay_no asc
 	""", {
 		"from_location": from_location, 

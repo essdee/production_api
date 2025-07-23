@@ -210,8 +210,8 @@ def get_cut_bundle_unmoved_data(from_location, lot, posting_date, posting_time, 
 				GROUP BY cbm_key
 			) latest_cbml
 		ON cbml.cbm_key = latest_cbml.cbm_key AND cbml.posting_datetime = latest_cbml.max_posting_datetime
-		WHERE cbml.posting_datetime <= %(datetime_value)s AND cbml.is_collapsed = 0 AND cbml.collapsed_bundle = 0
-		ORDER BY latest_cbml.lay_no asc
+		WHERE cbml.is_cancelled = 0 AND cbml.posting_datetime <= %(datetime_value)s AND cbml.is_collapsed = 0 
+		AND cbml.collapsed_bundle = 0 ORDER BY latest_cbml.lay_no asc
 	""", {
 		"datetime_value": posting_datetime,
 		"from_location": from_location,
