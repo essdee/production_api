@@ -153,8 +153,8 @@ class GoodsReceivedNote(Document):
 					deliverables = get_packing_process_deliverables(self)	
 					self.set("grn_deliverables", deliverables)
 					self.update_pack_variant_items()
-					self.validate_deliverables()
 				self.split_items()
+			self.validate_deliverables()
 
 		self.set('approved_by', frappe.get_user().doc.name)
 	
