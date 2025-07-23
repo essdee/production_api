@@ -180,7 +180,7 @@ const props = defineProps({
 })
 
 onMounted(()=> {
-    if(props.data){
+    if(props.data.length > 0){
         from_page = true
         items.value = props.data;
         items2.value = props.data;
