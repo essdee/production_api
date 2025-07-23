@@ -1041,6 +1041,24 @@ def update_stock(work_order):
 	res = get_variant_stock_details()
 	sl_entries = []
 	doc = frappe.get_doc("Work Order", work_order)
+	dc_list = frappe.get_all("Delivery Challan", filters={
+		"work_order": work_order, 
+		"docstatus": 1,
+		"is_internal_unit": 1,
+		"transfer_complete": 0,
+	}, limit=1, pluck="name")
+	if dc_list:
+		frappe.throw(_("Delivery Challan {0} is not completed. Please complete the Delivery Challan before Close Work Order.").format(dc_list[0]))
+	grn_list = frappe.get_all("Goods Received Note", filters={
+		"against": "Work Order",
+		"against_id": work_order, 
+		"docstatus": 1,
+		"is_internal_unit": 1,
+		"transfer_complete": 0,
+	}, limit=1, pluck="name")
+	if grn_list:
+		frappe.throw(_("GRN {0} is not completed. Please complete the GRN before Close Work Order.").format(grn_list[0]))
+	
 	received_type = frappe.db.get_single_value("Stock Settings","default_received_type")
 	for data in doc.deliverables:
 		if (data.qty - data.pending_quantity - data.stock_update) > 0 and res.get(data.item_variant):

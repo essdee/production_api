@@ -57,7 +57,8 @@ def get_data(filters):
 				) latest_cbml
 			ON cbml.cbm_key = latest_cbml.cbm_key AND cbml.posting_datetime = latest_cbml.max_posting_datetime
 			WHERE cbml.posting_datetime <= %(datetime_value)s AND cbml.is_collapsed = 0 AND cbml.collapsed_bundle = 0
-			AND cbml.quantity_after_transaction > 0 {conditions2} ORDER BY latest_cbml.lay_no asc
+			AND cbml.quantity_after_transaction > 0 AND cbml.is_cancelled = 0 {conditions2} 
+			ORDER BY latest_cbml.lay_no asc
 		""", con, as_dict=True)
 
 	return cb_list

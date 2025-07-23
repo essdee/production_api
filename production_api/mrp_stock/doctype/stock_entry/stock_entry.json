@@ -12,10 +12,11 @@
   "purpose",
   "packing_slip",
   "against",
-  "against_id",
   "transfer_supplier",
+  "against_id",
   "column_break_gz9cd",
   "skip_transit",
+  "includes_packing",
   "posting_date",
   "posting_time",
   "outgoing_stock_entry",
@@ -181,6 +182,7 @@
    "read_only": 1
   },
   {
+   "allow_on_submit": 1,
    "fieldname": "cut_panel_movement",
    "fieldtype": "Link",
    "hidden": 1,
@@ -194,6 +196,13 @@
    "label": "Skip Transit"
   },
   {
+   "default": "0",
+   "fieldname": "includes_packing",
+   "fieldtype": "Check",
+   "hidden": 1,
+   "label": "Includes Packing"
+  },
+  {
    "fieldname": "transfer_supplier",
    "fieldtype": "Link",
    "label": "Transfer Supplier",
@@ -204,7 +213,7 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-07-17 15:11:58.295632",
+ "modified": "2025-07-23 17:15:04.089140",
  "modified_by": "Administrator",
  "module": "MRP Stock",
  "name": "Stock Entry",

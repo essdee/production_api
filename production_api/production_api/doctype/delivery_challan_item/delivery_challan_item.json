@@ -27,7 +27,10 @@
   "valuation_rate",
   "is_calculated",
   "set_combination",
-  "item_type"
+  "item_type",
+  "stock_qty",
+  "stock_uom",
+  "conversion_factor"
  ],
  "fields": [
   {
@@ -165,13 +168,29 @@
    "fieldtype": "Link",
    "label": "Item Type",
    "options": "GRN Item Type"
+  },
+  {
+   "fieldname": "stock_qty",
+   "fieldtype": "Float",
+   "label": "Stock Qty"
+  },
+  {
+   "fieldname": "stock_uom",
+   "fieldtype": "Link",
+   "label": "Stock UOM",
+   "options": "UOM"
+  },
+  {
+   "fieldname": "conversion_factor",
+   "fieldtype": "Float",
+   "label": "Conversion Factor"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2025-05-15 11:02:51.746434",
+ "modified": "2025-07-23 10:20:19.676373",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Delivery Challan Item",

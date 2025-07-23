@@ -31,6 +31,7 @@
   "is_manual_entry",
   "letter_head",
   "cut_panel_movement",
+  "includes_packing",
   "section_break_1",
   "supplier",
   "supplier_document_no",
@@ -52,6 +53,7 @@
   "section_break_ve8oj",
   "items",
   "item_html",
+  "section_break_sgaj",
   "grn_deliverables",
   "items_json",
   "grn_consumed_html",
@@ -346,7 +348,8 @@
    "fieldname": "total_received_quantity",
    "fieldtype": "Float",
    "hidden": 1,
-   "label": "Total Received Quantity"
+   "label": "Total Received Quantity",
+   "read_only": 1
   },
   {
    "fieldname": "total_receivable_cost",
@@ -496,13 +499,24 @@
    "fieldname": "allow_non_bundle",
    "fieldtype": "Check",
    "label": "Allow Non Bundle"
+  },
+  {
+   "default": "0",
+   "fetch_from": "process_name.includes_packing",
+   "fieldname": "includes_packing",
+   "fieldtype": "Check",
+   "label": "Includes Packing"
+  },
+  {
+   "fieldname": "section_break_sgaj",
+   "fieldtype": "Section Break"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-07-10 17:03:52.166044",
+ "modified": "2025-07-23 17:13:39.848134",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Goods Received Note",
