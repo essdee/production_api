@@ -14,6 +14,7 @@
                         <th>S.No.</th>
                         <th v-for="attr in i.attributes" :key="attr">{{ attr }}</th>
                         <th v-for="attr in i.primary_attribute_values" :key="attr">{{ attr }}</th>
+                        <th>Total Qty</th>
                     </tr>
                     <tr v-for="(j, item1_index) in i.items" :key="item1_index">
                         <td><input type="checkbox" v-model="checkboxes[item1_index]" @change="update_qty(item_index, item1_index)">{{item1_index + 1}}</td>
@@ -28,6 +29,13 @@
                             </div>
                             <div v-else>--</div>
                         </td>
+                        <td>{{ j.total_qty }}</td>
+                    </tr>
+                    <tr>
+                        <th>Total</th>
+                        <th v-for="attr in i.attributes" :key="attr"></th>
+                        <th v-for="attr in i.primary_attribute_values" :key="attr">{{ i.size_wise_total[attr] }}</th>
+                        <th>{{ i.total_sum }}</th>
                     </tr>
                 </table>
             </tr>
@@ -128,10 +136,39 @@ function createInput(key,index,val){
         input['df']['onchange'] = ()=>{
             let input_value = input.get_value()
             items.value[0].items[index]['work_order_qty'][key] = input_value;
+            update_total()
         }
         return input
     }
     
+}
+
+function update_total(){
+    let size_wise_total = {}
+    let total_sum = 0
+    for(let i = 0 ; i < items.value[0].items.length; i++){
+        let row_total = 0
+        Object.keys(items.value[0].items[i].values).forEach((key,value)=> {
+            if(items.value[0].items[i]['entered_qty'][key]){
+                let type = typeof(items.value[0].items[i]['entered_qty'][key])
+                let entered = items.value[0].items[i]['entered_qty'][key]
+                if (type == "object"){
+                    entered = items.value[0].items[i]['entered_qty'][key].get_value()
+                }
+                if(size_wise_total.hasOwnProperty(key)){
+                    size_wise_total[key] += entered
+                }
+                else{
+                    size_wise_total[key] = entered
+                }
+                row_total += entered
+            }
+        })
+        total_sum += row_total
+        items.value[0].items[i]['total_qty'] = row_total
+    }
+    items.value[0].size_wise_total = size_wise_total
+    items.value[0].total_sum = total_sum
 }
 
 function get_input_class(key,index){

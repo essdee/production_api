@@ -111,7 +111,7 @@ frappe.ui.form.on("Cut Panel Movement", {
             },"Create")
             frm.add_custom_button("Create GRN", ()=> {
                 let d = new frappe.ui.Dialog({
-                    title: "Select th Work Order",
+                    title: "Select the Work Order",
                     fields: [
                         {
                             "fieldname":"work_order",

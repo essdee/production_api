@@ -47,6 +47,7 @@ import ReturnItemsPopUp from "./Delivery_Challan/components/ReturnItemsPopUp.vue
 import SuggestedVendorBillDeliveryPerson from "./VendorBillTracking/components/SuggestedVendorBillDeliveryPerson.vue";
 import CutBundleEdit from "./Cut_Bundle_Edit/components/CutBundleEdit.vue";
 import DailyProductionReport from "./CuttingLaySheet/components/DailyProductionReport.vue";
+import GRNPacking from "./GRN/components/GRNPacking.vue";
 
 // Product Development
 import { ProductFileVersionsWrapper, ProductCostingListWrapper } from "./ProductDevelopment"
@@ -348,6 +349,25 @@ frappe.production.ui.TimeActionReport = class {
         this.app = createApp(TimeActionReport)
         SetVueGlobals(this.app)
         this.vue = this.app.mount(this.$wrapper.get(0))
+    }
+}
+
+frappe.production.ui.GRNPacking = class {
+    constructor(wrapper){
+        this.$wrapper = $(wrapper);
+        this.make_app() 
+    }
+    make_app(){
+        this.app = createApp(GRNPacking)
+        SetVueGlobals(this.app)
+        this.vue = this.app.mount(this.$wrapper.get(0))
+    }
+    load_data(data){
+        this.vue.load_data(data)
+    }
+    get_data(){
+        let items = JSON.parse(JSON.stringify(this.vue.get_items()))
+        return items
     }
 }
 

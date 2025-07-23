@@ -157,7 +157,7 @@
 									</div>
 									<div v-else class="text-center">---</div>
 								</td>
-								<td>{{j.total_qty[type]}}</td>
+								<th>{{j.total_qty[type]}}</th>
 								<td v-if="docstatus == 0">
 									<div class="d-flex justify-content-between">
 										<div class="cursor-pointer" @click="edit_delivered_item(item_index, item1_index, type)" 
@@ -168,6 +168,17 @@
 								</td>
 							</tr>
 						</template>
+						<tr>
+							<th></th>
+							<th>Total</th>
+							<th v-for="attr in i.attributes" :key="attr"></th>
+							<th></th>
+							<th v-for="attr in i.primary_attribute_values" :key="attr">
+								{{ i.size_wise_total[attr] }}
+							</th>
+							<th>{{ i['total_sum'] }}</th>
+							<th v-if="docstatus == 0"></th>
+						</tr>
 					</table>
 				</td>
 				<td v-else>

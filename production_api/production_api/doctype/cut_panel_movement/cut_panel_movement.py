@@ -482,8 +482,10 @@ def create_goods_received_note(doc_name, work_order, return_items=False):
 	doc = frappe.get_cached_doc("Work Order", work_order)
 	items = []
 	check_one_panel = True
-	for item in doc.receivables:
-		item = item.as_dict()
+	receivables = doc.receivables
+	receivables =[item.as_dict() for item in receivables]
+	receivables = sorted(receivables, key=lambda x: x.get("row_index"))
+	for item in receivables:
 		check = True
 		item['quantity'] = item['qty']
 		for data in grn_item_list:
@@ -496,6 +498,7 @@ def create_goods_received_note(doc_name, work_order, return_items=False):
 				items.append(item)
 				break
 		if check:
+			item['delivered_quantity'] = 0
 			items.append(item)
 	if check_one_panel:
 		frappe.throw("No Items for this Work Order")
@@ -542,7 +545,7 @@ def create_goods_received_note(doc_name, work_order, return_items=False):
 				for attr in current_variant.attributes:
 					if attr.attribute == item.get('primary_attribute'):
 						variant['received_types'] = {
-							default_received_type: round(variant['qty'], 3)
+							default_received_type: round(variant['delivered_quantity'], 3)
 						}
 						item['values'][attr.attribute_value] = {
 							'primary_attr': attr.attribute_value,
@@ -555,7 +558,7 @@ def create_goods_received_note(doc_name, work_order, return_items=False):
 							'set_combination': variant.get('set_combination', {})
 						}
 						item['values'][attr.attribute_value]['qty'] = 0
-						item['values'][attr.attribute_value]['received'] = round(variant['qty'], 3)
+						item['values'][attr.attribute_value]['received'] = round(variant['delivered_quantity'], 3)
 						item['types'] = [default_received_type]
 						item['values'][attr.attribute_value]['ref_doctype'] = "Work Order Receivables"
 						item['values'][attr.attribute_value]['ref_docname'] = variant['name']
@@ -583,6 +586,8 @@ def create_goods_received_note(doc_name, work_order, return_items=False):
 			item_details[index]['items'].append(item)	
 			
 	for item in item_details:
+		table_total = 0
+		size_wise_total = {}
 		for row_item in item['items']:
 			total_json = {}
 			for key in row_item['values']:
@@ -590,8 +595,13 @@ def create_goods_received_note(doc_name, work_order, return_items=False):
 				for type in row_item['types']:
 					if types_json.get(type):
 						total_json.setdefault(type, 0)
+						size_wise_total.setdefault(key, 0)
+						size_wise_total[key] += types_json.get(type)
+						table_total += types_json.get(type)
 						total_json[type] += types_json.get(type)
 			row_item['total_qty'] = total_json
+		item['total_sum'] = table_total
+		item['size_wise_total'] = size_wise_total		
 
 	return {
 		"item_details": item_details,

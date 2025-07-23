@@ -1,5 +1,5 @@
 import frappe
-from production_api.production_api.doctype.cut_bundle_movement_ledger.cut_bundle_movement_ledger import check_cut_stage_variant
+from production_api.production_api.doctype.cut_bundle_movement_ledger.cut_bundle_movement_ledger import check_dependent_stage_variant
 from production_api.production_api.doctype.cutting_laysheet.cutting_laysheet import create_cut_bundle_ledger
 
 def execute():
@@ -23,7 +23,7 @@ def execute():
         for dc in dc_list:
             dc_doc = frappe.get_doc("Delivery Challan", dc)
             for row in dc_doc.items:
-                check = check_cut_stage_variant(row.item_variant, dependent_attribute=dept_attr, dependent_attribute_value=dept_attr_val)
+                check = check_dependent_stage_variant(row.item_variant, dependent_attribute=dept_attr, dependent_attribute_value=dept_attr_val)
                 if check:
                     cancelled_lot_list.append(lot)
                     break
