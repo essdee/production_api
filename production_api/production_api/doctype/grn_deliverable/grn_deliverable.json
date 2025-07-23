@@ -13,7 +13,10 @@
   "table_index",
   "row_index",
   "comments",
-  "set_combination"
+  "set_combination",
+  "stock_qty",
+  "stock_uom",
+  "conversion_factor"
  ],
  "fields": [
   {
@@ -61,17 +64,35 @@
    "fieldname": "set_combination",
    "fieldtype": "JSON",
    "label": "Set Combination"
+  },
+  {
+   "fieldname": "stock_qty",
+   "fieldtype": "Float",
+   "label": "Stock Qty"
+  },
+  {
+   "fieldname": "stock_uom",
+   "fieldtype": "Link",
+   "label": "Stock UOM",
+   "options": "UOM"
+  },
+  {
+   "fieldname": "conversion_factor",
+   "fieldtype": "Float",
+   "label": "Conversion Factor"
   }
  ],
+ "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2025-02-24 12:07:35.127572",
+ "modified": "2025-07-22 17:36:31.521927",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "GRN Deliverable",
  "owner": "Administrator",
  "permissions": [],
+ "row_format": "Dynamic",
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": []

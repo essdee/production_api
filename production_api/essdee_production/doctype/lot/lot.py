@@ -446,6 +446,20 @@ def fetch_order_item_details(items, production_detail, process=None ):
 			})
 		else:
 			item_details[index]['items'].append(item)
+	for item in item_details:
+		size_wise_total = {}
+		total_sum = 0
+		for row in item['items']:
+			sum = 0
+			for val in row['values']:
+				size_wise_total.setdefault(val, 0)
+				size_wise_total[val] += row['values'][val]['qty']
+				sum += row['values'][val]['qty']
+			row['total_qty'] = sum
+			total_sum += sum
+		item['size_wise_total'] = size_wise_total
+		item['total_sum'] = total_sum	
+
 	return item_details
 
 def get_quantity(attr, packing_attribute_details):

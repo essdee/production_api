@@ -9,7 +9,7 @@ from frappe.model.document import Document
 from frappe.utils import flt, nowdate, now
 from production_api.mrp_stock.utils import get_stock_balance
 from production_api.production_api.logger import get_module_logger
-from production_api.utils import get_panel_list, update_if_string_instance
+from production_api.utils import get_panel_list, update_if_string_instance, get_lpiece_variant
 from production_api.mrp_stock.stock_ledger import make_sl_entries, repost_future_stock_ledger_entry
 from production_api.production_api.doctype.item.item import get_attribute_details, get_or_create_variant
 from production_api.production_api.doctype.purchase_order.purchase_order import (
@@ -44,8 +44,11 @@ class DeliveryChallan(Document):
 			for deliverable in wo_doc.deliverables:
 				if item.ref_docname == deliverable.name:
 					deliverable.pending_quantity += item.delivered_quantity
-					item.delivered_quantity = 0
 					break
+		from production_api.production_api.doctype.cut_bundle_movement_ledger.cut_bundle_movement_ledger import (
+			check_dependent_stage_variant,
+		)		
+		dept_attr, piece_stage, pack_attr = frappe.get_value("Item Production Detail", self.production_detail, ["dependent_attribute","stiching_out_stage", "packing_attribute"])
 		logger.debug(f"{self.name} Work Order Deliverables Updated {datetime.now()}")
 		add_sl_entries = []
 		reduce_sl_entries = []
@@ -56,9 +59,14 @@ class DeliveryChallan(Document):
 		self.total_delivered_qty = 0
 		for row in self.items:
 			if res.get(row.item_variant):
-				add_sl_entries.append(self.get_sle_data(row, self.from_location, 1, {}, received_type))	
+				add_sl_entries.append(self.get_sle_data(row, self.from_location, -1, {}, received_type))	
 				supplier = transit_warehouse if self.is_internal_unit else self.supplier
-				reduce_sl_entries.append(self.get_sle_data(row, supplier, -1, {}, received_type))
+				if self.includes_packing and check_dependent_stage_variant(row.item_variant, dept_attr, piece_stage):
+					updated_variant = get_lpiece_variant(pack_attr, dept_attr, row.item_variant)
+					reduce_sl_entries.append(self.get_sle_data(row, supplier, 1, {}, received_type, new_variant=updated_variant))
+				else:	
+					reduce_sl_entries.append(self.get_sle_data(row, supplier, 1, {}, received_type))
+
 		logger.debug(f"{self.name} SLE data construction {datetime.now()}")
 		make_sl_entries(add_sl_entries)
 		logger.debug(f"{self.name} Stock Added to From Location {datetime.now()}")
@@ -91,7 +99,6 @@ class DeliveryChallan(Document):
 		self.make_repost_action()
 
 	def on_submit(self):
-		# calculate_pieces(self.name)
 		cancelled_str = frappe.db.get_single_value("MRP Settings", "cut_bundle_cancelled_lot")
 		cancelled_list = cancelled_str.split(",")
 		if self.lot not in cancelled_list:
@@ -128,6 +135,10 @@ class DeliveryChallan(Document):
 			if role not in user_roles:
 				frappe.throw(f"Only {role} can submit this document.", title='DC')
 
+		from production_api.production_api.doctype.cut_bundle_movement_ledger.cut_bundle_movement_ledger import (
+			check_dependent_stage_variant,
+		)
+
 		self.letter_head = frappe.db.get_single_value("MRP Settings","dc_grn_letter_head")
 		logger = get_module_logger("delivery_challan")
 		logger.debug(f"On Submit {datetime.now()}")
@@ -139,6 +150,7 @@ class DeliveryChallan(Document):
 		transit_warehouse = stock_settings.transit_warehouse
 		total_delivered = flt(0)
 		items = []
+		dept_attr, piece_stage, pack_attr = frappe.get_value("Item Production Detail", self.production_detail, ["dependent_attribute","stiching_out_stage", "packing_attribute"])
 		for row in self.items:
 			if res.get(row.item_variant) and row.delivered_quantity > 0:
 				items.append(row.as_dict())
@@ -152,7 +164,11 @@ class DeliveryChallan(Document):
 				total_delivered += row.delivered_quantity	
 				reduce_sl_entries.append(self.get_sle_data(row, self.from_location, -1, {}, received_type))
 				supplier = transit_warehouse if self.is_internal_unit else self.supplier
-				add_sl_entries.append(self.get_sle_data(row, supplier, 1, {}, received_type))
+				if self.includes_packing and check_dependent_stage_variant(row.item_variant, dept_attr, piece_stage):
+					updated_variant = get_lpiece_variant(pack_attr, dept_attr, row.item_variant)
+					add_sl_entries.append(self.get_sle_data(row, supplier, 1, {}, received_type, new_variant=updated_variant))
+				else:	
+					add_sl_entries.append(self.get_sle_data(row, supplier, 1, {}, received_type))
 		if len(items) == 0:
 			frappe.throw("There is no deliverables in this DC")
 		self.set("items", items)
@@ -222,10 +238,23 @@ class DeliveryChallan(Document):
 		if self.additional_goods_value:
 			self.total_value = self.stock_value + self.additional_goods_value	
 
-	def get_sle_data(self, row, location, multiplier, args, received_type):
+	def validate(self):
+		from production_api.mrp_stock.doctype.stock_entry.stock_entry import get_uom_details
+		for row in self.items:
+			item_details = get_uom_details(row.item_variant, row.uom, row.delivered_quantity)
+			row.set("stock_uom", item_details.get("stock_uom"))
+			row.set("conversion_factor", item_details.get("conversion_factor"))
+			row.stock_qty = flt(
+				flt(row.delivered_quantity) * flt(row.conversion_factor), self.precision("stock_qty", row)
+			)
+
+	def get_sle_data(self, row, location, multiplier, args, received_type, new_variant = None):
+		variant = row.item_variant
+		if new_variant:
+			variant = new_variant
 		sl_dict = frappe._dict({
 			"doctype": "Stock Ledger Entry",
-			"item": row.item_variant,
+			"item": variant,
 			"lot": row.lot,
 			"warehouse": location,
 			"received_type":received_type,
@@ -234,7 +263,7 @@ class DeliveryChallan(Document):
 			"voucher_type": self.doctype,
 			"voucher_no": self.name,
 			"voucher_detail_no": row.name,
-			"qty": row.delivered_quantity * multiplier,
+			"qty": row.stock_qty * multiplier,
 			"uom": row.uom,
 			"is_cancelled": 1 if self.docstatus == 2 else 0,
 			"rate": flt(row.rate, row.precision("rate")),
@@ -524,12 +553,13 @@ def construct_stock_entry_details(doc_name):
 	items = []
 	for item in doc.items:
 		if item.delivered_quantity - item.ste_delivered_quantity > 0:
+			rec_type = item.item_type if item.item_type else received_type
 			items.append({
 				"item": item.item_variant,
 				"lot": item.lot,
 				"qty": item.delivered_quantity - item.ste_delivered_quantity,
 				"uom": item.uom,
-				"received_type": received_type,
+				"received_type": rec_type,
 				"secondary_qty": item.secondary_qty,
 				"secondary_uom": item.secondary_uom,
 				"against_id_detail": item.name,
@@ -540,6 +570,7 @@ def construct_stock_entry_details(doc_name):
 			})
 	ste = frappe.new_doc("Stock Entry")
 	ste.purpose = "DC Completion"
+	ste.includes_packing = doc.includes_packing
 	ste.cut_panel_movement = doc.cut_panel_movement
 	ste.against = "Delivery Challan"
 	ste.against_id = doc_name
@@ -799,6 +830,7 @@ def create_return_grn(doc_name, items):
 		"against": "Work Order",
 		"is_return": 1,
 		"is_rework": dc_doc.is_rework,
+		"includes_packing": dc_doc.includes_packing,
 		"against_id": dc_doc.work_order,
 		"lot": dc_doc.lot,
 		"process_name": dc_doc.process_name,

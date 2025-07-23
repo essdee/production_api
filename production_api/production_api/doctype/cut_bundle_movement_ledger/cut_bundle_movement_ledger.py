@@ -210,7 +210,7 @@ def update_collapsed_bundle(doctype, docname, event, non_stich_process=False):
 		dept_attr = frappe.get_value("Item", item, "dependent_attribute")
 		if not dept_attr:
 			continue
-		if check_cut_stage_variant(row.item_variant, dept_attr, stich_stage):
+		if check_dependent_stage_variant(row.item_variant, dept_attr, stich_stage):
 			quantity = 0
 			if doctype == "Delivery Challan":
 				quantity = row.delivered_quantity
@@ -239,7 +239,7 @@ def update_collapsed_bundle(doctype, docname, event, non_stich_process=False):
 			if not dept_attr:
 				continue
 
-			if check_cut_stage_variant(row.item_variant, dept_attr, stich_stage):
+			if check_dependent_stage_variant(row.item_variant, dept_attr, stich_stage):
 				quantity = row.delivered_quantity
 				if quantity > 0:
 					d = get_variant_attr_details(row.item_variant)
@@ -258,7 +258,7 @@ def update_collapsed_bundle(doctype, docname, event, non_stich_process=False):
 				if not dept_attr:
 					continue
 
-				if check_cut_stage_variant(row.item_variant, dept_attr, stich_stage):
+				if check_dependent_stage_variant(row.item_variant, dept_attr, stich_stage):
 					d = get_variant_attr_details(row.item_variant)
 					if event == "on_submit":
 						to_new_bundles = on_submit_collapsed_bundles(doc, doctype, docname, to_location, row.item_variant, row.set_combination, d, attrs, item, quantity, to_new_bundles, add=True)
@@ -555,15 +555,15 @@ def get_latest_cbml_for_variant(from_location,lot, primary_value, pack_value, st
 
 	return cbm_list
 
-def check_cut_stage_variant(variant, dependent_attribute, dependent_attribute_value):
+def check_dependent_stage_variant(variant, dependent_attribute, dependent_attribute_value):
 	attr_details = frappe.db.sql(
 		"""
 			SELECT attribute, attribute_value FROM `tabItem Variant Attribute` WHERE parent = %(parent)s 
-			AND attribute = %(dependent)s AND attribute_value = %(stich_stage)s
+			AND attribute = %(dependent)s AND attribute_value = %(stage_value)s
 		""", {
 			"parent": variant, 
 			"dependent": dependent_attribute, 
-			"stich_stage": dependent_attribute_value
+			"stage_value": dependent_attribute_value
 		}, as_dict=True
 	)
 	if attr_details:

@@ -195,7 +195,7 @@ frappe.ui.form.on("Cutting LaySheet", {
             if(frm.doc.status == "Label Printed" || frm.doc.status == "Bundles Generated"){
                 frm.add_custom_button("Print Movement Chart", ()=> {
                     let pf = "Cutting Movement Chart"
-                    if(frm.doc.calculated_parts.split(",").length > 5){
+                    if(frm.doc.calculated_parts.split(",").length > 9){
                         pf = "Cutting Movement Chart 2"
                     }
                     let w = window.open(

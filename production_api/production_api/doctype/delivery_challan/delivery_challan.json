@@ -15,6 +15,7 @@
   "item",
   "is_internal_unit",
   "transfer_complete",
+  "includes_packing",
   "production_detail",
   "column_break_xmwj",
   "allow_non_bundle",
@@ -340,13 +341,20 @@
    "fieldname": "allow_non_bundle",
    "fieldtype": "Check",
    "label": "Allow Non Bundle"
+  },
+  {
+   "default": "0",
+   "fetch_from": "work_order.includes_packing",
+   "fieldname": "includes_packing",
+   "fieldtype": "Check",
+   "label": "Includes Packing"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-07-08 12:18:27.991961",
+ "modified": "2025-07-19 18:12:58.292234",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Delivery Challan",

@@ -520,10 +520,11 @@ def get_calculated_bom(item_production_detail, items, lot_name, process_name = N
 
 						qty_of_product = qty_of_product/qty_of_bom_item
 						quantity = qty / qty_of_product
-						if not mapping_bom[bom_item.item].get(str(attr), False):
-							mapping_bom[bom_item.item][str(attr)] = [math.ceil(quantity),bom_item.process_name, uom]
+						key = tuple(sorted(attr.items()))
+						if not mapping_bom[bom_item.item].get(key, False):
+							mapping_bom[bom_item.item][key] = [math.ceil(quantity),bom_item.process_name, uom]
 						else:
-							mapping_bom[bom_item.item][str(attr)][0] += math.ceil(quantity)
+							mapping_bom[bom_item.item][key][0] += math.ceil(quantity)
 
 		if item_detail.dependent_attribute and attr_values.get(item_detail.dependent_attribute):
 			del attr_values[item_detail.dependent_attribute]
@@ -546,11 +547,12 @@ def get_calculated_bom(item_production_detail, items, lot_name, process_name = N
 				bom[k[0]] = {cloth_name:[cloth_details[k],item_detail.cutting_process,uom]}
 			else:	
 				bom[k[0]][cloth_name] = [cloth_details[k],item_detail.cutting_process,uom]
-
+	
+	from production_api.utils import get_tuple_attributes
 	for key,value in mapping_bom.items():
 		for k,val in value.items():
-			k = k.replace("'", '"')
-			k = json.loads(k)
+			k = get_tuple_attributes(k)
+			k = update_if_string_instance(k)
 			variant = get_or_create_variant(key, k)
 			if not bom.get(key,False):
 				bom[key] = {variant:val}
