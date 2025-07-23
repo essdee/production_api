@@ -438,6 +438,7 @@ def get_calculated_bom(item_production_detail, items, lot_name, process_name = N
 		if process_name and bom_item.process_name != process_name:
 			continue
 		if not bom_item.based_on_attribute_mapping:
+			get_or_create_variant(bom_item.item, {})
 			bom[bom_item.item] = {}
 			qty_of_product = bom_item.qty_of_product
 			qty_of_bom = bom_item.qty_of_bom_item
@@ -565,6 +566,7 @@ def get_calculated_bom(item_production_detail, items, lot_name, process_name = N
 		for k,v in val.items():
 			if key in bom_summary:
 				bom_summary[key][5]+=v[0]
+
 			bom_items.append({'item_name': k,'uom':v[2],'process_name':v[1],'required_qty':v[0]})
 	
 	lot_doc.set('bom_summary_json',bom_summary)
