@@ -8,6 +8,7 @@
  "field_order": [
   "process_name",
   "is_manual_entry_in_grn",
+  "includes_packing",
   "is_group",
   "process_details",
   "additional_allowance"
@@ -43,11 +44,18 @@
    "fieldname": "is_manual_entry_in_grn",
    "fieldtype": "Check",
    "label": "Is Manual Entry in GRN"
+  },
+  {
+   "default": "0",
+   "fieldname": "includes_packing",
+   "fieldtype": "Check",
+   "label": "Includes Packing"
   }
  ],
+ "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-03-15 15:05:55.879290",
+ "modified": "2025-07-19 16:10:10.611088",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Process",
@@ -78,6 +86,7 @@
   }
  ],
  "quick_entry": 1,
+ "row_format": "Dynamic",
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": []

@@ -8,7 +8,7 @@ from frappe import _, msgprint
 from frappe.utils import cstr, flt
 from frappe.model.document import Document
 from frappe.model.mapper import get_mapped_doc
-from production_api.utils import update_if_string_instance
+from production_api.utils import update_if_string_instance, get_lpiece_variant
 from production_api.mrp_stock.utils import get_conversion_factor, get_stock_balance
 from production_api.production_api.doctype.item_price.item_price import get_item_variant_price
 from production_api.production_api.doctype.item.item import create_variant, get_attribute_details, get_variant
@@ -309,62 +309,79 @@ class StockEntry(Document):
 			return
 		
 		sl_entries = []
-
+		dept_attr = piece_stage = pack_attr = None
 		from_warehouse = None
 		if self.purpose == "Receive at Warehouse" or self.purpose == "DC Completion" or self.purpose == "GRN Completion":
 			from_warehouse = frappe.get_single("Stock Settings").transit_warehouse
+			if self.purpose == "DC Completion" and self.includes_packing:
+				ipd = frappe.get_value("Delivery Challan", self.against_id, "production_detail")
+				dept_attr, piece_stage, pack_attr = frappe.get_value("Item Production Detail", ipd, ["dependent_attribute","stiching_out_stage", "packing_attribute"])
 		# make sl entries for source warehouse first
-		self.get_sle_for_source_warehouse(sl_entries, warehouse=from_warehouse)
+		self.get_sle_for_source_warehouse(sl_entries, warehouse=from_warehouse, dept_attr=dept_attr, piece_stage=piece_stage, pack_attr=pack_attr)
 		to_warehouse = None
 		if self.purpose == "Send to Warehouse" and not self.skip_transit:
 			to_warehouse = frappe.get_single("Stock Settings").transit_warehouse
 		# SLE for target warehouse
-		self.get_sle_for_target_warehouse(sl_entries, warehouse=to_warehouse)
+		self.get_sle_for_target_warehouse(sl_entries, warehouse=to_warehouse, dept_attr=dept_attr, piece_stage=piece_stage, pack_attr=pack_attr)
 
 		# reverse sl entries if cancel
 		if self.docstatus == 2:
 			sl_entries.reverse()
 		make_sl_entries(sl_entries)
 
-	def get_sle_for_source_warehouse(self, sl_entries, warehouse=None):
+	def get_sle_for_source_warehouse(self, sl_entries, warehouse=None, dept_attr=None, piece_stage=None, pack_attr=None):
 		if not warehouse:
 			warehouse = self.from_warehouse
+		from production_api.production_api.doctype.cut_bundle_movement_ledger.cut_bundle_movement_ledger import (
+			check_dependent_stage_variant
+		)	
 		if cstr(warehouse):
 			for d in self.get("items"):
-				sle = self.get_sl_entries(
-					d, 
-					{
-						"warehouse": cstr(warehouse),
-						"qty": -flt(d.stock_qty),
-						"rate": 0,
-						"outgoing_rate": flt(d.stock_uom_rate)
-					}
-				)
+				sle = None
+				args = {
+					"warehouse": cstr(warehouse),
+					"qty": -flt(d.stock_qty),
+					"rate": 0,
+					"outgoing_rate": flt(d.stock_uom_rate)
+				}
+				if self.includes_packing and check_dependent_stage_variant(d.item, dept_attr, piece_stage):
+					variant = get_lpiece_variant(pack_attr, dept_attr, d.item)
+					sle = self.get_sl_entries(d, args, variant=variant)
+				else:	
+					sle = self.get_sl_entries(d, args)
 				if cstr(self.to_warehouse):
 					sle.dependant_sle_voucher_detail_no = d.name
 
 				sl_entries.append(sle)
 
-	def get_sle_for_target_warehouse(self, sl_entries, warehouse=None):
+	def get_sle_for_target_warehouse(self, sl_entries, warehouse=None, dept_attr=None, piece_stage=None, pack_attr=None):
 		if not warehouse:
 			warehouse = self.to_warehouse
+		from production_api.production_api.doctype.cut_bundle_movement_ledger.cut_bundle_movement_ledger import (
+			check_dependent_stage_variant
+		)	
 		if cstr(warehouse):
 			for d in self.get("items"):
-				sle = self.get_sl_entries(
-					d,
-					{
-						"warehouse": cstr(warehouse),
-						"qty": flt(d.stock_qty),
-						"rate": flt(d.stock_uom_rate),
-					},
-				)
+				args = {
+					"warehouse": cstr(warehouse),
+					"qty": flt(d.stock_qty),
+					"rate": flt(d.stock_uom_rate),
+				}
+				if self.includes_packing and check_dependent_stage_variant(d.item, dept_attr, piece_stage):
+					variant = get_lpiece_variant(pack_attr, dept_attr, d.item)
+					sle = self.get_sl_entries(d, args, variant=variant)
+				else:	
+					sle = self.get_sl_entries(d, args)
 
 				sl_entries.append(sle)
 
-	def get_sl_entries(self, d, args):
+	def get_sl_entries(self, d, args, variant=None):
+		item_variant = d.get("item", None)
+		if variant:
+			item_variant = variant
 		sl_dict = frappe._dict(
 			{
-				"item": d.get("item", None),
+				"item": item_variant,
 				"warehouse": d.get("warehouse", None),
 				"received_type":d.get("received_type",None),
 				"lot": d.get("lot"),

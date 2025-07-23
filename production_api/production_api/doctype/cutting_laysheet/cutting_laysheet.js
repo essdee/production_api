@@ -164,15 +164,22 @@ frappe.ui.form.on("Cutting LaySheet", {
                                         {
                                             fieldname: 'printer_list_html',
                                             fieldtype: 'HTML',
+                                        }, 
+                                        {
+                                            fieldname: "print_order",
+                                            fieldtype: "Select",
+                                            options: ["Panel", "Bundle No"],
+                                            label: "Print Order By",
+                                            default: "Panel",    
                                         }
                                     ],
                                     size:'small',
                                     primary_action_label:"Print",
-                                    primary_action:function(){
+                                    primary_action:function(values){
                                         d.hide()
                                         let printer = get_printer()
                                         printer = printer.slice(1, -1);
-                                        print_labels(frm,printer)
+                                        print_labels(frm, printer, values.print_order)
                                     }
                                 })
                                 d.fields_dict.printer_list_html.$wrapper.html('');
@@ -188,7 +195,7 @@ frappe.ui.form.on("Cutting LaySheet", {
             if(frm.doc.status == "Label Printed" || frm.doc.status == "Bundles Generated"){
                 frm.add_custom_button("Print Movement Chart", ()=> {
                     let pf = "Cutting Movement Chart"
-                    if(frm.doc.calculated_parts.split(",").length > 5){
+                    if(frm.doc.calculated_parts.split(",").length > 9){
                         pf = "Cutting Movement Chart 2"
                     }
                     let w = window.open(
@@ -359,7 +366,7 @@ function get_printer(){
     }
 }
 
-function print_labels(frm,printer){
+function print_labels(frm, printer, print_order){
     frappe.call({
         method:'production_api.production_api.doctype.cutting_laysheet.cutting_laysheet.print_labels',
         args: {
@@ -367,6 +374,7 @@ function print_labels(frm,printer){
             lay_no:frm.doc.lay_no,
             cutting_plan: frm.doc.cutting_plan,
             doc_name:frm.doc.name,
+            print_order: print_order,
         },
         callback: function(r){
             if(r.message){

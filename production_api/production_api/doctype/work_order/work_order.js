@@ -197,6 +197,7 @@ frappe.ui.form.on("Work Order", {
 					x.posting_date = frappe.datetime.nowdate()
 					x.posting_time = new Date().toTimeString().split(' ')[0]
 					x.is_rework = frm.doc.is_rework
+					x.includes_packing = frm.doc.includes_packing
 					frappe.set_route("Form",x.doctype, x.name);
 				}, __("Create"));
 				frm.add_custom_button(__('Make GRN'), function() {
@@ -210,6 +211,7 @@ frappe.ui.form.on("Work Order", {
 					y.delivery_date = frappe.datetime.nowdate()
 					y.posting_time = new Date().toTimeString().split(' ')[0]
 					y.is_rework = frm.doc.is_rework
+					y.includes_packing = frm.doc.includes_packing 
 					frappe.set_route("Form",y.doctype, y.name);
 				}, __("Create"));
 			}
