@@ -1,6 +1,6 @@
 <template>
     <div ref="root">
-        <div v-if="items && pop_up == 1 && !from_page">
+        <div v-if="items && pop_up == 1">
             <h4>Completed Cut Quantity</h4>        
         </div>
         <table v-if="pop_up == 1 || pop_up == 2" class="table table-sm table-bordered">
@@ -24,8 +24,7 @@
                                 {{ j }}
                             </th>
                             <th v-if="i.is_set_item">Panels</th>
-                            <th v-if="!from_page && pop_up == 1 || pop_up == 2">Completed</th>
-                            <th v-if="from_page">Total</th>
+                            <th v-if="pop_up == 1 || pop_up == 2">Completed</th>
                         </tr>
                         <tr v-for="(j, item1_index) in i.items" :key="item1_index">
                             <td>{{item1_index + 1}}</td>
@@ -47,16 +46,14 @@
                                     {{panel}}
                                 </div>
                             </td>
-                            <td v-if="pop_up == 1 && !from_page"><input type="checkbox" v-model="j['completed']" disabled></td>
-                            <td v-else-if="pop_up == 2 && !from_page"><input type="checkbox" v-model="j['completed']"></td>
-                            <td v-if="from_page">{{ j['total_qty'] }}</td>
+                            <td v-if="pop_up == 1"><input type="checkbox" v-model="j['completed']" disabled></td>
+                            <td v-else-if="pop_up == 2 "><input type="checkbox" v-model="j['completed']"></td>
                         </tr>
                         <tr v-if="pop_up == 1">
                             <td>Total</td>
                             <td v-for="(j, idx) in i.attributes" :key="idx"></td>
                             <td v-for="(j, idx) in i.total_qty" :key="idx">{{j}}</td>
-                            <td v-if="!from_page"></td>
-                            <td v-else>{{ i['total_sum'] }}</td>
+                            <td></td>
                         </tr>
                     </table>
                 </td>
@@ -170,22 +167,8 @@ let items2 = ref(null)
 let completed_total = ref({})
 let version = null
 let total_cut_qty = {}
-let from_page = false
-
-const props = defineProps({
-    data: {
-        type: Array,
-        default: () => []
-    }
-})
 
 onMounted(()=> {
-    if(props.data.length > 0){
-        from_page = true
-        items.value = props.data;
-        items2.value = props.data;
-        pop_up.value = 1
-    }
     let today = new Date()
     let date = format_datetime(today.getDate()) + "-" + format_datetime(today.getMonth()+1) + "-" + today.getFullYear()
     let time = format_datetime(today.getHours()) + ":" + format_datetime(today.getMinutes()) + ":" + format_datetime(today.getSeconds())

@@ -7,16 +7,61 @@
                 <button class="btn btn-primary" @click="get_report()">Get Report</button>
             </div>
         </div>
-        <div v-for="key in Object.keys(items)" :key="key" style="padding-left:20px;">
-            <h4>{{ key }}</h4>
-            <CuttingCompletionDetail :data="items[key]"/>
+        <div v-for="i in items" :key="i" style="padding-left:20px;">
+            <h3> {{ i['style_no'] }} - {{ i['lot_no'] }} ({{i['location']}})</h3>
+            <table class="table table-sm table-bordered">
+                <tr>
+                    <td>
+                        <table v-if="i.items && i.items.length > 0" class="table table-sm table-bordered">
+                            <tr>
+                                <th>S.No.</th>
+                                <th v-for="(j, idx) in i.attributes" :key="idx">{{ j }}</th>
+                                <th v-for="(j, idx) in i.primary_attribute_values" :key="idx">
+                                    {{ j }}
+                                </th>
+                                <th>Today Total</th>
+                                <th>Planned</th>
+                                <th>Cumulative Total</th>
+                                <th>Pending</th>
+                            </tr>
+                            <tr v-for="(j, item1_index) in i.items" :key="item1_index">
+                                <td>{{item1_index + 1}}</td>
+                                <td v-for="(k, idx) in i.attributes" :key="idx">
+                                    {{j.attributes[k]}}
+                                    <span>
+                                        <span v-if="k == 'Colour' && j.is_set_item && j.attributes[j.set_attr] != j.major_attr_value && j.attributes[k]">({{ j.item_keys['major_colour'] }})</span>
+                                        <span v-else-if="k == 'Colour' && !j.is_set_item && j.attributes[k] != j.item_keys['major_colour'] && j.attributes[k]">({{ j.item_keys['major_colour'] }})</span>
+                                    </span>
+                                </td>
+                                <td v-for="(k, idx) in Object.keys(j.values)" :key="idx">
+                                    <div v-if="j.values[k] > 0">
+                                        {{ j.values[k] }}
+                                    </div>
+                                    <div v-else>--</div>
+                                </td>
+                                <th>{{ j['total_qty'] }}</th>
+                                <th>{{ j['planned'] }}</th>
+                                <th>{{ j['cumulative'] }}</th>
+                                <th>{{ j['cumulative'] - j['planned'] }}</th>
+                            </tr>
+                            <tr>
+                                <th>Total</th>
+                                <td v-for="(j, idx) in i.attributes" :key="idx"></td>
+                                <th v-for="(j, idx) in i.total_qty" :key="idx">{{j}}</th>
+                                <th>{{ i['total_sum'] }}</th>
+                                <th>{{ i['total_planned_sum'] }}</th>
+                                <th>{{ i['total_received_sum'] }}</th>
+                            </tr>
+                        </table>
+                    </td>
+                </tr>
+            </table>
         </div>
     </div>
 </template>
 
 <script setup>
 import { ref, onMounted } from 'vue';
-import CuttingCompletionDetail from '../../CuttingPlan/components/CuttingCompletionDetail.vue';
 
 const root = ref(null);
 const sample_doc = ref({})

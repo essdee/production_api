@@ -137,7 +137,7 @@
   },
   {
    "fieldname": "calculated_parts",
-   "fieldtype": "Data",
+   "fieldtype": "Small Text",
    "hidden": 1,
    "label": "Calculated Parts"
   },
@@ -184,7 +184,7 @@
    "link_fieldname": "cutting_marker"
   }
  ],
- "modified": "2025-06-06 10:27:44.614057",
+ "modified": "2025-07-24 14:54:05.378761",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Cutting Marker",

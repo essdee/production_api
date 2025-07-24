@@ -310,7 +310,7 @@
   },
   {
    "fieldname": "calculated_parts",
-   "fieldtype": "Data",
+   "fieldtype": "Small Text",
    "hidden": 1,
    "label": "Calculated Parts"
   },
@@ -390,7 +390,7 @@
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-07-02 12:53:41.288578",
+ "modified": "2025-07-24 14:53:20.668092",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Cutting LaySheet",
