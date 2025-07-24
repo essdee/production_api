@@ -1147,7 +1147,7 @@ def save_grn_packing_item_details(item_details, lot):
 	total_qty = 0
 	default_received_type = frappe.db.get_single_value("Stock Settings", "default_received_type")
 	for item in item_details:
-		variant = get_or_create_variant(itemname, {dependent: "L_Piece",primary: item})
+		variant = get_or_create_variant(itemname, {dependent: "Loose Piece",primary: item})
 		item1 = {}
 		item1['item_variant'] = variant
 		item1['lot'] = lot
@@ -1953,6 +1953,7 @@ def calculate_pieces(doc_name):
 	received_types = {}
 	total_received = 0
 	incomplete_items = {}
+	completed_items = {}
 	process_name = grn_doc.process_name
 	prs_doc = frappe.get_cached_doc("Process", process_name)
 	final_calculation = []
@@ -2203,10 +2204,12 @@ def calculate_cutting_piece(grn_doc, received_types, panel_list):
 							if item2['values'][size][panel].get(ty):
 								if item2['values'][size][panel][ty] < min:
 									min = item2['values'][size][panel][ty]
+							else:
+								min = 0
+								break		
 						else:
 							min = 0
-					else:
-						min = 0		
+							break
 				if min > 0 and min != sys.maxsize:
 					if item1['values'][size]:
 						if item1['values'][size].get(ty):

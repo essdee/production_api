@@ -438,7 +438,7 @@ def get_daily_production_report(date):
 		}, as_dict=True
 
 	)
-	report = {}
+	report = []
 	for cutting_plan in cutting_plans:
 		cp_doc = frappe.get_doc("Cutting Plan",cutting_plan['cutting_plan'])
 		if cp_doc.version == "V1":
@@ -552,21 +552,49 @@ def get_daily_production_report(date):
 
 		items_list = []
 		total = 0
+		total_planned_qty = 0
+		total_received_qty = 0
+		planned_dict = {}
+		wo_doc = frappe.get_doc("Work Order", cp_doc.work_order)
+		for row in wo_doc.work_order_calculated_items:
+			planned_dict.setdefault(row.item_variant, {
+				"planned": row.quantity,
+				"cumulative": row.received_qty
+			})
+		from production_api.production_api.doctype.item.item import get_or_create_variant
 		for row in completed_items['items']:
 			total_qty = 0
+			total_planned = 0
+			total_received = 0
 			for val in row['values']:
 				if row['values'][val] > 0:
 					total_qty += row['values'][val]
+					attrs = row['attributes']
+					attrs[row['primary_attribute']] = val
+					variant = get_or_create_variant(cp_doc.item, attrs)
+					total_planned += planned_dict[variant]['planned']
+					total_received += planned_dict[variant]['cumulative']
+
 			if total_qty > 0:	
 				row['total_qty'] = total_qty	
+				row['planned'] = total_planned
+				row['cumulative'] = total_received
 				items_list.append(row)
 				total += total_qty
+				total_planned_qty += total_planned
+				total_received_qty += total_received
+
 		if len(items_list) == 0:
 			continue
 		else:
 			completed_items['items'] = items_list
 		completed_items['total_sum'] = total
-		report[cp_doc.lot + " - " + cp_doc.name] = [completed_items]
+		completed_items['total_planned_sum'] = total_planned_qty
+		completed_items['total_received_sum'] = total_received_qty
+		completed_items['style_no'] = cp_doc.item
+		completed_items['lot_no'] = cp_doc.lot
+		completed_items['location'] = cp_doc.cutting_location
+		report.append(completed_items)
 
 	return report
 
@@ -575,7 +603,7 @@ def get_lpiece_variant(pack_attr, dept_attr, variant):
 	from production_api.production_api.doctype.item.item import get_variant
 	attr_details = get_variant_attr_details(variant)
 	del attr_details[pack_attr]
-	attr_details[dept_attr] = "L_Piece"
+	attr_details[dept_attr] = "Loose Piece"
 	item_name = frappe.get_value("Item Variant", variant, "item")
 	variant = get_variant(item_name, attr_details)
 	return variant
