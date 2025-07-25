@@ -756,7 +756,7 @@ def print_labels(print_items, lay_no, cutting_plan, doc_name, print_order):
 		grn = create_grn_entry(doc_name)
 		cancelled_str = frappe.db.get_single_value("MRP Settings", "cut_bundle_cancelled_lot")
 		cancelled_list = cancelled_str.split(",")
-		if lot_no not in cancelled_list:
+		if lot_no not in cancelled_list and not cls_doc.avoid_bundle_movement:
 			create_cut_bundle_ledger(cls_doc)
 	return {
 		"zpl": zpl,
@@ -1501,7 +1501,8 @@ def update_label_print_status(doc_name):
 	if wo:
 		grn = create_grn_entry(doc_name)
 		doc.goods_received_note = grn
-		create_cut_bundle_ledger(doc)
+		if not doc.avoid_bundle_movement:
+			create_cut_bundle_ledger(doc)
 	doc.status = "Label Printed"
 	doc.reverted = 0
 	doc.save()
