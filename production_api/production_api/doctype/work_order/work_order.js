@@ -153,6 +153,7 @@ frappe.ui.form.on("Work Order", {
 							}
 						],
 						primary_action_label: "Close Work Order",
+						size: "extra-large",
 						primary_action(){
 							d.hide()
 							let x = new frappe.ui.Dialog({
@@ -238,7 +239,7 @@ frappe.ui.form.on("Work Order", {
 					frm.dirty();
 				})
 			}
-			if(frm.doc.docstatus == 1){
+			if(frm.doc.docstatus == 1 && !frm.doc.is_rework){
 				frappe.call({
 					method: "production_api.production_api.doctype.work_order.work_order.fetch_summary_details",
 					args : {

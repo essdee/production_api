@@ -1,0 +1,19 @@
+{
+ "content": null,
+ "creation": "2025-07-25 09:43:05.937499",
+ "docstatus": 0,
+ "doctype": "Page",
+ "idx": 0,
+ "modified": "2025-07-25 09:43:05.937499",
+ "modified_by": "Administrator",
+ "module": "Production Api",
+ "name": "inward-quantity-repo",
+ "owner": "Administrator",
+ "page_name": "inward-quantity-repo",
+ "roles": [],
+ "script": null,
+ "standard": "Yes",
+ "style": null,
+ "system_page": 0,
+ "title": "Inward Quantity Report"
+}

@@ -46,6 +46,7 @@ frappe.query_reports["Work Order Report"] = {
 			"fieldtype":"Select",
 			"options":"\nOpen\nClose",
 			"label":"Status",
+			"default": "Open",
 		}
 	]
 };

@@ -15,6 +15,7 @@ import GRNConsumedDetail from "./GRN/components/GRNConsumedDetail.vue"
 import LotOrder from "./Lot/components/LotOrder.vue" 
 import WorkStation from "./Lot/components/WorkStation.vue"
 import TimeActionPreview from "./Lot/components/TimeActionPreview.vue"
+import InwardQuantityReport from "./Lot/components/InwardQuantityReport.vue";
 import TimeAction from "./Lot/components/TimeAction.vue"
 import TimeActionReport from "./Lot/components/TimeActionReport.vue"
 import CutPlanItems from "./CuttingPlan/components/CutPlanItems.vue"
@@ -454,6 +455,18 @@ frappe.production.ui.TimeActionPreview = class {
     load_data(data){
         let items = JSON.parse(JSON.stringify(data))
         this.vue.load_data(items)
+    }
+}
+
+frappe.production.ui.InwardQuantityReport = class {
+    constructor(wrapper){
+        this.$wrapper = $(wrapper)
+        this.make_app()
+    }
+    make_app(){
+        this.app = createApp(InwardQuantityReport)
+        SetVueGlobals(this.app)
+        this.vue = this.app.mount(this.$wrapper.get(0))
     }
 }
 
