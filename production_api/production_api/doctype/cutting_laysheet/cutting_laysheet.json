@@ -34,6 +34,7 @@
   "width_allowance",
   "is_set_item",
   "posting_time",
+  "avoid_bundle_movement",
   "section_break_cwpl",
   "cutting_marker_ratios",
   "cutting_marker_ratios_html",
@@ -385,12 +386,18 @@
    "fieldtype": "Time",
    "label": "Posting Time",
    "read_only": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "avoid_bundle_movement",
+   "fieldtype": "Check",
+   "label": "Avoid Bundle Movement"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-07-24 14:53:20.668092",
+ "modified": "2025-07-25 18:35:32.742365",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Cutting LaySheet",
