@@ -195,10 +195,27 @@ def get_cut_bundle_unmoved_data(from_location, lot, posting_date, posting_time, 
 	sizes = get_ipd_primary_values(production_detail)
 	ipd_doc = frappe.get_doc("Item Production Detail", production_detail)
 	panels = []
+	major_part_value = None
+	set_part_value = None
+	set_item_combination_details = {}
+	indexes = {}
 	if ipd_doc.is_set_item:
+		major_part_value = ipd_doc.major_attribute_value
 		panels = {}
 		for row in ipd_doc.stiching_item_details:
+			if row.set_item_attribute_value != major_part_value:
+				set_part_value = row.set_item_attribute_value
 			panels.setdefault(row.set_item_attribute_value, [])
+			panels[row.set_item_attribute_value].append(row.stiching_attribute_value)
+
+		for row in ipd_doc.set_item_combination_details:
+			if indexes.get(row.index):
+				m = indexes[row.index]
+				set_item_combination_details[m] = row.attribute_value
+			else:
+				indexes[row.index] = row.attribute_value
+				set_item_combination_details[row.attribute_value] = None
+
 	posting_datetime = get_combine_datetime(posting_date, posting_time)
 	
 	cb_list = frappe.db.sql("""
@@ -231,10 +248,17 @@ def get_cut_bundle_unmoved_data(from_location, lot, posting_date, posting_time, 
 		major_colour = set_combination['major_colour']
 		panel_colour = cb_doc.colour
 		if ipd_doc.is_set_item:
-			if set_combination.get('set_part'):
-				if parts not in panels[set_combination['set_part']]:
-					panels[set_combination['set_part']].append(parts)
-				major_colour = "("+ major_colour +")" + set_combination["set_colour"] +"-"+set_combination.get('set_part')
+			cur_panels = parts.split(",")
+			if cur_panels[0] not in panels[set_combination['major_part']]:
+				if not set_combination.get('set_part'):
+					set_colour = set_item_combination_details[major_colour]
+					major_colour = "("+ major_colour +")" + set_colour +"-"+set_part_value
+					if parts not in panels[set_part_value]:
+						panels[set_part_value].append(parts)
+				else:	
+					if parts not in panels[set_combination['set_part']]:
+						panels[set_combination['set_part']].append(parts)
+					major_colour = "("+ major_colour +")" + set_combination["set_colour"] +"-"+set_combination.get('set_part')
 			else:
 				if parts not in panels[set_combination['major_part']]:
 					panels[set_combination['major_part']].append(parts)

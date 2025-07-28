@@ -863,6 +863,7 @@ def get_attributes(items, itemname, stage, dependent_attribute, ipd=None, proces
 				})
 			else:
 				set_item_stitching_attrs = {}
+				panel_colour_combination = get_panel_colour_combination(ipd_doc)
 				if ipd_doc.is_set_item:
 					part = None
 					for attr in current_variant.attributes:
@@ -884,6 +885,8 @@ def get_attributes(items, itemname, stage, dependent_attribute, ipd=None, proces
 								attributes[ipd_doc.stiching_attribute] = item.stiching_attribute_value			
 						else:
 							attributes[ipd_doc.stiching_attribute] = item.stiching_attribute_value
+						m_colour = variant['set_combination']['major_colour']
+						attributes[ipd_doc.packing_attribute] = panel_colour_combination[m_colour][item.stiching_attribute_value]	
 						v = True
 						panel_part = set_item_stitching_attrs[item.stiching_attribute_value]
 						if panel_part != part:
@@ -1517,3 +1520,17 @@ def update_receivables(receivables_data, doc_name):
 						"ref_docname": ref_docname,
 					}
 				)
+
+def get_panel_colour_combination(ipd_doc):
+	indexes = {}
+	comb_details = {}
+	for row in ipd_doc.stiching_item_combination_details:
+		if indexes.get(row.index):
+			major_colour = indexes[row.index]
+			comb_details[major_colour][row.set_item_attribute_value] = row.attribute_value
+		else:
+			indexes[row.index] = row.major_attribute_value
+			comb_details[row.major_attribute_value] = {}
+			comb_details[row.major_attribute_value][row.set_item_attribute_value] = row.attribute_value
+
+	return comb_details
