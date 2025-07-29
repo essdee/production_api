@@ -188,12 +188,14 @@ def update_collapsed_bundle(doctype, docname, event, non_stich_process=False):
 	)
 	if not bundle_entries:
 		return
-	ipd_fields = ["primary_item_attribute", "packing_attribute", "stiching_attribute", "stiching_in_stage"]
-	primary_attr, pack_attr, stich_attr, stich_stage = frappe.get_value("Item Production Detail", ipd, ipd_fields)
+	ipd_fields = ["primary_item_attribute", "packing_attribute", "stiching_attribute", "stiching_in_stage", "dependent_attribute"]
+	primary_attr, pack_attr, stich_attr, stich_stage, dependent = frappe.get_value("Item Production Detail", ipd, ipd_fields)
 	attrs = {
 		"primary": primary_attr,
 		"pack": pack_attr,
 		"stich": stich_attr,
+		"stich_stage": stich_stage,
+		"stage": dependent,
 	}
 	items = None
 	if doctype == "Delivery Challan":
@@ -268,7 +270,7 @@ def update_collapsed_bundle(doctype, docname, event, non_stich_process=False):
 	for bundle_key in new_bundles.keys():
 		bundle_total_qty = new_bundles[bundle_key]['bundle_qty']
 		stock_moved_qty = new_bundles[bundle_key]['qty']
-		create_new_collapsed_bundle(bundle_key, bundle_total_qty, stock_moved_qty, from_location, doc)
+		create_new_collapsed_bundle(bundle_key, bundle_total_qty, stock_moved_qty, from_location, doc, d, attrs)
 
 	if doctype == "Delivery Challan":
 		for bundle_key in to_new_bundles.keys():
@@ -277,13 +279,14 @@ def update_collapsed_bundle(doctype, docname, event, non_stich_process=False):
 			create_new_collapsed_bundle(bundle_key, bundle_total_qty, stock_moved_qty, to_location, doc)	
 
 def on_submit_collapsed_bundles(doc, doctype, docname, location, item_variant, set_combination, d, attrs, item, quantity, bundles_dict, add=False):
-	cb_previous_entries = get_collapsed_previous_cbm_list(doc.posting_date, doc.posting_time, location, item_variant, set_combination)
-	cb_future_entries = get_collapsed_future_cbm_list(doc.posting_date, doc.posting_time, location, item_variant, set_combination, limit=False)
+	cb_previous_entries = get_collapsed_previous_cbm_list(doc.posting_date, doc.posting_time, location, item_variant)
+	cb_future_entries = get_collapsed_future_cbm_list(doc.posting_date, doc.posting_time, location, item_variant, limit=False)
 	if not cb_previous_entries and not cb_future_entries:
 		row_panel = d[attrs['stich']]
 		d[attrs['stich']] = "%"+d[attrs['stich']]+"%"
 		row_set_comb = update_if_string_instance(set_combination)
-		row_set_str = frappe.json.dumps(row_set_comb)	
+		tuple_key = sorted(row_set_comb.items())
+		row_set_str = frappe.json.dumps(tuple_key)	
 		cbm_list = get_latest_cbml_for_variant(location, doc.lot, d[attrs['primary']], d[attrs['pack']], d[attrs['stich']], item)
 		for bundle in cbm_list:
 			cbm_doc = frappe.get_doc("Cut Bundle Movement Ledger", bundle['name'])	
@@ -296,7 +299,8 @@ def on_submit_collapsed_bundles(doc, doctype, docname, location, item_variant, s
 				set_comb["major_part"] = cbm_set_comb['major_part']
 			if set_comb != row_set_comb:
 				continue
-			set_comb_str = frappe.json.dumps(set_comb)
+			tuple_key = sorted(set_comb.items())
+			set_comb_str = frappe.json.dumps(tuple_key)
 			for panel in panels:
 				panel = panel.strip()
 				key = [ str(cbm_doc.lot), str(cbm_doc.item), str(cbm_doc.size), str(cbm_doc.colour), str(panel), set_comb_str]		
@@ -344,8 +348,8 @@ def on_submit_collapsed_bundles(doc, doctype, docname, location, item_variant, s
 	return bundles_dict		
 
 def cancel_collapse_bundles(doc, item_variant, set_combination, quantity, location, d, attrs, item):
-	cb_previous_entries = get_collapsed_previous_cbm_list(doc.posting_date, doc.posting_time, location, item_variant, set_combination, limit=False)
-	cb_future_entries = get_collapsed_future_cbm_list(doc.posting_date, doc.posting_time, location, item_variant, set_combination, limit=False)
+	cb_previous_entries = get_collapsed_previous_cbm_list(doc.posting_date, doc.posting_time, location, item_variant, limit=False)
+	cb_future_entries = get_collapsed_future_cbm_list(doc.posting_date, doc.posting_time, location, item_variant, limit=False)
 	if cb_previous_entries and not cb_future_entries:
 		if len(cb_previous_entries) == 1:
 			update_uncollapsed(location, set_combination, doc.lot, d[attrs['primary']], d[attrs['pack']], d[attrs['stich']], item)
@@ -363,7 +367,8 @@ def cancel_collapse_bundles(doc, item_variant, set_combination, quantity, locati
 				qty = entry['quantity_after_transaction'] + previous_qty
 				update_future_entries_qty_after_transaction(entry['name'], qty)	
 
-def create_new_collapsed_bundle(bundle_key, bundle_total_qty, stock_moved_qty, from_location, doc):
+def create_new_collapsed_bundle(bundle_key, bundle_total_qty, stock_moved_qty, from_location, doc, d, attrs):
+	from production_api.utils import get_tuple_attributes
 	lot, item, size, colour, panel, set_combination = bundle_key.split("|")
 	set_combination = frappe.json.loads(set_combination)
 	ipd = frappe.get_value("Lot", lot, "production_detail")
@@ -384,9 +389,17 @@ def create_new_collapsed_bundle(bundle_key, bundle_total_qty, stock_moved_qty, f
 		frappe.throw("Stock is not Available")
 
 	lay_no = bundle_no = 0
+	variant = get_or_create_variant(item, {
+		attrs['primary']: size,
+		attrs['pack']: colour,
+		attrs['stich']: panel,
+		attrs['stage']: attrs['stich_stage'],
+	})
+	set_combination = get_tuple_attributes(set_combination)
 	d = {
 		"lot" : lot,
 		"item" : item,
+		"item_variant": variant,
 		"size" : size,
 		"colour" : colour,
 		"panel" : panel,
@@ -403,20 +416,18 @@ def create_new_collapsed_bundle(bundle_key, bundle_total_qty, stock_moved_qty, f
 		"quantity_after_transaction": bundle_qty * panel_qty_dict[panel],
 		"set_combination": frappe.json.dumps(set_combination),
 	}
-	new_doc = frappe.new_doc("Cut Bundle Movement Ledger")
-	new_doc.update(d)
-	new_doc.save()
+	d['doctype'] = "Cut Bundle Movement Ledger"
+	new_doc = frappe.get_doc(d)
+	new_doc.flags.ignore_permissions = 1
 	new_doc.set_posting_datetime()
 	new_doc.set_key()
-	new_doc.update_item_variant()
 	new_doc.submit()
 
-def get_collapsed_future_cbm_list(posting_date, posting_time, supplier, variant, set_combination, limit=True):
-	set_comb = frappe.json.dumps(frappe.json.loads(set_combination))
+def get_collapsed_future_cbm_list(posting_date, posting_time, supplier, variant, limit=True):
 	query = """
 		SELECT name, quantity_after_transaction, set_combination, quantity FROM `tabCut Bundle Movement Ledger` 
 		WHERE collapsed_bundle = 1 AND is_cancelled = 0 AND transformed = 0 AND posting_datetime > %(datetime)s 
-		AND supplier = %(supplier)s AND item_variant = %(variant)s AND set_combination = %(set_comb)s 
+		AND supplier = %(supplier)s AND item_variant = %(variant)s
 		ORDER BY posting_datetime DESC
 	"""	
 	if limit:
@@ -427,16 +438,14 @@ def get_collapsed_future_cbm_list(posting_date, posting_time, supplier, variant,
 		"datetime": datetime, 
 		"supplier": supplier,
 		"variant": variant,
-		"set_comb": set_comb,
 	}, as_dict=True)
 	return cbm_list
 
-def get_collapsed_previous_cbm_list(posting_date, posting_time, supplier, variant, set_combination, limit=True):
-	set_comb = frappe.json.dumps(frappe.json.loads(set_combination))
+def get_collapsed_previous_cbm_list(posting_date, posting_time, supplier, variant, limit=True):
 	query = """
 		SELECT name, quantity_after_transaction, quantity, set_combination FROM `tabCut Bundle Movement Ledger` 
 		WHERE collapsed_bundle = 1 AND is_cancelled = 0 AND transformed = 0 AND posting_datetime <= %(datetime)s 
-		AND supplier = %(supplier)s AND item_variant = %(variant)s AND set_combination = %(set_comb)s 
+		AND supplier = %(supplier)s AND item_variant = %(variant)s
 		ORDER BY posting_datetime DESC
 	"""
 	if limit:
@@ -447,7 +456,6 @@ def get_collapsed_previous_cbm_list(posting_date, posting_time, supplier, varian
 		"datetime": datetime, 
 		"supplier": supplier,
 		"variant": variant,
-		"set_comb": set_comb,
 	}, as_dict=True)
 
 	return cbm_list
@@ -496,27 +504,30 @@ def update_uncollapsed(from_location, set_combination, lot, primary_val, pack_va
 
 def create_inter_cbml_doc(previous_docname, doctype, docname, quantity, multiplier, posting_date, posting_time):
 	collapsed_doc = frappe.get_doc("Cut Bundle Movement Ledger", previous_docname)
-	new_doc = frappe.new_doc("Cut Bundle Movement Ledger")
-	new_doc.lot = collapsed_doc.lot
-	new_doc.supplier = collapsed_doc.supplier 
-	new_doc.supplier_name = collapsed_doc. supplier_name
-	new_doc.lay_no = collapsed_doc.lay_no 
-	new_doc.bundle_no = collapsed_doc.bundle_no
-	new_doc.panel = collapsed_doc.panel 
-	new_doc.shade = collapsed_doc.shade 
-	new_doc.collapsed_bundle = 1 
-	new_doc.item_variant = collapsed_doc.item_variant 
-	new_doc.item = collapsed_doc.item 
-	new_doc.voucher_type = doctype 
-	new_doc.voucher_no = docname 
-	new_doc.size = collapsed_doc.size 
-	new_doc.colour = collapsed_doc.colour 
-	new_doc.quantity = quantity * multiplier
-	new_doc.quantity_after_transaction = collapsed_doc.quantity_after_transaction + (quantity * multiplier ) 
-	new_doc.set_combination = collapsed_doc.set_combination
-	new_doc.posting_date = posting_date
-	new_doc.posting_time = posting_time
-	new_doc.save()
+	d = {
+		"lot": collapsed_doc.lot,
+		"supplier": collapsed_doc.supplier, 
+		"supplier_name": collapsed_doc. supplier_name,
+		"lay_no": collapsed_doc.lay_no, 
+		"bundle_no": collapsed_doc.bundle_no,
+		"panel": collapsed_doc.panel, 
+		"shade": collapsed_doc.shade, 
+		"collapsed_bundle": 1, 
+		"item_variant": collapsed_doc.item_variant, 
+		"item": collapsed_doc.item, 
+		"voucher_type": doctype, 
+		"voucher_no": docname, 
+		"size": collapsed_doc.size, 
+		"colour": collapsed_doc.colour, 
+		"quantity": quantity * multiplier,
+		"quantity_after_transaction": collapsed_doc.quantity_after_transaction + (quantity * multiplier), 
+		"set_combination": collapsed_doc.set_combination,
+		"posting_date": posting_date,
+		"posting_time": posting_time,
+	}
+	d['doctype'] = "Cut Bundle Movement Ledger"
+	new_doc = frappe.get_doc(d)
+	new_doc.flags.ignore_permissions = 1
 	new_doc.set_posting_datetime()
 	new_doc.set_key()
 	new_doc.submit()
