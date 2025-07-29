@@ -433,7 +433,7 @@ def get_calculated_bom(item_production_detail, items, lot_name, process_name = N
 		total_quantity = 0
 		for i in items:
 			total_quantity += i['quantity']
-	
+	mapping_bom = {}
 	for bom_item in item_detail.item_bom:
 		if process_name and bom_item.process_name != process_name:
 			continue
@@ -458,7 +458,13 @@ def get_calculated_bom(item_production_detail, items, lot_name, process_name = N
 				bom[bom_item.item][bom_item.item] = [math.ceil(quantity),bom_item.process_name, uom]
 			else:
 				bom[bom_item.item][bom_item.item][0] += math.ceil(quantity)
-	mapping_bom = {}
+			if not bom_summary.get(bom_item.item,False):
+				dept_attr = bom_item.dependent_attribute_value
+				attr_details = get_dependent_attribute_details(item_detail.dependent_attribute_mapping)
+				dept_attr_uom = attr_details['attr_list'][dept_attr]['uom']
+				default_uom = frappe.get_value("Item",bom_item.item,"default_unit_of_measure")
+				bom_summary[bom_item.item] = [bom_item.process_name,bom_item.qty_of_product,dept_attr_uom,bom_item.qty_of_bom_item,default_uom,0]	
+
 	cloth_details = {}
 	
 	for item in items:

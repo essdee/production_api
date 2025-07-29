@@ -907,11 +907,13 @@ def get_mapping_details(ipd):
 				'bom_attr_mapping_link': bom.attribute_mapping,
 				'bom_attr_mapping_based_on': bom.based_on_attribute_mapping,
 				'bom_attr_mapping_list': doc.values,
-				'doctype': 'Item BOM Attribute Mapping'
+				'doctype': 'Item BOM Attribute Mapping',
+				"qty": bom.qty_of_bom_item,
 			})
 
 	map_dict = {}
 	for mapping in bom_attribute_list:	
+		bom_qty = mapping.get('qty')
 		bom_item = mapping.get('bom_item')
 		mapping = mapping.get('bom_attr_mapping_list')
 		data = []
@@ -920,11 +922,15 @@ def get_mapping_details(ipd):
 			if len(data) <= d.index:
 				while x >= 0:
 					x = x -1
-					data.append({"item": [], "bom": []})
+					data.append({"item": [], "bom": [], "quantity": 0})
 			if d.type == "item":
 				data[d.index]["item"].append(d.attribute_value)
 			elif (d.type == "bom"):
 				data[d.index]["bom"].append(d.attribute_value)
+			qty = d.quantity
+			if d.quantity == 0:
+				qty = bom_qty
+			data[d.index]['quantity'] = qty	
 			
 		i = 0
 		while i < len(data):
@@ -934,10 +940,10 @@ def get_mapping_details(ipd):
 				i = i + 1
 		items = "\n"
 		for d in data:
-			if d.get('item') and d.get('bom'):
+			if d.get('item'):
 				item_str = ", ".join(d['item'])
 				bom_str = ", ".join(d['bom'])
-				items += f"{item_str} -> {bom_str} <br>"
+				items += f"{item_str} -> {bom_str} / {d['quantity']}<br>"
 		map_dict[bom_item] = items
 	return map_dict
 

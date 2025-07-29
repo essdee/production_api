@@ -176,6 +176,9 @@ export default {
                     if (!indexes.includes(i)) {
                         this.toggle_row(i, false);
                     }
+                    else{
+                        this.toggle_row(i, true);
+                    }
                 }
             });
             // this.$nextTick(() => {
