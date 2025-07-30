@@ -453,7 +453,7 @@
    "in_standard_filter": 1,
    "label": "Lot Costing Type",
    "no_copy": 1,
-   "options": "Costing\nPlanned Qty\nCutting Qty\nFinal Qty",
+   "options": "Costing\nPlanned Qty\nCutting Qty\nFinal Qty\nAudited Final",
    "reqd": 1
   },
   {
@@ -473,9 +473,10 @@
    "options": "Product"
   }
  ],
+ "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2024-04-04 18:29:31.261490",
+ "modified": "2025-07-30 16:45:38.888965",
  "modified_by": "Administrator",
  "module": "Product Development",
  "name": "Lotwise Item Profit",
@@ -519,6 +520,7 @@
    "write": 1
   }
  ],
+ "row_format": "Dynamic",
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": [],

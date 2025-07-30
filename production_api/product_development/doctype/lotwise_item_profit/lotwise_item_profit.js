@@ -258,6 +258,7 @@ function fetch_lot_qty(frm) {
 		"Planned Qty": "qty",
 		"Cutting Qty": "cut_qty",
 		"Final Qty": "final_qty",
+		"Audited Final": "final_qty",
 	}
 	frappe.call({
 		method: "production_api.product_development.doctype.lotwise_item_profit.lotwise_item_profit.get_lot_qty",

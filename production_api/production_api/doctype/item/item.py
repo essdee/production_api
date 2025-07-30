@@ -477,7 +477,7 @@ def get_item_attribute_values(doctype, txt, searchfield, start, page_len, filter
 		mapping = None
 		if attribute == item_detail.packing_attribute:
 			attribute_values = [value.attribute_value for value in item_detail.packing_attribute_details]
-			return [[value] for value in attribute_values if value.lower().startswith(txt.lower())]
+			return [[value] for value in attribute_values if txt.lower() in value.lower()]
 		else:
 			for attr in item_detail.item_attributes:
 				if attr.attribute == attribute:
@@ -489,7 +489,7 @@ def get_item_attribute_values(doctype, txt, searchfield, start, page_len, filter
 				return values
 			else:
 				attribute_values = [value.attribute_value for value in mapping_doc.values]
-				return [[value] for value in attribute_values if value.lower().startswith(txt.lower())]
+				return [[value] for value in attribute_values if txt.lower() in value.lower()]
 	else:	
 		item = frappe.get_doc("Item", item_name)
 		attributes = [attribute.attribute for attribute in item.attributes]
@@ -503,7 +503,7 @@ def get_item_attribute_values(doctype, txt, searchfield, start, page_len, filter
 					return values
 				else:
 					attribute_values = [value.attribute_value for value in mapping_doc.values]
-					return [[value] for value in attribute_values if value.lower().startswith(txt.lower())]
+					return [[value] for value in attribute_values if txt.lower() in value.lower()]
 		
 @frappe.whitelist()
 @frappe.validate_and_sanitize_search_inputs
@@ -514,7 +514,7 @@ def get_item_attributes(doctype, txt, searchfield, start, page_len, filters):
 	item_name = filters['item']
 	item = frappe.get_doc("Item", item_name)
 	attributes = [attribute.attribute for attribute in item.attributes]
-	return [[value] for value in attributes if value.lower().startswith(txt.lower())]
+	return [[value] for value in attributes if txt.lower() in value.lower()]
 
 @frappe.whitelist()
 def get_attribute_values(item, attributes = None):
