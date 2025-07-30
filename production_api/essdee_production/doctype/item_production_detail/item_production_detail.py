@@ -455,9 +455,9 @@ def get_calculated_bom(item_production_detail, items, lot_name, process_name = N
 			uom = frappe.get_value("Item", bom_item.item, "default_unit_of_measure")
 			quantity = temp_qty / qty_of_product
 			if not bom[bom_item.item].get(bom_item.item, False):
-				bom[bom_item.item][bom_item.item] = [math.ceil(quantity),bom_item.process_name, uom]
+				bom[bom_item.item][bom_item.item] = [quantity,bom_item.process_name, uom]
 			else:
-				bom[bom_item.item][bom_item.item][0] += math.ceil(quantity)
+				bom[bom_item.item][bom_item.item][0] += quantity
 			if not bom_summary.get(bom_item.item,False):
 				dept_attr = bom_item.dependent_attribute_value
 				attr_details = get_dependent_attribute_details(item_detail.dependent_attribute_mapping)
@@ -529,9 +529,9 @@ def get_calculated_bom(item_production_detail, items, lot_name, process_name = N
 						quantity = qty / qty_of_product
 						key = tuple(sorted(attr.items()))
 						if not mapping_bom[bom_item.item].get(key, False):
-							mapping_bom[bom_item.item][key] = [math.ceil(quantity),bom_item.process_name, uom]
+							mapping_bom[bom_item.item][key] = [quantity,bom_item.process_name, uom]
 						else:
-							mapping_bom[bom_item.item][key][0] += math.ceil(quantity)
+							mapping_bom[bom_item.item][key][0] += quantity
 
 		if item_detail.dependent_attribute and attr_values.get(item_detail.dependent_attribute):
 			del attr_values[item_detail.dependent_attribute]
@@ -561,6 +561,7 @@ def get_calculated_bom(item_production_detail, items, lot_name, process_name = N
 			k = get_tuple_attributes(k)
 			k = update_if_string_instance(k)
 			variant = get_or_create_variant(key, k)
+			val[0] = math.ceil(val[0])
 			if not bom.get(key,False):
 				bom[key] = {variant:val}
 			else:	
