@@ -7,14 +7,14 @@ frappe.query_reports["Stock Reconciliation Report"] = {
 			"fieldname": "from_date",
 			"fieldtype": "Date",
 			"label": "From Date",
-			"default": frappe.datetime.add_months(frappe.datetime.nowdate(), -1),
+			"default": frappe.datetime.add_months(frappe.datetime.month_start(), -1),
 			"reqd": true
 		},
 		{
 			"fieldname": "to_date",
 			"fieldtype": "Date",
 			"label": "To Date",
-			"default": frappe.datetime.nowdate(),
+			"default": frappe.datetime.add_months(frappe.datetime.month_end(), -1),
 			"reqd": true
 		},
 		{

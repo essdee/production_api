@@ -68,6 +68,7 @@
   {
    "fieldname": "item",
    "fieldtype": "Link",
+   "in_standard_filter": 1,
    "label": "Item",
    "options": "Item"
   },
@@ -350,7 +351,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-06-25 16:41:26.525635",
+ "modified": "2025-07-29 11:18:13.956398",
  "modified_by": "Administrator",
  "module": "Essdee Production",
  "name": "Lot",

@@ -189,7 +189,7 @@ class LotTransfer(Document):
 				"voucher_type": self.doctype,
 				"voucher_no": self.name,
 				"voucher_detail_no": d.name,
-				"uom": d.stock_uom_rate,
+				"uom": d.stock_uom,
 				"rate": 0,
 				"is_cancelled": 1 if self.docstatus == 2 else 0,
 			}
