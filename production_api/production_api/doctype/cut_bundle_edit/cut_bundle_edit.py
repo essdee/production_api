@@ -226,9 +226,9 @@ class CutBundleEdit(Document):
 			"set_combination": frappe.json.dumps(row['set_combination']),
 			"transformed_from": self.name,
 		}
-		new_doc = frappe.new_doc("Cut Bundle Movement Ledger")
-		new_doc.update(d)
-		new_doc.save()
+		d['doctype'] = "Cut Bundle Movement Ledger"
+		new_doc = frappe.get_doc(d)
+		new_doc.flags.ignore_permissions = 1
 		new_doc.set_posting_datetime()
 		new_doc.set_key()
 		new_doc.submit()
