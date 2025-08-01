@@ -85,7 +85,7 @@ class CutBundleEdit(Document):
 					accessories.append(acc)
 			json_data['accessory_data'] = accessories		
 
-		self.set("cut_panel_movement_json", json_data)		
+		self.set("cut_panel_movement_json", frappe.json.dumps(json_data))		
 
 	def before_cancel(self):
 		self.ignore_linked_doctypes = ("Cut Bundle Movement Ledger",)
