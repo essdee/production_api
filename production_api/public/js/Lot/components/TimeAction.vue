@@ -4,8 +4,9 @@
             <div style="display:flex;width:100%; justify-content: space-between;">
                 <h4>Time and Action Summary</h4>
                 <div style="display:flex; justify-content: space-between; gap: 0.75rem; ">
-                    <button  v-if="show_button" class="btn btn-success" @click="update_all()">Update All</button>
+                    <button v-if="show_button" class="btn btn-success" @click="update_all()">Update All</button>
                     <button class="btn btn-success" @click="update_work_station()">Update Work Station</button>
+                    <button v-if="version=='V1'" class="btn btn-success" @click="update_allocated_days()">Update Allocated Days</button>
                 </div>
             </div>
             <table class="table table-sm table-bordered">
@@ -35,25 +36,60 @@
 <script setup>
 import {ref} from 'vue';
 import WorkStation from './WorkStation.vue';
+import WorkStationV2 from './WorkStationV2.vue';
 import { createApp } from 'vue';
 
 let items = ref([])
+let version = cur_frm.doc.version
 let is_set_item = ref(cur_frm.doc.is_set_item)
 let set_item_attribute = ref(cur_frm.doc.set_item_attribute)
 let changed = ref(false)
 let show_button = ref(false)
 let cur_action = ref(null)
 let dates = ref([])
+let duplicate_value = ref(null)
 
 function load_data(item){
     items.value = item
+    duplicate_value.value = item
 }
 
-function get_data(){
-    return {
-        "items" : items.value,
-        "changed" : changed.value,
-    }
+async function get_data(){
+    return new Promise((resolve) => {
+        resolve({
+            "items" : items.value,
+            "changed" : changed.value,
+        })
+    })
+}
+
+function update_allocated_days(){
+    let d = new frappe.ui.Dialog({
+        title: "Update Allocated Days",
+        size: "extra-large",
+        fields: [
+            {
+                "fieldname": "allocation_days_html",
+                "fieldtype": "HTML"
+            }
+        ],
+        primary_action_label: "Check and Update Days",
+        primary_action(){
+            frappe.call({
+                method: "production_api.essdee_production.doctype.lot.lot.update_and_unallocate_workstation",
+                args: {
+                    data: dialog_html.get_data(),
+                },
+                callback: function(){
+                    d.hide()
+                }
+            })
+        }
+    })
+    d.show()
+    d.fields_dict.allocation_days_html.$wrapper.html("")
+    let dialog_html = new frappe.production.ui.UpdateAllocationDays(d.fields_dict.allocation_days_html.wrapper);
+    dialog_html.load_data(items.value)
 }
 
 function date_format(date){
@@ -95,7 +131,8 @@ function update_all(){
                 "label" : "Reason"
             },
         ],
-        primary_action(values){
+        async primary_action(values){
+            let cp = await frappe.db.get_value("Action", cur_action.value, "capacity_planning")
             if(!values.reason){
                 for(let i = 0 ; i < dates.value.length ; i++){
                     if(dates.value[i] < values.actual_date){
@@ -111,10 +148,10 @@ function update_all(){
                 row['actual_date'] = values.actual_date
                 row['reason'] = reason    
                 changed.value = true
-                cur_frm.dirty()
-                cur_frm.save()
                 dialog.hide()
             })
+            cur_frm.dirty()
+            cur_frm.save()
         }
     })
     dialog.show()
@@ -175,10 +212,11 @@ function update_work_station(){
         method:"production_api.essdee_production.doctype.lot.lot.get_work_stations",
         args : {
             "items": items.value,
+            "lot": cur_frm.doc.name,
         },
         callback :async function(r){
             let d = new frappe.ui.Dialog({
-                size : "large",
+                size : "extra-large",
                 title: "Update Work Station",
                 fields: [
                     {
@@ -193,7 +231,8 @@ function update_work_station(){
                     frappe.call({
                         method: "production_api.essdee_production.doctype.lot.lot.update_t_and_a_ws",
                         args : {
-                            datas : updated_ws
+                            datas : updated_ws,
+                            version: cur_frm.doc.version
                         },
                         callback: function(){
                             cur_frm.refresh()
@@ -202,10 +241,16 @@ function update_work_station(){
                 },
             });
             d.fields_dict.html_field.$wrapper.empty();
-            const vueApp = createApp(WorkStation); 
+            let module = WorkStation
+            if(cur_frm.doc.version == "V2"){
+                module = WorkStationV2
+            }
+            const vueApp = createApp(module); 
             const app = vueApp.mount(d.fields_dict.html_field.$wrapper[0]);
             await app.load_data(r.message,"update")
-            app.set_attributes()
+            if(cur_frm.doc.version == "V1"){
+                app.set_attributes()
+            }
             d.show();
         }
     })

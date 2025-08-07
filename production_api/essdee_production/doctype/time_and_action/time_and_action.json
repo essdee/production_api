@@ -10,6 +10,7 @@
   "colour",
   "qty",
   "delay",
+  "capacity",
   "column_break_ayau",
   "item",
   "sizes",
@@ -21,7 +22,8 @@
   "end_date",
   "status",
   "section_break_hshs",
-  "details"
+  "details",
+  "time_and_action_work_station_details"
  ],
  "fields": [
   {
@@ -110,11 +112,23 @@
    "fieldname": "end_date",
    "fieldtype": "Date",
    "label": "End Date"
+  },
+  {
+   "fieldname": "time_and_action_work_station_details",
+   "fieldtype": "Table",
+   "label": "Time and Action Work Station Details",
+   "options": "Time and Action Work Station Detail"
+  },
+  {
+   "fieldname": "capacity",
+   "fieldtype": "Float",
+   "label": "Capacity"
   }
  ],
+ "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-03-06 15:01:15.342893",
+ "modified": "2025-08-02 15:27:21.780810",
  "modified_by": "Administrator",
  "module": "Essdee Production",
  "name": "Time and Action",
@@ -177,6 +191,7 @@
    "share": 1
   }
  ],
+ "row_format": "Dynamic",
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": [],

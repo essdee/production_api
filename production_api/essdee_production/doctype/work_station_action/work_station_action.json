@@ -1,0 +1,70 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2025-07-28 17:55:50.467749",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "allocated_date",
+  "lot",
+  "colour",
+  "target",
+  "capacity",
+  "time_and_action"
+ ],
+ "fields": [
+  {
+   "fieldname": "allocated_date",
+   "fieldtype": "Date",
+   "in_list_view": 1,
+   "label": "Allocated Date"
+  },
+  {
+   "fieldname": "lot",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Lot",
+   "options": "Lot"
+  },
+  {
+   "fieldname": "colour",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Colour"
+  },
+  {
+   "fieldname": "target",
+   "fieldtype": "Float",
+   "in_list_view": 1,
+   "label": "Target"
+  },
+  {
+   "fieldname": "capacity",
+   "fieldtype": "Percent",
+   "in_list_view": 1,
+   "label": "Capacity"
+  },
+  {
+   "fieldname": "time_and_action",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Time and Action",
+   "options": "Time and Action"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2025-08-01 11:28:55.414833",
+ "modified_by": "Administrator",
+ "module": "Essdee Production",
+ "name": "Work Station Action",
+ "owner": "Administrator",
+ "permissions": [],
+ "row_format": "Dynamic",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

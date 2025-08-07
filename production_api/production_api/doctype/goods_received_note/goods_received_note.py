@@ -1948,6 +1948,10 @@ def construct_stock_entry_data(doc_name):
 def calculate_pieces(doc_name):
 	grn_doc = frappe.get_doc("Goods Received Note",doc_name)
 	doc_status = grn_doc.docstatus
+	if doc_status == 2:
+		from production_api.production_api.doctype.work_order.work_order import calculate_completed_pieces
+		calculate_completed_pieces(grn_doc.against_id)
+		return
 	ipd = frappe.get_cached_value("Lot", grn_doc.lot,"production_detail")
 	ipd_doc = frappe.get_cached_doc("Item Production Detail",ipd)
 	received_types = {}
