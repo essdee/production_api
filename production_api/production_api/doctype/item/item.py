@@ -1,19 +1,23 @@
 # Copyright (c) 2021, Essdee and contributors
 # For license information, please see license.txt
 
-import frappe
+import frappe, json
 from frappe import _
-from frappe.utils import cstr, flt
 from six import string_types
-import json
+from frappe.utils import cstr, flt
 from frappe.model.document import Document
 from frappe.desk.search import search_widget
+from frappe.model.naming import make_autoname
 from production_api.production_api.doctype.item_dependent_attribute_mapping.item_dependent_attribute_mapping import get_dependent_attribute_details
 from production_api.production_api.doctype.item_price.item_price import get_all_active_price
 
 
 class Item(Document):
-
+	
+	def before_validate(self):
+		if self.is_new():
+			self.item_hash_value = make_autoname(key="hash")
+			
 	def autoname(self):
 		self.name1 = self.name1.strip()
 		self.name = self.get_name(self.brand, self.name1)

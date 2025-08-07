@@ -20,6 +20,7 @@
   "default_unit_of_measure",
   "uom_conversion_details",
   "secondary_unit_of_measure",
+  "item_hash_value",
   "attributes_section",
   "primary_attribute",
   "dependent_attribute",
@@ -214,12 +215,19 @@
    "fieldname": "is_ineligible_for_itc",
    "fieldtype": "Check",
    "label": "Is Ineligible for Input Tax Credit"
+  },
+  {
+   "fieldname": "item_hash_value",
+   "fieldtype": "Data",
+   "hidden": 1,
+   "label": "Item Hash Value",
+   "unique": 1
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-05-15 15:08:55.717722",
+ "modified": "2025-07-28 10:32:48.211891",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Item",

@@ -1,8 +1,5 @@
 <template>
     <div ref="root" v-if="Object.keys(items).length > 0">
-        <h3 v-if="version == 'V2' && types == 'update'">
-            Some allocated dates will be unallocated due to workstation or capacity changes
-        </h3>
         <div v-for="item in Object.keys(items)" :key="item">
             <div v-if='items[item].length > 0'>
                 <h4 style="line-height:0;">{{item}}</h4>
@@ -40,7 +37,7 @@
                                         </td>   
                                         <td>
                                             <div class="pull-left cursor-pointer" @click="delete_work_station(item, index, idx)"
-                                            v-html="frappe.utils.icon('delete', 'md')"></div>
+                                            v-html="icon"></div>
                                         </td>
                                     </tr>
                                 </table>
@@ -76,7 +73,7 @@
                                         </td>   
                                         <td>
                                             <div class="pull-left cursor-pointer" @click="delete_work_station(item, index, idx)"
-                                            >XX</div>
+                                            v-html="icon"></div>
                                         </td>
                                     </tr>
                                 </table>
@@ -103,6 +100,7 @@ function load_data(item, type){
     items.value = item
     types.value = type
 }
+const icon = frappe.utils.icon('delete', 'md')
 
 onMounted(()=> {
     frappe.call({
@@ -136,29 +134,29 @@ function get_items(){
             if(items.value[colour][i]['work_station'].length == 0){
                 frappe.throw(`Add Atleast One Work Station for ${action} ${colour}`)
             }
-            // for(let j = 0; j < items.value[colour][i]['work_station'].length; j++){
-            //     let ws = items.value[colour][i]['work_station'][j]['work_station']
-            //     let target = items.value[colour][i]['work_station'][j]['target']
-            //     let capacity = items.value[colour][i]['work_station'][j]['capacity'] 
-            //     if(!ws){
-            //         frappe.throw(`Select a Work station for ${action} ${colour}`)
-            //     }
-            //     if(!target || target == 0){
-            //         frappe.throw(`Target Should not be Zero for ${action} ${colour}`)
-            //     }
-            //     if(!capacity || capacity == 0){
-            //         frappe.throw(`Capacity Should not be Zero for ${action} ${colour}`)
-            //     }
-            //     if(capacity > 100){
-            //         frappe.throw(`Capacity Should not be greater than 100 for ${action} ${colour}`)
-            //     }   
-            //     if (work_station_capacity.hasOwnProperty(ws)){
-            //         work_station_capacity[ws] += capacity
-            //     }
-            //     else{
-            //         work_station_capacity[ws] = capacity 
-            //     }
-            // }
+            for(let j = 0; j < items.value[colour][i]['work_station'].length; j++){
+                let ws = items.value[colour][i]['work_station'][j]['work_station']
+                let target = items.value[colour][i]['work_station'][j]['target']
+                let capacity = items.value[colour][i]['work_station'][j]['capacity'] 
+                if(!ws){
+                    frappe.throw(`Select a Work station for ${action} ${colour}`)
+                }
+                if(!target || target == 0){
+                    frappe.throw(`Target Should not be Zero for ${action} ${colour}`)
+                }
+                if(!capacity || capacity == 0){
+                    frappe.throw(`Capacity Should not be Zero for ${action} ${colour}`)
+                }
+                if(capacity > 100){
+                    frappe.throw(`Capacity Should not be greater than 100 for ${action} ${colour}`)
+                }   
+                if (work_station_capacity.hasOwnProperty(ws)){
+                    work_station_capacity[ws] += capacity
+                }
+                else{
+                    work_station_capacity[ws] = capacity 
+                }
+            }
         }
     })
     return items.value

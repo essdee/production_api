@@ -27,6 +27,7 @@
   "pattern_version",
   "dependent_attribute_mapping",
   "packing_combo",
+  "lot_hash_value",
   "section_break_ry89l",
   "column_break_njmh",
   "planned_qty",
@@ -351,6 +352,13 @@
    "label": "Assigned Person Name"
   },
   {
+   "fieldname": "lot_hash_value",
+   "fieldtype": "Data",
+   "hidden": 1,
+   "label": "Lot Hash Value",
+   "unique": 1
+  },
+  {
    "fieldname": "version",
    "fieldtype": "Select",
    "label": "Version",
@@ -366,7 +374,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-07-31 18:45:08.792319",
+ "modified": "2025-08-07 19:00:03.066012",
  "modified_by": "Administrator",
  "module": "Essdee Production",
  "name": "Lot",

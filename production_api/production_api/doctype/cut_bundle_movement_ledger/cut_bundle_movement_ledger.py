@@ -33,9 +33,11 @@ class CutBundleMovementLedger(Document):
 		self.item_variant = variant
 
 	def set_key(self):
+		lot_hash = frappe.get_cached_value("Lot", self.lot, "lot_hash_value")
+		item_hash = frappe.get_cached_value("Item", self.item, "item_hash_value")
 		parts = [
-			str(self.lot), str(self.supplier), str(self.lay_no), str(self.bundle_no),
-			str(self.shade), str(self.item), str(self.size), str(self.colour), str(self.panel),
+			str(lot_hash), str(self.supplier), str(self.lay_no), str(self.bundle_no),
+			str(self.shade), str(item_hash), str(self.size), str(self.colour), str(self.panel),
 		]
 		self.cbm_key = "-".join(parts)
 
@@ -135,13 +137,15 @@ def get_previous_entry(entry, collapsed_bundle=0):
 	return previous if previous else None
 
 def get_cbm_key(entry):
+	lot_hash = frappe.get_cached_value("Lot", entry['lot'], "lot_hash_value")
+	item_hash = frappe.get_cached_value("Item", entry['item'], "item_hash_value")
 	parts = [
-		str(entry['lot']),
+		str(lot_hash),
 		str(entry['supplier']),
 		str(entry['lay_no']),
 		str(entry['bundle_no']),
 		str(entry['shade']),
-		str(entry['item']),
+		str(item_hash),
 		str(entry['size']),
 		str(entry['colour']),
 		str(entry['panel']),
