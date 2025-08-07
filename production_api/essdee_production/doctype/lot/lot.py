@@ -6,6 +6,7 @@ from six import string_types
 from frappe.utils import flt, date_diff
 from itertools import groupby, zip_longest
 from frappe.model.document import Document
+from frappe.model.naming import make_autoname
 from production_api.utils import update_if_string_instance
 from production_api.essdee_production.doctype.holiday_list.holiday_list import get_next_date
 from production_api.production_api.doctype.purchase_order.purchase_order import get_item_group_index
@@ -27,6 +28,7 @@ class Lot(Document):
 			self.set('lot_order_details',order_items)
 
 		if self.is_new(): 
+			self.lot_hash_value = make_autoname(key="hash")
 			if len(self.items) > 0:
 				self.calculate_order()
 		else:

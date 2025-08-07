@@ -47,5 +47,7 @@ production_api.patches.v1_0.update_null_dc_received_types
 production_api.patches.v1_0.create_cbml_against_cls #2
 production_api.patches.v1_0.update_stock_qty_uom
 production_api.patches.v1_0.update_loose_piece_stage
+production_api.patches.v1_0.create_hash_value
+production_api.patches.v1_0.update_cbml_key
 production_api.patches.v1_0.create_t_and_a_workstation_detail
 production_api.patches.v1_0.update_lot_version
