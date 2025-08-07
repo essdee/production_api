@@ -6,7 +6,7 @@
                 <div style="display:flex; justify-content: space-between; gap: 0.75rem; ">
                     <button v-if="show_button" class="btn btn-success" @click="update_all()">Update All</button>
                     <button class="btn btn-success" @click="update_work_station()">Update Work Station</button>
-                    <button v-if="version=='V1'" class="btn btn-success" @click="update_allocated_days()">Update Allocated Days</button>
+                    <button v-if="version=='V2'" class="btn btn-success" @click="update_allocated_days()">Update Allocated Days</button>
                 </div>
             </div>
             <table class="table table-sm table-bordered">
