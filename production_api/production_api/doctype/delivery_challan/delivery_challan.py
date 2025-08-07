@@ -585,6 +585,10 @@ def construct_stock_entry_details(doc_name):
 def calculate_pieces(doc_name):
 	dc_doc = frappe.get_doc("Delivery Challan",doc_name)
 	doc_status = dc_doc.docstatus
+	if doc_status == 2:
+		from production_api.production_api.doctype.work_order.work_order import calculate_completed_pieces
+		calculate_completed_pieces(dc_doc.work_order)
+		return
 	ipd = frappe.get_cached_value("Lot", dc_doc.lot,"production_detail")
 	ipd_doc = frappe.get_cached_doc("Item Production Detail",ipd)
 	total_delivered = 0

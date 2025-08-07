@@ -7,6 +7,7 @@
  "editable_grid": 1,
  "engine": "InnoDB",
  "field_order": [
+  "capacity_planning",
   "lot_name",
   "item",
   "pack_out_stage",
@@ -20,6 +21,7 @@
   "expected_delivery_date",
   "is_set_item",
   "set_item_attribute",
+  "version",
   "section_break_qubc",
   "tech_pack_version",
   "pattern_version",
@@ -347,11 +349,24 @@
    "fieldname": "assigned_person_name",
    "fieldtype": "Data",
    "label": "Assigned Person Name"
+  },
+  {
+   "fieldname": "version",
+   "fieldtype": "Select",
+   "label": "Version",
+   "options": "\nV1\nV2",
+   "read_only": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "capacity_planning",
+   "fieldtype": "Check",
+   "label": "Capacity Planning"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-07-29 11:18:13.956398",
+ "modified": "2025-07-31 18:45:08.792319",
  "modified_by": "Administrator",
  "module": "Essdee Production",
  "name": "Lot",

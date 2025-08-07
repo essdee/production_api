@@ -1,0 +1,88 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2025-07-31 16:40:31.416877",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "work_station",
+  "rescheduled_date",
+  "actual_date",
+  "date_diff",
+  "reason",
+  "performance",
+  "parent_link_value",
+  "capacity",
+  "target"
+ ],
+ "fields": [
+  {
+   "fieldname": "work_station",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Work Station",
+   "options": "Work Station"
+  },
+  {
+   "fieldname": "rescheduled_date",
+   "fieldtype": "Date",
+   "in_list_view": 1,
+   "label": "Rescheduled Date"
+  },
+  {
+   "fieldname": "actual_date",
+   "fieldtype": "Date",
+   "in_list_view": 1,
+   "label": "Actual Date"
+  },
+  {
+   "fieldname": "date_diff",
+   "fieldtype": "Int",
+   "in_list_view": 1,
+   "label": "Date Diff"
+  },
+  {
+   "fieldname": "reason",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Reason"
+  },
+  {
+   "fieldname": "performance",
+   "fieldtype": "Percent",
+   "in_list_view": 1,
+   "label": "Performance"
+  },
+  {
+   "fieldname": "parent_link_value",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Parent Link Value"
+  },
+  {
+   "fieldname": "capacity",
+   "fieldtype": "Percent",
+   "label": "Capacity"
+  },
+  {
+   "fieldname": "target",
+   "fieldtype": "Float",
+   "label": "Target"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2025-08-04 18:57:44.566456",
+ "modified_by": "Administrator",
+ "module": "Essdee Production",
+ "name": "Time and Action Work Station Detail",
+ "owner": "Administrator",
+ "permissions": [],
+ "row_format": "Dynamic",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

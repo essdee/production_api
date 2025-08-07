@@ -1,49 +1,102 @@
 <template>
     <div ref="root">
-        <div v-if="items && items.length > 0">
-            <h4>Report</h4>
-        </div>
-        <div class="row">
-            <div class="select-field col-md-5"></div>
-            <div class="col-md-4"></div>
-            <div v-if="selected_colour && status != 'Completed'" class="col-md-3 mt-4">
-                <button @click="undo_last_update()" class="btn btn-success" style="margin-right: 10px;">Undo Last</button>
-                <button @click="make_complete()" class="btn btn-success">Complete T&A</button>
+        <div v-if="version == 'V1'">
+            <div v-if="items && items.length > 0">
+                <h4>Report</h4>
             </div>
+            <div class="row">
+                <div class="select-field col-md-5"></div>
+                <div class="col-md-4"></div>
+                <div v-if="selected_colour && status != 'Completed'" class="col-md-3 mt-4">
+                    <button @click="undo_last_update()" class="btn btn-success" style="margin-right: 10px;">Undo Last</button>
+                    <button @click="make_complete()" class="btn btn-success">Complete T&A</button>
+                </div>
+            </div>
+            <table v-if="items && items.length > 0" class="table table-sm table-bordered">
+                <tr>
+                    <th>S.No</th>
+                    <th>Action</th>
+                    <th>Department</th>
+                    <th>Lead Time</th>
+                    <th>Work Station</th>
+                    <th>Planned Date</th>
+                    <th>Rescheduled Date</th>
+                    <th>Actual Date</th>
+                    <th>Date Diff</th>
+                    <th>Reason</th>
+                    <th>Performance</th>
+                </tr>
+                <tr v-for="(i, index) in items" :key="index">
+                    <td>{{ index + 1 }}</td>
+                    <td>{{ i.action }}</td>
+                    <td>{{ i.department }}</td>
+                    <td>{{ i.lead_time }}</td>
+                    <td v-if="i.work_station">
+                        {{ i.work_station }}
+                    </td>
+                    <td v-else></td>
+                    <td>{{ date_format(i.date) }}</td>
+                    <td>{{ date_format(i.rescheduled_date) }}</td>
+                    <td :class="{'bg-red': i.rescheduled_date < i.actual_date, 'bg-green': i.rescheduled_date >= i.actual_date}">
+                        {{ date_format(i.actual_date) }}
+                    </td>
+                    <td>{{ i.date_diff }}</td>
+                    <td>{{ i.reason }}</td>
+                    <td>{{ i.performance }}%</td>
+                </tr>
+            </table>
         </div>
-        <table v-if="items && items.length > 0" class="table table-sm table-bordered">
-            <tr>
-                <th>S.No</th>
-                <th>Action</th>
-                <th>Department</th>
-                <th>Lead Time</th>
-                <th>Work Station</th>
-                <th>Planned Date</th>
-                <th>Rescheduled Date</th>
-                <th>Actual Date</th>
-                <th>Date Diff</th>
-                <th>Reason</th>
-                <th>Performance</th>
-            </tr>
-            <tr v-for="(i, index) in items" :key="index">
-                <td>{{ index + 1 }}</td>
-                <td>{{ i.action }}</td>
-                <td>{{ i.department }}</td>
-                <td>{{ i.lead_time }}</td>
-                <td v-if="i.work_station">
-                    {{ i.work_station }}
-                </td>
-                <td v-else></td>
-                <td>{{ date_format(i.date) }}</td>
-                <td>{{ date_format(i.rescheduled_date) }}</td>
-                <td :class="{'bg-red': i.rescheduled_date < i.actual_date, 'bg-green': i.rescheduled_date >= i.actual_date}">
-                    {{ date_format(i.actual_date) }}
-                </td>
-                <td>{{ i.date_diff }}</td>
-                <td>{{ i.reason }}</td>
-                <td>{{ i.performance }}%</td>
-            </tr>
-        </table>
+        <div v-else>
+            <div v-if="items && items.length > 0">
+                <h4>Report</h4>
+            </div>
+            <div class="row">
+                <div class="select-field col-md-5"></div>
+                <div class="col-md-4"></div>
+                <div v-if="selected_colour && status != 'Completed'" class="col-md-3 mt-4">
+                    <button @click="undo_last_update()" class="btn btn-success" style="margin-right: 10px;">Undo Last</button>
+                    <button @click="make_complete()" class="btn btn-success">Complete T&A</button>
+                </div>
+            </div>
+            <table v-if="items && items.length > 0" class="table table-sm table-bordered">
+                <tr>
+                    <th>S.No</th>
+                    <th>Action</th>
+                    <th>Department</th>
+                    <th>Lead Time</th>
+                    <th>Work Station</th>
+                    <th>Planned Date</th>
+                    <th>Rescheduled Date</th>
+                    <th>Actual Date</th>
+                    <th>Date Diff</th>
+                    <th>Reason</th>
+                    <th>Performance</th>
+                </tr>
+                <tr v-for="(i, index) in items" :key="index" 
+                        :class="{
+                            'bg-red': i.change_allocation,
+                            'bg-blue': !i.change_allocation && i.not_allocated
+                        }">
+                    <td>{{ index + 1 }}
+                    </td>
+                    <td>{{ i.action }}</td>
+                    <td>{{ i.department }}</td>
+                    <td>{{ i.lead_time }}</td>
+                    <td v-if="i.work_station">
+                        {{ i.work_station }}
+                    </td>
+                    <td v-else></td>
+                    <td>{{ date_format(i.date) }}</td>
+                    <td>{{ date_format(i.rescheduled_date) }}</td>
+                    <td :class="{'bg-red': i.rescheduled_date < i.actual_date, 'bg-green': i.rescheduled_date >= i.actual_date}">
+                        {{ date_format(i.actual_date) }}
+                    </td>
+                    <td>{{ i.date_diff }}</td>
+                    <td>{{ i.reason }}</td>
+                    <td>{{ i.performance }}%</td>
+                </tr>
+            </table>
+        </div>    
     </div>
 </template>
 
@@ -59,6 +112,7 @@ const docnames = {};
 let docname = ref(null)
 let selected_colour = ref(null)
 let status = ref(null)
+let version = cur_frm.doc.version
 
 onMounted(() => {
     cur_frm.doc.lot_time_and_action_details.forEach(detail => {
@@ -151,5 +205,9 @@ function date_format(date){
 .bg-green {
     background-color: #d4edda;
     color: #155724;
+}
+.bg-blue {
+    background-color: #ADD8E6;
+    color: black;
 }
 </style>

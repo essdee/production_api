@@ -1109,7 +1109,7 @@ def calculate_completed_pieces(doc_name):
 		field = "cut_qty" if process_name == ipd_doc.cutting_process else "stich_qty" if process_name == ipd_doc.stiching_process else "pack_qty"
 		for item in wo_doc.work_order_calculated_items:
 			for lot_item in lot_doc.lot_order_details:
-				if lot_item.item_variant == item.item_variant:
+				if lot_item.item_variant == item.item_variant and item.quantity > 0:
 					setattr(lot_item, field, 0)	
 					break
 			item.received_qty = 0

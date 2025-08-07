@@ -13,11 +13,14 @@ import GRNWorkOrder from "./GRN/components/GRNWorkOrder.vue";
 import GRNReturnItem from "./GRN/components/GRNReturnItem.vue"
 import GRNConsumedDetail from "./GRN/components/GRNConsumedDetail.vue"
 import LotOrder from "./Lot/components/LotOrder.vue" 
+import WorkStationV2 from "./Lot/components/WorkStationV2.vue"
 import WorkStation from "./Lot/components/WorkStation.vue"
 import TimeActionPreview from "./Lot/components/TimeActionPreview.vue"
 import InwardQuantityReport from "./Lot/components/InwardQuantityReport.vue";
 import TimeAction from "./Lot/components/TimeAction.vue"
 import TimeActionReport from "./Lot/components/TimeActionReport.vue"
+import TandACapacityPreview from "./Lot/components/TandACapacityPreview.vue";
+import UpdateAllocationDays from "./Lot/components/UpdateAllocationDays.vue";
 import CutPlanItems from "./CuttingPlan/components/CutPlanItems.vue"
 import CuttingCompletionDetail from "./CuttingPlan/components/CuttingCompletionDetail.vue"
 import CuttingIncompletionDetail from "./CuttingPlan/components/CuttingIncompletionDetail.vue"
@@ -326,14 +329,16 @@ frappe.production.ui.TimeAction = class {
         SetVueGlobals(this.app)
         this.vue = this.app.mount(this.$wrapper.get(0))
     }
-    get_data(){
-        let get_data = this.vue.get_data()
+    async get_data(){
+        let get_data = await this.vue.get_data()
         let items = JSON.parse(JSON.stringify(get_data.items))
-        let changed = JSON.parse(JSON.stringify(get_data.changed))
-        return {
-            "items":items,
-            "changed":changed,
-        }
+        let changed = get_data.changed
+        return new Promise((resolve)=>{
+            resolve({
+                "items":items,
+                "changed":changed,
+            })
+        })
     }
     load_data(item_details){
         let items = JSON.parse(JSON.stringify(item_details));
@@ -442,6 +447,28 @@ frappe.production.ui.WorkStation = class {
     }
 }
 
+frappe.production.ui.WorkStationV2 = class {
+    constructor(wrapper){
+        this.$wrapper = $(wrapper)
+        this.make_app()
+    }
+    make_app(){
+        this.app = createApp(WorkStationV2)
+        SetVueGlobals(this.app)
+        this.vue = this.app.mount(this.$wrapper.get(0))
+    }
+    load_data(data, type){
+        let items = JSON.parse(JSON.stringify(data))
+        this.vue.load_data(items, type)
+    }
+    set_attributes(){
+        this.vue.set_attributes()
+    }
+    get_items(){
+        return this.vue.get_items()
+    }
+}
+
 frappe.production.ui.TimeActionPreview = class {
     constructor(wrapper){
         this.$wrapper = $(wrapper)
@@ -455,6 +482,41 @@ frappe.production.ui.TimeActionPreview = class {
     load_data(data){
         let items = JSON.parse(JSON.stringify(data))
         this.vue.load_data(items)
+    }
+}
+
+frappe.production.ui.TandACapacityPreview = class {
+    constructor(wrapper){
+        this.$wrapper = $(wrapper)
+        this.make_app()
+    }
+    make_app(){
+        this.app = createApp(TandACapacityPreview)
+        SetVueGlobals(this.app)
+        this.vue = this.app.mount(this.$wrapper.get(0))
+    }
+
+    load_data(data){
+        let items = JSON.parse(JSON.stringify(data))
+        this.vue.load_data(items)
+    }
+}
+
+frappe.production.ui.UpdateAllocationDays = class {
+    constructor(wrapper){
+        this.$wrapper = $(wrapper)
+        this.make_app()
+    }
+    make_app(){
+        this.app = createApp(UpdateAllocationDays)
+        SetVueGlobals(this.app)
+        this.vue = this.app.mount(this.$wrapper.get(0))
+    }
+    load_data(data){
+        this.vue.load_data(data)
+    }
+    get_data(){
+        return this.vue.get_data()
     }
 }
 
