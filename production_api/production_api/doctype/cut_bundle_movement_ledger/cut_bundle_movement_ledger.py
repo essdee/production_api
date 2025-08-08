@@ -596,3 +596,8 @@ def get_variant_attr_details(variant):
 	for attr_detail in attr_details:
 		d[attr_detail['attribute']] = attr_detail['attribute_value']
 	return d
+
+def on_doctype_update():
+	frappe.db.add_index("Cut Bundle Movement Ledger", ["cbm_key"])
+	frappe.db.add_index("Cut Bundle Movement Ledger", ["supplier", "posting_datetime"])
+	frappe.db.add_index("Cut Bundle Movement Ledger", ['is_cancelled', "is_collapsed", "transformed"])
