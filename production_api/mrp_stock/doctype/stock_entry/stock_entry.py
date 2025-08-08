@@ -233,7 +233,7 @@ class StockEntry(Document):
 		return from_warehouse, to_warehouse
 
 	def before_cancel(self):
-		self.ignore_linked_doctypes = ("Stock Ledger Entry", "Stock Reservation Entry", "Delivery Challan", "Repost Item Valuation", "Cut Bundle Movement Ledger")
+		self.ignore_linked_doctypes = ("Stock Ledger Entry", "Stock Reservation Entry", "Delivery Challan", "Repost Item Valuation", "Cut Bundle Movement Ledger", "Cut Panel Movement")
 		self.update_stock_ledger()
 		self.make_repost_action()
 		self.update_transferred_qty()
