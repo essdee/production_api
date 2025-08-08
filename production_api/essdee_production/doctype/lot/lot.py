@@ -1107,7 +1107,7 @@ def get_action_master_details(master_list, version):
 					action_data['work_station'] = [{
 						"work_station": frappe.get_value("Work Station",name_list[0],"name"),
 						"target": action.target,
-						"capacity": 0
+						"capacity": 100
 					}]
 			action_data['master'] = item['master']	
 			work_station[item['colour']].append(action_data)
@@ -1449,7 +1449,7 @@ def get_allocated_days(t_and_a_data):
 			for row in doc.time_and_action_work_station_details:
 				x.setdefault(row.work_station, {
 					"target": row.target,
-					"capacity": row.capacity
+					"capacity": round(row.capacity, 2)
 				})
 			for child in doc.details:
 				action_data = child.as_dict()
@@ -1468,11 +1468,7 @@ def get_allocated_days(t_and_a_data):
 				action_data['previous_allocated'] = action_data['work_station']		
 				action_data['master'] = item['master']	
 				work_station[item['colour']].append(action_data)
-	ws_allocated = get_allocated_ws_details()
-	return {
-		"data": work_station,
-		"allocated": ws_allocated
-	}	
+	return work_station
 
 def get_ws_days(work_station, t_and_a):
 	data = frappe.db.sql(
@@ -1487,7 +1483,7 @@ def get_ws_days(work_station, t_and_a):
 	dates = [{
 				"allocated":row['allocated_date'],
 				"target": row['target'],
-				"capacity": row['capacity'],
+				"capacity": round(row['capacity'], 2),
 				"name": row['name']
 			} for row in data]
 	return dates
@@ -1545,11 +1541,20 @@ def update_and_unallocate_workstation(data):
 def get_allocated_ws_details():
 	ws_list = frappe.get_all("Work Station", pluck="name")
 	ws_allocated_days = {}
+	ws_date_wise_allocation = {}
 	for ws in ws_list:
 		ws_doc = frappe.get_doc("Work Station", ws)
 		ws_allocated_days.setdefault(ws, {})
-
+		ws_date_wise_allocation.setdefault(ws, {})
 		for row in ws_doc.work_station_actions:
-			ws_allocated_days[ws].setdefault(str(row.allocated_date), 0)
-			ws_allocated_days[ws][str(row.allocated_date)] += row.capacity
-	return ws_allocated_days		
+			c = round(row.capacity, 2)
+			d = str(row.allocated_date)
+			ws_allocated_days[ws].setdefault(d, 0)
+			ws_allocated_days[ws][d] += c
+			ws_date_wise_allocation[ws].setdefault(d, {})
+			ws_date_wise_allocation[ws][d].setdefault(row.time_and_action, 0)
+			ws_date_wise_allocation[ws][d][row.time_and_action] += c
+	return {
+		"total_allocated":ws_allocated_days,
+		"date_wise_allocated": ws_date_wise_allocation
+	}		

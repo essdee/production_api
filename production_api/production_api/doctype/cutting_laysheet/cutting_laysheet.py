@@ -1489,6 +1489,11 @@ def cancel_laysheet(doc_name):
 		update_cloth_stock(doc, 1, -1)
 		grn_doc = frappe.get_doc("Goods Received Note", doc.goods_received_note)
 		grn_doc.cancel()
+		lot_no = doc.lot
+		cancelled_str = frappe.db.get_single_value("MRP Settings", "cut_bundle_cancelled_lot")
+		cancelled_list = cancelled_str.split(",")
+		if lot_no not in cancelled_list:
+			cancel_cut_bundle(doc, is_cancelled=1)
 	doc.goods_received_note =  None
 	from production_api.production_api.doctype.cutting_plan.cutting_plan import calculate_laysheets
 	calculate_laysheets(doc.cutting_plan)

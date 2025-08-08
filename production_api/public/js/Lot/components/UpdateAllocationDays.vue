@@ -33,8 +33,31 @@
                                                             <VueDatePicker v-model="d['allocated']" format="dd-MM-yyyy"
                                                                 :disabled-dates="get_disabled_dates(row['work_station'])"
                                                                 @update:model-value="(val) => onDateChange(val, item, index, idx, idx2)"
-                                                                :input-class="'custom-input'"
-                                                            />
+                                                                :input-class="'custom-input'">
+                                                                <template #day="{ day, date }">
+                                                                    <div @mouseenter="showTooltip($event, date, item, index, idx, idx2, row['work_station'])"
+                                                                        @mouseleave="hideTooltip" @mousemove="updateTooltipPosition">
+                                                                        {{ day }}
+                                                                    </div>
+                                                                </template>
+                                                            </VueDatePicker>
+                                                            <div v-if="is_to_show_tooltip(item, index, idx, idx2)"
+                                                                :style="{
+                                                                    position: 'fixed',
+                                                                    top: tooltip.y + 'px',
+                                                                    left: tooltip.x + 'px',
+                                                                    background: '#333',
+                                                                    color: '#fff',
+                                                                    padding: '4px 8px',
+                                                                    borderRadius: '4px',
+                                                                    fontSize: '12px',
+                                                                    pointerEvents: 'none',
+                                                                    whiteSpace: 'nowrap',
+                                                                    zIndex: 999999
+                                                                }"
+                                                            >
+                                                                <div v-html="tooltip.text"></div>
+                                                            </div>
                                                         </td>
                                                         <td>
                                                             <input type="number" class="form-control" v-model="d['target']" step="0.01"/>
@@ -69,13 +92,34 @@
 </template>
 
 <script setup>
-import {ref} from 'vue';
+import {ref, onMounted} from 'vue';
 import VueDatePicker from '@vuepic/vue-datepicker';
 import '@vuepic/vue-datepicker/dist/main.css'
 
 let items = ref({})
 let ws_allocated_dates = ref({})
+let ws_date_wise_allocated = ref({})
 let duplicate_value = ref({})
+let tooltip = ref({
+    visible: false,
+    text: '',
+    colour: null,
+    index: null,
+    idx: null,
+    idx2: null,
+    x: null,
+    y: null,
+});
+
+onMounted(()=> {
+    frappe.call({
+        method: "production_api.essdee_production.doctype.lot.lot.get_allocated_ws_details",
+        callback: function(r){
+            ws_allocated_dates.value = r.message.total_allocated
+            ws_date_wise_allocated.value = r.message.date_wise_allocated
+        }
+    })
+})
 
 function load_data(data){
     frappe.call({
@@ -84,9 +128,8 @@ function load_data(data){
             "t_and_a_data": data,
         },
         callback: function(r){
-            items.value = r.message.data
+            items.value = r.message
             duplicate_value.value = JSON.stringify(r.message.data)
-            ws_allocated_dates.value = r.message.allocated
         }
     })
 }
@@ -99,6 +142,76 @@ function get_disabled_dates(ws){
         }
     })
     return dates
+}
+
+function showTooltip(date, event, colour, index, idx, idx2, ws) {
+    let d = formatDate(event)
+    let text = ws_date_wise_allocated.value[ws][d.toString()];
+    let return_text = ``
+    if(!text){
+        return_text = "<div>No Allocation</div>"
+    }
+    else{
+        return_text += `<div>
+                    <table>
+                        <tr>
+                            <th>Time and Action</th>
+                            <th>Capacity</th>
+                        </tr>        
+                `
+        Object.keys(text).forEach((t_and_a)=> {
+            return_text += `
+                <tr>
+                    <td>${t_and_a}</td>
+                    <td>${text[t_and_a]}</td>
+                </tr>    
+            ` 
+        })
+        return_text += `</table>
+            </div>
+        `    
+    }
+    tooltip.value.text = return_text
+    tooltip.value.visible = true;
+    tooltip.value.colour = colour;
+    tooltip.value.index = index;
+    tooltip.value.idx = idx;
+    tooltip.value.idx2 = idx2;
+    tooltip.value.x = event.clientX + 10;
+    tooltip.value.y = event.clientY + 10;
+}
+
+function updateTooltipPosition(event) {
+    tooltip.value.x = event.clientX + 10;
+    tooltip.value.y = event.clientY + 10;
+}
+
+function hideTooltip() {
+    tooltip.value.visible = false;
+}
+  
+function is_to_show_tooltip(colour, index, idx, idx2) {
+    return (
+        tooltip.value.visible && 
+        tooltip.value.colour == colour && 
+        tooltip.value.index == index && 
+        tooltip.value.idx == idx && 
+        tooltip.value.idx2 == idx2
+    );    
+}
+function formatDate(date) {
+    console.log(date)
+    if (!(date instanceof Date)) {
+        date = new Date(date);
+    }
+    if (isNaN(date)) {
+        throw new Error("Invalid date provided");
+    }
+
+    const day = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const year = date.getFullYear();
+    return `${year}-${month}-${day}`;
 }
 
 function onDateChange(value, colour, index, idx, idx2) {
@@ -122,7 +235,7 @@ function onDateChange(value, colour, index, idx, idx2) {
         allocated = ws_allocated_dates.value[work_station][date] 
     }
     items.value[colour][index]['work_station'][idx]['allocated_days'][idx2]['allocated'] = date 
-    items.value[colour][index]['work_station'][idx]['allocated_days'][idx2]['capacity'] = 100 - allocated
+    items.value[colour][index]['work_station'][idx]['allocated_days'][idx2]['capacity'] = (100 - allocated).toFixed(2)
     ws_allocated_dates.value[work_station][date] = 100
     items.value[colour][index]['work_station'][idx]['changed'] = true
     duplicate_value.value = JSON.stringify(items.value)
@@ -167,8 +280,9 @@ function get_data(){
                             v[ws][d] = 100
                         }
                         v[ws][d] -= c
+                        v[ws][d] = v[ws][d].toFixed(2);
                         if(v[ws][d] < 0){
-                            frappe.throw(`Allocated more than 100% on ${ws}`)
+                            frappe.throw(`Allocated more than 100% in ${ws} on ${d}`)
                         }
                     }
                 }
