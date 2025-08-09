@@ -206,9 +206,10 @@ class StockEntry(Document):
 			doc.save()
 		if self.cut_panel_movement:
 			cpm_doc = frappe.get_doc("Cut Panel Movement", self.cut_panel_movement)	
-			cpm_doc.against = self.doctype
-			cpm_doc.against_id = self.name
-			cpm_doc.save()
+			if self.purpose not in ["DC Completion", "GRN Completion"]:
+				cpm_doc.against = self.doctype
+				cpm_doc.against_id = self.name
+				cpm_doc.save()
 			from_warehouse, to_warehouse = self.get_from_and_to_warehouse()
 
 			from production_api.production_api.doctype.cut_bundle_movement_ledger.cut_bundle_movement_ledger import get_cut_bundle_entry
