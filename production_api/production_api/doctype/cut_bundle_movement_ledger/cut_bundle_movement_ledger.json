@@ -147,7 +147,7 @@
   },
   {
    "fieldname": "cbm_key",
-   "fieldtype": "Small Text",
+   "fieldtype": "Data",
    "label": "CBM Key"
   },
   {
@@ -201,7 +201,7 @@
  "in_create": 1,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-07-15 18:06:46.637935",
+ "modified": "2025-08-08 18:56:39.129039",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Cut Bundle Movement Ledger",

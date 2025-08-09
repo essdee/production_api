@@ -17,7 +17,7 @@
    "hidden": 0,
    "is_query_report": 0,
    "label": "Reports",
-   "link_count": 5,
+   "link_count": 6,
    "link_type": "DocType",
    "onboard": 0,
    "type": "Card Break"
@@ -71,9 +71,19 @@
    "link_type": "Page",
    "onboard": 0,
    "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 1,
+   "label": "Work Station Capacity Blocking",
+   "link_count": 0,
+   "link_to": "Work Station Capacity Blocking",
+   "link_type": "Report",
+   "onboard": 0,
+   "type": "Link"
   }
  ],
- "modified": "2025-07-25 17:27:41.627103",
+ "modified": "2025-08-08 17:51:10.434877",
  "modified_by": "Administrator",
  "module": "Essdee Production",
  "name": "Manufacturing",
