@@ -201,12 +201,21 @@ function load_data(item_data, is_pop_up){
 
 function get_items(){
     let is_system_manager = frappe.user.has_role('System Manager')
+    let all_completed = true
     for(let i = 0 ; i < items.value[0]['items'].length; i++){
-        if(!is_system_manager && !items.value[0]['items'][i]['completed'] && items2.value[0]['items'][i]['completed']){
+        let x = false
+        if(is_system_manager && items.value[0]['items'][i]['completed']){
             items.value[0]['items'][i]['completed'] = true
+            x = true
+        }
+        if(!x){
+            all_completed = false
         }
     }
-    return items.value
+    return {
+        "json_data":items.value,
+        "completed": all_completed,
+    }
 }
 
 function get_total(){

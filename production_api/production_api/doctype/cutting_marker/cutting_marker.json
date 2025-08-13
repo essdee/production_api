@@ -68,15 +68,13 @@
    "fieldname": "length",
    "fieldtype": "Float",
    "label": "Length (Meters)",
-   "precision": "3",
-   "reqd": 1
+   "precision": "3"
   },
   {
    "fieldname": "width",
    "fieldtype": "Float",
    "label": "Width (Inches)",
-   "precision": "3",
-   "reqd": 1
+   "precision": "3"
   },
   {
    "fieldname": "cutting_marker_ratios",
@@ -184,7 +182,7 @@
    "link_fieldname": "cutting_marker"
   }
  ],
- "modified": "2025-07-24 14:54:05.378761",
+ "modified": "2025-08-12 12:03:58.070216",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Cutting Marker",
