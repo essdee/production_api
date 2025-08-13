@@ -395,7 +395,7 @@ def fetch_item_details(items, production_detail):
 	return item_structure
 
 @frappe.whitelist()
-def fetch_order_item_details(items, production_detail, process=None ):
+def fetch_order_item_details(items, production_detail, process=None, includes_packing=False):
 	ipd_doc = frappe.get_doc("Item Production Detail", production_detail)
 	items = update_if_string_instance(items)
 	from production_api.essdee_production.doctype.item_production_detail.item_production_detail import get_ipd_primary_values
@@ -408,6 +408,8 @@ def fetch_order_item_details(items, production_detail, process=None ):
 				break
 			
 		field = "quantity" if process == ipd_doc.cutting_process else "cut_qty" if process == ipd_doc.stiching_process else  "stich_qty" if process == ipd_doc.packing_process else None
+		if includes_packing:
+			field = "cut_qty"
 		if not field:
 			stage = None
 			for prs in ipd_doc.ipd_processes:
@@ -472,6 +474,7 @@ def fetch_order_item_details(items, production_detail, process=None ):
 				"dependent_attribute": current_item_attribute_details['dependent_attribute'],
 				"dependent_attribute_details": current_item_attribute_details['dependent_attribute_details'],
 				'additional_parameters': current_item_attribute_details['additional_parameters'],
+				"stiching_attribute": ipd_doc.stiching_attribute,
 				'items': [item]
 			})
 		else:
@@ -1558,3 +1561,8 @@ def get_allocated_ws_details():
 		"total_allocated":ws_allocated_days,
 		"date_wise_allocated": ws_date_wise_allocation
 	}		
+
+def get_ironing_mistake_pf_items(lot):
+	lot_doc = frappe.get_doc("Lot", lot)
+	items = fetch_order_item_details(lot_doc.lot_order_details, lot_doc.production_detail)
+	return items

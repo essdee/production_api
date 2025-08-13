@@ -9,6 +9,7 @@
  "field_order": [
   "transit_warehouse",
   "default_received_type",
+  "default_rejected_type",
   "column_break_lblg",
   "default_fg_lot",
   "section_break_lupm",
@@ -81,13 +82,20 @@
    "fieldtype": "Table",
    "label": "Location Mapping",
    "options": "Stock Settings Old Warehouse Mapping"
+  },
+  {
+   "fieldname": "default_rejected_type",
+   "fieldtype": "Link",
+   "label": "Default Rejected Type",
+   "options": "GRN Item Type",
+   "reqd": 1
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2025-04-28 14:48:35.284251",
+ "modified": "2025-08-11 10:02:54.426273",
  "modified_by": "Administrator",
  "module": "MRP Stock",
  "name": "Stock Settings",
