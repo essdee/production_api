@@ -464,6 +464,7 @@
    "default": "0",
    "fieldname": "is_return",
    "fieldtype": "Check",
+   "in_standard_filter": 1,
    "label": "Is Return",
    "read_only": 1
   },
@@ -516,7 +517,7 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-07-23 17:13:39.848134",
+ "modified": "2025-08-11 18:21:18.670983",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Goods Received Note",

@@ -1,6 +1,7 @@
 <template>
-	<div>
+	<div ref="root">
 		<table class="table table-sm table-bordered">
+            <div class="received-type col-md-4"></div>
 			<template v-for="(i, item_index) in items" :key="item_index">
                 <tr>
                     <input type="checkbox" @input="update_group($event.target.checked, item_index)"/> Select All Items
@@ -83,11 +84,14 @@
 </template>
 	
 <script setup>
-import { reactive, ref, onMounted } from 'vue';
+import { ref, onMounted } from 'vue';
 
 let items = ref([]);
 let is_rework = cur_frm.doc.is_rework
 let indexes = []
+let received_type = ref(null)
+let sample_doc = ref({})
+let root = ref(null)
 
 function load_data(data){
     items.value = data
@@ -100,6 +104,10 @@ function load_data(data){
 }
 
 function get_items(){
+    if(!received_type.get_value()){
+        frappe.msgprint("Enter the Return Type")
+        return
+    }
 	for(let i = 0 ; i < items.value.length ; i++){
 		for(let j = 0 ; j < items.value[i].items.length ; j++){
 			Object.keys(items.value[i].items[j].values).forEach(key => {
@@ -109,7 +117,10 @@ function get_items(){
 			})
 		}
 	}
-	return items.value
+	return {
+        "items": items.value,
+        "received_type": received_type.get_value()
+    }
 }
 
 function update_row(val, index1, index2){
@@ -137,6 +148,23 @@ function update_group(val, index){
         indexes[index][i] = val
     }
 }
+
+onMounted(()=> {
+    let el = root.value
+    $(el).find(".received-type").html("");
+    received_type = frappe.ui.form.make_control({
+        parent: $(el).find(".received-type"),
+        df: {
+            fieldname: "received_type",
+            fieldtype: "Link",
+            options: "GRN Item Type",
+            label: "Return Type",
+            reqd: true,
+        },
+        doc: sample_doc.value,
+        render_input: true,
+    })
+})
 
 defineExpose({
 	load_data,

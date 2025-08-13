@@ -524,7 +524,7 @@ def get_current_user_time():
 def get_calculated_items(doc_name,work_order):
 	from production_api.production_api.doctype.work_order.work_order import fetch_order_item_details
 	doc = frappe.get_doc("Work Order", work_order)
-	items = fetch_order_item_details(doc.work_order_calculated_items, doc.production_detail)
+	items = fetch_order_item_details(doc.work_order_calculated_items, doc.production_detail, includes_packing=doc.includes_packing)
 	return items
 
 @frappe.whitelist()
@@ -808,7 +808,7 @@ def create_bundle_return_grn(doc_name, cpm, work_order):
 	return new_doc.name
 
 @frappe.whitelist()
-def create_return_grn(doc_name, items):
+def create_return_grn(doc_name, items, received_type):
 	dc_doc = frappe.get_doc("Delivery Challan", doc_name)
 	items = update_if_string_instance(items)
 	items_list = get_return_popup_items(items)
@@ -822,7 +822,7 @@ def create_return_grn(doc_name, items):
 				"quantity": item['return_quantity'],
 				"uom": item['uom'],
 				"valuation_rate": 0.0,
-				"received_type": item['received_type'] or default_received_type,
+				"received_type": received_type,
 				"ref_docname": item['ref_docname'],
 				"ref_doctype": item['ref_doctype'],
 				"table_index": item['table_index'],

@@ -675,3 +675,153 @@ def get_inward_qty(lot, process):
 		"is_set_item": is_set_item,
 		"set_attr": set_attr
 	}
+
+@frappe.whitelist()
+def get_rework_items(lot):
+	rework_items = frappe.get_all("GRN Rework Item", filters={"lot": lot, "completed": 0}, pluck="name")
+	data = {}
+	from production_api.production_api.doctype.cut_bundle_movement_ledger.cut_bundle_movement_ledger import get_variant_attr_details
+	for item in rework_items:
+		doc = frappe.get_doc("GRN Rework Item", item)
+		ipd = frappe.get_cached_value("Lot", doc.lot, "production_detail")
+		ipd_fields = ['packing_attribute', 'primary_item_attribute', 'is_set_item', 'set_item_attribute']
+		pack_attr, primary_attr, set_item, set_attr = frappe.get_cached_value("Item Production Detail", ipd, ipd_fields)
+		data.setdefault(item, {
+			"grn_number": doc.grn_number,
+			"lot": doc.lot,
+			"item": doc.item,
+			"rework_detail": {},
+			"size": primary_attr,
+		})
+		for row in doc.grn_rework_item_details:
+			if row.completed == 1:
+				continue
+			attr_details = get_variant_attr_details(row.item_variant)
+			key = row.received_type+"-"+attr_details[pack_attr]
+			if set_item:
+				key += "-"+attr_details[set_attr]
+			data[item]['rework_detail'].setdefault(key, {
+				"changed": 0,
+				'items': [],
+			})
+			data[item]['rework_detail'][key]['items'].append({
+				primary_attr : attr_details[primary_attr],
+				"rework_qty": row.quantity,
+				"rejected": row.rejection, 
+				"row_name": row.name,
+				"variant": row.item_variant,
+				"received_type": row.received_type,
+				"uom": row.uom,
+			})
+	return data	
+
+@frappe.whitelist()
+def update_rejected_quantity(rejection_data, completed:int, lot):
+	rejection_data = update_if_string_instance(rejection_data)
+	for row in rejection_data:
+		frappe.db.sql(
+			"""
+				UPDATE `tabGRN Rework Item Detail` SET rejection = %(reject_qty)s, 
+				completed = %(completed)s WHERE name = %(name)s 
+			""", {
+				"reject_qty": row['rejected'],
+				"name": row['row_name'],
+				"completed": completed, 
+			}
+		)
+
+	parent = frappe.db.sql(
+		"""
+			SELECT parent FROM `tabGRN Rework Item Detail` WHERE name = %(row_name)s
+		""", {
+			"row_name": rejection_data[0]['row_name']
+		}, as_dict=True
+	)[0]['parent']	
+	if completed:
+		convert_received_type(rejection_data, parent, lot)
+
+	incompleted = frappe.db.sql(
+		"""
+			SELECT name FROM `tabGRN Rework Item Detail` WHERE parent = %(parent)s 
+			AND completed = 0
+		""", {
+			"parent": parent
+		}, as_dict=True
+	)
+
+	if not incompleted:
+		frappe.db.sql(
+			"""
+				UPDATE `tabGRN Rework Item` SET completed = 1 WHERE name = %(name)s
+			""", {
+				"name": parent
+			}
+		)
+
+def convert_received_type(rejection_data, docname, lot):
+	warehouse = frappe.db.sql(
+		"""
+			SELECT warehouse FROM `tabGRN Rework Item` WHERE name = %(docname)s
+		""", {
+			"docname": docname
+		}, as_dict=True
+	)[0]['warehouse']
+	doc = frappe.get_single("Stock Settings")
+	accepted = doc.default_received_type
+	rejected = doc.default_rejected_type	
+	sl_entries = []
+	for row in rejection_data:
+		sl_entries.append({
+			"item": row['variant'],
+			"warehouse": warehouse,
+			"received_type": row['received_type'],
+			"lot": lot,
+			"voucher_type": "GRN Rework Item",
+			"voucher_no": docname,
+			"voucher_detail_no": row['row_name'],
+			"qty": row['rework_qty'] * -1,
+			"uom": row['uom'],
+			"rate": 0,
+			"valuation_rate": 0,
+			"is_cancelled": 0,
+			"posting_date": frappe.utils.nowdate(),
+			"posting_time": frappe.utils.nowtime(),
+		})	
+		if row['rejected'] > 0:
+			sl_entries.append({
+				"item": row['variant'],
+				"warehouse": warehouse,
+				"received_type": rejected,
+				"lot": lot,
+				"voucher_type": "GRN Rework Item",
+				"voucher_no": docname,
+				"voucher_detail_no": row['row_name'],
+				"qty": row['rejected'],
+				"uom": row['uom'],
+				"rate": 0,
+				"valuation_rate": 0,
+				"is_cancelled": 0,
+				"posting_date": frappe.utils.nowdate(),
+				"posting_time": frappe.utils.nowtime(),
+			})
+
+		if row['rework_qty'] - row['rejected'] > 0:
+			sl_entries.append({
+				"item": row['variant'],
+				"warehouse": warehouse,
+				"received_type": accepted,
+				"lot": lot,
+				"voucher_type": "GRN Rework Item",
+				"voucher_no": docname,
+				"voucher_detail_no": row['row_name'],
+				"qty":  row['rework_qty'] - row['rejected'],
+				"uom": row['uom'],
+				"rate": 0,
+				"valuation_rate": 0,
+				"is_cancelled": 0,
+				"posting_date": frappe.utils.nowdate(),
+				"posting_time": frappe.utils.nowtime(),
+			})			
+
+	from production_api.mrp_stock.stock_ledger import make_sl_entries
+	make_sl_entries(sl_entries)
