@@ -8,8 +8,24 @@
                 <th>S.No</th>
                 <th></th>
                 <th v-for="attr in item_attributes">{{ attr }}</th>
-                <th v-for="attr in bom_attributes">{{ attr }}</th>
-                <th v-if="bom_attributes.length > 0">Quantity</th>
+                <th v-for="attr in bom_attributes">
+                    {{ attr }}
+                    <div style="display:flex;width:100%;">
+                        <div :class="get_input_class('bom', attr, 1000)"></div>
+                        <div style="padding-left: 5px;">
+                            <button class="btn btn-info" @click="fill_child_values('bom', attr)">Fill</button>
+                        </div>
+                    </div>
+                </th>
+                <th v-if="bom_attributes.length > 0">
+                    Quantity
+                    <div style="display:flex;width:100%;">
+                        <div :class="get_quantity_input_class('quantity', 1000)"></div>
+                        <div style="padding-left: 5px;">
+                            <button class="btn btn-info" @click="fill_child_quantity_values()">Fill</button>
+                        </div>
+                    </div>
+                </th>
             </tr>
             <tr v-for="(d, index) in data">
                 <td>{{ index + 1 }}</td>
@@ -49,6 +65,7 @@ export default {
             data: [],
             bom_item: cur_frm.doc.bom_item,
             sample_doc: {},
+            header_inputs: {},
         };
     },
     methods: {
@@ -129,7 +146,6 @@ export default {
             // this.bom_attributes = this.get_mapping_attributes('bom', this.attributes);
             // this.attribute_values = this.get_item_attribute_values(this.attributes);
             // this.data = [];
-            console.log(data)
             await this.set_attributes(data.attributes);
             this.$nextTick(() => {
                 data.data.sort(function(a, b) {
@@ -251,7 +267,7 @@ export default {
             return key+"-"+index;
         },
 
-        create_input: function(type, attribute, index) {
+        create_input: function(type, attribute, index, is_header=false) {
             let me = this;
             let parent_class = "." + this.get_input_class(type, attribute, index);
             let df = {
@@ -272,7 +288,9 @@ export default {
                         }
                     };
                 }
-                df["reqd"] = true;
+                if(!is_header){
+                    df["reqd"] = true;
+                }
             }
             return frappe.ui.form.make_control({
                 parent: $(this.$el).find(parent_class),
@@ -334,11 +352,21 @@ export default {
                     let attr_name = this.get_attribute_name('bom', attr);
                     inputs[attr_name] = this.create_input("bom", attr, i);
                     inputs[attr_name].set_value(this.data[i][attr_name]);
+                    if(i == 0){
+                        if(!(attr in this.header_inputs)){
+                            this.header_inputs[attr] = this.create_input("bom", attr, 1000, true);
+                        }
+                    }
                 }
                 if(this.bom_attributes.length > 0){
                     let attr_name = this.get_attribute_name("quantity", i)
                     inputs[attr_name] = this.create_quantity_input("quantity", i)
                     inputs[attr_name].set_value(this.data[i][attr_name])
+                    if(i == 0){
+                        if(!("Quantity" in this.header_inputs)){
+                            this.header_inputs["Quantity"] = this.create_quantity_input("quantity", 1000);
+                        }
+                    }
                 }
                 this.attribute_inputs.push(inputs);
             }
@@ -370,6 +398,24 @@ export default {
                 input.set_value("");
                 input.df["reqd"] = b;
                 input.df["read_only"] = !b;
+                input.refresh();
+            }
+        },
+        
+        fill_child_values: function(type, attr){
+            for (let j=0;j<this.attribute_inputs.length;j++) {
+                let attr_name = this.get_attribute_name('bom', attr);
+                let input = this.attribute_inputs[j][attr_name]
+                input.set_value(this.header_inputs[attr].get_value());
+                input.refresh();
+            }
+        },
+
+        fill_child_quantity_values: function(){
+            for (let j=0;j<this.attribute_inputs.length;j++) {
+                let attr_name = this.get_attribute_name('quantity', j)
+                let input = this.attribute_inputs[j][attr_name]
+                input.set_value(this.header_inputs["Quantity"].get_value());
                 input.refresh();
             }
         },
