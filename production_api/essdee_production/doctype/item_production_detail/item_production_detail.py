@@ -4,6 +4,7 @@
 import math
 import frappe, json
 from itertools import groupby
+from itertools import zip_longest
 from frappe.utils import now_datetime
 from frappe.model.document import Document
 from production_api.utils import get_stich_details, update_if_string_instance
@@ -1308,3 +1309,71 @@ def get_ipd_variant(item_variants, item_name, tup):
 def get_ipd_pf_details(ipd):
 	ipd_doc = frappe.get_doc("Item Production Detail", ipd)
 	return ipd_doc
+
+@frappe.whitelist()
+def duplicate_ipd(ipd):
+	ipd_doc = frappe.get_doc("Item Production Detail", ipd)
+	doc = frappe.new_doc("Item Production Detail")
+	doc.update({
+		"item": ipd_doc.item,
+		"tech_pack_version": ipd_doc.tech_pack_version,
+		"pattern_version": ipd_doc.pattern_version,
+		"dependent_attribute": ipd_doc.dependent_attribute,
+		"dependent_attribute_mapping": ipd_doc.dependent_attribute_mapping,
+		"packing_process": ipd_doc.packing_process,
+		"packing_attribute": ipd_doc.packing_attribute,
+		"pack_in_stage": ipd_doc.pack_in_stage,
+		"pack_out_stage": ipd_doc.pack_out_stage,
+		"packing_combo": ipd_doc.packing_combo,
+		"packing_attribute_no": ipd_doc.packing_attribute_no,
+		"auto_calculate": ipd_doc.auto_calculate,
+		"stiching_process": ipd_doc.stiching_process,
+		"stiching_in_stage": ipd_doc.stiching_in_stage,
+		"stiching_attribute": ipd_doc.stiching_attribute,
+		"stiching_out_stage": ipd_doc.stiching_out_stage,
+		"stiching_major_attribute_value": ipd_doc.stiching_major_attribute_value,
+		"is_same_packing_attribute": ipd_doc.is_same_packing_attribute,
+		"cutting_process": ipd_doc.cutting_process,
+		"additional_cloth": ipd_doc.additional_cloth,
+		"emblishment_details_json": ipd_doc.emblishment_details_json, 
+		"cutting_cloths_json": ipd_doc.cutting_cloths_json,
+		"cutting_items_json": ipd_doc.cutting_items_json,
+		"cloth_accessory_json": ipd_doc.cloth_accessory_json,
+		"stiching_accessory_json": ipd_doc.stiching_accessory_json,
+		"accessory_clothtype_json": ipd_doc.accessory_clothtype_json,
+	})
+
+	doc.set("item_attributes", get_dict_table(ipd_doc.item_attributes))
+	doc.set("item_bom", get_dict_table(ipd_doc.item_bom))
+	doc.set("ipd_processes", get_dict_table(ipd_doc.ipd_processes))
+	doc.set("packing_attribute_details", get_dict_table(ipd_doc.packing_attribute_details))
+	doc.set("stiching_item_details", get_dict_table(ipd_doc.stiching_item_details))
+	doc.set("stiching_item_combination_details", get_dict_table(ipd_doc.stiching_item_combination_details))
+	doc.set("cutting_attributes", get_dict_table(ipd_doc.cutting_attributes))
+	doc.set("cloth_detail", get_dict_table(ipd_doc.cloth_detail))
+	doc.set("accessory_attributes", get_dict_table(ipd_doc.accessory_attributes))
+	doc.save()
+	if ipd_doc.is_set_item: 
+		doc.update({
+			"is_set_item": ipd_doc.is_set_item,
+			"set_item_attribute": ipd_doc.set_item_attribute,
+			"major_attribute_value": ipd_doc.major_attribute_value,
+		})
+		doc.set("set_item_combination_details", ipd_doc.set_item_combination_details)
+		doc.save()
+
+	for item1, item2 in zip_longest(ipd_doc.item_bom, doc.item_bom):
+		if item1.based_on_attribute_mapping:
+			bom_doc = frappe.get_doc("Item BOM Attribute Mapping", item1.attribute_mapping)
+			new_bom_doc = frappe.get_doc("Item BOM Attribute Mapping", item2.attribute_mapping)
+			new_bom_doc.set("item_attributes", bom_doc.item_attributes)
+			new_bom_doc.set("bom_item_attributes", bom_doc.bom_item_attributes)
+			new_bom_doc.item_production_detail = doc.name
+			new_bom_doc.set("values", bom_doc.values)
+			new_bom_doc.save()
+
+	return doc.name
+
+def get_dict_table(table_data):
+	items = [row.as_dict() for row in table_data]
+	return items

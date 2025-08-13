@@ -187,6 +187,19 @@ frappe.ui.form.on("Item Production Detail", {
 				unhide_field('set_items_html')
 				frm.trigger('make_set_combination')
 			}
+			frm.add_custom_button("Duplicate IPD", ()=> {
+				frappe.call({
+					method: "production_api.essdee_production.doctype.item_production_detail.item_production_detail.duplicate_ipd",
+					args: {
+						"ipd": frm.doc.name
+					},
+					freeze: true,
+					freeze_message: "Duplicating IPD",
+					callback: function(r){
+						frappe.set_route("Form", "Item Production Detail", r.message)
+					}
+				})
+			})
 		}
 		
 		frm.trigger('make_hide_and_unhide_tabs')
