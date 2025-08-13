@@ -1,0 +1,92 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "format: RW-{MM}-{YYYY}-{#####}",
+ "creation": "2025-08-11 10:55:20.524440",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "grn_number",
+  "item",
+  "completed",
+  "column_break_erha",
+  "lot",
+  "warehouse",
+  "section_break_roqw",
+  "grn_rework_item_details"
+ ],
+ "fields": [
+  {
+   "fieldname": "grn_number",
+   "fieldtype": "Link",
+   "label": "GRN Number",
+   "options": "Goods Received Note"
+  },
+  {
+   "fieldname": "column_break_erha",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "lot",
+   "fieldtype": "Link",
+   "label": "Lot",
+   "options": "Lot"
+  },
+  {
+   "fieldname": "section_break_roqw",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "grn_rework_item_details",
+   "fieldtype": "Table",
+   "label": "GRN Rework Item Details",
+   "options": "GRN Rework Item Detail"
+  },
+  {
+   "default": "0",
+   "fieldname": "completed",
+   "fieldtype": "Check",
+   "label": "Completed"
+  },
+  {
+   "fetch_from": "lot.item",
+   "fieldname": "item",
+   "fieldtype": "Link",
+   "label": "Item",
+   "options": "Item"
+  },
+  {
+   "fieldname": "warehouse",
+   "fieldtype": "Link",
+   "label": "Warehouse",
+   "options": "Supplier"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2025-08-12 11:03:18.590371",
+ "modified_by": "Administrator",
+ "module": "Production Api",
+ "name": "GRN Rework Item",
+ "naming_rule": "Expression",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

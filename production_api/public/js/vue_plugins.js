@@ -52,6 +52,7 @@ import SuggestedVendorBillDeliveryPerson from "./VendorBillTracking/components/S
 import CutBundleEdit from "./Cut_Bundle_Edit/components/CutBundleEdit.vue";
 import DailyProductionReport from "./CuttingLaySheet/components/DailyProductionReport.vue";
 import GRNPacking from "./GRN/components/GRNPacking.vue";
+import ReworkPage from "./WorkOrder/components/ReworkPage.vue";
 
 // Product Development
 import { ProductFileVersionsWrapper, ProductCostingListWrapper } from "./ProductDevelopment"
@@ -527,6 +528,18 @@ frappe.production.ui.InwardQuantityReport = class {
     }
     make_app(){
         this.app = createApp(InwardQuantityReport)
+        SetVueGlobals(this.app)
+        this.vue = this.app.mount(this.$wrapper.get(0))
+    }
+}
+
+frappe.production.ui.ReworkPage = class {
+    constructor(wrapper){
+        this.$wrapper = $(wrapper)
+        this.make_app()
+    }
+    make_app(){
+        this.app = createApp(ReworkPage)
         SetVueGlobals(this.app)
         this.vue = this.app.mount(this.$wrapper.get(0))
     }
