@@ -220,6 +220,7 @@ class GoodsReceivedNote(Document):
 						to_warehouse = self.get_to_warehouse()
 
 						bundles, collapsed_details = get_cut_bundle_entry(cpm_doc, self, from_warehouse, -1)
+						self.check_bundle_qty(bundles)
 						make_cut_bundle_ledger(bundles, collapsed_details)
 						bundles, collapsed_details = get_cut_bundle_entry(cpm_doc, self, to_warehouse, 1)
 						make_cut_bundle_ledger(bundles, collapsed_details)
@@ -236,6 +237,38 @@ class GoodsReceivedNote(Document):
 			self.piece_calculation()
 			self.generate_rework_docs()
 
+	def check_bundle_qty(self, bundles):
+		ipd = frappe.get_value("Lot", self.lot, "production_detail")
+		ipd_doc = frappe.get_doc("Item Production Detail", ipd)
+		panel_count = {}
+		for panel in ipd_doc.stiching_item_details:
+			panel_count[panel.stiching_attribute_value] = panel.quantity
+
+		bundle_variant_d = {} 
+		for bundle in bundles:
+			for panel in bundle['panel'].split(","):
+				variant = get_or_create_variant(bundle['item'], {
+					ipd_doc.dependent_attribute: ipd_doc.stiching_in_stage,
+					ipd_doc.primary_item_attribute: bundle['size'],
+					ipd_doc.packing_attribute: bundle['colour'],
+					ipd_doc.stiching_attribute: panel
+				})
+				bundle_variant_d.setdefault(variant, 0)
+				bundle_variant_d[variant] += (bundle['quantity'] * panel_count[panel]) * -1
+
+		challan_variant_d = {}
+		for item in self.items:
+			if item.quantity > 0:
+				challan_variant_d.setdefault(item.item_variant, 0)
+				challan_variant_d[item.item_variant] += item.quantity
+
+		for variant in bundle_variant_d:
+			if variant not in challan_variant_d:
+				frappe.throw("Unwanted bundles are selected in Cut Panel Movement")
+			
+			if bundle_variant_d[variant] != challan_variant_d[variant]:
+				frappe.throw(f"Quantity Mismatch on Variant {variant}")
+	
 	def generate_rework_docs(self):
 		frappe.enqueue(generate_rework, "short", doc_name=self.name, enqueue_after_commit=True)
 

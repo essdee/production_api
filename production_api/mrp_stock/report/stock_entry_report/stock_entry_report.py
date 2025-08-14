@@ -10,7 +10,7 @@ def execute(filters=None):
 
 def get_columns():
 	return [
-		{"fieldname": "stock_entry","fieldtype": "Link","label": "Stock Entry","options": "Stock Reconciliation", "width": 200},
+		{"fieldname": "stock_entry","fieldtype": "Link","label": "Stock Entry","options": "Stock Entry", "width": 200},
 		{"fieldname": "purpose","fieldtype": "Data","label": "Purpose", "width": 130},
 		{"fieldname": "from_warehouse","fieldtype": "Link","label": "From Warehouse","options": "Supplier", "width": 100},
 		{"fieldname": "from_warehouse_name","fieldtype": "Data","label": "From Warehouse Name", "width": 200},
@@ -21,6 +21,7 @@ def get_columns():
 		{"fieldname": "item_variant","fieldtype": "Link","label": "Item Variant","options": "Item Variant", "width": 250},
 		{"fieldname": "qty","fieldtype": "Float","label": "Quantity", "width": 100},
 		{"fieldname": "uom","fieldtype": "Link","label": "UOM","options": "UOM", "width": 100},
+		{"fieldname": "valuation_rate","fieldtype": "Currency", "label": "Valuation Rate", "width": 100},
 		{"fieldname": "remarks","fieldtype": "Data","label": "Remarks", "width": 200},
 	]
 
@@ -68,7 +69,7 @@ def get_data(filters):
 
 		se_table_items = frappe.db.sql(
 			f"""
-				SELECT item, qty, lot, uom, remarks FROM `tabStock Entry Detail` WHERE parent = %(se)s {conditions}
+				SELECT item, qty, lot, uom, remarks, stock_uom_rate FROM `tabStock Entry Detail` WHERE parent = %(se)s {conditions}
 			""", con, as_dict=True
 		)
 		for table_item in se_table_items:
@@ -89,6 +90,7 @@ def get_data(filters):
 					"item_variant": table_item['item'],
 					"qty": table_item['qty'],
 					"uom": table_item['uom'],
+					"valuation_rate": table_item['stock_uom_rate'],
 					"remarks": table_item['remarks'],
 				}
 			)
