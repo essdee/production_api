@@ -2309,7 +2309,7 @@ def get_primary_values(grn_name):
 
 def generate_rework(doc_name):
 	self = frappe.get_doc("Goods Received Note", doc_name)
-	if doc.docstatus == 2:
+	if self.docstatus == 2:
 		frappe.db.sql(
 			"""
 				DELETE FROM `tabGRN Rework Item` WHERE grn_number = %(grn)s
