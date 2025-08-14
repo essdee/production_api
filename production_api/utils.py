@@ -475,12 +475,13 @@ def get_daily_production_report(date):
 					qty = item.quantity
 					for part in parts:
 						alter_incomplete_items[set_colour][item.size][part] += qty	
-				
 				total_qty = completed_items['total_qty']
 				for item in completed_items['items']:
 					colour = item['attributes'][ipd_doc.packing_attribute]
 					for val in item['values']:
 						min = sys.maxsize
+						if not alter_incomplete_items[colour].get(val) or not total_qty.get(val):
+							continue
 						for panel in alter_incomplete_items[colour][val]:
 							if alter_incomplete_items[colour][val][panel] < min:
 								min = alter_incomplete_items[colour][val][panel]
@@ -489,7 +490,6 @@ def get_daily_production_report(date):
 						item['values'][val] += min
 						for panel in alter_incomplete_items[colour][val]:
 							alter_incomplete_items[colour][val][panel] -= min
-
 				completed_items['total_qty'] = total_qty				
 				for item in incomplete_items['items']:
 					colour = item['attributes'][ipd_doc.packing_attribute]
@@ -549,18 +549,18 @@ def get_daily_production_report(date):
 					colour = set_combination['major_colour']
 					part = item['attributes'][ipd_doc.set_item_attribute]
 					item['values'] = alter_incomplete_items[colour][part]
-
 		items_list = []
 		total = 0
 		total_planned_qty = 0
 		total_received_qty = 0
 		planned_dict = {}
-		wo_doc = frappe.get_doc("Work Order", cp_doc.work_order)
-		for row in wo_doc.work_order_calculated_items:
-			planned_dict.setdefault(row.item_variant, {
-				"planned": row.quantity,
-				"cumulative": row.received_qty
-			})
+		if cp_doc.work_order:
+			wo_doc = frappe.get_doc("Work Order", cp_doc.work_order)
+			for row in wo_doc.work_order_calculated_items:
+				planned_dict.setdefault(row.item_variant, {
+					"planned": row.quantity,
+					"cumulative": row.received_qty
+				})
 		from production_api.production_api.doctype.item.item import get_or_create_variant
 		for row in completed_items['items']:
 			total_qty = 0
@@ -572,8 +572,9 @@ def get_daily_production_report(date):
 					attrs = row['attributes']
 					attrs[row['primary_attribute']] = val
 					variant = get_or_create_variant(cp_doc.item, attrs)
-					total_planned += planned_dict[variant]['planned']
-					total_received += planned_dict[variant]['cumulative']
+					if planned_dict:
+						total_planned += planned_dict[variant]['planned']
+						total_received += planned_dict[variant]['cumulative']
 
 			if total_qty > 0:	
 				row['total_qty'] = total_qty	
@@ -595,6 +596,140 @@ def get_daily_production_report(date):
 		completed_items['lot_no'] = cp_doc.lot
 		completed_items['location'] = cp_doc.cutting_location
 		report.append(completed_items)
+
+	return report
+
+@frappe.whitelist()
+def get_cut_sheet_report(date):
+	from production_api.essdee_production.doctype.lot.lot import fetch_order_item_details
+	from production_api.production_api.doctype.cutting_plan.cutting_plan import get_complete_incomplete_structure
+	cls = frappe.db.sql(
+		"""
+			SELECT name FROM `tabCutting LaySheet` WHERE DATE(printed_time) = %(date)s
+		""", {
+			"date": getdate(date, parse_day_first=True).strftime("%Y-%m-%d")
+		}, as_dict=True
+	)
+	cutting_plans = frappe.db.sql(
+		"""
+			SELECT distinct(cutting_plan) as cutting_plan FROM `tabCutting LaySheet` 
+			WHERE DATE(printed_time) = %(date)s
+		""", {
+			"date": getdate(date, parse_day_first=True).strftime("%Y-%m-%d")
+		}, as_dict=True
+
+	)
+	report = []
+	for cutting_plan in cutting_plans:
+		cp_doc = frappe.get_doc("Cutting Plan",cutting_plan['cutting_plan'])
+		if cp_doc.version == "V1":
+			frappe.throw("Can't get report for Cutting Plan Version V1")
+
+		item_details = fetch_order_item_details(cp_doc.items,cp_doc.production_detail)
+		completed, incomplete = get_complete_incomplete_structure(cp_doc.production_detail,item_details)
+		cls_list = frappe.db.sql(
+			"""
+				SELECT name FROM `tabCutting LaySheet` WHERE DATE(printed_time) = %(date)s  
+				AND cutting_plan = %(cutting_plan)s AND status = 'Label Printed'
+			""", {
+				"date": getdate(date, parse_day_first=True).strftime("%Y-%m-%d"),
+				"cutting_plan": cutting_plan['cutting_plan']
+			}, as_dict=True
+		)	
+		incomplete_items = update_if_string_instance(incomplete)
+		completed_items = update_if_string_instance(completed)
+		production_detail = cp_doc.production_detail
+		ipd_doc = frappe.get_cached_doc("Item Production Detail",production_detail)
+		alter_incomplete_items = {}
+		if not ipd_doc.is_set_item:
+			for item in incomplete_items['items']:
+				colour = item['attributes'][ipd_doc.packing_attribute]
+				alter_incomplete_items[colour] = item['values']
+		else:
+			for item in incomplete_items['items']:
+				set_combination = update_if_string_instance(item['item_keys'])
+				colour = set_combination['major_colour']
+				part = item['attributes'][ipd_doc.set_item_attribute]
+				if alter_incomplete_items.get(colour):
+					alter_incomplete_items[colour][part] = item['values']
+				else:	
+					alter_incomplete_items[colour] = {}
+					alter_incomplete_items[colour][part] = item['values']
+
+		for cls in cls_list:
+			cls_doc = frappe.get_doc("Cutting LaySheet",cls['name'])
+			if not ipd_doc.is_set_item:
+				for item in cls_doc.cutting_laysheet_bundles:
+					parts = item.part.split(",")
+					set_combination = update_if_string_instance(item.set_combination)
+					set_colour = set_combination['major_colour']
+					qty = item.quantity
+					for part in parts:
+						alter_incomplete_items[set_colour][item.size][part] += qty	
+				for item in incomplete_items['items']:
+					colour = item['attributes'][ipd_doc.packing_attribute]
+					item['values'] = alter_incomplete_items[colour]		
+				
+			else:
+				stich_details = get_stich_details(ipd_doc)
+				for item in cls_doc.cutting_laysheet_bundles:
+					parts = item.part.split(",")
+					set_combination = update_if_string_instance(item.set_combination)
+					major_part = set_combination['major_part']
+					major_colour = set_combination['major_colour']
+					d = {
+						"major_colour": major_colour,
+					}
+					if set_combination.get('set_part'):
+						major_part = set_combination['set_part']
+						major_colour = set_combination['set_colour']
+					d['major_part'] = major_part	
+
+					qty = item.quantity
+					for part in parts:
+						try:
+							alter_incomplete_items[d['major_colour']][d['major_part']][item.size][part] += qty
+						except:
+							secondary_part = stich_details[part]
+							alter_incomplete_items[d['major_colour']][secondary_part][item.size][part] += qty
+				
+				for item in incomplete_items['items']:
+					set_combination = update_if_string_instance(item['item_keys'])
+					colour = set_combination['major_colour']
+					part = item['attributes'][ipd_doc.set_item_attribute]
+					item['values'] = alter_incomplete_items[colour][part]
+		
+		items_list = []
+		for item in incomplete_items['items']:
+			add_item = False
+			for size in item['values']:
+				check = False
+				for panel in item['values'][size]:
+					if item['values'][size][panel] > 0:
+						check = True
+						break
+				if check:	
+					add_item = True
+					break
+			if add_item:
+				items_list.append(item)
+
+		if len(items_list) == 0:
+			continue
+
+		incomplete_items['items'] = items_list			
+
+		for item in incomplete_items['items']:
+			item['total_panel_qty'] = {}
+			for size in item['values']:
+				for panel in item['values'][size]:
+					if item['values'][size][panel] > 0:
+						item['total_panel_qty'].setdefault(panel, 0)
+						item['total_panel_qty'][panel] += item['values'][size][panel] 
+		incomplete_items['style_no'] = cp_doc.item
+		incomplete_items['lot_no'] = cp_doc.lot
+		incomplete_items['location'] = cp_doc.cutting_location
+		report.append(incomplete_items)
 
 	return report
 

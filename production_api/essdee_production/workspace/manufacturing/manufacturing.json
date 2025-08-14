@@ -17,7 +17,7 @@
    "hidden": 0,
    "is_query_report": 0,
    "label": "Reports",
-   "link_count": 6,
+   "link_count": 7,
    "link_type": "DocType",
    "onboard": 0,
    "type": "Card Break"
@@ -28,6 +28,16 @@
    "label": "Daily Production Report",
    "link_count": 0,
    "link_to": "daily-production-rep",
+   "link_type": "Page",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Daily Cut Sheet Report",
+   "link_count": 0,
+   "link_to": "daily-cut-sheet-repo",
    "link_type": "Page",
    "onboard": 0,
    "type": "Link"
@@ -83,7 +93,7 @@
    "type": "Link"
   }
  ],
- "modified": "2025-08-08 17:51:10.434877",
+ "modified": "2025-08-13 14:58:46.691945",
  "modified_by": "Administrator",
  "module": "Essdee Production",
  "name": "Manufacturing",

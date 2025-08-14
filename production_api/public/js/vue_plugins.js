@@ -51,6 +51,7 @@ import ReturnItemsPopUp from "./Delivery_Challan/components/ReturnItemsPopUp.vue
 import SuggestedVendorBillDeliveryPerson from "./VendorBillTracking/components/SuggestedVendorBillDeliveryPerson.vue";
 import CutBundleEdit from "./Cut_Bundle_Edit/components/CutBundleEdit.vue";
 import DailyProductionReport from "./CuttingLaySheet/components/DailyProductionReport.vue";
+import DailyCutSheetReport from "./CuttingLaySheet/components/DailyCutSheetReport.vue";
 import GRNPacking from "./GRN/components/GRNPacking.vue";
 import ReworkPage from "./WorkOrder/components/ReworkPage.vue";
 
@@ -409,6 +410,18 @@ frappe.production.ui.DailyProductionReport = class {
     }
     make_app(){
         this.app = createApp(DailyProductionReport)
+        SetVueGlobals(this.app)
+        this.vue = this.app.mount(this.$wrapper.get(0))
+    }
+}
+
+frappe.production.ui.DailyCutSheetReport = class {
+    constructor(wrapper){
+        this.$wrapper = $(wrapper);
+        this.make_app()
+    }
+    make_app(){
+        this.app = createApp(DailyCutSheetReport)
         SetVueGlobals(this.app)
         this.vue = this.app.mount(this.$wrapper.get(0))
     }
