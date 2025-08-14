@@ -78,9 +78,10 @@
   }
  ],
  "grid_page_length": 50,
+ "in_create": 1,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-08-14 11:41:33.388323",
+ "modified": "2025-08-14 11:44:08.650878",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "GRN Rework Item",

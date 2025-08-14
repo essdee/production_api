@@ -970,7 +970,7 @@ def convert_received_type(rejection_data, docname, lot):
 		doc = frappe.get_doc("GRN Rework Item", docname)
 		for row in table_data:
 			doc.append("grn_reworked_item_details", row)
-		doc.save()
+		doc.save(ignore_permissions=True)
 	from production_api.mrp_stock.stock_ledger import make_sl_entries
 	make_sl_entries(sl_entries)
 
@@ -1050,6 +1050,6 @@ def update_partial_quantity(data, lot):
 		doc = frappe.get_doc("GRN Rework Item", docname)
 		for row in table_data:
 			doc.append("grn_reworked_item_details", row)
-		doc.save()
+		doc.save(ignore_permissions=True)
 	from production_api.mrp_stock.stock_ledger import make_sl_entries
 	make_sl_entries(sl_entries)		
