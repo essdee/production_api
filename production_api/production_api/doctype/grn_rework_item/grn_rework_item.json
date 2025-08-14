@@ -1,7 +1,7 @@
 {
  "actions": [],
  "allow_rename": 1,
- "autoname": "format: RW-{MM}-{YYYY}-{#####}",
+ "autoname": "naming_series:",
  "creation": "2025-08-11 10:55:20.524440",
  "doctype": "DocType",
  "engine": "InnoDB",
@@ -12,6 +12,7 @@
   "column_break_erha",
   "lot",
   "warehouse",
+  "naming_series",
   "section_break_roqw",
   "grn_rework_item_details",
   "grn_reworked_item_details"
@@ -67,16 +68,23 @@
    "fieldtype": "Table",
    "label": "GRN Reworked Item Details",
    "options": "GRN Reworked Item Detail"
+  },
+  {
+   "default": "RW-",
+   "fieldname": "naming_series",
+   "fieldtype": "Select",
+   "label": "Naming Series",
+   "options": "RW-"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-08-14 11:27:52.613226",
+ "modified": "2025-08-14 11:41:33.388323",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "GRN Rework Item",
- "naming_rule": "Expression",
+ "naming_rule": "By \"Naming Series\" field",
  "owner": "Administrator",
  "permissions": [
   {
