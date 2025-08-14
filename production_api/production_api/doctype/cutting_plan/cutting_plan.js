@@ -20,6 +20,12 @@ frappe.ui.form.on("Cutting Plan", {
             .forEach(field => $(frm.fields_dict[field].wrapper).html(""));
         }
         else{
+            if(frm.doc.lay_no != 0){
+                frm.set_df_property("cutting_location", "read_only", true)
+            }
+            else{
+                frm.set_df_property("cutting_location", "read_only", false)
+            }
             if(frm.doc.__onload && frm.doc.__onload.item_details){
                 frm.cut_plan_items.load_data(frm.doc.__onload.item_details,0)
             }
@@ -127,7 +133,13 @@ frappe.ui.form.on("Cutting Plan", {
                     primary_action(){
                         frm.dirty()
                         let items = frm.update_completed.get_items()
-                        frm.set_value("completed_items_json",JSON.parse(JSON.stringify(items[0])))
+                        frm.set_value("completed_items_json",JSON.parse(JSON.stringify(items.json_data[0])))
+                        if(items.completed){
+                            frm.set_value("status", "Completed")
+                        }
+                        else{
+                            frm.set_value("status", "Started")
+                        }
                         frm.save()   
                         d.hide()
                     }

@@ -21,6 +21,9 @@ class CuttingMarker(Document):
 		self.naming_series = "CM-.YY..MM.-.{#####}."
 
 	def before_submit(self):
+		if not self.length or not self.width:
+			frappe.throw("Enter the Values for Length and Width")
+			
 		if self.version == "V3" and len(self.cutting_marker_groups) == 0:
 			items = []
 			for part in self.calculated_parts.split(","):
@@ -151,3 +154,13 @@ def calculate_parts(cutting_plan):
 			"part": item.stiching_attribute_value,
 		})
 	return attribute_list
+
+@frappe.whitelist()
+def get_panels_and_size(lot, cutting_plan):
+	ipd = frappe.get_value("Lot",lot,"production_detail")
+	primary_values = get_ipd_primary_values(ipd)
+	panels = calculate_parts(cutting_plan)
+	return {
+		"sizes": primary_values,
+		"panels": panels,
+	}

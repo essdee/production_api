@@ -1078,6 +1078,11 @@
         edit_index.value = index;
         edit_index1.value = index1;
         let items = JSON.parse(JSON.stringify(props.items[index]))
+        Object.keys(items.items[0]['values']).forEach((size)=> {
+            if(items.items[0]['values'][size]['secondary_qty'] > 0){
+                secondary_quantity.value = true
+            }
+        })
         set_lot_item_details({
             item: items.items[index1].name,
             attributes: items.attributes,

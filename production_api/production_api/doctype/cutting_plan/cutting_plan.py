@@ -354,8 +354,10 @@ def get_ccr(doc_name):
 
 		tup_panels = ", ".join(panels)
 		markers.setdefault(tup_panels, {})
+		cloth_type = {}
 		for row in cls_doc.cutting_laysheet_details:
 			key = (row.colour, row.cloth_type)
+			cloth_type.setdefault(row.colour, row.cloth_type)
 			markers[tup_panels].setdefault(key, {
 				"used_weight": 0,
 				"received_weight": 0,
@@ -368,8 +370,14 @@ def get_ccr(doc_name):
 				bits = sizes[size] * row.effective_bits
 				markers[tup_panels][key][size]["bits"] += bits
 				markers[tup_panels][key]["total_pieces"] += bits
+
+		if cp_doc.is_manual_entry:
+			for row in cls_doc.cutting_laysheet_bundles:
+				key = (row.colour, cloth_type[row.colour])
+				markers[tup_panels][key][row.size]["bits"] += row.quantity
+				markers[tup_panels][key]["total_pieces"] += row.quantity
 		sizes = {}
-	
+
 	cp_doc_colours = {}
 	for row in cp_doc.cutting_plan_cloth_details:
 		key = (row.colour, row.cloth_type)
@@ -401,6 +409,9 @@ def get_ccr(doc_name):
 						cp_doc_colours[key]['received_weight'] -= markers[mark][key]['used_weight']
 	from production_api.essdee_production.doctype.item_production_detail.item_production_detail import get_ipd_primary_values
 	sizes = get_ipd_primary_values(cp_doc.production_detail)
+	print("*****************8")
+	print(sizes)
+	print(markers)
 	if markers:
 		return {
 			"marker_data": markers,

@@ -128,10 +128,8 @@ class GoodsReceivedNote(Document):
 							break
 				wo_doc.save(ignore_permissions=True)		
 				for item in self.items:
-					received_type = default_received_type
-					if item.received_type:
-						received_type = item.received_type
-					reduce_stock_list.append(self.get_return_deliverables(item, lot, {}, -1, received_type, self.supplier))
+					received_type = item.received_type
+					reduce_stock_list.append(self.get_return_deliverables(item, lot, {}, -1, default_received_type, self.supplier))
 					add_stock_list.append(self.get_return_deliverables(item, lot, {}, 1, received_type, self.delivery_location))
 				if self.includes_packing:
 					pack_attr, dept_attr, stich_stage = frappe.get_value("Item Production Detail", wo_doc.production_detail, ["packing_attribute", "dependent_attribute", "stiching_out_stage"])
@@ -175,6 +173,7 @@ class GoodsReceivedNote(Document):
 
 	def on_submit(self):
 		logger = get_module_logger("goods_received_note")
+		make_piece_calculation = False
 		if self.against == 'Purchase Order':
 			logger.debug(f"Purchase Order {datetime.now()}")
 			self.update_purchase_order()
@@ -198,7 +197,7 @@ class GoodsReceivedNote(Document):
 					self.db_set("ste_transferred_percent", 100)
 					self.db_set("ste_transferred", self.total_delivered_qty)
 					self.db_set("transfer_complete", 1)
-				self.piece_calculation()
+				make_piece_calculation = True	
 
 		cancelled_str = frappe.db.get_single_value("MRP Settings", "cut_bundle_cancelled_lot")
 		cancelled_list = cancelled_str.split(",")
@@ -233,12 +232,17 @@ class GoodsReceivedNote(Document):
 					update_collapsed_bundle(self.doctype, self.name, "on_submit", non_stich_process=True)
 		self.make_repost_action()
 
+		if make_piece_calculation:
+			self.piece_calculation()
+			self.generate_rework_docs()
+
+	def generate_rework_docs(self):
+		frappe.enqueue(generate_rework, "short", doc_name=self.name, enqueue_after_commit=True)
+
 	def get_to_warehouse(self):
-		to_warehouse = None
-		if self.is_internal_unit:
+		to_warehouse = self.delivery_location
+		if self.is_internal_unit and self.supplier_address != self.delivery_address:
 			to_warehouse = frappe.get_single("Stock Settings").transit_warehouse
-		else:
-			to_warehouse = self.delivery_location
 		
 		return to_warehouse	
 
@@ -429,11 +433,7 @@ class GoodsReceivedNote(Document):
 				deliverables_rate = deliverables_rate + (item.valuation_rate * item.quantity)
 		avg = deliverables_rate / self.total_received_quantity
 		# frappe.throw(str(avg))
-		supplier = self.delivery_location
-		if self.supplier_address != self.delivery_address and self.is_internal_unit:
-			transit_warehouse = frappe.db.get_single_value("Stock Settings","transit_warehouse")
-			supplier = transit_warehouse
-
+		supplier = self.get_to_warehouse()
 		sl_entries = []
 		for item in self.items:
 			if item.quantity > 0 and res.get(item.item_variant):
@@ -524,6 +524,7 @@ class GoodsReceivedNote(Document):
 	def on_cancel(self):
 		logger = get_module_logger("goods_received_note")
 		self.ignore_linked_doctypes = ("Stock Ledger Entry", "Repost Item Valuation", "Cut Panel Movement", "Cut Bundle Movement Ledger")
+		make_piece_calculation = False
 		if self.against == 'Purchase Order':
 			logger.debug(f"{self.name} On Cancel Purchase Order {datetime.now()}")
 			if self.purchase_invoice_name:
@@ -563,11 +564,9 @@ class GoodsReceivedNote(Document):
 							break
 				wo_doc.save(ignore_permissions=True)		
 				for item in self.items:
-					received_type = default_received_type
-					if item.received_type:
-						received_type = item.received_type
+					received_type = item.received_type
 					reduce_stock_list.append(self.get_return_deliverables(item, lot, {}, 1, received_type, self.delivery_location))
-					add_stock_list.append(self.get_return_deliverables(item, lot, {}, -1, received_type, self.supplier))
+					add_stock_list.append(self.get_return_deliverables(item, lot, {}, -1, default_received_type, self.supplier))
 				if self.includes_packing:
 					pack_attr, dept_attr, stich_stage = frappe.get_value("Item Production Detail", wo_doc.production_detail, ["packing_attribute", "dependent_attribute", "stiching_out_stage"])
 					from production_api.production_api.doctype.cut_bundle_movement_ledger.cut_bundle_movement_ledger import (
@@ -605,7 +604,7 @@ class GoodsReceivedNote(Document):
 					self.db_set("ste_transferred_percent", 0)
 					self.db_set("ste_transferred", 0)
 					self.db_set("transfer_complete", 0)
-				self.piece_calculation()
+				make_piece_calculation = True
 
 		cancelled_str = frappe.db.get_single_value("MRP Settings", "cut_bundle_cancelled_lot")
 		cancelled_list = cancelled_str.split(",")
@@ -641,6 +640,15 @@ class GoodsReceivedNote(Document):
 					update_collapsed_bundle(self.doctype, self.name, "on_cancel")						
 
 		self.make_repost_action()
+		if make_piece_calculation:
+			self.piece_calculation()
+			frappe.db.sql(
+				"""
+					DELETE FROM `tabGRN Rework Item` WHERE grn_number = %(grn)s
+				""", {
+					"grn": self.name
+				}
+			)
 			
 	def reupdate_rework_stock(self):
 		wo_doc = frappe.get_doc(self.against, self.against_id)
@@ -2265,3 +2273,53 @@ def get_primary_values(grn_name):
 	ipd = frappe.get_cached_value("Work Order", grn_doc.against_id, "production_detail")
 	primary_values = get_ipd_primary_values(ipd)
 	return primary_values
+
+def generate_rework(doc_name):
+	self = frappe.get_doc("Goods Received Note", doc_name)
+	if doc.docstatus == 2:
+		frappe.db.sql(
+			"""
+				DELETE FROM `tabGRN Rework Item` WHERE grn_number = %(grn)s
+			""", {
+				"grn": doc_name
+			}
+		)
+		return
+	
+	single_doc = frappe.get_single("Stock Settings")
+	types = [single_doc.default_received_type, single_doc.default_rejected_type]
+	items = update_if_string_instance(self.items_json)
+	if self.is_return:
+		items = [item.as_dict() for item in self.items]
+	for key, variants in groupby(items, lambda i: i['row_index']):
+		received_data = {}
+		for item in variants:
+			if self.is_return:
+				received_data.setdefault(item.received_type, [])
+				received_data[item.received_type].append({
+					"item_variant": item.item_variant,
+					"received_type": item.received_type,
+					"quantity": item.quantity,
+					"uom": item['stock_uom']
+				})
+			else:	
+				received_types = update_if_string_instance(item['received_types'])
+				for rec_type in received_types:
+					if rec_type in types:
+						continue 
+					received_data.setdefault(rec_type, [])
+					received_data[rec_type].append({
+						"item_variant": item['item_variant'],
+						"received_type": rec_type,
+						"quantity": received_types[rec_type],
+						"uom": item['stock_uom']
+					})
+		data = []
+		for ty in received_data:
+			data = data + received_data[ty]
+		doc = frappe.new_doc("GRN Rework Item")	
+		doc.grn_number = self.name
+		doc.warehouse = self.delivery_location
+		doc.lot = self.lot
+		doc.set('grn_rework_item_details', data)
+		doc.save(ignore_permissions=True)

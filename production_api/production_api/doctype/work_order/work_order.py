@@ -493,11 +493,11 @@ def get_work_order_items(work_order, is_grn = False):
 	return data
  
 @frappe.whitelist()
-def get_lot_items(lot, doc_name, process):
+def get_lot_items(lot, doc_name, process, includes_packing=False):
 	logger = get_module_logger("work_order")
 	logger.debug(f"{doc_name} Calculation Started {datetime.now()}")
 	doc = frappe.get_cached_doc("Lot", lot)	
-	items = fetch_order_item_details(doc.lot_order_details, doc.production_detail, process=process)
+	items = fetch_order_item_details(doc.lot_order_details, doc.production_detail, process=process, includes_packing=includes_packing)
 	logger.debug(f"{doc_name} Fetched Order detail from Lot {datetime.now()}")
 	return items
 

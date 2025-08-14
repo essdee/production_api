@@ -189,7 +189,8 @@ frappe.ui.form.on("Delivery Challan", {
 												method: "production_api.production_api.doctype.delivery_challan.delivery_challan.create_return_grn",
 												args: {
 													doc_name: frm.doc.name,
-													items: returned_items,
+													items: returned_items.items,
+													received_type: returned_items.received_type
 												},
 												callback: function(r){
 													frappe.set_route("Form", "Goods Received Note", r.message)

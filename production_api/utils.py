@@ -475,12 +475,13 @@ def get_daily_production_report(date):
 					qty = item.quantity
 					for part in parts:
 						alter_incomplete_items[set_colour][item.size][part] += qty	
-				
 				total_qty = completed_items['total_qty']
 				for item in completed_items['items']:
 					colour = item['attributes'][ipd_doc.packing_attribute]
 					for val in item['values']:
 						min = sys.maxsize
+						if not alter_incomplete_items[colour].get(val) or not total_qty.get(val):
+							continue
 						for panel in alter_incomplete_items[colour][val]:
 							if alter_incomplete_items[colour][val][panel] < min:
 								min = alter_incomplete_items[colour][val][panel]
@@ -489,7 +490,6 @@ def get_daily_production_report(date):
 						item['values'][val] += min
 						for panel in alter_incomplete_items[colour][val]:
 							alter_incomplete_items[colour][val][panel] -= min
-
 				completed_items['total_qty'] = total_qty				
 				for item in incomplete_items['items']:
 					colour = item['attributes'][ipd_doc.packing_attribute]
@@ -549,18 +549,18 @@ def get_daily_production_report(date):
 					colour = set_combination['major_colour']
 					part = item['attributes'][ipd_doc.set_item_attribute]
 					item['values'] = alter_incomplete_items[colour][part]
-
 		items_list = []
 		total = 0
 		total_planned_qty = 0
 		total_received_qty = 0
 		planned_dict = {}
-		wo_doc = frappe.get_doc("Work Order", cp_doc.work_order)
-		for row in wo_doc.work_order_calculated_items:
-			planned_dict.setdefault(row.item_variant, {
-				"planned": row.quantity,
-				"cumulative": row.received_qty
-			})
+		if cp_doc.work_order:
+			wo_doc = frappe.get_doc("Work Order", cp_doc.work_order)
+			for row in wo_doc.work_order_calculated_items:
+				planned_dict.setdefault(row.item_variant, {
+					"planned": row.quantity,
+					"cumulative": row.received_qty
+				})
 		from production_api.production_api.doctype.item.item import get_or_create_variant
 		for row in completed_items['items']:
 			total_qty = 0
@@ -572,8 +572,9 @@ def get_daily_production_report(date):
 					attrs = row['attributes']
 					attrs[row['primary_attribute']] = val
 					variant = get_or_create_variant(cp_doc.item, attrs)
-					total_planned += planned_dict[variant]['planned']
-					total_received += planned_dict[variant]['cumulative']
+					if planned_dict:
+						total_planned += planned_dict[variant]['planned']
+						total_received += planned_dict[variant]['cumulative']
 
 			if total_qty > 0:	
 				row['total_qty'] = total_qty	
@@ -595,6 +596,140 @@ def get_daily_production_report(date):
 		completed_items['lot_no'] = cp_doc.lot
 		completed_items['location'] = cp_doc.cutting_location
 		report.append(completed_items)
+
+	return report
+
+@frappe.whitelist()
+def get_cut_sheet_report(date):
+	from production_api.essdee_production.doctype.lot.lot import fetch_order_item_details
+	from production_api.production_api.doctype.cutting_plan.cutting_plan import get_complete_incomplete_structure
+	cls = frappe.db.sql(
+		"""
+			SELECT name FROM `tabCutting LaySheet` WHERE DATE(printed_time) = %(date)s
+		""", {
+			"date": getdate(date, parse_day_first=True).strftime("%Y-%m-%d")
+		}, as_dict=True
+	)
+	cutting_plans = frappe.db.sql(
+		"""
+			SELECT distinct(cutting_plan) as cutting_plan FROM `tabCutting LaySheet` 
+			WHERE DATE(printed_time) = %(date)s
+		""", {
+			"date": getdate(date, parse_day_first=True).strftime("%Y-%m-%d")
+		}, as_dict=True
+
+	)
+	report = []
+	for cutting_plan in cutting_plans:
+		cp_doc = frappe.get_doc("Cutting Plan",cutting_plan['cutting_plan'])
+		if cp_doc.version == "V1":
+			frappe.throw("Can't get report for Cutting Plan Version V1")
+
+		item_details = fetch_order_item_details(cp_doc.items,cp_doc.production_detail)
+		completed, incomplete = get_complete_incomplete_structure(cp_doc.production_detail,item_details)
+		cls_list = frappe.db.sql(
+			"""
+				SELECT name FROM `tabCutting LaySheet` WHERE DATE(printed_time) = %(date)s  
+				AND cutting_plan = %(cutting_plan)s AND status = 'Label Printed'
+			""", {
+				"date": getdate(date, parse_day_first=True).strftime("%Y-%m-%d"),
+				"cutting_plan": cutting_plan['cutting_plan']
+			}, as_dict=True
+		)	
+		incomplete_items = update_if_string_instance(incomplete)
+		completed_items = update_if_string_instance(completed)
+		production_detail = cp_doc.production_detail
+		ipd_doc = frappe.get_cached_doc("Item Production Detail",production_detail)
+		alter_incomplete_items = {}
+		if not ipd_doc.is_set_item:
+			for item in incomplete_items['items']:
+				colour = item['attributes'][ipd_doc.packing_attribute]
+				alter_incomplete_items[colour] = item['values']
+		else:
+			for item in incomplete_items['items']:
+				set_combination = update_if_string_instance(item['item_keys'])
+				colour = set_combination['major_colour']
+				part = item['attributes'][ipd_doc.set_item_attribute]
+				if alter_incomplete_items.get(colour):
+					alter_incomplete_items[colour][part] = item['values']
+				else:	
+					alter_incomplete_items[colour] = {}
+					alter_incomplete_items[colour][part] = item['values']
+
+		for cls in cls_list:
+			cls_doc = frappe.get_doc("Cutting LaySheet",cls['name'])
+			if not ipd_doc.is_set_item:
+				for item in cls_doc.cutting_laysheet_bundles:
+					parts = item.part.split(",")
+					set_combination = update_if_string_instance(item.set_combination)
+					set_colour = set_combination['major_colour']
+					qty = item.quantity
+					for part in parts:
+						alter_incomplete_items[set_colour][item.size][part] += qty	
+				for item in incomplete_items['items']:
+					colour = item['attributes'][ipd_doc.packing_attribute]
+					item['values'] = alter_incomplete_items[colour]		
+				
+			else:
+				stich_details = get_stich_details(ipd_doc)
+				for item in cls_doc.cutting_laysheet_bundles:
+					parts = item.part.split(",")
+					set_combination = update_if_string_instance(item.set_combination)
+					major_part = set_combination['major_part']
+					major_colour = set_combination['major_colour']
+					d = {
+						"major_colour": major_colour,
+					}
+					if set_combination.get('set_part'):
+						major_part = set_combination['set_part']
+						major_colour = set_combination['set_colour']
+					d['major_part'] = major_part	
+
+					qty = item.quantity
+					for part in parts:
+						try:
+							alter_incomplete_items[d['major_colour']][d['major_part']][item.size][part] += qty
+						except:
+							secondary_part = stich_details[part]
+							alter_incomplete_items[d['major_colour']][secondary_part][item.size][part] += qty
+				
+				for item in incomplete_items['items']:
+					set_combination = update_if_string_instance(item['item_keys'])
+					colour = set_combination['major_colour']
+					part = item['attributes'][ipd_doc.set_item_attribute]
+					item['values'] = alter_incomplete_items[colour][part]
+		
+		items_list = []
+		for item in incomplete_items['items']:
+			add_item = False
+			for size in item['values']:
+				check = False
+				for panel in item['values'][size]:
+					if item['values'][size][panel] > 0:
+						check = True
+						break
+				if check:	
+					add_item = True
+					break
+			if add_item:
+				items_list.append(item)
+
+		if len(items_list) == 0:
+			continue
+
+		incomplete_items['items'] = items_list			
+
+		for item in incomplete_items['items']:
+			item['total_panel_qty'] = {}
+			for size in item['values']:
+				for panel in item['values'][size]:
+					if item['values'][size][panel] > 0:
+						item['total_panel_qty'].setdefault(panel, 0)
+						item['total_panel_qty'][panel] += item['values'][size][panel] 
+		incomplete_items['style_no'] = cp_doc.item
+		incomplete_items['lot_no'] = cp_doc.lot
+		incomplete_items['location'] = cp_doc.cutting_location
+		report.append(incomplete_items)
 
 	return report
 
@@ -675,3 +810,246 @@ def get_inward_qty(lot, process):
 		"is_set_item": is_set_item,
 		"set_attr": set_attr
 	}
+
+@frappe.whitelist()
+def get_rework_items(lot):
+	rework_items = frappe.get_all("GRN Rework Item", filters={"lot": lot, "completed": 0}, pluck="name")
+	data = {}
+	from production_api.production_api.doctype.cut_bundle_movement_ledger.cut_bundle_movement_ledger import get_variant_attr_details
+	for item in rework_items:
+		doc = frappe.get_doc("GRN Rework Item", item)
+		ipd = frappe.get_cached_value("Lot", doc.lot, "production_detail")
+		ipd_fields = ['packing_attribute', 'primary_item_attribute', 'is_set_item', 'set_item_attribute']
+		pack_attr, primary_attr, set_item, set_attr = frappe.get_cached_value("Item Production Detail", ipd, ipd_fields)
+		data.setdefault(item, {
+			"grn_number": doc.grn_number,
+			"lot": doc.lot,
+			"item": doc.item,
+			"rework_detail": {},
+			"size": primary_attr,
+		})
+		for row in doc.grn_rework_item_details:
+			if row.completed == 1:
+				continue
+			attr_details = get_variant_attr_details(row.item_variant)
+			key = row.received_type+"-"+attr_details[pack_attr]
+			if set_item:
+				key += "-"+attr_details[set_attr]
+			data[item]['rework_detail'].setdefault(key, {
+				"changed": 0,
+				'items': [],
+			})
+			data[item]['rework_detail'][key]['items'].append({
+				primary_attr : attr_details[primary_attr],
+				"rework_qty": row.quantity - row.reworked,
+				"rejected": row.rejection, 
+				"rework": 0,
+				"row_name": row.name,
+				"variant": row.item_variant,
+				"received_type": row.received_type,
+				"uom": row.uom,
+			})
+	return data	
+
+@frappe.whitelist()
+def update_rejected_quantity(rejection_data, completed:int, lot):
+	rejection_data = update_if_string_instance(rejection_data)
+	for row in rejection_data:
+		frappe.db.sql(
+			"""
+				UPDATE `tabGRN Rework Item Detail` SET rejection = %(reject_qty)s, 
+				completed = %(completed)s WHERE name = %(name)s 
+			""", {
+				"reject_qty": row['rejected'],
+				"name": row['row_name'],
+				"completed": completed, 
+			}
+		)
+
+	parent = frappe.db.sql(
+		"""
+			SELECT parent FROM `tabGRN Rework Item Detail` WHERE name = %(row_name)s
+		""", {
+			"row_name": rejection_data[0]['row_name']
+		}, as_dict=True
+	)[0]['parent']	
+	if completed:
+		convert_received_type(rejection_data, parent, lot)
+
+	incompleted = frappe.db.sql(
+		"""
+			SELECT name FROM `tabGRN Rework Item Detail` WHERE parent = %(parent)s 
+			AND completed = 0
+		""", {
+			"parent": parent
+		}, as_dict=True
+	)
+
+	if not incompleted:
+		frappe.db.sql(
+			"""
+				UPDATE `tabGRN Rework Item` SET completed = 1 WHERE name = %(name)s
+			""", {
+				"name": parent
+			}
+		)
+
+def convert_received_type(rejection_data, docname, lot):
+	warehouse = frappe.db.sql(
+		"""
+			SELECT warehouse FROM `tabGRN Rework Item` WHERE name = %(docname)s
+		""", {
+			"docname": docname
+		}, as_dict=True
+	)[0]['warehouse']
+	doc = frappe.get_single("Stock Settings")
+	accepted = doc.default_received_type
+	rejected = doc.default_rejected_type	
+	sl_entries = []
+	table_data = []
+	for row in rejection_data:
+		sl_entries.append({
+			"item": row['variant'],
+			"warehouse": warehouse,
+			"received_type": row['received_type'],
+			"lot": lot,
+			"voucher_type": "GRN Rework Item",
+			"voucher_no": docname,
+			"voucher_detail_no": row['row_name'],
+			"qty": row['rework_qty'] * -1,
+			"uom": row['uom'],
+			"rate": 0,
+			"valuation_rate": 0,
+			"is_cancelled": 0,
+			"posting_date": frappe.utils.nowdate(),
+			"posting_time": frappe.utils.nowtime(),
+		})	
+		if row['rejected'] > 0:
+			sl_entries.append({
+				"item": row['variant'],
+				"warehouse": warehouse,
+				"received_type": rejected,
+				"lot": lot,
+				"voucher_type": "GRN Rework Item",
+				"voucher_no": docname,
+				"voucher_detail_no": row['row_name'],
+				"qty": row['rejected'],
+				"uom": row['uom'],
+				"rate": 0,
+				"valuation_rate": 0,
+				"is_cancelled": 0,
+				"posting_date": frappe.utils.nowdate(),
+				"posting_time": frappe.utils.nowtime(),
+			})
+
+		if row['rework_qty'] - row['rejected'] > 0:
+			sl_entries.append({
+				"item": row['variant'],
+				"warehouse": warehouse,
+				"received_type": accepted,
+				"lot": lot,
+				"voucher_type": "GRN Rework Item",
+				"voucher_no": docname,
+				"voucher_detail_no": row['row_name'],
+				"qty":  row['rework_qty'] - row['rejected'],
+				"uom": row['uom'],
+				"rate": 0,
+				"valuation_rate": 0,
+				"is_cancelled": 0,
+				"posting_date": frappe.utils.nowdate(),
+				"posting_time": frappe.utils.nowtime(),
+			})	
+		table_data.append({
+			"item_variant": row['variant'],
+			"quantity": row['rework_qty'] - row['rejected'],
+			"received_type": row['received_type'],
+			"uom": row['uom'],
+			"reworked_time": frappe.utils.now_datetime()
+		})			
+	if table_data:
+		doc = frappe.get_doc("GRN Rework Item", docname)
+		for row in table_data:
+			doc.append("grn_reworked_item_details", row)
+		doc.save(ignore_permissions=True)
+	from production_api.mrp_stock.stock_ledger import make_sl_entries
+	make_sl_entries(sl_entries)
+
+@frappe.whitelist()
+def update_partial_quantity(data, lot):
+	data = update_if_string_instance(data)
+	docname = frappe.db.sql(
+		"""
+			SELECT parent FROM `tabGRN Rework Item Detail` WHERE name = %(row_name)s
+		""", {
+			"row_name": data[0]['row_name']
+		}, as_dict=True
+	)[0]['parent']	
+	warehouse = frappe.db.sql(
+		"""
+			SELECT warehouse FROM `tabGRN Rework Item` WHERE name = %(docname)s
+		""", {
+			"docname": docname
+		}, as_dict=True
+	)[0]['warehouse']
+	accepted = frappe.db.get_single_value("Stock Settings", "default_received_type")
+	sl_entries = []
+	table_data = []
+	for row in data:
+		if row['rework'] > 0:
+			sl_entries.append({
+				"item": row['variant'],
+				"warehouse": warehouse,
+				"received_type": row['received_type'],
+				"lot": lot,
+				"voucher_type": "GRN Rework Item",
+				"voucher_no": docname,
+				"voucher_detail_no": row['row_name'],
+				"qty":  row['rework'],
+				"uom": row['uom'],
+				"rate": 0,
+				"valuation_rate": 0,
+				"is_cancelled": 0,
+				"posting_date": frappe.utils.nowdate(),
+				"posting_time": frappe.utils.nowtime(),
+			})
+			sl_entries.append({
+				"item": row['variant'],
+				"warehouse": warehouse,
+				"received_type": accepted,
+				"lot": lot,
+				"voucher_type": "GRN Rework Item",
+				"voucher_no": docname,
+				"voucher_detail_no": row['row_name'],
+				"qty":  row['rework'],
+				"uom": row['uom'],
+				"rate": 0,
+				"valuation_rate": 0,
+				"is_cancelled": 0,
+				"posting_date": frappe.utils.nowdate(),
+				"posting_time": frappe.utils.nowtime(),
+			})	
+			frappe.db.sql(
+				"""
+					UPDATE `tabGRN Rework Item Detail` SET reworked = IFNULL(reworked, 0) + %(qty)s
+					WHERE name = %(name)s
+				""",
+				{
+					"qty": row['rework'],
+					"name": row['row_name']
+				}
+			)
+			table_data.append({
+				"item_variant": row['variant'],
+				"quantity": row['rework'],
+				"received_type": row['received_type'],
+				"uom": row['uom'],
+				"reworked_time": frappe.utils.now_datetime()
+			})
+
+	if table_data:
+		doc = frappe.get_doc("GRN Rework Item", docname)
+		for row in table_data:
+			doc.append("grn_reworked_item_details", row)
+		doc.save(ignore_permissions=True)
+	from production_api.mrp_stock.stock_ledger import make_sl_entries
+	make_sl_entries(sl_entries)		

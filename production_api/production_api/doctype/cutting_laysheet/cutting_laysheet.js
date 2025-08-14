@@ -55,7 +55,14 @@ frappe.ui.form.on("Cutting LaySheet", {
         else{
             frm.laysheet.load_data([])
         }
-
+        if(frm.doc.status == "Label Printed"){
+            frm.set_df_property("start_datetime", "read_only", true)
+            frm.set_df_property("end_datetime", "read_only", true)
+        }
+        else{
+            frm.set_df_property("start_datetime", "read_only", true)
+            frm.set_df_property("end_datetime", "read_only", true)
+        }
         frm.accessory = new frappe.production.ui.LaySheetAccessory(frm.fields_dict['accessory_html'].wrapper)
         if(frm.doc.__onload && frm.doc.__onload.item_accessories){
             frm.accessory.load_data(frm.doc.__onload.item_accessories)
