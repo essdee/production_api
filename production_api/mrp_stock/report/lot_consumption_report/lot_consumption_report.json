@@ -1,0 +1,41 @@
+{
+ "add_total_row": 0,
+ "add_translate_data": 0,
+ "columns": [],
+ "creation": "2025-08-14 12:07:52.691136",
+ "disabled": 0,
+ "docstatus": 0,
+ "doctype": "Report",
+ "filters": [],
+ "idx": 0,
+ "is_standard": "Yes",
+ "letter_head": "Essdee Knitting Mills Private Limited",
+ "letterhead": null,
+ "modified": "2025-08-14 17:35:36.710646",
+ "modified_by": "Administrator",
+ "module": "MRP Stock",
+ "name": "Lot Consumption Report",
+ "owner": "Administrator",
+ "prepared_report": 0,
+ "ref_doctype": "Stock Ledger Entry",
+ "report_name": "Lot Consumption Report",
+ "report_type": "Script Report",
+ "roles": [
+  {
+   "role": "System Manager"
+  },
+  {
+   "role": "Stock Manager"
+  },
+  {
+   "role": "Merchandiser"
+  },
+  {
+   "role": "Accounts Manager"
+  },
+  {
+   "role": "Stock User"
+  }
+ ],
+ "timeout": 0
+}
