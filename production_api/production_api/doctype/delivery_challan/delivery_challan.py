@@ -37,6 +37,11 @@ class DeliveryChallan(Document):
 				doc.cancel()
 	
 	def on_cancel(self):
+		if self.from_address == self.supplier_address and self.is_internal_unit:
+			self.db_set("ste_transferred_percent", 0)
+			self.db_set("ste_transferred", 0)
+			self.db_set("transfer_complete", 0)
+
 		logger = get_module_logger("delivery_challan")
 		logger.debug(f"On Cancel {datetime.now()}")
 		wo_doc = frappe.get_doc("Work Order",self.work_order)
@@ -54,13 +59,12 @@ class DeliveryChallan(Document):
 		reduce_sl_entries = []
 		stock_settings = frappe.get_single("Stock Settings")
 		received_type = stock_settings.default_received_type
-		transit_warehouse = stock_settings.transit_warehouse
 		res = get_variant_stock_details()
 		self.total_delivered_qty = 0
 		for row in self.items:
 			if res.get(row.item_variant):
 				add_sl_entries.append(self.get_sle_data(row, self.from_location, -1, {}, received_type))	
-				supplier = transit_warehouse if self.is_internal_unit else self.supplier
+				supplier = self.get_to_warehouse()
 				if self.includes_packing and check_dependent_stage_variant(row.item_variant, dept_attr, piece_stage):
 					updated_variant = get_lpiece_variant(pack_attr, dept_attr, row.item_variant)
 					reduce_sl_entries.append(self.get_sle_data(row, supplier, 1, {}, received_type, new_variant=updated_variant))
@@ -99,6 +103,11 @@ class DeliveryChallan(Document):
 		self.make_repost_action()
 
 	def on_submit(self):
+		if self.from_address == self.supplier_address and self.is_internal_unit:
+			self.db_set("ste_transferred_percent", 100)
+			self.db_set("ste_transferred", self.total_delivered_qty)
+			self.db_set("transfer_complete", 1)
+
 		cancelled_str = frappe.db.get_single_value("MRP Settings", "cut_bundle_cancelled_lot")
 		cancelled_list = cancelled_str.split(",")
 		if self.lot not in cancelled_list:
@@ -147,7 +156,6 @@ class DeliveryChallan(Document):
 		res = get_variant_stock_details()
 		stock_settings = frappe.get_single("Stock Settings")
 		default_received_type = stock_settings.default_received_type
-		transit_warehouse = stock_settings.transit_warehouse
 		total_delivered = flt(0)
 		items = []
 		dept_attr, piece_stage, pack_attr = frappe.get_value("Item Production Detail", self.production_detail, ["dependent_attribute","stiching_out_stage", "packing_attribute"])
@@ -163,7 +171,7 @@ class DeliveryChallan(Document):
 				row.rate = rate	
 				total_delivered += row.delivered_quantity	
 				reduce_sl_entries.append(self.get_sle_data(row, self.from_location, -1, {}, received_type))
-				supplier = transit_warehouse if self.is_internal_unit else self.supplier
+				supplier = self.get_to_warehouse()
 				if self.includes_packing and check_dependent_stage_variant(row.item_variant, dept_attr, piece_stage):
 					updated_variant = get_lpiece_variant(pack_attr, dept_attr, row.item_variant)
 					add_sl_entries.append(self.get_sle_data(row, supplier, 1, {}, received_type, new_variant=updated_variant))
@@ -273,11 +281,9 @@ class DeliveryChallan(Document):
 		return sl_dict
 	
 	def get_to_warehouse(self):
-		to_warehouse = None
-		if self.is_internal_unit:
+		to_warehouse = self.supplier
+		if self.is_internal_unit and self.supplier_address != self.from_address:
 			to_warehouse = frappe.get_single("Stock Settings").transit_warehouse
-		else:
-			to_warehouse = self.supplier
 
 		return to_warehouse
 

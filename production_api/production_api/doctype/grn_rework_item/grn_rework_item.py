@@ -70,7 +70,10 @@ def revert_reworked_item(docname):
 			"posting_time": frappe.utils.nowtime(),
 		})	
 		row.completed = 0
+		row.rejection = 0
+		row.reworked = 0
 	doc.completed = 0	
+	doc.set("grn_reworked_item_details", [])
 	doc.save(ignore_permissions=True)	
 	from production_api.mrp_stock.stock_ledger import make_sl_entries
 	make_sl_entries(sl_entries)

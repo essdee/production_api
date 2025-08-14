@@ -240,11 +240,9 @@ class GoodsReceivedNote(Document):
 		frappe.enqueue(generate_rework, "short", doc_name=self.name, enqueue_after_commit=True)
 
 	def get_to_warehouse(self):
-		to_warehouse = None
-		if self.is_internal_unit:
+		to_warehouse = self.delivery_location
+		if self.is_internal_unit and self.supplier_address != self.delivery_address:
 			to_warehouse = frappe.get_single("Stock Settings").transit_warehouse
-		else:
-			to_warehouse = self.delivery_location
 		
 		return to_warehouse	
 
@@ -435,11 +433,7 @@ class GoodsReceivedNote(Document):
 				deliverables_rate = deliverables_rate + (item.valuation_rate * item.quantity)
 		avg = deliverables_rate / self.total_received_quantity
 		# frappe.throw(str(avg))
-		supplier = self.delivery_location
-		if self.supplier_address != self.delivery_address and self.is_internal_unit:
-			transit_warehouse = frappe.db.get_single_value("Stock Settings","transit_warehouse")
-			supplier = transit_warehouse
-
+		supplier = self.get_to_warehouse()
 		sl_entries = []
 		for item in self.items:
 			if item.quantity > 0 and res.get(item.item_variant):

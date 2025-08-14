@@ -2,7 +2,6 @@
     <div ref="root" class="rework-container">
         <div class="input-row">
             <div class="lot-input col-md-3"></div>
-            <div class="process-input col-md-3"></div>
             <div class="btn-wrapper">
                 <button class="btn btn-primary" @click="get_rework_items()">Get Rework Items</button>
             </div>
@@ -34,7 +33,7 @@
                                         </th>
                                     </tr>
                                     <tr>
-                                        <td>Rework</td>
+                                        <td>Total Rework</td>
                                         <td v-for="size in colour_data['items']">
                                             {{ size['rework_qty'] }}
                                         </td>
@@ -45,13 +44,22 @@
                                             <input type="number" v-model="size['rejected']" @blur="update_changed(key, colour)" class="form-control"/>
                                         </th>
                                     </tr>
+                                    <tr>
+                                        <td>Reworked</td>
+                                        <th v-for="size in colour_data['items']">
+                                            <input type="number" v-model="size['rework']" @blur="update_changed(key, colour)" class="form-control"/>
+                                        </th>
+                                    </tr>
                                 </table>
                                 <div style="width:100%;display:flex;justify-content: end;margin-top: 10px;">
                                     <div style="padding-right: 10px;">
-                                        <button class="btn btn-primary" @click="update_items(colour_data['items'], colour_data['changed'], 0, value['lot'])">Update</button>
+                                        <button class="btn btn-primary" @click="update_items(colour_data['items'], colour_data['changed'], 0, value['lot'])">Update Rejection Qty</button>
                                     </div>
                                     <div style="padding-right: 10px;">
-                                        <button class="btn btn-primary" @click="update_items(colour_data['items'], 1, 1, value['lot'])">Final</button>
+                                        <button class="btn btn-primary" @click="update_rework(colour_data['items'], value['lot'])">Update Reworked Piece</button>
+                                    </div>
+                                    <div style="padding-right: 10px;">
+                                        <button class="btn btn-primary" @click="update_items(colour_data['items'], 1, 1, value['lot'])">Complete Rework</button>
                                     </div>
                                 </div>
                             </template>
@@ -67,7 +75,6 @@
 import { ref, onMounted } from 'vue';
 
 let lot = null;
-let process = null;
 let root = ref(null);
 let sample_doc = ref({});
 let items = ref({});
@@ -89,29 +96,11 @@ onMounted(() => {
         doc: sample_doc.value,
         render_input: true,
     });
-
-    $(el).find(".process-input").html("");
-    process = frappe.ui.form.make_control({
-        parent: $(el).find(".process-input"),
-        df: {
-            fieldname: "process",
-            fieldtype: "Link",
-            options: "Process",
-            label: "Process",
-            reqd: true,
-        },
-        doc: sample_doc.value,
-        render_input: true,
-    });
 });
 
 function get_rework_items() {
     if (!lot.get_value()) {
         frappe.msgprint("Select a Lot");
-        return;
-    }
-    if (!process.get_value()) {
-        frappe.msgprint("Select a Process");
         return;
     }
     frappe.call({
@@ -156,6 +145,31 @@ function update_items(data, changed, completed, lot){
         }
         update(data, completed, lot)
     }
+}
+
+function update_rework(data, lot){
+    let d =  new frappe.ui.Dialog({
+        title: "Are you sure want to convert to reworked",
+        primary_action_label: "Yes",
+        secondary_action_label: "No",
+        primary_action(){
+            frappe.call({
+                method: "production_api.utils.update_partial_quantity",
+                args: {
+                    "data": data,
+                    "lot": lot
+                },
+                callback: function(){
+                    get_rework_items()
+                }
+            })
+            d.hide()
+        },
+        secondary_action(){
+            d.hide()
+        } 
+    })
+    d.show()
 }
 
 function update(data, completed, lot){
