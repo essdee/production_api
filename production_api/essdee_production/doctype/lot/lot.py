@@ -395,7 +395,7 @@ def fetch_item_details(items, production_detail):
 	return item_structure
 
 @frappe.whitelist()
-def fetch_order_item_details(items, production_detail, process=None, includes_packing=False):
+def fetch_order_item_details(items, production_detail, process=None, includes_packing:bool=False):
 	ipd_doc = frappe.get_doc("Item Production Detail", production_detail)
 	items = update_if_string_instance(items)
 	from production_api.essdee_production.doctype.item_production_detail.item_production_detail import get_ipd_primary_values
