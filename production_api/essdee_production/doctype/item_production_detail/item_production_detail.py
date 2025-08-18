@@ -1318,6 +1318,7 @@ def duplicate_ipd(ipd):
 		"item": ipd_doc.item,
 		"tech_pack_version": ipd_doc.tech_pack_version,
 		"pattern_version": ipd_doc.pattern_version,
+		"primary_item_attribute": ipd_doc.primary_item_attribute,
 		"dependent_attribute": ipd_doc.dependent_attribute,
 		"dependent_attribute_mapping": ipd_doc.dependent_attribute_mapping,
 		"packing_process": ipd_doc.packing_process,
