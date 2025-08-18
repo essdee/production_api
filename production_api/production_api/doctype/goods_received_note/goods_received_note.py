@@ -2350,9 +2350,10 @@ def generate_rework(doc_name):
 		data = []
 		for ty in received_data:
 			data = data + received_data[ty]
-		doc = frappe.new_doc("GRN Rework Item")	
-		doc.grn_number = self.name
-		doc.warehouse = self.delivery_location
-		doc.lot = self.lot
-		doc.set('grn_rework_item_details', data)
-		doc.save(ignore_permissions=True)
+		if data:	
+			doc = frappe.new_doc("GRN Rework Item")	
+			doc.grn_number = self.name
+			doc.warehouse = self.delivery_location
+			doc.lot = self.lot
+			doc.set('grn_rework_item_details', data)
+			doc.save(ignore_permissions=True)
