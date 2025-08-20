@@ -24,7 +24,7 @@ from production_api.production_api.doctype.cut_bundle_movement_ledger.cut_bundle
 
 class DeliveryChallan(Document):
 	def before_cancel(self):
-		self.ignore_linked_doctypes = ('Stock Ledger Entry', 'Repost Item Valuation',"Cut Bundle Movement Ledger",)
+		self.ignore_linked_doctypes = ('Stock Ledger Entry', 'Repost Item Valuation',"Cut Bundle Movement Ledger", "Cut Panel Movement")
 		if self.is_internal_unit:
 			ste_list = frappe.get_list("Stock Entry", filters={
 				"against":self.doctype,

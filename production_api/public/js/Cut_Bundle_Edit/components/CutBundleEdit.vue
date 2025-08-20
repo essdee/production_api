@@ -9,8 +9,13 @@
         <div>
             <CutPanelMovementBundle ref="bundleRef" :data="fetched_data" />
         </div>
-        <div style="width:100%;" v-if="docstatus == 0">
-            <button class="btn btn-success" @click="fetch_selected_bundles()">Fetch Selected Bundles</button>
+        <div style="width:100%;display: flex;" v-if="docstatus == 0">
+            <div>
+                <button class="btn btn-success" @click="fetch_selected_bundles()">Fetch Selected Bundles</button>
+            </div>
+            <div style="padding-left: 10px;">
+                <button class="btn btn-success" @click="split_bundles()">Split Bundles</button>
+            </div>
         </div>
         <div v-if="input_bundles.length > 0 || output_bundles.length > 0">
             <div style="width: 100%; display: flex; padding-top: 20px;">
@@ -85,8 +90,10 @@
 </template>
 
 <script setup>
-import {ref, onMounted} from 'vue';
+import {ref, onMounted, createApp} from 'vue';
 import CutPanelMovementBundle from '../../Cut_Panel_Movement/components/CutPanelMovementBundle.vue';
+import CutBundlePanelGroup from "./CutBundlePanelGroup.vue";
+
 
 const root = ref(null)
 let colour = ref(null)
@@ -266,143 +273,158 @@ function fetch_selected_bundles(){
 }
 
 function addBundle(index=-1){
-    let data_fields = [
-        {
-            fieldtype: "Select",
-            fieldname: "size",
-            label: "Size",
-            options: sizes.value,
-            reqd: true,
-        },
-        {
-            fieldtype: "Select",
-            fieldname: "colour",
-            label: "Colour",
-            options: colours.value,
-            reqd: true,
-            onchange: function(){
-                if(d.get_value('colour') && d.get_value("panel")){
-                    get_major_and_set_colour(d.get_value('colour'), d.get_value("panel"))
+    frappe.model.with_doctype("Cut Panel Item", function(){
+        let data_fields = [
+            {
+                fieldtype: "Select",
+                fieldname: "size",
+                label: "Size",
+                options: sizes.value,
+                reqd: true,
+            },
+            {
+                fieldtype: "Select",
+                fieldname: "colour",
+                label: "Colour",
+                options: colours.value,
+                reqd: true,
+                onchange: function(){
+                    if(d.get_value('colour') && d.get_value("panel")){
+                        get_major_and_set_colour(d.get_value('colour'), d.get_value("panel"))
+                    }
                 }
-            }
-        },
-        {
-            fieldtype: "Select",
-            fieldname: "panel",
-            label: "Panel",
-            options: panels.value,
-            reqd: true,
-            onchange: function(){
-                if(d.get_value('colour') && d.get_value("panel")){
-                    get_major_and_set_colour(d.get_value('colour'), d.get_value("panel"))
+            },
+            {
+                fieldtype: "Table MultiSelect",
+                fieldname: "panel",
+                label: "Selected Panels",
+                options: "Cut Panel Item",
+                reqd: true,
+                onchange: function(){
+                    if(d.get_value('colour') && d.get_value("panel")){
+                        get_major_and_set_colour(d.get_value('colour'), d.get_value("panel"))
+                    }
+                },
+                get_query() {
+                    return {
+                        filters: {
+                            name: ["in", panels.value],
+                        }
+                    }
                 }
+            },
+            {
+                fieldtype: "Data",
+                fieldname: "shade",
+                label: "Shade",
+                reqd: true,
+            },
+            {
+                fieldtype: "Int",
+                fieldname: "lay_no",
+                label: "Lay No",
+                reqd: true,
+            },
+            {
+                fieldtype: "Int",
+                fieldname: "bundle_no",
+                label: "Bundle No",
+                reqd: true,
+            },
+            {
+                fieldtype: "Int",
+                fieldname: "quantity",
+                label: "Quantity",
+                reqd: true,
             }
-        },
-        {
-            fieldtype: "Data",
-            fieldname: "shade",
-            label: "Shade",
-            reqd: true,
-        },
-        {
-            fieldtype: "Int",
-            fieldname: "lay_no",
-            label: "Lay No",
-            reqd: true,
-        },
-        {
-            fieldtype: "Int",
-            fieldname: "bundle_no",
-            label: "Bundle No",
-            reqd: true,
-        },
-        {
-            fieldtype: "Int",
-            fieldname: "quantity",
-            label: "Quantity",
-            reqd: true,
+        ]
+        if(index != -1){
+            let val = output_bundles.value[index]
+            let panel = val.panel.split(",")
+            data_fields[0]['default'] = val.size
+            data_fields[1]['default'] = val.colour
+            data_fields[2]['default'] = panel.map(p => ({panel: p}))
+            data_fields[3]['default'] = val.shade
+            data_fields[4]['default'] = val.lay_no
+            data_fields[5]['default'] = val.bundle_no
+            data_fields[6]['default'] = val.qty
         }
-    ]
-    if(index != -1){
-        let val = output_bundles.value[index]
-        console.log(val)
-        data_fields[0]['default'] = val.size
-        data_fields[1]['default'] = val.colour
-        data_fields[2]['default'] = val.panel
-        data_fields[3]['default'] = val.shade
-        data_fields[4]['default'] = val.lay_no
-        data_fields[5]['default'] = val.bundle_no
-        data_fields[6]['default'] = val.qty
-    }
-    let d = new frappe.ui.Dialog({
-        title: "Enter the below details to create new bundle",
-        fields: data_fields,
-        primary_action(values){
-            d.hide()
-            let fields = []
-            if(cur_set_comb.value.hasOwnProperty("major_colour")){
-                let x = {
-                    fieldname: "major_colour",
-                    fieldtype: "Select",
-                    options: colours.value,
-                    label: "Major Colour",
-                    reqd: true,
+        var d = new frappe.ui.Dialog({
+            title: "Enter the below details to create new bundle",
+            fields: data_fields,
+            primary_action(values){
+                d.hide()
+                let fields = []
+                if(cur_set_comb.value.hasOwnProperty("major_colour")){
+                    let x = {
+                        fieldname: "major_colour",
+                        fieldtype: "Select",
+                        options: colours.value,
+                        label: "Major Colour",
+                        reqd: true,
+                    }
+                    if(cur_set_comb.value.major_colour){
+                        x['default'] = cur_set_comb.value.major_colour
+                        x['read_only'] = true
+                    }
+                    fields.push(x)
                 }
-                if(cur_set_comb.value.major_colour){
-                    x['default'] = cur_set_comb.value.major_colour
-                    x['read_only'] = true
+                if(cur_set_comb.value.hasOwnProperty("set_colour")){
+                    let x = {
+                        fieldname: "set_colour",
+                        fieldtype: "Select",
+                        options: colours.value,
+                        label: "Set Colour",
+                        reqd: true,
+                    }
+                    if(cur_set_comb.value.set_colour){
+                        x['default'] = cur_set_comb.value.set_colour
+                        x['read_only'] = true
+                    }
+                    fields.push(x)
                 }
-                fields.push(x)
+                let d2 = new frappe.ui.Dialog({
+                    title: "Update or Verify the Set Colours",
+                    fields: fields,
+                    primary_action(val){
+                        d2.hide()
+                        make_dirty()
+                        cur_set_comb.value.major_colour = val.major_colour
+                        if(val.set_colour){
+                            cur_set_comb.value.set_colour = val.set_colour
+                        }
+                        let p = ""
+                        for(let i = 0; i < values.panel.length; i++){
+                            p += values.panel[i]['panel'] + ","
+                        }
+                        p = p.slice(0, -1)
+                        let bundle_val = {
+                            "lay_no": values.lay_no,
+                            "bundle_no": values.bundle_no,
+                            "qty": values.quantity,
+                            "panel": p,
+                            "set_combination": cur_set_comb.value,
+                            "shade": values.shade,
+                            "size": values.size,
+                            "colour": values.colour,
+                        }
+                        if(index != -1){
+                            output_bundles.value[index] = bundle_val
+                        }
+                        else{
+                            output_bundles.value.push(bundle_val)
+                        }
+                    }
+                })
+                d2.show()
             }
-            if(cur_set_comb.value.hasOwnProperty("set_colour")){
-                let x = {
-                    fieldname: "set_colour",
-                    fieldtype: "Select",
-                    options: colours.value,
-                    label: "Set Colour",
-                    reqd: true,
-                }
-                if(cur_set_comb.value.set_colour){
-                    x['default'] = cur_set_comb.value.set_colour
-                    x['read_only'] = true
-                }
-                fields.push(x)
-            }
-            let d2 = new frappe.ui.Dialog({
-                title: "Update or Verify the Set Colours",
-                fields: fields,
-                primary_action(val){
-                    d2.hide()
-                    make_dirty()
-                    cur_set_comb.value.major_colour = val.major_colour
-                    if(val.set_colour){
-                        cur_set_comb.value.set_colour = val.set_colour
-                    }
-                    let bundle_val = {
-                        "lay_no": values.lay_no,
-                        "bundle_no": values.bundle_no,
-                        "qty": values.quantity,
-                        "panel": values.panel,
-                        "set_combination": cur_set_comb.value,
-                        "shade": values.shade,
-                        "size": values.size,
-                        "colour": values.colour,
-                    }
-                    if(index != -1){
-                        output_bundles.value[index] = bundle_val
-                    }
-                    else{
-                        output_bundles.value.push(bundle_val)
-                    }
-                }
-            })
-            d2.show()
-        }
+        })
+        d.show()
     })
-    d.show()
 }
 
 function get_major_and_set_colour(colour, panel){
+    panel = panel[0]['panel']
     frappe.call({
         method: "production_api.production_api.doctype.cut_bundle_edit.cut_bundle_edit.get_major_set_colours",
         args: {
@@ -414,6 +436,78 @@ function get_major_and_set_colour(colour, panel){
             cur_set_comb.value = r.message
         }
     })
+}
+
+function split_bundles(){
+    if(input_bundles.value.length == 0){
+        frappe.msgprint("No input bundles to split")
+        return
+    }
+    let panels = []
+    for(let i = 0; i < input_bundles.value.length; i++){
+        if(panels.includes(input_bundles.value[i].panel)){
+            continue
+        }
+        if(input_bundles.value[i].panel.split(",").length == 1){
+            frappe.msgprint("Cannot split bundles with single panel")
+            return
+        }
+        panels.push(input_bundles.value[i].panel)
+    }
+    let i;
+    let d = new frappe.ui.Dialog({
+        title: "Split Bundles",
+        size: "extra-large",
+        fields: [
+            {
+                fieldtype: "HTML",
+                fieldname: "panel_group_html",
+            },
+        ],
+        primary_action(){
+            const panelGroupsData = i.panel_groups;
+            Object.keys(panelGroupsData).forEach((panel_grp) => {
+                let grp = panel_grp.split(",")
+                let new_groups = []
+                for(let j = 0; j < panelGroupsData[panel_grp].length; j++){
+                    let panels = panelGroupsData[panel_grp][j].split(",")
+                    for(let k = 0; k < panels.length; k++){
+                        if(new_groups.includes(panels[k])){
+                            frappe.throw(`Panel ${panels[k]} is already part of the group ${panel_grp}`)
+                            return
+                        }
+                        new_groups.push(panels[k])
+                    }
+                }
+                if(new_groups.length != grp.length){
+                    frappe.throw(`Panel group ${panel_grp} does not have all panels selected`)
+                    return
+                }
+            });
+            output_bundles.value = []
+            Object.keys(panelGroupsData).forEach((panel_grp) => {
+                console.log(panel_grp)
+                for(let j = 0; j < panelGroupsData[panel_grp].length; j++){
+                    for(let k = 0; k < input_bundles.value.length; k++){
+                        let bundle = input_bundles.value[k]
+                        if(bundle.panel == panel_grp){
+                            let new_bundle = Object.assign({}, bundle)
+                            new_bundle.panel = panelGroupsData[panel_grp][j]
+                            output_bundles.value.push(new_bundle)
+                        }
+                    }
+                }
+            });
+            d.hide()
+            make_dirty()
+        }
+    })
+    d.fields_dict['panel_group_html'].$wrapper.html("")
+    d.show()
+    const el = d.fields_dict["panel_group_html"].$wrapper.get(0);
+    const props = { panels: panels,};
+    const vueApp = createApp(CutBundlePanelGroup, props);
+    i = vueApp.mount(el);
 }
 
 defineExpose({
