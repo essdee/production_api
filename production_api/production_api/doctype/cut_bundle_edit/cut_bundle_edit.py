@@ -270,6 +270,9 @@ def get_major_colours(posting_date, posting_time, from_location, lot):
 
 	sizes = []
 	colours = []
+	if not cb_list:
+		frappe.throw("No Cut Bundle Movement Ledger Found for the warehouse")
+
 	for cb in cb_list:
 		cb_doc = frappe.get_doc("Cut Bundle Movement Ledger", cb['name'])
 		if cb_doc.size not in sizes:
@@ -324,12 +327,11 @@ def get_major_set_colours(colour, panel, lot):
 			if row.set_item_attribute_value == part and row.is_default:
 				default_panel = row.stiching_attribute_value
 				break
-
 		if part == ipd_doc.major_attribute_value:
 			if ipd_doc.is_same_packing_attribute:
 				d['major_colour'] = colour
 			else:
-				d['major_colour'] = colour
+				d['major_colour'] = None
 		else:
 			d['set_part'] = part
 			d['set_panel'] = default_panel
