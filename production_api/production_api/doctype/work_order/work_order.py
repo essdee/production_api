@@ -1112,11 +1112,13 @@ def calculate_completed_pieces(doc_name):
 				if lot_item.item_variant == item.item_variant and item.quantity > 0:
 					setattr(lot_item, field, 0)	
 					break
-			item.received_qty = 0
-			item.received_type_json = {}
-			item.delivered_quantity = 0	
 
 		lot_doc.save(ignore_permissions=True)
+
+	for item in wo_doc.work_order_calculated_items:
+		item.received_qty = 0
+		item.received_type_json = {}
+		item.delivered_quantity = 0	
 			
 	wo_doc.total_no_of_pieces_delivered = 0
 	wo_doc.total_no_of_pieces_received = 0	

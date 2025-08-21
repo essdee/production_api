@@ -231,7 +231,7 @@ def update_collapsed_bundle(doctype, docname, event, non_stich_process=False):
 	
 	if doctype ==  "Delivery Challan" and new_bundles:
 		for key in new_bundles:
-			key['qty'] = key['qty'] * -1
+			new_bundles[key]['qty'] = new_bundles[key]['qty'] * -1
 
 	to_new_bundles = {}
 	to_location = None
@@ -280,7 +280,7 @@ def update_collapsed_bundle(doctype, docname, event, non_stich_process=False):
 		for bundle_key in to_new_bundles.keys():
 			bundle_total_qty = to_new_bundles[bundle_key]['bundle_qty']
 			stock_moved_qty = to_new_bundles[bundle_key]['qty']
-			create_new_collapsed_bundle(bundle_key, bundle_total_qty, stock_moved_qty, to_location, doc)	
+			create_new_collapsed_bundle(bundle_key, bundle_total_qty, stock_moved_qty, to_location, doc, d, attrs)	
 
 def on_submit_collapsed_bundles(doc, doctype, docname, location, item_variant, set_combination, d, attrs, item, quantity, bundles_dict, add=False):
 	cb_previous_entries = get_collapsed_previous_cbm_list(doc.posting_date, doc.posting_time, location, item_variant)
