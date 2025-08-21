@@ -13,13 +13,20 @@
                     <th>GRN Number</th>
                     <th>Lot</th>
                     <th>Item</th>
+                    <th>Colour</th>
+                    <th v-for="type in items['types']">{{ type }}</th>
                 </tr>
-                <template v-for="(value, key) in items" :key="key">
+                <template v-for="(value, key) in items['report_detail']" :key="key">
                     <tr @click="toggle_row(key)">
                         <td>{{ key }}</td>
-                        <td>{{ value['grn_number'] }}</td>
+                        <td @click="map_to_grn(value['grn_number'])" class="hover-style">{{ value['grn_number'] }}</td>
                         <td>{{ value['lot'] }}</td>
                         <td>{{ value['item'] }}</td>
+                        <td>{{ Object.keys(value['rework_detail'])[0].split("-").slice(1).join("-") }}</td>
+                        <td v-for="ty in items['types']">
+                            <span v-if="ty in value['types']">{{value['types'][ty]}}</span>
+                            <span v-else>0</span>
+                        </td>
                     </tr>
                     <tr v-if="expandedRowKey === key">
                         <td :colspan="1000" class="expanded-row-content">
@@ -91,7 +98,6 @@ onMounted(() => {
             fieldtype: "Link",
             options: "Lot",
             label: "Lot",
-            reqd: true,
         },
         doc: sample_doc.value,
         render_input: true,
@@ -99,10 +105,6 @@ onMounted(() => {
 });
 
 function get_rework_items() {
-    if (!lot.get_value()) {
-        frappe.msgprint("Select a Lot");
-        return;
-    }
     frappe.call({
         method: "production_api.utils.get_rework_items",
         args: {
@@ -186,6 +188,11 @@ function update(data, completed, lot){
     })
 }
 
+function map_to_grn(grn){
+    const url = `/app/goods-received-note/${grn}`;
+    window.open(url, '_blank');
+}
+
 </script>
 
 <style scoped>
@@ -227,13 +234,11 @@ function update(data, completed, lot){
     color: #495057;
 }
 
-/* Hover effect for clickable rows */
 .table-sm-bordered tr:not(.expanded-row-content):hover {
     background-color: #f8f9fa;
     cursor: pointer;
 }
 
-/* Expanded Row Styling */
 .expanded-row-content {
     background-color: #fdfdfd;
     padding: 12px 16px !important;
@@ -242,7 +247,6 @@ function update(data, completed, lot){
     border-top: 1px solid #dee2e6;
 }
 
-/* Button Styling */
 .btn-primary {
     background-color: #007bff;
     border-color: #007bff;
@@ -255,5 +259,9 @@ function update(data, completed, lot){
 .btn-primary:hover {
     background-color: #0069d9;
     border-color: #0062cc;
+}
+
+.hover-style:hover{
+    text-decoration: underline;
 }
 </style>
