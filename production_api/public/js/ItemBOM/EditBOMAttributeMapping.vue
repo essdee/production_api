@@ -384,9 +384,14 @@ export default {
                 for (let j=0;j<this.bom_attributes.length;j++) {
                     let parent_class = "." + this.get_input_class('bom', this.bom_attributes[j], i);
                     $(this.$el).find(parent_class).empty();
+                    parent_class = "." + this.get_input_class('bom', this.bom_attributes[j], 1000)
+                    $(this.$el).find(parent_class).empty();
                 }
             }
+            let parent_class = "." + this.get_quantity_input_class("quantity", 1000);
+            $(this.$el).find(parent_class).empty();
             this.attribute_inputs = [];
+            this.header_inputs = {}
         },
 
         toggle_row: function(index, b) {
