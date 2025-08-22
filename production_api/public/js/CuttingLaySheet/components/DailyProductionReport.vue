@@ -3,6 +3,7 @@
         <h3 style="text-align:center;padding-top:15px;">Daily Production Report</h3>
         <div style="padding:15px;display:flex;">
             <div class="date-input col-md-2"></div>
+            <div class="select-field col-md-2"></div>
             <div style="padding-top: 27px;">
                 <button class="btn btn-primary" @click="get_report()">Get Report</button>
             </div>
@@ -80,6 +81,7 @@ import { ref, onMounted } from 'vue';
 const root = ref(null);
 const sample_doc = ref({})
 let date_filter = ref(null)
+let cutting_location = ref(null)
 let items = ref({});
 let report = ref(true)
 
@@ -97,6 +99,17 @@ onMounted(() => {
         doc: sample_doc.value,
         render_input: true,
     });
+    cutting_location.value = frappe.ui.form.make_control({
+        parent: el.querySelector('.select-field'),
+        df: {
+            fieldtype: 'Select',
+            label: "Cutting Location",
+            fieldname: "cutting_location",
+            options: ['Machine Cutting', "Manual Cutting"]
+        },
+        doc: sample_doc.value,
+        render_input: true,
+    })
 });
 
 function get_report(){
@@ -108,6 +121,7 @@ function get_report(){
         method: 'production_api.utils.get_daily_production_report',
         args: {
             date: date_filter.value.get_value(),
+            location: cutting_location.value.get_value(),
         },
         freeze: true,
         freeze_message: "Fetching Completion Report",
