@@ -420,7 +420,7 @@ def update_wo_checkpoint(datas):
 				wo_doc.save(ignore_permissions=True)			
 
 @frappe.whitelist()
-def get_daily_production_report(date):
+def get_daily_production_report(date, location):
 	from production_api.essdee_production.doctype.lot.lot import fetch_order_item_details
 	from production_api.production_api.doctype.cutting_plan.cutting_plan import get_complete_incomplete_structure
 	cutting_plans = frappe.db.sql(
@@ -435,7 +435,8 @@ def get_daily_production_report(date):
 		cp_doc = frappe.get_doc("Cutting Plan",cutting_plan['cutting_plan'])
 		if cp_doc.version == "V1":
 			frappe.throw("Can't get report for Cutting Plan Version V1")
-
+		if location and cp_doc.cutting_location != location:
+			continue
 		item_details = fetch_order_item_details(cp_doc.items,cp_doc.production_detail)
 		completed, incomplete = get_complete_incomplete_structure(cp_doc.production_detail,item_details)
 		incomplete_items = update_if_string_instance(incomplete)
@@ -611,24 +612,15 @@ def calculate_completed(cls_list, ipd_doc, completed_items, incomplete_items):
 	return completed_items, incomplete_items
 
 @frappe.whitelist()
-def get_cut_sheet_report(date):
+def get_cut_sheet_report(date, location):
 	from production_api.essdee_production.doctype.lot.lot import fetch_order_item_details
 	from production_api.production_api.doctype.cutting_plan.cutting_plan import get_complete_incomplete_structure
-	cls = frappe.db.sql(
-		"""
-			SELECT name FROM `tabCutting LaySheet` WHERE DATE(printed_time) = %(date)s
-		""", {
-			"date": getdate(date, parse_day_first=True).strftime("%Y-%m-%d")
-		}, as_dict=True
-	)
 	cutting_plans = frappe.db.sql(
 		"""
-			SELECT distinct(cutting_plan) as cutting_plan FROM `tabCutting LaySheet` 
-			WHERE DATE(printed_time) = %(date)s
+			SELECT distinct(cutting_plan) FROM `tabCutting LaySheet` WHERE DATE(printed_time) = %(date)s
 		""", {
-			"date": getdate(date, parse_day_first=True).strftime("%Y-%m-%d")
+			"date": getdate(date)
 		}, as_dict=True
-
 	)
 	report = []
 	for cutting_plan in cutting_plans:
@@ -636,6 +628,8 @@ def get_cut_sheet_report(date):
 		if cp_doc.version == "V1":
 			frappe.throw("Can't get report for Cutting Plan Version V1")
 
+		if location and cp_doc.cutting_location != location:
+			continue
 		item_details = fetch_order_item_details(cp_doc.items,cp_doc.production_detail)
 		completed, incomplete = get_complete_incomplete_structure(cp_doc.production_detail,item_details)
 		cls_list = frappe.db.sql(
@@ -643,12 +637,11 @@ def get_cut_sheet_report(date):
 				SELECT name FROM `tabCutting LaySheet` WHERE DATE(printed_time) = %(date)s  
 				AND cutting_plan = %(cutting_plan)s AND status = 'Label Printed'
 			""", {
-				"date": getdate(date, parse_day_first=True).strftime("%Y-%m-%d"),
+				"date": getdate(date),
 				"cutting_plan": cutting_plan['cutting_plan']
 			}, as_dict=True
 		)	
 		incomplete_items = update_if_string_instance(incomplete)
-		completed_items = update_if_string_instance(completed)
 		production_detail = cp_doc.production_detail
 		ipd_doc = frappe.get_cached_doc("Item Production Detail",production_detail)
 		alter_incomplete_items = {}
