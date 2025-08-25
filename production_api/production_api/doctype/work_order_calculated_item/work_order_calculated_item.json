@@ -50,6 +50,7 @@
    "label": "Received Type JSON"
   },
   {
+   "allow_on_submit": 1,
    "fieldname": "quantity",
    "fieldtype": "Int",
    "in_list_view": 1,
@@ -71,15 +72,17 @@
    "non_negative": 1
   }
  ],
+ "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2025-03-10 18:28:21.490278",
+ "modified": "2025-08-25 15:53:05.810600",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Work Order Calculated Item",
  "owner": "Administrator",
  "permissions": [],
+ "row_format": "Dynamic",
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": []

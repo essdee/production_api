@@ -418,7 +418,11 @@ def fetch_order_item_details(items, production_detail, process=None, includes_pa
 					break
 			if stage:
 				field = "cut_qty" if stage == ipd_doc.stiching_in_stage else "stich_qty" if stage == ipd_doc.pack_in_stage else "pack_qty"
-
+		
+		if not field:
+			frappe.msgprint(f"Please Mention Process {process} in IPD")
+			return
+		
 	items = [item.as_dict() for item in items]
 	item_details = []
 	items = sorted(items, key = lambda i: i['row_index'])

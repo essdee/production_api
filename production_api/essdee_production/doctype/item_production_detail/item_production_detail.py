@@ -321,8 +321,12 @@ class ItemProductionDetail(Document):
 			self.stiching_tab_validations()
 			
 		if self.cutting_process:
-			self.cutting_tab_validations()		
-			
+			self.cutting_tab_validations()	
+
+		if len(self.accessory_attributes) > 0 and update_if_string_instance(self.cloth_accessory_json):
+			if not update_if_string_instance(self.stiching_accessory_json):
+				frappe.throw("Enter the Details for Stitching Accessory Combination")
+
 	def on_trash(self):
 		documents = {
 			"Item Item Attribute Mapping":[],
@@ -1353,6 +1357,7 @@ def duplicate_ipd(ipd):
 	doc.set("cutting_attributes", get_dict_table(ipd_doc.cutting_attributes))
 	doc.set("cloth_detail", get_dict_table(ipd_doc.cloth_detail))
 	doc.set("accessory_attributes", get_dict_table(ipd_doc.accessory_attributes))
+	doc.set("cloth_attributes", get_dict_table(ipd_doc.cloth_attributes))
 	doc.save()
 	if ipd_doc.is_set_item: 
 		doc.update({
