@@ -138,6 +138,20 @@ frappe.ui.form.on("Item Production Detail", {
 	refresh: async function(frm) {
 		frm.trigger('declarations')
 		frm.trigger('onload_post_render')
+		$(frm.fields_dict['item_attribute_list_values_html'].wrapper).html("");
+		$(frm.fields_dict['dependent_attribute_details_html'].wrapper).html("");
+		$(frm.fields_dict['bom_attribute_mapping_html'].wrapper).html("");
+		$(frm.fields_dict['set_items_html'].wrapper).html("");
+		$(frm.fields_dict['stiching_items_html'].wrapper).html("");
+		$(frm.fields_dict['cutting_items_html'].wrapper).html("");
+		$(frm.fields_dict['cutting_cloths_html'].wrapper).html("");
+		$(frm.fields_dict['cloth_accessories_html'].wrapper).html("");
+		$(frm.fields_dict['stiching_accessory_html'].wrapper).html("");
+		$(frm.fields_dict['accessory_clothtype_combination_html'].wrapper).html("");
+		$(frm.fields_dict['emblishment_details_html'].wrapper).html("");
+		$(frm.fields_dict['select_cloths_attribute_html'].wrapper).html("")
+		$(frm.fields_dict['select_attributes_html'].wrapper).html("")
+		$(frm.fields_dict['select_cloth_accessory_html'].wrapper).html("")
 		if(frm.doc.stiching_in_stage && frm.doc.dependent_attribute){
 			frm.cutting_attrs = await get_stich_in_attributes(frm.doc.dependent_attribute_mapping,frm.doc.stiching_in_stage, frm.doc.item)
 			if(frm.doc.is_set_item){
@@ -158,23 +172,8 @@ frappe.ui.form.on("Item Production Detail", {
 		frm.refresh_field('cloth_accessory_json')
 		frm.refresh_field('accessory_clothtype_json')
 		frm.refresh_field('stiching_accessory_json')
-
 		if (frm.doc.__islocal) {
 			hide_field(["item_attribute_list_values_html", "bom_attribute_mapping_html",'dependent_attribute_details_html']);
-			$(frm.fields_dict['item_attribute_list_values_html'].wrapper).html("");
-			$(frm.fields_dict['dependent_attribute_details_html'].wrapper).html("");
-			$(frm.fields_dict['bom_attribute_mapping_html'].wrapper).html("");
-			$(frm.fields_dict['set_items_html'].wrapper).html("");
-			$(frm.fields_dict['stiching_items_html'].wrapper).html("");
-			$(frm.fields_dict['cutting_items_html'].wrapper).html("");
-			$(frm.fields_dict['cutting_cloths_html'].wrapper).html("");
-			$(frm.fields_dict['cloth_accessories_html'].wrapper).html("");
-			$(frm.fields_dict['stiching_accessory_html'].wrapper).html("");
-			$(frm.fields_dict['accessory_clothtype_combination_html'].wrapper).html("");
-			$(frm.fields_dict['emblishment_details_html'].wrapper).html("");
-			$(frm.fields_dict['select_cloths_attribute_html'].wrapper).html("")
-			$(frm.fields_dict['select_attributes_html'].wrapper).html("")
-			$(frm.fields_dict['select_cloth_accessory_html'].wrapper).html("")
 		} 
 		else {
 			unhide_field(["item_attribute_list_values_html", "bom_attribute_mapping_html",'dependent_attribute_details_html']);
