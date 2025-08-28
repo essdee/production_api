@@ -121,7 +121,7 @@ function toggle_row(key) {
 }
 
 function update_changed(name, colour){
-    items.value[name]['rework_detail'][colour]['changed'] = 1
+    items.value["report_detail"][name]['rework_detail'][colour]['changed'] = 1
 }
 
 function update_items(data, changed, completed, lot){
