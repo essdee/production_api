@@ -146,6 +146,10 @@ function update_items(data, changed, completed, lot){
             return
         }
         update(data, completed, lot)
+        frappe.show_alert({
+            message: __("Rejection Quantity Updated"),
+            indicator: "info",
+        });
     }
 }
 

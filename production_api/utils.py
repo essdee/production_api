@@ -977,13 +977,13 @@ def convert_received_type(rejection_data, docname, lot):
 				"posting_date": frappe.utils.nowdate(),
 				"posting_time": frappe.utils.nowtime(),
 			})	
-		table_data.append({
-			"item_variant": row['variant'],
-			"quantity": row['rework_qty'] - row['rejected'],
-			"received_type": row['received_type'],
-			"uom": row['uom'],
-			"reworked_time": frappe.utils.now_datetime()
-		})			
+			table_data.append({
+				"item_variant": row['variant'],
+				"quantity": row['rework_qty'] - row['rejected'],
+				"received_type": row['received_type'],
+				"uom": row['uom'],
+				"reworked_time": frappe.utils.now_datetime()
+			})			
 	if table_data:
 		doc = frappe.get_doc("GRN Rework Item", docname)
 		for row in table_data:
@@ -1022,7 +1022,7 @@ def update_partial_quantity(data, lot):
 				"voucher_type": "GRN Rework Item",
 				"voucher_no": docname,
 				"voucher_detail_no": row['row_name'],
-				"qty":  row['rework'],
+				"qty":  row['rework'] * -1,
 				"uom": row['uom'],
 				"rate": 0,
 				"valuation_rate": 0,
