@@ -83,10 +83,13 @@ class GoodsReceivedNote(Document):
 			frappe.throw(f'{self.against} is not submitted.', title='GRN')
 		
 		if self.against == 'Purchase Order':		
+			total_qty = 0	
 			for item in self.items:
+				total_qty += item.quantity
 				if item.quantity == 0:
 					self.items.remove(item)
 			self.validate_quantity()
+			self.freight_charge_per_product = round(self.freight_charges/total_qty, 2)
 			self.calculate_amount()
 		else:
 			if self.additional_grn:
@@ -470,7 +473,7 @@ class GoodsReceivedNote(Document):
 		sl_entries = []
 		for item in self.items:
 			if item.quantity > 0 and res.get(item.item_variant):
-				sl_entries.append(self.get_sl_entries(item, supplier, {}, 1, self.against, item.received_type, valuation_rate=avg))
+				sl_entries.append(self.get_sl_entries(item, supplier, {}, 1, item.received_type, valuation_rate=avg))
 		make_sl_entries(sl_entries)
 
 	def reduce_uncalculated_stock(self, res):
@@ -526,13 +529,14 @@ class GoodsReceivedNote(Document):
 		sl_dict.update(args)
 		return sl_dict
 	
-	def get_sl_entries(self, d, from_location, args, multiplier, order, received_type, valuation_rate = 0.0):
+	def get_sl_entries(self, d, from_location, args, multiplier, received_type, valuation_rate = 0.0):
 		qty = None
-		if order == "Work Order":
+		if self.against == "Work Order":
 			qty = flt(d.get("stock_qty")) * multiplier
 			rate = valuation_rate + d.get("rate")
 		else:
 			rate = d.rate or 0.0
+			rate += self.freight_charge_per_product
 			qty = flt(d.get("stock_qty")) * multiplier
 		
 		sl_dict = frappe._dict({
@@ -727,7 +731,7 @@ class GoodsReceivedNote(Document):
 				for type, qty in received_types.items():
 					x = item
 					x['quantity'] = qty
-					sl_entries.append(self.get_sl_entries(item, self.delivery_location, {}, 1, self.against,type,valuation_rate=avg))
+					sl_entries.append(self.get_sl_entries(item, self.delivery_location, {}, 1, type, valuation_rate=avg))
 		make_sl_entries(sl_entries)	
 
 	def reupdate_wo_deliverables(self, res):
@@ -797,7 +801,7 @@ class GoodsReceivedNote(Document):
 		received_type = frappe.db.get_single_value("Stock Settings", "default_received_type")
 		for item in self.items:
 			self.received_type = received_type
-			sl_entries.append(self.get_sl_entries(item, self.delivery_location, {}, 1, self.against, received_type))
+			sl_entries.append(self.get_sl_entries(item, self.delivery_location, {}, 1, received_type))
 
 		if self.docstatus == 2:
 			sl_entries.reverse()
@@ -929,6 +933,8 @@ class GoodsReceivedNote(Document):
 			total_tax += tax
 			total = item_total + tax
 			grand_total += total
+
+		grand_total	+= self.freight_charges
 		self.set('total', total_amount)
 		self.set('total_tax', total_tax)
 		self.set('grand_total', grand_total)
