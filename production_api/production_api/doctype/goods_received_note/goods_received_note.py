@@ -86,8 +86,9 @@ class GoodsReceivedNote(Document):
 			total_qty = 0	
 			for item in self.items:
 				total_qty += item.quantity
+			for item in self.items:
 				if item.quantity == 0:
-					self.items.remove(item)
+					self.items.remove(item)		
 			self.validate_quantity()
 			self.freight_charge_per_product = round(self.freight_charges/total_qty, 2)
 			self.calculate_amount()
