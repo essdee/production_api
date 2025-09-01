@@ -923,6 +923,8 @@ class GoodsReceivedNote(Document):
 			)
 
 	def calculate_amount(self):
+		if not self.freight_charges:
+			self.freight_charges = 0
 		total_amount = 0
 		total_tax = 0
 		grand_total = 0
