@@ -36,9 +36,11 @@
   "supplier",
   "supplier_document_no",
   "vehicle_no",
+  "freight_charge_per_product",
   "column_break_vyiz9",
   "supplier_name",
   "delivery_date",
+  "freight_charges",
   "section_addresses",
   "supplier_address",
   "supplier_address_display",
@@ -511,13 +513,26 @@
   {
    "fieldname": "section_break_sgaj",
    "fieldtype": "Section Break"
+  },
+  {
+   "depends_on": "eval: doc.against == 'Purchase Order'",
+   "fieldname": "freight_charges",
+   "fieldtype": "Currency",
+   "label": "Freight And Other Cost",
+   "precision": "2"
+  },
+  {
+   "fieldname": "freight_charge_per_product",
+   "fieldtype": "Currency",
+   "hidden": 1,
+   "label": "Freight Charge Per Product"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-08-11 18:21:18.670983",
+ "modified": "2025-09-01 12:46:53.242877",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Goods Received Note",
