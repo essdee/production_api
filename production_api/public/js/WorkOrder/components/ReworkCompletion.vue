@@ -110,21 +110,21 @@ function get_rework_completion(){
 </script>
 <style scoped>
 .bordered-table {
-  width: 100%;
-  border: 1px solid #ccc;
-  border-collapse: collapse;
+    width: 100%;
+    border: 1px solid #ccc;
+    border-collapse: collapse;
 }
 
 .bordered-table th,
 .bordered-table td {
-  border: 1px solid #ccc;
-  padding: 6px 8px;
-  text-align: center;
+    border: 1px solid #ccc;
+    padding: 6px 8px;
+    text-align: center;
 }
 
 .bordered-table thead {
-  background-color: #f8f9fa;
-  font-weight: bold;
+    background-color: #f8f9fa;
+    font-weight: bold;
 }
 
 .dark-border{
