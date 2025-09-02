@@ -106,7 +106,7 @@ onMounted(() => {
 
 function get_rework_items() {
     frappe.call({
-        method: "production_api.utils.get_rework_items",
+        method: "production_api.production_api.doctype.grn_rework_item.grn_rework_item.get_rework_items",
         args: {
             lot: lot.get_value(),
         },
@@ -160,7 +160,7 @@ function update_rework(data, lot){
         secondary_action_label: "No",
         primary_action(){
             frappe.call({
-                method: "production_api.utils.update_partial_quantity",
+                method: "production_api.production_api.doctype.grn_rework_item.grn_rework_item.update_partial_quantity",
                 args: {
                     "data": data,
                     "lot": lot
@@ -180,7 +180,7 @@ function update_rework(data, lot){
 
 function update(data, completed, lot){
     frappe.call({
-        method: "production_api.utils.update_rejected_quantity",
+        method: "production_api.production_api.doctype.grn_rework_item.grn_rework_item.update_rejected_quantity",
         args: {
             "rejection_data": data,
             "completed": completed,

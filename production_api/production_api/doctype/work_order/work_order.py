@@ -14,7 +14,7 @@ from production_api.production_api.doctype.purchase_order.purchase_order import 
 from production_api.production_api.doctype.item.item import get_attribute_details, get_or_create_variant
 from production_api.production_api.doctype.delivery_challan.delivery_challan import get_variant_stock_details
 from production_api.essdee_production.doctype.lot.lot import fetch_order_item_details, get_uom_conversion_factor
-from production_api.utils import get_stich_details, get_part_list, update_if_string_instance, get_tuple_attributes
+from production_api.utils import get_stich_details, get_part_list, update_if_string_instance, get_tuple_attributes, get_panel_colour_combination
 from production_api.essdee_production.doctype.item_production_detail.item_production_detail import get_calculated_bom, calculate_accessory, get_cloth_combination, get_stitching_combination
 
 class WorkOrder(Document):
@@ -1522,17 +1522,3 @@ def update_receivables(receivables_data, doc_name):
 						"ref_docname": ref_docname,
 					}
 				)
-
-def get_panel_colour_combination(ipd_doc):
-	indexes = {}
-	comb_details = {}
-	for row in ipd_doc.stiching_item_combination_details:
-		if indexes.get(row.index):
-			major_colour = indexes[row.index]
-			comb_details[major_colour][row.set_item_attribute_value] = row.attribute_value
-		else:
-			indexes[row.index] = row.major_attribute_value
-			comb_details[row.major_attribute_value] = {}
-			comb_details[row.major_attribute_value][row.set_item_attribute_value] = row.attribute_value
-
-	return comb_details
