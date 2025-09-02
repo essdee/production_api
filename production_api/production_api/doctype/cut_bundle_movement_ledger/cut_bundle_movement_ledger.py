@@ -257,7 +257,7 @@ def update_collapsed_bundle(doctype, docname, event, non_stich_process=False):
 	if non_stich_process:
 		to_location = doc.delivery_location
 		for row in items:
-			quantity = row.qty
+			quantity = row.quantity
 			if quantity > 0:
 				item = frappe.get_value("Item Variant", row.item_variant, "item")
 				dept_attr = frappe.get_value("Item", item, "dependent_attribute")
