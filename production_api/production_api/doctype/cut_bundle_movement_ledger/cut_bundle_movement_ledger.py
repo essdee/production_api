@@ -276,11 +276,10 @@ def update_collapsed_bundle(doctype, docname, event, non_stich_process=False):
 		stock_moved_qty = new_bundles[bundle_key]['qty']
 		create_new_collapsed_bundle(bundle_key, bundle_total_qty, stock_moved_qty, from_location, doc, d, attrs)
 
-	if doctype == "Delivery Challan":
-		for bundle_key in to_new_bundles.keys():
-			bundle_total_qty = to_new_bundles[bundle_key]['bundle_qty']
-			stock_moved_qty = to_new_bundles[bundle_key]['qty']
-			create_new_collapsed_bundle(bundle_key, bundle_total_qty, stock_moved_qty, to_location, doc, d, attrs)	
+	for bundle_key in to_new_bundles.keys():
+		bundle_total_qty = to_new_bundles[bundle_key]['bundle_qty']
+		stock_moved_qty = to_new_bundles[bundle_key]['qty']
+		create_new_collapsed_bundle(bundle_key, bundle_total_qty, stock_moved_qty, to_location, doc, d, attrs, new=True)	
 
 def on_submit_collapsed_bundles(doc, doctype, docname, location, item_variant, set_combination, d, attrs, item, quantity, bundles_dict, add=False):
 	cb_previous_entries = get_collapsed_previous_cbm_list(doc.posting_date, doc.posting_time, location, item_variant)
@@ -371,7 +370,7 @@ def cancel_collapse_bundles(doc, item_variant, set_combination, quantity, locati
 				qty = entry['quantity_after_transaction'] + previous_qty
 				update_future_entries_qty_after_transaction(entry['name'], qty)	
 
-def create_new_collapsed_bundle(bundle_key, bundle_total_qty, stock_moved_qty, from_location, doc, d, attrs):
+def create_new_collapsed_bundle(bundle_key, bundle_total_qty, stock_moved_qty, from_location, doc, d, attrs, new:bool=False):
 	from production_api.utils import get_tuple_attributes
 	lot, item, size, colour, panel, set_combination = bundle_key.split("|")
 	set_combination = frappe.json.loads(set_combination)
@@ -384,7 +383,7 @@ def create_new_collapsed_bundle(bundle_key, bundle_total_qty, stock_moved_qty, f
 	panel_qty = panel_qty_dict[panel]
 	stock_moved_qty = stock_moved_qty / panel_qty
 	bundle_qty = 0
-	if doc.doctype == "Delivery Challan":
+	if doc.doctype == "Delivery Challan" or new:
 		bundle_qty = bundle_total_qty + stock_moved_qty
 	else:	
 		bundle_qty = bundle_total_qty - stock_moved_qty
