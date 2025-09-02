@@ -14,6 +14,10 @@
   "enable_purchase_invoice_sync",
   "erp_site_url",
   "enable_tuple_attribute",
+  "sales_settings_section",
+  "sales_site_url",
+  "sales_api_key",
+  "sales_api_secret",
   "url_shortner_settings_section",
   "shortned_url_domain",
   "link_expiry_days",
@@ -178,14 +182,34 @@
    "fieldtype": "Text",
    "label": "Cut Bundle Cancelled Lot",
    "read_only": 1
+  },
+  {
+   "fieldname": "sales_settings_section",
+   "fieldtype": "Section Break",
+   "label": "Sales Settings"
+  },
+  {
+   "fieldname": "sales_site_url",
+   "fieldtype": "Data",
+   "label": "Sales Site URL"
+  },
+  {
+   "fieldname": "sales_api_key",
+   "fieldtype": "Data",
+   "label": "Sales API Key"
+  },
+  {
+   "fieldname": "sales_api_secret",
+   "fieldtype": "Password",
+   "label": "Sales API Secret"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2025-07-15 14:44:17.489867",
- "modified_by": "mohammedanasman123@gmail.com",
+ "modified": "2025-08-30 14:30:13.865194",
+ "modified_by": "Administrator",
  "module": "Production Api",
  "name": "MRP Settings",
  "owner": "Administrator",

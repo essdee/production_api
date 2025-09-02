@@ -31,3 +31,12 @@ def get_purchase_invoice_series(series:str) -> str:
 			mapped_series = c.mapped_series
 			break
 	return mapped_series
+
+def get_sales_credentials():
+	config = frappe.get_single("MRP Settings")
+	if not config.sales_site_url or not config.sales_api_key or not config.sales_api_secret:
+		frappe.throw("Please Setup The Sales Credentials")
+	return {
+		"url" : config.sales_site_url,
+		"token" : f"token {config.sales_api_key}:{config.get_password('sales_api_secret')}"
+	}
