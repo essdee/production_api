@@ -1,6 +1,7 @@
 import frappe
 import json
 from production_api.production_api.doctype.supplier.supplier import Supplier
+import requests
 
 @frappe.whitelist()
 def send_notification(
@@ -153,3 +154,10 @@ def parse_json(value: str):
 	if value:
 		return json.loads(value)
 	return None
+
+def make_get_request(endpoint, configurations, params={}):
+	return requests.get(
+		configurations['url']+endpoint,
+		headers=configurations['headers'],
+		params=params
+	)
