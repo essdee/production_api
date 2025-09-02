@@ -125,7 +125,7 @@ def get_rework_items(lot):
 				"rework_qty": row.quantity - row.reworked,
 				"rejected": row.rejection, 
 				"rework": 0,
-				"set_combination": frappe.json.loads(row.set_combination),
+				"set_combination": update_if_string_instance(row.set_combination),
 				"row_name": row.name,
 				"variant": row.item_variant,
 				"received_type": row.received_type,
@@ -279,7 +279,6 @@ def update_partial_quantity(data, lot):
 	table_data = []
 	for row in data:
 		if row['rework'] > 0:
-			print(row)
 			sl_entries.append({
 				"item": row['variant'],
 				"warehouse": warehouse,
@@ -351,19 +350,17 @@ def get_rework_completion(lot, process):
 	grn_rework_item = frappe.get_all("GRN Rework Item", filters={
 		"grn_number": ["in", grns]
 	}, pluck="name")
+
 	conditions = ""
 	if len(grn_rework_item) == 1:
-		print(grn_rework_item)
-		print(grn_rework_item[0])
 		conditions += f"('{grn_rework_item[0]}')"
 	else:
 		conditions += f"{tuple(grn_rework_item)}"
-	print(grn_rework_item)
+
 	query = f"""
 		SELECT item_variant, quantity, uom, parent, set_combination FROM `tabGRN Reworked Item Detail`
 		WHERE parent IN {conditions} AND quantity > 0
 	"""
-	print(query)
 	items = frappe.db.sql(query, as_dict=True)
 	from production_api.production_api.doctype.cut_bundle_movement_ledger.cut_bundle_movement_ledger import get_variant_attr_details
 	from production_api.essdee_production.doctype.item_production_detail.item_production_detail import get_ipd_primary_values

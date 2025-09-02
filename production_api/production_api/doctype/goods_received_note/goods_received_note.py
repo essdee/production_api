@@ -7,6 +7,7 @@ import frappe,json, sys, math
 from datetime import datetime
 from itertools import groupby, zip_longest
 from frappe.model.document import Document
+from production_api.mrp_stock.utils import get_stock_balance
 from frappe.utils import money_in_words, flt, cstr, date_diff
 from production_api.production_api.logger import get_module_logger
 from production_api.mrp_stock.doctype.stock_entry.stock_entry import get_uom_details
@@ -320,6 +321,11 @@ class GoodsReceivedNote(Document):
 		make_sl_entries(sl_entries)		
 
 	def get_rework_deliverables(self, variant, received_type, detail_no, variant_received_types, multiplier):
+		uom = variant_received_types[(variant, detail_no)][received_type]['uom']
+		rate = get_stock_balance(
+			variant, None, received_type, posting_date=self.posting_date, 
+				posting_time=self.posting_time, with_valuation_rate=True, uom=uom,
+		)[1]
 		return frappe._dict({
 			"item": variant,
 			"warehouse": self.supplier,
@@ -329,12 +335,12 @@ class GoodsReceivedNote(Document):
 			"voucher_no": self.name,
 			"voucher_detail_no": detail_no,
 			"qty": variant_received_types[(variant, detail_no)][received_type]['qty'] * multiplier,
-			"uom": variant_received_types[(variant, detail_no)][received_type]['uom'],
-			"rate": 0,
+			"uom": uom,
+			"rate": rate,
 			"is_cancelled": 1 if self.docstatus == 2 else 0,
 			"posting_date": self.posting_date,
 			"posting_time": self.posting_time,
-			"valuation_rate": 0,
+			"valuation_rate": rate,
 		})
 
 	def split_items(self):
@@ -492,6 +498,10 @@ class GoodsReceivedNote(Document):
 		make_sl_entries(sl_entries)
 	
 	def get_deliverables_data(self, d, lot, args, multiplier, received_type):
+		rate = get_stock_balance(
+			d.item_variant, None, received_type, posting_date=self.posting_date, 
+				posting_time=self.posting_time, with_valuation_rate=True, uom=d.uom,
+		)[1]
 		sl_dict = frappe._dict({
 			"item": d.item_variant,
 			"warehouse": self.supplier,
@@ -502,16 +512,20 @@ class GoodsReceivedNote(Document):
 			"voucher_detail_no": d.name,
 			"qty": d.get('stock_qty') * multiplier,
 			"uom": d.get('stock_uom'),
-			"rate": d.valuation_rate,
+			"rate": rate,
 			"is_cancelled": 1 if self.docstatus == 2 else 0,
 			"posting_date": self.posting_date,
 			"posting_time": self.posting_time,
-			"valuation_rate":d.valuation_rate,
+			"valuation_rate": rate,
 		})
 		sl_dict.update(args)
 		return sl_dict
 	
 	def get_return_deliverables(self, d, lot, args, multiplier, received_type, supplier):
+		rate = get_stock_balance(
+			d.item_variant, None, received_type, posting_date=self.posting_date, 
+				posting_time=self.posting_time, with_valuation_rate=True, uom=d.get('stock_uom'),
+		)[1]
 		sl_dict = frappe._dict({
 			"item": d.item_variant,
 			"warehouse": supplier,
@@ -522,11 +536,11 @@ class GoodsReceivedNote(Document):
 			"voucher_detail_no": d.name,
 			"qty": d.get('stock_qty') * multiplier,
 			"uom": d.get('stock_uom'),
-			"rate": d.get('valuation_rate', 0),
+			"rate": rate,
 			"is_cancelled": 1 if self.docstatus == 2 else 0,
 			"posting_date": self.posting_date,
 			"posting_time": self.posting_time,
-			"valuation_rate":d.get('valuation_rate', 0),
+			"valuation_rate": rate,
 		})
 		sl_dict.update(args)
 		return sl_dict
@@ -535,7 +549,11 @@ class GoodsReceivedNote(Document):
 		qty = None
 		if self.against == "Work Order":
 			qty = flt(d.get("stock_qty")) * multiplier
-			rate = valuation_rate + d.get("rate")
+			rate = get_stock_balance(
+				d.item_variant, None, received_type, posting_date=self.posting_date, 
+				posting_time=self.posting_time, with_valuation_rate=True, uom=d.get('stock_uom'),
+			)[1]
+			rate = valuation_rate + rate
 		else:
 			rate = d.rate or 0.0
 			rate += self.freight_charge_per_product
@@ -1684,7 +1702,6 @@ def get_stiching_process_deliverables(grn_doc, wo_doc, ipd_doc):
 	return final_value
 
 def get_packing_process_deliverables(grn_doc):
-	from production_api.mrp_stock.utils import get_stock_balance
 	default_received_type = frappe.get_single("Stock Settings").default_received_type
 	ipd, item = frappe.get_value("Lot", grn_doc.lot, ["production_detail","item"])
 	ipd_doc = frappe.get_doc("Item Production Detail", ipd)
@@ -1695,7 +1712,8 @@ def get_packing_process_deliverables(grn_doc):
 	lot_item_detail = frappe.get_cached_doc("Item", item)
 	for item in grn_doc.items:
 		rate = get_stock_balance(
-			item.item_variant, None, default_received_type, grn_doc.posting_date, grn_doc.posting_time, with_valuation_rate=True, uom=item.uom,
+			item.item_variant, None, default_received_type, posting_date=grn_doc.posting_date, 
+				posting_time=grn_doc.posting_time, with_valuation_rate=True, uom=item.uom,
 		)[1]
 		total_box_quantity += item.quantity
 		deliverables.append({
@@ -1731,7 +1749,8 @@ def get_packing_process_deliverables(grn_doc):
 
 	for bom in bom_items:
 		rate = get_stock_balance(
-			bom, None, default_received_type, grn_doc.posting_date, grn_doc.posting_time, with_valuation_rate=True, uom=bom_items[bom]['uom'],
+			bom, None, default_received_type, posting_date=grn_doc.posting_date, posting_time=grn_doc.posting_time, 
+			with_valuation_rate=True, uom=bom_items[bom]['uom'],
 		)[1]
 		deliverables.append({
 			"item_variant": bom,

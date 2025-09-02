@@ -292,6 +292,9 @@ class DeliveryChallan(Document):
 		variant = row.item_variant
 		if new_variant:
 			variant = new_variant
+		rate = get_stock_balance(
+			variant, None, received_type, posting_date=self.posting_date, posting_time=self.posting_time, with_valuation_rate=True, uom=row.uom,
+		)[1]	
 		sl_dict = frappe._dict({
 			"doctype": "Stock Ledger Entry",
 			"item": variant,
@@ -306,8 +309,8 @@ class DeliveryChallan(Document):
 			"qty": row.stock_qty * multiplier,
 			"uom": row.uom,
 			"is_cancelled": 1 if self.docstatus == 2 else 0,
-			"rate": flt(row.rate, row.precision("rate")),
-			"valuation_rate": flt(row.rate, row.precision("rate")),
+			"rate": flt(rate),
+			"valuation_rate": flt(rate, row.precision("rate")),
 		})
 		sl_dict.update(args)
 		return sl_dict
