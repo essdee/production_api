@@ -96,7 +96,7 @@
    "hidden": 0,
    "is_query_report": 0,
    "label": "Rework Detail",
-   "link_count": 1,
+   "link_count": 2,
    "link_type": "DocType",
    "onboard": 0,
    "type": "Card Break"
@@ -110,9 +110,19 @@
    "link_type": "Page",
    "onboard": 0,
    "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Rework Completion",
+   "link_count": 0,
+   "link_to": "rework-completion-re",
+   "link_type": "Page",
+   "onboard": 0,
+   "type": "Link"
   }
  ],
- "modified": "2025-08-21 10:14:57.092770",
+ "modified": "2025-09-02 12:40:34.783499",
  "modified_by": "Administrator",
  "module": "Essdee Production",
  "name": "Manufacturing",
