@@ -39,6 +39,7 @@ import WOReworkReceivable from "./WorkOrder/components/WOReworkReceivables.vue"
 import WorkOrderReceivables from "./WorkOrder/components/Receivables.vue"
 import WorkOrderItemView from "./WorkOrder/components/WorkOrderItemView.vue"
 import WOSummary from "./WorkOrder/components/WoSummary.vue"
+import ReworkCompletion from "./WorkOrder/components/ReworkCompletion.vue"
 import LaySheetCloths from "./CuttingLaySheet/components/LaySheetCloths.vue"
 import LaySheetAccessory from "./CuttingLaySheet/components/LaySheetAccessory.vue"
 import DeliveryChallan from "./Delivery_Challan/components/deliverable_items.vue"
@@ -621,6 +622,17 @@ frappe.production.ui.CutPlanItems = class {
     get_items(){
         let items = this.vue.get_items()
         return items
+    }
+}
+
+frappe.production.ui.ReworkCompletion =  class {
+    constructor(wrapper){
+        this.$wrapper = $(wrapper)
+        this.make_app()
+    }
+    make_app(){
+        this.app = createApp(ReworkCompletion)
+        this.vue = this.app.mount(this.$wrapper.get(0))
     }
 }
 

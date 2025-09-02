@@ -274,6 +274,7 @@ class GoodsReceivedNote(Document):
 				frappe.throw(f"Quantity Mismatch on Variant {variant}")
 	
 	def generate_rework_docs(self):
+		# generate_rework(self.name)
 		frappe.enqueue(generate_rework, "short", doc_name=self.name, enqueue_after_commit=True)
 
 	def get_to_warehouse(self):
@@ -2337,12 +2338,15 @@ def generate_rework(doc_name):
 		received_data = {}
 		for item in variants:
 			if self.is_return:
+				if rec_type in types:
+					continue 
 				received_data.setdefault(item.received_type, [])
 				received_data[item.received_type].append({
 					"item_variant": item.item_variant,
 					"received_type": item.received_type,
 					"quantity": item.quantity,
-					"uom": item['stock_uom']
+					"uom": item['stock_uom'],
+					"set_combination": frappe.json.dumps(item['set_combination']),
 				})
 			else:	
 				received_types = update_if_string_instance(item['received_types'])
@@ -2354,7 +2358,8 @@ def generate_rework(doc_name):
 						"item_variant": item['item_variant'],
 						"received_type": rec_type,
 						"quantity": received_types[rec_type],
-						"uom": item['stock_uom']
+						"uom": item['stock_uom'],
+						"set_combination": frappe.json.dumps(item['set_combination']),
 					})
 		data = []
 		for ty in received_data:
