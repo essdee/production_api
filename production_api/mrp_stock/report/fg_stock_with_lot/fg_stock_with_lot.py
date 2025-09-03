@@ -276,7 +276,10 @@ def construct_item_wise_stock_detail(stock):
 	resp = {}
 	price_and_valuations = get_price_valuation_for_items()
 	for i in stock:
-		resp[i['item_variant']] = price_and_valuations[i['item_variant']] if i['item_variant'] in price_and_valuations else 0
+		resp[i['item_variant']] = price_and_valuations[i['item_variant']] if i['item_variant'] in price_and_valuations else {
+            "price": 0.0,
+            "uom": "Box",
+        }
 		resp[i['item_variant']]['stock'] = i['stock']
 		resp[i['item_variant']]['item'] = i['item']
 		resp[i['item_variant']]["conversion_factor"] = get_conversion_factor(i['item_variant'], uom=resp[i['item_variant']]['uom'])['conversion_factor']
