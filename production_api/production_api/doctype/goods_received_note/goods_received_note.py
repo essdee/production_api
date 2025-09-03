@@ -550,7 +550,7 @@ class GoodsReceivedNote(Document):
 		if self.against == "Work Order":
 			qty = flt(d.get("stock_qty")) * multiplier
 			rate = get_stock_balance(
-				d.item_variant, None, received_type, posting_date=self.posting_date, 
+				d.get('item_variant'), None, received_type, posting_date=self.posting_date, 
 				posting_time=self.posting_time, with_valuation_rate=True, uom=d.get('stock_uom'),
 			)[1]
 			rate = valuation_rate + rate
