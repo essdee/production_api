@@ -7,6 +7,23 @@ frappe.ui.form.on("Item Production Detail", {
 			const attributes = doc.item_attributes.map(attr => attr.attribute)
 			return { filters: { name: ["in", attributes] } };
 		};
+		frm.set_query("item", ()=> {
+			frappe.call({
+				method: "production_api.essdee_production.doctype.item_production_detail.item_production_detail.get_ipd_item_group",
+				callback: function(r) {
+					if (r.message) {
+						let item_groups = r.message;
+						frm.set_query("item", () => {
+							return {
+								filters: {
+									item_group: ["in", item_groups]
+								}
+							};
+						});
+					}
+				}
+			});
+		})
 		frm.set_query('set_item_attribute', setAttributeQuery);
 		frm.set_query('packing_attribute', setAttributeQuery);
 		frm.set_query('stiching_attribute', setAttributeQuery);
