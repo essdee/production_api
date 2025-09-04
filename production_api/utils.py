@@ -829,3 +829,7 @@ def get_inward_qty(lot, process):
 		"set_attr": set_attr
 	}
 
+@frappe.whitelist()
+def get_site_config_value():
+    conf = frappe.get_conf()
+    return conf
