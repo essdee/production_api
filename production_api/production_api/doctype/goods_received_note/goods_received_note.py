@@ -1624,22 +1624,12 @@ def get_cutting_process_deliverables(grn_doc, ipd_doc):
 				else:
 					cloths[t] = accessory_weight
 
-	additional = False
-	add_percent = 0
-	if ipd_doc.additional_cloth:
-		additional = True
-		add_percent = ipd_doc.additional_cloth
-
 	for cloth, weight in cloths.items():
 		name, colour, dia = cloth
 		attributes = {ipd_doc.packing_attribute:colour,"Dia":dia}
 		item_name = name
 		new_variant = get_or_create_variant(item_name, attributes)
 		uom = frappe.get_cached_value("Item",name,"default_unit_of_measure")
-		if additional:
-			x = weight / 100
-			x = x * add_percent
-			weight = weight + x
 		if final_value.get(new_variant):
 			final_value[new_variant]['qty'] += weight
 		else:

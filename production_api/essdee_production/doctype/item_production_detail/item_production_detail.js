@@ -7,6 +7,23 @@ frappe.ui.form.on("Item Production Detail", {
 			const attributes = doc.item_attributes.map(attr => attr.attribute)
 			return { filters: { name: ["in", attributes] } };
 		};
+		frm.set_query("item", ()=> {
+			frappe.call({
+				method: "production_api.essdee_production.doctype.item_production_detail.item_production_detail.get_ipd_item_group",
+				callback: function(r) {
+					if (r.message) {
+						let item_groups = r.message;
+						frm.set_query("item", () => {
+							return {
+								filters: {
+									item_group: ["in", item_groups]
+								}
+							};
+						});
+					}
+				}
+			});
+		})
 		frm.set_query('set_item_attribute', setAttributeQuery);
 		frm.set_query('packing_attribute', setAttributeQuery);
 		frm.set_query('stiching_attribute', setAttributeQuery);
@@ -158,9 +175,7 @@ frappe.ui.form.on("Item Production Detail", {
 				frm.cutting_attrs.push(frm.doc.set_item_attribute)
 			}
 			make_select_attributes(frm,'select_attributes_html','select_attributes_wrapper','select_attrs_multicheck','cutting_attributes','cutting_items_json','get_cutting_combination')
-			// if(frm.doc.cloth_detail.length > 0){
-				make_select_attributes(frm,'select_cloths_attribute_html','select_cloths_attributes_wrapper','select_cloth_attrs_multicheck','cloth_attributes','cutting_cloths_json', 'get_cloth_combination')
-			// }
+			make_select_attributes(frm,'select_cloths_attribute_html','select_cloths_attributes_wrapper','select_cloth_attrs_multicheck','cloth_attributes','cutting_cloths_json', 'get_cloth_combination')
 			let accessoryClothTypeObj = JSON.parse(frm.doc.accessory_clothtype_json || '{}');
 			if (Object.keys(accessoryClothTypeObj).length > 0) {
 				make_select_attributes(frm, 'select_cloth_accessory_html', 'select_cloths_accessory_wrapper', 'select_cloth_accessory_multicheck', 'accessory_attributes', 'cloth_accessory_json', 'get_accessory_combination');

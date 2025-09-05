@@ -88,26 +88,16 @@ class ItemProductionDetail(Document):
 	
 	def before_save(self):
 		if self.is_new():
-			dict_values = {
-				"packing_process" : "Packing",
-				"pack_in_stage" : "Piece",
-				"pack_out_stage" : "Pack",
-				"packing_attribute" : "Colour",
-				"stiching_process" : "Stitching",
-				"stiching_attribute" : "Panel",
-				"stiching_in_stage" : "Cut",
-				"stiching_out_stage" : "Piece",
-				"cutting_process" : "Cutting",
-			}
-			self.packing_process = dict_values['packing_process']
-			self.pack_in_stage = dict_values['pack_in_stage']
-			self.pack_out_stage = dict_values['pack_out_stage']
-			self.packing_attribute = dict_values['packing_attribute']
-			self.stiching_process = dict_values['stiching_process']
-			self.stiching_attribute = dict_values['stiching_attribute']
-			self.stiching_in_stage = dict_values['stiching_in_stage']
-			self.stiching_out_stage = dict_values['stiching_out_stage']
-			self.cutting_process = dict_values['cutting_process']	
+			doc = frappe.get_single("IPD Settings")
+			self.packing_process = doc.default_packing_process
+			self.pack_in_stage = doc.default_pack_in_stage
+			self.pack_out_stage = doc.default_pack_out_stage
+			self.packing_attribute = doc.default_packing_attribute
+			self.stiching_process = doc.default_packing_process
+			self.stiching_attribute = doc.default_stitching_attribute
+			self.stiching_in_stage = doc.default_stitching_in_stage
+			self.stiching_out_stage = doc.default_stitching_out_stage
+			self.cutting_process = doc.default_cutting_process
 
 	def on_update(self):	
 		docs = frappe.flags.delete_bom_mapping
@@ -391,6 +381,10 @@ def get_attribute_detail_values(doctype, txt, searchfield, start, page_len, filt
 	return attr_list
 
 @frappe.whitelist()
+def get_ipd_item_group():
+	return frappe.db.get_single_value("IPD Settings", "item_group")
+
+@frappe.whitelist()
 def get_attribute_values(item_production_detail, attributes = None):
 	ipd_doc = frappe.get_doc("Item Production Detail", item_production_detail)
 	attribute_values = {}
@@ -606,12 +600,12 @@ def calculate_cloth(ipd_doc, variant_attrs, qty, cloth_combination, stitching_co
 				cloth_type = cloth_combination["cloth_combination"][cloth_key]
 				weight = weight * qty * attr_qty
 				cloth_colour = stitching_combination["stitching_combination"][stich_key][stiching_attr]
-				cloth_detail.append(add_cloth_detail(weight, ipd_doc.additional_cloth,cloth_type,cloth_colour,dia,"cloth"))
+				cloth_detail.append(add_cloth_detail(weight,cloth_type,cloth_colour,dia,"cloth"))
 	else:
 		dia, weight = cloth_combination["cutting_combination"][get_key(attrs, cloth_combination["cutting_attributes"])]
 		cloth_type = cloth_combination["cloth_combination"][get_key(attrs, cloth_combination["cloth_attributes"])]
 		weight = weight * qty
-		cloth_detail.append(add_cloth_detail(weight, ipd_doc.additional_cloth,cloth_type,attrs[ipd_doc.packing_attribute],dia,"cloth"))
+		cloth_detail.append(add_cloth_detail(weight,cloth_type,attrs[ipd_doc.packing_attribute],dia,"cloth"))
 	accessory_detail = calculate_accessory(ipd_doc, cloth_combination, stitching_combination, attrs, qty)
 	cloth_detail = cloth_detail + accessory_detail
 	return cloth_detail
@@ -629,7 +623,7 @@ def calculate_accessory(ipd_doc, cloth_combination, stitching_combination, attrs
 					dia, accessory_weight = cloth_combination["accessory_combination"][key]
 					accessory_colour, cloth = get_accessory_colour(ipd_doc,attrs,accessory_name)
 					weight = accessory_weight * qty * attr_qty
-					accessory_detail.append(add_cloth_detail(weight, ipd_doc.additional_cloth,cloth,accessory_colour,dia,"accessory", accessory_name=accessory_name))
+					accessory_detail.append(add_cloth_detail(weight,cloth,accessory_colour,dia,"accessory", accessory_name=accessory_name))
 	elif cloth_accessory_json:
 		for accessory_name, accessory_cloth in cloth_accessory_json.items():
 			attrs["Accessory"] = accessory_name
@@ -638,7 +632,7 @@ def calculate_accessory(ipd_doc, cloth_combination, stitching_combination, attrs
 				dia, accessory_weight = cloth_combination["accessory_combination"][key]
 				accessory_colour, cloth = get_accessory_colour(ipd_doc,attrs,accessory_name)	
 				weight = accessory_weight * qty
-				accessory_detail.append(add_cloth_detail(weight, ipd_doc.additional_cloth,cloth,accessory_colour,dia,"accessory", accessory_name=accessory_name))
+				accessory_detail.append(add_cloth_detail(weight,cloth,accessory_colour,dia,"accessory", accessory_name=accessory_name))
 	return accessory_detail
 
 def get_bom_combination(bom_items, process_name):
@@ -673,9 +667,7 @@ def get_bom_combination(bom_items, process_name):
 			bom_combination[bom_item.item][idx] = bom_combination[bom_item.item][idx] | c
 	return bom_combination
 
-def add_cloth_detail(weight, additional_cloth,cloth_type,cloth_colour,dia,type, accessory_name=None):
-	x = get_additional_cloth(weight, additional_cloth)
-	weight = weight + x
+def add_cloth_detail(weight,cloth_type,cloth_colour,dia,type, accessory_name=None):
 	d = {
 		"cloth_type": cloth_type,
 		"colour": cloth_colour,
@@ -706,12 +698,6 @@ def get_accessory_colour(ipd_doc,variant_attrs,accessory):
 			if row['accessory'] == accessory and row['major_colour'] == colour:
 				return row['accessory_colour'],row['cloth_type']
 	frappe.throw("NO COLOUR")
-
-def get_additional_cloth(weight, additional_cloth):
-	if additional_cloth:
-		x = weight/100
-		return  x * additional_cloth
-	return 0.0
 
 def get_cloth_combination(ipd_doc):
 	cutting_attributes = [i.attribute for i in ipd_doc.cutting_attributes]
@@ -1339,7 +1325,6 @@ def duplicate_ipd(ipd):
 		"stiching_major_attribute_value": ipd_doc.stiching_major_attribute_value,
 		"is_same_packing_attribute": ipd_doc.is_same_packing_attribute,
 		"cutting_process": ipd_doc.cutting_process,
-		"additional_cloth": ipd_doc.additional_cloth,
 		"emblishment_details_json": ipd_doc.emblishment_details_json, 
 		"cutting_cloths_json": ipd_doc.cutting_cloths_json,
 		"cutting_items_json": ipd_doc.cutting_items_json,

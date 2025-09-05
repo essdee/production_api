@@ -24,12 +24,8 @@
   "variants_json",
   "packing_tab",
   "packing_section",
-  "packing_process",
-  "pack_in_stage",
   "packing_combo",
   "column_break_gcku",
-  "packing_attribute",
-  "pack_out_stage",
   "packing_attribute_no",
   "section_break_rjdy",
   "auto_calculate",
@@ -45,12 +41,7 @@
   "set_items_html",
   "stiching_tab",
   "stiching_details_section",
-  "stiching_process",
-  "stiching_attribute",
   "stiching_major_attribute_value",
-  "column_break_houe",
-  "stiching_in_stage",
-  "stiching_out_stage",
   "section_break_lpco",
   "get_stiching_attribute_values",
   "stiching_item_details",
@@ -64,10 +55,8 @@
   "emblishment_details_json",
   "cutting_tab",
   "cutting_details_section",
-  "cutting_process",
   "cloth_attributes",
   "cloth_detail",
-  "additional_cloth",
   "update_cloth_items",
   "section_break_eorj",
   "cutting_attributes",
@@ -92,7 +81,22 @@
   "section_break_bfkp",
   "get_stiching_accessory_combination",
   "stiching_accessory_json",
-  "stiching_accessory_html"
+  "stiching_accessory_html",
+  "advance_settings_tab",
+  "packing_details_section",
+  "packing_process",
+  "pack_in_stage",
+  "column_break_iknj",
+  "packing_attribute",
+  "pack_out_stage",
+  "stitching_details_section_section",
+  "stiching_process",
+  "stiching_in_stage",
+  "column_break_xhgb",
+  "stiching_attribute",
+  "stiching_out_stage",
+  "cutting_details_section_section",
+  "cutting_process"
  ],
  "fields": [
   {
@@ -400,13 +404,6 @@
    "label": "Update Cloth Items"
   },
   {
-   "fieldname": "additional_cloth",
-   "fieldtype": "Float",
-   "label": "Additional Cloth %",
-   "non_negative": 1,
-   "precision": "2"
-  },
-  {
    "fieldname": "tech_pack_version",
    "fieldtype": "Data",
    "label": "Tech Pack Version"
@@ -573,10 +570,6 @@
    "fieldtype": "Section Break"
   },
   {
-   "fieldname": "column_break_houe",
-   "fieldtype": "Column Break"
-  },
-  {
    "fieldname": "section_break_lpco",
    "fieldtype": "Section Break"
   },
@@ -611,11 +604,39 @@
    "fieldtype": "JSON",
    "hidden": 1,
    "label": "Variants JSON"
+  },
+  {
+   "fieldname": "advance_settings_tab",
+   "fieldtype": "Tab Break",
+   "label": "Advance Settings"
+  },
+  {
+   "fieldname": "packing_details_section",
+   "fieldtype": "Section Break",
+   "label": "Packing Details Section"
+  },
+  {
+   "fieldname": "column_break_iknj",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "stitching_details_section_section",
+   "fieldtype": "Section Break",
+   "label": "Stitching Details Section"
+  },
+  {
+   "fieldname": "column_break_xhgb",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "cutting_details_section_section",
+   "fieldtype": "Section Break",
+   "label": "Cutting Details Section"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-03-15 15:04:42.623172",
+ "modified": "2025-09-04 14:32:24.293707",
  "modified_by": "Administrator",
  "module": "Essdee Production",
  "name": "Item Production Detail",
@@ -656,6 +677,7 @@
    "share": 1
   }
  ],
+ "row_format": "Dynamic",
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": [],
