@@ -5,21 +5,125 @@
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
-  "item_group"
+  "item_group",
+  "column_break_vcvr",
+  "default_cutting_process",
+  "packing_details_section",
+  "default_packing_process",
+  "default_pack_in_stage",
+  "column_break_vbai",
+  "default_packing_attribute",
+  "default_pack_out_stage",
+  "stitching_details_section",
+  "default_stitching_process",
+  "default_stitching_in_stage",
+  "column_break_ihkx",
+  "default_stitching_attribute",
+  "default_stitching_out_stage"
  ],
  "fields": [
   {
    "fieldname": "item_group",
    "fieldtype": "Link",
+   "in_list_view": 1,
    "label": "Item Group",
-   "options": "Item Group"
+   "options": "Item Group",
+   "reqd": 1
+  },
+  {
+   "fieldname": "default_cutting_process",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Default Cutting Process",
+   "options": "Process",
+   "reqd": 1
+  },
+  {
+   "fieldname": "default_stitching_process",
+   "fieldtype": "Link",
+   "label": "Default Stitching Process",
+   "options": "Process",
+   "reqd": 1
+  },
+  {
+   "fieldname": "default_packing_process",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Default Packing Process",
+   "options": "Process",
+   "reqd": 1
+  },
+  {
+   "fieldname": "default_pack_in_stage",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Default Pack In Stage",
+   "options": "Item Attribute Value",
+   "reqd": 1
+  },
+  {
+   "fieldname": "default_pack_out_stage",
+   "fieldtype": "Link",
+   "label": "Default Pack Out Stage",
+   "options": "Item Attribute Value",
+   "reqd": 1
+  },
+  {
+   "fieldname": "default_stitching_in_stage",
+   "fieldtype": "Link",
+   "label": "Default Stitching in Stage",
+   "options": "Item Attribute Value",
+   "reqd": 1
+  },
+  {
+   "fieldname": "default_stitching_out_stage",
+   "fieldtype": "Link",
+   "label": "Default Stitching Out Stage",
+   "options": "Item Attribute Value",
+   "reqd": 1
+  },
+  {
+   "fieldname": "default_packing_attribute",
+   "fieldtype": "Link",
+   "label": "Default Packing Attribute",
+   "options": "Item Attribute",
+   "reqd": 1
+  },
+  {
+   "fieldname": "default_stitching_attribute",
+   "fieldtype": "Link",
+   "label": "Default Stitching Attribute",
+   "options": "Item Attribute",
+   "reqd": 1
+  },
+  {
+   "fieldname": "column_break_vcvr",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "packing_details_section",
+   "fieldtype": "Section Break",
+   "label": "Packing Details"
+  },
+  {
+   "fieldname": "column_break_vbai",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "stitching_details_section",
+   "fieldtype": "Section Break",
+   "label": "Stitching Details"
+  },
+  {
+   "fieldname": "column_break_ihkx",
+   "fieldtype": "Column Break"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2025-09-04 13:01:11.115409",
+ "modified": "2025-09-05 12:48:16.379024",
  "modified_by": "Administrator",
  "module": "Essdee Production",
  "name": "IPD Settings",

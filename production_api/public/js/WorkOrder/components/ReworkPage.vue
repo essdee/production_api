@@ -10,16 +10,21 @@
             <table class="table table-sm table-sm-bordered">
                 <tr>
                     <th>Series No</th>
+                    <th>Date</th>
                     <th>GRN Number</th>
                     <th>Lot</th>
                     <th>Item</th>
                     <th>Colour</th>
                     <th v-for="type in items['types']">{{ type }}</th>
+                    <th>Total</th>
                 </tr>
                 <template v-for="(value, key) in items['report_detail']" :key="key">
                     <tr @click="toggle_row(key)">
                         <td>{{ key }}</td>
-                        <td @click="map_to_grn(value['grn_number'])" class="hover-style">{{ value['grn_number'] }}</td>
+                        <td>{{ get_date(value['date']) }}</td>
+                        <td>
+                            <div @click="map_to_grn(value['grn_number'])" class="hover-style">{{ value['grn_number'] }}</div>
+                        </td>
                         <td>{{ value['lot'] }}</td>
                         <td>{{ value['item'] }}</td>
                         <td>{{ Object.keys(value['rework_detail'])[0].split("-").slice(1).join("-") }}</td>
@@ -27,6 +32,7 @@
                             <span v-if="ty in value['types']">{{value['types'][ty]}}</span>
                             <span v-else>0</span>
                         </td>
+                        <th> {{ value['total'] }}</th>
                     </tr>
                     <tr v-if="expandedRowKey === key">
                         <td :colspan="1000" class="expanded-row-content">
@@ -176,6 +182,13 @@ function update_rework(data, lot){
         } 
     })
     d.show()
+}
+
+function get_date(date){
+    if(date){
+        let x = new Date(date)
+        return x.getDate() + "-" + (x.getMonth() + 1) + "-" + x.getFullYear()
+    }
 }
 
 function update(data, completed, lot){

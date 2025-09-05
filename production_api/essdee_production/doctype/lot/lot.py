@@ -7,7 +7,7 @@ from frappe.utils import flt, date_diff
 from itertools import groupby, zip_longest
 from frappe.model.document import Document
 from frappe.model.naming import make_autoname
-from production_api.utils import update_if_string_instance
+from production_api.utils import update_if_string_instance, get_panel_colour_combination
 from production_api.essdee_production.doctype.holiday_list.holiday_list import get_next_date
 from production_api.production_api.doctype.purchase_order.purchase_order import get_item_group_index
 from production_api.production_api.doctype.item.item import get_attribute_details, get_or_create_variant

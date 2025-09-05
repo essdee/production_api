@@ -98,11 +98,13 @@ def get_rework_items(lot):
 		pack_attr, primary_attr, set_item, set_attr = frappe.get_cached_value("Item Production Detail", ipd, ipd_fields)
 		data["report_detail"].setdefault(item, {
 			"grn_number": doc.grn_number,
+			"date": doc.creation,
 			"lot": doc.lot,
 			"item": doc.item,
 			"rework_detail": {},
 			"size": primary_attr,
-			"types": {}
+			"types": {},
+			"total": 0,
 		})
 		for row in doc.grn_rework_item_details:
 			if row.completed == 1:
@@ -117,12 +119,13 @@ def get_rework_items(lot):
 			})
 			if row.received_type not in data['types']:
 				data['types'].append(row.received_type)
-				
+			qty = row.quantity - row.reworked
 			data["report_detail"][item]['types'].setdefault(row.received_type, 0)
-			data["report_detail"][item]['types'][row.received_type] += row.quantity - row.reworked
+			data["report_detail"][item]['types'][row.received_type] += qty
+			data["report_detail"][item]['total'] += qty
 			data["report_detail"][item]['rework_detail'][key]['items'].append({
 				primary_attr : attr_details[primary_attr],
-				"rework_qty": row.quantity - row.reworked,
+				"rework_qty": qty,
 				"rejected": row.rejection, 
 				"rework": 0,
 				"set_combination": update_if_string_instance(row.set_combination),

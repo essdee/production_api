@@ -88,26 +88,16 @@ class ItemProductionDetail(Document):
 	
 	def before_save(self):
 		if self.is_new():
-			dict_values = {
-				"packing_process" : "Packing",
-				"pack_in_stage" : "Piece",
-				"pack_out_stage" : "Pack",
-				"packing_attribute" : "Colour",
-				"stiching_process" : "Stitching",
-				"stiching_attribute" : "Panel",
-				"stiching_in_stage" : "Cut",
-				"stiching_out_stage" : "Piece",
-				"cutting_process" : "Cutting",
-			}
-			self.packing_process = dict_values['packing_process']
-			self.pack_in_stage = dict_values['pack_in_stage']
-			self.pack_out_stage = dict_values['pack_out_stage']
-			self.packing_attribute = dict_values['packing_attribute']
-			self.stiching_process = dict_values['stiching_process']
-			self.stiching_attribute = dict_values['stiching_attribute']
-			self.stiching_in_stage = dict_values['stiching_in_stage']
-			self.stiching_out_stage = dict_values['stiching_out_stage']
-			self.cutting_process = dict_values['cutting_process']	
+			doc = frappe.get_single("IPD Settings")
+			self.packing_process = doc.default_packing_process
+			self.pack_in_stage = doc.default_pack_in_stage
+			self.pack_out_stage = doc.default_pack_out_stage
+			self.packing_attribute = doc.default_packing_attribute
+			self.stiching_process = doc.default_packing_process
+			self.stiching_attribute = doc.default_stitching_attribute
+			self.stiching_in_stage = doc.default_stitching_in_stage
+			self.stiching_out_stage = doc.default_stitching_out_stage
+			self.cutting_process = doc.default_cutting_process
 
 	def on_update(self):	
 		docs = frappe.flags.delete_bom_mapping

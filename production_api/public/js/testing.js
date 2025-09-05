@@ -9,7 +9,6 @@ my_app.mount_testing_banner = function () {
                 if (!document.getElementById(bannerId)) {
                     let banner = document.createElement("div");
                     banner.id = bannerId;
-            
                     banner.innerHTML = `
                         <div style="
                             position: fixed;
@@ -59,9 +58,5 @@ my_app.mount_testing_banner = function () {
 };
 
 $(document).ready(function () {
-    my_app.mount_testing_banner();
-});
-
-frappe.router.on("change", () => {
     my_app.mount_testing_banner();
 });
