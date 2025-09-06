@@ -123,7 +123,7 @@ def fetch_group_marker_details(calculated_parts, cutting_marker_groups):
 	return items			
 
 @frappe.whitelist()
-def get_primary_attributes(lot, selected_value, panels):
+def get_primary_and_bundle_detail(lot, selected_value, panels, grp_panels):
 	ipd = frappe.get_value("Lot",lot,"production_detail")
 	primary_values = get_ipd_primary_values(ipd)
 	primary_attributes = []
@@ -142,7 +142,47 @@ def get_primary_attributes(lot, selected_value, panels):
 					"panel":panel,
 					"ratio":0,
 				})
-	return primary_attributes	
+	grp_items = []		
+	doc = frappe.get_doc("Item Production Detail", ipd)
+	if len(doc.cutting_marker_groups) > 0:
+		d = {}
+		grp_panels = frappe.json.loads(grp_panels)
+		idx = 0
+		for grp_panel in grp_panels:
+			grp_panels[idx] = {
+				"option": grp_panel,
+				"id": grp_panel,
+			}
+			idx += 1
+		for row in doc.cutting_marker_groups:
+			for p in row.group_panels.split(","):
+				d[p] = row.group_panels.split(",")
+		grouped_panels = []
+		for panel in panels:
+			if panel not in grouped_panels:
+				grp_list = d[panel]
+				check = True
+				for p in grp_list:
+					if p not in panels:
+						check = False
+						break
+				if check:
+					for p in grp_list:
+						grouped_panels.append(p)
+					grp_items.append({
+						"options": grp_panels,
+						"defaultList": d[panel],
+						"id": len(grp_items),
+						"selected": d[panel],
+					})
+				else:
+					grp_items = []
+					break	
+
+	return {
+		"primary":primary_attributes,
+		"grp_items": grp_items,
+	}	
 
 @frappe.whitelist()
 def calculate_parts(cutting_plan):

@@ -135,6 +135,18 @@ class ItemProductionDetail(Document):
 			cut_json['select_list'] = cloths		
 		self.cutting_cloths_json = cut_json
 
+		if self.get("marker_details"):
+			group_items = self.marker_details
+			items2 = []
+			for item in group_items:
+				item['selected'].sort()
+				selected = ",".join(item['selected'])
+				if selected:
+					items2.append({
+						"group_panels":selected,
+					})
+			self.set("cutting_marker_groups", items2)	
+
 		if self.is_set_item:
 			doc = frappe.get_doc("Item Production Detail",self.name)
 			if doc.is_set_item and self.is_set_item:

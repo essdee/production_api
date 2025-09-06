@@ -169,6 +169,7 @@ frappe.ui.form.on("Item Production Detail", {
 		$(frm.fields_dict['select_cloths_attribute_html'].wrapper).html("")
 		$(frm.fields_dict['select_attributes_html'].wrapper).html("")
 		$(frm.fields_dict['select_cloth_accessory_html'].wrapper).html("")
+		$(frm.fields_dict['bundle_group_html'].wrapper).html("")
 		if(frm.doc.stiching_in_stage && frm.doc.dependent_attribute){
 			frm.cutting_attrs = await get_stich_in_attributes(frm.doc.dependent_attribute_mapping,frm.doc.stiching_in_stage, frm.doc.item)
 			if(frm.doc.is_set_item){
@@ -227,6 +228,7 @@ frappe.ui.form.on("Item Production Detail", {
 	make_hide_and_unhide_tabs(frm){
 		if(frm.doc.dependent_attribute){
 			frm.trigger('make_stiching_combination')
+			frm.trigger("bundle_combination")
 			frm.trigger('make_cutting_combination')
 			frm.trigger('make_cloth_accessories')
 			frm.trigger('make_stiching_accessory_combination')
@@ -242,7 +244,14 @@ frappe.ui.form.on("Item Production Detail", {
 		else{
 			frm.$wrapper.find("[data-fieldname='set_item_tab']").show();
 		}
-
+	},
+	bundle_combination(frm){
+		if(frm.doc.stiching_item_details.length > 0){
+			frm.bundle_group = new frappe.production.ui.BundleGroup(frm.fields_dict['bundle_group_html'].wrapper)
+			if(frm.doc.__onload && frm.doc.__onload.bundle_group_details){
+				frm.bundle_group.load_data(frm.doc.__onload.bundle_group_details)
+			}
+		}
 	},
 	load_item_attribute_details(frm){
 		$(frm.fields_dict['item_attribute_list_values_html'].wrapper).html("");
@@ -500,6 +509,10 @@ frappe.ui.form.on("Item Production Detail", {
 				else{
 					frm.doc.emblishment_details_json = items
 				}
+			}
+			if(frm.bundle_group){
+				let items = frm.bundle_group.get_items()
+            	frm.doc['marker_details'] = items
 			}
 		}
 	},
