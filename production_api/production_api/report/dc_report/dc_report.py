@@ -40,7 +40,7 @@ def get_data(filters):
 			FROM `tabDelivery Challan Item` as t1 
 			JOIN `tabDelivery Challan` as t2 
 			ON t2.name = t1.parent 
-			WHERE t1.docstatus = 1 AND t1.qty > 0 {conditions}
+			WHERE t1.docstatus = 1 AND t1.delivered_quantity > 0 {conditions}
 		""", d, as_dict=True
 	)
 	for row in data:
