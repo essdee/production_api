@@ -341,6 +341,7 @@ def get_ccr(doc_name):
 	cp_doc = frappe.get_doc("Cutting Plan", doc_name)
 	cls_list = frappe.get_all("Cutting LaySheet", filters={"cutting_plan": doc_name, "status": "Label Printed"}, pluck="name", order_by="lay_no asc")
 	markers = {}
+	keys = []
 	for cls in cls_list:
 		cls_doc = frappe.get_doc("Cutting LaySheet", cls)
 		sizes = {}
@@ -363,7 +364,12 @@ def get_ccr(doc_name):
 				"received_weight": 0,
 				"balance_weight": 0,
 				"total_pieces": 0,
+				"reqd_weight": 0,
 			})
+			if key not in keys:
+				keys.append(key)
+				markers[tup_panels][key]['reqd_weight'] += cls_doc.required_pcs_weight
+
 			markers[tup_panels][key]["used_weight"] += row.used_weight
 			for size in sizes:
 				markers[tup_panels][key].setdefault(size, { "bits": 0 })
@@ -409,9 +415,6 @@ def get_ccr(doc_name):
 						cp_doc_colours[key]['received_weight'] -= markers[mark][key]['used_weight']
 	from production_api.essdee_production.doctype.item_production_detail.item_production_detail import get_ipd_primary_values
 	sizes = get_ipd_primary_values(cp_doc.production_detail)
-	print("*****************8")
-	print(sizes)
-	print(markers)
 	if markers:
 		return {
 			"marker_data": markers,

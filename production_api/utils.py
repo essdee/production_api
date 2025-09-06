@@ -833,3 +833,80 @@ def get_inward_qty(lot, process):
 def get_site_config_value():
     conf = frappe.get_conf()
     return conf
+
+@frappe.whitelist()
+def get_inhouse_qty(lot, process):
+	from production_api.production_api.doctype.cut_bundle_movement_ledger.cut_bundle_movement_ledger import (
+		get_variant_attr_details,
+	)
+	from production_api.essdee_production.doctype.item_production_detail.item_production_detail import (
+		get_ipd_primary_values,
+	)
+
+	ipd = frappe.get_value("Lot", lot, "production_detail")
+	ipd_fields = ["is_set_item", "packing_attribute", "primary_item_attribute", "set_item_attribute"]
+	is_set_item, pack_attr, primary_attr, set_attr = frappe.get_value("Item Production Detail", ipd, ipd_fields)
+
+	inward_qty = {"data": {}, "total": {}}
+
+
+	wo_list = frappe.get_all(
+		"Work Order", filters={"lot": lot, "process_name": process, "docstatus": 1}, pluck="name"
+	)
+	if not wo_list:
+		frappe.msgprint(f"No Work Order's for Process {process}")
+		return
+	items = frappe.db.sql(
+		"""
+			SELECT * FROM `tabWork Order Calculated Item` WHERE parent IN %(work_orders)s
+		""",{
+			"work_orders": tuple(wo_list)
+		},as_dict=True,
+	)
+
+	for item in items:
+		sup_name = frappe.get_cached_value("Work Order", item['parent'], "supplier_name")
+		set_comb = update_if_string_instance(item["set_combination"])
+		major_colour = set_comb["major_colour"]
+		colour = major_colour
+		attr_details = get_variant_attr_details(item["item_variant"])
+		size = attr_details[primary_attr]
+		part = None
+
+		if is_set_item:
+			variant_colour = attr_details[pack_attr]
+			part = attr_details[set_attr]
+			colour = f"{variant_colour}({major_colour})"
+
+		inward_qty["data"].setdefault(colour, {})
+
+		inward_qty['data'][colour].setdefault(sup_name, {
+			"values": {},
+			"part": part,
+			"colour_total": {
+				"delivered": 0, 
+				"received": 0, 
+			},
+		})
+		inward_qty["data"][colour][sup_name]["values"].setdefault(size, {
+			"delivered": 0, 
+			"received": 0, 
+		})
+		inward_qty["total"].setdefault(size, 0)
+
+		received = item["received_qty"] or 0
+		delivered = item["delivered_quantity"] or 0
+
+		inward_qty["data"][colour][sup_name]["colour_total"]["received"] += received
+		inward_qty["data"][colour][sup_name]["colour_total"]["delivered"] += delivered
+		inward_qty["data"][colour][sup_name]["values"][size]["received"] += received
+		inward_qty["data"][colour][sup_name]["values"][size]["delivered"] += delivered
+		inward_qty["total"][size] += received
+
+	primary_values = get_ipd_primary_values(ipd)
+	return {
+		"primary_values": primary_values,
+		"data": inward_qty,
+		"is_set_item": is_set_item,
+		"set_attr": set_attr,
+	}

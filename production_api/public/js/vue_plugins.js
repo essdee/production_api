@@ -17,6 +17,7 @@ import WorkStationV2 from "./Lot/components/WorkStationV2.vue"
 import WorkStation from "./Lot/components/WorkStation.vue"
 import TimeActionPreview from "./Lot/components/TimeActionPreview.vue"
 import InwardQuantityReport from "./Lot/components/InwardQuantityReport.vue";
+import InhouseQuantity from "./Lot/components/InhouseQuantity.vue";
 import TimeAction from "./Lot/components/TimeAction.vue"
 import TimeActionReport from "./Lot/components/TimeActionReport.vue"
 import TandACapacityPreview from "./Lot/components/TandACapacityPreview.vue";
@@ -542,6 +543,18 @@ frappe.production.ui.InwardQuantityReport = class {
     }
     make_app(){
         this.app = createApp(InwardQuantityReport)
+        SetVueGlobals(this.app)
+        this.vue = this.app.mount(this.$wrapper.get(0))
+    }
+}
+
+frappe.production.ui.InhouseQuantity = class {
+    constructor(wrapper){
+        this.$wrapper = $(wrapper)
+        this.make_app()
+    }
+    make_app(){
+        this.app = createApp(InhouseQuantity)
         SetVueGlobals(this.app)
         this.vue = this.app.mount(this.$wrapper.get(0))
     }
