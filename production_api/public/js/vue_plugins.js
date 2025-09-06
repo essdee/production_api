@@ -32,6 +32,7 @@ import CuttingItemDetail from "./Item_Po_detail/CuttingItemDetail.vue"
 import ClothAccessory from "./Item_Po_detail/ClothAccessory.vue"
 import ClothAccessoryCombination from "./Item_Po_detail/ClothAccessoryCombination.vue"
 import AccessoryItems from "./Item_Po_detail/AccessoryItems.vue"
+import BundleGroup from "./Item_Po_detail/BundleGroup.vue"
 import { StockEntryWrapper, StockReconciliationWrapper, LotTransferWrapper } from "./Stock";
 import WorkOrderDeliverables from "./WorkOrder/components/Deliverables.vue"
 import WorkOrderRework from "./WorkOrder/components/WOReworkPopUp.vue"
@@ -269,6 +270,21 @@ frappe.production.ui.AccessoryItems = class {
     get_data(){
         let items = JSON.parse(JSON.stringify(this.vue.get_items()))
         return items
+    }
+}
+
+frappe.production.ui.BundleGroup = class {
+    constructor(wrapper){
+        this.$wrapper = $(wrapper);
+        this.make_app()
+    }
+    make_app(){
+        this.app = createApp(BundleGroup)
+        SetVueGlobals(this.app)
+        this.vue = this.app.mount(this.$wrapper.get(0))
+    }
+    get_items(){
+        return this.vue.get_items()
     }
 }
 

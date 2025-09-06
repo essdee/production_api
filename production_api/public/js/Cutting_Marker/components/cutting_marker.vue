@@ -148,9 +148,6 @@ function get_items(){
     let selected_panels = []
     for(let i = 0; i < grp_items.value.length ; i++){
         if(grp_items.value[i].selected.length > 0){
-            if(grp_items.value[i].selected.length > 2){
-                frappe.throw("Only two panels can be a group")
-            }
             for(let j = 0; j < grp_items.value[i].selected.length; j++){
                 if(selected_panels.includes(grp_items.value[i].selected[j])){
                     frappe.throw("Panel " + grp_items.value[i].selected[j] + " is grouped multiple times")
@@ -246,15 +243,16 @@ function get_combination(user_input=null){
     cur_frm.doc.calculated_parts = panels.join(",")
     doc_panels = panels.join(",")
     frappe.call({
-        method:"production_api.production_api.doctype.cutting_marker.cutting_marker.get_primary_attributes",
+        method:"production_api.production_api.doctype.cutting_marker.cutting_marker.get_primary_and_bundle_detail",
         args: {
             lot:cur_frm.doc.lot,
             selected_value: selected_value,
-            panels: panels
+            panels: panels,
+            grp_panels: grp_panel,
         },
         callback:((r)=> {
-            items.value = r.message
-            grp_items.value = []
+            items.value = r.message.primary
+            grp_items.value = r.message.grp_items
         })
     })
 }

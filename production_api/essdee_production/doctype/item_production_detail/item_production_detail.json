@@ -50,6 +50,9 @@
   "get_stiching_item_combination",
   "stiching_items_html",
   "stiching_item_combination_details",
+  "bundle_details_section",
+  "cutting_marker_groups",
+  "bundle_group_html",
   "emblishment_tab",
   "emblishment_details_html",
   "emblishment_details_json",
@@ -611,6 +614,7 @@
    "label": "Advance Settings"
   },
   {
+   "collapsible": 1,
    "fieldname": "packing_details_section",
    "fieldtype": "Section Break",
    "label": "Packing Details Section"
@@ -620,6 +624,7 @@
    "fieldtype": "Column Break"
   },
   {
+   "collapsible": 1,
    "fieldname": "stitching_details_section_section",
    "fieldtype": "Section Break",
    "label": "Stitching Details Section"
@@ -629,14 +634,32 @@
    "fieldtype": "Column Break"
   },
   {
+   "collapsible": 1,
    "fieldname": "cutting_details_section_section",
    "fieldtype": "Section Break",
    "label": "Cutting Details Section"
+  },
+  {
+   "fieldname": "bundle_group_html",
+   "fieldtype": "HTML",
+   "label": "Bundle Group HTML"
+  },
+  {
+   "fieldname": "cutting_marker_groups",
+   "fieldtype": "Table",
+   "hidden": 1,
+   "label": "Cutting Marker Groups",
+   "options": "Cutting Marker Group"
+  },
+  {
+   "fieldname": "bundle_details_section",
+   "fieldtype": "Section Break",
+   "label": "Bundle Details"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-09-04 14:32:24.293707",
+ "modified": "2025-09-05 11:31:53.914455",
  "modified_by": "Administrator",
  "module": "Essdee Production",
  "name": "Item Production Detail",
