@@ -33,10 +33,14 @@ def get_data(filters):
 
 	data = frappe.db.sql(
 		f"""
-			SELECT t2.name as delivery_challan, t2.from_location, t2.from_location_name, t2.supplier, 
-			t2.supplier_name, t2.lot, t2.process_name, t1.item_variant, t1.qty, t1.uom, t1.item_type as received_type 
-			FROM `tabDelivery Challan Item` as t1 JOIN `tabDelivery Challan` as t2 ON t2.name = t1.parent 
-			WHERE t1.docstatus = 1 AND t1.qty > 0 {conditions}
+			SELECT 
+				t2.name as delivery_challan, t2.from_location, t2.from_location_name, t2.supplier, 
+				t2.supplier_name, t2.lot, t2.process_name, t1.item_variant, t1.delivered_quantity as qty, 
+				t1.uom, t1.item_type as received_type 
+			FROM `tabDelivery Challan Item` as t1 
+			JOIN `tabDelivery Challan` as t2 
+			ON t2.name = t1.parent 
+			WHERE t1.docstatus = 1 AND t1.delivered_quantity > 0 {conditions}
 		""", d, as_dict=True
 	)
 	for row in data:

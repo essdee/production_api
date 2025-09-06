@@ -155,48 +155,25 @@ frappe.ui.form.on("Cutting LaySheet", {
             }
             if(frm.doc.cutting_laysheet_bundles.length > 0 && frm.doc.status == "Bundles Generated" ){
                 frm.add_custom_button("Print Labels", ()=> {
-                    frappe.call({
-                        method:"production_api.production_api.doctype.cutting_laysheet.cutting_laysheet.update_cutting_plan",
-                        args: {
-                            cutting_laysheet: frm.doc.name, 
-                            check_cp: true,
-                        },
-                        callback: function(){
-                            frappe.ui.form.qz_connect().then(function () {
-                                return frappe.ui.form.qz_get_printer_list();
-                            }).then(function (printers) {
-                                let d = new frappe.ui.Dialog({
-                                    title:"Select any one printer",
-                                    fields: [
-                                        {
-                                            fieldname: 'printer_list_html',
-                                            fieldtype: 'HTML',
-                                        }, 
-                                        {
-                                            fieldname: "print_order",
-                                            fieldtype: "Select",
-                                            options: ["Panel", "Bundle No"],
-                                            label: "Print Order By",
-                                            default: "Panel",    
-                                        }
-                                    ],
-                                    size:'small',
-                                    primary_action_label:"Print",
-                                    primary_action:function(values){
-                                        d.hide()
-                                        let printer = get_printer()
-                                        printer = printer.slice(1, -1);
-                                        print_labels(frm, printer, values.print_order)
-                                    }
-                                })
-                                d.fields_dict.printer_list_html.$wrapper.html('');
-                                d.fields_dict.printer_list_html.$wrapper.append(get_printers_html(printers))
-                                d.show()
-                            }).catch(function (err) {
-                                frappe.ui.form.qz_fail(err);
-                            });
-                        }
-                    })
+                    if(frm.doc.required_pcs_weight != frm.doc.piece_weight){
+                        let d = new frappe.ui.Dialog({
+                            title: `Required Weight is ${frm.doc.required_pcs_weight}, <br>
+                                    Actual Piece Weight is ${frm.doc.piece_weight.toFixed(3)} <br>
+                                    Are you sure want to continue`,
+                            primary_action_label: "Yes",
+                            secondary_action_label: "No",
+                            primary_action(){
+                                frm.set_value("approved_by", frappe.session.user)
+                                frm.refresh_field("approved_by")
+                                d.hide()
+                                frm.trigger("label_print")
+                            },
+                            secondary_action(){
+                                d.hide()
+                            }
+                        })
+                        d.show()
+                    }
                 }, "Print")
             }
             if(frm.doc.status == "Label Printed" || frm.doc.status == "Bundles Generated"){
@@ -312,6 +289,50 @@ frappe.ui.form.on("Cutting LaySheet", {
             let items2 = frm.accessory.get_items()
             frm.doc['item_accessory_details'] = JSON.stringify(items2)
         }
+    },
+    label_print(frm){
+        frappe.call({
+            method:"production_api.production_api.doctype.cutting_laysheet.cutting_laysheet.update_cutting_plan",
+            args: {
+                cutting_laysheet: frm.doc.name, 
+                check_cp: true,
+            },
+            callback: function(){
+                frappe.ui.form.qz_connect().then(function () {
+                    return frappe.ui.form.qz_get_printer_list();
+                }).then(function (printers) {
+                    let d = new frappe.ui.Dialog({
+                        title:"Select any one printer",
+                        fields: [
+                            {
+                                fieldname: 'printer_list_html',
+                                fieldtype: 'HTML',
+                            }, 
+                            {
+                                fieldname: "print_order",
+                                fieldtype: "Select",
+                                options: ["Panel", "Bundle No"],
+                                label: "Print Order By",
+                                default: "Panel",    
+                            }
+                        ],
+                        size:'small',
+                        primary_action_label:"Print",
+                        primary_action:function(values){
+                            d.hide()
+                            let printer = get_printer()
+                            printer = printer.slice(1, -1);
+                            print_labels(frm, printer, values.print_order)
+                        }
+                    })
+                    d.fields_dict.printer_list_html.$wrapper.html('');
+                    d.fields_dict.printer_list_html.$wrapper.append(get_printers_html(printers))
+                    d.show()
+                }).catch(function (err) {
+                    frappe.ui.form.qz_fail(err);
+                });
+            }
+        })
     }
 });
 

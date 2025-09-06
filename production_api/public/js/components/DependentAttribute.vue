@@ -97,7 +97,7 @@ export default {
     },
     methods: {
         get_input_class: function(attribute, type) {
-            return attribute+"-"+type;
+            return attribute.replace(/\s+/g, "_") + "-" + type;
         },
 
         has_value: function(list, value) {

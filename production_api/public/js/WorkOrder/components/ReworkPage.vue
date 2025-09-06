@@ -2,6 +2,8 @@
     <div ref="root" class="rework-container">
         <div class="input-row">
             <div class="lot-input col-md-3"></div>
+            <div class="item-input col-md-3"></div>
+            <div class="colour-input col-md-3"></div>
             <div class="btn-wrapper">
                 <button class="btn btn-primary" @click="get_rework_items()">Get Rework Items</button>
             </div>
@@ -46,7 +48,7 @@
                                         </th>
                                     </tr>
                                     <tr>
-                                        <td>Total Rework</td>
+                                        <td>Total {{ colour.split("-")[0] }}</td>
                                         <td v-for="size in colour_data['items']">
                                             {{ size['rework_qty'] }}
                                         </td>
@@ -92,6 +94,8 @@ let root = ref(null);
 let sample_doc = ref({});
 let items = ref({});
 let expandedRowKey = ref(null);
+let item = null
+let colour = null
 
 onMounted(() => {
     let el = root.value;
@@ -108,6 +112,29 @@ onMounted(() => {
         doc: sample_doc.value,
         render_input: true,
     });
+    $(el).find(".item-input").html("");
+    item = frappe.ui.form.make_control({
+        parent: $(el).find(".item-input"),
+        df: {
+            fieldname: "item",
+            fieldtype: "Link",
+            options: "Item",
+            label: "Item",
+        },
+        doc: sample_doc.value,
+        render_input: true,
+    });
+    $(el).find(".colour-input").html("");
+    colour = frappe.ui.form.make_control({
+        parent: $(el).find(".colour-input"),
+        df: {
+            fieldname: "colour",
+            fieldtype: "Data",
+            label: "Colour",
+        },
+        doc: sample_doc.value,
+        render_input: true,
+    });
 });
 
 function get_rework_items() {
@@ -115,6 +142,8 @@ function get_rework_items() {
         method: "production_api.production_api.doctype.grn_rework_item.grn_rework_item.get_rework_items",
         args: {
             lot: lot.get_value(),
+            item: item.get_value(),
+            colour: colour.get_value(),
         },
         callback: function (r) {
             items.value = r.message;

@@ -79,19 +79,34 @@ def revert_reworked_item(docname):
 	make_sl_entries(sl_entries)
 
 @frappe.whitelist()
-def get_rework_items(lot):
-	filters = {
-		"completed": 0,
-	}
+def get_rework_items(lot, item, colour):
+	conditions = " AND t2.completed = 0"
+	con = {}
+	if item:
+		conditions += " AND t1.item = %(item_name)s"
+		con['item_name'] = item
+
 	if lot:
-		filters["lot"] = lot
-	rework_items = frappe.get_all("GRN Rework Item", filters=filters, pluck="name", order_by="name" )
+		conditions += " AND t1.lot = %(lot_name)s"
+		con['lot_name'] = lot
+
+	if colour:
+		conditions += " AND t2.item_variant LIKE  %(colour)s"
+		con['colour'] = f"%{colour}%"
+
+	rework_items = frappe.db.sql(
+		f"""
+			SELECT t1.name FROM `tabGRN Rework Item` t1 JOIN `tabGRN Rework Item Detail` t2 
+			ON t1.name = t2.parent WHERE 1 = 1 {conditions} GROUP BY t1.name
+		""", con, as_dict=True
+	)	
 	data = {
 		"report_detail": {},
 		"types": [],
 	}
 	from production_api.production_api.doctype.cut_bundle_movement_ledger.cut_bundle_movement_ledger import get_variant_attr_details
 	for item in rework_items:
+		item = item['name']
 		doc = frappe.get_doc("GRN Rework Item", item)
 		ipd = frappe.get_cached_value("Lot", doc.lot, "production_detail")
 		ipd_fields = ['packing_attribute', 'primary_item_attribute', 'is_set_item', 'set_item_attribute']
