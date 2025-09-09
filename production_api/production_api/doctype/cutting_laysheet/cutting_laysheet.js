@@ -174,6 +174,11 @@ frappe.ui.form.on("Cutting LaySheet", {
                         })
                         d.show()
                     }
+                    else{
+                        frm.set_value("approved_by", frappe.session.user)
+                        frm.refresh_field("approved_by")
+                        frm.trigger("label_print")
+                    }
                 }, "Print")
             }
             if(frm.doc.status == "Label Printed" || frm.doc.status == "Bundles Generated"){
