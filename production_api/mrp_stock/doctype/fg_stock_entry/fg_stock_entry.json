@@ -104,10 +104,11 @@
    "label": "Received By"
   }
  ],
+ "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-01-27 14:16:44.453383",
+ "modified": "2025-09-17 17:17:45.981049",
  "modified_by": "Administrator",
  "module": "MRP Stock",
  "name": "FG Stock Entry",
@@ -147,8 +148,18 @@
    "role": "Merch Manager",
    "select": 1,
    "share": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Accounts User",
+   "share": 1
   }
  ],
+ "row_format": "Dynamic",
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": []
