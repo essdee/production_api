@@ -67,6 +67,12 @@ def getColumns():
 			"fieldtype" : "Currency",
 			"width" : 140
 		},
+		{
+			"label" : _('Stock Entry Date'),
+			"fieldname" : "entry_date",
+			"fieldtype" : "Datetime",
+			"width" : 140
+		},
 		# {
 		# 	"label" : _("Price Per Box"),
 		# 	"fieldname" : "price_per_box",
@@ -88,7 +94,7 @@ def get_prev_fg_stock_entries(filters, stock):
 
 	query = """
 		SELECT 
-			t0.item_variant, SUM(t0.qty) as qty, t1.lot, t1.warehouse, t3.supplier_name as warehouse_name, t2.item, t4.pcs_per_box
+			t0.item_variant, SUM(t0.qty) as qty, t1.lot, t1.warehouse, t3.supplier_name as warehouse_name, t2.item, t4.pcs_per_box, t1.creation as entry_date
 		FROM
 		`tabFG Stock Entry Detail` t0 JOIN
 		 `tabFG Stock Entry` t1 ON t0.parent=t1.name
@@ -129,6 +135,7 @@ def get_prev_fg_stock_entries(filters, stock):
 			"warehouse_name" : i['warehouse_name'],
 			"stock_in_pcs" : i['qty'] * i['pcs_per_box'],
 			"pcs_per_box" : i['pcs_per_box'],
+			"entry_date" : i['entry_date']
 		}
 		calculate_and_update_price_and_valuation(row, item_stock[i['item_variant']])
 		report.append(row)
@@ -225,7 +232,7 @@ def get_old_sms_data(stock_detail, warehouse, filter_date):
 					item_size_type_details[i['name']][size] = None
 		cursor.execute(f"""
 			select 
-			    t3.name as item, t2.size1, t2.size2, t2.size3, t2.size4, t2.size5, t2.size6, t2.size7, t2.size8, t2.size9, t2.size10, t1.lotnumber as lot, t1.creationdate, t1.idlocation, t3.pieces as pcs_per_box
+			    t3.name as item, t2.size1, t2.size2, t2.size3, t2.size4, t2.size5, t2.size6, t2.size7, t2.size8, t2.size9, t2.size10, t1.lotnumber as lot, t1.creationdate, t1.idlocation, t3.pieces as pcs_per_box, t1.creationdate as entry_date
 			from stockentrydetails t1 
 			join stockentryitems t2 ON t1.idstockentry = t2.idstockentry
 			join iteminfo t3 ON t3.iditem = t2.iditem
@@ -249,7 +256,8 @@ def get_old_sms_data(stock_detail, warehouse, filter_date):
 					"warehouse" : warehouse_map[1],
 					"warehouse_name" : warehouse_map[2],
 					"stock_in_pcs" : i[size] * i['pcs_per_box'],
-					"pcs_per_box" : i['pcs_per_box']
+					"pcs_per_box" : i['pcs_per_box'],
+					"entry_date" : i['entry_date']
 				}
 				calculate_and_update_price_and_valuation(row, stock_detail[item_size_type_details[i['item']][size]])
 				report_data.append(row)
