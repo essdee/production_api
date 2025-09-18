@@ -9,7 +9,7 @@ from frappe.model.document import Document
 from frappe.utils import flt, nowdate, now
 from production_api.mrp_stock.utils import get_stock_balance
 from production_api.production_api.logger import get_module_logger
-from production_api.utils import get_panel_list, update_if_string_instance, get_lpiece_variant
+from production_api.utils import get_panel_list, update_if_string_instance, get_lpiece_variant, get_tuple_attributes
 from production_api.mrp_stock.stock_ledger import make_sl_entries, repost_future_stock_ledger_entry
 from production_api.production_api.doctype.item.item import get_attribute_details, get_or_create_variant
 from production_api.production_api.doctype.purchase_order.purchase_order import (
@@ -100,6 +100,7 @@ class DeliveryChallan(Document):
 				)
 				update_collapsed_bundle(self.doctype, self.name, "on_cancel")
 		frappe.enqueue(calculate_pieces,"short", doc_name=self.name, enqueue_after_commit=True )	
+		self.update_finishing_doc()
 		self.make_repost_action()
 
 	def on_submit(self):
@@ -132,7 +133,37 @@ class DeliveryChallan(Document):
 				update_collapsed_bundle(self.doctype, self.name, "on_submit")
 
 		frappe.enqueue(calculate_pieces,"short", doc_name=self.name, enqueue_after_commit=True )
+		self.update_finishing_doc()
 		self.make_repost_action()
+
+	def update_finishing_doc(self):
+		finishing_inward_process = frappe.db.get_single_value("MRP Settings", "finishing_inward_process")
+		if self.process_name == finishing_inward_process:
+			finishing_doc = frappe.get_all("Finishing Plan", filters={
+				"lot": self.lot, 
+			}, pluck="name", limit=1)
+			if finishing_doc:
+				frappe.enqueue(
+					update_finishing_item_doc, 
+					"short", 
+					doc_name=self.name, 
+					finishing_doc_name=finishing_doc[0],
+					update_dc=False,
+					enqueue_after_commit=True
+				)
+		elif self.includes_packing:
+			finishing_doc = frappe.get_all("Finishing Plan", filters={
+				"lot": self.lot,
+			}, pluck="name", limit=1)
+			if finishing_doc:
+				frappe.enqueue(
+					update_finishing_item_doc, 
+					"short", 
+					doc_name=self.name, 
+					finishing_doc_name=finishing_doc[0],
+					update_dc=True,
+					enqueue_after_commit=True
+				)
 	
 	def check_bundle_qty(self, bundles):
 		ipd_doc = frappe.get_doc("Item Production Detail", self.production_detail)
@@ -209,6 +240,7 @@ class DeliveryChallan(Document):
 					add_sl_entries.append(self.get_sle_data(row, supplier, 1, {}, received_type, new_variant=updated_variant))
 				else:	
 					add_sl_entries.append(self.get_sle_data(row, supplier, 1, {}, received_type))
+
 		if len(items) == 0:
 			frappe.throw("There is no deliverables in this DC")
 		self.set("items", items)
@@ -1004,3 +1036,47 @@ def get_return_popup_items(item_details):
 					items.append(item1)		
 			row_index += 1	
 	return items
+
+def update_finishing_item_doc(doc_name, finishing_doc_name, update_dc:bool):
+	self = frappe.get_doc("Delivery Challan", doc_name)
+	docstatus = self.docstatus
+	finishing_doc = frappe.get_doc("Finishing Plan", finishing_doc_name)
+	finishing_items = {}
+	for row in finishing_doc.finishing_plan_details:
+		set_comb = update_if_string_instance(row.set_combination)
+		key = (row.item_variant, tuple(sorted(set_comb.items())))
+		finishing_items.setdefault(key, {
+			"inward_quantity": row.inward_quantity,
+			"delivered_quantity": row.delivered_quantity,
+			"cutting_qty": row.cutting_qty,
+			"received_types": update_if_string_instance(row.received_type_json),
+			"accepted_qty": row.accepted_qty,
+			"dc_qty": row.dc_qty,
+		})
+
+	for item in self.items:
+		set_comb = update_if_string_instance(item.set_combination)
+		key = (item.item_variant, tuple(sorted(set_comb.items())))
+		if finishing_items.get(key):
+			dict_key = "dc_qty" if update_dc else "inward_quantity"
+			if docstatus == 2:
+				finishing_items[key][dict_key] -= item.stock_qty
+			else:	
+				finishing_items[key][dict_key] += item.stock_qty
+
+	finshing_items_list = []
+	for key in finishing_items:
+		variant, tuple_attrs = key
+		comb = get_tuple_attributes(tuple_attrs)
+		finshing_items_list.append({
+			"item_variant": variant,
+			"cutting_qty": finishing_items[key]['cutting_qty'],
+			"inward_quantity": finishing_items[key]['inward_quantity'],
+			"delivered_quantity": finishing_items[key]['delivered_quantity'],
+			"set_combination": frappe.json.dumps(comb),
+			"received_type_json": frappe.json.dumps(finishing_items[key]['received_types']),
+			"accepted_qty": finishing_items[key]['accepted_qty'],
+			"dc_qty": finishing_items[key]['dc_qty']
+		})
+	finishing_doc.set("finishing_plan_details", finshing_items_list)
+	finishing_doc.save()	

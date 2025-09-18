@@ -7,6 +7,9 @@
             <div class="btn-wrapper">
                 <button class="btn btn-primary" @click="get_rework_items()">Get Rework Items</button>
             </div>
+            <div class="btn-wrapper">
+                <button class="btn btn-primary" @click="download()">Download XL</button>
+            </div>
         </div>
         <div v-if="items && Object.keys(items).length > 0" class="table-wrapper">
             <table class="table table-sm table-sm-bordered">
@@ -38,8 +41,8 @@
                     </tr>
                     <tr v-if="expandedRowKey === key">
                         <td :colspan="1000" class="expanded-row-content">
-                            <template v-for="(colour_data, colour) in value['rework_detail']">
-                                <h4 style="padding-top:8px;">{{ colour }}</h4>
+                            <template v-for="(colour_data, colour_mistake) in value['rework_detail']">
+                                <h4 style="padding-top:8px;">{{ colour_mistake }}</h4>
                                 <table style="width:100%;">
                                     <tr>
                                         <th>Size</th>
@@ -48,7 +51,7 @@
                                         </th>
                                     </tr>
                                     <tr>
-                                        <td>Total {{ colour.split("-")[0] }}</td>
+                                        <td>Total {{ colour_mistake.split("-")[0] }}</td>
                                         <td v-for="size in colour_data['items']">
                                             {{ size['rework_qty'] }}
                                         </td>
@@ -56,13 +59,13 @@
                                     <tr>
                                         <td>Rejection</td>
                                         <th v-for="size in colour_data['items']">
-                                            <input type="number" v-model="size['rejected']" @blur="update_changed(key, colour)" class="form-control"/>
+                                            <input type="number" v-model="size['rejected']" @blur="update_changed(key, colour_mistake)" class="form-control"/>
                                         </th>
                                     </tr>
                                     <tr>
                                         <td>Reworked</td>
                                         <th v-for="size in colour_data['items']">
-                                            <input type="number" v-model="size['rework']" @blur="update_changed(key, colour)" class="form-control"/>
+                                            <input type="number" v-model="size['rework']" @blur="update_changed(key, colour_mistake)" class="form-control"/>
                                         </th>
                                     </tr>
                                 </table>
@@ -71,7 +74,7 @@
                                         <button class="btn btn-primary" @click="update_items(colour_data['items'], colour_data['changed'], 0, value['lot'])">Update Rejection Qty</button>
                                     </div>
                                     <div style="padding-right: 10px;">
-                                        <button class="btn btn-primary" @click="update_rework(colour_data['items'], value['lot'])">Update Reworked Piece</button>
+                                        <button class="btn btn-primary" @click="update_rework(colour_data['items'], value['lot'], key, colour_mistake)">Update Reworked Piece</button>
                                     </div>
                                     <div style="padding-right: 10px;">
                                         <button class="btn btn-primary" @click="update_items(colour_data['items'], 1, 1, value['lot'])">Complete Rework</button>
@@ -188,7 +191,7 @@ function update_items(data, changed, completed, lot){
     }
 }
 
-function update_rework(data, lot){
+function update_rework(data, lot, key, colour_mistake){
     let d =  new frappe.ui.Dialog({
         title: "Are you sure want to convert to reworked",
         primary_action_label: "Yes",
@@ -201,7 +204,7 @@ function update_rework(data, lot){
                     "lot": lot
                 },
                 callback: function(){
-                    get_rework_items()
+                    get_updated_rework_details(key, colour_mistake)
                 }
             })
             d.hide()
@@ -211,6 +214,20 @@ function update_rework(data, lot){
         } 
     })
     d.show()
+}
+
+function get_updated_rework_details(key, colour_mistake){
+    frappe.call({
+        method: "production_api.production_api.doctype.grn_rework_item.grn_rework_item.get_partial_reworked_qty",
+        args: {
+            "doc_name": key,
+            "colour_mistake": colour_mistake,
+            "data": items.value
+        },
+        callback: function(r){
+            items.value = r.message
+        }
+    })
 }
 
 function get_date(date){
@@ -228,15 +245,62 @@ function update(data, completed, lot){
             "completed": completed,
             "lot": lot
         },
-        callback: function(){
-            get_rework_items()
-        }
     })
 }
 
 function map_to_grn(grn){
     const url = `/app/goods-received-note/${grn}`;
     window.open(url, '_blank');
+}
+
+function download(){
+    var xhr = new XMLHttpRequest();
+    xhr.open('POST', '/api/method/production_api.production_api.doctype.grn_rework_item.grn_rework_item.download_xl', true);
+	xhr.setRequestHeader('X-Frappe-CSRF-Token',frappe.csrf_token)
+	xhr.responseType = 'arraybuffer';
+	xhr.onload = function (success) {
+		if (this.status === 200) {
+			var blob = new Blob([success.currentTarget.response], {type: "application/xlsx"});
+			var filename = ""
+			var disposition = xhr.getResponseHeader('Content-Disposition');
+			if (disposition && disposition.indexOf('filename') !== -1) {
+				var filenameRegex = /filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/;
+				var matches = filenameRegex.exec(disposition);
+				if (matches != null && matches[1]) filename = matches[1].replace(/['"]/g, '');
+			}
+	
+			if (typeof window.navigator.msSaveBlob !== 'undefined') {
+				window.navigator.msSaveBlob(blob, filename);
+			} 
+            else {
+				var URL = window.URL || window.webkitURL;
+				var downloadUrl = URL.createObjectURL(blob);
+				if (filename) {
+					var a = document.createElement("a");
+					if (typeof a.download === 'undefined') {
+						window.location.href = downloadUrl;
+					} 
+                    else {
+						a.href = downloadUrl;
+						a.download = filename;
+						document.body.appendChild(a);
+						a.click();
+					}
+				} 
+                else {
+					window.location.href = downloadUrl;
+				}
+				setTimeout(function () { URL.revokeObjectURL(downloadUrl); }, 100);
+			}
+		}
+		else{
+			var dec = new TextDecoder("utf-8")
+			var data = dec.decode(this.response)
+			frappe.request.cleanup({}, JSON.parse(data))
+		}
+	};
+	xhr.setRequestHeader('Content-type', 'application/x-www-form-urlencoded');
+	xhr.send($.param({"data" : JSON.stringify(items.value)}, true));
 }
 
 </script>

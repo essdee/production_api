@@ -9,6 +9,7 @@
   "stiching_attribute_value",
   "set_item_attribute_value",
   "quantity",
+  "category",
   "is_default"
  ],
  "fields": [
@@ -39,17 +40,27 @@
    "fieldtype": "Check",
    "in_list_view": 1,
    "label": "Is Default"
+  },
+  {
+   "fieldname": "category",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Category",
+   "options": "\nBody\nCut & Sew\nMain Panel\nPlacket\nShorts\nRib",
+   "reqd": 1
   }
  ],
+ "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2024-11-26 18:06:12.245926",
+ "modified": "2025-08-26 12:19:07.243429",
  "modified_by": "Administrator",
  "module": "Essdee Production",
  "name": "Stiching Item Detail",
  "owner": "Administrator",
  "permissions": [],
+ "row_format": "Dynamic",
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": []

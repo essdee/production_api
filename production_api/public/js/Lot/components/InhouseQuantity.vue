@@ -27,7 +27,7 @@
                 <template v-for="supplier in Object.keys(items['data']['data'][colour])">
                     <tr>
                         <td :rowspan="3">{{ idx + 1 }}</td>
-                        <td :rowspan="3">{{ colour }}</td>
+                        <td :rowspan="3">{{ colour.split("@")[0] }}</td>
                         <td :rowspan="3" v-if="items.is_set_item">{{ items['data']['data'][colour][supplier]['part'] }}</td>
                         <td :rowspan="3">{{ supplier }}</td>
                         <td>Delivered</td>

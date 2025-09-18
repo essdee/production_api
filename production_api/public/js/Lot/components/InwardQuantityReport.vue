@@ -25,7 +25,7 @@
             <tbody class="dark-border" v-for="(colour, idx) in Object.keys(items.data)" :key="colour">
                 <tr v-for="(type, typeIdx) in items.types" :key="type + '-' + colour">
                     <td v-if="typeIdx === 0" :rowspan="items.types.length + 1">{{ idx + 1 }}</td>
-                    <td v-if="typeIdx === 0" :rowspan="items.types.length + 1">{{ colour }}</td>
+                    <td v-if="typeIdx === 0" :rowspan="items.types.length + 1">{{ colour.split("@")[0] }}</td>
                     <td v-if="typeIdx === 0 && items.is_set_item" :rowspan="items.types.length + 1">{{ items.data[colour]['part'] }}</td>
                     <td>{{ type }}</td>
                     <td v-for="size in items.primary_values" :key="size">

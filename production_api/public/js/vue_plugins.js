@@ -56,7 +56,11 @@ import CutBundleEdit from "./Cut_Bundle_Edit/components/CutBundleEdit.vue";
 import DailyProductionReport from "./CuttingLaySheet/components/DailyProductionReport.vue";
 import DailyCutSheetReport from "./CuttingLaySheet/components/DailyCutSheetReport.vue";
 import GRNPacking from "./GRN/components/GRNPacking.vue";
+import FinishingGRN from "./Finishing/FinishingGRN.vue";
 import ReworkPage from "./WorkOrder/components/ReworkPage.vue";
+import FinishingDetail from "./Finishing/FinishingDetail.vue" 
+import FinishingQtyDetail from "./Finishing/FinishingQtyDetail.vue"
+import FinishingInward from "./Finishing/FinishingInward.vue"
 
 // Product Development
 import { ProductFileVersionsWrapper, ProductCostingListWrapper } from "./ProductDevelopment"
@@ -397,6 +401,26 @@ frappe.production.ui.GRNPacking = class {
     }
 }
 
+frappe.production.ui.FinishingGRN = class {
+    constructor(wrapper){
+        this.$wrapper = $(wrapper);
+        this.make_app() 
+    }
+    make_app(){
+        this.app = createApp(FinishingGRN)
+        SetVueGlobals(this.app)
+        this.vue = this.app.mount(this.$wrapper.get(0))
+    }
+    load_data(data){
+        this.vue.load_data(data)
+    }
+    get_data(){
+        let items = JSON.parse(JSON.stringify(this.vue.get_items()))
+        return items
+    }
+}
+
+
 frappe.production.ui.TimeAndActionWeeklyReport = class {
     constructor(wrapper){
         this.$wrapper = $(wrapper);
@@ -456,6 +480,52 @@ frappe.production.ui.StockSummary = class {
         this.vue = this.app.mount(this.$wrapper.get(0))
     }
 }
+
+frappe.production.ui.FinishingDetail = class {
+    constructor(wrapper){
+        this.$wrapper = $(wrapper)
+        this.make_app()
+    }
+    make_app(){
+        this.app = createApp(FinishingDetail)
+        SetVueGlobals(this.app)
+        this.vue = this.app.mount(this.$wrapper.get(0))
+    }
+    load_data(data){
+        this.vue.load_data(JSON.parse(JSON.stringify(data)))
+    }
+}
+
+frappe.production.ui.FinishingInward = class {
+    constructor(wrapper){
+        this.$wrapper = $(wrapper)
+        this.make_app()
+    }
+    make_app(){
+        this.app = createApp(FinishingInward)
+        SetVueGlobals(this.app)
+        this.vue = this.app.mount(this.$wrapper.get(0))
+    }
+    load_data(data){
+        this.vue.load_data(JSON.parse(JSON.stringify(data)))
+    }
+}
+
+frappe.production.ui.FinishingQtyDetail = class {
+    constructor(wrapper){
+        this.$wrapper = $(wrapper)
+        this.make_app()
+    }
+    make_app(){
+        this.app = createApp(FinishingQtyDetail)
+        SetVueGlobals(this.app)
+        this.vue = this.app.mount(this.$wrapper.get(0))
+    }
+    load_data(data){
+        this.vue.load_data(JSON.parse(JSON.stringify(data)))
+    }
+}
+
 
 frappe.production.ui.WorkStation = class {
     constructor(wrapper){

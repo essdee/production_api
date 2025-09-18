@@ -59,6 +59,7 @@
   "grn_deliverables",
   "items_json",
   "grn_consumed_html",
+  "grn_excess_usage_items",
   "transfer_section",
   "total_delivered_qty",
   "ste_transferred",
@@ -526,13 +527,20 @@
    "fieldtype": "Currency",
    "hidden": 1,
    "label": "Freight Charge Per Product"
+  },
+  {
+   "fieldname": "grn_excess_usage_items",
+   "fieldtype": "Table",
+   "hidden": 1,
+   "label": "GRN Excess Usage Items",
+   "options": "GRN Excess Usage Item"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-09-01 12:46:53.242877",
+ "modified": "2025-09-18 12:16:34.979284",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Goods Received Note",

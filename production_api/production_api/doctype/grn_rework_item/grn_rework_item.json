@@ -31,6 +31,8 @@
   {
    "fieldname": "lot",
    "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
    "label": "Lot",
    "options": "Lot"
   },
@@ -54,12 +56,16 @@
    "fetch_from": "lot.item",
    "fieldname": "item",
    "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
    "label": "Item",
    "options": "Item"
   },
   {
    "fieldname": "warehouse",
    "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
    "label": "Warehouse",
    "options": "Supplier"
   },
@@ -81,7 +87,7 @@
  "in_create": 1,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-08-14 11:44:08.650878",
+ "modified": "2025-09-16 17:31:22.975398",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "GRN Rework Item",
