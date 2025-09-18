@@ -426,7 +426,6 @@ def create_grn(work_order, lot, item_name, data, grn_values):
 		variant = get_or_create_variant(item_name, {
 			primary_attr: size,
 			dept_attr: "Loose Piece",
-			"Part": "Top"
 		})
 		current_variant = frappe.get_cached_doc("Item Variant", variant)
 		current_item_attribute_details = get_attribute_details(current_variant.item)
