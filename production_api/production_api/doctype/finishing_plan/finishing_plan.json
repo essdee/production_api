@@ -31,6 +31,7 @@
   {
    "fieldname": "lot",
    "fieldtype": "Link",
+   "in_standard_filter": 1,
    "label": "Lot",
    "options": "Lot",
    "read_only": 1
@@ -42,6 +43,7 @@
   {
    "fieldname": "work_order",
    "fieldtype": "Link",
+   "in_standard_filter": 1,
    "label": "Work Order",
    "options": "Work Order",
    "read_only": 1
@@ -69,6 +71,7 @@
    "fetch_from": "lot.item",
    "fieldname": "item",
    "fieldtype": "Link",
+   "in_standard_filter": 1,
    "label": "Item",
    "options": "Item",
    "read_only": 1
@@ -148,7 +151,7 @@
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-09-18 12:46:11.752252",
+ "modified": "2025-09-18 16:23:20.853686",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Finishing Plan",
