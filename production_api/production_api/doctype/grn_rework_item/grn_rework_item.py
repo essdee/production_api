@@ -2,6 +2,8 @@
 # For license information, please see license.txt
 
 import frappe
+import openpyxl
+from io import BytesIO
 from frappe.model.document import Document
 from production_api.utils import update_if_string_instance
 
@@ -16,10 +18,30 @@ def revert_reworked_item(docname):
 	accepted = single_doc.default_received_type
 	rejected = single_doc.default_rejected_type	
 	sl_entries = []
+	finishing_docs = frappe.get_all("Finishing Plan", filters={"lot": doc.lot}, pluck="name", limit=1)
+	finishing_items = {}
+	finishing_doc = None
+	if finishing_docs:
+		finishing_doc = frappe.get_doc("Finishing Plan", finishing_docs[0])
+		for row in finishing_doc.finishing_plan_reworked_details:
+			key = (row.item_variant, tuple(sorted(update_if_string_instance(row.set_combination).items())))
+			finishing_items.setdefault(key, {
+				"quantity": row.quantity,
+				"reworked_quantity": row.reworked_quantity,
+				"rejected_qty": row.rejected_qty,
+				"row_index": row.row_index,
+				"table_index": row.table_index,
+				"set_combination": row.set_combination,
+			})
+
 	for row in doc.grn_rework_item_details:
 		if row.completed == 0:
 			continue
+		set_comb = update_if_string_instance(row.set_combination)
+		key = (row.item_variant, tuple(sorted(update_if_string_instance(set_comb).items())))
 		if row.rejection > 0:
+			if finishing_items.get(key):
+				finishing_items[key]['rejected_qty'] -= row.rejection
 			sl_entries.append({
 				"item": row.item_variant,
 				"warehouse": warehouse,
@@ -37,6 +59,8 @@ def revert_reworked_item(docname):
 				"posting_time": frappe.utils.nowtime(),
 			})
 		if row.quantity - row.rejection > 0:
+			if finishing_items.get(key):
+				finishing_items[key]['reworked_quantity'] -= row.quantity - row.rejection
 			sl_entries.append({
 				"item": row.item_variant,
 				"warehouse": warehouse,
@@ -74,7 +98,22 @@ def revert_reworked_item(docname):
 		row.reworked = 0
 	doc.completed = 0	
 	doc.set("grn_reworked_item_details", [])
-	doc.save(ignore_permissions=True)	
+	doc.save(ignore_permissions=True)
+	finishing_items_list = []	
+	if finishing_doc:
+		for key in finishing_items:
+			variant, tuple_attrs = key
+			finishing_items_list.append({
+				"item_variant": variant,
+				"quantity": finishing_items[key]['quantity'],
+				"reworked_quantity": finishing_items[key]['reworked_quantity'],
+				"rejected_qty": finishing_items[key]['rejected_qty'],
+				"row_index": finishing_items[key]['row_index'],
+				"table_index": finishing_items[key]['table_index'],
+				"set_combination": finishing_items[key]['set_combination'],
+			})
+		finishing_doc.set("finishing_item_reworked_details", finishing_items_list)
+		finishing_doc.save()
 	from production_api.mrp_stock.stock_ledger import make_sl_entries
 	make_sl_entries(sl_entries)
 
@@ -265,13 +304,36 @@ def convert_received_type(rejection_data, docname, lot):
 				"received_type": row['received_type'],
 				"uom": row['uom'],
 				"reworked_time": frappe.utils.now_datetime(),
+				"rejected": row['rejected'],
 				"set_combination": frappe.json.dumps(row['set_combination'])
-			})			
+			})		
+
+	finishing_docs = frappe.get_all("Finishing Plan", filters={"lot": lot}, pluck="name", limit=1)		
+	finishing_data = {}
 	if table_data:
 		doc = frappe.get_doc("GRN Rework Item", docname)
 		for row in table_data:
+			if finishing_docs:
+				set_comb = update_if_string_instance(frappe.json.loads(row['set_combination']))
+				key = (row['item_variant'], tuple(sorted(set_comb.items())))
+				finishing_data.setdefault(key, {
+					"reworked": 0,
+					"rejected": 0,
+				})
+				finishing_data[key]['reworked'] += row['quantity']
+				finishing_data[key]['rejected'] += row['rejected']
 			doc.append("grn_reworked_item_details", row)
 		doc.save(ignore_permissions=True)
+
+	if finishing_docs:
+		doc = frappe.get_doc("Finishing Plan", finishing_docs[0])
+		for row in doc.finishing_plan_reworked_details:
+			key = (row.item_variant, tuple(sorted(update_if_string_instance(row.set_combination).items())))
+			if finishing_data.get(key):
+				row.reworked_quantity += finishing_data[key]['reworked']
+				row.rejected_qty += finishing_data[key]['rejected']
+		doc.save()
+
 	from production_api.mrp_stock.stock_ledger import make_sl_entries
 	make_sl_entries(sl_entries)
 
@@ -348,11 +410,29 @@ def update_partial_quantity(data, lot):
 				"set_combination": frappe.json.dumps(row['set_combination'])
 			})
 
+	finishing_docs = frappe.get_all("Finishing Plan", filters={"lot": lot}, pluck="name", limit=1)		
+	finishing_data = {}
 	if table_data:
 		doc = frappe.get_doc("GRN Rework Item", docname)
 		for row in table_data:
+			if finishing_docs:
+				set_comb = update_if_string_instance(frappe.json.loads(row['set_combination']))
+				key = (row['item_variant'], tuple(sorted(set_comb.items())))
+				finishing_data.setdefault(key, 0)
+				finishing_data[key] += row['quantity']
 			doc.append("grn_reworked_item_details", row)
 		doc.save(ignore_permissions=True)
+
+	if finishing_docs:
+		doc = frappe.get_doc("Finishing Plan", finishing_docs[0])
+		for row in doc.finishing_plan_reworked_details:
+			key1 = (row.item_variant, tuple(sorted(update_if_string_instance(row.set_combination).items())))
+			for key in finishing_data:
+				if key1 == key:
+					row.reworked_quantity += finishing_data[key]
+					break
+		doc.save()
+
 	from production_api.mrp_stock.stock_ledger import make_sl_entries
 	make_sl_entries(sl_entries)		
 
@@ -431,3 +511,69 @@ def get_rework_completion(lot, process):
 		"is_set_item": is_set_item,
 		"set_attr": set_attr
 	}
+
+@frappe.whitelist()
+def get_partial_reworked_qty(doc_name, colour_mistake, data):
+	from production_api.production_api.doctype.cut_bundle_movement_ledger.cut_bundle_movement_ledger import get_variant_attr_details
+	data = update_if_string_instance(data)
+	doc = frappe.get_doc("GRN Rework Item", doc_name)
+	ipd = frappe.get_cached_value("Lot", doc.lot, "production_detail")
+	primary_attr = frappe.get_cached_value("Item Production Detail", ipd, "primary_item_attribute")
+	mistake = colour_mistake.split("-")[0]
+	key = colour_mistake
+	data["report_detail"][doc_name]['rework_detail'][key]['changed'] = 0
+	data["report_detail"][doc_name]['rework_detail'][key]['items'] = []
+	data["report_detail"][doc_name]['types'][mistake] = 0
+	data["report_detail"][doc_name]['total'] = 0
+	for row in doc.grn_rework_item_details:
+		if row.completed == 1:
+			continue
+		qty = row.quantity - row.reworked
+		data["report_detail"][doc_name]['total'] += qty
+		if row.received_type != mistake:
+			continue
+
+		attr_details = get_variant_attr_details(row.item_variant)
+		if row.received_type not in data['types']:
+			data['types'].append(row.received_type)
+		qty = row.quantity - row.reworked
+		data["report_detail"][doc_name]['types'][mistake] += qty
+		data["report_detail"][doc_name]['rework_detail'][key]['items'].append({
+			primary_attr : attr_details[primary_attr],
+			"rework_qty": qty,
+			"rejected": row.rejection, 
+			"rework": 0,
+			"set_combination": update_if_string_instance(row.set_combination),
+			"row_name": row.name,
+			"variant": row.item_variant,
+			"received_type": row.received_type,
+			"uom": row.uom,
+		})
+	return data
+
+@frappe.whitelist()
+def download_xl(data):
+	if isinstance(data, str):
+		data = frappe.json.loads(data)  
+	wb = openpyxl.Workbook(write_only=True)
+	ws = wb.create_sheet("Sheet1", 0)
+	columns = ['Series No', "Date", "GRN Number", "Lot", "Item", "Colour"] + data['types']
+	ws.append(columns)
+	for series_id in data['report_detail']:
+		x = data['report_detail'][series_id]
+		l_data = list(x['rework_detail'].keys())[0].split("-")
+		l_data = l_data[1:]
+		colour = "-".join(l_data)
+		from datetime import datetime
+		raw_date = x['date']
+		dt = datetime.strptime(raw_date, "%Y-%m-%d %H:%M:%S.%f")
+		formatted_date = dt.strftime("%d-%m-%Y")
+		d = [series_id, formatted_date, x['grn_number'], x['lot'], x['item'], colour]
+		for ty in data['types']:
+			d.append(x['types'].get(ty, 0))
+		ws.append(d)  
+	xlsx_file = BytesIO()
+	wb.save(xlsx_file)
+	frappe.local.response.filename = "rework_details.xlsx"
+	frappe.local.response.filecontent = xlsx_file.getvalue()
+	frappe.local.response.type = "binary"

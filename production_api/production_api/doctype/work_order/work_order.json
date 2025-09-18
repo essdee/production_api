@@ -56,6 +56,7 @@
   "incompleted_items_json",
   "wo_delivered_completed_json",
   "wo_delivered_incompleted_json",
+  "work_order_excess_usage_items",
   "section_break_lgsu",
   "column_break_ocbe",
   "first_dc_date",
@@ -335,7 +336,6 @@
   {
    "fieldname": "work_order_calculated_items",
    "fieldtype": "Table",
-   "hidden": 1,
    "label": "Work Order Calculated Items",
    "options": "Work Order Calculated Item"
   },
@@ -519,6 +519,14 @@
    "fieldtype": "Check",
    "label": "Includes Packing",
    "read_only": 1
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "work_order_excess_usage_items",
+   "fieldtype": "Table",
+   "hidden": 1,
+   "label": "Work Order Excess Usage Items",
+   "options": "Work Order Excess Usage Item"
   }
  ],
  "grid_page_length": 50,
@@ -534,7 +542,7 @@
    "link_fieldname": "against_id"
   }
  ],
- "modified": "2025-07-19 16:10:39.705914",
+ "modified": "2025-09-18 14:14:45.071394",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Work Order",

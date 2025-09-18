@@ -572,7 +572,6 @@ def get_calculated_bom(item_production_detail, items, lot_name, process_name = N
 			k = get_tuple_attributes(k)
 			k = update_if_string_instance(k)
 			variant = get_or_create_variant(key, k)
-			val[0] = math.ceil(val[0])
 			if not bom.get(key,False):
 				bom[key] = {variant:val}
 			else:	

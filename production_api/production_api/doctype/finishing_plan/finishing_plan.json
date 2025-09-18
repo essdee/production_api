@@ -1,0 +1,208 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "naming_series:",
+ "creation": "2025-09-15 14:34:38.995607",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "lot",
+  "item",
+  "production_detail",
+  "column_break_klxu",
+  "work_order",
+  "pieces_per_box",
+  "naming_series",
+  "section_break_umng",
+  "finishing_item_html",
+  "finishing_plan_details",
+  "item_details_tab",
+  "finishing_quantity_html",
+  "finishing_plan_reworked_details",
+  "grn_tab",
+  "finishing_plan_grn_html",
+  "finishing_plan_grn_details",
+  "section_break_beyy",
+  "finishing_return_html",
+  "inward_report_tab",
+  "inward_report_html"
+ ],
+ "fields": [
+  {
+   "fieldname": "lot",
+   "fieldtype": "Link",
+   "label": "Lot",
+   "options": "Lot",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_klxu",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "work_order",
+   "fieldtype": "Link",
+   "label": "Work Order",
+   "options": "Work Order",
+   "read_only": 1
+  },
+  {
+   "fieldname": "section_break_umng",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "finishing_item_html",
+   "fieldtype": "HTML",
+   "label": "Finishing Item HTML"
+  },
+  {
+   "fieldname": "item_details_tab",
+   "fieldtype": "Tab Break",
+   "label": "Item Details"
+  },
+  {
+   "fieldname": "finishing_quantity_html",
+   "fieldtype": "HTML",
+   "label": "Finishing Quantity HTML"
+  },
+  {
+   "fetch_from": "lot.item",
+   "fieldname": "item",
+   "fieldtype": "Link",
+   "label": "Item",
+   "options": "Item",
+   "read_only": 1
+  },
+  {
+   "fetch_from": "production_detail.packing_combo",
+   "fieldname": "pieces_per_box",
+   "fieldtype": "Int",
+   "label": "Pieces Per Box",
+   "read_only": 1
+  },
+  {
+   "fetch_from": "lot.production_detail",
+   "fieldname": "production_detail",
+   "fieldtype": "Link",
+   "hidden": 1,
+   "label": "Production Detail",
+   "options": "Item Production Detail"
+  },
+  {
+   "fieldname": "finishing_plan_details",
+   "fieldtype": "Table",
+   "hidden": 1,
+   "label": "Finishing Plan Details",
+   "options": "Finishing Plan Detail"
+  },
+  {
+   "fieldname": "finishing_plan_reworked_details",
+   "fieldtype": "Table",
+   "hidden": 1,
+   "label": "Finishing Plan Reworked Details",
+   "options": "Finishing Plan Reworked Detail"
+  },
+  {
+   "fieldname": "grn_tab",
+   "fieldtype": "Tab Break",
+   "label": "GRN"
+  },
+  {
+   "fieldname": "finishing_plan_grn_html",
+   "fieldtype": "HTML",
+   "label": "Finishing Plan GRN HTML"
+  },
+  {
+   "fieldname": "finishing_plan_grn_details",
+   "fieldtype": "Table",
+   "hidden": 1,
+   "label": "Finishing Plan GRN Details",
+   "options": "Finishing Plan GRN Detail"
+  },
+  {
+   "fieldname": "finishing_return_html",
+   "fieldtype": "HTML",
+   "label": "Finishing Return HTML"
+  },
+  {
+   "fieldname": "section_break_beyy",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "inward_report_tab",
+   "fieldtype": "Tab Break",
+   "label": "Inward Report"
+  },
+  {
+   "fieldname": "inward_report_html",
+   "fieldtype": "HTML",
+   "label": "Inward Report HTML"
+  },
+  {
+   "fieldname": "naming_series",
+   "fieldtype": "Select",
+   "label": "Naming Series",
+   "options": "\nFP-2526-"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2025-09-18 12:46:11.752252",
+ "modified_by": "Administrator",
+ "module": "Production Api",
+ "name": "Finishing Plan",
+ "naming_rule": "By \"Naming Series\" field",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Transaction User",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Stock User",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Store User",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

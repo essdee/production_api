@@ -37,6 +37,17 @@ class WorkOrder(Document):
 		if len(self.receivables) == 0:
 			frappe.throw("There is no receivables on the Work Order")
 
+		finishing_wo = frappe.get_all("Work Order", filters={
+			"docstatus": 1,
+			"includes_packing": 1,
+			"name": ['!=', self.name],
+			"lot": self.lot,
+		}, pluck="name")
+
+		if finishing_wo:
+			frappe.throw("Already Work Order was Created for Packing")
+			return	
+
 	def on_submit(self):
 		d = [{
 			"from_date": self.planned_start_date,
@@ -46,9 +57,21 @@ class WorkOrder(Document):
 		}]
 		self.set("work_order_tracking_logs", d)
 		self.update_deliverables()
+		if self.includes_packing:
+			self.create_finshing_doc()
+
+	def create_finshing_doc(self):
+		frappe.enqueue(create_finishing_detail, "short", work_order=self.name)
 
 	def on_cancel(self):
 		self.update_deliverables()
+		if self.includes_packing:
+			finishing_detail = frappe.get_all("Finishing Plan", filters={
+				"lot": self.lot, 
+				"work_order": self.name
+			}, pluck="name")
+			if finishing_detail:
+				frappe.delete_doc("Finishing Plan", finishing_detail[0])
 
 	def update_deliverables(self):
 		if self.is_rework:
@@ -89,6 +112,22 @@ class WorkOrder(Document):
 
 		receivable_item_details = fetch_item_details(self.get('receivables'),self.production_detail, include_id=True)
 		self.set_onload('receivable_item_details', receivable_item_details)
+
+	def before_cancel(self):
+		dc_list = frappe.get_all("Delivery Challan", filters={
+			"work_order": self.name,
+			"docstatus": 1
+		}, pluck="name")
+		if dc_list:
+			frappe.throw(_("Cannot cancel because Delivery Challan {0} is submitted against this Work Order").format(", ".join(dc_list)))
+
+		grn_list = frappe.get_all("Goods Received Note", filters={	
+			"against": "Work Order",
+			"against_id": self.name,
+			"docstatus": 1	
+		}, pluck="name")
+		if grn_list:
+			frappe.throw(_("Cannot cancel because Goods Received Note {0} is submitted against this Work Order").format(", ".join(grn_list)))	
 
 	def before_save(self):
 		if self.docstatus == 1:
@@ -1522,3 +1561,139 @@ def update_receivables(receivables_data, doc_name):
 						"ref_docname": ref_docname,
 					}
 				)
+
+def create_finishing_detail(work_order, from_finishing=False):
+	wo_doc = frappe.get_doc("Work Order", work_order)
+	items = {}
+	default_type = frappe.db.get_single_value("Stock Settings", "default_received_type")
+	default_rejected = frappe.db.get_single_value("Stock Settings", "default_rejected_type")
+	for row in wo_doc.work_order_calculated_items:
+		set_comb = update_if_string_instance(row.set_combination)
+		key = (row.item_variant, tuple(sorted(set_comb.items())))
+		items.setdefault(key, {
+			"inward_quantity": 0,
+			"delivered_quantity": 0,
+			"received_types": {},
+			"cutting_qty": 0,
+			"accepted_qty": 0,
+			"rework_qty": 0,
+		})
+	finishing_inward_process = frappe.db.get_single_value("MRP Settings", "finishing_inward_process")
+	if not finishing_inward_process:
+		frappe.throw("Set Finishing Inward Process")
+
+	wo_list = frappe.get_all("Work Order", filters={
+		"docstatus": 1,
+		"lot": wo_doc.lot,
+		"process_name": finishing_inward_process,
+	}, pluck="name")	
+
+	for wo in wo_list:
+		doc = frappe.get_doc("Work Order", wo)
+		for row in doc.work_order_calculated_items:
+			if row.quantity > 0:
+				set_comb = update_if_string_instance(row.set_combination)
+				key = (row.item_variant, tuple(sorted(set_comb.items())))
+				items[key]['delivered_quantity'] += row.received_qty
+				items[key]['inward_quantity'] += row.delivered_quantity
+				received_types = update_if_string_instance(row.received_type_json)
+				for ty in received_types:
+					if ty not in items[key]['received_types']:
+						items[key]['received_types'][ty] = 0
+					if ty == default_type:
+						items[key]['accepted_qty'] += received_types[ty]
+					if ty not in [default_type, default_rejected]:
+						items[key]['rework_qty'] += received_types[ty]	
+
+					items[key]['received_types'][ty] += received_types[ty]	
+
+	wo_list = frappe.get_all("Work Order", filters={
+		"docstatus": 1,
+		"lot": wo_doc.lot,
+		"process_name": "Cutting",
+	}, pluck="name")	
+
+	for wo in wo_list:
+		doc = frappe.get_doc("Work Order", wo)
+		for row in doc.work_order_calculated_items:
+			if row.quantity > 0:
+				set_comb = update_if_string_instance(row.set_combination)
+				key = (row.item_variant, tuple(sorted(set_comb.items())))
+				items[key]['cutting_qty'] += row.received_qty
+
+	rework_items = {}
+	rework_list = frappe.get_all("GRN Rework Item", filters={"lot": wo_doc.lot}, pluck="name")
+	for rework in rework_list:
+		rework_doc = frappe.get_doc("GRN Rework Item", rework)
+		for row in rework_doc.grn_rework_item_details:
+			set_comb = update_if_string_instance(row.set_combination)
+			key = (row.item_variant, tuple(sorted(update_if_string_instance(set_comb).items())))
+			rework_items.setdefault(key, {
+				"reworked": 0,
+				"rejected": 0,
+			})
+			rework_items[key]['rejected'] += row.rejection
+
+		for row in rework_doc.grn_reworked_item_details:
+			set_comb = update_if_string_instance(row.set_combination)
+			key = (row.item_variant, tuple(sorted(update_if_string_instance(set_comb).items())))
+			rework_items.setdefault(key, {
+				"reworked": 0,
+				"rejected": 0,
+			})
+			rework_items[key]['reworked'] += row.quantity	
+
+	finishing_items = []
+	finishing_rework_items = []
+	for key in items:
+		variant, tuple_attrs = key
+		comb = get_tuple_attributes(tuple_attrs)
+		finishing_items.append({
+			"item_variant": variant,
+			"delivered_quantity": items[key]['delivered_quantity'],
+			"inward_quantity": items[key]['inward_quantity'],
+			"set_combination": frappe.json.dumps(comb),
+			"received_type_json": frappe.json.dumps(items[key]['received_types']),
+			"cutting_qty": items[key]['cutting_qty'],
+			"accepted_qty": items[key]['accepted_qty'],
+		})
+		if items[key]['rework_qty'] > 0:
+			reworked = 0
+			rejected = 0
+			if rework_items.get(key):
+				reworked = rework_items[key]['reworked']
+				rejected = rework_items[key]['rejected']
+			finishing_rework_items.append({
+				"item_variant": variant,
+				"set_combination": frappe.json.dumps(comb),
+				"quantity": items[key]['rework_qty'],
+				"reworked_quantity": reworked,
+				"rejected_qty": rejected,
+			})
+
+	from production_api.production_api.doctype.goods_received_note.goods_received_note import get_primary_values
+	grn_items = []
+	primary_values = get_primary_values(wo_doc.lot)
+	ipd = frappe.get_value("Lot", wo_doc.lot, "production_detail")
+	dependent, primary, pack_stage = frappe.get_value("Item Production Detail", ipd, ["dependent_attribute", "primary_item_attribute", "pack_out_stage"])
+	for size in primary_values:
+		variant = get_or_create_variant(wo_doc.item, {dependent: pack_stage,primary: size})
+		grn_items.append({
+			"item_variant": variant,
+			"quantity": 0,
+			"dispatched": 0,
+		})
+
+	if from_finishing:
+		return finishing_items, finishing_rework_items, grn_items
+	
+	ipd = frappe.get_value("Lot", wo_doc.lot, "production_detail")
+	pcs_per_box = frappe.get_value("Item Production Detail", ipd, "packing_combo")
+	new_doc = frappe.new_doc("Finishing Plan")
+	new_doc.lot = wo_doc.lot
+	new_doc.pieces_per_box = pcs_per_box
+	new_doc.work_order = work_order
+	new_doc.set("finishing_plan_details", finishing_items)
+	new_doc.set("finishing_plan_reworked_details", finishing_rework_items)
+	new_doc.set("finishing_plan_grn_details", grn_items)
+	new_doc.save()	

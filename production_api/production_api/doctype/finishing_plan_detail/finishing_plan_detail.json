@@ -1,0 +1,95 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2025-09-15 16:56:34.204008",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "item_variant",
+  "cutting_qty",
+  "inward_quantity",
+  "delivered_quantity",
+  "reworked",
+  "received_type_json",
+  "set_combination",
+  "accepted_qty",
+  "dc_qty"
+ ],
+ "fields": [
+  {
+   "columns": 4,
+   "fieldname": "item_variant",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Item Variant",
+   "options": "Item Variant"
+  },
+  {
+   "fieldname": "received_type_json",
+   "fieldtype": "Small Text",
+   "label": "Received Type JSON"
+  },
+  {
+   "fieldname": "set_combination",
+   "fieldtype": "Small Text",
+   "label": "Set Combination"
+  },
+  {
+   "columns": 1,
+   "fieldname": "cutting_qty",
+   "fieldtype": "Int",
+   "in_list_view": 1,
+   "label": "Cutting Qty"
+  },
+  {
+   "columns": 1,
+   "fieldname": "inward_quantity",
+   "fieldtype": "Int",
+   "in_list_view": 1,
+   "label": "Inward Quantity"
+  },
+  {
+   "columns": 1,
+   "fieldname": "delivered_quantity",
+   "fieldtype": "Int",
+   "in_list_view": 1,
+   "label": "Delivered Quantity"
+  },
+  {
+   "columns": 1,
+   "fieldname": "accepted_qty",
+   "fieldtype": "Float",
+   "in_list_view": 1,
+   "label": "Accepted Qty"
+  },
+  {
+   "columns": 1,
+   "fieldname": "dc_qty",
+   "fieldtype": "Float",
+   "in_list_view": 1,
+   "label": "DC Qty"
+  },
+  {
+   "columns": 1,
+   "fieldname": "reworked",
+   "fieldtype": "Int",
+   "in_list_view": 1,
+   "label": "Reworked"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2025-09-16 16:56:19.121668",
+ "modified_by": "Administrator",
+ "module": "Production Api",
+ "name": "Finishing Plan Detail",
+ "owner": "Administrator",
+ "permissions": [],
+ "row_format": "Dynamic",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

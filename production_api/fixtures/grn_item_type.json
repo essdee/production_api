@@ -2,9 +2,25 @@
  {
   "docstatus": 0,
   "doctype": "GRN Item Type",
-  "grn_type": "Accepted",
-  "modified": "2024-10-16 11:01:30.111451",
-  "name": "Accepted",
+  "grn_type": "Misstitch",
+  "modified": "2025-08-12 10:48:26.159090",
+  "name": "Misstitch",
+  "type": "Mistake"
+ },
+ {
+  "docstatus": 0,
+  "doctype": "GRN Item Type",
+  "grn_type": "Shade Mistake",
+  "modified": "2025-08-14 11:51:15.960983",
+  "name": "Shade Mistake",
+  "type": "Mistake"
+ },
+ {
+  "docstatus": 0,
+  "doctype": "GRN Item Type",
+  "grn_type": "Fabric Mistake",
+  "modified": "2025-08-14 11:51:27.276479",
+  "name": "Fabric Mistake",
   "type": "Accepted"
  },
  {
@@ -18,9 +34,17 @@
  {
   "docstatus": 0,
   "doctype": "GRN Item Type",
-  "grn_type": "Oil Mark",
-  "modified": "2024-10-16 11:01:22.227076",
-  "name": "Oil Mark",
+  "grn_type": "Fusing Mistake",
+  "modified": "2025-08-09 16:55:26.606075",
+  "name": "Fusing Mistake",
+  "type": "Mistake"
+ },
+ {
+  "docstatus": 0,
+  "doctype": "GRN Item Type",
+  "grn_type": "Other Mistake",
+  "modified": "2025-08-09 16:56:31.549619",
+  "name": "Other Mistake",
   "type": "Mistake"
  },
  {
@@ -30,5 +54,29 @@
   "modified": "2024-10-16 11:01:17.670254",
   "name": "Adas",
   "type": "Mistake"
+ },
+ {
+  "docstatus": 0,
+  "doctype": "GRN Item Type",
+  "grn_type": "Oil Mark",
+  "modified": "2024-10-16 11:01:22.227076",
+  "name": "Oil Mark",
+  "type": "Mistake"
+ },
+ {
+  "docstatus": 0,
+  "doctype": "GRN Item Type",
+  "grn_type": "Printing Mistake",
+  "modified": "2025-08-09 16:55:43.106378",
+  "name": "Printing Mistake",
+  "type": "Mistake"
+ },
+ {
+  "docstatus": 0,
+  "doctype": "GRN Item Type",
+  "grn_type": "Accepted",
+  "modified": "2024-10-16 11:01:30.111451",
+  "name": "Accepted",
+  "type": "Accepted"
  }
 ]

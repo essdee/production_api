@@ -26,7 +26,7 @@ onMounted(()=> {
     frappe.call({
         method: "production_api.production_api.doctype.goods_received_note.goods_received_note.get_primary_values",
         args: {
-            grn_name: cur_frm.doc.name
+            lot: cur_frm.doc.lot
         },
         callback: function(response) {
             if(cur_frm.doc.docstatus != 0){
