@@ -756,6 +756,8 @@ def get_lpiece_variant(pack_attr, dept_attr, variant):
 	from production_api.production_api.doctype.item.item import get_or_create_variant
 	attr_details = get_variant_attr_details(variant)
 	del attr_details[pack_attr]
+	if 'Part' in attr_details:
+		del attr_details['Part']
 	attr_details[dept_attr] = "Loose Piece"
 	item_name = frappe.get_value("Item Variant", variant, "item")
 	variant = get_or_create_variant(item_name, attr_details)
@@ -794,7 +796,7 @@ def get_inward_qty(lot, process):
 			if is_set_item:
 				variant_colour = attr_details[pack_attr]
 				part = attr_details[set_attr]
-				colour = variant_colour+"("+ major_colour+")"
+				colour = variant_colour+"("+ major_colour+") @"+ part
 			received_types = update_if_string_instance(item['received_type_json'])
 			if colour not in colours:
 				colours.append(colour)
@@ -876,7 +878,7 @@ def get_inhouse_qty(lot, process):
 		if is_set_item:
 			variant_colour = attr_details[pack_attr]
 			part = attr_details[set_attr]
-			colour = f"{variant_colour}({major_colour})"
+			colour = f"{variant_colour}({major_colour}) @ "+ part
 
 		inward_qty["data"].setdefault(colour, {})
 
