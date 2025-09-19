@@ -268,21 +268,6 @@ class GoodsReceivedNote(Document):
 	
 	def update_finishing_doc(self):
 		finishing_inward_process = frappe.db.get_single_value("MRP Settings", "finishing_inward_process")
-		if self.process_name == finishing_inward_process:
-			finishing_doc = frappe.get_all("Finishing Plan", filters={
-				"lot": self.lot, 
-			}, pluck="name", limit=1)
-			if finishing_doc:
-				# update_finishing_item_doc(self.name, finishing_doc[0], update_finishing=False)
-				frappe.enqueue(
-					update_finishing_item_doc, 
-					"short", 
-					doc_name=self.name, 
-					finishing_doc_name=finishing_doc[0],
-				  	update_finishing=False,
-					enqueue_after_commit=True
-				)
-
 		if self.includes_packing:
 			finishing_doc = frappe.get_all("Finishing Plan", filters={
 				"lot": self.lot, 
@@ -297,6 +282,32 @@ class GoodsReceivedNote(Document):
 					enqueue_after_commit=True
 				)
 				# update_finishing_item_doc(self.name, finishing_doc[0], update_finishing=True)
+		else:
+			is_group = frappe.get_value("Process", self.process_name, "is_group")
+			check = False
+			if is_group:
+				process = None
+				doc = frappe.get_doc("Process", self.process_name)
+				for row in doc.process_details:
+					process = row.process_name
+				check = process == finishing_inward_process
+			else:
+				check = self.process_name == finishing_inward_process
+
+			if check:
+				finishing_doc = frappe.get_all("Finishing Plan", filters={
+					"lot": self.lot, 
+				}, pluck="name", limit=1)
+				if finishing_doc:
+					# update_finishing_item_doc(self.name, finishing_doc[0], update_finishing=False)
+					frappe.enqueue(
+						update_finishing_item_doc, 
+						"short", 
+						doc_name=self.name, 
+						finishing_doc_name=finishing_doc[0],
+						update_finishing=False,
+						enqueue_after_commit=True
+					)
 
 	def check_bundle_qty(self, bundles):
 		ipd = frappe.get_value("Lot", self.lot, "production_detail")
@@ -2560,7 +2571,14 @@ def update_finishing_item_doc(doc_name, finishing_doc_name, update_finishing:boo
 				"dispatched": finishing_items[variant]['dispatched'],
 			})
 		finishing_doc.set("finishing_plan_grn_details", finshing_items_list)
+		grn_list = update_if_string_instance(finishing_doc.grn_list)
+		if docstatus == 2:
+			del grn_list[doc_name]
+		else:
+			grn_list[doc_name] = frappe.utils.now_datetime().strftime("%d-%m-%Y %H:%M:%S")
+		finishing_doc.grn_list = frappe.json.dumps(grn_list)
 		finishing_doc.save()	
+		
 	elif update_finishing and self.is_return:
 		finishing_doc = frappe.get_doc("Finishing Plan", finishing_doc_name)
 		finishing_items = {}

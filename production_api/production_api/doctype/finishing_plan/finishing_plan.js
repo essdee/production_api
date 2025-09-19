@@ -31,6 +31,8 @@ frappe.ui.form.on("Finishing Plan", {
             frm.doc['inward_details'] = JSON.stringify(frm.doc.__onload.inward_details);
             frm.inward_detail.load_data(frm.doc.__onload.inward_details);
         }
+        $(frm.fields_dict['finishing_old_lot_html'].wrapper).html("")
+        frm.old_lot = new frappe.production.ui.FinishingOldLotTransfer(frm.fields_dict["finishing_old_lot_html"].wrapper);
 	},
     fetch_quantity(frm){
         frappe.call({

@@ -1,5 +1,49 @@
 <template>
     <div ref="root">
+        <div style="display:flex;width:100%;gap:20px;">
+            <div v-if="grn_list && Object.keys(grn_list).length > 0" style="width:50%;">
+                <h3>GRN List</h3>
+                <table class="table table-sm table-sm-bordered bordered-table">
+                    <thead class="dark-border">
+                        <tr>
+                            <th>Goods Received Note</th>
+                            <th>Date Time</th>
+                            <th>Cancel</th>
+                        </tr>
+                    </thead>
+                    <tbody class="dark-border">
+                        <tr v-for="(date, grn) in grn_list">
+                            <td style="cursor: pointer;" @click="redirect_to('Goods Received Note', grn)">{{ grn }}</td>
+                            <td>{{ date }}</td>
+                            <td>
+                                <button class="btn btn-primary" @click="cancel_doc('Goods Received Note', grn)">Cancel</button>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            <div v-if="se_list && Object.keys(se_list).length > 0" style="width:50%;">
+                <h3>Stock Entry List</h3>
+                <table class="table table-sm table-sm-bordered bordered-table">
+                    <thead class="dark-border">
+                        <tr>
+                            <th>Stock Entry</th>
+                            <th>Date Time</th>
+                            <th>Cancel</th>
+                        </tr>
+                    </thead>
+                    <tbody class="dark-border">
+                        <tr v-for="(date, se) in se_list">
+                            <td style="cursor: pointer;" @click="redirect_to('Stock Entry', se)">{{ se }}</td>
+                            <td>{{ date }}</td>
+                            <td>
+                                <button class="btn btn-primary" @click="cancel_doc('Stock Entry', se)">Cancel</button>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>    
         <div style="display:flex;">
             <div>
                 <h3>Enter Box Quantity</h3>
@@ -82,6 +126,9 @@ const primary_values = ref([])
 let box_qty = ref({})
 let packed_qty = ref({})
 let dispatch_check = ref(0)
+let location = cur_frm.doc.delivery_location
+let grn_list = JSON.parse(cur_frm.doc.grn_list || "{}")
+let se_list = JSON.parse(cur_frm.doc.stock_entry_list || "{}")
 
 onMounted(()=> {
     frappe.call({
@@ -99,6 +146,38 @@ onMounted(()=> {
         }
     })
 })
+
+function redirect_to(doctype, docname){
+    frappe.open_in_new_tab = true;
+    frappe.set_route("Form", doctype, docname);
+}
+
+function cancel_doc(doctype, docname){
+    let d = new frappe.ui.Dialog({
+        title: `Are you sure want to cancel this ${doctype}`,
+        primary_action_label: 'Yes',
+        secondary_action_label: "No",
+        primary_action(){
+            d.hide()
+            frappe.call({
+                method: "production_api.production_api.doctype.finishing_plan.finishing_plan.cancel_document",
+                args: {
+                    "doctype": doctype,
+                    "docname": docname,
+                },
+                freeze: true,
+                freeze_message: `Cancelling ${doctype}`,
+                callback: function(){
+                    frappe.show_alert("Cancelled Successfully")
+                }
+            })
+        },
+        secondary_action(){
+            d.hide()
+        }
+    })
+    d.show()
+}
 
 function get_items(){
     return box_qty.value;
@@ -121,25 +200,8 @@ function make_grn(){
                 "label": "Delivery Location",
                 "options": "Supplier",
                 "reqd": 1,  
+                "default": location
             },
-            {
-                "fieldname": "vehicle_no",
-                "fieldtype": "Data",
-                "label": "Vehicle No",
-                "reqd": 1,
-            },
-            {
-                "fieldname": "supplier_document_no",
-                "fieldtype": "Data",
-                "label": "Supplier Document No",
-                "reqd": 1,
-            },
-            {
-                "fieldname": "dc_no",
-                "fieldtype": "Data",
-                "label": "DC No",
-                "reqd": 1,
-            }
         ],
         primary_action_label: 'Create GRN',
         primary_action(values) {
@@ -151,11 +213,11 @@ function make_grn(){
                     lot: cur_frm.doc.lot,
                     item_name: cur_frm.doc.item,
                     data: box_qty.value,
-                    grn_values: values
+                    delivery_location: values.delivery_location
                 },
                 freeze: true,
                 freeze_message: "Creating Goods Received Note...",
-                callback: function(response) {
+                callback: function() {
                     frappe.msgprint("GRN Created Successfully");
                 }
             })
@@ -178,6 +240,7 @@ function make_dispatch(){
                 "label": "From Location",
                 "options": "Supplier",
                 "reqd": 1,  
+                "default": location,
             },
             {
                 "fieldname": "to_location",
@@ -203,7 +266,7 @@ function make_dispatch(){
                 freeze: true,
                 freeze_message: "Dispatching Items...",
                 callback: function(response) {
-                    frappe.msgprint("Dispatched Successfully");
+                    frappe.msgprint("Stock Dispatched Successfully...")
                 } 
             })
         }
@@ -223,6 +286,10 @@ defineExpose({
     width: 100%;
     border: 1px solid #ccc;
     border-collapse: collapse;
+}
+
+.small-width{
+    width:40%;
 }
 
 .bordered-table th,

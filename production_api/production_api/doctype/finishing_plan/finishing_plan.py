@@ -414,8 +414,7 @@ def get_delivery_challan_item_list(lot, item_name, data):
 	return items
 
 @frappe.whitelist()
-def create_grn(work_order, lot, item_name, data, grn_values):
-	grn_values = update_if_string_instance(grn_values)
+def create_grn(work_order, lot, item_name, data, delivery_location):
 	box_qty = {}
 	ipd = frappe.get_value("Lot", lot, "production_detail")
 	ipd_fields = ["primary_item_attribute", "dependent_attribute"]
@@ -442,11 +441,11 @@ def create_grn(work_order, lot, item_name, data, grn_values):
 	doc.lot = lot
 	doc.supplier = frappe.get_value("Work Order", work_order, "supplier")
 	doc.supplier_address = frappe.get_value("Work Order", work_order, "supplier_address")
-	doc.delivery_location = grn_values.get('delivery_location')
-	doc.delivery_address = get_primary_address(grn_values.get('delivery_location'))
-	doc.supplier_document_no = grn_values.get('supplier_document_no')
-	doc.vehicle_no = grn_values.get('vehicle_no')
-	doc.dc_no = grn_values.get('dc_no')
+	doc.delivery_location = delivery_location
+	doc.delivery_address = get_primary_address(delivery_location)
+	doc.supplier_document_no = "NA"
+	doc.vehicle_no = "NA"
+	doc.dc_no = "NA"
 	doc.item_details = box_qty
 	doc.process_name = frappe.get_value("Work Order", work_order, "process_name")
 	doc.save()
@@ -539,8 +538,7 @@ def return_items(data, work_order, lot, item_name, popup_values):
 @frappe.whitelist()
 def create_stock_entry(data, item_name, doc_name, lot, from_location, to_location):
 	data = update_if_string_instance(data)
-	box_qty = {}
-	ipd, uom = frappe.get_value("Lot", lot, ["production_detail", "uom"])  # to check if lot exists
+	ipd, uom = frappe.get_value("Lot", lot, ["production_detail", "uom"])
 	ipd_fields = ["primary_item_attribute", "dependent_attribute", "pack_out_stage"]
 	primary_attr, dept_attr, pack_out = frappe.get_value("Item Production Detail", ipd, ipd_fields)
 	default_type = frappe.db.get_single_value("Stock Settings", "default_received_type")
@@ -562,30 +560,88 @@ def create_stock_entry(data, item_name, doc_name, lot, from_location, to_locatio
 		})
 	doc = frappe.new_doc("Stock Entry")	
 	doc.purpose = "Material Issue"
+	doc.against = "Finishing Plan"
+	doc.against_id = doc_name
 	doc.from_warehouse = from_location
 	doc.transfer_supplier = to_location
 	from production_api.mrp_stock.doctype.stock_entry.stock_entry import fetch_stock_entry_items
 	item_details = fetch_stock_entry_items(item_list)
 	doc.item_details = item_details
 	doc.save()
+	doc.submit()
+	return doc.name
 
-	finishing_doc = frappe.get_doc("Finishing Plan", doc_name)
-	d = {}
-	for row in finishing_doc.finishing_plan_grn_details:
-		d[row.item_variant] = {
-			"quantity": row.quantity,
-			"dispatched": row.dispatched,
-		}
+@frappe.whitelist()
+def cancel_document(doctype, docname):
+	doc = frappe.get_doc(doctype, docname)
+	doc.cancel()
 
-	for row in item_list:
-		d[row['item']]['dispatched'] += row['qty']
+@frappe.whitelist()
+def fetch_from_old_lot(lot, item):
+	from production_api.mrp_stock.report.item_balance.item_balance import execute as get_item_balance
+	filters = {
+		"remove_zero_balance_item":1,
+		"item": item
+	}
+	data = get_item_balance(filters)[1]
+	ipd = frappe.get_value("Lot", lot, "production_detail")
+	ipd_fields = ["is_set_item", "packing_attribute", "primary_item_attribute", "set_item_attribute", "dependent_attribute", "pack_in_stage"]
+	is_set_item, pack_attr, primary_attr, set_attr, dept_attr, pack_in_stage = frappe.get_value("Item Production Detail", ipd, ipd_fields)
+	old_lot_data = {} 
+	default_type = frappe.db.get_single_value("Stock Settings", "default_received_type")
+	for d in data:
+		if d['lot'] != lot and d['received_type'] == default_type:
+			if pack_stage_variant(d['item_variant'], dept_attr, pack_in_stage):
+				key = (d['lot'], d['warehouse'], d['warehouse_name'])
+				old_lot_data.setdefault(key, {})
+				old_lot_data[key].setdefault(d['item_variant'], 0)
+				old_lot_data[key][d['item_variant']] += d['bal_qty']
 
-	finishing_grn_list = []
-	for key in d:
-		finishing_grn_list.append({
-			"item_variant": key,
-			"quantity": d[key]['quantity'],
-			"dispatched": d[key]['dispatched'],
+	data = []
+	primary_values = get_ipd_primary_values(ipd)
+	for key in old_lot_data:
+		lot_value, warehouse, warehouse_name = key
+		old_lot_inward = {"data": {}, "total": {}}
+		for variant in old_lot_data[key]:	
+			attr_details = get_variant_attr_details(variant)
+			size = attr_details[primary_attr]
+			part = None
+			if is_set_item:
+				part = attr_details[set_attr]
+
+			colour = attr_details[pack_attr]	
+			old_lot_inward["data"].setdefault(colour, {
+				"values": {},
+				"part": part,
+				"colour": attr_details[pack_attr],
+				"set_combination": {},
+				"colour_total": {
+					"balance": 0, "transfer": 0
+				},
+			})
+			old_lot_inward["data"][colour]["values"].setdefault(size, {
+				"balance": 0, "transfer": 0
+			})
+			old_lot_inward["total"].setdefault(size, 0)
+			qty = old_lot_data[key][variant]
+			old_lot_inward["data"][colour]["colour_total"]["balance"] += qty
+			old_lot_inward["data"][colour]["values"][size]["balance"] += qty
+			old_lot_inward['total'][size] += qty
+
+		data.append({
+			"lot": lot_value,
+			"warehouse": warehouse,
+			"warehouse_name": warehouse_name,
+			"primary_values": primary_values,
+			"old_lot_inward": old_lot_inward,
+			"is_set_item": is_set_item,
+			"set_attr": set_attr,
 		})
-	finishing_doc.set("finishing_plan_grn_details", finishing_grn_list)
-	finishing_doc.save()
+	return data	
+
+def pack_stage_variant(variant, dept_attr, pack_in_stage):
+	from production_api.production_api.doctype.cut_bundle_movement_ledger.cut_bundle_movement_ledger import get_variant_attr_details
+	attr_details = get_variant_attr_details(variant)
+	if attr_details[dept_attr] == pack_in_stage:
+		return True
+	return False

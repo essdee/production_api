@@ -217,6 +217,7 @@ class StockEntry(Document):
 			make_cut_bundle_ledger(bundles, collapsed_details)
 			bundles, collapsed_details = get_cut_bundle_entry(cpm_doc, self, to_warehouse, 1)
 			make_cut_bundle_ledger(bundles, collapsed_details)
+		self.update_finishing_plan()	
 
 	def get_from_and_to_warehouse(self):
 		from_warehouse = None
@@ -287,6 +288,41 @@ class StockEntry(Document):
 			cancel_cut_bundle_ledger(bundles)
 
 		self.revert_stock_transfer_entries()
+
+	def on_cancel(self):
+		self.update_finishing_plan()
+
+	def update_finishing_plan(self):	
+		if self.against == "Finishing Plan":
+			finishing_doc = frappe.get_doc("Finishing Plan", self.against_id)
+			d = {}
+			for row in finishing_doc.finishing_plan_grn_details:
+				d[row.item_variant] = {
+					"quantity": row.quantity,
+					"dispatched": row.dispatched,
+				}
+
+			for row in self.items:
+				qty = row.qty
+				if self.docstatus == 2:
+					qty = qty * -1
+				d[row.item]['dispatched'] += qty
+
+			finishing_grn_list = []
+			for key in d:
+				finishing_grn_list.append({
+					"item_variant": key,
+					"quantity": d[key]['quantity'],
+					"dispatched": d[key]['dispatched'],
+				})
+			finishing_doc.set("finishing_plan_grn_details", finishing_grn_list)
+			stock_entry_list = update_if_string_instance(finishing_doc.stock_entry_list)
+			if self.docstatus == 2:
+				del stock_entry_list[self.name]
+			else:
+				stock_entry_list[self.name] = frappe.utils.now_datetime().strftime("%d-%m-%Y %H:%M:%S")
+			finishing_doc.stock_entry_list = frappe.json.dumps(stock_entry_list)		
+			finishing_doc.save()
 	
 	def make_repost_action(self):
 		from production_api.mrp_stock.stock_ledger import repost_future_stock_ledger_entry
