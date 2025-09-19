@@ -887,27 +887,27 @@ class GoodsReceivedNote(Document):
 		lot = wo_doc.lot
 		if self.includes_packing:
 			d = {}
-			for item in wo_doc.work_order_excess_usage_items:
-				if item.item_variant in d:
-					d[item.item_variant]['quantity'] += item.quantity
-				else:
-					d[item.item_variant] = {
-						"quantity": item.quantity,
-						"uom": item.uom,
-						"rate": item.rate,
-					}
-			for item in self.grn_excess_usage_items:
-				d[item.item_variant]['quantity'] -= item.quantity
+			# for item in wo_doc.work_order_excess_usage_items:
+			# 	if item.item_variant in d:
+			# 		d[item.item_variant]['quantity'] += item.excesss_quantity
+			# 	else:
+			# 		d[item.item_variant] = {
+			# 			"quantity": item.excess_quantity,
+			# 			"uom": item.uom,
+			# 			"rate": item.rate,
+			# 		}
+			# for item in self.grn_excess_usage_items:
+			# 	d[item.item_variant]['quantity'] -= item.excess_quantity
 
-			excess_items = []		
-			for key in d:
-				excess_items.append({
-					"item_variant": key,
-					"quantity": d[key]['quantity'],
-					"uom": d[key]['uom'],
-					"rate": d[key]['rate'],
-				})
-			wo_doc.set("work_order_excess_usage_items", excess_items)
+			# excess_items = []		
+			# for key in d:
+			# 	excess_items.append({
+			# 		"item_variant": key,
+			# 		"excess_quantity": d[key]['quantity'],
+			# 		"uom": d[key]['uom'],
+			# 		"rate": d[key]['rate'],
+			# 	})
+			# wo_doc.set("work_order_excess_usage_items", excess_items)
 		wo_doc.save(ignore_permissions = True)	
 		if self.additional_grn:
 			return
