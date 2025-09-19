@@ -887,7 +887,7 @@ class GoodsReceivedNote(Document):
 		lot = wo_doc.lot
 		if self.includes_packing:
 			d = {}
-			for item in self.work_order_excess_usage_items:
+			for item in wo_doc.work_order_excess_usage_items:
 				if item.item_variant in d:
 					d[item.item_variant]['quantity'] += item.quantity
 				else:
@@ -1889,7 +1889,6 @@ def get_packing_process_deliverables(grn_doc):
 	for d in deliverables:
 		if d['quantity'] > d['stock']:
 			item = frappe.get_value("Item Variant", d['item_variant'], "item")
-			print(d)
 			if item == item_name:
 				excess_items.setdefault(d['item_variant'], {
 					"qty": 0,
@@ -1897,6 +1896,7 @@ def get_packing_process_deliverables(grn_doc):
 					"rate": d['valuation_rate'],
 				})
 				excess_items[d['item_variant']]['qty'] += d['quantity'] - d['stock']
+				d['quantity'] -= (d['quantity'] - d['stock'])
 	
 	excess_items_list = []
 	default_received_type = frappe.db.get_single_value("Stock Settings", "default_received_type")
