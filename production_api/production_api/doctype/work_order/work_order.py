@@ -1582,12 +1582,20 @@ def create_finishing_detail(work_order, from_finishing=False):
 	if not finishing_inward_process:
 		frappe.throw("Set Finishing Inward Process")
 
+	processes = frappe.db.sql(
+		"""
+			Select parent FROM `tabProcess Details` WHERE process_name = %(process)s OR parent = %(process)s
+		""", {
+			"process": finishing_inward_process,
+		}, as_dict=1
+	)
+	process_names = [p['parent'] for p in processes]
+	process_names.append(finishing_inward_process)
 	wo_list = frappe.get_all("Work Order", filters={
 		"docstatus": 1,
 		"lot": wo_doc.lot,
-		"process_name": finishing_inward_process,
-	}, pluck="name")	
-
+		"process_name": ['in', process_names],
+	}, pluck="name")
 	for wo in wo_list:
 		doc = frappe.get_doc("Work Order", wo)
 		for row in doc.work_order_calculated_items:
@@ -1693,6 +1701,7 @@ def create_finishing_detail(work_order, from_finishing=False):
 	new_doc.lot = wo_doc.lot
 	new_doc.pieces_per_box = pcs_per_box
 	new_doc.work_order = work_order
+	new_doc.finishing_process = finishing_inward_process
 	new_doc.set("finishing_plan_details", finishing_items)
 	new_doc.set("finishing_plan_reworked_details", finishing_rework_items)
 	new_doc.set("finishing_plan_grn_details", grn_items)

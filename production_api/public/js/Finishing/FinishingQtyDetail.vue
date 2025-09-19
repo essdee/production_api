@@ -1,5 +1,26 @@
 <template>
     <div>
+        <div v-if="dc_list && Object.keys(dc_list).length > 0">
+            <h3>DC List</h3>
+            <table class="table table-sm table-sm-bordered bordered-table small-width">
+                <thead class="dark-border">
+                    <tr>
+                        <th>Delivery Challan</th>
+                        <th>Date Time</th>
+                        <th>Cancel</th>
+                    </tr>
+                </thead>
+                <tbody class="dark-border">
+                    <tr v-for="(date, dc) in dc_list">
+                        <td style="cursor: pointer;" @click="redirect_to('Delivery Challan', dc)">{{ dc }}</td>
+                        <td>{{ date }}</td>
+                        <td>
+                            <button class="btn btn-primary" @click="cancel_doc('Delivery Challan', dc)">Cancel</button>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
         <h3>Inward Details</h3>
         <div style="margin-bottom: 10px;width:100%;display: flex;">
             <div>
@@ -144,9 +165,43 @@ import { ref, createApp } from 'vue';
 import ReturnPopUp from "./FinishingReturnPopup.vue";
 
 let items = ref(null)
+let location = cur_frm.doc.delivery_location
+let dc_list = JSON.parse(cur_frm.doc.dc_list || "{}");
 
 function load_data(data){
     items.value = data
+}
+
+function cancel_doc(doctype, docname){
+    let d = new frappe.ui.Dialog({
+        title: `Are you sure want to cancel this ${doctype}`,
+        primary_action_label: 'Yes',
+        secondary_action_label: "No",
+        primary_action(){
+            d.hide()
+            frappe.call({
+                method: "production_api.production_api.doctype.finishing_plan.finishing_plan.cancel_document",
+                args: {
+                    "doctype": doctype,
+                    "docname": docname,
+                },
+                freeze: true,
+                freeze_message: `Cancelling ${doctype}`,
+                callback: function(){
+                    frappe.show_alert("Cancelled Successfully")
+                }
+            })
+        },
+        secondary_action(){
+            d.hide()
+        }
+    })
+    d.show()
+}
+
+function redirect_to(doctype, docname){
+    frappe.open_in_new_tab = true;
+    frappe.set_route("Form", doctype, docname);
 }
 
 function create_dc(){
@@ -175,13 +230,8 @@ function create_dc(){
                 "options": "Supplier",
                 "label": "From Location",
                 "reqd": 1,
+                "default": location
             },
-            {
-                "fieldname": "vehicle_no",
-                "fieldtype": "Data",
-                "label": "Vehicle No",
-                "reqd": 1,
-            }
         ],
         primary_action_label: 'Create',
         primary_action(values) {
@@ -194,7 +244,7 @@ function create_dc(){
                     work_order: cur_frm.doc.work_order,
                     lot: cur_frm.doc.lot,
                     from_location: values.from_location,
-                    vehicle_no: values.vehicle_no
+                    vehicle_no: "NA"
                 },
                 freeze: true,
                 freeze_message: "Creating Delivery Challan...",
@@ -211,26 +261,6 @@ function return_item() {
     let d = new frappe.ui.Dialog({
         title: __("Return Items"),
         fields: [
-            {
-                "fieldname": "from_location",
-                "fieldtype": "Link",
-                "options": "Supplier",
-                "label": "From Location",
-                "reqd": 1,
-            },
-            {
-                "fieldname": "delivery_location",
-                "fieldtype": "Link",
-                "options": "Supplier",
-                "label": "Delivery Location",
-                "reqd": 1,
-            },
-            {
-                "fieldname": "vehicle_no",
-                "fieldtype": "Data",
-                "label": "Vehicle No",
-                "reqd": 1,
-            },
             {
                 "fieldname": "received_type",
                 "fieldtype": "Link",
@@ -257,9 +287,9 @@ function return_item() {
                     "lot": cur_frm.doc.lot,
                     "item_name": cur_frm.doc.item,
                     "popup_values": {
-                        "from_location": d.get_value("from_location"),
-                        "delivery_location": d.get_value("delivery_location"),
-                        "vehicle_no": d.get_value("vehicle_no"),
+                        "from_location": location,
+                        "delivery_location": location,
+                        "vehicle_no": "NA",
                         "received_type": d.get_value("received_type"),
                     }
                 },
@@ -291,6 +321,14 @@ defineExpose({
     width: 100%;
     border: 1px solid #ccc;
     border-collapse: collapse;
+}
+.bordered-table {
+    width: 100%;
+    border: 1px solid #ccc;
+    border-collapse: collapse;
+}
+.small-width {
+    width: 40%;
 }
 
 .bordered-table th,

@@ -9,23 +9,31 @@
   "lot",
   "item",
   "production_detail",
+  "delivery_location",
   "column_break_klxu",
   "work_order",
   "pieces_per_box",
   "naming_series",
+  "finishing_process",
   "section_break_umng",
   "finishing_item_html",
   "finishing_plan_details",
   "item_details_tab",
   "finishing_quantity_html",
   "finishing_plan_reworked_details",
+  "dc_list",
   "grn_tab",
   "finishing_plan_grn_html",
   "finishing_plan_grn_details",
+  "grn_list",
+  "stock_entry_list",
   "section_break_beyy",
   "finishing_return_html",
   "inward_report_tab",
-  "inward_report_html"
+  "inward_report_html",
+  "fetch_from_old_lot_tab",
+  "finishing_old_lot_html",
+  "lot_transfer_list"
  ],
  "fields": [
   {
@@ -146,12 +154,63 @@
    "fieldtype": "Select",
    "label": "Naming Series",
    "options": "\nFP-2526-"
+  },
+  {
+   "fetch_from": "work_order.delivery_location",
+   "fieldname": "delivery_location",
+   "fieldtype": "Link",
+   "hidden": 1,
+   "label": "Delivery Location",
+   "options": "Supplier",
+   "read_only": 1
+  },
+  {
+   "fieldname": "finishing_process",
+   "fieldtype": "Link",
+   "hidden": 1,
+   "label": "Finishing Process",
+   "options": "Process",
+   "read_only": 1
+  },
+  {
+   "fieldname": "fetch_from_old_lot_tab",
+   "fieldtype": "Tab Break",
+   "hidden": 1,
+   "label": "Fetch From Old Lot"
+  },
+  {
+   "fieldname": "finishing_old_lot_html",
+   "fieldtype": "HTML",
+   "label": "Finishing Old Lot HTML"
+  },
+  {
+   "fieldname": "dc_list",
+   "fieldtype": "Small Text",
+   "hidden": 1,
+   "label": "DC List"
+  },
+  {
+   "fieldname": "grn_list",
+   "fieldtype": "Small Text",
+   "hidden": 1,
+   "label": "GRN List"
+  },
+  {
+   "fieldname": "stock_entry_list",
+   "fieldtype": "Small Text",
+   "hidden": 1,
+   "label": "Stock Entry List"
+  },
+  {
+   "fieldname": "lot_transfer_list",
+   "fieldtype": "Small Text",
+   "label": "Lot Transfer List"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-09-18 16:23:20.853686",
+ "modified": "2025-09-19 18:16:09.467409",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Finishing Plan",

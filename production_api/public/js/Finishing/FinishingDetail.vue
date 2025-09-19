@@ -25,7 +25,7 @@
                     <td><strong>{{ items['data']['data'][colour]['colour_total']['cutting'] ?? 0 }}</strong></td>
                 </tr>
                 <tr>
-                    <td>Delivered</td>
+                    <td>{{ process }} Delivered</td>
                     <td v-for="size in items.primary_values" :key="size">
                         {{
                             items['data']['data'][colour]["values"][size]['delivered'] ?? 0
@@ -34,7 +34,7 @@
                     <td><strong>{{ items['data']['data'][colour]['colour_total']['delivered'] ?? 0 }}</strong></td>
                 </tr>
                 <tr>
-                    <td>Received</td>
+                    <td>{{ process }} Received</td>
                     <td v-for="size in items.primary_values" :key="size">
                         {{
                             items['data']['data'][colour]["values"][size]['received'] ?? 0
@@ -64,13 +64,10 @@
 import { ref } from 'vue';
 
 let items = ref(null)
+let process = cur_frm.doc.finishing_process
 
 function load_data(data){
     items.value = data
-}
-
-function get_difference(qty1, qty2){
-    return qty1 - qty2
 }
 
 function get_style(val){
