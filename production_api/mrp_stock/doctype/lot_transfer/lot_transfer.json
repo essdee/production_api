@@ -9,6 +9,7 @@
  "engine": "InnoDB",
  "field_order": [
   "naming_series",
+  "finishing_plan",
   "column_break_a7vqn",
   "posting_date",
   "posting_time",
@@ -70,12 +71,19 @@
    "options": "Lot Transfer",
    "print_hide": 1,
    "read_only": 1
+  },
+  {
+   "fieldname": "finishing_plan",
+   "fieldtype": "Link",
+   "label": "Finishing Plan",
+   "options": "Finishing Plan"
   }
  ],
+ "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-01-27 14:17:36.965427",
+ "modified": "2025-09-22 11:27:29.645559",
  "modified_by": "Administrator",
  "module": "MRP Stock",
  "name": "Lot Transfer",
@@ -115,6 +123,7 @@
    "share": 1
   }
  ],
+ "row_format": "Dynamic",
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": []

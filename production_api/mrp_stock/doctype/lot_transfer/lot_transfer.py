@@ -10,7 +10,7 @@ from frappe import _, msgprint
 from frappe.utils import cstr, flt
 from frappe.model.document import Document
 from production_api.mrp_stock.utils import get_stock_balance
-
+from production_api.utils import update_if_string_instance
 from production_api.production_api.doctype.item.item import create_variant, get_attribute_details, get_variant
 from production_api.production_api.doctype.item_price.item_price import get_item_variant_price
 from production_api.production_api.doctype.purchase_order.purchase_order import get_item_attribute_details, get_item_group_index
@@ -75,8 +75,8 @@ class LotTransfer(Document):
 					if buying_rate:
 						row.rate = buying_rate
 			
-			if not row.rate and not row.allow_zero_valuation_rate:
-				self.validation_messages.append(_get_msg(row.table_index, row.row_index, _("Could not find valuation rate.")))
+			# if not row.rate and not row.allow_zero_valuation_rate:
+			# 	self.validation_messages.append(_get_msg(row.table_index, row.row_index, _("Could not find valuation rate.")))
 			
 			item_details = get_uom_details(row.item, row.uom, row.qty)
 			row.set("stock_uom", item_details.get("stock_uom"))
@@ -119,11 +119,67 @@ class LotTransfer(Document):
 	
 	def on_submit(self):
 		self.update_stock_ledger()
+		if self.finishing_plan:
+			self.update_finishing_plan()
 		self.make_repost_action()
 	
+	def update_finishing_plan(self):
+		doc = frappe.get_doc("Finishing Plan", self.finishing_plan)
+		finishing_items = {}
+		for row in doc.finishing_plan_details:
+			set_comb = update_if_string_instance(row.set_combination)
+			key = (row.item_variant, tuple(sorted(set_comb.items())))
+			finishing_items.setdefault(key, {
+				"inward_quantity": row.inward_quantity,
+				"delivered_quantity": row.delivered_quantity,
+				"cutting_qty": row.cutting_qty,
+				"received_types": update_if_string_instance(row.received_type_json),
+				"accepted_qty": row.accepted_qty,
+				"set_combination": row.set_combination,
+				"dc_qty": row.dc_qty,
+				"lot_transferred": row.lot_transferred,
+			})
+
+		for row in self.items:
+			set_comb = update_if_string_instance(row.set_combination)
+			key = (row.item, tuple(sorted(set_comb.items())))
+			qty = row.qty
+			if self.docstatus == 2:
+				qty = qty * -1
+
+			finishing_items[key]['lot_transferred'] += qty	
+
+		finshing_items_list = []
+		for key in finishing_items:
+			variant, tuple_attrs = key
+			finshing_items_list.append({
+				"item_variant": variant,
+				"cutting_qty": finishing_items[key]['cutting_qty'],
+				"inward_quantity": finishing_items[key]['inward_quantity'],
+				"delivered_quantity": finishing_items[key]['delivered_quantity'],
+				"set_combination": finishing_items[key]['set_combination'],
+				"received_type_json": frappe.json.dumps(finishing_items[key]['received_types']),
+				"accepted_qty": finishing_items[key]['accepted_qty'],
+				"dc_qty": finishing_items[key]['dc_qty'],
+				"lot_transferred": finishing_items[key]['lot_transferred']
+			})
+		lot_transfer_list = update_if_string_instance(doc.lot_transfer_list)
+		if self.docstatus == 2:
+			del lot_transfer_list[self.name]
+		else:
+			lot_transfer_list[self.name] = frappe.utils.now_datetime().strftime("%d-%m-%Y %H:%M:%S")
+		
+		doc.lot_transfer_list = frappe.json.dumps(lot_transfer_list)
+		doc.set("finishing_plan_details", finshing_items_list)
+		doc.save()	
+
 	def before_cancel(self):
 		self.ignore_linked_doctypes = ("Stock Ledger Entry", "Repost Item Valuation")
 		self.update_stock_ledger()
+
+	def on_cancel(self):	
+		if self.finishing_plan:
+			self.update_finishing_plan()
 		self.make_repost_action()
 
 	def make_repost_action(self):
@@ -230,8 +286,9 @@ def fetch_lot_transfer_items(items):
 				for attr in current_variant.attributes:
 					if attr.attribute == item.get('primary_attribute'):
 						item['values'][attr.attribute_value] = {
-							'qty': variant.qty,
-							'rate': variant.rate,
+							'qty': variant.get('qty'),
+							'rate': variant.get('rate'),
+							"set_combination": frappe.json.loads(variant.get('set_combination', {}))
 						}
 						break
 		else:
@@ -281,6 +338,7 @@ def save_lot_transfer_items(item_details):
 						item1['uom'] = item.get('default_uom')
 						item1['qty'] = values.get('qty')
 						item1['rate'] = values.get('rate')
+						item1['set_combination'] = frappe.json.dumps(values.get('set_combination', {}))
 						item1['table_index'] = table_index
 						item1['row_index'] = row_index
 						item1['received_type'] = values.get('received_type')

@@ -2597,6 +2597,7 @@ def update_finishing_item_doc(doc_name, finishing_doc_name, update_finishing:boo
 				"accepted_qty": row.accepted_qty,
 				"set_combination": row.set_combination,
 				"dc_qty": row.dc_qty,
+				"lot_transferred": row.lot_transferred,
 			})
 
 		for row in finishing_doc.finishing_plan_reworked_details:
@@ -2651,6 +2652,7 @@ def update_finishing_item_doc(doc_name, finishing_doc_name, update_finishing:boo
 				"received_type_json": frappe.json.dumps(finishing_items[key]['received_types']),
 				"accepted_qty": finishing_items[key]['accepted_qty'],
 				"dc_qty": finishing_items[key]['dc_qty'],
+				"lot_transferred": finishing_items[key]['lot_transferred']
 			})
 
 		finishing_rework_items_list = []
@@ -2682,6 +2684,7 @@ def update_finishing_item_doc(doc_name, finishing_doc_name, update_finishing:boo
 				"accepted_qty": row.accepted_qty,
 				"set_combination": row.set_combination,
 				"dc_qty": row.dc_qty,
+				"lot_transferred": row.lot_transferred
 			})
 
 		for row in finishing_doc.finishing_plan_reworked_details:
@@ -2739,6 +2742,7 @@ def update_finishing_item_doc(doc_name, finishing_doc_name, update_finishing:boo
 				"received_type_json": frappe.json.dumps(finishing_items[key]['received_types']),
 				"accepted_qty": finishing_items[key]['accepted_qty'],
 				"dc_qty": finishing_items[key]['dc_qty'],
+				"lot_transferred": finishing_items[key]['lot_transferred'],
 			})
 
 		finishing_rework_items_list = []

@@ -118,20 +118,24 @@ def revert_reworked_item(docname):
 	make_sl_entries(sl_entries)
 
 @frappe.whitelist()
-def get_rework_items(lot, item, colour):
+def get_rework_items(lot, item, colour, grn_number=None):
 	conditions = " AND t2.completed = 0"
 	con = {}
-	if item:
-		conditions += " AND t1.item = %(item_name)s"
-		con['item_name'] = item
+	if grn_number:
+		conditions += " AND t1.grn_number = %(grn_number)s"
+		con['grn_number'] = grn_number
+	else:	
+		if item:
+			conditions += " AND t1.item = %(item_name)s"
+			con['item_name'] = item
 
-	if lot:
-		conditions += " AND t1.lot = %(lot_name)s"
-		con['lot_name'] = lot
+		if lot:
+			conditions += " AND t1.lot = %(lot_name)s"
+			con['lot_name'] = lot
 
-	if colour:
-		conditions += " AND t2.item_variant LIKE  %(colour)s"
-		con['colour'] = f"%{colour}%"
+		if colour:
+			conditions += " AND t2.item_variant LIKE  %(colour)s"
+			con['colour'] = f"%{colour}%"
 
 	rework_items = frappe.db.sql(
 		f"""
@@ -188,6 +192,10 @@ def get_rework_items(lot, item, colour):
 				"received_type": row.received_type,
 				"uom": row.uom,
 			})
+	
+	if grn_number:
+		return data, rework_items[0]['name']
+	
 	return data	
 
 @frappe.whitelist()

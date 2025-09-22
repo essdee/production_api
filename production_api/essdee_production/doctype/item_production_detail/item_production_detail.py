@@ -93,7 +93,7 @@ class ItemProductionDetail(Document):
 			self.pack_in_stage = doc.default_pack_in_stage
 			self.pack_out_stage = doc.default_pack_out_stage
 			self.packing_attribute = doc.default_packing_attribute
-			self.stiching_process = doc.default_packing_process
+			self.stiching_process = doc.default_stitching_process
 			self.stiching_attribute = doc.default_stitching_attribute
 			self.stiching_in_stage = doc.default_stitching_in_stage
 			self.stiching_out_stage = doc.default_stitching_out_stage

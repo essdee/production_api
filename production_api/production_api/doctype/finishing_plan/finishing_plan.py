@@ -60,7 +60,6 @@ class FinishingPlan(Document):
 			inward_details["data"].setdefault(colour, {
 				"values": {},
 				"colour": attr_details[pack_attr],
-				"check_value": 0,
 				"part": part,
 				"colour_total": {
 					"accepted": 0, "reworked": 0, "pending": 0, "rejected": 0,
@@ -70,10 +69,10 @@ class FinishingPlan(Document):
 			inward_details["data"][colour]["values"].setdefault(size, {
 				"accepted": 0, "reworked": 0, "pending": 0, "rejected": 0
 			})
-
+			qty = item.accepted_qty + item.lot_transferred
 			inward_details["total"].setdefault(size, 0)
-			inward_details["data"][colour]["colour_total"]["accepted"] += item.accepted_qty
-			inward_details["data"][colour]["values"][size]["accepted"] += item.accepted_qty
+			inward_details["data"][colour]["colour_total"]["accepted"] += qty
+			inward_details["data"][colour]["values"][size]["accepted"] += qty
 
 		for item in self.finishing_plan_reworked_details:
 			set_comb = update_if_string_instance(item.set_combination)
@@ -140,7 +139,6 @@ class FinishingPlan(Document):
 			finishing_rework["data"].setdefault(colour, {
 				"values": {},
 				"colour": attr_details[pack_attr],
-				"check_value": 0,
 				"part": part,
 				"colour_total": {
 					"rework_qty": 0, "reworked": 0, "pending": 0, "rejected": 0,
@@ -177,7 +175,8 @@ class FinishingPlan(Document):
 				"accepted_qty": row.accepted_qty,
 				"dc_qty": row.dc_qty,
 				"reworked": 0,
-				"set_combination": row.set_combination
+				"set_combination": row.set_combination,
+				"lot_transferred": row.lot_transferred
 			})	
 
 		for row in self.finishing_plan_reworked_details:
@@ -197,7 +196,8 @@ class FinishingPlan(Document):
 				"received_type_json": frappe.json.dumps(finishing_plans[key]['received_types']),
 				"accepted_qty": finishing_plans[key]['accepted_qty'],
 				"dc_qty": finishing_plans[key]['dc_qty'],
-				"reworked": finishing_plans[key]['reworked']
+				"reworked": finishing_plans[key]['reworked'],
+				"lot_transferred": finishing_plans[key]['lot_transferred']
 			})
 		self.set("finishing_plan_details", finshing_items_list)
 
@@ -261,7 +261,7 @@ class FinishingPlan(Document):
 			finishing_inward["data"][colour]["values"][size]["difference"] += item.inward_quantity - item.delivered_quantity
 			finishing_inward["total"][size] += item.delivered_quantity
 
-			qty = item.accepted_qty + item.reworked
+			qty = item.accepted_qty + item.reworked + item.lot_transferred
 			finishing_qty["data"][colour]["colour_total"]["accepted"] += qty
 			finishing_qty["data"][colour]["colour_total"]["dc_qty"] += item.dc_qty
 			finishing_qty["data"][colour]["colour_total"]["balance"] += qty - item.dc_qty
@@ -392,8 +392,6 @@ def get_delivery_challan_item_list(lot, item_name, data):
 	items = {}
 	for colour in data['data']['data']:
 		colour_value = data['data']['data'][colour]['colour']
-		if not data['data']['data'][colour].get('check_value'):
-			continue
 		for size in data['data']['data'][colour]['values']:
 			if data['data']['data'][colour]['values'][size]['balance_dc'] > 0:
 				attrs = {
@@ -534,9 +532,8 @@ def return_items(data, work_order, lot, item_name, popup_values):
 	new_doc.save()
 	new_doc.submit()
 
-
 @frappe.whitelist()
-def create_stock_entry(data, item_name, doc_name, lot, from_location, to_location):
+def create_stock_entry(data, item_name, doc_name, lot, from_location, to_location, goods_value):
 	data = update_if_string_instance(data)
 	ipd, uom = frappe.get_value("Lot", lot, ["production_detail", "uom"])
 	ipd_fields = ["primary_item_attribute", "dependent_attribute", "pack_out_stage"]
@@ -567,6 +564,7 @@ def create_stock_entry(data, item_name, doc_name, lot, from_location, to_locatio
 	from production_api.mrp_stock.doctype.stock_entry.stock_entry import fetch_stock_entry_items
 	item_details = fetch_stock_entry_items(item_list)
 	doc.item_details = item_details
+	doc.additional_amount = goods_value
 	doc.save()
 	doc.submit()
 	return doc.name
@@ -577,21 +575,21 @@ def cancel_document(doctype, docname):
 	doc.cancel()
 
 @frappe.whitelist()
-def fetch_from_old_lot(lot, item):
+def fetch_from_old_lot(lot, item, location):
 	from production_api.mrp_stock.report.item_balance.item_balance import execute as get_item_balance
 	filters = {
 		"remove_zero_balance_item":1,
-		"item": item
+		"item": item,
+		"warehouse": location
 	}
 	data = get_item_balance(filters)[1]
 	ipd = frappe.get_value("Lot", lot, "production_detail")
-	ipd_fields = ["is_set_item", "packing_attribute", "primary_item_attribute", "set_item_attribute", "dependent_attribute", "pack_in_stage"]
-	is_set_item, pack_attr, primary_attr, set_attr, dept_attr, pack_in_stage = frappe.get_value("Item Production Detail", ipd, ipd_fields)
+	ipd_doc = frappe.get_doc("Item Production Detail", ipd)
 	old_lot_data = {} 
 	default_type = frappe.db.get_single_value("Stock Settings", "default_received_type")
 	for d in data:
 		if d['lot'] != lot and d['received_type'] == default_type:
-			if pack_stage_variant(d['item_variant'], dept_attr, pack_in_stage):
+			if pack_stage_variant(d['item_variant'], ipd_doc.dependent_attribute, ipd_doc.pack_in_stage):
 				key = (d['lot'], d['warehouse'], d['warehouse_name'])
 				old_lot_data.setdefault(key, {})
 				old_lot_data[key].setdefault(d['item_variant'], 0)
@@ -604,17 +602,23 @@ def fetch_from_old_lot(lot, item):
 		old_lot_inward = {"data": {}, "total": {}}
 		for variant in old_lot_data[key]:	
 			attr_details = get_variant_attr_details(variant)
-			size = attr_details[primary_attr]
+			size = attr_details[ipd_doc.primary_item_attribute]
 			part = None
-			if is_set_item:
-				part = attr_details[set_attr]
+			colour = attr_details[ipd_doc.packing_attribute]	
+			if ipd_doc.is_set_item:
+				part = attr_details[ipd_doc.set_item_attribute]
 
-			colour = attr_details[pack_attr]	
+			set_value = None
+			if ipd_doc.is_set_item:
+				if ipd_doc.major_attribute_value == part:
+					set_value = colour
+			else:		
+				set_value = colour
 			old_lot_inward["data"].setdefault(colour, {
 				"values": {},
 				"part": part,
-				"colour": attr_details[pack_attr],
-				"set_combination": {},
+				"colour": attr_details[ipd_doc.packing_attribute],
+				"set_combination": set_value,
 				"colour_total": {
 					"balance": 0, "transfer": 0
 				},
@@ -634,10 +638,17 @@ def fetch_from_old_lot(lot, item):
 			"warehouse_name": warehouse_name,
 			"primary_values": primary_values,
 			"old_lot_inward": old_lot_inward,
-			"is_set_item": is_set_item,
-			"set_attr": set_attr,
+			"is_set_item": ipd_doc.is_set_item,
+			"set_attr": ipd_doc.set_item_attribute,
 		})
-	return data	
+	colours = []
+	for row in ipd_doc.packing_attribute_details:
+		colours.append(row.attribute_value)
+
+	return {
+		"data": data,
+		"colours": colours
+	}	
 
 def pack_stage_variant(variant, dept_attr, pack_in_stage):
 	from production_api.production_api.doctype.cut_bundle_movement_ledger.cut_bundle_movement_ledger import get_variant_attr_details
@@ -645,3 +656,91 @@ def pack_stage_variant(variant, dept_attr, pack_in_stage):
 	if attr_details[dept_attr] == pack_in_stage:
 		return True
 	return False
+
+@frappe.whitelist()
+def create_lot_transfer(data, item_name, ipd, lot, doc_name):
+	data = update_if_string_instance(data)
+	ipd_fields = ["primary_item_attribute", "packing_attribute", "is_set_item", "set_item_attribute", "dependent_attribute", "stiching_out_stage", "major_attribute_value"]
+	primary, pack_attr, is_set, set_attr, dept_attr, stich_out, major_part = frappe.get_value("Item Production Detail", ipd, ipd_fields)
+	items = []
+	row_index = 0
+	uom = frappe.get_value("Item", item_name, "default_unit_of_measure")
+	received_type = frappe.db.get_single_value("Stock Settings", "default_received_type")
+	for table_index, group in enumerate(data):
+		for colour in group['old_lot_inward']['data']:
+			for size in group['old_lot_inward']['data'][colour]['values']:
+				item_attributes = {
+					primary: size,
+					pack_attr: colour,
+					dept_attr: stich_out
+				}
+				if is_set:
+					item_attributes[set_attr] = group['old_lot_inward']['data'][colour]['part']
+				if group['old_lot_inward']['data'][colour]['values'][size]['transfer'] > 0:
+					item1 = {}
+					variant_name = get_or_create_variant(item_name, item_attributes)
+					item1['item'] = variant_name
+					item1['from_lot'] = group['lot']
+					item1['to_lot'] = lot
+					item1['warehouse'] = group['warehouse']
+					item1['uom'] = uom
+					item1['qty'] = group['old_lot_inward']['data'][colour]['values'][size]['transfer']
+					item1['rate'] = 0
+					item1['table_index'] = table_index
+					item1['row_index'] = row_index
+					item1['received_type'] = received_type
+					set_comb = {
+						"major_colour": group['old_lot_inward']['data'][colour]['set_combination']
+					}
+					if is_set:
+						set_comb['major_part'] = major_part
+					item1['set_combination'] = set_comb
+					items.append(item1)
+			row_index += 1
+
+	item_details = []
+	items = sorted(items, key = lambda i: i['row_index'])
+	for key, variants in groupby(items, lambda i: i['row_index']):
+		variants = list(variants)
+		current_variant = frappe.get_doc("Item Variant", variants[0]['item'])
+		current_item_attribute_details = get_attribute_details(current_variant.item)
+		item = {
+			'name': current_variant.item,
+			'lot': variants[0]['from_lot'],
+			'to_lot': variants[0]['to_lot'],
+			'warehouse': variants[0]['warehouse'],
+			'attributes': get_item_attribute_details(current_variant, current_item_attribute_details),
+			'primary_attribute': current_item_attribute_details['primary_attribute'],
+			'values': {},
+			'default_uom': variants[0].get('uom') or current_item_attribute_details['default_uom'],
+			'secondary_uom': variants[0].get('secondary_uom') or current_item_attribute_details['secondary_uom'],
+			'received_type':variants[0].get('received_type')
+		}
+		for attr in current_item_attribute_details['primary_attribute_values']:
+			item['values'][attr] = {'qty': 0, 'rate': 0}
+		for variant in variants:
+			current_variant = frappe.get_doc("Item Variant", variant['item'])
+			for attr in current_variant.attributes:
+				if attr.attribute == item.get('primary_attribute'):
+					item['values'][attr.attribute_value] = {
+						'qty': variant.get('qty'),
+						'rate': variant.get('rate'),
+						"set_combination": variant.get('set_combination'),
+					}
+					break
+		index = get_item_group_index(item_details, current_item_attribute_details)
+
+		if index == -1:
+			item_details.append({
+				'attributes': current_item_attribute_details['attributes'],
+				'primary_attribute': current_item_attribute_details['primary_attribute'],
+				'primary_attribute_values': current_item_attribute_details['primary_attribute_values'],
+				'items': [item]
+			})
+		else:
+			item_details[index]['items'].append(item)
+	doc = frappe.new_doc("Lot Transfer")
+	doc.item_details = item_details
+	doc.finishing_plan = doc_name
+	doc.save()
+	doc.submit()

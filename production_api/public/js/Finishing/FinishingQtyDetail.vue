@@ -43,10 +43,7 @@
             </thead>
             <tbody class="dark-border" v-for="(colour, idx) in Object.keys(items['data']['data'])" :key="colour">
                 <tr>
-                    <td :rowspan="3">
-                        {{ idx + 1 }}
-                        <input type="checkbox" v-model="items['data']['data'][colour]['check_value']" />
-                    </td>
+                    <td :rowspan="3">{{ idx + 1 }}</td>
                     <td :rowspan="3">{{ colour.split("@")[0] }}</td>
                     <td :rowspan="3" v-if="items.is_set_item">{{ items['data']['data'][colour]['part'] }}</td>
                     <td>Accepted</td>
@@ -69,14 +66,9 @@
                 <tr>
                     <td>Balance</td>
                     <td v-for="size in items.primary_values" :key="size">
-                        <div v-if="items['data']['data'][colour]['check_value'] == 1">
-                            <input type="number" class="form-control" v-model="items['data']['data'][colour]['values'][size]['balance_dc']" />
-                        </div>
-                        <div v-else>
-                            {{
-                                items['data']['data'][colour]["values"][size]['balance'] ?? 0
-                            }}
-                        </div>
+                        {{
+                            items['data']['data'][colour]["values"][size]['balance'] ?? 0
+                        }}
                     </td>
                     <td><strong>{{ items['data']['data'][colour]['colour_total']['balance'] ?? 0 }}</strong></td>
                 </tr>
@@ -163,6 +155,7 @@
 
 import { ref, createApp } from 'vue';
 import ReturnPopUp from "./FinishingReturnPopup.vue";
+import FinishingDC from './FinishingDC.vue';
 
 let items = ref(null)
 let location = cur_frm.doc.delivery_location
@@ -205,24 +198,8 @@ function redirect_to(doctype, docname){
 }
 
 function create_dc(){
-    let selected_data = {
-        "work_order": cur_frm.doc.work_order,
-        "lot": cur_frm.doc.lot,
-        "items": {}
-    }
-
-    for(let colour of Object.keys(items.value['data']['data'])){
-        if(items.value['data']['data'][colour]['check_value'] == 1){
-            selected_data['items'][colour] = items.value['data']['data'][colour]['values']
-        }
-    }
-
-    if(Object.keys(selected_data['items']).length == 0){
-        frappe.msgprint("Please select at least one colour to create DC.")
-        return
-    }
     let d = new frappe.ui.Dialog({
-        title: 'Enter the Details to Create Delivery Challan',
+        title: __("Return Items"),
         fields: [
             {
                 "fieldname": "from_location",
@@ -232,14 +209,21 @@ function create_dc(){
                 "reqd": 1,
                 "default": location
             },
+            {
+                "fieldname": 'dc_pop_up_html',
+                "fieldtype": 'HTML',
+            },
         ],
-        primary_action_label: 'Create',
-        primary_action(values) {
+        size: "extra-large",
+        primary_action_label: __("Create DC"),
+        primary_action: function(values){
+            let dc_items = i.getData();  
+            console.log(dc_items)
             d.hide();
             frappe.call({
                 method: "production_api.production_api.doctype.finishing_plan.finishing_plan.create_delivery_challan",
                 args: {
-                    data: items.value,
+                    data: dc_items,
                     item_name: cur_frm.doc.item,
                     work_order: cur_frm.doc.work_order,
                     lot: cur_frm.doc.lot,
@@ -254,7 +238,12 @@ function create_dc(){
             });
         }
     });
-    d.show()
+    d.fields_dict['dc_pop_up_html'].$wrapper.html("");
+    const el = d.fields_dict["dc_pop_up_html"].$wrapper.get(0);
+    const props = { data: items.value,};
+    const vueApp = createApp(FinishingDC, props);
+    i = vueApp.mount(el);
+    d.show();
 }
 
 function return_item() {

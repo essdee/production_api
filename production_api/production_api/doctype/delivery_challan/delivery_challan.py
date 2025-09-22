@@ -1062,6 +1062,7 @@ def update_finishing_item_doc(doc_name, finishing_doc_name, update_dc:bool):
 			"received_types": update_if_string_instance(row.received_type_json),
 			"accepted_qty": row.accepted_qty,
 			"dc_qty": row.dc_qty,
+			"lot_transferred": row.lot_transferred
 		})
 
 	for item in self.items:
@@ -1086,7 +1087,8 @@ def update_finishing_item_doc(doc_name, finishing_doc_name, update_dc:bool):
 			"set_combination": frappe.json.dumps(comb),
 			"received_type_json": frappe.json.dumps(finishing_items[key]['received_types']),
 			"accepted_qty": finishing_items[key]['accepted_qty'],
-			"dc_qty": finishing_items[key]['dc_qty']
+			"dc_qty": finishing_items[key]['dc_qty'],
+			"lot_transferred": finishing_items[key]['lot_transferred']
 		})
 	finishing_doc.set("finishing_plan_details", finshing_items_list)
 	dc_list = update_if_string_instance(finishing_doc.dc_list)
