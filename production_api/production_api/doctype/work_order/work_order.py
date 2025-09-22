@@ -608,7 +608,7 @@ def get_deliverable_receivable( items, doc_name, deliverable=False, receivable=F
 	wo_doc.set("work_order_calculated_items",items)
 	wo_doc.set("wo_colours", wo_colour_sets)
 	logger.debug(f"{doc_name} doc saved {datetime.now()}")
-	wo_doc.save()
+	wo_doc.save(ignore_permissions=True)
 	processes = [ipd_doc.cutting_process]
 	dc_processes = [ipd_doc.stiching_process]		
 
@@ -640,7 +640,7 @@ def get_deliverable_receivable( items, doc_name, deliverable=False, receivable=F
 		wo_doc.set("incompleted_items_json",{})
 		wo_doc.set("wo_delivered_completed_json", {})
 		wo_doc.set("wo_delivered_incompleted_json",{})
-	wo_doc.save() 
+	wo_doc.save(ignore_permissions=True) 
 	return None
 
 def calc_deliverable_and_receivable(ipd_doc, process, item_list, item_name, dept_attribute, ipd, lot,uom, bom, lot_doc, stiching_in_stage, pack_out_stage, pack_out_uom):
@@ -1189,7 +1189,7 @@ def calculate_completed_pieces(doc_name):
 	else:
 		wo_doc.set("completed_items_json", {})
 		wo_doc.set("incompleted_items_json",{})	
-	wo_doc.save()
+	wo_doc.save(ignore_permissions=True)
 	# calc(doc_name)
 	frappe.enqueue(calc,"short", doc_name=doc_name)	
 	
@@ -1664,6 +1664,7 @@ def create_finishing_detail(work_order, from_finishing=False):
 			"received_type_json": frappe.json.dumps(items[key]['received_types']),
 			"cutting_qty": items[key]['cutting_qty'],
 			"accepted_qty": items[key]['accepted_qty'],
+			"lot_transferred": 0,
 		})
 		if items[key]['rework_qty'] > 0:
 			reworked = 0
@@ -1705,4 +1706,4 @@ def create_finishing_detail(work_order, from_finishing=False):
 	new_doc.set("finishing_plan_details", finishing_items)
 	new_doc.set("finishing_plan_reworked_details", finishing_rework_items)
 	new_doc.set("finishing_plan_grn_details", grn_items)
-	new_doc.save()	
+	new_doc.save(ignore_permissions=True)	

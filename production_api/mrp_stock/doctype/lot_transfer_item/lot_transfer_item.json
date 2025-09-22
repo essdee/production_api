@@ -25,6 +25,7 @@
   "stock_uom_rate",
   "column_break_frvd",
   "amount",
+  "set_combination",
   "section_break_uuam",
   "table_index",
   "column_break_xpbu",
@@ -150,18 +151,25 @@
    "fieldtype": "Link",
    "label": "Received Type",
    "options": "GRN Item Type"
+  },
+  {
+   "fieldname": "set_combination",
+   "fieldtype": "Small Text",
+   "label": "Set Combination"
   }
  ],
+ "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2025-01-23 10:16:30.262353",
+ "modified": "2025-09-22 11:31:03.290862",
  "modified_by": "Administrator",
  "module": "MRP Stock",
  "name": "Lot Transfer Item",
  "naming_rule": "Random",
  "owner": "Administrator",
  "permissions": [],
+ "row_format": "Dynamic",
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": []

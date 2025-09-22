@@ -121,6 +121,7 @@
 <script setup>
 import {ref, onMounted} from 'vue';
 
+
 const root = ref(null);
 const primary_values = ref([])
 let box_qty = ref({})
@@ -248,6 +249,12 @@ function make_dispatch(){
                 "label": "To Location",
                 "options": "Supplier",
                 "reqd": 1,
+            },
+            {
+                "fieldname": "goods_value",
+                "fieldtype": "Currency",
+                "label": "Goods Value",
+                "reqd": 1,
             }
         ],
         primary_action_label: 'Dispatch',
@@ -262,6 +269,7 @@ function make_dispatch(){
                     data: packed_qty.value,
                     from_location: values.from_location,
                     to_location: values.to_location,
+                    goods_value: values.goods_value,
                 }, 
                 freeze: true,
                 freeze_message: "Dispatching Items...",
