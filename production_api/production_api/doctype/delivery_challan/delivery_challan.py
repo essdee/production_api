@@ -9,7 +9,10 @@ from frappe.model.document import Document
 from frappe.utils import flt, nowdate, now
 from production_api.mrp_stock.utils import get_stock_balance
 from production_api.production_api.logger import get_module_logger
-from production_api.utils import get_panel_list, update_if_string_instance, get_lpiece_variant, get_tuple_attributes
+from production_api.utils import (
+    				get_panel_list, update_if_string_instance, get_lpiece_variant, 
+                    get_tuple_attributes, get_finishing_plan_dict, get_finishing_plan_list
+				)
 from production_api.mrp_stock.stock_ledger import make_sl_entries, repost_future_stock_ledger_entry
 from production_api.production_api.doctype.item.item import get_attribute_details, get_or_create_variant
 from production_api.production_api.doctype.purchase_order.purchase_order import (
@@ -1051,20 +1054,7 @@ def update_finishing_item_doc(doc_name, finishing_doc_name, update_dc:bool):
 	self = frappe.get_doc("Delivery Challan", doc_name)
 	docstatus = self.docstatus
 	finishing_doc = frappe.get_doc("Finishing Plan", finishing_doc_name)
-	finishing_items = {}
-	for row in finishing_doc.finishing_plan_details:
-		set_comb = update_if_string_instance(row.set_combination)
-		key = (row.item_variant, tuple(sorted(set_comb.items())))
-		finishing_items.setdefault(key, {
-			"inward_quantity": row.inward_quantity,
-			"delivered_quantity": row.delivered_quantity,
-			"cutting_qty": row.cutting_qty,
-			"received_types": update_if_string_instance(row.received_type_json),
-			"accepted_qty": row.accepted_qty,
-			"dc_qty": row.dc_qty,
-			"lot_transferred": row.lot_transferred
-		})
-
+	finishing_items = get_finishing_plan_dict(finishing_doc)
 	for item in self.items:
 		set_comb = update_if_string_instance(item.set_combination)
 		key = (item.item_variant, tuple(sorted(set_comb.items())))
@@ -1075,21 +1065,7 @@ def update_finishing_item_doc(doc_name, finishing_doc_name, update_dc:bool):
 			else:	
 				finishing_items[key][dict_key] += item.stock_qty
 
-	finshing_items_list = []
-	for key in finishing_items:
-		variant, tuple_attrs = key
-		comb = get_tuple_attributes(tuple_attrs)
-		finshing_items_list.append({
-			"item_variant": variant,
-			"cutting_qty": finishing_items[key]['cutting_qty'],
-			"inward_quantity": finishing_items[key]['inward_quantity'],
-			"delivered_quantity": finishing_items[key]['delivered_quantity'],
-			"set_combination": frappe.json.dumps(comb),
-			"received_type_json": frappe.json.dumps(finishing_items[key]['received_types']),
-			"accepted_qty": finishing_items[key]['accepted_qty'],
-			"dc_qty": finishing_items[key]['dc_qty'],
-			"lot_transferred": finishing_items[key]['lot_transferred']
-		})
+	finshing_items_list = get_finishing_plan_list(finishing_items)
 	finishing_doc.set("finishing_plan_details", finshing_items_list)
 	dc_list = update_if_string_instance(finishing_doc.dc_list)
 	if docstatus == 2:

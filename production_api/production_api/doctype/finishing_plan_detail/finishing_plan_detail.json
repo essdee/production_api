@@ -15,7 +15,8 @@
   "set_combination",
   "accepted_qty",
   "dc_qty",
-  "lot_transferred"
+  "lot_transferred",
+  "ironing_excess"
  ],
  "fields": [
   {
@@ -82,13 +83,18 @@
    "fieldname": "lot_transferred",
    "fieldtype": "Int",
    "label": "Lot Transferred"
+  },
+  {
+   "fieldname": "ironing_excess",
+   "fieldtype": "Int",
+   "label": "Ironing Excess"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2025-09-22 12:12:40.204903",
+ "modified": "2025-09-22 18:33:43.594110",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Finishing Plan Detail",

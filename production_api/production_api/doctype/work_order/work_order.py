@@ -1665,6 +1665,7 @@ def create_finishing_detail(work_order, from_finishing=False):
 			"cutting_qty": items[key]['cutting_qty'],
 			"accepted_qty": items[key]['accepted_qty'],
 			"lot_transferred": 0,
+			"ironing_excess": 0,
 		})
 		if items[key]['rework_qty'] > 0:
 			reworked = 0

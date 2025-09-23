@@ -75,6 +75,7 @@
   {
    "fieldname": "finishing_plan",
    "fieldtype": "Link",
+   "hidden": 1,
    "label": "Finishing Plan",
    "options": "Finishing Plan"
   }
@@ -83,7 +84,7 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-09-22 11:27:29.645559",
+ "modified": "2025-09-23 11:42:47.657614",
  "modified_by": "Administrator",
  "module": "MRP Stock",
  "name": "Lot Transfer",
