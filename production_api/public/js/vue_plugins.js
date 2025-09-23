@@ -62,6 +62,7 @@ import FinishingDetail from "./Finishing/FinishingDetail.vue"
 import FinishingQtyDetail from "./Finishing/FinishingQtyDetail.vue"
 import FinishingInward from "./Finishing/FinishingInward.vue"
 import FinishingOldLotTransfer from "./Finishing/FinishingOldLotTransfer.vue"
+import FinishingIroningExcess from "./Finishing/FinishingIroningExcess.vue";
 
 // Product Development
 import { ProductFileVersionsWrapper, ProductCostingListWrapper } from "./ProductDevelopment"
@@ -504,6 +505,21 @@ frappe.production.ui.FinishingInward = class {
     }
     make_app(){
         this.app = createApp(FinishingInward)
+        SetVueGlobals(this.app)
+        this.vue = this.app.mount(this.$wrapper.get(0))
+    }
+    load_data(data){
+        this.vue.load_data(JSON.parse(JSON.stringify(data)))
+    }
+}
+
+frappe.production.ui.FinishingIroningExcess = class {
+    constructor(wrapper){
+        this.$wrapper = $(wrapper)
+        this.make_app()
+    }
+    make_app(){
+        this.app = createApp(FinishingIroningExcess)
         SetVueGlobals(this.app)
         this.vue = this.app.mount(this.$wrapper.get(0))
     }
