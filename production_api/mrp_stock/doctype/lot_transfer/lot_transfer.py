@@ -10,7 +10,7 @@ from frappe import _, msgprint
 from frappe.utils import cstr, flt
 from frappe.model.document import Document
 from production_api.mrp_stock.utils import get_stock_balance
-from production_api.utils import update_if_string_instance
+from production_api.utils import update_if_string_instance, get_finishing_plan_dict, get_finishing_plan_list
 from production_api.production_api.doctype.item.item import create_variant, get_attribute_details, get_variant
 from production_api.production_api.doctype.item_price.item_price import get_item_variant_price
 from production_api.production_api.doctype.purchase_order.purchase_order import get_item_attribute_details, get_item_group_index
@@ -125,21 +125,7 @@ class LotTransfer(Document):
 	
 	def update_finishing_plan(self):
 		doc = frappe.get_doc("Finishing Plan", self.finishing_plan)
-		finishing_items = {}
-		for row in doc.finishing_plan_details:
-			set_comb = update_if_string_instance(row.set_combination)
-			key = (row.item_variant, tuple(sorted(set_comb.items())))
-			finishing_items.setdefault(key, {
-				"inward_quantity": row.inward_quantity,
-				"delivered_quantity": row.delivered_quantity,
-				"cutting_qty": row.cutting_qty,
-				"received_types": update_if_string_instance(row.received_type_json),
-				"accepted_qty": row.accepted_qty,
-				"set_combination": row.set_combination,
-				"dc_qty": row.dc_qty,
-				"lot_transferred": row.lot_transferred,
-			})
-
+		finishing_items = get_finishing_plan_dict(doc)
 		for row in self.items:
 			set_comb = update_if_string_instance(row.set_combination)
 			key = (row.item, tuple(sorted(set_comb.items())))
@@ -149,20 +135,7 @@ class LotTransfer(Document):
 
 			finishing_items[key]['lot_transferred'] += qty	
 
-		finshing_items_list = []
-		for key in finishing_items:
-			variant, tuple_attrs = key
-			finshing_items_list.append({
-				"item_variant": variant,
-				"cutting_qty": finishing_items[key]['cutting_qty'],
-				"inward_quantity": finishing_items[key]['inward_quantity'],
-				"delivered_quantity": finishing_items[key]['delivered_quantity'],
-				"set_combination": finishing_items[key]['set_combination'],
-				"received_type_json": frappe.json.dumps(finishing_items[key]['received_types']),
-				"accepted_qty": finishing_items[key]['accepted_qty'],
-				"dc_qty": finishing_items[key]['dc_qty'],
-				"lot_transferred": finishing_items[key]['lot_transferred']
-			})
+		finshing_items_list = get_finishing_plan_list(finishing_items)
 		lot_transfer_list = update_if_string_instance(doc.lot_transfer_list)
 		if self.docstatus == 2:
 			del lot_transfer_list[self.name]

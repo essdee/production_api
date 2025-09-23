@@ -35,7 +35,8 @@
   "finishing_old_lot_html",
   "lot_transfer_list",
   "ironing_excess_tab",
-  "finishing_plan_ironing_excess_html"
+  "finishing_plan_ironing_excess_html",
+  "ironing_excess_list"
  ],
  "fields": [
   {
@@ -212,19 +213,24 @@
   {
    "fieldname": "ironing_excess_tab",
    "fieldtype": "Tab Break",
-   "hidden": 1,
    "label": "Ironing Excess"
   },
   {
    "fieldname": "finishing_plan_ironing_excess_html",
    "fieldtype": "HTML",
    "label": "Finishing Plan Ironing Excess HTML"
+  },
+  {
+   "fieldname": "ironing_excess_list",
+   "fieldtype": "Small Text",
+   "hidden": 1,
+   "label": "Ironing Excess List"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-09-22 18:27:27.434424",
+ "modified": "2025-09-23 11:43:36.301946",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Finishing Plan",
@@ -278,7 +284,9 @@
   }
  ],
  "row_format": "Dynamic",
+ "show_title_field_in_link": 1,
  "sort_field": "modified",
  "sort_order": "DESC",
- "states": []
+ "states": [],
+ "title_field": "item"
 }

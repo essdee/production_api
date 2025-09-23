@@ -6,39 +6,18 @@
                     <th style="width:20px;">S.No</th>
                     <th style="width:20px;">Colour</th>
                     <th style="width:20px;" v-if="items.is_set_item">{{ items['set_attr'] }}</th>
-                    <th style="width:150px;">Type</th>
                     <th v-for="size in items.primary_values" :key="size">{{ size }}</th>
-                    <th>Total</th>
                 </tr>
             </thead>
             <tbody class="dark-border" v-for="(colour, idx) in Object.keys(items['data']['data'])" :key="colour">
                 <tr>
-                    <td :rowspan="4">
-                        {{ idx + 1 }}
-                        <input type="checkbox" v-model="items['data']['data'][colour]['check_value']"/>
-                    </td>
-                    <td :rowspan="4">{{ colour.split("@")[0] }}</td>
-                    <td :rowspan="4" v-if="items.is_set_item">{{ items['data']['data'][colour]['part'] }}</td>
-                    <td>Balance Qty</td>
+                    <td>{{ idx + 1 }}</td>
+                    <td>{{ colour.split("@")[0] }}</td>
+                    <td v-if="items.is_set_item">{{ items['data']['data'][colour]['part'] }}</td>
                     <td v-for="size in items.primary_values" :key="size">
-                        {{
-                            items['data']['data'][colour]["values"][size]['balance'] ?? 0
-                        }}
+                        <input type="number" class="form-control"
+                            v-model="items['data']['data'][colour]['values'][size]['ironing_dc']"/>
                     </td>
-                    <td><strong>{{ items['data']['data'][colour]['colour_total']['balance'] ?? 0 }}</strong></td>
-                </tr>
-                <tr>
-                    <td>DC Qty</td>
-                    <td v-for="size in items.primary_values" :key="size">
-                        <div v-if="items['data']['data'][colour]['check_value']">
-                            <input type="number" v-model="items['data']['data'][colour]['values'][size]['balance_dc']"
-                            class="form-control"/>
-                        </div>
-                        <div v-else>
-                            0
-                        </div>
-                    </td>
-                    <td></td>
                 </tr>
             </tbody>
         </table>
@@ -61,7 +40,7 @@ function getData() {
 
 defineExpose({
     getData
-});
+})
 
 </script>
 

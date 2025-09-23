@@ -33,7 +33,14 @@ frappe.ui.form.on("Finishing Plan", {
         }
         $(frm.fields_dict['finishing_old_lot_html'].wrapper).html("")
         frm.old_lot = new frappe.production.ui.FinishingOldLotTransfer(frm.fields_dict["finishing_old_lot_html"].wrapper);
-	},
+        
+        $(frm.fields_dict['finishing_plan_ironing_excess_html'].wrapper).html("")
+        frm.ironing_detail = new frappe.production.ui.FinishingIroningExcess(frm.fields_dict["finishing_plan_ironing_excess_html"].wrapper);
+        if(frm.doc.__onload && frm.doc.__onload.finishing_ironing) {
+            frm.doc['finishing_ironing'] = JSON.stringify(frm.doc.__onload.finishing_ironing);
+            frm.ironing_detail.load_data(frm.doc.__onload.finishing_ironing);
+        }
+    },
     fetch_quantity(frm){
         frappe.call({
             method: "production_api.production_api.doctype.finishing_plan.finishing_plan.fetch_quantity",

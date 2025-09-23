@@ -199,7 +199,7 @@ function redirect_to(doctype, docname){
 
 function create_dc(){
     let d = new frappe.ui.Dialog({
-        title: __("Return Items"),
+        title: __("Enter Quantity to Create DC"),
         fields: [
             {
                 "fieldname": "from_location",
@@ -218,7 +218,6 @@ function create_dc(){
         primary_action_label: __("Create DC"),
         primary_action: function(values){
             let dc_items = i.getData();  
-            console.log(dc_items)
             d.hide();
             frappe.call({
                 method: "production_api.production_api.doctype.finishing_plan.finishing_plan.create_delivery_challan",

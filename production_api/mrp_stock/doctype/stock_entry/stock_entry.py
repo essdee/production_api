@@ -8,11 +8,11 @@ from frappe import _, msgprint
 from frappe.utils import cstr, flt
 from frappe.model.document import Document
 from frappe.model.mapper import get_mapped_doc
-from production_api.utils import update_if_string_instance, get_lpiece_variant
 from production_api.mrp_stock.utils import get_conversion_factor, get_stock_balance
 from production_api.production_api.doctype.item_price.item_price import get_item_variant_price
 from production_api.production_api.doctype.item.item import create_variant, get_attribute_details, get_variant
 from production_api.production_api.doctype.purchase_order.purchase_order import get_item_attribute_details, get_item_group_index
+from production_api.utils import update_if_string_instance, get_lpiece_variant, get_finishing_plan_dict, get_finishing_plan_list
 from production_api.production_api.doctype.cut_bundle_movement_ledger.cut_bundle_movement_ledger import make_cut_bundle_ledger, cancel_cut_bundle_ledger
 
 class StockEntry(Document):
@@ -294,35 +294,55 @@ class StockEntry(Document):
 
 	def update_finishing_plan(self):	
 		if self.against == "Finishing Plan":
-			finishing_doc = frappe.get_doc("Finishing Plan", self.against_id)
-			d = {}
-			for row in finishing_doc.finishing_plan_grn_details:
-				d[row.item_variant] = {
-					"quantity": row.quantity,
-					"dispatched": row.dispatched,
-				}
+			if self.purpose == 'Material Issue':
+				finishing_doc = frappe.get_doc("Finishing Plan", self.against_id)
+				d = {}
+				for row in finishing_doc.finishing_plan_grn_details:
+					d[row.item_variant] = {
+						"quantity": row.quantity,
+						"dispatched": row.dispatched,
+					}
 
-			for row in self.items:
-				qty = row.qty
+				for row in self.items:
+					qty = row.qty
+					if self.docstatus == 2:
+						qty = qty * -1
+					d[row.item]['dispatched'] += qty
+
+				finishing_grn_list = []
+				for key in d:
+					finishing_grn_list.append({
+						"item_variant": key,
+						"quantity": d[key]['quantity'],
+						"dispatched": d[key]['dispatched'],
+					})
+				finishing_doc.set("finishing_plan_grn_details", finishing_grn_list)
+				stock_entry_list = update_if_string_instance(finishing_doc.stock_entry_list)
 				if self.docstatus == 2:
-					qty = qty * -1
-				d[row.item]['dispatched'] += qty
-
-			finishing_grn_list = []
-			for key in d:
-				finishing_grn_list.append({
-					"item_variant": key,
-					"quantity": d[key]['quantity'],
-					"dispatched": d[key]['dispatched'],
-				})
-			finishing_doc.set("finishing_plan_grn_details", finishing_grn_list)
-			stock_entry_list = update_if_string_instance(finishing_doc.stock_entry_list)
-			if self.docstatus == 2:
-				del stock_entry_list[self.name]
+					del stock_entry_list[self.name]
+				else:
+					stock_entry_list[self.name] = frappe.utils.now_datetime().strftime("%d-%m-%Y %H:%M:%S")
+				finishing_doc.stock_entry_list = frappe.json.dumps(stock_entry_list)		
+				finishing_doc.save(ignore_permissions=True)
 			else:
-				stock_entry_list[self.name] = frappe.utils.now_datetime().strftime("%d-%m-%Y %H:%M:%S")
-			finishing_doc.stock_entry_list = frappe.json.dumps(stock_entry_list)		
-			finishing_doc.save()
+				finishing_doc = frappe.get_doc("Finishing Plan", self.against_id)
+				finishing_items = get_finishing_plan_dict(finishing_doc)
+				for row in self.items:
+					qty = row.qty
+					if self.docstatus == 2:
+						qty = qty * -1
+					key = (row.item, tuple(sorted(update_if_string_instance(row.set_combination).items())))
+					finishing_items[key]['ironing_excess'] += qty	
+
+				finishing_list = get_finishing_plan_list(finishing_items)
+				finishing_doc.set("finishing_plan_details", finishing_list)
+				ironing_excess_list = update_if_string_instance(finishing_doc.ironing_excess_list)
+				if self.docstatus == 2:
+					del ironing_excess_list[self.name]
+				else:
+					ironing_excess_list[self.name] = frappe.utils.now_datetime().strftime("%d-%m-%Y %H:%M:%S")
+				finishing_doc.ironing_excess_list = frappe.json.dumps(ironing_excess_list)		
+				finishing_doc.save(ignore_permissions=True)	
 	
 	def make_repost_action(self):
 		from production_api.mrp_stock.stock_ledger import repost_future_stock_ledger_entry

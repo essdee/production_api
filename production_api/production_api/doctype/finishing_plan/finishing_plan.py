@@ -4,10 +4,10 @@
 import frappe
 from itertools import groupby
 from frappe.model.document import Document
-from production_api.utils import update_if_string_instance
 from production_api.production_api.doctype.supplier.supplier import get_primary_address
 from production_api.production_api.doctype.work_order.work_order import create_finishing_detail
 from production_api.production_api.doctype.item.item import get_or_create_variant, get_attribute_details
+from production_api.utils import update_if_string_instance, get_finishing_plan_dict, get_finishing_plan_list
 from production_api.essdee_production.doctype.item_production_detail.item_production_detail import get_ipd_primary_values
 from production_api.production_api.doctype.purchase_order.purchase_order import get_item_attribute_details, get_item_group_index
 from production_api.production_api.doctype.cut_bundle_movement_ledger.cut_bundle_movement_ledger import get_variant_attr_details
@@ -38,6 +38,12 @@ class FinishingPlan(Document):
 			"set_attr": data['set_attr'],
 		})
 		self.set_onload("pack_items", packed_qty)
+		self.set_onload("finishing_ironing", {
+			"primary_values": data['primary_values'],
+			"data": data['finishing_ironing'],
+			"is_set_item": data['is_set_item'],
+			"set_attr": data['set_attr'],
+		})
 
 	def get_inward_details(self):
 		ipd = frappe.get_value("Lot", self.lot, "production_detail")
@@ -69,7 +75,7 @@ class FinishingPlan(Document):
 			inward_details["data"][colour]["values"].setdefault(size, {
 				"accepted": 0, "reworked": 0, "pending": 0, "rejected": 0
 			})
-			qty = item.accepted_qty + item.lot_transferred
+			qty = item.accepted_qty + item.lot_transferred + item.ironing_excess
 			inward_details["total"].setdefault(size, 0)
 			inward_details["data"][colour]["colour_total"]["accepted"] += qty
 			inward_details["data"][colour]["values"][size]["accepted"] += qty
@@ -163,42 +169,13 @@ class FinishingPlan(Document):
 		return finishing_rework
 	
 	def before_save(self):
-		finishing_plans = {}
-		for row in self.finishing_plan_details:
-			set_comb = update_if_string_instance(row.set_combination)
-			key = (row.item_variant, tuple(sorted(set_comb.items())))
-			finishing_plans.setdefault(key, {
-				"inward_quantity": row.inward_quantity,
-				"delivered_quantity": row.delivered_quantity,
-				"cutting_qty": row.cutting_qty,
-				"received_types": update_if_string_instance(row.received_type_json),
-				"accepted_qty": row.accepted_qty,
-				"dc_qty": row.dc_qty,
-				"reworked": 0,
-				"set_combination": row.set_combination,
-				"lot_transferred": row.lot_transferred
-			})	
-
+		finishing_plans = get_finishing_plan_dict(self)
 		for row in self.finishing_plan_reworked_details:
 			set_comb = update_if_string_instance(row.set_combination)
 			key = (row.item_variant, tuple(sorted(set_comb.items())))
 			finishing_plans[key]['reworked'] += row.reworked_quantity
 
-		finshing_items_list = []
-		for key in finishing_plans:
-			variant, tuple_attrs = key
-			finshing_items_list.append({
-				"item_variant": variant,
-				"cutting_qty": finishing_plans[key]['cutting_qty'],
-				"inward_quantity": finishing_plans[key]['inward_quantity'],
-				"delivered_quantity": finishing_plans[key]['delivered_quantity'],
-				"set_combination": finishing_plans[key]['set_combination'],
-				"received_type_json": frappe.json.dumps(finishing_plans[key]['received_types']),
-				"accepted_qty": finishing_plans[key]['accepted_qty'],
-				"dc_qty": finishing_plans[key]['dc_qty'],
-				"reworked": finishing_plans[key]['reworked'],
-				"lot_transferred": finishing_plans[key]['lot_transferred']
-			})
+		finshing_items_list = get_finishing_plan_list(finishing_plans)
 		self.set("finishing_plan_details", finshing_items_list)
 
 	def get_finishing_plans(self):
@@ -208,6 +185,9 @@ class FinishingPlan(Document):
 
 		finishing_inward = {"data": {}, "total": {}}
 		finishing_qty = {"data": {}, "total": {}}
+		finishing_ironing = {"data": {}, "total": {}, "total_qty": {
+			"ironing": 0, "lot_transferred": 0
+		}}
 
 		for item in self.finishing_plan_details:
 			set_comb = update_if_string_instance(item.set_combination)
@@ -234,21 +214,41 @@ class FinishingPlan(Document):
 			finishing_qty['data'].setdefault(colour, {
 				"values": {},
 				"part": part,
+				"check_value": True,
 				"colour": attr_details[pack_attr],
 				"set_combination": set_comb,
 				"colour_total": {
 					"accepted": 0, "dc_qty": 0, "balance": 0, "balance_dc": 0
 				},
 			})
+			finishing_ironing['data'].setdefault(colour, {
+				"values": {},
+				"part": part,
+				"colour": attr_details[pack_attr],
+				"set_combination": set_comb,
+				"colour_total": {
+					"ironing": 0,
+					"ironing_dc": 0,
+					"lot_transferred": 0,
+				},
+			})
+			
 			finishing_inward["data"][colour]["values"].setdefault(size, {
 				"delivered": 0, "received": 0, "cutting": 0, "difference": 0,
 			})
 			finishing_qty["data"][colour]["values"].setdefault(size, {
 				"accepted": 0, "dc_qty": 0, "balance": 0, "balance_dc": 0, "return_qty": 0,
 			})
+			finishing_ironing["data"][colour]["values"].setdefault(size, {
+				"ironing": 0, "ironing_dc": 0, "lot_transferred": 0,
+			})
 
 			finishing_inward["total"].setdefault(size, 0)
 			finishing_qty["total"].setdefault(size, 0)
+			finishing_ironing['total'].setdefault(size, {
+				"lot_transferred": 0,
+				"ironing": 0,
+			})
 
 			finishing_inward["data"][colour]["colour_total"]["cutting"] += item.cutting_qty
 			finishing_inward["data"][colour]["colour_total"]["received"] += item.delivered_quantity
@@ -261,7 +261,7 @@ class FinishingPlan(Document):
 			finishing_inward["data"][colour]["values"][size]["difference"] += item.inward_quantity - item.delivered_quantity
 			finishing_inward["total"][size] += item.delivered_quantity
 
-			qty = item.accepted_qty + item.reworked + item.lot_transferred
+			qty = item.accepted_qty + item.reworked + item.lot_transferred + item.ironing_excess
 			finishing_qty["data"][colour]["colour_total"]["accepted"] += qty
 			finishing_qty["data"][colour]["colour_total"]["dc_qty"] += item.dc_qty
 			finishing_qty["data"][colour]["colour_total"]["balance"] += qty - item.dc_qty
@@ -271,11 +271,21 @@ class FinishingPlan(Document):
 			finishing_qty["data"][colour]["values"][size]["balance"] += qty - item.dc_qty
 			finishing_qty["data"][colour]["values"][size]["balance_dc"] += qty - item.dc_qty
 
+			finishing_ironing['data'][colour]['values'][size]['ironing'] += item.ironing_excess
+			finishing_ironing['data'][colour]['colour_total']['ironing'] += item.ironing_excess
+			finishing_ironing['total'][size]['ironing'] += item.ironing_excess
+			finishing_ironing['total_qty']['ironing'] += item.ironing_excess
+			finishing_ironing['data'][colour]['values'][size]['lot_transferred'] += item.lot_transferred
+			finishing_ironing['data'][colour]['colour_total']['lot_transferred'] += item.lot_transferred
+			finishing_ironing['total'][size]['lot_transferred'] += item.lot_transferred
+			finishing_ironing['total_qty']['lot_transferred'] += item.lot_transferred
+
 		primary_values = get_ipd_primary_values(ipd)
 		return {
 			"primary_values": primary_values,
 			"finishing_inward": finishing_inward,
 			"finishing_qty": finishing_qty,
+			"finishing_ironing": finishing_ironing,
 			"is_set_item": is_set_item,
 			"set_attr": set_attr,
 		}
@@ -392,6 +402,8 @@ def get_delivery_challan_item_list(lot, item_name, data):
 	items = {}
 	for colour in data['data']['data']:
 		colour_value = data['data']['data'][colour]['colour']
+		if not data['data']['data'][colour]['check_value']:
+			continue
 		for size in data['data']['data'][colour]['values']:
 			if data['data']['data'][colour]['values'][size]['balance_dc'] > 0:
 				attrs = {
@@ -562,7 +574,7 @@ def create_stock_entry(data, item_name, doc_name, lot, from_location, to_locatio
 	doc.from_warehouse = from_location
 	doc.transfer_supplier = to_location
 	from production_api.mrp_stock.doctype.stock_entry.stock_entry import fetch_stock_entry_items
-	item_details = fetch_stock_entry_items(item_list)
+	item_details = fetch_stock_entry_items(item_list, ipd=ipd)
 	doc.item_details = item_details
 	doc.additional_amount = goods_value
 	doc.save()
@@ -742,5 +754,48 @@ def create_lot_transfer(data, item_name, ipd, lot, doc_name):
 	doc = frappe.new_doc("Lot Transfer")
 	doc.item_details = item_details
 	doc.finishing_plan = doc_name
+	doc.save()
+	doc.submit()
+
+@frappe.whitelist()
+def create_material_receipt(data, item_name, lot, ipd, doc_name, location):
+	data = update_if_string_instance(data)
+	received_type = frappe.db.get_single_value("Stock Settings", "default_received_type")
+	uom = frappe.get_value("Item", item_name, "default_unit_of_measure")
+	ipd_fields = ["is_set_item", "packing_attribute", "primary_item_attribute", "set_item_attribute", "dependent_attribute", "stiching_out_stage"]
+	is_set_item, pack_attr, primary_attr, set_attr, dept_attr, stich_out = frappe.get_value("Item Production Detail", ipd, ipd_fields)
+	row_index = -1
+	item_list = []
+	for colour in data['data']['data']:
+		row_index += 1
+		for size in data['data']['data'][colour]['values']:
+			if not data['data']['data'][colour]['values'][size]['ironing_dc'] > 0:
+				continue
+			attrs = {
+				primary_attr: size,
+				pack_attr: data['data']['data'][colour]['colour'],
+				dept_attr: stich_out,
+			}
+			if is_set_item:
+				attrs[set_attr] = data['data']['data'][colour]['part']
+			item_list.append({
+				"item": get_or_create_variant(item_name, attrs),
+				"qty": data['data']['data'][colour]['values'][size]['ironing_dc'],
+				"lot": lot,
+				"received_type": received_type,
+				"uom": uom,
+				'table_index': 0,
+				'row_index': row_index,
+				'set_combination': update_if_string_instance(data['data']['data'][colour]['set_combination']),
+			})	
+	doc = frappe.new_doc("Stock Entry")	
+	doc.purpose = "Material Receipt"
+	doc.against = "Finishing Plan"
+	doc.against_id = doc_name
+	doc.to_warehouse = location
+	doc.transfer_supplier = location
+	from production_api.mrp_stock.doctype.stock_entry.stock_entry import fetch_stock_entry_items
+	item_details = fetch_stock_entry_items(item_list, ipd=ipd)
+	doc.item_details = item_details
 	doc.save()
 	doc.submit()

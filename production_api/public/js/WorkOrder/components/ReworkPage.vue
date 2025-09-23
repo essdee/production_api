@@ -169,7 +169,7 @@ function redirect_to_print(grn_number){
         frappe.urllib.get_full_url(
             "/printview?" + "doctype=" + encodeURIComponent("Goods Received Note") + "&name=" +
                 encodeURIComponent(grn_number) + "&trigger_print=1" + "&format=" + 
-                encodeURIComponent("Rework Print") + "&no_letterhead=0"
+                encodeURIComponent("Rework Print") + "&no_letterhead=1"
         )
     );
     if (!w) {

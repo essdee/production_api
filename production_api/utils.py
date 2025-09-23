@@ -912,3 +912,43 @@ def get_inhouse_qty(lot, process):
 		"is_set_item": is_set_item,
 		"set_attr": set_attr,
 	}
+
+@frappe.whitelist()
+def get_finishing_plan_dict(doc):
+	finishing_items = {}
+	for row in doc.finishing_plan_details:
+		set_comb = update_if_string_instance(row.set_combination)
+		key = (row.item_variant, tuple(sorted(set_comb.items())))
+		finishing_items.setdefault(key, {
+			"inward_quantity": row.inward_quantity,
+			"delivered_quantity": row.delivered_quantity,
+			"cutting_qty": row.cutting_qty,
+			"received_types": update_if_string_instance(row.received_type_json),
+			"accepted_qty": row.accepted_qty,
+			"set_combination": row.set_combination,
+			"dc_qty": row.dc_qty,
+			"lot_transferred": row.lot_transferred,
+			"ironing_excess": row.ironing_excess,
+			"reworked": row.reworked,
+		})
+	return finishing_items	
+
+@frappe.whitelist()
+def get_finishing_plan_list(finishing_items):
+	finshing_items_list = []
+	for key in finishing_items:
+		variant, tuple_attrs = key
+		finshing_items_list.append({
+			"item_variant": variant,
+			"cutting_qty": finishing_items[key]['cutting_qty'],
+			"inward_quantity": finishing_items[key]['inward_quantity'],
+			"delivered_quantity": finishing_items[key]['delivered_quantity'],
+			"set_combination": finishing_items[key]['set_combination'],
+			"received_type_json": frappe.json.dumps(finishing_items[key]['received_types']),
+			"accepted_qty": finishing_items[key]['accepted_qty'],
+			"dc_qty": finishing_items[key]['dc_qty'],
+			"lot_transferred": finishing_items[key]['lot_transferred'],
+			"ironing_excess": finishing_items[key]['ironing_excess'],
+			"reworked": finishing_items[key]['reworked'],
+		})
+	return finshing_items_list	
