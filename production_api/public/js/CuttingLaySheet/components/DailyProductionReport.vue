@@ -7,6 +7,9 @@
             <div style="padding-top: 27px;">
                 <button class="btn btn-primary" @click="get_report()">Get Report</button>
             </div>
+            <div style="padding-top: 27px;padding-left:10px;">
+                <button class="btn btn-success" @click="take_screenshot()">Take Screenshot</button>
+            </div>
         </div>
         <div v-if="report">
             <div v-for="i in items" :key="i" style="padding-left:20px;">
@@ -111,6 +114,25 @@ onMounted(() => {
         render_input: true,
     })
 });
+
+async function take_screenshot(){
+    frappe.require("https://cdn.jsdelivr.net/npm/html2canvas-pro@1.5.8/dist/html2canvas-pro.min.js", async () => {
+        let sourceDiv = document.getElementById("page-daily-production-rep");
+        html2canvas(sourceDiv, { 
+            scale: 1, 
+            useCORS: true, 
+            backgroundColor: null, 
+            logging: false, // turn off debug logs
+            removeContainer: true // cleans up temp nodes faster
+        }).then((canvas) => {
+            let link = document.createElement("a");
+            link.href = canvas.toDataURL("image/png");
+            link.download = "screenshot.png";
+            link.click();
+        });
+    });
+}
+
 
 function get_report(){
     if (!date_filter.value.get_value()) {
