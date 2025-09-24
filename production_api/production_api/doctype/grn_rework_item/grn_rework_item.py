@@ -5,7 +5,7 @@ import frappe
 import openpyxl
 from io import BytesIO
 from frappe.model.document import Document
-from production_api.utils import update_if_string_instance
+from production_api.utils import update_if_string_instance, get_finishing_rework_list, get_finishing_rework_dict
 
 class GRNReworkItem(Document):
 	pass
@@ -23,16 +23,7 @@ def revert_reworked_item(docname):
 	finishing_doc = None
 	if finishing_docs:
 		finishing_doc = frappe.get_doc("Finishing Plan", finishing_docs[0])
-		for row in finishing_doc.finishing_plan_reworked_details:
-			key = (row.item_variant, tuple(sorted(update_if_string_instance(row.set_combination).items())))
-			finishing_items.setdefault(key, {
-				"quantity": row.quantity,
-				"reworked_quantity": row.reworked_quantity,
-				"rejected_qty": row.rejected_qty,
-				"row_index": row.row_index,
-				"table_index": row.table_index,
-				"set_combination": row.set_combination,
-			})
+		finishing_items = get_finishing_rework_dict(finishing_doc)
 
 	for row in doc.grn_rework_item_details:
 		if row.completed == 0:
@@ -101,17 +92,7 @@ def revert_reworked_item(docname):
 	doc.save(ignore_permissions=True)
 	finishing_items_list = []	
 	if finishing_doc:
-		for key in finishing_items:
-			variant, tuple_attrs = key
-			finishing_items_list.append({
-				"item_variant": variant,
-				"quantity": finishing_items[key]['quantity'],
-				"reworked_quantity": finishing_items[key]['reworked_quantity'],
-				"rejected_qty": finishing_items[key]['rejected_qty'],
-				"row_index": finishing_items[key]['row_index'],
-				"table_index": finishing_items[key]['table_index'],
-				"set_combination": finishing_items[key]['set_combination'],
-			})
+		finishing_items_list = get_finishing_rework_list(finishing_items)
 		finishing_doc.set("finishing_item_reworked_details", finishing_items_list)
 		finishing_doc.save()
 	from production_api.mrp_stock.stock_ledger import make_sl_entries

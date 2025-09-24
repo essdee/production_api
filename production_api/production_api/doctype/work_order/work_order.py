@@ -44,7 +44,7 @@ class WorkOrder(Document):
 			"lot": self.lot,
 		}, pluck="name")
 
-		if finishing_wo:
+		if finishing_wo and self.includes_packing:
 			frappe.throw("Already Work Order was Created for Packing")
 			return	
 
@@ -61,6 +61,7 @@ class WorkOrder(Document):
 			self.create_finshing_doc()
 
 	def create_finshing_doc(self):
+		# create_finishing_detail(self.name)
 		frappe.enqueue(create_finishing_detail, "short", work_order=self.name)
 
 	def on_cancel(self):
@@ -1656,6 +1657,21 @@ def create_finishing_detail(work_order, from_finishing=False):
 	for key in items:
 		variant, tuple_attrs = key
 		comb = get_tuple_attributes(tuple_attrs)
+		reworked_qty = 0
+		if items[key]['rework_qty'] > 0:
+			reworked = 0
+			rejected = 0
+			if rework_items.get(key):
+				reworked = rework_items[key]['reworked']
+				rejected = rework_items[key]['rejected']
+				reworked_qty = rework_items[key]['reworked']
+			finishing_rework_items.append({
+				"item_variant": variant,
+				"set_combination": frappe.json.dumps(comb),
+				"quantity": items[key]['rework_qty'],
+				"reworked_quantity": reworked,
+				"rejected_qty": rejected,
+			})
 		finishing_items.append({
 			"item_variant": variant,
 			"delivered_quantity": items[key]['delivered_quantity'],
@@ -1666,20 +1682,11 @@ def create_finishing_detail(work_order, from_finishing=False):
 			"accepted_qty": items[key]['accepted_qty'],
 			"lot_transferred": 0,
 			"ironing_excess": 0,
-		})
-		if items[key]['rework_qty'] > 0:
-			reworked = 0
-			rejected = 0
-			if rework_items.get(key):
-				reworked = rework_items[key]['reworked']
-				rejected = rework_items[key]['rejected']
-			finishing_rework_items.append({
-				"item_variant": variant,
-				"set_combination": frappe.json.dumps(comb),
-				"quantity": items[key]['rework_qty'],
-				"reworked_quantity": reworked,
-				"rejected_qty": rejected,
-			})
+			"reworked": reworked_qty,
+			"dc_qty": 0,
+			"return_qty": 0,
+			"pack_return_qty": 0
+		})	
 
 	from production_api.production_api.doctype.goods_received_note.goods_received_note import get_primary_values
 	grn_items = []

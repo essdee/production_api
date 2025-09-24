@@ -228,7 +228,7 @@ def update_collapsed_bundle(doctype, docname, event, non_stich_process=False):
 					new_bundles = on_submit_collapsed_bundles(doc, doctype, docname, from_location, row.item_variant, row.set_combination, d, attrs, item, quantity, new_bundles)
 				else:
 					cancel_collapse_bundles(doc, row.item_variant, row.set_combination, quantity, from_location, d, attrs, item)
-	
+
 	if doctype ==  "Delivery Challan" and new_bundles:
 		for key in new_bundles:
 			new_bundles[key]['qty'] = new_bundles[key]['qty'] * -1
@@ -353,20 +353,42 @@ def on_submit_collapsed_bundles(doc, doctype, docname, location, item_variant, s
 def cancel_collapse_bundles(doc, item_variant, set_combination, quantity, location, d, attrs, item):
 	cb_previous_entries = get_collapsed_previous_cbm_list(doc.posting_date, doc.posting_time, location, item_variant, limit=False)
 	cb_future_entries = get_collapsed_future_cbm_list(doc.posting_date, doc.posting_time, location, item_variant, limit=False)
-	if cb_previous_entries and not cb_future_entries:
-		if len(cb_previous_entries) == 1:
+	previous = []
+	future = []
+	set_combination = update_if_string_instance(set_combination)
+	for entry in cb_previous_entries:
+		cbm_set_comb = update_if_string_instance(entry['set_combination'])
+		set_comb = {
+			"major_colour": cbm_set_comb['major_colour']
+		}
+		if cbm_set_comb.get("major_part"):
+			set_comb["major_part"] = cbm_set_comb['major_part']
+		if set_comb == set_combination:
+			previous.append(entry)
+	
+	for entry in cb_future_entries:
+		cbm_set_comb = update_if_string_instance(entry['set_combination'])
+		set_comb = {
+			"major_colour": cbm_set_comb['major_colour']
+		}
+		if cbm_set_comb.get("major_part"):
+			set_comb["major_part"] = cbm_set_comb['major_part']
+		if set_comb == set_combination:
+			future.append(entry)
+	if previous and not future:
+		if len(previous) == 1:
 			update_uncollapsed(location, set_combination, doc.lot, d[attrs['primary']], d[attrs['pack']], d[attrs['stich']], item)
-			update_is_cancelled_cbml(cb_previous_entries[0]['name'])
+			update_is_cancelled_cbml(previous[0]['name'])
 		else:
-			update_is_cancelled_cbml(cb_previous_entries[0]['name'])
+			update_is_cancelled_cbml(previous[0]['name'])
 			
-	elif cb_previous_entries and cb_future_entries:
-		if len(cb_previous_entries) == 1:
+	elif previous and future:
+		if len(previous) == 1:
 			frappe.throw("Stock Not Available")
 		else:
-			update_is_cancelled_cbml(cb_previous_entries[0]['name'])
+			update_is_cancelled_cbml(previous[0]['name'])
 			previous_qty = quantity * -1
-			for entry in cb_future_entries:
+			for entry in future:
 				qty = entry['quantity_after_transaction'] + previous_qty
 				update_future_entries_qty_after_transaction(entry['name'], qty)	
 

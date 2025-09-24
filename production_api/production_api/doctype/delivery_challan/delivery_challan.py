@@ -140,7 +140,6 @@ class DeliveryChallan(Document):
 		self.make_repost_action()
 
 	def update_finishing_doc(self):
-		finishing_inward_process = frappe.db.get_single_value("MRP Settings", "finishing_inward_process")
 		if self.includes_packing:
 			finishing_doc = frappe.get_all("Finishing Plan", filters={
 				"lot": self.lot,
@@ -155,28 +154,6 @@ class DeliveryChallan(Document):
 					update_dc=True,
 					enqueue_after_commit=True
 				)
-		else:
-			is_group = frappe.get_value("Process", self.process_name, "is_group")
-			check = False
-			if is_group:
-				pass
-			else:
-				check = self.process_name == finishing_inward_process
-
-			if check:
-				finishing_doc = frappe.get_all("Finishing Plan", filters={
-					"lot": self.lot, 
-				}, pluck="name", limit=1)
-				if finishing_doc:
-					frappe.enqueue(
-						update_finishing_item_doc, 
-						"short", 
-						doc_name=self.name, 
-						finishing_doc_name=finishing_doc[0],
-						update_dc=False,
-						enqueue_after_commit=True
-					)
-			
 	
 	def check_bundle_qty(self, bundles):
 		ipd_doc = frappe.get_doc("Item Production Detail", self.production_detail)
@@ -750,6 +727,40 @@ def calculate_pieces(doc_name):
 				set_combination = update_if_string_instance(item.set_combination)
 				if item.item_variant == data['item_variant'] and set_combination == data['set_combination']:
 					item.delivered_quantity += data['quantity']
+	fp_list = frappe.get_all("Finishing Plan", filters={ "lot": dc_doc.lot}, pluck="name")				
+	if fp_list:
+		finishing_inward_process = frappe.db.get_single_value("MRP Settings", "finishing_inward_process")
+		is_group = frappe.get_value("Process", dc_doc.process_name, "is_group")
+		check = False
+		if is_group:
+			prs_doc = frappe.get_doc("Process", dc_doc.process_name)
+			for row in prs_doc.process_details:
+				if row.process_name == finishing_inward_process:
+					check = True
+					break
+		else:
+			check = dc_doc.process_name == finishing_inward_process
+
+		if check:
+			finishing_doc = frappe.get_all("Finishing Plan", filters={
+				"lot": dc_doc.lot, 
+			}, pluck="name", limit=1)
+			if finishing_doc:
+				fp_doc = frappe.get_doc("Finishing Plan", fp_list[0])
+				finishing_items = get_finishing_plan_dict(fp_doc)
+				
+				for row in wo_doc.work_order_calculated_items:
+					key = (row.item_variant, tuple(sorted(update_if_string_instance(row.set_combination).items())))
+					finishing_items[key]['inward_quantity'] = 0
+
+				for row in wo_doc.work_order_calculated_items:
+					key = (row.item_variant, tuple(sorted(update_if_string_instance(row.set_combination).items())))
+					finishing_items[key]['inward_quantity'] += row.delivered_quantity
+				
+				finishing_items_list = get_finishing_plan_list(finishing_items)
+				fp_doc.set("finishing_plan_details", finishing_items_list)
+				fp_doc.save(ignore_permissions=True)
+
 	wo_doc.save(ignore_permissions=True)
 
 def calculate_piece_stage(dc_doc, doc_status, total_delivered, final_calculation):

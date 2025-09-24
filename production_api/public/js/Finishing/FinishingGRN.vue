@@ -296,10 +296,6 @@ defineExpose({
     border-collapse: collapse;
 }
 
-.small-width{
-    width:40%;
-}
-
 .bordered-table th,
 .bordered-table td {
     border: 1px solid #ccc;

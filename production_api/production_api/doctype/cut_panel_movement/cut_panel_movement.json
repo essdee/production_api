@@ -13,6 +13,7 @@
   "movement_from_cutting",
   "cutting_plan",
   "column_break_dcpm",
+  "edit_posting_date_and_time",
   "from_warehouse",
   "movement_date",
   "against_id",
@@ -115,14 +116,14 @@
    "fieldname": "posting_date",
    "fieldtype": "Date",
    "label": "Posting Date",
-   "read_only": 1
+   "read_only_depends_on": "eval: !doc.edit_posting_date_and_time"
   },
   {
    "default": "Now",
    "fieldname": "posting_time",
    "fieldtype": "Time",
    "label": "Posting Time",
-   "read_only": 1
+   "read_only_depends_on": "eval: !doc.edit_posting_date_and_time"
   },
   {
    "default": "0",
@@ -137,13 +138,19 @@
    "label": "Cutting Plan",
    "mandatory_depends_on": "eval: doc.movement_from_cutting",
    "options": "Cutting Plan"
+  },
+  {
+   "default": "0",
+   "fieldname": "edit_posting_date_and_time",
+   "fieldtype": "Check",
+   "label": "Edit Posting Date and Time"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-07-23 10:28:45.622990",
+ "modified": "2025-09-23 16:43:00.486379",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Cut Panel Movement",

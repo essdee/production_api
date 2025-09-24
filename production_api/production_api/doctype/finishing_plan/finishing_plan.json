@@ -10,6 +10,7 @@
   "item",
   "production_detail",
   "delivery_location",
+  "is_set_item",
   "column_break_klxu",
   "work_order",
   "pieces_per_box",
@@ -22,6 +23,7 @@
   "finishing_quantity_html",
   "finishing_plan_reworked_details",
   "dc_list",
+  "return_grn_list",
   "grn_tab",
   "finishing_plan_grn_html",
   "finishing_plan_grn_details",
@@ -36,7 +38,12 @@
   "lot_transfer_list",
   "ironing_excess_tab",
   "finishing_plan_ironing_excess_html",
-  "ironing_excess_list"
+  "ironing_excess_list",
+  "pack_return_tab",
+  "finishing_pack_return_html",
+  "pack_return_list",
+  "ocr_tab",
+  "finishing_plan_ocr_html"
  ],
  "fields": [
   {
@@ -91,6 +98,7 @@
   },
   {
    "fetch_from": "production_detail.packing_combo",
+   "fetch_if_empty": 1,
    "fieldname": "pieces_per_box",
    "fieldtype": "Int",
    "label": "Pieces Per Box",
@@ -107,6 +115,7 @@
   {
    "fieldname": "finishing_plan_details",
    "fieldtype": "Table",
+   "hidden": 1,
    "label": "Finishing Plan Details",
    "options": "Finishing Plan Detail"
   },
@@ -146,7 +155,7 @@
   {
    "fieldname": "inward_report_tab",
    "fieldtype": "Tab Break",
-   "label": "Inward Report"
+   "label": "Inward"
   },
   {
    "fieldname": "inward_report_html",
@@ -225,12 +234,53 @@
    "fieldtype": "Small Text",
    "hidden": 1,
    "label": "Ironing Excess List"
+  },
+  {
+   "fieldname": "pack_return_tab",
+   "fieldtype": "Tab Break",
+   "label": "Pack Return"
+  },
+  {
+   "fieldname": "finishing_pack_return_html",
+   "fieldtype": "HTML",
+   "label": "Finishing Pack Return HTML"
+  },
+  {
+   "fieldname": "ocr_tab",
+   "fieldtype": "Tab Break",
+   "label": "OCR"
+  },
+  {
+   "fieldname": "finishing_plan_ocr_html",
+   "fieldtype": "HTML",
+   "label": "Finishing Plan OCR HTML"
+  },
+  {
+   "fieldname": "return_grn_list",
+   "fieldtype": "Small Text",
+   "hidden": 1,
+   "label": "Return GRN List"
+  },
+  {
+   "default": "0",
+   "fetch_from": "production_detail.is_set_item",
+   "fetch_if_empty": 1,
+   "fieldname": "is_set_item",
+   "fieldtype": "Check",
+   "label": "Is Set Item",
+   "read_only": 1
+  },
+  {
+   "fieldname": "pack_return_list",
+   "fieldtype": "Small Text",
+   "hidden": 1,
+   "label": "Pack Return List"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-09-23 11:43:36.301946",
+ "modified": "2025-09-24 12:50:12.449708",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Finishing Plan",
