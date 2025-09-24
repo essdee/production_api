@@ -40,6 +40,18 @@ frappe.ui.form.on("Finishing Plan", {
             frm.doc['finishing_ironing'] = JSON.stringify(frm.doc.__onload.finishing_ironing);
             frm.ironing_detail.load_data(frm.doc.__onload.finishing_ironing);
         }
+        $(frm.fields_dict['finishing_plan_ocr_html'].wrapper).html("")
+        frm.ocr_detail = new frappe.production.ui.FinishingOCR(frm.fields_dict["finishing_plan_ocr_html"].wrapper);
+        if(frm.doc.__onload && frm.doc.__onload.ocr_details) {
+            frm.doc['ocr_details'] = JSON.stringify(frm.doc.__onload.ocr_details);
+            frm.ocr_detail.load_data(frm.doc.__onload.ocr_details);
+        }
+        $(frm.fields_dict['finishing_pack_return_html'].wrapper).html("")
+        frm.pack_return_detail = new frappe.production.ui.FinishingPackReturn(frm.fields_dict["finishing_pack_return_html"].wrapper);
+        if(frm.doc.__onload && frm.doc.__onload.pack_return) {
+            frm.doc['pack_return'] = JSON.stringify(frm.doc.__onload.pack_return);
+            frm.pack_return_detail.load_data(frm.doc.__onload.pack_return);
+        }
     },
     fetch_quantity(frm){
         frappe.call({

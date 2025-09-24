@@ -16,7 +16,9 @@
   "accepted_qty",
   "dc_qty",
   "lot_transferred",
-  "ironing_excess"
+  "ironing_excess",
+  "return_qty",
+  "pack_return_qty"
  ],
  "fields": [
   {
@@ -88,13 +90,23 @@
    "fieldname": "ironing_excess",
    "fieldtype": "Int",
    "label": "Ironing Excess"
+  },
+  {
+   "fieldname": "return_qty",
+   "fieldtype": "Int",
+   "label": "Return Qty"
+  },
+  {
+   "fieldname": "pack_return_qty",
+   "fieldtype": "Int",
+   "label": "Pack Return Qty"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2025-09-22 18:33:43.594110",
+ "modified": "2025-09-24 10:05:07.121579",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Finishing Plan Detail",

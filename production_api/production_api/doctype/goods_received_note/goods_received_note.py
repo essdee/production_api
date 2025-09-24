@@ -17,7 +17,7 @@ from production_api.production_api.doctype.purchase_order.purchase_order import 
     							get_item_attribute_details, get_item_group_index)
 from production_api.utils import (
     			get_panel_list, get_stich_details, update_if_string_instance, get_lpiece_variant, get_finishing_plan_dict,
-				get_finishing_plan_list)
+				get_finishing_plan_list, get_finishing_rework_dict, get_finishing_rework_list)
 from production_api.essdee_production.doctype.item_production_detail.item_production_detail import (
     														get_calculated_bom, get_cloth_combination)
 from production_api.production_api.doctype.cut_bundle_movement_ledger.cut_bundle_movement_ledger import (
@@ -256,7 +256,18 @@ class GoodsReceivedNote(Document):
 					else:
 						ipd = frappe.get_value("Lot", self.lot, "production_detail")	
 						stich_process = frappe.get_value("Item Production Detail", ipd, "stiching_process")
-						if stich_process == self.process_name:
+						is_group = frappe.get_value("Process", self.process_name, "is_group")
+						check = False
+						if is_group:
+							doc = frappe.get_doc("Process", self.process_name)
+							for row in doc.process_details:
+								if row.process_name == stich_process:
+									check = True
+									break
+						else:
+							check = self.process_name == stich_process
+
+						if check:	
 							update_collapsed_bundle(self.doctype, self.name, "on_submit")
 				else:
 					update_collapsed_bundle(self.doctype, self.name, "on_submit", non_stich_process=True)
@@ -790,7 +801,18 @@ class GoodsReceivedNote(Document):
 					else:
 						ipd = frappe.get_value("Lot", self.lot, "production_detail")	
 						stich_process = frappe.get_value("Item Production Detail", ipd, "stiching_process")
-						if stich_process == self.process_name:
+						is_group = frappe.get_value("Process", self.process_name, "is_group")
+						check = False
+						if is_group:
+							doc = frappe.get_doc("Process", self.process_name)
+							for row in doc.process_details:
+								if row.process_name == stich_process:
+									check = True
+									break
+						else:
+							check = self.process_name == stich_process
+						
+						if check:
 							update_collapsed_bundle(self.doctype, self.name, "on_cancel")						
 				else:
 					update_collapsed_bundle(self.doctype, self.name, "on_cancel", non_stich_prcoess=True)						
@@ -2586,17 +2608,7 @@ def update_finishing_item_doc(doc_name, finishing_doc_name, update_finishing:boo
 	elif update_finishing and self.is_return:
 		finishing_doc = frappe.get_doc("Finishing Plan", finishing_doc_name)
 		finishing_items = get_finishing_plan_dict(finishing_doc)
-		finishing_rework_items = {}
-
-		for row in finishing_doc.finishing_plan_reworked_details:
-			set_comb = update_if_string_instance(row.set_combination)
-			key = (row.item_variant, tuple(sorted(set_comb.items())))
-			finishing_rework_items.setdefault(key, {
-				"quantity": row.quantity,
-				"reworked_quantity": row.reworked_quantity,
-				"rejected_qty": row.rejected_qty,
-				"set_combination": row.set_combination,
-			})	
+		finishing_rework_items = get_finishing_rework_dict(finishing_doc)
 
 		for key, variants in groupby(items, lambda i: i['row_index']):
 			for item in variants:
@@ -2621,42 +2633,42 @@ def update_finishing_item_doc(doc_name, finishing_doc_name, update_finishing:boo
 								"set_combination": item['set_combination'],
 							}
 						if ty ==  default_rejected_type:
-							finishing_rework_items[key]['quantity'] += rework_qty
 							finishing_rework_items[key]['rejected_qty'] += rework_qty
+						finishing_rework_items[key]['quantity'] += rework_qty
+					else:
+						q = item['quantity']
+						if docstatus == 2:
+							q = q * -1
+						if self.is_pack:
+							finishing_items[key]['pack_return_qty'] += q		
 						else:	
-							finishing_rework_items[key]['quantity'] += rework_qty
+							finishing_items[key]['return_qty'] += q		
 
 					finishing_items[key]['dc_qty'] += qty
 		
 		finshing_items_list = get_finishing_plan_list(finishing_items)
-		finishing_rework_items_list = []
-		for key in finishing_rework_items:
-			variant, tuple_attrs = key
-			finishing_rework_items_list.append({
-				"item_variant": variant,
-				"quantity": finishing_rework_items[key]['quantity'],
-				"reworked_quantity": finishing_rework_items[key]['reworked_quantity'],
-				"rejected_qty": finishing_rework_items[key]['rejected_qty'],
-				"set_combination": finishing_rework_items[key]['set_combination'],
-			})
-
+		finishing_rework_items_list = get_finishing_rework_list(finishing_rework_items)
+		if self.is_pack:
+			pack_return_list = update_if_string_instance(finishing_doc.pack_return_list)
+			if docstatus == 2:
+				del pack_return_list[doc_name]
+			else:
+				pack_return_list[doc_name] = frappe.utils.now_datetime().strftime("%d-%m-%Y %H:%M:%S")
+			finishing_doc.pack_return_list = frappe.json.dumps(pack_return_list)
+		else:	
+			return_grn_list = update_if_string_instance(finishing_doc.return_grn_list)
+			if docstatus == 2:
+				del return_grn_list[doc_name]
+			else:
+				return_grn_list[doc_name] = frappe.utils.now_datetime().strftime("%d-%m-%Y %H:%M:%S")
+			finishing_doc.return_grn_list = frappe.json.dumps(return_grn_list)
 		finishing_doc.set("finishing_plan_details", finshing_items_list)
 		finishing_doc.set("finishing_plan_reworked_details", finishing_rework_items_list)
 		finishing_doc.save()		
 	else:		
 		finishing_doc = frappe.get_doc("Finishing Plan", finishing_doc_name)
 		finishing_items = get_finishing_plan_dict(finishing_doc)
-		finishing_rework_items = {}
-
-		for row in finishing_doc.finishing_plan_reworked_details:
-			set_comb = update_if_string_instance(row.set_combination)
-			key = (row.item_variant, tuple(sorted(set_comb.items())))
-			finishing_rework_items.setdefault(key, {
-				"quantity": row.quantity,
-				"reworked_quantity": row.reworked_quantity,
-				"rejected_qty": row.rejected_qty,
-				"set_combination": row.set_combination,
-			})	
+		finishing_rework_items = get_finishing_rework_dict(finishing_doc)
 
 		for key, variants in groupby(items, lambda i: i['row_index']):
 			for item in variants:
@@ -2692,17 +2704,7 @@ def update_finishing_item_doc(doc_name, finishing_doc_name, update_finishing:boo
 						finishing_items[key]['received_types'][ty] += qty	
 						
 		finshing_items_list = get_finishing_plan_list(finishing_items)
-		finishing_rework_items_list = []
-		for key in finishing_rework_items:
-			variant, tuple_attrs = key
-			finishing_rework_items_list.append({
-				"item_variant": variant,
-				"quantity": finishing_rework_items[key]['quantity'],
-				"reworked_quantity": finishing_rework_items[key]['reworked_quantity'],
-				"rejected_qty": finishing_rework_items[key]['rejected_qty'],
-				"set_combination": finishing_rework_items[key]['set_combination'],
-			})
-
+		finishing_rework_items_list = get_finishing_rework_list(finishing_rework_items)
 		finishing_doc.set("finishing_plan_details", finshing_items_list)
 		finishing_doc.set("finishing_plan_reworked_details", finishing_rework_items_list)
 		finishing_doc.save()		

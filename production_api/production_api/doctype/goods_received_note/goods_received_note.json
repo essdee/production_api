@@ -20,6 +20,7 @@
   "transfer_complete",
   "is_return",
   "is_rework",
+  "is_pack",
   "column_break_1",
   "rework_created",
   "edit_posting_date_and_time",
@@ -534,13 +535,20 @@
    "hidden": 1,
    "label": "GRN Excess Usage Items",
    "options": "GRN Excess Usage Item"
+  },
+  {
+   "default": "0",
+   "fieldname": "is_pack",
+   "fieldtype": "Check",
+   "hidden": 1,
+   "label": "Is Pack"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-09-18 12:16:34.979284",
+ "modified": "2025-09-24 12:32:41.891602",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Goods Received Note",

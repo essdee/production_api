@@ -44,7 +44,7 @@ class WorkOrder(Document):
 			"lot": self.lot,
 		}, pluck="name")
 
-		if finishing_wo:
+		if finishing_wo and self.includes_packing:
 			frappe.throw("Already Work Order was Created for Packing")
 			return	
 

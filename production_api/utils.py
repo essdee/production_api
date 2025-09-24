@@ -930,6 +930,8 @@ def get_finishing_plan_dict(doc):
 			"lot_transferred": row.lot_transferred,
 			"ironing_excess": row.ironing_excess,
 			"reworked": row.reworked,
+			"return_qty": row.return_qty,
+			"pack_return_qty": row.pack_return_qty
 		})
 	return finishing_items	
 
@@ -950,5 +952,35 @@ def get_finishing_plan_list(finishing_items):
 			"lot_transferred": finishing_items[key]['lot_transferred'],
 			"ironing_excess": finishing_items[key]['ironing_excess'],
 			"reworked": finishing_items[key]['reworked'],
+			"return_qty": finishing_items[key]['return_qty'],
+			"pack_return_qty": finishing_items[key]['pack_return_qty']
 		})
 	return finshing_items_list	
+
+@frappe.whitelist()
+def get_finishing_rework_dict(doc):
+	finishing_rework_items = {}
+	for row in doc.finishing_plan_reworked_details:
+		set_comb = update_if_string_instance(row.set_combination)
+		key = (row.item_variant, tuple(sorted(set_comb.items())))
+		finishing_rework_items.setdefault(key, {
+			"quantity": row.quantity,
+			"reworked_quantity": row.reworked_quantity,
+			"rejected_qty": row.rejected_qty,
+			"set_combination": row.set_combination,
+		})	
+	return finishing_rework_items
+
+@frappe.whitelist()
+def get_finishing_rework_list(finishing_rework_items):
+	finishing_rework_items_list = []
+	for key in finishing_rework_items:
+		variant, tuple_attrs = key
+		finishing_rework_items_list.append({
+			"item_variant": variant,
+			"quantity": finishing_rework_items[key]['quantity'],
+			"reworked_quantity": finishing_rework_items[key]['reworked_quantity'],
+			"rejected_qty": finishing_rework_items[key]['rejected_qty'],
+			"set_combination": finishing_rework_items[key]['set_combination'],
+		})	
+	return finishing_rework_items_list	

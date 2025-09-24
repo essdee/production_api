@@ -1,26 +1,49 @@
 <template>
     <div>
-        <div v-if="dc_list && Object.keys(dc_list).length > 0">
-            <h3>DC List</h3>
-            <table class="table table-sm table-sm-bordered bordered-table small-width">
-                <thead class="dark-border">
-                    <tr>
-                        <th>Delivery Challan</th>
-                        <th>Date Time</th>
-                        <th>Cancel</th>
-                    </tr>
-                </thead>
-                <tbody class="dark-border">
-                    <tr v-for="(date, dc) in dc_list">
-                        <td style="cursor: pointer;" @click="redirect_to('Delivery Challan', dc)">{{ dc }}</td>
-                        <td>{{ date }}</td>
-                        <td>
-                            <button class="btn btn-primary" @click="cancel_doc('Delivery Challan', dc)">Cancel</button>
-                        </td>
-                    </tr>
-                </tbody>
-            </table>
-        </div>
+        <div style="display:flex;width:100%;gap:20px;">
+            <div v-if="dc_list && Object.keys(dc_list).length > 0" style="width:50%;">
+                <h3>DC List</h3>
+                <table class="table table-sm table-sm-bordered bordered-table">
+                    <thead class="dark-border">
+                        <tr>
+                            <th>Delivery Challan</th>
+                            <th>Date Time</th>
+                            <th>Cancel</th>
+                        </tr>
+                    </thead>
+                    <tbody class="dark-border">
+                        <tr v-for="(date, dc) in dc_list">
+                            <td style="cursor: pointer;" @click="redirect_to('Delivery Challan', dc)">{{ dc }}</td>
+                            <td>{{ date }}</td>
+                            <td>
+                                <button class="btn btn-primary" @click="cancel_doc('Delivery Challan', dc)">Cancel</button>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            <div v-if="return_list && Object.keys(return_list).length > 0" style="width:50%;">
+                <h3>Return Item List</h3>
+                <table class="table table-sm table-sm-bordered bordered-table">
+                    <thead class="dark-border">
+                        <tr>
+                            <th>Return Items</th>
+                            <th>Date Time</th>
+                            <th>Cancel</th>
+                        </tr>
+                    </thead>
+                    <tbody class="dark-border">
+                        <tr v-for="(date, rl) in return_list">
+                            <td style="cursor: pointer;" @click="redirect_to('Goods Received Note', rl)">{{ rl }}</td>
+                            <td>{{ date }}</td>
+                            <td>
+                                <button class="btn btn-primary" @click="cancel_doc('Goods Received Note', rl)">Cancel</button>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>    
         <h3>Inward Details</h3>
         <div style="margin-bottom: 10px;width:100%;display: flex;">
             <div>
@@ -160,6 +183,7 @@ import FinishingDC from './FinishingDC.vue';
 let items = ref(null)
 let location = cur_frm.doc.delivery_location
 let dc_list = JSON.parse(cur_frm.doc.dc_list || "{}");
+let return_list = JSON.parse(cur_frm.doc.return_grn_list || "{}")
 
 function load_data(data){
     items.value = data
@@ -266,7 +290,6 @@ function return_item() {
         primary_action: function(){
             let returned_items = i.getData();  
             d.hide();
-            console.log(returned_items)
             frappe.call({
                 method: "production_api.production_api.doctype.finishing_plan.finishing_plan.return_items",
                 args: {
@@ -309,14 +332,6 @@ defineExpose({
     width: 100%;
     border: 1px solid #ccc;
     border-collapse: collapse;
-}
-.bordered-table {
-    width: 100%;
-    border: 1px solid #ccc;
-    border-collapse: collapse;
-}
-.small-width {
-    width: 40%;
 }
 
 .bordered-table th,
