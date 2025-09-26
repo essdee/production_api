@@ -3,7 +3,7 @@
         <div style="width:100%;" v-if="items && Object.keys(items).length > 0">
             <div v-for="part_value in Object.keys(items['ocr_data'])" style="width:100%;">
                 <div style="display:flex;width:100%;gap:20px;">
-                    <div style="width:80%;">
+                    <div style="width:75%;">
                         <table class="table table-sm table-sm-bordered bordered-table">
                             <thead class="dark-border">
                                 <tr>
@@ -25,6 +25,34 @@
                                     </th>
                                 </tr>
                                 <tr>
+                                    <th :colspan="2">Sewing Received</th>
+                                    <td v-for="size in items.primary_values">
+                                        {{ items['ocr_data'][part_value]['total'][size]['sewing_received'] }}
+                                    </td>
+                                    <th>
+                                        {{ items['ocr_data'][part_value]['sewing_received'] }}
+                                    </th>
+                                </tr>
+                                <tr>
+                                    <th :colspan="2">Difference</th>
+                                    <td v-for="size in items.primary_values" 
+                                        :style="get_style(items['ocr_data'][part_value]['total'][size]['sewing_received'] - items['ocr_data'][part_value]['total'][size]['cutting_qty'])">
+                                        {{ items['ocr_data'][part_value]['total'][size]['sewing_received'] - items['ocr_data'][part_value]['total'][size]['cutting_qty'] }}
+                                    </td>
+                                    <th :style="get_style(items['ocr_data'][part_value]['sewing_received'] - items['ocr_data'][part_value]['cutting'])">
+                                        {{ items['ocr_data'][part_value]['sewing_received'] - items['ocr_data'][part_value]['cutting'] }}
+                                    </th>
+                                </tr>
+                                <tr>
+                                    <th :colspan="2">Sewing Received</th>
+                                    <td v-for="size in items.primary_values">
+                                        {{ items['ocr_data'][part_value]['total'][size]['sewing_received'] }}
+                                    </td>
+                                    <th>
+                                        {{ items['ocr_data'][part_value]['sewing_received'] }}
+                                    </th>
+                                </tr>
+                                <tr>
                                     <th :colspan="2">Finishing Inward</th>
                                     <td v-for="size in items.primary_values">
                                         {{ items['ocr_data'][part_value]['total'][size]['dc_qty'] }}
@@ -36,11 +64,11 @@
                                 <tr>
                                     <th :colspan="2">Difference</th>
                                     <td v-for="size in items.primary_values" 
-                                        :style="get_style(items['ocr_data'][part_value]['total'][size]['dc_qty'] - items['ocr_data'][part_value]['total'][size]['cutting_qty'])">
-                                        {{ items['ocr_data'][part_value]['total'][size]['dc_qty'] - items['ocr_data'][part_value]['total'][size]['cutting_qty'] }}
+                                        :style="get_style(items['ocr_data'][part_value]['total'][size]['dc_qty'] - items['ocr_data'][part_value]['total'][size]['sewing_received'])">
+                                        {{ items['ocr_data'][part_value]['total'][size]['dc_qty'] - items['ocr_data'][part_value]['total'][size]['sewing_received'] }}
                                     </td>
-                                    <th :style="get_style(items['ocr_data'][part_value]['dc_qty'] - items['ocr_data'][part_value]['cutting'])">
-                                        {{ items['ocr_data'][part_value]['dc_qty'] - items['ocr_data'][part_value]['cutting'] }}
+                                    <th :style="get_style(items['ocr_data'][part_value]['dc_qty'] - items['ocr_data'][part_value]['sewing_received'])">
+                                        {{ items['ocr_data'][part_value]['dc_qty'] - items['ocr_data'][part_value]['sewing_received'] }}
                                     </th>
                                 </tr>
                                 <tr>
@@ -53,7 +81,7 @@
                                     </th>
                                 </tr>
                                 <tr>
-                                    <th :colspan="2">Packed Box Qty</th>
+                                    <th :colspan="2">Packed Box Qty(In Pieces)</th>
                                     <td v-for="size in items.primary_values">
                                         {{ items['ocr_data'][part_value]['total'][size]['packed_box_qty'] }}
                                     </td>
@@ -187,14 +215,24 @@
                                         {{ items['ocr_data'][part_value]['pending'] }}
                                     </th>
                                 </tr>
+                                <tr>
+                                    <th :colspan="2">Difference</th>
+                                    <th v-for="size in items.primary_values" :style="get_style(get_total_difference(part_value, size))">
+                                        {{ get_total_difference(part_value, size) }}
+                                    </th>
+                                    <th :style="get_style(get_total(part_value))">
+                                        {{ get_total(part_value) }}
+                                    </th>
+                                </tr>
                             </tbody>    
                         </table>
                     </div>
-                    <div style="width:20%;">    
+                    <div style="width:25%;">    
                         <table class="table table-sm table-sm-bordered bordered-table">
                             <thead class="dark-border">
                                 <tr>
                                     <th>{{ part_value }}</th>
+                                    <th></th>
                                     <th>Difference</th>
                                 </tr>
                             </thead>
@@ -202,38 +240,56 @@
                                 <tr>
                                     <td>Cut to Dispatch</td>
                                     <td> 
-                                        {{ get_percentage(items['ocr_data'][part_value]['cutting'], items['ocr_data'][part_value]['packed_box_qty']) }}
+                                        {{ get_percentage(get_cut_to_dispatch(part_value)) }}%
                                     </td>
+                                    <td>{{ (100 - get_percentage(get_cut_to_dispatch(part_value))).toFixed(2) }}%</td>
                                 </tr>
                                 <tr>
                                     <td>Cut to Inward</td>
                                     <td>
-                                        {{ get_percentage(items['ocr_data'][part_value]['cutting'], items['ocr_data'][part_value]['dc_qty']) }}
+                                        {{ get_percentage(get_cut_to_inward(part_value)) }}%
                                     </td>
+                                    <td>{{ (100 - get_percentage(get_cut_to_inward(part_value))).toFixed(2) }}%</td>
                                 </tr>
                                 <tr>
                                     <td>Inward to Dispatch</td>
                                     <td>
-                                        {{ get_percentage(items['ocr_data'][part_value]['dc_qty'], items['ocr_data'][part_value]['packed_box_qty']) }}
+                                        {{ get_percentage(get_inward_to_dispatch(part_value)) }}%
                                     </td>
+                                    <td>{{ (100 - get_percentage(get_inward_to_dispatch(part_value))).toFixed(2) }}%</td>
                                 </tr>
                                 <tr>
                                     <td>Loose Piece</td>
                                     <td>
-                                        {{ get_percentage(items['ocr_data'][part_value]['dc_qty'], items['ocr_data'][part_value]['loose_piece']) }}
+                                        {{ get_percentage(get_loose_piece(part_value)) }}%
                                     </td>
+                                    <td></td>
                                 </tr>
                                 <tr>
                                     <td>Rejection</td>
                                     <td>
-                                        {{ get_percentage(items['ocr_data'][part_value]['dc_qty'], items['ocr_data'][part_value]['rejected']) }}
+                                        {{ get_percentage(get_rejection(part_value)) }}%
                                     </td>
+                                    <td></td>
                                 </tr>
                                 <tr>
                                     <td>Rework</td>
                                     <td>
-                                        {{ get_percentage(items['ocr_data'][part_value]['cutting'], items['ocr_data'][part_value]['pending']) }}
+                                        {{ get_percentage(get_rework(part_value)) }}%
                                     </td>
+                                    <td></td>
+                                </tr>
+                                <tr>
+                                    <td>Finishing Not Received</td>
+                                    <td>
+                                        {{ get_percentage(get_not_received(part_value), make_pos=true) }}%
+                                    </td>
+                                    <td></td>
+                                </tr>
+                                <tr>
+                                    <td>OCR Complete</td>
+                                    <td>{{ (get_ocr_value(part_value)).toFixed(2) }}%</td>
+                                    <td>{{ (100 - get_ocr_value(part_value)).toFixed(2) }}%</td>
                                 </tr>
                             </tbody>    
                         </table>
@@ -253,13 +309,18 @@ function load_data(data){
     items.value = data
 }
 
-function get_percentage(val1, val2){
+function get_percentage(val_dict, make_pos=false){
+    let val1 = val_dict['val1']
+    let val2 = val_dict['val2']
     let x = val2/val1
     x = x * 100
-    if(typeof(x) != "number"){
+    if (isNaN(x)) {  
         x = 0
     }
-    return x.toFixed(2)+"%"
+    if(make_pos && x < 0){
+        x = x * -1
+    }
+    return parseFloat(x.toFixed(2))
 }
 
 function get_style(val){
@@ -269,7 +330,80 @@ function get_style(val){
     else if(val > 0){
         return {"background":"#98ebae"}
     }
-    return {"background":"#67b0b8"};
+    return {"background":"#ebc96e"};
+}
+
+function get_total_difference(part_value, size){
+    return items.value['ocr_data'][part_value]['total'][size]['pending'] +
+        items.value['ocr_data'][part_value]['total'][size]['loose_piece_set'] +
+        items.value['ocr_data'][part_value]['total'][size]['loose_piece'] +
+        items.value['ocr_data'][part_value]['total'][size]['rejected'] +
+        items.value['ocr_data'][part_value]['total'][size]['packed_box_qty'] - 
+        items.value['ocr_data'][part_value]['total'][size]['cutting_qty']
+}
+
+function get_total(part_value){
+    return items.value['ocr_data'][part_value]['pending'] +
+        items.value['ocr_data'][part_value]['loose_piece_set'] +
+        items.value['ocr_data'][part_value]['loose_piece'] +
+        items.value['ocr_data'][part_value]['rejected'] +
+        items.value['ocr_data'][part_value]['packed_box_qty'] - 
+        items.value['ocr_data'][part_value]['cutting']
+}
+
+function get_ocr_value(part_value){
+    return get_percentage(get_cut_to_dispatch(part_value)) + get_percentage(get_loose_piece(part_value)) +
+        get_percentage(get_rejection(part_value)) + get_percentage(get_rework(part_value)) +
+        get_percentage(get_not_received(part_value), make_pos=true)
+}
+
+function get_cut_to_dispatch(part_value){
+    return {
+        "val1": items.value['ocr_data'][part_value]['cutting'],
+        "val2": items.value['ocr_data'][part_value]['packed_box_qty'],
+    }
+}
+
+function get_cut_to_inward(part_value){
+    return {
+        "val1": items.value['ocr_data'][part_value]['cutting'],
+        "val2": items.value['ocr_data'][part_value]['sewing_received'],
+    }
+}
+
+function get_inward_to_dispatch(part_value){
+    return {
+        "val1": items.value['ocr_data'][part_value]['sewing_received'], 
+        "val2": items.value['ocr_data'][part_value]['packed_box_qty']
+    }
+}
+
+function get_loose_piece(part_value){
+    return {
+        "val1": items.value['ocr_data'][part_value]['sewing_received'], 
+        "val2": items.value['ocr_data'][part_value]['loose_piece'],
+    }
+}
+
+function get_rejection(part_value){
+    return {
+        "val1": items.value['ocr_data'][part_value]['sewing_received'], 
+        "val2": items.value['ocr_data'][part_value]['rejected'],
+    }
+}
+
+function get_rework(part_value){
+    return {
+        "val1": items.value['ocr_data'][part_value]['cutting'], 
+        "val2": items.value['ocr_data'][part_value]['pending']
+    }
+}
+
+function get_not_received(part_value){
+    return {
+        "val1": items.value['ocr_data'][part_value]['cutting'], 
+        "val2": items.value['ocr_data'][part_value]['sewing_received'] - items.value['ocr_data'][part_value]['cutting']
+    }
 }
 
 defineExpose({

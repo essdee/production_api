@@ -13,9 +13,9 @@
             </thead>
             <tbody class="dark-border" v-for="(colour, idx) in Object.keys(items['data']['data'])" :key="colour">
                 <tr>
-                    <td :rowspan="4">{{ idx + 1 }}</td>
-                    <td :rowspan="4">{{ colour.split("@")[0] }}</td>
-                    <td :rowspan="4" v-if="items.is_set_item">{{ items['data']['data'][colour]['part'] }}</td>
+                    <td :rowspan="6">{{ idx + 1 }}</td>
+                    <td :rowspan="6">{{ colour.split("@")[0] }}</td>
+                    <td :rowspan="6" v-if="items.is_set_item">{{ items['data']['data'][colour]['part'] }}</td>
                     <td>Cutting Qty</td>
                     <td v-for="size in items.primary_values" :key="size">
                         {{
@@ -23,6 +23,27 @@
                         }}
                     </td>
                     <td><strong>{{ items['data']['data'][colour]['colour_total']['cutting'] ?? 0 }}</strong></td>
+                </tr>
+                <tr>
+                    <td>{{ process }} Delivered</td>
+                    <td v-for="size in items.primary_values" :key="size">
+                        {{
+                            items['data']['data'][colour]["values"][size]['delivered'] ?? 0
+                        }}
+                    </td>
+                    <td><strong>{{ items['data']['data'][colour]['colour_total']['delivered'] ?? 0 }}</strong></td>
+                </tr>
+                <tr>
+                    <td>Difference</td>
+                    <td v-for="size in items.primary_values" :key="size" 
+                        :style="get_style(items['data']['data'][colour]['values'][size]['cut_sew_diff'] ?? 0)">
+                        {{
+                             items['data']['data'][colour]['values'][size]['cut_sew_diff'] ?? 0
+                        }}
+                    </td>
+                    <td :style="get_style(items['data']['data'][colour]['colour_total']['cut_sew_diff'] ?? 0)">
+                        <strong>{{ items['data']['data'][colour]['colour_total']['cut_sew_diff'] ?? 0 }}</strong>
+                    </td>
                 </tr>
                 <tr>
                     <td>{{ process }} Delivered</td>
@@ -77,7 +98,7 @@ function get_style(val){
     else if(val > 0){
         return {"background":"#98ebae"}
     }
-    return {"background":"#67b0b8"};
+    return {"background":"#ebc96e"};
 }
 
 

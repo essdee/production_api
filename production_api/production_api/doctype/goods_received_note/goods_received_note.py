@@ -2597,11 +2597,12 @@ def update_finishing_item_doc(doc_name, finishing_doc_name, update_finishing:boo
 				"dispatched": finishing_items[variant]['dispatched'],
 			})
 		finishing_doc.set("finishing_plan_grn_details", finshing_items_list)
-		grn_list = update_if_string_instance(finishing_doc.grn_list)
-		if docstatus == 2:
-			del grn_list[doc_name]
-		else:
-			grn_list[doc_name] = frappe.utils.now_datetime().strftime("%d-%m-%Y %H:%M:%S")
+		if self.from_finishing:
+			grn_list = update_if_string_instance(finishing_doc.grn_list)
+			if docstatus == 2:
+				del grn_list[doc_name]
+			else:
+				grn_list[doc_name] = frappe.utils.now_datetime().strftime("%d-%m-%Y %H:%M:%S")
 		finishing_doc.grn_list = frappe.json.dumps(grn_list)
 		finishing_doc.save()	
 		
@@ -2656,12 +2657,13 @@ def update_finishing_item_doc(doc_name, finishing_doc_name, update_finishing:boo
 				pack_return_list[doc_name] = frappe.utils.now_datetime().strftime("%d-%m-%Y %H:%M:%S")
 			finishing_doc.pack_return_list = frappe.json.dumps(pack_return_list)
 		else:	
-			return_grn_list = update_if_string_instance(finishing_doc.return_grn_list)
-			if docstatus == 2:
-				del return_grn_list[doc_name]
-			else:
-				return_grn_list[doc_name] = frappe.utils.now_datetime().strftime("%d-%m-%Y %H:%M:%S")
-			finishing_doc.return_grn_list = frappe.json.dumps(return_grn_list)
+			if self.from_finishing:
+				return_grn_list = update_if_string_instance(finishing_doc.return_grn_list)
+				if docstatus == 2:
+					del return_grn_list[doc_name]
+				else:
+					return_grn_list[doc_name] = frappe.utils.now_datetime().strftime("%d-%m-%Y %H:%M:%S")
+				finishing_doc.return_grn_list = frappe.json.dumps(return_grn_list)
 		finishing_doc.set("finishing_plan_details", finshing_items_list)
 		finishing_doc.set("finishing_plan_reworked_details", finishing_rework_items_list)
 		finishing_doc.save()		

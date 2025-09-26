@@ -21,6 +21,7 @@
   "is_return",
   "is_rework",
   "is_pack",
+  "from_finishing",
   "column_break_1",
   "rework_created",
   "edit_posting_date_and_time",
@@ -542,13 +543,21 @@
    "fieldtype": "Check",
    "hidden": 1,
    "label": "Is Pack"
+  },
+  {
+   "allow_on_submit": 1,
+   "default": "0",
+   "fieldname": "from_finishing",
+   "fieldtype": "Check",
+   "label": "From Finishing",
+   "read_only": 1
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-09-24 12:32:41.891602",
+ "modified": "2025-09-26 11:54:20.761444",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Goods Received Note",

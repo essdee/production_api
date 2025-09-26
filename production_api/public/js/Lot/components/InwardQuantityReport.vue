@@ -11,39 +11,42 @@
                 <button class="btn btn-success" @click="take_screenshot()">Take Screenshot</button>
             </div>
         </div>
-        <table class="table table-sm table-sm-bordered bordered-table" v-if="items && Object.keys(items).length > 0">
-            <thead class="dark-border">
-                <tr>
-                    <th style="width:20px;">S.No</th>
-                    <th style="width:20px;">Colour</th>
-                    <th style="width:20px;" v-if="items.is_set_item">{{ items['set_attr'] }}</th>
-                    <th style="width:150px;">Types</th>
-                    <th v-for="size in items.primary_values" :key="size">{{ size }}</th>
-                    <th>Total</th>
-                </tr>
-            </thead>
-            <tbody class="dark-border" v-for="(colour, idx) in Object.keys(items.data)" :key="colour">
-                <tr v-for="(type, typeIdx) in items.types" :key="type + '-' + colour">
-                    <td v-if="typeIdx === 0" :rowspan="items.types.length + 1">{{ idx + 1 }}</td>
-                    <td v-if="typeIdx === 0" :rowspan="items.types.length + 1">{{ colour.split("@")[0] }}</td>
-                    <td v-if="typeIdx === 0 && items.is_set_item" :rowspan="items.types.length + 1">{{ items.data[colour]['part'] }}</td>
-                    <td>{{ type }}</td>
-                    <td v-for="size in items.primary_values" :key="size">
-                        {{
-                            items.data[colour]["values"][size]?.[type] ?? 0
-                        }}
-                    </td>
-                    <td><strong>{{ items.data[colour]['type_wise_total']?.[type] ?? 0 }}</strong></td>
-                </tr>
-                <tr>
-                    <td><strong>Total</strong></td>
-                    <td v-for="size in items.primary_values" :key="size">
-                        <strong>{{ items.data[colour]['size_wise_total']?.[size] ?? 0 }}</strong>
-                    </td>
-                    <td><strong>{{ items.data[colour]['colour_total']['total'] }}</strong></td>
-                </tr>
-            </tbody>
-        </table>
+        <div v-if="items && Object.keys(items).length > 0">
+            <h3 style="padding-top:20px;">Item: {{ item_name }}</h3>
+            <table class="table table-sm table-sm-bordered bordered-table">
+                <thead class="dark-border">
+                    <tr>
+                        <th style="width:20px;">S.No</th>
+                        <th style="width:20px;">Colour</th>
+                        <th style="width:20px;" v-if="items.is_set_item">{{ items['set_attr'] }}</th>
+                        <th style="width:150px;">Types</th>
+                        <th v-for="size in items.primary_values" :key="size">{{ size }}</th>
+                        <th>Total</th>
+                    </tr>
+                </thead>
+                <tbody class="dark-border" v-for="(colour, idx) in Object.keys(items.data)" :key="colour">
+                    <tr v-for="(type, typeIdx) in items.types" :key="type + '-' + colour">
+                        <td v-if="typeIdx === 0" :rowspan="items.types.length + 1">{{ idx + 1 }}</td>
+                        <td v-if="typeIdx === 0" :rowspan="items.types.length + 1">{{ colour.split("@")[0] }}</td>
+                        <td v-if="typeIdx === 0 && items.is_set_item" :rowspan="items.types.length + 1">{{ items.data[colour]['part'] }}</td>
+                        <td>{{ type }}</td>
+                        <td v-for="size in items.primary_values" :key="size">
+                            {{
+                                items.data[colour]["values"][size]?.[type] ?? 0
+                            }}
+                        </td>
+                        <td><strong>{{ items.data[colour]['type_wise_total']?.[type] ?? 0 }}</strong></td>
+                    </tr>
+                    <tr>
+                        <td><strong>Total</strong></td>
+                        <td v-for="size in items.primary_values" :key="size">
+                            <strong>{{ items.data[colour]['size_wise_total']?.[size] ?? 0 }}</strong>
+                        </td>
+                        <td><strong>{{ items.data[colour]['colour_total']['total'] }}</strong></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>    
     </div>  
 </template>
 
@@ -56,6 +59,7 @@ let process = null
 let root = ref(null)
 let sample_doc = ref({})
 let items = ref({})
+let item_name = ref(null)
 
 onMounted(()=> {
     let el = root.value
@@ -68,6 +72,10 @@ onMounted(()=> {
             options: "Lot",
             label: "Lot",
             reqd: true,
+            async onchange(){
+                let x = await frappe.db.get_value("Lot", lot.get_value(), "item")
+                item_name.value = x.message.item
+            }
         },
         doc: sample_doc.value,
         render_input: true,

@@ -78,6 +78,7 @@ class FinishingPlan(Document):
 				"loose_piece": 0,
 				"loose_piece_set": 0,
 				"pending": 0,
+				"sewing_received": 0,
 			})
 			size = attr_details[primary_attr]
 			ocr_data[part_value]['total'].setdefault(size, {
@@ -89,6 +90,7 @@ class FinishingPlan(Document):
 				"loose_piece": 0,
 				"loose_piece_set": 0,
 				"pending": 0,
+				"sewing_received": 0,
 			})
 			
 			set_comb = update_if_string_instance(row.set_combination)
@@ -106,17 +108,22 @@ class FinishingPlan(Document):
 				"colour": attr_details[pack_attr],
 				"part": part,
 				"colour_total": {
-					"loose_piece": 0, "pending": 0, "rejected": 0, "loose_piece_set": 0,
+					"loose_piece": 0, "pending": 0, "rejected": 0, "loose_piece_set": 0, "sewing_received": 0,
 				}
 			})
 			ocr_data[part_value]['cutting'] += row.cutting_qty
 			ocr_data[part_value]['dc_qty'] += (row.dc_qty + row.return_qty + row.pack_return_qty)
 			ocr_data[part_value]['total'][size]['cutting_qty'] += row.cutting_qty
 			ocr_data[part_value]['total'][size]['dc_qty'] += (row.dc_qty + row.return_qty + row.pack_return_qty)
-
 			ocr_data[part_value]['data'][colour]['values'].setdefault(size, {
-				"loose_piece": 0, "pending": 0, "rejected": 0, "loose_piece_set": 0,
+				"loose_piece": 0, "pending": 0, "rejected": 0, "loose_piece_set": 0, "sewing_received": 0,
 			})
+
+			ocr_data[part_value]['data'][colour]['values'][size]['sewing_received'] += row.inward_quantity
+			ocr_data[part_value]['data'][colour]['colour_total']['sewing_received'] += row.inward_quantity
+			ocr_data[part_value]['total'][size]['sewing_received'] += row.inward_quantity
+			ocr_data[part_value]['sewing_received'] += row.inward_quantity
+
 			ocr_data[part_value]['data'][colour]['values'][size]['loose_piece'] += row.return_qty
 			ocr_data[part_value]['data'][colour]['colour_total']['loose_piece'] += row.return_qty
 			ocr_data[part_value]['total'][size]['loose_piece'] += row.return_qty
@@ -289,6 +296,9 @@ class FinishingPlan(Document):
 	
 	def before_save(self):
 		finishing_plans = get_finishing_plan_dict(self)
+		for key in finishing_plans:
+			finishing_plans[key]['reworked'] = 0
+			
 		for row in self.finishing_plan_reworked_details:
 			set_comb = update_if_string_instance(row.set_combination)
 			key = (row.item_variant, tuple(sorted(set_comb.items())))
@@ -328,7 +338,7 @@ class FinishingPlan(Document):
 				"colour": attr_details[pack_attr],
 				"set_combination": set_comb,
 				"colour_total": {
-					"delivered": 0, "received": 0, "cutting": 0, "difference": 0,
+					"delivered": 0, "received": 0, "cutting": 0, "difference": 0, "cut_sew_diff": 0,
 				},
 			})
 			finishing_qty['data'].setdefault(colour, {
@@ -360,7 +370,7 @@ class FinishingPlan(Document):
 			})
 			
 			finishing_inward["data"][colour]["values"].setdefault(size, {
-				"delivered": 0, "received": 0, "cutting": 0, "difference": 0,
+				"delivered": 0, "received": 0, "cutting": 0, "difference": 0, "cut_sew_diff": 0,
 			})
 			finishing_qty["data"][colour]["values"].setdefault(size, {
 				"accepted": 0, "dc_qty": 0, "balance": 0, "balance_dc": 0, "return_qty": 0,
@@ -381,12 +391,14 @@ class FinishingPlan(Document):
 			finishing_inward["data"][colour]["colour_total"]["cutting"] += item.cutting_qty
 			finishing_inward["data"][colour]["colour_total"]["received"] += item.delivered_quantity
 			finishing_inward["data"][colour]["colour_total"]["delivered"] += item.inward_quantity
-			finishing_inward["data"][colour]["colour_total"]["difference"] += item.inward_quantity - item.delivered_quantity
+			finishing_inward["data"][colour]["colour_total"]["difference"] += item.delivered_quantity - item.inward_quantity
+			finishing_inward["data"][colour]["colour_total"]['cut_sew_diff'] += item.inward_quantity - item.cutting_qty 
 
 			finishing_inward["data"][colour]["values"][size]["received"] += item.delivered_quantity
 			finishing_inward["data"][colour]["values"][size]["delivered"] += item.inward_quantity
 			finishing_inward["data"][colour]["values"][size]["cutting"] += item.cutting_qty
-			finishing_inward["data"][colour]["values"][size]["difference"] += item.inward_quantity - item.delivered_quantity
+			finishing_inward["data"][colour]["values"][size]["difference"] += item.delivered_quantity - item.inward_quantity
+			finishing_inward["data"][colour]["values"][size]['cut_sew_diff'] += item.inward_quantity - item.cutting_qty 
 			finishing_inward["total"][size] += item.delivered_quantity
 
 			qty = item.accepted_qty + item.reworked + item.lot_transferred + item.ironing_excess
@@ -522,6 +534,7 @@ def create_delivery_challan(data, item_name, work_order, lot, from_location, veh
 		else:
 			item_details[index]['items'].append(item)		
 	dc_doc.deliverable_item_details = item_details
+	dc_doc.from_finishing = 1
 	dc_doc.save()
 	dc_doc.submit()
 
@@ -588,6 +601,7 @@ def create_grn(work_order, lot, item_name, data, delivery_location):
 	doc.dc_no = "NA"
 	doc.item_details = box_qty
 	doc.process_name = frappe.get_value("Work Order", work_order, "process_name")
+	doc.from_finishing = 1
 	doc.save()
 	doc.submit()
 
@@ -676,6 +690,7 @@ def return_items(data, work_order, lot, item_name, popup_values, is_pack:bool=Fa
 	})
 	new_doc.set("items", grn_items)
 	new_doc.save()
+	new_doc.from_finishing = 1
 	new_doc.submit()
 
 @frappe.whitelist()
