@@ -100,7 +100,7 @@ def revert_reworked_item(docname):
 
 @frappe.whitelist()
 def get_rework_items(lot, item, colour, grn_number=None):
-	conditions = " AND t2.completed = 0"
+	conditions = " AND t1.completed = 0"
 	con = {}
 	if grn_number:
 		conditions += " AND t1.grn_number = %(grn_number)s"
