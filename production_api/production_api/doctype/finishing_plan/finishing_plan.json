@@ -43,6 +43,7 @@
   "finishing_pack_return_html",
   "pack_return_list",
   "ocr_tab",
+  "comments",
   "finishing_plan_ocr_html"
  ],
  "fields": [
@@ -275,12 +276,17 @@
    "fieldtype": "Small Text",
    "hidden": 1,
    "label": "Pack Return List"
+  },
+  {
+   "fieldname": "comments",
+   "fieldtype": "Small Text",
+   "label": "Comments"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-09-24 12:50:12.449708",
+ "modified": "2025-09-26 13:04:55.144004",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Finishing Plan",

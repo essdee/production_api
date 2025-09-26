@@ -25,6 +25,34 @@
                                     </th>
                                 </tr>
                                 <tr>
+                                    <th :colspan="2">Sewing Received</th>
+                                    <td v-for="size in items.primary_values">
+                                        {{ items['ocr_data'][part_value]['total'][size]['sewing_received'] }}
+                                    </td>
+                                    <th>
+                                        {{ items['ocr_data'][part_value]['sewing_received'] }}
+                                    </th>
+                                </tr>
+                                <tr>
+                                    <th :colspan="2">Difference</th>
+                                    <td v-for="size in items.primary_values" 
+                                        :style="get_style(items['ocr_data'][part_value]['total'][size]['sewing_received'] - items['ocr_data'][part_value]['total'][size]['cutting_qty'])">
+                                        {{ items['ocr_data'][part_value]['total'][size]['sewing_received'] - items['ocr_data'][part_value]['total'][size]['cutting_qty'] }}
+                                    </td>
+                                    <th :style="get_style(items['ocr_data'][part_value]['sewing_received'] - items['ocr_data'][part_value]['cutting'])">
+                                        {{ items['ocr_data'][part_value]['sewing_received'] - items['ocr_data'][part_value]['cutting'] }}
+                                    </th>
+                                </tr>
+                                <tr>
+                                    <th :colspan="2">Sewing Received</th>
+                                    <td v-for="size in items.primary_values">
+                                        {{ items['ocr_data'][part_value]['total'][size]['sewing_received'] }}
+                                    </td>
+                                    <th>
+                                        {{ items['ocr_data'][part_value]['sewing_received'] }}
+                                    </th>
+                                </tr>
+                                <tr>
                                     <th :colspan="2">Finishing Inward</th>
                                     <td v-for="size in items.primary_values">
                                         {{ items['ocr_data'][part_value]['total'][size]['dc_qty'] }}
@@ -36,11 +64,11 @@
                                 <tr>
                                     <th :colspan="2">Difference</th>
                                     <td v-for="size in items.primary_values" 
-                                        :style="get_style(items['ocr_data'][part_value]['total'][size]['dc_qty'] - items['ocr_data'][part_value]['total'][size]['cutting_qty'])">
-                                        {{ items['ocr_data'][part_value]['total'][size]['dc_qty'] - items['ocr_data'][part_value]['total'][size]['cutting_qty'] }}
+                                        :style="get_style(items['ocr_data'][part_value]['total'][size]['dc_qty'] - items['ocr_data'][part_value]['total'][size]['sewing_received'])">
+                                        {{ items['ocr_data'][part_value]['total'][size]['dc_qty'] - items['ocr_data'][part_value]['total'][size]['sewing_received'] }}
                                     </td>
-                                    <th :style="get_style(items['ocr_data'][part_value]['dc_qty'] - items['ocr_data'][part_value]['cutting'])">
-                                        {{ items['ocr_data'][part_value]['dc_qty'] - items['ocr_data'][part_value]['cutting'] }}
+                                    <th :style="get_style(items['ocr_data'][part_value]['dc_qty'] - items['ocr_data'][part_value]['sewing_received'])">
+                                        {{ items['ocr_data'][part_value]['dc_qty'] - items['ocr_data'][part_value]['sewing_received'] }}
                                     </th>
                                 </tr>
                                 <tr>
@@ -53,7 +81,7 @@
                                     </th>
                                 </tr>
                                 <tr>
-                                    <th :colspan="2">Packed Box Qty</th>
+                                    <th :colspan="2">Packed Box Qty(In Pieces)</th>
                                     <td v-for="size in items.primary_values">
                                         {{ items['ocr_data'][part_value]['total'][size]['packed_box_qty'] }}
                                     </td>
@@ -187,6 +215,15 @@
                                         {{ items['ocr_data'][part_value]['pending'] }}
                                     </th>
                                 </tr>
+                                <tr>
+                                    <th :colspan="2">Difference</th>
+                                    <th v-for="size in items.primary_values" :style="get_style(get_total_difference(part_value, size))">
+                                        {{ get_total_difference(part_value, size) }}
+                                    </th>
+                                    <th :style="get_style(get_total(part_value))">
+                                        {{ get_total(part_value) }}
+                                    </th>
+                                </tr>
                             </tbody>    
                         </table>
                     </div>
@@ -251,8 +288,8 @@
                                 </tr>
                                 <tr>
                                     <td>OCR Complete</td>
-                                    <td>{{ get_ocr_value(part_value) }}%</td>
-                                    <td>{{ 100 - get_ocr_value(part_value) }}%</td>
+                                    <td>{{ (get_ocr_value(part_value)).toFixed(2) }}%</td>
+                                    <td>{{ (100 - get_ocr_value(part_value)).toFixed(2) }}%</td>
                                 </tr>
                             </tbody>    
                         </table>
@@ -293,7 +330,25 @@ function get_style(val){
     else if(val > 0){
         return {"background":"#98ebae"}
     }
-    return {"background":"#67b0b8"};
+    return {"background":"#ebc96e"};
+}
+
+function get_total_difference(part_value, size){
+    return items.value['ocr_data'][part_value]['total'][size]['pending'] +
+        items.value['ocr_data'][part_value]['total'][size]['loose_piece_set'] +
+        items.value['ocr_data'][part_value]['total'][size]['loose_piece'] +
+        items.value['ocr_data'][part_value]['total'][size]['rejected'] +
+        items.value['ocr_data'][part_value]['total'][size]['packed_box_qty'] - 
+        items.value['ocr_data'][part_value]['total'][size]['cutting_qty']
+}
+
+function get_total(part_value){
+    return items.value['ocr_data'][part_value]['pending'] +
+        items.value['ocr_data'][part_value]['loose_piece_set'] +
+        items.value['ocr_data'][part_value]['loose_piece'] +
+        items.value['ocr_data'][part_value]['rejected'] +
+        items.value['ocr_data'][part_value]['packed_box_qty'] - 
+        items.value['ocr_data'][part_value]['cutting']
 }
 
 function get_ocr_value(part_value){
@@ -312,27 +367,27 @@ function get_cut_to_dispatch(part_value){
 function get_cut_to_inward(part_value){
     return {
         "val1": items.value['ocr_data'][part_value]['cutting'],
-        "val2": items.value['ocr_data'][part_value]['dc_qty'],
+        "val2": items.value['ocr_data'][part_value]['sewing_received'],
     }
 }
 
 function get_inward_to_dispatch(part_value){
     return {
-        "val1": items.value['ocr_data'][part_value]['dc_qty'], 
+        "val1": items.value['ocr_data'][part_value]['sewing_received'], 
         "val2": items.value['ocr_data'][part_value]['packed_box_qty']
     }
 }
 
 function get_loose_piece(part_value){
     return {
-        "val1": items.value['ocr_data'][part_value]['dc_qty'], 
+        "val1": items.value['ocr_data'][part_value]['sewing_received'], 
         "val2": items.value['ocr_data'][part_value]['loose_piece'],
     }
 }
 
 function get_rejection(part_value){
     return {
-        "val1": items.value['ocr_data'][part_value]['dc_qty'], 
+        "val1": items.value['ocr_data'][part_value]['sewing_received'], 
         "val2": items.value['ocr_data'][part_value]['rejected'],
     }
 }
@@ -347,7 +402,7 @@ function get_rework(part_value){
 function get_not_received(part_value){
     return {
         "val1": items.value['ocr_data'][part_value]['cutting'], 
-        "val2": items.value['ocr_data'][part_value]['dc_qty'] - items.value['ocr_data'][part_value]['cutting']
+        "val2": items.value['ocr_data'][part_value]['sewing_received'] - items.value['ocr_data'][part_value]['cutting']
     }
 }
 
