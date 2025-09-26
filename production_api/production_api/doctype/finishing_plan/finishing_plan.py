@@ -522,6 +522,7 @@ def create_delivery_challan(data, item_name, work_order, lot, from_location, veh
 		else:
 			item_details[index]['items'].append(item)		
 	dc_doc.deliverable_item_details = item_details
+	dc_doc.from_finishing = 1
 	dc_doc.save()
 	dc_doc.submit()
 
@@ -588,6 +589,7 @@ def create_grn(work_order, lot, item_name, data, delivery_location):
 	doc.dc_no = "NA"
 	doc.item_details = box_qty
 	doc.process_name = frappe.get_value("Work Order", work_order, "process_name")
+	doc.from_finishing = 1
 	doc.save()
 	doc.submit()
 
@@ -676,6 +678,7 @@ def return_items(data, work_order, lot, item_name, popup_values, is_pack:bool=Fa
 	})
 	new_doc.set("items", grn_items)
 	new_doc.save()
+	new_doc.from_finishing = 1
 	new_doc.submit()
 
 @frappe.whitelist()
