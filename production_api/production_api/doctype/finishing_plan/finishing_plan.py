@@ -119,10 +119,10 @@ class FinishingPlan(Document):
 				"loose_piece": 0, "pending": 0, "rejected": 0, "loose_piece_set": 0, "sewing_received": 0,
 			})
 
-			ocr_data[part_value]['data'][colour]['values'][size]['sewing_received'] += row.inward_quantity
-			ocr_data[part_value]['data'][colour]['colour_total']['sewing_received'] += row.inward_quantity
-			ocr_data[part_value]['total'][size]['sewing_received'] += row.inward_quantity
-			ocr_data[part_value]['sewing_received'] += row.inward_quantity
+			ocr_data[part_value]['data'][colour]['values'][size]['sewing_received'] += row.delivered_quantity
+			ocr_data[part_value]['data'][colour]['colour_total']['sewing_received'] += row.delivered_quantity
+			ocr_data[part_value]['total'][size]['sewing_received'] += row.delivered_quantity
+			ocr_data[part_value]['sewing_received'] += row.delivered_quantity
 
 			ocr_data[part_value]['data'][colour]['values'][size]['loose_piece'] += row.return_qty
 			ocr_data[part_value]['data'][colour]['colour_total']['loose_piece'] += row.return_qty

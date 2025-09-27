@@ -374,7 +374,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-08-07 19:00:03.066012",
+ "modified": "2025-09-26 17:22:25.653156",
  "modified_by": "Administrator",
  "module": "Essdee Production",
  "name": "Lot",
@@ -427,6 +427,7 @@
   }
  ],
  "row_format": "Dynamic",
+ "search_fields": "item",
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": [],
