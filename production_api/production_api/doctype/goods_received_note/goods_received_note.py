@@ -815,7 +815,7 @@ class GoodsReceivedNote(Document):
 						if check:
 							update_collapsed_bundle(self.doctype, self.name, "on_cancel")						
 				else:
-					update_collapsed_bundle(self.doctype, self.name, "on_cancel", non_stich_prcoess=True)						
+					update_collapsed_bundle(self.doctype, self.name, "on_cancel", non_stich_process=True)						
 
 		self.make_repost_action()
 		if make_piece_calculation:

@@ -16,7 +16,7 @@
                             </thead>
                             <tbody class="dark-border">
                                 <tr>
-                                    <th :colspan="2">Cutting Qty</th>
+                                    <th :colspan="2">Cutting Qty ( A )</th>
                                     <td v-for="size in items.primary_values">
                                         {{ items['ocr_data'][part_value]['total'][size]['cutting_qty'] }}
                                     </td>
@@ -25,7 +25,7 @@
                                     </th>
                                 </tr>
                                 <tr>
-                                    <th :colspan="2">Sewing Received</th>
+                                    <th :colspan="2">Sewing Received ( B )</th>
                                     <td v-for="size in items.primary_values">
                                         {{ items['ocr_data'][part_value]['total'][size]['sewing_received'] }}
                                     </td>
@@ -34,7 +34,7 @@
                                     </th>
                                 </tr>
                                 <tr>
-                                    <th :colspan="2">Difference</th>
+                                    <th :colspan="2">Difference ( A - B )</th>
                                     <td v-for="size in items.primary_values" 
                                         :style="get_style(items['ocr_data'][part_value]['total'][size]['sewing_received'] - items['ocr_data'][part_value]['total'][size]['cutting_qty'])">
                                         {{ items['ocr_data'][part_value]['total'][size]['sewing_received'] - items['ocr_data'][part_value]['total'][size]['cutting_qty'] }}
@@ -44,7 +44,7 @@
                                     </th>
                                 </tr>
                                 <tr>
-                                    <th :colspan="2">Sewing Received</th>
+                                    <th :colspan="2">Sewing Received ( C )</th>
                                     <td v-for="size in items.primary_values">
                                         {{ items['ocr_data'][part_value]['total'][size]['sewing_received'] }}
                                     </td>
@@ -53,7 +53,7 @@
                                     </th>
                                 </tr>
                                 <tr>
-                                    <th :colspan="2">Finishing Inward</th>
+                                    <th :colspan="2">Finishing Inward ( D )</th>
                                     <td v-for="size in items.primary_values">
                                         {{ items['ocr_data'][part_value]['total'][size]['dc_qty'] }}
                                     </td>
@@ -62,7 +62,7 @@
                                     </th>
                                 </tr>
                                 <tr>
-                                    <th :colspan="2">Difference</th>
+                                    <th :colspan="2">Difference ( D - C )</th>
                                     <td v-for="size in items.primary_values" 
                                         :style="get_style(items['ocr_data'][part_value]['total'][size]['dc_qty'] - items['ocr_data'][part_value]['total'][size]['sewing_received'])">
                                         {{ items['ocr_data'][part_value]['total'][size]['dc_qty'] - items['ocr_data'][part_value]['total'][size]['sewing_received'] }}
@@ -81,7 +81,7 @@
                                     </th>
                                 </tr>
                                 <tr>
-                                    <th :colspan="2">Packed Box Qty(In Pieces)</th>
+                                    <th :colspan="2">Packed Box Qty(In Pieces) ( E )</th>
                                     <td v-for="size in items.primary_values">
                                         {{ items['ocr_data'][part_value]['total'][size]['packed_box_qty'] }}
                                     </td>
@@ -90,7 +90,7 @@
                                     </th>
                                 </tr>
                                 <tr>
-                                    <th :colspan="2">Difference</th>
+                                    <th :colspan="2">Difference ( E - D )</th>
                                     <td v-for="size in items.primary_values" 
                                         :style="get_style(items['ocr_data'][part_value]['total'][size]['packed_box_qty'] - items['ocr_data'][part_value]['total'][size]['dc_qty'])">
                                         {{ items['ocr_data'][part_value]['total'][size]['packed_box_qty'] - items['ocr_data'][part_value]['total'][size]['dc_qty'] }}
@@ -101,7 +101,7 @@
                                 </tr>
                                 <tr>
                                     <th :rowspan="Object.keys(items['ocr_data'][part_value]['data']).length + 1"
-                                    style="vertical-align: middle;">Rejection Pieces</th>
+                                    style="vertical-align: middle;">Rejection Pieces ( I )</th>
                                 </tr>
                                 <template v-for="colour in Object.keys(items['ocr_data'][part_value]['data'])">
                                     <tr>
@@ -119,7 +119,7 @@
                                         </th>
                                     </tr>
                                 </template>
-                                <tr>
+                                <tr style="background-color: darkgray;">
                                     <th :colspan="2">Total</th>
                                     <th v-for="size in items.primary_values">
                                         {{ items['ocr_data'][part_value]['total'][size]['rejected'] }}
@@ -130,7 +130,7 @@
                                 </tr>
                                 <tr>
                                     <th :rowspan="Object.keys(items['ocr_data'][part_value]['data']).length + 1"
-                                    style="vertical-align: middle;">Loose Piece</th>
+                                    style="vertical-align: middle;">Loose Piece ( J )</th>
                                 </tr>
                                 <template v-for="colour in Object.keys(items['ocr_data'][part_value]['data'])">
                                     <tr>
@@ -148,7 +148,7 @@
                                         </th>
                                     </tr>
                                 </template>
-                                <tr>
+                                <tr style="background-color: darkgray;">
                                     <th :colspan="2">Total</th>
                                     <th v-for="size in items.primary_values">
                                         {{ items['ocr_data'][part_value]['total'][size]['loose_piece'] }}
@@ -159,7 +159,7 @@
                                 </tr>
                                 <tr>
                                     <th :rowspan="Object.keys(items['ocr_data'][part_value]['data']).length + 1"
-                                    style="vertical-align: middle;">Loose Piece Set</th>
+                                    style="vertical-align: middle;">Loose Piece Set ( K )</th>
                                 </tr>
                                 <template v-for="colour in Object.keys(items['ocr_data'][part_value]['data'])">
                                     <tr>
@@ -177,7 +177,7 @@
                                         </th>
                                     </tr>
                                 </template>
-                                <tr>
+                                <tr style="background-color: darkgray;">
                                     <th :colspan="2">Total</th>
                                     <th v-for="size in items.primary_values">
                                         {{ items['ocr_data'][part_value]['total'][size]['loose_piece_set'] }}
@@ -188,7 +188,7 @@
                                 </tr>
                                 <tr>
                                     <th :rowspan="Object.keys(items['ocr_data'][part_value]['data']).length + 1"
-                                    style="vertical-align: middle;">Rework Pieces</th>
+                                    style="vertical-align: middle;">Rework Pieces ( L )</th>
                                 </tr>
                                 <template v-for="colour in Object.keys(items['ocr_data'][part_value]['data'])">
                                     <tr>
@@ -206,7 +206,7 @@
                                         </th>
                                     </tr>
                                 </template>
-                                <tr>
+                                <tr style="background-color: darkgray;">
                                     <th :colspan="2">Total</th>
                                     <th v-for="size in items.primary_values">
                                         {{ items['ocr_data'][part_value]['total'][size]['pending'] }}
@@ -216,7 +216,7 @@
                                     </th>
                                 </tr>
                                 <tr>
-                                    <th :colspan="2">Difference</th>
+                                    <th :colspan="2">Difference  ( I + J + K + L + E + (B-A) - A )</th>
                                     <th v-for="size in items.primary_values" :style="get_style(get_total_difference(part_value, size))">
                                         {{ get_total_difference(part_value, size) }}
                                     </th>
@@ -338,7 +338,9 @@ function get_total_difference(part_value, size){
         items.value['ocr_data'][part_value]['total'][size]['loose_piece_set'] +
         items.value['ocr_data'][part_value]['total'][size]['loose_piece'] +
         items.value['ocr_data'][part_value]['total'][size]['rejected'] +
-        items.value['ocr_data'][part_value]['total'][size]['packed_box_qty'] - 
+        items.value['ocr_data'][part_value]['total'][size]['packed_box_qty'] +
+        (items.value['ocr_data'][part_value]['total'][size]['sewing_received'] - 
+        items.value['ocr_data'][part_value]['total'][size]['cutting_qty'] ) -
         items.value['ocr_data'][part_value]['total'][size]['cutting_qty']
 }
 
@@ -347,7 +349,9 @@ function get_total(part_value){
         items.value['ocr_data'][part_value]['loose_piece_set'] +
         items.value['ocr_data'][part_value]['loose_piece'] +
         items.value['ocr_data'][part_value]['rejected'] +
-        items.value['ocr_data'][part_value]['packed_box_qty'] - 
+        items.value['ocr_data'][part_value]['packed_box_qty'] +
+        (items.value['ocr_data'][part_value]['sewing_received'] - 
+        items.value['ocr_data'][part_value]['cutting']) -
         items.value['ocr_data'][part_value]['cutting']
 }
 
