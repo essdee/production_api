@@ -46,7 +46,6 @@ def get_chart_data(data):
 	data_list = {label: 0 for label in labels}
 
 	for d in data:
-		print(d)
 		data_list[d.action] += d.no_of_completed
 
 	datasets = [{

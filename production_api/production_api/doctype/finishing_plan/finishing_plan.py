@@ -312,7 +312,7 @@ class FinishingPlan(Document):
 		ipd_fields = ["is_set_item", "packing_attribute", "primary_item_attribute", "set_item_attribute"]
 		is_set_item, pack_attr, primary_attr, set_attr = frappe.get_value("Item Production Detail", ipd, ipd_fields)
 
-		finishing_inward = {"data": {}, "total": {}}
+		finishing_inward = {"data": {}, "total": {}, "over_all": {}}
 		finishing_qty = {"data": {}, "total": {}}
 		finishing_ironing = {"data": {}, "total": {}, "total_qty": {
 			"ironing": 0
@@ -382,8 +382,15 @@ class FinishingPlan(Document):
 				"pack_returned_qty": 0,
 				"pack_return": 0,
 			})
-
-			finishing_inward["total"].setdefault(size, 0)
+			if not part:
+				part = "item"
+			finishing_inward["total"].setdefault(part, {})
+			finishing_inward['over_all'].setdefault(part, {
+				"cutting": 0, "received": 0, "delivered": 0, "difference": 0, "cut_sew_diff": 0,
+			})
+			finishing_inward["total"][part].setdefault(size, {
+				"cutting": 0, "received": 0, "delivered": 0, "difference": 0, "cut_sew_diff": 0,
+			})
 			finishing_qty["total"].setdefault(size, 0)
 			finishing_ironing['total'].setdefault(size, {"ironing": 0})
 			finishing_pack_return['total'].setdefault(size, 0)
@@ -393,13 +400,21 @@ class FinishingPlan(Document):
 			finishing_inward["data"][colour]["colour_total"]["delivered"] += item.inward_quantity
 			finishing_inward["data"][colour]["colour_total"]["difference"] += item.delivered_quantity - item.inward_quantity
 			finishing_inward["data"][colour]["colour_total"]['cut_sew_diff'] += item.inward_quantity - item.cutting_qty 
-
+			finishing_inward['total'][part][size]['delivered'] += item.inward_quantity
+			finishing_inward['total'][part][size]['received'] += item.delivered_quantity
+			finishing_inward['total'][part][size]['cutting'] += item.cutting_qty
+			finishing_inward['total'][part][size]['difference'] += item.delivered_quantity - item.inward_quantity
+			finishing_inward['total'][part][size]['cut_sew_diff'] += item.inward_quantity - item.cutting_qty  
+			finishing_inward['over_all'][part]['delivered'] += item.inward_quantity
+			finishing_inward['over_all'][part]['received'] += item.delivered_quantity
+			finishing_inward['over_all'][part]['cutting'] += item.cutting_qty
+			finishing_inward['over_all'][part]['difference'] += item.delivered_quantity - item.inward_quantity
+			finishing_inward['over_all'][part]['cut_sew_diff'] += item.inward_quantity - item.cutting_qty
 			finishing_inward["data"][colour]["values"][size]["received"] += item.delivered_quantity
 			finishing_inward["data"][colour]["values"][size]["delivered"] += item.inward_quantity
 			finishing_inward["data"][colour]["values"][size]["cutting"] += item.cutting_qty
 			finishing_inward["data"][colour]["values"][size]["difference"] += item.delivered_quantity - item.inward_quantity
 			finishing_inward["data"][colour]["values"][size]['cut_sew_diff'] += item.inward_quantity - item.cutting_qty 
-			finishing_inward["total"][size] += item.delivered_quantity
 
 			qty = item.accepted_qty + item.reworked + item.lot_transferred + item.ironing_excess
 			finishing_qty["data"][colour]["colour_total"]["accepted"] += qty
@@ -694,7 +709,7 @@ def return_items(data, work_order, lot, item_name, popup_values, is_pack:bool=Fa
 	new_doc.submit()
 
 @frappe.whitelist()
-def create_stock_entry(data, item_name, doc_name, lot, from_location, to_location, goods_value):
+def create_stock_entry(data, item_name, doc_name, lot, from_location, to_location, goods_value, vehicle_no):
 	data = update_if_string_instance(data)
 	ipd, uom = frappe.get_value("Lot", lot, ["production_detail", "uom"])
 	ipd_fields = ["primary_item_attribute", "dependent_attribute", "pack_out_stage"]
@@ -725,6 +740,7 @@ def create_stock_entry(data, item_name, doc_name, lot, from_location, to_locatio
 	from production_api.mrp_stock.doctype.stock_entry.stock_entry import fetch_stock_entry_items
 	item_details = fetch_stock_entry_items(item_list, ipd=ipd)
 	doc.item_details = item_details
+	doc.vehicle_no = vehicle_no
 	doc.additional_amount = goods_value
 	doc.save()
 	doc.submit()
