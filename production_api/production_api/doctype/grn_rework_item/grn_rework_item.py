@@ -127,6 +127,8 @@ def get_rework_items(lot, item, colour, grn_number=None):
 	data = {
 		"report_detail": {},
 		"types": [],
+		"total_detail": {},
+		"total_sum": 0,
 	}
 	from production_api.production_api.doctype.cut_bundle_movement_ledger.cut_bundle_movement_ledger import get_variant_attr_details
 	for item in rework_items:
@@ -148,6 +150,7 @@ def get_rework_items(lot, item, colour, grn_number=None):
 		for row in doc.grn_rework_item_details:
 			if row.completed == 1:
 				continue
+			data['total_detail'].setdefault(row.received_type, 0)
 			attr_details = get_variant_attr_details(row.item_variant)
 			key = row.received_type+"-"+attr_details[pack_attr]
 			if set_item:
@@ -159,6 +162,8 @@ def get_rework_items(lot, item, colour, grn_number=None):
 			if row.received_type not in data['types']:
 				data['types'].append(row.received_type)
 			qty = row.quantity - row.reworked
+			data['total_detail'][row.received_type] += qty
+			data['total_sum'] += qty
 			data["report_detail"][item]['types'].setdefault(row.received_type, 0)
 			data["report_detail"][item]['types'][row.received_type] += qty
 			data["report_detail"][item]['total'] += qty

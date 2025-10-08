@@ -25,44 +25,82 @@
                         <th>Total</th>
                     </tr>
                 </thead>
-                <tbody class="dark-border" v-for="(colour, idx) in Object.keys(items['data']['data'])" :key="colour">
-                    <template v-for="supplier in Object.keys(items['data']['data'][colour])">
-                        <tr>
-                            <td :rowspan="3">{{ idx + 1 }}</td>
-                            <td :rowspan="3">{{ colour.split("@")[0] }}</td>
-                            <td :rowspan="3" v-if="items.is_set_item">{{ items['data']['data'][colour][supplier]['part'] }}</td>
-                            <td :rowspan="3">{{ supplier }}</td>
+                <tbody>
+                    <template class="dark-border" v-for="(colour, idx) in Object.keys(items['data']['data'])" :key="colour">
+                        <template v-for="supplier in Object.keys(items['data']['data'][colour])">
+                            <tr>
+                                <td :rowspan="3">{{ idx + 1 }}</td>
+                                <td :rowspan="3">{{ colour.split("@")[0] }}</td>
+                                <td :rowspan="3" v-if="items.is_set_item">{{ items['data']['data'][colour][supplier]['part'] }}</td>
+                                <td :rowspan="3">{{ supplier }}</td>
+                                <td>Delivered</td>
+                                <td v-for="size in items.primary_values" :key="size">
+                                    {{
+                                        items['data']['data'][colour][supplier]["values"][size]['delivered'] ?? 0
+                                    }}
+                                </td>
+                                <td><strong>{{ items['data']['data'][colour][supplier]['colour_total']['delivered'] ?? 0 }}</strong></td>
+                            </tr>
+                            <tr>
+                                <td>Received</td>
+                                <td v-for="size in items.primary_values" :key="size">
+                                    {{
+                                        items['data']['data'][colour][supplier]["values"][size]['received'] ?? 0
+                                    }}
+                                </td>
+                                <td><strong>{{ items['data']['data'][colour][supplier]['colour_total']['received'] ?? 0 }}</strong></td>
+                            </tr>
+                            <tr>
+                                <td>Difference</td>
+                                <td v-for="size in items.primary_values" :key="size"
+                                    :style="get_style(items.data.data[colour][supplier].values[size].received ?? 0,items.data.data[colour][supplier].values[size].delivered ?? 0)">
+                                        {{
+                                            get_difference(items.data.data[colour][supplier].values[size].received ?? 0,items.data.data[colour][supplier].values[size].delivered ?? 0)
+                                        }}
+                                </td>
+                                <td :style="get_style(items['data']['data'][colour][supplier]['colour_total']['received'] ?? 0, items['data']['data'][colour][supplier]['colour_total']['delivered'] ?? 0)">
+                                <strong>{{ 
+                                    get_difference(items['data']['data'][colour][supplier]['colour_total']['received'] ?? 0, items['data']['data'][colour][supplier]['colour_total']['delivered'] ?? 0)
+                                }}</strong></td>
+                            </tr>
+                        </template>    
+                    </template>
+                    <template v-for="(row,key) in items.data['total']" :key="row">
+                        <tr style="background-color: bisque;">
+                            <td :rowspan="3"></td>
+                            <td :rowspan="3">Total</td>
+                            <td :rowspan="3" v-if="items.is_set_item">{{ key }}</td>
+                            <td :rowspan="3"></td>
                             <td>Delivered</td>
                             <td v-for="size in items.primary_values" :key="size">
                                 {{
-                                    items['data']['data'][colour][supplier]["values"][size]['delivered'] ?? 0
+                                    row[size]['delivered'] ?? 0
                                 }}
                             </td>
-                            <td><strong>{{ items['data']['data'][colour][supplier]['colour_total']['delivered'] ?? 0 }}</strong></td>
+                            <td>{{ items.data['over_all'][key]['delivered']  ?? 0 }}</td>
                         </tr>
-                        <tr>
+                        <tr style="background-color: bisque;">
                             <td>Received</td>
                             <td v-for="size in items.primary_values" :key="size">
                                 {{
-                                    items['data']['data'][colour][supplier]["values"][size]['received'] ?? 0
+                                    row[size]['received'] ?? 0
                                 }}
                             </td>
-                            <td><strong>{{ items['data']['data'][colour][supplier]['colour_total']['received'] ?? 0 }}</strong></td>
+                            <td>{{ items.data['over_all'][key]['received']  ?? 0}}</td>
                         </tr>
-                        <tr>
+                        <tr style="background-color: bisque;">
                             <td>Difference</td>
                             <td v-for="size in items.primary_values" :key="size"
-                                :style="get_style(items.data.data[colour][supplier].values[size].received ?? 0,items.data.data[colour][supplier].values[size].delivered ?? 0)">
-                                    {{
-                                        get_difference(items.data.data[colour][supplier].values[size].received ?? 0,items.data.data[colour][supplier].values[size].delivered ?? 0)
-                                    }}
+                            :style="get_style(row[size]['received'] ?? 0 , row[size]['delivered'] ?? 0)">
+                                {{
+                                    get_difference(row[size]['received'] ?? 0 , row[size]['delivered'] ?? 0)
+                                }}
                             </td>
-                            <td :style="get_style(items['data']['data'][colour][supplier]['colour_total']['received'] ?? 0, items['data']['data'][colour][supplier]['colour_total']['delivered'] ?? 0)">
-                            <strong>{{ 
-                                get_difference(items['data']['data'][colour][supplier]['colour_total']['received'] ?? 0, items['data']['data'][colour][supplier]['colour_total']['delivered'] ?? 0)
-                            }}</strong></td>
+                            <td :style="get_style(items.data['over_all'][key]['received'] ?? 0 , items.data['over_all'][key]['delivered'] ?? 0)">
+                                {{ get_difference(items.data['over_all'][key]['received'] ?? 0 , items.data['over_all'][key]['delivered'] ?? 0) }}
+                            </td>
                         </tr>
-                    </template>    
+                    </template>
                 </tbody>
             </table>
         </div>    

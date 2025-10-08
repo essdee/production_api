@@ -94,6 +94,20 @@
                         </td>
                     </tr>
                 </template>
+                <tr>
+                    <th>Total</th> 
+                    <th></th>
+                    <th></th>
+                    <th></th>
+                    <th></th>
+                    <th></th>
+                    <th></th>
+                    <th v-for="ty in items['types']">
+                        <span v-if="ty in items['total_detail']">{{items['total_detail'][ty]}}</span>
+                        <span v-else>0</span>
+                    </th>
+                    <th> {{ items['total_sum'] }}</th>
+                </tr>
             </table>
         </div>
     </div>
