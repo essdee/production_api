@@ -24,26 +24,49 @@
                         <th>Total</th>
                     </tr>
                 </thead>
-                <tbody class="dark-border" v-for="(colour, idx) in Object.keys(items.data)" :key="colour">
-                    <tr v-for="(type, typeIdx) in items.types" :key="type + '-' + colour">
-                        <td v-if="typeIdx === 0" :rowspan="items.types.length + 1">{{ idx + 1 }}</td>
-                        <td v-if="typeIdx === 0" :rowspan="items.types.length + 1">{{ colour.split("@")[0] }}</td>
-                        <td v-if="typeIdx === 0 && items.is_set_item" :rowspan="items.types.length + 1">{{ items.data[colour]['part'] }}</td>
-                        <td>{{ type }}</td>
-                        <td v-for="size in items.primary_values" :key="size">
-                            {{
-                                items.data[colour]["values"][size]?.[type] ?? 0
-                            }}
-                        </td>
-                        <td><strong>{{ items.data[colour]['type_wise_total']?.[type] ?? 0 }}</strong></td>
-                    </tr>
-                    <tr>
-                        <td><strong>Total</strong></td>
-                        <td v-for="size in items.primary_values" :key="size">
-                            <strong>{{ items.data[colour]['size_wise_total']?.[size] ?? 0 }}</strong>
-                        </td>
-                        <td><strong>{{ items.data[colour]['colour_total']['total'] }}</strong></td>
-                    </tr>
+                <tbody class="dark-border">
+                    <template v-for="(colour, idx) in Object.keys(items.data['data'])" :key="colour">                
+                        <tr v-for="(type, typeIdx) in items.types" :key="type + '-' + colour">
+                            <td v-if="typeIdx === 0" :rowspan="items.types.length + 1">{{ idx + 1 }}</td>
+                            <td v-if="typeIdx === 0" :rowspan="items.types.length + 1">{{ colour.split("@")[0] }}</td>
+                            <td v-if="typeIdx === 0 && items.is_set_item" :rowspan="items.types.length + 1">{{ items.data['data'][colour]['part'] }}</td>
+                            <td>{{ type }}</td>
+                            <td v-for="size in items.primary_values" :key="size">
+                                {{
+                                    items.data['data'][colour]["values"][size]?.[type] ?? 0
+                                }}
+                            </td>
+                            <td><strong>{{ items.data['data'][colour]['type_wise_total']?.[type] ?? 0 }}</strong></td>
+                        </tr>
+                        <tr>
+                            <td><strong>Total</strong></td>
+                            <td v-for="size in items.primary_values" :key="size">
+                                <strong>{{ items.data['data'][colour]['size_wise_total']?.[size] ?? 0 }}</strong>
+                            </td>
+                            <td><strong>{{ items.data['data'][colour]['colour_total']['total'] }}</strong></td>
+                        </tr>
+                    </template>    
+                    <template v-for="(row, part) in items.data['total']">
+                        <tr v-for="(type, typeIdx) in items.types" style="background-color: bisque;">
+                            <td v-if="typeIdx === 0" :rowspan="items.types.length + 1"></td>
+                            <td v-if="typeIdx === 0" :rowspan="items.types.length + 1">Total</td>
+                            <td v-if="typeIdx === 0 && items.is_set_item" :rowspan="items.types.length + 1">{{ part }}</td>
+                            <td>{{ type }}</td>
+                            <td v-for="size in items.primary_values" :key="size">
+                                {{
+                                    items.data['total'][part]['size_type_wise'][size]?.[type] ?? 0
+                                }}
+                            </td>
+                            <td><strong>{{ items.data['total'][part]['type_wise']?.[type] ?? 0 }}</strong></td>
+                        </tr>
+                        <tr style="background-color: bisque;">
+                            <td><strong>Total</strong></td>
+                            <td v-for="size in items.primary_values" :key="size">
+                                <strong>{{ items.data['total'][part]['size_wise']?.[size] ?? 0 }}</strong>
+                            </td>
+                            <td><strong>{{ items.data['total'][part]['over_all'] }}</strong></td>
+                        </tr>
+                    </template>
                 </tbody>
             </table>
         </div>    

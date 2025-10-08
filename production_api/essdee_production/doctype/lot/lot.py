@@ -23,7 +23,7 @@ class Lot(Document):
 			items = save_item_details(self.item_details)
 			self.set("items",items)
 
-		if self.get('order_item_details') and len(self.lot_time_and_action_details) == 0:
+		if self.get('order_item_details') and len(self.lot_time_and_action_details) == 0 and self.production_detail:
 			order_items = save_order_item_details(self.production_detail, self.lot_order_details, self.order_item_details)
 			self.set('lot_order_details',order_items)
 
