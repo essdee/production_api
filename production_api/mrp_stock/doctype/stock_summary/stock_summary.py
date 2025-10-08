@@ -3,8 +3,12 @@
 
 import frappe
 from six import string_types
+from itertools import groupby
 from frappe.model.document import Document
+from production_api.production_api.doctype.item.item import get_attribute_details
 from production_api.mrp_stock.report.item_balance.item_balance import execute as get_item_balance
+from production_api.production_api.doctype.purchase_order.purchase_order import get_item_attribute_details, get_item_group_index
+
 
 class StockSummary(Document):
  	pass
@@ -154,3 +158,85 @@ def get_variant_attr_values(doc, primary_attr):
 	else:
 		attrs = None			
 	return attrs
+
+@frappe.whitelist()
+def lot_transfer_items(selected_items, transfer_lot):
+	if isinstance(selected_items, string_types):
+		selected_items = frappe.json.loads(selected_items)
+	grouped_items = get_grouped_items(selected_items)	
+	table_index = -1
+	row_index = -1
+	final_items = []
+	for (lot, item, received_type, stage), items in grouped_items.items():
+		sorted_items = sorted(items, key=lambda x: x['item_variant'])
+		table_index += 1
+		row_index += 1
+		primary = frappe.get_cached_value("Item", sorted_items[0]['item'], "primary_attribute")
+		for item in sorted_items:
+			if not primary:
+				row_index += 1
+			item1 = {}
+			item1['item'] = item['item_variant']
+			item1['from_lot'] = item['lot']
+			item1['to_lot'] = transfer_lot
+			item1['warehouse'] = item['warehouse']
+			item1['uom'] = item['stock_uom']
+			item1['qty'] = item['bal_qty']
+			item1['rate'] = 0
+			item1['table_index'] = table_index
+			item1['row_index'] = row_index
+			item1['received_type'] = item['received_type']
+			final_items.append(item1)
+
+	item_details = []
+	final_items = sorted(final_items, key = lambda i: i['row_index'])
+	for key, variants in groupby(final_items, lambda i: i['row_index']):
+		variants = list(variants)
+		current_variant = frappe.get_doc("Item Variant", variants[0]['item'])
+		current_item_attribute_details = get_attribute_details(current_variant.item)
+		item = {
+			'name': current_variant.item,
+			'lot': variants[0]['from_lot'],
+			'to_lot': variants[0]['to_lot'],
+			'warehouse': variants[0]['warehouse'],
+			'attributes': get_item_attribute_details(current_variant, current_item_attribute_details),
+			'primary_attribute': current_item_attribute_details['primary_attribute'],
+			'values': {},
+			'default_uom': variants[0].get('uom') or current_item_attribute_details['default_uom'],
+			'secondary_uom': variants[0].get('secondary_uom') or current_item_attribute_details['secondary_uom'],
+			'received_type':variants[0].get('received_type')
+		}
+		if item['primary_attribute']:
+			for attr in current_item_attribute_details['primary_attribute_values']:
+				item['values'][attr] = {'qty': 0, 'rate': 0}
+			for variant in variants:
+				current_variant = frappe.get_doc("Item Variant", variant['item'])
+				for attr in current_variant.attributes:
+					if attr.attribute == item.get('primary_attribute'):
+						item['values'][attr.attribute_value] = {
+							'qty': variant.get('qty'),
+							'rate': variant.get('rate'),
+							"set_combination": variant.get('set_combination'),
+						}
+						break
+		else:
+			item['values']['default'] = {
+				'qty': variants[0]['qty'],
+				'rate': variants[0]['rate'],
+			}			
+		index = get_item_group_index(item_details, current_item_attribute_details)
+
+		if index == -1:
+			item_details.append({
+				'attributes': current_item_attribute_details['attributes'],
+				'primary_attribute': current_item_attribute_details['primary_attribute'],
+				'primary_attribute_values': current_item_attribute_details['primary_attribute_values'],
+				'items': [item]
+			})
+		else:
+			item_details[index]['items'].append(item)
+	doc = frappe.new_doc("Lot Transfer")
+	doc.item_details = item_details
+	doc.save()
+
+	return doc.name
