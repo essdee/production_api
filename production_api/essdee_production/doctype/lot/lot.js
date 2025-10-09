@@ -302,14 +302,18 @@ frappe.ui.form.on("Lot", {
 		}
     },
     async validate(frm){
-        let items = frm.item.get_data()
-        frm.doc['item_details'] = JSON.stringify(items)
+		if(frm.item){
+			let items = frm.item.get_data()
+        	frm.doc['item_details'] = JSON.stringify(items)
+		}
 		let order_items = frm.order_detail.get_items()
         frm.doc['order_item_details'] = JSON.stringify(order_items)
-
-		let action_items = await frm.time_action.get_data()
-		if(action_items.changed){
-			frm.doc['action_details'] = JSON.stringify(action_items.items)
+		if(frm.time_action){
+			let action_items = await frm.time_action.get_data()
+			if(action_items.changed){
+				frm.doc['action_details'] = JSON.stringify(action_items.items)
+			}
+		}
 		}
     },
 	item(frm){
