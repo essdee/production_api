@@ -300,7 +300,22 @@ frappe.ui.form.on("Lot", {
         else{
 			frm.order_detail.load_data([],0)
 		}
+		// if(!frm.is_new()){
+		// 	frm.cad_detail = new frappe.production.ui.CadDetail(frm.fields_dict['cad_detail_html'].wrapper)
+		// 	if(frm.doc.__onload && frm.doc.__onload.cad_item_details) {
+		// 		frm.cad_detail.load_data(frm.doc.__onload.cad_item_details);
+		// 	}
+		// 	else{
+		// 		frm.cad_detail.load_data([])
+		// 	}
+		// }
     },
+	// fetch_cad_template(frm){
+	// 	frm.cad_detail.load_data([])
+	// 	if(!frm.is_dirty()){
+	// 		frm.dirty()
+	// 	}
+	// },
     async validate(frm){
 		if(frm.item){
 			let items = frm.item.get_data()
@@ -314,7 +329,10 @@ frappe.ui.form.on("Lot", {
 				frm.doc['action_details'] = JSON.stringify(action_items.items)
 			}
 		}
-		}
+		// if(frm.cad_detail){
+		// 	let cad_data = frm.cad_detail.get_data()
+		// 	frm.doc['cad_details'] = JSON.stringify(cad_data)
+		// }
     },
 	item(frm){
 		if(!frm.doc.item){
