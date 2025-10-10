@@ -13,7 +13,6 @@ import GRNWorkOrder from "./GRN/components/GRNWorkOrder.vue";
 import GRNReturnItem from "./GRN/components/GRNReturnItem.vue"
 import GRNConsumedDetail from "./GRN/components/GRNConsumedDetail.vue"
 import LotOrder from "./Lot/components/LotOrder.vue" 
-import WorkStationV2 from "./Lot/components/WorkStationV2.vue"
 import WorkStation from "./Lot/components/WorkStation.vue"
 import TimeActionPreview from "./TimeAndAction/TimeActionPreview.vue"
 import InwardQuantityReport from "./Lot/components/InwardQuantityReport.vue";
