@@ -20,7 +20,7 @@
    "fieldtype": "Link",
    "in_list_view": 1,
    "label": "Department",
-   "options": "Employee Department",
+   "options": "Department",
    "reqd": 1
   },
   {
@@ -52,9 +52,10 @@
    "label": "Default Order"
   }
  ],
+ "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-03-06 16:43:04.471961",
+ "modified": "2025-10-09 18:29:47.830205",
  "modified_by": "Administrator",
  "module": "Essdee Production",
  "name": "Action",
@@ -117,6 +118,7 @@
   }
  ],
  "quick_entry": 1,
+ "row_format": "Dynamic",
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": [],

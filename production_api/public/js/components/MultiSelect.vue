@@ -1,6 +1,6 @@
 <template>
-    <div class="w-100 position-relative transition" ref="multiSelect">
-        <div class="p-2 rounded bg-blue text-dark border" @click="toggleDropdown">
+    <div class="w-100 position-relative transition" style="margin-top:7px;" ref="multiSelect">
+        <div class="p-2 rounded bg-blue text-dark border" style="height:100px; background-color: #f3f3f3;" @click="toggleDropdown">
             <div class="d-flex flex-wrap gap-1">
                 <span v-if="!selectedValues.length">{{ placeholder }}</span>
                 <span v-for="(value, index) in selectedValues" :key="index"
@@ -19,7 +19,7 @@
                 </span>
             </div>
         </div>
-        <div v-if="isOpen" class="position-absolute mt-2 bg-info text-dark w-50 p-1 border rounded" style="z-index: 1050" >
+        <div v-if="isOpen" class="position-absolute mt-2 text-dark w-100 p-1 border rounded" style="z-index: 1050; background-color: #f3f3f3;" >
             {{get_options()}}
             <div v-if="show_options">
                 <template v-for="(option) in options" v-if="options.length != 0">
@@ -104,6 +104,7 @@ export default {
             });
         },
         selectOption(option) {
+            console.log("HELLO")
             if (this.selectedValues.includes(option)) {
                 this.selectedValues = this.selectedValues.filter((val) => val !== option);
             } 
@@ -122,6 +123,7 @@ export default {
             }
         },
         handleChange(){
+            console.log("HIHIHIHIHIHI")
             this.triggerEvent(this.selectedValues, this.item_key);
         },
         get_options() {

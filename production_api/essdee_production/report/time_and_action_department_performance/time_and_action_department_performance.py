@@ -13,7 +13,7 @@ def get_columns(filters=None):
 	group_by = filters.get("select")
 	group_by_map = {
         "Department": {
-			"options":"Employee Department",
+			"options":"Department",
 			"label":"Department",
 			"fieldname":"department"
 		},

@@ -14,6 +14,7 @@
   "homepage": "https://github.com/essdee/production_api#readme",
   "dependencies": {
     "@vuepic/vue-datepicker": "^11.0.2",
-    "frappe-gantt": "^0.6.1"
+    "frappe-gantt": "^0.6.1",
+    "vuedraggable": "^4.1.0"
   }
 }

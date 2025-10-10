@@ -97,8 +97,8 @@
    "is_query_report": 0,
    "label": "Time and Action Weekly Review Report",
    "link_count": 0,
-   "link_to": "Time and Action Weekly Review Report",
-   "link_type": "DocType",
+   "link_to": "t-and-a-weekly-revie",
+   "link_type": "Page",
    "onboard": 0,
    "type": "Link"
   },
@@ -113,7 +113,7 @@
    "type": "Link"
   }
  ],
- "modified": "2025-03-07 17:08:54.478184",
+ "modified": "2025-10-08 15:26:44.039214",
  "modified_by": "Administrator",
  "module": "Essdee Production",
  "name": "Time and Actions",

@@ -1,0 +1,87 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2025-09-30 14:20:40.088818",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "update_last_n_dates",
+  "update_future_n_dates",
+  "ordering_based_on_delay",
+  "column_break_izrm",
+  "revised_date_approver_role",
+  "revising_days_limit",
+  "assigned_person_editer_role"
+ ],
+ "fields": [
+  {
+   "fieldname": "update_last_n_dates",
+   "fieldtype": "Int",
+   "label": "Update Last N Dates"
+  },
+  {
+   "default": "0",
+   "fieldname": "ordering_based_on_delay",
+   "fieldtype": "Check",
+   "label": "Ordering Based on delay"
+  },
+  {
+   "fieldname": "revised_date_approver_role",
+   "fieldtype": "Link",
+   "label": "Revised Date Approver Role",
+   "options": "Role"
+  },
+  {
+   "fieldname": "column_break_izrm",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "update_future_n_dates",
+   "fieldtype": "Int",
+   "label": "Update Future N Dates"
+  },
+  {
+   "fieldname": "revising_days_limit",
+   "fieldtype": "Int",
+   "label": "Revising Days Limit"
+  },
+  {
+   "fieldname": "assigned_person_editer_role",
+   "fieldtype": "Link",
+   "label": "Assigned Person Editer Role",
+   "options": "Role"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "issingle": 1,
+ "links": [],
+ "modified": "2025-10-09 17:31:34.800992",
+ "modified_by": "Administrator",
+ "module": "Essdee Production",
+ "name": "T and A Settings",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "print": 1,
+   "read": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "email": 1,
+   "print": 1,
+   "read": 1,
+   "role": "All",
+   "share": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

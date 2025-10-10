@@ -17,7 +17,7 @@ def get_columns():
 		{"fieldtype":"Data","fieldname":"sizes","label":"Sizes","width":130},
 		{"fieldtype":"Float","fieldname":"qty","label":"Quantity","width":100},
 		{"fieldtype":"Link","fieldname":"action","options":"Action","label":"Action","width":100},
-		{"fieldtype":"Link","fieldname":"department","options":"Employee Department","label":"Department","width":120},
+		{"fieldtype":"Link","fieldname":"department","options":"Department","label":"Department","width":120},
 		{"fieldtype":"Date","fieldname":"date","label":"Planned Date","width":120},
 		{"fieldtype":"Date","fieldname":"rescheduled_date","label":"Rescheduled Date","width":120},
 		{"fieldtype":"Int","fieldname":"date_diff","label":"Date Diff","width":100}

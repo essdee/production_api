@@ -11,7 +11,7 @@ def execute(filters=None):
 def get_columns():
 	columns = [
 		{"fieldtype":"Link","fieldname":"action","label":"Action","options":"Action","width":150},
-		{"fieldtype":"Link","fieldname":"department","label":"Department","options":"Employee Department","width":120},
+		{"fieldtype":"Link","fieldname":"department","label":"Department","options":"Department","width":120},
 		{"fieldtype":"Date","fieldname":"date","label":"Planned Date","width":120},
 		{"fieldtype":"Date","fieldname":"rescheduled_date","label":"Rescheduled Date","width":120},
 		{"fieldtype":"Date","fieldname":"actual_date","label":"Actual Date","width":120},
