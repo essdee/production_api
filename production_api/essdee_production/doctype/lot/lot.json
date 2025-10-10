@@ -10,7 +10,6 @@
   "lot_name",
   "item",
   "assigned_person",
-  "production_order",
   "pack_out_stage",
   "size_set_colour",
   "set_item_attribute",
@@ -58,11 +57,7 @@
   "lot_time_and_action_details",
   "time_and_action_html",
   "section_break_cmku",
-  "time_and_action_report_html",
-  "cad_tab",
-  "fetch_cad_template",
-  "cad_detail_html",
-  "cad_detail_data"
+  "time_and_action_report_html"
  ],
  "fields": [
   {
@@ -364,34 +359,6 @@
    "unique": 1
   },
   {
-   "fieldname": "production_order",
-   "fieldtype": "Link",
-   "label": "Production Order",
-   "options": "Production Order"
-  },
-  {
-   "depends_on": "eval: doc.production_detail",
-   "fieldname": "cad_tab",
-   "fieldtype": "Tab Break",
-   "label": "CAD"
-  },
-  {
-   "fieldname": "cad_detail_html",
-   "fieldtype": "HTML",
-   "label": "CAD Detail HTML"
-  },
-  {
-   "fieldname": "cad_detail_data",
-   "fieldtype": "Text",
-   "hidden": 1,
-   "label": "CAD Detail Data"
-  },
-  {
-   "fieldname": "fetch_cad_template",
-   "fieldtype": "Button",
-   "label": "Fetch CAD Template"
-  },
-  {
    "fieldname": "size_set_colour_colour",
    "fieldtype": "HTML",
    "label": "Size Set Colour HTML"
@@ -404,7 +371,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-10-10 12:40:50.967968",
+ "modified": "2025-10-10 15:41:40.561534",
  "modified_by": "Administrator",
  "module": "Essdee Production",
  "name": "Lot",
