@@ -295,6 +295,9 @@ class StockEntry(Document):
 	def update_finishing_plan(self):	
 		if self.against == "Finishing Plan":
 			if self.purpose == 'Material Issue':
+				add_value = frappe.db.get_single_value("Stock Settings", "add_finishing_plan_goods_value")
+				if not add_value:
+					self.total_amount = self.additional_amount
 				finishing_doc = frappe.get_doc("Finishing Plan", self.against_id)
 				d = {}
 				for row in finishing_doc.finishing_plan_grn_details:
