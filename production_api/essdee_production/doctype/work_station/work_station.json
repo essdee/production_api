@@ -9,8 +9,7 @@
   "action",
   "minutes_available",
   "default",
-  "disabled",
-  "work_station_actions"
+  "disabled"
  ],
  "fields": [
   {
@@ -38,19 +37,12 @@
    "fieldtype": "Float",
    "label": "Minutes available / day",
    "non_negative": 1
-  },
-  {
-   "allow_bulk_edit": 1,
-   "fieldname": "work_station_actions",
-   "fieldtype": "Table",
-   "label": "Work Station Actions",
-   "options": "Work Station Action"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-08-06 12:14:26.756823",
+ "modified": "2025-09-26 16:09:20.952044",
  "modified_by": "Administrator",
  "module": "Essdee Production",
  "name": "Work Station",
