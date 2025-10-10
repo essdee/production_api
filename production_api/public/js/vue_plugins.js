@@ -13,15 +13,12 @@ import GRNWorkOrder from "./GRN/components/GRNWorkOrder.vue";
 import GRNReturnItem from "./GRN/components/GRNReturnItem.vue"
 import GRNConsumedDetail from "./GRN/components/GRNConsumedDetail.vue"
 import LotOrder from "./Lot/components/LotOrder.vue" 
-import WorkStationV2 from "./Lot/components/WorkStationV2.vue"
 import WorkStation from "./Lot/components/WorkStation.vue"
-import TimeActionPreview from "./Lot/components/TimeActionPreview.vue"
+import TimeActionPreview from "./TimeAndAction/TimeActionPreview.vue"
 import InwardQuantityReport from "./Lot/components/InwardQuantityReport.vue";
 import InhouseQuantity from "./Lot/components/InhouseQuantity.vue";
-import TimeAction from "./Lot/components/TimeAction.vue"
-import TimeActionReport from "./Lot/components/TimeActionReport.vue"
-import TandACapacityPreview from "./Lot/components/TandACapacityPreview.vue";
-import UpdateAllocationDays from "./Lot/components/UpdateAllocationDays.vue";
+import TimeAction from "./TimeAndAction/TimeAction.vue"
+import TimeActionReport from "./TimeAndAction/TimeActionReport.vue"
 import CutPlanItems from "./CuttingPlan/components/CutPlanItems.vue"
 import CuttingCompletionDetail from "./CuttingPlan/components/CuttingCompletionDetail.vue"
 import CuttingIncompletionDetail from "./CuttingPlan/components/CuttingIncompletionDetail.vue"
@@ -46,8 +43,9 @@ import LaySheetCloths from "./CuttingLaySheet/components/LaySheetCloths.vue"
 import LaySheetAccessory from "./CuttingLaySheet/components/LaySheetAccessory.vue"
 import DeliveryChallan from "./Delivery_Challan/components/deliverable_items.vue"
 import CuttingMarker from "./Cutting_Marker/components/cutting_marker.vue"
-import TimeAndActionWeeklyReport from "./Lot/components/TimeAndActionWeeklyReport.vue"
-import TimeAndActionOrderTracking from "./Lot/components/TimeAndActionTracking.vue"
+import TimeAndActionWeeklyReport from "./TimeAndAction/TimeAndActionWeeklyReport.vue"
+import TandAUpdate from "./TimeAndAction/TandAUpdate.vue"
+import TimeAndActionOrderTracking from "./TimeAndAction/TimeAndActionTracking.vue"
 import CutPanelMovementBundle from "./Cut_Panel_Movement/components/CutPanelMovementBundle.vue"
 import StockSummary from "./components/StockSummary.vue"
 import ReturnItemsPopUp from "./Delivery_Challan/components/ReturnItemsPopUp.vue"
@@ -65,6 +63,7 @@ import FinishingOldLotTransfer from "./Finishing/FinishingOldLotTransfer.vue"
 import FinishingIroningExcess from "./Finishing/FinishingIroningExcess.vue";
 import FinishingOCR from "./Finishing/FinishingOCR.vue"
 import FinishingPackReturn from "./Finishing/FinishingPackReturn.vue"
+import ActionDetail from "./ActionMaster/ActionDetail.vue"
 
 // Product Development
 import { ProductFileVersionsWrapper, ProductCostingListWrapper } from "./ProductDevelopment"
@@ -437,6 +436,36 @@ frappe.production.ui.TimeAndActionWeeklyReport = class {
     }
 }
 
+frappe.production.ui.ActionDetail = class {
+    constructor(wrapper){
+        this.$wrapper = $(wrapper)
+        this.make_app()
+    }
+    make_app(){
+        this.app = createApp(ActionDetail)
+        SetVueGlobals(this.app)
+        this.vue = this.app.mount(this.$wrapper.get(0))
+    }
+    load_data(data, options, preview=false){
+        this.vue.load_data(JSON.parse(JSON.stringify(data)), options, preview)
+    }
+    get_data(){
+        return this.vue.get_items()
+    }
+}
+
+frappe.production.ui.TandAUpdate = class {
+    constructor(wrapper){
+        this.$wrapper = $(wrapper);
+        this.make_app()
+    }
+    make_app(){
+        this.app = createApp(TandAUpdate)
+        SetVueGlobals(this.app)
+        this.vue = this.app.mount(this.$wrapper.get(0))
+    }
+}
+
 frappe.production.ui.TimeAndActionOrderTracking = class {
     constructor(wrapper){
         this.$wrapper = $(wrapper);
@@ -611,28 +640,6 @@ frappe.production.ui.WorkStation = class {
     }
 }
 
-frappe.production.ui.WorkStationV2 = class {
-    constructor(wrapper){
-        this.$wrapper = $(wrapper)
-        this.make_app()
-    }
-    make_app(){
-        this.app = createApp(WorkStationV2)
-        SetVueGlobals(this.app)
-        this.vue = this.app.mount(this.$wrapper.get(0))
-    }
-    load_data(data, type){
-        let items = JSON.parse(JSON.stringify(data))
-        this.vue.load_data(items, type)
-    }
-    set_attributes(){
-        this.vue.set_attributes()
-    }
-    get_items(){
-        return this.vue.get_items()
-    }
-}
-
 frappe.production.ui.TimeActionPreview = class {
     constructor(wrapper){
         this.$wrapper = $(wrapper)
@@ -643,44 +650,33 @@ frappe.production.ui.TimeActionPreview = class {
         SetVueGlobals(this.app)
         this.vue = this.app.mount(this.$wrapper.get(0))
     }
-    load_data(data){
+    load_data(data, start_date){
         let items = JSON.parse(JSON.stringify(data))
-        this.vue.load_data(items)
+        this.vue.load_data(items, start_date)
     }
 }
 
-frappe.production.ui.TandACapacityPreview = class {
+frappe.production.ui.InwardQuantityReport = class {
     constructor(wrapper){
         this.$wrapper = $(wrapper)
         this.make_app()
     }
     make_app(){
-        this.app = createApp(TandACapacityPreview)
+        this.app = createApp(InwardQuantityReport)
         SetVueGlobals(this.app)
         this.vue = this.app.mount(this.$wrapper.get(0))
     }
-
-    load_data(data){
-        let items = JSON.parse(JSON.stringify(data))
-        this.vue.load_data(items)
-    }
 }
 
-frappe.production.ui.UpdateAllocationDays = class {
+frappe.production.ui.InhouseQuantity = class {
     constructor(wrapper){
         this.$wrapper = $(wrapper)
         this.make_app()
     }
     make_app(){
-        this.app = createApp(UpdateAllocationDays)
+        this.app = createApp(InhouseQuantity)
         SetVueGlobals(this.app)
         this.vue = this.app.mount(this.$wrapper.get(0))
-    }
-    load_data(data){
-        this.vue.load_data(data)
-    }
-    get_data(){
-        return this.vue.get_data()
     }
 }
 

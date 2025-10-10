@@ -1,6 +1,6 @@
 {
  "charts": [],
- "content": "[{\"id\":\"rgAV8RFkbU\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">Time and Actions</span>\",\"col\":12}},{\"id\":\"1eUCwSymfe\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Lot\",\"col\":3}},{\"id\":\"ENDQLw06kX\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Item Production Detail\",\"col\":3}},{\"id\":\"FJ--7fv2dG\",\"type\":\"spacer\",\"data\":{\"col\":12}},{\"id\":\"gkymznbA4X\",\"type\":\"card\",\"data\":{\"card_name\":\"Time and Action Reports\",\"col\":4}}]",
+ "content": "[{\"id\":\"rgAV8RFkbU\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">Time and Actions</span>\",\"col\":12}},{\"id\":\"1eUCwSymfe\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Lot\",\"col\":3}},{\"id\":\"ENDQLw06kX\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Item Production Detail\",\"col\":3}},{\"id\":\"FJ--7fv2dG\",\"type\":\"spacer\",\"data\":{\"col\":12}},{\"id\":\"gkymznbA4X\",\"type\":\"card\",\"data\":{\"card_name\":\"Time and Action Reports\",\"col\":4}},{\"id\":\"R2oY3ttlEn\",\"type\":\"card\",\"data\":{\"card_name\":\"Details\",\"col\":4}}]",
  "creation": "2024-11-15 15:05:48.921491",
  "custom_blocks": [],
  "docstatus": 0,
@@ -97,8 +97,8 @@
    "is_query_report": 0,
    "label": "Time and Action Weekly Review Report",
    "link_count": 0,
-   "link_to": "Time and Action Weekly Review Report",
-   "link_type": "DocType",
+   "link_to": "t-and-a-weekly-revie",
+   "link_type": "Page",
    "onboard": 0,
    "type": "Link"
   },
@@ -111,9 +111,68 @@
    "link_type": "Report",
    "onboard": 0,
    "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Details",
+   "link_count": 5,
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Action",
+   "link_count": 0,
+   "link_to": "Action",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Action Master",
+   "link_count": 0,
+   "link_to": "Action Master",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Action Master Template",
+   "link_count": 0,
+   "link_to": "Action Master Template",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Time and Action Update",
+   "link_count": 0,
+   "link_to": "t_and_a_update",
+   "link_type": "Page",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "T and A Settings",
+   "link_count": 0,
+   "link_to": "T and A Settings",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
   }
  ],
- "modified": "2025-03-07 17:08:54.478184",
+ "modified": "2025-10-10 16:31:36.767599",
  "modified_by": "Administrator",
  "module": "Essdee Production",
  "name": "Time and Actions",
