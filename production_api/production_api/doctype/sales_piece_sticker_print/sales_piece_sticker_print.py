@@ -28,7 +28,8 @@ def get_print_format(doc_name):
 
 	templates = ""
 	for item in doc.sales_piece_sticker_print_details:
-		templates += get_template(item, raw_code, label_count, doc.brand)
+		if item.quantity > 0:
+			templates += get_template(item, raw_code, label_count, doc.brand)
 
 	return templates
 
@@ -36,7 +37,6 @@ def get_template(item, raw_code, label_count, brand):
 	mrp = "{:.2f}".format(float(item.mrp_price))
 	offer_price = "{:.2f}".format(float(item.offer_price))
 	print_quantity = int(math.ceil(item.quantity) / int(label_count))
-
 	template = frappe.render_template(raw_code, {
 		'print_quantity': print_quantity,
 		'mrp_price': str(mrp),
