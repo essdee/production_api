@@ -33,6 +33,7 @@ frappe.ui.form.on("Sales Piece Sticker Print", {
                                     primary_action:function(){
                                         d.hide()
                                         let printer = get_printer()
+                                        printer = printer.slice(1, -1);
                                         print_labels(frm, printer)
                                     }
                                 })
@@ -123,7 +124,7 @@ function print_labels(frm, printer){
             if(r.message){
                 let config = qz.configs.create(printer)
                 qz.print(config,[r.message]).then().catch((err)=>{
-                    
+                    console.log(err)
                 })
             }
         }
