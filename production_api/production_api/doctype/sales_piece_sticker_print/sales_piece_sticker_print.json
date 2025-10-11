@@ -1,0 +1,61 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2025-10-11 10:59:06.275901",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "brand",
+  "print_format",
+  "sales_piece_sticker_print_details"
+ ],
+ "fields": [
+  {
+   "fieldname": "print_format",
+   "fieldtype": "Link",
+   "label": "Print Format",
+   "options": "Essdee Raw Print Format",
+   "reqd": 1
+  },
+  {
+   "allow_bulk_edit": 1,
+   "fieldname": "sales_piece_sticker_print_details",
+   "fieldtype": "Table",
+   "label": "Sales Piece Sticker Print Details",
+   "options": "Sales Piece Sticker Print Detail"
+  },
+  {
+   "fieldname": "brand",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Brand",
+   "options": "Brand",
+   "reqd": 1
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "issingle": 1,
+ "links": [],
+ "modified": "2025-10-11 11:39:20.581468",
+ "modified_by": "Administrator",
+ "module": "Production Api",
+ "name": "Sales Piece Sticker Print",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "print": 1,
+   "read": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}
