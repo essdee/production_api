@@ -38,6 +38,13 @@ class StockEntry(Document):
 		elif not self.flags.allow_from_sms and not self.flags.allow_from_dc and not self.flags.allow_from_summary and not self.flags.allow_from_grn and self.is_new() or not self.get('items'):
 			frappe.throw('Add items to Stock Entry.', title='Stock Entry')
 
+	def before_submit(self):
+		if self.against == "Finishing Plan":
+			if self.purpose == 'Material Issue':
+				add_value = frappe.db.get_single_value("Stock Settings", "add_finishing_plan_goods_value")
+				if not add_value:
+					self.total_amount = self.additional_amount
+
 	def validate(self):
 		self.validate_data()
 		self.validate_warehouse()
@@ -295,9 +302,6 @@ class StockEntry(Document):
 	def update_finishing_plan(self):	
 		if self.against == "Finishing Plan":
 			if self.purpose == 'Material Issue':
-				add_value = frappe.db.get_single_value("Stock Settings", "add_finishing_plan_goods_value")
-				if not add_value:
-					self.total_amount = self.additional_amount
 				finishing_doc = frappe.get_doc("Finishing Plan", self.against_id)
 				d = {}
 				for row in finishing_doc.finishing_plan_grn_details:
