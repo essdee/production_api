@@ -1012,3 +1012,17 @@ def get_finishing_rework_list(finishing_rework_items):
 			"set_combination": finishing_rework_items[key]['set_combination'],
 		})	
 	return finishing_rework_items_list	
+
+def get_variant_attr_details(variant):
+	attr_details = frappe.db.sql(
+		""" SELECT attribute, attribute_value FROM `tabItem Variant Attribute` WHERE parent = %(parent)s 
+		""", {
+			"parent": variant
+		}, as_dict=True
+	)
+	d = {}
+	for attr_detail in attr_details:
+		d[attr_detail['attribute']] = attr_detail['attribute_value']
+	return d
+
+
