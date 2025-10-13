@@ -7,10 +7,9 @@ from frappe.model.document import Document
 from production_api.production_api.doctype.supplier.supplier import get_primary_address
 from production_api.production_api.doctype.work_order.work_order import create_finishing_detail
 from production_api.production_api.doctype.item.item import get_or_create_variant, get_attribute_details
-from production_api.utils import update_if_string_instance, get_finishing_plan_dict, get_finishing_plan_list
 from production_api.essdee_production.doctype.item_production_detail.item_production_detail import get_ipd_primary_values
 from production_api.production_api.doctype.purchase_order.purchase_order import get_item_attribute_details, get_item_group_index
-from production_api.production_api.doctype.cut_bundle_movement_ledger.cut_bundle_movement_ledger import get_variant_attr_details
+from production_api.utils import update_if_string_instance, get_finishing_plan_dict, get_finishing_plan_list, get_variant_attr_details
 
 class FinishingPlan(Document):
 	def onload(self):
@@ -828,7 +827,6 @@ def fetch_from_old_lot(lot, item, location):
 	}	
 
 def pack_stage_variant(variant, dept_attr, pack_in_stage):
-	from production_api.production_api.doctype.cut_bundle_movement_ledger.cut_bundle_movement_ledger import get_variant_attr_details
 	attr_details = get_variant_attr_details(variant)
 	if attr_details[dept_attr] == pack_in_stage:
 		return True

@@ -4,9 +4,9 @@
 import frappe
 from frappe.utils import nowdate, nowtime
 from frappe.model.document import Document
-from production_api.utils import update_if_string_instance
 from production_api.mrp_stock.utils import get_combine_datetime
 from production_api.production_api.doctype.item.item import get_or_create_variant
+from production_api.utils import update_if_string_instance, get_variant_attr_details
 
 class CutBundleMovementLedger(Document):
 	def set_posting_datetime(self):
@@ -605,18 +605,6 @@ def check_dependent_stage_variant(variant, dependent_attribute, dependent_attrib
 	if attr_details:
 		return True
 	return False
-
-def get_variant_attr_details(variant):
-	attr_details = frappe.db.sql(
-		""" SELECT attribute, attribute_value FROM `tabItem Variant Attribute` WHERE parent = %(parent)s 
-		""", {
-			"parent": variant
-		}, as_dict=True
-	)
-	d = {}
-	for attr_detail in attr_details:
-		d[attr_detail['attribute']] = attr_detail['attribute_value']
-	return d
 
 def on_doctype_update():
 	frappe.db.add_index("Cut Bundle Movement Ledger", ["cbm_key"])

@@ -39,7 +39,7 @@ class StockEntry(Document):
 			frappe.throw('Add items to Stock Entry.', title='Stock Entry')
 
 	def before_submit(self):
-		if self.against == "Finishing Plan":
+		if self.against in ["Finishing Plan", "Finishing Plan Dispatch"]:
 			if self.purpose == 'Material Issue':
 				add_value = frappe.db.get_single_value("Stock Settings", "add_finishing_plan_goods_value")
 				if not add_value:
@@ -345,6 +345,24 @@ class StockEntry(Document):
 
 				fp_doc.incomplete_transfer_dc_list = frappe.json.dumps(incomplete_transfer_dc_list)
 				fp_doc.save(ignore_permissions=True)
+
+		if self.against == "Finishing Plan Dispatch":
+			fp_doc = frappe.get_doc("Finishing Plan Dispatch", self.against_id)
+			for row in fp_doc.finishing_plan_dispatch_items:
+				qty = frappe.db.get_value("Finishing Plan GRN Detail", row.against_id_detail, "dispatched")
+				if self.docstatus == 2:
+					qty -= row.quantity
+				else:
+					qty += row.quantity		
+
+				frappe.db.set_value("Finishing Plan GRN Detail", row.against_id_detail, "dispatched", qty)
+			
+			if self.docstatus == 1:
+				fp_doc.stock_entry = self.name
+			else:
+				fp_doc.stock_entry = None
+				
+			fp_doc.save(ignore_permissions=True)
 
 		if self.against == "Finishing Plan":
 			if self.purpose == 'Material Issue':

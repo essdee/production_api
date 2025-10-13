@@ -17,7 +17,7 @@
    "hidden": 0,
    "is_query_report": 0,
    "label": "Reports",
-   "link_count": 7,
+   "link_count": 6,
    "link_type": "DocType",
    "onboard": 0,
    "type": "Card Break"
@@ -84,19 +84,9 @@
   },
   {
    "hidden": 0,
-   "is_query_report": 1,
-   "label": "Work Station Capacity Blocking",
-   "link_count": 0,
-   "link_to": "Work Station Capacity Blocking",
-   "link_type": "Report",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "hidden": 0,
    "is_query_report": 0,
    "label": "Rework Detail",
-   "link_count": 2,
+   "link_count": 4,
    "link_type": "DocType",
    "onboard": 0,
    "type": "Card Break"
@@ -120,9 +110,30 @@
    "link_type": "Page",
    "onboard": 0,
    "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Finishing Plan",
+   "link_count": 0,
+   "link_to": "Finishing Plan",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Finishing Plan Dispatch",
+   "link_count": 0,
+   "link_to": "Finishing Plan Dispatch",
+   "link_type": "DocType",
+   "onboard": 0,
+   "report_ref_doctype": "Delivery Challan",
+   "type": "Link"
   }
  ],
- "modified": "2025-09-02 12:40:34.783499",
+ "modified": "2025-10-13 16:34:10.027513",
  "modified_by": "Administrator",
  "module": "Essdee Production",
  "name": "Manufacturing",
