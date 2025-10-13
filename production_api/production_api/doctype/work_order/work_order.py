@@ -1597,6 +1597,7 @@ def create_finishing_detail(work_order, from_finishing=False):
 		"lot": wo_doc.lot,
 		"process_name": ['in', process_names],
 	}, pluck="name")
+	stiching_grn_list = {}
 	for wo in wo_list:
 		doc = frappe.get_doc("Work Order", wo)
 		for row in doc.work_order_calculated_items:
@@ -1615,6 +1616,17 @@ def create_finishing_detail(work_order, from_finishing=False):
 						items[key]['rework_qty'] += received_types[ty]	
 
 					items[key]['received_types'][ty] += received_types[ty]	
+
+		if doc.is_internal_unit:
+			grn_list = frappe.get_all("Goods Received Note", filters={
+				"against": "Work Order",
+				"against_id": wo,
+				"docstatus": 1,
+				"transfer_complete": 0,
+			}, pluck="name")
+
+			for grn in grn_list:
+				stiching_grn_list[grn] = True
 
 	wo_list = frappe.get_all("Work Order", filters={
 		"docstatus": 1,
@@ -1711,6 +1723,8 @@ def create_finishing_detail(work_order, from_finishing=False):
 	new_doc.pieces_per_box = pcs_per_box
 	new_doc.work_order = work_order
 	new_doc.finishing_process = finishing_inward_process
+	new_doc.incomplete_transfer_grn_list = frappe.json.dumps(stiching_grn_list)
+	new_doc.incomplete_transfer_dc_list = frappe.json.dumps({})
 	new_doc.set("finishing_plan_details", finishing_items)
 	new_doc.set("finishing_plan_reworked_details", finishing_rework_items)
 	new_doc.set("finishing_plan_grn_details", grn_items)

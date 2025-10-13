@@ -641,7 +641,7 @@ def get_packing_attributes(ipd):
 		colour_combo_dict_list = []
 		ratio_combo = []
 		index = -1		
-		for colour in colours:
+		for colour in major_colours:
 			index = index + 1
 			for part in set_map_doc.values:
 				colour_combo_dict_list.append({

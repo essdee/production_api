@@ -300,6 +300,52 @@ class StockEntry(Document):
 		self.update_finishing_plan()
 
 	def update_finishing_plan(self):	
+		if self.purpose == "GRN Completion":
+			finishing_inward_process = frappe.db.get_single_value("MRP Settings", "finishing_inward_process")
+			process_name, lot = frappe.get_value("Goods Received Note", self.against_id, ["process_name", "lot"])	
+			is_group = frappe.get_value("Process", process_name, "is_group")
+			check = False
+			if is_group:
+				process = None
+				doc = frappe.get_doc("Process", process_name)
+				for row in doc.process_details:
+					process = row.process_name
+				check = process == finishing_inward_process
+			else:
+				check = process_name == finishing_inward_process
+
+			if check:
+				fp_list = frappe.get_all("Finishing Plan", filters={
+					"lot": lot,
+				}, pluck="name")
+				if fp_list:
+					fp_doc = frappe.get_doc("Finishing Plan", fp_list[0])
+					incomplete_transfer_grn_list = update_if_string_instance(fp_doc.incomplete_transfer_grn_list)
+					if self.docstatus == 1:
+						del incomplete_transfer_grn_list[self.against_id]
+					else:
+						incomplete_transfer_grn_list[self.against_id] = True
+
+					fp_doc.incomplete_transfer_grn_list = frappe.json.dumps(incomplete_transfer_grn_list)
+					fp_doc.save(ignore_permissions=True)
+
+		if self.purpose == "DC Completion":
+			lot = frappe.get_value("Delivery Challan", self.against_id, "lot")
+			finishing_list = frappe.get_all("Finishing Plan", filters={
+				"lot": lot,
+			}, pluck="name", limit=1)		
+
+			if finishing_list:
+				fp_doc = frappe.get_doc("Finishing Plan", finishing_list[0])	
+				incomplete_transfer_dc_list = update_if_string_instance(fp_doc.incomplete_transfer_dc_list)
+				if self.docstatus == 2:
+					incomplete_transfer_dc_list[self.against_id] = True
+				else:
+					del incomplete_transfer_dc_list[self.against_id]
+
+				fp_doc.incomplete_transfer_dc_list = frappe.json.dumps(incomplete_transfer_dc_list)
+				fp_doc.save(ignore_permissions=True)
+
 		if self.against == "Finishing Plan":
 			if self.purpose == 'Material Issue':
 				finishing_doc = frappe.get_doc("Finishing Plan", self.against_id)

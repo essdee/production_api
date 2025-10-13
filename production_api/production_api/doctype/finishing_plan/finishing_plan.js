@@ -52,6 +52,8 @@ frappe.ui.form.on("Finishing Plan", {
             frm.doc['pack_return'] = JSON.stringify(frm.doc.__onload.pack_return);
             frm.pack_return_detail.load_data(frm.doc.__onload.pack_return);
         }
+        $(frm.fields_dict['incomplete_transfer_items_html'].wrapper).html("")
+        new frappe.production.ui.FinishingPlanCompleteTransfer(frm.fields_dict['incomplete_transfer_items_html'].wrapper)
     },
     fetch_quantity(frm){
         frappe.call({
@@ -62,6 +64,15 @@ frappe.ui.form.on("Finishing Plan", {
             },
             freeze: true,
             freeze_message: "Fetching Quantity",
+        })
+    },
+    fetch_incomplete_items(frm){
+        frappe.call({
+            method: "production_api.production_api.doctype.finishing_plan.finishing_plan.get_incomplete_transfer_docs",
+            args: {
+                lot: frm.doc.lot,
+                doc_name: frm.doc.name
+            },
         })
     }
 });

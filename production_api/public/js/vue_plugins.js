@@ -63,6 +63,7 @@ import FinishingOldLotTransfer from "./Finishing/FinishingOldLotTransfer.vue"
 import FinishingIroningExcess from "./Finishing/FinishingIroningExcess.vue";
 import FinishingOCR from "./Finishing/FinishingOCR.vue"
 import FinishingPackReturn from "./Finishing/FinishingPackReturn.vue"
+import FinishingPlanCompleteTransfer from "./Finishing/FinishingPlanCompleteTransfer.vue";
 import ActionDetail from "./ActionMaster/ActionDetail.vue"
 
 // Product Development
@@ -588,6 +589,19 @@ frappe.production.ui.FinishingPackReturn = class {
         this.vue.load_data(JSON.parse(JSON.stringify(data)))
     }
 }
+
+frappe.production.ui.FinishingPlanCompleteTransfer = class {
+    constructor(wrapper){
+        this.$wrapper = $(wrapper)
+        this.make_app()
+    }
+    make_app(){
+        this.app = createApp(FinishingPlanCompleteTransfer)
+        SetVueGlobals(this.app)
+        this.vue = this.app.mount(this.$wrapper.get(0))
+    }
+}
+
 
 
 frappe.production.ui.FinishingOldLotTransfer = class {
