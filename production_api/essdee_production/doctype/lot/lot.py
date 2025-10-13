@@ -6,10 +6,10 @@ from six import string_types
 from itertools import groupby
 from frappe.model.document import Document
 from frappe.model.naming import make_autoname
-from production_api.utils import update_if_string_instance, get_panel_colour_combination
 from production_api.essdee_production.doctype.holiday_list.holiday_list import get_next_date
 from production_api.production_api.doctype.purchase_order.purchase_order import get_item_group_index
 from production_api.production_api.doctype.item.item import get_attribute_details, get_or_create_variant
+from production_api.utils import update_if_string_instance, get_panel_colour_combination, get_variant_attr_details
 from production_api.production_api.doctype.item_dependent_attribute_mapping.item_dependent_attribute_mapping import get_dependent_attribute_details
 
 class Lot(Document):
@@ -641,7 +641,7 @@ def get_packing_attributes(ipd):
 		colour_combo_dict_list = []
 		ratio_combo = []
 		index = -1		
-		for colour in colours:
+		for colour in major_colours:
 			index = index + 1
 			for part in set_map_doc.values:
 				colour_combo_dict_list.append({
@@ -764,7 +764,6 @@ def get_ironing_mistake_pf_items(lot):
 
 # @frappe.whitelist()
 # def get_cad_detail(ipd, lot):
-# 	from production_api.production_api.doctype.cut_bundle_movement_ledger.cut_bundle_movement_ledger import get_variant_attr_details
 # 	ipd_doc = frappe.get_doc("Item Production Detail", ipd)
 # 	lot_doc = frappe.get_doc("Lot", lot)
 # 	colour_qty = {}

@@ -99,6 +99,7 @@ def create_or_update_item(fg_item):
 		"is_stock_item": 1,
 		"is_purchase_item": 1,
 		"is_sales_item": 1,
+		"product_category": fg_item.product_category,
 		"secondary_unit_of_measure": secondary_unit
 	})
 

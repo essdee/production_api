@@ -7,10 +7,9 @@ from frappe.model.document import Document
 from production_api.production_api.doctype.supplier.supplier import get_primary_address
 from production_api.production_api.doctype.work_order.work_order import create_finishing_detail
 from production_api.production_api.doctype.item.item import get_or_create_variant, get_attribute_details
-from production_api.utils import update_if_string_instance, get_finishing_plan_dict, get_finishing_plan_list
 from production_api.essdee_production.doctype.item_production_detail.item_production_detail import get_ipd_primary_values
 from production_api.production_api.doctype.purchase_order.purchase_order import get_item_attribute_details, get_item_group_index
-from production_api.production_api.doctype.cut_bundle_movement_ledger.cut_bundle_movement_ledger import get_variant_attr_details
+from production_api.utils import update_if_string_instance, get_finishing_plan_dict, get_finishing_plan_list, get_variant_attr_details
 
 class FinishingPlan(Document):
 	def onload(self):
@@ -828,7 +827,6 @@ def fetch_from_old_lot(lot, item, location):
 	}	
 
 def pack_stage_variant(variant, dept_attr, pack_in_stage):
-	from production_api.production_api.doctype.cut_bundle_movement_ledger.cut_bundle_movement_ledger import get_variant_attr_details
 	attr_details = get_variant_attr_details(variant)
 	if attr_details[dept_attr] == pack_in_stage:
 		return True
@@ -979,3 +977,50 @@ def get_part_value(set_attr, ipd):
 		for row in map_doc.values:
 			values.append(row.attribute_value)
 		return values	
+
+@frappe.whitelist()
+def get_incomplete_transfer_docs(lot, doc_name):
+	finishing_inward_process = frappe.db.get_single_value("MRP Settings", "finishing_inward_process")
+	if not finishing_inward_process:
+		frappe.throw("Set Finishing Inward Process")
+
+	processes = frappe.db.sql(
+		"""
+			Select parent FROM `tabProcess Details` WHERE process_name = %(process)s OR parent = %(process)s
+		""", {
+			"process": finishing_inward_process,
+		}, as_dict=1
+	)
+	process_names = [p['parent'] for p in processes]
+	process_names.append(finishing_inward_process)
+	grn_list = frappe.get_all("Goods Received Note", filters={
+		"docstatus": 1,
+		"against": "Work Order",
+		"process_name": ['in', process_names],
+		"lot": lot,
+		"is_internal_unit": 1,
+		"transfer_complete": 0, 
+	}, pluck="name")
+	
+	grn_list_dict = {}
+	for grn in grn_list:
+		grn_list_dict[grn] = True
+
+	dc_list = frappe.get_all("Delivery Challan", filters={
+		"docstatus": 1,
+		"includes_packing": 1,
+		"lot": lot,
+		"is_internal_unit": 1,
+		"transfer_complete": 0, 
+	}, pluck="name")
+
+	dc_list_dict = {}
+
+	for dc in dc_list:
+		dc_list_dict[dc] = True
+
+	fp_doc = frappe.get_doc("Finishing Plan", doc_name)	
+	fp_doc.incomplete_transfer_grn_list = frappe.json.dumps(grn_list_dict)
+	fp_doc.incomplete_transfer_dc_list = frappe.json.dumps(dc_list_dict)
+	fp_doc.save()
+

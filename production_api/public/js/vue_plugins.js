@@ -63,6 +63,8 @@ import FinishingOldLotTransfer from "./Finishing/FinishingOldLotTransfer.vue"
 import FinishingIroningExcess from "./Finishing/FinishingIroningExcess.vue";
 import FinishingOCR from "./Finishing/FinishingOCR.vue"
 import FinishingPackReturn from "./Finishing/FinishingPackReturn.vue"
+import FinishingPlanCompleteTransfer from "./Finishing/FinishingPlanCompleteTransfer.vue";
+import FinishingPlanDispatch from "./Finishing/FinishingPlanDispatch.vue";
 import ActionDetail from "./ActionMaster/ActionDetail.vue"
 
 // Product Development
@@ -589,6 +591,35 @@ frappe.production.ui.FinishingPackReturn = class {
     }
 }
 
+frappe.production.ui.FinishingPlanCompleteTransfer = class {
+    constructor(wrapper){
+        this.$wrapper = $(wrapper)
+        this.make_app()
+    }
+    make_app(){
+        this.app = createApp(FinishingPlanCompleteTransfer)
+        SetVueGlobals(this.app)
+        this.vue = this.app.mount(this.$wrapper.get(0))
+    }
+}
+
+frappe.production.ui.FinishingPlanDispatch = class {
+    constructor(wrapper){
+        this.$wrapper = $(wrapper)
+        this.make_app()
+    }
+    make_app(){
+        this.app = createApp(FinishingPlanDispatch)
+        SetVueGlobals(this.app)
+        this.vue = this.app.mount(this.$wrapper.get(0))
+    }
+    load_data(data){
+        this.vue.load_data(JSON.parse(JSON.stringify(data)))
+    }
+    get_data(){
+        return this.vue.get_data()
+    }
+}
 
 frappe.production.ui.FinishingOldLotTransfer = class {
     constructor(wrapper){

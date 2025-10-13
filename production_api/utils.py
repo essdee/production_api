@@ -752,7 +752,6 @@ def get_cut_sheet_report(date, location):
 	return report
 
 def get_lpiece_variant(pack_attr, dept_attr, variant):
-	from production_api.production_api.doctype.cut_bundle_movement_ledger.cut_bundle_movement_ledger import get_variant_attr_details
 	from production_api.production_api.doctype.item.item import get_or_create_variant
 	attr_details = get_variant_attr_details(variant)
 	del attr_details[pack_attr]
@@ -765,7 +764,6 @@ def get_lpiece_variant(pack_attr, dept_attr, variant):
 
 @frappe.whitelist()
 def get_inward_qty(lot, process):
-	from production_api.production_api.doctype.cut_bundle_movement_ledger.cut_bundle_movement_ledger import get_variant_attr_details
 	from production_api.essdee_production.doctype.item_production_detail.item_production_detail import get_ipd_primary_values
 	wo_list = frappe.get_all("Work Order", filters={
 		"lot": lot,
@@ -858,9 +856,6 @@ def get_site_config_value():
 
 @frappe.whitelist()
 def get_inhouse_qty(lot, process):
-	from production_api.production_api.doctype.cut_bundle_movement_ledger.cut_bundle_movement_ledger import (
-		get_variant_attr_details,
-	)
 	from production_api.essdee_production.doctype.item_production_detail.item_production_detail import (
 		get_ipd_primary_values,
 	)

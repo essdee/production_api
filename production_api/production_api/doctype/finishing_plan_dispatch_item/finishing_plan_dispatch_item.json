@@ -1,0 +1,87 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2025-10-13 12:27:49.201656",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "item_variant",
+  "uom",
+  "balance_qty",
+  "quantity",
+  "lot",
+  "item",
+  "against_id",
+  "against_id_detail"
+ ],
+ "fields": [
+  {
+   "fieldname": "item_variant",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Item Variant",
+   "options": "Item Variant"
+  },
+  {
+   "fieldname": "uom",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "UOM",
+   "options": "UOM"
+  },
+  {
+   "fieldname": "quantity",
+   "fieldtype": "Int",
+   "in_list_view": 1,
+   "label": "Quantity"
+  },
+  {
+   "fieldname": "lot",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Lot",
+   "options": "Lot"
+  },
+  {
+   "fieldname": "item",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Item",
+   "options": "Item"
+  },
+  {
+   "fieldname": "balance_qty",
+   "fieldtype": "Int",
+   "in_list_view": 1,
+   "label": "Balance Qty"
+  },
+  {
+   "fieldname": "against_id",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Against ID",
+   "options": "Finishing Plan"
+  },
+  {
+   "fieldname": "against_id_detail",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Against ID Detail"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2025-10-13 14:40:40.059092",
+ "modified_by": "Administrator",
+ "module": "Production Api",
+ "name": "Finishing Plan Dispatch Item",
+ "owner": "Administrator",
+ "permissions": [],
+ "row_format": "Dynamic",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}
