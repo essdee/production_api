@@ -90,7 +90,6 @@
    "fieldname": "against",
    "fieldtype": "Select",
    "in_list_view": 1,
-   "in_standard_filter": 1,
    "label": "Against",
    "options": "Purchase Order\nWork Order",
    "reqd": 1
@@ -557,7 +556,7 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-09-26 11:54:20.761444",
+ "modified": "2025-10-15 12:36:49.027745",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Goods Received Note",

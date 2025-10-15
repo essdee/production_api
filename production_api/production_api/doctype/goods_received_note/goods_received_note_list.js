@@ -1,6 +1,6 @@
 frappe.listview_settings['Goods Received Note'] = {
     onload: function (listview) {
-        const desired_order = ['name', 'supplier', 'lot', 'process_name', 'against'];
+        const desired_order = ['name', 'supplier', 'lot', 'process_name', 'is_return'];
         const filters_dict = listview.page.fields_dict;
         let reorder_fields = []
         desired_order.forEach((key, idx)=> {
