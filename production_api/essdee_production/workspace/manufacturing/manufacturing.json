@@ -67,7 +67,7 @@
    "hidden": 0,
    "is_query_report": 0,
    "label": "Reports",
-   "link_count": 9,
+   "link_count": 10,
    "link_type": "DocType",
    "onboard": 0,
    "type": "Card Break"
@@ -161,9 +161,19 @@
    "link_type": "Page",
    "onboard": 0,
    "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Month Wise Detail Report",
+   "link_count": 0,
+   "link_to": "month-wise-detail-re",
+   "link_type": "Page",
+   "onboard": 0,
+   "type": "Link"
   }
  ],
- "modified": "2025-10-15 09:50:14.685363",
+ "modified": "2025-10-15 17:31:54.005396",
  "modified_by": "Administrator",
  "module": "Essdee Production",
  "name": "Manufacturing",

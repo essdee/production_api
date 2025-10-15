@@ -71,6 +71,7 @@
   "section_break_fewo",
   "column_break_klzv",
   "received_types_json",
+  "work_order_track_pieces",
   "summary_tab",
   "wo_summary_html"
  ],
@@ -528,6 +529,13 @@
    "hidden": 1,
    "label": "Work Order Excess Usage Items",
    "options": "Work Order Excess Usage Item"
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "work_order_track_pieces",
+   "fieldtype": "Table",
+   "label": "Work Order Track Pieces",
+   "options": "Work Order Track Piece"
   }
  ],
  "grid_page_length": 50,
@@ -543,7 +551,7 @@
    "link_fieldname": "against_id"
   }
  ],
- "modified": "2025-09-18 17:13:15.353413",
+ "modified": "2025-10-15 17:33:21.881678",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Work Order",

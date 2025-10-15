@@ -1,0 +1,84 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2025-10-15 14:15:15.129172",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "item_variant",
+  "delivered_quantity",
+  "received_qty",
+  "against",
+  "against_id",
+  "set_combination",
+  "date"
+ ],
+ "fields": [
+  {
+   "fieldname": "item_variant",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Item Variant",
+   "options": "Item Variant",
+   "reqd": 1
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "delivered_quantity",
+   "fieldtype": "Int",
+   "in_list_view": 1,
+   "label": "Delivered Quantity",
+   "non_negative": 1
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "received_qty",
+   "fieldtype": "Int",
+   "in_list_view": 1,
+   "label": "Received Qty",
+   "non_negative": 1
+  },
+  {
+   "fieldname": "set_combination",
+   "fieldtype": "JSON",
+   "label": "Set Combination"
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "against",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Against",
+   "options": "\nDelivery Challan\nGoods Received Note"
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "against_id",
+   "fieldtype": "Dynamic Link",
+   "in_list_view": 1,
+   "label": "Against ID",
+   "options": "against"
+  },
+  {
+   "fieldname": "date",
+   "fieldtype": "Date",
+   "in_list_view": 1,
+   "label": "Date"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2025-10-15 14:28:40.022174",
+ "modified_by": "Administrator",
+ "module": "Production Api",
+ "name": "Work Order Track Piece",
+ "owner": "Administrator",
+ "permissions": [],
+ "row_format": "Dynamic",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

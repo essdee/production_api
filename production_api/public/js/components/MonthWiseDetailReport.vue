@@ -8,44 +8,27 @@
             <div style="padding-top:27px;">
                 <button class="btn btn-primary" @click="get_month_wise_report()">Show Report</button>
             </div>
-            <!-- <div style="padding-top: 27px;padding-left:10px;">
-                <button class="btn btn-success" @click="take_screenshot()">Take Screenshot</button>
-            </div> -->
         </div>
-        <!-- <div v-if="items && Object.keys(items).length > 0">
+        <div v-if="items && Object.keys(items).length > 0">
             <table class="table table-md table-sm-bordered bordered-table">
                 <tr>
-                    <th>Style</th>
-                    <th>Lot No</th>
-                    <th>Order Qty</th>
+                    <th>Month</th>
                     <th>Cut Qty</th>
                     <th>Sewing Sent</th>
-                    <th>Cut to Sew Diff</th>
                     <th>Finishing Inward</th>
-                    <th>In Sew</th>
                     <th>Dispatch</th>
-                    <th>In Packing</th>
                 </tr>
-                <tr v-for="row in items">
-                    <td>{{ row['style'] }}</td>
-                    <td>{{ row['lot'] }}</td>
-                    <td>{{ row['order_qty'] }}</td>
-                    <td>{{ row['cut_qty'] }}</td>
-                    <td>{{ row['sewing_sent'] }}</td>
-                    <td :style="get_style(get_diff(row['sewing_sent'], row['cut_qty']))">
-                        {{ get_diff(row['sewing_sent'], row['cut_qty']) }}
-                    </td>
-                    <td>{{ row['finishing_inward'] }}</td>
-                    <td :style="get_style(get_diff(row['finishing_inward'], row['sewing_sent']))">
-                        {{ get_diff(row['finishing_inward'], row['sewing_sent']) }}
-                    </td>
-                    <td>{{ row['dispatch'] }}</td>
-                    <td :style="get_style(get_diff(row['dispatch'], row['finishing_inward']))">
-                        {{ get_diff(row['dispatch'], row['finishing_inward']) }}
-                    </td>
-                </tr>
+                <template v-for="month in Object.keys(items)">
+                    <tr>
+                        <td>{{ month }}</td>
+                        <td>{{ items[month]['cut_qty'] }}</td>
+                        <td>{{ items[month]['sewing_sent'] }}</td>
+                        <td>{{ items[month]['finishing_inward'] }}</td>
+                        <td>{{ items[month]['dispatch'] }}</td>
+                    </tr>    
+                </template>
             </table>
-        </div> -->
+        </div>
     </div>
 </template>
 
@@ -71,6 +54,11 @@ onMounted(()=> {
             fieldtype: "Link",
             options: "Lot",
             label: "Lot",
+            async onchange(){
+                let x = await frappe.db.get_value("Lot", lot.get_value(), "item")
+                item.set_value(x.message.item)
+                item.refresh()
+            }
         },
         doc: sample_doc.value,
         render_input: true,
@@ -139,6 +127,7 @@ function get_month_wise_report(){
 }
 
 </script>
+
 <style scoped>
 .bordered-table {
     width: 100%;
