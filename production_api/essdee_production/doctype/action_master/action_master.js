@@ -25,7 +25,7 @@ frappe.ui.form.on("Action Master", {
                             },
                             freeze: true,
                             freeze_message: "Creating Action Master",
-                            callback: function(r){
+                            callback: function(){
                                 frappe.msgprint("Action Master Template Created")
                             }
                         })
