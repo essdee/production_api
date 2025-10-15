@@ -1159,6 +1159,8 @@ def calculate_completed_pieces(doc_name):
 		item.received_qty = 0
 		item.received_type_json = {}
 		item.delivered_quantity = 0	
+
+	wo_doc.set("work_order_track_pieces", [])	
 			
 	wo_doc.total_no_of_pieces_delivered = 0
 	wo_doc.total_no_of_pieces_received = 0	

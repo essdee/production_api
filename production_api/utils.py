@@ -1156,10 +1156,6 @@ def get_month_wise_report(lot=None, item=None, start_date=None, end_date=None):
 		conditions += " AND item = %(item)s"
 		con_dict['item'] = item
 
-	if start_date and end_date:
-		conditions += " AND wo_date BETWEEN %(start_date)s AND %(end_date)s"
-		con_dict['start_date'] = start_date
-		con_dict['end_date'] = end_date
 
 	ipd_settings = frappe.get_single("IPD Settings")
 	cutting = ipd_settings.default_cutting_process
@@ -1189,9 +1185,111 @@ def get_month_wise_report(lot=None, item=None, start_date=None, end_date=None):
 	)
 	
 	month_wise_data = {}
+	months = ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC']
+	start, end = None, None
+	if start_date:
+		start = getdate(start_date)
+		end = getdate(end_date)
 
 	for wo in cut_wo_list:
-		wo_date = frappe.get_value("Work Order", wo['name'], "wo_date")
+		wo_doc = frappe.get_doc("Work Order", wo['name'])
+		for row in wo_doc.work_order_track_pieces:
+			date = row.date
+			if start and end and (date > end or date < start):
+				continue
+			wo_month = str(months[date.month-1])
+			month_wise_data.setdefault(wo_month, {
+				"cut_qty": 0,
+				"sewing_sent": 0,
+				"finishing_inward": 0,
+				"dispatch": 0,
+			})
+			month_wise_data[wo_month]['cut_qty'] += row.received_qty
+
+	processes = frappe.db.sql(
+		""" 
+			SELECT parent FROM `tabProcess Details` WHERE process_name = %(process)s OR parent = %(process)s
+		""",{
+		"process": sewing
+		}, as_dict=1
+	)
+	process_names = [p['parent'] for p in processes]
+	if sewing not in process_names:
+		process_names.append(sewing)
+
+	if len(process_names) == 1:
+		process_names.append("")
+
+	con_dict['process_name_list'] = tuple(process_names)
+	sew_conditions = conditions + " AND process_name IN %(process_name_list)s"
+
+	sew_wo_list = frappe.db.sql(
+		f"""
+			SELECT name FROM `tabWork Order` WHERE docstatus = 1 {sew_conditions}
+		""", con_dict, as_dict=True
+	)	
+
+	for wo in sew_wo_list:
+		wo_doc = frappe.get_doc("Work Order", wo['name'])
+		for row in wo_doc.work_order_track_pieces:
+			date = row.date
+			if start and end and (date > end or date < start):
+				continue
+			wo_month = str(months[date.month-1])
+			month_wise_data.setdefault(wo_month, {
+				"cut_qty": 0,
+				"sewing_sent": 0,
+				"finishing_inward": 0,
+				"dispatch": 0,
+			})
+			month_wise_data[wo_month]['sewing_sent'] += row.delivered_quantity
+			month_wise_data[wo_month]['finishing_inward'] += row.received_qty
+
+	conditions = ""
+	con = {}
+	if lot:
+		conditions += " AND t2.lot = %(lot)s"
+		con['lot'] = lot
+	if item:
+		conditions += " AND t4.name = %(item)s"
+		con['item'] = item
+
+	if start_date and end_date:
+		conditions += " AND t1.posting_date BETWEEN %(start_date)s AND %(end_date)s"
+		con_dict['start_date'] = start_date
+		con_dict['end_date'] = end_date
+
+	conditions += " AND t1.against IN %(doc_list)s"
+	doc_list = ["Finishing Plan", "Finishing Plan Dispatch"]
+	con['doc_list'] = tuple(doc_list)	
+
+	se_list = frappe.db.sql(
+		f"""
+			SELECT t1.name FROM `tabStock Entry Detail` t2 LEFT JOIN `tabStock Entry` t1 ON t2.parent = t1.name
+			LEFT JOIN `tabItem Variant` t3 ON t2.item = t3.name LEFT JOIN `tabItem` t4 ON t3.item = t4.name 
+			WHERE t1.docstatus = 1 {conditions} GROUP BY t1.name
+		""", con, as_dict=True
+	)
+
+	for se in se_list:
+		se_doc = frappe.get_doc("Stock Entry", se['name'])
+		date = se_doc.posting_date
+		wo_month = str(months[date.month-1])
+		month_wise_data.setdefault(wo_month, {
+			"cut_qty": 0,
+			"sewing_sent": 0,
+			"finishing_inward": 0,
+			"dispatch": 0,
+		})
+		for row in se_doc.items:
+			if lot and row.lot != lot:
+				continue
+			if item and frappe.get_cached_value("Item Variant", row.item, "item") != item:
+				continue
+
+			month_wise_data[wo_month]['dispatch'] += (row.qty * row.conversion_factor)
+
+	return month_wise_data
 
 @frappe.whitelist()
 def get_size_wise_stock_report(open_status, lot_list, item_list, category):

@@ -675,15 +675,26 @@ def calculate_pieces(doc_name):
 		for detail in prs_doc.process_details:
 			process_name = detail.process_name
 			break
-	
+	finishing_inward_process = frappe.db.get_single_value("MRP Settings", "finishing_inward_process")
+	is_group = frappe.get_value("Process", dc_doc.process_name, "is_group")
+	check = False
+	if is_group:
+		prs_doc = frappe.get_doc("Process", dc_doc.process_name)
+		for row in prs_doc.process_details:
+			if row.process_name == finishing_inward_process:
+				check = True
+				break
+	else:
+		check = dc_doc.process_name == finishing_inward_process
+
 	if process_name == ipd_doc.cutting_process:
 		return
-	elif process_name == ipd_doc.stiching_process:
+	elif check:
 		panel_list = get_panel_list(ipd_doc)
 		incomplete_items, completed_items, total_delivered, qty_list = calculate_cutting_piece(dc_doc, panel_list)
 
-	elif process_name == ipd_doc.packing_process:
-		final_calculation, total_delivered = calculate_piece_stage(dc_doc, doc_status, total_delivered, final_calculation)
+	elif dc_doc.includes_packing:
+		final_calculation, total_delivered = calculate_piece_stage(dc_doc, doc_status, total_delivered, final_calculation, wo_doc.item)
 	else:
 		emb = update_if_string_instance(ipd_doc.get("emblishment_details_json"))
 		stage = None
@@ -698,7 +709,7 @@ def calculate_pieces(doc_name):
 
 		if stage:
 			if stage == ipd_doc.pack_in_stage:
-				final_calculation, total_delivered = calculate_piece_stage(dc_doc, doc_status, total_delivered, final_calculation)
+				final_calculation, total_delivered = calculate_piece_stage(dc_doc, doc_status, total_delivered, final_calculation, wo_doc.item)
 
 			elif stage == ipd_doc.stiching_in_stage:
 				if not panel_list:	
@@ -720,6 +731,15 @@ def calculate_pieces(doc_name):
 					qty = qty_data['quantity']
 					if doc_status == 2:
 						qty = qty * -1
+					if qty > 0:
+						wo_doc.append("work_order_track_pieces", {
+							"item_variant": qty_data['item_variant'],
+							"delivered_quantity": qty,
+							"against": dc_doc.doctype,
+							"against_id": dc_doc.name,
+							"received_qty": 0,
+							"date": dc_doc.posting_date,
+						})		
 					item.delivered_quantity += qty
 					break 
 	else:
@@ -728,6 +748,15 @@ def calculate_pieces(doc_name):
 				set_combination = update_if_string_instance(item.set_combination)
 				if item.item_variant == data['item_variant'] and set_combination == data['set_combination']:
 					item.delivered_quantity += data['quantity']
+					if data['quantity'] > 0:
+						wo_doc.append("work_order_track_pieces", {
+							"item_variant": data['item_variant'],
+							"delivered_quantity": data['quantity'],
+							"against": dc_doc.doctype,
+							"against_id": dc_doc.name,
+							"received_qty": 0,
+							"date": dc_doc.posting_date,
+						})		
 					
 	fp_list = frappe.get_all("Finishing Plan", filters={ "lot": dc_doc.lot}, pluck="name")				
 	if fp_list:
@@ -765,7 +794,7 @@ def calculate_pieces(doc_name):
 
 	wo_doc.save(ignore_permissions=True)
 
-def calculate_piece_stage(dc_doc, doc_status, total_delivered, final_calculation):
+def calculate_piece_stage(dc_doc, doc_status, total_delivered, final_calculation, item_name):
 	for item in dc_doc.items:
 		qty = item.delivered_quantity
 		if doc_status == 2:
@@ -776,7 +805,9 @@ def calculate_piece_stage(dc_doc, doc_status, total_delivered, final_calculation
 			"quantity": qty,
 			"set_combination":set_combination
 		})
-		total_delivered += qty
+		parent = frappe.get_value("Item Variant", item.item_variant, "item")
+		if parent == item_name:
+			total_delivered += qty
 	return final_calculation, total_delivered
 
 def calculate_cutting_piece(dc_doc, panel_list):

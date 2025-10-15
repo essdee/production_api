@@ -96,7 +96,7 @@ def fetch_fp_items():
 	item_detail = []	
 	for fp in fp_list:
 		fp_doc = frappe.get_doc("Finishing Plan", fp)
-		uom = frappe.get_value("Item", fp_doc.item, "default_unit_of_measure")
+		uom = frappe.get_value("Lot", fp_doc.lot, "uom")
 		item = {}
 		item['lot'] = fp_doc.lot
 		item['item'] = fp_doc.item

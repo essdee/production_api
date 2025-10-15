@@ -2193,7 +2193,7 @@ def calculate_pieces(doc_name):
 		from production_api.production_api.doctype.work_order.work_order import calculate_completed_pieces
 		calculate_completed_pieces(grn_doc.against_id)
 		return
-	ipd = frappe.get_cached_value("Lot", grn_doc.lot,"production_detail")
+	ipd, item_name = frappe.get_cached_value("Lot", grn_doc.lot,["production_detail", "item"])
 	ipd_doc = frappe.get_cached_doc("Item Production Detail",ipd)
 	received_types = {}
 	total_received = 0
@@ -2206,14 +2206,26 @@ def calculate_pieces(doc_name):
 		for detail in prs_doc.process_details:
 			process_name = detail.process_name
 
+	finishing_inward_process = frappe.db.get_single_value("MRP Settings", "finishing_inward_process")
+	is_group = frappe.get_value("Process", grn_doc.process_name, "is_group")
+	check_prs = False
+	if is_group:
+		prs_doc = frappe.get_doc("Process", grn_doc.process_name)
+		for row in prs_doc.process_details:
+			if row.process_name == finishing_inward_process:
+				check_prs = True
+				break
+	else:
+		check_prs = grn_doc.process_name == finishing_inward_process
+
 	if process_name == ipd_doc.cutting_process:
 		panel_list = get_panel_list(ipd_doc)
 		incomplete_items, completed_items, received_types, total_received, qty_list = calculate_cutting_piece(grn_doc, received_types, panel_list)
-	elif process_name == ipd_doc.stiching_process:
+	elif check_prs:
 		final_calculation, received_types, total_received = calculate_piece_stage(grn_doc, received_types, doc_status, total_received, final_calculation)
 
-	elif process_name == ipd_doc.packing_process:
-		final_calculation, received_types, total_received = calculate_pack_stage(ipd_doc, grn_doc, received_types, doc_status, total_received, final_calculation)
+	elif grn_doc.includes_packing:
+		final_calculation, received_types, total_received = calculate_pack_stage(ipd_doc, grn_doc, received_types, doc_status, total_received, final_calculation, item_name)
 	else:
 		emb = update_if_string_instance(ipd_doc.get("emblishment_details_json"))
 		stage = None
@@ -2232,7 +2244,7 @@ def calculate_pieces(doc_name):
 				final_calculation, received_types, total_received = calculate_piece_stage(grn_doc, received_types, doc_status, total_received, final_calculation)
 
 			elif stage == ipd_doc.pack_out_stage:
-				final_calculation, received_types, total_received = calculate_pack_stage(ipd_doc, grn_doc, received_types, doc_status, total_received, final_calculation)
+				final_calculation, received_types, total_received = calculate_pack_stage(ipd_doc, grn_doc, received_types, doc_status, total_received, final_calculation, item_name)
 
 			elif stage == ipd_doc.stiching_in_stage:
 				if not panel_list:	
@@ -2269,20 +2281,8 @@ def calculate_pieces(doc_name):
 		field = 'cut_qty'
 	elif wo_doc.includes_packing:
 		field = 'pack_qty' 	
-	else:	
-		is_group = frappe.get_value("Process", process_name, "is_group")
-		check = False
-		if is_group:
-			process = None
-			doc = frappe.get_doc("Process", process_name)
-			for row in doc.process_details:
-				process = row.process_name
-			check = process == finishing_inward_process
-		else:
-			check = process_name == finishing_inward_process
-		
-		if check:
-			field = 'stich_qty'
+	elif check_prs:	
+		field = 'stich_qty'
 	
 	if field:
 		lot_doc = frappe.get_cached_doc("Lot",wo_doc.lot)
@@ -2297,6 +2297,15 @@ def calculate_pieces(doc_name):
 					qty = qty_data['quantity']
 					if doc_status == 2:
 						qty = qty * -1
+					if qty > 0:
+						wo_doc.append("work_order_track_pieces", {
+							"item_variant": qty_data['item_variant'],
+							"delivered_quantity": 0,
+							"against": grn_doc.doctype,
+							"against_id": grn_doc.name,
+							"received_qty": qty,
+							"date": grn_doc.posting_date,
+						})	
 					item.received_qty += qty
 					wo_types = update_if_string_instance(item.received_type_json)
 					if wo_types.get(type):
@@ -2323,7 +2332,15 @@ def calculate_pieces(doc_name):
 				if item.item_variant == data['item_variant'] and set_combination == data['set_combination']:
 					item.received_qty += data['quantity']
 					wo_types = update_if_string_instance(item.received_type_json)
-					
+					if data['quantity'] > 0:
+						wo_doc.append("work_order_track_pieces", {
+							"item_variant": data['item_variant'],
+							"delivered_quantity": 0,
+							"against": grn_doc.doctype,
+							"against_id": grn_doc.name,
+							"received_qty": data['quantity'],
+							"date": grn_doc.posting_date,
+						})	
 					if wo_types.get(data['type']):
 						wo_types[data['type']] += data['quantity']
 					else:
@@ -2362,7 +2379,7 @@ def calculate_piece_stage(grn_doc, received_types, doc_status, total_received, f
 		total_received += qty
 	return final_calculation, received_types, total_received
 
-def calculate_pack_stage(ipd_doc, grn_doc, received_types, doc_status, total_received, final_calculation):
+def calculate_pack_stage(ipd_doc, grn_doc, received_types, doc_status, total_received, final_calculation, item_name):
 	attrs = []
 	if ipd_doc.is_set_item:
 		for row in ipd_doc.set_item_combination_details:
@@ -2374,8 +2391,9 @@ def calculate_pack_stage(ipd_doc, grn_doc, received_types, doc_status, total_rec
 	else:
 		for row in ipd_doc.packing_attribute_details:
 			attrs.append({ipd_doc.packing_attribute: row.attribute_value})
-
+	main_attrs = frappe.json.dumps(attrs)
 	for item in grn_doc.items:
+		attrs = update_if_string_instance(main_attrs)
 		if item.quantity <= 0:
 			continue
 		for attr in attrs:
@@ -2407,7 +2425,8 @@ def calculate_pack_stage(ipd_doc, grn_doc, received_types, doc_status, total_rec
 
 			received_types.setdefault(item.received_type, 0)
 			received_types[item.received_type] += qty
-			total_received += qty
+			if variant_doc.item == item_name:
+				total_received += qty 
 
 	return final_calculation, received_types, total_received		
 
