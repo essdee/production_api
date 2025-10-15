@@ -1026,3 +1026,365 @@ def get_variant_attr_details(variant):
 	return d
 
 
+@frappe.whitelist()
+def get_work_in_progress_report(category, status):
+	lot_list = frappe.db.sql(
+		"""
+			SELECT t1.name FROM `tabLot` t1 JOIN `tabItem` t2 ON t1.item = t2.name
+			WHERE t1.status = %(status)s AND t2.product_category = %(category)s
+			AND t1.item IS NOT NULL AND t1.production_detail IS NOT NULL 
+		""", {
+			"status": status,
+			"category": category,
+		}, as_dict=True
+	)
+	lot_dict = {}
+	for lot in lot_list:
+		lot = lot['name']
+		ipd, item = frappe.get_value("Lot", lot, ["production_detail", "item"])
+		lot_dict.setdefault(lot, {
+			"style": item,
+			"lot": lot,
+			"order_qty": 0,
+			"cut_qty": 0,
+			"sewing_sent": 0,
+			"finishing_inward": 0,
+			"dispatch": 0,
+			"last_cut_date": None,
+			"sew_sent_date": None,
+			"finishing_inward_date": None,
+		})
+		## ORDER QTY
+		order_detail = frappe.db.sql(
+			"""
+				SELECT sum(quantity) as order_qty, sum(cut_qty) as cutting FROM `tabLot Order Detail` 
+				WHERE parent = %(parent)s
+			""", {
+				"parent": lot,
+			}, as_dict=True
+		)
+		if order_detail:
+			lot_dict[lot]['order_qty'] += order_detail[0]['order_qty']
+			lot_dict[lot]['cut_qty'] += order_detail[0]['cutting']
+
+		cutting, sewing = frappe.get_value("Item Production Detail", ipd, ["cutting_process", "stiching_process"])
+		sql_data = frappe.db.sql(
+			"""
+				SELECT max(last_grn_date) as date FROM `tabWork Order` WHERE docstatus = 1 AND
+				lot = %(lot)s AND process_name = %(process)s
+			""", {
+				"lot": lot,
+				"process": cutting
+			}, as_dict=True
+		)
+		if sql_data and sql_data[0]['date']:
+			lot_dict[lot]['last_cut_date'] = sql_data[0]['date']
+
+		## Sewing Sent and Finishing Inward
+		processes = frappe.db.sql(
+			"""
+				Select parent FROM `tabProcess Details` WHERE process_name = %(process)s OR parent = %(process)s
+			""", {
+				"process": sewing,
+			}, as_dict=1
+		)
+		process_names = [p['parent'] for p in processes]
+		process_names.append(sewing)
+		stich_wo_list = frappe.get_all("Work Order", filters={
+			"lot": lot,
+			"docstatus": 1,
+			"process_name": ['in', process_names]
+		}, pluck="name")
+
+		for wo in stich_wo_list:
+			stich_detail = frappe.db.sql(
+				"""
+					SELECT sum(delivered_quantity) as sewing_sent, sum(received_qty) as finishing_inward 
+					FROM `tabWork Order Calculated Item` WHERE parent = %(parent)s
+				""",{
+					"parent": wo
+				}, as_dict=True
+			)
+			if stich_detail:
+				lot_dict[lot]['sewing_sent'] += stich_detail[0]['sewing_sent']
+				lot_dict[lot]['finishing_inward'] += stich_detail[0]['finishing_inward']
+		
+		stich_wo_list.append("")
+		sql_data = frappe.db.sql(
+			"""
+				SELECT max(last_grn_date) as grn_date, min(first_dc_date) as dc_date FROM `tabWork Order` 
+				WHERE docstatus = 1 AND lot = %(lot)s AND name IN %(wo_list)s
+			""", {
+				"lot": lot,
+				"wo_list": tuple(stich_wo_list)
+			}, as_dict=True
+		)
+
+		if sql_data and sql_data[0]['grn_date']:
+			lot_dict[lot]['sew_sent_date'] = sql_data[0]['dc_date']
+			lot_dict[lot]['finishing_inward_date'] = sql_data[0]['grn_date']
+
+		## Dispatched Qty
+		finishing_plan_list =frappe.get_all("Finishing Plan", filters={
+			"lot": lot,
+		}, pluck="name")
+
+		for finishing_plan in finishing_plan_list:
+			pcs_per_box = frappe.get_value("Finishing Plan", finishing_plan, "pieces_per_box")
+			finishing_detail = frappe.db.sql(
+				"""
+					SELECT sum(dispatched) as dispatch_qty FROM `tabFinishing Plan GRN Detail` WHERE
+					parent = %(parent)s
+				""", {
+					"parent": finishing_plan,
+				}, as_dict=True
+			)
+			if finishing_detail:
+				lot_dict[lot]['dispatch'] += (finishing_detail[0]['dispatch_qty'] * pcs_per_box)
+
+	return lot_dict	
+
+@frappe.whitelist()
+def get_month_wise_report(lot=None, item=None, start_date=None, end_date=None):
+	conditions = ""
+	con_dict = {}
+	if lot:
+		conditions += " AND lot = %(lot)s"
+		con_dict['lot'] = lot
+	
+	if item:
+		conditions += " AND item = %(item)s"
+		con_dict['item'] = item
+
+	if start_date and end_date:
+		conditions += " AND wo_date BETWEEN %(start_date)s AND %(end_date)s"
+		con_dict['start_date'] = start_date
+		con_dict['end_date'] = end_date
+
+	ipd_settings = frappe.get_single("IPD Settings")
+	cutting = ipd_settings.default_cutting_process
+	sewing = ipd_settings.default_stitching_process
+
+	processes = frappe.db.sql(
+		""" 
+			SELECT parent FROM `tabProcess Details` WHERE process_name = %(process)s OR parent = %(process)s
+		""",{
+		"process": cutting
+		}, as_dict=1
+	)
+	process_names = [p['parent'] for p in processes]
+	if cutting not in process_names:
+		process_names.append(cutting)
+
+	if len(process_names) == 1:
+		process_names.append("")
+
+	con_dict['process_name_list'] = tuple(process_names)
+	cut_conditions = conditions + " AND process_name IN %(process_name_list)s"
+
+	cut_wo_list = frappe.db.sql(
+		f"""
+			SELECT name FROM `tabWork Order` WHERE docstatus = 1 {cut_conditions}
+		""", con_dict, as_dict=True
+	)
+	
+	month_wise_data = {}
+
+	for wo in cut_wo_list:
+		wo_date = frappe.get_value("Work Order", wo['name'], "wo_date")
+
+@frappe.whitelist()
+def get_size_wise_stock_report(open_status, lot_list, item_list, category):
+	conditions = " AND t2.product_category = %(category)s"
+	con = {
+		"category": category
+	}
+	lot_list = update_if_string_instance(lot_list)
+	item_list = update_if_string_instance(item_list)
+	lot_list = [lot['lot'] for lot in lot_list]
+	item_list = [item['item'] for item in item_list]
+	if lot_list:
+		lot_list.append("")
+		conditions += " AND t1.name IN %(lot_list)s"
+		con['lot_list'] = tuple(lot_list)
+
+	if item_list:
+		item_list.append("")
+		conditions += " AND t1.item IN %(item_list)s"
+		con['item_list'] = tuple(item_list)
+
+	if open_status:
+		conditions += " AND t1.status = %(status)s"
+		con['status'] = open_status
+
+	lot_list = frappe.db.sql(
+		f"""
+			SELECT t1.name FROM `tabLot` t1 JOIN `tabItem` t2 ON t1.item = t2.name 
+			WHERE 1 = 1 {conditions}
+		""", con, as_dict=True
+	)
+	lot_dict = {}
+	for lot in lot_list:
+		lot = lot['name']
+		ipd, item = frappe.get_value("Lot", lot, ["production_detail", "item"])
+		sewing, primary = frappe.get_value("Item Production Detail", ipd, ["stiching_process", "primary_item_attribute"])
+
+		lot_dict.setdefault(lot, {
+			"style": item,
+			"lot": lot,
+			"order_qty": {},
+			"cut_qty": {},
+			"sewing_sent": {},
+			"finishing_inward": {},
+			"dispatch": {},
+			"total_cut": 0,
+			"total_order": 0,
+			"total_sew_sent": 0,
+			"total_finishing_inward": 0,
+			"total_dispatch": 0,
+		})
+		## ORDER QTY
+		lot_doc = frappe.get_doc("Lot", lot)
+		for row in lot_doc.lot_order_details:
+			attr_details = get_variant_attr_details(row.item_variant)
+			size = attr_details[primary]
+			lot_dict[lot]['order_qty'].setdefault(size, 0)
+			lot_dict[lot]['cut_qty'].setdefault(size, 0)
+			lot_dict[lot]['sewing_sent'].setdefault(size, 0)
+			lot_dict[lot]['finishing_inward'].setdefault(size, 0)
+			lot_dict[lot]['dispatch'].setdefault(size, 0)
+			lot_dict[lot]['order_qty'][size] += row.quantity
+			lot_dict[lot]['cut_qty'][size] += row.cut_qty
+			lot_dict[lot]['total_cut'] += row.cut_qty
+			lot_dict[lot]['total_order'] += row.quantity
+		
+		processes = frappe.db.sql(
+			"""
+				Select parent FROM `tabProcess Details` WHERE process_name = %(process)s OR parent = %(process)s
+			""", {
+				"process": sewing,
+			}, as_dict=1
+		)
+		process_names = [p['parent'] for p in processes]
+		process_names.append(sewing)
+		stich_wo_list = frappe.get_all("Work Order", filters={
+			"lot": lot,
+			"docstatus": 1,
+			"process_name": ['in', process_names]
+		}, pluck="name")
+
+		for wo in stich_wo_list:
+			wo_doc = frappe.get_doc("Work Order", wo)
+			for row in wo_doc.work_order_calculated_items:
+				attr_details = get_variant_attr_details(row.item_variant)
+				size = attr_details[primary]
+				lot_dict[lot]['sewing_sent'][size] += row.delivered_quantity
+				lot_dict[lot]['finishing_inward'][size] += row.received_qty
+				lot_dict[lot]['total_sew_sent'] += row.delivered_quantity
+				lot_dict[lot]['total_finishing_inward'] += row.received_qty
+
+		finishing_plan_list =frappe.get_all("Finishing Plan", filters={
+			"lot": lot,
+		}, pluck="name")
+
+		for finishing_plan in finishing_plan_list:
+			fp_doc = frappe.get_doc("Finishing Plan", finishing_plan)
+			for row in fp_doc.finishing_plan_grn_details:
+				attr_details = get_variant_attr_details(row.item_variant)
+				size = attr_details[primary]
+				lot_dict[lot]['dispatch'][size] += (row.dispatched * fp_doc.pieces_per_box)
+				lot_dict[lot]['total_dispatch'] += (row.dispatched * fp_doc.pieces_per_box)
+
+	return lot_dict
+
+@frappe.whitelist()
+def get_colour_wise_diff_report(lot):
+	lot_doc = frappe.get_doc("Lot", lot)
+	ipd_fields = ['is_set_item', 'primary_item_attribute', 'packing_attribute', 'set_item_attribute', 'stiching_process']
+	is_set_item, primary, pack_attr, set_attr, sewing = frappe.get_value("Item Production Detail", lot_doc.production_detail, ipd_fields)
+	lot_dict = {
+		"style": lot_doc.item,
+		"lot": lot,
+		"sizes": [],
+		"order_qty": {},
+		"cut_qty": {},
+		"sewing_sent": {},
+		"finishing_inward": {},
+		"total_cut": 0,
+		"total_order": 0,
+		"total_sew_sent": 0,
+		"total_finishing_inward": 0,
+		"values": {}
+	}
+	for row in lot_doc.lot_order_details:
+		attr_details = get_variant_attr_details(row.item_variant)
+		set_comb = update_if_string_instance(row.set_combination)
+		major_colour = set_comb['major_colour']
+		colour = major_colour
+		size = attr_details[primary]
+		if size not in lot_dict['sizes']:
+			lot_dict['sizes'].append(size)
+
+		part = None
+		if is_set_item:
+			variant_colour = attr_details[pack_attr]
+			part = attr_details[set_attr]
+			colour = variant_colour+"("+ major_colour+") @"+ part
+		
+		lot_dict['values'].setdefault(colour, {
+			'order_qty':{},
+			'cut_qty':{},
+			'sewing_sent':{},
+			'finishing_inward':{},
+			'total_order': 0,
+			'total_cut': 0,
+			'total_sew_sent': 0,
+			'total_finishing_inward': 0
+		})	
+		lot_dict['values'][colour]['order_qty'].setdefault(size, 0)
+		lot_dict['values'][colour]['cut_qty'].setdefault(size, 0)
+		lot_dict['values'][colour]['sewing_sent'].setdefault(size, 0)
+		lot_dict['values'][colour]['finishing_inward'].setdefault(size, 0)
+
+		lot_dict['values'][colour]['order_qty'][size] += row.quantity
+		lot_dict['values'][colour]['cut_qty'][size] += row.cut_qty
+
+
+		lot_dict['values'][colour]['total_order'] += row.quantity
+		lot_dict['values'][colour]['total_cut'] += row.cut_qty
+	
+	processes = frappe.db.sql(
+		"""
+			Select parent FROM `tabProcess Details` WHERE process_name = %(process)s OR parent = %(process)s
+		""", {
+			"process": sewing,
+		}, as_dict=1
+	)
+	process_names = [p['parent'] for p in processes]
+	process_names.append(sewing)
+	stich_wo_list = frappe.get_all("Work Order", filters={
+		"lot": lot,
+		"docstatus": 1,
+		"process_name": ['in', process_names]
+	}, pluck="name")
+
+	for wo in stich_wo_list:
+		wo_doc = frappe.get_doc("Work Order", wo)
+		for row in wo_doc.work_order_calculated_items:
+			attr_details = get_variant_attr_details(row.item_variant)
+			set_comb = update_if_string_instance(row.set_combination)
+			major_colour = set_comb['major_colour']
+			colour = major_colour
+			size = attr_details[primary]
+			part = None
+			if is_set_item:
+				variant_colour = attr_details[pack_attr]
+				part = attr_details[set_attr]
+				colour = variant_colour+"("+ major_colour+") @"+ part
+
+			lot_dict['values'][colour]['sewing_sent'][size] += row.delivered_quantity
+			lot_dict['values'][colour]['finishing_inward'][size] += row.received_qty
+			lot_dict['values'][colour]['total_sew_sent'] += row.delivered_quantity
+			lot_dict['values'][colour]['total_finishing_inward'] += row.received_qty
+
+	return lot_dict		

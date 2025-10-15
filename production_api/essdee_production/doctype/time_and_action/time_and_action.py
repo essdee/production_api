@@ -82,7 +82,7 @@ def make_complete(time_and_action):
 		frappe.msgprint("Not all the Actions are Completed")
 
 @frappe.whitelist()
-def get_t_and_a_preview_data(start_date, table, is_template=False):
+def get_t_and_a_preview_data(start_date, table, is_template=False, master_doc=None):
 	table = update_if_string_instance(table)
 	preview_data = {}
 	merge_process = {}
@@ -90,11 +90,13 @@ def get_t_and_a_preview_data(start_date, table, is_template=False):
 	doc_data = {}
 
 	for row in table:
-		doctype="Action Master"
-		if is_template:
-			doctype = "Action Master Template"
-
-		doc = frappe.get_doc(doctype, row['master'])
+		if not master_doc:
+			doctype="Action Master"
+			if is_template:
+				doctype = "Action Master Template"
+			doc = frappe.get_doc(doctype, row['master'])
+		else:
+			doc = master_doc
 		doc_data[row['colour']] = doc
 		day = start_date
 		action_completion_date = {}

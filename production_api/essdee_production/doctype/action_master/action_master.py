@@ -58,16 +58,18 @@ class ActionMaster(Document):
 							"action": row['action'],
 							"dependent_action": act,
 						})
-
 			self.set("details", details)
 			self.set("action_master_dependent_details", dependent_details)			
 
 	def before_save(self):
 		from production_api.essdee_production.doctype.time_and_action.time_and_action import get_t_and_a_preview_data
-		data = get_t_and_a_preview_data(frappe.utils.nowdate(), [{'colour': 'colour', 'master': self.name}])		
-		dispatch_date = data['colour'][len(data['colour']) - 1]['rescheduled_date']
-		lead_time = date_diff(dispatch_date, frappe.utils.nowdate())
-		self.lead_time = lead_time
+		data = get_t_and_a_preview_data(frappe.utils.nowdate(), [{'colour': 'colour', 'master': self.name}], is_template=False, master_doc=self)		
+		if len(data['colour']) > 0:
+			dispatch_date = data['colour'][len(data['colour']) - 1]['rescheduled_date']
+			lead_time = date_diff(dispatch_date, frappe.utils.nowdate())
+			self.lead_time = lead_time
+		else:
+			self.lead_time = 0	
 
 @frappe.whitelist()
 def get_action_master_details(master_list):

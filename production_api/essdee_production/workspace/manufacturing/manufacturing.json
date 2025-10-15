@@ -16,8 +16,58 @@
   {
    "hidden": 0,
    "is_query_report": 0,
+   "label": "Rework Detail",
+   "link_count": 4,
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Rework Details",
+   "link_count": 0,
+   "link_to": "rework-details",
+   "link_type": "Page",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Rework Completion",
+   "link_count": 0,
+   "link_to": "rework-completion-re",
+   "link_type": "Page",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Finishing Plan",
+   "link_count": 0,
+   "link_to": "Finishing Plan",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Finishing Plan Dispatch",
+   "link_count": 0,
+   "link_to": "Finishing Plan Dispatch",
+   "link_type": "DocType",
+   "onboard": 0,
+   "report_ref_doctype": "Delivery Challan",
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
    "label": "Reports",
-   "link_count": 6,
+   "link_count": 9,
    "link_type": "DocType",
    "onboard": 0,
    "type": "Card Break"
@@ -85,18 +135,9 @@
   {
    "hidden": 0,
    "is_query_report": 0,
-   "label": "Rework Detail",
-   "link_count": 4,
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Card Break"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Rework Details",
+   "label": "Work In Progress Report",
    "link_count": 0,
-   "link_to": "rework-details",
+   "link_to": "work-in-progress-rep",
    "link_type": "Page",
    "onboard": 0,
    "type": "Link"
@@ -104,9 +145,9 @@
   {
    "hidden": 0,
    "is_query_report": 0,
-   "label": "Rework Completion",
+   "label": "Size Wise Stock Report",
    "link_count": 0,
-   "link_to": "rework-completion-re",
+   "link_to": "size-wise-stock-repo",
    "link_type": "Page",
    "onboard": 0,
    "type": "Link"
@@ -114,26 +155,15 @@
   {
    "hidden": 0,
    "is_query_report": 0,
-   "label": "Finishing Plan",
+   "label": "Colour Wise Diff Report",
    "link_count": 0,
-   "link_to": "Finishing Plan",
-   "link_type": "DocType",
+   "link_to": "colour-wise-diff-rep",
+   "link_type": "Page",
    "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Finishing Plan Dispatch",
-   "link_count": 0,
-   "link_to": "Finishing Plan Dispatch",
-   "link_type": "DocType",
-   "onboard": 0,
-   "report_ref_doctype": "Delivery Challan",
    "type": "Link"
   }
  ],
- "modified": "2025-10-13 16:34:10.027513",
+ "modified": "2025-10-15 09:50:14.685363",
  "modified_by": "Administrator",
  "module": "Essdee Production",
  "name": "Manufacturing",

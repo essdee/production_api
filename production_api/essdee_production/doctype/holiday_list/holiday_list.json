@@ -89,6 +89,7 @@
    "label": "Holidays"
   },
   {
+   "allow_bulk_edit": 1,
    "fieldname": "holidays",
    "fieldtype": "Table",
    "label": "Holidays",
@@ -137,10 +138,11 @@
    "options": "get_local_holidays"
   }
  ],
+ "grid_page_length": 50,
  "icon": "fa fa-calendar",
  "idx": 1,
  "links": [],
- "modified": "2024-11-28 15:42:52.390621",
+ "modified": "2025-10-15 11:46:45.070967",
  "modified_by": "Administrator",
  "module": "Essdee Production",
  "name": "Holiday List",
@@ -169,6 +171,7 @@
    "share": 1
   }
  ],
+ "row_format": "Dynamic",
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": []

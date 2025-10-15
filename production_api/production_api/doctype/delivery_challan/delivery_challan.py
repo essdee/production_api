@@ -658,7 +658,16 @@ def calculate_pieces(doc_name):
 	incomplete_items = {}
 	process_name = dc_doc.process_name
 	prs_doc = frappe.get_cached_doc("Process", process_name)
+	wo_doc = frappe.get_doc("Work Order", dc_doc.work_order)
+	if not wo_doc.first_dc_date:
+		wo_doc.start_date = dc_doc.posting_date
+		wo_doc.first_dc_date = dc_doc.posting_date
+		wo_doc.last_dc_date = dc_doc.posting_date
+	else:
+		wo_doc.last_dc_date = dc_doc.posting_date
+	
 	if prs_doc.is_manual_entry_in_grn:
+		wo_doc.save(ignore_permissions=True)
 		return
 	
 	final_calculation = []
@@ -700,14 +709,6 @@ def calculate_pieces(doc_name):
 				else:
 					return
 
-	wo_doc = frappe.get_doc("Work Order", dc_doc.work_order)
-	if not wo_doc.first_dc_date:
-		wo_doc.start_date = dc_doc.posting_date
-		wo_doc.first_dc_date = dc_doc.posting_date
-		wo_doc.last_dc_date = dc_doc.posting_date
-	else:
-		wo_doc.last_dc_date = dc_doc.posting_date
-
 	wo_doc.total_no_of_pieces_delivered += total_delivered
 	if incomplete_items:
 		wo_doc.wo_delivered_incompleted_json = incomplete_items
@@ -727,6 +728,7 @@ def calculate_pieces(doc_name):
 				set_combination = update_if_string_instance(item.set_combination)
 				if item.item_variant == data['item_variant'] and set_combination == data['set_combination']:
 					item.delivered_quantity += data['quantity']
+					
 	fp_list = frappe.get_all("Finishing Plan", filters={ "lot": dc_doc.lot}, pluck="name")				
 	if fp_list:
 		finishing_inward_process = frappe.db.get_single_value("MRP Settings", "finishing_inward_process")

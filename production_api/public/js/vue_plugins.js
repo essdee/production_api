@@ -66,6 +66,10 @@ import FinishingPackReturn from "./Finishing/FinishingPackReturn.vue"
 import FinishingPlanCompleteTransfer from "./Finishing/FinishingPlanCompleteTransfer.vue";
 import FinishingPlanDispatch from "./Finishing/FinishingPlanDispatch.vue";
 import ActionDetail from "./ActionMaster/ActionDetail.vue"
+import WorkInProgress from "./components/WorkInProgress.vue"
+import MonthWiseDetailReport from "./components/MonthWiseDetailReport.vue"
+import SizeWiseStockReport from "./components/SizeWiseStockDetail.vue"
+import ColourWiseDiffReport from "./components/ColourWiseDiffReport.vue"
 
 // Product Development
 import { ProductFileVersionsWrapper, ProductCostingListWrapper } from "./ProductDevelopment"
@@ -711,25 +715,49 @@ frappe.production.ui.InhouseQuantity = class {
     }
 }
 
-frappe.production.ui.InwardQuantityReport = class {
+frappe.production.ui.WorkInProgress = class {
     constructor(wrapper){
         this.$wrapper = $(wrapper)
         this.make_app()
     }
     make_app(){
-        this.app = createApp(InwardQuantityReport)
+        this.app = createApp(WorkInProgress)
         SetVueGlobals(this.app)
         this.vue = this.app.mount(this.$wrapper.get(0))
     }
 }
 
-frappe.production.ui.InhouseQuantity = class {
+frappe.production.ui.MonthWiseDetailReport = class {
     constructor(wrapper){
         this.$wrapper = $(wrapper)
         this.make_app()
     }
     make_app(){
-        this.app = createApp(InhouseQuantity)
+        this.app = createApp(MonthWiseDetailReport)
+        SetVueGlobals(this.app)
+        this.vue = this.app.mount(this.$wrapper.get(0))
+    }
+}
+
+frappe.production.ui.SizeWiseStockReport = class {
+    constructor(wrapper){
+        this.$wrapper = $(wrapper)
+        this.make_app()
+    }
+    make_app(){
+        this.app = createApp(SizeWiseStockReport)
+        SetVueGlobals(this.app)
+        this.vue = this.app.mount(this.$wrapper.get(0))
+    }
+}
+
+frappe.production.ui.ColourWiseDiffReport = class {
+    constructor(wrapper){
+        this.$wrapper = $(wrapper)
+        this.make_app()
+    }
+    make_app(){
+        this.app = createApp(ColourWiseDiffReport)
         SetVueGlobals(this.app)
         this.vue = this.app.mount(this.$wrapper.get(0))
     }
@@ -812,6 +840,24 @@ frappe.production.ui.CutPlanItems = class {
         return items
     }
 }
+
+// frappe.production.ui.CadDetail = class {
+//     constructor(wrapper){
+//         this.$wrapper = $(wrapper)
+//         this.make_app()
+//     }
+//     make_app(){
+//         this.app = createApp(CadDetail)
+//         SetVueGlobals(this.app)
+//         this.vue = this.app.mount(this.$wrapper.get(0))
+//     }
+//     load_data(data){
+//         this.vue.load_data(JSON.parse(JSON.stringify(data)))
+//     }
+//     get_data(){
+//         return this.vue.get_data()
+//     }
+// }
 
 frappe.production.ui.ReworkCompletion =  class {
     constructor(wrapper){
