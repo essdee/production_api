@@ -111,6 +111,13 @@ frappe.ui.form.on("Item Production Detail", {
 				}
 			}
 		})
+		frm.set_query('item','item_bom', ()=> {
+			return {
+				filters: {
+					'disabled': 0,
+				}
+			}
+		})
 		frm.set_query('dependent_attribute_value','item_bom', ()=> {
 			return {
 				query:'production_api.essdee_production.doctype.item_production_detail.item_production_detail.get_attribute_detail_values',

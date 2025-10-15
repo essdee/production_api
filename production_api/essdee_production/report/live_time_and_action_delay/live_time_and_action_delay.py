@@ -20,7 +20,7 @@ def get_columns(filters):
 			{"fieldtype":"Data","fieldname":"sizes","label":"Sizes","width":130},
 			{"fieldtype":"Float","fieldname":"qty","label":"Qty","width":100},
 			{"fieldtype":"Link","fieldname":"action","label":"Action","options":"Action","width":150},
-			{"fieldtype":"Link","fieldname":"department","label":"Department","options":"Employee Department","width":120},
+			{"fieldtype":"Link","fieldname":"department","label":"Department","options":"Department","width":120},
 			{"fieldtype":"Date","fieldname":"date","label":"Planned Date","width":120},
 			{"fieldtype":"Date","fieldname":"rescheduled_date","label":"Rescheduled Date","width":120},
 			{"fieldtype":"Int","fieldname":"date_diff","label":"Date Diff","width":90},

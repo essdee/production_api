@@ -7,10 +7,9 @@ from frappe.model.document import Document
 from production_api.production_api.doctype.supplier.supplier import get_primary_address
 from production_api.production_api.doctype.work_order.work_order import create_finishing_detail
 from production_api.production_api.doctype.item.item import get_or_create_variant, get_attribute_details
-from production_api.utils import update_if_string_instance, get_finishing_plan_dict, get_finishing_plan_list
 from production_api.essdee_production.doctype.item_production_detail.item_production_detail import get_ipd_primary_values
 from production_api.production_api.doctype.purchase_order.purchase_order import get_item_attribute_details, get_item_group_index
-from production_api.production_api.doctype.cut_bundle_movement_ledger.cut_bundle_movement_ledger import get_variant_attr_details
+from production_api.utils import update_if_string_instance, get_finishing_plan_dict, get_finishing_plan_list, get_variant_attr_details
 
 class FinishingPlan(Document):
 	def onload(self):
@@ -312,7 +311,7 @@ class FinishingPlan(Document):
 		ipd_fields = ["is_set_item", "packing_attribute", "primary_item_attribute", "set_item_attribute"]
 		is_set_item, pack_attr, primary_attr, set_attr = frappe.get_value("Item Production Detail", ipd, ipd_fields)
 
-		finishing_inward = {"data": {}, "total": {}}
+		finishing_inward = {"data": {}, "total": {}, "over_all": {}}
 		finishing_qty = {"data": {}, "total": {}}
 		finishing_ironing = {"data": {}, "total": {}, "total_qty": {
 			"ironing": 0
@@ -382,8 +381,15 @@ class FinishingPlan(Document):
 				"pack_returned_qty": 0,
 				"pack_return": 0,
 			})
-
-			finishing_inward["total"].setdefault(size, 0)
+			if not part:
+				part = "item"
+			finishing_inward["total"].setdefault(part, {})
+			finishing_inward['over_all'].setdefault(part, {
+				"cutting": 0, "received": 0, "delivered": 0, "difference": 0, "cut_sew_diff": 0,
+			})
+			finishing_inward["total"][part].setdefault(size, {
+				"cutting": 0, "received": 0, "delivered": 0, "difference": 0, "cut_sew_diff": 0,
+			})
 			finishing_qty["total"].setdefault(size, 0)
 			finishing_ironing['total'].setdefault(size, {"ironing": 0})
 			finishing_pack_return['total'].setdefault(size, 0)
@@ -393,13 +399,21 @@ class FinishingPlan(Document):
 			finishing_inward["data"][colour]["colour_total"]["delivered"] += item.inward_quantity
 			finishing_inward["data"][colour]["colour_total"]["difference"] += item.delivered_quantity - item.inward_quantity
 			finishing_inward["data"][colour]["colour_total"]['cut_sew_diff'] += item.inward_quantity - item.cutting_qty 
-
+			finishing_inward['total'][part][size]['delivered'] += item.inward_quantity
+			finishing_inward['total'][part][size]['received'] += item.delivered_quantity
+			finishing_inward['total'][part][size]['cutting'] += item.cutting_qty
+			finishing_inward['total'][part][size]['difference'] += item.delivered_quantity - item.inward_quantity
+			finishing_inward['total'][part][size]['cut_sew_diff'] += item.inward_quantity - item.cutting_qty  
+			finishing_inward['over_all'][part]['delivered'] += item.inward_quantity
+			finishing_inward['over_all'][part]['received'] += item.delivered_quantity
+			finishing_inward['over_all'][part]['cutting'] += item.cutting_qty
+			finishing_inward['over_all'][part]['difference'] += item.delivered_quantity - item.inward_quantity
+			finishing_inward['over_all'][part]['cut_sew_diff'] += item.inward_quantity - item.cutting_qty
 			finishing_inward["data"][colour]["values"][size]["received"] += item.delivered_quantity
 			finishing_inward["data"][colour]["values"][size]["delivered"] += item.inward_quantity
 			finishing_inward["data"][colour]["values"][size]["cutting"] += item.cutting_qty
 			finishing_inward["data"][colour]["values"][size]["difference"] += item.delivered_quantity - item.inward_quantity
 			finishing_inward["data"][colour]["values"][size]['cut_sew_diff'] += item.inward_quantity - item.cutting_qty 
-			finishing_inward["total"][size] += item.delivered_quantity
 
 			qty = item.accepted_qty + item.reworked + item.lot_transferred + item.ironing_excess
 			finishing_qty["data"][colour]["colour_total"]["accepted"] += qty
@@ -694,7 +708,7 @@ def return_items(data, work_order, lot, item_name, popup_values, is_pack:bool=Fa
 	new_doc.submit()
 
 @frappe.whitelist()
-def create_stock_entry(data, item_name, doc_name, lot, from_location, to_location, goods_value):
+def create_stock_entry(data, item_name, doc_name, lot, from_location, to_location, goods_value, vehicle_no):
 	data = update_if_string_instance(data)
 	ipd, uom = frappe.get_value("Lot", lot, ["production_detail", "uom"])
 	ipd_fields = ["primary_item_attribute", "dependent_attribute", "pack_out_stage"]
@@ -725,6 +739,7 @@ def create_stock_entry(data, item_name, doc_name, lot, from_location, to_locatio
 	from production_api.mrp_stock.doctype.stock_entry.stock_entry import fetch_stock_entry_items
 	item_details = fetch_stock_entry_items(item_list, ipd=ipd)
 	doc.item_details = item_details
+	doc.vehicle_no = vehicle_no
 	doc.additional_amount = goods_value
 	doc.save()
 	doc.submit()
@@ -812,7 +827,6 @@ def fetch_from_old_lot(lot, item, location):
 	}	
 
 def pack_stage_variant(variant, dept_attr, pack_in_stage):
-	from production_api.production_api.doctype.cut_bundle_movement_ledger.cut_bundle_movement_ledger import get_variant_attr_details
 	attr_details = get_variant_attr_details(variant)
 	if attr_details[dept_attr] == pack_in_stage:
 		return True
@@ -963,3 +977,50 @@ def get_part_value(set_attr, ipd):
 		for row in map_doc.values:
 			values.append(row.attribute_value)
 		return values	
+
+@frappe.whitelist()
+def get_incomplete_transfer_docs(lot, doc_name):
+	finishing_inward_process = frappe.db.get_single_value("MRP Settings", "finishing_inward_process")
+	if not finishing_inward_process:
+		frappe.throw("Set Finishing Inward Process")
+
+	processes = frappe.db.sql(
+		"""
+			Select parent FROM `tabProcess Details` WHERE process_name = %(process)s OR parent = %(process)s
+		""", {
+			"process": finishing_inward_process,
+		}, as_dict=1
+	)
+	process_names = [p['parent'] for p in processes]
+	process_names.append(finishing_inward_process)
+	grn_list = frappe.get_all("Goods Received Note", filters={
+		"docstatus": 1,
+		"against": "Work Order",
+		"process_name": ['in', process_names],
+		"lot": lot,
+		"is_internal_unit": 1,
+		"transfer_complete": 0, 
+	}, pluck="name")
+	
+	grn_list_dict = {}
+	for grn in grn_list:
+		grn_list_dict[grn] = True
+
+	dc_list = frappe.get_all("Delivery Challan", filters={
+		"docstatus": 1,
+		"includes_packing": 1,
+		"lot": lot,
+		"is_internal_unit": 1,
+		"transfer_complete": 0, 
+	}, pluck="name")
+
+	dc_list_dict = {}
+
+	for dc in dc_list:
+		dc_list_dict[dc] = True
+
+	fp_doc = frappe.get_doc("Finishing Plan", doc_name)	
+	fp_doc.incomplete_transfer_grn_list = frappe.json.dumps(grn_list_dict)
+	fp_doc.incomplete_transfer_dc_list = frappe.json.dumps(dc_list_dict)
+	fp_doc.save()
+

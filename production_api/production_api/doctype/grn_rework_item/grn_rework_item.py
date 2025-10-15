@@ -5,7 +5,7 @@ import frappe
 import openpyxl
 from io import BytesIO
 from frappe.model.document import Document
-from production_api.utils import update_if_string_instance, get_finishing_rework_list, get_finishing_rework_dict
+from production_api.utils import update_if_string_instance, get_finishing_rework_list, get_finishing_rework_dict, get_variant_attr_details
 
 class GRNReworkItem(Document):
 	pass
@@ -127,8 +127,9 @@ def get_rework_items(lot, item, colour, grn_number=None):
 	data = {
 		"report_detail": {},
 		"types": [],
+		"total_detail": {},
+		"total_sum": 0,
 	}
-	from production_api.production_api.doctype.cut_bundle_movement_ledger.cut_bundle_movement_ledger import get_variant_attr_details
 	for item in rework_items:
 		item = item['name']
 		doc = frappe.get_doc("GRN Rework Item", item)
@@ -148,6 +149,7 @@ def get_rework_items(lot, item, colour, grn_number=None):
 		for row in doc.grn_rework_item_details:
 			if row.completed == 1:
 				continue
+			data['total_detail'].setdefault(row.received_type, 0)
 			attr_details = get_variant_attr_details(row.item_variant)
 			key = row.received_type+"-"+attr_details[pack_attr]
 			if set_item:
@@ -159,6 +161,8 @@ def get_rework_items(lot, item, colour, grn_number=None):
 			if row.received_type not in data['types']:
 				data['types'].append(row.received_type)
 			qty = row.quantity - row.reworked
+			data['total_detail'][row.received_type] += qty
+			data['total_sum'] += qty
 			data["report_detail"][item]['types'].setdefault(row.received_type, 0)
 			data["report_detail"][item]['types'][row.received_type] += qty
 			data["report_detail"][item]['total'] += qty
@@ -449,7 +453,6 @@ def get_rework_completion(lot, process):
 		WHERE parent IN {conditions} AND quantity > 0
 	"""
 	items = frappe.db.sql(query, as_dict=True)
-	from production_api.production_api.doctype.cut_bundle_movement_ledger.cut_bundle_movement_ledger import get_variant_attr_details
 	from production_api.essdee_production.doctype.item_production_detail.item_production_detail import get_ipd_primary_values
 
 	ipd = frappe.get_value("Lot", lot, "production_detail")
@@ -503,7 +506,6 @@ def get_rework_completion(lot, process):
 
 @frappe.whitelist()
 def get_partial_reworked_qty(doc_name, colour_mistake, data):
-	from production_api.production_api.doctype.cut_bundle_movement_ledger.cut_bundle_movement_ledger import get_variant_attr_details
 	data = update_if_string_instance(data)
 	doc = frappe.get_doc("GRN Rework Item", doc_name)
 	ipd = frappe.get_cached_value("Lot", doc.lot, "production_detail")

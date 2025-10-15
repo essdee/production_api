@@ -16,6 +16,7 @@
   "prices",
   "template",
   "mrp",
+  "product_category",
   "column_break_rmzju",
   "name1",
   "display_name",
@@ -160,10 +161,17 @@
    "fieldname": "display_name",
    "fieldtype": "Data",
    "label": "Display Name"
+  },
+  {
+   "fieldname": "product_category",
+   "fieldtype": "Link",
+   "label": "Product Category",
+   "options": "Product Category"
   }
  ],
+ "grid_page_length": 50,
  "links": [],
- "modified": "2024-09-21 12:06:30.982447",
+ "modified": "2025-10-13 12:18:15.979650",
  "modified_by": "Administrator",
  "module": "Product Development",
  "name": "FG Item Master",
@@ -202,6 +210,7 @@
    "select": 1
   }
  ],
+ "row_format": "Dynamic",
  "search_fields": "name1, uid",
  "sort_field": "modified",
  "sort_order": "DESC",

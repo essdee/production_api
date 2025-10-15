@@ -752,7 +752,6 @@ def get_cut_sheet_report(date, location):
 	return report
 
 def get_lpiece_variant(pack_attr, dept_attr, variant):
-	from production_api.production_api.doctype.cut_bundle_movement_ledger.cut_bundle_movement_ledger import get_variant_attr_details
 	from production_api.production_api.doctype.item.item import get_or_create_variant
 	attr_details = get_variant_attr_details(variant)
 	del attr_details[pack_attr]
@@ -765,7 +764,6 @@ def get_lpiece_variant(pack_attr, dept_attr, variant):
 
 @frappe.whitelist()
 def get_inward_qty(lot, process):
-	from production_api.production_api.doctype.cut_bundle_movement_ledger.cut_bundle_movement_ledger import get_variant_attr_details
 	from production_api.essdee_production.doctype.item_production_detail.item_production_detail import get_ipd_primary_values
 	wo_list = frappe.get_all("Work Order", filters={
 		"lot": lot,
@@ -775,7 +773,10 @@ def get_inward_qty(lot, process):
 	ipd = frappe.get_value("Lot", lot, "production_detail")
 	ipd_fields = ["is_set_item", "packing_attribute", "primary_item_attribute", "set_item_attribute"]
 	is_set_item, pack_attr, primary_attr, set_attr = frappe.get_value("Item Production Detail", ipd, ipd_fields)
-	inward_qty = {}
+	inward_qty = {
+		"data": {},
+		"total": {},
+	}
 	type_list = []
 	colours = []
 	for wo in wo_list:
@@ -797,30 +798,47 @@ def get_inward_qty(lot, process):
 				variant_colour = attr_details[pack_attr]
 				part = attr_details[set_attr]
 				colour = variant_colour+"("+ major_colour+") @"+ part
+			if not part:
+				part = "item"
+			inward_qty['total'].setdefault(part, {
+				"size_wise": {},
+				"type_wise": {},
+				"size_type_wise": {},
+				"over_all": 0,
+			})
+
+			inward_qty['total'][part]['size_wise'].setdefault(size, 0)
+			inward_qty['total'][part]['size_type_wise'].setdefault(size, {})
 			received_types = update_if_string_instance(item['received_type_json'])
 			if colour not in colours:
 				colours.append(colour)
-				inward_qty.setdefault(colour, {})
-				inward_qty[colour]['values'] = {}
-				inward_qty[colour]["part"] = part
-				inward_qty[colour]['type_wise_total'] = {}
-				inward_qty[colour]['size_wise_total'] = {}
-				inward_qty[colour]['colour_total'] = {}
-				inward_qty[colour]['colour_total'].setdefault("total", 0)
+				inward_qty["data"].setdefault(colour, {})
+				inward_qty["data"][colour]['values'] = {}
+				inward_qty["data"][colour]["part"] = part
+				inward_qty["data"][colour]['type_wise_total'] = {}
+				inward_qty["data"][colour]['size_wise_total'] = {}
+				inward_qty["data"][colour]['colour_total'] = {}
+				inward_qty["data"][colour]['colour_total'].setdefault("total", 0)
 
-			inward_qty[colour]["values"].setdefault(size, {})
-			inward_qty[colour]['size_wise_total'].setdefault(size, 0)
+			inward_qty["data"][colour]["values"].setdefault(size, {})
+			inward_qty["data"][colour]['size_wise_total'].setdefault(size, 0)
 
 			for received_type in received_types:
 				if received_type not in type_list:
 					type_list.append(received_type)
 				qty = received_types[received_type]
-				inward_qty[colour]['size_wise_total'][size] += qty
-				inward_qty[colour]['colour_total']['total'] += qty
-				inward_qty[colour]["type_wise_total"].setdefault(received_type, 0)
-				inward_qty[colour]["type_wise_total"][received_type] += qty	
-				inward_qty[colour]["values"][size].setdefault(received_type, 0)
-				inward_qty[colour]["values"][size][received_type] += qty
+				inward_qty['total'][part]['size_wise'][size] += qty
+				inward_qty['total'][part]['type_wise'].setdefault(received_type, 0)
+				inward_qty['total'][part]['type_wise'][received_type] += qty
+				inward_qty['total'][part]['size_type_wise'][size].setdefault(received_type, 0)
+				inward_qty['total'][part]['over_all'] += qty
+				inward_qty['total'][part]['size_type_wise'][size][received_type] += qty
+				inward_qty["data"][colour]['size_wise_total'][size] += qty
+				inward_qty["data"][colour]['colour_total']['total'] += qty
+				inward_qty["data"][colour]["type_wise_total"].setdefault(received_type, 0)
+				inward_qty["data"][colour]["type_wise_total"][received_type] += qty	
+				inward_qty["data"][colour]["values"][size].setdefault(received_type, 0)
+				inward_qty["data"][colour]["values"][size][received_type] += qty
 
 	primary_values = get_ipd_primary_values(ipd)
 	return {
@@ -838,9 +856,6 @@ def get_site_config_value():
 
 @frappe.whitelist()
 def get_inhouse_qty(lot, process):
-	from production_api.production_api.doctype.cut_bundle_movement_ledger.cut_bundle_movement_ledger import (
-		get_variant_attr_details,
-	)
 	from production_api.essdee_production.doctype.item_production_detail.item_production_detail import (
 		get_ipd_primary_values,
 	)
@@ -849,8 +864,7 @@ def get_inhouse_qty(lot, process):
 	ipd_fields = ["is_set_item", "packing_attribute", "primary_item_attribute", "set_item_attribute"]
 	is_set_item, pack_attr, primary_attr, set_attr = frappe.get_value("Item Production Detail", ipd, ipd_fields)
 
-	inward_qty = {"data": {}, "total": {}}
-
+	inward_qty = {"data": {}, "total": {}, "over_all": {}}
 
 	wo_list = frappe.get_all(
 		"Work Order", filters={"lot": lot, "process_name": process, "docstatus": 1}, pluck="name"
@@ -894,7 +908,14 @@ def get_inhouse_qty(lot, process):
 			"delivered": 0, 
 			"received": 0, 
 		})
-		inward_qty["total"].setdefault(size, 0)
+		if not part:
+			part = "item"
+
+		inward_qty['total'].setdefault(part, {})
+		inward_qty["total"][part].setdefault(size, {
+			"delivered": 0,
+			"received": 0,
+		})
 
 		received = item["received_qty"] or 0
 		delivered = item["delivered_quantity"] or 0
@@ -903,7 +924,14 @@ def get_inhouse_qty(lot, process):
 		inward_qty["data"][colour][sup_name]["colour_total"]["delivered"] += delivered
 		inward_qty["data"][colour][sup_name]["values"][size]["received"] += received
 		inward_qty["data"][colour][sup_name]["values"][size]["delivered"] += delivered
-		inward_qty["total"][size] += received
+		inward_qty["total"][part][size]['received'] += received
+		inward_qty["total"][part][size]['delivered'] += delivered
+		inward_qty['over_all'].setdefault(part, {
+			"delivered": 0,
+			"received": 0,
+		})
+		inward_qty['over_all'][part]['delivered'] += delivered
+		inward_qty['over_all'][part]['received'] += received
 
 	primary_values = get_ipd_primary_values(ipd)
 	return {
@@ -984,3 +1012,17 @@ def get_finishing_rework_list(finishing_rework_items):
 			"set_combination": finishing_rework_items[key]['set_combination'],
 		})	
 	return finishing_rework_items_list	
+
+def get_variant_attr_details(variant):
+	attr_details = frappe.db.sql(
+		""" SELECT attribute, attribute_value FROM `tabItem Variant Attribute` WHERE parent = %(parent)s 
+		""", {
+			"parent": variant
+		}, as_dict=True
+	)
+	d = {}
+	for attr_detail in attr_details:
+		d[attr_detail['attribute']] = attr_detail['attribute_value']
+	return d
+
+

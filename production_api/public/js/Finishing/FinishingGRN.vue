@@ -255,6 +255,12 @@ function make_dispatch(){
                 "fieldtype": "Currency",
                 "label": "Goods Value",
                 "reqd": 1,
+            },
+            {
+                "fieldname": "vehicle_no",
+                "fieldtype": "Data",
+                "label": "Vehicle No",
+                "reqd": 1
             }
         ],
         primary_action_label: 'Dispatch',
@@ -270,6 +276,7 @@ function make_dispatch(){
                     from_location: values.from_location,
                     to_location: values.to_location,
                     goods_value: values.goods_value,
+                    vehicle_no: values.vehicle_no,
                 }, 
                 freeze: true,
                 freeze_message: "Dispatching Items...",

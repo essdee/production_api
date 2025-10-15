@@ -11,8 +11,17 @@
             <button class="btn btn-success ml-3" @click="unselect_all()">Unselect All</button>
         </div>
         <div v-if="items.length > 0 && show_table">
-            <button class="btn btn-primary" @click="create_bulk_stock_entry()">Create Bulk Stock Entry</button> 
-            <button class="btn btn-primary" @click="reduce_stock()">Reduce Stock</button>                            
+            <div style="display:flex;">
+                <div>
+                    <button class="btn btn-primary" @click="create_bulk_stock_entry()">Create Bulk Stock Entry</button> 
+                </div>
+                <div style="padding-left:15px;">
+                    <button class="btn btn-primary" @click="reduce_stock()">Reduce Stock</button>   
+                </div>
+                <div style="padding-left:15px;">
+                    <button class="btn btn-primary" @click="lot_transfer()">Lot Transfer</button>   
+                </div>
+            </div>
             <table class="table table-sm table-bordered">
                 <thead>
                     <tr>
@@ -162,6 +171,52 @@ function unselect_all(){
     selectedItems.value = []
 }
 
+function lot_transfer(){
+    if(selectedItems.value.length === 0){
+        frappe.msgprint("Please select at least one item.");
+        return;
+    }
+    let selected = selectedItems.value
+    let location = selected[0]['warehouse']
+    for(let i = 0 ; i < selected.length ; i++){
+        let cur_location = selected[i]['warehouse']
+        if(location != cur_location){
+            frappe.throw("Please select Item from same location")
+        }
+    }
+    let d = new frappe.ui.Dialog({
+        title: "Select the Lot to Transfer",
+        fields: [
+            {
+                "fieldname": "lot",
+                "fieldtype": "Link",
+                "options": "Lot",
+                "label": "Lot",
+                "reqd": 1
+            }
+        ],
+        primary_action_label: "Transfer",
+        secondary_action_label: "Close",
+        primary_action(values){
+            frappe.call({
+                method: "production_api.mrp_stock.doctype.stock_summary.stock_summary.lot_transfer_items",
+                args: {
+                    "selected_items": selected,
+                    "transfer_lot": values.lot
+                },
+                callback: function(r){
+                    frappe.set_route("Form", "Lot Transfer", r.message)
+                }
+            })
+            console.log(selected)
+        },
+        secodary_action(){
+            d.hide()
+        }
+    })
+    d.show()
+}
+
 function create_stock_entry(item) {
     let type_dialog = new frappe.ui.Dialog({
         title: "Select Purpose",
@@ -228,7 +283,7 @@ function create_bulk_stock_entry(){
                             selected_items: selected,
                             purpose: purpose,
                         },
-                        callback: function(){
+                        callback: function(r){
                             frappe.set_route("Form", "Stock Entry", r.message)
                         }
                     })
@@ -265,7 +320,7 @@ function reduce_stock(){
                     selected_items: selected,
                     warehouse: location,
                 },
-                callback: function(){
+                callback: function(r){
                     frappe.set_route("Form", "Stock Reconciliation", r.message)
                 }
             })

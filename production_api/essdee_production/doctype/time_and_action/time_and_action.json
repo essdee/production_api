@@ -11,19 +11,23 @@
   "qty",
   "delay",
   "capacity",
+  "major_colour",
   "column_break_ayau",
   "item",
   "sizes",
   "start_date",
   "action",
+  "rescheduled_delay",
   "column_break_ucee",
   "master",
   "description",
   "end_date",
   "status",
+  "revised",
   "section_break_hshs",
   "details",
-  "time_and_action_work_station_details"
+  "dependent_details",
+  "time_and_action_revised_dates"
  ],
  "fields": [
   {
@@ -114,21 +118,43 @@
    "label": "End Date"
   },
   {
-   "fieldname": "time_and_action_work_station_details",
-   "fieldtype": "Table",
-   "label": "Time and Action Work Station Details",
-   "options": "Time and Action Work Station Detail"
-  },
-  {
    "fieldname": "capacity",
    "fieldtype": "Float",
    "label": "Capacity"
+  },
+  {
+   "fieldname": "dependent_details",
+   "fieldtype": "Table",
+   "label": "Time and Action Dependent Details",
+   "options": "Time and Action Dependent Detail"
+  },
+  {
+   "fieldname": "time_and_action_revised_dates",
+   "fieldtype": "Table",
+   "label": "Time and Action Revised Dates",
+   "options": "Time and Action Revised Date"
+  },
+  {
+   "fieldname": "rescheduled_delay",
+   "fieldtype": "Int",
+   "label": "Rescheduled Delay"
+  },
+  {
+   "fieldname": "revised",
+   "fieldtype": "Int",
+   "label": "Revised",
+   "read_only": 1
+  },
+  {
+   "fieldname": "major_colour",
+   "fieldtype": "Data",
+   "label": "Major Colour"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-08-02 15:27:21.780810",
+ "modified": "2025-10-10 09:47:53.317058",
  "modified_by": "Administrator",
  "module": "Essdee Production",
  "name": "Time and Action",

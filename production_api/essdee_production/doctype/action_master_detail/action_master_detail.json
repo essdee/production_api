@@ -9,7 +9,9 @@
   "action",
   "lead_time",
   "target",
-  "department"
+  "department",
+  "merge_action",
+  "one_colour_process"
  ],
  "fields": [
   {
@@ -42,13 +44,26 @@
    "fieldtype": "Float",
    "in_list_view": 1,
    "label": "Target"
+  },
+  {
+   "default": "0",
+   "fieldname": "merge_action",
+   "fieldtype": "Check",
+   "in_list_view": 1,
+   "label": "Merge Action"
+  },
+  {
+   "default": "0",
+   "fieldname": "one_colour_process",
+   "fieldtype": "Check",
+   "label": "One Colour Process"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2025-08-06 09:41:37.140176",
+ "modified": "2025-10-06 17:41:16.298532",
  "modified_by": "Administrator",
  "module": "Essdee Production",
  "name": "Action Master Detail",

@@ -1,0 +1,65 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2025-10-11 11:00:29.452882",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "item_code",
+  "mrp_price",
+  "offer_price",
+  "sku",
+  "quantity"
+ ],
+ "fields": [
+  {
+   "fieldname": "item_code",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Item Code",
+   "read_only": 1
+  },
+  {
+   "fieldname": "mrp_price",
+   "fieldtype": "Currency",
+   "in_list_view": 1,
+   "label": "MRP Price",
+   "read_only": 1
+  },
+  {
+   "fieldname": "offer_price",
+   "fieldtype": "Currency",
+   "in_list_view": 1,
+   "label": "Offer Price",
+   "read_only": 1
+  },
+  {
+   "fieldname": "sku",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "SKU",
+   "read_only": 1
+  },
+  {
+   "fieldname": "quantity",
+   "fieldtype": "Int",
+   "in_list_view": 1,
+   "label": "Quantity"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2025-10-11 11:03:13.697611",
+ "modified_by": "Administrator",
+ "module": "Production Api",
+ "name": "Sales Piece Sticker Print Detail",
+ "owner": "Administrator",
+ "permissions": [],
+ "row_format": "Dynamic",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

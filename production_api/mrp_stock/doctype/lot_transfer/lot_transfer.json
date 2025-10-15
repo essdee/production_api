@@ -16,7 +16,8 @@
   "section_break_31bsv",
   "items",
   "item_html",
-  "amended_from"
+  "amended_from",
+  "comments"
  ],
  "fields": [
   {
@@ -78,13 +79,18 @@
    "hidden": 1,
    "label": "Finishing Plan",
    "options": "Finishing Plan"
+  },
+  {
+   "fieldname": "comments",
+   "fieldtype": "Small Text",
+   "label": "Comments"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-09-23 11:42:47.657614",
+ "modified": "2025-10-08 14:51:50.440856",
  "modified_by": "Administrator",
  "module": "MRP Stock",
  "name": "Lot Transfer",

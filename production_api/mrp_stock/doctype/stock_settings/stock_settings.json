@@ -12,6 +12,7 @@
   "default_rejected_type",
   "column_break_lblg",
   "default_fg_lot",
+  "add_finishing_plan_goods_value",
   "section_break_lupm",
   "sms_old_database_host",
   "sms_old_database_name",
@@ -89,13 +90,19 @@
    "label": "Default Rejected Type",
    "options": "GRN Item Type",
    "reqd": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "add_finishing_plan_goods_value",
+   "fieldtype": "Check",
+   "label": "Add Finishing Plan Goods Value"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2025-08-11 10:02:54.426273",
+ "modified": "2025-10-10 10:34:57.020498",
  "modified_by": "Administrator",
  "module": "MRP Stock",
  "name": "Stock Settings",

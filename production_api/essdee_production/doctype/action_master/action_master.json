@@ -11,13 +11,19 @@
   "fabric",
   "product_type",
   "emblishment",
+  "description",
   "column_break_vloz",
+  "disable",
+  "action_master_template",
   "min_qty",
   "max_qty",
   "quantity",
-  "description",
+  "lead_time",
   "section_break_wfwl",
-  "details"
+  "details",
+  "action_master_dependent_details",
+  "action_master_html",
+  "amended_from"
  ],
  "fields": [
   {
@@ -62,6 +68,7 @@
   {
    "fieldname": "details",
    "fieldtype": "Table",
+   "hidden": 1,
    "label": "Details",
    "options": "Action Master Detail"
   },
@@ -85,11 +92,54 @@
    "in_list_view": 1,
    "in_standard_filter": 1,
    "label": "Emblishment"
+  },
+  {
+   "fieldname": "action_master_dependent_details",
+   "fieldtype": "Table",
+   "hidden": 1,
+   "label": "Action Master Dependent Details",
+   "options": "Action Master Dependent Detail"
+  },
+  {
+   "fieldname": "action_master_html",
+   "fieldtype": "HTML",
+   "label": "Action Master HTML"
+  },
+  {
+   "fieldname": "action_master_template",
+   "fieldtype": "Link",
+   "label": "Action Master Template",
+   "options": "Action Master Template"
+  },
+  {
+   "fieldname": "lead_time",
+   "fieldtype": "Int",
+   "label": "Lead Time",
+   "read_only": 1
+  },
+  {
+   "allow_on_submit": 1,
+   "default": "0",
+   "fieldname": "disable",
+   "fieldtype": "Check",
+   "label": "Disable"
+  },
+  {
+   "fieldname": "amended_from",
+   "fieldtype": "Link",
+   "label": "Amended From",
+   "no_copy": 1,
+   "options": "Action Master",
+   "print_hide": 1,
+   "read_only": 1,
+   "search_index": 1
   }
  ],
+ "grid_page_length": 50,
  "index_web_pages_for_search": 1,
+ "is_submittable": 1,
  "links": [],
- "modified": "2024-11-28 15:27:40.051098",
+ "modified": "2025-10-10 13:06:41.621485",
  "modified_by": "Administrator",
  "module": "Essdee Production",
  "name": "Action Master",
@@ -148,6 +198,7 @@
    "share": 1
   }
  ],
+ "row_format": "Dynamic",
  "search_fields": "fabric,product_type,emblishment,description,quantity",
  "sort_field": "modified",
  "sort_order": "DESC",

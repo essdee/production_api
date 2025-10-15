@@ -44,7 +44,11 @@
   "pack_return_list",
   "ocr_tab",
   "comments",
-  "finishing_plan_ocr_html"
+  "finishing_plan_ocr_html",
+  "incomplete_transfer_tab",
+  "incomplete_transfer_items_html",
+  "incomplete_transfer_dc_list",
+  "incomplete_transfer_grn_list"
  ],
  "fields": [
   {
@@ -281,12 +285,34 @@
    "fieldname": "comments",
    "fieldtype": "Small Text",
    "label": "Comments"
+  },
+  {
+   "fieldname": "incomplete_transfer_tab",
+   "fieldtype": "Tab Break",
+   "label": "InComplete Transfer"
+  },
+  {
+   "fieldname": "incomplete_transfer_items_html",
+   "fieldtype": "HTML",
+   "label": "Incomplete Transfer Items HTML"
+  },
+  {
+   "fieldname": "incomplete_transfer_dc_list",
+   "fieldtype": "Small Text",
+   "hidden": 1,
+   "label": "Incomplete Transfer DC List"
+  },
+  {
+   "fieldname": "incomplete_transfer_grn_list",
+   "fieldtype": "Small Text",
+   "hidden": 1,
+   "label": "Incomplete Transfer GRN List"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-09-26 13:04:55.144004",
+ "modified": "2025-10-13 15:30:46.067660",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Finishing Plan",

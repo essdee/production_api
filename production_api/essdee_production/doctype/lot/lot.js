@@ -10,6 +10,14 @@ frappe.ui.form.on("Lot", {
 				}
 			}
 		})
+		frm.set_query("production_order", (doc)=> {
+			return {
+				filters: {
+					"item": doc.item,
+					"docstatus": 1,
+				}
+			}
+		})
 	},
     refresh(frm) {
 		$(".layout-side-section").css("display", "none");
@@ -23,6 +31,14 @@ frappe.ui.form.on("Lot", {
                 });
             }, __("View"));
         }
+		frappe.db.get_single_value("T and A Settings", "assigned_person_editer_role").then((res)=> {
+			if(!frappe.user.has_role(res)){
+				frm.set_df_property("assigned_person", "read_only", true)
+			}
+			else{
+				frm.set_df_property("assigned_person", "read_only", false)
+			}
+		})
 		frm.set_df_property('bom_summary','cannot_add_rows',true)
 		frm.set_df_property('bom_summary','cannot_delete_rows',true)
 		if(frm.doc.lot_time_and_action_details.length == 0){
@@ -64,12 +80,24 @@ frappe.ui.form.on("Lot", {
 				frm.item.load_data([])
 			}
         }
-		$(frm.fields_dict['time_and_action_html'].wrapper).html("")
-		frm.time_action = new frappe.production.ui.TimeAction(frm.fields_dict['time_and_action_html'].wrapper)
-		if(frm.doc.__onload && frm.doc.__onload.action_details){
-			frm.time_action.load_data(frm.doc.__onload.action_details)
+		if(frm.doc.lot_order_details.length > 0){
+			frappe.call({
+				method:"production_api.essdee_production.doctype.lot.lot.get_packing_attributes",
+				args: {
+					ipd: frm.doc.production_detail,
+				},
+				callback:function(r){
+					frm.fields_dict['size_set_colour'].df.options = r.message.major_colours
+					frm.refresh_field("size_set_colour")
+				}
+			})
 		}
 		if(frm.doc.lot_time_and_action_details.length > 0){
+			$(frm.fields_dict['time_and_action_html'].wrapper).html("")
+			frm.time_action = new frappe.production.ui.TimeAction(frm.fields_dict['time_and_action_html'].wrapper)
+			if(frm.doc.__onload && frm.doc.__onload.action_details){
+				frm.time_action.load_data(frm.doc.__onload.action_details)
+			}
 			$(frm.fields_dict['time_and_action_report_html'].wrapper).html("")
 			frm.time_action_report = new frappe.production.ui.TimeActionReport(frm.fields_dict['time_and_action_report_html'].wrapper)
 			if(frappe.user.has_role("T & A Admin")){
@@ -81,7 +109,7 @@ frappe.ui.form.on("Lot", {
 						primary_action(){
 							d.hide()
 							frappe.call({
-								method: "production_api.essdee_production.doctype.lot.lot.revert_t_and_a",
+								method: "production_api.essdee_production.doctype.time_and_action.time_and_action.revert_t_and_a",
 								args : {
 									doc_name: frm.doc.name
 								},
@@ -101,7 +129,7 @@ frappe.ui.form.on("Lot", {
 				})
 			}
 		}	
-		if(frm.doc.lot_time_and_action_details.length == 0){
+		if(frm.doc.lot_time_and_action_details.length == 0 && frm.doc.assigned_person && frm.doc.size_set_colour){
 			frm.add_custom_button("Create T&A",()=> {
 				frappe.call({
 					method:"production_api.essdee_production.doctype.lot.lot.get_packing_attributes",
@@ -110,9 +138,9 @@ frappe.ui.form.on("Lot", {
 					},
 					callback:function(r){
 						let data = []
-						for(let i = 0; i < r.message.colours.length ; i++){
+						for(let i = 0; i < r.message.colour_combo.length ; i++){
 							data.push(
-								{'colour':r.message.colours[i],'master':null}
+								{'colour':r.message.colour_combo[i]['colour'],'master':null, 'major_colour': r.message.colour_combo[i]['major_colour']}
 							)
 						}
 						let label = "Colours"
@@ -130,8 +158,32 @@ frappe.ui.form.on("Lot", {
 									in_place_edit: false,
 									data: data,
 									fields: [
-										{ fieldname: 'colour', fieldtype: 'Data', in_list_view: 1, label: 'Colour',reqd:1 ,read_only:1},
-										{ fieldname: 'master', fieldtype: 'Link', in_list_view: 1, options:"Action Master" ,label:'Master',reqd:1}
+										{ 
+											fieldname: 'major_colour', 
+											fieldtype: 'Data', 
+											in_list_view: 1, 
+											label: 'Major Colour', 
+											read_only: 1
+										},
+										{ 
+											fieldname: 'colour', 
+											fieldtype: 'Data', 
+											in_list_view: 1, 
+											label: 'Colour',
+											read_only:1
+										},
+										{ 
+											fieldname: 'master', 
+											fieldtype: 'Link', 
+											in_list_view: 1, 
+											options:"Action Master",
+											label:'Master',
+											reqd:1,
+											filters: {
+												"workflow_state": "Approved",
+												"disable": 0,
+											}
+										},
 									]
 								},
 								{
@@ -153,99 +205,40 @@ frappe.ui.form.on("Lot", {
 									frappe.throw("Select the Start Date")
 								}
 								frappe.call({
-									method:"production_api.essdee_production.doctype.lot.lot.get_action_master_details",
+									method:"production_api.essdee_production.doctype.action_master.action_master.get_action_master_details",
 									args : {
 										master_list : values.table,
-										version: frm.doc.version
 									},
 									callback:async function(res){
-										if(frm.doc.version == "V1"){
-											let d = new frappe.ui.Dialog({
-												size:"large",
-												title:"Work Station List",
-												fields:[
-													{
-														"fieldtype":"HTML",
-														"fieldname":"work_station_html",
-													},
-												],
-												primary_action(){
-													let items = popupDialog.get_items()
-													frappe.call({
-														method:"production_api.essdee_production.doctype.lot.lot.create_time_and_action_v1",
-														args: {
-															"lot":frm.doc.name,
-															"item_name":frm.doc.item,
-															"args":r.message,
-															"values":values,
-															"total_qty":frm.doc.total_order_quantity,
-															"items":items
-														}
-													})
-													d.hide()
-												}
-											})
-											d.show()
-											let popupDialog = new frappe.production.ui.WorkStation(d.fields_dict['work_station_html'].wrapper);
-											await popupDialog.load_data(res.message,"create")
-											popupDialog.set_attributes()
-										}
-										else{
-											let d = new frappe.ui.Dialog({
-												size:"extra-large",
-												title:"Work Station List",
-												fields:[
-													{
-														"fieldtype":"HTML",
-														"fieldname":"work_station_html",
-													},
-												],
-												primary_action_label: "Show Preview",
-												primary_action(){
-													let items = popupDialog.get_items()
-													frappe.call({
-														method:"production_api.essdee_production.doctype.lot.lot.get_time_and_action_v2",
-														args: {
-															"lot":frm.doc.name,
-															"item_name":frm.doc.item,
-															"args":r.message,
-															"values":values,
-															"total_qty":frm.doc.total_order_quantity,
-															"items":items
-														},
-														callback: function(t_and_a_details){
-															let t_dialog = new frappe.ui.Dialog({
-																size:"extra-large",
-																title:"Preview Data",
-																fields:[
-																	{
-																		"fieldtype":"HTML",
-																		"fieldname":"capacity_preview_html",
-																	},
-																],
-																primary_action(){
-																	d.hide()
-																	t_dialog.hide()
-																	frappe.call({
-																		method: "production_api.essdee_production.doctype.lot.lot.create_time_and_action_v2",
-																		args: {
-																			details: t_and_a_details.message,
-																			lot: frm.doc.name,
-																		}
-																	})
-																}
-															})
-															t_dialog.show()
-															let previewPopUp = new frappe.production.ui.TandACapacityPreview(t_dialog.fields_dict['capacity_preview_html'].wrapper);
-															previewPopUp.load_data(t_and_a_details.message)
-														}
-													})
-												}
-											})
-											d.show()
-											let popupDialog = new frappe.production.ui.WorkStationV2(d.fields_dict['work_station_html'].wrapper);
-											await popupDialog.load_data(res.message,"create")
-										}
+										let d = new frappe.ui.Dialog({
+											size:"large",
+											title:"Work Station List",
+											fields:[
+												{
+													"fieldtype":"HTML",
+													"fieldname":"work_station_html",
+												},
+											],
+											primary_action(){
+												let items = popupDialog.get_items()
+												frappe.call({
+													method:"production_api.essdee_production.doctype.time_and_action.time_and_action.create_time_and_action",
+													args: {
+														"lot":frm.doc.name,
+														"item_name":frm.doc.item,
+														"args":r.message,
+														"values":values,
+														"total_qty":frm.doc.total_order_quantity,
+														"items":items
+													}
+												})
+												d.hide()
+											}
+										})
+										d.show()
+										let popupDialog = new frappe.production.ui.WorkStation(d.fields_dict['work_station_html'].wrapper);
+										await popupDialog.load_data(res.message,"create")
+										popupDialog.set_attributes()
 									}
 								})
 								dialog.hide()
@@ -262,7 +255,7 @@ frappe.ui.form.on("Lot", {
 								}
 
 								frappe.call({
-									method : "production_api.essdee_production.doctype.lot.lot.get_t_and_a_preview_data",
+									method : "production_api.essdee_production.doctype.time_and_action.time_and_action.get_t_and_a_preview_data",
 									args : {
 										"start_date" : dialog.get_value("start_date"),
 										"table" : dialog.get_value("table")
@@ -282,7 +275,7 @@ frappe.ui.form.on("Lot", {
 											}
 										})
 										let previewDialog = new frappe.production.ui.TimeActionPreview(d.fields_dict['preview_html'].wrapper);
-										previewDialog.load_data(r.message)
+										previewDialog.load_data(r.message, dialog.get_value("start_date"))
 										d.show()
 									}
 								})
@@ -300,17 +293,39 @@ frappe.ui.form.on("Lot", {
         else{
 			frm.order_detail.load_data([],0)
 		}
+		// if(!frm.is_new()){
+		// 	frm.cad_detail = new frappe.production.ui.CadDetail(frm.fields_dict['cad_detail_html'].wrapper)
+		// 	if(frm.doc.__onload && frm.doc.__onload.cad_item_details) {
+		// 		frm.cad_detail.load_data(frm.doc.__onload.cad_item_details);
+		// 	}
+		// 	else{
+		// 		frm.cad_detail.load_data([])
+		// 	}
+		// }
     },
+	// fetch_cad_template(frm){
+	// 	frm.cad_detail.load_data([])
+	// 	if(!frm.is_dirty()){
+	// 		frm.dirty()
+	// 	}
+	// },
     async validate(frm){
-        let items = frm.item.get_data()
-        frm.doc['item_details'] = JSON.stringify(items)
+		if(frm.item){
+			let items = frm.item.get_data()
+        	frm.doc['item_details'] = JSON.stringify(items)
+		}
 		let order_items = frm.order_detail.get_items()
         frm.doc['order_item_details'] = JSON.stringify(order_items)
-
-		let action_items = await frm.time_action.get_data()
-		if(action_items.changed){
-			frm.doc['action_details'] = JSON.stringify(action_items.items)
+		if(frm.time_action){
+			let action_items = await frm.time_action.get_data()
+			if(action_items.changed){
+				frm.doc['action_details'] = JSON.stringify(action_items.items)
+			}
 		}
+		// if(frm.cad_detail){
+		// 	let cad_data = frm.cad_detail.get_data()
+		// 	frm.doc['cad_details'] = JSON.stringify(cad_data)
+		// }
     },
 	item(frm){
 		if(!frm.doc.item){

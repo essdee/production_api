@@ -9,6 +9,7 @@
   "hsn_code",
   "item_group",
   "categories",
+  "product_category",
   "column_break_4",
   "name1",
   "disabled",
@@ -222,12 +223,18 @@
    "hidden": 1,
    "label": "Item Hash Value",
    "unique": 1
+  },
+  {
+   "fieldname": "product_category",
+   "fieldtype": "Link",
+   "label": "Product Category",
+   "options": "Product Category"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-07-28 10:32:48.211891",
+ "modified": "2025-10-08 17:42:14.959522",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Item",
