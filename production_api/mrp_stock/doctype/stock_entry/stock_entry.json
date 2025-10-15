@@ -29,6 +29,7 @@
   "section_break_uc2k1",
   "items",
   "item_html",
+  "section_break_ncqk",
   "comments",
   "section_break_zvib",
   "amended_from",
@@ -221,13 +222,17 @@
    "fieldname": "comments",
    "fieldtype": "Small Text",
    "label": "Comments"
+  },
+  {
+   "fieldname": "section_break_ncqk",
+   "fieldtype": "Section Break"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-10-13 15:22:11.352535",
+ "modified": "2025-10-15 10:59:03.578045",
  "modified_by": "Administrator",
  "module": "MRP Stock",
  "name": "Stock Entry",

@@ -2260,11 +2260,32 @@ def calculate_pieces(doc_name):
 			received_json[type] = qty
 
 	wo_doc.received_types_json = received_json
-	field = None
+
 	lot_doc = None
-	if process_name in [ipd_doc.cutting_process, ipd_doc.stiching_process, ipd_doc.packing_process]:
+	field = None
+
+	finishing_inward_process = frappe.db.get_single_value("MRP Settings", "finishing_inward_process")
+	if process_name == ipd_doc.cutting_process:
+		field = 'cut_qty'
+	elif wo_doc.includes_packing:
+		field = 'pack_qty' 	
+	else:	
+		is_group = frappe.get_value("Process", process_name, "is_group")
+		check = False
+		if is_group:
+			process = None
+			doc = frappe.get_doc("Process", process_name)
+			for row in doc.process_details:
+				process = row.process_name
+			check = process == finishing_inward_process
+		else:
+			check = process_name == finishing_inward_process
+		
+		if check:
+			field = 'stich_qty'
+	
+	if field:
 		lot_doc = frappe.get_cached_doc("Lot",wo_doc.lot)
-		field = "cut_qty" if process_name == ipd_doc.cutting_process else "stich_qty" if process_name == ipd_doc.stiching_process else "pack_qty"
 
 	if incomplete_items:
 		wo_doc.incompleted_items_json = incomplete_items

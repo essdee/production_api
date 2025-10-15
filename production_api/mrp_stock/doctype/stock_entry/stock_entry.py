@@ -322,7 +322,8 @@ class StockEntry(Document):
 					fp_doc = frappe.get_doc("Finishing Plan", fp_list[0])
 					incomplete_transfer_grn_list = update_if_string_instance(fp_doc.incomplete_transfer_grn_list)
 					if self.docstatus == 1:
-						del incomplete_transfer_grn_list[self.against_id]
+						if self.against_id in incomplete_transfer_grn_list:
+							del incomplete_transfer_grn_list[self.against_id]
 					else:
 						incomplete_transfer_grn_list[self.against_id] = True
 
@@ -341,7 +342,8 @@ class StockEntry(Document):
 				if self.docstatus == 2:
 					incomplete_transfer_dc_list[self.against_id] = True
 				else:
-					del incomplete_transfer_dc_list[self.against_id]
+					if self.against_id in incomplete_transfer_dc_list:
+						del incomplete_transfer_dc_list[self.against_id]
 
 				fp_doc.incomplete_transfer_dc_list = frappe.json.dumps(incomplete_transfer_dc_list)
 				fp_doc.save(ignore_permissions=True)

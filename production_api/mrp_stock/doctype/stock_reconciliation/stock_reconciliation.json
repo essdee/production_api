@@ -18,8 +18,9 @@
   "default_warehouse",
   "items",
   "item_html",
-  "comments",
-  "amended_from"
+  "amended_from",
+  "section_break_limm",
+  "comments"
  ],
  "fields": [
   {
@@ -95,13 +96,17 @@
    "fieldname": "comments",
    "fieldtype": "Small Text",
    "label": "Comments"
+  },
+  {
+   "fieldname": "section_break_limm",
+   "fieldtype": "Section Break"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-10-08 14:51:27.041687",
+ "modified": "2025-10-15 10:59:22.628262",
  "modified_by": "Administrator",
  "module": "MRP Stock",
  "name": "Stock Reconciliation",
