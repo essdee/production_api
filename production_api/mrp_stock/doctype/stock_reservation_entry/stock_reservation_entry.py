@@ -110,9 +110,11 @@ class StockReservationEntry(Document):
 			frappe.throw(msg)
 
 def on_doctype_update():
-	frappe.db.add_index("Stock Reservation Entry", ['warehouse', 'lot', 'item_code', 'received_type', 'status'])
-	frappe.db.add_index("Stock Reservation Entry", ['warehouse', 'lot', 'item_code', 'received_type'])
-	frappe.db.add_index("Stock Reservation Entry", ['voucher_type', 'voucher_no', 'status'])
+	frappe.db.add_index(
+		"Stock Reservation Entry",
+		["item_code", "warehouse", "received_type", "docstatus", "status"],
+		"idx_item_wh_type_docstatus_status"
+	)
 
 def create_stock_reservation_entries_for_so_items(
     voucher_type,
@@ -138,7 +140,7 @@ def create_stock_reservation_entries_for_so_items(
 		}
 	common_item_map = {}
 	voucher_detail_dict = {}
-	
+
 	for item in items_details:
 		
 		if item.get("item_name") not in common_item_map:
