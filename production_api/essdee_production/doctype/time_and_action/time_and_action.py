@@ -510,13 +510,15 @@ def get_t_and_a_update_data(lot, item):
 			"user": user
 		}, as_dict=True
 	)
-	department = department_data[0]['parent'] if department_data else None
+	departments = []
+	if department_data:
+		departments = [d['parent'] for d in department_data ]
 	return {
 		"data":data,
 		"role": t_and_a_settings.revised_date_approver_role,
 		"revised_limit": t_and_a_settings.revising_days_limit,
 		"max_revised": max_revised,
-		"department": department,
+		"departments": departments,
 		"user": user,
 	}
 

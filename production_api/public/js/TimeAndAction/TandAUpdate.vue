@@ -141,7 +141,7 @@
                                                 <td v-for="d in data['actions']" :key="d.actual_date" :style="{ backgroundColor: d.actual_date > d.rescheduled_date ? '#FFCCCB' : d.actual_date ? '#90EE90' : 'White'}">
                                                     <div style="width:100%;">
                                                         <div class="action-td-style">
-                                                            <div v-if="d.enable_date && (d.department == department || is_administrator)">
+                                                            <div v-if="d.enable_date && (departments.includes(d.department) || is_administrator)">
                                                                 <VueDatePicker v-model="d['allocated']" format="dd-MM-yyyy"
                                                                     :teleport="true"
                                                                     @update:model-value="(val) => call_func(val, lot, master, idx, d.index)"
@@ -239,7 +239,7 @@ let is_edited = ref(false)
 let hoveredAction = ref(null);
 let hoverMaster = ref(null);
 let approver = ref(false)
-let department = ref(null)
+let departments = ref([])
 let is_administrator = ref(false)
 
 onMounted(() => {
@@ -319,7 +319,7 @@ function get_filters() {
                 approver.value = false
             }
             let lot_value = lot.get_value()
-            department.value = r.message.department
+            departments.value = r.message.departments
             if(r.message.user == 'Administrator'){
                 is_administrator.value = true
             }
