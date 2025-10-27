@@ -55,10 +55,9 @@
   {
    "allow_on_submit": 1,
    "fieldname": "against_id",
-   "fieldtype": "Dynamic Link",
+   "fieldtype": "Data",
    "in_list_view": 1,
-   "label": "Against ID",
-   "options": "against"
+   "label": "Against ID"
   },
   {
    "fieldname": "date",
@@ -71,7 +70,7 @@
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2025-10-15 14:28:40.022174",
+ "modified": "2025-10-27 12:27:33.782836",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Work Order Track Piece",
