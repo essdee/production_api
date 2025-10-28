@@ -1,8 +1,10 @@
 <template>
     <div ref="root" style="padding:20px;">
         <div style="display:flex;">
-            <div class="category-input col-md-3"></div>
-            <div class="lot-status-input col-md-3"></div>
+            <div class="category-input col-md-2"></div>
+            <div class="lot-status-input col-md-2"></div>
+            <div class="lot-input col-md-3"></div>
+            <div class="item-input col-md-3"></div>
             <div style="padding-top:27px;">
                 <button class="btn btn-primary" @click="get_work_in_progress_report()">Show Report</button>
             </div>
@@ -63,6 +65,8 @@ let lot_status = null
 let root = ref(null)
 let sample_doc = ref({})
 let items = ref({})
+let lot_list = null
+let item_list = null
 
 onMounted(()=> {
     let el = root.value
@@ -74,7 +78,6 @@ onMounted(()=> {
             fieldtype: "Link",
             options: "Product Category",
             label: "Product Category",
-            reqd: true,
         },
         doc: sample_doc.value,
         render_input: true,
@@ -85,7 +88,7 @@ onMounted(()=> {
         df: {
             fieldname: "lot_status",
             fieldtype: "Select",
-            options: ["Open", "Close"],
+            options: "\nOpen\nClosed",
             label: "Lot Status",
             default: "Open",
             reqd: true,
@@ -93,12 +96,43 @@ onMounted(()=> {
         doc: sample_doc.value,
         render_input: true,
     })
+    frappe.model.with_doctype("Lot MultiSelect", () => {
+        $(el).find(".lot-input").html("");
+        lot_list = frappe.ui.form.make_control({
+            parent: $(el).find(".lot-input"),
+            df: {
+                fieldtype: "Table MultiSelect",
+                fieldname: "lot",
+                label: "Lot",
+                options: "Lot MultiSelect",
+            },
+            doc: sample_doc.value,
+            render_input: true,
+        })
+    })
+    
+    $(el).find(".item-input").html("");
+    frappe.model.with_doctype("Item MultiSelect", () => {
+        item_list = frappe.ui.form.make_control({
+            parent: $(el).find(".item-input"),
+            df: {
+                fieldtype: "Table MultiSelect",
+                fieldname: "item",
+                label: "Item",
+                options: "Item MultiSelect",
+            },
+            doc: sample_doc.value,
+            render_input: true,
+        })
+    })
+    
 })
 
 function get_work_in_progress_report(){
-    if(!category.get_value()){
-        frappe.msgprint("Please Set Category to Generate Report")
-        return
+    let lot_list_val = lot_list.get_value()
+    let item_list_val = item_list.get_value()
+    if(!category.get_value() && lot_list_val.length == 0 && item_list_val.length == 0){
+        frappe.msgprint("Please Set Atleast one filter other than Lot Status")
     }
     else{
         frappe.call({
@@ -106,6 +140,8 @@ function get_work_in_progress_report(){
             args: {
                 "category": category.get_value(),
                 "status": lot_status.get_value(),
+                "lot_list_val": lot_list_val,
+                "item_list": item_list_val,
             },
             freeze: true,
             freeze_message: "Fetching Data",

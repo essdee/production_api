@@ -82,6 +82,9 @@
                                                     <div v-else>
                                                         No Dependencies
                                                     </div>
+                                                    <br>
+                                                    <h4>Respective Department</h4>
+                                                    {{ items[lot]['masters'][master]['datas'][0]['actions'][idx]['department'] }}
                                                 </div>
                                             </th>
                                         </tr>
