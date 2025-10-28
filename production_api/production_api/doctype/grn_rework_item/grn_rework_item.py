@@ -129,6 +129,8 @@ def get_rework_items(lot, item, colour, grn_number=None):
 		"types": [],
 		"total_detail": {},
 		"total_sum": 0,
+		"total_rejection": 0,
+		"total_rejection_detail": {}
 	}
 	for item in rework_items:
 		item = item['name']
@@ -145,11 +147,14 @@ def get_rework_items(lot, item, colour, grn_number=None):
 			"size": primary_attr,
 			"types": {},
 			"total": 0,
+			'rejection_detail': {},
+			'total_rejection': 0,
 		})
 		for row in doc.grn_rework_item_details:
 			if row.completed == 1:
 				continue
 			data['total_detail'].setdefault(row.received_type, 0)
+			data['total_rejection_detail'].setdefault(row.received_type, 0)
 			attr_details = get_variant_attr_details(row.item_variant)
 			key = row.received_type+"-"+attr_details[pack_attr]
 			if set_item:
@@ -162,10 +167,15 @@ def get_rework_items(lot, item, colour, grn_number=None):
 				data['types'].append(row.received_type)
 			qty = row.quantity - row.reworked
 			data['total_detail'][row.received_type] += qty
+			data['total_rejection_detail'][row.received_type] += row.rejection
 			data['total_sum'] += qty
+			data['total_rejection'] += row.rejection
 			data["report_detail"][item]['types'].setdefault(row.received_type, 0)
 			data["report_detail"][item]['types'][row.received_type] += qty
 			data["report_detail"][item]['total'] += qty
+			data["report_detail"][item]['total_rejection'] += row.rejection
+			data['report_detail'][item]['rejection_detail'].setdefault(row.received_type, 0)
+			data['report_detail'][item]['rejection_detail'][row.received_type] += row.rejection
 			data["report_detail"][item]['rework_detail'][key]['items'].append({
 				primary_attr : attr_details[primary_attr],
 				"rework_qty": qty,
