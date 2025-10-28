@@ -137,16 +137,16 @@ onMounted(()=> {
     $(el).find(".item-input").html("");
     frappe.model.with_doctype("Item MultiSelect", () => {
         item_list = frappe.ui.form.make_control({
-        parent: $(el).find(".item-input"),
-        df: {
-            fieldtype: "Table MultiSelect",
-            fieldname: "item",
-            label: "Item",
-            options: "Item MultiSelect",
-        },
-        doc: sample_doc.value,
-        render_input: true,
-    })
+            parent: $(el).find(".item-input"),
+            df: {
+                fieldtype: "Table MultiSelect",
+                fieldname: "item",
+                label: "Item",
+                options: "Item MultiSelect",
+            },
+            doc: sample_doc.value,
+            render_input: true,
+        })
     })
     
     $(el).find(".lot-status-input").html("")
@@ -156,7 +156,7 @@ onMounted(()=> {
             fieldname: "lot_status",
             fieldtype: "Select",
             label: "Status",
-            options: ['Open', 'Closed'],
+            options: "\nOpen\nClosed",
             default: "Open",
         },
         doc: sample_doc.value,
@@ -197,11 +197,8 @@ function get_size_wise_stock(){
     let lot_list_val = lot_list.get_value()
     let item_list_val = item_list.get_value()
     let category = product_category.get_value()
-    if(!category){
-        frappe.msgprint("Please Set Category")
-    }
-    else if(lot_list_val.length == 0 && item_list_val.length == 0 && !open_status_val){
-        frappe.msgprint("Select at least one Item or Lot, or select Open Status.")
+    if(lot_list_val.length == 0 && item_list_val.length == 0 && !category){
+        frappe.msgprint("Select at least one Item or Lot, or select Category.")
     }
     else{
         frappe.call({

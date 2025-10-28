@@ -44,10 +44,12 @@
                         <td>{{ value['item'] }}</td>
                         <td>{{ Object.keys(value['rework_detail'])[0].split("-").slice(1).join("-") }}</td>
                         <td v-for="ty in items['types']">
-                            <span v-if="ty in value['types']">{{value['types'][ty]}}</span>
+                            <span v-if="ty in value['types']">
+                                {{value['types'][ty] - value['rejection_detail'][ty]}}
+                            </span>
                             <span v-else>0</span>
                         </td>
-                        <th> {{ value['total'] }}</th>
+                        <th> {{ value['total'] - value['total_rejection'] }}</th>
                     </tr>
                     <tr v-if="expandedRowKey === key">
                         <td :colspan="1000" class="expanded-row-content">
@@ -103,10 +105,10 @@
                     <th></th>
                     <th></th>
                     <th v-for="ty in items['types']">
-                        <span v-if="ty in items['total_detail']">{{items['total_detail'][ty]}}</span>
+                        <span v-if="ty in items['total_detail']">{{items['total_detail'][ty] - items['total_rejection_detail'][ty]}}</span>
                         <span v-else>0</span>
                     </th>
-                    <th> {{ items['total_sum'] }}</th>
+                    <th> {{ items['total_sum'] - items['total_rejection'] }}</th>
                 </tr>
             </table>
         </div>

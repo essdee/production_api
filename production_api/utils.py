@@ -1027,17 +1027,38 @@ def get_variant_attr_details(variant):
 
 
 @frappe.whitelist()
-def get_work_in_progress_report(category, status):
+def get_work_in_progress_report(category, status, lot_list_val, item_list):
+	conditions = ""
+	con = {}
+	if category:
+		conditions += ' AND t2.product_category = %(cat)s'
+		con['cat'] = category
+	
+	if status:
+		conditions += ' AND t1.status = %(status)s'
+		con['status'] = status
+
+	lot_list_val = update_if_string_instance(lot_list_val)
+	if lot_list_val:
+		lot_list_val = [lot['lot'] for lot in lot_list_val]
+		conditions += ' AND t1.name IN %(lot_list)s'
+		lot_list_val.append("")
+		con['lot_list'] = tuple(lot_list_val)
+
+	item_list = update_if_string_instance(item_list)
+	if item_list:
+		item_list = [item['item'] for item in item_list]
+		conditions += ' AND t1.item IN %(item_list)s'
+		item_list.append("")
+		con['item_list'] = tuple(item_list)		
+
 	lot_list = frappe.db.sql(
-		"""
+		f"""
 			SELECT t1.name FROM `tabLot` t1 JOIN `tabItem` t2 ON t1.item = t2.name
-			WHERE t1.status = %(status)s AND t2.product_category = %(category)s
-			AND t1.item IS NOT NULL AND t1.production_detail IS NOT NULL 
-		""", {
-			"status": status,
-			"category": category,
-		}, as_dict=True
+			WHERE 1 = 1 {conditions}
+		""", con, as_dict=True
 	)
+
 	lot_dict = {}
 	for lot in lot_list:
 		lot = lot['name']
@@ -1293,10 +1314,13 @@ def get_month_wise_report(lot=None, item=None, start_date=None, end_date=None):
 
 @frappe.whitelist()
 def get_size_wise_stock_report(open_status, lot_list, item_list, category):
-	conditions = " AND t2.product_category = %(category)s"
-	con = {
-		"category": category
-	}
+	conditions = ""
+	con = {}
+	if category:
+		conditions += " AND t2.product_category = %(category)s"
+		con = {
+			"category": category
+		}
 	lot_list = update_if_string_instance(lot_list)
 	item_list = update_if_string_instance(item_list)
 	lot_list = [lot['lot'] for lot in lot_list]
