@@ -175,7 +175,9 @@ def make_fg_ste_from_sms(fg_ste_req):
         posting_time=fg_ste_req['posting_time'],
         items_list=fg_ste_req['items'],
         comments=fg_ste_req['comments'],
-        created_user=fg_ste_req['user']
+        created_user=fg_ste_req['user'],
+        customer=fg_ste_req['customer'],
+        consumed=fg_ste_req['consumed']
     )
 
 @frappe.whitelist()
@@ -187,7 +189,7 @@ def get_fg_stock_entry_details_list(pageLength, curr_page):
 
     list_items = frappe.get_list("FG Stock Entry",
                     fields=['name','posting_date', 'posting_time', 'dc_number', 
-                    'lot', 'supplier', 'warehouse', 'received_by', 'comments', 'docstatus'], 
+                    'lot', 'supplier', 'warehouse', 'received_by', 'comments', 'docstatus', 'customer', 'consumed'], 
                 start=((curr_page-1) * pageLength), limit=pageLength, order_by='creation DESC' )
     
     total_pages = frappe.db.count("FG Stock Entry")
@@ -227,6 +229,14 @@ def get_reserved_stock(warehouse, item):
 
 @frappe.whitelist()
 def get_fg_stock_entry_datewise_inward(start_date, end_date, item, warehouse):
+    return get_fg_stock_entry_itemwise_outward_inward(start_date, end_date, item, warehouse, is_inward=True)
+
+@frappe.whitelist()
+def get_fg_stock_entry_datewise_outward(start_date, end_date, item, warehouse):
+    return get_fg_stock_entry_itemwise_outward_inward(start_date, end_date, item, warehouse, is_inward=False)
+
+def get_fg_stock_entry_itemwise_outward_inward(start_date, end_date, item, warehouse, is_inward = True):
+
     if isinstance(item, string_types):
         item = json.loads(item)
     if isinstance(warehouse, string_types):
@@ -238,6 +248,7 @@ def get_fg_stock_entry_datewise_inward(start_date, end_date, item, warehouse):
         JOIN `tabSupplier` t3 ON t3.name = t1.warehouse
         JOIN `tabItem Variant` t4 ON t4.name = t2.item_variant
         WHERE t1.docstatus = 1 AND t1.posting_date BETWEEN '{start_date}' AND '{end_date}'
+        AND t1.consumed = {consumed}
         AND t1.warehouse IN ({warehouse})
         AND t2.item_variant IN ({item})
         GROUP BY t2.item_variant
@@ -245,6 +256,7 @@ def get_fg_stock_entry_datewise_inward(start_date, end_date, item, warehouse):
         start_date=start_date,
         end_date=end_date,
         warehouse=",".join([f"'{w}'" for w in warehouse]),
-        item=",".join([f"'{i}'" for i in item])
+        item=",".join([f"'{i}'" for i in item]),
+        consumed = 0 if is_inward else 1
     )
     return frappe.db.sql(query, as_dict=True)

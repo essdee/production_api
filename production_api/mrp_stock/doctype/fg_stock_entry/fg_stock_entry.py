@@ -50,7 +50,7 @@ class FGStockEntry(Document):
 				"posting_date" : self.get("posting_date"),
 				"posting_time" : self.get("posting_time"),
 				"recieved_by" : self.get("recieved_by"),
-				"qty" :  flt(d.get('stock_qty')),
+				"qty" :  flt(d.get('stock_qty')) * ( -1 if self.consumed else 1),
 				"uom": d.get('stock_uom'),
 				"voucher_type" : "FG Stock Entry",
 				"voucher_no" : self.get('name'),
@@ -71,7 +71,7 @@ def make_sle_entries(sle_details):
 	make_sl_entries(sle_details)
 
 @frappe.whitelist()
-def create_FG_ste(lot, received_by, supplier, dc_number, warehouse, posting_date, posting_time, items_list, comments, created_user):
+def create_FG_ste(lot, received_by, dc_number, warehouse, posting_date, posting_time, items_list, comments, created_user, consumed = False, customer = None, supplier = None):
 	if isinstance(items_list, string_types):
 		items_list = frappe.json.loads(items_list)
 	received_type =frappe.db.get_single_value("Stock Settings", "default_received_type")
@@ -81,6 +81,8 @@ def create_FG_ste(lot, received_by, supplier, dc_number, warehouse, posting_date
 	doc.set('dc_number', dc_number)
 	doc.set('supplier', supplier)
 	doc.set('warehouse', warehouse)
+	doc.set('customer', customer)
+	doc.set('consumed', 1 if consumed else 0)
 	doc_items = []
 	for i in items_list:
 		stock_details = get_uom_details(i['item_variant'], i['uom'], i['qty'])
@@ -144,17 +146,26 @@ def get_stock_entry_detail(stock_entry):
 		"lot" : doc.lot,
 		"items" : items_list,
 		"created_at" : doc.creation,
-		"docstatus" : doc.docstatus
+		"docstatus" : doc.docstatus,
+		"consumed" : True if doc.consumed else False,
+		"customer" : doc.customer
 	}
 	return resp
 
 def get_inward_stock(item, warehouselist, start_date = None, end_date = None):
+	return get_inward_outward_entry(item=item, warehouselist=warehouselist, start_date=start_date, end_date=end_date, is_inward=True)
 
+def fg_stock_entry_cancel(stock_entry):
+	doc = frappe.get_doc("FG Stock Entry", stock_entry)
+	doc.cancel()
+
+def get_outward_stock(item, warehouselist, start_date = None, end_date = None):
+	return get_inward_outward_entry(item=item, warehouselist=warehouselist, start_date=start_date, end_date=end_date, is_inward=False)
+
+def get_inward_outward_entry(item, warehouselist, start_date = None, end_date = None, is_inward = True):
 	if isinstance(warehouselist, string_types) :
 		warehouselist = frappe.json.loads(warehouselist)
-
 	warehouseFilter = "("
-
 	ind = 0
 	for i in warehouselist:
 		warehouseFilter += f"'{i}'"
@@ -165,7 +176,7 @@ def get_inward_stock(item, warehouselist, start_date = None, end_date = None):
 
 	date_filter = ""
 	if start_date and end_date:
-		date_filter = f" AND `tabFG Stock Entry`.creation BETWEEN '{start_date}' AND '{end_date}' "
+		date_filter = f" AND DATE(`tabFG Stock Entry`.creation) BETWEEN '{start_date}' AND '{end_date}' "
 
 	query = f"""
 		SELECT `tabFG Stock Entry Detail`.qty as pending_qty,
@@ -174,7 +185,7 @@ def get_inward_stock(item, warehouselist, start_date = None, end_date = None):
 		`tabFG Stock Entry`.creation as st_entry_date,
 		`tabFG Stock Entry`.posting_date as posting_date,
 		`tabFG Stock Entry`.posting_time as posting_time,
-		`tabFG Stock Entry`.supplier as supplier,
+		`tabFG Stock Entry`.customer as customer,
 		`tabFG Stock Entry`.warehouse as warehouse,
 		`tabFG Stock Entry`.received_by as received_by,
 		`tabFG Stock Entry`.lot as lot,
@@ -185,13 +196,8 @@ def get_inward_stock(item, warehouselist, start_date = None, end_date = None):
 		`tabFG Stock Entry`.name as stock_entry
 		FROM `tabFG Stock Entry Detail` JOIN  `tabFG Stock Entry` ON `tabFG Stock Entry Detail`.parent = `tabFG Stock Entry`.name
 		JOIN `tabItem Variant` ON `tabFG Stock Entry Detail`.item_variant=`tabItem Variant`.name  WHERE `tabItem Variant`.item = '{item}' 
-		AND `tabFG Stock Entry`.docstatus = 1
+		AND `tabFG Stock Entry`.docstatus = 1 AND `tabFG Stock Entry`.consumed = { 0 if is_inward else 1 }
 		{ f'AND `tabFG Stock Entry`.warehouse IN  {warehouseFilter}' if len(warehouselist) > 0 else "" }
 		{ date_filter }
 	"""
-
 	return frappe.db.sql(query, as_dict=True)
-
-def fg_stock_entry_cancel(stock_entry):
-	doc = frappe.get_doc("FG Stock Entry", stock_entry)
-	doc.cancel()
