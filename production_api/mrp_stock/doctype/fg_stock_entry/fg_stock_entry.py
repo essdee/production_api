@@ -186,6 +186,7 @@ def get_inward_outward_entry(item, warehouselist, start_date = None, end_date = 
 		`tabFG Stock Entry`.posting_date as posting_date,
 		`tabFG Stock Entry`.posting_time as posting_time,
 		`tabFG Stock Entry`.customer as customer,
+		`tabFG Stock Entry`.supplier as supplier,
 		`tabFG Stock Entry`.warehouse as warehouse,
 		`tabFG Stock Entry`.received_by as received_by,
 		`tabFG Stock Entry`.lot as lot,
