@@ -35,7 +35,11 @@
   "time_and_action_tracking_order_report_days",
   "additional_grn_submit_role",
   "cut_bundle_cancelled_lot",
-  "finishing_inward_process"
+  "finishing_inward_process",
+  "vendor_bill_tracking_section",
+  "enable_vendor_bill_no_unique_restriction",
+  "fiscal_year_start_date",
+  "fiscal_year_end_date"
  ],
  "fields": [
   {
@@ -209,13 +213,36 @@
    "fieldtype": "Link",
    "label": "Finishing Inward Process",
    "options": "Process"
+  },
+  {
+   "fieldname": "vendor_bill_tracking_section",
+   "fieldtype": "Section Break",
+   "label": "Vendor Bill Tracking"
+  },
+  {
+   "default": "0",
+   "fieldname": "enable_vendor_bill_no_unique_restriction",
+   "fieldtype": "Check",
+   "label": "Enable Vendor Bill No Unique Restriction"
+  },
+  {
+   "fieldname": "fiscal_year_start_date",
+   "fieldtype": "Date",
+   "label": "Fiscal Year Start Date",
+   "mandatory_depends_on": "eval: doc.enable_vendor_bill_no_unique_restriction"
+  },
+  {
+   "fieldname": "fiscal_year_end_date",
+   "fieldtype": "Date",
+   "label": "Fiscal Year End Date",
+   "mandatory_depends_on": "eval: doc.enable_vendor_bill_no_unique_restriction"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2025-09-18 16:14:44.024583",
+ "modified": "2025-10-30 12:05:56.919272",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "MRP Settings",
@@ -243,6 +270,7 @@
   }
  ],
  "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": [],
