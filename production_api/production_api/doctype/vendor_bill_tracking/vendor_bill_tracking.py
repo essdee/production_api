@@ -17,8 +17,24 @@ class VendorBillTracking(Document):
 		self.set_cancelled_log()
 
 	def before_insert(self):
+		self.check_for_unique_condition()
 		if self.amended_from:
 			self.set_amended_log()
+
+	def check_for_unique_condition(self):
+		flag = frappe.db.get_single_value("MRP Settings", 'enable_vendor_bill_no_unique_restriction')
+		if not flag:
+			return
+		start_date = frappe.db.get_single_value("MRP Settings", 'fiscal_year_start_date')
+		end_date = frappe.db.get_single_value("MRP Settings", 'fiscal_year_end_date')
+		exist_bills= frappe.get_all("Vendor Bill Tracking", filters = [
+			['bill_date', 'between', [start_date, end_date]],
+			['supplier','=',self.supplier],
+			['bill_no', '=', self.bill_no],
+			['docstatus', '!=', 2]
+		])
+		if exist_bills:
+			frappe.throw("The Following Bills Are Already Exist<br>"+"<br>".join([ f"<a href='/app/vendor-bill-tracking/{i['name']}' target='_blank' >{i['name']}</a>" for i in exist_bills]))
 
 	def set_amended_log(self):
 		self.append('vendor_bill_tracking_history', {
