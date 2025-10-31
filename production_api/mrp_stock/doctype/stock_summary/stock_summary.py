@@ -6,7 +6,7 @@ from six import string_types
 from itertools import groupby
 from frappe.model.document import Document
 from production_api.production_api.doctype.item.item import get_attribute_details
-from production_api.mrp_stock.report.item_balance.item_balance import execute as get_item_balance
+from production_api.mrp_stock.report.stock_balance.stock_balance import execute as get_item_balance
 from production_api.production_api.doctype.purchase_order.purchase_order import get_item_attribute_details, get_item_group_index
 
 
@@ -17,18 +17,20 @@ class StockSummary(Document):
 def get_stock_summary(lot, item, item_variant, warehouse, received_type):
 	filters = {
 		"remove_zero_balance_item":1,
+		"from_date": frappe.utils.add_months(frappe.utils.nowdate(), -1),
+		"to_date": frappe.utils.nowdate()
 	}
 	if lot:
 		filters['lot'] = lot
 	if item:
-		filters['item'] = item
+		filters['parent_item'] = item
 	if item_variant:
-		filters['item_variant'] = item_variant
+		filters['item'] = item_variant
 	if warehouse:
 		filters['warehouse'] = warehouse
 	if received_type:
 		filters['received_type'] = received_type
-	
+
 	x = get_item_balance(filters)
 	report_data = x[1]
 	return report_data
