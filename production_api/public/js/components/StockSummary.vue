@@ -47,13 +47,14 @@
                             </div>
                         </td>
                         <td>{{ item.lot }}</td>
+                        <td>{{ item.item_name }}</td>
                         <td>{{ item.item }}</td>
-                        <td>{{ item.item_variant }}</td>
                         <td>{{ item.warehouse }}</td>
                         <td>{{ item.warehouse_name }}</td>
                         <td>{{ item.received_type }}</td>
-                        <td>{{ item.actual_qty }}</td>
+                        <td>{{ item.bal_qty }}</td>
                         <td>
+                            
                             <button class="btn btn-success" @click="create_stock_entry(item)">Create</button>
                         </td>
                     </tr>
