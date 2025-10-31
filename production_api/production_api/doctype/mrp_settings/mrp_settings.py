@@ -8,7 +8,10 @@ import frappe
 from frappe.model.document import Document
 
 class MRPSettings(Document):
-	pass
+	def validate(self):
+		if self.fiscal_year_start_date and self.fiscal_year_end_date:
+			if self.fiscal_year_end_date < self.fiscal_year_start_date:
+				frappe.throw("Please set the fiscal year start and end date correctly")
 
 def post_erp_request(endpoint: str, data: dict) -> Response:
 	config = frappe.get_single('MRP Settings')
