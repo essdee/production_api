@@ -97,6 +97,7 @@ frappe.ui.form.on('Purchase Invoice', {
 					frm.set_value("grn_grand_total", r.message.total)
 					frm.set_value("total_quantity", r.message.total_quantity)
 					frm.set_value("pi_work_order_billed_details", r.message.wo_items)
+					frm.set_value("allow_to_change_rate", r.message.allow_to_change_rate)
 				}
 			}
 		})

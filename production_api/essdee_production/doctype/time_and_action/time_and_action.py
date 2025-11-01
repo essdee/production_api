@@ -572,21 +572,22 @@ def get_update_rescheduled_date(updated_date, key, updated_action, data_index, t
 	actual_date_details = {}
 	rescheduled_date_details = {}
 	total_data = update_if_string_instance(total_data)
+	sing_doc = frappe.get_single("T and A Settings")
 	if key == "updated":
-		if total_data[lot]['masters'][master]['datas'][int(data_index)]['actions'][int(cur_index)]['dependent_details']:
-			greater_date = None
-			for act in total_data[lot]['masters'][master]['datas'][int(data_index)]['actions'][int(cur_index)]['dependent_details']:
-				if not greater_date:
-					greater_date = total_data[lot]['masters'][master]['datas'][int(data_index)]['actions'][int(cur_index)]['dependent_details'][act]
-				if total_data[lot]['masters'][master]['datas'][int(data_index)]['actions'][int(cur_index)]['dependent_details'][act] > greater_date:
-					greater_date = total_data[lot]['masters'][master]['datas'][int(data_index)]['actions'][int(cur_index)]['dependent_details'][act]
-			
-			if updated_date < greater_date:
-				year, mon, date = greater_date.split("-")
-				frappe.throw(f"Date Should be greater than {date}-{mon}-{year}")			
+		if not sing_doc.override_previous_action_completion_date:
+			if total_data[lot]['masters'][master]['datas'][int(data_index)]['actions'][int(cur_index)]['dependent_details']:
+				greater_date = None
+				for act in total_data[lot]['masters'][master]['datas'][int(data_index)]['actions'][int(cur_index)]['dependent_details']:
+					if not greater_date:
+						greater_date = total_data[lot]['masters'][master]['datas'][int(data_index)]['actions'][int(cur_index)]['dependent_details'][act]
+					if total_data[lot]['masters'][master]['datas'][int(data_index)]['actions'][int(cur_index)]['dependent_details'][act] > greater_date:
+						greater_date = total_data[lot]['masters'][master]['datas'][int(data_index)]['actions'][int(cur_index)]['dependent_details'][act]
+				
+				if updated_date < greater_date:
+					year, mon, date = greater_date.split("-")
+					frappe.throw(f"Date Should be greater than {date}-{mon}-{year}")			
 
 		today = frappe.utils.nowdate()
-		sing_doc = frappe.get_single("T and A Settings")
 		past_date = frappe.utils.add_days(today, sing_doc.update_last_n_dates*-1)
 		if updated_date < past_date:
 			frappe.throw("These dates are not allowed")

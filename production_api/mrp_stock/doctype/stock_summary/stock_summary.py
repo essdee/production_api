@@ -5,6 +5,7 @@ import frappe
 from six import string_types
 from itertools import groupby
 from frappe.model.document import Document
+from production_api.utils import update_if_string_instance
 from production_api.production_api.doctype.item.item import get_attribute_details
 from production_api.mrp_stock.report.stock_balance.stock_balance import execute as get_item_balance
 from production_api.production_api.doctype.purchase_order.purchase_order import get_item_attribute_details, get_item_group_index
@@ -20,8 +21,6 @@ def get_stock_summary(lot, item, item_variant, warehouse, received_type):
 		"from_date": frappe.utils.add_months(frappe.utils.nowdate(), -1),
 		"to_date": frappe.utils.nowdate()
 	}
-	if lot:
-		filters['lot'] = lot
 	if item:
 		filters['parent_item'] = item
 	if item_variant:
@@ -30,9 +29,18 @@ def get_stock_summary(lot, item, item_variant, warehouse, received_type):
 		filters['warehouse'] = warehouse
 	if received_type:
 		filters['received_type'] = received_type
-
-	x = get_item_balance(filters)
-	report_data = x[1]
+	
+	report_data = []
+	if lot:
+		lot = update_if_string_instance(lot)
+		for lot_name in lot:
+			filters['lot'] = lot_name['lot']
+			x = get_item_balance(filters)
+			lot_report_data = x[1]
+			report_data = report_data + lot_report_data
+	else:	
+		x = get_item_balance(filters)
+		report_data = x[1]
 	return report_data
 
 @frappe.whitelist()

@@ -76,18 +76,20 @@ let show_table = ref(true);
 
 onMounted(() => {
     let el = root.value;
-    $(el).find(".lot-name").html("");
-    lot = frappe.ui.form.make_control({
-        parent: $(el).find(".lot-name"),
-        df: {
-            fieldname: "lot",
-            fieldtype: "Link",
-            options: "Lot",
-            label: "Lot",
-        },
-        doc: sample_doc.value,
-        render_input: true,
-    });
+    frappe.model.with_doctype("Lot MultiSelect", () => {
+        $(el).find(".lot-name").html("");
+        lot = frappe.ui.form.make_control({
+            parent: $(el).find(".lot-name"),
+            df: {
+                fieldtype: "Table MultiSelect",
+                fieldname: "lot",
+                label: "Lot",
+                options: "Lot MultiSelect",
+            },
+            doc: sample_doc.value,
+            render_input: true,
+        })
+    })
 
     $(el).find(".item-name").html("");
     item = frappe.ui.form.make_control({

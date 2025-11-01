@@ -56,11 +56,15 @@ class PurchaseInvoice(Document):
 			grand_total += total
 			total_quantity += item.qty
 
-		if grand_total > self.grn_grand_total:
-			frappe.throw("Total amount is greater than GRN total amount")	
+		if self.against == 'Purchase Order':
+			if grand_total > self.grn_grand_total:
+				frappe.throw("Total amount is greater than GRN total amount")	
+		else:
+			if grand_total != self.grn_grand_total and not self.allow_to_change_rate:
+				frappe.throw("Total amount is greater than GRN total amount")	
 
-		if self.against == 'Work Order' and total_quantity != self.total_quantity and not self.is_new():
-			frappe.throw("Not Allowed to Change Quantity")
+			if total_quantity != self.total_quantity and not self.is_new():
+				frappe.throw("Not Allowed to Change Quantity")
 
 		self.set('total', total_amount)
 		self.set('total_tax', total_tax)
@@ -102,7 +106,9 @@ class PurchaseInvoice(Document):
 				frappe.throw(data.get('exception') or f"Unknown Error - {frappe.get_desk_link(error.doctype, error.name)}")
 		if self.vendor_bill_tracking:
 			self.remove_vendor_bill_purchase_invoce()
-		update_wo_billed_qty(self, docstatus=2)	
+		
+		if self.against == 'Work Order':	
+			update_wo_billed_qty(self, docstatus=2)	
 	
 	def before_submit(self):
 		if not len(self.grn) or not len(self.items):
@@ -273,6 +279,7 @@ def fetch_grn_details(grns, against, supplier):
 	items = {}
 	exception_item_set = set()
 	total_quantity = 0
+	allow_to_change_rate = 0
 	wo_items = {}
 	if against == 'Purchase Order':
 		for grn in grns:
@@ -302,11 +309,20 @@ def fetch_grn_details(grns, against, supplier):
 	else:
 		has_gst = frappe.get_value("Supplier", supplier, "gstin")
 		grn_groups = {}
+		pi_min_grn_date = frappe.db.get_single_value("MRP Settings", 'pi_minimum_grn_date')
+		min_date = None
 		for grn in grns:
-			wo = frappe.get_value("Goods Received Note", grn, "against_id")
+			wo, grn_date = frappe.get_value("Goods Received Note", grn, ["against_id", "posting_date"])
+			if not min_date:
+				min_date = grn_date
+			if grn_date < min_date:
+				min_date = grn_date	
 			grn_groups.setdefault(wo, [])
 			grn_groups[wo].append(grn)
-		
+
+		if pi_min_grn_date and min_date < pi_min_grn_date:
+			allow_to_change_rate = 1	
+
 		for wo in grn_groups:
 			items_list, process_docname = calculate_grns(grn_groups[wo], wo)
 			process_cost_doc = frappe.get_doc("Process Cost", process_docname)
@@ -401,7 +417,8 @@ def fetch_grn_details(grns, against, supplier):
 		"items": list(items.values()),
 		"total": grand_total,
 		"total_quantity": total_quantity,
-		"wo_items": work_order_items
+		"wo_items": work_order_items,
+		"allow_to_change_rate": allow_to_change_rate
 	}		
 
 def calculate_grns(grn_list, wo):
@@ -499,6 +516,18 @@ def calculate_grns(grn_list, wo):
 		items_list[key_val]['difference'] = items_list[key_val]['received'] - items_list[key_val]['billed']
 
 	return items_list, process_docname
+
+@frappe.whitelist()
+def get_merch_roles():
+	doc = frappe.get_single("MRP Settings")
+	user_roles = frappe.get_roles(frappe.session.user)
+	if doc.merchandising_manager_role in user_roles:
+		return "merch_manager"
+	if doc.senior_merch_role in user_roles:
+		return "senior_merch"
+	if doc.merch_user_role in user_roles:
+		return "merch_user"
+	return None
 
 @frappe.whitelist()
 def get_erp_inv_link(name):
