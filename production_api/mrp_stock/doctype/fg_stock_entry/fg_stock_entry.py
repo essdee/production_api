@@ -1,6 +1,10 @@
 # Copyright (c) 2024, Essdee and contributors
 # For license information, please see license.txt
 
+from itertools import groupby
+
+from production_api.production_api.doctype.item.item import get_attribute_details
+from production_api.utils import update_if_string_instance
 import frappe
 from frappe.model.document import Document
 from frappe.utils import flt
@@ -8,6 +12,7 @@ from production_api.mrp_stock.stock_ledger import make_sl_entries, repost_future
 from six import string_types
 from production_api.mrp_stock.doctype.stock_entry.stock_entry import get_uom_details
 from production_api.production_api.doctype.item_price.item_price import get_item_variant_price
+from production_api.production_api.doctype.purchase_order.purchase_order import get_item_attribute_details, get_item_group_index
 from production_api.mrp_stock.utils import get_stock_balance
 from six import string_types
 
@@ -202,3 +207,34 @@ def get_inward_outward_entry(item, warehouselist, start_date = None, end_date = 
 		{ date_filter }
 	"""
 	return frappe.db.sql(query, as_dict=True)
+
+@frappe.whitelist()
+def fetch_stock_entry_items(items):
+	item_details = []
+	item_mapper = {}
+	for i in items:
+		key = f"row-{i['row']}-col-{i['col']}"
+		if key not in item_mapper:
+			item_mapper[key] = [i]
+		else:
+			item_mapper[key].append(i)
+	combination_details = [v for i, v in item_mapper.items()]
+	return item_details
+
+def get_combined_details(items):
+
+	item_attribute_combination_map = {}
+	result = []
+	for i in items:
+		item_name = frappe.get_cached_value('Item Variant', i[0]['item_variant'], 'item')
+		curr_item = {
+			"item_name" : item_name,
+			"qty" : {},
+			"primary_attribute" : frappe.get_cached_value("Item", item_name, 'primary_attribute')
+		}
+		if item_name not in item_attribute_combination_map:
+			item_attribute_combination_map[item_name] = get_attribute_details(item_name)
+		item_combination_details = item_attribute_combination_map[item_name]
+
+		for j in i:
+			pass
