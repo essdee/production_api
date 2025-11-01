@@ -151,7 +151,7 @@ def update_wo_billed_qty(self, docstatus=1):
 						wo_item.billed_qty += row.quantity
 
 	for wo in wo_doc_dict:
-		wo.save(ignore_permissions=True)
+		wo_doc_dict[wo].save(ignore_permissions=True)
 
 @frappe.whitelist()
 def submit_erp_invoice(name):
