@@ -39,10 +39,18 @@
   "remarks",
   "cancel_without_cancelling_erp_inv",
   "verification_details_tab",
+  "debit_type",
+  "allow_to_change_rate",
+  "column_break_xpcb",
+  "debit_no",
+  "debit_value",
+  "section_break_bgxs",
   "work_order_details_html",
   "pi_work_order_billed_details",
   "total_quantity",
-  "approved_by"
+  "approved_by",
+  "senior_merch_approved_by",
+  "purchase_invoice_wo_approval_details"
  ],
  "fields": [
   {
@@ -283,12 +291,57 @@
    "label": "Approved By",
    "options": "User",
    "read_only": 1
+  },
+  {
+   "fieldname": "debit_type",
+   "fieldtype": "Select",
+   "label": "Debit Type",
+   "options": "\nPermanent\nTemporary"
+  },
+  {
+   "fieldname": "column_break_xpcb",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "debit_no",
+   "fieldtype": "Data",
+   "label": "Debit No"
+  },
+  {
+   "fieldname": "debit_value",
+   "fieldtype": "Currency",
+   "label": "Debit Value"
+  },
+  {
+   "fieldname": "section_break_bgxs",
+   "fieldtype": "Section Break"
+  },
+  {
+   "default": "0",
+   "fieldname": "allow_to_change_rate",
+   "fieldtype": "Check",
+   "hidden": 1,
+   "label": "Allow to Change Rate"
+  },
+  {
+   "fieldname": "purchase_invoice_wo_approval_details",
+   "fieldtype": "Table",
+   "label": "Purchase Invoice WO Approval Details",
+   "options": "Purchase Invoice WO Approval Detail",
+   "read_only": 1
+  },
+  {
+   "fieldname": "senior_merch_approved_by",
+   "fieldtype": "Link",
+   "label": "Senior Merch Approved By",
+   "options": "User",
+   "read_only": 1
   }
  ],
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-10-31 14:12:01.760701",
+ "modified": "2025-11-01 17:26:20.569465",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Purchase Invoice",

@@ -28,6 +28,11 @@
   "allow_grn_cancellation",
   "section_break_inin",
   "dc_grn_letter_head",
+  "purchase_invoice_section",
+  "pi_minimum_grn_date",
+  "senior_merch_role",
+  "merchandising_manager_role",
+  "merch_user_role",
   "raw_printing_printers_section",
   "printer_list",
   "work_order_section",
@@ -136,7 +141,8 @@
   },
   {
    "fieldname": "section_break_inin",
-   "fieldtype": "Section Break"
+   "fieldtype": "Section Break",
+   "label": "Delivery Challan"
   },
   {
    "fieldname": "dc_grn_letter_head",
@@ -215,6 +221,16 @@
    "options": "Process"
   },
   {
+   "fieldname": "purchase_invoice_section",
+   "fieldtype": "Section Break",
+   "label": "Purchase Invoice"
+  },
+  {
+   "fieldname": "pi_minimum_grn_date",
+   "fieldtype": "Date",
+   "label": "PI Minimum GRN Date"
+  },
+  {
    "fieldname": "vendor_bill_tracking_section",
    "fieldtype": "Section Break",
    "label": "Vendor Bill Tracking"
@@ -236,13 +252,31 @@
    "fieldtype": "Date",
    "label": "Fiscal Year End Date",
    "mandatory_depends_on": "eval: doc.enable_vendor_bill_no_unique_restriction"
+  },
+  {
+   "fieldname": "senior_merch_role",
+   "fieldtype": "Link",
+   "label": "Senior Merch Role",
+   "options": "Role"
+  },
+  {
+   "fieldname": "merchandising_manager_role",
+   "fieldtype": "Link",
+   "label": "Merchandising Manager Role",
+   "options": "Role"
+  },
+  {
+   "fieldname": "merch_user_role",
+   "fieldtype": "Link",
+   "label": "Merch User Role",
+   "options": "Role"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2025-10-30 12:05:56.919272",
+ "modified": "2025-11-01 16:43:54.113034",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "MRP Settings",
