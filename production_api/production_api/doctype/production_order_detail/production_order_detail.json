@@ -1,0 +1,59 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2025-08-22 11:54:16.385125",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "item_variant",
+  "quantity",
+  "ratio",
+  "mrp"
+ ],
+ "fields": [
+  {
+   "allow_on_submit": 1,
+   "fieldname": "item_variant",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Item Variant",
+   "options": "Item Variant"
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "quantity",
+   "fieldtype": "Float",
+   "in_list_view": 1,
+   "label": "Quantity"
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "ratio",
+   "fieldtype": "Float",
+   "in_list_view": 1,
+   "label": "Ratio"
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "mrp",
+   "fieldtype": "Currency",
+   "in_list_view": 1,
+   "label": "MRP"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2025-10-29 18:17:49.516340",
+ "modified_by": "Administrator",
+ "module": "Production Api",
+ "name": "Production Order Detail",
+ "owner": "Administrator",
+ "permissions": [],
+ "row_format": "Dynamic",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

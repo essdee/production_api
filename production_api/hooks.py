@@ -214,6 +214,7 @@ jinja = {
         "production_api.production_api.doctype.cutting_plan.cutting_plan.remove_empty_rows",
         "production_api.essdee_production.doctype.lot.lot.get_ironing_mistake_pf_items",
         "production_api.production_api.doctype.cutting_marker.cutting_marker.get_panels_and_size",
+        "production_api.production_api.doctype.production_order.production_order.get_production_order_details",
         "production_api.production_api.doctype.grn_rework_item.grn_rework_item.get_rework_items",
     ]
 }

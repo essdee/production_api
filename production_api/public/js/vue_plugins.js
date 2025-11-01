@@ -55,6 +55,7 @@ import DailyProductionReport from "./CuttingLaySheet/components/DailyProductionR
 import DailyCutSheetReport from "./CuttingLaySheet/components/DailyCutSheetReport.vue";
 import GRNPacking from "./GRN/components/GRNPacking.vue";
 import FinishingGRN from "./Finishing/FinishingGRN.vue";
+import ProductionOrder from "./Lot/components/ProductionOrder.vue";
 import ReworkPage from "./WorkOrder/components/ReworkPage.vue";
 import FinishingDetail from "./Finishing/FinishingDetail.vue" 
 import FinishingQtyDetail from "./Finishing/FinishingQtyDetail.vue"
@@ -70,6 +71,7 @@ import WorkInProgress from "./components/WorkInProgress.vue"
 import MonthWiseDetailReport from "./components/MonthWiseDetailReport.vue"
 import SizeWiseStockReport from "./components/SizeWiseStockDetail.vue"
 import ColourWiseDiffReport from "./components/ColourWiseDiffReport.vue"
+import InvoiceWoItems from "./PurchaseInvoice/components/InvoiceWOItems.vue"
 
 // Product Development
 import { ProductFileVersionsWrapper, ProductCostingListWrapper } from "./ProductDevelopment"
@@ -429,6 +431,39 @@ frappe.production.ui.FinishingGRN = class {
     }
 }
 
+frappe.production.ui.ProductionOrder = class {
+    constructor(wrapper){
+        this.$wrapper = $(wrapper);
+        this.make_app() 
+    }
+    make_app(){
+        this.app = createApp(ProductionOrder)
+        SetVueGlobals(this.app)
+        this.vue = this.app.mount(this.$wrapper.get(0))
+    }
+    load_data(data){
+        this.vue.load_data(data)
+    }
+    get_data(){
+        let items = JSON.parse(JSON.stringify(this.vue.get_items()))
+        return items
+    }
+}
+
+frappe.production.ui.InvoiceWoItems = class {
+    constructor(wrapper){
+        this.$wrapper = $(wrapper);
+        this.make_app()
+    }
+    make_app(){
+        this.app = createApp(InvoiceWoItems)
+        SetVueGlobals(this.app)
+        this.vue = this.app.mount(this.$wrapper.get(0))
+    }
+    load_data(data){
+        this.vue.load_data(data)
+    }
+}
 
 frappe.production.ui.TimeAndActionWeeklyReport = class {
     constructor(wrapper){
