@@ -1,0 +1,76 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2025-10-29 15:27:24.696780",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "work_order",
+  "item_variant",
+  "quantity",
+  "total_delivered",
+  "total_received",
+  "billed",
+  "set_combination"
+ ],
+ "fields": [
+  {
+   "fieldname": "work_order",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Work Order",
+   "options": "Work Order"
+  },
+  {
+   "fieldname": "item_variant",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Item Variant",
+   "options": "Item Variant"
+  },
+  {
+   "fieldname": "quantity",
+   "fieldtype": "Float",
+   "in_list_view": 1,
+   "label": "Quantity"
+  },
+  {
+   "fieldname": "total_delivered",
+   "fieldtype": "Float",
+   "in_list_view": 1,
+   "label": "Total Delivered"
+  },
+  {
+   "fieldname": "total_received",
+   "fieldtype": "Float",
+   "in_list_view": 1,
+   "label": "Total Received"
+  },
+  {
+   "fieldname": "billed",
+   "fieldtype": "Float",
+   "in_list_view": 1,
+   "label": "Billed"
+  },
+  {
+   "fieldname": "set_combination",
+   "fieldtype": "Small Text",
+   "label": "Set Combination"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2025-10-30 15:17:01.271493",
+ "modified_by": "Administrator",
+ "module": "Production Api",
+ "name": "PI Work Order Billed Detail",
+ "owner": "Administrator",
+ "permissions": [],
+ "row_format": "Dynamic",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

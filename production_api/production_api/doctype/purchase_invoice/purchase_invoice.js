@@ -2,10 +2,6 @@
 // For license information, please see license.txt
 
 frappe.ui.form.on('Purchase Invoice', {
-	// refresh: function(frm) {
-
-	// }
-
 	setup: function(frm) {
 		frm.set_query('supplier', (doc) => {
 			return {
@@ -18,11 +14,15 @@ frappe.ui.form.on('Purchase Invoice', {
 			if (!doc.supplier) {
 				frappe.throw("Please Set Supplier");
 			}
+			if (!doc.against) {
+				frappe.throw("Please Set Against")
+			}
 			return {
 				filters: [
 					["purchase_invoice_name", "is", "not set"],
 					["docstatus", "=", "1"],
-					["supplier", "=", doc.supplier]
+					["supplier", "=", doc.supplier],
+					["against", '=', doc.against]
 				]
 			}
 		});
@@ -62,6 +62,12 @@ frappe.ui.form.on('Purchase Invoice', {
 				})
 			})
 		}
+		$(frm.fields_dict['work_order_details_html'].wrapper).html("")
+		if(frm.doc.__onload && frm.doc.__onload.item_details){
+			frm.pi_wo_items = new frappe.production.ui.InvoiceWoItems(frm.fields_dict['work_order_details_html'].wrapper)
+			frm.doc['item_details'] = frm.doc.__onload.item_details
+			frm.pi_wo_items.load_data(frm.doc.__onload.item_details)
+		}
 	},
 
 	supplier: function(frm) {
@@ -81,12 +87,16 @@ frappe.ui.form.on('Purchase Invoice', {
 		frappe.call({
 			method: "production_api.production_api.doctype.purchase_invoice.purchase_invoice.fetch_grn_details",
 			args: {
-				grns
+				"grns": grns,
+				"against": frm.doc.against,
+				"supplier": frm.doc.supplier
 			},
 			callback: function(r){
 				if (r.message){
 					frm.set_value('items', r.message.items)
 					frm.set_value("grn_grand_total", r.message.total)
+					frm.set_value("total_quantity", r.message.total_quantity)
+					frm.set_value("pi_work_order_billed_details", r.message.wo_items)
 				}
 			}
 		})

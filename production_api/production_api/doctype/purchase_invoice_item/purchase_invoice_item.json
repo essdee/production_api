@@ -7,6 +7,7 @@
  "engine": "InnoDB",
  "field_order": [
   "item",
+  "lot",
   "item_group",
   "qty",
   "uom",
@@ -63,17 +64,26 @@
    "label": "Item Group",
    "read_only": 1,
    "reqd": 1
+  },
+  {
+   "fieldname": "lot",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Lot",
+   "options": "Lot"
   }
  ],
+ "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2025-03-31 15:10:40.030179",
+ "modified": "2025-10-27 15:04:27.233671",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Purchase Invoice Item",
  "owner": "Administrator",
  "permissions": [],
+ "row_format": "Dynamic",
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": []
