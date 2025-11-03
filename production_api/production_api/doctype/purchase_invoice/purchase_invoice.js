@@ -62,6 +62,12 @@ frappe.ui.form.on('Purchase Invoice', {
 				})
 			})
 		}
+		if(frm.doc.docstatus == 0 && frm.doc.approved_by){
+			frm.dashboard.add_comment("Approved By Merch Manager", "green", true)
+		}
+		else if(frm.doc.docstaus == 0 && frm.doc.senior_merch_approved_by){
+			frm.dashboard.add_comment("Approved By Senior Merch", "blue", true)
+		}
 		$(frm.fields_dict['work_order_details_html'].wrapper).html("")
 		if(frm.doc.__onload && frm.doc.__onload.item_details){
 			frm.pi_wo_items = new frappe.production.ui.InvoiceWoItems(frm.fields_dict['work_order_details_html'].wrapper)

@@ -38,13 +38,25 @@ class PurchaseInvoice(Document):
 				grn = frappe.get_doc("Goods Received Note", g)
 				grn.purchase_invoice_name = self.name
 				grn.save(ignore_permissions=True)
+		else:
+			self.status = "Draft"	
+			self.approved_by = None
+			self.senior_merch_approved_by = None
+			self.set("purchase_invoice_wo_approval_details", [])
+			self.set("purchase_invoice_debit_details", [])	
 	
-	def calculate_total(self):
+	def calculate_total(self):		
 		total_amount = 0
 		total_tax = 0
 		grand_total = 0
 		total_quantity = 0
 		for item in self.items:
+			p = "/api/method/essdee.essdee.utils.mrp.purchase_invoice.get_erp_item_expense_account"
+			res = post_erp_request(p, {'item': item.item})
+			if res.status_code == 200:
+				data = res.json()['message']
+				item.expense_head = data
+
 			# Item Total
 			item_total = item.rate * item.qty
 			total_amount += item_total
@@ -109,7 +121,8 @@ class PurchaseInvoice(Document):
 		
 		if self.against == 'Work Order':	
 			update_wo_billed_qty(self, docstatus=2)	
-	
+		self.status = 'Cancelled'
+
 	def before_submit(self):
 		if not len(self.grn) or not len(self.items):
 			frappe.throw("Please set at least 1 grn and item row.")
@@ -138,6 +151,7 @@ class PurchaseInvoice(Document):
 		
 		if self.against == 'Work Order':
 			update_wo_billed_qty(self)
+		self.status = 'Submitted'
 
 def update_wo_billed_qty(self, docstatus=1):
 	wo_doc_dict = {}
@@ -529,6 +543,10 @@ def get_merch_roles():
 	if doc.merch_user_role in user_roles:
 		return "merch_user"
 	return None
+
+@frappe.whitelist()
+def get_merch_manager_role():
+	return frappe.db.get_single_value("MRP Settings", "merchandising_manager_role") 
 
 @frappe.whitelist()
 def get_erp_inv_link(name):
