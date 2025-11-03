@@ -372,7 +372,8 @@ def fetch_grn_details(grns, against, supplier):
 				items_list[key_val]['rate'] = rate
 
 			item_name = frappe.get_cached_value("Process", wo_doc.process_name, "item")
-			item_group, uom = frappe.get_cached_value("Item", item_name, ["item_group", "default_unit_of_measure"])
+			item_group = frappe.get_cached_value("Item", item_name, 'item_group')
+			uom = frappe.get_cached_value("Item", item_name, 'default_unit_of_measure')
 			get_or_create_variant(item_name, {})
 			if not item_group:
 				exception_item_set.add(item_name)
