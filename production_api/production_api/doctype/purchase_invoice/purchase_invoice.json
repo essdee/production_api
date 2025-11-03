@@ -15,6 +15,7 @@
   "posting_date",
   "posting_time",
   "do_not_submit_invoice",
+  "status",
   "supplier_invoice_details_section",
   "bill_no",
   "billing_supplier",
@@ -39,11 +40,8 @@
   "remarks",
   "cancel_without_cancelling_erp_inv",
   "verification_details_tab",
-  "debit_type",
   "allow_to_change_rate",
-  "column_break_xpcb",
-  "debit_no",
-  "debit_value",
+  "purchase_invoice_debit_details",
   "section_break_bgxs",
   "work_order_details_html",
   "pi_work_order_billed_details",
@@ -293,26 +291,6 @@
    "read_only": 1
   },
   {
-   "fieldname": "debit_type",
-   "fieldtype": "Select",
-   "label": "Debit Type",
-   "options": "\nPermanent\nTemporary"
-  },
-  {
-   "fieldname": "column_break_xpcb",
-   "fieldtype": "Column Break"
-  },
-  {
-   "fieldname": "debit_no",
-   "fieldtype": "Data",
-   "label": "Debit No"
-  },
-  {
-   "fieldname": "debit_value",
-   "fieldtype": "Currency",
-   "label": "Debit Value"
-  },
-  {
    "fieldname": "section_break_bgxs",
    "fieldtype": "Section Break"
   },
@@ -336,12 +314,27 @@
    "label": "Senior Merch Approved By",
    "options": "User",
    "read_only": 1
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "in_standard_filter": 1,
+   "label": "Status",
+   "options": "\nDraft\nApproval Initiated\nApproval Pending\nApproved\nSubmitted\nCancelled",
+   "read_only": 1
+  },
+  {
+   "fieldname": "purchase_invoice_debit_details",
+   "fieldtype": "Table",
+   "label": "Purchase Invoice Debit Details",
+   "options": "Purchase Invoice Debit Detail"
   }
  ],
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-11-01 17:26:20.569465",
+ "modified": "2025-11-03 17:42:47.436972",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Purchase Invoice",
@@ -436,6 +429,17 @@
    "read": 1,
    "report": 1,
    "role": "Administrator",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Merch User",
    "share": 1,
    "write": 1
   }

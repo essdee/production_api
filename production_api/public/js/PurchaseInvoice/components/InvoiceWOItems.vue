@@ -1,11 +1,5 @@
 <template>
     <div>
-        <div v-if="approved_by" style="text-align:end;">
-            <h4>Approved By Merch Manager</h4>
-        </div>
-        <div v-if="senior_approved" style="text-align:end;">
-            <h4>Approved By Senior Merch</h4>
-        </div>
         <div class="mb-4">
             <h4>Amount Details</h4>
             <table class="table table-sm table-sm-bordered bordered-table">
@@ -104,7 +98,7 @@
                 </table>
             </div>
         </div>
-        <div style="text-align: end;" v-if="docstatus == 0 && !approved_by">
+        <div style="text-align: end;" v-if="docstatus == 0 && !approved_by && user_role">
             <button class="btn btn-success" @click="approve()">Approve</button>
         </div>
     </div>
@@ -173,8 +167,8 @@ function approve(){
             d.hide()
             console.log(user_role)
             if (user_role.value === 'merch_manager') {
+                cur_frm.set_value("status", "Approved")
                 if (!senior_approved) {
-                    console.log("YESSSSSSSSSS")
                     cur_frm.doc.approved_by = frappe.session.user
                     cur_frm.set_value("approved_by", frappe.session.user);
                     cur_frm.set_value("senior_merch_approved_by", frappe.session.user);
@@ -185,7 +179,11 @@ function approve(){
                 }
             } 
             else if (user_role.value === 'senior_merch') {
+                cur_frm.set_value("status", "Approval Pending")
                 cur_frm.set_value("senior_merch_approved_by", frappe.session.user);
+            }
+            else if(cur_frm.doc.status == 'Draft'){
+                cur_frm.set_value("status", "Approval Initiated")
             }
             cur_frm.refresh_field("approved_by")
             cur_frm.refresh_field("senior_merch_approved_by")

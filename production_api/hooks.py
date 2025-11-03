@@ -116,7 +116,7 @@ fixtures = [
     },
     {
         "dt": 'Role',
-        "filters": [["name", "in",["Merch User","Merch Manager"]]]
+        "filters": [["name", "in",["Merch User","Merch Manager", "Senior Merch"]]]
     },
     {
         'dt': 'Workflow State',
