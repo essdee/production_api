@@ -1,0 +1,49 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2025-11-03 12:17:53.189839",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "debit_type",
+  "debit_no",
+  "debit_value"
+ ],
+ "fields": [
+  {
+   "fieldname": "debit_type",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Debit Type",
+   "options": "\nPermanent\nTemporary"
+  },
+  {
+   "fieldname": "debit_no",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Debit No"
+  },
+  {
+   "fieldname": "debit_value",
+   "fieldtype": "Float",
+   "in_list_view": 1,
+   "label": "Debit Value"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2025-11-03 12:18:51.665940",
+ "modified_by": "Administrator",
+ "module": "Production Api",
+ "name": "Purchase Invoice Debit Detail",
+ "owner": "Administrator",
+ "permissions": [],
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

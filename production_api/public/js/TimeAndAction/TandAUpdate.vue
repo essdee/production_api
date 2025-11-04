@@ -168,7 +168,7 @@
                                                 <td v-for="d in data['actions']" :key="d.index">
                                                     <div style="width:100%;">
                                                         <div class="action-td-style">
-                                                            <input type="text" v-model="d.reason" class="form-control" :class="{ 'custom-style-input': d.actual_date > d.rescheduled_date && !d.reason }" @blur="update_status()"/>
+                                                            <input type="text" v-model="d.reason" class="form-control" :class="{ 'custom-style-input': d.actual_date > d.rescheduled_date && !d.reason }" @blur="update_status(data, d.index)"/>
                                                         </div>
                                                     </div>
                                                 </td>
@@ -700,7 +700,19 @@ function update_all(){
     })
 }
 
-function update_status(){
+function update_status(data, idx){
+    if(data['actions'][idx]['merge_action'] == 1){
+        let lot_value = lot.get_value()
+        for ( master in items.value[lot_value]['masters']){
+            for (row of items.value[lot_value]['masters'][master]['datas']){
+                for (row1 of row['actions']){
+                    if (!row1['reason'] && row1['action'] == data['actions'][idx]['action']){
+                        row1['reason'] = data['actions'][idx]['reason']
+                    }
+                }
+            }
+        }
+    }
     is_edited.value = true
 }
 
@@ -733,16 +745,15 @@ function update_t_and_a(){
 }
 
 function check_reason(){
-    for( lot_value in items.value){
-        for ( master in items.value[lot_value]['masters']){
-            for (row of items.value[lot_value]['masters'][master]['datas']){
-                for (row1 of row['actions']){
-                    if (!row1['reason'] && row1['actual_date'] && row1['actual_date'] > row1['rescheduled_date']){
-                        return {
-                            "val": false,
-                            "action": row1['action'],
-                            "colour": row['colour'],
-                        }
+    let lot_value = lot.get_value()
+    for ( master in items.value[lot_value]['masters']){
+        for (row of items.value[lot_value]['masters'][master]['datas']){
+            for (row1 of row['actions']){
+                if (!row1['reason'] && row1['actual_date'] && row1['actual_date'] > row1['rescheduled_date']){
+                    return {
+                        "val": false,
+                        "action": row1['action'],
+                        "colour": row['colour'],
                     }
                 }
             }

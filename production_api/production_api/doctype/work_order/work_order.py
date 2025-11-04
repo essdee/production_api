@@ -170,7 +170,7 @@ class WorkOrder(Document):
 			self.set("receivables",[])	
 			self.set("work_order_calculated_items",[])
 
-	def calc_receivable_rate(self):	
+	def calc_receivable_rate(self, get_name=False):	
 		if self.rework_type == "No Cost":
 			return	
 		is_group = frappe.get_value("Process", self.process_name,"is_group")
@@ -197,34 +197,47 @@ class WorkOrder(Document):
 				check = True				
 		
 		fil = {
-			'process_name':self.process_name,
-			'item':self.item,
-			'is_expired':0,
-			'from_date':['<=',self.wo_date],
-			'docstatus': 1,
-			"workflow_state":"Approved",
+			"process_name": self.process_name,
+			"item": self.item,
+			"is_expired": 0,
+			"from_date": ["<=", self.wo_date],
+			"docstatus": 1,
+			"workflow_state": "Approved",
+			"lot": self.lot,
+			"is_rework": 1 if self.is_rework else 0,
 		}
-		if self.is_rework:
-			fil['is_rework'] = 1
-		else:
-			fil['is_rework'] = 0
-
 		if self.supplier:
-			fil['supplier'] = self.supplier
+			fil["supplier"] = self.supplier
 
-		doc_names = frappe.get_list('Process Cost',filters = fil)
+		filter_variants = [fil.copy()]
+
+		if "supplier" in fil:
+			f1 = fil.copy()
+			f1.pop("supplier")
+			filter_variants.append(f1)
+
+		f2 = fil.copy()
+		f2.pop("lot", None)
+		filter_variants.append(f2)
+
+		f3 = f2.copy()
+		f3.pop("supplier", None)
+		filter_variants.append(f3)
+
 		docname = None
-		if doc_names:
-			docname = doc_names[0]['name']
-		else:
-			if self.is_rework:
-				return
-			del fil['supplier']
-			docnames = frappe.get_list('Process Cost',filters = fil)
-			if docnames:
-				docname = docnames[0]['name']
+		for f in filter_variants:
+			docs = frappe.get_list("Process Cost", filters=f)
+			if docs:
+				docname = docs[0].name
+				break
+
+		if self.is_rework and not docname:
+			return
+		
 		if not docname and not self.is_rework:
 			frappe.throw('No process cost for ' + self.process_name)	
+		if get_name:
+			return docname	
 		process_doc = frappe.get_doc("Process Cost", docname)
 		ipd_doc = frappe.get_cached_doc("Item Production Detail", self.production_detail)
 		stich_details = {}
@@ -1144,9 +1157,32 @@ def calculate_completed_pieces(doc_name):
 	from production_api.production_api.doctype.cutting_plan.cutting_plan import get_complete_incomplete_structure
 	process_name = wo_doc.process_name
 	ipd_doc = frappe.get_doc("Item Production Detail", wo_doc.production_detail)
-	if process_name in [ipd_doc.cutting_process, ipd_doc.stiching_process, ipd_doc.packing_process]:
+	is_group = frappe.get_value("Process", wo_doc.process_name, "is_group")
+	final_process = None
+	first_process = None
+
+	if is_group:
+		process_doc = frappe.get_doc("Process", wo_doc.process_name)
+		for p in process_doc.process_details:
+			if not first_process:
+				first_process = p.process_name
+			final_process = p.process_name
+			break
+
+	prs_list = [ipd_doc.cutting_process, ipd_doc.stiching_process, ipd_doc.packing_process]
+
+	update_lot = False
+	field = None
+	if is_group and final_process in prs_list:
+		update_lot = True
+		field = "cut_qty" if final_process == ipd_doc.cutting_process else "stich_qty" if final_process == ipd_doc.stiching_process else None
+
+	if not is_group and wo_doc.process_name in prs_list:
+		update_lot = True	
+		field = "cut_qty" if process_name == ipd_doc.cutting_process else "stich_qty" if process_name == ipd_doc.stiching_process else None
+
+	if update_lot:
 		lot_doc = frappe.get_cached_doc("Lot",wo_doc.lot)
-		field = "cut_qty" if process_name == ipd_doc.cutting_process else "stich_qty" if process_name == ipd_doc.stiching_process else "pack_qty"
 		for item in wo_doc.work_order_calculated_items:
 			for lot_item in lot_doc.lot_order_details:
 				if lot_item.item_variant == item.item_variant and item.quantity > 0:
@@ -1160,35 +1196,46 @@ def calculate_completed_pieces(doc_name):
 		item.received_type_json = {}
 		item.delivered_quantity = 0	
 
-	wo_doc.set("work_order_track_pieces", [])	
-			
+	wo_doc.set("work_order_track_pieces", [])
 	wo_doc.total_no_of_pieces_delivered = 0
-	wo_doc.total_no_of_pieces_received = 0	
+	wo_doc.total_no_of_pieces_received = 0
 	wo_doc.received_types_json = {}
-	processes = [ipd_doc.cutting_process]
-	dc_processes = [ipd_doc.stiching_process]		
-	for item in ipd_doc.ipd_processes:
-		if item.process_name == wo_doc.process_name:
-			if ipd_doc.stiching_in_stage == item.stage:
-				processes.append(item.process_name)
-				dc_processes.append(item.process_name)
-				break
-	all_process = processes + dc_processes
-	if wo_doc.process_name in all_process:
+
+	delivered_json = False
+	received_json = False
+
+	stage = ipd_doc.stiching_in_stage
+	if is_group:
+		if ipd_doc.stiching_process == first_process:
+			delivered_json = True
+		if ipd_doc.cutting_process == final_process:
+			received_json = True	
+		for row in ipd_doc.ipd_processes:
+			if row.process_name == first_process and stage == row.stage:
+				delivered_json = True
+			if row.process_name == final_process and stage == row.stage:
+				received_json = True
+	else:	
+		if wo_doc.process_name == ipd_doc.stiching_process:
+			delivered_json = True
+		elif wo_doc.process_name == ipd_doc.cutting_process:
+			received_json = True	
+		else:
+			for row in ipd_doc.ipd_processes:
+				if row.process_name == wo_doc.process_name and stage == row.stage:
+					received_json = True
+					delivered_json = True
+					break
+
+	if delivered_json or received_json:
 		items = fetch_order_item_details(wo_doc.work_order_calculated_items, wo_doc.production_detail)
 		complete, incomplete = get_complete_incomplete_structure(wo_doc.production_detail, items)
-		if wo_doc.process_name in processes and wo_doc.process_name in dc_processes:
-			wo_doc.set("completed_items_json", complete)
-			wo_doc.set("incompleted_items_json",incomplete)
+		if delivered_json:
 			wo_doc.set("wo_delivered_completed_json", complete)
 			wo_doc.set("wo_delivered_incompleted_json",incomplete)
-		else:
-			if wo_doc.process_name in processes:
-				wo_doc.set("completed_items_json", complete)
-				wo_doc.set("incompleted_items_json",incomplete)
-			else:
-				wo_doc.set("wo_delivered_completed_json", complete)
-				wo_doc.set("wo_delivered_incompleted_json",incomplete)
+		if received_json:
+			wo_doc.set("completed_items_json", complete)
+			wo_doc.set("incompleted_items_json",incomplete)
 	else:
 		wo_doc.set("completed_items_json", {})
 		wo_doc.set("incompleted_items_json",{})	

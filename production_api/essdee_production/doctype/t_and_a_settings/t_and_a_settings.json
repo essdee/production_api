@@ -8,6 +8,7 @@
   "update_last_n_dates",
   "update_future_n_dates",
   "ordering_based_on_delay",
+  "override_previous_action_completion_date",
   "column_break_izrm",
   "revised_date_approver_role",
   "revising_days_limit",
@@ -50,13 +51,19 @@
    "fieldtype": "Link",
    "label": "Assigned Person Editer Role",
    "options": "Role"
+  },
+  {
+   "default": "0",
+   "fieldname": "override_previous_action_completion_date",
+   "fieldtype": "Check",
+   "label": "Override Previous Action Completion Date"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2025-10-09 17:31:34.800992",
+ "modified": "2025-11-01 11:02:28.699891",
  "modified_by": "Administrator",
  "module": "Essdee Production",
  "name": "T and A Settings",
@@ -81,6 +88,7 @@
   }
  ],
  "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": []

@@ -9,11 +9,13 @@
  "field_order": [
   "naming_series",
   "supplier",
+  "against",
   "due_date",
   "column_break_cob1e",
   "posting_date",
   "posting_time",
   "do_not_submit_invoice",
+  "status",
   "supplier_invoice_details_section",
   "bill_no",
   "billing_supplier",
@@ -25,6 +27,7 @@
   "fetch_grn",
   "section_break_rqlkf",
   "items",
+  "fetch_expense_head",
   "total",
   "total_tax",
   "grand_total",
@@ -36,7 +39,17 @@
   "final_amount",
   "eligibility_for_itc",
   "remarks",
-  "cancel_without_cancelling_erp_inv"
+  "cancel_without_cancelling_erp_inv",
+  "verification_details_tab",
+  "allow_to_change_rate",
+  "purchase_invoice_debit_details",
+  "section_break_bgxs",
+  "work_order_details_html",
+  "pi_work_order_billed_details",
+  "total_quantity",
+  "approved_by",
+  "senior_merch_approved_by",
+  "purchase_invoice_wo_approval_details"
  ],
  "fields": [
   {
@@ -106,6 +119,7 @@
    "read_only": 1
   },
   {
+   "depends_on": "eval: doc.docstatus != 1 && doc.docstatus != 2",
    "fieldname": "fetch_grn",
    "fieldtype": "Button",
    "label": "Fetch GRN"
@@ -227,6 +241,7 @@
    "read_only": 1
   },
   {
+   "default": "0",
    "fieldname": "grn_grand_total",
    "fieldtype": "Currency",
    "hidden": 1,
@@ -238,12 +253,96 @@
    "label": "Vendor Bill Tracking",
    "options": "Vendor Bill Tracking",
    "read_only": 1
+  },
+  {
+   "fieldname": "against",
+   "fieldtype": "Select",
+   "label": "Against",
+   "options": "\nPurchase Order\nWork Order",
+   "reqd": 1
+  },
+  {
+   "depends_on": "eval: doc.against == 'Work Order'",
+   "fieldname": "verification_details_tab",
+   "fieldtype": "Tab Break",
+   "label": "Verification Details"
+  },
+  {
+   "fieldname": "work_order_details_html",
+   "fieldtype": "HTML",
+   "label": "Work Order Details HTML"
+  },
+  {
+   "fieldname": "pi_work_order_billed_details",
+   "fieldtype": "Table",
+   "hidden": 1,
+   "label": "Pi Work Order Billed Details",
+   "options": "PI Work Order Billed Detail"
+  },
+  {
+   "fieldname": "total_quantity",
+   "fieldtype": "Float",
+   "hidden": 1,
+   "label": "Total Quantity"
+  },
+  {
+   "fieldname": "approved_by",
+   "fieldtype": "Link",
+   "label": "Approved By",
+   "options": "User",
+   "read_only": 1
+  },
+  {
+   "fieldname": "section_break_bgxs",
+   "fieldtype": "Section Break"
+  },
+  {
+   "default": "0",
+   "fieldname": "allow_to_change_rate",
+   "fieldtype": "Check",
+   "hidden": 1,
+   "label": "Allow to Change Rate"
+  },
+  {
+   "fieldname": "purchase_invoice_wo_approval_details",
+   "fieldtype": "Table",
+   "label": "Purchase Invoice WO Approval Details",
+   "options": "Purchase Invoice WO Approval Detail",
+   "read_only": 1
+  },
+  {
+   "fieldname": "senior_merch_approved_by",
+   "fieldtype": "Link",
+   "label": "Senior Merch Approved By",
+   "options": "User",
+   "read_only": 1
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "in_standard_filter": 1,
+   "label": "Status",
+   "options": "\nDraft\nApproval Initiated\nApproval Pending\nApproved\nSubmitted\nCancelled",
+   "read_only": 1
+  },
+  {
+   "fieldname": "purchase_invoice_debit_details",
+   "fieldtype": "Table",
+   "label": "Purchase Invoice Debit Details",
+   "options": "Purchase Invoice Debit Detail"
+  },
+  {
+   "depends_on": "eval: doc.docstatus != 1 && doc.docstatus != 2",
+   "fieldname": "fetch_expense_head",
+   "fieldtype": "Button",
+   "label": "Fetch Expense Head"
   }
  ],
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-07-30 12:59:29.026797",
+ "modified": "2025-11-04 11:39:29.823070",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Purchase Invoice",
@@ -338,6 +437,17 @@
    "read": 1,
    "report": 1,
    "role": "Administrator",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Merch User",
    "share": 1,
    "write": 1
   }

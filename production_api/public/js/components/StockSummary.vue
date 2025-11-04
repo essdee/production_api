@@ -47,13 +47,14 @@
                             </div>
                         </td>
                         <td>{{ item.lot }}</td>
+                        <td>{{ item.item_name }}</td>
                         <td>{{ item.item }}</td>
-                        <td>{{ item.item_variant }}</td>
                         <td>{{ item.warehouse }}</td>
                         <td>{{ item.warehouse_name }}</td>
                         <td>{{ item.received_type }}</td>
-                        <td>{{ item.actual_qty }}</td>
+                        <td>{{ item.bal_qty }}</td>
                         <td>
+                            
                             <button class="btn btn-success" @click="create_stock_entry(item)">Create</button>
                         </td>
                     </tr>
@@ -75,18 +76,20 @@ let show_table = ref(true);
 
 onMounted(() => {
     let el = root.value;
-    $(el).find(".lot-name").html("");
-    lot = frappe.ui.form.make_control({
-        parent: $(el).find(".lot-name"),
-        df: {
-            fieldname: "lot",
-            fieldtype: "Link",
-            options: "Lot",
-            label: "Lot",
-        },
-        doc: sample_doc.value,
-        render_input: true,
-    });
+    frappe.model.with_doctype("Lot MultiSelect", () => {
+        $(el).find(".lot-name").html("");
+        lot = frappe.ui.form.make_control({
+            parent: $(el).find(".lot-name"),
+            df: {
+                fieldtype: "Table MultiSelect",
+                fieldname: "lot",
+                label: "Lot",
+                options: "Lot MultiSelect",
+            },
+            doc: sample_doc.value,
+            render_input: true,
+        })
+    })
 
     $(el).find(".item-name").html("");
     item = frappe.ui.form.make_control({

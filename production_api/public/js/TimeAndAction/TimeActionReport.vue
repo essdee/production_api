@@ -19,9 +19,11 @@
                 <th>Lead Time</th>
                 <th>Work_Station</th>
                 <th>Planned Date</th>
+                <th>Freezed Date</th>
                 <th>Rescheduled Date</th>
                 <th>Actual_Date</th>
-                <th>Date Diff</th>
+                <th>Planned Delay</th>
+                <th>Rescheduled Delay</th>
                 <th>Reason</th>
                 <th>Performance</th>
             </tr>
@@ -34,11 +36,13 @@
                     {{ i.work_station }}
                 </td>
                 <td v-else></td>
+                <td>{{ date_format(i.planned_start_date) }}</td>
                 <td>{{ date_format(i.date) }}</td>
                 <td>{{ date_format(i.rescheduled_date) }}</td>
                 <td :class="{'bg-red': i.rescheduled_date < i.actual_date, 'bg-green': i.rescheduled_date >= i.actual_date}">
                     {{ date_format(i.actual_date) }}
                 </td>
+                <td>{{ i.actual_delay }}</td>
                 <td>{{ i.date_diff }}</td>
                 <td>{{ i.reason }}</td>
                 <td>{{ i.performance }}%</td>

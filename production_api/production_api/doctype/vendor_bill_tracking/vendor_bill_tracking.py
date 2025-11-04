@@ -175,3 +175,13 @@ def check_for_can_show_receive_btn(name):
 	if exists:
 		return True
 	return False
+
+@frappe.whitelist()
+def get_erp_inv_link(name):
+	import urllib.parse
+	d = frappe.get_doc("Vendor Bill Tracking", name)
+	if d.docstatus == 1 and d.purchase_invoice:
+		erp_url = frappe.get_single("MRP Settings").erp_site_url
+		return f"{erp_url}/app/purchase-invoice/{urllib.parse.quote(d.purchase_invoice, safe='')}"
+	else:
+		frappe.throw("Document not submitted")

@@ -83,7 +83,7 @@ class StockReconciliation(Document):
 					if buying_rate:
 						row.rate = buying_rate
 			
-			if not row.rate and not row.allow_zero_valuation_rate:
+			if not row.rate and not row.allow_zero_valuation_rate and not row.make_qty_zero:
 				self.validation_messages.append(_get_msg(row.table_index, row.row_index, _("Could not find valuation rate.")))
 
 			item_details = get_uom_details(row.item, row.uom, row.qty)

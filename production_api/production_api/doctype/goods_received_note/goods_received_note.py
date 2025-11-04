@@ -2186,7 +2186,7 @@ def construct_stock_entry_data(doc_name):
 	return ste.name
 
 @frappe.whitelist()
-def calculate_pieces(doc_name):
+def calculate_pieces(doc_name, complete_json=None, incomplete_json=None, from_pi=False):
 	grn_doc = frappe.get_doc("Goods Received Note",doc_name)
 	doc_status = grn_doc.docstatus
 	if doc_status == 2:
@@ -2220,7 +2220,7 @@ def calculate_pieces(doc_name):
 
 	if process_name == ipd_doc.cutting_process:
 		panel_list = get_panel_list(ipd_doc)
-		incomplete_items, completed_items, received_types, total_received, qty_list = calculate_cutting_piece(grn_doc, received_types, panel_list)
+		incomplete_items, completed_items, received_types, total_received, qty_list = calculate_cutting_piece(grn_doc, received_types, panel_list, complete_json, incomplete_json, from_pi)
 	elif check_prs:
 		final_calculation, received_types, total_received = calculate_piece_stage(grn_doc, received_types, doc_status, total_received, final_calculation)
 
@@ -2249,12 +2249,13 @@ def calculate_pieces(doc_name):
 			elif stage == ipd_doc.stiching_in_stage:
 				if not panel_list:	
 					panel_list = get_panel_list(ipd_doc)
-					incomplete_items, completed_items, received_types, total_received, qty_list = calculate_cutting_piece(grn_doc, received_types, panel_list)
+					incomplete_items, completed_items, received_types, total_received, qty_list = calculate_cutting_piece(grn_doc, received_types, panel_list, complete_json, incomplete_json, from_pi)
 				elif panel_list:
-					incomplete_items, completed_items, received_types, total_received, qty_list = calculate_cutting_piece(grn_doc, received_types, panel_list)
+					incomplete_items, completed_items, received_types, total_received, qty_list = calculate_cutting_piece(grn_doc, received_types, panel_list, complete_json, incomplete_json, from_pi)
 				else:
 					return
-
+	if from_pi:
+		return completed_items, incomplete_items
 	wo_doc = frappe.get_doc("Work Order", grn_doc.against_id)
 	if not wo_doc.first_grn_date:
 		wo_doc.first_grn_date = grn_doc.posting_date
@@ -2430,12 +2431,16 @@ def calculate_pack_stage(ipd_doc, grn_doc, received_types, doc_status, total_rec
 
 	return final_calculation, received_types, total_received		
 
-def calculate_cutting_piece(grn_doc, received_types, panel_list):
+def calculate_cutting_piece(grn_doc, received_types, panel_list, complete_json, incomplete_json, from_pi):
 	panel_list = update_if_string_instance(panel_list)		
 	production_detail, incomplete_items_json, completed_items_json = frappe.get_value("Work Order", grn_doc.against_id,['production_detail',"incompleted_items_json","completed_items_json"])
 	ipd_doc = frappe.get_cached_doc("Item Production Detail",production_detail)
 	incomplete_items = json.loads(incomplete_items_json)
 	completed_items = json.loads(completed_items_json)
+	if from_pi:
+		incomplete_items = update_if_string_instance(frappe.json.dumps(incomplete_json))
+		completed_items = update_if_string_instance(frappe.json.dumps(complete_json))
+
 	panel_qty = {}
 	set_comb = {}
 	for row in ipd_doc.stiching_item_details:
@@ -2511,8 +2516,10 @@ def calculate_cutting_piece(grn_doc, received_types, panel_list):
 						if panel in panel_list:
 							if item2['values'][size][panel] and ty in item2['values'][size][panel]:
 								item2['values'][size][panel][ty] -= (min * panel_qty[panel])
-
 	qty_list = []
+	if from_pi:
+		return incomplete_items, completed_items, received_types, total_qty, qty_list
+	
 	for ty in types:
 		for item in completed_items['items']: 
 			attrs = item['attributes']

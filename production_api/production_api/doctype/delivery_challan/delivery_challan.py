@@ -679,7 +679,7 @@ def calculate_pieces(doc_name):
 	is_group = frappe.get_value("Process", dc_doc.process_name, "is_group")
 	check = False
 	if is_group:
-		prs_doc = frappe.get_doc("Process", dc_doc.process_name)
+		prs_doc = frappe.get_doc("Process", process_name)
 		for row in prs_doc.process_details:
 			if row.process_name == finishing_inward_process:
 				check = True

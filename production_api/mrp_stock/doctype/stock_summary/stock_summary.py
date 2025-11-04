@@ -5,8 +5,9 @@ import frappe
 from six import string_types
 from itertools import groupby
 from frappe.model.document import Document
+from production_api.utils import update_if_string_instance
 from production_api.production_api.doctype.item.item import get_attribute_details
-from production_api.mrp_stock.report.item_balance.item_balance import execute as get_item_balance
+from production_api.mrp_stock.report.stock_balance.stock_balance import execute as get_item_balance
 from production_api.production_api.doctype.purchase_order.purchase_order import get_item_attribute_details, get_item_group_index
 
 
@@ -17,20 +18,29 @@ class StockSummary(Document):
 def get_stock_summary(lot, item, item_variant, warehouse, received_type):
 	filters = {
 		"remove_zero_balance_item":1,
+		"from_date": frappe.utils.add_months(frappe.utils.nowdate(), -1),
+		"to_date": frappe.utils.nowdate()
 	}
-	if lot:
-		filters['lot'] = lot
 	if item:
-		filters['item'] = item
+		filters['parent_item'] = item
 	if item_variant:
-		filters['item_variant'] = item_variant
+		filters['item'] = item_variant
 	if warehouse:
 		filters['warehouse'] = warehouse
 	if received_type:
 		filters['received_type'] = received_type
 	
-	x = get_item_balance(filters)
-	report_data = x[1]
+	report_data = []
+	if lot:
+		lot = update_if_string_instance(lot)
+		for lot_name in lot:
+			filters['lot'] = lot_name['lot']
+			x = get_item_balance(filters)
+			lot_report_data = x[1]
+			report_data = report_data + lot_report_data
+	else:	
+		x = get_item_balance(filters)
+		report_data = x[1]
 	return report_data
 
 @frappe.whitelist()
@@ -47,8 +57,8 @@ def create_stock_entry(stock_values):
 		new_doc.from_warehouse = stock_values['from_warehouse']
 	
 	items = [{
-		"item": stock_values['item_variant'],
-		"qty": stock_values['qty'],
+		"item": stock_values['item'],
+		"qty": stock_values['bal_qty'],
 		"lot": stock_values['lot'],
 		"received_type": stock_values['received_type'],
 		"uom":stock_values['uom']
@@ -78,7 +88,7 @@ def create_bulk_stock_entry(locations, selected_items, purpose):
 	table_index = -1
 	row_index = -1
 	for (lot, item, received_type, stage), items in grouped_items.items():
-		sorted_items = sorted(items, key=lambda x: x['item_variant'])
+		sorted_items = sorted(items, key=lambda x: x['item'])
 		table_index += 1
 		row_index += 1
 		primary = frappe.get_cached_value("Item", sorted_items[0]['item'], "primary_attribute")
@@ -86,8 +96,8 @@ def create_bulk_stock_entry(locations, selected_items, purpose):
 			if not primary:
 				row_index += 1
 			final_list.append({
-                "item": item['item_variant'],
-                "qty": item['actual_qty'],
+                "item": item['item'],
+                "qty": item['bal_qty'],
                 "lot": lot,
                 "received_type": received_type,
                 "uom": item['stock_uom'],
@@ -108,7 +118,7 @@ def reduce_stock(selected_items, warehouse):
 	table_index = -1
 	row_index = -1
 	for (lot, item, received_type, stage), items in grouped_items.items():
-		sorted_items = sorted(items, key=lambda x: x['item_variant'])
+		sorted_items = sorted(items, key=lambda x: x['item'])
 		table_index += 1
 		row_index += 1
 		primary = frappe.get_cached_value("Item", sorted_items[0]['item'], "primary_attribute")
@@ -116,7 +126,7 @@ def reduce_stock(selected_items, warehouse):
 			if not primary:
 				row_index += 1
 			final_list.append({
-                "item": item['item_variant'],
+                "item": item['item'],
                 "qty": 0,
                 "lot": lot,
                 "received_type": received_type,
@@ -137,11 +147,11 @@ def reduce_stock(selected_items, warehouse):
 def get_grouped_items(selected_items):
 	grouped_items = {}
 	for item in selected_items:
-		variant = item['item_variant']
+		variant = item['item']
 		doc = frappe.get_cached_doc("Item Variant", variant)
 		primary_attr = frappe.get_cached_value("Item", doc.item, "primary_attribute")
 		attr_details = get_variant_attr_values(doc, primary_attr)
-		key = (item['lot'], item['item'], item['received_type'], attr_details)
+		key = (item['lot'], item['item_name'], item['received_type'], attr_details)
 		if key not in grouped_items:
 			grouped_items[key] = []
 		grouped_items[key].append(item)
@@ -168,7 +178,7 @@ def lot_transfer_items(selected_items, transfer_lot):
 	row_index = -1
 	final_items = []
 	for (lot, item, received_type, stage), items in grouped_items.items():
-		sorted_items = sorted(items, key=lambda x: x['item_variant'])
+		sorted_items = sorted(items, key=lambda x: x['item'])
 		table_index += 1
 		row_index += 1
 		primary = frappe.get_cached_value("Item", sorted_items[0]['item'], "primary_attribute")
@@ -176,7 +186,7 @@ def lot_transfer_items(selected_items, transfer_lot):
 			if not primary:
 				row_index += 1
 			item1 = {}
-			item1['item'] = item['item_variant']
+			item1['item'] = item['item']
 			item1['from_lot'] = item['lot']
 			item1['to_lot'] = transfer_lot
 			item1['warehouse'] = item['warehouse']
