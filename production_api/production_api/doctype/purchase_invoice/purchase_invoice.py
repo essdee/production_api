@@ -51,12 +51,6 @@ class PurchaseInvoice(Document):
 		grand_total = 0
 		total_quantity = 0
 		for item in self.items:
-			p = "/api/method/essdee.essdee.utils.mrp.purchase_invoice.get_erp_item_expense_account"
-			res = post_erp_request(p, {'item': item.item})
-			if res.status_code == 200:
-				data = res.json()['message']
-				item.expense_head = data
-
 			# Item Total
 			item_total = item.rate * item.qty
 			total_amount += item_total
@@ -72,9 +66,18 @@ class PurchaseInvoice(Document):
 			if grand_total > self.grn_grand_total:
 				frappe.throw("Total amount is greater than GRN total amount")	
 		else:
-			if grand_total != self.grn_grand_total and not self.allow_to_change_rate:
-				frappe.throw("Total amount is greater than GRN total amount")	
+			if float(grand_total) != float(self.grn_grand_total):
+				if not self.allow_to_change_rate:
+					frappe.throw("Total amount is greater than GRN total amount")
+					
+				elif self.status != "Draft":
+					self.status = "Draft"	
+					self.approved_by = None
+					self.senior_merch_approved_by = None
+					self.set("purchase_invoice_wo_approval_details", [])
+					frappe.msgprint("All Approvals are Reverted")
 
+			self.set("grn_grand_total", grand_total)
 			if total_quantity != self.total_quantity and not self.is_new():
 				frappe.throw("Not Allowed to Change Quantity")
 
@@ -427,14 +430,32 @@ def fetch_grn_details(grns, against, supplier):
 		tax = (item_total * (float(item['tax'] or 0) / 100))
 		total = item_total + tax
 		grand_total += total
-
+	items = fetch_expense_head(list(items.values()))
 	return {
-		"items": list(items.values()),
+		"items": items,
 		"total": grand_total,
 		"total_quantity": total_quantity,
 		"wo_items": work_order_items,
 		"allow_to_change_rate": allow_to_change_rate
 	}		
+
+def fetch_expense_head(items):
+	for row in items:
+		p = "/api/method/essdee.essdee.utils.mrp.purchase_invoice.get_erp_item_expense_account"
+		res = post_erp_request(p, {'item': row['item']})
+		if res.status_code == 200:
+			data = res.json()['message']
+			row['expense_head'] = data
+		else:
+			row['expense_head'] = None	
+	return items
+
+@frappe.whitelist()
+def fetch_items_expense_head(items):
+	items = update_if_string_instance(items)
+	items = [item for item in items]
+	items = fetch_expense_head(items)
+	return items
 
 def calculate_grns(grn_list, wo):
 	wo_doc = frappe.get_doc("Work Order", wo)

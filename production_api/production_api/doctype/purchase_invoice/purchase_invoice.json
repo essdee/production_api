@@ -27,6 +27,7 @@
   "fetch_grn",
   "section_break_rqlkf",
   "items",
+  "fetch_expense_head",
   "total",
   "total_tax",
   "grand_total",
@@ -118,6 +119,7 @@
    "read_only": 1
   },
   {
+   "depends_on": "eval: doc.docstatus != 1 && doc.docstatus != 2",
    "fieldname": "fetch_grn",
    "fieldtype": "Button",
    "label": "Fetch GRN"
@@ -329,12 +331,18 @@
    "fieldtype": "Table",
    "label": "Purchase Invoice Debit Details",
    "options": "Purchase Invoice Debit Detail"
+  },
+  {
+   "depends_on": "eval: doc.docstatus != 1 && doc.docstatus != 2",
+   "fieldname": "fetch_expense_head",
+   "fieldtype": "Button",
+   "label": "Fetch Expense Head"
   }
  ],
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-11-03 17:42:47.436972",
+ "modified": "2025-11-04 11:39:29.823070",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Purchase Invoice",
