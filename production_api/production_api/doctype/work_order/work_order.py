@@ -197,32 +197,43 @@ class WorkOrder(Document):
 				check = True				
 		
 		fil = {
-			'process_name':self.process_name,
-			'item':self.item,
-			'is_expired':0,
-			'from_date':['<=',self.wo_date],
-			'docstatus': 1,
-			"workflow_state":"Approved",
+			"process_name": self.process_name,
+			"item": self.item,
+			"is_expired": 0,
+			"from_date": ["<=", self.wo_date],
+			"docstatus": 1,
+			"workflow_state": "Approved",
+			"lot": self.lot,
+			"is_rework": 1 if self.is_rework else 0,
 		}
-		if self.is_rework:
-			fil['is_rework'] = 1
-		else:
-			fil['is_rework'] = 0
-
 		if self.supplier:
-			fil['supplier'] = self.supplier
+			fil["supplier"] = self.supplier
 
-		doc_names = frappe.get_list('Process Cost',filters = fil)
+		filter_variants = [fil.copy()]
+
+		if "supplier" in fil:
+			f1 = fil.copy()
+			f1.pop("supplier")
+			filter_variants.append(f1)
+
+		f2 = fil.copy()
+		f2.pop("lot", None)
+		filter_variants.append(f2)
+
+		f3 = f2.copy()
+		f3.pop("supplier", None)
+		filter_variants.append(f3)
+
 		docname = None
-		if doc_names:
-			docname = doc_names[0]['name']
-		else:
-			if self.is_rework:
-				return
-			del fil['supplier']
-			docnames = frappe.get_list('Process Cost',filters = fil)
-			if docnames:
-				docname = docnames[0]['name']
+		for f in filter_variants:
+			docs = frappe.get_list("Process Cost", filters=f)
+			if docs:
+				docname = docs[0].name
+				break
+
+		if self.is_rework and not docname:
+			return
+		
 		if not docname and not self.is_rework:
 			frappe.throw('No process cost for ' + self.process_name)	
 		if get_name:

@@ -29,6 +29,7 @@ frappe.ui.form.on("Process Cost", {
 				filters: {
 					item: doc.item,
 					attribute: doc.attribute,
+                    lot: doc.lot
 				}
 			};
         })

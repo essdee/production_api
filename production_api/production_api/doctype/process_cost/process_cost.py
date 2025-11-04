@@ -19,7 +19,8 @@ class ProcessCost(Document):
 		    ["name","!=",self.name],
 			['workflow_state',"=","Approved"],
 			['is_expired','=',0],
-			['is_rework','=', self.is_rework]
+			['is_rework','=', self.is_rework],
+			['lot', '=', self.lot]
 		]
 		if self.supplier != None:
 			filters.append(["supplier", "=", self.supplier])
