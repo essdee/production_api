@@ -85,27 +85,68 @@ frappe.ui.form.on('Purchase Invoice', {
 		if (!frm.doc.grn.length) {
 			frappe.throw("Please set atleast one GRN")
 		}
-		let grns = [];
-		for (let i = 0;i<frm.doc.grn.length;i++) {
-			grns.push(frm.doc.grn[i].grn)
-		}
-		grns = Array.from(new Set(grns))
-		frappe.call({
-			method: "production_api.production_api.doctype.purchase_invoice.purchase_invoice.fetch_grn_details",
-			args: {
-				"grns": grns,
-				"against": frm.doc.against,
-				"supplier": frm.doc.supplier
-			},
-			callback: function(r){
-				if (r.message){
-					frm.set_value('items', r.message.items)
-					frm.set_value("grn_grand_total", r.message.total)
-					frm.set_value("total_quantity", r.message.total_quantity)
-					frm.set_value("pi_work_order_billed_details", r.message.wo_items)
-					frm.set_value("allow_to_change_rate", r.message.allow_to_change_rate)
+		if(frm.doc.against == 'Work Order' && frm.doc.purchase_invoice_wo_approval_details.length > 0){
+			let d = new frappe.ui.Dialog({
+				title: "Fetching the GRN will revert all approvals. Do you want to continue?",
+				primary_action_label: "Yes",
+				secondary_action_label: "No",
+				primary_action(){
+					frm.set_value("approved_by", null)
+					frm.set_value("senior_merch_approved_by", null)
+					frm.set_value("purchase_invoice_wo_approval_details", [])
+					frm.set_value("status", 'Draft')
+					fetch_grn(frm)
+					d.hide()
+				},
+				secondary_action(){
+					d.hide()
 				}
-			}
-		})
+			})
+			d.show()
+		}
+		else{
+			fetch_grn(frm)
+		}
+	},
+	fetch_expense_head(frm){
+		if(frm.doc.items.length == 0){
+			frappe.throw("No Items in the Table")
+		}
+		else{
+			frappe.call({
+				method: "production_api.production_api.doctype.purchase_invoice.purchase_invoice.fetch_items_expense_head",
+				args: {
+					items : frm.doc.items,
+				},
+				callback: function(r){
+					frm.set_value('items', r.message)
+				}
+			})
+		}
 	}
 });
+
+function fetch_grn(frm){
+	let grns = [];
+	for (let i = 0;i<frm.doc.grn.length;i++) {
+		grns.push(frm.doc.grn[i].grn)
+	}
+	grns = Array.from(new Set(grns))
+	frappe.call({
+		method: "production_api.production_api.doctype.purchase_invoice.purchase_invoice.fetch_grn_details",
+		args: {
+			"grns": grns,
+			"against": frm.doc.against,
+			"supplier": frm.doc.supplier
+		},
+		callback: function(r){
+			if (r.message){
+				frm.set_value('items', r.message.items)
+				frm.set_value("grn_grand_total", r.message.total)
+				frm.set_value("total_quantity", r.message.total_quantity)
+				frm.set_value("pi_work_order_billed_details", r.message.wo_items)
+				frm.set_value("allow_to_change_rate", r.message.allow_to_change_rate)
+			}
+		}
+	})
+}

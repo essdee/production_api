@@ -228,7 +228,7 @@
    "link_fieldname": "cutting_plan"
   }
  ],
- "modified": "2025-08-09 10:36:08.460017",
+ "modified": "2025-11-04 10:51:50.692213",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Cutting Plan",
@@ -291,8 +291,10 @@
   }
  ],
  "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
  "search_fields": "lot,item",
  "sort_field": "modified",
  "sort_order": "DESC",
- "states": []
+ "states": [],
+ "track_changes": 1
 }
