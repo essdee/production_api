@@ -2208,20 +2208,20 @@ def calculate_pieces(doc_name, complete_json=None, incomplete_json=None, from_pi
 
 	finishing_inward_process = frappe.db.get_single_value("MRP Settings", "finishing_inward_process")
 	is_group = frappe.get_value("Process", grn_doc.process_name, "is_group")
-	check_prs = False
+	check_stich_prs = False
 	if is_group:
 		prs_doc = frappe.get_doc("Process", grn_doc.process_name)
 		for row in prs_doc.process_details:
 			if row.process_name == finishing_inward_process:
-				check_prs = True
+				check_stich_prs = True
 				break
 	else:
-		check_prs = grn_doc.process_name == finishing_inward_process
+		check_stich_prs = grn_doc.process_name == finishing_inward_process
 
 	if process_name == ipd_doc.cutting_process:
 		panel_list = get_panel_list(ipd_doc)
 		incomplete_items, completed_items, received_types, total_received, qty_list = calculate_cutting_piece(grn_doc, received_types, panel_list, complete_json, incomplete_json, from_pi)
-	elif check_prs:
+	elif check_stich_prs:
 		final_calculation, received_types, total_received = calculate_piece_stage(grn_doc, received_types, doc_status, total_received, final_calculation)
 
 	elif grn_doc.includes_packing:
@@ -2282,7 +2282,7 @@ def calculate_pieces(doc_name, complete_json=None, incomplete_json=None, from_pi
 		field = 'cut_qty'
 	elif wo_doc.includes_packing:
 		field = 'pack_qty' 	
-	elif check_prs:	
+	elif check_stich_prs:	
 		field = 'stich_qty'
 	
 	if field:

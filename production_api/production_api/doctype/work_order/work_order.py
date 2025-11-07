@@ -1244,7 +1244,11 @@ def calculate_completed_pieces(doc_name):
 	frappe.enqueue(calc,"short", doc_name=doc_name)	
 	
 def calc(doc_name):	
-	grn_list = frappe.get_list("Goods Received Note", filters={"against_id": doc_name,"docstatus": 1}, pluck="name")
+	grn_list = frappe.get_list("Goods Received Note", filters={
+		"against_id": doc_name,
+		"docstatus": 1,
+		"is_return": 0,
+	}, pluck="name")
 	from production_api.production_api.doctype.goods_received_note.goods_received_note import calculate_pieces as calculate_grn_pieces
 	for grn in grn_list:
 		calculate_grn_pieces(grn)
@@ -1323,21 +1327,38 @@ def fetch_summary_details(doc_name, production_detail):
 			})
 		else:
 			item_details[index]['items'].append(item)
-
+	
+	item_details[0]['overall_delivered'] = 0
+	item_details[0]['overall_received'] = 0
+	item_details[0]['overall_planned'] = 0
 	for item in item_details[0]['items']:
 		total_qty = 0
 		total_delivered = 0
 		total_received = 0
+		item_details[0].setdefault('total_details', {})
+
 		for primary_attr in item_details[0]['primary_attribute_values']:
+			item_details[0]['total_details'].setdefault(primary_attr, {
+				"planned": 0,
+				"delivered": 0,
+				"received": 0,
+			})
 			if item['values'][primary_attr].get("qty"):
+				item_details[0]['total_details'][primary_attr]['planned'] += item['values'][primary_attr]['qty']
 				total_qty += item['values'][primary_attr]['qty']
 			if item['values'][primary_attr].get("delivered"):
+				item_details[0]['total_details'][primary_attr]['delivered'] += item['values'][primary_attr]['delivered'] 
 				total_delivered += item['values'][primary_attr]['delivered']
 			if item['values'][primary_attr].get("received"):
+				item_details[0]['total_details'][primary_attr]['received'] += item['values'][primary_attr]['received']
 				total_received += item['values'][primary_attr]['received']
+
 		item['total_qty'] = total_qty
 		item['total_delivered'] = total_delivered
-		item['total_received'] = total_received	
+		item['total_received'] = total_received
+		item_details[0]['overall_planned'] += total_qty
+		item_details[0]['overall_delivered'] += total_delivered
+		item_details[0]['overall_received'] += total_received	
 
 	deliverables = fetch_item_details(wo_doc.deliverables, wo_doc.production_detail )
 

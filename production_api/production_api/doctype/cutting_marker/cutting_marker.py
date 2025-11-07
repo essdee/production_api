@@ -32,6 +32,12 @@ class CuttingMarker(Document):
 			self.set("cutting_marker_groups", items)	
 
 	def before_validate(self):
+		status, docstatus = frappe.get_value("Cutting Plan", self.cutting_plan, ["status", "docstatus"])
+		if docstatus == 0:
+			frappe.throw("Cutting Plan was not Submitted")
+		if status == 'Planned':
+			frappe.throw("Cloths Not Received in Cutting Plan")
+			
 		if self.get("marker_details"):
 			marker_details = self.marker_details['ratio_items']
 			items = []

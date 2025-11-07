@@ -57,7 +57,9 @@
   "lot_time_and_action_details",
   "time_and_action_html",
   "section_break_cmku",
-  "time_and_action_report_html"
+  "time_and_action_report_html",
+  "ocr_detail_tab",
+  "ocr_detail_html"
  ],
  "fields": [
   {
@@ -367,11 +369,21 @@
    "fieldname": "size_set_colour",
    "fieldtype": "Select",
    "label": "Size Set Colour"
+  },
+  {
+   "fieldname": "ocr_detail_tab",
+   "fieldtype": "Tab Break",
+   "label": "OCR Detail"
+  },
+  {
+   "fieldname": "ocr_detail_html",
+   "fieldtype": "HTML",
+   "label": "OCR Detail HTML"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-10-10 15:41:40.561534",
+ "modified": "2025-11-06 11:45:28.824282",
  "modified_by": "Administrator",
  "module": "Essdee Production",
  "name": "Lot",
@@ -424,6 +436,7 @@
   }
  ],
  "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
  "search_fields": "item",
  "sort_field": "modified",
  "sort_order": "DESC",

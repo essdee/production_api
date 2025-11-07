@@ -54,6 +54,35 @@
                                 <td>{{ j.total_received }}</td>
                             </tr>
                         </template>
+                        <tr>
+                            <td :rowspan="is_manual ? 2 : 3">Total</td>
+                            <td :rowspan="is_manual ? 2 : 3"></td>
+                            <td v-if="i.is_set_item" :rowspan="is_manual ? 2 : 3">
+                            </td>
+                            <td>Planned</td>
+                            <td v-for="attr in Object.keys(i.items[0]['values'])" :key="attr">
+                                <div v-if="i.total_details[attr]['planned'] > 0">{{ i.total_details[attr]['planned'] }}</div>
+                                <div v-else>--</div>
+                            </td>
+                            <td>{{ i.overall_planned }}</td>
+                        </tr>
+                        <tr v-if="!is_manual && doctype == 'Work Order'">
+                            <td>Delivered</td>
+                            <td v-for="attr in Object.keys(i.items[0]['values'])" :key="attr">
+                                <div v-if="i.total_details[attr]['delivered'] > 0">{{ i.total_details[attr]['delivered'] }}</div>
+                                <div v-else>--</div>
+                            </td>
+                            <td>{{ i.overall_delivered }}</td>
+                        </tr>
+                        <tr>
+                            <td v-if="doctype=='Work Order'">Received</td>
+                            <td v-else>Completed</td>
+                            <td v-for="attr in Object.keys(i.items[0]['values'])" :key="attr">
+                                <div v-if="i.total_details[attr]['received'] > 0">{{ i.total_details[attr]['received'] }}</div>
+                                <div v-else>--</div>
+                            </td>
+                            <td>{{ i.overall_received }}</td>
+                        </tr>
                     </tbody>
                 </table>
             </tr>

@@ -35,6 +35,8 @@
   "merch_user_role",
   "raw_printing_printers_section",
   "printer_list",
+  "cutting_plan_section",
+  "cloth_allowance_percentage",
   "work_order_section",
   "received_type_list",
   "time_and_action_tracking_order_report_days",
@@ -71,6 +73,7 @@
    "options": "MRP Settings Notification Doctype List"
   },
   {
+   "collapsible": 1,
    "fieldname": "section_break_45wni",
    "fieldtype": "Section Break",
    "label": "GRN"
@@ -140,6 +143,7 @@
    "options": "MRP Settings Series Map"
   },
   {
+   "collapsible": 1,
    "fieldname": "section_break_inin",
    "fieldtype": "Section Break",
    "label": "Delivery Challan"
@@ -151,6 +155,7 @@
    "options": "Letter Head"
   },
   {
+   "collapsible": 1,
    "fieldname": "raw_printing_printers_section",
    "fieldtype": "Section Break",
    "label": "Raw Printing Printers"
@@ -161,6 +166,7 @@
    "label": "Printer List"
   },
   {
+   "collapsible": 1,
    "fieldname": "work_order_section",
    "fieldtype": "Section Break",
    "label": "Work Order"
@@ -221,6 +227,7 @@
    "options": "Process"
   },
   {
+   "collapsible": 1,
    "fieldname": "purchase_invoice_section",
    "fieldtype": "Section Break",
    "label": "Purchase Invoice"
@@ -231,6 +238,7 @@
    "label": "PI Minimum GRN Date"
   },
   {
+   "collapsible": 1,
    "fieldname": "vendor_bill_tracking_section",
    "fieldtype": "Section Break",
    "label": "Vendor Bill Tracking"
@@ -270,13 +278,24 @@
    "fieldtype": "Link",
    "label": "Merch User Role",
    "options": "Role"
+  },
+  {
+   "collapsible": 1,
+   "fieldname": "cutting_plan_section",
+   "fieldtype": "Section Break",
+   "label": "Cutting Plan"
+  },
+  {
+   "fieldname": "cloth_allowance_percentage",
+   "fieldtype": "Float",
+   "label": "Cloth Allowance Percentage"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2025-11-01 16:43:54.113034",
+ "modified": "2025-11-07 18:11:21.097668",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "MRP Settings",

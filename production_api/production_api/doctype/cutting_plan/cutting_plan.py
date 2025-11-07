@@ -10,6 +10,41 @@ from production_api.production_api.doctype.cutting_laysheet.cutting_laysheet imp
 from production_api.essdee_production.doctype.item_production_detail.item_production_detail import get_cloth_combination, get_stitching_combination, calculate_cloth
 
 class CuttingPlan(Document):
+	def on_update_after_submit(self):
+		status = self.status
+		percent = frappe.db.get_single_value("MRP Settings", "cloth_allowance_percentage")
+		check = True
+		for row in self.cutting_plan_cloth_details:
+			if row.weight < row.required_weight:
+				percent_weight = (row.weight/100) * percent
+				if row.weight < (row.required_weight - percent_weight):
+					check = False
+
+		updated_status = None			
+		if check:
+			if status in ['Planned', 'Fabric Partially Received']:
+				updated_status = 'Ready to Cut'
+		else:
+			if status in ['Planned', 'Ready to Cut']:
+				updated_status = 'Fabric Partially Received'
+
+		if not updated_status:
+			completed_json = update_if_string_instance(self.completed_items_json)
+			check = True
+			one_colour_completed = False
+			for row in completed_json['items']:
+				if row['completed']:
+					one_colour_completed = True
+				if not row['completed']:
+					check = False
+			if check:
+				updated_status = "Completed"	
+			elif one_colour_completed:
+				updated_status = 'Partially Completed'		
+			else:
+				updated_status = "Cutting In Progress"	
+		frappe.db.set_value(self.doctype, self.name, "status", updated_status, update_modified=True)	
+
 	def autoname(self):
 		self.naming_series = "CP-.YY..MM.-.{#####}."
 		
@@ -31,7 +66,6 @@ class CuttingPlan(Document):
 				self.completed_items_json = x
 				self.incomplete_items_json = y
 
-
 		if self.get('item_details'):
 			items = save_item_details(self.item_details)
 			self.set("items",items)
@@ -39,6 +73,25 @@ class CuttingPlan(Document):
 		if self.get('item_cloth_details'):
 			items = save_item_cloth_details(self.item_cloth_details)
 			self.set("cutting_plan_cloth_details",items)	
+
+	def before_submit(self):
+		percent = frappe.db.get_single_value("MRP Settings", "cloth_allowance_percentage")
+		check = True
+		all_zero = True
+		for row in self.cutting_plan_cloth_details:
+			if row.weight > 0:
+				all_zero = False
+			if row.weight < row.required_weight:
+				percent_weight = (row.weight/100) * percent
+				if row.weight < (row.required_weight - percent_weight):
+					check = False
+
+		if all_zero:			
+			self.status = 'Planned'
+		elif not check:
+			self.status = 'Fabric Partially Received'
+		else:
+			self.status = 'Ready to Cut'	
 
 def get_complete_incomplete_structure(ipd,item_details):
 	ipd_doc = frappe.get_doc("Item Production Detail",ipd)
@@ -69,6 +122,7 @@ def get_complete_cut_structure(x,stiching_attrs):
 		for val in item['values']:
 			item['values'][val] = 0
 		item['completed'] = False
+		item['completed_date'] = None
 	x = x | stiching_attrs
 	return x
 
@@ -501,3 +555,41 @@ def get_cutting_plan_size_reports(cutting_plan):
 						duplicate[panel+"_Bundle"] = panel_detail[panel]['bundles']
 					final_data[colour].append(duplicate)
 	return panels, final_data, ipd_doc.is_set_item
+
+@frappe.whitelist()
+def fetch_received_cloth(docname):
+	cp_doc = frappe.get_doc("Cutting Plan", docname)
+	dc_list = frappe.get_all("Delivery Challan", filters={
+		"docstatus": 1,
+		"work_order": cp_doc.work_order
+	}, pluck="name")
+
+	for item in cp_doc.cutting_plan_cloth_details:
+		item.weight = 0
+
+	for dc in dc_list:
+		internal = frappe.get_value("Delivery Challan", dc, "is_internal_unit")
+		if internal:
+			se_list = frappe.get_all("Stock Entry", filters={
+				"purpose": "DC Completion",
+				"against": "Delivery Challan",
+				"docstatus": 1,
+				"against_id": dc
+			}, pluck="name")
+			for se in se_list:
+				se_doc = frappe.get_doc("Stock Entry", se)
+				for ste_item in se_doc.items:
+					for item in cp_doc.cutting_plan_cloth_details:
+						print(item.cloth_item_variant)
+						if item.cloth_item_variant == ste_item.item:	
+							print(ste_item.qty)
+							item.weight += ste_item.qty
+							break
+		else:
+			dc_doc = frappe.get_doc("Delivery Challan", dc)
+			for dc_item in dc_doc.items:
+				for item in cp_doc.cutting_plan_cloth_details:
+					if item.cloth_item_variant == dc_item.item_variant:	
+						item.weight += dc_item.delivered_quantity
+						break
+	cp_doc.save()
