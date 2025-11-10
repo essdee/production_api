@@ -569,7 +569,7 @@ def fetch_received_cloth(docname):
 
 	for dc in dc_list:
 		internal, _from, _to = frappe.get_value("Delivery Challan", dc, ["is_internal_unit", "from_address", "supplier_address"])
-		if internal or _from == _to:
+		if internal and _from != _to:
 			se_list = frappe.get_all("Stock Entry", filters={
 				"purpose": "DC Completion",
 				"against": "Delivery Challan",
@@ -580,9 +580,7 @@ def fetch_received_cloth(docname):
 				se_doc = frappe.get_doc("Stock Entry", se)
 				for ste_item in se_doc.items:
 					for item in cp_doc.cutting_plan_cloth_details:
-						print(item.cloth_item_variant)
 						if item.cloth_item_variant == ste_item.item:	
-							print(ste_item.qty)
 							item.weight += ste_item.qty
 							break
 		else:
