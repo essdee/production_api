@@ -13,6 +13,7 @@
   "naming_series",
   "status",
   "version",
+  "no_of_colours",
   "column_break_nvaz",
   "item",
   "maximum_allow_percent",
@@ -241,6 +242,12 @@
    "label": "Open Status",
    "options": "\nOpen\nClosed",
    "read_only": 1
+  },
+  {
+   "fieldname": "no_of_colours",
+   "fieldtype": "Int",
+   "label": "No of Colours",
+   "read_only": 1
   }
  ],
  "grid_page_length": 50,
@@ -256,7 +263,7 @@
    "link_fieldname": "cutting_plan"
   }
  ],
- "modified": "2025-11-07 16:43:35.944298",
+ "modified": "2025-11-10 16:04:43.959959",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Cutting Plan",
