@@ -38,6 +38,16 @@ class DeliveryChallan(Document):
 			for name in ste_list:
 				doc = frappe.get_doc("Stock Entry", name)
 				doc.cancel()
+
+		cp_list = frappe.get_list("Cutting Plan", filters={"work_order": self.work_order}, pluck="name")					
+		if cp_list and (self.from_address == self.supplier_address or not self.is_internal_unit):
+			cp_doc = frappe.get_doc("Cutting Plan", cp_list[0])
+			for dc_item in self.items:
+				for item in cp_doc.cutting_plan_cloth_details:
+					if item.cloth_item_variant == dc_item.item:	
+						item.weight -= dc_item.qty
+						break
+			cp_doc.save()		
 	
 	def on_cancel(self):
 		if self.from_address == self.supplier_address and self.is_internal_unit:
@@ -257,7 +267,7 @@ class DeliveryChallan(Document):
 
 		work_order = self.work_order
 		cp_list = frappe.get_list("Cutting Plan", filters={"work_order": work_order}, pluck="name")					
-		if cp_list and not self.is_internal_unit:
+		if cp_list and (self.from_address == self.supplier_address or not self.is_internal_unit):
 			cp_doc = frappe.get_doc("Cutting Plan", cp_list[0])
 			for dc_item in self.items:
 				check = False

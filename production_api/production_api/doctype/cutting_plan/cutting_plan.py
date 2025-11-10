@@ -568,8 +568,8 @@ def fetch_received_cloth(docname):
 		item.weight = 0
 
 	for dc in dc_list:
-		internal = frappe.get_value("Delivery Challan", dc, "is_internal_unit")
-		if internal:
+		internal, _from, _to = frappe.get_value("Delivery Challan", dc, ["is_internal_unit", "from_address", "supplier_address"])
+		if internal or _from == _to:
 			se_list = frappe.get_all("Stock Entry", filters={
 				"purpose": "DC Completion",
 				"against": "Delivery Challan",
