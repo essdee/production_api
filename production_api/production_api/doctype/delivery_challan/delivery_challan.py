@@ -44,7 +44,7 @@ class DeliveryChallan(Document):
 			cp_doc = frappe.get_doc("Cutting Plan", cp_list[0])
 			for dc_item in self.items:
 				for item in cp_doc.cutting_plan_cloth_details:
-					if item.cloth_item_variant == dc_item.item:	
+					if item.cloth_item_variant == dc_item.item_variant:	
 						item.weight -= dc_item.qty
 						break
 			cp_doc.save()		
@@ -272,12 +272,12 @@ class DeliveryChallan(Document):
 			for dc_item in self.items:
 				check = False
 				for item in cp_doc.cutting_plan_cloth_details:
-					if item.cloth_item_variant == dc_item.item:	
+					if item.cloth_item_variant == dc_item.item_variant:	
 						check = True
 						item.weight += dc_item.qty
 						break
 				if not check:
-					parent_item = frappe.get_value("Item Variant", dc_item.item, "item")
+					parent_item = frappe.get_value("Item Variant", dc_item.item_variant, "item")
 					ipd = frappe.get_value("Lot", self.lot, "production_detail")
 					cloth_list = frappe.db.sql(
 						f"""
@@ -286,7 +286,7 @@ class DeliveryChallan(Document):
 						""", as_dict=True
 					)
 					if cloth_list:
-						frappe.throw(f"Item {dc_item.item} not in Cutting Plan")
+						frappe.throw(f"Item {dc_item.item_variant} not in Cutting Plan")
 			cp_doc.save()
 			
 		logger.debug(f"{self.name} Work Order deliverables updated {datetime.now()}")

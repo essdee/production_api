@@ -571,7 +571,9 @@ def download_xl(data):
 		formatted_date = dt.strftime("%d-%m-%Y")
 		d = [series_id, formatted_date, x['grn_number'], x['lot'], x['item'], colour]
 		for ty in data['types']:
-			d.append(x['types'].get(ty, 0))
+			qty = x['types'].get(ty, 0)
+			reject_qty = x['rejection_detail'].get(ty, 0)
+			d.append(qty - reject_qty)
 		ws.append(d)  
 	xlsx_file = BytesIO()
 	wb.save(xlsx_file)

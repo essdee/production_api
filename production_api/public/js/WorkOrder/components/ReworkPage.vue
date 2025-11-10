@@ -83,13 +83,13 @@
                                 </table>
                                 <div style="width:100%;display:flex;justify-content: end;margin-top: 10px;">
                                     <div style="padding-right: 10px;">
-                                        <button class="btn btn-primary" @click="update_items(colour_data['items'], colour_data['changed'], 0, value['lot'])">Update Rejection Qty</button>
+                                        <button class="btn btn-primary" @click="update_items(colour_data['items'], colour_data['changed'], 0, value['lot'], key, colour_mistake)">Update Rejection Qty</button>
                                     </div>
                                     <div style="padding-right: 10px;">
                                         <button class="btn btn-primary" @click="update_rework(colour_data['items'], value['lot'], key, colour_mistake)">Update Reworked Piece</button>
                                     </div>
                                     <div style="padding-right: 10px;">
-                                        <button class="btn btn-primary" @click="update_items(colour_data['items'], 1, 1, value['lot'])">Complete Rework</button>
+                                        <button class="btn btn-primary" @click="update_items(colour_data['items'], 1, 1, value['lot'], key, colour_mistake)">Complete Rework</button>
                                     </div>
                                 </div>
                             </template>
@@ -202,7 +202,7 @@ function update_changed(name, colour){
     items.value["report_detail"][name]['rework_detail'][colour]['changed'] = 1
 }
 
-function update_items(data, changed, completed, lot){
+function update_items(data, changed, completed, lot, series_key, mistake_key){
     if(completed == 1 || completed === 1){
         let d =  new frappe.ui.Dialog({
             title: "Are you sure want to final the item",
@@ -210,6 +210,16 @@ function update_items(data, changed, completed, lot){
             secondary_action_label: "No",
             primary_action(){
                 update(data, completed, lot)
+                frappe.show_alert({
+                    message: __("Rework Completed"),
+                    indicator: "info",
+                });
+                if (items?.value?.report_detail?.[series_key]?.rework_detail) {
+                    delete items.value.report_detail[series_key].rework_detail[mistake_key];
+                    if (Object.keys(items.value.report_detail[series_key]['rework_detail']).length == 0){
+                        delete items.value.report_detail[series_key]       
+                    }
+                }
                 d.hide()
             },
             secondary_action(){
