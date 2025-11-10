@@ -17,7 +17,9 @@
                     <th>Colour</th>
                     <th>Dia</th>
                     <th>Required Weight</th>
-                    <th>Received Weight</th>
+                    <th v-if='type=="cloth"'>Received Weight</th>
+                    <th>Used Weight</th>
+                    <th v-if='type=="cloth"'>Balance Weight</th>
                 </tr>
                 <tr v-for="(i, item1_index) in items" :key="item1_index">
                     <td>{{item1_index + 1}}</td>
@@ -26,7 +28,9 @@
                     <td>{{ i.colour }}</td>
                     <td>{{ i.dia }}</td>
                     <td>{{ i.required_weight }}</td>
-                    <td>{{ i.weight }}</td>
+                    <td v-if="type=='cloth'">{{ i.weight }}</td>
+                    <td>{{i.used_weight}}</td>
+                    <td v-if='type=="cloth"'>{{i.balance_weight}}</td>
                 </tr>
             </table>
         </table>
