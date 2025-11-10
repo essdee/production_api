@@ -56,6 +56,7 @@ import DailyCutSheetReport from "./CuttingLaySheet/components/DailyCutSheetRepor
 import GRNPacking from "./GRN/components/GRNPacking.vue";
 import FinishingGRN from "./Finishing/FinishingGRN.vue";
 import ProductionOrder from "./Lot/components/ProductionOrder.vue";
+import OCRDetail from './Lot/components/OCRDetail.vue';
 import ReworkPage from "./WorkOrder/components/ReworkPage.vue";
 import FinishingDetail from "./Finishing/FinishingDetail.vue" 
 import FinishingQtyDetail from "./Finishing/FinishingQtyDetail.vue"
@@ -447,6 +448,18 @@ frappe.production.ui.ProductionOrder = class {
     get_data(){
         let items = JSON.parse(JSON.stringify(this.vue.get_items()))
         return items
+    }
+}
+
+frappe.production.ui.OCRDetail = class {
+    constructor(wrapper){
+        this.$wrapper = $(wrapper);
+        this.make_app();
+    }
+    make_app(){
+        this.app = createApp(OCRDetail)
+        SetVueGlobals(this.app)
+        this.vue = this.app.mount(this.$wrapper.get(0))
     }
 }
 

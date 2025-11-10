@@ -197,32 +197,43 @@ class WorkOrder(Document):
 				check = True				
 		
 		fil = {
-			'process_name':self.process_name,
-			'item':self.item,
-			'is_expired':0,
-			'from_date':['<=',self.wo_date],
-			'docstatus': 1,
-			"workflow_state":"Approved",
+			"process_name": self.process_name,
+			"item": self.item,
+			"is_expired": 0,
+			"from_date": ["<=", self.wo_date],
+			"docstatus": 1,
+			"workflow_state": "Approved",
+			"lot": self.lot,
+			"is_rework": 1 if self.is_rework else 0,
 		}
-		if self.is_rework:
-			fil['is_rework'] = 1
-		else:
-			fil['is_rework'] = 0
-
 		if self.supplier:
-			fil['supplier'] = self.supplier
+			fil["supplier"] = self.supplier
 
-		doc_names = frappe.get_list('Process Cost',filters = fil)
+		filter_variants = [fil.copy()]
+
+		if "supplier" in fil:
+			f1 = fil.copy()
+			f1.pop("supplier")
+			filter_variants.append(f1)
+
+		f2 = fil.copy()
+		f2.pop("lot", None)
+		filter_variants.append(f2)
+
+		f3 = f2.copy()
+		f3.pop("supplier", None)
+		filter_variants.append(f3)
+
 		docname = None
-		if doc_names:
-			docname = doc_names[0]['name']
-		else:
-			if self.is_rework:
-				return
-			del fil['supplier']
-			docnames = frappe.get_list('Process Cost',filters = fil)
-			if docnames:
-				docname = docnames[0]['name']
+		for f in filter_variants:
+			docs = frappe.get_list("Process Cost", filters=f)
+			if docs:
+				docname = docs[0].name
+				break
+
+		if self.is_rework and not docname:
+			return
+		
 		if not docname and not self.is_rework:
 			frappe.throw('No process cost for ' + self.process_name)	
 		if get_name:
@@ -1233,7 +1244,11 @@ def calculate_completed_pieces(doc_name):
 	frappe.enqueue(calc,"short", doc_name=doc_name)	
 	
 def calc(doc_name):	
-	grn_list = frappe.get_list("Goods Received Note", filters={"against_id": doc_name,"docstatus": 1}, pluck="name")
+	grn_list = frappe.get_list("Goods Received Note", filters={
+		"against_id": doc_name,
+		"docstatus": 1,
+		"is_return": 0,
+	}, pluck="name")
 	from production_api.production_api.doctype.goods_received_note.goods_received_note import calculate_pieces as calculate_grn_pieces
 	for grn in grn_list:
 		calculate_grn_pieces(grn)
@@ -1312,21 +1327,38 @@ def fetch_summary_details(doc_name, production_detail):
 			})
 		else:
 			item_details[index]['items'].append(item)
-
+	
+	item_details[0]['overall_delivered'] = 0
+	item_details[0]['overall_received'] = 0
+	item_details[0]['overall_planned'] = 0
 	for item in item_details[0]['items']:
 		total_qty = 0
 		total_delivered = 0
 		total_received = 0
+		item_details[0].setdefault('total_details', {})
+
 		for primary_attr in item_details[0]['primary_attribute_values']:
+			item_details[0]['total_details'].setdefault(primary_attr, {
+				"planned": 0,
+				"delivered": 0,
+				"received": 0,
+			})
 			if item['values'][primary_attr].get("qty"):
+				item_details[0]['total_details'][primary_attr]['planned'] += item['values'][primary_attr]['qty']
 				total_qty += item['values'][primary_attr]['qty']
 			if item['values'][primary_attr].get("delivered"):
+				item_details[0]['total_details'][primary_attr]['delivered'] += item['values'][primary_attr]['delivered'] 
 				total_delivered += item['values'][primary_attr]['delivered']
 			if item['values'][primary_attr].get("received"):
+				item_details[0]['total_details'][primary_attr]['received'] += item['values'][primary_attr]['received']
 				total_received += item['values'][primary_attr]['received']
+
 		item['total_qty'] = total_qty
 		item['total_delivered'] = total_delivered
-		item['total_received'] = total_received	
+		item['total_received'] = total_received
+		item_details[0]['overall_planned'] += total_qty
+		item_details[0]['overall_delivered'] += total_delivered
+		item_details[0]['overall_received'] += total_received	
 
 	deliverables = fetch_item_details(wo_doc.deliverables, wo_doc.production_detail )
 

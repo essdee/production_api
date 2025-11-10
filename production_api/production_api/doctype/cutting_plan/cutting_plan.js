@@ -54,6 +54,16 @@ frappe.ui.form.on("Cutting Plan", {
             else{
                 frm.cut_plan_accessory_items.load_data([],null)
             }
+            frm.add_custom_button("Fetch Received Cloth", ()=> {
+                frappe.call({
+                    method: "production_api.production_api.doctype.cutting_plan.cutting_plan.fetch_received_cloth",
+                    args: {
+                        docname: frm.doc.name,
+                    },
+                    freeze: true,
+                    freeze_message: "Fetching Cloth",
+                })
+            })
             frm.add_custom_button("Generate",function(){
                 if (frm.is_dirty()) {
                     return;
@@ -134,13 +144,6 @@ frappe.ui.form.on("Cutting Plan", {
                         frm.dirty()
                         let items = frm.update_completed.get_items()
                         frm.set_value("completed_items_json",JSON.parse(JSON.stringify(items.json_data[0])))
-                        if(items.completed){
-                            frm.set_value("status", "Completed")
-                        }
-                        else{
-                            frm.set_value("status", "Started")
-                        }
-                        frm.save()   
                         d.hide()
                     }
                 })

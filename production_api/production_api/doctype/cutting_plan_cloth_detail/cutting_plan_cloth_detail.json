@@ -18,6 +18,7 @@
  ],
  "fields": [
   {
+   "allow_on_submit": 1,
    "fieldname": "required_weight",
    "fieldtype": "Float",
    "in_list_view": 1,
@@ -26,12 +27,14 @@
    "read_only": 1
   },
   {
+   "allow_on_submit": 1,
    "fieldname": "weight",
    "fieldtype": "Float",
    "in_list_view": 1,
    "label": "Weight"
   },
   {
+   "allow_on_submit": 1,
    "fieldname": "cloth_item_variant",
    "fieldtype": "Link",
    "in_list_view": 1,
@@ -40,6 +43,7 @@
    "read_only": 1
   },
   {
+   "allow_on_submit": 1,
    "fieldname": "colour",
    "fieldtype": "Link",
    "in_list_view": 1,
@@ -47,6 +51,7 @@
    "options": "Item Attribute Value"
   },
   {
+   "allow_on_submit": 1,
    "fieldname": "dia",
    "fieldtype": "Link",
    "in_list_view": 1,
@@ -54,37 +59,44 @@
    "options": "Item Attribute Value"
   },
   {
+   "allow_on_submit": 1,
    "fieldname": "cloth_type",
    "fieldtype": "Data",
    "in_list_view": 1,
    "label": "Cloth Type"
   },
   {
+   "allow_on_submit": 1,
    "fieldname": "used_weight",
    "fieldtype": "Float",
    "label": "Used Weight"
   },
   {
+   "allow_on_submit": 1,
    "fieldname": "balance_weight",
    "fieldtype": "Float",
    "label": "Balance Weight"
   },
   {
+   "allow_on_submit": 1,
    "fieldname": "accessory",
    "fieldtype": "Data",
    "in_list_view": 1,
    "label": "Accessory"
   }
  ],
+ "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2025-03-17 13:08:30.700798",
+ "modified": "2025-11-07 16:11:52.960095",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Cutting Plan Cloth Detail",
  "owner": "Administrator",
  "permissions": [],
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": []

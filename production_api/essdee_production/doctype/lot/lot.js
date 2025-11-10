@@ -302,6 +302,10 @@ frappe.ui.form.on("Lot", {
 		// 		frm.cad_detail.load_data([])
 		// 	}
 		// }
+		if(!frm.is_new()){
+			$(frm.fields_dict['ocr_detail_html'].wrapper).html("")
+			new frappe.production.ui.OCRDetail(frm.fields_dict['ocr_detail_html'].wrapper)
+		}
     },
 	// fetch_cad_template(frm){
 	// 	frm.cad_detail.load_data([])

@@ -20,6 +20,7 @@
   "ipd_cutting_attribute",
   "cutting_location",
   "work_order",
+  "open_status",
   "section_break_krhn",
   "items",
   "items_html",
@@ -34,7 +35,8 @@
   "incomplete_items_json",
   "incompleted_items_html",
   "planned_detail_tab",
-  "planned_details_html"
+  "planned_details_html",
+  "amended_from"
  ],
  "fields": [
   {
@@ -95,6 +97,7 @@
    "fieldtype": "Section Break"
   },
   {
+   "allow_on_submit": 1,
    "fieldname": "cutting_plan_cloth_details",
    "fieldtype": "Table",
    "hidden": 1,
@@ -143,6 +146,7 @@
    "label": "Summary"
   },
   {
+   "allow_on_submit": 1,
    "fieldname": "cutting_plan_accessory_details",
    "fieldtype": "Table",
    "hidden": 1,
@@ -155,12 +159,14 @@
    "label": "Accessory HTML"
   },
   {
+   "allow_on_submit": 1,
    "fieldname": "completed_items_json",
    "fieldtype": "JSON",
    "hidden": 1,
    "label": "Completed Items JSON"
   },
   {
+   "allow_on_submit": 1,
    "fieldname": "incomplete_items_json",
    "fieldtype": "JSON",
    "hidden": 1,
@@ -177,12 +183,14 @@
    "label": "Incompleted Items HTML"
   },
   {
-   "default": "Started",
+   "allow_on_submit": 1,
+   "default": "Draft",
    "fieldname": "status",
    "fieldtype": "Select",
    "in_list_view": 1,
+   "in_standard_filter": 1,
    "label": "Status",
-   "options": "Started\nCompleted",
+   "options": "\nDraft\nPlanned\nFabric Partially Received\nReady to Cut\nCutting In Progress\nPartially Completed\nCompleted\nCut Panel Dispatch Pending",
    "read_only": 1
   },
   {
@@ -215,10 +223,29 @@
    "fieldname": "planned_details_html",
    "fieldtype": "HTML",
    "label": "Planned Details HTML"
+  },
+  {
+   "fieldname": "amended_from",
+   "fieldtype": "Link",
+   "label": "Amended From",
+   "no_copy": 1,
+   "options": "Cutting Plan",
+   "print_hide": 1,
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "open_status",
+   "fieldtype": "Select",
+   "in_standard_filter": 1,
+   "label": "Open Status",
+   "options": "\nOpen\nClosed",
+   "read_only": 1
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
+ "is_submittable": 1,
  "links": [
   {
    "link_doctype": "Cutting Marker",
@@ -229,7 +256,7 @@
    "link_fieldname": "cutting_plan"
   }
  ],
- "modified": "2025-11-04 12:03:01.518860",
+ "modified": "2025-11-07 16:43:35.944298",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Cutting Plan",
@@ -237,6 +264,7 @@
  "owner": "Administrator",
  "permissions": [
   {
+   "cancel": 1,
    "create": 1,
    "delete": 1,
    "email": 1,
@@ -246,6 +274,7 @@
    "report": 1,
    "role": "System Manager",
    "share": 1,
+   "submit": 1,
    "write": 1
   },
   {
@@ -256,7 +285,8 @@
    "report": 1,
    "role": "Cutting User",
    "select": 1,
-   "share": 1
+   "share": 1,
+   "write": 1
   },
   {
    "create": 1,
@@ -278,7 +308,8 @@
    "report": 1,
    "role": "CAD User",
    "select": 1,
-   "share": 1
+   "share": 1,
+   "write": 1
   },
   {
    "email": 1,
@@ -300,6 +331,7 @@
    "report": 1,
    "role": "T & A Manager",
    "share": 1,
+   "submit": 1,
    "write": 1
   },
   {
@@ -362,7 +394,8 @@
    "read": 1,
    "report": 1,
    "role": "Merchandiser",
-   "share": 1
+   "share": 1,
+   "write": 1
   }
  ],
  "row_format": "Dynamic",

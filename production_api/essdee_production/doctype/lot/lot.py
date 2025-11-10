@@ -762,6 +762,91 @@ def get_ironing_mistake_pf_items(lot):
 	items = fetch_order_item_details(lot_doc.lot_order_details, lot_doc.production_detail)
 	return items
 
+@frappe.whitelist()
+def get_ocr_details(lot):
+	lot_dict = {}
+	wo_list = frappe.get_all("Work Order", filters={
+		"lot": lot,
+		"docstatus": 1,
+	}, pluck="name", order_by="creation")
+
+	ipd, item = frappe.get_value("Lot", lot, ["production_detail", "item"])
+	sewing, primary, pcs_per_box = frappe.get_value("Item Production Detail", ipd, ["stiching_process", "primary_item_attribute", "packing_combo"])
+	lot_dict['sizes'] = []
+	lot_dict['processes'] = {}
+	lot_dict['dispatch_detail'] = {}
+	lot_dict['total_dispatch'] = 0
+	lot_dict['finishing_plan_list'] = []
+	includes_packing_process = None
+	for wo in wo_list:
+		wo_doc = frappe.get_doc("Work Order", wo)
+		if wo_doc.includes_packing:
+			includes_packing_process = wo_doc.process_name
+		cp_list = frappe.get_list("Cutting Plan", filters={
+			"work_order": wo
+		}, pluck='name')
+		lot_dict['processes'].setdefault(wo_doc.process_name, {
+			"wo_list": [],
+			"cp_list": [],
+			"data": {},
+			"total_sent": 0,
+			"total_received": 0,
+		})
+		lot_dict['processes'][wo_doc.process_name]['cp_list'] += cp_list
+		lot_dict['processes'][wo_doc.process_name]['wo_list'].append(wo)
+		for row in wo_doc.work_order_calculated_items:
+			attr_details = get_variant_attr_details(row.item_variant)
+			size = attr_details[primary]
+			if size not in lot_dict['sizes']:
+				lot_dict['sizes'].append(size)
+			lot_dict['processes'][wo_doc.process_name]['data'].setdefault(size, {
+				"sent": 0,
+				"received": 0,
+			})
+			lot_dict['processes'][wo_doc.process_name]['data'][size]['sent'] += row.delivered_quantity
+			lot_dict['processes'][wo_doc.process_name]['total_sent'] += row.delivered_quantity
+			if not wo_doc.includes_packing:
+				lot_dict['processes'][wo_doc.process_name]['data'][size]['received'] += row.received_qty
+				lot_dict['processes'][wo_doc.process_name]['total_received'] += row.received_qty
+
+	grn_list = frappe.get_all("Goods Received Note", filters={
+		"against": "Work Order",
+		"docstatus": 1,
+		"includes_packing": 1,
+		"process_name": includes_packing_process,
+		"is_return": 0,
+		"lot": lot,
+	}, pluck="name")
+
+	grn_item_dict = {}
+	for grn in grn_list:
+		grn_doc = frappe.get_doc("Goods Received Note", grn)
+		for row in grn_doc.items:
+			grn_item_dict.setdefault(row.item_variant, 0)
+			grn_item_dict[row.item_variant] += row.quantity
+
+	for variant in grn_item_dict:
+		attr_details = get_variant_attr_details(variant)
+		size = attr_details[primary]
+		lot_dict['processes'][includes_packing_process]['total_received'] += (grn_item_dict[variant] * pcs_per_box)
+		lot_dict['processes'][includes_packing_process]['data'][size]['received'] += (grn_item_dict[variant] * pcs_per_box)
+
+	finishing_plan_list =frappe.get_all("Finishing Plan", filters={
+		"lot": lot,
+	}, pluck="name")
+
+	for finishing_plan in finishing_plan_list:
+		lot_dict['finishing_plan_list'].append(finishing_plan)
+		fp_doc = frappe.get_doc("Finishing Plan", finishing_plan)
+		for row in fp_doc.finishing_plan_grn_details:
+			attr_details = get_variant_attr_details(row.item_variant)
+			size = attr_details[primary]
+			lot_dict['dispatch_detail'].setdefault(size, 0)
+			lot_dict['dispatch_detail'][size] += (row.dispatched * fp_doc.pieces_per_box)
+			lot_dict['total_dispatch'] += (row.dispatched * fp_doc.pieces_per_box)
+
+	return lot_dict
+
 # @frappe.whitelist()
 # def get_cad_detail(ipd, lot):
 # 	ipd_doc = frappe.get_doc("Item Production Detail", ipd)
