@@ -3,7 +3,7 @@ from frappe.utils import getdate, add_months, nowdate
 from production_api.utils import update_if_string_instance
 
 def execute():
-    draft_lot_list = ["C0925-71", "F0925-23", "F0925-23/1", "F0925-23/2", "F0925-23/3", "C0925-67"]
+    draft_lot_list = ["C0925-71", 'F0325-75', "F0925-23/1", "F0925-23/2", "F0925-23/3", "C0925-67"]
     lot_list = tuple(draft_lot_list)
     query = f"""UPDATE `tabCutting Plan` SET status = 'Draft' WHERE lot IN {lot_list} """
     frappe.db.sql(query)
