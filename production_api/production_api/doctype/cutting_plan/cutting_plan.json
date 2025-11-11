@@ -72,6 +72,7 @@
    "options": "Item Production Detail"
   },
   {
+   "allow_on_submit": 1,
    "default": "0",
    "fieldname": "lay_no",
    "fieldtype": "Int",
@@ -272,7 +273,7 @@
    "link_fieldname": "cutting_plan"
   }
  ],
- "modified": "2025-11-11 11:42:26.759885",
+ "modified": "2025-11-11 12:52:05.405113",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Cutting Plan",
