@@ -43,7 +43,10 @@ class CuttingPlan(Document):
 				updated_status = 'Partially Completed'		
 			else:
 				updated_status = "Cutting In Progress"	
-		frappe.db.set_value(self.doctype, self.name, "status", updated_status, update_modified=True)	
+
+		for item in self.cutting_plan_cloth_details:
+			item.balance_weight = round(item.weight - item.used_weight, 3)
+		self.status = updated_status	
 
 	def autoname(self):
 		self.naming_series = "CP-.YY..MM.-.{#####}."
@@ -590,4 +593,7 @@ def fetch_received_cloth(docname):
 					if item.cloth_item_variant == dc_item.item_variant:	
 						item.weight += dc_item.delivered_quantity
 						break
+	for item in cp_doc.cutting_plan_cloth_details:
+		item.balance_weight = round(item.weight - item.used_weight, 3)
+
 	cp_doc.save()

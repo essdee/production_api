@@ -472,7 +472,7 @@ def get_item_attribute_values(doctype, txt, searchfield, start, page_len, filter
 	else:
 		production_detail = filters['production_detail']
 
-	if filters['lot']:
+	if filters.get('lot'):
 		production_detail = frappe.get_value("Lot", filters['lot'], "production_detail")	
 	attr = frappe.get_doc("Item Attribute", attribute)
 	if attr.numeric_values:
