@@ -1,6 +1,5 @@
 frappe.listview_settings["Cutting Plan"] = {
-    add_fields: ["status"],
-	has_indicator_for_draft: 1,
+    add_fields: ["cp_status", "no_of_colours", "no_of_colours_completed"],
 	get_indicator: function (doc) {
 		const status_color = {
 			"Draft": "gray",
@@ -12,7 +11,10 @@ frappe.listview_settings["Cutting Plan"] = {
             "Completed": "green",
             "Cut Panel Dispatch Pending": "red"
 		};
-		const status = doc.status;
-		return [__(doc.status), status_color[doc.status]];
+		let str = doc.cp_status
+		if (!['Planned', 'Draft', 'Ready to Cut', 'Completed', 'Cutting In Progress'].includes(doc.cp_status)){
+			str = str+"-"+doc.no_of_colours_completed+"/"+doc.no_of_colours
+		}
+		return [__(str), status_color[doc.cp_status], "cp_status,=," + doc.cp_status];
 	},
 };
