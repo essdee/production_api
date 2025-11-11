@@ -11,7 +11,7 @@
   "maximum_no_of_plys",
   "lay_no",
   "naming_series",
-  "status",
+  "cp_status",
   "version",
   "no_of_colours",
   "column_break_nvaz",
@@ -22,6 +22,7 @@
   "cutting_location",
   "work_order",
   "open_status",
+  "no_of_colours_completed",
   "section_break_krhn",
   "items",
   "items_html",
@@ -71,6 +72,7 @@
    "options": "Item Production Detail"
   },
   {
+   "allow_on_submit": 1,
    "default": "0",
    "fieldname": "lay_no",
    "fieldtype": "Int",
@@ -184,17 +186,6 @@
    "label": "Incompleted Items HTML"
   },
   {
-   "allow_on_submit": 1,
-   "default": "Draft",
-   "fieldname": "status",
-   "fieldtype": "Select",
-   "in_list_view": 1,
-   "in_standard_filter": 1,
-   "label": "Status",
-   "options": "\nDraft\nPlanned\nFabric Partially Received\nReady to Cut\nCutting In Progress\nPartially Completed\nCompleted\nCut Panel Dispatch Pending",
-   "read_only": 1
-  },
-  {
    "fieldname": "version",
    "fieldtype": "Select",
    "hidden": 1,
@@ -202,6 +193,7 @@
    "options": "\nV1\nV2\nV3"
   },
   {
+   "allow_on_submit": 1,
    "fieldname": "work_order",
    "fieldtype": "Link",
    "label": "Work Order",
@@ -244,9 +236,27 @@
    "read_only": 1
   },
   {
+   "allow_on_submit": 1,
    "fieldname": "no_of_colours",
    "fieldtype": "Int",
    "label": "No of Colours",
+   "read_only": 1
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "no_of_colours_completed",
+   "fieldtype": "Int",
+   "label": "No of Colours Completed",
+   "read_only": 1
+  },
+  {
+   "allow_on_submit": 1,
+   "default": "Draft",
+   "fieldname": "cp_status",
+   "fieldtype": "Select",
+   "in_standard_filter": 1,
+   "label": "CP Status",
+   "options": "\nDraft\nPlanned\nFabric Partially Received\nReady to Cut\nCutting In Progress\nPartially Completed\nCompleted\nCut Panel Dispatch Pending",
    "read_only": 1
   }
  ],
@@ -263,7 +273,7 @@
    "link_fieldname": "cutting_plan"
   }
  ],
- "modified": "2025-11-10 16:04:43.959959",
+ "modified": "2025-11-11 12:52:05.405113",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Cutting Plan",

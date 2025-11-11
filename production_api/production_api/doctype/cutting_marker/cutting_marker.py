@@ -32,7 +32,7 @@ class CuttingMarker(Document):
 			self.set("cutting_marker_groups", items)	
 
 	def before_validate(self):
-		status, docstatus = frappe.get_value("Cutting Plan", self.cutting_plan, ["status", "docstatus"])
+		status, docstatus = frappe.get_value("Cutting Plan", self.cutting_plan, ["cp_status", "docstatus"])
 		if docstatus == 0:
 			frappe.throw("Cutting Plan was not Submitted")
 		if status == 'Planned':

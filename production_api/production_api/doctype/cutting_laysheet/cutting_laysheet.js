@@ -18,7 +18,7 @@ frappe.ui.form.on("Cutting LaySheet", {
         frm.set_query("cutting_plan", ()=> {
             return{
                 filters: {
-                    "status":["!=","Completed"]
+                    "cp_status":["!=","Completed"]
                 }
             }
         })

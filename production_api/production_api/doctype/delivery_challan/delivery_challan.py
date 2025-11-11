@@ -39,7 +39,7 @@ class DeliveryChallan(Document):
 				doc = frappe.get_doc("Stock Entry", name)
 				doc.cancel()
 
-		cp_list = frappe.get_list("Cutting Plan", filters={"work_order": self.work_order}, pluck="name")					
+		cp_list = frappe.get_all("Cutting Plan", filters={"work_order": self.work_order}, pluck="name")					
 		if cp_list and (self.from_address == self.supplier_address or not self.is_internal_unit):
 			cp_doc = frappe.get_doc("Cutting Plan", cp_list[0])
 			for dc_item in self.items:
@@ -266,7 +266,7 @@ class DeliveryChallan(Document):
 		wo_doc.save(ignore_permissions=True)
 
 		work_order = self.work_order
-		cp_list = frappe.get_list("Cutting Plan", filters={"work_order": work_order}, pluck="name")					
+		cp_list = frappe.get_all("Cutting Plan", filters={"work_order": work_order}, pluck="name")					
 		if cp_list and (self.from_address == self.supplier_address or not self.is_internal_unit):
 			cp_doc = frappe.get_doc("Cutting Plan", cp_list[0])
 			for dc_item in self.items:
