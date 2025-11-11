@@ -17,4 +17,7 @@ frappe.listview_settings["Cutting Plan"] = {
 		}
 		return [__(str), status_color[doc.cp_status], "cp_status,=," + doc.cp_status];
 	},
+	refresh(){
+		$(".layout-side-section").css("display", "none")
+	}
 };
