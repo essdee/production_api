@@ -1075,10 +1075,10 @@ def get_work_in_progress_report(category, status, lot_list_val, item_list, proce
 			"finishing_columns": {
 				"Dispatch": 'dispatch',
 				"In Packing": 'in_packing',
-				"Order to Dispatch Diff": "order_to_dispatch_diff", 
+				"Cut to Dispatch Diff": "cut_to_dispatch_diff", 
 			},
 		},
-		"diff_columns": ['order_to_cut_diff', 'cut_to_sew_diff', 'in_sew', 'in_packing', "order_to_dispatch_diff"],
+		"diff_columns": ['order_to_cut_diff', 'cut_to_sew_diff', 'in_sew', 'in_packing', "cut_to_dispatch_diff"],
 		"lot_data": {}
 	}
 	for lot in lot_list:
@@ -1103,7 +1103,7 @@ def get_work_in_progress_report(category, status, lot_list_val, item_list, proce
 			"finishing_details": {
 				"dispatch": 0,
 				"in_packing": 0,
-				"order_to_dispatch_diff": 0,
+				"cut_to_dispatch_diff": 0,
 			},
 			"last_cut_date": None,
 			"sew_sent_date": None,
@@ -1165,6 +1165,18 @@ def get_work_in_progress_report(category, status, lot_list_val, item_list, proce
 		finishing_plan_list =frappe.get_all("Finishing Plan", filters={
 			"lot": lot,
 		}, pluck="name")
+		part_qty = 1
+		is_set_item, set_attr = frappe.get_value("Item Production Detail", ipd, ["is_set_item", "set_item_attribute"])
+		if is_set_item:
+			mapping_value = frappe.db.sql(
+				f"""
+					SELECT mapping FROM `tabItem Item Attribute` 
+					WHERE parent = {frappe.db.escape(ipd)} AND attribute = {frappe.db.escape(set_attr)}
+				""", as_dict=True
+			)
+			if len(mapping_value) > 0:
+				map_doc = frappe.get_doc("Item Item Attribute Mapping", mapping_value[0]['mapping'])
+				part_qty = len(map_doc.values)
 
 		for finishing_plan in finishing_plan_list:
 			pcs_per_box = frappe.get_value("Finishing Plan", finishing_plan, "pieces_per_box")
@@ -1177,10 +1189,10 @@ def get_work_in_progress_report(category, status, lot_list_val, item_list, proce
 				}, as_dict=True
 			)
 			if finishing_detail:
-				lot_dict['lot_data'][lot]['finishing_details']['dispatch'] += (finishing_detail[0]['dispatch_qty'] * pcs_per_box)
+				lot_dict['lot_data'][lot]['finishing_details']['dispatch'] += (finishing_detail[0]['dispatch_qty'] * pcs_per_box * part_qty)
 		
 		lot_dict['lot_data'][lot]['finishing_details']['in_packing'] = lot_dict['lot_data'][lot]['finishing_details']['dispatch'] - lot_dict['lot_data'][lot]['sewing_details']['finishing_inward']
-		lot_dict['lot_data'][lot]['finishing_details']['order_to_dispatch_diff'] = lot_dict['lot_data'][lot]['finishing_details']['dispatch'] - lot_dict['lot_data'][lot]['cut_details']['order_qty']
+		lot_dict['lot_data'][lot]['finishing_details']['cut_to_dispatch_diff'] = lot_dict['lot_data'][lot]['finishing_details']['dispatch'] - lot_dict['lot_data'][lot]['cut_details']['cut_qty']
 		
 		process_dict, cut, piece = get_ipd_process_dict(ipd)
 		last_cut_process = None
@@ -1217,9 +1229,19 @@ def get_work_in_progress_report(category, status, lot_list_val, item_list, proce
 
 			wo_list = get_process_wo_list(process_name, lot)
 			if not wo_list:
-				lot_dict['lot_data'][lot][details_key][sent_val] = -1
-				lot_dict['lot_data'][lot][details_key][rec_val] = -1
-				lot_dict['lot_data'][lot][details_key][diff_val] = -1 
+				process_exist = frappe.db.sql(
+					f"""
+						SELECT name FROM `tabIPD Process` WHERE parent = {frappe.db.escape(ipd)}
+						AND process_name = {frappe.db.escape(process_name)}
+					""", as_dict=True
+				)
+				val = -1
+				if len(process_exist) > 0:
+					val = 0
+
+				lot_dict['lot_data'][lot][details_key][sent_val] = val
+				lot_dict['lot_data'][lot][details_key][rec_val] = val
+				lot_dict['lot_data'][lot][details_key][diff_val] = val 
 				continue
 			
 			for wo in wo_list:
@@ -1228,6 +1250,7 @@ def get_work_in_progress_report(category, status, lot_list_val, item_list, proce
 					lot_dict['lot_data'][lot][details_key][sent_val] += detail[0]['sent']
 					lot_dict['lot_data'][lot][details_key][rec_val] += detail[0]['received']
 					lot_dict['lot_data'][lot][details_key][diff_val] += (detail[0]['received'] - detail[0]['received'])
+
 			if process_dict[process_name] == cut:
 				if not last_cut_process:
 					against_key = process_name + " to Cut Diff"
@@ -1481,7 +1504,7 @@ def get_size_wise_stock_report(open_status, lot_list, item_list, category, proce
 	)
 	lot_dict = {
 		"lot_data": {},
-		"diff_rows": ["order_to_cut_diff","cut_to_sew_diff","in_sew","in_packing","order_to_dispatch_diff"],
+		"diff_rows": ["order_to_cut_diff","cut_to_sew_diff","in_sew","in_packing","cut_to_dispatch_diff"],
 		"rows": {
 			"cut_rows": {
 				"Order Qty": "order_qty",
@@ -1499,7 +1522,7 @@ def get_size_wise_stock_report(open_status, lot_list, item_list, category, proce
 			"finishing_rows": {
 				"Dispatch": 'dispatch',
 				"In Packing": 'in_packing',
-				"Order to Dispatch Diff": "order_to_dispatch_diff", 
+				"Cut to Dispatch Diff": "cut_to_dispatch_diff", 
 				"Work In Progress": "work_in_progress",
 			},
 		}
@@ -1529,7 +1552,7 @@ def get_size_wise_stock_report(open_status, lot_list, item_list, category, proce
 			"finishing_details": {
 				"dispatch": {},
 				"in_packing": {},
-				"order_to_dispatch_diff": {},
+				"cut_to_dispatch_diff": {},
 				"work_in_progress": {},
 			},
 			"total_details": {}
@@ -1551,7 +1574,7 @@ def get_size_wise_stock_report(open_status, lot_list, item_list, category, proce
 			lot_dict['lot_data'][lot]['sewing_details']['cut_to_sew_diff'].setdefault(size, 0)
 			lot_dict['lot_data'][lot]['finishing_details']['dispatch'].setdefault(size, 0)
 			lot_dict['lot_data'][lot]['finishing_details']['in_packing'].setdefault(size, 0)
-			lot_dict['lot_data'][lot]['finishing_details']['order_to_dispatch_diff'].setdefault(size, 0)
+			lot_dict['lot_data'][lot]['finishing_details']['cut_to_dispatch_diff'].setdefault(size, 0)
 			lot_dict['lot_data'][lot]['finishing_details']['work_in_progress'].setdefault(size, 0)
 
 			lot_dict['lot_data'][lot]['cut_details']['order_qty'][size] += row.quantity
@@ -1597,25 +1620,25 @@ def get_size_wise_stock_report(open_status, lot_list, item_list, category, proce
 			order_qty = lot_dict['lot_data'][lot]['cut_details']['order_qty'][size]
 			dispatch_qty = lot_dict['lot_data'][lot]['finishing_details']['dispatch'][size]
 			#diff detail
-			lot_dict['lot_data'][lot]['sewing_details']['in_sew'][size] += (sent - received)
+			lot_dict['lot_data'][lot]['sewing_details']['in_sew'][size] += (received - sent)
 			lot_dict['lot_data'][lot]['sewing_details']['cut_to_sew_diff'][size] += (sent - cut_qty)
 			lot_dict['lot_data'][lot]['cut_details']['order_to_cut_diff'][size] = (cut_qty - order_qty) 
 			lot_dict['lot_data'][lot]['finishing_details']['in_packing'][size] += (dispatch_qty - received)
-			lot_dict['lot_data'][lot]['finishing_details']['order_to_dispatch_diff'][size] += (dispatch_qty - order_qty)
+			lot_dict['lot_data'][lot]['finishing_details']['cut_to_dispatch_diff'][size] += (dispatch_qty - cut_qty)
 			lot_dict['lot_data'][lot]['finishing_details']['work_in_progress'][size] += (cut_qty - dispatch_qty)
 			#total details
 			lot_dict['lot_data'][lot]['total_details'].setdefault("in_sew_total", 0)
 			lot_dict['lot_data'][lot]['total_details'].setdefault("cut_to_sew_diff_total", 0)
 			lot_dict['lot_data'][lot]['total_details'].setdefault("order_to_cut_diff_total", 0)
 			lot_dict['lot_data'][lot]['total_details'].setdefault("in_packing_total", 0)
-			lot_dict['lot_data'][lot]['total_details'].setdefault("order_to_dispatch_diff_total", 0)
+			lot_dict['lot_data'][lot]['total_details'].setdefault("cut_to_dispatch_diff_total", 0)
 			lot_dict['lot_data'][lot]['total_details'].setdefault("work_in_progress_total", 0)
 			#diff total
-			lot_dict['lot_data'][lot]['total_details']["in_sew_total"] += (sent - received)
+			lot_dict['lot_data'][lot]['total_details']["in_sew_total"] += (received - sent)
 			lot_dict['lot_data'][lot]['total_details']["cut_to_sew_diff_total"] += (sent - cut_qty)
 			lot_dict['lot_data'][lot]['total_details']["order_to_cut_diff_total"] += (cut_qty - order_qty)
 			lot_dict['lot_data'][lot]['total_details']["in_packing_total"] += (dispatch_qty - received)
-			lot_dict['lot_data'][lot]['total_details']["order_to_dispatch_diff_total"] += (dispatch_qty - order_qty)
+			lot_dict['lot_data'][lot]['total_details']["cut_to_dispatch_diff_total"] += (dispatch_qty - cut_qty)
 			lot_dict['lot_data'][lot]['total_details']["work_in_progress_total"] += (cut_qty - dispatch_qty)
 
 		process_dict, cut, piece = get_ipd_process_dict(lot_doc.production_detail)
@@ -1847,7 +1870,7 @@ def get_colour_wise_diff_report(lot, process_list):
 			lot_dict['values'][colour]['total_details']["sewing_sent_total"] += sent
 			lot_dict['values'][colour]['total_details']["finishing_inward_total"] += received
 			#diff detail
-			lot_dict['values'][colour]['sewing_details']['in_sew'][size] += (sent - received)
+			lot_dict['values'][colour]['sewing_details']['in_sew'][size] += (received - sent)
 			lot_dict['values'][colour]['sewing_details']['cut_to_sew_diff'][size] += (sent - cut_qty)
 			lot_dict['values'][colour]['cut_details']['order_to_cut_diff'][size] = (cut_qty - order_qty) 
 			#total details
@@ -1855,7 +1878,7 @@ def get_colour_wise_diff_report(lot, process_list):
 			lot_dict['values'][colour]['total_details'].setdefault("cut_to_sew_diff_total", 0)
 			lot_dict['values'][colour]['total_details'].setdefault("order_to_cut_diff_total", 0)
 			#diff total
-			lot_dict['values'][colour]['total_details']["in_sew_total"] += (sent - received)
+			lot_dict['values'][colour]['total_details']["in_sew_total"] += (received - sent)
 			lot_dict['values'][colour]['total_details']["cut_to_sew_diff_total"] += (sent - cut_qty)
 			lot_dict['values'][colour]['total_details']["order_to_cut_diff_total"] += (cut_qty - order_qty)
 

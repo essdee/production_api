@@ -250,22 +250,24 @@ def convert_received_type(rejection_data, docname, lot):
 	sl_entries = []
 	table_data = []
 	for row in rejection_data:
-		sl_entries.append({
-			"item": row['variant'],
-			"warehouse": warehouse,
-			"received_type": row['received_type'],
-			"lot": lot,
-			"voucher_type": "GRN Rework Item",
-			"voucher_no": docname,
-			"voucher_detail_no": row['row_name'],
-			"qty": row['rework_qty'] * -1,
-			"uom": row['uom'],
-			"rate": 0,
-			"valuation_rate": 0,
-			"is_cancelled": 0,
-			"posting_date": frappe.utils.nowdate(),
-			"posting_time": frappe.utils.nowtime(),
-		})	
+		if row['rework_qty'] > 0:
+			sl_entries.append({
+				"item": row['variant'],
+				"warehouse": warehouse,
+				"received_type": row['received_type'],
+				"lot": lot,
+				"voucher_type": "GRN Rework Item",
+				"voucher_no": docname,
+				"voucher_detail_no": row['row_name'],
+				"qty": row['rework_qty'] * -1,
+				"uom": row['uom'],
+				"rate": 0,
+				"valuation_rate": 0,
+				"is_cancelled": 0,
+				"posting_date": frappe.utils.nowdate(),
+				"posting_time": frappe.utils.nowtime(),
+			})	
+			
 		if row['rejected'] > 0:
 			sl_entries.append({
 				"item": row['variant'],
@@ -301,6 +303,8 @@ def convert_received_type(rejection_data, docname, lot):
 				"posting_date": frappe.utils.nowdate(),
 				"posting_time": frappe.utils.nowtime(),
 			})	
+
+		if row['rework_qty'] - row['rejected'] > 0 or row['rejected'] > 0:
 			table_data.append({
 				"item_variant": row['variant'],
 				"quantity": row['rework_qty'] - row['rejected'],
@@ -309,7 +313,7 @@ def convert_received_type(rejection_data, docname, lot):
 				"reworked_time": frappe.utils.now_datetime(),
 				"rejected": row['rejected'],
 				"set_combination": frappe.json.dumps(row['set_combination'])
-			})		
+			})
 
 	finishing_docs = frappe.get_all("Finishing Plan", filters={"lot": lot}, pluck="name", limit=1)		
 	finishing_data = {}
