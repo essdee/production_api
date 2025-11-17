@@ -199,7 +199,33 @@ class StockEntry(Document):
 							item.ste_delivered_quantity += ste_item.qty
 							qty += ste_item.qty
 							break
-						
+
+			if self.purpose == 'DC Completion':
+				work_order = frappe.get_value(self.against, self.against_id, "work_order")
+				cp_list = frappe.get_list("Cutting Plan", filters={"work_order": work_order}, pluck="name")					
+				if cp_list:
+					cp_doc = frappe.get_doc("Cutting Plan", cp_list[0])
+					for ste_item in self.items:
+						check = False
+						for item in cp_doc.cutting_plan_cloth_details:
+							if item.cloth_item_variant == ste_item.item:	
+								check = True
+								item.weight += ste_item.qty
+								break
+						if not check:
+							parent_item = frappe.get_value("Item Variant", ste_item.item, "item")
+							ipd = frappe.get_value("Lot", ste_item.lot, "production_detail")
+							cloth_list = frappe.db.sql(
+								f"""
+									SELECT name FROM `tabItem Production Detail Cloth Detail` WHERE
+									parent = {frappe.db.escape(ipd)} AND cloth = {frappe.db.escape(parent_item)} 
+								""", as_dict=True
+							)
+							if cloth_list:
+								frappe.throw(f"Item {ste_item.item} not in Cutting Plan")
+
+					cp_doc.save(ignore_permissions=True)
+
 			if round(qty - now_delivered,3) > round(total_quantity,3):
 				frappe.throw("High Amount of Items Received")
 			x = qty / total_quantity
@@ -271,6 +297,19 @@ class StockEntry(Document):
 							item.ste_delivered_quantity -= ste_item.qty
 							qty += ste_item.qty
 							break
+			
+			if self.purpose == 'DC Completion':
+				work_order = frappe.get_value(self.against, self.against_id, "work_order")
+				cp_list = frappe.get_list("Cutting Plan", filters={"work_order": work_order}, pluck="name")					
+				if cp_list:
+					cp_doc = frappe.get_doc("Cutting Plan", cp_list[0])
+					for ste_item in self.items:
+						for item in cp_doc.cutting_plan_cloth_details:
+							if item.cloth_item_variant == ste_item.item:	
+								item.weight -= ste_item.qty
+								break
+					cp_doc.save(ignore_permissions=True)	
+
 			x = qty / total_quantity
 			x = x * 100
 			doc.ste_transferred_percent = doc.ste_transferred_percent - x

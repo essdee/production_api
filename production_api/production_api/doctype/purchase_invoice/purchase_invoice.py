@@ -6,6 +6,7 @@ from six import string_types
 from itertools import groupby
 from frappe.model.document import Document
 from frappe.utils.data import money_in_words
+from erpnext.accounts.doctype.tax_rule.tax_rule import get_party_details
 from production_api.production_api.doctype.item.item import get_or_create_variant
 from production_api.utils import update_if_string_instance, get_variant_attr_details
 from production_api.production_api.doctype.mrp_settings.mrp_settings import get_purchase_invoice_series, post_erp_request
@@ -46,11 +47,30 @@ class PurchaseInvoice(Document):
 			self.set("purchase_invoice_debit_details", [])	
 	
 	def calculate_total(self):		
+		from frappe.contacts.doctype.address.address import get_default_address
+		from erpnext import get_default_company
+		sup_address = get_default_address("Supplier", self.supplier)
+		self.pan_no = frappe.get_value("Supplier", self.supplier, "pan")
+		if sup_address:
+			gstin = frappe.get_value("Address", sup_address, "gstin")
+			if gstin:
+				self.gstin = gstin
+				company_gstin = frappe.db.get_single_value("Company Settings", "gstin")[0:2]
+				if gstin.startswith(company_gstin):
+					self.gst_state = 'In-State'
+				else:
+					self.gst_state = 'Out-State'
+		else:
+			frappe.throw("No Address for this Supplier")
+		
 		total_amount = 0
 		total_tax = 0
 		grand_total = 0
 		total_quantity = 0
+		no_tax = False
 		for item in self.items:
+			if self.against == 'Work Order' and self.gst_state and not item.tax:
+				no_tax = True
 			# Item Total
 			item_total = item.rate * item.qty
 			total_amount += item_total
@@ -61,6 +81,9 @@ class PurchaseInvoice(Document):
 			total = item_total + tax
 			grand_total += total
 			total_quantity += item.qty
+		
+		if no_tax:
+			frappe.msgprint("Tax not Applied for this Supplier")
 
 		if self.against == 'Purchase Order':
 			if grand_total > self.grn_grand_total:

@@ -11,6 +11,9 @@
   "supplier",
   "against",
   "due_date",
+  "gstin",
+  "pan_no",
+  "gst_state",
   "column_break_cob1e",
   "posting_date",
   "posting_time",
@@ -337,12 +340,31 @@
    "fieldname": "fetch_expense_head",
    "fieldtype": "Button",
    "label": "Fetch Expense Head"
+  },
+  {
+   "fieldname": "gst_state",
+   "fieldtype": "Select",
+   "hidden": 1,
+   "label": "GST State",
+   "options": "\nIn-State\nOut-State"
+  },
+  {
+   "fieldname": "gstin",
+   "fieldtype": "Data",
+   "label": "GSTIN",
+   "read_only": 1
+  },
+  {
+   "fieldname": "pan_no",
+   "fieldtype": "Data",
+   "label": "PAN NO",
+   "read_only": 1
   }
  ],
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-11-04 11:39:29.823070",
+ "modified": "2025-11-10 14:34:51.092618",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Purchase Invoice",

@@ -37,7 +37,22 @@ class CuttingLaySheet(Document):
 				}
 				self.set_onload("marker_details", details)
 
+	def after_insert(self):
+		if self.lay_no == 1:
+			frappe.db.sql(
+				f"""
+					UPDATE `tabCutting Plan` SET cp_status = 'Cutting In Progress' 
+					WHERE name = {frappe.db.escape(self.cutting_plan)}
+				"""
+			)
+
 	def before_validate(self):
+		status, docstatus = frappe.get_value("Cutting Plan", self.cutting_plan, ["cp_status", "docstatus"])
+		if docstatus == 0:
+			frappe.throw("Cutting Plan was not Submitted")
+		if status == 'Planned':
+			frappe.throw("Cloths Not Received in Cutting Plan")
+			
 		if frappe.flags.in_patch:
 			return
 		if self.lay_no == 1:
@@ -58,7 +73,7 @@ class CuttingLaySheet(Document):
 			items = save_accessory_details(self.item_accessory_details, self.cutting_plan)	
 			self.set("cutting_laysheet_accessory_details", items)
 
-		status = frappe.get_value("Cutting Plan",self.cutting_plan,"status")	
+		status = frappe.get_value("Cutting Plan",self.cutting_plan,"cp_status")	
 		if status == "Completed":
 			frappe.throw("Select the Incompleted Cutting Plan")
 		

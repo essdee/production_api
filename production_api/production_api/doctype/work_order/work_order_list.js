@@ -16,5 +16,19 @@ frappe.listview_settings['Work Order'] = {
         reorder_fields.map((df) => {
             cur_list.filter_area.list_view.page.add_field(df, standard_filters_wrapper);
         });
+    },
+    refresh: function(frm){
+        let process = localStorage.getItem("process")
+        let lot = localStorage.getItem("lot")
+        localStorage.removeItem("process")
+        localStorage.removeItem("lot")
+        if(process && lot){
+            frm.filter_area.set([
+                ["Work Order", "process_name", "=", process],
+                ["Work Order", "docstatus", "=", 1],
+                ["Work Order", "lot", "=", lot],
+            ]);
+            frm.refresh();
+        }
     }
 };

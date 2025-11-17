@@ -9,7 +9,15 @@
                     <th>Lot</th>
                     <th>Rate</th>
                     <th>Quantity</th>
+                    <template v-if="gst_state && gst_state == 'In-State'">
+                        <th>CGST</th>
+                        <th>SGST</th>
+                    </template>
+                    <template v-if="gst_state == 'Out-State'">
+                        <th>IGST</th>
+                    </template>
                     <th>Amount</th>
+                    <th v-if="gst_state">Total</th>
                 </tr>
                 <tr v-for="(cost_data, idx) in cost_value">
                     <td>{{ idx + 1 }}</td>
@@ -17,7 +25,15 @@
                     <td>{{ cost_data['lot'] }}</td>
                     <td>{{ cost_data['rate'] }}</td>
                     <td>{{ cost_data['qty'] }}</td>
+                    <template v-if="gst_state && gst_state == 'In-State'">
+                        <td>{{ cost_data['igst']/2 }}</td>
+                        <td>{{ cost_data['igst']/2 }}</td>
+                    </template>
+                    <template v-if="gst_state == 'Out-State'">
+                        <td>{{ cost_data['igst'] }}</td>
+                    </template>
                     <th>{{ cost_data['total_amount'] }}</th>
+                    <th v-if="gst_state">{{ parseInt(cost_data['total_amount']) + parseInt(cost_data['igst']) }}</th>
                 </tr>
                 <tr>
                     <th>Total</th>
@@ -25,7 +41,15 @@
                     <td></td>
                     <td></td>
                     <td></td>
+                    <template v-if="gst_state && gst_state == 'In-State'">
+                        <th>{{ total_tax/2 }}</th>
+                        <th>{{ total_tax/2 }}</th>
+                    </template>
+                    <template v-if="gst_state == 'Out-State'">
+                        <th>{{ total_tax }}</th>
+                    </template>
                     <th>{{ total_amount }}</th>
+                    <th  v-if="gst_state">{{ parseInt(total_amount) + parseInt(total_tax) }}</th>
                 </tr>
             </table>
         </div>
@@ -114,17 +138,20 @@ let docstatus = cur_frm.doc.docstatus
 let user_role = ref(null)
 let approved_by = cur_frm.doc.approved_by
 let senior_approved = cur_frm.doc.senior_merch_approved_by
+let gst_state = cur_frm.doc.gst_state
+let total_tax = ref(0)
 
 onMounted(() => {
     const grouped = {}
     cur_frm.doc.items.forEach(row => {
-        const key = `${row.lot}_${row.item}_${row.rate}`
+        const key = `${row.lot}_${row.item}_${row.rate}_${row.tax}`
         if (!grouped[key]) {
             grouped[key] = {
                 lot: row.lot,
                 item: row.item,
                 rate: row.rate,
-                qty: row.qty || 0
+                qty: row.qty || 0,
+                tax: row.tax,
             }
         } else {
             grouped[key].qty += row.qty || 0
@@ -133,6 +160,11 @@ onMounted(() => {
     Object.keys(grouped).forEach((key)=> {
         let amt = grouped[key]['rate'] * grouped[key]['qty']
         grouped[key]['total_amount'] = amt
+        if(gst_state){
+            let tax_amt = (amt/100) * grouped[key]['tax']
+            grouped[key]['igst'] = tax_amt
+            total_tax.value += tax_amt
+        }
         total_amount.value += amt
     })
     cost_value.value = Object.values(grouped)

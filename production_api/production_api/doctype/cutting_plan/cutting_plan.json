@@ -11,8 +11,9 @@
   "maximum_no_of_plys",
   "lay_no",
   "naming_series",
-  "status",
+  "cp_status",
   "version",
+  "no_of_colours",
   "column_break_nvaz",
   "item",
   "maximum_allow_percent",
@@ -20,6 +21,8 @@
   "ipd_cutting_attribute",
   "cutting_location",
   "work_order",
+  "open_status",
+  "no_of_colours_completed",
   "section_break_krhn",
   "items",
   "items_html",
@@ -34,7 +37,8 @@
   "incomplete_items_json",
   "incompleted_items_html",
   "planned_detail_tab",
-  "planned_details_html"
+  "planned_details_html",
+  "amended_from"
  ],
  "fields": [
   {
@@ -68,6 +72,7 @@
    "options": "Item Production Detail"
   },
   {
+   "allow_on_submit": 1,
    "default": "0",
    "fieldname": "lay_no",
    "fieldtype": "Int",
@@ -95,6 +100,7 @@
    "fieldtype": "Section Break"
   },
   {
+   "allow_on_submit": 1,
    "fieldname": "cutting_plan_cloth_details",
    "fieldtype": "Table",
    "hidden": 1,
@@ -143,6 +149,7 @@
    "label": "Summary"
   },
   {
+   "allow_on_submit": 1,
    "fieldname": "cutting_plan_accessory_details",
    "fieldtype": "Table",
    "hidden": 1,
@@ -155,12 +162,14 @@
    "label": "Accessory HTML"
   },
   {
+   "allow_on_submit": 1,
    "fieldname": "completed_items_json",
    "fieldtype": "JSON",
    "hidden": 1,
    "label": "Completed Items JSON"
   },
   {
+   "allow_on_submit": 1,
    "fieldname": "incomplete_items_json",
    "fieldtype": "JSON",
    "hidden": 1,
@@ -177,15 +186,6 @@
    "label": "Incompleted Items HTML"
   },
   {
-   "default": "Started",
-   "fieldname": "status",
-   "fieldtype": "Select",
-   "in_list_view": 1,
-   "label": "Status",
-   "options": "Started\nCompleted",
-   "read_only": 1
-  },
-  {
    "fieldname": "version",
    "fieldtype": "Select",
    "hidden": 1,
@@ -193,6 +193,7 @@
    "options": "\nV1\nV2\nV3"
   },
   {
+   "allow_on_submit": 1,
    "fieldname": "work_order",
    "fieldtype": "Link",
    "label": "Work Order",
@@ -215,10 +216,53 @@
    "fieldname": "planned_details_html",
    "fieldtype": "HTML",
    "label": "Planned Details HTML"
+  },
+  {
+   "fieldname": "amended_from",
+   "fieldtype": "Link",
+   "label": "Amended From",
+   "no_copy": 1,
+   "options": "Cutting Plan",
+   "print_hide": 1,
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "open_status",
+   "fieldtype": "Select",
+   "in_standard_filter": 1,
+   "label": "Open Status",
+   "options": "\nOpen\nClosed",
+   "read_only": 1
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "no_of_colours",
+   "fieldtype": "Int",
+   "label": "No of Colours",
+   "read_only": 1
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "no_of_colours_completed",
+   "fieldtype": "Int",
+   "label": "No of Colours Completed",
+   "read_only": 1
+  },
+  {
+   "allow_on_submit": 1,
+   "default": "Draft",
+   "fieldname": "cp_status",
+   "fieldtype": "Select",
+   "in_standard_filter": 1,
+   "label": "CP Status",
+   "options": "\nDraft\nPlanned\nFabric Partially Received\nReady to Cut\nCutting In Progress\nPartially Completed\nCompleted\nCut Panel Dispatch Pending",
+   "read_only": 1
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
+ "is_submittable": 1,
  "links": [
   {
    "link_doctype": "Cutting Marker",
@@ -229,7 +273,7 @@
    "link_fieldname": "cutting_plan"
   }
  ],
- "modified": "2025-11-04 12:03:01.518860",
+ "modified": "2025-11-11 12:52:05.405113",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Cutting Plan",
@@ -237,6 +281,7 @@
  "owner": "Administrator",
  "permissions": [
   {
+   "cancel": 1,
    "create": 1,
    "delete": 1,
    "email": 1,
@@ -246,6 +291,7 @@
    "report": 1,
    "role": "System Manager",
    "share": 1,
+   "submit": 1,
    "write": 1
   },
   {
@@ -256,7 +302,8 @@
    "report": 1,
    "role": "Cutting User",
    "select": 1,
-   "share": 1
+   "share": 1,
+   "write": 1
   },
   {
    "create": 1,
@@ -278,7 +325,8 @@
    "report": 1,
    "role": "CAD User",
    "select": 1,
-   "share": 1
+   "share": 1,
+   "write": 1
   },
   {
    "email": 1,
@@ -300,6 +348,7 @@
    "report": 1,
    "role": "T & A Manager",
    "share": 1,
+   "submit": 1,
    "write": 1
   },
   {
@@ -362,7 +411,8 @@
    "read": 1,
    "report": 1,
    "role": "Merchandiser",
-   "share": 1
+   "share": 1,
+   "write": 1
   }
  ],
  "row_format": "Dynamic",
