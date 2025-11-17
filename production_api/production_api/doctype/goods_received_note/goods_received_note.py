@@ -1909,27 +1909,29 @@ def get_packing_process_deliverables(grn_doc):
 		})
 	item_name = frappe.get_value(grn_doc.against, grn_doc.against_id, "item")
 	excess_items = {}
-	for d in deliverables:
-		if d['quantity'] > d['stock']:
-			item = frappe.get_value("Item Variant", d['item_variant'], "item")
-			if item == item_name:
-				excess_items.setdefault(d['item_variant'], {
-					"qty": 0,
-					"uom": d['uom'],
-					"rate": d['valuation_rate'],
-				})
-				excess_items[d['item_variant']]['qty'] += d['quantity'] - d['stock']
-				d['quantity'] -= (d['quantity'] - d['stock'])
-	
 	excess_items_list = []
-	default_received_type = frappe.db.get_single_value("Stock Settings", "default_received_type")
-	for d in excess_items:			
-		excess_items_list.append({
-			"item_variant": d,
-			"excess_quantity": excess_items[d]['qty'],
-			"uom": excess_items[d]['uom'],
-			"rate": excess_items[d]['rate'],
-		})
+	allow_excess = frappe.db.get_single_value("MRP Settings", "allow_excess_grn")
+	if allow_excess:
+		for d in deliverables:
+			if d['quantity'] > d['stock']:
+				item = frappe.get_value("Item Variant", d['item_variant'], "item")
+				if item == item_name:
+					excess_items.setdefault(d['item_variant'], {
+						"qty": 0,
+						"uom": d['uom'],
+						"rate": d['valuation_rate'],
+					})
+					excess_items[d['item_variant']]['qty'] += d['quantity'] - d['stock']
+					d['quantity'] -= (d['quantity'] - d['stock'])
+		
+		default_received_type = frappe.db.get_single_value("Stock Settings", "default_received_type")
+		for d in excess_items:			
+			excess_items_list.append({
+				"item_variant": d,
+				"excess_quantity": excess_items[d]['qty'],
+				"uom": excess_items[d]['uom'],
+				"rate": excess_items[d]['rate'],
+			})
 	return deliverables, excess_items_list
 
 def get_bom(bom_item, total_piece_qty, lot_item_detail, lot_doc, ipd_doc, packing_combo):

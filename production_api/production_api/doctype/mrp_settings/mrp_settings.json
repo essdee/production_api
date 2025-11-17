@@ -38,6 +38,7 @@
   "cutting_plan_section",
   "cloth_allowance_percentage",
   "work_order_section",
+  "allow_excess_grn",
   "received_type_list",
   "time_and_action_tracking_order_report_days",
   "additional_grn_submit_role",
@@ -289,13 +290,19 @@
    "fieldname": "cloth_allowance_percentage",
    "fieldtype": "Float",
    "label": "Cloth Allowance Percentage"
+  },
+  {
+   "default": "0",
+   "fieldname": "allow_excess_grn",
+   "fieldtype": "Check",
+   "label": "Allow Excess GRN"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2025-11-07 18:11:21.097668",
+ "modified": "2025-11-17 16:19:31.601004",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "MRP Settings",
