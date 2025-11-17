@@ -3,6 +3,9 @@
 
 frappe.ui.form.on("Vendor Bill Tracking", {
   async refresh(frm) {
+		if(frm.is_new()){
+			remove_existing_fields(frm);
+		}
 		$(frm.fields_dict["delivery_person_suggestion_html"].wrapper).html("");
 		if (frm.doc.docstatus == 0) {
 			frm.delivery_person_suggestion = new frappe.production.ui.SuggestedVendorBillDeliveryPerson(
@@ -101,6 +104,15 @@ frappe.ui.form.on("Vendor Bill Tracking", {
 		}
 	},
 });
+
+function remove_existing_fields(frm){
+	frm.set_value('purchase_invoice', null);
+	frm.set_value('mrp_purchase_invoice', null);
+	frm.set_value('form_status', null);
+	frm.set_value('assigned_to', null);
+	frm.set_value('vendor_bill_tracking_history', []);
+	frm.refresh_fields();
+}
 async function show_bill_received(frm) {
 	if (!frm.doc.assigned_to) return false;
 	let last_item = null;
