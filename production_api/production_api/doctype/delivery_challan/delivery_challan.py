@@ -1153,7 +1153,7 @@ def update_finishing_item_doc(doc_name, finishing_doc_name, update_dc:bool):
 		dc_list[doc_name] = frappe.utils.now_datetime().strftime("%d-%m-%Y %H:%M:%S")
 	finishing_doc.dc_list = frappe.json.dumps(dc_list)
 
-	if self.is_internal_unit:
+	if self.is_internal_unit and self.supplier_address != self.from_address:
 		incomplete_transfer_dc_list = update_if_string_instance(finishing_doc.incomplete_transfer_dc_list)
 		if self.docstatus == 2:
 			del incomplete_transfer_dc_list[self.name]

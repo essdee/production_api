@@ -29,10 +29,9 @@ def get_stock_summary(lot, item, item_variant, warehouse, received_type):
 		filters['warehouse'] = warehouse
 	if received_type:
 		filters['received_type'] = received_type
-	
+	lot = update_if_string_instance(lot)
 	report_data = []
-	if lot:
-		lot = update_if_string_instance(lot)
+	if len(lot) > 0:
 		for lot_name in lot:
 			filters['lot'] = lot_name['lot']
 			x = get_item_balance(filters)
