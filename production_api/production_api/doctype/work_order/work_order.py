@@ -1622,7 +1622,9 @@ def update_receivables(receivables_data, doc_name):
 	for receivable in receivables_data:
 		for item in receivable['items']:
 			for val in item['values']:
-				cost = item['values'][val]['cost']
+				if not item['values'][val].get('ref_docname'):
+					continue
+				cost = item['values'][val].get('cost', 0)
 				ref_docname = item['values'][val]['ref_docname'] 
 				frappe.db.sql(
 					"""

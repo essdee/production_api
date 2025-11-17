@@ -1835,10 +1835,16 @@ def get_colour_wise_diff_report(lot, process_list):
 
 		lot_dict['values'][colour]['cut_details']['order_qty'][size] += row.quantity
 		lot_dict['values'][colour]['cut_details']['cut_qty'][size] += row.cut_qty
+		lot_dict['values'][colour]['cut_details']['order_to_cut_diff'][size] += (row.cut_qty - row.quantity) 
+
 		lot_dict['values'][colour]['total_details'].setdefault("order_qty_total", 0)
 		lot_dict['values'][colour]['total_details'].setdefault("cut_qty_total", 0)
+		lot_dict['values'][colour]['total_details'].setdefault("order_to_cut_diff_total", 0)
+
 		lot_dict['values'][colour]['total_details']["order_qty_total"] += row.quantity
 		lot_dict['values'][colour]['total_details']["cut_qty_total"] += row.cut_qty
+		lot_dict['values'][colour]['total_details']["order_to_cut_diff_total"] += (row.cut_qty - row.quantity)
+
 	
 	cut_wo_list = get_process_wo_list(cutting, lot)
 	if cut_wo_list:
@@ -1872,20 +1878,17 @@ def get_colour_wise_diff_report(lot, process_list):
 			#diff detail
 			lot_dict['values'][colour]['sewing_details']['in_sew'][size] += (received - sent)
 			lot_dict['values'][colour]['sewing_details']['cut_to_sew_diff'][size] += (sent - cut_qty)
-			lot_dict['values'][colour]['cut_details']['order_to_cut_diff'][size] = (cut_qty - order_qty) 
 			#total details
 			lot_dict['values'][colour]['total_details'].setdefault("in_sew_total", 0)
 			lot_dict['values'][colour]['total_details'].setdefault("cut_to_sew_diff_total", 0)
-			lot_dict['values'][colour]['total_details'].setdefault("order_to_cut_diff_total", 0)
 			#diff total
 			lot_dict['values'][colour]['total_details']["in_sew_total"] += (received - sent)
 			lot_dict['values'][colour]['total_details']["cut_to_sew_diff_total"] += (sent - cut_qty)
-			lot_dict['values'][colour]['total_details']["order_to_cut_diff_total"] += (cut_qty - order_qty)
 
 			lot_dict['values'][colour]['supplier_details'].setdefault('sewing_sent', [])
 			if wo_doc.supplier_name not in lot_dict['values'][colour]['supplier_details']['sewing_sent']:
 				lot_dict['values'][colour]['supplier_details']['sewing_sent'].append(wo_doc.supplier_name)	
-
+	
 	process_dict, cut, piece = get_ipd_process_dict(lot_doc.production_detail)
 	for process in process_list:
 		process_name = process['process_name']

@@ -54,16 +54,15 @@ frappe.ui.form.on("Finishing Plan", {
         }
         $(frm.fields_dict['incomplete_transfer_items_html'].wrapper).html("")
         new frappe.production.ui.FinishingPlanCompleteTransfer(frm.fields_dict['incomplete_transfer_items_html'].wrapper)
-    },
-    fetch_quantity(frm){
-        frappe.call({
-            method: "production_api.production_api.doctype.finishing_plan.finishing_plan.fetch_quantity",
-            args: {
-                doc_name: frm.doc.name,
-                work_order: frm.doc.work_order
-            },
-            freeze: true,
-            freeze_message: "Fetching Quantity",
+        frm.add_custom_button("Fetch Rejected Quantity", ()=> {
+            frappe.call({
+                method: "production_api.production_api.doctype.finishing_plan.finishing_plan.fetch_rejected_quantity",
+                args: {
+                    doc_name: frm.doc.name,
+                },
+                freeze: true,
+                freeze_message: "Fetching Quantity",
+            })
         })
     },
     fetch_incomplete_items(frm){

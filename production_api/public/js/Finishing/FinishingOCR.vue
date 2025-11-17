@@ -53,7 +53,25 @@
                                     </th>
                                 </tr>
                                 <tr>
-                                    <th :colspan="2">Finishing Inward ( D )</th>
+                                    <th :colspan="2">Old Lot ( D1 )</th>
+                                    <td v-for="size in items.primary_values">
+                                        {{ items['ocr_data'][part_value]['total'][size]['old_lot'] }}
+                                    </td>
+                                    <th>
+                                        {{ items['ocr_data'][part_value]['old_lot'] }}
+                                    </th>
+                                </tr>
+                                <tr>
+                                    <th :colspan="2">Ironing Excess ( D2 )</th>
+                                    <td v-for="size in items.primary_values">
+                                        {{ items['ocr_data'][part_value]['total'][size]['ironing_excess'] }}
+                                    </td>
+                                    <th>
+                                        {{ items['ocr_data'][part_value]['ironing_excess'] }}
+                                    </th>
+                                </tr>
+                                <tr>
+                                    <th :colspan="2">Finishing Inward ( D3 )</th>
                                     <td v-for="size in items.primary_values">
                                         {{ items['ocr_data'][part_value]['total'][size]['dc_qty'] }}
                                     </td>
@@ -62,13 +80,22 @@
                                     </th>
                                 </tr>
                                 <tr>
-                                    <th :colspan="2">Difference ( D - C )</th>
+                                    <th :colspan="2">Difference ( D3 - C )</th>
                                     <td v-for="size in items.primary_values" 
                                         :style="get_style(items['ocr_data'][part_value]['total'][size]['dc_qty'] - items['ocr_data'][part_value]['total'][size]['sewing_received'])">
                                         {{ items['ocr_data'][part_value]['total'][size]['dc_qty'] - items['ocr_data'][part_value]['total'][size]['sewing_received'] }}
                                     </td>
                                     <th :style="get_style(items['ocr_data'][part_value]['dc_qty'] - items['ocr_data'][part_value]['sewing_received'])">
                                         {{ items['ocr_data'][part_value]['dc_qty'] - items['ocr_data'][part_value]['sewing_received'] }}
+                                    </th>
+                                </tr>
+                                <tr>
+                                    <th :colspan="2">Total Inward ( D ) (D1 + D2 + D3)</th>
+                                    <td v-for="size in items.primary_values">
+                                        {{ items['ocr_data'][part_value]['total'][size]['total_inward'] }}
+                                    </td>
+                                    <th>
+                                        {{ items['ocr_data'][part_value]['total_inward'] }}
                                     </th>
                                 </tr>
                                 <tr>
@@ -92,11 +119,11 @@
                                 <tr>
                                     <th :colspan="2">Difference ( E - D )</th>
                                     <td v-for="size in items.primary_values" 
-                                        :style="get_style(items['ocr_data'][part_value]['total'][size]['packed_box_qty'] - items['ocr_data'][part_value]['total'][size]['dc_qty'])">
-                                        {{ items['ocr_data'][part_value]['total'][size]['packed_box_qty'] - items['ocr_data'][part_value]['total'][size]['dc_qty'] }}
+                                        :style="get_style(items['ocr_data'][part_value]['total'][size]['packed_box_qty'] - items['ocr_data'][part_value]['total'][size]['total_inward'])">
+                                        {{ items['ocr_data'][part_value]['total'][size]['packed_box_qty'] - items['ocr_data'][part_value]['total'][size]['total_inward'] }}
                                     </td>
-                                    <th :style="get_style(items['ocr_data'][part_value]['packed_box_qty'] - items['ocr_data'][part_value]['dc_qty'])">
-                                        {{ items['ocr_data'][part_value]['packed_box_qty'] - items['ocr_data'][part_value]['dc_qty'] }}
+                                    <th :style="get_style(items['ocr_data'][part_value]['packed_box_qty'] - items['ocr_data'][part_value]['total_inward'])">
+                                        {{ items['ocr_data'][part_value]['packed_box_qty'] - items['ocr_data'][part_value]['total_inward'] }}
                                     </th>
                                 </tr>
                                 <tr>
@@ -363,7 +390,9 @@ function get_ocr_value(part_value){
 
 function get_cut_to_dispatch(part_value){
     return {
-        "val1": items.value['ocr_data'][part_value]['cutting'],
+        "val1": items.value['ocr_data'][part_value]['cutting'] + 
+                items.value['ocr_data'][part_value]['old_lot'] + 
+                items.value['ocr_data'][part_value]['ironing_excess'],
         "val2": items.value['ocr_data'][part_value]['packed_box_qty'],
     }
 }
@@ -377,7 +406,9 @@ function get_cut_to_inward(part_value){
 
 function get_inward_to_dispatch(part_value){
     return {
-        "val1": items.value['ocr_data'][part_value]['sewing_received'], 
+        "val1": items.value['ocr_data'][part_value]['sewing_received'] +
+                items.value['ocr_data'][part_value]['old_lot'] + 
+                items.value['ocr_data'][part_value]['ironing_excess'], 
         "val2": items.value['ocr_data'][part_value]['packed_box_qty']
     }
 }

@@ -78,6 +78,9 @@ class FinishingPlan(Document):
 				"loose_piece_set": 0,
 				"pending": 0,
 				"sewing_received": 0,
+				"old_lot": 0,
+				"ironing_excess": 0,
+				"total_inward": 0,
 			})
 			size = attr_details[primary_attr]
 			ocr_data[part_value]['total'].setdefault(size, {
@@ -90,6 +93,9 @@ class FinishingPlan(Document):
 				"loose_piece_set": 0,
 				"pending": 0,
 				"sewing_received": 0,
+				"old_lot": 0,
+				"ironing_excess": 0,
+				"total_inward": 0,
 			})
 			
 			set_comb = update_if_string_instance(row.set_combination)
@@ -114,6 +120,13 @@ class FinishingPlan(Document):
 			ocr_data[part_value]['dc_qty'] += (row.dc_qty + row.return_qty + row.pack_return_qty)
 			ocr_data[part_value]['total'][size]['cutting_qty'] += row.cutting_qty
 			ocr_data[part_value]['total'][size]['dc_qty'] += (row.dc_qty + row.return_qty + row.pack_return_qty)
+			ocr_data[part_value]['total'][size]['ironing_excess'] += row.ironing_excess
+			ocr_data[part_value]['total'][size]['old_lot'] += row.lot_transferred
+			ocr_data[part_value]['total'][size]['total_inward'] += (row.dc_qty + row.return_qty + row.pack_return_qty) + row.ironing_excess + row.lot_transferred
+			ocr_data[part_value]['old_lot'] += row.lot_transferred
+			ocr_data[part_value]['ironing_excess'] += row.ironing_excess
+			ocr_data[part_value]['total_inward'] += (row.dc_qty + row.return_qty + row.pack_return_qty) + row.ironing_excess + row.lot_transferred
+
 			ocr_data[part_value]['data'][colour]['values'].setdefault(size, {
 				"loose_piece": 0, "pending": 0, "rejected": 0, "loose_piece_set": 0, "sewing_received": 0,
 			})
@@ -229,23 +242,28 @@ class FinishingPlan(Document):
 
 		return inward_details
 
-
 	def get_packed_qty(self):
 		items = [item.as_dict() for item in self.finishing_plan_grn_details]
-		box_qty = {}
+		box_qty = {
+			"sizes": {},
+			"total_packed": 0,
+			"total_dispatched": 0
+		}
 		for row in items:
 			current_variant = frappe.get_cached_doc("Item Variant", row['item_variant'])
 			current_item_attribute_details = get_attribute_details(current_variant.item)
 			primary_attribute = current_item_attribute_details['primary_attribute']
 			for attr in current_variant.attributes:
 				if attr.attribute == primary_attribute:
-					box_qty.setdefault(attr.attribute_value, {
+					box_qty['sizes'].setdefault(attr.attribute_value, {
 						"packed": 0,
 						"dispatched": 0,
 						"cur_dispatch": 0,
 					})
-					box_qty[attr.attribute_value]['packed'] += row['quantity']
-					box_qty[attr.attribute_value]['dispatched'] += row['dispatched']
+					box_qty['sizes'][attr.attribute_value]['packed'] += row['quantity']
+					box_qty['sizes'][attr.attribute_value]['dispatched'] += row['dispatched']
+					box_qty['total_packed'] += row['quantity']
+					box_qty['total_dispatched'] += row['dispatched']
 					break	
 		return box_qty
 
@@ -447,13 +465,46 @@ class FinishingPlan(Document):
 		}
 
 @frappe.whitelist()
-def fetch_quantity(doc_name, work_order):
-	items = create_finishing_detail(work_order, from_finishing=True)
-	doc = frappe.get_doc("Finishing Plan", doc_name)
-	doc.set("finishing_plan_details", items[0])
-	doc.set("finishing_plan_reworked_details", items[1])
-	doc.set("finishing_plan_grn_details", items[2])
-	doc.save()
+def fetch_rejected_quantity(doc_name):
+	fp_doc = frappe.get_doc("Finishing Plan", doc_name)
+	rework_item_list = frappe.get_all("GRN Rework Item", filters={
+		"lot": fp_doc.lot
+	}, pluck="name")
+	finishing_rework_items = {}
+	for row in fp_doc.finishing_plan_reworked_details:
+		set_comb = update_if_string_instance(row.set_combination)
+		key = (row.item_variant, tuple(sorted(set_comb.items())))
+		finishing_rework_items.setdefault(key, {
+			"item_variant": row.item_variant,
+			"quantity": row.quantity,
+			"reworked_quantity": 0,
+			"rejected_qty": 0,
+			"set_combination": row.set_combination,
+		})
+
+	for rework_item in rework_item_list:
+		doc = frappe.get_doc("GRN Rework Item", rework_item)
+		for row in doc.grn_rework_item_details:
+			if row.quantity == 0 or not row.completed:
+				continue
+			set_comb = update_if_string_instance(row.set_combination)
+			set_comb = update_if_string_instance(set_comb)
+			key = (row.item_variant, tuple(sorted(set_comb.items())))
+			finishing_rework_items[key]['rejected_qty'] += row.rejection
+
+		for row in doc.grn_reworked_item_details:		
+			if row.quantity == 0:
+				continue
+			set_comb = update_if_string_instance(row.set_combination)
+			set_comb = update_if_string_instance(set_comb)
+			key = (row.item_variant, tuple(sorted(set_comb.items())))
+			finishing_rework_items[key]['reworked_quantity'] += row.quantity
+		
+	rework_list = []
+	for key in finishing_rework_items:
+		rework_list.append(finishing_rework_items[key])
+	fp_doc.set("finishing_plan_reworked_details", rework_list)		
+	fp_doc.save()	
 
 @frappe.whitelist()
 def create_delivery_challan(data, item_name, work_order, lot, from_location, vehicle_no):
@@ -599,7 +650,8 @@ def create_grn(work_order, lot, item_name, data, delivery_location):
 		for attr in current_variant.attributes:
 			if attr.attribute == primary_attribute:
 				box_qty.setdefault(attr.attribute_value, 0)
-				box_qty[attr.attribute_value] += data[size]
+				if data[size]:
+					box_qty[attr.attribute_value] += data.get(size, 0)
 				break	
 	
 	doc = frappe.new_doc("Goods Received Note")
