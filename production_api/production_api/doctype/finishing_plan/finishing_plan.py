@@ -9,7 +9,7 @@ from production_api.production_api.doctype.work_order.work_order import create_f
 from production_api.production_api.doctype.item.item import get_or_create_variant, get_attribute_details
 from production_api.essdee_production.doctype.item_production_detail.item_production_detail import get_ipd_primary_values
 from production_api.production_api.doctype.purchase_order.purchase_order import get_item_attribute_details, get_item_group_index
-from production_api.utils import update_if_string_instance, get_finishing_plan_dict, get_finishing_plan_list, get_variant_attr_details
+from production_api.utils import update_if_string_instance, get_finishing_plan_dict, get_finishing_plan_list, get_variant_attr_details, get_tuple_attributes
 
 class FinishingPlan(Document):
 	def onload(self):
@@ -1076,3 +1076,208 @@ def get_incomplete_transfer_docs(lot, doc_name):
 	fp_doc.incomplete_transfer_dc_list = frappe.json.dumps(dc_list_dict)
 	fp_doc.save()
 
+@frappe.whitelist()
+def fetch_quantity(doc_name):
+	doc = frappe.get_doc("Finishing Plan", doc_name)
+	wo_doc = frappe.get_doc("Work Order", doc.work_order)
+	finishing_items = {}
+	default_type = frappe.db.get_single_value("Stock Settings", "default_received_type")
+	default_rejected = frappe.db.get_single_value("Stock Settings", "default_rejected_type")
+	for row in wo_doc.work_order_calculated_items:
+		set_comb = update_if_string_instance(row.set_combination)
+		key = (row.item_variant, tuple(sorted(set_comb.items())))
+		finishing_items.setdefault(key, {
+			"inward_quantity": 0,
+			"delivered_quantity": 0,
+			"received_types": {},
+			"cutting_qty": 0,
+			"accepted_qty": 0,
+			"rework_qty": 0,
+			"item_variant": row.item_variant,
+			"set_combination": row.set_combination,
+			"received_type_json": {},
+			"lot_transferred": 0,
+			"ironing_excess": 0,
+			"reworked": 0,
+			"dc_qty": 0,
+			"return_qty": 0,
+			"pack_return_qty": 0
+		})
+	finishing_inward_process = frappe.db.get_single_value("MRP Settings", "finishing_inward_process")
+	if not finishing_inward_process:
+		frappe.throw("Set Finishing Inward Process")
+
+	processes = frappe.db.sql(
+		"""
+			Select parent FROM `tabProcess Details` WHERE process_name = %(process)s OR parent = %(process)s
+		""", {
+			"process": finishing_inward_process,
+		}, as_dict=1
+	)
+	process_names = [p['parent'] for p in processes]
+	process_names.append(finishing_inward_process)
+	wo_list = frappe.get_all("Work Order", filters={
+		"docstatus": 1,
+		"lot": wo_doc.lot,
+		"process_name": ['in', process_names],
+	}, pluck="name")
+
+	for wo in wo_list:
+		stich_wo_doc = frappe.get_doc("Work Order", wo)
+		for row in stich_wo_doc.work_order_calculated_items:
+			if row.quantity > 0:
+				set_comb = update_if_string_instance(row.set_combination)
+				key = (row.item_variant, tuple(sorted(set_comb.items())))
+				finishing_items[key]['delivered_quantity'] += row.received_qty
+				finishing_items[key]['inward_quantity'] += row.delivered_quantity
+				received_types = update_if_string_instance(row.received_type_json)
+				for ty in received_types:
+					if ty not in finishing_items[key]['received_types']:
+						finishing_items[key]['received_types'][ty] = 0
+					if ty == default_type:
+						finishing_items[key]['accepted_qty'] += received_types[ty]
+					if ty not in [default_type, default_rejected]:
+						finishing_items[key]['rework_qty'] += received_types[ty]	
+
+					finishing_items[key]['received_types'][ty] += received_types[ty]	
+
+	wo_list = frappe.get_all("Work Order", filters={
+		"docstatus": 1,
+		"lot": wo_doc.lot,
+		"process_name": "Cutting",
+	}, pluck="name")	
+
+	for wo in wo_list:
+		cut_wo_doc = frappe.get_doc("Work Order", wo)
+		for row in cut_wo_doc.work_order_calculated_items:
+			if row.quantity > 0:
+				set_comb = update_if_string_instance(row.set_combination)
+				key = (row.item_variant, tuple(sorted(set_comb.items())))
+				finishing_items[key]['cutting_qty'] += row.received_qty
+
+	finishing_rework_items = {}
+	rework_list = frappe.get_all("GRN Rework Item", filters={"lot": wo_doc.lot}, pluck="name")
+	for rework in rework_list:
+		rework_doc = frappe.get_doc("GRN Rework Item", rework)
+		from_finishing = frappe.get_value("Goods Received Note", rework_doc.grn_number, "from_finishing")
+		for row in rework_doc.grn_rework_item_details:
+			set_comb = update_if_string_instance(row.set_combination)
+			key = (row.item_variant, tuple(sorted(update_if_string_instance(set_comb).items())))
+			finishing_rework_items.setdefault(key, {
+				"quantity": 0,
+				"reworked": 0,
+				"rejected": 0,
+			})
+			if from_finishing:
+				finishing_items[key]['rework_qty'] += row.quantity	
+			finishing_rework_items[key]['quantity'] += row.quantity
+			finishing_rework_items[key]['rejected'] += row.rejection
+
+		for row in rework_doc.grn_reworked_item_details:
+			set_comb = update_if_string_instance(row.set_combination)
+			key = (row.item_variant, tuple(sorted(update_if_string_instance(set_comb).items())))
+			finishing_rework_items[key]['reworked'] += row.quantity	
+
+	fp_dc_list = update_if_string_instance(doc.dc_list)
+	dc_list = [dc for dc in fp_dc_list]
+	for dc in dc_list:
+		dc_doc = frappe.get_doc("Delivery Challan", dc)
+		for item in dc_doc.items:
+			set_comb = update_if_string_instance(item.set_combination)
+			key = (item.item_variant, tuple(sorted(set_comb.items())))
+			if finishing_items.get(key):
+				finishing_items[key]['dc_qty'] += item.stock_qty
+
+	return_grn_list = update_if_string_instance(doc.return_grn_list)
+	pack_return_list = update_if_string_instance(doc.pack_return_list)
+	return_grns = [grn for grn in return_grn_list]
+	finishing_items, finishing_rework_items = get_updated_return(return_grns, finishing_items, finishing_rework_items)
+	pack_return_grns = [grn for grn in pack_return_list]
+	finishing_items, finishing_rework_items = get_updated_return(pack_return_grns, finishing_items, finishing_rework_items)
+	
+	ironing_excess = update_if_string_instance(doc.ironing_excess_list)
+	ironing_excess_list = [ste for ste in ironing_excess]
+
+	for ironing in ironing_excess_list:
+		ste_doc = frappe.get_doc("Stock Entry", ironing)
+		for row in ste_doc.items:
+			qty = row.qty
+			key = (row.item, tuple(sorted(update_if_string_instance(row.set_combination).items())))
+			finishing_items[key]['ironing_excess'] += qty	
+
+	finishing_items_list = []
+	finishing_rework_items_list = []
+	for key in finishing_items:
+		variant, tuple_attrs = key
+		comb = get_tuple_attributes(tuple_attrs)
+		reworked_qty = 0
+		if finishing_items[key]['rework_qty'] > 0:
+			reworked = 0
+			rejected = 0
+			if finishing_rework_items.get(key):
+				reworked = finishing_rework_items[key]['reworked']
+				rejected = finishing_rework_items[key]['rejected']
+				reworked_qty = finishing_rework_items[key]['reworked']
+			finishing_rework_items_list.append({
+				"item_variant": variant,
+				"set_combination": frappe.json.dumps(comb),
+				"quantity": finishing_items[key]['rework_qty'],
+				"reworked_quantity": reworked,
+				"rejected_qty": rejected,
+			})
+		finishing_items_list.append({
+			"item_variant": variant,
+			"delivered_quantity": finishing_items[key]['delivered_quantity'],
+			"inward_quantity": finishing_items[key]['inward_quantity'],
+			"set_combination": frappe.json.dumps(comb),
+			"received_type_json": frappe.json.dumps(finishing_items[key]['received_types']),
+			"cutting_qty": finishing_items[key]['cutting_qty'],
+			"accepted_qty": finishing_items[key]['accepted_qty'],
+			"lot_transferred": finishing_items[key]['lot_transferred'],
+			"ironing_excess": finishing_items[key]['ironing_excess'],
+			"reworked": reworked_qty,
+			"dc_qty": finishing_items[key]['dc_qty'],
+			"return_qty": finishing_items[key]['return_qty'],
+			"pack_return_qty": finishing_items[key]['pack_return_qty']
+		})		
+	doc.set("finishing_plan_details", finishing_items_list)
+	doc.save()
+	doc.set("finishing_plan_reworked_details", finishing_rework_items_list)
+	doc.save()
+
+def get_updated_return(grn_list, finishing_items, finishing_rework_items):
+	default_type = frappe.db.get_single_value("Stock Settings", "default_received_type")
+	default_rejected_type = frappe.db.get_single_value("Stock Settings", "default_rejected_type")
+	for grn in grn_list:
+		grn_doc = frappe.get_doc("Goods Received Note", grn)
+		items = update_if_string_instance(grn_doc.items_json)
+		items = [item.as_dict() for item in grn_doc.items]
+		for key, variants in groupby(items, lambda i: i['row_index']):
+			for item in variants:
+				set_comb = update_if_string_instance(item['set_combination'])
+				key = (item['item_variant'], tuple(sorted(set_comb.items())))
+				if finishing_items.get(key):
+					ty = item['received_type']
+					qty = item['quantity'] * -1
+					rework_qty = item['quantity']
+					if ty != default_type:
+						if not finishing_rework_items.get(key):
+							finishing_rework_items[key] = {
+								"quantity": 0,
+								"reworked_quantity": 0,
+								"rejected_qty": 0,
+								"set_combination": item['set_combination'],
+							}
+						if ty ==  default_rejected_type:
+							finishing_rework_items[key]['rejected_qty'] += rework_qty
+						finishing_rework_items[key]['quantity'] += rework_qty
+						finishing_items[key]['accepted_qty'] += qty 
+					else:
+						q = item['quantity']
+						if grn_doc.is_pack:
+							finishing_items[key]['pack_return_qty'] += q		
+						else:	
+							finishing_items[key]['return_qty'] += q		
+
+					finishing_items[key]['dc_qty'] += qty
+	return finishing_items, finishing_rework_items

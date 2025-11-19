@@ -73,5 +73,13 @@ frappe.ui.form.on("Finishing Plan", {
                 doc_name: frm.doc.name
             },
         })
+    },
+    fetch_quantity(frm){
+        frappe.call({
+            method: "production_api.production_api.doctype.finishing_plan.finishing_plan.fetch_quantity",
+            args: {
+                "doc_name": frm.doc.name
+            }
+        })
     }
 });
