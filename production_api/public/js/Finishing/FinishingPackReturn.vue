@@ -15,7 +15,7 @@
                         <td style="cursor: pointer;" @click="redirect_to('Goods Received Note', pr)">{{ pr }}</td>
                         <td>{{ date }}</td>
                         <td>
-                            <button class="btn btn-primary" @click="cancel_doc('Goods Received Note', ie)">Cancel</button>
+                            <button class="btn btn-primary" @click="cancel_doc('Goods Received Note', pr)">Cancel</button>
                         </td>
                     </tr>
                 </tbody>
@@ -77,6 +77,8 @@ function load_data(data){
 let pr_list = JSON.parse(cur_frm.doc.pack_return_list || "{}");
 
 function cancel_doc(doctype, docname){
+    console.log(doctype)
+    console.log(docname)
     let d = new frappe.ui.Dialog({
         title: `Are you sure want to cancel this ${doctype}`,
         primary_action_label: 'Yes',
