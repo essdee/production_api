@@ -318,6 +318,11 @@
                                     <td>{{ (get_ocr_value(part_value)).toFixed(2) }}%</td>
                                     <td>{{ (100 - get_ocr_value(part_value)).toFixed(2) }}%</td>
                                 </tr>
+                                <tr>
+                                    <td>Unaccountable</td>
+                                    <td>-{{ get_percentage(get_unaccountable(part_value), make_pos=true) }}%</td>
+                                    <td></td>
+                                </tr>
                             </tbody>    
                         </table>
                     </div>    
@@ -415,29 +420,53 @@ function get_inward_to_dispatch(part_value){
 
 function get_loose_piece(part_value){
     return {
-        "val1": items.value['ocr_data'][part_value]['sewing_received'], 
+        "val1": items.value['ocr_data'][part_value]['cutting'] +
+                items.value['ocr_data'][part_value]['old_lot'] + 
+                items.value['ocr_data'][part_value]['ironing_excess'], 
         "val2": items.value['ocr_data'][part_value]['loose_piece'],
     }
 }
 
 function get_rejection(part_value){
     return {
-        "val1": items.value['ocr_data'][part_value]['sewing_received'], 
+        "val1": items.value['ocr_data'][part_value]['cutting'] +
+                items.value['ocr_data'][part_value]['old_lot'] + 
+                items.value['ocr_data'][part_value]['ironing_excess'], 
         "val2": items.value['ocr_data'][part_value]['rejected'],
     }
 }
 
 function get_rework(part_value){
     return {
-        "val1": items.value['ocr_data'][part_value]['cutting'], 
+        "val1": items.value['ocr_data'][part_value]['cutting'] +
+                items.value['ocr_data'][part_value]['old_lot'] + 
+                items.value['ocr_data'][part_value]['ironing_excess'], 
         "val2": items.value['ocr_data'][part_value]['pending']
     }
 }
 
 function get_not_received(part_value){
     return {
-        "val1": items.value['ocr_data'][part_value]['cutting'], 
+        "val1": items.value['ocr_data'][part_value]['cutting'] +
+                items.value['ocr_data'][part_value]['old_lot'] + 
+                items.value['ocr_data'][part_value]['ironing_excess'],
         "val2": items.value['ocr_data'][part_value]['sewing_received'] - items.value['ocr_data'][part_value]['cutting']
+    }
+}
+
+function get_unaccountable(part_value){
+    return {
+        "val1": items.value['ocr_data'][part_value]['cutting'] +
+                items.value['ocr_data'][part_value]['old_lot'] + 
+                items.value['ocr_data'][part_value]['ironing_excess'],
+        "val2": items.value['ocr_data'][part_value]['sewing_received'] +
+                items.value['ocr_data'][part_value]['old_lot'] + 
+                items.value['ocr_data'][part_value]['ironing_excess'] -
+                (items.value['ocr_data'][part_value]['packed_box_qty'] + 
+                items.value['ocr_data'][part_value]['rejected'] + 
+                items.value['ocr_data'][part_value]['loose_piece_set'] +
+                items.value['ocr_data'][part_value]['loose_piece'] +
+                items.value['ocr_data'][part_value]['pending'])
     }
 }
 

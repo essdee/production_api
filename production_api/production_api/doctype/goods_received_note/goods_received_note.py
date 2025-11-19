@@ -2685,6 +2685,7 @@ def update_finishing_item_doc(doc_name, finishing_doc_name, update_finishing:boo
 						if ty ==  default_rejected_type:
 							finishing_rework_items[key]['rejected_qty'] += rework_qty
 						finishing_rework_items[key]['quantity'] += rework_qty
+						finishing_items[key]['accepted_qty'] += qty 
 					else:
 						q = item['quantity']
 						if docstatus == 2:
