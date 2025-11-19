@@ -423,7 +423,8 @@ function get_loose_piece(part_value){
         "val1": items.value['ocr_data'][part_value]['cutting'] +
                 items.value['ocr_data'][part_value]['old_lot'] + 
                 items.value['ocr_data'][part_value]['ironing_excess'], 
-        "val2": items.value['ocr_data'][part_value]['loose_piece'],
+        "val2": items.value['ocr_data'][part_value]['loose_piece'] +
+                items.value['ocr_data'][part_value]['loose_piece_set'], 
     }
 }
 
