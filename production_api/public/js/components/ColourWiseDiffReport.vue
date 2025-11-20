@@ -21,10 +21,10 @@
                 </tr>
                 <template v-for="(colour, idx) in Object.keys(items.values)">
                     <tr>
-                        <td :rowspan="8+Object.keys(items['rows']['against_cut_rows']).length+Object.keys(items['rows']['against_sew_rows']).length">{{ idx + 1 }}</td>
-                        <td :rowspan="8+Object.keys(items['rows']['against_cut_rows']).length+Object.keys(items['rows']['against_sew_rows']).length">{{ colour.split("@")[0] }}</td>
+                        <td :rowspan="8+Object.keys(items['values'][colour]['rows']['against_cut_rows']).length+Object.keys(items['values'][colour]['rows']['against_sew_rows']).length">{{ idx + 1 }}</td>
+                        <td :rowspan="8+Object.keys(items['values'][colour]['rows']['against_cut_rows']).length+Object.keys(items['values'][colour]['rows']['against_sew_rows']).length">{{ colour.split("@")[0] }}</td>
                     </tr>
-                    <tr v-for="(col, val) in items['rows']['cut_rows']">
+                    <tr v-for="(col, val) in items['values'][colour]['rows']['cut_rows']">
                         <td>
                             <div v-if="items['values'][colour]['supplier_details']?.[col]">
                                 {{ items['values'][colour]['supplier_details'][col].join(",") }}
@@ -45,7 +45,7 @@
                             {{ items['values'][colour]['total_details'][col+'_total'] }}
                         </td>
                     </tr>
-                    <tr v-for="(col, val) in items['rows']['against_cut_rows']">
+                    <tr v-for="(col, val) in items['values'][colour]['rows']['against_cut_rows']">
                         <td>
                             <div v-if="items['values'][colour]['supplier_details']?.[col]">
                                 {{ items['values'][colour]['supplier_details'][col].join(",") }}
@@ -71,7 +71,7 @@
                             </div>
                         </td>    
                     </tr>
-                    <tr v-for="(col, val) in items['rows']['sew_rows']">
+                    <tr v-for="(col, val) in items['values'][colour]['rows']['sew_rows']">
                         <td>
                             <div v-if="items['values'][colour]['supplier_details']?.[col]">
                                 {{ items['values'][colour]['supplier_details'][col].join(",") }}
@@ -92,7 +92,7 @@
                             {{ items['values'][colour]['total_details'][col+'_total'] }}
                         </td>
                     </tr>
-                    <tr v-for="(col, val) in items['rows']['against_sew_rows']">
+                    <tr v-for="(col, val) in items['values'][colour]['rows']['against_sew_rows']">
                         <td>
                             <div v-if="items['values'][colour]['supplier_details']?.[col]">
                                 {{ items['values'][colour]['supplier_details'][col].join(",") }}

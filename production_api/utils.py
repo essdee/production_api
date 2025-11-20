@@ -1504,6 +1504,7 @@ def get_size_wise_stock_report(open_status, lot_list, item_list, category, proce
 	)
 	lot_dict = {
 		"lot_data": {},
+		"item_data": {},
 		"diff_rows": ["order_to_cut_diff","cut_to_sew_diff","in_sew","in_packing","cut_to_dispatch_diff"],
 		"rows": {
 			"cut_rows": {
@@ -1674,15 +1675,22 @@ def get_size_wise_stock_report(open_status, lot_list, item_list, category, proce
 			lot_dict['lot_data'][lot][details_key].setdefault(rec_val, {})
 			lot_dict['lot_data'][lot][details_key].setdefault(diff_val, {})
 
+			total_sent_key = sent_val+"_total"
+			total_rec_key = rec_val+"_total"
+			total_diff_key = diff_val+"_total"
+
 			wo_list = get_process_wo_list(process_name, lot)
 			if not wo_list:
-				continue
+				for size in sizes:
+					lot_dict['lot_data'][lot][details_key][sent_val].setdefault(size, 0)
+					lot_dict['lot_data'][lot][details_key][rec_val].setdefault(size, 0)
+					lot_dict['lot_data'][lot][details_key][diff_val].setdefault(size, 0)
+					lot_dict['lot_data'][lot]['total_details'].setdefault(total_sent_key, 0)
+					lot_dict['lot_data'][lot]['total_details'].setdefault(total_rec_key, 0)
+					lot_dict['lot_data'][lot]['total_details'].setdefault(total_diff_key, 0)
 
 			for wo in wo_list:
 				wo_doc = frappe.get_doc("Work Order", wo)
-				total_sent_key = sent_val+"_total"
-				total_rec_key = rec_val+"_total"
-				total_diff_key = diff_val+"_total"
 				for row in wo_doc.work_order_calculated_items:
 					attr_details = get_variant_attr_details(row.item_variant)
 					size = attr_details[primary]
@@ -1769,6 +1777,59 @@ def get_size_wise_stock_report(open_status, lot_list, item_list, category, proce
 						lot_dict['lot_data'][lot]['total_details'].setdefault(total_against_key, 0)
 						lot_dict['lot_data'][lot]['total_details'][total_against_key] += (rec_value - prev_prs_value)
 				last_piece_process = process_name
+	
+	for lot, lot_data in lot_dict['lot_data'].items():
+		style_name = lot_data['style']
+		style_entry = lot_dict['item_data'].setdefault(style_name, {
+			"style": item,
+			"sizes": lot_dict['lot_data'][lot]['sizes'],
+			"cut_details": {
+				"order_qty": {},
+				"cut_qty": {},
+				"order_to_cut_diff": {},
+			},
+			"against_cut_details": {},
+			"sewing_details": {
+				"sewing_sent": {},
+				"cut_to_sew_diff": {},
+				"finishing_inward": {},
+				"in_sew": {},
+			},
+			"against_sew_details": {},
+			"finishing_details": {
+				"dispatch": {},
+				"in_packing": {},
+				"cut_to_dispatch_diff": {},
+				"work_in_progress": {},
+			},
+			"total_details": {}
+		})
+
+		def merge_size_dict(target, source):
+			for size, qty in source.items():
+				target[size] = target.get(size, 0) + qty
+
+		def merge_nested_size_dict(target, source):
+			for key, size_dict in source.items():
+				inner_target = target.setdefault(key, {})
+				for size, qty in size_dict.items():
+					inner_target[size] = inner_target.get(size, 0) + qty
+
+		for key in ["order_qty", "cut_qty", "order_to_cut_diff"]:
+			merge_size_dict(style_entry["cut_details"][key], lot_data["cut_details"].get(key, {}))
+
+		merge_nested_size_dict(style_entry["against_cut_details"], lot_data.get("against_cut_details", {}))
+
+		for key in ["sewing_sent", "cut_to_sew_diff", "finishing_inward", "in_sew"]:
+			merge_size_dict(style_entry["sewing_details"][key], lot_data["sewing_details"].get(key, {}))
+
+		merge_nested_size_dict(style_entry["against_sew_details"], lot_data.get("against_sew_details", {}))
+
+		for key in ["dispatch", "in_packing", "cut_to_dispatch_diff", "work_in_progress"]:
+			merge_size_dict(style_entry["finishing_details"][key], lot_data["finishing_details"].get(key, {}))
+
+		merge_size_dict(style_entry["total_details"], lot_data.get("total_details", {}))
+	print(lot_dict['item_data'])
 
 	return lot_dict
 
@@ -1781,22 +1842,8 @@ def get_colour_wise_diff_report(lot, process_list):
 		"style": lot_doc.item,
 		"lot": lot,
 		"sizes": [],
+		"colours": [],
 		"values": {},
-		"rows": {
-			"cut_rows": {
-				"Order Qty": "order_qty",
-				"Cut Qty": "cut_qty",
-				"Order to Cut Diff": "order_to_cut_diff",
-			},
-			"against_cut_rows": {},
-			"sew_rows": {
-				"Sewing Sent": "sewing_sent",
-				"Cut to Sew Diff": "cut_to_sew_diff",
-				"Finishing Inward": "finishing_inward",
-				"In Sew": "in_sew"
-			},
-			"against_sew_rows": {},
-		},
 		"diff_rows": ["order_to_cut_diff","in_sew","cut_to_sew_diff"]
 	}
 
@@ -1806,7 +1853,8 @@ def get_colour_wise_diff_report(lot, process_list):
 		size = attr_details[primary]
 		if size not in lot_dict['sizes']:
 			lot_dict['sizes'].append(size)
-		colour = get_variant_set_colour(attr_details, row.set_combination, is_set_item, pack_attr, set_attr)		
+		colour = get_variant_set_colour(attr_details, row.set_combination, is_set_item, pack_attr, set_attr)	
+		lot_dict['colours'].append(colour)	
 		lot_dict['values'].setdefault(colour, {
 			"cut_details": {
 				"order_qty": {},
@@ -1822,7 +1870,22 @@ def get_colour_wise_diff_report(lot, process_list):
 			},
 			"against_sew_details": {},
 			"total_details": {},
-			"supplier_details": {}
+			"supplier_details": {},
+			"rows": {
+				"cut_rows": {
+					"Order Qty": "order_qty",
+					"Cut Qty": "cut_qty",
+					"Order to Cut Diff": "order_to_cut_diff",
+				},
+				"against_cut_rows": {},
+				"sew_rows": {
+					"Sewing Sent": "sewing_sent",
+					"Cut to Sew Diff": "cut_to_sew_diff",
+					"Finishing Inward": "finishing_inward",
+					"In Sew": "in_sew"
+				},
+				"against_sew_rows": {},
+			},
 		})		
 
 		lot_dict['values'][colour]['cut_details']['order_qty'].setdefault(size, 0)
@@ -1913,23 +1976,41 @@ def get_colour_wise_diff_report(lot, process_list):
 			row_key = 'against_sew_rows'
 			details_key = 'against_sew_details'
 
-		lot_dict['rows'][row_key].setdefault(sent_key, sent_val)
-		lot_dict['rows'][row_key].setdefault(rec_key, rec_val)
-		lot_dict['rows'][row_key].setdefault(diff_key, diff_val)
 		wo_list = get_process_wo_list(process_name, lot)
+		total_sent_key = sent_val+"_total"
+		total_rec_key = rec_val+"_total"
+		total_diff_key = diff_val+"_total"
+		
 		if not wo_list:
+			for colour in lot_dict['values']:
+				for size in lot_dict['sizes']:
+					lot_dict['values'][colour]['supplier_details'].setdefault(sent_val, [])
+					lot_dict['values'][colour]['rows'][row_key].setdefault(sent_key, sent_val)
+					lot_dict['values'][colour]['rows'][row_key].setdefault(rec_key, rec_val)
+					lot_dict['values'][colour]['rows'][row_key].setdefault(diff_key, diff_val)
+					lot_dict['values'][colour][details_key].setdefault(sent_val, {})
+					lot_dict['values'][colour][details_key].setdefault(rec_val, {})
+					lot_dict['values'][colour][details_key].setdefault(diff_val, {})
+					lot_dict['values'][colour][details_key][sent_val].setdefault(size, 0)
+					lot_dict['values'][colour][details_key][rec_val].setdefault(size, 0)
+					lot_dict['values'][colour][details_key][diff_val].setdefault(size, 0)
+					
+					lot_dict['values'][colour]['total_details'].setdefault(total_sent_key, 0)
+					lot_dict['values'][colour]['total_details'].setdefault(total_rec_key, 0)
+					lot_dict['values'][colour]['total_details'].setdefault(total_diff_key, 0)
 			continue
 
+		process_colours = []
 		for wo in wo_list:
 			wo_doc = frappe.get_doc("Work Order", wo)
-			total_sent_key = sent_val+"_total"
-			total_rec_key = rec_val+"_total"
-			total_diff_key = diff_val+"_total"
 			colour_wise_last_process = {}
 			for row in wo_doc.work_order_calculated_items:
 				attr_details = get_variant_attr_details(row.item_variant)
 				size = attr_details[primary]
 				colour = get_variant_set_colour(attr_details, row.set_combination, is_set_item, pack_attr, set_attr)				
+				if colour not in process_colours:
+					process_colours.append(colour)
+
 				lot_dict['values'][colour]['supplier_details'].setdefault(sent_val, [])
 				if wo_doc.supplier_name not in lot_dict['values'][colour]['supplier_details'][sent_val]:
 					lot_dict['values'][colour]['supplier_details'][sent_val].append(wo_doc.supplier_name)	
@@ -1937,6 +2018,9 @@ def get_colour_wise_diff_report(lot, process_list):
 					"last_cut_process": None,
 					"last_piece_process": None,
 				})
+				lot_dict['values'][colour]['rows'][row_key].setdefault(sent_key, sent_val)
+				lot_dict['values'][colour]['rows'][row_key].setdefault(rec_key, rec_val)
+				lot_dict['values'][colour]['rows'][row_key].setdefault(diff_key, diff_val)
 				lot_dict['values'][colour][details_key].setdefault(sent_val, {})
 				lot_dict['values'][colour][details_key].setdefault(rec_val, {})
 				lot_dict['values'][colour][details_key].setdefault(diff_val, {})
@@ -1953,7 +2037,6 @@ def get_colour_wise_diff_report(lot, process_list):
 				lot_dict['values'][colour]['total_details'][total_sent_key] += row.delivered_quantity
 				lot_dict['values'][colour]['total_details'][total_rec_key] += row.received_qty
 				lot_dict['values'][colour]['total_details'][total_diff_key] += (row.received_qty - row.delivered_quantity)
-				
 				if process_dict[process_name] == cut:
 					if not colour_wise_last_process[colour]['last_cut_process']:
 						against_key = process_name + " to Cut Diff"
@@ -1961,7 +2044,7 @@ def get_colour_wise_diff_report(lot, process_list):
 						if against_val not in lot_dict['diff_rows']:
 							lot_dict['diff_rows'].append(against_val)
 						
-						lot_dict['rows'][row_key].setdefault(against_key, against_val)
+						lot_dict['values'][colour]['rows'][row_key].setdefault(against_key, against_val)
 						lot_dict['values'][colour][details_key].setdefault(against_val, {})
 						rec_value = lot_dict['values'][colour][details_key][rec_val][size]
 						cut_value = lot_dict['values'][colour]['cut_details']["cut_qty"][size]
@@ -1975,7 +2058,7 @@ def get_colour_wise_diff_report(lot, process_list):
 						against_val = against_key.lower().replace(" ", "_")
 						if against_val not in lot_dict['diff_rows']:
 							lot_dict['diff_rows'].append(against_val)
-						lot_dict['rows'][row_key].setdefault(against_key, against_val)
+						lot_dict['values'][colour]['rows'][row_key].setdefault(against_key, against_val)
 						lot_dict['values'][colour][details_key].setdefault(against_val, {})
 						prev_key = colour_wise_last_process[colour]['last_cut_process'] + " Received"
 						prev_val = prev_key.lower().replace(" ", "_")
@@ -1992,7 +2075,7 @@ def get_colour_wise_diff_report(lot, process_list):
 						against_val = against_key.lower().replace(" ", "_")
 						if against_val not in lot_dict['diff_rows']:
 							lot_dict['diff_rows'].append(against_val)
-						lot_dict['rows'][row_key].setdefault(against_key, against_val)
+						lot_dict['values'][colour]['rows'][row_key].setdefault(against_key, against_val)
 						lot_dict['values'][colour][details_key].setdefault(against_val, {})
 						sew_inward = lot_dict['values'][colour]['sewing_details']["finishing_inward"][size]
 						rec_value = lot_dict['values'][colour][details_key][rec_val][size]
@@ -2006,7 +2089,7 @@ def get_colour_wise_diff_report(lot, process_list):
 						against_val = against_key.lower().replace(" ", "_")
 						if against_val not in lot_dict['diff_rows']:
 							lot_dict['diff_rows'].append(against_val)
-						lot_dict['rows'][row_key].setdefault(against_key, against_val)
+						lot_dict['values'][colour]['rows'][row_key].setdefault(against_key, against_val)
 						lot_dict['values'][colour][details_key].setdefault(against_val, {})
 						prev_key = colour_wise_last_process[colour]['last_piece_process'] + " Received"
 						prev_val = prev_key.lower().replace(" ", "_")
@@ -2018,12 +2101,31 @@ def get_colour_wise_diff_report(lot, process_list):
 						lot_dict['values'][colour]['total_details'].setdefault(total_against_key, 0)
 						lot_dict['values'][colour]['total_details'][total_against_key] += (rec_value - prev_prs_value)
 
-				if process_dict[process_name] == cut:
-					colour_wise_last_process[colour]['last_cut_process'] = process_name
-				else:
-					colour_wise_last_process[colour]['last_piece_process'] = process_name		
+			if process_dict[process_name] == cut:
+				colour_wise_last_process[colour]['last_cut_process'] = process_name
+			else:
+				colour_wise_last_process[colour]['last_piece_process'] = process_name		
 
-	return lot_dict		
+		if wo_list:
+			for clr in lot_dict['colours']:
+				if clr in process_colours:
+					continue
+				for size in lot_dict['sizes']:
+					lot_dict['values'][clr]['supplier_details'].setdefault(sent_val, [])
+					lot_dict['values'][clr]['rows'][row_key].setdefault(sent_key, sent_val)
+					lot_dict['values'][clr]['rows'][row_key].setdefault(rec_key, rec_val)
+					lot_dict['values'][clr]['rows'][row_key].setdefault(diff_key, diff_val)
+					lot_dict['values'][clr][details_key].setdefault(sent_val, {})
+					lot_dict['values'][clr][details_key].setdefault(rec_val, {})
+					lot_dict['values'][clr][details_key].setdefault(diff_val, {})
+					lot_dict['values'][clr][details_key][sent_val].setdefault(size, 0)
+					lot_dict['values'][clr][details_key][rec_val].setdefault(size, 0)
+					lot_dict['values'][clr][details_key][diff_val].setdefault(size, 0)
+					
+					lot_dict['values'][clr]['total_details'].setdefault(total_sent_key, 0)
+					lot_dict['values'][clr]['total_details'].setdefault(total_rec_key, 0)
+					lot_dict['values'][clr]['total_details'].setdefault(total_diff_key, 0)
+	return lot_dict
 
 def get_variant_set_colour(attr_details, set_combination, is_set_item, pack_attr, set_attr):
 	set_comb = update_if_string_instance(set_combination)
@@ -2047,3 +2149,65 @@ def get_ipd_process_dict(ipd):
 	for row in ipd_process_data:
 		process_dict[row['process_name']] = row['stage']
 	return process_dict, cut, piece	
+
+@frappe.whitelist()
+def get_lotwise_cloth_usage_report(item_list, lot_list):
+	conditions = ""
+	con = {}
+	
+	lot_list = update_if_string_instance(lot_list)
+	item_list = update_if_string_instance(item_list)
+	process_list = update_if_string_instance(process_list)
+	if lot_list:
+		lot_list.append("")
+		conditions += " AND t1.name IN %(lot_list)s"
+		con['lot_list'] = tuple(lot_list)
+
+	if item_list:
+		item_list.append("")
+		conditions += " AND t1.item IN %(item_list)s"
+		con['item_list'] = tuple(item_list)
+
+	lot_list = frappe.db.sql(
+		f"""
+			SELECT t1.name FROM `tabLot` t1 JOIN `tabItem` t2 ON t1.item = t2.name 
+			WHERE 1 = 1 {conditions}
+		""", con, as_dict=True
+	)
+	
+	lot_dict = {}
+	for lot in lot_list:
+		lot = lot['name']
+		ipd, item = frappe.get_value("Lot", lot, ["production_detail", "item"])
+		sewing, primary = frappe.get_value("Item Production Detail", ipd, ["stiching_process", "primary_item_attribute"])
+
+		## ORDER QTY
+		lot_doc = frappe.get_doc("Lot", lot)
+		sizes = []
+		for row in lot_doc.lot_order_details:
+			attr_details = get_variant_attr_details(row.item_variant)
+			size = attr_details[primary]
+			if size not in sizes:
+				sizes.append(size)
+			lot_dict['lot_data'][lot]['cut_details']['order_qty'].setdefault(size, 0)
+			lot_dict['lot_data'][lot]['cut_details']['cut_qty'].setdefault(size, 0)
+			lot_dict['lot_data'][lot]['cut_details']['order_to_cut_diff'].setdefault(size, 0)
+			lot_dict['lot_data'][lot]['sewing_details']['sewing_sent'].setdefault(size, 0)
+			lot_dict['lot_data'][lot]['sewing_details']['finishing_inward'].setdefault(size, 0)
+			lot_dict['lot_data'][lot]['sewing_details']['in_sew'].setdefault(size, 0)
+			lot_dict['lot_data'][lot]['sewing_details']['cut_to_sew_diff'].setdefault(size, 0)
+			lot_dict['lot_data'][lot]['finishing_details']['dispatch'].setdefault(size, 0)
+			lot_dict['lot_data'][lot]['finishing_details']['in_packing'].setdefault(size, 0)
+			lot_dict['lot_data'][lot]['finishing_details']['cut_to_dispatch_diff'].setdefault(size, 0)
+			lot_dict['lot_data'][lot]['finishing_details']['work_in_progress'].setdefault(size, 0)
+
+			lot_dict['lot_data'][lot]['cut_details']['order_qty'][size] += row.quantity
+			lot_dict['lot_data'][lot]['cut_details']['cut_qty'][size] += row.cut_qty
+			lot_dict['lot_data'][lot]['total_details'].setdefault("order_qty_total", 0)
+			lot_dict['lot_data'][lot]['total_details'].setdefault("cut_qty_total", 0)
+			lot_dict['lot_data'][lot]['total_details']["order_qty_total"] += row.quantity
+			lot_dict['lot_data'][lot]['total_details']["cut_qty_total"] += row.cut_qty
+		
+		lot_dict['lot_data'][lot]["sizes"] = sizes
+
+	return lot_dict
