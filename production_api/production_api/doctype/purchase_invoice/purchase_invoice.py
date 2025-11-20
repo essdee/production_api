@@ -558,7 +558,6 @@ def calculate_grns(grn_list, wo, allow_to_change_rate):
 			if docs:
 				process_docname = docs[0].name
 				break
-		process_docname = None
 	else:	
 		process_docname = wo_doc.calc_receivable_rate(get_name=True)		
 		
