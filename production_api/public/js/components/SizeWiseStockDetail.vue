@@ -115,7 +115,7 @@
                     </tr>
                 </table>
             </div>
-            <h3> Style wise Summary</h3>
+            <h3 style="text-decoration: underline;"> Style wise Summary</h3>
             <div v-for="data in items['item_data']">
                 <h3>{{ data.style }}</h3>
                 <table class="table table-md table-sm-bordered bordered-table">
