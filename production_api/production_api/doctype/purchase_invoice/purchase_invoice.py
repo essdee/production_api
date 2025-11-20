@@ -364,37 +364,39 @@ def fetch_grn_details(grns, against, supplier):
 			allow_to_change_rate = 1	
 
 		for wo in grn_groups:
-			items_list, process_docname = calculate_grns(grn_groups[wo], wo)
-			process_cost_doc = frappe.get_doc("Process Cost", process_docname)
-			order_qty_dict = {} 
-			tax = None
-			if has_gst:
-				tax = process_cost_doc.tax_slab
-			for row in process_cost_doc.process_cost_values:
-				order_qty_dict.setdefault(str(int(row.min_order_qty)), 0)
-				order_qty_dict[str(int(row.min_order_qty))] += row.price
-			
-			sorted_dict = dict(sorted(order_qty_dict.items(), key=lambda x: float(x[0]), reverse=True))
-			length = len(sorted_dict)
-
+			items_list, process_docname = calculate_grns(grn_groups[wo], wo, allow_to_change_rate)
 			qty_list = []
 			cost_list = []
-			for order_qty in sorted_dict:
-				qty_list.append(int(order_qty))
-				cost_list.append(order_qty_dict[order_qty])
+			order_qty_dict = {} 
+			tax = None
+			if process_docname:
+				process_cost_doc = frappe.get_doc("Process Cost", process_docname)
+				if has_gst:
+					tax = process_cost_doc.tax_slab
+				for row in process_cost_doc.process_cost_values:
+					order_qty_dict.setdefault(str(int(row.min_order_qty)), 0)
+					order_qty_dict[str(int(row.min_order_qty))] += row.price
+			
+				sorted_dict = dict(sorted(order_qty_dict.items(), key=lambda x: float(x[0]), reverse=True))
+				length = len(sorted_dict)
+				
+				for order_qty in sorted_dict:
+					qty_list.append(int(order_qty))
+					cost_list.append(order_qty_dict[order_qty])
 
 			wo_doc = frappe.get_doc("Work Order", wo)
 			for key_val in items_list:
 				variant, major_colour = key_val
 				qty = items_list[key_val]['current_grn_received']
 				rate = 0
-				if length == 1:
-					rate = cost_list[0]
-				else:
-					for idx, order_qty in enumerate(qty_list):
-						if order_qty < qty:
-							rate = cost_list[idx]
-							break 
+				if process_docname:
+					if length == 1:
+						rate = cost_list[0]
+					else:
+						for idx, order_qty in enumerate(qty_list):
+							if order_qty < qty:
+								rate = cost_list[idx]
+								break 
 				items_list[key_val]['rate'] = rate
 
 			item_name = frappe.get_cached_value("Process", wo_doc.process_name, "item")
@@ -480,7 +482,7 @@ def fetch_items_expense_head(items):
 	items = fetch_expense_head(items)
 	return items
 
-def calculate_grns(grn_list, wo):
+def calculate_grns(grn_list, wo, allow_to_change_rate):
 	wo_doc = frappe.get_doc("Work Order", wo)
 	from production_api.production_api.doctype.cutting_plan.cutting_plan import get_complete_incomplete_structure
 	from production_api.essdee_production.doctype.lot.lot import fetch_order_item_details
@@ -522,7 +524,44 @@ def calculate_grns(grn_list, wo):
 	complete = None
 	items_list = {}
 	grn_total_received = {}
-	process_docname = wo_doc.calc_receivable_rate(get_name=True)
+	process_docname = None
+	if allow_to_change_rate == 1:
+		fil = {
+			"process_name": wo_doc.process_name,
+			"item": wo_doc.item,
+			"is_expired": 0,
+			"from_date": ["<=", wo_doc.wo_date],
+			"docstatus": 1,
+			"workflow_state": "Approved",
+			"lot": wo_doc.lot,
+			"is_rework": 1 if wo_doc.is_rework else 0,
+		}
+		if wo_doc.supplier:
+			fil["supplier"] = wo_doc.supplier
+
+		filter_variants = [fil.copy()]
+		if "supplier" in fil:
+			f1 = fil.copy()
+			f1.pop("supplier")
+			filter_variants.append(f1)
+
+		f2 = fil.copy()
+		f2.pop("lot", None)
+		filter_variants.append(f2)
+
+		f3 = f2.copy()
+		f3.pop("supplier", None)
+		filter_variants.append(f3)
+
+		for f in filter_variants:
+			docs = frappe.get_list("Process Cost", filters=f)
+			if docs:
+				process_docname = docs[0].name
+				break
+		process_docname = None
+	else:	
+		process_docname = wo_doc.calc_receivable_rate(get_name=True)		
+		
 	if received_json:
 		items = fetch_order_item_details(wo_doc.work_order_calculated_items, wo_doc.production_detail)
 		complete, incomplete = get_complete_incomplete_structure(wo_doc.production_detail, items)

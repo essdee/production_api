@@ -211,18 +211,9 @@ class WorkOrder(Document):
 
 		filter_variants = [fil.copy()]
 
-		if "supplier" in fil:
-			f1 = fil.copy()
-			f1.pop("supplier")
-			filter_variants.append(f1)
-
-		f2 = fil.copy()
-		f2.pop("lot", None)
-		filter_variants.append(f2)
-
-		f3 = f2.copy()
-		f3.pop("supplier", None)
-		filter_variants.append(f3)
+		f1 = fil.copy()
+		f1.pop("lot", None)
+		filter_variants.append(f1)
 
 		docname = None
 		for f in filter_variants:
