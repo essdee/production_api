@@ -1781,7 +1781,7 @@ def get_size_wise_stock_report(open_status, lot_list, item_list, category, proce
 	for lot, lot_data in lot_dict['lot_data'].items():
 		style_name = lot_data['style']
 		style_entry = lot_dict['item_data'].setdefault(style_name, {
-			"style": item,
+			"style": style_name,
 			"sizes": lot_dict['lot_data'][lot]['sizes'],
 			"cut_details": {
 				"order_qty": {},
