@@ -117,15 +117,15 @@ class FinishingPlan(Document):
 				}
 			})
 			ocr_data[part_value]['cutting'] += row.cutting_qty
-			ocr_data[part_value]['dc_qty'] += (row.dc_qty + row.return_qty + row.pack_return_qty)
+			ocr_data[part_value]['dc_qty'] += row.dc_qty 
 			ocr_data[part_value]['total'][size]['cutting_qty'] += row.cutting_qty
-			ocr_data[part_value]['total'][size]['dc_qty'] += (row.dc_qty + row.return_qty + row.pack_return_qty)
+			ocr_data[part_value]['total'][size]['dc_qty'] += row.dc_qty 
 			ocr_data[part_value]['total'][size]['ironing_excess'] += row.ironing_excess
 			ocr_data[part_value]['total'][size]['old_lot'] += row.lot_transferred
-			ocr_data[part_value]['total'][size]['total_inward'] += (row.dc_qty + row.return_qty + row.pack_return_qty) + row.ironing_excess + row.lot_transferred
+			ocr_data[part_value]['total'][size]['total_inward'] += row.delivered_quantity + row.ironing_excess + row.lot_transferred
 			ocr_data[part_value]['old_lot'] += row.lot_transferred
 			ocr_data[part_value]['ironing_excess'] += row.ironing_excess
-			ocr_data[part_value]['total_inward'] += (row.dc_qty + row.return_qty + row.pack_return_qty) + row.ironing_excess + row.lot_transferred
+			ocr_data[part_value]['total_inward'] += row.delivered_quantity + row.ironing_excess + row.lot_transferred
 
 			ocr_data[part_value]['data'][colour]['values'].setdefault(size, {
 				"loose_piece": 0, "pending": 0, "rejected": 0, "loose_piece_set": 0, "sewing_received": 0,

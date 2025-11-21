@@ -115,6 +115,107 @@
                     </tr>
                 </table>
             </div>
+            <h3 style="text-decoration: underline;"> Style wise Summary</h3>
+            <div v-for="data in items['item_data']">
+                <h3>{{ data.style }}</h3>
+                <table class="table table-md table-sm-bordered bordered-table">
+                    <tr>
+                        <th>Size</th>
+                        <th v-for="size in data.sizes">{{ size }}</th>
+                        <th>Total</th>
+                    </tr>
+                    <tr v-for="col, val in items['rows']['cut_rows']">
+                        <td>{{ val }}</td>
+                        <td v-for="size in data.sizes"
+                            :style="items['diff_rows'].includes(col) 
+                            ? get_style(data['cut_details'][col][size]) 
+                            : { background: 'white' }"
+                        >
+                            {{ data['cut_details'][col][size] }}
+                        </td>
+                        <td :style="items['diff_rows'].includes(col) 
+                            ? get_style(data['total_details'][col+'_total']) 
+                            : { background: 'white' }"
+                        >
+                            {{ data['total_details'][col+'_total'] }}
+                        </td>
+                    </tr>
+                    <tr v-for="col, val in items['rows']['against_cut_rows']">
+                        <td>{{ val }}</td>
+                        <td v-for="size in data.sizes" >
+                            <div v-if="data['against_cut_details']?.[col]"
+                                :style="items['diff_rows'].includes(col) 
+                                ? get_style(data['against_cut_details'][col][size]) 
+                                : { background: 'white' }"
+                            >
+                                {{ data['against_cut_details'][col][size] }}
+                            </div>
+                        </td>
+                        <td>
+                            <div v-if="data['against_cut_details']?.[col]"
+                                :style="items['diff_rows'].includes(col) 
+                                ? get_style(data['total_details'][col+'_total']) 
+                                : { background: 'white' }"
+                            >
+                                {{ data['total_details'][col+'_total'] }}
+                            </div>
+                        </td>
+                    </tr>
+                    <tr v-for="col, val in items['rows']['sew_rows']">
+                        <td>{{ val }}</td>
+                        <td v-for="size in data.sizes"
+                            :style="items['diff_rows'].includes(col) 
+                            ? get_style(data['sewing_details'][col][size]) 
+                            : { background: 'white' }"
+                        >
+                            {{ data['sewing_details'][col][size] }}
+                        </td>
+                        <td :style="items['diff_rows'].includes(col) 
+                            ? get_style(data['total_details'][col+'_total']) 
+                            : { background: 'white' }"
+                        >
+                            {{ data['total_details'][col+'_total'] }}
+                        </td>
+                    </tr>
+                    <tr v-for="col, val in items['rows']['against_sew_rows']">
+                        <td>{{ val }}</td>
+                        <td v-for="size in data.sizes">
+                            <div v-if="data['against_sew_details']?.[col]" 
+                                :style="items['diff_rows'].includes(col) 
+                                ? get_style(data['against_sew_details'][col][size]) 
+                                : { background: 'white' }"
+                            >
+                                {{ data['against_sew_details'][col][size] }}
+                            </div>
+                        </td>
+                        <td>
+                            <div v-if="data['against_sew_details']?.[col]" 
+                                :style="items['diff_rows'].includes(col) 
+                                ? get_style(data['total_details'][col+'_total']) 
+                                : { background: 'white' }"
+                            >
+                                {{ data['total_details'][col+"_total"] }}
+                            </div>
+                        </td>
+                    </tr>
+                    <tr v-for="col, val in items['rows']['finishing_rows']">
+                        <td>{{ val }}</td>
+                        <td v-for="size in data.sizes"
+                            :style="items['diff_rows'].includes(col) 
+                            ? get_style(data['finishing_details'][col][size]) 
+                            : { background: 'white' }"
+                        >
+                            {{ data['finishing_details'][col][size] }}
+                        </td>
+                        <td :style="items['diff_rows'].includes(col) 
+                            ? get_style(data['total_details'][col+'_total']) 
+                            : { background: 'white' }"
+                        >
+                            {{ data['total_details'][col+'_total'] }}
+                        </td>
+                    </tr>
+                </table>
+            </div>
         </div>
         <div v-else>
             <div class="flex justify-center align-center text-muted" style="height: 50vh;">

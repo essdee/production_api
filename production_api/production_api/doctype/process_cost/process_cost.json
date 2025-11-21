@@ -135,7 +135,8 @@
    "fieldname": "supplier",
    "fieldtype": "Link",
    "label": "Supplier",
-   "options": "Supplier"
+   "options": "Supplier",
+   "reqd": 1
   },
   {
    "fieldname": "section_break_oriw",
@@ -166,7 +167,7 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-11-04 11:11:40.943437",
+ "modified": "2025-11-20 14:21:27.262886",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Process Cost",
