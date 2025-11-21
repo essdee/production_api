@@ -41,7 +41,8 @@ frappe.query_reports["Item Balance"] = {
 		{
 			"fieldname": 'remove_zero_balance_item',
 			"label": __('Remove Zero Balance Item'),
-			"fieldtype": 'Check'
+			"fieldtype": 'Check',
+			"default": 1
 		},
 	]
 };
