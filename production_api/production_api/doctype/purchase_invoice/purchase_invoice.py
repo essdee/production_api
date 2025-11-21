@@ -254,11 +254,13 @@ def fetch_work_order_items(items):
 			}, as_dict=True
 		)
 		lot = frappe.get_value("Work Order", work_order, "lot")
-		ipd = frappe.get_value("Lot", lot, "production_detail")
+		ipd, item_name = frappe.get_value("Lot", lot, ["production_detail", "item"])
 		ipd_fields = ['is_set_item', 'primary_item_attribute', 'packing_attribute', 'set_item_attribute']
 		is_set_item, primary, pack_attr, set_attr = frappe.get_value("Item Production Detail", ipd, ipd_fields)
 		data = {
 			"work_order": work_order,
+			"lot": lot,
+			"item_name": item_name,
 			"sizes": [],
 			"colours": {},
 			"total_qty": {},

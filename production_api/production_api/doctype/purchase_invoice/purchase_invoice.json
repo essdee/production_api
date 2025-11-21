@@ -260,6 +260,7 @@
   {
    "fieldname": "against",
    "fieldtype": "Select",
+   "in_standard_filter": 1,
    "label": "Against",
    "options": "\nPurchase Order\nWork Order",
    "reqd": 1
@@ -364,7 +365,7 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-11-10 14:34:51.092618",
+ "modified": "2025-11-21 10:23:14.965105",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Purchase Invoice",

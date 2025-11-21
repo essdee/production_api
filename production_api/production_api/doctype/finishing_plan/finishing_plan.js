@@ -79,7 +79,9 @@ frappe.ui.form.on("Finishing Plan", {
             method: "production_api.production_api.doctype.finishing_plan.finishing_plan.fetch_quantity",
             args: {
                 "doc_name": frm.doc.name
-            }
+            },
+            freeze: true,
+            freeze_message: "Reupdating Finishing Plan"
         })
     }
 });
