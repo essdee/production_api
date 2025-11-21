@@ -1887,12 +1887,12 @@ def get_packing_process_deliverables(grn_doc):
 	else:		
 		for bom in ipd_doc.item_bom:
 			if bom.process_name == grn_doc.process_name and not bom.based_on_attribute_mapping:
-				quantity, uom = get_bom(bom_item, total_piece_qty, lot_item_detail, lot_doc, ipd_doc, packing_combo)
-				bom_items.setdefault(bom_item.item, {
+				quantity, uom = get_bom(bom, total_piece_qty, lot_item_detail, lot_doc, ipd_doc, packing_combo)
+				bom_items.setdefault(bom.item, {
 					"qty": 0,
 					"uom": uom
 				})
-				bom_items[bom_item.item]["qty"] += math.ceil(quantity)
+				bom_items[bom.item]["qty"] += math.ceil(quantity)
 
 	for bom in bom_items:
 		rate = get_stock_balance(
