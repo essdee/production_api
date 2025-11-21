@@ -8,6 +8,7 @@
  "field_order": [
   "is_rework",
   "naming_series",
+  "edit_wo_date",
   "wo_date",
   "lot",
   "supplier",
@@ -151,7 +152,7 @@
    "fieldname": "wo_date",
    "fieldtype": "Date",
    "label": "WO Date",
-   "read_only": 1,
+   "read_only_depends_on": "eval: !doc.edit_wo_date",
    "reqd": 1
   },
   {
@@ -536,6 +537,12 @@
    "fieldtype": "Table",
    "label": "Work Order Track Pieces",
    "options": "Work Order Track Piece"
+  },
+  {
+   "default": "0",
+   "fieldname": "edit_wo_date",
+   "fieldtype": "Check",
+   "label": "Edit WO Date"
   }
  ],
  "grid_page_length": 50,
@@ -551,7 +558,7 @@
    "link_fieldname": "against_id"
   }
  ],
- "modified": "2025-10-15 17:33:21.881678",
+ "modified": "2025-11-21 10:08:47.685155",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Work Order",

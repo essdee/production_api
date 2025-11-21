@@ -5,11 +5,10 @@ import frappe
 from itertools import groupby
 from frappe.model.document import Document
 from production_api.production_api.doctype.supplier.supplier import get_primary_address
-from production_api.production_api.doctype.work_order.work_order import create_finishing_detail
 from production_api.production_api.doctype.item.item import get_or_create_variant, get_attribute_details
 from production_api.essdee_production.doctype.item_production_detail.item_production_detail import get_ipd_primary_values
 from production_api.production_api.doctype.purchase_order.purchase_order import get_item_attribute_details, get_item_group_index
-from production_api.utils import update_if_string_instance, get_finishing_plan_dict, get_finishing_plan_list, get_variant_attr_details, get_tuple_attributes
+from production_api.utils import update_if_string_instance, get_finishing_plan_dict, get_finishing_plan_list, get_variant_attr_details, get_tuple_attributes, get_process_wo_list
 
 class FinishingPlan(Document):
 	def onload(self):
@@ -1107,21 +1106,7 @@ def fetch_quantity(doc_name):
 	if not finishing_inward_process:
 		frappe.throw("Set Finishing Inward Process")
 
-	processes = frappe.db.sql(
-		"""
-			Select parent FROM `tabProcess Details` WHERE process_name = %(process)s OR parent = %(process)s
-		""", {
-			"process": finishing_inward_process,
-		}, as_dict=1
-	)
-	process_names = [p['parent'] for p in processes]
-	process_names.append(finishing_inward_process)
-	wo_list = frappe.get_all("Work Order", filters={
-		"docstatus": 1,
-		"lot": wo_doc.lot,
-		"process_name": ['in', process_names],
-	}, pluck="name")
-
+	wo_list = get_process_wo_list(finishing_inward_process, doc.lot)
 	for wo in wo_list:
 		stich_wo_doc = frappe.get_doc("Work Order", wo)
 		for row in stich_wo_doc.work_order_calculated_items:
@@ -1187,6 +1172,16 @@ def fetch_quantity(doc_name):
 			key = (item.item_variant, tuple(sorted(set_comb.items())))
 			if finishing_items.get(key):
 				finishing_items[key]['dc_qty'] += item.stock_qty
+	
+	lot_transfer = update_if_string_instance(doc.lot_transfer_list)
+	lot_transfer_list = [lot_t for lot_t in lot_transfer]
+	for lot_t in lot_transfer_list:
+		lot_t_doc = frappe.get_doc("Lot Transfer", lot_t)
+		for row in lot_t_doc.items:
+			set_comb = update_if_string_instance(row.set_combination)
+			key = (row.item, tuple(sorted(set_comb.items())))
+			qty = row.qty
+			finishing_items[key]['lot_transferred'] += qty	
 
 	return_grn_list = update_if_string_instance(doc.return_grn_list)
 	pack_return_list = update_if_string_instance(doc.pack_return_list)

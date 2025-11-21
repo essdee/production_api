@@ -83,7 +83,7 @@
 								<th v-if="docstatus == 0">Pending Quantity</th>
 								<th v-if="docstatus == 0">Quantity</th>
 								<th v-if="docstatus == 0">Secondary Qty</th>
-								<th v-if="docstatus == 1">Delivered Quantity</th>
+								<th v-if="docstatus != 0">Delivered Quantity</th>
 								<th>Comments</th>
 							</tr>
 							<tr v-for="(j, item1_index) in i.items" :key="item1_index">
@@ -107,7 +107,7 @@
 										{{j.values['default'].secondary_qty}} {{j.values['default'].secondary_uom}}
 									</div>
 								</td>
-								<td v-if="docstatus == 1">
+								<td v-if="docstatus != 0">
 									<div v-if='j.values["default"].delivered_quantity > 0'>
 										{{ j.values["default"].delivered_quantity}}
 										<span v-if="j.default_uom">{{ " " + j.default_uom }}</span>

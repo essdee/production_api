@@ -26,8 +26,8 @@
                     <td>{{ cost_data['rate'] }}</td>
                     <td>{{ cost_data['qty'] }}</td>
                     <template v-if="gst_state && gst_state == 'In-State'">
-                        <td>{{ cost_data['igst']/2 }}</td>
-                        <td>{{ cost_data['igst']/2 }}</td>
+                        <td>{{ (cost_data['igst']/2).toFixed(2) }}</td>
+                        <td>{{ (cost_data['igst']/2).toFixed(2) }}</td>
                     </template>
                     <template v-if="gst_state == 'Out-State'">
                         <td>{{ cost_data['igst'] }}</td>
@@ -42,8 +42,8 @@
                     <td></td>
                     <td></td>
                     <template v-if="gst_state && gst_state == 'In-State'">
-                        <th>{{ total_tax/2 }}</th>
-                        <th>{{ total_tax/2 }}</th>
+                        <th>{{ (total_tax/2).toFixed(2) }}</th>
+                        <th>{{ (total_tax/2).toFixed(2) }}</th>
                     </template>
                     <template v-if="gst_state == 'Out-State'">
                         <th>{{ total_tax }}</th>
@@ -69,6 +69,7 @@
                         </tr>
                     </table>
                 </div>
+                <h5>{{ item['lot'] }} - {{ item['item_name'] }}</h5>
                 <table class="table table-sm table-sm-bordered bordered-table">
                     <thead class="dark-border">
                         <tr>

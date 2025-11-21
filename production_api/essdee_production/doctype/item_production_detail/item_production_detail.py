@@ -106,6 +106,13 @@ class ItemProductionDetail(Document):
 				frappe.delete_doc("Item BOM Attribute Mapping", mapping)
 	
 	def before_validate(self):
+		items = []
+		for item in self.item_bom:
+			if not item.based_on_attribute_mapping:
+				if item.item in items:
+					frappe.throw("Duplicate Item in BOM "+item.item + " in Row "+ str(item.idx))
+				items.append(item.item)	
+
 		if self.get('set_item_detail') and self.is_set_item:
 			set_details = save_item_details(self.set_item_detail)
 			self.set('set_item_combination_details', set_details)
