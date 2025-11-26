@@ -1,0 +1,59 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2025-11-25 10:43:20.093846",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "top_colour",
+  "top_colour_code",
+  "bottom_colour",
+  "bottom_colour_code"
+ ],
+ "fields": [
+  {
+   "fieldname": "top_colour",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Top Colour",
+   "options": "Product Colour Code"
+  },
+  {
+   "fetch_from": "top_colour.colour_code",
+   "fieldname": "top_colour_code",
+   "fieldtype": "Color",
+   "hidden": 1,
+   "label": "Top Colour Code"
+  },
+  {
+   "fieldname": "bottom_colour",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Bottom Colour",
+   "options": "Product Colour Code"
+  },
+  {
+   "fetch_from": "bottom_colour.colour_code",
+   "fieldname": "bottom_colour_code",
+   "fieldtype": "Color",
+   "hidden": 1,
+   "label": "Bottom Colour Code"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2025-11-25 10:45:46.355983",
+ "modified_by": "Administrator",
+ "module": "Product Development",
+ "name": "Product Set Colour",
+ "owner": "Administrator",
+ "permissions": [],
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

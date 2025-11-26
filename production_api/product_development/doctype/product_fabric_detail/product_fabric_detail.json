@@ -1,0 +1,55 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2025-11-21 17:05:29.116918",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "fabric_name",
+  "supplier",
+  "rate",
+  "fabric_details"
+ ],
+ "fields": [
+  {
+   "fieldname": "fabric_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Fabric Name"
+  },
+  {
+   "fieldname": "supplier",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Supplier"
+  },
+  {
+   "fieldname": "rate",
+   "fieldtype": "Currency",
+   "in_list_view": 1,
+   "label": "Rate"
+  },
+  {
+   "fieldname": "fabric_details",
+   "fieldtype": "Small Text",
+   "in_list_view": 1,
+   "label": "Fabric Details"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2025-11-21 17:06:29.354980",
+ "modified_by": "Administrator",
+ "module": "Product Development",
+ "name": "Product Fabric Detail",
+ "owner": "Administrator",
+ "permissions": [],
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

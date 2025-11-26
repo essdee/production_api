@@ -1,0 +1,62 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "field:image_title",
+ "creation": "2025-11-21 17:17:13.470141",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "image_title",
+  "image",
+  "title_header"
+ ],
+ "fields": [
+  {
+   "fieldname": "image_title",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Image Title",
+   "reqd": 1,
+   "unique": 1
+  },
+  {
+   "fieldname": "image",
+   "fieldtype": "Attach Image",
+   "label": "Image",
+   "reqd": 1
+  },
+  {
+   "fieldname": "title_header",
+   "fieldtype": "Data",
+   "label": "Title Header"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2025-11-24 11:22:40.447471",
+ "modified_by": "Administrator",
+ "module": "Product Development",
+ "name": "Product Image",
+ "naming_rule": "By fieldname",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}
