@@ -1249,7 +1249,7 @@ def get_work_in_progress_report(category, status, lot_list_val, item_list, proce
 				if detail:
 					lot_dict['lot_data'][lot][details_key][sent_val] += detail[0]['sent']
 					lot_dict['lot_data'][lot][details_key][rec_val] += detail[0]['received']
-					lot_dict['lot_data'][lot][details_key][diff_val] += (detail[0]['received'] - detail[0]['received'])
+					lot_dict['lot_data'][lot][details_key][diff_val] += (detail[0]['sent'] - detail[0]['received'])
 
 			if process_dict[process_name] == cut:
 				if not last_cut_process:

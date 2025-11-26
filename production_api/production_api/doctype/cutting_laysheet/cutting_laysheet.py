@@ -74,7 +74,7 @@ class CuttingLaySheet(Document):
 			self.set("cutting_laysheet_accessory_details", items)
 
 		status = frappe.get_value("Cutting Plan",self.cutting_plan,"cp_status")	
-		if status == "Completed":
+		if self.is_new() and status == "Completed":
 			frappe.throw("Select the Incompleted Cutting Plan")
 		
 		cm_docstatus, cut_marker_cp  = frappe.get_value("Cutting Marker",self.cutting_marker,["docstatus","cutting_plan"])
