@@ -243,7 +243,7 @@
                                     </th>
                                 </tr>
                                 <tr>
-                                    <th :colspan="2">Unaccountable ((B + D1 + D2 ) - ( F + I + J + K + L ))</th>
+                                    <th :colspan="2">Unaccountable (( F + I + J + K + L ) - (B + D1 + D2 ))</th>
                                     <th v-for="size in items.primary_values" :style="get_style(get_total_difference(part_value, size))">
                                         {{ get_total_difference(part_value, size) }}
                                     </th>
@@ -366,26 +366,25 @@ function get_style(val){
 }
 
 function get_total_difference(part_value, size){
-    return (items.value['ocr_data'][part_value]['total'][size]['sewing_received'] +
-            items.value['ocr_data'][part_value]['total'][size]['old_lot'] + 
-            items.value['ocr_data'][part_value]['total'][size]['ironing_excess']) -
-            (items.value['ocr_data'][part_value]['total'][size]['packed_box_qty'] + 
+    return  (items.value['ocr_data'][part_value]['total'][size]['packed_box_qty'] + 
             items.value['ocr_data'][part_value]['total'][size]['rejected'] + 
             items.value['ocr_data'][part_value]['total'][size]['loose_piece_set'] +
             items.value['ocr_data'][part_value]['total'][size]['loose_piece'] +
-            items.value['ocr_data'][part_value]['total'][size]['pending'])
+            items.value['ocr_data'][part_value]['total'][size]['pending']) - 
+            (items.value['ocr_data'][part_value]['total'][size]['sewing_received'] +
+            items.value['ocr_data'][part_value]['total'][size]['old_lot'] + 
+            items.value['ocr_data'][part_value]['total'][size]['ironing_excess'])
 }
 
 function get_total(part_value){
-    return items.value['ocr_data'][part_value]['sewing_received'] +
-            items.value['ocr_data'][part_value]['old_lot'] + 
-            items.value['ocr_data'][part_value]['ironing_excess'] -
-            (items.value['ocr_data'][part_value]['packed_box_qty'] + 
+    return (items.value['ocr_data'][part_value]['packed_box_qty'] + 
             items.value['ocr_data'][part_value]['rejected'] + 
             items.value['ocr_data'][part_value]['loose_piece_set'] +
             items.value['ocr_data'][part_value]['loose_piece'] +
-            items.value['ocr_data'][part_value]['pending'])
-
+            items.value['ocr_data'][part_value]['pending']) -
+            (items.value['ocr_data'][part_value]['sewing_received'] +
+            items.value['ocr_data'][part_value]['old_lot'] + 
+            items.value['ocr_data'][part_value]['ironing_excess'])
 }
 
 function get_ocr_value(part_value){
