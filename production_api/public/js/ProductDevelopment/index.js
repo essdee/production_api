@@ -1,6 +1,9 @@
 import { createApp } from 'vue';
 import ProductFileVersions from "./Product/ProductFileVersions.vue"
 import ProductCostingList from "./Product/ProductCostingList.vue"
+import ProductImageList from './Product/ProductImageList.vue';
+import ProductTrimColourComb from "./Product/ProductTrimColourComb.vue"
+import ProductMeasurement from "./Product/ProductMeasurement.vue";
 
 export class ProductFileVersionsWrapper {
     constructor(wrapper) {
@@ -37,3 +40,57 @@ export class ProductCostingListWrapper {
         // });
     }
 };
+
+export class ProductImageListWrapper {
+    constructor(wrapper) {
+        this.$wrapper = $(wrapper);
+        this.make_body();
+    }
+
+    make_body() {
+        this.app = createApp(ProductImageList);
+        this.productImageList = this.app.mount(this.$wrapper.get(0));
+    }
+    get_data(){
+        return this.productImageList.get_data()
+    }
+    load_data(data, view){
+        this.productImageList.load_data(JSON.parse(JSON.stringify(data)), view)
+    }
+}
+
+export class ProductTrimColourCombWrapper {
+    constructor(wrapper) {
+        this.$wrapper = $(wrapper);
+        this.make_body();
+    }
+
+    make_body() {
+        this.app = createApp(ProductTrimColourComb);
+        this.productTrimColourComb = this.app.mount(this.$wrapper.get(0));
+    }
+    get_data(){
+        return this.productTrimColourComb.get_data()
+    }
+    load_data(data, view){
+        this.productTrimColourComb.load_data(JSON.parse(JSON.stringify(data)), view)
+    }
+}
+
+export class ProductMeasurementWrapper {
+    constructor(wrapper) {
+        this.$wrapper = $(wrapper);
+        this.make_body();
+    }
+
+    make_body() {
+        this.app = createApp(ProductMeasurement);
+        this.productMeasurement = this.app.mount(this.$wrapper.get(0));
+    }
+    get_data(){
+        return this.productMeasurement.get_data()
+    }
+    load_data(data){
+        this.productMeasurement.load_data(JSON.parse(JSON.stringify(data)))
+    }
+}

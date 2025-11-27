@@ -75,7 +75,13 @@ import ColourWiseDiffReport from "./components/ColourWiseDiffReport.vue"
 import InvoiceWoItems from "./PurchaseInvoice/components/InvoiceWOItems.vue"
 
 // Product Development
-import { ProductFileVersionsWrapper, ProductCostingListWrapper } from "./ProductDevelopment"
+import { 
+    ProductFileVersionsWrapper, 
+    ProductCostingListWrapper, 
+    ProductImageListWrapper, 
+    ProductTrimColourCombWrapper,
+    ProductMeasurementWrapper
+} from "./ProductDevelopment"
 
 import EventBus from "./bus.js";
 
@@ -1429,5 +1435,6 @@ frappe.production.ui.EditBOMAttributeMapping = EditBOMAttributeMappingWrapper
 // Product Development
 frappe.production.product_development.ui.ProductFileVersions = ProductFileVersionsWrapper
 frappe.production.product_development.ui.ProductCostingList = ProductCostingListWrapper
-
-
+frappe.production.product_development.ui.ProductImageList = ProductImageListWrapper
+frappe.production.product_development.ui.ProductTrimColourComb = ProductTrimColourCombWrapper
+frappe.production.product_development.ui.ProductMeasurement = ProductMeasurementWrapper
