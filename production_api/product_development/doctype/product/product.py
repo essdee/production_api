@@ -3,8 +3,9 @@
 
 from mimetypes import guess_type
 import frappe
-from frappe.utils import cint
+from frappe.utils import cint, get_url
 from frappe.model.document import Document
+from production_api.utils import update_if_string_instance
 
 class Product(Document):
 	def load_costing_list(self):
@@ -17,6 +18,77 @@ class Product(Document):
 	def onload(self):
 		"""Load Attribute List into `__onload`"""
 		self.load_costing_list()
+		if len(self.product_placement) > 0:
+			upload_data = get_table_onload_data(self.product_placement)
+			self.set_onload("placement_images", upload_data)	
+		
+		if len(self.trims) > 0:
+			upload_data = get_table_onload_data(self.trims)
+			self.set_onload("trims_images", upload_data)	
+
+		if len(self.product_trim_combination) > 0:
+			upload_data = get_table_onload_data(self.product_trim_combination, with_list=True)
+			self.set_onload("trims_combination", upload_data)	
+
+		if len(self.product_measurement_descriptions) > 0:
+			measurement_details = {}
+			for row in self.product_measurement_descriptions:
+				measurement_details.setdefault(row.group, [])
+				measurement_details[row.group].append(row.description)
+			self.set_onload("measurement_details", measurement_details)	
+
+	def before_validate(self):
+		image_list = []
+		if self.get('placement_images'):
+			placement_images = update_if_string_instance(self.placement_images)
+			image_list = get_tabel_struct_data(placement_images)
+		self.set("product_placement", image_list)	
+		image_list = []
+		if self.get('product_trims_images'):
+			trims = update_if_string_instance(self.product_trims_images)
+			image_list = get_tabel_struct_data(trims)
+		self.set("trims", image_list)	
+		image_list = []
+		if self.get("trim_comb"):
+			trim_comb = update_if_string_instance(self.trim_comb)
+			image_list = get_tabel_struct_data(trim_comb, with_list=True)	
+		self.set("product_trim_combination", image_list)
+		if self.get("measurement_details"):
+			measurement_details = update_if_string_instance(self.measurement_details)
+			items_list = []
+			for key in measurement_details:
+				for val in measurement_details[key]:
+					items_list.append({
+						"description": val,
+						"group": key
+					})
+			self.set("product_measurement_descriptions", items_list)		
+
+def get_table_onload_data(table, with_list=False):
+	upload_data = []
+	for row in table:
+		d = {
+			"image_url": get_url(row.url),
+			"image_title": row.title_header,
+			"image_name": row.product_image
+		}
+		if with_list:
+			d['selected_colours'] = row.selected_colours.split(",")
+		upload_data.append(d)
+	return upload_data
+	
+def get_tabel_struct_data(data, with_list=False):
+	image_list = []
+	for row in data:
+		d = {
+			"product_image": row['image_name'],
+			"url": row['image_url'],
+			"title_header": row['image_title'],
+		}
+		if with_list:
+			d['selected_colours'] = ",".join(row.get("selected_colours") or [])
+		image_list.append(d)
+	return image_list
 
 @frappe.whitelist()
 def upload_product_file():
@@ -159,3 +231,16 @@ def get_grouped_files(files):
 	for key in grouped_files:
 		grouped_files[key].sort(key=lambda x: x.version_number, reverse=True)
 	return grouped_files
+
+@frappe.whitelist()
+def get_product_colour_codes(docname):
+	doc = frappe.get_doc("Product", docname)
+	colour_codes = {}
+	if doc.is_set_item:
+		for row in doc.product_set_colours:
+			colour_codes[row.top_colour] = row.top_colour_code
+			colour_codes[row.bottom_colour] = row.bottom_colour_code
+	else:
+		for row in doc.product_colours:
+			colour_codes[row.product_colour] = row.colour_code
+	return colour_codes		

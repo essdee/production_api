@@ -6,11 +6,32 @@ frappe.ui.form.on('Product', {
 		if (frm.is_new()) {
 			$(frm.fields_dict['file_html'].wrapper).html("");
 			$(frm.fields_dict['costing_html'].wrapper).html("");
-		} else {
+		} 
+		else {
 			$(frm.fields_dict['file_html'].wrapper).html("");
 			$(frm.fields_dict['costing_html'].wrapper).html("");
 			let fileEditor = new frappe.production.product_development.ui.ProductFileVersions(frm.fields_dict["file_html"].wrapper);
 			let costingList = new frappe.production.product_development.ui.ProductCostingList(frm.fields_dict["costing_html"].wrapper);
+		}
+		frm.placement = new frappe.production.product_development.ui.ProductImageList(frm.fields_dict['product_placement_html'].wrapper);
+		if(frm.doc.__onload && frm.doc.__onload.placement_images){
+			frm.doc['placement_images'] = frm.doc.__onload.placement_images
+			frm.placement.load_data(frm.doc.__onload.placement_images, "Placement")
+		}
+		frm.product_trims = new frappe.production.product_development.ui.ProductImageList(frm.fields_dict['product_trims_html'].wrapper)
+		if(frm.doc.__onload && frm.doc.__onload.trims_images){
+			frm.doc['trims_images'] = frm.doc.__onload.trims_images
+			frm.product_trims.load_data(frm.doc.__onload.trims_images, "Trims")
+		}
+		frm.trim_comb = new frappe.production.product_development.ui.ProductTrimColourComb(frm.fields_dict['trim_colour_combination_html'].wrapper)
+		if(frm.doc.__onload && frm.doc.__onload.trims_combination){
+			frm.doc['trims_combination'] = frm.doc.__onload.trims_combination
+			frm.trim_comb.load_data(frm.doc.__onload.trims_combination, "Combination")
+		}
+		frm.measurement = new frappe.production.product_development.ui.ProductMeasurement(frm.fields_dict['product_measurement_html'].wrapper)
+		if(frm.doc.__onload && frm.doc.__onload.measurement_details){
+			frm.doc['measurement_details'] = frm.doc.__onload.measurement_details
+			frm.measurement.load_data(frm.doc.__onload.measurement_details)
 		}
 	},
 
@@ -24,7 +45,6 @@ frappe.ui.form.on('Product', {
 
 	get_sizes: function(frm) {
 		frappe.db.get_doc("FG Item Size Range", frm.doc.size_range).then(size_range => {
-			console.log(size_range);
 			frm.set_value("sizes", []);
 			size_range.sizes.forEach(size => {
 				let row = frm.add_child("sizes");
@@ -32,5 +52,20 @@ frappe.ui.form.on('Product', {
 			});
 			frm.refresh_field("sizes");
 		});
+	},
+
+	validate(frm){
+		if(frm.placement){
+			frm.doc['placement_images'] = frm.placement.get_data()
+		}
+		if(frm.product_trims) {
+			frm.doc['product_trims_images'] = frm.product_trims.get_data()
+		}
+		if(frm.trim_comb){
+			frm.doc['trim_comb'] = frm.trim_comb.get_data()
+		}
+		if(frm.measurement){
+			frm.doc['measurement_details'] = frm.measurement.get_data()
+		}
 	}
 });
