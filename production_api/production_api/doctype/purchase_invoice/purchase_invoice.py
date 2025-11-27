@@ -89,7 +89,7 @@ class PurchaseInvoice(Document):
 			if grand_total > self.grn_grand_total:
 				frappe.throw("Total amount is greater than GRN total amount")	
 		else:
-			if float(grand_total) != float(self.grn_grand_total):
+			if float(round(grand_total, 2)) != float(round(self.grn_grand_total, 2)):
 				if not self.allow_to_change_rate:
 					frappe.throw("Total amount is greater than GRN total amount")
 					
