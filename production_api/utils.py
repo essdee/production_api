@@ -1144,7 +1144,7 @@ def get_work_in_progress_report(category, status, lot_list_val, item_list, proce
 				lot_dict['lot_data'][lot]['sewing_details']['sewing_sent'] += stich_detail[0]['sent']
 				lot_dict['lot_data'][lot]['sewing_details']['finishing_inward'] += stich_detail[0]['received']
 		
-		lot_dict['lot_data'][lot]['sewing_details']['cut_to_sew_diff'] = lot_dict['lot_data'][lot]['cut_details']['cut_qty'] - lot_dict['lot_data'][lot]['sewing_details']['sewing_sent']
+		lot_dict['lot_data'][lot]['sewing_details']['cut_to_sew_diff'] = lot_dict['lot_data'][lot]['sewing_details']['sewing_sent'] - lot_dict['lot_data'][lot]['cut_details']['cut_qty']
 		lot_dict['lot_data'][lot]['sewing_details']['in_sew'] = lot_dict['lot_data'][lot]['sewing_details']['finishing_inward'] - lot_dict['lot_data'][lot]['sewing_details']['sewing_sent']
 		stich_wo_list.append("")
 		sql_data = frappe.db.sql(
