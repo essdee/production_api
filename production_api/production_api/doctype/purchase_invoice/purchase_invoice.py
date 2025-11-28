@@ -343,6 +343,7 @@ def fetch_grn_details(grns, against, supplier):
 					"qty": 0,
 					"uom": grn_item.uom,
 					"rate": rate,
+					"actual_rate": rate,
 					"amount": 0,
 					"tax": grn_item.tax,
 				})
@@ -422,6 +423,7 @@ def fetch_grn_details(grns, against, supplier):
 					"rate": rate,
 					"amount": 0,
 					"tax": tax,
+					"actual_rate": rate,
 				})
 				wo_items.setdefault(wo, {})
 				wo_items[wo].setdefault(key_val, {
