@@ -12,8 +12,8 @@
   "tab_break_v3vhq",
   "style_no",
   "product_group",
-  "description",
   "fabric_details",
+  "description",
   "column_break_gelhq",
   "season",
   "front_image",
@@ -22,12 +22,14 @@
   "size_range",
   "sizes",
   "section_break_zlpx",
+  "is_set_item",
   "category",
   "category_image_url",
+  "column_break_jphn",
   "sub_brand",
   "sub_brand_image_url",
   "dia",
-  "is_set_item",
+  "section_break_xbdm",
   "product_fabric_composition_details",
   "tab_break_xxll",
   "top_image",
@@ -351,13 +353,21 @@
    "fieldname": "top_measurement_image",
    "fieldtype": "Attach Image",
    "label": "Top Measurement Image"
+  },
+  {
+   "fieldname": "column_break_jphn",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "section_break_xbdm",
+   "fieldtype": "Section Break"
   }
  ],
  "grid_page_length": 50,
  "image_field": "front_image",
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-11-26 17:33:17.851174",
+ "modified": "2025-11-29 11:33:53.575758",
  "modified_by": "Administrator",
  "module": "Product Development",
  "name": "Product",
