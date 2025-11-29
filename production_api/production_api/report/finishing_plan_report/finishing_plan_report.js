@@ -18,7 +18,7 @@ frappe.query_reports["Finishing Plan Report"] = {
 		{
 			"fieldname": "season",
 			"fieldtype": "Link",
-			"options": "Season",
+			"options": "Product Season",
 			"label": "Season",
 		},
 	],
