@@ -11,6 +11,7 @@
   "item",
   "assigned_person",
   "pack_out_stage",
+  "season",
   "size_set_colour",
   "set_item_attribute",
   "is_set_item",
@@ -379,11 +380,17 @@
    "fieldname": "ocr_detail_html",
    "fieldtype": "HTML",
    "label": "OCR Detail HTML"
+  },
+  {
+   "fieldname": "season",
+   "fieldtype": "Link",
+   "label": "Season",
+   "options": "Product Season"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-11-06 11:45:28.824282",
+ "modified": "2025-11-29 11:27:38.834649",
  "modified_by": "Administrator",
  "module": "Essdee Production",
  "name": "Lot",

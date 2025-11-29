@@ -37,5 +37,31 @@
   "restrict_to_domain": null,
   "role_name": "Senior Merch",
   "two_factor_auth": 0
+ },
+ {
+  "desk_access": 1,
+  "disabled": 0,
+  "docstatus": 0,
+  "doctype": "Role",
+  "home_page": null,
+  "is_custom": 0,
+  "modified": "2025-11-29 15:48:42.038253",
+  "name": "Brand QA User",
+  "restrict_to_domain": null,
+  "role_name": "Brand QA User",
+  "two_factor_auth": 0
+ },
+ {
+  "desk_access": 1,
+  "disabled": 0,
+  "docstatus": 0,
+  "doctype": "Role",
+  "home_page": null,
+  "is_custom": 0,
+  "modified": "2025-11-29 15:48:49.207253",
+  "name": "Brand QA Manager",
+  "restrict_to_domain": null,
+  "role_name": "Brand QA Manager",
+  "two_factor_auth": 0
  }
 ]
