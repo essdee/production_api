@@ -12,16 +12,16 @@
   "against_id",
   "section_break_bljm",
   "inspection_type",
+  "order_qty",
   "column_break_btol",
   "offer_qty",
   "section_break_rppo",
   "checking_level",
-  "order_qty",
   "column_break_qmbo",
   "posting_date",
   "section_break_rkfg",
   "lot",
-  "unit_name",
+  "supplier",
   "column_break_nrbx",
   "item",
   "description",
@@ -56,15 +56,6 @@
    "label": "Inspection Type",
    "options": "\nPre-FInal\nFinal\nRe-Final",
    "reqd": 1
-  },
-  {
-   "fieldname": "unit_name",
-   "fieldtype": "Link",
-   "in_list_view": 1,
-   "in_standard_filter": 1,
-   "label": "Unit Name",
-   "options": "Supplier",
-   "read_only": 1
   },
   {
    "fieldname": "item",
@@ -287,13 +278,22 @@
    "print_hide": 1,
    "read_only": 1,
    "search_index": 1
+  },
+  {
+   "fieldname": "supplier",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Supplier",
+   "options": "Supplier",
+   "read_only": 1
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-11-29 16:00:15.999418",
+ "modified": "2025-11-29 17:42:52.793228",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Essdee Quality Inspection",
