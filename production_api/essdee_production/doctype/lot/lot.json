@@ -385,12 +385,12 @@
    "fieldname": "season",
    "fieldtype": "Link",
    "label": "Season",
-   "options": "Season"
+   "options": "Product Season"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-11-28 17:33:35.701685",
+ "modified": "2025-11-29 11:27:38.834649",
  "modified_by": "Administrator",
  "module": "Essdee Production",
  "name": "Lot",
