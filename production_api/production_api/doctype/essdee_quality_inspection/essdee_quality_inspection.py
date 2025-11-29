@@ -26,6 +26,8 @@ class EssdeeQualityInspection(Document):
 	def before_submit(self):
 		if self.result not in ['Pass', "Fail", "Hold"]:
 			frappe.thow("Please set the result")
+		self.inspector = frappe.session.user
+		self.inspector_name = frappe.get_value("User", frappe.session.user, "full_name")
 
 	def before_validate(self):
 		if self.offer_qty == 0:
@@ -47,7 +49,7 @@ class EssdeeQualityInspection(Document):
 			check = True
 
 		if check:
-			if self.major_defect_found < self.major_defect_maximum_allowed and self.minor_defect_found < self.minor_defect_maximum_allowed:
+			if self.major_defect_found <= self.major_defect_maximum_allowed and self.minor_defect_found <= self.minor_defect_maximum_allowed:
 				self.result = 'Pass'
 				self.calculated_result = 'Pass'
 			else:

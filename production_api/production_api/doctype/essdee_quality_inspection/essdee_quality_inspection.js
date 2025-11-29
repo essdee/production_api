@@ -39,10 +39,12 @@ frappe.ui.form.on("Essdee Quality Inspection", {
                 frm.doc.essdee_quality_inspection_sizes.forEach((size)=> {
                     sizes+= size.size+","
                 })
+                sizes = sizes.slice(0, -1)
                 let colours = ""
                 frm.doc.essdee_quality_inspection_colours.forEach((colour)=> {
                     colours+= colour.colour+","
                 })
+                colours = colours.slice(0, -1)
                 let caption = `
 ${frm.doc.inspection_type}
 Supplier: ${frm.doc.supplier}
@@ -53,7 +55,7 @@ Colour: ${colours}
 Order Qty: ${frm.doc.order_qty}
 Offer Qty: ${frm.doc.offer_qty}
 AQL Sample: ${frm.doc.sample_piece_count}
-Allowed Major: ${frm.doc.major_defect_maximum_allowed}}
+Allowed Major: ${frm.doc.major_defect_maximum_allowed}
 Found Major: ${frm.doc.major_defect_found}
 Allowed Minor: ${frm.doc.minor_defect_maximum_allowed}
 Found Minor: ${frm.doc.minor_defect_found}
@@ -61,8 +63,9 @@ Result: ${frm.doc.result}
                 `;
                 try {
                     await navigator.clipboard.writeText(caption);
-                    let imageUrl = frm.doc.upload_quality_approval_sheet + "?sid=" + frappe.session.sid;
-                    const response = await fetch(imageUrl, { credentials: "include" });
+                    let file_url = frm.doc.upload_quality_approval_sheet;
+                    let api_url = `/api/method/frappe.utils.file_manager.download_file?file_url=${encodeURIComponent(file_url)}`;
+                    const response = await fetch(api_url, { credentials: "include" });
                     const blob = await response.blob();
                     const file = new File([blob], "inspection.jpg", { type: blob.type });
                     const shareData = { files: [file] };

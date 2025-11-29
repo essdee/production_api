@@ -19,6 +19,7 @@
    "unique": 1
   },
   {
+   "allow_bulk_edit": 1,
    "fieldname": "aql_level_limit_details",
    "fieldtype": "Table",
    "label": "AQL Level Limit Details",
@@ -28,7 +29,7 @@
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-11-29 16:05:16.438248",
+ "modified": "2025-11-29 17:51:59.378692",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "AQL Level",

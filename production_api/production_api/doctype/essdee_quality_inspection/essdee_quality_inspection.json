@@ -45,7 +45,9 @@
   "upload_quality_approval_sheet",
   "result",
   "calculated_result",
-  "amended_from"
+  "amended_from",
+  "inspector",
+  "inspector_name"
  ],
  "fields": [
   {
@@ -287,13 +289,26 @@
    "label": "Supplier",
    "options": "Supplier",
    "read_only": 1
+  },
+  {
+   "fieldname": "inspector",
+   "fieldtype": "Link",
+   "label": "Inspector",
+   "options": "User",
+   "read_only": 1
+  },
+  {
+   "fieldname": "inspector_name",
+   "fieldtype": "Data",
+   "label": "Inspector Name",
+   "read_only": 1
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-11-29 17:42:52.793228",
+ "modified": "2025-11-29 18:49:21.270753",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Essdee Quality Inspection",
@@ -301,6 +316,7 @@
  "owner": "Administrator",
  "permissions": [
   {
+   "cancel": 1,
    "create": 1,
    "email": 1,
    "export": 1,
@@ -309,6 +325,7 @@
    "report": 1,
    "role": "System Manager",
    "share": 1,
+   "submit": 1,
    "write": 1
   },
   {
@@ -335,6 +352,36 @@
    "share": 1,
    "submit": 1,
    "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Merch User",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Stock User",
+   "share": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Store User",
+   "share": 1
   }
  ],
  "row_format": "Dynamic",
