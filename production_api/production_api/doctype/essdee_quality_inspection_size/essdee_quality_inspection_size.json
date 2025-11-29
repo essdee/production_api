@@ -1,0 +1,42 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2025-11-28 09:33:58.229921",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "size",
+  "selected"
+ ],
+ "fields": [
+  {
+   "default": "0",
+   "fieldname": "selected",
+   "fieldtype": "Check",
+   "in_list_view": 1,
+   "label": "Selected"
+  },
+  {
+   "fieldname": "size",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Size"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2025-11-28 09:34:06.857282",
+ "modified_by": "Administrator",
+ "module": "Production Api",
+ "name": "Essdee Quality Inspection Size",
+ "owner": "Administrator",
+ "permissions": [],
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

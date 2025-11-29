@@ -43,7 +43,7 @@
                                 {{ index + 1 }}
                             </div>
                             <div style="padding-top:1px;padding-left:5px;">
-                                <input  type="checkbox" v-model="selectedItems" :value="item">
+                                <input  type="checkbox" v-model="selectedItems" :value="`${item.lot}|${item.item}|${item.warehouse}`">
                             </div>
                         </td>
                         <td>{{ item.lot }}</td>
@@ -54,7 +54,6 @@
                         <td>{{ item.received_type }}</td>
                         <td>{{ item.bal_qty }}</td>
                         <td>
-                            
                             <button class="btn btn-success" @click="create_stock_entry(item)">Create</button>
                         </td>
                     </tr>
@@ -163,15 +162,12 @@ function get_filters() {
     });
 }
 
-function select_all(){
-    selectedItems.value = []
-    for(let i = 0; i < items.value.length; i++){
-        selectedItems.value.push(items.value[i])
-    }
+function select_all() {
+    selectedItems.value = items.value.map(i => i.lot);
 }
 
-function unselect_all(){
-    selectedItems.value = []
+function unselect_all() {
+    selectedItems.value = [];
 }
 
 function lot_transfer(){
@@ -208,6 +204,7 @@ function lot_transfer(){
                     "transfer_lot": values.lot
                 },
                 callback: function(r){
+                    frappe.open_in_new_tab = true
                     frappe.set_route("Form", "Lot Transfer", r.message)
                 }
             })
@@ -242,6 +239,7 @@ function create_stock_entry(item) {
                             stock_values: stock_values
                         },
                         callback: function (r) {
+                            frappe.open_in_new_tab = true
                             frappe.set_route("Form", "Stock Entry", r.message)
                         }
                     })
@@ -287,6 +285,7 @@ function create_bulk_stock_entry(){
                             purpose: purpose,
                         },
                         callback: function(r){
+                            frappe.open_in_new_tab = true
                             frappe.set_route("Form", "Stock Entry", r.message)
                         }
                     })
@@ -324,6 +323,7 @@ function reduce_stock(){
                     warehouse: location,
                 },
                 callback: function(r){
+                    frappe.open_in_new_tab = true
                     frappe.set_route("Form", "Stock Reconciliation", r.message)
                 }
             })

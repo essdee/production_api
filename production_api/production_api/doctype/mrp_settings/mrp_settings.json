@@ -44,6 +44,8 @@
   "additional_grn_submit_role",
   "cut_bundle_cancelled_lot",
   "finishing_inward_process",
+  "default_major_aql_level",
+  "default_minor_aql_level",
   "vendor_bill_tracking_section",
   "enable_vendor_bill_no_unique_restriction",
   "fiscal_year_start_date",
@@ -296,13 +298,25 @@
    "fieldname": "allow_excess_grn",
    "fieldtype": "Check",
    "label": "Allow Excess GRN"
+  },
+  {
+   "fieldname": "default_major_aql_level",
+   "fieldtype": "Link",
+   "label": "Default Major AQL Level",
+   "options": "AQL Level"
+  },
+  {
+   "fieldname": "default_minor_aql_level",
+   "fieldtype": "Link",
+   "label": "Default Minor AQL Level",
+   "options": "AQL Level"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2025-11-17 16:19:31.601004",
+ "modified": "2025-11-29 16:03:49.370112",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "MRP Settings",

@@ -4,6 +4,31 @@
   "doctype": "Essdee Raw Print Format",
   "height": 1.0,
   "labels_per_row": 3,
+  "modified": "2025-10-12 15:14:23.962973",
+  "name": "Sales Piece Print Without MRP",
+  "raw_print_format_details": [
+   {
+    "parent": "Sales Piece Print Without MRP",
+    "parentfield": "raw_print_format_details",
+    "parenttype": "Essdee Raw Print Format",
+    "printer_type": "200dpi",
+    "raw_code": "\r\n^XA\r\n^PQ{{print_quantity}}\r\n^PW1170\r\n\r\n^FO0,20^GFA,5500,5500,22,,:::::::::::::::::::::::::::::::::::::::V03E0FC03E,V03F0FC03F,::::::::::::::V03F0FE07F,V03MF,::V03LFE,V01LFE,W0LFC,,::::V01E07803E,V03F0FC03F,:::::::::::::::V03MF,::V03LFE,V01LFE,V01LFC,W07KF,,::::W0LFC,V01LFE,V03LFE,V03MF,::V03F8I07F,V03FJ03F,::::::::::V03FJ07F,V03MF,::::V03LFE,,::::V01E00IF,V03F07IFE,:V03F0JFE,V03F0KF,:V03F0FE07F,V03F0FC03F,::::::V03E0FC03F,V03F0FC03F,:::V03F9FC03F,V03IFC03F,::V03IF803F,V01IF803F,W07FF003E,,::::V03E03IFC,V03F07IFE,V03F0JFE,V03F0KF,::V03F0FE07F,V03F0FC03F,:::::::::::V03IFC03F,:::V01IF803F,V01IF003F,,::::V01E07801E,V03E0FC03F,V03F0FC03F,::::::::::::::V03F9FF07F,V03MF,::V03LFE,V01LFC,W07KF8,,:::::::::::::::::::::::::::::::::::::^FS\r\n\r\n^FO350,20^GFA,5500,5500,22,,:::::::::::::::::::::::::::::::::::::::V03E0FC03E,V03F0FC03F,::::::::::::::V03F0FE07F,V03MF,::V03LFE,V01LFE,W0LFC,,::::V01E07803E,V03F0FC03F,:::::::::::::::V03MF,::V03LFE,V01LFE,V01LFC,W07KF,,::::W0LFC,V01LFE,V03LFE,V03MF,::V03F8I07F,V03FJ03F,::::::::::V03FJ07F,V03MF,::::V03LFE,,::::V01E00IF,V03F07IFE,:V03F0JFE,V03F0KF,:V03F0FE07F,V03F0FC03F,::::::V03E0FC03F,V03F0FC03F,:::V03F9FC03F,V03IFC03F,::V03IF803F,V01IF803F,W07FF003E,,::::V03E03IFC,V03F07IFE,V03F0JFE,V03F0KF,::V03F0FE07F,V03F0FC03F,:::::::::::V03IFC03F,:::V01IF803F,V01IF003F,,::::V01E07801E,V03E0FC03F,V03F0FC03F,::::::::::::::V03F9FF07F,V03MF,::V03LFE,V01LFC,W07KF8,,:::::::::::::::::::::::::::::::::::::^FS\r\n\r\n^FO680,20^GFA,5500,5500,22,,:::::::::::::::::::::::::::::::::::::::V03E0FC03E,V03F0FC03F,::::::::::::::V03F0FE07F,V03MF,::V03LFE,V01LFE,W0LFC,,::::V01E07803E,V03F0FC03F,:::::::::::::::V03MF,::V03LFE,V01LFE,V01LFC,W07KF,,::::W0LFC,V01LFE,V03LFE,V03MF,::V03F8I07F,V03FJ03F,::::::::::V03FJ07F,V03MF,::::V03LFE,,::::V01E00IF,V03F07IFE,:V03F0JFE,V03F0KF,:V03F0FE07F,V03F0FC03F,::::::V03E0FC03F,V03F0FC03F,:::V03F9FC03F,V03IFC03F,::V03IF803F,V01IF803F,W07FF003E,,::::V03E03IFC,V03F07IFE,V03F0JFE,V03F0KF,::V03F0FE07F,V03F0FC03F,:::::::::::V03IFC03F,:::V01IF803F,V01IF003F,,::::V01E07801E,V03E0FC03F,V03F0FC03F,::::::::::::::V03F9FF07F,V03MF,::V03LFE,V01LFC,W07KF8,,:::::::::::::::::::::::::::::::::::::^FS\r\n\r\n^FO15,200^GFA,1800,1800,18,,:::::::::::::::::::::::::::::R02,,R02,,R04,,:::R03IF8,R01IFC,S0IFE,S07IF,S03IF8,,:::R03LFE,R01MF,S0MF8,S07LFC,S03LFE,,:::S01IFC,S07IF8,S0JF,R01IFE,R03IFC,R02,,::::::::::::::::::::::::::::::::::::^FS\r\n^FO365,200^GFA,1800,1800,18,,:::::::::::::::::::::::::::::R02,,R02,,R04,,:::R03IF8,R01IFC,S0IFE,S07IF,S03IF8,,:::R03LFE,R01MF,S0MF8,S07LFC,S03LFE,,:::S01IFC,S07IF8,S0JF,R01IFE,R03IFC,R02,,::::::::::::::::::::::::::::::::::::^FS\r\n^FO695,200^GFA,1800,1800,18,,:::::::::::::::::::::::::::::R02,,R02,,R04,,:::R03IF8,R01IFC,S0IFE,S07IF,S03IF8,,:::R03LFE,R01MF,S0MF8,S07LFC,S03LFE,,:::S01IFC,S07IF8,S0JF,R01IFE,R03IFC,R02,,::::::::::::::::::::::::::::::::::::^FS\r\n\r\n^FO165, 40^A0B, 45,45^FDOFFER PRICE^FS\r\n^FO215, 80^A0B, 40,40^FDRS: {{offer_price}}^FS\r\n^BY2,1,50\r\n^FO280,45^A0B^BY4^BC,70,Y,N,N^FD{{sku}}^FS\r\n\r\n^FO500, 40^A0B, 45,45^FDOFFER PRICE^FS\r\n^FO550, 80^A0B, 40,40^FDRS: {{offer_price}}^FS\r\n^BY2,1,50\r\n^FO620,45^A0B^BY4^BC,70,Y,N,N^FD{{sku}}^FS\r\n\r\n^FO825, 40^A0B, 45,45^FDOFFER PRICE^FS\r\n^FO875, 50^A0B, 40,40^FDRS: {{offer_price}}^FS\r\n\r\n^BY2,1,50\r\n^FO960,45^A0B^BY4^BC,70,Y,N,N^FD{{sku}}^FS\r\n\r\n^XZ\r\n"
+   },
+   {
+    "parent": "Sales Piece Print Without MRP",
+    "parentfield": "raw_print_format_details",
+    "parenttype": "Essdee Raw Print Format",
+    "printer_type": "300dpi",
+    "raw_code": "\r\n^XA\r\n^PQ{{print_quantity}}\r\n^PW1170\r\n\r\n^FO70, 120^A0B, 40,40^FD{{brand}}^FS\r\n^FO110,90^GB3,100,3^FS\r\n^FO460,90^GB3,100,3^FS\r\n^FO790,90^GB3,100,3^FS\r\n\r\n^FO420,120^A0B, 40,40^FD{{brand}}^FS\r\n\r\n^FO750,120^A0B, 40,40^FD{{brand}}^FS\r\n\r\n^FO165, 40^A0B, 45,45^FDOFFER PRICE^FS\r\n^FO215, 80^A0B, 40,40^FDRS: {{offer_price}}^FS\r\n^BY2,1,50\r\n^FO280,20^A0B^BY3^BC,70,Y,N,N^FD{{sku}}^FS\r\n\r\n^FO500, 40^A0B, 45,45^FDOFFER PRICE^FS\r\n^FO550, 80^A0B, 40,40^FDRS: {{offer_price}}^FS\r\n^BY2,1,50\r\n^FO620,20^A0B^BY3^BC,70,Y,N,N^FD{{sku}}^FS\r\n\r\n^FO825, 40^A0B, 45,45^FDOFFER PRICE^FS\r\n^FO875, 50^A0B, 40,40^FDRS: {{offer_price}}^FS\r\n\r\n\r\n^FO960,20^A0B^BY4^BC,70,Y,N,N^FD{{sku}}^FS\r\n\r\n\r\n^XZ\r\n"
+   }
+  ],
+  "width": 3.75
+ },
+ {
+  "docstatus": 0,
+  "doctype": "Essdee Raw Print Format",
+  "height": 1.0,
+  "labels_per_row": 3,
   "modified": "2025-10-11 15:34:59.064052",
   "name": "Sales Piece Sticker Format",
   "raw_print_format_details": [
