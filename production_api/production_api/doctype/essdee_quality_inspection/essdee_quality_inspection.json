@@ -1,0 +1,346 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "naming_series:",
+ "creation": "2025-11-01 09:54:14.425677",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "naming_series",
+  "against",
+  "column_break_hmzd",
+  "against_id",
+  "section_break_bljm",
+  "inspection_type",
+  "column_break_btol",
+  "offer_qty",
+  "section_break_rppo",
+  "checking_level",
+  "order_qty",
+  "column_break_qmbo",
+  "posting_date",
+  "section_break_rkfg",
+  "lot",
+  "unit_name",
+  "column_break_nrbx",
+  "item",
+  "description",
+  "sample_piece_count",
+  "section_break_trfa",
+  "essdee_quality_inspection_colours",
+  "essdee_quality_inspection_sizes",
+  "size_and_colour_html",
+  "section_break_nqvk",
+  "major_aql_level",
+  "major_defect_maximum_allowed",
+  "major_defect_found",
+  "column_break_eide",
+  "minor_aql_level",
+  "minor_defect_maximum_allowed",
+  "minor_defect_found",
+  "section_break_xebx",
+  "spi_found",
+  "measurement_deviation",
+  "remarks_and_suggestions",
+  "upload_quality_approval_sheet",
+  "result",
+  "calculated_result",
+  "amended_from"
+ ],
+ "fields": [
+  {
+   "fieldname": "inspection_type",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Inspection Type",
+   "options": "\nPre-FInal\nFinal\nRe-Final",
+   "reqd": 1
+  },
+  {
+   "fieldname": "unit_name",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Unit Name",
+   "options": "Supplier",
+   "read_only": 1
+  },
+  {
+   "fieldname": "item",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Item",
+   "options": "Item",
+   "read_only": 1
+  },
+  {
+   "fieldname": "lot",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Lot",
+   "options": "Lot",
+   "read_only": 1
+  },
+  {
+   "fieldname": "description",
+   "fieldtype": "Data",
+   "label": "Description"
+  },
+  {
+   "fieldname": "order_qty",
+   "fieldtype": "Int",
+   "label": "Order Qty",
+   "read_only": 1
+  },
+  {
+   "fieldname": "offer_qty",
+   "fieldtype": "Int",
+   "label": "Offer Qty"
+  },
+  {
+   "default": "Today",
+   "fieldname": "posting_date",
+   "fieldtype": "Date",
+   "label": "Posting Date",
+   "read_only": 1
+  },
+  {
+   "fieldname": "major_defect_maximum_allowed",
+   "fieldtype": "Int",
+   "label": "Major Defect Maximum Allowed",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_nrbx",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "minor_defect_maximum_allowed",
+   "fieldtype": "Int",
+   "label": "Minor Defect Maximum Allowed",
+   "read_only": 1
+  },
+  {
+   "fieldname": "section_break_nqvk",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "column_break_eide",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "against",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Against",
+   "options": "Work Order",
+   "reqd": 1
+  },
+  {
+   "fieldname": "against_id",
+   "fieldtype": "Dynamic Link",
+   "in_list_view": 1,
+   "label": "Against ID",
+   "options": "against",
+   "reqd": 1
+  },
+  {
+   "fieldname": "section_break_trfa",
+   "fieldtype": "Section Break"
+  },
+  {
+   "default": "0",
+   "fieldname": "major_defect_found",
+   "fieldtype": "Int",
+   "label": "Major Defect Found"
+  },
+  {
+   "default": "0",
+   "fieldname": "minor_defect_found",
+   "fieldtype": "Int",
+   "label": "Minor Defect Found"
+  },
+  {
+   "fieldname": "major_aql_level",
+   "fieldtype": "Link",
+   "label": "Major AQL Level",
+   "options": "AQL Level"
+  },
+  {
+   "fieldname": "minor_aql_level",
+   "fieldtype": "Link",
+   "label": "Minor AQL Level",
+   "options": "AQL Level"
+  },
+  {
+   "default": "Level 2",
+   "fieldname": "checking_level",
+   "fieldtype": "Select",
+   "label": "Checking Level",
+   "options": "\nLevel 1\nLevel 2",
+   "reqd": 1
+  },
+  {
+   "fieldname": "sample_piece_count",
+   "fieldtype": "Int",
+   "label": "Sample Piece Count",
+   "read_only": 1
+  },
+  {
+   "fieldname": "spi_found",
+   "fieldtype": "Int",
+   "label": "SPI Found"
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "result",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Result",
+   "options": "\nPass\nFail\nHold"
+  },
+  {
+   "fieldname": "calculated_result",
+   "fieldtype": "Data",
+   "hidden": 1,
+   "label": "Calculated Result"
+  },
+  {
+   "fieldname": "section_break_xebx",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "measurement_deviation",
+   "fieldtype": "Small Text",
+   "label": "Measurement Deviation"
+  },
+  {
+   "fieldname": "remarks_and_suggestions",
+   "fieldtype": "Small Text",
+   "label": "Remarks and Suggestions"
+  },
+  {
+   "fieldname": "upload_quality_approval_sheet",
+   "fieldtype": "Attach Image",
+   "label": "Upload Quality Approval Sheet"
+  },
+  {
+   "fieldname": "essdee_quality_inspection_colours",
+   "fieldtype": "Table",
+   "hidden": 1,
+   "label": "Essdee Quality Inspection Colours",
+   "options": "Essdee Quality Inspection Colour"
+  },
+  {
+   "fieldname": "essdee_quality_inspection_sizes",
+   "fieldtype": "Table",
+   "hidden": 1,
+   "label": "Essdee Quality Inspection Sizes",
+   "options": "Essdee Quality Inspection Size"
+  },
+  {
+   "fieldname": "size_and_colour_html",
+   "fieldtype": "HTML",
+   "label": "Size and Colour HTML"
+  },
+  {
+   "fieldname": "column_break_hmzd",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "section_break_bljm",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "column_break_btol",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "section_break_rppo",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "column_break_qmbo",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "section_break_rkfg",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "naming_series",
+   "fieldtype": "Select",
+   "label": "Naming Series",
+   "options": "EQI-2526-",
+   "reqd": 1
+  },
+  {
+   "fieldname": "amended_from",
+   "fieldtype": "Link",
+   "label": "Amended From",
+   "no_copy": 1,
+   "options": "Essdee Quality Inspection",
+   "print_hide": 1,
+   "read_only": 1,
+   "search_index": 1
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "is_submittable": 1,
+ "links": [],
+ "modified": "2025-11-29 16:00:15.999418",
+ "modified_by": "Administrator",
+ "module": "Production Api",
+ "name": "Essdee Quality Inspection",
+ "naming_rule": "By \"Naming Series\" field",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Brand QA User",
+   "share": 1,
+   "submit": 1,
+   "write": 1
+  },
+  {
+   "cancel": 1,
+   "create": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Brand QA Manager",
+   "share": 1,
+   "submit": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1
+}

@@ -74,6 +74,7 @@ import SizeWiseStockReport from "./components/SizeWiseStockDetail.vue"
 import ColourWiseDiffReport from "./components/ColourWiseDiffReport.vue"
 import InvoiceWoItems from "./PurchaseInvoice/components/InvoiceWOItems.vue"
 
+import QualityInspection from "./WorkOrder/components/QualityInspection.vue";
 // Product Development
 import { 
     ProductFileVersionsWrapper, 
@@ -869,6 +870,30 @@ frappe.production.ui.WOSummary = class {
         let items = JSON.parse(JSON.stringify(item_details))
         let delivered = JSON.parse(JSON.stringify(delivered_items))
         this.vue.load_data(items, delivered)
+    }
+}
+
+frappe.production.ui.QualityInspection = class {
+    constructor(wrapper){
+        this.$wrapper = $(wrapper)
+        this.make_app()
+    }
+    make_app(){
+        this.app = createApp(QualityInspection)
+        SetVueGlobals(this.app)
+        this.vue = this.app.mount(this.$wrapper.get(0))
+    }
+    get_data(){
+        let items = this.vue.get_data()
+        return items
+    }
+    unmount() {
+        if (this.app) {
+            this.app.unmount();
+        }
+    }
+    load_data(data){
+        this.vue.load_data(JSON.parse(JSON.stringify(data)))
     }
 }
 

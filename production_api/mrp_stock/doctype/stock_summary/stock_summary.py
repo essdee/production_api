@@ -90,7 +90,7 @@ def create_bulk_stock_entry(locations, selected_items, purpose):
 		sorted_items = sorted(items, key=lambda x: x['item'])
 		table_index += 1
 		row_index += 1
-		primary = frappe.get_cached_value("Item", sorted_items[0]['item'], "primary_attribute")
+		primary = frappe.get_cached_value("Item", sorted_items[0]['item_name'], "primary_attribute")
 		for item in sorted_items:
 			if not primary:
 				row_index += 1
@@ -120,7 +120,7 @@ def reduce_stock(selected_items, warehouse):
 		sorted_items = sorted(items, key=lambda x: x['item'])
 		table_index += 1
 		row_index += 1
-		primary = frappe.get_cached_value("Item", sorted_items[0]['item'], "primary_attribute")
+		primary = frappe.get_cached_value("Item", sorted_items[0]['item_name'], "primary_attribute")
 		for item in sorted_items:
 			if not primary:
 				row_index += 1
@@ -180,7 +180,7 @@ def lot_transfer_items(selected_items, transfer_lot):
 		sorted_items = sorted(items, key=lambda x: x['item'])
 		table_index += 1
 		row_index += 1
-		primary = frappe.get_cached_value("Item", sorted_items[0]['item'], "primary_attribute")
+		primary = frappe.get_cached_value("Item", sorted_items[0]['item_name'], "primary_attribute")
 		for item in sorted_items:
 			if not primary:
 				row_index += 1
