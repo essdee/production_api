@@ -35,32 +35,45 @@ frappe.ui.form.on("Essdee Quality Inspection", {
         if(frm.doc.docstatus == 1){
             frm.set_df_property("result", "read_only", true)
             frm.add_custom_button("Share", async () => {
-                if (!navigator.share || !navigator.canShare) {
-                    frappe.msgprint("Sharing with image is not supported on this browser.");
-                    return;
-                }
+                let sizes = ""
+                frm.doc.essdee_quality_inspection_sizes.forEach((size)=> {
+                    sizes+= size.size+","
+                })
+                let colours = ""
+                frm.doc.essdee_quality_inspection_colours.forEach((colour)=> {
+                    colours+= colour.colour+","
+                })
+                let caption = `
+${frm.doc.inspection_type}
+Supplier: ${frm.doc.supplier}
+Style: ${frm.doc.item}
+Lot: ${frm.doc.lot}
+Size: ${sizes}
+Colour: ${colours}
+Order Qty: ${frm.doc.order_qty}
+Offer Qty: ${frm.doc.offer_qty}
+AQL Sample: ${frm.doc.sample_piece_count}
+Allowed Major: ${frm.doc.major_defect_maximum_allowed}}
+Found Major: ${frm.doc.major_defect_found}
+Allowed Minor: ${frm.doc.minor_defect_maximum_allowed}
+Found Minor: ${frm.doc.minor_defect_found}
+Result: ${frm.doc.result}
+                `;
                 try {
-                    let imageUrl = frm.doc.upload_quality_approval_sheet;
-                    const response = await fetch(imageUrl);
+                    await navigator.clipboard.writeText(caption);
+                    let imageUrl = frm.doc.upload_quality_approval_sheet + "?sid=" + frappe.session.sid;
+                    const response = await fetch(imageUrl, { credentials: "include" });
                     const blob = await response.blob();
                     const file = new File([blob], "inspection.jpg", { type: blob.type });
-                    const shareData = {
-                        title: frm.doc.name,
-                        text: "Sharing this inspection",
-                        files: [file]
-                    };
-                    if (navigator.canShare(shareData)) {
-                        await navigator.share(shareData);
-                    } 
-                    else {
-                        frappe.msgprint("Cannot share image on this device.");
-                    }
+                    const shareData = { files: [file] };
+                    await navigator.share(shareData);
                 } 
                 catch (err) {
-                    console.error("Sharing failed:", err);
-                    frappe.msgprint("Image sharing failed.");
+                    console.error(err);
+                    frappe.msgprint("Sharing failed.");
                 }
             });
+            
         }
         if(frm.doc.result == 'Hold' && frappe.perm.has_perm(frm.doc.doctype, 0, "cancel")){
             frm.add_custom_button("Update Status", ()=> {
@@ -112,7 +125,7 @@ frappe.ui.form.on("Essdee Quality Inspection", {
                     frm.set_value("item", r.message.item)
                     frm.set_value("lot", r.message.lot)
                     frm.set_value('order_qty', r.message.order_qty)
-                    frm.set_value("unit_name", r.message.supplier)
+                    frm.set_value("supplier", r.message.supplier)
                     refresh_fields(frm)
                     frm.colour_and_size.load_data({
                         "colours": r.message.colours,
@@ -125,7 +138,7 @@ frappe.ui.form.on("Essdee Quality Inspection", {
             frm.set_value("item", null)
             frm.set_value("lot", null)
             frm.set_value('order_qty', 0)
-            frm.set_value("unit_name", null)
+            frm.set_value("supplier", null)
             refresh_fields(frm)
         }
     }
@@ -135,7 +148,7 @@ function refresh_fields(frm){
     frm.refresh_field("item")
     frm.refresh_field("lot")
     frm.refresh_field("order_qty")
-    frm.refresh_field("unit_name")
+    frm.refresh_field("supplier")
 }
 
 function fetch_major_minor_allowed(frm){
