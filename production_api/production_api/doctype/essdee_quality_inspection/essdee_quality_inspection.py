@@ -23,6 +23,10 @@ class EssdeeQualityInspection(Document):
 			})	
 		self.set_onload("colour_size_data", d)
 
+	def before_submit(self):
+		if self.result not in ['Pass', "Fail", "Hold"]:
+			frappe.thow("Please set the result")
+
 	def before_validate(self):
 		if self.offer_qty == 0:
 			frappe.throw("Offer Qty Cannot be Zero")
