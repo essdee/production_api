@@ -8,23 +8,31 @@
                         <tr>
                             <th>{{ row.primary_attribute }}</th>
                             <th v-for="(val, size) in row.values">{{ size }}</th>
+                            <th>Total</th>
                         </tr>
                     </thead>
                     <tbody class="dark-border">
                         <tr>
                             <td>Quantity</td>
                             <td v-for="size in row.values">{{ size['qty'] }}</td>
+                            <td>{{ row.total['total_qty'] }}</td>
                         </tr>
                         <tr>
                             <td>Dispatch Qty</td>
                             <td v-for="(val, size) in row.values">
                                 <div v-if="docstatus == 0">
-                                    <input type="number" v-model="row.values[size]['dispatch_qty']" class="form-control" @blur="make_dirty()" />
+                                    <input 
+                                        type="number" 
+                                        v-model="row.values[size]['dispatch_qty']" 
+                                        class="form-control"
+                                        @input="update_total(row); make_dirty()" 
+                                    />
                                 </div>
                                 <div v-else>
                                     {{ val['dispatch_qty'] }}
                                 </div>
                             </td>
+                            <td>{{ row.total['total_dispatch'] }}</td>
                         </tr>
                     </tbody>
                 </table>
@@ -41,6 +49,14 @@ let docstatus = cur_frm.doc.docstatus
 
 function load_data(data){
     items.value = data    
+}
+
+function update_total(row){
+    let total = 0;
+    for (let size in row.values){
+        total += Number(row.values[size].dispatch_qty) || 0;
+    }
+    row.total.total_dispatch = total;
 }
 
 function get_data(){
