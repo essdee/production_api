@@ -175,10 +175,11 @@ def get_data(filters):
 					"cut_to_dispatch_diff_percent": 0,
 				})
 				set_dict[set_attr_value]['cut_qty'] += row.cutting_qty
-				set_dict[set_attr_value]['sewing_received'] += row.inward_quantity
+				set_dict[set_attr_value]['sewing_received'] += row.delivered_quantity
 				set_dict[set_attr_value]['old_lot'] += row.lot_transferred
 				set_dict[set_attr_value]['ironing_excess'] += row.ironing_excess
 				set_dict[set_attr_value]['loose_piece'] += (row.return_qty + row.pack_return_qty)
+				set_dict[set_attr_value]['finishing_inward'] += row.dc_qty
 
 			for row in fp_doc.finishing_plan_reworked_details:
 				attrs = get_variant_attr_details(row.item_variant)
@@ -186,13 +187,10 @@ def get_data(filters):
 				set_dict[set_attr_value]['rejection'] += row.rejected_qty
 				set_dict[set_attr_value]['rework'] += ( row.quantity - (row.reworked_quantity + row.rejected_qty) )
 
-			key_len = len(set_dict)
 			for row in fp_doc.finishing_plan_grn_details:
 				for set_key in set_dict:
-					dispatch_box = row.dispatched
-					dispatached_piece = row.dispatched * fp_doc.pieces_per_box
-					set_dict[set_key]['dispatch_box_qty'] += round(dispatch_box/key_len) 
-					set_dict[set_key]['dispatch_piece_qty'] += round(dispatached_piece/key_len)
+					set_dict[set_key]['dispatch_box_qty'] += row.dispatched
+					set_dict[set_key]['dispatch_piece_qty'] +=  (row.dispatched * fp_doc.pieces_per_box)
 
 			for set_key in set_dict:
 				set_dict[set_key]['sewing_diff'] = set_dict[set_key]['sewing_received'] - set_dict[set_key]['cut_qty']
@@ -215,7 +213,7 @@ def get_data(filters):
 		else:	
 			fp_detail_data = frappe.db.sql(
 				f"""
-					SELECT SUM(cutting_qty) AS cut_qty, SUM(inward_quantity) AS sewing_received,
+					SELECT SUM(cutting_qty) AS cut_qty, SUM(delivered_quantity) AS sewing_received,
 					sum(dc_qty) as dc_qty, SUM(lot_transferred) as old_lot, SUM(ironing_excess) as ironing_excess,
 					SUM(return_qty) + SUM(pack_return_qty) AS loose_piece 
 					FROM `tabFinishing Plan Detail` WHERE parent = {frappe.db.escape(fp_name)}
