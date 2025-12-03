@@ -22,6 +22,7 @@
   "section_break_rkfg",
   "lot",
   "supplier",
+  "supplier_name",
   "column_break_nrbx",
   "item",
   "description",
@@ -302,13 +303,19 @@
    "fieldtype": "Data",
    "label": "Inspector Name",
    "read_only": 1
+  },
+  {
+   "fetch_from": "supplier.supplier_name",
+   "fieldname": "supplier_name",
+   "fieldtype": "Data",
+   "label": "Supplier Name"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-11-29 18:49:21.270753",
+ "modified": "2025-12-03 09:50:25.154016",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Essdee Quality Inspection",

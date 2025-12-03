@@ -110,6 +110,10 @@ def fetch_fp_items():
 		item['doc_name'] = fp
 		item['uom'] = uom
 		item['values'] = {}
+		item['total'] = {
+			"total_qty": 0,
+			"total_dispatch": 0,
+		}
 		ipd = frappe.get_value("Lot", fp_doc.lot, "production_detail")
 		primary, dependent, pack_out_stage = frappe.get_value("Item Production Detail", ipd, ["primary_item_attribute", "dependent_attribute", "pack_out_stage"])
 		item['primary_attribute'] = primary
@@ -125,6 +129,7 @@ def fetch_fp_items():
 				"row_detail": row.name,
 				"dispatch_qty": 0,
 			}
+			item['total']['total_qty'] += row.quantity - row.dispatched
 		if check:	
 			item_detail.append(item)
 

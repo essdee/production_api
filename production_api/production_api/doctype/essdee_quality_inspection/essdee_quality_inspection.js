@@ -47,11 +47,12 @@ frappe.ui.form.on("Essdee Quality Inspection", {
                 colours = colours.slice(0, -1)
                 let caption = `
 ${frm.doc.inspection_type}
-Supplier: ${frm.doc.supplier}
+Supplier: ${frm.doc.supplier_name}
 Style: ${frm.doc.item}
 Lot: ${frm.doc.lot}
 Size: ${sizes}
 Colour: ${colours}
+Description: ${frm.doc.description}
 Order Qty: ${frm.doc.order_qty}
 Offer Qty: ${frm.doc.offer_qty}
 AQL Sample: ${frm.doc.sample_piece_count}
