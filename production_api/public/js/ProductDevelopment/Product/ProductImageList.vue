@@ -12,18 +12,22 @@
                     class="relative border rounded-lg overflow-hidden bg-white shadow-sm"
                     style="width: 100%;"
                 >
-                    <div style="height: 100%; width: 280px;">
-                        <img :src="item.image_url" class="w-full object-cover"
-                            style="height: 140px; "
-                        />
+                    <div style="height: 85%; width: 100%; text-align:center; display: flex;">
+                        <div style="width: 90%;">
+                            <img :src="item.image_url" class="w-full object-cover"
+                                style="height: 140px; "
+                            />
+                        </div>
+                        <div>
+                            <button @click.stop="removeSelected(idx)"
+                                style="position: relative; z-index: 20; background-color: red; top: 10px;"
+                            >
+                                ×
+                            </button>
+                        </div>
                     </div>
-                    <button @click.stop="removeSelected(idx)"
-                        style="position: relative; top: -189px; right: -280px; z-index: 20; background-color: red;"
-                    >
-                        ×
-                    </button>
                     <div class="p-1 text-sm text-center"
-                        style="position: relative; top: -60px; right: 0px; z-index: 20;"
+                        style="position: relative; z-index: 20;"
                     >
                         {{ item.image_title || 'Untitled' }}
                     </div>

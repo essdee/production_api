@@ -328,6 +328,7 @@
    "depends_on": "eval: !doc.is_set_item",
    "fieldname": "product_measurement_descriptions",
    "fieldtype": "Table",
+   "hidden": 1,
    "label": "Product Measurement Descriptions",
    "options": "Product Measurement Description"
   },
@@ -367,7 +368,7 @@
  "image_field": "front_image",
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-11-29 11:33:53.575758",
+ "modified": "2025-12-02 11:05:13.198508",
  "modified_by": "Administrator",
  "module": "Product Development",
  "name": "Product",
