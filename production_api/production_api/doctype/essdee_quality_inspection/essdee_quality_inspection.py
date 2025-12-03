@@ -26,8 +26,36 @@ class EssdeeQualityInspection(Document):
 	def before_submit(self):
 		if self.result not in ['Pass', "Fail", "Hold"]:
 			frappe.thow("Please set the result")
+
 		self.inspector = frappe.session.user
 		self.inspector_name = frappe.get_value("User", frappe.session.user, "full_name")
+		from production_api.utils import get_variant_attr_details, update_if_string_instance
+		wo_doc = frappe.get_doc(self.against, self.against_id)
+		selected_colours = []
+		for row in self.essdee_quality_inspetion_colours:
+			if row.selected == 1:
+				selected_colours.append(row.colour)
+				
+		ipd = wo_doc.production_detail
+		ipd_fields = ['packing_attribute', 'is_set_item', 'set_item_attribute', 'major_attribute_value']
+		colour, set_item, set_attr, major_attr = frappe.get_value("Item Production Detail", ipd, ipd_fields)
+		order_qty = 0
+		for row in wo_doc.work_order_calculated_items: 
+			if row.delivered_quantity == 0:
+				continue
+			attrs = get_variant_attr_details(row.item_variant)
+			if set_item:
+				colour_val = attrs[colour]
+				if attrs[set_attr] != major_attr:
+					set_comb = update_if_string_instance(row.set_combination)
+					colour_val = colour_val + "("+ set_comb['major_colour'] +")"
+				if colour_val in selected_colours:
+					order_qty += row.delivered_quantity
+			else:
+				if attrs[colour] in selected_colours:
+					order_qty += row.delivered_quantity
+
+		self.order_qty = order_qty			
 
 	def before_validate(self):
 		if self.offer_qty == 0:
