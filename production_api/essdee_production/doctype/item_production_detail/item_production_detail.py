@@ -366,6 +366,7 @@ def delete_docs(documents):
 		if value:
 			frappe.qb.from_(doctype).delete().where(doctype.name.isin(value)).run()
 
+@frappe.whitelist()
 def get_ipd_primary_values(production_detail):
 	doc = frappe.get_cached_doc("Item Production Detail", production_detail)
 	primary_attr_values = []

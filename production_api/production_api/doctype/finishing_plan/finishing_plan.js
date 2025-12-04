@@ -64,6 +64,47 @@ frappe.ui.form.on("Finishing Plan", {
                 freeze_message: "Fetching Quantity",
             })
         })
+        frm.add_custom_button("Print Finishing Inward", ()=> {
+            frappe.call({
+                method: "production_api.essdee_production.doctype.item_production_detail.item_production_detail.get_ipd_primary_values",
+                args: {
+                    "production_detail": frm.doc.production_detail,
+                },
+                callback: function(r){
+                    let d = new frappe.ui.Dialog({
+                        title: "Select Size to Print Finishing Inward",
+                        fields: [
+                            {
+                                "fieldname": "size",
+                                "fieldtype": "Select",
+                                "options": r.message,
+                                "reqd": 1,
+                                "label": "Size",
+                            }
+                        ],
+                        primary_action(values){
+                            frappe.call({
+                                method: "production_api.production_api.doctype.finishing_plan.finishing_plan.cache_selected_size",
+                                args: {
+                                    "key": "inward_pf_size",
+                                    "size": values.size,
+                                },
+                                callback: function(r){
+                                    window.open(
+                                        frappe.urllib.get_full_url(
+                                            "/printview?" + "doctype=" + encodeURIComponent(frm.doc.doctype) + "&name=" +
+                                                encodeURIComponent(frm.doc.name) + "&trigger_print=1" + "&format=" + 
+                                                encodeURIComponent("Finishing Plan Inward Report") + "&no_letterhead=1"
+                                        )
+                                    );
+                                }
+                            })
+                        }
+                    })
+                    d.show()
+                }
+            })
+        })
     },
     fetch_incomplete_items(frm){
         frappe.call({

@@ -1276,3 +1276,129 @@ def get_updated_return(grn_list, finishing_items, finishing_rework_items):
 
 					finishing_items[key]['dc_qty'] += qty
 	return finishing_items, finishing_rework_items
+
+@frappe.whitelist()
+def cache_selected_size(key, size):
+	key += frappe.session.user
+	frappe.cache.set_value(key, size)
+
+@frappe.whitelist()
+def get_finishing_plan_inward_details(key, lot):
+	key += frappe.session.user
+	selected_size = frappe.cache.get_value(key)
+	if not selected_size:
+		return {}
+	frappe.cache().delete_value(key)
+	rejected_type = frappe.db.get_single_value("Stock Settings", "default_rejected_type")
+	process = frappe.db.get_single_value("MRP Settings", "finishing_inward_process") 
+	from production_api.essdee_production.doctype.item_production_detail.item_production_detail import get_ipd_primary_values
+	wo_list = get_process_wo_list(process, lot)
+	ipd = frappe.get_value("Lot", lot, "production_detail")
+	ipd_fields = ["is_set_item", "packing_attribute", "primary_item_attribute", "set_item_attribute"]
+	is_set_item, pack_attr, primary_attr, set_attr = frappe.get_value("Item Production Detail", ipd, ipd_fields)
+	inward_qty = {
+		"data": {},
+	}
+	type_list = [frappe.db.get_single_value("Stock Settings", "default_received_type")]
+	colours = []
+	for wo in wo_list:
+		items = frappe.db.sql(
+			"""
+				SELECT * FROM `tabWork Order Calculated Item` WHERE parent = %(work_order)s
+			""", {
+				"work_order": wo
+			}, as_dict=True,
+		)
+		for item in items:
+			attr_details = get_variant_attr_details(item['item_variant'])
+			size = attr_details[primary_attr]
+			if size != selected_size:
+				continue
+			set_comb = update_if_string_instance(item['set_combination'])
+			major_colour = set_comb['major_colour']
+			colour = major_colour
+			part = None
+			if is_set_item:
+				variant_colour = attr_details[pack_attr]
+				part = attr_details[set_attr]
+				colour = variant_colour+"("+ major_colour+")"
+			if not part:
+				part = "item"
+			inward_qty["data"].setdefault(part, {
+				"colours": {},
+				"colour_type": {},
+				"type_wise": {},
+				"cut_detail": {},
+				"total_sew": 0,
+				"total_cut": 0,
+				"part_colours": [],
+			})
+			received_types = update_if_string_instance(item['received_type_json'])
+			if colour not in inward_qty["data"][part]['part_colours']:
+				inward_qty["data"][part]['part_colours'].append(colour)
+				inward_qty["data"][part]['colours'].setdefault(colour, {})
+				inward_qty['data'][part]['colours'][colour]['sewing_received'] = 0
+				inward_qty["data"][part]['colour_type'].setdefault(colour, {})
+				inward_qty['data'][part]['colour_type'][colour]['type_wise'] = {}
+
+			for received_type in received_types:
+				if received_type == rejected_type:
+					continue
+				if received_type not in type_list:
+					type_list.append(received_type)
+				qty = received_types[received_type]
+				inward_qty['data'][part]['total_sew'] += qty
+
+				inward_qty["data"][part]['colours'][colour]['sewing_received'] += qty
+				inward_qty["data"][part]['colour_type'][colour]['type_wise'].setdefault(received_type, 0)
+				inward_qty["data"][part]['colour_type'][colour]['type_wise'][received_type] += qty
+
+				inward_qty['data'][part]['type_wise'].setdefault(received_type, 0)
+				inward_qty['data'][part]['type_wise'][received_type] += qty	
+
+	cut_wo_list = get_process_wo_list("Cutting", lot)
+	total_cut = 0
+	for wo in cut_wo_list:
+		items = frappe.db.sql(
+			"""
+				SELECT * FROM `tabWork Order Calculated Item` WHERE parent = %(work_order)s
+			""", {
+				"work_order": wo
+			}, as_dict=True,
+		)
+		for item in items:
+			attr_details = get_variant_attr_details(item['item_variant'])
+			size = attr_details[primary_attr]
+			if size != selected_size:
+				continue
+			set_comb = update_if_string_instance(item['set_combination'])
+			major_colour = set_comb['major_colour']
+			colour = major_colour
+			part = None
+			if is_set_item:
+				variant_colour = attr_details[pack_attr]
+				part = attr_details[set_attr]
+				colour = variant_colour+"("+ major_colour+")"
+			if not part:
+				part = "item"
+
+			received_types = update_if_string_instance(item['received_type_json'])
+			inward_qty['data'][part]['cut_detail'].setdefault(colour, 0)
+
+			for received_type in received_types:
+				if received_type == rejected_type:
+					continue
+				if received_type not in type_list:
+					type_list.append(received_type)
+				qty = received_types[received_type]
+				inward_qty['data'][part]['cut_detail'][colour] += qty
+				inward_qty['data'][part]['total_cut'] += qty
+
+				total_cut += qty
+	return {
+		"selected_size": selected_size,
+		"types": type_list,
+		"data": inward_qty['data'],
+		"is_set_item": is_set_item,
+		"set_attr": set_attr
+	}

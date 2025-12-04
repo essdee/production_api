@@ -43,7 +43,7 @@
                                 {{ index + 1 }}
                             </div>
                             <div style="padding-top:1px;padding-left:5px;">
-                                <input  type="checkbox" v-model="selectedItems" :value="`${item.lot}|${item.item}|${item.warehouse}`">
+                                <input  type="checkbox" v-model="selectedItems" :value="item">
                             </div>
                         </td>
                         <td>{{ item.lot }}</td>
@@ -162,12 +162,15 @@ function get_filters() {
     });
 }
 
-function select_all() {
-    selectedItems.value = items.value.map(i => i.lot);
+function select_all(){
+    selectedItems.value = []
+    for(let i = 0; i < items.value.length; i++){
+        selectedItems.value.push(items.value[i])
+    }
 }
 
-function unselect_all() {
-    selectedItems.value = [];
+function unselect_all(){
+    selectedItems.value = []
 }
 
 function lot_transfer(){

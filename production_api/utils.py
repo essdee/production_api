@@ -765,11 +765,7 @@ def get_lpiece_variant(pack_attr, dept_attr, variant):
 @frappe.whitelist()
 def get_inward_qty(lot, process):
 	from production_api.essdee_production.doctype.item_production_detail.item_production_detail import get_ipd_primary_values
-	wo_list = frappe.get_all("Work Order", filters={
-		"lot": lot,
-		"process_name": process,
-		"docstatus": 1,
-	}, pluck="name")
+	wo_list = get_process_wo_list(process, lot)
 	ipd = frappe.get_value("Lot", lot, "production_detail")
 	ipd_fields = ["is_set_item", "packing_attribute", "primary_item_attribute", "set_item_attribute"]
 	is_set_item, pack_attr, primary_attr, set_attr = frappe.get_value("Item Production Detail", ipd, ipd_fields)
@@ -1782,7 +1778,7 @@ def get_size_wise_stock_report(open_status, lot_list, item_list, category, proce
 		style_name = lot_data['style']
 		style_entry = lot_dict['item_data'].setdefault(style_name, {
 			"style": style_name,
-			"sizes": lot_dict['lot_data'][lot]['sizes'],
+			"sizes": [],
 			"cut_details": {
 				"order_qty": {},
 				"cut_qty": {},
@@ -1804,6 +1800,10 @@ def get_size_wise_stock_report(open_status, lot_list, item_list, category, proce
 			},
 			"total_details": {}
 		})
+		for size in lot_dict['lot_data'][lot]['sizes']:
+			if size not in style_entry['sizes']:
+				style_entry['sizes'].append(size)
+		style_entry['sizes'].sort()
 
 		def merge_size_dict(target, source):
 			for size, qty in source.items():
@@ -1829,7 +1829,6 @@ def get_size_wise_stock_report(open_status, lot_list, item_list, category, proce
 			merge_size_dict(style_entry["finishing_details"][key], lot_data["finishing_details"].get(key, {}))
 
 		merge_size_dict(style_entry["total_details"], lot_data.get("total_details", {}))
-	print(lot_dict['item_data'])
 
 	return lot_dict
 

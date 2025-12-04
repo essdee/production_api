@@ -32,7 +32,7 @@ class EssdeeQualityInspection(Document):
 		from production_api.utils import get_variant_attr_details, update_if_string_instance
 		wo_doc = frappe.get_doc(self.against, self.against_id)
 		selected_colours = []
-		for row in self.essdee_quality_inspetion_colours:
+		for row in self.essdee_quality_inspection_colours:
 			if row.selected == 1:
 				selected_colours.append(row.colour)
 				
