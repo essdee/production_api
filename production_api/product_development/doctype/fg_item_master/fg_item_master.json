@@ -27,6 +27,7 @@
   "hsn",
   "box_per_carton",
   "is_temp_item",
+  "secondary_mrp_uid",
   "section_break_muule",
   "sizes",
   "item",
@@ -167,11 +168,16 @@
    "fieldtype": "Link",
    "label": "Product Category",
    "options": "Product Category"
+  },
+  {
+   "fieldname": "secondary_mrp_uid",
+   "fieldtype": "Data",
+   "label": "Secondary MRP UID"
   }
  ],
  "grid_page_length": 50,
  "links": [],
- "modified": "2025-10-13 12:18:15.979650",
+ "modified": "2025-11-27 15:20:41.060623",
  "modified_by": "Administrator",
  "module": "Product Development",
  "name": "FG Item Master",
@@ -211,6 +217,7 @@
   }
  ],
  "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
  "search_fields": "name1, uid",
  "sort_field": "modified",
  "sort_order": "DESC",
