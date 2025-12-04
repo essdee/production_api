@@ -955,7 +955,9 @@ def get_finishing_plan_dict(doc):
 			"ironing_excess": row.ironing_excess,
 			"reworked": row.reworked,
 			"return_qty": row.return_qty,
-			"pack_return_qty": row.pack_return_qty
+			"pack_return_qty": row.pack_return_qty,
+			"return_dc_qty": row.return_dc_qty,
+			"pack_dc_qty": row.pack_dc_qty
 		})
 	return finishing_items	
 
@@ -977,7 +979,9 @@ def get_finishing_plan_list(finishing_items):
 			"ironing_excess": finishing_items[key]['ironing_excess'],
 			"reworked": finishing_items[key]['reworked'],
 			"return_qty": finishing_items[key]['return_qty'],
-			"pack_return_qty": finishing_items[key]['pack_return_qty']
+			"pack_return_qty": finishing_items[key]['pack_return_qty'],
+			"return_dc_qty": finishing_items[key]['return_dc_qty'],
+			"pack_dc_qty": finishing_items[key]['pack_dc_qty'],
 		})
 	return finshing_items_list	
 

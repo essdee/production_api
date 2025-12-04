@@ -29,6 +29,8 @@
   "vehicle_no",
   "letter_head",
   "cut_panel_movement",
+  "loose_piece_dc",
+  "pack_piece_dc",
   "address_and_contact_section",
   "from_address",
   "from_address_details",
@@ -358,13 +360,27 @@
    "fieldtype": "Check",
    "label": "From Finishing",
    "read_only": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "loose_piece_dc",
+   "fieldtype": "Check",
+   "hidden": 1,
+   "label": "Loose Piece DC"
+  },
+  {
+   "default": "0",
+   "fieldname": "pack_piece_dc",
+   "fieldtype": "Check",
+   "hidden": 1,
+   "label": "Pack Piece DC"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-09-26 11:54:03.949901",
+ "modified": "2025-12-04 17:13:33.408383",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Delivery Challan",

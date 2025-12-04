@@ -15,15 +15,24 @@
                     <td :rowspan="2">{{ idx + 1 }}</td>
                     <td :rowspan="2">{{ colour.split("@")[0] }}</td>
                     <td :rowspan="2" v-if="items.is_set_item">{{ items['data']['data'][colour]['part'] }}</td>
-                    <td>Delivered</td>
+                    <td v-if="is_loose_piece">Balance Qty</td>
+                    <td v-else>Delivered</td>
                     <td v-for="size in items.primary_values" :key="size">
-                        {{
-                            items['data']['data'][colour]["values"][size]['dc_qty'] ?? 0
-                        }}
+                        <span v-if="is_loose_piece">
+                            {{
+                                items['data']['data'][colour]["values"][size]['balance'] ?? 0
+                            }}
+                        </span>
+                        <span v-else>
+                            {{
+                                items['data']['data'][colour]["values"][size]['dc_qty'] ?? 0
+                            }}
+                        </span>
                     </td>
                 </tr>
                 <tr>
-                    <td>Return</td>
+                    <td v-if="is_loose_piece">Quantity</td>
+                    <td v-else>Quantity</td>
                     <td v-for="size in items.primary_values" :key="size">
                         <input type="number" class="form-control" v-model="items['data']['data'][colour]['values'][size]['return_qty']" />
                     </td>
@@ -38,17 +47,29 @@
 import { ref } from 'vue';
 
 const props = defineProps({
-    data: Object
+    data: Object,
+    loose_piece: Boolean,
 });
 
 let items = ref(props.data);
+let is_loose_piece = ref(props.loose_piece)
 
 function getData() {
     return items.value
 }
 
+function update_qty(){
+    Object.keys(items.value.data.data).forEach((colour)=> {
+        items.value.data.data[colour]['colour_total']['return_qty'] = 0
+        Object.keys(items.value.data.data[colour]['values']).forEach((size)=> {
+            items.value.data.data[colour]['values'][size]['return_qty'] = 0
+        })
+    })
+}
+
 defineExpose({
-    getData
+    getData,
+    update_qty
 });
 
 
