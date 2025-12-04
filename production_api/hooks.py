@@ -217,6 +217,8 @@ jinja = {
         "production_api.production_api.doctype.cutting_marker.cutting_marker.get_panels_and_size",
         "production_api.production_api.doctype.production_order.production_order.get_production_order_details",
         "production_api.production_api.doctype.grn_rework_item.grn_rework_item.get_rework_items",
+        "production_api.product_development.doctype.product.product.get_product_colour_codes",
+        "production_api.production_api.doctype.finishing_plan.finishing_plan.get_finishing_plan_inward_details"
     ]
 }
 

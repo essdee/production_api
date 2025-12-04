@@ -159,3 +159,7 @@ def get_grouped_files(files):
 	for key in grouped_files:
 		grouped_files[key].sort(key=lambda x: x.version_number, reverse=True)
 	return grouped_files
+
+@frappe.whitelist()
+def get_product_colour_codes():
+	return
