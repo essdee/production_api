@@ -1139,10 +1139,20 @@ def update_finishing_item_doc(doc_name, finishing_doc_name, update_dc:bool):
 		key = (item.item_variant, tuple(sorted(set_comb.items())))
 		if finishing_items.get(key):
 			dict_key = "dc_qty" if update_dc else "inward_quantity"
+			qty = item.stock_qty
+			loose_piece_qty = item.stock_qty
 			if docstatus == 2:
-				finishing_items[key][dict_key] -= item.stock_qty
-			else:	
-				finishing_items[key][dict_key] += item.stock_qty
+				qty = qty * -1
+			else:
+				loose_piece_qty = loose_piece_qty * -1	
+
+			finishing_items[key][dict_key] += qty
+			if self.loose_piece_dc:
+				finishing_items[key]['return_qty'] += loose_piece_qty
+				finishing_items[key]['return_dc_qty'] += qty
+			if self.pack_piece_dc:
+				finishing_items[key]['pack_return_qty'] += loose_piece_qty
+				finishing_items[key]['pack_dc_qty'] += qty
 
 	finshing_items_list = get_finishing_plan_list(finishing_items)
 	finishing_doc.set("finishing_plan_details", finshing_items_list)
