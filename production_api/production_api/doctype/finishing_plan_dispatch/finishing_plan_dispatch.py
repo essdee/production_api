@@ -26,6 +26,10 @@ class FinishingPlanDispatch(Document):
 			item1['doc_name'] = variants_list[0]['against_id']
 			item1['uom'] = variants_list[0]['uom']
 			item1['values'] = {}
+			item1['total'] = {
+				"total_qty": 0,
+				"total_dispatch": 0,
+			}
 			ipd = frappe.get_value("Lot", lot, "production_detail")
 			primary, dependent, pack_out_stage = frappe.get_value("Item Production Detail", ipd, ["primary_item_attribute", "dependent_attribute", "pack_out_stage"])
 			item1['primary_attribute'] = primary
@@ -38,6 +42,9 @@ class FinishingPlanDispatch(Document):
 					"row_detail": variant['against_id_detail'],
 					"dispatch_qty": variant['quantity'],
 				}
+				item1['total']['total_qty'] += variant['balance_qty']
+				item1['total']['total_dispatch'] += variant['quantity']
+
 			item_detail.append(item1)
 		self.set_onload("items", item_detail)		
 
@@ -103,6 +110,10 @@ def fetch_fp_items():
 		item['doc_name'] = fp
 		item['uom'] = uom
 		item['values'] = {}
+		item['total'] = {
+			"total_qty": 0,
+			"total_dispatch": 0,
+		}
 		ipd = frappe.get_value("Lot", fp_doc.lot, "production_detail")
 		primary, dependent, pack_out_stage = frappe.get_value("Item Production Detail", ipd, ["primary_item_attribute", "dependent_attribute", "pack_out_stage"])
 		item['primary_attribute'] = primary
@@ -118,6 +129,7 @@ def fetch_fp_items():
 				"row_detail": row.name,
 				"dispatch_qty": 0,
 			}
+			item['total']['total_qty'] += row.quantity - row.dispatched
 		if check:	
 			item_detail.append(item)
 

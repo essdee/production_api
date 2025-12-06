@@ -1351,7 +1351,7 @@ def get_sl_entries(variant, supplier, lot, item, uom, doc_name, received_type, m
 		"voucher_type": "Cutting LaySheet",
 		"voucher_no": doc_name,
 		"voucher_detail_no": item.name,
-		"qty": item.used_weight * multiplier,
+		"qty": item.weight * multiplier,
 		"uom": uom,
 		"is_cancelled": 0,
 		"posting_date": item.creation,

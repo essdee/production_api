@@ -52,6 +52,9 @@
             <div style="padding-left: 20px;">
                 <button class="btn btn-success" @click="create_dc()">Create DC</button>
             </div>
+            <div style="padding-left: 20px;">
+                <button class="btn btn-success" @click="create_loose_piece()">Convert to Loose Piece</button>
+            </div>
         </div>
         <table class="table table-sm table-sm-bordered bordered-table" v-if="items && Object.keys(items).length > 0">
             <thead class="dark-border">
@@ -66,9 +69,9 @@
             </thead>
             <tbody class="dark-border" v-for="(colour, idx) in Object.keys(items['data']['data'])" :key="colour">
                 <tr>
-                    <td :rowspan="3">{{ idx + 1 }}</td>
-                    <td :rowspan="3">{{ colour.split("@")[0] }}</td>
-                    <td :rowspan="3" v-if="items.is_set_item">{{ items['data']['data'][colour]['part'] }}</td>
+                    <td :rowspan="5">{{ idx + 1 }}</td>
+                    <td :rowspan="5">{{ colour.split("@")[0] }}</td>
+                    <td :rowspan="5" v-if="items.is_set_item">{{ items['data']['data'][colour]['part'] }}</td>
                     <td>Accepted</td>
                     <td v-for="size in items.primary_values" :key="size">
                         {{
@@ -94,6 +97,24 @@
                         }}
                     </td>
                     <td><strong>{{ items['data']['data'][colour]['colour_total']['balance'] ?? 0 }}</strong></td>
+                </tr>
+                <tr>
+                    <td>Loose Piece</td>
+                    <td v-for="size in items.primary_values" :key="size">
+                        {{
+                            items['data']['data'][colour]["values"][size]['return_qty'] ?? 0
+                        }}
+                    </td>
+                    <td><strong>{{ items['data']['data'][colour]['colour_total']['return_qty'] ?? 0 }}</strong></td>
+                </tr>
+                <tr>
+                    <td>Loose Piece Packed</td>
+                    <td v-for="size in items.primary_values" :key="size">
+                        {{
+                            items['data']['data'][colour]["values"][size]['pack_return'] ?? 0
+                        }}
+                    </td>
+                    <td><strong>{{ items['data']['data'][colour]['colour_total']['pack_return'] ?? 0 }}</strong></td>
                 </tr>
             </tbody>
         </table>
@@ -251,7 +272,8 @@ function create_dc(){
                     work_order: cur_frm.doc.work_order,
                     lot: cur_frm.doc.lot,
                     from_location: values.from_location,
-                    vehicle_no: "NA"
+                    vehicle_no: "NA",
+                    fp_name: cur_frm.doc.name,
                 },
                 freeze: true,
                 freeze_message: "Creating Delivery Challan...",
@@ -266,6 +288,55 @@ function create_dc(){
     const props = { data: items.value,};
     const vueApp = createApp(FinishingDC, props);
     i = vueApp.mount(el);
+    i.update_qty()
+    d.show();
+}
+
+function create_loose_piece(){
+    let d = new frappe.ui.Dialog({
+        title: __("Convert Items to Loose Piece"),
+        fields: [
+            {
+                "fieldname": "from_location",
+                "fieldtype": "Link",
+                "options": "Supplier",
+                "label": "From Location",
+                "reqd": 1,
+                "default": location
+            },
+            {
+                "fieldname": 'loose_piece_pop_up_html',
+                "fieldtype": 'HTML',
+            },
+        ],
+        size: "extra-large",
+        primary_action_label: __("Convert"),
+        primary_action: function(values){
+            let loose_piece_items = i.getData();  
+            d.hide();
+            frappe.call({
+                method: "production_api.production_api.doctype.finishing_plan.finishing_plan.convert_to_loose_piece_items",
+                args: {
+                    "data": loose_piece_items,
+                    "work_order": cur_frm.doc.work_order,
+                    "lot": cur_frm.doc.lot,
+                    "item_name": cur_frm.doc.item,
+                    "from_location": values.from_location,
+                },
+                freeze: true,
+                freeze_message: "Converting to Loose Piece...",
+                callback: function(r) {
+                    frappe.msgprint("Items Returned Successfully");
+                }
+            })
+        }
+    });
+    d.fields_dict['loose_piece_pop_up_html'].$wrapper.html("");
+    const el = d.fields_dict["loose_piece_pop_up_html"].$wrapper.get(0);
+    const props = { data: items.value, loose_piece: true};
+    const vueApp = createApp(ReturnPopUp, props);
+    i = vueApp.mount(el);
+    i.update_qty()
     d.show();
 }
 
@@ -314,9 +385,10 @@ function return_item() {
     });
     d.fields_dict['return_pop_up_html'].$wrapper.html("");
     const el = d.fields_dict["return_pop_up_html"].$wrapper.get(0);
-    const props = { data: items.value,};
+    const props = { data: items.value, loose_piece: false};
     const vueApp = createApp(ReturnPopUp, props);
     i = vueApp.mount(el);
+    i.update_qty()
     d.show();
 }
 

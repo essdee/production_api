@@ -558,7 +558,7 @@
    "link_fieldname": "against_id"
   }
  ],
- "modified": "2025-11-21 10:08:47.685155",
+ "modified": "2025-11-29 10:59:52.207188",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Work Order",
@@ -655,6 +655,7 @@
   }
  ],
  "row_format": "Dynamic",
+ "search_fields": "lot,item,supplier",
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": []

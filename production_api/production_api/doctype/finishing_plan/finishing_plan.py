@@ -364,7 +364,7 @@ class FinishingPlan(Document):
 				"colour": attr_details[pack_attr],
 				"set_combination": set_comb,
 				"colour_total": {
-					"accepted": 0, "dc_qty": 0, "balance": 0, "balance_dc": 0
+					"accepted": 0, "dc_qty": 0, "balance": 0, "balance_dc": 0, "return_qty": 0, "pack_return": 0,
 				},
 			})
 			finishing_ironing['data'].setdefault(colour, {
@@ -389,7 +389,7 @@ class FinishingPlan(Document):
 				"delivered": 0, "received": 0, "cutting": 0, "difference": 0, "cut_sew_diff": 0,
 			})
 			finishing_qty["data"][colour]["values"].setdefault(size, {
-				"accepted": 0, "dc_qty": 0, "balance": 0, "balance_dc": 0, "return_qty": 0,
+				"accepted": 0, "dc_qty": 0, "balance": 0, "balance_dc": 0, "return_qty": 0, "pack_return": 0,
 			})
 			finishing_ironing["data"][colour]["values"].setdefault(size, {
 				"ironing": 0, "ironing_dc": 0, 
@@ -435,12 +435,16 @@ class FinishingPlan(Document):
 			qty = item.accepted_qty + item.reworked + item.lot_transferred + item.ironing_excess
 			finishing_qty["data"][colour]["colour_total"]["accepted"] += qty
 			finishing_qty["data"][colour]["colour_total"]["dc_qty"] += item.dc_qty
-			finishing_qty["data"][colour]["colour_total"]["balance"] += qty - item.dc_qty
-			finishing_qty["data"][colour]["colour_total"]["balance_dc"] += qty - item.dc_qty
+			finishing_qty["data"][colour]["colour_total"]["balance"] += qty - item.dc_qty - item.return_qty - item.pack_return_qty
+			finishing_qty["data"][colour]["colour_total"]["balance_dc"] += qty - item.dc_qty - item.return_qty - item.pack_return_qty
+			finishing_qty["data"][colour]["colour_total"]['return_qty'] += item.return_qty
+			finishing_qty["data"][colour]["colour_total"]['pack_return'] += item.pack_return_qty
 			finishing_qty["data"][colour]["values"][size]["accepted"] += qty
 			finishing_qty["data"][colour]["values"][size]["dc_qty"] += item.dc_qty
-			finishing_qty["data"][colour]["values"][size]["balance"] += qty - item.dc_qty
-			finishing_qty["data"][colour]["values"][size]["balance_dc"] += qty - item.dc_qty
+			finishing_qty["data"][colour]["values"][size]["balance"] += qty - item.dc_qty - item.return_qty - item.pack_return_qty
+			finishing_qty["data"][colour]["values"][size]["balance_dc"] += qty - item.dc_qty - item.return_qty - item.pack_return_qty
+			finishing_qty["data"][colour]["values"][size]['return_qty'] += item.return_qty
+			finishing_qty["data"][colour]["values"][size]['pack_return'] += item.pack_return_qty
 
 			finishing_ironing['data'][colour]['values'][size]['ironing'] += item.ironing_excess
 			finishing_ironing['data'][colour]['colour_total']['ironing'] += item.ironing_excess
@@ -506,8 +510,10 @@ def fetch_rejected_quantity(doc_name):
 	fp_doc.save()	
 
 @frappe.whitelist()
-def create_delivery_challan(data, item_name, work_order, lot, from_location, vehicle_no):
+def create_delivery_challan(data, item_name, work_order, lot, from_location, vehicle_no, fp_name):
 	data = update_if_string_instance(data)
+	selected_type = data['selected_type']
+	data = data['items']
 	dc_doc = frappe.new_doc("Delivery Challan")
 	wo_doc = frappe.get_doc("Work Order", work_order)
 	dc_doc.work_order = work_order
@@ -529,7 +535,17 @@ def create_delivery_challan(data, item_name, work_order, lot, from_location, veh
 		else:
 			item['delivered_quantity'] = 0	
 		items.append(item)
+		
+	dc_doc.deliverable_item_details = get_dc_vue_structure(ipd, lot, items)
+	dc_doc.from_finishing = 1
+	if selected_type == 'return_qty':
+		dc_doc.loose_piece_dc = 1
+	elif selected_type == 'pack_return':
+		dc_doc.pack_piece_dc = 1
+	dc_doc.save()
+	dc_doc.submit()
 
+def get_dc_vue_structure(ipd, lot, items):
 	ipd_doc = frappe.get_cached_doc("Item Production Detail", ipd)
 	items = sorted(items, key = lambda i: i['row_index'])
 	item_details = []
@@ -596,13 +612,11 @@ def create_delivery_challan(data, item_name, work_order, lot, from_location, veh
 				'items': [item]
 			})
 		else:
-			item_details[index]['items'].append(item)		
-	dc_doc.deliverable_item_details = item_details
-	dc_doc.from_finishing = 1
-	dc_doc.save()
-	dc_doc.submit()
+			item_details[index]['items'].append(item)
 
-def get_delivery_challan_item_list(lot, item_name, data):
+	return item_details		
+
+def get_delivery_challan_item_list(lot, item_name, data, is_loose_piece=False):
 	ipd = frappe.get_value("Lot", lot, "production_detail")  # to check if lot exists
 	ipd_fields = ["is_set_item", "packing_attribute", "primary_item_attribute", "set_item_attribute", "dependent_attribute", "stiching_out_stage"]
 	is_set_item, pack_attr, primary_attr, set_attr, dept_attr, stich_out = frappe.get_value("Item Production Detail", ipd, ipd_fields)
@@ -612,7 +626,10 @@ def get_delivery_challan_item_list(lot, item_name, data):
 		if not data['data']['data'][colour]['check_value']:
 			continue
 		for size in data['data']['data'][colour]['values']:
-			if data['data']['data'][colour]['values'][size]['balance_dc'] > 0:
+			dict_key = "balance_dc"
+			if is_loose_piece:
+				dict_key = "return_qty" 
+			if data['data']['data'][colour]['values'][size][dict_key] > 0:
 				attrs = {
 					primary_attr: size,
 					pack_attr: colour_value,
@@ -627,7 +644,7 @@ def get_delivery_challan_item_list(lot, item_name, data):
 					"set_combination": set_comb,
 					"qty": 0
 				})
-				items[key]['qty'] += data['data']['data'][colour]['values'][size]['balance_dc']
+				items[key]['qty'] += data['data']['data'][colour]['values'][size][dict_key]
 	return items
 
 @frappe.whitelist()
@@ -1100,7 +1117,9 @@ def fetch_quantity(doc_name):
 			"reworked": 0,
 			"dc_qty": 0,
 			"return_qty": 0,
-			"pack_return_qty": 0
+			"pack_return_qty": 0,
+			"return_dc_qty": 0,
+			"pack_dc_qty": 0,
 		})
 	finishing_inward_process = frappe.db.get_single_value("MRP Settings", "finishing_inward_process")
 	if not finishing_inward_process:
@@ -1172,6 +1191,10 @@ def fetch_quantity(doc_name):
 			key = (item.item_variant, tuple(sorted(set_comb.items())))
 			if finishing_items.get(key):
 				finishing_items[key]['dc_qty'] += item.stock_qty
+				if dc_doc.loose_piece_dc:
+					finishing_items[key]['return_dc_qty'] += item.stock_qty
+				if dc_doc.pack_piece_dc:
+					finishing_items[key]['pack_dc_qty'] += item.stock_qty
 	
 	lot_transfer = update_if_string_instance(doc.lot_transfer_list)
 	lot_transfer_list = [lot_t for lot_t in lot_transfer]
@@ -1206,6 +1229,8 @@ def fetch_quantity(doc_name):
 		variant, tuple_attrs = key
 		comb = get_tuple_attributes(tuple_attrs)
 		reworked_qty = 0
+		finishing_items[key]['return_qty'] = finishing_items[key]['return_qty'] - finishing_items[key]['return_dc_qty']
+		finishing_items[key]['pack_return_qty'] = finishing_items[key]['pack_return_qty'] - finishing_items[key]['pack_dc_qty']
 		if finishing_items[key]['rework_qty'] > 0:
 			reworked = 0
 			rejected = 0
@@ -1276,3 +1301,165 @@ def get_updated_return(grn_list, finishing_items, finishing_rework_items):
 
 					finishing_items[key]['dc_qty'] += qty
 	return finishing_items, finishing_rework_items
+
+@frappe.whitelist()
+def cache_selected_size(key, size):
+	key += frappe.session.user
+	frappe.cache.set_value(key, size)
+
+@frappe.whitelist()
+def get_finishing_plan_inward_details(key, lot):
+	key += frappe.session.user
+	selected_size = frappe.cache.get_value(key)
+	if not selected_size:
+		return {}
+	frappe.cache().delete_value(key)
+	rejected_type = frappe.db.get_single_value("Stock Settings", "default_rejected_type")
+	process = frappe.db.get_single_value("MRP Settings", "finishing_inward_process") 
+	from production_api.essdee_production.doctype.item_production_detail.item_production_detail import get_ipd_primary_values
+	wo_list = get_process_wo_list(process, lot)
+	ipd = frappe.get_value("Lot", lot, "production_detail")
+	ipd_fields = ["is_set_item", "packing_attribute", "primary_item_attribute", "set_item_attribute"]
+	is_set_item, pack_attr, primary_attr, set_attr = frappe.get_value("Item Production Detail", ipd, ipd_fields)
+	inward_qty = {
+		"data": {},
+	}
+	type_list = [frappe.db.get_single_value("Stock Settings", "default_received_type")]
+	colours = []
+	for wo in wo_list:
+		items = frappe.db.sql(
+			"""
+				SELECT * FROM `tabWork Order Calculated Item` WHERE parent = %(work_order)s
+			""", {
+				"work_order": wo
+			}, as_dict=True,
+		)
+		for item in items:
+			attr_details = get_variant_attr_details(item['item_variant'])
+			size = attr_details[primary_attr]
+			if size != selected_size:
+				continue
+			set_comb = update_if_string_instance(item['set_combination'])
+			major_colour = set_comb['major_colour']
+			colour = major_colour
+			part = None
+			if is_set_item:
+				variant_colour = attr_details[pack_attr]
+				part = attr_details[set_attr]
+				colour = variant_colour+"("+ major_colour+")"
+			if not part:
+				part = "item"
+			inward_qty["data"].setdefault(part, {
+				"colours": {},
+				"colour_type": {},
+				"type_wise": {},
+				"cut_detail": {},
+				"total_sew": 0,
+				"total_cut": 0,
+				"part_colours": [],
+			})
+			received_types = update_if_string_instance(item['received_type_json'])
+			if colour not in inward_qty["data"][part]['part_colours']:
+				inward_qty["data"][part]['part_colours'].append(colour)
+				inward_qty["data"][part]['colours'].setdefault(colour, {})
+				inward_qty['data'][part]['colours'][colour]['sewing_received'] = 0
+				inward_qty["data"][part]['colour_type'].setdefault(colour, {})
+				inward_qty['data'][part]['colour_type'][colour]['type_wise'] = {}
+
+			for received_type in received_types:
+				if received_type == rejected_type:
+					continue
+				if received_type not in type_list:
+					type_list.append(received_type)
+				qty = received_types[received_type]
+				inward_qty['data'][part]['total_sew'] += qty
+
+				inward_qty["data"][part]['colours'][colour]['sewing_received'] += qty
+				inward_qty["data"][part]['colour_type'][colour]['type_wise'].setdefault(received_type, 0)
+				inward_qty["data"][part]['colour_type'][colour]['type_wise'][received_type] += qty
+
+				inward_qty['data'][part]['type_wise'].setdefault(received_type, 0)
+				inward_qty['data'][part]['type_wise'][received_type] += qty	
+
+	cut_wo_list = get_process_wo_list("Cutting", lot)
+	total_cut = 0
+	for wo in cut_wo_list:
+		items = frappe.db.sql(
+			"""
+				SELECT * FROM `tabWork Order Calculated Item` WHERE parent = %(work_order)s
+			""", {
+				"work_order": wo
+			}, as_dict=True,
+		)
+		for item in items:
+			attr_details = get_variant_attr_details(item['item_variant'])
+			size = attr_details[primary_attr]
+			if size != selected_size:
+				continue
+			set_comb = update_if_string_instance(item['set_combination'])
+			major_colour = set_comb['major_colour']
+			colour = major_colour
+			part = None
+			if is_set_item:
+				variant_colour = attr_details[pack_attr]
+				part = attr_details[set_attr]
+				colour = variant_colour+"("+ major_colour+")"
+			if not part:
+				part = "item"
+
+			received_types = update_if_string_instance(item['received_type_json'])
+			inward_qty['data'][part]['cut_detail'].setdefault(colour, 0)
+
+			for received_type in received_types:
+				if received_type == rejected_type:
+					continue
+				if received_type not in type_list:
+					type_list.append(received_type)
+				qty = received_types[received_type]
+				inward_qty['data'][part]['cut_detail'][colour] += qty
+				inward_qty['data'][part]['total_cut'] += qty
+
+				total_cut += qty
+	return {
+		"selected_size": selected_size,
+		"types": type_list,
+		"data": inward_qty['data'],
+		"is_set_item": is_set_item,
+		"set_attr": set_attr
+	}
+
+@frappe.whitelist()
+def convert_to_loose_piece_items(data, work_order, lot, item_name, from_location):
+	data = update_if_string_instance(data)
+	dc_doc = frappe.new_doc("Delivery Challan")
+	wo_doc = frappe.get_doc("Work Order", work_order)
+	dc_doc.work_order = work_order
+	dc_doc.lot = lot
+	dc_doc.from_location = from_location
+	dc_doc.from_address = get_primary_address(from_location)
+	dc_doc.vehicle_no = "NA"
+	dc_doc.supplier = wo_doc.supplier
+	dc_doc.supplier_address = get_primary_address(wo_doc.supplier)
+	items = []
+	ipd = frappe.get_value("Lot", lot, "production_detail")
+	delivery_challan_item_list = get_delivery_challan_item_list(lot, item_name, data, is_loose_piece=True)
+	for item in wo_doc.deliverables:
+		item = item.as_dict()
+		set_comb = update_if_string_instance(item['set_combination'])
+		key = (item['item_variant'], tuple(sorted(set_comb.items())))
+		if delivery_challan_item_list.get(key):
+			item['delivered_quantity'] = delivery_challan_item_list[key]['qty']
+		else:
+			item['delivered_quantity'] = 0	
+		items.append(item)
+		
+	dc_doc.deliverable_item_details = get_dc_vue_structure(ipd, lot, items)
+	dc_doc.from_finishing = 1
+	dc_doc.save()
+	dc_doc.submit()
+	return_items(data, work_order, lot, item_name, {
+		"from_location": from_location,
+		"received_type": "Accepted",
+		"vehicle_no": "NA",
+		"delivery_location": from_location
+	})

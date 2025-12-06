@@ -54,7 +54,6 @@
                         <td>{{ item.received_type }}</td>
                         <td>{{ item.bal_qty }}</td>
                         <td>
-                            
                             <button class="btn btn-success" @click="create_stock_entry(item)">Create</button>
                         </td>
                     </tr>
@@ -208,6 +207,7 @@ function lot_transfer(){
                     "transfer_lot": values.lot
                 },
                 callback: function(r){
+                    frappe.open_in_new_tab = true
                     frappe.set_route("Form", "Lot Transfer", r.message)
                 }
             })
@@ -242,6 +242,7 @@ function create_stock_entry(item) {
                             stock_values: stock_values
                         },
                         callback: function (r) {
+                            frappe.open_in_new_tab = true
                             frappe.set_route("Form", "Stock Entry", r.message)
                         }
                     })
@@ -287,6 +288,7 @@ function create_bulk_stock_entry(){
                             purpose: purpose,
                         },
                         callback: function(r){
+                            frappe.open_in_new_tab = true
                             frappe.set_route("Form", "Stock Entry", r.message)
                         }
                     })
@@ -324,6 +326,7 @@ function reduce_stock(){
                     warehouse: location,
                 },
                 callback: function(r){
+                    frappe.open_in_new_tab = true
                     frappe.set_route("Form", "Stock Reconciliation", r.message)
                 }
             })

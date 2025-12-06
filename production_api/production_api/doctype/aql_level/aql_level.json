@@ -1,0 +1,79 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "format:Level-{level}",
+ "creation": "2025-11-27 15:23:00.900349",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "level",
+  "aql_level_limit_details"
+ ],
+ "fields": [
+  {
+   "fieldname": "level",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Level",
+   "reqd": 1,
+   "unique": 1
+  },
+  {
+   "allow_bulk_edit": 1,
+   "fieldname": "aql_level_limit_details",
+   "fieldtype": "Table",
+   "label": "AQL Level Limit Details",
+   "options": "AQL Level Limit"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2025-11-29 17:51:59.378692",
+ "modified_by": "Administrator",
+ "module": "Production Api",
+ "name": "AQL Level",
+ "naming_rule": "Expression",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Brand QA User",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Brand QA Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

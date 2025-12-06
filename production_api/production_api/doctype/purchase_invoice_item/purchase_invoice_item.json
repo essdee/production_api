@@ -14,7 +14,8 @@
   "uom",
   "rate",
   "amount",
-  "tax"
+  "tax",
+  "actual_rate"
  ],
  "fields": [
   {
@@ -79,13 +80,19 @@
    "in_list_view": 1,
    "label": "Expense Head",
    "read_only": 1
+  },
+  {
+   "fieldname": "actual_rate",
+   "fieldtype": "Currency",
+   "hidden": 1,
+   "label": "Actual Rate"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2025-11-03 18:40:22.332254",
+ "modified": "2025-11-28 11:21:32.149985",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Purchase Invoice Item",
