@@ -41,7 +41,11 @@ class FGItemMaster(Document):
 				sync_rename_item(self.item, self.name, brand=self.brand)
 		else:
 			create_or_update_item(self)
-		updated = sync_FG_item_OMS(self.name)
+		updated = None
+		try:
+			updated = sync_FG_item_OMS(self.name)
+		except:
+			pass
 		if not updated:
 			frappe.throw("Some error occurred")
 		try:
