@@ -324,10 +324,10 @@ class DeliveryChallan(Document):
 		if(self.get('deliverable_item_details')):
 			deliverables = stock_value = None
 			if self.is_rework:
-				deliverables,stock_value = save_rework_deliverables(self.deliverable_item_details,self.from_location)
+				deliverables,stock_value = save_rework_deliverables(self.deliverable_item_details,self.from_location, self.cut_panel_movement)
 			else:	
 				rec_type = frappe.db.get_single_value("Stock Settings", "default_received_type")
-				deliverables, stock_value = save_deliverables(self.deliverable_item_details,self.from_location, received_type=rec_type)
+				deliverables, stock_value = save_deliverables(self.deliverable_item_details,self.from_location, self.cut_panel_movement, received_type=rec_type)
 			self.set('items',deliverables)
 			self.stock_value = stock_value
 			self.total_value = stock_value
@@ -379,17 +379,17 @@ class DeliveryChallan(Document):
 
 		return to_warehouse
 
-def save_rework_deliverables(item_details, from_location):
+def save_rework_deliverables(item_details, from_location, cut_panel_movement):
 	item_details = update_if_string_instance(item_details)
 	items_list = []
 	total_stock_value = 0
 	for received_type in item_details:
-		items, stock_value = save_deliverables(item_details[received_type], from_location, received_type=received_type)
+		items, stock_value = save_deliverables(item_details[received_type], from_location, cut_panel_movement, received_type=received_type)
 		items_list = items_list + items
 		total_stock_value += stock_value
 	return items_list, total_stock_value
 
-def save_deliverables(item_details, from_location, received_type=None):
+def save_deliverables(item_details, from_location, cut_panel_movement, received_type=None):
 	item_details = update_if_string_instance(item_details)
 	items = []
 	row_index = 0
@@ -416,10 +416,11 @@ def save_deliverables(item_details, from_location, received_type=None):
 						item1['rate'] = values.get('rate')
 						item1['table_index'] = table_index
 						item1['row_index'] = row_index
-						if values.get("row_index"):
-							item1['row_index'] = values.get("row_index")
-						if values.get("table_index"):
-							item1['table_index'] = values.get("table_index")
+						if cut_panel_movement:
+							if values.get("row_index"):
+								item1['row_index'] = values.get("row_index")
+							if values.get("table_index"):
+								item1['table_index'] = values.get("table_index")
 						item1['ref_doctype'] = values.get('ref_doctype')
 						item1['ref_docname'] = values.get('ref_docname')
 						item1['is_calculated'] = values.get('is_calculated')

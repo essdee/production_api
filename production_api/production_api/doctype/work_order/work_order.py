@@ -1052,8 +1052,10 @@ def get_bom_structure(items, row_index, table_index):
 	bom = {}
 	for item_name,values in items.items():
 		table_index = table_index + 1
+		primary_attr = frappe.get_value("Item", item_name, 'primary_attribute')
 		for item,value in values.items():
-			row_index = row_index + 1
+			if not primary_attr:
+				row_index = row_index + 1
 			if not bom.get(item_name):
 				bom[item_name] = []
 

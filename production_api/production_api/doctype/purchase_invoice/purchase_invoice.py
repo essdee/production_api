@@ -89,7 +89,12 @@ class PurchaseInvoice(Document):
 			if grand_total > self.grn_grand_total:
 				frappe.throw("Total amount is greater than GRN total amount")	
 		else:
-			if float(round(grand_total, 2)) != float(round(self.grn_grand_total, 2)):
+			from decimal import Decimal, ROUND_HALF_UP
+			grand_total = Decimal(str(grand_total)) 
+			x1 = grand_total.quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+			self_grand_total = Decimal(str(self.grn_grand_total))
+			x2 = self_grand_total.quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+			if x1 != x2:
 				if not self.allow_to_change_rate:
 					frappe.throw("Total amount is greater than GRN total amount")
 					
@@ -597,6 +602,8 @@ def calculate_grns(grn_list, wo, allow_to_change_rate):
 				})
 				grn_total_received[key]['qty'] += row.quantity
 	
+	print(received_json)
+	print(complete)
 	if received_json:
 		for row in complete['items']:
 			attrs = row['attributes']

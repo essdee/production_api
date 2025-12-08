@@ -175,19 +175,28 @@ def cancel_cut_bundle_ledger(entries):
 
 def update_collapsed_bundle(doctype, docname, event, non_stich_process=False):
 	doc = frappe.get_doc(doctype, docname)
-	from_location = doc.supplier
+	from_location = None
+	if doctype not in ['Delivery Challan', 'Stock Entry']:
+		from_location = doc.supplier
 	if doctype == "Delivery Challan":
 		from_location = doc.from_location
+	if doctype == 'Stock Entry':
+		from_location = frappe.db.get_single_value("Stock Settings", "transit_warehouse")
 
 	new_bundles = {}
-	ipd = frappe.get_value("Lot", doc.lot, "production_detail")
+	lot_value = None
+	if doctype == 'Stock Entry':
+		lot_value = frappe.get_value(doc.against, doc.against_id, "lot")
+	else:
+		lot_value = doc.lot	
+	ipd = frappe.get_value("Lot", lot_value, "production_detail")
 	if not ipd:
 		return
 	bundle_entries = frappe.db.sql(
 		""" 
 			SELECT name FROM `tabCut Bundle Movement Ledger` WHERE lot = %(lot)s 
 		""", {
-			"lot": doc.lot
+			"lot": lot_value
 		}, as_dict=True
 	)
 	if not bundle_entries:
@@ -202,7 +211,7 @@ def update_collapsed_bundle(doctype, docname, event, non_stich_process=False):
 		"stage": dependent,
 	}
 	items = None
-	if doctype == "Delivery Challan":
+	if doctype == "Delivery Challan" or doctype == 'Stock Entry':
 		items = doc.items
 	elif non_stich_process:
 		items = doc.items	
@@ -212,22 +221,31 @@ def update_collapsed_bundle(doctype, docname, event, non_stich_process=False):
 			items = doc.items
 
 	for row in items:
-		item = frappe.get_value("Item Variant", row.item_variant, "item")
+		variant = None
+		if doctype == 'Stock Entry':
+			variant = row.item
+		else:
+			variant = row.item_variant
+
+		item = frappe.get_value("Item Variant", variant, "item")
 		dept_attr = frappe.get_value("Item", item, "dependent_attribute")
 		if not dept_attr:
 			continue
-		if check_dependent_stage_variant(row.item_variant, dept_attr, stich_stage):
+		if check_dependent_stage_variant(variant, dept_attr, stich_stage):
 			quantity = 0
 			if doctype == "Delivery Challan":
 				quantity = row.delivered_quantity
+			elif doctype == 'Stock Entry':
+				quantity = row.qty	
 			else:
 				quantity = row.quantity
+
 			if quantity > 0:
-				d = get_variant_attr_details(row.item_variant)
+				d = get_variant_attr_details(variant)
 				if event == "on_submit":
-					new_bundles = on_submit_collapsed_bundles(doc, doctype, docname, from_location, row.item_variant, row.set_combination, d, attrs, item, quantity, new_bundles)
+					new_bundles = on_submit_collapsed_bundles(doc, doctype, docname, from_location, variant, row.set_combination, d, attrs, item, quantity, new_bundles, lot_value)
 				else:
-					cancel_collapse_bundles(doc, row.item_variant, row.set_combination, quantity, from_location, d, attrs, item)
+					cancel_collapse_bundles(doc, variant, row.set_combination, quantity, from_location, d, attrs, item, lot_value)
 
 	if doctype ==  "Delivery Challan" and new_bundles:
 		for key in new_bundles:
@@ -235,24 +253,39 @@ def update_collapsed_bundle(doctype, docname, event, non_stich_process=False):
 
 	to_new_bundles = {}
 	to_location = None
-	if doctype == "Delivery Challan":
-		to_location = doc.supplier
-		if doc.is_internal_unit and doc.from_location != doc.supplier:
-			to_location = frappe.db.get_single_value("Stock Settings", "transit_warehouse")
+	if doctype == "Delivery Challan" or doctype == 'Stock Entry':
+		to_location = None
+		if doctype == 'Delivery Challan':
+			to_location = doc.supplier
+			if doc.is_internal_unit and doc.from_location != doc.supplier:
+				to_location = frappe.db.get_single_value("Stock Settings", "transit_warehouse")
+		else:
+			to_location = doc.to_warehouse
+		
 		for row in items:
-			item = frappe.get_value("Item Variant", row.item_variant, "item")
+			variant = None
+			if doctype == 'Delivery Challan':
+				variant = row.item_variant
+			else:
+				variant = row.item	
+			item = frappe.get_value("Item Variant", variant, "item")
 			dept_attr = frappe.get_value("Item", item, "dependent_attribute")
 			if not dept_attr:
 				continue
 
-			if check_dependent_stage_variant(row.item_variant, dept_attr, stich_stage):
-				quantity = row.delivered_quantity
+			if check_dependent_stage_variant(variant, dept_attr, stich_stage):
+				quantity = 0
+				if doctype == 'Stock Entry':
+					quantity = row.qty
+				else:
+					quantity = row.delivered_quantity
+
 				if quantity > 0:
-					d = get_variant_attr_details(row.item_variant)
+					d = get_variant_attr_details(variant)
 					if event == "on_submit":
-						to_new_bundles = on_submit_collapsed_bundles(doc, doctype, docname, to_location, row.item_variant, row.set_combination, d, attrs, item, quantity, to_new_bundles, add=True)
+						to_new_bundles = on_submit_collapsed_bundles(doc, doctype, docname, to_location, variant, row.set_combination, d, attrs, item, quantity, to_new_bundles, lot_value, add=True)
 					else:
-						cancel_collapse_bundles(doc, row.item_variant, row.set_combination, quantity, to_location, d, attrs, item)
+						cancel_collapse_bundles(doc, variant, row.set_combination, quantity, to_location, d, attrs, item, lot_value)
 
 	if non_stich_process:
 		to_location = doc.delivery_location
@@ -267,9 +300,9 @@ def update_collapsed_bundle(doctype, docname, event, non_stich_process=False):
 				if check_dependent_stage_variant(row.item_variant, dept_attr, stich_stage):
 					d = get_variant_attr_details(row.item_variant)
 					if event == "on_submit":
-						to_new_bundles = on_submit_collapsed_bundles(doc, doctype, docname, to_location, row.item_variant, row.set_combination, d, attrs, item, quantity, to_new_bundles, add=True)
+						to_new_bundles = on_submit_collapsed_bundles(doc, doctype, docname, to_location, row.item_variant, row.set_combination, d, attrs, item, quantity, to_new_bundles, lot_value, add=True)
 					else:
-						cancel_collapse_bundles(doc, row.item_variant, row.set_combination, quantity, to_location, d, attrs, item)
+						cancel_collapse_bundles(doc, row.item_variant, row.set_combination, quantity, to_location, d, attrs, item, lot_value)
 
 	for bundle_key in new_bundles.keys():
 		bundle_total_qty = new_bundles[bundle_key]['bundle_qty']
@@ -281,7 +314,7 @@ def update_collapsed_bundle(doctype, docname, event, non_stich_process=False):
 		stock_moved_qty = to_new_bundles[bundle_key]['qty']
 		create_new_collapsed_bundle(bundle_key, bundle_total_qty, stock_moved_qty, to_location, doc, d, attrs, new=True)	
 
-def on_submit_collapsed_bundles(doc, doctype, docname, location, item_variant, set_combination, d, attrs, item, quantity, bundles_dict, add=False):
+def on_submit_collapsed_bundles(doc, doctype, docname, location, item_variant, set_combination, d, attrs, item, quantity, bundles_dict, lot_value, add=False):
 	cb_previous_entries = get_collapsed_previous_cbm_list(doc.posting_date, doc.posting_time, location, item_variant)
 	cb_future_entries = get_collapsed_future_cbm_list(doc.posting_date, doc.posting_time, location, item_variant, limit=False)
 	if not cb_previous_entries and not cb_future_entries:
@@ -290,7 +323,7 @@ def on_submit_collapsed_bundles(doc, doctype, docname, location, item_variant, s
 		row_set_comb = update_if_string_instance(set_combination)
 		tuple_key = sorted(row_set_comb.items())
 		row_set_str = frappe.json.dumps(tuple_key)	
-		cbm_list = get_latest_cbml_for_variant(location, doc.lot, d[attrs['primary']], d[attrs['pack']], d[attrs['stich']], item)
+		cbm_list = get_latest_cbml_for_variant(location, lot_value, d[attrs['primary']], d[attrs['pack']], d[attrs['stich']], item)
 		for bundle in cbm_list:
 			cbm_doc = frappe.get_doc("Cut Bundle Movement Ledger", bundle['name'])	
 			panels = cbm_doc.panel.split(",")	
@@ -319,7 +352,7 @@ def on_submit_collapsed_bundles(doc, doctype, docname, location, item_variant, s
 					"cbm_docname": bundle['name']
 				}
 			)
-		bundles_key = [ str(doc.lot), str(item), str(d[attrs['primary']]), str(d[attrs['pack']]), str(row_panel), row_set_str]		
+		bundles_key = [ str(lot_value), str(item), str(d[attrs['primary']]), str(d[attrs['pack']]), str(row_panel), row_set_str]		
 		key = "|".join(bundles_key)
 		if key not in bundles_dict:
 			bundles_dict[key] = { "qty": 0, "bundle_qty": 0 }
@@ -350,7 +383,7 @@ def on_submit_collapsed_bundles(doc, doctype, docname, location, item_variant, s
 
 	return bundles_dict		
 
-def cancel_collapse_bundles(doc, item_variant, set_combination, quantity, location, d, attrs, item):
+def cancel_collapse_bundles(doc, item_variant, set_combination, quantity, location, d, attrs, item, lot_value):
 	cb_previous_entries = get_collapsed_previous_cbm_list(doc.posting_date, doc.posting_time, location, item_variant, limit=False)
 	cb_future_entries = get_collapsed_future_cbm_list(doc.posting_date, doc.posting_time, location, item_variant, limit=False)
 	previous = []
@@ -377,7 +410,7 @@ def cancel_collapse_bundles(doc, item_variant, set_combination, quantity, locati
 			future.append(entry)
 	if previous and not future:
 		if len(previous) == 1:
-			update_uncollapsed(location, set_combination, doc.lot, d[attrs['primary']], d[attrs['pack']], d[attrs['stich']], item)
+			update_uncollapsed(location, set_combination, lot_value, d[attrs['primary']], d[attrs['pack']], d[attrs['stich']], item)
 			update_is_cancelled_cbml(previous[0]['name'])
 		else:
 			update_is_cancelled_cbml(previous[0]['name'])
@@ -405,13 +438,13 @@ def create_new_collapsed_bundle(bundle_key, bundle_total_qty, stock_moved_qty, f
 	panel_qty = panel_qty_dict[panel]
 	stock_moved_qty = stock_moved_qty / panel_qty
 	bundle_qty = 0
-	if doc.doctype == "Delivery Challan" or new:
+	if doc.doctype == "Delivery Challan" or new or doc.doctype == 'Stock Entry':
 		bundle_qty = bundle_total_qty + stock_moved_qty
 	else:	
 		bundle_qty = bundle_total_qty - stock_moved_qty
 
 	if bundle_qty < 0:
-		frappe.throw("Stock is not Available")
+		frappe.throw("Bundle Qty Less Than Zero")
 
 	lay_no = bundle_no = 0
 	variant = get_or_create_variant(item, {
