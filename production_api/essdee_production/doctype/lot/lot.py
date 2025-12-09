@@ -235,18 +235,12 @@ def calculate_order_details(items, production_detail, packing_uom, final_uom):
 
 def save_order_item_details(name, lot_order_details, item_details):
 	item_details = update_if_string_instance(item_details)
-	pack_attr, set_attr, is_set = frappe.get_value("Item Production Detail",name, ['packing_attribute', 'set_item_attribute', 'is_set_item'])
+	# pack_attr, set_attr, is_set = frappe.get_value("Item Production Detail",name, ['packing_attribute', 'set_item_attribute', 'is_set_item'])
 	qty_dict = {}
 	for item in lot_order_details:
-		variant_doc = frappe.get_cached_doc("Item Variant", item.item_variant)
-		attrs = variant_attribute_details(variant_doc)
-		x = {
-			pack_attr : attrs[pack_attr]
-		}
-		if is_set:
-			x[set_attr] = attrs[set_attr]
-		tup = tuple(sorted(x.items()))
-		qty_dict[tup] = {
+		set_comb = update_if_string_instance(item.set_combination)
+		key = (item.item_variant, tuple(sorted(set_comb.items())))
+		qty_dict[key] = {
 			"cut_qty":item.cut_qty,
 			"pack_qty":item.pack_qty,
 			"stich_qty":item.stich_qty,
@@ -271,15 +265,11 @@ def save_order_item_details(name, lot_order_details, item_details):
 				item1['quantity'] = quantity
 				item1['row_index'] = row_index
 				item1['table_index'] = 0
-				x = {
-					pack_attr : item_attributes[pack_attr]
-				}
-				if is_set:
-					x[set_attr] = item_attributes[set_attr]
-				tup = tuple(sorted(x.items()))
-				item1['cut_qty'] = qty_dict[tup]['cut_qty']
-				item1['pack_qty'] = qty_dict[tup]['pack_qty']
-				item1['stich_qty'] = qty_dict[tup]['stich_qty']
+				set_comb = update_if_string_instance(item['item_keys'])
+				key = (variant, tuple(sorted(set_comb.items())))
+				item1['cut_qty'] = qty_dict[key]['cut_qty']
+				item1['pack_qty'] = qty_dict[key]['pack_qty']
+				item1['stich_qty'] = qty_dict[key]['stich_qty']
 				item1['set_combination'] = item['item_keys']
 				items.append(item1)
 			row_index += 1
