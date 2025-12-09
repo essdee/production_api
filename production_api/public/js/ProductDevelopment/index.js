@@ -4,6 +4,8 @@ import ProductCostingList from "./Product/ProductCostingList.vue"
 import ProductImageList from './Product/ProductImageList.vue';
 import ProductTrimColourComb from "./Product/ProductTrimColourComb.vue"
 import ProductMeasurement from "./Product/ProductMeasurement.vue";
+import ProductSilhoutte from "./Product/ProductSilhoutte.vue"
+import ProductGraphics from './Product/ProductGraphics.vue'
 
 export class ProductFileVersionsWrapper {
     constructor(wrapper) {
@@ -92,5 +94,36 @@ export class ProductMeasurementWrapper {
     }
     load_data(data){
         this.productMeasurement.load_data(JSON.parse(JSON.stringify(data)))
+    }
+}
+
+export class ProductSilhoutteWrapper {
+    constructor(wrapper) {
+        this.$wrapper = $(wrapper);
+        this.make_body();
+    }
+
+    make_body() {
+        this.app = createApp(ProductSilhoutte);
+        this.productSilhoutte = this.app.mount(this.$wrapper.get(0));
+    }
+
+    load_data(data, text){
+        this.productSilhoutte.load_data(JSON.parse(JSON.stringify(data)), text)
+    }
+}
+
+export class ProductGraphicsWrapper {
+    constructor(wrapper) {
+        this.$wrapper = $(wrapper);
+        this.make_body();
+    }
+
+    make_body() {
+        this.app = createApp(ProductGraphics);
+        this.productGraphics = this.app.mount(this.$wrapper.get(0));
+    }
+    load_data(value){
+        this.productGraphics.load_data(value)
     }
 }

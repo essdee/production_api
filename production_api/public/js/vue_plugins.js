@@ -81,7 +81,9 @@ import {
     ProductCostingListWrapper, 
     ProductImageListWrapper, 
     ProductTrimColourCombWrapper,
-    ProductMeasurementWrapper
+    ProductMeasurementWrapper,
+    ProductSilhoutteWrapper,
+    ProductGraphicsWrapper,
 } from "./ProductDevelopment"
 
 import EventBus from "./bus.js";
@@ -1463,3 +1465,6 @@ frappe.production.product_development.ui.ProductCostingList = ProductCostingList
 frappe.production.product_development.ui.ProductImageList = ProductImageListWrapper
 frappe.production.product_development.ui.ProductTrimColourComb = ProductTrimColourCombWrapper
 frappe.production.product_development.ui.ProductMeasurement = ProductMeasurementWrapper
+frappe.production.product_development.ui.ProductSilhoutte = ProductSilhoutteWrapper
+frappe.production.product_development.ui.ProductGraphics = ProductGraphicsWrapper
+

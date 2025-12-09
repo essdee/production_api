@@ -18,9 +18,9 @@
                                 style="height: 140px; "
                             />
                         </div>
-                        <div>
+                        <div v-if="doctype != 'Product Release'">
                             <button @click.stop="removeSelected(idx)"
-                                style="position: relative; z-index: 20; background-color: red; top: 10px;"
+                                style="position: relative; z-index: 20; top: 10px;"
                             >
                                 ×
                             </button>
@@ -34,29 +34,38 @@
                 </div>
             </div>
         </div>
-
-        <h3>Add {{view_page}} Images</h3>
-		<input v-model="query" type="text" class="border p-2 rounded w-full"
-			placeholder="Search images..."
-		/>
-		<div v-if="results.length" class="grid grid-cols-3 gap-3">
-			<div v-for="(item, idx) in results" :key="idx"
-				class="p-2 border rounded cursor-pointer hover:bg-gray-100"
-				@click="selectItem(item)"
-			>
-            <img 
-                :src="item.image_url"
-                :style="{
-                    minHeight: '100px',
-                    height: '125px',
-                    maxHeight: '150px',
-                    maxWidth: '300px',
-                }"
-                class="object-cover rounded"
-            />
-				<div class="text-sm font-medium mt-1">{{ item.image_title }}</div>
-			</div>
-		</div>
+        <div v-if="doctype != 'Product Release'">
+            <h3>Add {{view_page}} Images</h3>
+            <div style="display: flex;">
+                <div>
+                    <input v-model="query" type="text" class="border p-2 rounded w-full"
+                        placeholder="Search images..."
+                    />
+                </div>
+                <div style="padding-top: 5px;padding-left: 10px;">
+                    <button @click="create_image()" class="btn btn-success">Create</button>
+                </div>
+            </div>
+            
+            <div v-if="results.length" class="grid grid-cols-3 gap-3">
+                <div v-for="(item, idx) in results" :key="idx"
+                    class="p-2 border rounded cursor-pointer hover:bg-gray-100"
+                    @click="selectItem(item)"
+                >
+                <img 
+                    :src="item.image_url"
+                    :style="{
+                        minHeight: '100px',
+                        height: '125px',
+                        maxHeight: '150px',
+                        maxWidth: '300px',
+                    }"
+                    class="object-cover rounded"
+                />
+                    <div class="text-sm font-medium mt-1">{{ item.image_title }}</div>
+                </div>
+            </div>
+        </div>    
 	</div>
 </template>
 
@@ -67,6 +76,7 @@ const query = ref("")
 const results = ref([])
 const selected = ref([])
 const view_page = ref("")
+let doctype = cur_frm.doc.doctype
 
 watch(query, async (val) => {
 	if (!val || val.length < 2) {
@@ -106,6 +116,14 @@ function load_data(data, view){
 
 function get_data(){
     return selected.value
+}
+
+function create_image(){
+    frappe.ui.form.make_quick_entry("Product Image", (doc)=> {
+        if(doc && doc.name){
+            query.value = doc.name
+        }
+    })
 }
 
 defineExpose({

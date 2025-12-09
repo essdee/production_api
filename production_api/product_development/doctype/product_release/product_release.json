@@ -2,38 +2,34 @@
  "actions": [],
  "allow_import": 1,
  "allow_rename": 1,
- "autoname": "field:style_no",
- "creation": "2023-05-18 17:53:46.518369",
+ "creation": "2025-12-06 11:49:08.235248",
  "default_view": "List",
  "doctype": "DocType",
  "editable_grid": 1,
  "engine": "InnoDB",
  "field_order": [
   "tab_break_v3vhq",
+  "product",
   "style_no",
-  "product_group",
   "item_name",
-  "template",
-  "fg_item_category",
-  "sizes",
-  "back_image",
-  "front_image",
+  "product_group",
+  "fabric_details",
+  "description",
   "column_break_gelhq",
   "season",
-  "fabric_details",
-  "pieces_per_box",
-  "product_category",
+  "front_image",
+  "back_image",
+  "gsm",
   "size_range",
-  "description",
+  "sizes",
   "section_break_zlpx",
-  "is_set_item",
   "company",
   "category",
   "is_cord",
   "column_break_jphn",
+  "is_set_item",
   "sub_brand",
   "dia",
-  "gsm",
   "section_break_xbdm",
   "product_fabric_composition_details",
   "tab_break_xxll",
@@ -65,31 +61,42 @@
   "top_measurement_image",
   "bottom_measurement_image",
   "product_measurement_descriptions",
-  "product_measurement_html",
-  "costing_tab",
-  "costing_html",
-  "attachments_tab",
-  "product_file_versions",
-  "file_html",
-  "tab_break_z27ab",
-  "product_info_extras"
+  "product_measurement_html"
  ],
  "fields": [
+  {
+   "fieldname": "tab_break_v3vhq",
+   "fieldtype": "Tab Break",
+   "label": "Basic"
+  },
+  {
+   "fieldname": "style_no",
+   "fieldtype": "Data",
+   "label": "Product Style No."
+  },
   {
    "fieldname": "product_group",
    "fieldtype": "Link",
    "in_list_view": 1,
    "in_standard_filter": 1,
    "label": "Product Group",
-   "options": "Product Group",
-   "reqd": 1
+   "options": "Product Group"
+  },
+  {
+   "fieldname": "fabric_details",
+   "fieldtype": "Data",
+   "in_standard_filter": 1,
+   "label": "Fabric Details"
   },
   {
    "fieldname": "description",
    "fieldtype": "Long Text",
    "in_list_view": 1,
-   "label": "Description",
-   "reqd": 1
+   "label": "Description"
+  },
+  {
+   "fieldname": "column_break_gelhq",
+   "fieldtype": "Column Break"
   },
   {
    "fieldname": "season",
@@ -102,7 +109,6 @@
   {
    "fieldname": "front_image",
    "fieldtype": "Attach Image",
-   "hidden": 1,
    "label": "Product Image"
   },
   {
@@ -112,63 +118,9 @@
    "label": "Product Image (Back)"
   },
   {
-   "fieldname": "product_file_versions",
-   "fieldtype": "Table",
-   "hidden": 1,
-   "label": "Product File Versions",
-   "no_copy": 1,
-   "options": "Product File Version"
-  },
-  {
-   "fieldname": "file_html",
-   "fieldtype": "HTML",
-   "label": "File HTML"
-  },
-  {
-   "fieldname": "tab_break_v3vhq",
-   "fieldtype": "Tab Break",
-   "label": "Basic"
-  },
-  {
-   "fieldname": "attachments_tab",
-   "fieldtype": "Tab Break",
-   "hidden": 1,
-   "label": "Attachments"
-  },
-  {
-   "fieldname": "style_no",
-   "fieldtype": "Data",
-   "label": "Product Style No.",
-   "reqd": 1,
-   "unique": 1
-  },
-  {
-   "fieldname": "fabric_details",
-   "fieldtype": "Data",
-   "in_standard_filter": 1,
-   "label": "Fabric Details",
-   "reqd": 1
-  },
-  {
-   "fieldname": "column_break_gelhq",
-   "fieldtype": "Column Break"
-  },
-  {
    "fieldname": "gsm",
    "fieldtype": "Data",
    "label": "GSM"
-  },
-  {
-   "fieldname": "tab_break_z27ab",
-   "fieldtype": "Tab Break",
-   "hidden": 1,
-   "label": "Extras"
-  },
-  {
-   "fieldname": "product_info_extras",
-   "fieldtype": "Table",
-   "label": "Product Info Extras",
-   "options": "Product Info"
   },
   {
    "fieldname": "size_range",
@@ -183,24 +135,24 @@
    "options": "FG Item Size"
   },
   {
-   "fieldname": "costing_tab",
-   "fieldtype": "Tab Break",
-   "label": "Costing"
-  },
-  {
-   "fieldname": "costing_html",
-   "fieldtype": "HTML",
-   "label": "Costing HTML"
-  },
-  {
    "fieldname": "section_break_zlpx",
    "fieldtype": "Section Break"
+  },
+  {
+   "default": "0",
+   "fieldname": "is_set_item",
+   "fieldtype": "Check",
+   "label": "Is Set Item"
   },
   {
    "fieldname": "category",
    "fieldtype": "Link",
    "label": "Category",
    "options": "Product Category Item"
+  },
+  {
+   "fieldname": "column_break_jphn",
+   "fieldtype": "Column Break"
   },
   {
    "fieldname": "sub_brand",
@@ -214,10 +166,14 @@
    "label": "Dia"
   },
   {
-   "default": "0",
-   "fieldname": "is_set_item",
-   "fieldtype": "Check",
-   "label": "Is Set Item"
+   "fieldname": "section_break_xbdm",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "product_fabric_composition_details",
+   "fieldtype": "Table",
+   "label": "Product Fabric Composition Details",
+   "options": "Product Fabric Composition Detail"
   },
   {
    "fieldname": "tab_break_xxll",
@@ -225,10 +181,28 @@
    "label": "Silhouette"
   },
   {
+   "fieldname": "product_image",
+   "fieldtype": "Attach",
+   "hidden": 1,
+   "label": "Product Image"
+  },
+  {
    "fieldname": "top_image",
    "fieldtype": "Attach Image",
    "hidden": 1,
    "label": "Top Image"
+  },
+  {
+   "depends_on": "eval: doc.is_set_item",
+   "fieldname": "bottom_image",
+   "fieldtype": "Attach Image",
+   "hidden": 1,
+   "label": "Bottom Image"
+  },
+  {
+   "fieldname": "product_silhouttes_html",
+   "fieldtype": "HTML",
+   "label": "Product Silhouttes HTML"
   },
   {
    "fieldname": "product_placement",
@@ -238,11 +212,9 @@
    "options": "Product Placement"
   },
   {
-   "depends_on": "eval: doc.is_set_item",
-   "fieldname": "bottom_image",
-   "fieldtype": "Attach Image",
-   "hidden": 1,
-   "label": "Bottom Image"
+   "fieldname": "product_placement_html",
+   "fieldtype": "HTML",
+   "label": "Product Placement HTML"
   },
   {
    "fieldname": "trims_tab",
@@ -257,6 +229,11 @@
    "options": "Product Placement"
   },
   {
+   "fieldname": "product_trims_html",
+   "fieldtype": "HTML",
+   "label": "Product Trims HTML"
+  },
+  {
    "fieldname": "colours_tab",
    "fieldtype": "Tab Break",
    "label": "Colours"
@@ -267,34 +244,6 @@
    "fieldtype": "Table",
    "label": "Product Colours",
    "options": "Product Colour"
-  },
-  {
-   "fieldname": "graphic_designs_tab",
-   "fieldtype": "Tab Break",
-   "label": "Graphic Designs"
-  },
-  {
-   "fieldname": "product_fabric_composition_details",
-   "fieldtype": "Table",
-   "label": "Product Fabric Composition Details",
-   "options": "Product Fabric Composition Detail"
-  },
-  {
-   "fieldname": "product_placement_html",
-   "fieldtype": "HTML",
-   "label": "Product Placement HTML"
-  },
-  {
-   "fieldname": "product_trims_html",
-   "fieldtype": "HTML",
-   "label": "Product Trims HTML"
-  },
-  {
-   "fieldname": "product_designs",
-   "fieldtype": "Table",
-   "hidden": 1,
-   "label": "Product Designs",
-   "options": "Product Design"
   },
   {
    "depends_on": "eval: doc.is_set_item",
@@ -316,6 +265,23 @@
    "options": "Product Placement"
   },
   {
+   "fieldname": "graphic_designs_tab",
+   "fieldtype": "Tab Break",
+   "label": "Graphic Designs"
+  },
+  {
+   "fieldname": "product_designs",
+   "fieldtype": "Table",
+   "hidden": 1,
+   "label": "Product Designs",
+   "options": "Product Design"
+  },
+  {
+   "fieldname": "product_design_html",
+   "fieldtype": "HTML",
+   "label": "Product Design HTML"
+  },
+  {
    "fieldname": "accessories_tab",
    "fieldtype": "Tab Break",
    "label": "Accessories"
@@ -324,6 +290,32 @@
    "fieldname": "measurement_tab",
    "fieldtype": "Tab Break",
    "label": "Measurement"
+  },
+  {
+   "fieldname": "measurement_images_html",
+   "fieldtype": "HTML",
+   "label": "Measurement Images HTML"
+  },
+  {
+   "depends_on": "eval: !doc.is_set_item",
+   "fieldname": "measurement_image",
+   "fieldtype": "Attach Image",
+   "hidden": 1,
+   "label": "Measurement Image"
+  },
+  {
+   "depends_on": "eval: doc.is_set_item",
+   "fieldname": "top_measurement_image",
+   "fieldtype": "Attach Image",
+   "hidden": 1,
+   "label": "Top Measurement Image"
+  },
+  {
+   "depends_on": "eval: doc.is_set_item",
+   "fieldname": "bottom_measurement_image",
+   "fieldtype": "Attach Image",
+   "hidden": 1,
+   "label": "Bottom Measurement Image"
   },
   {
    "depends_on": "eval: !doc.is_set_item",
@@ -339,67 +331,28 @@
    "label": "Product Measurement HTML"
   },
   {
-   "depends_on": "eval: !doc.is_set_item",
-   "fieldname": "measurement_image",
-   "fieldtype": "Attach Image",
-   "hidden": 1,
-   "label": "Measurement Image"
-  },
-  {
-   "depends_on": "eval: doc.is_set_item",
-   "fieldname": "bottom_measurement_image",
-   "fieldtype": "Attach Image",
-   "hidden": 1,
-   "label": "Bottom Measurement Image"
-  },
-  {
-   "depends_on": "eval: doc.is_set_item",
-   "fieldname": "top_measurement_image",
-   "fieldtype": "Attach Image",
-   "hidden": 1,
-   "label": "Top Measurement Image"
-  },
-  {
-   "fieldname": "column_break_jphn",
-   "fieldtype": "Column Break"
-  },
-  {
-   "fieldname": "section_break_xbdm",
-   "fieldtype": "Section Break"
-  },
-  {
-   "fieldname": "product_image",
-   "fieldtype": "Attach",
-   "hidden": 1,
-   "label": "Product Image"
-  },
-  {
-   "fieldname": "product_silhouttes_html",
-   "fieldtype": "HTML",
-   "label": "Product Silhouttes HTML"
-  },
-  {
-   "fieldname": "product_design_html",
-   "fieldtype": "HTML",
-   "label": "Product Design HTML"
-  },
-  {
-   "fieldname": "measurement_images_html",
-   "fieldtype": "HTML",
-   "label": "Measurement Images HTML"
+   "fieldname": "product",
+   "fieldtype": "Link",
+   "label": "Product",
+   "options": "Product"
   },
   {
    "default": "0",
    "fieldname": "is_cord",
    "fieldtype": "Check",
-   "hidden": 1,
    "label": "Is Cord"
   },
   {
    "fieldname": "item_name",
    "fieldtype": "Data",
-   "label": "Item Name",
-   "reqd": 1
+   "label": "Item Name"
+  },
+  {
+   "fieldname": "product_box_details",
+   "fieldtype": "Table",
+   "hidden": 1,
+   "label": "Product Box Details",
+   "options": "Product Design"
   },
   {
    "fieldname": "box_detail_html",
@@ -419,92 +372,57 @@
    "label": "Product Accessories HTML"
   },
   {
-   "fieldname": "product_box_details",
-   "fieldtype": "Table",
-   "hidden": 1,
-   "label": "Product Box Details",
-   "options": "Product Design"
-  },
-  {
    "fieldname": "company",
    "fieldtype": "Link",
    "label": "Company",
    "options": "Product Company"
-  },
-  {
-   "fieldname": "pieces_per_box",
-   "fieldtype": "Int",
-   "label": "Pieces Per Box"
-  },
-  {
-   "fieldname": "template",
-   "fieldtype": "Link",
-   "label": "Template",
-   "options": "FG Item Master Template"
-  },
-  {
-   "fieldname": "product_category",
-   "fieldtype": "Link",
-   "label": "Product Category",
-   "options": "Product Category"
-  },
-  {
-   "fieldname": "fg_item_category",
-   "fieldtype": "Link",
-   "label": "Fg Item Category",
-   "options": "FG Item Category"
   }
  ],
  "grid_page_length": 50,
  "image_field": "front_image",
  "index_web_pages_for_search": 1,
- "links": [
-  {
-   "link_doctype": "Product Release",
-   "link_fieldname": "product"
-  }
- ],
- "modified": "2025-12-08 16:58:57.670642",
+ "links": [],
+ "modified": "2025-12-08 16:34:04.400309",
  "modified_by": "Administrator",
  "module": "Product Development",
- "name": "Product",
- "naming_rule": "By fieldname",
+ "name": "Product Release",
  "owner": "Administrator",
  "permissions": [
   {
-   "create": 1,
-   "delete": 1,
    "email": 1,
    "export": 1,
    "print": 1,
    "read": 1,
    "report": 1,
    "role": "System Manager",
-   "share": 1,
-   "write": 1
+   "share": 1
   },
   {
-   "create": 1,
    "email": 1,
    "export": 1,
    "print": 1,
    "read": 1,
    "report": 1,
    "role": "PD User",
-   "share": 1,
-   "write": 1
+   "share": 1
   },
   {
-   "create": 1,
-   "delete": 1,
    "email": 1,
    "export": 1,
    "print": 1,
    "read": 1,
    "report": 1,
    "role": "PD Manager",
-   "share": 1,
-   "write": 1
+   "share": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Administrator",
+   "share": 1
   }
  ],
  "row_format": "Dynamic",

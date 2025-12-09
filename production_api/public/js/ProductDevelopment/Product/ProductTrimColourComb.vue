@@ -2,42 +2,31 @@
 	<div class="p-4 space-y-4">
         <div v-if="selected.length" class="mt-4">
 			<h3 class="font-semibold mb-2">Selected {{view_page}} Images</h3>
-
-			<div class="grid grid-cols-3 gap-3">
-				<div 
-                    v-for="(item, idx) in selected" 
-                    :key="idx"
-                    class="border rounded relative p-2"
-                    style="padding-top: 10px;"
+            <div class="mt-2 w-full"
+                style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px;"
+            >
+                <div v-for="(item, idx) in selected" :key="idx"
+                    class="relative border rounded-lg overflow-hidden bg-white shadow-sm"
+                    style="width: 100%;"
                 >
-                    <!-- FIXED X BUTTON -->
-                    <button
-                        class="absolute bg-red-500 text-white rounded-full flex items-center justify-center"
-                        @click.stop="removeSelected(idx)"
-                        style="
-                            top: -6px !important;
-                            right: -6px !important;
-                            width: 22px;
-                            height: 22px;
-                            font-size: 12px;
-                            box-shadow: 0 1px 4px rgba(0,0,0,0.3);
-                            background-color: red;
-                        "
+                    <div style="width: 100%; text-align:center; display: flex;">
+                        <div style="width: 90%;">
+                            <img :src="item.image_url" class="w-full object-cover"
+                                style="height: 140px; "
+                            />
+                        </div>
+                        <div v-if="doctype != 'Product Release'">
+                            <button @click.stop="removeSelected(idx)"
+                                style="position: relative; z-index: 20; top: 10px;"
+                            >
+                                ×
+                            </button>
+                        </div>
+                    </div>    
+                    <div class="grid mt-2 w-full"
+                        style="display:grid; grid-template-columns: repeat(2, 1fr); gap:4px; padding-left: 20px;"
                     >
-                        ✕
-                    </button>
-                    <img 
-                        :src="item.image_url"
-                        class="rounded object-cover w-full"
-                        style="height: 120px;"
-                    />
-                    <div 
-                        class="grid mt-2 w-full"
-                        style="display:grid; grid-template-columns: repeat(4, 1fr); gap:4px;"
-                    >
-                        <div
-                            v-for="(clr, cidx) in colour_list"
-                            :key="cidx"
+                        <div v-for="(clr, cidx) in colour_list" :key="cidx"
                             class="flex flex-col items-center text-[9px] cursor-pointer"
                             style="width:100%;"
                         >
@@ -47,39 +36,46 @@
                                 v-model="item.selected_colours"
                                 class="w-3 h-3"
                                 @click="make_dirty()"
+                                :disabled="doctype == 'Product Release'"
                             />
                             <span class="truncate text-center w-full">{{ clr.colour }}</span>
                         </div>
                     </div>
-
+                    <div class="p-1 text-sm text-center"
+                        style="position: relative; z-index: 20;"
+                    >
+                        {{ item.image_title || 'Untitled' }}
+                    </div>
                 </div>
             </div>
         </div>
-        <h3>Add {{view_page}} Images</h3>
-        <input 
-            v-model="query" 
-            type="text" 
-            class="border p-2 rounded w-full"
-            placeholder="Search images..."
-        />
-        <div v-if="results.length" class="grid grid-cols-3 gap-3">
-            <div 
-                v-for="(item, idx) in results" 
-                :key="idx"
-                class="p-2 border rounded cursor-pointer hover:bg-gray-100"
-                @click="selectItem(item)"
-            >
-                <img 
-                    :src="item.image_url"
-                    :style="{
-                        minHeight: '100px',
-                        height: '125px',
-                        maxHeight: '150px',
-                        maxWidth: '300px',
-                    }"
-                    class="object-cover rounded"
-                />
-                <div class="text-sm font-medium mt-1">{{ item.image_title }}</div>
+        <div v-if="doctype != 'Product Release'">
+            <h3>Add {{view_page}} Images</h3>
+            <input 
+                v-model="query" 
+                type="text" 
+                class="border p-2 rounded w-full"
+                placeholder="Search images..."
+            />
+            <div v-if="results.length" class="grid grid-cols-3 gap-3">
+                <div 
+                    v-for="(item, idx) in results" 
+                    :key="idx"
+                    class="p-2 border rounded cursor-pointer hover:bg-gray-100"
+                    @click="selectItem(item)"
+                >
+                    <img 
+                        :src="item.image_url"
+                        :style="{
+                            minHeight: '100px',
+                            height: '125px',
+                            maxHeight: '150px',
+                            maxWidth: '300px',
+                        }"
+                        class="object-cover rounded"
+                    />
+                    <div class="text-sm font-medium mt-1">{{ item.image_title }}</div>
+                </div>
             </div>
         </div>
 	</div>
@@ -93,6 +89,7 @@ const results = ref([])
 const selected = ref([])
 const view_page = ref("")
 const colour_list = ref([])
+let doctype = cur_frm.doc.doctype
 
 onMounted(() => {
     if (cur_frm.doc.is_set_item) {

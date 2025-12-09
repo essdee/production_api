@@ -1,44 +1,35 @@
 {
  "actions": [],
  "allow_rename": 1,
- "autoname": "field:image_title",
- "creation": "2025-11-21 17:17:13.470141",
+ "autoname": "field:company",
+ "creation": "2025-12-08 16:16:34.997349",
+ "default_view": "List",
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
-  "image_title",
-  "image",
-  "title_header"
+  "company",
+  "company_image"
  ],
  "fields": [
   {
-   "fieldname": "image_title",
+   "fieldname": "company",
    "fieldtype": "Data",
-   "in_list_view": 1,
-   "label": "Image Title",
-   "reqd": 1,
+   "label": "Company",
    "unique": 1
   },
   {
-   "fieldname": "image",
-   "fieldtype": "Attach Image",
-   "label": "Image",
-   "reqd": 1
-  },
-  {
-   "fieldname": "title_header",
-   "fieldtype": "Data",
-   "label": "Title Header",
-   "reqd": 1
+   "fieldname": "company_image",
+   "fieldtype": "Attach",
+   "label": "Company Image"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-12-05 16:43:44.465411",
+ "modified": "2025-12-08 16:17:41.287701",
  "modified_by": "Administrator",
  "module": "Product Development",
- "name": "Product Image",
+ "name": "Product Company",
  "naming_rule": "By fieldname",
  "owner": "Administrator",
  "permissions": [

@@ -13,12 +13,13 @@
                         class="input-box" 
                         placeholder="Enter text..."
                         @blur="make_dirty()"
+                        :disabled="doctype == 'Product Release'"
                     />
-                    <button class="delete-btn" @click="delete_row(key, idx)">
+                    <button class="delete-btn" @click="delete_row(key, idx)" v-if="doctype != 'Product Release'">
                         ✕
                     </button>
                 </div>
-                <button class="add-btn" @click="add_row(key)">
+                <button class="add-btn" @click="add_row(key)" v-if="doctype != 'Product Release'">
                     + Add Row
                 </button>
             </div>
@@ -30,7 +31,7 @@
 import { ref, onMounted } from "vue";
 
 let items = ref({});
-
+let doctype = cur_frm.doc.doctype
 function add_row(key) {
     items.value[key].push("");
 }
