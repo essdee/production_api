@@ -1049,13 +1049,25 @@ def get_item_structure(items,item_name, process, uom):
 	return item_list, row_index, table_index	
 
 def get_bom_structure(items, row_index, table_index):
+	from production_api.utils import get_variant_attr_details
 	bom = {}
+	primary_item_attrs = {}
 	for item_name,values in items.items():
 		table_index = table_index + 1
 		primary_attr = frappe.get_value("Item", item_name, 'primary_attribute')
 		for item,value in values.items():
 			if not primary_attr:
 				row_index = row_index + 1
+			else:
+				if item_name not in primary_item_attrs:
+					primary_item_attrs[item_name] = []
+				attrs = get_variant_attr_details(item)
+				del attrs[primary_attr]
+				tup_key = tuple(sorted(attrs.items()))
+				if tup_key not in primary_item_attrs[item_name]:
+					row_index = row_index + 1
+					primary_item_attrs[item_name].append(tup_key)
+
 			if not bom.get(item_name):
 				bom[item_name] = []
 
