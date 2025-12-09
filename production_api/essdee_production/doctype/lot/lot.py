@@ -726,7 +726,10 @@ def get_mapping_details(ipd):
 				item_str = ", ".join(d['item'])
 				bom_str = ", ".join(d['bom'])
 				items += f"{item_str} -> {bom_str} / {d['quantity']}<br>"
-		map_dict[bom_item] = items
+		if bom_item not in map_dict:				
+			map_dict[bom_item] = items
+		else:
+			map_dict[bom_item] += items	
 	return map_dict
 
 @frappe.whitelist()
