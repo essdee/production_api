@@ -2288,7 +2288,7 @@ def calculate_pieces(doc_name, complete_json=None, incomplete_json=None, from_pi
 		field = 'stich_qty'
 	
 	if field:
-		lot_doc = frappe.get_cached_doc("Lot",wo_doc.lot)
+		lot_doc = frappe.get_doc("Lot",wo_doc.lot)
 
 	if incomplete_items:
 		wo_doc.incompleted_items_json = incomplete_items
@@ -2324,8 +2324,9 @@ def calculate_pieces(doc_name, complete_json=None, incomplete_json=None, from_pi
 						qty = qty_data['quantity']
 						if doc_status == 2:
 							qty = qty * -1
-						current_qty = getattr(item, "cut_qty", 0)
-						setattr(item, "cut_qty", current_qty + qty)
+						current_qty = getattr(item, field, 0)
+						setattr(item, field, current_qty + qty)
+						break
 		if lot_doc:
 			lot_doc.save(ignore_permissions=True)	
 	else:
@@ -2350,6 +2351,7 @@ def calculate_pieces(doc_name, complete_json=None, incomplete_json=None, from_pi
 						wo_types[data['type']] = data['quantity']
 
 					item.received_type_json = wo_types
+					break
 			if lot_doc:
 				for item in lot_doc.lot_order_details:
 					set_combination = update_if_string_instance(item.set_combination)
@@ -2357,6 +2359,7 @@ def calculate_pieces(doc_name, complete_json=None, incomplete_json=None, from_pi
 						qty = data['quantity']
 						current_qty = getattr(item, field, 0)
 						setattr(item, field, current_qty + qty)	
+						break
 		if lot_doc:
 			lot_doc.save(ignore_permissions=True)
 	wo_doc.save(ignore_permissions=True)
