@@ -867,10 +867,12 @@ def fetch_from_old_lot(lot, item, location):
 					"balance": 0, "transfer": 0
 				},
 			})
-			old_lot_inward["data"][colour]["values"].setdefault(size, {
-				"balance": 0, "transfer": 0
-			})
-			old_lot_inward["total"].setdefault(size, 0)
+			for size1 in primary_values:
+				old_lot_inward["data"][colour]["values"].setdefault(size1, {
+					"balance": 0, "transfer": 0
+				})
+				old_lot_inward["total"].setdefault(size1, 0)
+
 			qty = old_lot_data[key][variant]
 			old_lot_inward["data"][colour]["colour_total"]["balance"] += qty
 			old_lot_inward["data"][colour]["values"][size]["balance"] += qty
