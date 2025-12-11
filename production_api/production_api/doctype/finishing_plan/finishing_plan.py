@@ -22,7 +22,7 @@ class FinishingPlan(Document):
 		})
 		rework_details = self.get_rework_item_details()
 		inward_details = self.get_inward_details()
-		ocr_details = self.get_ocr_details()
+		ocr_details = get_ocr_details(self)
 		self.set_onload("finishing_qty_data", {
 			"primary_values": data['primary_values'],
 			"data": data['finishing_qty'],
@@ -53,134 +53,6 @@ class FinishingPlan(Document):
 			"ocr_data":ocr_details,
 			"primary_values": data['primary_values']
 		})
-
-	def get_ocr_details(self):
-		ipd = frappe.get_value("Lot", self.lot, "production_detail")
-		ipd_fields = ["is_set_item", "packing_attribute", "primary_item_attribute", "set_item_attribute"]
-		is_set_item, pack_attr, primary_attr, set_attr = frappe.get_value("Item Production Detail", ipd, ipd_fields)
-		ocr_data = {}
-		for row in self.finishing_plan_details:
-			attr_details = get_variant_attr_details(row.item_variant)
-			part_value = "Item"
-			if is_set_item:
-				part_value = attr_details[set_attr]
-
-			ocr_data.setdefault(part_value, {
-				"data": {},
-				"total": {},
-				"cutting": 0,
-				"dc_qty": 0,
-				"packed_box": 0,
-				"packed_box_qty": 0,
-				"rejected": 0,
-				"loose_piece": 0,
-				"loose_piece_set": 0,
-				"pending": 0,
-				"sewing_received": 0,
-				"old_lot": 0,
-				"ironing_excess": 0,
-				"total_inward": 0,
-			})
-			size = attr_details[primary_attr]
-			ocr_data[part_value]['total'].setdefault(size, {
-				"cutting_qty": 0,
-				"dc_qty": 0,
-				"packed_box": 0,
-				"packed_box_qty": 0,
-				"rejected": 0,
-				"loose_piece": 0,
-				"loose_piece_set": 0,
-				"pending": 0,
-				"sewing_received": 0,
-				"old_lot": 0,
-				"ironing_excess": 0,
-				"total_inward": 0,
-			})
-			
-			set_comb = update_if_string_instance(row.set_combination)
-			major_colour = set_comb["major_colour"]
-			colour = major_colour
-			size = attr_details[primary_attr]
-			part = None
-			if is_set_item:
-				variant_colour = attr_details[pack_attr]
-				part = attr_details[set_attr]
-				colour = f"{variant_colour} ({major_colour}) @ "+part
-			
-			ocr_data[part_value]['data'].setdefault(colour, {
-				"values": {},
-				"colour": attr_details[pack_attr],
-				"part": part,
-				"colour_total": {
-					"loose_piece": 0, "pending": 0, "rejected": 0, "loose_piece_set": 0, "sewing_received": 0,
-				}
-			})
-			ocr_data[part_value]['cutting'] += row.cutting_qty
-			ocr_data[part_value]['dc_qty'] += row.dc_qty 
-			ocr_data[part_value]['total'][size]['cutting_qty'] += row.cutting_qty
-			ocr_data[part_value]['total'][size]['dc_qty'] += row.dc_qty 
-			ocr_data[part_value]['total'][size]['ironing_excess'] += row.ironing_excess
-			ocr_data[part_value]['total'][size]['old_lot'] += row.lot_transferred
-			ocr_data[part_value]['total'][size]['total_inward'] += row.delivered_quantity + row.ironing_excess + row.lot_transferred
-			ocr_data[part_value]['old_lot'] += row.lot_transferred
-			ocr_data[part_value]['ironing_excess'] += row.ironing_excess
-			ocr_data[part_value]['total_inward'] += row.delivered_quantity + row.ironing_excess + row.lot_transferred
-
-			ocr_data[part_value]['data'][colour]['values'].setdefault(size, {
-				"loose_piece": 0, "pending": 0, "rejected": 0, "loose_piece_set": 0, "sewing_received": 0,
-			})
-
-			ocr_data[part_value]['data'][colour]['values'][size]['sewing_received'] += row.delivered_quantity
-			ocr_data[part_value]['data'][colour]['colour_total']['sewing_received'] += row.delivered_quantity
-			ocr_data[part_value]['total'][size]['sewing_received'] += row.delivered_quantity
-			ocr_data[part_value]['sewing_received'] += row.delivered_quantity
-
-			ocr_data[part_value]['data'][colour]['values'][size]['loose_piece'] += row.return_qty
-			ocr_data[part_value]['data'][colour]['colour_total']['loose_piece'] += row.return_qty
-			ocr_data[part_value]['total'][size]['loose_piece'] += row.return_qty
-			ocr_data[part_value]['loose_piece'] += row.return_qty
-
-			ocr_data[part_value]['data'][colour]['values'][size]['loose_piece_set'] += row.pack_return_qty
-			ocr_data[part_value]['data'][colour]['colour_total']['loose_piece_set'] += row.pack_return_qty
-			ocr_data[part_value]['total'][size]['loose_piece_set'] += row.pack_return_qty
-			ocr_data[part_value]['loose_piece_set'] += row.pack_return_qty
-
-		part_value = ["Item"]
-		if is_set_item:
-			part_value = get_part_value(set_attr, ipd)
-		for row in self.finishing_plan_grn_details:
-			attr_details = get_variant_attr_details(row.item_variant)
-			for par in part_value:
-				size = attr_details[primary_attr]
-				ocr_data[par]['packed_box'] += row.quantity
-				ocr_data[par]['packed_box_qty'] += (row.quantity * self.pieces_per_box)
-				ocr_data[par]['total'][size]['packed_box'] += row.quantity
-				ocr_data[par]['total'][size]['packed_box_qty'] += (row.quantity * self.pieces_per_box)	
-		
-		for row in self.finishing_plan_reworked_details:
-			set_comb = update_if_string_instance(row.set_combination)
-			major_colour = set_comb["major_colour"]
-			colour = major_colour
-			attr_details = get_variant_attr_details(row.item_variant)
-			size = attr_details[primary_attr]
-			part_value = "Item"
-			if is_set_item:
-				part_value = attr_details[set_attr]
-			part = None
-			if is_set_item:
-				variant_colour = attr_details[pack_attr]
-				part = attr_details[set_attr]
-				colour = f"{variant_colour} ({major_colour}) @ "+part
-			ocr_data[part_value]['data'][colour]['colour_total']['rejected'] += row.rejected_qty
-			ocr_data[part_value]['total'][size]['rejected'] += row.rejected_qty	
-			ocr_data[part_value]['data'][colour]['values'][size]['rejected'] += row.rejected_qty
-			ocr_data[part_value]['data'][colour]['values'][size]['pending'] += (row.quantity - row.reworked_quantity - row.rejected_qty)
-			ocr_data[part_value]['data'][colour]['colour_total']['pending'] += (row.quantity - row.reworked_quantity - row.rejected_qty)
-			ocr_data[part_value]['total'][size]['pending'] += (row.quantity - row.reworked_quantity - row.rejected_qty)	
-			ocr_data[part_value]['rejected'] += row.rejected_qty
-			ocr_data[part_value]['pending'] += (row.quantity - row.reworked_quantity - row.rejected_qty)
-
-		return ocr_data	
 
 	def get_inward_details(self):
 		ipd = frappe.get_value("Lot", self.lot, "production_detail")
@@ -466,6 +338,271 @@ class FinishingPlan(Document):
 			"set_attr": set_attr,
 			"pack_return": finishing_pack_return,
 		}
+
+@frappe.whitelist()
+def get_fp_ocr_details(doc_name):
+	doc = frappe.get_doc("Finishing Plan", doc_name)
+	primary_values = get_ipd_primary_values(doc.production_detail)
+	ocr_data = get_ocr_details(doc)
+	d = {
+		"get_total_difference": {},
+		"get_total": {},
+		"get_ocr_value": {},
+		"get_cut_to_dispatch": {},
+		"get_cut_to_inward": {},
+		"get_inward_to_dispatch": {},
+		"get_loose_piece": {},
+		"get_rejection": {},
+		"get_rework": {},
+		"get_not_received": {},
+		"get_unaccountable": {},
+	}
+	def get_total(part_value, ocr_data):
+		return ((ocr_data[part_value]['packed_box_qty'] + 
+			ocr_data[part_value]['rejected'] + 
+			ocr_data[part_value]['loose_piece_set'] +
+			ocr_data[part_value]['loose_piece'] +
+			ocr_data[part_value]['pending']) -
+			(ocr_data[part_value]['sewing_received'] +
+			ocr_data[part_value]['old_lot'] + 
+			ocr_data[part_value]['ironing_excess']))
+		
+	def get_cut_to_dispatch(part_value, ocr_data):
+		return {
+			"val1": ocr_data[part_value]['cutting'] + 
+					ocr_data[part_value]['old_lot'] + 
+					ocr_data[part_value]['ironing_excess'],
+			"val2": ocr_data[part_value]['packed_box_qty'],
+		}
+	
+	def get_cut_to_inward(part_value, ocr_data):
+		return {
+			"val1": ocr_data[part_value]['cutting'],
+			"val2": ocr_data[part_value]['sewing_received'],
+		}
+
+	def get_inward_to_dispatch(part_value, ocr_data):
+		return {
+			"val1": ocr_data[part_value]['sewing_received'] +
+					ocr_data[part_value]['old_lot'] + 
+					ocr_data[part_value]['ironing_excess'], 
+			"val2": ocr_data[part_value]['packed_box_qty']
+		}
+	
+	def get_loose_piece(part_value, ocr_data):
+		return {
+			"val1": ocr_data[part_value]['cutting'] +
+					ocr_data[part_value]['old_lot'] + 
+					ocr_data[part_value]['ironing_excess'], 
+			"val2": ocr_data[part_value]['loose_piece'] +
+					ocr_data[part_value]['loose_piece_set'], 
+		}
+	
+	def get_rejection(part_value, ocr_data):
+		return {
+			"val1": ocr_data[part_value]['cutting'] +
+					ocr_data[part_value]['old_lot'] + 
+					ocr_data[part_value]['ironing_excess'], 
+			"val2": ocr_data[part_value]['rejected'],
+		}
+
+	def get_rework(part_value, ocr_data):
+		return {
+			"val1": ocr_data[part_value]['cutting'] +
+					ocr_data[part_value]['old_lot'] + 
+					ocr_data[part_value]['ironing_excess'], 
+			"val2": ocr_data[part_value]['pending']
+		}
+
+	def get_not_received(part_value, ocr_data):
+		return {
+			"val1": ocr_data[part_value]['cutting'] +
+					ocr_data[part_value]['old_lot'] + 
+					ocr_data[part_value]['ironing_excess'],
+			"val2": ocr_data[part_value]['sewing_received'] - ocr_data[part_value]['cutting']
+		}
+
+	def get_unaccountable(part_value, ocr_data):
+		return {
+			"val1": ocr_data[part_value]['cutting'] +
+					ocr_data[part_value]['old_lot'] + 
+					ocr_data[part_value]['ironing_excess'],
+			"val2": ocr_data[part_value]['sewing_received'] +
+					ocr_data[part_value]['old_lot'] + 
+					ocr_data[part_value]['ironing_excess'] -
+					(ocr_data[part_value]['packed_box_qty'] + 
+					ocr_data[part_value]['rejected'] + 
+					ocr_data[part_value]['loose_piece_set'] +
+					ocr_data[part_value]['loose_piece'] +
+					ocr_data[part_value]['pending'])
+		}
+	
+	def get_total_difference(part_value, size, ocr_data):
+		return  ((ocr_data[part_value]['total'][size]['packed_box_qty'] + 
+				ocr_data[part_value]['total'][size]['rejected'] + 
+				ocr_data[part_value]['total'][size]['loose_piece_set'] +
+				ocr_data[part_value]['total'][size]['loose_piece'] +
+				ocr_data[part_value]['total'][size]['pending']) - 
+				(ocr_data[part_value]['total'][size]['sewing_received'] +
+				ocr_data[part_value]['total'][size]['old_lot'] + 
+				ocr_data[part_value]['total'][size]['ironing_excess']))
+	
+	def get_ocr_value(part_value, ocr_data):
+		return (
+			get_ocr_percentage(get_cut_to_dispatch(part_value, ocr_data)) +
+			get_ocr_percentage(get_loose_piece(part_value, ocr_data)) +
+			get_ocr_percentage(get_rejection(part_value, ocr_data)) +
+			get_ocr_percentage(get_rework(part_value, ocr_data)) +
+			get_ocr_percentage(get_not_received(part_value, ocr_data), make_pos=True)
+		)
+
+	for part_value in ocr_data:
+		d["get_total"].setdefault(part_value, get_total(part_value, ocr_data))
+		d["get_ocr_value"].setdefault(part_value, get_ocr_value(part_value, ocr_data))
+		d["get_cut_to_dispatch"].setdefault(part_value, get_cut_to_dispatch(part_value, ocr_data))
+		d["get_cut_to_inward"].setdefault(part_value, get_cut_to_inward(part_value, ocr_data))
+		d["get_inward_to_dispatch"].setdefault(part_value, get_inward_to_dispatch(part_value, ocr_data))
+		d["get_loose_piece"].setdefault(part_value, get_loose_piece(part_value, ocr_data))
+		d["get_rejection"].setdefault(part_value, get_rejection(part_value, ocr_data))
+		d["get_rework"].setdefault(part_value, get_rework(part_value, ocr_data))
+		d["get_not_received"].setdefault(part_value, get_not_received(part_value, ocr_data))
+		d["get_unaccountable"].setdefault(part_value, get_unaccountable(part_value, ocr_data))
+		d['get_total_difference'].setdefault(part_value, {})
+		for colour in ocr_data[part_value]['data']:
+			for size in ocr_data[part_value]['data'][colour]['values']:
+				d['get_total_difference'][part_value].setdefault(size, 0)
+				d['get_total_difference'][part_value][size] = get_total_difference(part_value, size, ocr_data)
+			break	
+
+	return ocr_data, d, primary_values
+
+def get_ocr_details(doc):
+	ipd = frappe.get_value("Lot", doc.lot, "production_detail")
+	ipd_fields = ["is_set_item", "packing_attribute", "primary_item_attribute", "set_item_attribute"]
+	is_set_item, pack_attr, primary_attr, set_attr = frappe.get_value("Item Production Detail", ipd, ipd_fields)
+	ocr_data = {}
+	for row in doc.finishing_plan_details:
+		attr_details = get_variant_attr_details(row.item_variant)
+		part_value = "Item"
+		if is_set_item:
+			part_value = attr_details[set_attr]
+
+		ocr_data.setdefault(part_value, {
+			"data": {},
+			"total": {},
+			"cutting": 0,
+			"dc_qty": 0,
+			"packed_box": 0,
+			"packed_box_qty": 0,
+			"rejected": 0,
+			"loose_piece": 0,
+			"loose_piece_set": 0,
+			"pending": 0,
+			"sewing_received": 0,
+			"old_lot": 0,
+			"ironing_excess": 0,
+			"total_inward": 0,
+		})
+		size = attr_details[primary_attr]
+		ocr_data[part_value]['total'].setdefault(size, {
+			"cutting_qty": 0,
+			"dc_qty": 0,
+			"packed_box": 0,
+			"packed_box_qty": 0,
+			"rejected": 0,
+			"loose_piece": 0,
+			"loose_piece_set": 0,
+			"pending": 0,
+			"sewing_received": 0,
+			"old_lot": 0,
+			"ironing_excess": 0,
+			"total_inward": 0,
+		})
+		
+		set_comb = update_if_string_instance(row.set_combination)
+		major_colour = set_comb["major_colour"]
+		colour = major_colour
+		size = attr_details[primary_attr]
+		part = None
+		if is_set_item:
+			variant_colour = attr_details[pack_attr]
+			part = attr_details[set_attr]
+			colour = f"{variant_colour} ({major_colour}) @ "+part
+		
+		ocr_data[part_value]['data'].setdefault(colour, {
+			"values": {},
+			"colour": attr_details[pack_attr],
+			"part": part,
+			"colour_total": {
+				"loose_piece": 0, "pending": 0, "rejected": 0, "loose_piece_set": 0, "sewing_received": 0,
+			}
+		})
+		ocr_data[part_value]['cutting'] += row.cutting_qty
+		ocr_data[part_value]['dc_qty'] += row.dc_qty 
+		ocr_data[part_value]['total'][size]['cutting_qty'] += row.cutting_qty
+		ocr_data[part_value]['total'][size]['dc_qty'] += row.dc_qty 
+		ocr_data[part_value]['total'][size]['ironing_excess'] += row.ironing_excess
+		ocr_data[part_value]['total'][size]['old_lot'] += row.lot_transferred
+		ocr_data[part_value]['total'][size]['total_inward'] += row.delivered_quantity + row.ironing_excess + row.lot_transferred
+		ocr_data[part_value]['old_lot'] += row.lot_transferred
+		ocr_data[part_value]['ironing_excess'] += row.ironing_excess
+		ocr_data[part_value]['total_inward'] += row.delivered_quantity + row.ironing_excess + row.lot_transferred
+
+		ocr_data[part_value]['data'][colour]['values'].setdefault(size, {
+			"loose_piece": 0, "pending": 0, "rejected": 0, "loose_piece_set": 0, "sewing_received": 0,
+		})
+
+		ocr_data[part_value]['data'][colour]['values'][size]['sewing_received'] += row.delivered_quantity
+		ocr_data[part_value]['data'][colour]['colour_total']['sewing_received'] += row.delivered_quantity
+		ocr_data[part_value]['total'][size]['sewing_received'] += row.delivered_quantity
+		ocr_data[part_value]['sewing_received'] += row.delivered_quantity
+
+		ocr_data[part_value]['data'][colour]['values'][size]['loose_piece'] += row.return_qty
+		ocr_data[part_value]['data'][colour]['colour_total']['loose_piece'] += row.return_qty
+		ocr_data[part_value]['total'][size]['loose_piece'] += row.return_qty
+		ocr_data[part_value]['loose_piece'] += row.return_qty
+
+		ocr_data[part_value]['data'][colour]['values'][size]['loose_piece_set'] += row.pack_return_qty
+		ocr_data[part_value]['data'][colour]['colour_total']['loose_piece_set'] += row.pack_return_qty
+		ocr_data[part_value]['total'][size]['loose_piece_set'] += row.pack_return_qty
+		ocr_data[part_value]['loose_piece_set'] += row.pack_return_qty
+
+	part_value = ["Item"]
+	if is_set_item:
+		part_value = get_part_value(set_attr, ipd)
+	for row in doc.finishing_plan_grn_details:
+		attr_details = get_variant_attr_details(row.item_variant)
+		for par in part_value:
+			size = attr_details[primary_attr]
+			ocr_data[par]['packed_box'] += row.quantity
+			ocr_data[par]['packed_box_qty'] += (row.quantity * doc.pieces_per_box)
+			ocr_data[par]['total'][size]['packed_box'] += row.quantity
+			ocr_data[par]['total'][size]['packed_box_qty'] += (row.quantity * doc.pieces_per_box)	
+	
+	for row in doc.finishing_plan_reworked_details:
+		set_comb = update_if_string_instance(row.set_combination)
+		major_colour = set_comb["major_colour"]
+		colour = major_colour
+		attr_details = get_variant_attr_details(row.item_variant)
+		size = attr_details[primary_attr]
+		part_value = "Item"
+		if is_set_item:
+			part_value = attr_details[set_attr]
+		part = None
+		if is_set_item:
+			variant_colour = attr_details[pack_attr]
+			part = attr_details[set_attr]
+			colour = f"{variant_colour} ({major_colour}) @ "+part
+		ocr_data[part_value]['data'][colour]['colour_total']['rejected'] += row.rejected_qty
+		ocr_data[part_value]['total'][size]['rejected'] += row.rejected_qty	
+		ocr_data[part_value]['data'][colour]['values'][size]['rejected'] += row.rejected_qty
+		ocr_data[part_value]['data'][colour]['values'][size]['pending'] += (row.quantity - row.reworked_quantity - row.rejected_qty)
+		ocr_data[part_value]['data'][colour]['colour_total']['pending'] += (row.quantity - row.reworked_quantity - row.rejected_qty)
+		ocr_data[part_value]['total'][size]['pending'] += (row.quantity - row.reworked_quantity - row.rejected_qty)	
+		ocr_data[part_value]['rejected'] += row.rejected_qty
+		ocr_data[part_value]['pending'] += (row.quantity - row.reworked_quantity - row.rejected_qty)
+
+	return ocr_data	
 
 @frappe.whitelist()
 def fetch_rejected_quantity(doc_name):
@@ -872,11 +1009,12 @@ def fetch_from_old_lot(lot, item, location):
 					"balance": 0, "transfer": 0
 				})
 				old_lot_inward["total"].setdefault(size1, 0)
-
-			qty = old_lot_data[key][variant]
-			old_lot_inward["data"][colour]["colour_total"]["balance"] += qty
-			old_lot_inward["data"][colour]["values"][size]["balance"] += qty
-			old_lot_inward['total'][size] += qty
+			
+			if size in primary_values:
+				qty = old_lot_data[key][variant]
+				old_lot_inward["data"][colour]["colour_total"]["balance"] += qty
+				old_lot_inward["data"][colour]["values"][size]["balance"] += qty
+				old_lot_inward['total'][size] += qty
 
 		data.append({
 			"lot": lot_value,
@@ -1321,13 +1459,12 @@ def get_finishing_plan_inward_details(key, lot):
 	from production_api.essdee_production.doctype.item_production_detail.item_production_detail import get_ipd_primary_values
 	wo_list = get_process_wo_list(process, lot)
 	ipd = frappe.get_value("Lot", lot, "production_detail")
-	ipd_fields = ["is_set_item", "packing_attribute", "primary_item_attribute", "set_item_attribute"]
-	is_set_item, pack_attr, primary_attr, set_attr = frappe.get_value("Item Production Detail", ipd, ipd_fields)
+	ipd_fields = ["is_set_item", "packing_attribute", "primary_item_attribute", "set_item_attribute", "major_attribute_value"]
+	is_set_item, pack_attr, primary_attr, set_attr, major_attr_val = frappe.get_value("Item Production Detail", ipd, ipd_fields)
 	inward_qty = {
 		"data": {},
 	}
 	type_list = [frappe.db.get_single_value("Stock Settings", "default_received_type")]
-	colours = []
 	for wo in wo_list:
 		items = frappe.db.sql(
 			"""
@@ -1465,3 +1602,25 @@ def convert_to_loose_piece_items(data, work_order, lot, item_name, from_location
 		"vehicle_no": "NA",
 		"delivery_location": from_location
 	})
+
+def get_ocr_percentage(val_dict, make_pos = False):
+	val1 = val_dict['val1']
+	val2 = val_dict['val2']
+	if val1 == 0:
+		val1 = 1
+	x = val2/val1
+	if not x:
+		x = 0
+	x = x * 100
+
+	if make_pos and x < 0:
+		x = x * -1
+
+	return round(x, 2)
+
+def get_ocr_style(val):
+	if val < 0:
+		return "background: #f57f87;"
+	elif val > 0:
+		return "background:#98ebae";
+	return "background:#ebc96e;"

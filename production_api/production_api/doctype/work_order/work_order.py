@@ -1717,7 +1717,8 @@ def create_finishing_detail(work_order, from_finishing=False):
 			if row.quantity > 0:
 				set_comb = update_if_string_instance(row.set_combination)
 				key = (row.item_variant, tuple(sorted(set_comb.items())))
-				items[key]['cutting_qty'] += row.received_qty
+				if items.get(key):
+					items[key]['cutting_qty'] += row.received_qty
 
 	rework_items = {}
 	rework_list = frappe.get_all("GRN Rework Item", filters={"lot": wo_doc.lot}, pluck="name")
