@@ -249,26 +249,34 @@ class StockEntry(Document):
 				update_bundle = False
 		
 		if update_bundle:
-			if self.cut_panel_movement and not non_bundle:
-				cpm_doc = frappe.get_doc("Cut Panel Movement", self.cut_panel_movement)	
-				if self.purpose not in ["DC Completion", "GRN Completion"]:
+			if self.purpose not in ["DC Completion", "GRN Completion"]:
+				if self.cut_panel_movement:
+					cpm_doc = frappe.get_doc("Cut Panel Movement", self.cut_panel_movement)	
 					cpm_doc.against = self.doctype
 					cpm_doc.against_id = self.name
 					cpm_doc.save()
-				
-				from_warehouse, to_warehouse = self.get_from_and_to_warehouse()
+					from_warehouse, to_warehouse = self.get_from_and_to_warehouse()
+					from production_api.production_api.doctype.cut_bundle_movement_ledger.cut_bundle_movement_ledger import get_cut_bundle_entry
+					bundles, collapsed_details = get_cut_bundle_entry(cpm_doc, self, from_warehouse, -1)
+					make_cut_bundle_ledger(bundles, collapsed_details)
+					bundles, collapsed_details = get_cut_bundle_entry(cpm_doc, self, to_warehouse, 1)
+					make_cut_bundle_ledger(bundles, collapsed_details)
+			else:	
+				if self.cut_panel_movement and not non_bundle:
+					cpm_doc = frappe.get_doc("Cut Panel Movement", self.cut_panel_movement)	
+					from_warehouse, to_warehouse = self.get_from_and_to_warehouse()
 
-				from production_api.production_api.doctype.cut_bundle_movement_ledger.cut_bundle_movement_ledger import get_cut_bundle_entry
-				bundles, collapsed_details = get_cut_bundle_entry(cpm_doc, self, from_warehouse, -1)
-				make_cut_bundle_ledger(bundles, collapsed_details)
-				bundles, collapsed_details = get_cut_bundle_entry(cpm_doc, self, to_warehouse, 1)
-				make_cut_bundle_ledger(bundles, collapsed_details)
-			
-			elif self.purpose == 'DC Completion' and non_bundle:
-				from production_api.production_api.doctype.cut_bundle_movement_ledger.cut_bundle_movement_ledger import (
-					update_collapsed_bundle
-				)
-				update_collapsed_bundle(self.doctype, self.name, "on_submit")
+					from production_api.production_api.doctype.cut_bundle_movement_ledger.cut_bundle_movement_ledger import get_cut_bundle_entry
+					bundles, collapsed_details = get_cut_bundle_entry(cpm_doc, self, from_warehouse, -1)
+					make_cut_bundle_ledger(bundles, collapsed_details)
+					bundles, collapsed_details = get_cut_bundle_entry(cpm_doc, self, to_warehouse, 1)
+					make_cut_bundle_ledger(bundles, collapsed_details)
+				
+				elif self.purpose == 'DC Completion' and non_bundle:
+					from production_api.production_api.doctype.cut_bundle_movement_ledger.cut_bundle_movement_ledger import (
+						update_collapsed_bundle
+					)
+					update_collapsed_bundle(self.doctype, self.name, "on_submit")
 
 		self.update_finishing_plan()	
 
