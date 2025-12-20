@@ -729,7 +729,7 @@ def get_deliverables(items, lot):
 				'qty': round(variant['qty'],3),
 				'uom':variant['uom'],
 				'table_index': variant['table_index'],
-				'row_index':str(variant['table_index'])+""+str(variant['row_index']),
+				'row_index': variant['row_index'],
 				'pending_quantity':round(variant['qty'],3),
 				'delivered_quantity':round(variant['qty'],3),
 				'set_combination':variant.get('set_combination', {}),
