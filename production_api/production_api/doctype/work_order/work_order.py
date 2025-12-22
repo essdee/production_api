@@ -656,7 +656,7 @@ def calc_deliverable_and_receivable(ipd_doc, process, item_list, item_name, dept
 		receivables, total_qty, table_index, row_index = get_receivables(item_list, lot, uom)
 		stiching_attributes = get_attributes(item_list, item_name, stiching_in_stage, dept_attribute, ipd)
 		stiching_attributes.update(bom)
-		deliverables  = get_deliverables(stiching_attributes, lot)
+		deliverables, table_index, row_index  = get_deliverables(stiching_attributes, lot)
 		accessory = get_accessories(item_list, ipd_doc)
 		accessory = get_converted_accessory(ipd_doc, accessory, lot, table_index, row_index)
 		deliverables = deliverables + accessory
@@ -664,7 +664,7 @@ def calc_deliverable_and_receivable(ipd_doc, process, item_list, item_name, dept
 	elif ipd_doc.packing_process == process:
 		packing_attributes = get_attributes(item_list, item_name, pack_out_stage, dept_attribute, pack_ipd=ipd)
 		item_list.update(bom)
-		deliverables  = get_deliverables(item_list, lot)
+		deliverables, table_index, row_index  = get_deliverables(item_list, lot)
 		item_doc = frappe.get_cached_doc("Item", item_name)
 		receivables, total_qty, table_index, row_index = get_receivables(packing_attributes, lot, uom, conversion_details=item_doc.uom_conversion_details, out_uom=pack_out_uom)
 		combine_dict = {}
@@ -694,7 +694,7 @@ def calc_deliverable_and_receivable(ipd_doc, process, item_list, item_name, dept
 		receivables, total_qty, table_index, row_index = get_receivables(cutting_attributes, lot, uom)
 		accessory = get_converted_accessory(ipd_doc, accessory, lot, table_index, row_index)
 		receivables = receivables + accessory
-		deliverables  =  get_deliverables(bom, lot)
+		deliverables, table_index, row_index  =  get_deliverables(bom, lot)
 	else:	
 		for item in ipd_doc.ipd_processes:
 			if item.process_name == process:
@@ -702,28 +702,30 @@ def calc_deliverable_and_receivable(ipd_doc, process, item_list, item_name, dept
 					attributes = get_attributes(item_list, item_name, item.stage, dept_attribute, ipd, process)
 					x = attributes.copy()
 					x.update(bom)
-					deliverables  = get_deliverables(x, lot)
+					deliverables, table_index, row_index  = get_deliverables(x, lot)
 					receivables, total_qty, table_index, row_index = get_receivables(attributes, lot, uom)
 				
 				elif lot_doc.pack_in_stage == item.stage:
 					deliverables = item_list.copy()
 					receivables, total_qty, table_index, row_index = get_receivables(deliverables,lot, uom)
 					item_list.update(bom)
-					deliverables = get_deliverables(item_list, lot)
+					deliverables, table_index, row_index = get_deliverables(item_list, lot)
 
 				else:
 					attributes = get_attributes(item_list, item_name, item.stage, dept_attribute, pack_ipd=ipd)
 					receivables, total_qty, table_index, row_index = get_receivables(attributes,lot, uom)
 					attributes.update(bom)
-					deliverables = get_deliverables(attributes, lot)
+					deliverables,table_index, row_index = get_deliverables(attributes, lot)
 				break
 	return deliverables, receivables, total_qty
 
 def get_deliverables(items, lot):
-    deliverables = []
-    for item_name, variants in items.items():
-        for variant in variants:
-            deliverables.append({
+	deliverables = []
+	table_index = None
+	row_index = None
+	for item_name, variants in items.items():
+		for variant in variants:
+			deliverables.append({
 				'item_variant': variant['item_variant'],
 				'lot':lot,
 				'qty': round(variant['qty'],3),
@@ -735,9 +737,14 @@ def get_deliverables(items, lot):
 				'set_combination':variant.get('set_combination', {}),
 				'is_calculated':True,
 			})
-    return deliverables
+			table_index = variant['table_index']
+			row_index = variant['row_index']
+
+	return deliverables, table_index, row_index
 
 def get_converted_accessory(ipd_doc, accessory, lot, table_index, row_index):
+	table_index += 1
+	row_index += 1
 	accessories = []
 	cloth_detail = {}
 	for cloth in ipd_doc.cloth_detail:
