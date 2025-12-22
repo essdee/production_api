@@ -357,27 +357,38 @@ class StockEntry(Document):
 			non_bundle, lot = frappe.get_value(self.against, self.against_id, ["allow_non_bundle", "lot"])	
 			if lot in cancelled_list:
 				update_bundle = False
+		
+		if update_bundle:
+			if self.purpose not in ["DC Completion", "GRN Completion"]:
+				if self.cut_panel_movement:
+					cpm_doc = frappe.get_doc("Cut Panel Movement", self.cut_panel_movement)	
+					if self.purpose == "Send to Warehouse":
+						cpm_doc.against = None
+						cpm_doc.against_id = None
+						cpm_doc.save()
+					from_warehouse, to_warehouse = self.get_from_and_to_warehouse()
 
-		if update_bundle:	
-			if self.cut_panel_movement and not non_bundle:
-				cpm_doc = frappe.get_doc("Cut Panel Movement", self.cut_panel_movement)	
-				if self.purpose == "Send to Warehouse":
-					cpm_doc.against = None
-					cpm_doc.against_id = None
-					cpm_doc.save()
-				from_warehouse, to_warehouse = self.get_from_and_to_warehouse()
+					from production_api.production_api.doctype.cut_bundle_movement_ledger.cut_bundle_movement_ledger import get_cut_bundle_entry
+					bundles, collapsed_bundles = get_cut_bundle_entry(cpm_doc, self, from_warehouse, -1, cancelled=1)
+					cancel_cut_bundle_ledger(bundles)
+					bundles, collapsed_bundles = get_cut_bundle_entry(cpm_doc, self, to_warehouse, 1, cancelled=1)
+					cancel_cut_bundle_ledger(bundles)
+			else:	
+				if self.cut_panel_movement and not non_bundle:
+					cpm_doc = frappe.get_doc("Cut Panel Movement", self.cut_panel_movement)	
+					from_warehouse, to_warehouse = self.get_from_and_to_warehouse()
 
-				from production_api.production_api.doctype.cut_bundle_movement_ledger.cut_bundle_movement_ledger import get_cut_bundle_entry
-				bundles, collapsed_bundles = get_cut_bundle_entry(cpm_doc, self, from_warehouse, -1, cancelled=1)
-				cancel_cut_bundle_ledger(bundles)
-				bundles, collapsed_bundles = get_cut_bundle_entry(cpm_doc, self, to_warehouse, 1, cancelled=1)
-				cancel_cut_bundle_ledger(bundles)
-
-			elif self.purpose == 'DC Completion' and non_bundle:
-				from production_api.production_api.doctype.cut_bundle_movement_ledger.cut_bundle_movement_ledger import (
-					update_collapsed_bundle
-				)
-				update_collapsed_bundle(self.doctype, self.name, "on_cancel")
+					from production_api.production_api.doctype.cut_bundle_movement_ledger.cut_bundle_movement_ledger import get_cut_bundle_entry
+					bundles, collapsed_bundles = get_cut_bundle_entry(cpm_doc, self, from_warehouse, -1, cancelled=1)
+					cancel_cut_bundle_ledger(bundles)
+					bundles, collapsed_bundles = get_cut_bundle_entry(cpm_doc, self, to_warehouse, 1, cancelled=1)
+					cancel_cut_bundle_ledger(bundles)
+				
+				elif self.purpose == 'DC Completion' and non_bundle:
+					from production_api.production_api.doctype.cut_bundle_movement_ledger.cut_bundle_movement_ledger import (
+						update_collapsed_bundle
+					)
+					update_collapsed_bundle(self.doctype, self.name, "on_cancel")
 
 		self.revert_stock_transfer_entries()
 

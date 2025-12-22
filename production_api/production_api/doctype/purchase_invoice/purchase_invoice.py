@@ -106,7 +106,7 @@ class PurchaseInvoice(Document):
 					frappe.msgprint("All Approvals are Reverted")
 
 			self.set("grn_grand_total", grand_total)
-			if total_quantity != self.total_quantity and not self.is_new():
+			if total_quantity > self.total_quantity and not self.is_new():
 				frappe.throw("Not Allowed to Change Quantity")
 
 		self.set('total', total_amount)
@@ -351,8 +351,10 @@ def fetch_grn_details(grns, against, supplier):
 					"actual_rate": rate,
 					"amount": 0,
 					"tax": grn_item.tax,
+					"actual_qty": 0,
 				})
 				items[key]["qty"] += grn_item.quantity
+				items[key]["actual_qty"] += grn_item.quantity
 				items[key]["amount"] += (grn_item.quantity * rate)
 	else:
 		has_gst = frappe.get_value("Supplier", supplier, "gstin")
