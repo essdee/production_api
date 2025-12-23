@@ -743,6 +743,10 @@ def get_deliverables(items, lot):
 	return deliverables, table_index, row_index
 
 def get_converted_accessory(ipd_doc, accessory, lot, table_index, row_index):
+	if isinstance(table_index, str):
+		table_index = int(table_index)
+	if isinstance(row_index, str):
+		row_index = int(row_index)	
 	table_index += 1
 	row_index += 1
 	accessories = []
@@ -840,8 +844,8 @@ def get_receivables(items,lot, uom, conversion_details = None, out_uom = None):
 			})
 			table_index = variant['table_index']
 			row_index = variant['row_index']
-
-	return receivables, total_qty, int(table_index)+1, int(row_index)+1	
+	x = 1
+	return receivables, total_qty, int(table_index)+x, int(row_index)+x	
 
 def get_attributes_qty(ipd_doc, process, depends_on_attr):
 	if depends_on_attr:
