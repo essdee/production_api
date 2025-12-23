@@ -15,7 +15,8 @@
   "rate",
   "amount",
   "tax",
-  "actual_rate"
+  "actual_rate",
+  "actual_qty"
  ],
  "fields": [
   {
@@ -86,13 +87,18 @@
    "fieldtype": "Currency",
    "hidden": 1,
    "label": "Actual Rate"
+  },
+  {
+   "fieldname": "actual_qty",
+   "fieldtype": "Float",
+   "label": "Actual Qty"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2025-11-28 11:21:32.149985",
+ "modified": "2025-12-22 14:40:15.846878",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Purchase Invoice Item",

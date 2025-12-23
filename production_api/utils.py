@@ -1053,7 +1053,7 @@ def get_work_in_progress_report(category, status, lot_list_val, item_list, proce
 	lot_list = frappe.db.sql(
 		f"""
 			SELECT t1.name FROM `tabLot` t1 JOIN `tabItem` t2 ON t1.item = t2.name
-			WHERE 1 = 1 {conditions}
+			WHERE 1 = 1 {conditions} AND (t1.production_detail IS NOT NULL AND t1.production_detail != '')
 		""", con, as_dict=True
 	)
 
@@ -1119,9 +1119,11 @@ def get_work_in_progress_report(category, status, lot_list_val, item_list, proce
 			}, as_dict=True
 		)
 		if order_detail:
-			lot_dict['lot_data'][lot]['cut_details']['order_qty'] += order_detail[0]['order_qty']
-			lot_dict['lot_data'][lot]['cut_details']['cut_qty'] += order_detail[0]['cutting']
-			lot_dict['lot_data'][lot]['cut_details']['order_to_cut_diff'] += (order_detail[0]['cutting']- order_detail[0]['order_qty'])
+			cut_qty = 	order_detail[0]['cutting'] if order_detail[0]['cutting'] else 0
+			order_qty = order_detail[0]['order_qty'] if order_detail[0]['order_qty'] else 0
+			lot_dict['lot_data'][lot]['cut_details']['order_qty'] += order_qty
+			lot_dict['lot_data'][lot]['cut_details']['cut_qty'] += cut_qty
+			lot_dict['lot_data'][lot]['cut_details']['order_to_cut_diff'] += (cut_qty - order_qty)
 
 		cutting, sewing = frappe.get_value("Item Production Detail", ipd, ["cutting_process", "stiching_process"])
 		sql_data = frappe.db.sql(
@@ -1499,7 +1501,7 @@ def get_size_wise_stock_report(open_status, lot_list, item_list, category, proce
 	lot_list = frappe.db.sql(
 		f"""
 			SELECT t1.name FROM `tabLot` t1 JOIN `tabItem` t2 ON t1.item = t2.name 
-			WHERE 1 = 1 {conditions}
+			WHERE 1 = 1 {conditions} AND (t1.production_detail IS NOT NULL AND t1.production_detail != '')
 		""", con, as_dict=True
 	)
 	lot_dict = {
