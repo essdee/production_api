@@ -79,6 +79,8 @@ def get_print_format(doc, print_items, printer_type):
 				return None
 		
 		print_quantity = int(math.ceil(int(item['quantity']) / int(label_count)))
+		if doc.size and len(doc.size) > 0:
+			item['size'] = doc.size
 		templates += get_template(doc, item, raw_code, label_count, fg_item)
 	
 		frappe.db.set_value('Box Sticker Print Detail',item['doc_name'],'printed_quantity',print_qty + (print_quantity * label_count))
@@ -138,6 +140,8 @@ def get_raw_code(doc_name):
 	# width , height, labels_count = frappe.get_value("Essdee Raw Print Format", doc.print_format,['width','height','labels_per_row'])
 	item_dict = doc.box_sticker_print_details[0].as_dict()
 	item_dict.quantity = 1
+	if doc.size and len(doc.size) > 0:
+		item_dict['size'] = doc.size
 	code = get_template(doc, item_dict, raw_code, print_format_doc.labels_per_row, doc.fg_item)
 	return {
 		"code":code,
