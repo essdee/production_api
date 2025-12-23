@@ -67,7 +67,7 @@
    "hidden": 0,
    "is_query_report": 0,
    "label": "Reports",
-   "link_count": 10,
+   "link_count": 12,
    "link_type": "DocType",
    "onboard": 0,
    "type": "Card Break"
@@ -171,9 +171,29 @@
    "link_type": "Page",
    "onboard": 0,
    "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 1,
+   "label": "Finishing Plan Report",
+   "link_count": 0,
+   "link_to": "Finishing Plan Report",
+   "link_type": "Report",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Inhouse Quantity Report",
+   "link_count": 0,
+   "link_to": "inhouse-quantity-rep",
+   "link_type": "Page",
+   "onboard": 0,
+   "type": "Link"
   }
  ],
- "modified": "2025-10-15 17:31:54.005396",
+ "modified": "2025-12-23 12:06:09.599963",
  "modified_by": "Administrator",
  "module": "Essdee Production",
  "name": "Manufacturing",
