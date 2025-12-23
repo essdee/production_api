@@ -37,12 +37,16 @@ frappe.ui.form.on("Essdee Quality Inspection", {
             frm.add_custom_button("Share", async () => {
                 let sizes = ""
                 frm.doc.essdee_quality_inspection_sizes.forEach((size)=> {
-                    sizes+= size.size+","
+                    if(size.selected == 1){
+                        sizes+= size.size+","
+                    }
                 })
                 sizes = sizes.slice(0, -1)
                 let colours = ""
                 frm.doc.essdee_quality_inspection_colours.forEach((colour)=> {
-                    colours+= colour.colour+","
+                    if(colour.selected == 1){
+                        colours+= colour.colour+","
+                    }
                 })
                 colours = colours.slice(0, -1)
                 let caption = `
