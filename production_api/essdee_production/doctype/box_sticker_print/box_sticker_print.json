@@ -10,6 +10,7 @@
   "fg_item",
   "display_name",
   "use_item_name",
+  "size",
   "print_format",
   "box_sticker_print_details",
   "piece_per_box",
@@ -97,12 +98,18 @@
    "hidden": 1,
    "label": "Naming Series",
    "options": "BSP-.YYYY.-"
+  },
+  {
+   "fieldname": "size",
+   "fieldtype": "Data",
+   "label": "Size"
   }
  ],
+ "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2024-10-19 14:26:30.277335",
+ "modified": "2025-12-23 16:55:51.897878",
  "modified_by": "Administrator",
  "module": "Essdee Production",
  "name": "Box Sticker Print",
@@ -147,6 +154,7 @@
    "share": 1
   }
  ],
+ "row_format": "Dynamic",
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": []
