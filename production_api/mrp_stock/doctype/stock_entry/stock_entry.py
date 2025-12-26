@@ -45,6 +45,10 @@ class StockEntry(Document):
 				if not add_value:
 					self.total_amount = self.additional_amount
 
+		if self.purpose in ["Send to Warehouse"]:
+			if self.cut_panel_movement and self.from_warehouse == self.to_warehouse:
+				frappe.throw("From and To Locations are same")
+
 	def validate(self):
 		self.validate_data()
 		self.validate_warehouse()
