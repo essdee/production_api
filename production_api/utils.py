@@ -1628,7 +1628,10 @@ def get_size_wise_stock_report(open_status, lot_list, item_list, category, proce
 			lot_dict['lot_data'][lot]['cut_details']['order_to_cut_diff'][size] = (cut_qty - order_qty) 
 			lot_dict['lot_data'][lot]['finishing_details']['in_packing'][size] += (dispatch_qty - received)
 			lot_dict['lot_data'][lot]['finishing_details']['cut_to_dispatch_diff'][size] += (dispatch_qty - cut_qty)
-			lot_dict['lot_data'][lot]['finishing_details']['work_in_progress'][size] += (cut_qty - dispatch_qty)
+			work_in_progress = cut_qty
+			if cut_qty == 0:
+				work_in_progress = lot_dict['lot_data'][lot]['cut_details']['order_qty'][size]
+			lot_dict['lot_data'][lot]['finishing_details']['work_in_progress'][size] += (work_in_progress - dispatch_qty)
 			#total details
 			lot_dict['lot_data'][lot]['total_details'].setdefault("in_sew_total", 0)
 			lot_dict['lot_data'][lot]['total_details'].setdefault("cut_to_sew_diff_total", 0)
@@ -1642,7 +1645,7 @@ def get_size_wise_stock_report(open_status, lot_list, item_list, category, proce
 			lot_dict['lot_data'][lot]['total_details']["order_to_cut_diff_total"] += (cut_qty - order_qty)
 			lot_dict['lot_data'][lot]['total_details']["in_packing_total"] += (dispatch_qty - received)
 			lot_dict['lot_data'][lot]['total_details']["cut_to_dispatch_diff_total"] += (dispatch_qty - cut_qty)
-			lot_dict['lot_data'][lot]['total_details']["work_in_progress_total"] += (cut_qty - dispatch_qty)
+			lot_dict['lot_data'][lot]['total_details']["work_in_progress_total"] += (work_in_progress - dispatch_qty)
 
 		process_dict, cut, piece = get_ipd_process_dict(lot_doc.production_detail)
 		last_cut_process = None
@@ -1809,7 +1812,27 @@ def get_size_wise_stock_report(open_status, lot_list, item_list, category, proce
 		for size in lot_dict['lot_data'][lot]['sizes']:
 			if size not in style_entry['sizes']:
 				style_entry['sizes'].append(size)
-		style_entry['sizes'].sort()
+		item_doc = frappe.get_doc("Item", style_name)
+		primary = item_doc.primary_attribute
+		mapping = None
+		for row in item_doc.attributes:
+			if row.attribute == primary:
+				mapping = row.mapping
+				break
+		item_doc_sizes = []			
+		if mapping:
+			doc = frappe.get_doc("Item Item Attribute Mapping", mapping)
+			for size in doc.values:
+				item_doc_sizes.append(size.attribute_value)
+
+		sizes = style_entry['sizes']
+
+		if item_doc_sizes:
+			order_map = {v: i for i, v in enumerate(item_doc_sizes)}
+			sizes.sort(key=lambda x: order_map.get(x, 9999)) 
+		else:
+			sizes.sort()
+		style_entry['sizes'] = sizes
 
 		def merge_size_dict(target, source):
 			for size, qty in source.items():
