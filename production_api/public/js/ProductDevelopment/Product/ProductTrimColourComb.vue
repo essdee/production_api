@@ -17,7 +17,7 @@
                         </div>
                         <div v-if="doctype != 'Product Release'">
                             <button @click.stop="removeSelected(idx)"
-                                style="position: relative; z-index: 20; top: 10px;"
+                                style="position: relative; top: 10px;"
                             >
                                 ×
                             </button>
@@ -51,7 +51,7 @@
                         </div>
                     </div>
                     <div class="p-1 text-sm text-center"
-                        style="position: relative; z-index: 20;"
+                        style="position: relative;"
                     >
                         {{ item.image_title || 'Untitled' }}
                     </div>

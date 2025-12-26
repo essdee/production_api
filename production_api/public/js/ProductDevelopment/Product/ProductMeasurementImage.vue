@@ -4,18 +4,18 @@
             Measurement Image
         </label>
         <div class="image-box">
-            <div v-if="doc.measurement_image" class="preview-box">
+            <div v-if="doc[image_field]" class="preview-box">
                 <img 
-                    :src="getImage(doc.measurement_image)" 
+                    :src="getImage(doc[image_field])" 
                     class="preview-img"
                 >
             </div>
-            <div v-if="docstatus == 1" style="padding-top: 10px; text-align: center;">
+            <div v-if="docstatus != 1" style="padding-top: 10px; text-align: center;">
                 <button 
                     class="btn btn-primary btn-sm mr-2"
                     @click="upload"
                 >
-                    <span v-if="!doc.measurement_image">Add Image</span>
+                    <span v-if="!doc[image_field]">Add Image</span>
                     <span v-else>Update Image</span>
                 </button>
                 <button 
@@ -36,6 +36,7 @@ import { ref } from "vue";
 const root = ref(null);
 const doc = cur_frm.doc;    
 const docstatus = cur_frm.doc.docstatus;
+const image_field = cur_frm.doc.doctype == 'Product Measurement' ? 'measurement_image' : 'image';
 
 function getImage(path) {
     if (!path) return "";
@@ -44,23 +45,19 @@ function getImage(path) {
 }
 
 function upload() {
-    let old_file = doc.measurement_image; 
+    let old_file = doc[image_field]; 
     let uploader = new frappe.ui.FileUploader({
         allow_multiple: false,
         folder: "Home",
         on_success: async (file) => {
-            console.log({
-                    file_url: old_file,
-                    fieldname: "measurement_image",
-                    docname: cur_frm.doc.name,
-                    updated_url: file.file_url,
-                    file_name: file.name
-                })
+            if(!old_file){
+                old_file = null
+            }
             await frappe.call({
                 method: "production_api.product_development.doctype.product.product.delete_and_update_file",
                 args: {
                     file_url: old_file,
-                    fieldname: "measurement_image",
+                    fieldname: image_field,
                     doctype: cur_frm.doc.doctype,
                     docname: cur_frm.doc.name,
                     updated_url: file.file_url,
@@ -78,7 +75,7 @@ function upload_pdf() {
     new frappe.ui.FileUploader({
         doctype: cur_frm.doc.doctype,
         docname: cur_frm.doc.name,
-        fieldname: "measurement_image",
+        fieldname: image_field,
         folder: 'Home',
         restrictions: {
             allowed_file_types: ['.pdf']
@@ -90,7 +87,7 @@ function upload_pdf() {
                     file_url: file.file_url,
                     doctype: cur_frm.doc.doctype,
                     docname: cur_frm.doc.name,
-                    fieldname: "measurement_image"
+                    fieldname: image_field
                 },
                 freeze: true,
                 freeze_message: __("Processing PDF and extracting image..."),
