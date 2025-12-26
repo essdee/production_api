@@ -832,6 +832,8 @@ def calculate_pieces(doc_name):
 
 def calculate_piece_stage(dc_doc, doc_status, total_delivered, final_calculation, item_name):
 	for item in dc_doc.items:
+		if item.delivered_quantity == 0 or not item.delivered_quantity:
+			continue
 		qty = item.delivered_quantity
 		if doc_status == 2:
 			qty = qty * -1
@@ -860,6 +862,8 @@ def calculate_cutting_piece(dc_doc, panel_list):
 		panel_qty[row.stiching_attribute_value] = row.quantity
 
 	for item in dc_doc.items:
+		if not item.delivered_quantity or item.delivered_quantity == 0:
+			continue
 		variant = frappe.get_cached_doc("Item Variant", item.item_variant)
 		attrs = get_variant_attributes(variant)
 		if not attrs.get(ipd_doc.stiching_attribute):

@@ -1735,7 +1735,7 @@ def get_cutting_process_deliverables(grn_doc, ipd_doc):
 	accessory_json = update_if_string_instance(ipd_doc.accessory_clothtype_json)
 
 	for item in grn_doc.items:
-		if not item.quantity > 0:
+		if item.quantity <= 0:
 			continue
 		variant_doc = frappe.get_cached_doc("Item Variant", item.item_variant)	
 		item_attribute_details = None
