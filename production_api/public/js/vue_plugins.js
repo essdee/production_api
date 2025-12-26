@@ -76,14 +76,15 @@ import InvoiceWoItems from "./PurchaseInvoice/components/InvoiceWOItems.vue"
 
 import QualityInspection from "./WorkOrder/components/QualityInspection.vue";
 // Product Development
-import { 
-    ProductFileVersionsWrapper, 
-    ProductCostingListWrapper, 
-    ProductImageListWrapper, 
+import {
+    ProductFileVersionsWrapper,
+    ProductCostingListWrapper,
+    ProductImageListWrapper,
     ProductTrimColourCombWrapper,
     ProductMeasurementWrapper,
     ProductSilhoutteWrapper,
     ProductGraphicsWrapper,
+    ProductMeasurementImageWrapper,
 } from "./ProductDevelopment"
 
 import EventBus from "./bus.js";
@@ -1467,4 +1468,4 @@ frappe.production.product_development.ui.ProductTrimColourComb = ProductTrimColo
 frappe.production.product_development.ui.ProductMeasurement = ProductMeasurementWrapper
 frappe.production.product_development.ui.ProductSilhoutte = ProductSilhoutteWrapper
 frappe.production.product_development.ui.ProductGraphics = ProductGraphicsWrapper
-
+frappe.production.product_development.ui.ProductMeasurementImage = ProductMeasurementImageWrapper

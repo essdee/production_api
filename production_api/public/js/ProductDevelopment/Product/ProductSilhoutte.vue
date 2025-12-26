@@ -1,68 +1,85 @@
 <template>
     <div ref="root" class="p-3">
-        <div v-if="is_set_item">
-            <div>
-                <label class="form-label fw-bold">Top {{ text_value }} Image</label>
-            </div>
-            <div class="image-box" style="display:flex;">
-                <div v-if="doc[fieldnames.top_image]" class="mb-2">
-                    <strong>Uploaded File:</strong>
-                    <div style="font-size: 13px; word-break: break-all;">
-                        <a :href="doc[fieldnames.top_image]" target="_blank">{{ doc[fieldnames.top_image] }}</a>
+        <div v-if="is_set_item" style="width: 100%;display: flex; gap:2%;">
+            <div style="width: 48%;">
+                <label class="form-label fw-bold">
+                    Top {{ text_value }} Image
+                </label>
+                <div class="image-box">
+                    <div v-if="doc[fieldnames.top_image]" class="preview-box">
+                        <img 
+                            :src="doc[fieldnames.top_image]" 
+                            class="preview-img"
+                        >
                     </div>
-                </div>
-                <div style="padding-top: 15px; padding-left: 10px;" v-if="doctype != 'Product Release'">
-                    <button class="btn btn-primary btn-sm"  @click="upload(fieldnames.top_image)" style="cursor:pointer;">
-                        <span v-if="!doc[fieldnames.top_image]">
-                            Add Top Image
-                        </span>
-                        <span v-else>
-                            Update Top Image
-                        </span>
-                    </button>
-                </div>
-            </div>
-            <div>
-                <label class="form-label fw-bold">Bottom {{text_value}} Image</label>
-            </div>
-            <div class="image-box" style="display:flex;">
-                <div v-if="doc[fieldnames.bottom_image]" class="mb-2">
-                    <strong>Uploaded File:</strong>
-                    <div style="font-size: 13px; word-break: break-all;">
-                        <a :href="doc[fieldnames.bottom_image]" target="_blank">{{ doc[fieldnames.bottom_image] }}</a>
+                    <div v-if="doctype != 'Product Release'" style="padding-top: 10px; text-align: center;">
+                        <button 
+                            class="btn btn-primary btn-sm"
+                            @click="upload(fieldnames.top_image)"
+                        >
+                            <span v-if="!doc[fieldnames.top_image]">Add Top Image</span>
+                            <span v-else>Update Top Image</span>
+                        </button>
+                        <button 
+                            class="btn btn-secondary btn-sm ml-2"
+                            @click="upload_pdf(fieldnames.top_image)"
+                        >
+                            Upload PDF
+                        </button>
                     </div>
+
                 </div>
-                <div style="padding-top: 15px; padding-left: 10px;" v-if="doctype != 'Product Release'">
-                    <button class="btn btn-primary btn-sm"  @click="upload(fieldnames.bottom_image)" style="cursor:pointer;">
-                        <span v-if="!doc[fieldnames.bottom_image]">
-                            Add Bottom Image
-                        </span>
-                        <span v-else>
-                            Update Bottom Image
-                        </span>
-                    </button>
+            </div>
+            <div style="width: 48%;">
+                <label class="form-label fw-bold">
+                    Bottom {{ text_value }} Image
+                </label>
+                <div class="image-box">
+                    <div v-if="doc[fieldnames.bottom_image]" class="preview-box">
+                        <img 
+                            :src="doc[fieldnames.bottom_image]" 
+                            class="preview-img"
+                        >
+                    </div>
+                    <div v-if="doctype != 'Product Release'" style="padding-top: 10px; text-align: center;">
+                        <button 
+                            class="btn btn-primary btn-sm"
+                            @click="upload(fieldnames.bottom_image)"
+                        >
+                            <span v-if="!doc[fieldnames.bottom_image]">Add Bottom Image</span>
+                            <span v-else>Update Bottom Image</span>
+                        </button>
+                        <button 
+                            class="btn btn-secondary btn-sm ml-2"
+                            @click="upload_pdf(fieldnames.bottom_image)"
+                        >
+                            Upload PDF
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
-        <div v-else class="mb-3">
-            <label class="form-label fw-bold">Product {{text_value}} Image</label>
-            <div class="image-box" style="display:flex;">
-                <div v-if="doc[fieldnames.product_image]" class="mb-2">
-                    <strong>Uploaded File:</strong>
-                    <div style="font-size: 13px; word-break: break-all;">
-                        <a :href="doc[fieldnames.product_image]" target="_blank">{{ doc[fieldnames.product_image] }}</a>
-                    </div>
-                </div>
-                <div style="padding-top: 15px; padding-left: 10px;" v-if="doctype != 'Product Release'">
-                    <button class="btn btn-primary btn-sm"  @click="upload(fieldnames.product_image)" style="cursor:pointer;">
-                        <span v-if="!doc[fieldnames.product_image]">
-                            Add Image
-                        </span>
-                        <span v-else>
-                            Update Image
-                        </span>
-                    </button>
-                </div>
+        <div v-else class="image-box">
+            <div v-if="doc[fieldnames.product_image]" class="preview-box">
+                <img 
+                    :src="doc[fieldnames.product_image]" 
+                    class="preview-img"
+                >
+            </div>
+            <div v-if="doctype != 'Product Release'" style="padding-top: 10px; text-align: center;">
+                <button 
+                    class="btn btn-primary btn-sm"
+                    @click="upload(fieldnames.product_image)"
+                >
+                    <span v-if="!doc[fieldnames.product_image]">Add Image</span>
+                    <span v-else>Update Image</span>
+                </button>
+                <button 
+                    class="btn btn-secondary btn-sm ml-2"
+                    @click="upload_pdf(fieldnames.product_image)"
+                >
+                    Upload PDF
+                </button>
             </div>
         </div>
     </div>
@@ -92,12 +109,47 @@ function upload(fieldname) {
                 args: {
                     file_url: old_file,
                     fieldname: fieldname,
+                    doctype: cur_frm.doc.doctype,
                     docname: cur_frm.doc.name,
                     updated_url: file.file_url,
                     file_name: file.name
                 },
                 callback: function(){
                     cur_frm.reload_doc()
+                }
+            });
+        }
+    });
+}
+
+function upload_pdf(fieldname) {
+    new frappe.ui.FileUploader({
+        doctype: cur_frm.doc.doctype,
+        docname: cur_frm.doc.name,
+        fieldname: fieldname,
+        folder: 'Home',
+        restrictions: {
+            allowed_file_types: ['.pdf']
+        },
+        on_success: (file) => {
+            frappe.call({
+                method: "production_api.product_development.doctype.product.product.process_single_page_pdf",
+                args: {
+                    file_url: file.file_url,
+                    doctype: cur_frm.doc.doctype,
+                    docname: cur_frm.doc.name,
+                    fieldname: fieldname
+                },
+                freeze: true,
+                freeze_message: __("Processing PDF and extracting image..."),
+                callback: function(r) {
+                    if (r.message) {
+                        frappe.show_alert({
+                            message: __("PDF processed successfully"),
+                            indicator: 'green'
+                        });
+                        cur_frm.reload_doc();
+                    }
                 }
             });
         }
@@ -123,11 +175,6 @@ defineExpose({
     border-radius: 8px;
     padding: 12px 16px;
     margin-bottom: 18px;
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 12px;
-    min-height: 70px;
 }
 
 /* Uploaded File Block */
@@ -164,4 +211,20 @@ defineExpose({
     margin-bottom: 6px;
     margin-top: 10px;
 }
+
+.preview-box {
+    width: 100%;
+    height: 230px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    overflow: hidden;
+    background: white;
+}
+
+.preview-img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}
+
 </style>

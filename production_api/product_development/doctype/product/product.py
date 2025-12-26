@@ -6,6 +6,8 @@ import frappe
 from frappe.utils import cint, get_url
 from frappe.model.document import Document
 from production_api.utils import update_if_string_instance
+import os
+import fitz
 
 class Product(Document):
 	def load_costing_list(self):
@@ -42,6 +44,27 @@ class Product(Document):
 			self.set_onload("measurement_details", measurement_details)	
 
 	def before_validate(self):
+		colours = []
+		if self.is_set_item:
+			if self.top_measurement:
+				if frappe.get_value("Product Measurement", self.top_measurement, "docstatus") != 1:
+					frappe.throw("Top Measurement is not submitted")
+			if self.bottom_measurement:
+				if frappe.get_value("Product Measurement", self.bottom_measurement, "docstatus") != 1:
+					frappe.throw("Bottom Measurement is not submitted")
+			for row in self.product_set_colours:
+				if row.top_colour not in colours:
+					colours.append(row.top_colour)
+				if row.bottom_colour not in colours:
+					colours.append(row.bottom_colour)	
+		else:
+			if self.measurement:
+				if frappe.get_value("Product Measurement", self.measurement, "docstatus") != 1:
+					frappe.throw("Measurement is not submitted")
+			for row in self.product_colours:
+				if row.product_colour not in colours:
+					colours.append(row.product_colour)	
+
 		if self.get('placement_images') not in [None]:
 			placement_images = update_if_string_instance(self.placement_images)
 			image_list = get_tabel_struct_data(placement_images)
@@ -54,9 +77,9 @@ class Product(Document):
 		
 		if self.get("trim_comb") not in [None]:
 			trim_comb = update_if_string_instance(self.trim_comb)
-			image_list = get_tabel_struct_data(trim_comb, with_list=True)	
+			image_list = get_tabel_struct_data(trim_comb, with_list=True, colour_list=colours)	
 			self.set("product_trim_combination", image_list)
-		
+
 		if self.get('accessory_images') not in [None]:
 			accessory_images = update_if_string_instance(self.accessory_images)
 			image_list = get_tabel_struct_data(accessory_images)
@@ -80,8 +103,33 @@ class Product(Document):
 					is_cord = False
 					break
 			self.is_cord = 1 if is_cord else 0	
+			items = []
+			if self.top_measurement:
+				doc = frappe.get_doc("Product Measurement", self.top_measurement)
+				for row in doc.product_measurement_descriptions:
+					items.append({
+						"description": row.description,
+						"group": "Top",
+					})
+			if self.bottom_measurement:		
+				doc = frappe.get_doc("Product Measurement", self.bottom_measurement)
+				for row in doc.product_measurement_descriptions:
+					items.append({
+						"description": row.description,
+						"group": "Bottom",
+					})	
+			self.set("product_measurement_descriptions", items)		
 		else:
-			self.is_cord = 0			
+			self.is_cord = 0	
+			items = []
+			if self.measurement:
+				doc = frappe.get_doc("Product Measurement", self.measurement)
+				for row in doc.product_measurement_descriptions:
+					items.append({
+						"description": row.description,
+						"group": "Part",
+					})	
+			self.set("product_measurement_descriptions", items)					
 
 def get_table_onload_data(table, with_list=False):
 	upload_data = []
@@ -96,7 +144,7 @@ def get_table_onload_data(table, with_list=False):
 		upload_data.append(d)
 	return upload_data
 	
-def get_tabel_struct_data(data, with_list=False):
+def get_tabel_struct_data(data, with_list=False, colour_list=[]):
 	image_list = []
 	for row in data:
 		d = {
@@ -105,7 +153,12 @@ def get_tabel_struct_data(data, with_list=False):
 			"title_header": row['image_title'],
 		}
 		if with_list:
-			d['selected_colours'] = ",".join(row.get("selected_colours") or [])
+			selected_colours = row.get("selected_colours") or []
+			colour_list = []
+			for colour in selected_colours:
+				if colour not in colour_list:
+					colour_list.append(colour)
+			d['selected_colours'] = ",".join(colour_list)
 		image_list.append(d)
 	return image_list
 
@@ -180,7 +233,6 @@ def get_or_create_product_folder(doctype, docname):
 
 	doctype = doctype.lower().replace(" ", "_")
 	docname = docname.lower().replace(" ", "_")
-	# Create folder for doctype with parent folder as "Home"
 	doctype_folder_name = frappe.get_value(
 		"File",
 		{
@@ -265,7 +317,7 @@ def get_product_colour_codes(doctype, docname):
 	return colour_codes		
 
 @frappe.whitelist()
-def delete_and_update_file(file_url, fieldname, docname, updated_url, file_name):
+def delete_and_update_file(file_url, fieldname, doctype, docname, updated_url, file_name):
 	if file_url:
 		files = frappe.get_all("File", filters={
 			"attached_to_name": docname,
@@ -276,11 +328,11 @@ def delete_and_update_file(file_url, fieldname, docname, updated_url, file_name)
 			frappe.delete_doc("File", file)
 	if updated_url:
 		file_doc = frappe.get_doc("File", file_name)
-		file_doc.attached_to_doctype = 'Product'
+		file_doc.attached_to_doctype = doctype
 		file_doc.attached_to_name = docname
 		file_doc.attached_to_field = fieldname
 		file_doc.save()
-		doc = frappe.get_doc("Product", docname)	
+		doc = frappe.get_doc(doctype, docname)	
 		doc.db_set(fieldname, updated_url)
 
 @frappe.whitelist()
@@ -362,7 +414,7 @@ def release_tech_pack(doc_name):
 		"is_cord": product_doc.is_cord,
 		"item_name": product_doc.item_name,
 		"style_no": product_doc.style_no,
-		"company": product_doc.company,
+		"brand": product_doc.brand,
 		"product_group": product_doc.product_group,
 		"fabric_details": product_doc.fabric_details,
 		"description": product_doc.description,
@@ -375,9 +427,9 @@ def release_tech_pack(doc_name):
 		"dia": product_doc.dia,
 		"top_image": product_doc.top_image,
 		"bottom_image": product_doc.bottom_image,
-		"measurement_image": product_doc.measurement_image,
-		"top_measurement_image": product_doc.top_measurement_image,
-		"bottom_measurement_image": product_doc.bottom_measurement_image,
+		"measurement": product_doc.measurement,
+		"top_measurement": product_doc.top_measurement,
+		"bottom_measurement": product_doc.bottom_measurement,
 	}
 	new_doc = frappe.new_doc("Product Release")
 	new_doc.update(d)
@@ -428,3 +480,79 @@ def get_list_dict(doc, table_name):
         list_data.append(row.as_dict())
 
     return list_data
+
+@frappe.whitelist()
+def process_pdf_to_images(file_url, docname, table_name):
+    product = frappe.get_doc("Product", docname)
+    file_doc = frappe.get_doc("File", {"file_url": file_url})
+    content = file_doc.get_content()
+    doc = fitz.open(stream=content, filetype="pdf")
+    folder = get_or_create_product_folder("Product", docname)
+    zoom = 2 
+    mat = fitz.Matrix(zoom, zoom)
+    
+    for page_number in range(len(doc)):
+        page = doc[page_number]
+        pix = page.get_pixmap(matrix=mat)
+        img_bytes = pix.tobytes("png")
+        filename = f"{docname}_page_{page_number + 1}.png"
+        new_file_doc = frappe.get_doc({
+            "doctype": "File",
+            "file_name": filename,
+            "folder": folder,
+            "content": img_bytes,
+            "is_private": file_doc.is_private,
+            "attached_to_doctype": "Product",
+            "attached_to_name": docname,
+            "attached_to_field": table_name
+        })
+        new_file_doc.save(ignore_permissions=True)
+        product.append(table_name, {
+            "upload_name": f"Page {page_number + 1}",
+            "graphic_image": new_file_doc.file_url,
+            "filename": filename,
+            "file": new_file_doc.name
+        })
+    
+    product.save()
+    return True
+
+@frappe.whitelist()
+def process_single_page_pdf(file_url, doctype, docname, fieldname):
+	product = frappe.get_doc(doctype, docname)
+	file_doc = frappe.get_doc("File", {"file_url": file_url})
+	content = file_doc.get_content()
+	doc = fitz.open(stream=content, filetype="pdf")
+
+	if len(doc) != 1:
+		frappe.throw("The PDF must contain exactly 1 page.")
+
+	zoom = 2 
+	mat = fitz.Matrix(zoom, zoom)
+	page = doc[0]
+	pix = page.get_pixmap(matrix=mat)
+	img_bytes = pix.tobytes("png")
+
+	old_files = frappe.get_all("File", filters={
+		"attached_to_name": docname,
+		"attached_to_doctype": doctype,
+		"attached_to_field": fieldname
+	}, pluck="name")
+	for f in old_files:
+		frappe.delete_doc("File", f)
+	doctype_str = doctype.replace(" ", "_")
+	filename = f"{doctype_str}_{docname}_{fieldname}.png"
+	new_file_doc = frappe.get_doc({
+		"doctype": "File",
+		"file_name": filename,
+		"content": img_bytes,
+		"is_private": file_doc.is_private,
+		"attached_to_doctype": doctype,
+		"attached_to_name": docname,
+		"attached_to_field": fieldname
+	})
+	new_file_doc.save(ignore_permissions=True)	
+	product.db_set(fieldname, new_file_doc.file_url)
+	frappe.delete_doc("File", file_doc.name)
+
+	return True

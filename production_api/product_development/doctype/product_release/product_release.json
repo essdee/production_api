@@ -23,7 +23,7 @@
   "size_range",
   "sizes",
   "section_break_zlpx",
-  "company",
+  "brand",
   "category",
   "is_cord",
   "column_break_jphn",
@@ -56,11 +56,13 @@
   "product_accessories",
   "product_accessories_html",
   "measurement_tab",
-  "measurement_images_html",
-  "measurement_image",
-  "top_measurement_image",
-  "bottom_measurement_image",
+  "measurement",
+  "top_measurement",
   "product_measurement_descriptions",
+  "column_break_jgex",
+  "bottom_measurement",
+  "measurement_images_html",
+  "section_break_frfy",
   "product_measurement_html"
  ],
  "fields": [
@@ -298,27 +300,6 @@
   },
   {
    "depends_on": "eval: !doc.is_set_item",
-   "fieldname": "measurement_image",
-   "fieldtype": "Attach Image",
-   "hidden": 1,
-   "label": "Measurement Image"
-  },
-  {
-   "depends_on": "eval: doc.is_set_item",
-   "fieldname": "top_measurement_image",
-   "fieldtype": "Attach Image",
-   "hidden": 1,
-   "label": "Top Measurement Image"
-  },
-  {
-   "depends_on": "eval: doc.is_set_item",
-   "fieldname": "bottom_measurement_image",
-   "fieldtype": "Attach Image",
-   "hidden": 1,
-   "label": "Bottom Measurement Image"
-  },
-  {
-   "depends_on": "eval: !doc.is_set_item",
    "fieldname": "product_measurement_descriptions",
    "fieldtype": "Table",
    "hidden": 1,
@@ -372,17 +353,46 @@
    "label": "Product Accessories HTML"
   },
   {
-   "fieldname": "company",
+   "fieldname": "brand",
    "fieldtype": "Link",
-   "label": "Company",
-   "options": "Product Company"
+   "label": "Brand",
+   "options": "Product Brand"
+  },
+  {
+   "depends_on": "eval: !doc.is_set_item",
+   "fieldname": "measurement",
+   "fieldtype": "Link",
+   "label": "Measurement",
+   "options": "Product Measurement"
+  },
+  {
+   "depends_on": "eval: doc.is_set_item",
+   "fieldname": "top_measurement",
+   "fieldtype": "Link",
+   "label": "Top Measurement",
+   "options": "Product Measurement"
+  },
+  {
+   "depends_on": "eval: doc.is_set_item",
+   "fieldname": "bottom_measurement",
+   "fieldtype": "Link",
+   "label": "Bottom Measurement",
+   "options": "Product Measurement"
+  },
+  {
+   "fieldname": "column_break_jgex",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "section_break_frfy",
+   "fieldtype": "Section Break"
   }
  ],
  "grid_page_length": 50,
  "image_field": "front_image",
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-12-08 16:34:04.400309",
+ "modified": "2025-12-25 10:33:40.203044",
  "modified_by": "Administrator",
  "module": "Product Development",
  "name": "Product Release",

@@ -35,10 +35,19 @@
                                 :value="clr.colour"
                                 v-model="item.selected_colours"
                                 class="w-3 h-3"
+                                style="margin-top: 5px;"
                                 @click="make_dirty()"
                                 :disabled="doctype == 'Product Release'"
                             />
-                            <span class="truncate text-center w-full">{{ clr.colour }}</span>
+                            <span class="truncate text-center w-full inline-block rounded-full px-2 py-1"
+                                :style="{ 
+                                    backgroundColor: colour_codes[clr.colour], 
+                                    color: getTextColour(colour_codes[clr.colour]), 
+                                    borderRadius: '10px',
+                                }"
+                            >
+                                {{ clr.colour }}
+                            </span>
                         </div>
                     </div>
                     <div class="p-1 text-sm text-center"
@@ -82,7 +91,7 @@
 </template>
 
 <script setup>
-import { ref, watch, onMounted } from "vue"
+import { ref, watch, onMounted, reactive } from "vue"
 
 const query = ref("")
 const results = ref([])
@@ -90,6 +99,7 @@ const selected = ref([])
 const view_page = ref("")
 const colour_list = ref([])
 let doctype = cur_frm.doc.doctype
+const colour_codes = reactive({})
 
 onMounted(() => {
     if (cur_frm.doc.is_set_item) {
@@ -101,12 +111,14 @@ onMounted(() => {
                     colour: top.top_colour,
                     colour_code: top.top_colour_code
                 })
+                colour_codes[top.top_colour] = top.top_colour_code
             }
             if (!colour_list.value.find(c => c.colour === bottom.bottom_colour)) {
                 colour_list.value.push({
                     colour: bottom.bottom_colour,
                     colour_code: bottom.bottom_colour_code
                 })
+                colour_codes[bottom.bottom_colour] = bottom.bottom_colour_code
             }
         }
     } 
@@ -118,10 +130,24 @@ onMounted(() => {
                     colour: clr.product_colour,
                     colour_code: clr.colour_code
                 })
+                colour_codes[clr.product_colour] = clr.product_colour_code
             }
         }
     }
 })
+
+function getTextColour(hex) {
+    if (!hex) return '#000'
+    hex = hex.replace('#', '')
+    let r = parseInt(hex.substring(0, 2), 16)
+    let g = parseInt(hex.substring(2, 4), 16)
+    let b = parseInt(hex.substring(4, 6), 16)
+
+    let yiq = ((r * 299) + (g * 587) + (b * 114)) / 1000
+
+    return yiq >= 128 ? '#000' : '#fff'
+}
+
 
 watch(query, async (val) => {
 	if (!val || val.length < 2) {
@@ -142,7 +168,7 @@ function selectItem(item) {
 		selected.value.push({
             ...item,
             selected_colours: [],
-            colours_available: [...colour_list.value]   // TEMP until backend gives exact colours
+            colours_available: [...colour_list.value] 
         })
 	}
     make_dirty()

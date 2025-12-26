@@ -1,30 +1,38 @@
 <template>
-    <div class="wrapper">
-        <div class="table-card" v-for="(rows, key) in items" :key="key">
-            <div class="table-header">
-                {{ key }} Description
-            </div>
-            <div class="table-body">
-                <div class="row-item" v-for="(row, idx) in rows" :key="idx">
-                    <div class="sno">{{ idx + 1 }}</div>
-                    <input 
-                        type="text" 
-                        v-model="items[key][idx]"
-                        class="input-box" 
-                        placeholder="Enter text..."
-                        @blur="make_dirty()"
-                        :disabled="doctype == 'Product Release'"
-                    />
-                    <button class="delete-btn" @click="delete_row(key, idx)" v-if="doctype != 'Product Release'">
-                        ✕
-                    </button>
+    <div>
+        <div style="display:flex;">
+            <div v-if="image1">
+                <div v-if="set_item" class="head-align">
+                    Top Measurement Image
                 </div>
-                <button class="add-btn" @click="add_row(key)" v-if="doctype != 'Product Release'">
-                    + Add Row
-                </button>
+                <div v-else class="head-align">
+                    Measurement Image
+                </div>
+                <img :src="image1" />
+            </div>
+            <div v-if="image2">
+                <div class="head-align">
+                    Bottom Measurement Image
+                </div>
+                <img :src="image2" />
             </div>
         </div>
-    </div>
+        <div class="wrapper">
+            <div class="table-card" v-for="(rows, key) in items" :key="key">
+                <div class="table-header">
+                    {{ key }} Description
+                </div>
+                <div class="table-body">
+                    <div class="row-item" v-for="(row, idx) in rows" :key="idx">
+                        <div class="sno">{{ idx + 1 }}</div>
+                        <input type="text" v-model="items[key][idx]" class="input-box" 
+                            placeholder="Enter text..." @blur="make_dirty()" :disabled="true"
+                        />
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>    
 </template>
 
 <script setup>
@@ -32,6 +40,9 @@ import { ref, onMounted } from "vue";
 
 let items = ref({});
 let doctype = cur_frm.doc.doctype
+let image1 = ref(null)
+let image2 = ref(null)
+let set_item = cur_frm.doc.is_set_item
 function add_row(key) {
     items.value[key].push("");
 }
@@ -47,10 +58,30 @@ onMounted(() => {
     } else {
         items.value.Product = items.value.Product || [];
     }
+    if(cur_frm.doc.is_set_item){
+        if(cur_frm.doc.top_measurement){
+            frappe.db.get_value("Product Measurement", cur_frm.doc.top_measurement, "measurement_image").then((x)=> {
+                image1.value = x.message.measurement_image
+            })
+        }
+        if(cur_frm.doc.bottom_measurement){
+            frappe.db.get_value("Product Measurement", cur_frm.doc.bottom_measurement, "measurement_image").then((x)=> {
+                image2.value = x.message.measurement_image
+            })
+        }
+    }
+    else{
+        if(cur_frm.doc.measurement){
+            frappe.db.get_value("Product Measurement", cur_frm.doc.measurement, "measurement_image").then((x)=> {
+                image1.value = x.message.measurement_image
+            })
+        }
+    }
 });
 
 function load_data(data) {
     items.value = {};
+    console.log(data)
     Object.assign(items.value, data);
 }
 
@@ -151,5 +182,10 @@ defineExpose({
     padding: 6px 0;
     border-radius: 4px;
     border: 1px solid #dcdfe3;
+}
+.head-align{
+    text-align: center;
+    font-size: 17px;
+    font-weight: 600;
 }
 </style>

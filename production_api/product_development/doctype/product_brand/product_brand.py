@@ -5,5 +5,5 @@
 from frappe.model.document import Document
 
 
-class ProductCompany(Document):
+class ProductBrand(Document):
 	pass

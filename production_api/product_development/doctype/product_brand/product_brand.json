@@ -1,35 +1,35 @@
 {
  "actions": [],
  "allow_rename": 1,
- "autoname": "field:company",
+ "autoname": "field:brand",
  "creation": "2025-12-08 16:16:34.997349",
  "default_view": "List",
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
-  "company",
-  "company_image"
+  "brand",
+  "brand_image"
  ],
  "fields": [
   {
-   "fieldname": "company",
+   "fieldname": "brand",
    "fieldtype": "Data",
-   "label": "Company",
+   "label": "Brand",
    "unique": 1
   },
   {
-   "fieldname": "company_image",
+   "fieldname": "brand_image",
    "fieldtype": "Attach",
-   "label": "Company Image"
+   "label": "Brand Image"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-12-08 16:17:41.287701",
+ "modified": "2025-12-24 14:30:41.602275",
  "modified_by": "Administrator",
  "module": "Product Development",
- "name": "Product Company",
+ "name": "Product Brand",
  "naming_rule": "By fieldname",
  "owner": "Administrator",
  "permissions": [

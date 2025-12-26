@@ -6,6 +6,7 @@ import ProductTrimColourComb from "./Product/ProductTrimColourComb.vue"
 import ProductMeasurement from "./Product/ProductMeasurement.vue";
 import ProductSilhoutte from "./Product/ProductSilhoutte.vue"
 import ProductGraphics from './Product/ProductGraphics.vue'
+import ProductMeasurementImage from './Product/ProductMeasurementImage.vue'
 
 export class ProductFileVersionsWrapper {
     constructor(wrapper) {
@@ -53,10 +54,10 @@ export class ProductImageListWrapper {
         this.app = createApp(ProductImageList);
         this.productImageList = this.app.mount(this.$wrapper.get(0));
     }
-    get_data(){
+    get_data() {
         return this.productImageList.get_data()
     }
-    load_data(data, view){
+    load_data(data, view) {
         this.productImageList.load_data(JSON.parse(JSON.stringify(data)), view)
     }
 }
@@ -71,10 +72,10 @@ export class ProductTrimColourCombWrapper {
         this.app = createApp(ProductTrimColourComb);
         this.productTrimColourComb = this.app.mount(this.$wrapper.get(0));
     }
-    get_data(){
+    get_data() {
         return this.productTrimColourComb.get_data()
     }
-    load_data(data, view){
+    load_data(data, view) {
         this.productTrimColourComb.load_data(JSON.parse(JSON.stringify(data)), view)
     }
 }
@@ -89,10 +90,10 @@ export class ProductMeasurementWrapper {
         this.app = createApp(ProductMeasurement);
         this.productMeasurement = this.app.mount(this.$wrapper.get(0));
     }
-    get_data(){
+    get_data() {
         return this.productMeasurement.get_data()
     }
-    load_data(data){
+    load_data(data) {
         this.productMeasurement.load_data(JSON.parse(JSON.stringify(data)))
     }
 }
@@ -108,7 +109,7 @@ export class ProductSilhoutteWrapper {
         this.productSilhoutte = this.app.mount(this.$wrapper.get(0));
     }
 
-    load_data(data, text){
+    load_data(data, text) {
         this.productSilhoutte.load_data(JSON.parse(JSON.stringify(data)), text)
     }
 }
@@ -123,7 +124,19 @@ export class ProductGraphicsWrapper {
         this.app = createApp(ProductGraphics);
         this.productGraphics = this.app.mount(this.$wrapper.get(0));
     }
-    load_data(value){
+    load_data(value) {
         this.productGraphics.load_data(value)
+    }
+}
+
+export class ProductMeasurementImageWrapper {
+    constructor(wrapper) {
+        this.$wrapper = $(wrapper);
+        this.make_body();
+    }
+
+    make_body() {
+        this.app = createApp(ProductMeasurementImage);
+        this.productMeasurementImage = this.app.mount(this.$wrapper.get(0));
     }
 }

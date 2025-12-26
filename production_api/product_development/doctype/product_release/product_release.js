@@ -42,12 +42,6 @@ frappe.ui.form.on('Product Release', {
 		else{
 			frm.trim_comb.load_data([], "Combination")
 		}
-		frm.measurement_image = new frappe.production.product_development.ui.ProductSilhoutte(frm.fields_dict['measurement_images_html'].wrapper)
-		frm.measurement_image.load_data({
-			"top_image": "top_measurement_image",
-			"bottom_image": "bottom_measurement_image",
-			"product_image": "measurement_image",
-		}, "Measurement")
 		frm.box_detail = new frappe.production.product_development.ui.ProductGraphics(frm.fields_dict['box_detail_html'].wrapper)
 		frm.box_detail.load_data("Box Data")
 		frm.measurement = new frappe.production.product_development.ui.ProductMeasurement(frm.fields_dict['product_measurement_html'].wrapper)
@@ -63,5 +57,18 @@ frappe.ui.form.on('Product Release', {
 		else{
 			frm.accessories.load_data([], "Accessory")
 		}
+		frm.add_custom_button("Print Tech Pack", ()=> {
+			let w = window.open(
+				frappe.urllib.get_full_url(
+					"/printview?" + "doctype=" + encodeURIComponent(frm.doc.doctype) + "&name=" +
+						encodeURIComponent(frm.doc.name) + "&trigger_print=1" + "&format=" + 
+						encodeURIComponent('Tech Pack') + "&no_letterhead=1"
+				)
+			);
+			if (!w) {
+				frappe.msgprint(__("Please enable pop-ups"));
+				return;
+			}
+		})
 	},
 });

@@ -1,25 +1,34 @@
 <template>
     <div ref="root">
         <h5>Product Graphics</h5>
-        <div>
-            <div class="card card-body m-1" v-for="(row, idx) in files" :key="idx">
-                <div style="display: flex;">
-                    <div>
-                        <strong>{{ row.upload_name }}: </strong> 
-                        <a :href="row.graphic_image" target="_blank">{{ row.graphic_image }}</a>
+        <div style="display:flex; flex-wrap:wrap;">
+            <div class="card card-body m-1" v-for="(row, idx) in files" :key="idx" style="width:48%;">
+                <div>
+                    <strong>{{ row.upload_name }}</strong>
+                    <div style="margin-top: 6px;">
+                        <img 
+                            :src="getImage(row.graphic_image)" 
+                            style="width:100%; max-height:230px; object-fit:contain; border:1px solid #ddd; border-radius:6px;"
+                        >
                     </div>
                     <div v-if="doctype != 'Product Release'">
-                        <button class="btn btn-danger btn-sm ml-2" @click="removeImage(idx, row)">
+                        <button 
+                            class="btn btn-danger btn-sm mt-2"
+                            @click="removeImage(idx, row)"
+                        >
                             Remove
                         </button>
                     </div>
                 </div>
             </div>
         </div>
-        <div class="row" v-if="doctype != 'Product Release'">
-            <div class="upload-type-control col-md-6"></div>
-            <div class="attach-control col-md-6"></div>
+        <div class="row mt-3" v-if="doctype != 'Product Release'">
+            <div class="upload-type-control col-md-4"></div>
+            <div class="attach-control col-md-4"></div>
         </div>
+        <div>
+            <button class="btn btn-primary" @click="upload_pdf">Upload PDF</button>
+        </div>    
     </div>
 </template>
 
@@ -34,6 +43,7 @@ let attach = null
 let upload_promise = null
 let doctype = cur_frm.doc.doctype
 let box_detail = ref(false)
+let show_button = ref(false)
 
 const attach_input = ref(null)
 const file = ref({})
@@ -46,6 +56,12 @@ onMounted(() => {
         create_upload_type_input()
     }
 });
+
+function getImage(path) {
+    if (!path) return "";
+    if (path.startsWith("http")) return path;
+    return window.location.origin + path;
+}
 
 function create_upload_type_input() {
     let $el = root.value
@@ -69,8 +85,10 @@ async function create_attach_control() {
     $($el).find('.attach-control').html("");
     if (!upload_type_input.get_value()) {
         attach = null;
+        show_button.value = false
         return;
     }
+    show_button.value = true
     let upload_type = upload_type_input.get_value();
     let options = {
         restrictions: {},
@@ -96,6 +114,39 @@ async function create_attach_control() {
             }
         },
         render_input: true,
+    });
+}
+
+function upload_pdf() {
+    new frappe.ui.FileUploader({
+        doctype: cur_frm.doc.doctype,
+        docname: cur_frm.doc.name,
+        fieldname: 'product_designs',
+        folder: 'Home',
+        restrictions: {
+            allowed_file_types: ['.pdf']
+        },
+        on_success: (file) => {
+            frappe.call({
+                method: "production_api.product_development.doctype.product.product.process_pdf_to_images",
+                args: {
+                    file_url: file.file_url,
+                    docname: cur_frm.doc.name,
+                    table_name: box_detail.value ? "product_box_details" : "product_designs"
+                },
+                freeze: true,
+                freeze_message: __("Processing PDF and extracting images..."),
+                callback: function(r) {
+                    if (r.message) {
+                        frappe.show_alert({
+                            message: __("PDF processed successfully"),
+                            indicator: 'green'
+                        });
+                        cur_frm.reload_doc();
+                    }
+                }
+            });
+        }
     });
 }
 
@@ -203,7 +254,9 @@ function upload_file(file, type) {
         form_data.append('docname', cur_frm.doc.name);
         form_data.append('fieldname', 'file');
         form_data.append('method', method);
-        form_data.append('box_data', "accessory")
+        if(box_detail.value){
+            form_data.append('box_data', "accessory")
+        }
 
         if (file.value.optimize) {
             form_data.append('optimize', true);
