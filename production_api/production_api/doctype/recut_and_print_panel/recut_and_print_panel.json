@@ -1,0 +1,179 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2025-12-29 14:58:18.469284",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "cutting_plan",
+  "work_order",
+  "no_of_colours",
+  "type",
+  "posting_date",
+  "column_break_rqty",
+  "lot",
+  "item",
+  "cutting_location",
+  "supplier",
+  "posting_time",
+  "section_break_oxts",
+  "recut_and_print_panel_details",
+  "amended_from"
+ ],
+ "fields": [
+  {
+   "fieldname": "cutting_plan",
+   "fieldtype": "Link",
+   "label": "Cutting Plan",
+   "options": "Cutting Plan"
+  },
+  {
+   "fetch_from": "cutting_plan.lot",
+   "fieldname": "lot",
+   "fieldtype": "Link",
+   "label": "Lot",
+   "options": "Lot"
+  },
+  {
+   "fetch_from": "cutting_plan.item",
+   "fieldname": "item",
+   "fieldtype": "Link",
+   "label": "Item",
+   "options": "Item"
+  },
+  {
+   "fetch_from": "cutting_plan.work_order",
+   "fieldname": "work_order",
+   "fieldtype": "Link",
+   "label": "Work Order",
+   "options": "Work Order"
+  },
+  {
+   "fetch_from": "cutting_plan.no_of_colours",
+   "fieldname": "no_of_colours",
+   "fieldtype": "Int",
+   "label": "No of Colours"
+  },
+  {
+   "fieldname": "column_break_rqty",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fetch_from": "cutting_plan.cutting_location",
+   "fieldname": "cutting_location",
+   "fieldtype": "Data",
+   "label": "Cutting Location"
+  },
+  {
+   "fieldname": "section_break_oxts",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "recut_and_print_panel_details",
+   "fieldtype": "Table",
+   "label": "Recut and Print Panel Details",
+   "options": "Recut and Print Panel Detail"
+  },
+  {
+   "fieldname": "type",
+   "fieldtype": "Select",
+   "label": "Type",
+   "options": "\nRecut\nPrint Panel"
+  },
+  {
+   "fetch_from": "work_order.supplier",
+   "fieldname": "supplier",
+   "fieldtype": "Link",
+   "label": "Supplier",
+   "options": "Supplier"
+  },
+  {
+   "default": "Today",
+   "fieldname": "posting_date",
+   "fieldtype": "Date",
+   "label": "Posting Date"
+  },
+  {
+   "default": "Now",
+   "fieldname": "posting_time",
+   "fieldtype": "Time",
+   "label": "Posting Time"
+  },
+  {
+   "fieldname": "amended_from",
+   "fieldtype": "Link",
+   "label": "Amended From",
+   "no_copy": 1,
+   "options": "Recut and Print Panel",
+   "print_hide": 1,
+   "read_only": 1,
+   "search_index": 1
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "is_submittable": 1,
+ "links": [],
+ "modified": "2025-12-29 18:04:37.934973",
+ "modified_by": "Administrator",
+ "module": "Production Api",
+ "name": "Recut and Print Panel",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "cancel": 1,
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "submit": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Cutting User",
+   "share": 1,
+   "submit": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Production Planner",
+   "share": 1,
+   "submit": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "CAD User",
+   "share": 1,
+   "submit": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}
