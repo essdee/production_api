@@ -71,6 +71,28 @@
                     <td>{{ get_date(row['sew_sent_date']) }}</td>
                     <td>{{ get_date(row['finishing_inward_date']) }}</td>
                 </tr>
+                <tr>
+                    <th></th>
+                    <th></th>
+                    <th v-for="col in items['columns']['cut_columns']">
+                        {{ items['total_data']['cut_details'][col] }}
+                    </th>
+                    <th v-for="col in items['columns']['against_cut_columns']">
+                        {{ items['total_data']['against_cut_details'][col] }}
+                    </th>
+                    <th v-for="col in items['columns']['sew_columns']">
+                        {{ items['total_data']['sewing_details'][col] }}
+                    </th>
+                    <th v-for="col in items['columns']['against_sew_columns']">
+                        {{ items['total_data']['against_sew_details'][col] }}
+                    </th>
+                    <th v-for="col in items['columns']['finishing_columns']">
+                        {{ items['total_data']['finishing_details'][col] }}
+                    </th>
+                    <th></th>
+                    <th></th>
+                    <th></th>
+                </tr>
             </table>
         </div>
         <div v-else>
