@@ -1079,7 +1079,27 @@ def get_work_in_progress_report(category, status, lot_list_val, item_list, proce
 			},
 		},
 		"diff_columns": ['order_to_cut_diff', 'cut_to_sew_diff', 'in_sew', 'in_packing', "cut_to_dispatch_diff"],
-		"lot_data": {}
+		"lot_data": {},
+		"total_data": {
+			"cut_details": {
+				"order_qty": 0,
+				"cut_qty": 0,
+				"order_to_cut_diff": 0,
+			},
+			"against_cut_details": {},
+			"sewing_details": {
+				"sewing_sent": 0,
+				"cut_to_sew_diff": 0,
+				"finishing_inward": 0,
+				"in_sew": 0,
+			},
+			"against_sew_details": {},
+			"finishing_details": {
+				"dispatch": 0,
+				"in_packing": 0,
+				"cut_to_dispatch_diff": 0,
+			},
+		},
 	}
 	for lot in lot_list:
 		lot = lot['name']
@@ -1121,6 +1141,9 @@ def get_work_in_progress_report(category, status, lot_list_val, item_list, proce
 		if order_detail:
 			cut_qty = 	order_detail[0]['cutting'] if order_detail[0]['cutting'] else 0
 			order_qty = order_detail[0]['order_qty'] if order_detail[0]['order_qty'] else 0
+			lot_dict['total_data']['cut_details']['order_qty'] += order_qty
+			lot_dict['total_data']['cut_details']['cut_qty'] += cut_qty
+			lot_dict['total_data']['cut_details']['order_to_cut_diff'] += (cut_qty - order_qty)
 			lot_dict['lot_data'][lot]['cut_details']['order_qty'] += order_qty
 			lot_dict['lot_data'][lot]['cut_details']['cut_qty'] += cut_qty
 			lot_dict['lot_data'][lot]['cut_details']['order_to_cut_diff'] += (cut_qty - order_qty)
@@ -1143,9 +1166,13 @@ def get_work_in_progress_report(category, status, lot_list_val, item_list, proce
 		for wo in stich_wo_list:
 			stich_detail = get_wo_total_delivered_received(wo)
 			if stich_detail:
+				lot_dict['total_data']['sewing_details']['sewing_sent'] += stich_detail[0]['sent']
+				lot_dict['total_data']['sewing_details']['finishing_inward'] += stich_detail[0]['received']
 				lot_dict['lot_data'][lot]['sewing_details']['sewing_sent'] += stich_detail[0]['sent']
 				lot_dict['lot_data'][lot]['sewing_details']['finishing_inward'] += stich_detail[0]['received']
 		
+		lot_dict['total_data']['sewing_details']['cut_to_sew_diff'] = lot_dict['total_data']['sewing_details']['sewing_sent'] - lot_dict['total_data']['cut_details']['cut_qty']
+		lot_dict['total_data']['sewing_details']['in_sew'] = lot_dict['total_data']['sewing_details']['finishing_inward'] - lot_dict['total_data']['sewing_details']['sewing_sent']
 		lot_dict['lot_data'][lot]['sewing_details']['cut_to_sew_diff'] = lot_dict['lot_data'][lot]['sewing_details']['sewing_sent'] - lot_dict['lot_data'][lot]['cut_details']['cut_qty']
 		lot_dict['lot_data'][lot]['sewing_details']['in_sew'] = lot_dict['lot_data'][lot]['sewing_details']['finishing_inward'] - lot_dict['lot_data'][lot]['sewing_details']['sewing_sent']
 		stich_wo_list.append("")
@@ -1191,8 +1218,11 @@ def get_work_in_progress_report(category, status, lot_list_val, item_list, proce
 				}, as_dict=True
 			)
 			if finishing_detail:
+				lot_dict['total_data']['finishing_details']['dispatch'] += (finishing_detail[0]['dispatch_qty'] * pcs_per_box * part_qty)
 				lot_dict['lot_data'][lot]['finishing_details']['dispatch'] += (finishing_detail[0]['dispatch_qty'] * pcs_per_box * part_qty)
 		
+		lot_dict['total_data']['finishing_details']['in_packing'] = lot_dict['total_data']['finishing_details']['dispatch'] - lot_dict['total_data']['sewing_details']['finishing_inward']
+		lot_dict['total_data']['finishing_details']['cut_to_dispatch_diff'] = lot_dict['total_data']['finishing_details']['dispatch'] - lot_dict['total_data']['cut_details']['cut_qty']
 		lot_dict['lot_data'][lot]['finishing_details']['in_packing'] = lot_dict['lot_data'][lot]['finishing_details']['dispatch'] - lot_dict['lot_data'][lot]['sewing_details']['finishing_inward']
 		lot_dict['lot_data'][lot]['finishing_details']['cut_to_dispatch_diff'] = lot_dict['lot_data'][lot]['finishing_details']['dispatch'] - lot_dict['lot_data'][lot]['cut_details']['cut_qty']
 		
@@ -1228,6 +1258,9 @@ def get_work_in_progress_report(category, status, lot_list_val, item_list, proce
 			lot_dict['lot_data'][lot][details_key].setdefault(sent_val, 0)
 			lot_dict['lot_data'][lot][details_key].setdefault(rec_val, 0)
 			lot_dict['lot_data'][lot][details_key].setdefault(diff_val, 0)
+			lot_dict['total_data'][details_key].setdefault(sent_val, 0)
+			lot_dict['total_data'][details_key].setdefault(rec_val, 0)
+			lot_dict['total_data'][details_key].setdefault(diff_val, 0)
 
 			wo_list = get_process_wo_list(process_name, lot)
 			if not wo_list:
@@ -1252,6 +1285,9 @@ def get_work_in_progress_report(category, status, lot_list_val, item_list, proce
 					lot_dict['lot_data'][lot][details_key][sent_val] += detail[0]['sent']
 					lot_dict['lot_data'][lot][details_key][rec_val] += detail[0]['received']
 					lot_dict['lot_data'][lot][details_key][diff_val] += (detail[0]['sent'] - detail[0]['received'])
+					lot_dict['total_data'][details_key][sent_val] += detail[0]['sent']
+					lot_dict['total_data'][details_key][rec_val] += detail[0]['received']
+					lot_dict['total_data'][details_key][diff_val] += (detail[0]['sent'] - detail[0]['received'])
 
 			if process_dict[process_name] == cut:
 				if not last_cut_process:
@@ -1262,16 +1298,20 @@ def get_work_in_progress_report(category, status, lot_list_val, item_list, proce
 					lot_dict['columns'][column_key].setdefault(against_key, against_val)
 					lot_dict['lot_data'][lot][details_key].setdefault(against_val, 0)
 					lot_dict['lot_data'][lot][details_key][against_val] += (lot_dict['lot_data'][lot][details_key][rec_val] - lot_dict['lot_data'][lot]['cut_details']["cut_qty"])
+					lot_dict['total_data'][details_key].setdefault(against_val, 0)
+					lot_dict['total_data'][details_key][against_val] += (lot_dict['lot_data'][lot][details_key][rec_val] - lot_dict['lot_data'][lot]['cut_details']["cut_qty"])
 				else:
 					against_key = process_name + " to "+ last_cut_process + " Diff"
 					against_val = against_key.lower().replace(" ", "_")
 					if against_val not in lot_dict['diff_columns']:
 						lot_dict['diff_columns'].append(against_val)
 					lot_dict['columns'][column_key].setdefault(against_key, against_val)
+					lot_dict['total_data'][details_key].setdefault(against_val, 0)
 					lot_dict['lot_data'][lot][details_key].setdefault(against_val, 0)
 					prev_key = last_cut_process + " Received"
 					prev_val = prev_key.lower().replace(" ", "_")
 					lot_dict['lot_data'][lot][details_key][against_val] += (lot_dict['lot_data'][lot][details_key][rec_val] - lot_dict['lot_data'][lot][details_key][prev_val])
+					lot_dict['total_data'][details_key][against_val] += (lot_dict['lot_data'][lot][details_key][rec_val] - lot_dict['lot_data'][lot][details_key][prev_val])
 				last_cut_process = process_name	
 			else:
 				if not last_piece_process:
@@ -1281,6 +1321,8 @@ def get_work_in_progress_report(category, status, lot_list_val, item_list, proce
 						lot_dict['diff_columns'].append(against_val)
 					lot_dict['columns'][column_key].setdefault(against_key, against_val)
 					lot_dict['lot_data'][lot][details_key].setdefault(against_val, 0)
+					lot_dict['total_data'][details_key].setdefault(against_val, 0)
+					lot_dict['total_data'][details_key][against_val] += (lot_dict['lot_data'][lot][details_key][rec_val] - lot_dict['lot_data'][lot]['sewing_details']["finishing_inward"])
 					lot_dict['lot_data'][lot][details_key][against_val] += (lot_dict['lot_data'][lot][details_key][rec_val] - lot_dict['lot_data'][lot]['sewing_details']["finishing_inward"])
 				else:
 					against_key = process_name + " to "+ last_piece_process + " Diff"
@@ -1289,8 +1331,10 @@ def get_work_in_progress_report(category, status, lot_list_val, item_list, proce
 						lot_dict['diff_columns'].append(against_val)
 					lot_dict['columns'][column_key].setdefault(against_key, against_val)
 					lot_dict['lot_data'][lot][details_key].setdefault(against_val, 0)
+					lot_dict['total_data'][details_key].setdefault(against_val, 0)
 					prev_key = last_piece_process + " Received"
 					prev_val = prev_key.lower().replace(" ", "_")
+					lot_dict['total_data'][details_key][against_val] += (lot_dict['lot_data'][lot][details_key][rec_val] - lot_dict['lot_data'][lot][details_key][prev_val])
 					lot_dict['lot_data'][lot][details_key][against_val] += (lot_dict['lot_data'][lot][details_key][rec_val] - lot_dict['lot_data'][lot][details_key][prev_val])
 				last_piece_process = process_name
 	return lot_dict	
