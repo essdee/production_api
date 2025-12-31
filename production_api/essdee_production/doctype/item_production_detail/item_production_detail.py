@@ -900,7 +900,7 @@ def get_stiching_in_stage_attributes(dependent_attribute_mapping,stiching_in_sta
 def get_combination(doc_name,attributes, combination_type, cloth_list = None):
 	ipd_doc = frappe.get_doc("Item Production Detail",doc_name)
 
-	attributes = json.loads(attributes)
+	attributes = update_if_string_instance(attributes)
 	item_attributes = ipd_doc.item_attributes
 	packing_attr = ipd_doc.packing_attribute
 	packing_attr_details = ipd_doc.packing_attribute_details
