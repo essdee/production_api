@@ -73,6 +73,8 @@ import MonthWiseDetailReport from "./components/MonthWiseDetailReport.vue"
 import SizeWiseStockReport from "./components/SizeWiseStockDetail.vue"
 import ColourWiseDiffReport from "./components/ColourWiseDiffReport.vue"
 import InvoiceWoItems from "./PurchaseInvoice/components/InvoiceWOItems.vue"
+import RecutPrintPanelDetail from "./CuttingPlan/components/RecutPrintPanelDetails.vue"
+import RecutPrintPanelView from "./CuttingPlan/components/RecutPrintPanelView.vue"
 
 import QualityInspection from "./WorkOrder/components/QualityInspection.vue";
 // Product Development
@@ -106,7 +108,7 @@ frappe.production.ui.ItemAttributeValues = class {
         this.attr_name = attr_name;
         this.make_body();
     }
-    
+
     make_body() {
         this.$page_container = $('<div class="attribute-value-template frappe-control">').appendTo(this.$wrapper);
         this.app = createApp(AttributeValues);
@@ -988,7 +990,7 @@ frappe.production.ui.GRNPurchaseOrder = class {
         this.$wrapper = $(wrapper);
         $(this.vue.$el).appendTo(this.$wrapper)
     }
-    
+
     get_items() {
         return this.grn.get_items();
     }
@@ -1081,6 +1083,39 @@ frappe.production.ui.CuttingIncompletionDetail = class {
         item_details = "[" + item_details + "]"
         let items = JSON.parse(JSON.stringify(item_details))
         this.vue.load_data(items)
+    }
+}
+
+frappe.production.ui.RecutPrintPanelDetail = class {
+    constructor(wrapper) {
+        this.$wrapper = $(wrapper)
+        this.make_app()
+    }
+    make_app() {
+        this.app = createApp(RecutPrintPanelDetail)
+        SetVueGlobals(this.app)
+        this.vue = this.app.mount(this.$wrapper.get(0))
+    }
+    get_items() {
+        return this.vue.get_items()
+    }
+    load_data() {
+        this.vue.load_data()
+    }
+}
+
+frappe.production.ui.RecutPrintPanelView = class {
+    constructor(wrapper) {
+        this.$wrapper = $(wrapper)
+        this.make_app()
+    }
+    make_app() {
+        this.app = createApp(RecutPrintPanelView)
+        SetVueGlobals(this.app)
+        this.vue = this.app.mount(this.$wrapper.get(0))
+    }
+    load_data(type) {
+        this.vue.load_data(type)
     }
 }
 
