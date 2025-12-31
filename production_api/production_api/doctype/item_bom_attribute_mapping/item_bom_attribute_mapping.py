@@ -93,157 +93,171 @@ def get_item_bom_mapping_combination(item_attributes, bom_attributes, attribute_
 	if isinstance(attribute_values, string_types):
 		attribute_values = json.loads(attribute_values)
 	
-	is_set_item = frappe.get_value("Item Production Detail", ipd, "is_set_item")
+	# is_set_item = frappe.get_value("Item Production Detail", ipd, "is_set_item")
+	from production_api.essdee_production.doctype.item_production_detail.item_production_detail import get_combination
+	data = get_combination(ipd, item_attributes, "Cutting")
+	items = []
+	for row in data['items']:
+		d = {}
+		for attr in item_attributes:
+			attr_key = get_attribute_name("item", attr)
+			d[attr_key] = row[attr]
 
-	check = True
-	if is_set_item and len(item_attributes) > 1:
-		data = get_comb(ipd, item_attributes, bom_attributes, attribute_values)
-		check = False
+		for attr in bom_attributes:
+			attr_key = get_attribute_name("bom", attr)
+			d[attr_key] = None
+		d['quantity'] = 0	
+		d['included'] = True
+		items.append(d)
+	# check = True
+	# if is_set_item and len(item_attributes) > 1:
+	# 	data = get_comb(ipd, item_attributes, bom_attributes, attribute_values)
+	# 	check = False
 
-	if check:
-		data = get_combination(item_attributes, bom_attributes, attribute_values)
-	for d in data:
-		d['quantity'] = 0
-	return data
+	# if check:
+	# 	data = get_combination(item_attributes, bom_attributes, attribute_values)
+	# for d in data:
+	# 	d['quantity'] = 0
+	return items
 
 def get_attribute_name(type, attribute):
 	return type+"_"+attribute
 
-def get_comb(ipd, attributes, bom_attributes, attribute_values):
-	ipd_doc = frappe.get_cached_doc("Item Production Detail", ipd)
-	if isinstance(attributes, string_types):
-		attributes = json.loads(attributes)
-	item_attributes = ipd_doc.item_attributes
-	packing_attr = ipd_doc.packing_attribute
-	packing_attr_details = ipd_doc.packing_attribute_details
+# def get_comb(ipd, attributes, bom_attributes, attribute_values):
+# 	ipd_doc = frappe.get_cached_doc("Item Production Detail", ipd)
+# 	if isinstance(attributes, string_types):
+# 		attributes = json.loads(attributes)
+# 	item_attributes = ipd_doc.item_attributes
+# 	packing_attr = ipd_doc.packing_attribute
+# 	packing_attr_details = ipd_doc.packing_attribute_details
 	
-	if isinstance(item_attributes, string_types):
-		item_attributes = json.loads(item_attributes)
-	if isinstance(packing_attr_details, string_types):
-		packing_attr_details = json.loads(packing_attr_details)
+# 	if isinstance(item_attributes, string_types):
+# 		item_attributes = json.loads(item_attributes)
+# 	if isinstance(packing_attr_details, string_types):
+# 		packing_attr_details = json.loads(packing_attr_details)
 	
-	cloth_colours = []
-	for pack_attr in packing_attr_details:
-		cloth_colours.append(pack_attr.attribute_value)
+# 	cloth_colours = []
+# 	for pack_attr in packing_attr_details:
+# 		cloth_colours.append(pack_attr.attribute_value)
 	
-	if ipd_doc.is_set_item:
-		for row in ipd_doc.set_item_combination_details:
-			if row.attribute_value not in cloth_colours:
-				cloth_colours.append(row.attribute_value)
+# 	if ipd_doc.is_set_item:
+# 		for row in ipd_doc.set_item_combination_details:
+# 			if row.attribute_value not in cloth_colours:
+# 				cloth_colours.append(row.attribute_value)
 
-	item_attr_val_list = get_combination_attr_list(attributes,packing_attr, cloth_colours, item_attributes)
+# 	item_attr_val_list = get_combination_attr_list(attributes,packing_attr, cloth_colours, item_attributes)
 
-	stich_attr = ipd_doc.stiching_attribute
-	set_attr = ipd_doc.set_item_attribute
-	pack_attr = ipd_doc.packing_attribute
+# 	stich_attr = ipd_doc.stiching_attribute
+# 	set_attr = ipd_doc.set_item_attribute
+# 	pack_attr = ipd_doc.packing_attribute
 	
-	item_list = []
-	combination_type=""
-	part_accessory_combination = {}
+# 	item_list = []
+# 	combination_type=""
+# 	part_accessory_combination = {}
 
-	if pack_attr in attributes and set_attr in attributes and stich_attr in attributes:
-		x = item_attr_val_list.copy()
-		del x[pack_attr]
-		del x[stich_attr]
+# 	if pack_attr in attributes and set_attr in attributes and stich_attr in attributes:
+# 		x = item_attr_val_list.copy()
+# 		del x[pack_attr]
+# 		del x[stich_attr]
 
-		set_data = {set_attr : {}}
-		for i in item_attr_val_list[set_attr]:
-			set_data[set_attr][i] = {
-				pack_attr : [],
-				stich_attr : []
-			}
+# 		set_data = {set_attr : {}}
+# 		for i in item_attr_val_list[set_attr]:
+# 			set_data[set_attr][i] = {
+# 				pack_attr : [],
+# 				stich_attr : []
+# 			}
 
-		x[set_attr] = set_data[set_attr]
-		item_attr_list = x		
-		item_attr_list = get_set_tri_struct(ipd_doc, item_attr_list, set_attr, pack_attr, stich_attr)
+# 		x[set_attr] = set_data[set_attr]
+# 		item_attr_list = x		
+# 		item_attr_list = get_set_tri_struct(ipd_doc, item_attr_list, set_attr, pack_attr, stich_attr)
 		
-		set_attr_values = item_attr_list[set_attr]
-		del item_attr_list[set_attr]
+# 		set_attr_values = item_attr_list[set_attr]
+# 		del item_attr_list[set_attr]
 		
-		attributes = pop_attributes(attributes, [set_attr, pack_attr, stich_attr])
+# 		attributes = pop_attributes(attributes, [set_attr, pack_attr, stich_attr])
 
-		item_attr_val_list = item_attr_list
-		item_list = get_set_tri_combination(set_attr_values, set_attr, pack_attr, stich_attr, combination_type, part_accessory_combination)
+# 		item_attr_val_list = item_attr_list
+# 		item_list = get_set_tri_combination(set_attr_values, set_attr, pack_attr, stich_attr, combination_type, part_accessory_combination)
 
-		attributes.append(set_attr)
-		attributes.append(pack_attr)
-		attributes.append(stich_attr)
+# 		attributes.append(set_attr)
+# 		attributes.append(pack_attr)
+# 		attributes.append(stich_attr)
 
-	elif pack_attr in attributes and set_attr in attributes and stich_attr not in attributes:
-		x = item_attr_val_list.copy()
-		del x[pack_attr]
+# 	elif pack_attr in attributes and set_attr in attributes and stich_attr not in attributes:
+# 		x = item_attr_val_list.copy()
+# 		del x[pack_attr]
 		
-		set_data = {set_attr : {}}
-		for i in item_attr_val_list[set_attr]:
-			set_data[set_attr][i] = []
+# 		set_data = {set_attr : {}}
+# 		for i in item_attr_val_list[set_attr]:
+# 			set_data[set_attr][i] = []
 
-		x[set_attr] = set_data[set_attr]
+# 		x[set_attr] = set_data[set_attr]
 
-		item_attr_list = x	
-		for i in ipd_doc.set_item_combination_details:
-			if i.attribute_value not in item_attr_list[set_attr][i.set_item_attribute_value]:
-				item_attr_list[set_attr][i.set_item_attribute_value].append(i.attribute_value) 
+# 		item_attr_list = x	
+# 		for i in ipd_doc.set_item_combination_details:
+# 			if i.attribute_value not in item_attr_list[set_attr][i.set_item_attribute_value]:
+# 				item_attr_list[set_attr][i.set_item_attribute_value].append(i.attribute_value) 
 
-		set_attr_values = item_attr_list[set_attr]
-		del item_attr_list[set_attr]
+# 		set_attr_values = item_attr_list[set_attr]
+# 		del item_attr_list[set_attr]
 
-		attributes = pop_attributes(attributes, [set_attr, pack_attr])
+# 		attributes = pop_attributes(attributes, [set_attr, pack_attr])
 		
-		item_attr_val_list = item_attr_list
-		item_list = get_comb_items(set_attr_values, set_attr, pack_attr, combination_type, part_accessory_combination)
-		attributes.append(set_attr)
-		attributes.append(pack_attr)
+# 		item_attr_val_list = item_attr_list
+# 		item_list = get_comb_items(set_attr_values, set_attr, pack_attr, combination_type, part_accessory_combination)
+# 		attributes.append(set_attr)
+# 		attributes.append(pack_attr)
 
-	elif stich_attr in attributes and set_attr in attributes and pack_attr not in attributes:
-		item_attr_list = change_attr_list(item_attr_val_list,ipd_doc.stiching_item_details,stich_attr,set_attr)
-		set_attr_values = item_attr_list[set_attr]
-		del item_attr_list[set_attr]
+# 	elif stich_attr in attributes and set_attr in attributes and pack_attr not in attributes:
+# 		item_attr_list = change_attr_list(item_attr_val_list,ipd_doc.stiching_item_details,stich_attr,set_attr)
+# 		set_attr_values = item_attr_list[set_attr]
+# 		del item_attr_list[set_attr]
 		
-		attributes = pop_attributes(attributes, [set_attr, stich_attr])
-		item_attr_val_list = item_attr_list
-		item_list = get_comb_items(set_attr_values, set_attr, stich_attr, combination_type, part_accessory_combination)
-		attributes.append(set_attr)
-		attributes.append(stich_attr)
-	else:
-		data = get_combination(attributes, bom_attributes, attribute_values)
-		return data
+# 		attributes = pop_attributes(attributes, [set_attr, stich_attr])
+# 		item_attr_val_list = item_attr_list
+# 		item_list = get_comb_items(set_attr_values, set_attr, stich_attr, combination_type, part_accessory_combination)
+# 		attributes.append(set_attr)
+# 		attributes.append(stich_attr)
+# 	else:
+# 		data = get_combination(attributes, bom_attributes, attribute_values)
+# 		return data
 
-	items = []
-	for item in item_list:
-		d = {}
-		for key, val in item.items():
-			name = get_attribute_name('item', key)
-			d[name] = val
-		items.append(d)
-	return items	
+# 	items = []
+# 	for item in item_list:
+# 		d = {}
+# 		for key, val in item.items():
+# 			name = get_attribute_name('item', key)
+# 			d[name] = val
+# 		items.append(d)
+# 	return items	
 
-def get_combination(item_attributes, bom_attributes, attribute_values):
-	data = []
-	attr = item_attributes[0]
-	attr_values = attribute_values[attr]
-	for attr_value in attr_values:
-		d = {}
-		attr_name = get_attribute_name('item', attr)
-		d[attr_name] = attr_value
-		data.append(d)
+# def get_combination(item_attributes, bom_attributes, attribute_values):
+# 	data = []
+# 	attr = item_attributes[0]
+# 	attr_values = attribute_values[attr]
+# 	for attr_value in attr_values:
+# 		d = {}
+# 		attr_name = get_attribute_name('item', attr)
+# 		d[attr_name] = attr_value
+# 		data.append(d)
 
-	if len(item_attributes) > 1:
-		data1 = data.copy()
-		data = []
-		for idx, item in enumerate(item_attributes):
-			if idx > 0:
-				attr = item_attributes[idx]
-				attr_values = attribute_values[attr]
-				for attr_val in attr_values:
-					for k in data1:
-						d = k.copy()
-						d[get_attribute_name('item', attr)] = attr_val
-						data.append(d)
-	for d in data:
-		for bom_attr in bom_attributes:
-			d[get_attribute_name('bom', bom_attr)] = None
+# 	if len(item_attributes) > 1:
+# 		data1 = data.copy()
+# 		data = []
+# 		for idx, item in enumerate(item_attributes):
+# 			if idx > 0:
+# 				attr = item_attributes[idx]
+# 				attr_values = attribute_values[attr]
+# 				for attr_val in attr_values:
+# 					for k in data1:
+# 						d = k.copy()
+# 						d[get_attribute_name('item', attr)] = attr_val
+# 						data.append(d)
+# 	for d in data:
+# 		for bom_attr in bom_attributes:
+# 			d[get_attribute_name('bom', bom_attr)] = None
 	
-	for d in data:
-		d['included'] = True	
+# 	for d in data:
+# 		d['included'] = True	
 	
-	return data
+# 	return data
