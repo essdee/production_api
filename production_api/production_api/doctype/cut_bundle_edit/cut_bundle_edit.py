@@ -165,7 +165,14 @@ class CutBundleEdit(Document):
 
 	def on_submit(self):
 		input_json = frappe.json.loads(self.input_json)
+		lot_hash = frappe.get_cached_value("Lot", self.lot, "lot_hash_value")
+		item_hash = frappe.get_cached_value("Item", self.item, "item_hash_value")
 		for row in input_json:
+			parts = [
+				str(lot_hash), str(self.warehouse), str(row['lay_no']), str(row['bundle_no']),
+				str(row['shade']), str(item_hash), str(row['size']), str(row['colour']), str(row['panel']),
+			]
+			cbm_key = "-".join(parts)
 			d = {
 				"modified": frappe.utils.now(),
 				"user": frappe.session.user,
@@ -178,25 +185,22 @@ class CutBundleEdit(Document):
 				"item": self.item,
 				"panel": row['panel'],
 				"colour": row['colour'],
+				"cbm_key": cbm_key,
 			}
 			if row['is_collapsed']:
 				frappe.db.sql(
 					"""
 						UPDATE `tabCut Bundle Movement Ledger` SET transformed = 1, modified = %(modified)s, 
-						modified_by = %(user)s WHERE lot = %(lot)s AND is_cancelled = 0 
-						AND collapsed_bundle = 1 AND lay_no = %(lay_no)s AND bundle_no = %(bundle)s 
-						AND size = %(size)s AND colour = %(colour)s AND panel = %(panel)s
-						AND shade = %(shade)s AND item = %(item)s
+						modified_by = %(user)s WHERE is_cancelled = 0 
+						AND collapsed_bundle = 1 AND cbm_key = %(cbm_key)s
 					""", d 
 				)
 			else:
 				frappe.db.sql(
 					"""
 						UPDATE `tabCut Bundle Movement Ledger` SET transformed = 1, modified = %(modified)s, 
-						modified_by = %(user)s WHERE lot = %(lot)s AND is_cancelled = 0 
-						AND is_collapsed = 0 AND collapsed_bundle = 0 AND lay_no = %(lay_no)s AND bundle_no = %(bundle)s 
-						AND size = %(size)s AND colour = %(colour)s AND panel = %(panel)s
-						AND shade = %(shade)s AND item = %(item)s
+						modified_by = %(user)s WHERE is_cancelled = 0 
+						AND is_collapsed = 0 AND collapsed_bundle = 0 AND cbm_key = %(cbm_key)s
 					""", d 
 				)
 		self.create_new_bundles(self.output_json)
