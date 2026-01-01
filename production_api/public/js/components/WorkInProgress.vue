@@ -265,8 +265,8 @@ function get_date(date){
 <style scoped>
 .table-container {
     width: 100%;
-    overflow-x: auto; /* enables horizontal scroll */
-    overflow-y: hidden;
+    overflow: auto;
+    max-height: 70vh;
     -webkit-overflow-scrolling: touch;
     border: 2px solid #000;
     border-radius: 6px;
