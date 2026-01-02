@@ -3,7 +3,8 @@
 
 import frappe
 from frappe.model.document import Document
-from production_api.utils import update_if_string_instance
+from production_api.utils import get_variant_attr_details, update_if_string_instance
+
 
 class EssdeeQualityInspection(Document):
 	def onload(self):
@@ -29,34 +30,7 @@ class EssdeeQualityInspection(Document):
 
 		self.inspector = frappe.session.user
 		self.inspector_name = frappe.get_value("User", frappe.session.user, "full_name")
-		from production_api.utils import get_variant_attr_details, update_if_string_instance
-		wo_doc = frappe.get_doc(self.against, self.against_id)
-		selected_colours = []
-		for row in self.essdee_quality_inspection_colours:
-			if row.selected == 1:
-				selected_colours.append(row.colour)
-				
-		ipd = wo_doc.production_detail
-		ipd_fields = ['packing_attribute', 'is_set_item', 'set_item_attribute', 'major_attribute_value']
-		colour, set_item, set_attr, major_attr = frappe.get_value("Item Production Detail", ipd, ipd_fields)
-		order_qty = 0
-		for row in wo_doc.work_order_calculated_items: 
-			if row.delivered_quantity == 0:
-				continue
-			attrs = get_variant_attr_details(row.item_variant)
-			if set_item:
-				colour_val = attrs[colour]
-				if attrs[set_attr] != major_attr:
-					set_comb = update_if_string_instance(row.set_combination)
-					colour_val = colour_val + "("+ set_comb['major_colour'] +")"
-				if colour_val in selected_colours:
-					order_qty += row.delivered_quantity
-			else:
-				if attrs[colour] in selected_colours:
-					order_qty += row.delivered_quantity
-
-		self.order_qty = order_qty			
-
+		
 	def before_validate(self):
 		if self.offer_qty == 0:
 			frappe.throw("Offer Qty Cannot be Zero")
@@ -83,6 +57,38 @@ class EssdeeQualityInspection(Document):
 			else:
 				self.result = 'Fail'
 				self.calculated_result = 'Fail'
+
+		wo_doc = frappe.get_doc(self.against, self.against_id)
+		selected_colours = []
+		for row in self.essdee_quality_inspection_colours:
+			if row.selected == 1:
+				selected_colours.append(row.colour)
+		selected_sizes = []		
+		for row in self.essdee_quality_inspection_sizes:
+			if row.selected == 1:
+				selected_sizes.append(row.size)
+				
+		ipd = wo_doc.production_detail
+		ipd_fields = ['packing_attribute', 'is_set_item', 'set_item_attribute', 'major_attribute_value', 'primary_item_attribute']
+		colour, set_item, set_attr, major_attr, primary = frappe.get_value("Item Production Detail", ipd, ipd_fields)
+		order_qty = 0
+		for row in wo_doc.work_order_calculated_items: 
+			if row.delivered_quantity == 0:
+				continue
+			attrs = get_variant_attr_details(row.item_variant)
+			if set_item:
+				colour_val = attrs[colour]
+				primary_val = attrs[primary]
+				if attrs[set_attr] != major_attr:
+					set_comb = update_if_string_instance(row.set_combination)
+					colour_val = colour_val + "("+ set_comb['major_colour'] +")"
+				if colour_val in selected_colours and primary_val in selected_sizes:
+					order_qty += row.delivered_quantity
+			else:
+				if attrs[colour] in selected_colours and primary_val in selected_sizes:
+					order_qty += row.delivered_quantity
+
+		self.order_qty = order_qty			
 
 @frappe.whitelist()
 def get_max_minor_defect_allowed(level, offer_qty: int, major_aql_level, minor_aql_level):
@@ -139,7 +145,6 @@ def get_against_details(against, against_id):
 	}
 
 def fetch_colours_and_sizes(work_order):
-	from production_api.utils import get_variant_attr_details, update_if_string_instance
 	wo_doc = frappe.get_doc("Work Order", work_order)
 	colours = []
 	sizes = []

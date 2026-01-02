@@ -200,19 +200,23 @@ def get_data(filters):
 				sum1 = set_dict[set_key]['dispatch_piece_qty'] + set_dict[set_key]['rejection'] +set_dict[set_key]['loose_piece'] + set_dict[set_key]['rework']
 				sum2 = set_dict[set_key]['sewing_received'] + set_dict[set_key]['old_lot'] + set_dict[set_key]['ironing_excess']
 				set_dict[set_key]['unaccountable'] = sum1 - sum2
-				if sum1 != 0:
-					set_dict[set_key]['unaccountable_percentage'] = 100 - round(sum2 / sum1, 2)
+				val1 = set_dict[set_key]['cut_qty'] + set_dict[set_key]['old_lot'] + set_dict[set_key]['ironing_excess']
+				if set_dict[set_key]['unaccountable'] != 0:
+					x = set_dict[set_key]['unaccountable']
+					if x < 0:
+						x = x * -1
+					set_dict[set_key]['unaccountable_percentage'] = round(x/ val1, 2) * 100
 				else:
 					set_dict[set_key]['unaccountable_percentage'] = 100
 
 				sum1 = set_dict[set_key]['cut_qty'] + set_dict[set_key]['old_lot'] + set_dict[set_key]['ironing_excess']
 				if sum1 != 0:
-					set_dict[set_key]['cut_to_dispatch_diff_percent'] = 100 - round(set_dict[set_key]['dispatch_piece_qty'] / sum1, 2)
+					set_dict[set_key]['cut_to_dispatch_diff_percent'] = 100 - (round(set_dict[set_key]['dispatch_piece_qty'] / sum1, 2) * 100)
 				else:
 					set_dict[set_key]['cut_to_dispatch_diff_percent'] = 100	 
 				sum1 = set_dict[set_key]['sewing_received'] + set_dict[set_key]['old_lot'] + set_dict[set_key]['ironing_excess']
 				if sum1 != 0:
-					set_dict[set_key]['finishing_inward_to_dispatch_diff_percent'] = 100 - round(set_dict[set_key]['dispatch_piece_qty'] / sum1, 2)
+					set_dict[set_key]['finishing_inward_to_dispatch_diff_percent'] = 100 - (round(set_dict[set_key]['dispatch_piece_qty'] / sum1, 2) * 100)
 				else:
 					set_dict[set_key]['finishing_inward_to_dispatch_diff_percent'] = 100
 
@@ -262,19 +266,23 @@ def get_data(filters):
 			sum1 = d['dispatch_piece_qty'] + d['rejection'] + d['loose_piece'] +d['rework']
 			sum2 = d['sewing_received'] + d['old_lot'] + d['ironing_excess']
 			d['unaccountable'] = sum1 - sum2
-			if sum1 != 0:
-				d['unaccountable_percentage'] = 100 - round(sum2 / sum1, 2)
+			val1 = d['cut_qty'] + d['old_lot'] + d['ironing_excess']
+			if d['unaccountable'] != 0:
+				x = d['unaccountable']
+				if x < 0:
+					x = x * -1
+				d['unaccountable_percentage'] = round(x/ val1, 2) * 100
 			else:
 				d['unaccountable_percentage'] = 100	
 			sum1 = d['cut_qty'] + d['old_lot'] + d['ironing_excess']
-			if sum1 != 0:
-				d['cut_to_dispatch_diff_percent'] = 100 - round(d['dispatch_piece_qty'] / sum1, 2)
+			if sum1!= 0:
+				d['cut_to_dispatch_diff_percent'] = 100 - (round(d['dispatch_piece_qty'] / sum1, 2) * 100)
 			else:
 				d['cut_to_dispatch_diff_percent'] = 100
 
 			sum1 = d['sewing_received'] + d['old_lot'] + d['ironing_excess']
 			if sum1 != 0:
-				d['finishing_inward_to_dispatch_diff_percent'] = 100 - round(d['dispatch_piece_qty'] / sum1, 2)
+				d['finishing_inward_to_dispatch_diff_percent'] = 100 - (round(d['dispatch_piece_qty'] / sum1, 2) * 100)
 			else:
 				d['finishing_inward_to_dispatch_diff_percent'] = 100
 
