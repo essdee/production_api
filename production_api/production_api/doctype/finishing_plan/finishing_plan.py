@@ -371,7 +371,8 @@ def get_fp_ocr_details(doc_name):
 		return {
 			"val1": ocr_data[part_value]['cutting'] + 
 					ocr_data[part_value]['old_lot'] + 
-					ocr_data[part_value]['ironing_excess'],
+					ocr_data[part_value]['ironing_excess'] - 
+					ocr_data[part_value]['transferred'] ,
 			"val2": ocr_data[part_value]['packed_box_qty'],
 		}
 	
@@ -385,7 +386,8 @@ def get_fp_ocr_details(doc_name):
 		return {
 			"val1": ocr_data[part_value]['sewing_received'] +
 					ocr_data[part_value]['old_lot'] + 
-					ocr_data[part_value]['ironing_excess'], 
+					ocr_data[part_value]['ironing_excess'] - 
+					ocr_data[part_value]['transferred'] , 
 			"val2": ocr_data[part_value]['packed_box_qty']
 		}
 	
@@ -434,7 +436,8 @@ def get_fp_ocr_details(doc_name):
 					ocr_data[part_value]['rejected'] + 
 					ocr_data[part_value]['loose_piece_set'] +
 					ocr_data[part_value]['loose_piece'] +
-					ocr_data[part_value]['pending'])
+					ocr_data[part_value]['pending'] +
+					ocr_data[part_value]['transferred'])
 		}
 	
 	def get_total_difference(part_value, size, ocr_data):
@@ -492,6 +495,7 @@ def get_ocr_details(doc):
 			"total": {},
 			"cutting": 0,
 			"dc_qty": 0,
+			"transferred": 0,
 			"packed_box": 0,
 			"packed_box_qty": 0,
 			"rejected": 0,
@@ -507,6 +511,7 @@ def get_ocr_details(doc):
 		ocr_data[part_value]['total'].setdefault(size, {
 			"cutting_qty": 0,
 			"dc_qty": 0,
+			"transferred": 0,
 			"packed_box": 0,
 			"packed_box_qty": 0,
 			"rejected": 0,
@@ -539,8 +544,10 @@ def get_ocr_details(doc):
 		})
 		ocr_data[part_value]['cutting'] += row.cutting_qty
 		ocr_data[part_value]['dc_qty'] += row.dc_qty 
+		ocr_data[part_value]['transferred'] += row.transferred_qty
 		ocr_data[part_value]['total'][size]['cutting_qty'] += row.cutting_qty
 		ocr_data[part_value]['total'][size]['dc_qty'] += row.dc_qty 
+		ocr_data[part_value]['total'][size]['transferred'] += row.transferred_qty 
 		ocr_data[part_value]['total'][size]['ironing_excess'] += row.ironing_excess
 		ocr_data[part_value]['total'][size]['old_lot'] += row.lot_transferred
 		ocr_data[part_value]['total'][size]['total_inward'] += row.delivered_quantity + row.ironing_excess + row.lot_transferred
@@ -1625,3 +1632,191 @@ def get_ocr_style(val):
 	elif val > 0:
 		return "background:#98ebae";
 	return "background:#ebc96e;"
+
+@frappe.whitelist()
+def create_alternative_fp(doc_name, alternative_item, production_detail, lot_name, qty_details):
+	qty_details = update_if_string_instance(qty_details)
+	fp_doc = frappe.get_doc("Finishing Plan", doc_name)
+	converting_colours = []
+	converting_sizes = []
+	for colour in qty_details['data']['data']:
+		for size in qty_details['data']['data'][colour]['values']:
+			qty = qty_details['data']['data'][colour]['values'][size]['conversion_qty']
+			if qty > 0:
+				if colour not in converting_colours:
+					converting_colours.append(colour)
+				if size not in converting_sizes:
+					converting_sizes.append(size)
+
+	check_colours_and_sizes(production_detail, converting_colours, converting_sizes)
+	supplier, process = frappe.get_value("Work Order", fp_doc.work_order, ["supplier", "process_name"])
+	check_process_cost(process, alternative_item, supplier)
+	## LOT CREATION
+	lot_doc = frappe.new_doc("Lot")
+	lot_doc.lot_name = lot_name
+	lot_doc.production_detail = production_detail
+	lot_doc.item = alternative_item
+	from production_api.essdee_production.doctype.lot.lot import get_isfinal_uom
+	response = get_isfinal_uom(production_detail, get_pack_stage=True)
+	lot_doc.uom = response['uom']
+	lot_doc.pack_in_stage = response['pack_in_stage']
+	lot_doc.packing_uom = response['packing_uom']
+	lot_doc.pack_out_stage = response['pack_out_stage']
+	lot_doc.dependent_attribute_mapping = response['dependent_attr_mapping']
+	lot_doc.tech_pack_version = response['tech_pack_version']
+	lot_doc.pattern_version = response['pattern_version']
+	lot_doc.packing_combo = response['packing_combo']
+	lot_doc.is_transferred = 1
+	lot_doc.transferred_lot = fp_doc.lot
+	lot_doc.save()
+	ipd_fields = ["packing_combo", "pack_out_stage", "primary_item_attribute", "dependent_attribute", 'packing_attribute', 'pack_in_stage']
+	pcs_per_box, pack_stage, primary_attr, dependent_attr, packing_attr, pack_in_stage = frappe.get_value("Item Production Detail", production_detail, ipd_fields)
+
+	size_wise_detail = {}
+	row_index = 0
+	for colour in qty_details['data']['data']:
+		for size in qty_details['data']['data'][colour]['values']:
+			size_wise_detail.setdefault(size, 0)
+			qty = qty_details['data']['data'][colour]['values'][size]['conversion_qty']
+			size_wise_detail[size] += qty
+			
+			order_detail = frappe.new_doc("Lot Order Detail")
+			order_detail.item_variant = get_or_create_variant(alternative_item, {
+				primary_attr: size,
+				dependent_attr: pack_in_stage,
+				packing_attr: colour,
+			})
+			order_detail.quantity = qty
+			order_detail.cut_qty = qty
+			order_detail.pack_qty = 0
+			order_detail.parent = lot_doc.name
+			order_detail.parentfield = "lot_order_details"
+			order_detail.parenttype = "Lot"
+			order_detail.row_index = row_index
+			order_detail.set_combination = frappe.json.dumps({"major_colour": colour})
+			order_detail.stich_qty = 0
+			order_detail.table_index = 0	
+			order_detail.save()
+		row_index += 1	
+	
+	items = save_item_details(size_wise_detail, alternative_item, pcs_per_box, pack_stage, primary_attr, dependent_attr)
+	for row in items:
+		lot_order_item = frappe.new_doc("Lot Order Item")
+		lot_order_item.mrp = row['mrp']
+		lot_order_item.parent = lot_doc.name
+		lot_order_item.parentfield = "items"
+		lot_order_item.parenttype = "Lot"
+		lot_order_item.row_index = row['row_index']
+		lot_order_item.table_index = row['table_index']
+		lot_order_item.ratio = row['ratio']
+		lot_order_item.qty = row['qty']
+		lot_order_item.item_variant = row['item_variant']
+		lot_order_item.save(ignore_permissions=True)
+
+	old_wo = frappe.get_doc("Work Order", fp_doc.work_order)
+	wo_doc = frappe.new_doc("Work Order")
+	wo_doc.lot = lot_doc.name
+	wo_doc.supplier = old_wo.supplier
+	wo_doc.supplier_address = old_wo.supplier_address
+	wo_doc.delivery_address = old_wo.delivery_address
+	wo_doc.item = alternative_item
+	wo_doc.process_name = old_wo.process_name
+	wo_doc.delivery_location = old_wo.delivery_location
+	wo_doc.planned_start_date = old_wo.planned_start_date
+	wo_doc.planned_end_date = old_wo.planned_end_date
+	wo_doc.expected_delivery_date = old_wo.expected_delivery_date
+	wo_doc.save()
+
+	from production_api.production_api.doctype.work_order.work_order import get_lot_items, get_deliverable_receivable
+	items = get_lot_items(
+		wo_doc.lot,wo_doc.name,wo_doc.process_name,wo_doc.includes_packing,
+	)
+	for item in items:
+		idx = 0
+		for row in item['items']:
+			d = {}
+			for size in row['values']:
+				d[size] = row['values'][size]['qty']
+			item['items'][idx]['work_order_qty'] = d
+			idx += 1	
+	new_wo_name = get_deliverable_receivable(items, wo_doc.name, is_alternate=True)
+	return new_wo_name
+
+def save_item_details(item_details, alternative_item, pcs_per_box, pack_stage, primary_attr, dependent_attr):
+	item_details = update_if_string_instance(item_details)
+	items = []
+	idx = 0
+	for size in item_details:
+		attributes = {
+			primary_attr: size,
+			dependent_attr: pack_stage
+		}
+		item1 = {}
+		variant_name = get_or_create_variant(alternative_item, attributes)
+		item1['item_variant'] = variant_name
+		item1['qty'] = round(item_details[size]/pcs_per_box)
+		item1['ratio'] = 1
+		item1['mrp'] = 0
+		item1['table_index'] = 0
+		item1['row_index'] = idx
+		idx += 1
+		items.append(item1)
+	return items	
+
+def check_colours_and_sizes(ipd, converting_colours, converting_sizes):
+	ipd_doc = frappe.get_doc("Item Production Detail", ipd)
+	if ipd_doc.is_set_item:
+		frappe.throw("Set Item is not applicable for Alternative Items")
+
+	pack_attr = ipd_doc.packing_attribute
+	primary_attr = ipd_doc.primary_item_attribute
+	pack_attr_mapping = None
+	primary_attr_mapping = None
+	for row in ipd_doc.item_attributes:
+		if row.attribute == pack_attr:
+			pack_attr_mapping = row.mapping
+		if row.attribute == primary_attr:
+			primary_attr_mapping = row.mapping
+
+	if not pack_attr_mapping or not primary_attr_mapping:
+		frappe.throw("Not a valid Production Detail")
+
+	doc = frappe.get_doc("Item Item Attribute Mapping", pack_attr_mapping)
+	colours = [row.attribute_value for row in doc.values]
+	doc = frappe.get_doc("Item Item Attribute Mapping", primary_attr_mapping)
+	sizes = [row.attribute_value for row in doc.values]	
+
+	for colour in converting_colours:
+		if colour not in colours:
+			frappe.throw(f"Selected Item Production Detail not contains the {pack_attr} {colour}")
+
+	for size in sizes:
+		if size not in converting_sizes:
+			frappe.throw(f"Selected Item Production Detail not contains the {primary_attr} {size}")
+
+def check_process_cost(process_name, item, supplier):
+	fil = {
+		"process_name": process_name,
+		"item": item,
+		"is_expired": 0,
+		"from_date": ["<=", frappe.utils.nowdate()],
+		"docstatus": 1,
+		"workflow_state": "Approved",
+		"is_rework": 0,
+		"supplier": supplier
+	}
+
+	filter_variants = [fil.copy()]
+
+	f1 = fil.copy()
+	filter_variants.append(f1)
+
+	docname = None
+	for f in filter_variants:
+		docs = frappe.get_list("Process Cost", filters=f)
+		if docs:
+			docname = docs[0].name
+			break
+	
+	if not docname:
+		frappe.throw('No process cost was defined')

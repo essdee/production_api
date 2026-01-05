@@ -68,7 +68,7 @@ def create_stock_entry(stock_values):
 	return new_doc.name
 
 @frappe.whitelist()
-def create_bulk_stock_entry(locations, selected_items, purpose):
+def create_bulk_stock_entry(locations, selected_items, purpose, submit=False):
 	if isinstance(locations, string_types):
 		locations = frappe.json.loads(locations)
 	if isinstance(selected_items, string_types):
@@ -106,6 +106,8 @@ def create_bulk_stock_entry(locations, selected_items, purpose):
 	new_doc.set("items", final_list)
 	new_doc.flags.allow_from_summary = True		
 	new_doc.save()
+	if submit:
+		new_doc.submit()
 	return new_doc.name
 
 @frappe.whitelist()

@@ -89,12 +89,33 @@
                                     </th>
                                 </tr>
                                 <tr>
-                                    <th :colspan="2">Difference ( E - D )</th>
-                                    <td v-for="size in items.primary_values" 
-                                        :style="get_style(items['ocr_data'][part_value]['total'][size]['dc_qty'] - items['ocr_data'][part_value]['total'][size]['total_inward'])">
-                                        {{ items['ocr_data'][part_value]['total'][size]['dc_qty'] - items['ocr_data'][part_value]['total'][size]['total_inward'] }}
+                                    <th :colspan="2">Transferred ( F )</th>
+                                    <td v-for="size in items.primary_values">
+                                        {{ items['ocr_data'][part_value]['total'][size]['transferred'] }}
                                     </td>
-                                    <th :style="get_style(items['ocr_data'][part_value]['dc_qty'] - items['ocr_data'][part_value]['total_inward'])">
+                                    <th>
+                                        {{ items['ocr_data'][part_value]['transferred'] }}
+                                    </th>
+                                </tr>
+                                <tr>
+                                    <th :colspan="2">Difference ( (E + F) - D )</th>
+                                    <td v-for="size in items.primary_values" 
+                                        :style="get_style(
+                                            items['ocr_data'][part_value]['total'][size]['transferred'] +
+                                            items['ocr_data'][part_value]['total'][size]['dc_qty'] - 
+                                            items['ocr_data'][part_value]['total'][size]['total_inward']
+                                        )">
+                                        {{ 
+                                            items['ocr_data'][part_value]['total'][size]['transferred'] +
+                                            items['ocr_data'][part_value]['total'][size]['dc_qty'] - 
+                                            items['ocr_data'][part_value]['total'][size]['total_inward'] 
+                                        }}
+                                    </td>
+                                    <th :style="get_style(
+                                            items['ocr_data'][part_value]['transferred'] + 
+                                            items['ocr_data'][part_value]['dc_qty'] - 
+                                            items['ocr_data'][part_value]['total_inward']
+                                        )">
                                         {{ items['ocr_data'][part_value]['dc_qty'] - items['ocr_data'][part_value]['total_inward'] }}
                                     </th>
                                 </tr>
@@ -108,7 +129,7 @@
                                     </th>
                                 </tr>
                                 <tr>
-                                    <th :colspan="2">Packed Box Qty(In Pieces) ( F )</th>
+                                    <th :colspan="2">Packed Box Qty(In Pieces) ( G )</th>
                                     <td v-for="size in items.primary_values">
                                         {{ items['ocr_data'][part_value]['total'][size]['packed_box_qty'] }}
                                     </td>
@@ -117,7 +138,7 @@
                                     </th>
                                 </tr>
                                 <tr>
-                                    <th :colspan="2">Difference ( F - E )</th>
+                                    <th :colspan="2">Difference ( G - E )</th>
                                     <td v-for="size in items.primary_values" 
                                         :style="get_style(items['ocr_data'][part_value]['total'][size]['packed_box_qty'] - items['ocr_data'][part_value]['total'][size]['dc_qty'])">
                                         {{ items['ocr_data'][part_value]['total'][size]['packed_box_qty'] - items['ocr_data'][part_value]['total'][size]['dc_qty'] }}
@@ -243,7 +264,7 @@
                                     </th>
                                 </tr>
                                 <tr>
-                                    <th :colspan="2">Unaccountable (( F + I + J + K + L ) - (B + D1 + D2 ))</th>
+                                    <th :colspan="2">Unaccountable (( G + I + J + K + L ) - (B + D1 + D2 ))</th>
                                     <th v-for="size in items.primary_values" :style="get_style(get_total_difference(part_value, size))">
                                         {{ get_total_difference(part_value, size) }}
                                     </th>
@@ -397,8 +418,9 @@ function get_cut_to_dispatch(part_value){
     return {
         "val1": items.value['ocr_data'][part_value]['cutting'] + 
                 items.value['ocr_data'][part_value]['old_lot'] + 
-                items.value['ocr_data'][part_value]['ironing_excess'],
-        "val2": items.value['ocr_data'][part_value]['packed_box_qty'],
+                items.value['ocr_data'][part_value]['ironing_excess'] - 
+                items.value['ocr_data'][part_value]['transferred'],
+        "val2": items.value['ocr_data'][part_value]['packed_box_qty'] 
     }
 }
 
@@ -413,7 +435,8 @@ function get_inward_to_dispatch(part_value){
     return {
         "val1": items.value['ocr_data'][part_value]['sewing_received'] +
                 items.value['ocr_data'][part_value]['old_lot'] + 
-                items.value['ocr_data'][part_value]['ironing_excess'], 
+                items.value['ocr_data'][part_value]['ironing_excess'] - 
+                items.value['ocr_data'][part_value]['transferred'], 
         "val2": items.value['ocr_data'][part_value]['packed_box_qty']
     }
 }
@@ -467,7 +490,9 @@ function get_unaccountable(part_value){
                 items.value['ocr_data'][part_value]['rejected'] + 
                 items.value['ocr_data'][part_value]['loose_piece_set'] +
                 items.value['ocr_data'][part_value]['loose_piece'] +
-                items.value['ocr_data'][part_value]['pending'])
+                items.value['ocr_data'][part_value]['pending'] +
+                items.value['ocr_data'][part_value]['transferred'] 
+            )
     }
 }
 

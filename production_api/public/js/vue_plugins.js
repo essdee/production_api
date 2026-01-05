@@ -12,7 +12,7 @@ import GRNPurchaseOrder from "./GRN/components/GRNPurchaseOrder.vue";
 import GRNWorkOrder from "./GRN/components/GRNWorkOrder.vue";
 import GRNReturnItem from "./GRN/components/GRNReturnItem.vue"
 import GRNConsumedDetail from "./GRN/components/GRNConsumedDetail.vue"
-import LotOrder from "./Lot/components/LotOrder.vue" 
+import LotOrder from "./Lot/components/LotOrder.vue"
 import WorkStation from "./Lot/components/WorkStation.vue"
 import TimeActionPreview from "./TimeAndAction/TimeActionPreview.vue"
 import InwardQuantityReport from "./Lot/components/InwardQuantityReport.vue";
@@ -55,7 +55,8 @@ import DailyProductionReport from "./CuttingLaySheet/components/DailyProductionR
 import DailyCutSheetReport from "./CuttingLaySheet/components/DailyCutSheetReport.vue";
 import GRNPacking from "./GRN/components/GRNPacking.vue";
 import FinishingGRN from "./Finishing/FinishingGRN.vue";
-import ProductionOrder from "./Lot/components/ProductionOrder.vue";
+import ProductionOrder from "./ProductionOrder/components/ProductionOrder.vue";
+import UpdatePrice from "./ProductionOrder/components/UpdatePrice.vue";
 import OCRDetail from './Lot/components/OCRDetail.vue';
 import ReworkPage from "./WorkOrder/components/ReworkPage.vue";
 import FinishingDetail from "./Finishing/FinishingDetail.vue"
@@ -67,6 +68,7 @@ import FinishingOCR from "./Finishing/FinishingOCR.vue"
 import FinishingPackReturn from "./Finishing/FinishingPackReturn.vue"
 import FinishingPlanCompleteTransfer from "./Finishing/FinishingPlanCompleteTransfer.vue";
 import FinishingPlanDispatch from "./Finishing/FinishingPlanDispatch.vue";
+import AlternativeItem from "./Finishing/AlternativeItem.vue"
 import ActionDetail from "./ActionMaster/ActionDetail.vue"
 import WorkInProgress from "./components/WorkInProgress.vue"
 import MonthWiseDetailReport from "./components/MonthWiseDetailReport.vue"
@@ -463,6 +465,25 @@ frappe.production.ui.ProductionOrder = class {
     }
 }
 
+frappe.production.ui.UpdatePrice = class {
+    constructor(wrapper) {
+        this.$wrapper = $(wrapper);
+        this.make_app()
+    }
+    make_app() {
+        this.app = createApp(UpdatePrice)
+        SetVueGlobals(this.app)
+        this.vue = this.app.mount(this.$wrapper.get(0))
+    }
+    load_data(data) {
+        this.vue.load_data(data)
+    }
+    get_data() {
+        let items = JSON.parse(JSON.stringify(this.vue.get_items()))
+        return items
+    }
+}
+
 frappe.production.ui.OCRDetail = class {
     constructor(wrapper) {
         this.$wrapper = $(wrapper);
@@ -592,6 +613,24 @@ frappe.production.ui.FinishingDetail = class {
     }
     load_data(data) {
         this.vue.load_data(JSON.parse(JSON.stringify(data)))
+    }
+}
+frappe.production.ui.AlternativeItem = class {
+    constructor(wrapper, data) {
+        this.$wrapper = $(wrapper)
+        this.make_app()
+        this.load_data(data)
+    }
+    make_app() {
+        this.app = createApp(AlternativeItem)
+        SetVueGlobals(this.app)
+        this.vue = this.app.mount(this.$wrapper.get(0))
+    }
+    load_data(data) {
+        this.vue.load_data(JSON.parse(JSON.stringify(data)))
+    }
+    get_data() {
+        return this.vue.get_items()
     }
 }
 
@@ -916,12 +955,15 @@ frappe.production.ui.CutPlanItems = class {
         let items = JSON.parse(JSON.stringify(item_details))
         this.vue.load_data(items)
         if (length > 0) {
-            this.vue.update_docstatus()
+            this.update_status()
         }
     }
     get_items() {
         let items = this.vue.get_items()
         return items
+    }
+    update_status() {
+        this.vue.update_docstatus()
     }
 }
 

@@ -23,6 +23,8 @@
   "uom",
   "expected_delivery_date",
   "size_set_colour_colour",
+  "is_transferred",
+  "transferred_lot",
   "section_break_qubc",
   "tech_pack_version",
   "pattern_version",
@@ -352,7 +354,8 @@
    "fetch_if_empty": 1,
    "fieldname": "assigned_person_name",
    "fieldtype": "Data",
-   "label": "Assigned Person Name"
+   "label": "Assigned Person Name",
+   "read_only": 1
   },
   {
    "fieldname": "lot_hash_value",
@@ -386,11 +389,25 @@
    "fieldtype": "Link",
    "label": "Season",
    "options": "Product Season"
+  },
+  {
+   "default": "0",
+   "fieldname": "is_transferred",
+   "fieldtype": "Check",
+   "label": "Is Transferred",
+   "read_only": 1
+  },
+  {
+   "fieldname": "transferred_lot",
+   "fieldtype": "Link",
+   "label": "Transferred Lot",
+   "options": "Lot",
+   "read_only": 1
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-11-29 11:27:38.834649",
+ "modified": "2026-01-05 16:16:59.923757",
  "modified_by": "Administrator",
  "module": "Essdee Production",
  "name": "Lot",

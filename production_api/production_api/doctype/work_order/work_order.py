@@ -14,7 +14,16 @@ from production_api.production_api.doctype.purchase_order.purchase_order import 
 from production_api.production_api.doctype.item.item import get_attribute_details, get_or_create_variant
 from production_api.production_api.doctype.delivery_challan.delivery_challan import get_variant_stock_details
 from production_api.essdee_production.doctype.lot.lot import fetch_order_item_details, get_uom_conversion_factor
-from production_api.utils import get_stich_details, get_part_list, update_if_string_instance, get_tuple_attributes, get_panel_colour_combination
+from production_api.utils import (
+	get_stich_details, 
+	get_part_list, 
+	update_if_string_instance, 
+	get_tuple_attributes, 
+	get_panel_colour_combination,
+	get_finishing_plan_dict, 
+	get_finishing_plan_list,
+	get_variant_attr_details,
+)
 from production_api.essdee_production.doctype.item_production_detail.item_production_detail import get_calculated_bom, calculate_accessory, get_cloth_combination, get_stitching_combination
 
 class WorkOrder(Document):
@@ -58,6 +67,54 @@ class WorkOrder(Document):
 		self.set("work_order_tracking_logs", d)
 		self.update_deliverables()
 		if self.includes_packing:
+			is_transferred, transferred_lot = frappe.get_value("Lot", self.lot, ["is_transferred", "transferred_lot"])	
+			if is_transferred:
+				reduce_items = []
+				update_items = []
+				received_type = frappe.db.get_single_value("Stock Settings", "default_received_type")
+				fp_list = frappe.get_all("Finishing Plan", filters={
+					"lot": transferred_lot,
+				}, pluck="name")
+				if not fp_list:
+					frappe.throw(f"There is No Finishing Plan for Parent Lot {transferred_lot}")
+				fp_doc = frappe.get_doc("Finishing Plan", fp_list[0])	
+				fp_item = fp_doc.item
+				fp_uom = frappe.get_value("Item", fp_doc.item, "default_unit_of_measure")
+				self_uom = frappe.get_value("Item", self.item, "default_unit_of_measure")
+				fp_dict = get_finishing_plan_dict(fp_doc)
+				for row in self.deliverables:
+					item = frappe.get_value("Item Variant", row.item_variant, "item")
+					if item == self.item:
+						attrs = get_variant_attr_details(row.item_variant)
+						new_variant = get_or_create_variant(fp_item, attrs)
+						reduce_items.append({
+							"item": new_variant,
+							"warehouse": self.supplier,
+							"received_type": received_type,
+							"lot": fp_doc.lot,
+							"item_name": fp_item,
+							"stock_uom": fp_uom,
+							"bal_qty": row.qty,
+						})
+						update_items.append({
+							"item": row.item_variant,
+							"warehouse": self.supplier,
+							"received_type": received_type,
+							"lot": self.lot,
+							"item_name": self.item,
+							"stock_uom": self_uom,
+							"bal_qty": row.qty,
+						})
+						set_comb = update_if_string_instance(row.set_combination)
+						key = (new_variant, tuple(sorted(set_comb.items())))
+						fp_dict[key]['transferred_qty'] += row.qty
+				from production_api.mrp_stock.doctype.stock_summary.stock_summary import create_bulk_stock_entry
+				self.db_set("reduce_stock_entry", create_bulk_stock_entry({"from_warehouse":self.supplier}, reduce_items, "Material Issue", submit=True))
+				self.db_set("update_stock_entry", create_bulk_stock_entry({"to_warehouse":self.supplier}, update_items, "Material Receipt", submit=True))
+				fp_list = get_finishing_plan_list(fp_dict)
+				fp_doc.set("finishing_plan_details", fp_list)
+				fp_doc.save(ignore_permissions=True)	
+
 			self.create_finshing_doc()
 
 	def create_finshing_doc(self):
@@ -73,6 +130,32 @@ class WorkOrder(Document):
 			}, pluck="name")
 			if finishing_detail:
 				frappe.delete_doc("Finishing Plan", finishing_detail[0])
+				is_transferred, transferred_lot = frappe.get_value("Lot", self.lot, ["is_transferred", "transferred_lot"])	
+				if is_transferred:
+					fp_list = frappe.get_all("Finishing Plan", filters={
+						"lot": transferred_lot,
+					}, pluck="name")
+					if not fp_list:
+						frappe.throw(f"There is No Finishing Plan for Parent Lot {transferred_lot}")
+					fp_doc = frappe.get_doc("Finishing Plan", fp_list[0])	
+					fp_item = fp_doc.item
+					fp_dict = get_finishing_plan_dict(fp_doc)
+					for row in self.deliverables:
+						item = frappe.get_value("Item Variant", row.item_variant, "item")
+						if item == self.item:
+							attrs = get_variant_attr_details(row.item_variant)
+							new_variant = get_or_create_variant(fp_item, attrs)
+							set_comb = update_if_string_instance(row.set_combination)
+							key = (new_variant, tuple(sorted(set_comb.items())))
+							fp_dict[key]['transferred_qty'] -= row.qty
+
+					se_doc = frappe.get_doc("Stock Entry", self.update_stock_entry)
+					se_doc.cancel()
+					se_doc = frappe.get_doc("Stock Entry", self.reduce_stock_entry)
+					se_doc.cancel()
+					fp_list = get_finishing_plan_list(fp_dict)
+					fp_doc.set("finishing_plan_details", fp_list)
+					fp_doc.save(ignore_permissions=True)	
 
 	def update_deliverables(self):
 		if self.is_rework:
@@ -547,7 +630,7 @@ def get_lot_items(lot, doc_name, process, includes_packing=False):
 	return items
 
 @frappe.whitelist()
-def get_deliverable_receivable( items, doc_name, deliverable=False, receivable=False):
+def get_deliverable_receivable( items, doc_name, deliverable=False, receivable=False, is_alternate=False):
 	logger = get_module_logger("work_order")
 	logger.debug(f"{doc_name} Deliverable and Receivable Calculation {datetime.now()}")
 	wo_doc = frappe.get_doc("Work Order", doc_name)
@@ -615,6 +698,9 @@ def get_deliverable_receivable( items, doc_name, deliverable=False, receivable=F
 	wo_doc.set("wo_colours", wo_colour_sets)
 	logger.debug(f"{doc_name} doc saved {datetime.now()}")
 	wo_doc.save(ignore_permissions=True)
+	if is_alternate:
+		return wo_doc.name
+
 	processes = [ipd_doc.cutting_process]
 	dc_processes = [ipd_doc.stiching_process]		
 
@@ -1717,20 +1803,18 @@ def create_finishing_detail(work_order, from_finishing=False):
 			for grn in grn_list:
 				stiching_grn_list[grn] = True
 
-	wo_list = frappe.get_all("Work Order", filters={
-		"docstatus": 1,
-		"lot": wo_doc.lot,
-		"process_name": "Cutting",
-	}, pluck="name")	
+	lot_doc = frappe.get_doc("Lot", wo_doc.lot)
+	# wo_list = frappe.get_all("Work Order", filters={
+	# 	"docstatus": 1,
+	# 	"lot": wo_doc.lot,
+	# 	"process_name": "Cutting",
+	# }, pluck="name")	
 
-	for wo in wo_list:
-		doc = frappe.get_doc("Work Order", wo)
-		for row in doc.work_order_calculated_items:
-			if row.quantity > 0:
-				set_comb = update_if_string_instance(row.set_combination)
-				key = (row.item_variant, tuple(sorted(set_comb.items())))
-				if items.get(key):
-					items[key]['cutting_qty'] += row.received_qty
+	for row in lot_doc.lot_order_details:
+		set_comb = update_if_string_instance(row.set_combination)
+		key = (row.item_variant, tuple(sorted(set_comb.items())))
+		if items.get(key):
+			items[key]['cutting_qty'] += row.cut_qty
 
 	rework_items = {}
 	rework_list = frappe.get_all("GRN Rework Item", filters={"lot": wo_doc.lot}, pluck="name")
