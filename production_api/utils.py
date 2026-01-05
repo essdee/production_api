@@ -957,7 +957,8 @@ def get_finishing_plan_dict(doc):
 			"return_qty": row.return_qty,
 			"pack_return_qty": row.pack_return_qty,
 			"return_dc_qty": row.return_dc_qty,
-			"pack_dc_qty": row.pack_dc_qty
+			"pack_dc_qty": row.pack_dc_qty,
+			"transferred_qty": row.transferred_qty,
 		})
 	return finishing_items	
 
@@ -982,6 +983,7 @@ def get_finishing_plan_list(finishing_items):
 			"pack_return_qty": finishing_items[key]['pack_return_qty'],
 			"return_dc_qty": finishing_items[key]['return_dc_qty'],
 			"pack_dc_qty": finishing_items[key]['pack_dc_qty'],
+			"transferred_qty": finishing_items[key]['transferred_qty'],
 		})
 	return finshing_items_list	
 
@@ -1075,6 +1077,7 @@ def get_work_in_progress_report(category, status, lot_list_val, item_list, proce
 			"finishing_columns": {
 				"Dispatch": 'dispatch',
 				"In Packing": 'in_packing',
+				"Transferred": "transferred",
 				"Cut to Dispatch Diff": "cut_to_dispatch_diff", 
 			},
 		},
@@ -1097,6 +1100,7 @@ def get_work_in_progress_report(category, status, lot_list_val, item_list, proce
 			"finishing_details": {
 				"dispatch": 0,
 				"in_packing": 0,
+				"transferred": 0,
 				"cut_to_dispatch_diff": 0,
 			},
 		},
@@ -1123,6 +1127,7 @@ def get_work_in_progress_report(category, status, lot_list_val, item_list, proce
 			"finishing_details": {
 				"dispatch": 0,
 				"in_packing": 0,
+				"transferred": 0,
 				"cut_to_dispatch_diff": 0,
 			},
 			"last_cut_date": None,
@@ -1220,11 +1225,33 @@ def get_work_in_progress_report(category, status, lot_list_val, item_list, proce
 			if finishing_detail:
 				lot_dict['total_data']['finishing_details']['dispatch'] += (finishing_detail[0]['dispatch_qty'] * pcs_per_box * part_qty)
 				lot_dict['lot_data'][lot]['finishing_details']['dispatch'] += (finishing_detail[0]['dispatch_qty'] * pcs_per_box * part_qty)
-		
+			
+			transfer_detail = frappe.db.sql(
+				"""
+					SELECT SUM(transferred_qty) as transferred FROM `tabFinishing Plan Detail` WHERE
+					parent = %(parent)s
+				""", {
+					"parent": finishing_plan,
+				}, as_dict=True
+			)
+			if transfer_detail:
+				lot_dict['total_data']['finishing_details']['transferred'] += transfer_detail[0]['transferred']
+				lot_dict['lot_data'][lot]['finishing_details']['transferred'] += transfer_detail[0]['transferred']
+
+		cut_to_dispatch_diff = (
+			lot_dict['total_data']['finishing_details']['dispatch'] +
+			lot_dict['total_data']['finishing_details']['transferred'] - 
+			lot_dict['total_data']['cut_details']['cut_qty']
+		)
+		cut_to_dispatch_lot_diff = (
+			lot_dict['lot_data'][lot]['finishing_details']['transferred'] +
+			lot_dict['lot_data'][lot]['finishing_details']['dispatch'] - 
+			lot_dict['lot_data'][lot]['cut_details']['cut_qty']
+		)
 		lot_dict['total_data']['finishing_details']['in_packing'] = lot_dict['total_data']['finishing_details']['dispatch'] - lot_dict['total_data']['sewing_details']['finishing_inward']
-		lot_dict['total_data']['finishing_details']['cut_to_dispatch_diff'] = lot_dict['total_data']['finishing_details']['dispatch'] - lot_dict['total_data']['cut_details']['cut_qty']
+		lot_dict['total_data']['finishing_details']['cut_to_dispatch_diff'] = cut_to_dispatch_diff
 		lot_dict['lot_data'][lot]['finishing_details']['in_packing'] = lot_dict['lot_data'][lot]['finishing_details']['dispatch'] - lot_dict['lot_data'][lot]['sewing_details']['finishing_inward']
-		lot_dict['lot_data'][lot]['finishing_details']['cut_to_dispatch_diff'] = lot_dict['lot_data'][lot]['finishing_details']['dispatch'] - lot_dict['lot_data'][lot]['cut_details']['cut_qty']
+		lot_dict['lot_data'][lot]['finishing_details']['cut_to_dispatch_diff'] = cut_to_dispatch_lot_diff
 		
 		process_dict, cut, piece = get_ipd_process_dict(ipd)
 		last_cut_process = None
@@ -1569,6 +1596,7 @@ def get_size_wise_stock_report(open_status, lot_list, item_list, category, proce
 			"finishing_rows": {
 				"Dispatch": 'dispatch',
 				"In Packing": 'in_packing',
+				"Transferred": "transferred",
 				"Cut to Dispatch Diff": "cut_to_dispatch_diff", 
 				"Work In Progress": "work_in_progress",
 			},
@@ -1599,6 +1627,7 @@ def get_size_wise_stock_report(open_status, lot_list, item_list, category, proce
 			"finishing_details": {
 				"dispatch": {},
 				"in_packing": {},
+				"transferred": {},
 				"cut_to_dispatch_diff": {},
 				"work_in_progress": {},
 			},
@@ -1621,6 +1650,7 @@ def get_size_wise_stock_report(open_status, lot_list, item_list, category, proce
 			lot_dict['lot_data'][lot]['sewing_details']['cut_to_sew_diff'].setdefault(size, 0)
 			lot_dict['lot_data'][lot]['finishing_details']['dispatch'].setdefault(size, 0)
 			lot_dict['lot_data'][lot]['finishing_details']['in_packing'].setdefault(size, 0)
+			lot_dict['lot_data'][lot]['finishing_details']['transferred'].setdefault(size, 0)
 			lot_dict['lot_data'][lot]['finishing_details']['cut_to_dispatch_diff'].setdefault(size, 0)
 			lot_dict['lot_data'][lot]['finishing_details']['work_in_progress'].setdefault(size, 0)
 
@@ -1659,6 +1689,10 @@ def get_size_wise_stock_report(open_status, lot_list, item_list, category, proce
 				lot_dict['lot_data'][lot]['finishing_details']['dispatch'][size] += (row.dispatched * fp_doc.pieces_per_box)
 				lot_dict['lot_data'][lot]['total_details'].setdefault("dispatch_total", 0)
 				lot_dict['lot_data'][lot]['total_details']["dispatch_total"] += (row.dispatched * fp_doc.pieces_per_box)
+			for row in fp_doc.finishing_plan_details: 
+				attr_details = get_variant_attr_details(row.item_variant)
+				size = attr_details[primary]
+				lot_dict['lot_data'][lot]['finishing_details']['transferred'][size] += row.transferred_qty
 
 		for size in sizes:		
 			sent = lot_dict['lot_data'][lot]['sewing_details']['sewing_sent'][size]
@@ -1666,6 +1700,7 @@ def get_size_wise_stock_report(open_status, lot_list, item_list, category, proce
 			cut_qty = lot_dict['lot_data'][lot]['cut_details']['cut_qty'][size]
 			order_qty = lot_dict['lot_data'][lot]['cut_details']['order_qty'][size]
 			dispatch_qty = lot_dict['lot_data'][lot]['finishing_details']['dispatch'][size]
+			transferred = lot_dict['lot_data'][lot]['finishing_details']['transferred'][size]
 			#diff detail
 			lot_dict['lot_data'][lot]['sewing_details']['in_sew'][size] += (received - sent)
 			lot_dict['lot_data'][lot]['sewing_details']['cut_to_sew_diff'][size] += (sent - cut_qty)
@@ -1675,7 +1710,7 @@ def get_size_wise_stock_report(open_status, lot_list, item_list, category, proce
 			work_in_progress = cut_qty
 			if cut_qty == 0:
 				work_in_progress = lot_dict['lot_data'][lot]['cut_details']['order_qty'][size]
-			lot_dict['lot_data'][lot]['finishing_details']['work_in_progress'][size] += (work_in_progress - dispatch_qty)
+			lot_dict['lot_data'][lot]['finishing_details']['work_in_progress'][size] += (work_in_progress - dispatch_qty - transferred)
 			#total details
 			lot_dict['lot_data'][lot]['total_details'].setdefault("in_sew_total", 0)
 			lot_dict['lot_data'][lot]['total_details'].setdefault("cut_to_sew_diff_total", 0)
@@ -1689,7 +1724,7 @@ def get_size_wise_stock_report(open_status, lot_list, item_list, category, proce
 			lot_dict['lot_data'][lot]['total_details']["order_to_cut_diff_total"] += (cut_qty - order_qty)
 			lot_dict['lot_data'][lot]['total_details']["in_packing_total"] += (dispatch_qty - received)
 			lot_dict['lot_data'][lot]['total_details']["cut_to_dispatch_diff_total"] += (dispatch_qty - cut_qty)
-			lot_dict['lot_data'][lot]['total_details']["work_in_progress_total"] += (work_in_progress - dispatch_qty)
+			lot_dict['lot_data'][lot]['total_details']["work_in_progress_total"] += (work_in_progress - dispatch_qty - transferred)
 
 		process_dict, cut, piece = get_ipd_process_dict(lot_doc.production_detail)
 		last_cut_process = None
@@ -1848,6 +1883,7 @@ def get_size_wise_stock_report(open_status, lot_list, item_list, category, proce
 			"finishing_details": {
 				"dispatch": {},
 				"in_packing": {},
+				"transferred": {},
 				"cut_to_dispatch_diff": {},
 				"work_in_progress": {},
 			},
@@ -1898,7 +1934,7 @@ def get_size_wise_stock_report(open_status, lot_list, item_list, category, proce
 
 		merge_nested_size_dict(style_entry["against_sew_details"], lot_data.get("against_sew_details", {}))
 
-		for key in ["dispatch", "in_packing", "cut_to_dispatch_diff", "work_in_progress"]:
+		for key in ["dispatch", "in_packing", "transferred", "cut_to_dispatch_diff", "work_in_progress"]:
 			merge_size_dict(style_entry["finishing_details"][key], lot_data["finishing_details"].get(key, {}))
 
 		merge_size_dict(style_entry["total_details"], lot_data.get("total_details", {}))

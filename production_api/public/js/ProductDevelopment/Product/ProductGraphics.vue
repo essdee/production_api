@@ -1,6 +1,7 @@
 <template>
     <div ref="root">
-        <h5>Product Graphics</h5>
+        <h5 v-if="box_detail">Product Box Details</h5>
+        <h5 v-else>Product Graphics</h5>
         <div style="display:flex; flex-wrap:wrap;">
             <div class="card card-body m-1" v-for="(row, idx) in files" :key="idx" style="width:48%;">
                 <div>

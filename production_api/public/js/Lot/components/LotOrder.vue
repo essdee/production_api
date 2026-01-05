@@ -11,7 +11,7 @@
 							<th v-for="(j, idx) in i.primary_attribute_values" :key="idx">
 								{{ j }}
 							</th>
-							<th v-if="docstatus == 0 && t_and_a == 0">Edit</th>
+							<th v-if="docstatus == 0 && t_and_a == 0 && !transferred">Edit</th>
 						</tr>
 						<tr v-for="(j, item1_index) in i.items" :key="item1_index">
 							<td :rowspan="3">{{ item1_index + 1 }}</td>
@@ -20,7 +20,7 @@
 							<td v-for="(k, idx) in Object.keys(j.values)" :key="'qty-' + idx">
 								Qty: {{ j.values[k]['qty'] }}
 							</td>
-							<td :rowspan="3" v-if="docstatus == 0">
+							<td :rowspan="3" v-if="docstatus == 0 && t_and_a == 0 && !transferred">
 								<div class="pull-left cursor-pointer" @click="edit_item(item1_index)"
 									v-html="frappe.utils.icon('edit', 'md', 'mr-1')"></div>
 								<div class="pull-left cursor-pointer" @click="delete_item(item1_index)"
@@ -59,7 +59,7 @@
 							<td>{{ j.values.qty }}</td>
 							<td>{{ j.values.ratio }}</td>
 							<td>{{ j.values.mrp }}</td>
-							<td v-if='docstatus == 0'>
+							<td v-if='docstatus == 0 && !transferred'>
 								<div class="pull-left cursor-pointer" @click="edit_item(item1_index)"
 									v-html="frappe.utils.icon('edit', 'md', 'mr-1')"></div>
 								<div class="pull-left cursor-pointer" @click="delete_item(item1_index)"
@@ -106,6 +106,7 @@ const list_item = ref([]);
 let primary_values = {};
 let dependent_values = {};
 let comment = {};
+let transferred = cur_frm.doc.is_transferred
 const edit = ref(false);
 const edit_index = ref(null);
 const button_show = ref(false);
@@ -431,5 +432,6 @@ function edit_item(index) {
 defineExpose({
   list_item,
   load_data,
+  show_add_items,
 });
 </script>

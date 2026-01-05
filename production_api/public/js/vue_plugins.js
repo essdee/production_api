@@ -68,6 +68,7 @@ import FinishingOCR from "./Finishing/FinishingOCR.vue"
 import FinishingPackReturn from "./Finishing/FinishingPackReturn.vue"
 import FinishingPlanCompleteTransfer from "./Finishing/FinishingPlanCompleteTransfer.vue";
 import FinishingPlanDispatch from "./Finishing/FinishingPlanDispatch.vue";
+import AlternativeItem from "./Finishing/AlternativeItem.vue"
 import ActionDetail from "./ActionMaster/ActionDetail.vue"
 import WorkInProgress from "./components/WorkInProgress.vue"
 import MonthWiseDetailReport from "./components/MonthWiseDetailReport.vue"
@@ -612,6 +613,24 @@ frappe.production.ui.FinishingDetail = class {
     }
     load_data(data) {
         this.vue.load_data(JSON.parse(JSON.stringify(data)))
+    }
+}
+frappe.production.ui.AlternativeItem = class {
+    constructor(wrapper, data) {
+        this.$wrapper = $(wrapper)
+        this.make_app()
+        this.load_data(data)
+    }
+    make_app() {
+        this.app = createApp(AlternativeItem)
+        SetVueGlobals(this.app)
+        this.vue = this.app.mount(this.$wrapper.get(0))
+    }
+    load_data(data) {
+        this.vue.load_data(JSON.parse(JSON.stringify(data)))
+    }
+    get_data() {
+        return this.vue.get_items()
     }
 }
 
