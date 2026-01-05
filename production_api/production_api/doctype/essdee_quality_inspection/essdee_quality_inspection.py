@@ -76,16 +76,16 @@ class EssdeeQualityInspection(Document):
 			if row.delivered_quantity == 0:
 				continue
 			attrs = get_variant_attr_details(row.item_variant)
+			colour_val = attrs[colour]
+			primary_val = attrs[primary]
 			if set_item:
-				colour_val = attrs[colour]
-				primary_val = attrs[primary]
 				if attrs[set_attr] != major_attr:
 					set_comb = update_if_string_instance(row.set_combination)
 					colour_val = colour_val + "("+ set_comb['major_colour'] +")"
 				if colour_val in selected_colours and primary_val in selected_sizes:
 					order_qty += row.delivered_quantity
 			else:
-				if attrs[colour] in selected_colours and primary_val in selected_sizes:
+				if colour_val in selected_colours and primary_val in selected_sizes:
 					order_qty += row.delivered_quantity
 
 		self.order_qty = order_qty			

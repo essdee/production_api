@@ -1285,19 +1285,20 @@ def fetch_quantity(doc_name):
 
 					finishing_items[key]['received_types'][ty] += received_types[ty]	
 
-	wo_list = frappe.get_all("Work Order", filters={
-		"docstatus": 1,
-		"lot": wo_doc.lot,
-		"process_name": "Cutting",
-	}, pluck="name")	
-
-	for wo in wo_list:
-		cut_wo_doc = frappe.get_doc("Work Order", wo)
-		for row in cut_wo_doc.work_order_calculated_items:
-			if row.quantity > 0:
-				set_comb = update_if_string_instance(row.set_combination)
-				key = (row.item_variant, tuple(sorted(set_comb.items())))
-				finishing_items[key]['cutting_qty'] += row.received_qty
+	lot_doc = frappe.get_doc("Lot", doc.lot)
+	# wo_list = frappe.get_all("Work Order", filters={
+	# 	"docstatus": 1,
+	# 	"lot": wo_doc.lot,
+	# 	"process_name": "Cutting",
+	# }, pluck="name")	
+	for row in lot_doc.lot_order_details:
+	# for wo in wo_list:
+		# cut_wo_doc = frappe.get_doc("Work Order", wo)
+		# for row in cut_wo_doc.work_order_calculated_items:
+			# if row.quantity > 0:
+		set_comb = update_if_string_instance(row.set_combination)
+		key = (row.item_variant, tuple(sorted(set_comb.items())))
+		finishing_items[key]['cutting_qty'] += row.cut_qty
 
 	finishing_rework_items = {}
 	rework_list = frappe.get_all("GRN Rework Item", filters={"lot": wo_doc.lot}, pluck="name")
