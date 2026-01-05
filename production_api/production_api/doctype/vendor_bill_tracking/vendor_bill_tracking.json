@@ -16,6 +16,7 @@
   "bill_no",
   "bill_date",
   "invoice_value",
+  "department",
   "delivery_details_section",
   "delivery_person_suggestion_html",
   "received_date",
@@ -190,13 +191,21 @@
    "fieldname": "pan",
    "fieldtype": "Data",
    "label": "PAN"
+  },
+  {
+   "fetch_from": "supplier.department",
+   "fieldname": "department",
+   "fieldtype": "Link",
+   "label": "Department",
+   "options": "Department",
+   "read_only": 1
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-07-03 11:59:24.750159",
+ "modified": "2025-12-06 18:41:27.235865",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Vendor Bill Tracking",
@@ -251,6 +260,7 @@
   }
  ],
  "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": []
