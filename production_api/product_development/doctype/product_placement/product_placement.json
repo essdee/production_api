@@ -1,0 +1,56 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2025-11-21 17:16:32.429665",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "product_image",
+  "url",
+  "title_header",
+  "selected_colours"
+ ],
+ "fields": [
+  {
+   "fieldname": "product_image",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Product Image",
+   "options": "Product Image"
+  },
+  {
+   "fetch_from": "product_image.image",
+   "fieldname": "url",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "URL"
+  },
+  {
+   "fieldname": "title_header",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Title Header"
+  },
+  {
+   "fieldname": "selected_colours",
+   "fieldtype": "Small Text",
+   "label": "Selected Colours"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2025-12-05 15:14:41.057303",
+ "modified_by": "Administrator",
+ "module": "Product Development",
+ "name": "Product Placement",
+ "owner": "Administrator",
+ "permissions": [],
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

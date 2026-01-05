@@ -250,6 +250,8 @@ class CutBundleEdit(Document):
 
 @frappe.whitelist()
 def get_major_colours(posting_date, posting_time, from_location, lot):
+	print(frappe.utils.now_datetime())
+	print("**********************")
 	posting_datetime = get_combine_datetime(posting_date, posting_time)
 	cb_list = frappe.db.sql("""
 		SELECT cbml.name FROM `tabCut Bundle Movement Ledger` cbml
@@ -259,13 +261,15 @@ def get_major_colours(posting_date, posting_time, from_location, lot):
 				AND lot = %(lot)s AND transformed = 0 GROUP BY cbm_key
 			) latest_cbml
 		ON cbml.cbm_key = latest_cbml.cbm_key AND cbml.posting_datetime = latest_cbml.max_posting_datetime
-		WHERE cbml.posting_datetime <= %(datetime_value)s ORDER BY latest_cbml.lay_no asc
+		WHERE cbml.posting_datetime <= %(datetime_value)s AND cbml.supplier = %(from_location)s 
+		AND cbml.lot = %(lot)s ORDER BY latest_cbml.lay_no asc
 	""", {
 		"datetime_value": posting_datetime,
 		"from_location": from_location,
 		"lot": lot,
 	}, as_dict=True)
-
+	print("**********************")
+	print(frappe.utils.now_datetime())
 	ipd = frappe.get_value("Lot", lot, "production_detail")
 	ipd_doc = frappe.get_doc("Item Production Detail", ipd)
 	panels = []
@@ -276,6 +280,7 @@ def get_major_colours(posting_date, posting_time, from_location, lot):
 	colours = []
 	if not cb_list:
 		frappe.throw("No Cut Bundle Movement Ledger Found for the warehouse")
+	print(frappe.utils.now_datetime())
 
 	for cb in cb_list:
 		cb_doc = frappe.get_doc("Cut Bundle Movement Ledger", cb['name'])
@@ -300,6 +305,7 @@ def get_major_colours(posting_date, posting_time, from_location, lot):
 
 		if major_colour not in colours:
 			colours.append(major_colour)
+	print(frappe.utils.now_datetime())
 
 	return {
 		"colours": colours,

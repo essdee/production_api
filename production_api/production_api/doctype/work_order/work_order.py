@@ -229,6 +229,7 @@ class WorkOrder(Document):
 			frappe.throw('No process cost for ' + self.process_name)	
 		if get_name:
 			return docname	
+		self.process_cost = docname	
 		process_doc = frappe.get_doc("Process Cost", docname)
 		ipd_doc = frappe.get_cached_doc("Item Production Detail", self.production_detail)
 		stich_details = {}
