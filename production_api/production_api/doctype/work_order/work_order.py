@@ -109,8 +109,8 @@ class WorkOrder(Document):
 						key = (new_variant, tuple(sorted(set_comb.items())))
 						fp_dict[key]['transferred_qty'] += row.qty
 				from production_api.mrp_stock.doctype.stock_summary.stock_summary import create_bulk_stock_entry
-				self.reduce_stock_entry = create_bulk_stock_entry({"from_warehouse":self.supplier}, reduce_items, "Material Issue", submit=True)
-				self.update_stock_entry = create_bulk_stock_entry({"to_warehouse":self.supplier}, update_items, "Material Receipt", submit=True)
+				self.db_set("reduce_stock_entry", create_bulk_stock_entry({"from_warehouse":self.supplier}, reduce_items, "Material Issue", submit=True))
+				self.db_set("update_stock_entry", create_bulk_stock_entry({"to_warehouse":self.supplier}, update_items, "Material Receipt", submit=True))
 				fp_list = get_finishing_plan_list(fp_dict)
 				fp_doc.set("finishing_plan_details", fp_list)
 				fp_doc.save(ignore_permissions=True)	
@@ -130,6 +130,32 @@ class WorkOrder(Document):
 			}, pluck="name")
 			if finishing_detail:
 				frappe.delete_doc("Finishing Plan", finishing_detail[0])
+				is_transferred, transferred_lot = frappe.get_value("Lot", self.lot, ["is_transferred", "transferred_lot"])	
+				if is_transferred:
+					fp_list = frappe.get_all("Finishing Plan", filters={
+						"lot": transferred_lot,
+					}, pluck="name")
+					if not fp_list:
+						frappe.throw(f"There is No Finishing Plan for Parent Lot {transferred_lot}")
+					fp_doc = frappe.get_doc("Finishing Plan", fp_list[0])	
+					fp_item = fp_doc.item
+					fp_dict = get_finishing_plan_dict(fp_doc)
+					for row in self.deliverables:
+						item = frappe.get_value("Item Variant", row.item_variant, "item")
+						if item == self.item:
+							attrs = get_variant_attr_details(row.item_variant)
+							new_variant = get_or_create_variant(fp_item, attrs)
+							set_comb = update_if_string_instance(row.set_combination)
+							key = (new_variant, tuple(sorted(set_comb.items())))
+							fp_dict[key]['transferred_qty'] -= row.qty
+
+					se_doc = frappe.get_doc("Stock Entry", self.update_stock_entry)
+					se_doc.cancel()
+					se_doc = frappe.get_doc("Stock Entry", self.reduce_stock_entry)
+					se_doc.cancel()
+					fp_list = get_finishing_plan_list(fp_dict)
+					fp_doc.set("finishing_plan_details", fp_list)
+					fp_doc.save(ignore_permissions=True)	
 
 	def update_deliverables(self):
 		if self.is_rework:

@@ -1634,7 +1634,7 @@ def get_ocr_style(val):
 	return "background:#ebc96e;"
 
 @frappe.whitelist()
-def create_alternative_fp(doc_name, alternative_item, production_detail, qty_details):
+def create_alternative_fp(doc_name, alternative_item, production_detail, lot_name, qty_details):
 	qty_details = update_if_string_instance(qty_details)
 	fp_doc = frappe.get_doc("Finishing Plan", doc_name)
 	converting_colours = []
@@ -1653,7 +1653,7 @@ def create_alternative_fp(doc_name, alternative_item, production_detail, qty_det
 	check_process_cost(process, alternative_item, supplier)
 	## LOT CREATION
 	lot_doc = frappe.new_doc("Lot")
-	lot_doc.lot_name = fp_doc.lot+"1234"
+	lot_doc.lot_name = lot_name
 	lot_doc.production_detail = production_detail
 	lot_doc.item = alternative_item
 	from production_api.essdee_production.doctype.lot.lot import get_isfinal_uom
@@ -1740,7 +1740,8 @@ def create_alternative_fp(doc_name, alternative_item, production_detail, qty_det
 			item['items'][idx]['work_order_qty'] = d
 			idx += 1	
 	new_wo_name = get_deliverable_receivable(items, wo_doc.name, is_alternate=True)
-	
+	return new_wo_name
+
 def save_item_details(item_details, alternative_item, pcs_per_box, pack_stage, primary_attr, dependent_attr):
 	item_details = update_if_string_instance(item_details)
 	items = []

@@ -124,6 +124,12 @@ frappe.ui.form.on("Finishing Plan", {
                     title: __("Select Alternative Item and IPD"),
                     fields: [
                         {
+                            label: "Lot Name",
+                            fieldname: "lot_name",
+                            fieldtype: "Data",
+                            reqd: 1,
+                        },
+                        {
                             label: __("Alternative Item"),
                             fieldname: "alternative_item",
                             fieldtype: "Link",
@@ -170,11 +176,13 @@ frappe.ui.form.on("Finishing Plan", {
                                 "doc_name": frm.doc.name,
                                 "alternative_item": values.alternative_item,
                                 "production_detail": values.production_detail,
+                                "lot_name": values.lot_name,
                                 "qty_details": qty_details
                             },
                             freeze: true,
                             freeze_message: "Creating Alternative FP",
                             callback: function (r) {
+                                frm.set_route("Form", "Work Order", r.message)
                                 d.hide();
                             }
                         })

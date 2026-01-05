@@ -563,10 +563,12 @@
    "read_only": 1
   },
   {
+   "allow_on_submit": 1,
    "fieldname": "update_stock_entry",
    "fieldtype": "Link",
    "label": "Update Stock Entry",
-   "options": "Stock Entry"
+   "options": "Stock Entry",
+   "read_only": 1
   }
  ],
  "grid_page_length": 50,
@@ -582,7 +584,7 @@
    "link_fieldname": "against_id"
   }
  ],
- "modified": "2026-01-05 11:34:36.700156",
+ "modified": "2026-01-05 16:34:31.354310",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Work Order",
