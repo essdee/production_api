@@ -22,6 +22,7 @@
   "gsm",
   "size_range",
   "sizes",
+  "tech_pack_no",
   "section_break_zlpx",
   "brand",
   "category",
@@ -386,13 +387,18 @@
   {
    "fieldname": "section_break_frfy",
    "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "tech_pack_no",
+   "fieldtype": "Int",
+   "label": "Tech Pack No"
   }
  ],
  "grid_page_length": 50,
  "image_field": "front_image",
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-12-25 10:33:40.203044",
+ "modified": "2026-01-05 17:53:07.343940",
  "modified_by": "Administrator",
  "module": "Product Development",
  "name": "Product Release",

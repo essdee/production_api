@@ -430,6 +430,7 @@ def release_tech_pack(doc_name):
 		"measurement": product_doc.measurement,
 		"top_measurement": product_doc.top_measurement,
 		"bottom_measurement": product_doc.bottom_measurement,
+		"tech_pack_no": product_doc.tech_pack_no + 1
 	}
 	new_doc = frappe.new_doc("Product Release")
 	new_doc.update(d)
@@ -451,6 +452,7 @@ def release_tech_pack(doc_name):
 		duplicate_and_attach(design, new_doc.name)
 	for box in box_list:
 		duplicate_and_attach(box, new_doc.name)	
+	product_doc.db_set("tech_pack_no", product_doc.tech_pack_no + 1)
 
 @frappe.whitelist()
 def duplicate_and_attach(row, new_docname):
