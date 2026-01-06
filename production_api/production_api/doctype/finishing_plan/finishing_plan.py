@@ -1640,6 +1640,8 @@ def create_alternative_fp(doc_name, alternative_item, production_detail, lot_nam
 	converting_colours = []
 	converting_sizes = []
 	for colour in qty_details['data']['data']:
+		if not qty_details['data']['data'][colour]['check_value']:
+			continue
 		for size in qty_details['data']['data'][colour]['values']:
 			qty = qty_details['data']['data'][colour]['values'][size]['conversion_qty']
 			if qty > 0:
@@ -1675,6 +1677,8 @@ def create_alternative_fp(doc_name, alternative_item, production_detail, lot_nam
 	size_wise_detail = {}
 	row_index = 0
 	for colour in qty_details['data']['data']:
+		if not qty_details['data']['data'][colour]['check_value']:
+			continue
 		for size in qty_details['data']['data'][colour]['values']:
 			size_wise_detail.setdefault(size, 0)
 			qty = qty_details['data']['data'][colour]['values'][size]['conversion_qty']

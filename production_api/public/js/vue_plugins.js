@@ -350,20 +350,23 @@ frappe.production.ui.ItemDetail = function (wrapper, type, data) {
 // };
 
 frappe.production.ui.LotOrder = class {
-    constructor(wrapper){
+    constructor(wrapper) {
         this.$wrapper = $(wrapper)
         this.make_app()
     }
-    make_app(){
+    make_app() {
         this.app = createApp(LotOrder)
         SetVueGlobals(this.app)
         this.vue = this.app.mount(this.$wrapper.get(0))
     }
-    get_data(){
+    get_data() {
         let items = JSON.parse(JSON.stringify(this.vue.list_item))
         return items
     }
-    load_data(item_details){
+    show_inputs() {
+        this.vue.show_add_items()
+    }
+    load_data(item_details) {
         let items = JSON.parse(JSON.stringify(item_details));
         this.vue.load_data(items)
     }
