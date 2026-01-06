@@ -1089,3 +1089,7 @@ def get_consumption_sheet_data(ipd, lot):
 				weight += colour_comb[colour][panel]['weight']
 			cad_data[item][colour]['categories'][cat]['reqd_weight'] = weight
 			cad_data[item][colour]['categories'][cat]['total_reqd'] = weight * cad_data[item][colour]['qty']
+
+@frappe.whitelist()
+def check_enabled_po():
+	return frappe.db.get_single_value("MRP Settings", "enable_production_order")
