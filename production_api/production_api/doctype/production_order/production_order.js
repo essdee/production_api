@@ -76,11 +76,8 @@ frappe.ui.form.on("Production Order", {
                             },
                             callback: function (response) {
                                 d.hide();
-                                frappe.show_alert({
-                                    message: __("Lot {0} created successfully", [values.lot_name]),
-                                    indicator: "green"
-                                });
-                                frm.set_route("Form", "Lot", response.message);
+                                frappe.open_in_new_tab = true
+                                frappe.set_route("Form", "Lot", response.message);
                             }
                         });
                     }
@@ -111,11 +108,8 @@ frappe.ui.form.on("Production Order", {
                             },
                             callback: function (response) {
                                 d.hide();
-                                frappe.show_alert({
-                                    message: __("Lot {0} linked successfully", [values.lot_name]),
-                                    indicator: "green"
-                                });
-                                frm.set_route("Form", "Lot", values.lot_name);
+                                frappe.open_in_new_tab = true
+                                frappe.set_route("Form", "Lot", values.lot_name);
                             }
                         });
                     }

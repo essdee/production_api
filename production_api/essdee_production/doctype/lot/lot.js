@@ -2,15 +2,15 @@
 // For license information, please see license.txt
 
 frappe.ui.form.on("Lot", {
-	setup(frm){
-		frm.set_query('production_detail',(doc)=> {
-			return{
+	setup(frm) {
+		frm.set_query('production_detail', (doc) => {
+			return {
 				filters: {
-					'item':doc.item
+					'item': doc.item
 				}
 			}
 		})
-		frm.set_query("production_order", (doc)=> {
+		frm.set_query("production_order", (doc) => {
 			return {
 				filters: {
 					"item": doc.item,
@@ -24,6 +24,16 @@ frappe.ui.form.on("Lot", {
 		frm.page.add_menu_item(__("Calculate"), function () {
 			calculate_all(frm);
 		}, false, 'Ctrl+E', false);
+		frappe.db.get_single_value("MRP Settings", "enable_production_order").then((r)=> {
+			let x = true
+			if(!r){
+				x = false
+			}
+			frm.set_df_property("production_order", "read_only", !x)
+			frm.set_df_property("item", "read_only", x)
+			frm.refresh_field("production_order")
+			frm.refresh_field("item")
+		})
 		if (!frm.is_new()) {
 			frm.add_custom_button(__('Purchase Summary'), function () {
 				frappe.set_route("query-report", "Lot Purchase Summary", {
@@ -70,9 +80,15 @@ frappe.ui.form.on("Lot", {
 						item_name: frm.doc.item,
 						uom: frm.doc.uom,
 						production_detail: frm.doc.production_detail,
+						ppo: frm.doc.production_order,
 					},
-					callback:function(r){
-						frm.item.load_data(r.message) 
+					callback: function (r) {
+						frm.item.load_data(r.message)
+						if(frm.doc.production_order){
+							frm.item.show_inputs()
+							frm.item.load_data(r.message)
+						}
+						cur_frm.dirty()
 					}
 				})
 			}
@@ -309,7 +325,15 @@ frappe.ui.form.on("Lot", {
 			$(frm.fields_dict['ocr_detail_html'].wrapper).html("")
 			new frappe.production.ui.OCRDetail(frm.fields_dict['ocr_detail_html'].wrapper)
 		}
-    },
+	},
+	production_order(frm) {
+		if (frm.doc.production_order) {
+			frappe.db.get_value("Production Order", frm.doc.production_order, "item").then((r) => {
+				frm.set_value("item", r.message.item)
+				frm.refresh_field("item")
+			})
+		}
+	},
 	// fetch_cad_template(frm){
 	// 	frm.cad_detail.load_data([])
 	// 	if(!frm.is_dirty()){
@@ -363,15 +387,20 @@ frappe.ui.form.on("Lot", {
 				}
 			})
 			frappe.call({
-				method : 'production_api.essdee_production.doctype.lot.lot.get_item_details',
-				args : {
-					item_name : frm.doc.item,
+				method: 'production_api.essdee_production.doctype.lot.lot.get_item_details',
+				args: {
+					item_name: frm.doc.item,
 					uom: frm.doc.uom,
-					production_detail:frm.doc.production_detail,
-					dependent_attr_mapping: frm.doc.dependent_attribute_mapping
+					production_detail: frm.doc.production_detail,
+					dependent_attr_mapping: frm.doc.dependent_attribute_mapping,
+					ppo: frm.doc.production_order,
 				},
-				callback:function(r){
-					frm.item.load_data(r.message) 
+				callback: function (r) {
+					frm.item.load_data(r.message)
+					if(frm.doc.production_order){
+						frm.item.show_inputs()
+						frm.item.load_data(r.message)
+					}
 				}
 			})
 		}

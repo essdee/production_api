@@ -25,6 +25,7 @@
   "product_category",
   "size_range",
   "description",
+  "tech_pack_no",
   "section_break_zlpx",
   "is_set_item",
   "brand",
@@ -463,6 +464,13 @@
    "fieldtype": "Link",
    "label": "Brand",
    "options": "Product Brand"
+  },
+  {
+   "default": "0",
+   "fieldname": "tech_pack_no",
+   "fieldtype": "Int",
+   "label": "Tech Pack No",
+   "read_only": 1
   }
  ],
  "grid_page_length": 50,
@@ -474,7 +482,7 @@
    "link_fieldname": "product"
   }
  ],
- "modified": "2025-12-25 10:43:52.026512",
+ "modified": "2026-01-05 17:54:20.391220",
  "modified_by": "Administrator",
  "module": "Product Development",
  "name": "Product",

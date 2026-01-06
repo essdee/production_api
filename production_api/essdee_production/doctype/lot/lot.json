@@ -8,6 +8,7 @@
  "engine": "InnoDB",
  "field_order": [
   "lot_name",
+  "production_order",
   "item",
   "assigned_person",
   "pack_out_stage",
@@ -78,7 +79,8 @@
    "fieldtype": "Link",
    "in_standard_filter": 1,
    "label": "Item",
-   "options": "Item"
+   "options": "Item",
+   "read_only": 1
   },
   {
    "fieldname": "column_break_tvkgg",
@@ -389,6 +391,12 @@
    "fieldtype": "Link",
    "label": "Season",
    "options": "Product Season"
+  },
+  {
+   "fieldname": "production_order",
+   "fieldtype": "Link",
+   "label": "Production Order",
+   "options": "Production Order"
   },
   {
    "default": "0",

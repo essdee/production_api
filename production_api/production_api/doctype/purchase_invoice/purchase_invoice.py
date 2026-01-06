@@ -604,8 +604,6 @@ def calculate_grns(grn_list, wo, allow_to_change_rate):
 				})
 				grn_total_received[key]['qty'] += row.quantity
 	
-	print(received_json)
-	print(complete)
 	if received_json:
 		for row in complete['items']:
 			attrs = row['attributes']

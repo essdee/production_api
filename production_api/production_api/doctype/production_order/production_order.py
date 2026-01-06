@@ -9,6 +9,10 @@ from production_api.production_api.doctype.item.item import get_attribute_detail
 
 class ProductionOrder(Document):
 	def before_submit(self):
+		docstatus = frappe.get_value("Production Term", self.production_term, "docstatus")
+		if docstatus != 1:
+			frappe.throw("Selected Term is not valid")
+			
 		self.posting_date = frappe.utils.nowdate()
 			
 	def onload(self):

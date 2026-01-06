@@ -182,7 +182,7 @@ frappe.ui.form.on("Finishing Plan", {
                             freeze: true,
                             freeze_message: "Creating Alternative FP",
                             callback: function (r) {
-                                frm.set_route("Form", "Work Order", r.message)
+                                frappe.set_route("Form", "Work Order", r.message)
                                 d.hide();
                             }
                         })

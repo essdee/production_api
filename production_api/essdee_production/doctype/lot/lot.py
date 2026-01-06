@@ -55,7 +55,29 @@ class Lot(Document):
 		for item in self.lot_order_details:
 			total_qty += vars(item)['quantity']
 		self.total_order_quantity = total_qty
+	
+	def before_save(self):
+		if not self.is_new():
+			prev_ppo = frappe.get_value("Lot", self.name, "production_order")
+			cur_ppo = self.production_order
+			if not prev_ppo and not cur_ppo:
+				pass
+			elif not prev_ppo and cur_ppo:
+				add_ppo_lot_qty(self.production_order, self.name, self.items)
+			elif prev_ppo and not cur_ppo:
+				delete_ppo_lot_qty(prev_ppo, self.name)
+			elif prev_ppo and cur_ppo:
+				if prev_ppo == cur_ppo:
+					delete_ppo_lot_qty(prev_ppo, self.name)
+					add_ppo_lot_qty(self.production_order, self.name, self.items)
+				else:
+					delete_ppo_lot_qty(prev_ppo, self.name)
+					add_ppo_lot_qty(self.production_order, self.name, self.items)
 
+	def after_insert(self):
+		if len(self.items) > 0 and self.production_order:
+			add_ppo_lot_qty(self.production_order, self.name, self.items)			
+	
 	def calculate_order(self):	
 		previous_data = {}
 		for item in self.lot_order_details:
@@ -109,6 +131,26 @@ class Lot(Document):
 		# if self.cad_detail_data:
 		# 	data = update_if_string_instance(self.cad_detail_data)		
 		# 	self.set_onload("cad_item_details", data)
+
+def delete_ppo_lot_qty(ppo, lot):
+	frappe.db.sql(
+		f"""
+			DELETE FROM `tabProduction Ordered Detail` 
+			WHERE parent = {frappe.db.escape(ppo)} 
+			AND lot = {frappe.db.escape(lot)}
+		"""
+	)
+
+def add_ppo_lot_qty(ppo, lot, items):
+	for item in items:
+		doc = frappe.new_doc("Production Ordered Detail")
+		doc.parent = ppo
+		doc.item_variant = item.item_variant
+		doc.quantity = item.qty
+		doc.lot = lot
+		doc.parenttype = "Production Order"
+		doc.parentfield = "production_ordered_details"
+		doc.save(ignore_permissions=True)
 
 def get_time_and_action_process(action_details):
 	items = []
@@ -478,7 +520,7 @@ def variant_attribute_details(variant):
 	return attribute_details
 
 @frappe.whitelist()
-def get_item_details(item_name, attr_details = None, uom=None, production_detail=None, dependent_state=None, dependent_attr_mapping=None):
+def get_item_details(item_name, attr_details = None, uom=None, production_detail=None, dependent_state=None, dependent_attr_mapping=None, ppo=None):
 	from production_api.essdee_production.doctype.item_production_detail.item_production_detail import get_ipd_primary_values
 	if not attr_details:
 		item = get_attribute_details(item_name, dependent_attr_mapping=dependent_attr_mapping)
@@ -516,6 +558,28 @@ def get_item_details(item_name, attr_details = None, uom=None, production_detail
 		pack_attr_value = frappe.get_value("Item Production Detail", production_detail, "packing_attribute")
 		item['packing_attr'] = pack_attr_value
 		item['primary_attribute_values'] = get_ipd_primary_values(production_detail)
+		if ppo:
+			primary = frappe.get_value("Item Production Detail", production_detail, "primary_item_attribute")
+			ppo_doc = frappe.get_doc("Production Order", ppo)
+			d = {
+				"primary_attribute": primary,
+				"attributes": {},
+				"values": {},
+			}
+			values = {}
+			for row in ppo_doc.production_order_details:
+				attrs = get_variant_attr_details(row.item_variant)
+				values.setdefault(attrs[primary], {
+					"qty": row.quantity,
+					"ratio": row.ratio,
+					"mrp": row.mrp
+				})
+			for row in ppo_doc.production_ordered_details:
+				attrs = get_variant_attr_details(row.item_variant)
+				values[attrs[primary]]['qty'] -= row.quantity
+			d['values'] = values
+			item['items'].append(d)
+
 	return item
 
 @frappe.whitelist()

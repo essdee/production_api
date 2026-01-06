@@ -210,17 +210,29 @@ frappe.ui.form.on("Item Production Detail", {
 				frm.trigger('make_set_combination')
 			}
 			frm.add_custom_button("Duplicate IPD", ()=> {
-				frappe.call({
-					method: "production_api.essdee_production.doctype.item_production_detail.item_production_detail.duplicate_ipd",
-					args: {
-						"ipd": frm.doc.name
+				let d = new frappe.ui.Dialog({
+					title: "Are you sure want to duplicate this IPD",
+					primary_action_label: "Yes",
+					secondary_action_label: "No",
+					primary_action(){
+						frappe.call({
+							method: "production_api.essdee_production.doctype.item_production_detail.item_production_detail.duplicate_ipd",
+							args: {
+								"ipd": frm.doc.name
+							},
+							freeze: true,
+							freeze_message: "Duplicating IPD",
+							callback: function(r){
+								d.hide()
+								frappe.set_route("Form", "Item Production Detail", r.message)
+							}
+						})
 					},
-					freeze: true,
-					freeze_message: "Duplicating IPD",
-					callback: function(r){
-						frappe.set_route("Form", "Item Production Detail", r.message)
+					secondary_action(){
+						d.hide()
 					}
 				})
+				d.show()
 			})
 		}
 		

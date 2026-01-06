@@ -1370,7 +1370,7 @@ def duplicate_ipd(ipd):
 			"set_item_attribute": ipd_doc.set_item_attribute,
 			"major_attribute_value": ipd_doc.major_attribute_value,
 		})
-		doc.set("set_item_combination_details", ipd_doc.set_item_combination_details)
+		doc.set("set_item_combination_details", get_dict_table(ipd_doc.set_item_combination_details))
 		doc.save()
 
 	items = []
