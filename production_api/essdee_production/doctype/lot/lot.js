@@ -24,16 +24,20 @@ frappe.ui.form.on("Lot", {
 		frm.page.add_menu_item(__("Calculate"), function () {
 			calculate_all(frm);
 		}, false, 'Ctrl+E', false);
-		frappe.db.get_single_value("MRP Settings", "enable_production_order").then((r)=> {
-			let x = true
-			if(!r){
-				x = false
+		frappe.call({
+			method: "production_api.essdee_production.doctype.lot.lot.check_enabled_po",
+			callback: function(r){
+				let x = true
+				if(!r.message){
+					x = false
+				}
+				frm.set_df_property("production_order", "read_only", !x)
+				frm.set_df_property("item", "read_only", x)
+				frm.refresh_field("production_order")
+				frm.refresh_field("item")
 			}
-			frm.set_df_property("production_order", "read_only", !x)
-			frm.set_df_property("item", "read_only", x)
-			frm.refresh_field("production_order")
-			frm.refresh_field("item")
 		})
+		
 		if (!frm.is_new()) {
 			frm.add_custom_button(__('Purchase Summary'), function () {
 				frappe.set_route("query-report", "Lot Purchase Summary", {
