@@ -24,6 +24,7 @@
                                 {{ j }}
                             </th>
                             <th v-if="i.is_set_item">Panels</th>
+                            <th>Total</th>
                             <th v-if="pop_up == 1 || pop_up == 2">Completed</th>
                         </tr>
                         <tr v-for="(j, item1_index) in i.items" :key="item1_index">
@@ -41,6 +42,7 @@
                                 </div>
                                 <div v-else>--</div>
                             </td>
+                            <td>{{ j.total_qty }}</td>
                             <td v-if='i.is_set_item'>
                                 <div v-for="panel in i[i.stiching_attr][j.attributes[i.set_item_attr]]" :key="panel">
                                     {{panel}}
@@ -190,9 +192,7 @@ function load_data(item_data, is_pop_up){
         items.value = JSON.parse(item_data);
         items2.value = JSON.parse(item_data);
         pop_up.value = is_pop_up
-        if(pop_up.value == 3){
-            get_total()
-        }
+        get_total()
     } 
     catch(e) {
         console.log(e)
@@ -239,6 +239,9 @@ function get_total(){
                     row.total_qty = x
                     total_cut_qty['qty'] += x
                 }
+                else{
+                    row.total_qty = 0
+                }
             })
         }
         else{
@@ -261,6 +264,9 @@ function get_total(){
                         })
                         row.total_qty = x
                         total_cut_qty[part] += x
+                    }
+                    else{
+                        row.total_qty = 0
                     }
                 })  
             })

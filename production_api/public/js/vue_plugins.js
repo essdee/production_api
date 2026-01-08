@@ -77,6 +77,7 @@ import ColourWiseDiffReport from "./components/ColourWiseDiffReport.vue"
 import InvoiceWoItems from "./PurchaseInvoice/components/InvoiceWOItems.vue"
 import RecutPrintPanelDetail from "./CuttingPlan/components/RecutPrintPanelDetails.vue"
 import RecutPrintPanelView from "./CuttingPlan/components/RecutPrintPanelView.vue"
+import MultiCCR from "./CuttingPlan/components/MultiCCR.vue"
 
 import QualityInspection from "./WorkOrder/components/QualityInspection.vue";
 // Product Development
@@ -1161,6 +1162,18 @@ frappe.production.ui.RecutPrintPanelView = class {
     }
     load_data(type) {
         this.vue.load_data(type)
+    }
+}
+
+frappe.production.ui.MultiCCR = class{
+    constructor(wrapper) {
+        this.$wrapper = $(wrapper)
+        this.make_app()
+    }
+    make_app(){
+        this.app = createApp(MultiCCR)
+        SetVueGlobals(this.app)
+        this.vue = this.app.mount(this.$wrapper.get(0))
     }
 }
 

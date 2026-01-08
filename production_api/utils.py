@@ -2319,3 +2319,228 @@ def get_lotwise_cloth_usage_report(item_list, lot_list):
 		lot_dict['lot_data'][lot]["sizes"] = sizes
 
 	return lot_dict
+
+@frappe.whitelist()
+def get_multiccr(open_status, lot_list, item_list, category):
+	conditions = ""
+	con = {}
+	if category:
+		conditions += " AND t2.product_category = %(category)s"
+		con = {
+			"category": category
+		}
+	lot_list = update_if_string_instance(lot_list)
+	item_list = update_if_string_instance(item_list)
+
+	if lot_list:
+		lot_list.append("")
+		conditions += " AND t1.name IN %(lot_list)s"
+		con['lot_list'] = tuple(lot_list)
+
+	if item_list:
+		item_list.append("")
+		conditions += " AND t1.item IN %(item_list)s"
+		con['item_list'] = tuple(item_list)
+
+	if open_status:
+		conditions += " AND t1.status = %(status)s"
+		con['status'] = open_status
+
+	lot_list = frappe.db.sql(
+		f"""
+			SELECT t1.name FROM `tabLot` t1 JOIN `tabItem` t2 ON t1.item = t2.name 
+			WHERE 1 = 1 {conditions} AND (t1.production_detail IS NOT NULL AND t1.production_detail != '')
+		""", con, as_dict=True
+	)
+	lot_data = {}
+	output_lots = []
+	output_items = []
+	for lot in lot_list:
+		lot = lot['name']
+		cp_list = frappe.get_all("Cutting Plan", filters={
+			"lot": lot,
+			"docstatus": 1,
+		}, pluck="name")
+		total_qty = 0
+		for cp in cp_list:
+			if lot not in output_lots:
+				output_lots.append(lot)
+			cp_fields = ['item', 'lay_no', 'no_of_colours', 'completed_items_json', 'version']
+			(
+				item_name, lay_no, no_of_colours, completed, version
+			) = frappe.get_value("Cutting Plan", cp, cp_fields)
+			if item_name not in output_items:
+				output_items.append(item_name)
+			completed = [update_if_string_instance(completed)]
+			for row in completed:
+				if not row['is_set_item']:
+					for item in row['items']:
+						total = 0
+						for size in item['values']:
+							total += item['values'][size]
+						item['total_qty'] = total	
+						total_qty += total
+				else:
+					for part in row['Panel']:
+						for item in row['items']:
+							if item['attributes'][item['set_attr']] == part:
+								total = 0
+								for size in item['values']:
+									total += item['values'][size]
+								item['total_qty'] = total	
+								total_qty += total
+			cloth_details = frappe.get_all(
+				"Cutting Plan Cloth Detail",
+				filters={
+					"parent": cp,
+					"parenttype": "Cutting Plan",
+					"parentfield": "cutting_plan_cloth_details",
+				},
+				fields=[
+					"cloth_item_variant",
+					"cloth_type",
+					"dia",
+					"colour",
+					"required_weight",
+					"weight",
+					"used_weight",
+					"balance_weight",
+				],
+			)
+			lot_data = get_lot_data(
+						lot, 
+						lot_data, 
+						cloth_details, 
+						completed, 
+						item_name, 
+						lay_no, 
+						no_of_colours, 
+						version, 
+						total_qty
+					)
+
+	item_data = get_item_data(lot_data)		
+			
+	d = {
+		"output_lots": output_lots,
+		"output_items": output_items,
+		"data": lot_data,
+		"item_data": item_data,
+	}			
+	return d
+
+def get_item_data(lot_data):
+	item_data = {}
+	import copy
+	lot_details = copy.deepcopy(lot_data)
+	for lot in lot_details:
+		item_name = lot_details[lot]['item']
+		if item_name not in item_data:
+			item_data[item_name] = {
+				"completed_json": lot_details[lot]['completed_json'],
+				"total_qty": lot_details[lot]['total_qty'],
+				"cloth_details": lot_details[lot]['cloth_details'],
+				"cloth_total": lot_details[lot]['cloth_total'], 
+			}
+		else:
+			item_data[item_name]['total_qty'] += lot_details[lot]['total_qty']
+			d = {}
+			old_details = item_data[item_name]['cloth_details']
+			for row in old_details:
+				key = (row['cloth_item_variant'], row['cloth_type'])
+				d[key] = row
+
+			for row in lot_details[lot]['cloth_details']:
+				key = (row['cloth_item_variant'], row['cloth_type'])
+				if key in d:
+					d[key]['used_weight'] += row['used_weight']
+					d[key]['weight'] += row['weight']
+					d[key]['required_weight'] += row['required_weight']
+				else:
+					d[key] = row	
+			item_data[item_name]['cloth_total']['balance'] = 0
+			item_data[item_name]['cloth_total']['received'] = 0
+			item_data[item_name]['cloth_total']['used'] = 0
+			item_data[item_name]['cloth_total']['required'] = 0 
+			for key in d:
+				row = d[key]
+				row['balance_weight'] = round(row['weight'] - row['used_weight'], 3)
+				item_data[item_name]['cloth_total']['balance'] += row['balance_weight']
+				item_data[item_name]['cloth_total']['received'] += row['weight']
+				item_data[item_name]['cloth_total']['used'] += row['used_weight']
+				item_data[item_name]['cloth_total']['required'] += row['required_weight']
+
+			item_data[item_name]['cloth_details'] = d.values()		
+
+			old_json = item_data[item_name]['completed_json'][0]
+			new_json = lot_details[lot]['completed_json'][0]
+			for item1 in old_json['items']:
+				item1['total_qty'] = 0
+				for item2 in new_json['items']:
+					if item1['attributes'] != item2['attributes'] or item1['item_keys'] != item2['item_keys']:
+						continue
+					for size in item2['values']:
+						if not item1['values'].get(size):
+							item1['values'][size] = 0	
+						item1['values'][size] += item2['values'][size]
+						item1['total_qty'] += item1['values'][size]
+					break	
+
+			for size in new_json['total_qty']:
+				old_json['total_qty'][size] += new_json['total_qty'][size]
+
+			item_data[item_name]['completed_json'] = [old_json]		
+
+	return item_data
+
+def get_lot_data(lot, lot_data, cloth_details, completed, item_name, lay_no, no_of_colours, version, total_qty):
+	cloth_total = {
+		"required": 0,
+		"used": 0,
+		"balance": 0,
+		"received": 0,
+	}
+	if lot in lot_data:
+		old_cloth_details = lot_data[lot]['cloth_details']
+		for row1 in old_cloth_details:
+			for row2 in cloth_details:
+				if row1['cloth_item_variant'] == row2['cloth_item_variant']:
+					row1['used_weight'] += row2['used_weight']
+					row1['required_weight'] += row2['required_weight']
+					row1['weight'] += row2['weight']
+		
+		for row1 in old_cloth_details:
+			row1['balance_weight'] = round(row1['weight'] - row1['used_weight'], 3	)
+			cloth_total['balance'] += row1['balance_weight']
+			cloth_total['received'] += row1['weight']
+			cloth_total['used'] += row1['used_weight']
+			cloth_total['required'] += row1['required_weight']
+		
+		lot_data[lot]['cloth_total'] = cloth_total	
+		lot_data[lot]['cloth_details'] = old_cloth_details	
+
+		old_completed = lot_data[lot]['completed_json']
+		for row1, row2 in zip(old_completed, completed):
+			for item1, item2 in zip(row1['items'], row2['items']):
+				for size1, size2 in zip(item1['values'], item2['values']):
+					item1['values'][size1] += item2['values'][size2]
+				item1['total_qty'] += item2['total_qty']	
+		lot_data[lot]['completed_json'] = old_completed		
+	else:
+		for row in cloth_details:
+			cloth_total['required'] += row['required_weight']
+			cloth_total['used'] += row['used_weight']
+			cloth_total['balance'] += row['balance_weight']
+			cloth_total['received'] += row['weight']
+
+		lot_data[lot] = {
+			"item": item_name,
+			"lay_no": lay_no,
+			"no_of_colours": no_of_colours,
+			"completed_json": completed,
+			"version": version,
+			"total_qty": total_qty,
+			"cloth_details": cloth_details,
+			"cloth_total": cloth_total, 
+		}
+	return lot_data	
