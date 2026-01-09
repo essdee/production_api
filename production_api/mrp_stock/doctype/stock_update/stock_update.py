@@ -14,10 +14,14 @@ from production_api.production_api.doctype.purchase_order.purchase_order import 
 
 class StockUpdate(Document):
 	def before_submit(self):
-		if self.update_type == 'Reduce':
-			for row in self.stock_update_details:
-				if row.available_stock < row.update_diff_qty:
-					frappe.throw(f"{row.item_variant} is not Available to Reduce {row.update_diff_qty - row.available_stock}")
+		for row in self.stock_update_details:
+			if self.update_type == 'Reduce' and row.available_stock < row.update_diff_qty :
+				frappe.throw(f"{row.item_variant} is not Available to Reduce {row.update_diff_qty - row.available_stock}")
+			item_name = frappe.get_value("Item Variant", row.item_variant, "item")
+			dept_attr = frappe.get_value("Item", item_name, "dependent_attribute")
+			if dept_attr:
+				frappe.throw("Can't update Dependent Attribute Item")
+
 		self.update_uom_details()
 
 	def on_submit(self):
