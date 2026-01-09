@@ -84,7 +84,7 @@ class WorkOrder(Document):
 				fp_dict = get_finishing_plan_dict(fp_doc)
 				for row in self.deliverables:
 					item = frappe.get_value("Item Variant", row.item_variant, "item")
-					if item == self.item:
+					if item == self.item and row.qty > 0:
 						attrs = get_variant_attr_details(row.item_variant)
 						new_variant = get_or_create_variant(fp_item, attrs)
 						reduce_items.append({

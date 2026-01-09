@@ -1744,6 +1744,7 @@ def create_alternative_fp(doc_name, alternative_item, production_detail, lot_nam
 			item['items'][idx]['work_order_qty'] = d
 			idx += 1	
 	new_wo_name = get_deliverable_receivable(items, wo_doc.name, is_alternate=True)
+	frappe.db.set_value("Lot", fp_doc.lot, "has_transferred", 1)
 	return new_wo_name
 
 def save_item_details(item_details, alternative_item, pcs_per_box, pack_stage, primary_attr, dependent_attr):
@@ -1824,3 +1825,18 @@ def check_process_cost(process_name, item, supplier):
 	
 	if not docname:
 		frappe.throw('No process cost was defined')
+
+@frappe.whitelist()
+def get_alternative_details(lot):
+	from production_api.essdee_production.doctype.lot.lot import fetch_order_item_details
+	lot_list = frappe.get_all("Lot", filters={"transferred_lot": lot}, pluck="name")
+	lot_dict = {}
+	for lot in lot_list:
+		lot_doc = frappe.get_doc("Lot", lot)
+		details = fetch_order_item_details(lot_doc.lot_order_details, lot_doc.production_detail)
+		lot_dict[lot] = {
+			"item": lot_doc.item,
+			"ipd": lot_doc.production_detail,
+			"details": details
+		}
+	return lot_dict

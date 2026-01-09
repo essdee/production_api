@@ -24,6 +24,7 @@
   "uom",
   "expected_delivery_date",
   "size_set_colour_colour",
+  "has_transferred",
   "is_transferred",
   "transferred_lot",
   "section_break_qubc",
@@ -63,7 +64,9 @@
   "section_break_cmku",
   "time_and_action_report_html",
   "ocr_detail_tab",
-  "ocr_detail_html"
+  "ocr_detail_html",
+  "alternative_detail_tab",
+  "alternative_html"
  ],
  "fields": [
   {
@@ -411,11 +414,29 @@
    "label": "Transferred Lot",
    "options": "Lot",
    "read_only": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "has_transferred",
+   "fieldtype": "Check",
+   "label": "Has Transferred",
+   "read_only": 1
+  },
+  {
+   "depends_on": "eval: doc.has_transferred",
+   "fieldname": "alternative_detail_tab",
+   "fieldtype": "Tab Break",
+   "label": "Alternative Detail"
+  },
+  {
+   "fieldname": "alternative_html",
+   "fieldtype": "HTML",
+   "label": "Alternative HTML"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-01-05 16:16:59.923757",
+ "modified": "2026-01-09 17:03:18.712181",
  "modified_by": "Administrator",
  "module": "Essdee Production",
  "name": "Lot",

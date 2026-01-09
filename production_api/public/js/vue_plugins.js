@@ -12,11 +12,15 @@ import GRNPurchaseOrder from "./GRN/components/GRNPurchaseOrder.vue";
 import GRNWorkOrder from "./GRN/components/GRNWorkOrder.vue";
 import GRNReturnItem from "./GRN/components/GRNReturnItem.vue"
 import GRNConsumedDetail from "./GRN/components/GRNConsumedDetail.vue"
-import LotOrder from "./Lot/components/LotOrder.vue"
-import WorkStation from "./Lot/components/WorkStation.vue"
+import {
+    LotOrderWrapper,
+    OCRDetailWrapper,
+    WorkStationWrapper,
+    InwardQuantityReportWrapper,
+    InhouseQuantityWrapper,
+    // CadDetailWrapper,
+} from "./Lot";
 import TimeActionPreview from "./TimeAndAction/TimeActionPreview.vue"
-import InwardQuantityReport from "./Lot/components/InwardQuantityReport.vue";
-import InhouseQuantity from "./Lot/components/InhouseQuantity.vue";
 import TimeAction from "./TimeAndAction/TimeAction.vue"
 import TimeActionReport from "./TimeAndAction/TimeActionReport.vue"
 import CutPlanItems from "./CuttingPlan/components/CutPlanItems.vue"
@@ -31,14 +35,19 @@ import ClothAccessoryCombination from "./Item_Po_detail/ClothAccessoryCombinatio
 import AccessoryItems from "./Item_Po_detail/AccessoryItems.vue"
 import BundleGroup from "./Item_Po_detail/BundleGroup.vue"
 import { StockEntryWrapper, StockReconciliationWrapper, LotTransferWrapper, StockUpdateWrapper } from "./Stock";
-import WorkOrderDeliverables from "./WorkOrder/components/Deliverables.vue"
-import WorkOrderRework from "./WorkOrder/components/WOReworkPopUp.vue"
-import WOReworkDeliverable from "./WorkOrder/components/WOReworkDeliverables.vue"
-import WOReworkReceivable from "./WorkOrder/components/WOReworkReceivables.vue"
-import WorkOrderReceivables from "./WorkOrder/components/Receivables.vue"
-import WorkOrderItemView from "./WorkOrder/components/WorkOrderItemView.vue"
-import WOSummary from "./WorkOrder/components/WoSummary.vue"
-import ReworkCompletion from "./WorkOrder/components/ReworkCompletion.vue"
+import {
+    DeliverablesWrapper,
+    WOReworkPopUpWrapper,
+    WOReworkDeliverablesWrapper,
+    WOReworkReceivablesWrapper,
+    ReceivablesWrapper,
+    ReworkPageWrapper,
+    WorkOrderItemViewWrapper,
+    WOSummaryWrapper,
+    QualityInspectionWrapper,
+    ReworkCompletionWrapper,
+} from "./WorkOrder";
+
 import LaySheetCloths from "./CuttingLaySheet/components/LaySheetCloths.vue"
 import LaySheetAccessory from "./CuttingLaySheet/components/LaySheetAccessory.vue"
 import DeliveryChallan from "./Delivery_Challan/components/deliverable_items.vue"
@@ -54,21 +63,23 @@ import CutBundleEdit from "./Cut_Bundle_Edit/components/CutBundleEdit.vue";
 import DailyProductionReport from "./CuttingLaySheet/components/DailyProductionReport.vue";
 import DailyCutSheetReport from "./CuttingLaySheet/components/DailyCutSheetReport.vue";
 import GRNPacking from "./GRN/components/GRNPacking.vue";
-import FinishingGRN from "./Finishing/FinishingGRN.vue";
+import {
+    FinishingGRNWrapper,
+    FinishingDetailWrapper,
+    AlternativeItemWrapper,
+    AlternativeDetailWrapper,
+    FinishingInwardWrapper,
+    FinishingIroningExcessWrapper,
+    FinishingOCRWrapper,
+    FinishingPackReturnWrapper,
+    FinishingPlanCompleteTransferWrapper,
+    FinishingPlanDispatchWrapper,
+    FinishingOldLotTransferWrapper,
+    FinishingQtyDetailWrapper,
+} from "./Finishing";
+
 import ProductionOrder from "./ProductionOrder/components/ProductionOrder.vue";
 import UpdatePrice from "./ProductionOrder/components/UpdatePrice.vue";
-import OCRDetail from './Lot/components/OCRDetail.vue';
-import ReworkPage from "./WorkOrder/components/ReworkPage.vue";
-import FinishingDetail from "./Finishing/FinishingDetail.vue"
-import FinishingQtyDetail from "./Finishing/FinishingQtyDetail.vue"
-import FinishingInward from "./Finishing/FinishingInward.vue"
-import FinishingOldLotTransfer from "./Finishing/FinishingOldLotTransfer.vue"
-import FinishingIroningExcess from "./Finishing/FinishingIroningExcess.vue";
-import FinishingOCR from "./Finishing/FinishingOCR.vue"
-import FinishingPackReturn from "./Finishing/FinishingPackReturn.vue"
-import FinishingPlanCompleteTransfer from "./Finishing/FinishingPlanCompleteTransfer.vue";
-import FinishingPlanDispatch from "./Finishing/FinishingPlanDispatch.vue";
-import AlternativeItem from "./Finishing/AlternativeItem.vue"
 import ActionDetail from "./ActionMaster/ActionDetail.vue"
 import WorkInProgress from "./components/WorkInProgress.vue"
 import MonthWiseDetailReport from "./components/MonthWiseDetailReport.vue"
@@ -79,7 +90,6 @@ import RecutPrintPanelDetail from "./CuttingPlan/components/RecutPrintPanelDetai
 import RecutPrintPanelView from "./CuttingPlan/components/RecutPrintPanelView.vue"
 import MultiCCR from "./CuttingPlan/components/MultiCCR.vue"
 
-import QualityInspection from "./WorkOrder/components/QualityInspection.vue";
 // Product Development
 import {
     ProductFileVersionsWrapper,
@@ -103,7 +113,6 @@ frappe.provide("frappe.production.product_development.ui");
 
 frappe.production.ui.eventBus = EventBus;
 
-
 frappe.production.ui.ItemAttributeValues = class {
     constructor({ wrapper, attr_values, attr_name } = {}) {
         this.$wrapper = $(wrapper);
@@ -111,7 +120,6 @@ frappe.production.ui.ItemAttributeValues = class {
         this.attr_name = attr_name;
         this.make_body();
     }
-
     make_body() {
         this.$page_container = $('<div class="attribute-value-template frappe-control">').appendTo(this.$wrapper);
         this.app = createApp(AttributeValues);
@@ -131,7 +139,6 @@ frappe.production.ui.ItemAttributeList = class {
         this.attr_name = attr_name;
         this.make_body();
     }
-
     make_body() {
         this.$page_container = $('<div class="attribute-list-template frappe-control">').appendTo(this.$wrapper);
         this.app = createApp(AttributeList);
@@ -149,7 +156,6 @@ frappe.production.ui.ItemDependentAttributeDetail = class {
         this.$wrapper = $(wrapper);
         this.make_body();
     }
-
     make_body() {
         this.$page_container = $('<div class="dependent-attribute-template frappe-control">').appendTo(this.$wrapper);
         this.app = createApp(DependentAttributeTemplate);
@@ -319,7 +325,6 @@ frappe.production.ui.BundleGroup = class {
     }
 }
 
-
 frappe.production.ui.BomItemAttributeMapping = BOMAttributeMappingWrapper;
 
 frappe.production.ui.ItemPriceList = ItemPriceList;
@@ -339,39 +344,6 @@ frappe.production.ui.ItemDetail = function (wrapper, type, data) {
     //     })
     // });
 };
-
-// frappe.production.ui.PurchaseOrderItem = function(wrapper) {
-//     let $wrapper = $(wrapper);
-//     let $page_container = $('<div class="item frappe-control">').appendTo($wrapper);
-//     return new Vue({
-//         el: '.item',
-//         render: h => h(POItem, {
-//         })
-//     });
-// };
-
-frappe.production.ui.LotOrder = class {
-    constructor(wrapper) {
-        this.$wrapper = $(wrapper)
-        this.make_app()
-    }
-    make_app() {
-        this.app = createApp(LotOrder)
-        SetVueGlobals(this.app)
-        this.vue = this.app.mount(this.$wrapper.get(0))
-    }
-    get_data() {
-        let items = JSON.parse(JSON.stringify(this.vue.list_item))
-        return items
-    }
-    show_inputs() {
-        this.vue.show_add_items()
-    }
-    load_data(item_details) {
-        let items = JSON.parse(JSON.stringify(item_details));
-        this.vue.load_data(items)
-    }
-}
 
 frappe.production.ui.TimeAction = class {
     constructor(wrapper) {
@@ -431,25 +403,6 @@ frappe.production.ui.GRNPacking = class {
     }
 }
 
-frappe.production.ui.FinishingGRN = class {
-    constructor(wrapper) {
-        this.$wrapper = $(wrapper);
-        this.make_app()
-    }
-    make_app() {
-        this.app = createApp(FinishingGRN)
-        SetVueGlobals(this.app)
-        this.vue = this.app.mount(this.$wrapper.get(0))
-    }
-    load_data(data) {
-        this.vue.load_data(data)
-    }
-    get_data() {
-        let items = JSON.parse(JSON.stringify(this.vue.get_items()))
-        return items
-    }
-}
-
 frappe.production.ui.ProductionOrder = class {
     constructor(wrapper) {
         this.$wrapper = $(wrapper);
@@ -485,18 +438,6 @@ frappe.production.ui.UpdatePrice = class {
     get_data() {
         let items = JSON.parse(JSON.stringify(this.vue.get_items()))
         return items
-    }
-}
-
-frappe.production.ui.OCRDetail = class {
-    constructor(wrapper) {
-        this.$wrapper = $(wrapper);
-        this.make_app();
-    }
-    make_app() {
-        this.app = createApp(OCRDetail)
-        SetVueGlobals(this.app)
-        this.vue = this.app.mount(this.$wrapper.get(0))
     }
 }
 
@@ -605,179 +546,6 @@ frappe.production.ui.StockSummary = class {
     }
 }
 
-frappe.production.ui.FinishingDetail = class {
-    constructor(wrapper) {
-        this.$wrapper = $(wrapper)
-        this.make_app()
-    }
-    make_app() {
-        this.app = createApp(FinishingDetail)
-        SetVueGlobals(this.app)
-        this.vue = this.app.mount(this.$wrapper.get(0))
-    }
-    load_data(data) {
-        this.vue.load_data(JSON.parse(JSON.stringify(data)))
-    }
-}
-frappe.production.ui.AlternativeItem = class {
-    constructor(wrapper, data) {
-        this.$wrapper = $(wrapper)
-        this.make_app()
-        this.load_data(data)
-    }
-    make_app() {
-        this.app = createApp(AlternativeItem)
-        SetVueGlobals(this.app)
-        this.vue = this.app.mount(this.$wrapper.get(0))
-    }
-    load_data(data) {
-        this.vue.load_data(JSON.parse(JSON.stringify(data)))
-    }
-    get_data() {
-        return this.vue.get_items()
-    }
-}
-
-frappe.production.ui.FinishingInward = class {
-    constructor(wrapper) {
-        this.$wrapper = $(wrapper)
-        this.make_app()
-    }
-    make_app() {
-        this.app = createApp(FinishingInward)
-        SetVueGlobals(this.app)
-        this.vue = this.app.mount(this.$wrapper.get(0))
-    }
-    load_data(data) {
-        this.vue.load_data(JSON.parse(JSON.stringify(data)))
-    }
-}
-
-frappe.production.ui.FinishingIroningExcess = class {
-    constructor(wrapper) {
-        this.$wrapper = $(wrapper)
-        this.make_app()
-    }
-    make_app() {
-        this.app = createApp(FinishingIroningExcess)
-        SetVueGlobals(this.app)
-        this.vue = this.app.mount(this.$wrapper.get(0))
-    }
-    load_data(data) {
-        this.vue.load_data(JSON.parse(JSON.stringify(data)))
-    }
-}
-
-frappe.production.ui.FinishingOCR = class {
-    constructor(wrapper) {
-        this.$wrapper = $(wrapper)
-        this.make_app()
-    }
-    make_app() {
-        this.app = createApp(FinishingOCR)
-        SetVueGlobals(this.app)
-        this.vue = this.app.mount(this.$wrapper.get(0))
-    }
-    load_data(data) {
-        this.vue.load_data(JSON.parse(JSON.stringify(data)))
-    }
-}
-
-frappe.production.ui.FinishingPackReturn = class {
-    constructor(wrapper) {
-        this.$wrapper = $(wrapper)
-        this.make_app()
-    }
-    make_app() {
-        this.app = createApp(FinishingPackReturn)
-        SetVueGlobals(this.app)
-        this.vue = this.app.mount(this.$wrapper.get(0))
-    }
-    load_data(data) {
-        this.vue.load_data(JSON.parse(JSON.stringify(data)))
-    }
-}
-
-frappe.production.ui.FinishingPlanCompleteTransfer = class {
-    constructor(wrapper) {
-        this.$wrapper = $(wrapper)
-        this.make_app()
-    }
-    make_app() {
-        this.app = createApp(FinishingPlanCompleteTransfer)
-        SetVueGlobals(this.app)
-        this.vue = this.app.mount(this.$wrapper.get(0))
-    }
-}
-
-frappe.production.ui.FinishingPlanDispatch = class {
-    constructor(wrapper) {
-        this.$wrapper = $(wrapper)
-        this.make_app()
-    }
-    make_app() {
-        this.app = createApp(FinishingPlanDispatch)
-        SetVueGlobals(this.app)
-        this.vue = this.app.mount(this.$wrapper.get(0))
-    }
-    load_data(data) {
-        this.vue.load_data(JSON.parse(JSON.stringify(data)))
-    }
-    get_data() {
-        return this.vue.get_data()
-    }
-}
-
-frappe.production.ui.FinishingOldLotTransfer = class {
-    constructor(wrapper) {
-        this.$wrapper = $(wrapper)
-        this.make_app()
-    }
-    make_app() {
-        this.app = createApp(FinishingOldLotTransfer)
-        SetVueGlobals(this.app)
-        this.vue = this.app.mount(this.$wrapper.get(0))
-    }
-}
-
-frappe.production.ui.FinishingQtyDetail = class {
-    constructor(wrapper) {
-        this.$wrapper = $(wrapper)
-        this.make_app()
-    }
-    make_app() {
-        this.app = createApp(FinishingQtyDetail)
-        SetVueGlobals(this.app)
-        this.vue = this.app.mount(this.$wrapper.get(0))
-    }
-    load_data(data) {
-        this.vue.load_data(JSON.parse(JSON.stringify(data)))
-    }
-}
-
-
-frappe.production.ui.WorkStation = class {
-    constructor(wrapper) {
-        this.$wrapper = $(wrapper)
-        this.make_app()
-    }
-    make_app() {
-        this.app = createApp(WorkStation)
-        SetVueGlobals(this.app)
-        this.vue = this.app.mount(this.$wrapper.get(0))
-    }
-    load_data(data, type) {
-        let items = JSON.parse(JSON.stringify(data))
-        this.vue.load_data(items, type)
-    }
-    set_attributes() {
-        this.vue.set_attributes()
-    }
-    get_items() {
-        return this.vue.get_items()
-    }
-}
-
 frappe.production.ui.TimeActionPreview = class {
     constructor(wrapper) {
         this.$wrapper = $(wrapper)
@@ -791,30 +559,6 @@ frappe.production.ui.TimeActionPreview = class {
     load_data(data, start_date) {
         let items = JSON.parse(JSON.stringify(data))
         this.vue.load_data(items, start_date)
-    }
-}
-
-frappe.production.ui.InwardQuantityReport = class {
-    constructor(wrapper) {
-        this.$wrapper = $(wrapper)
-        this.make_app()
-    }
-    make_app() {
-        this.app = createApp(InwardQuantityReport)
-        SetVueGlobals(this.app)
-        this.vue = this.app.mount(this.$wrapper.get(0))
-    }
-}
-
-frappe.production.ui.InhouseQuantity = class {
-    constructor(wrapper) {
-        this.$wrapper = $(wrapper)
-        this.make_app()
-    }
-    make_app() {
-        this.app = createApp(InhouseQuantity)
-        SetVueGlobals(this.app)
-        this.vue = this.app.mount(this.$wrapper.get(0))
     }
 }
 
@@ -866,85 +610,6 @@ frappe.production.ui.ColourWiseDiffReport = class {
     }
 }
 
-frappe.production.ui.ReworkPage = class {
-    constructor(wrapper) {
-        this.$wrapper = $(wrapper)
-        this.make_app()
-    }
-    make_app() {
-        this.app = createApp(ReworkPage)
-        SetVueGlobals(this.app)
-        this.vue = this.app.mount(this.$wrapper.get(0))
-    }
-}
-
-frappe.production.ui.WorkOrderItemView = class {
-    constructor(wrapper) {
-        this.$wrapper = $(wrapper)
-        this.make_app()
-    }
-    make_app() {
-        this.app = createApp(WorkOrderItemView)
-        SetVueGlobals(this.app)
-        this.vue = this.app.mount(this.$wrapper.get(0))
-    }
-    load_data(item_details) {
-        let items = JSON.parse(JSON.stringify(item_details))
-        this.vue.load_data(items)
-    }
-    get_work_order_items() {
-        let items = this.vue.get_items()
-        for (let i = 0; i < items[0].items.length; i++) {
-            items[0].items[i]['entered_qty'] = {}
-        }
-        return items
-    }
-    create_input_attributes() {
-        this.vue.create_input_classes()
-    }
-}
-
-frappe.production.ui.WOSummary = class {
-    constructor(wrapper) {
-        this.$wrapper = $(wrapper)
-        this.make_app()
-    }
-    make_app() {
-        this.app = createApp(WOSummary)
-        SetVueGlobals(this.app)
-        this.vue = this.app.mount(this.$wrapper.get(0))
-    }
-    load_data(item_details, delivered_items) {
-        let items = JSON.parse(JSON.stringify(item_details))
-        let delivered = JSON.parse(JSON.stringify(delivered_items))
-        this.vue.load_data(items, delivered)
-    }
-}
-
-frappe.production.ui.QualityInspection = class {
-    constructor(wrapper) {
-        this.$wrapper = $(wrapper)
-        this.make_app()
-    }
-    make_app() {
-        this.app = createApp(QualityInspection)
-        SetVueGlobals(this.app)
-        this.vue = this.app.mount(this.$wrapper.get(0))
-    }
-    get_data() {
-        let items = this.vue.get_data()
-        return items
-    }
-    unmount() {
-        if (this.app) {
-            this.app.unmount();
-        }
-    }
-    load_data(data) {
-        this.vue.load_data(JSON.parse(JSON.stringify(data)))
-    }
-}
-
 frappe.production.ui.CutPlanItems = class {
     constructor(wrapper) {
         this.$wrapper = $(wrapper)
@@ -968,35 +633,6 @@ frappe.production.ui.CutPlanItems = class {
     }
     update_status() {
         this.vue.update_docstatus()
-    }
-}
-
-// frappe.production.ui.CadDetail = class {
-//     constructor(wrapper){
-//         this.$wrapper = $(wrapper)
-//         this.make_app()
-//     }
-//     make_app(){
-//         this.app = createApp(CadDetail)
-//         SetVueGlobals(this.app)
-//         this.vue = this.app.mount(this.$wrapper.get(0))
-//     }
-//     load_data(data){
-//         this.vue.load_data(JSON.parse(JSON.stringify(data)))
-//     }
-//     get_data(){
-//         return this.vue.get_data()
-//     }
-// }
-
-frappe.production.ui.ReworkCompletion = class {
-    constructor(wrapper) {
-        this.$wrapper = $(wrapper)
-        this.make_app()
-    }
-    make_app() {
-        this.app = createApp(ReworkCompletion)
-        this.vue = this.app.mount(this.$wrapper.get(0))
     }
 }
 
@@ -1025,22 +661,18 @@ frappe.production.ui.GRNPurchaseOrder = class {
         this.$wrapper = $(wrapper);
         this.make_body();
     }
-
     make_body() {
         this.app = createApp(GRNPurchaseOrder);
         SetVueGlobals(this.app)
         this.grn = this.app.mount(this.$wrapper.get(0));
     }
-
     updateWrapper(wrapper) {
         this.$wrapper = $(wrapper);
         $(this.vue.$el).appendTo(this.$wrapper)
     }
-
     get_items() {
         return this.grn.get_items();
     }
-
     load_data(data, skip_watch = false) {
         this.grn.load_data(data, skip_watch);
     }
@@ -1054,22 +686,18 @@ frappe.production.ui.GRNWorkOrder = class {
         this.$wrapper = $(wrapper);
         this.make_body();
     }
-
     make_body() {
         this.app = createApp(GRNWorkOrder);
         SetVueGlobals(this.app)
         this.grn = this.app.mount(this.$wrapper.get(0));
     }
-
     updateWrapper(wrapper) {
         this.$wrapper = $(wrapper);
         $(this.vue.$el).appendTo(this.$wrapper)
     }
-
     get_items() {
         return this.grn.get_items();
     }
-
     load_data(data, skip_watch = false) {
         this.grn.load_data(data, skip_watch);
     }
@@ -1083,7 +711,6 @@ frappe.production.ui.GRNReturnItem = class {
         this.$wrapper = $(wrapper);
         this.make_body();
     }
-
     make_body() {
         this.app = createApp(GRNReturnItem);
         SetVueGlobals(this.app)
@@ -1165,12 +792,12 @@ frappe.production.ui.RecutPrintPanelView = class {
     }
 }
 
-frappe.production.ui.MultiCCR = class{
+frappe.production.ui.MultiCCR = class {
     constructor(wrapper) {
         this.$wrapper = $(wrapper)
         this.make_app()
     }
-    make_app(){
+    make_app() {
         this.app = createApp(MultiCCR)
         SetVueGlobals(this.app)
         this.vue = this.app.mount(this.$wrapper.get(0))
@@ -1243,7 +870,6 @@ frappe.production.ui.PurchaseOrderItem = class {
         this.$wrapper = $(wrapper);
         this.make_body();
     }
-
     make_body() {
         let $page_container = $('<div class="item frappe-control">').appendTo(this.$wrapper);
         this.app = createApp(POItem)
@@ -1255,14 +881,12 @@ frappe.production.ui.PurchaseOrderItem = class {
         //     })
         // });
     }
-
     updateWrapper(wrapper) {
         // this.$wrapper = $(wrapper);
         // let $page_container = $('<div class="item frappe-control">').appendTo(this.$wrapper);
         // this.app.unmount();
         // this.vue = this.app.mount(this.$wrapper.get(0))
     }
-
     get_items() {
         // let items = JSON.parse(JSON.stringify(this.vue.$children[0].items));
         let items = JSON.parse(JSON.stringify(this.vue.items));
@@ -1275,7 +899,6 @@ frappe.production.ui.PurchaseOrderItem = class {
         }
         return items;
     }
-
     load_data(item_details) {
         let items = JSON.parse(JSON.stringify(item_details));
         for (let i = 0; i < items.length; i++) {
@@ -1287,87 +910,8 @@ frappe.production.ui.PurchaseOrderItem = class {
         }
         this.vue.load_data(items);
     }
-
     update_status() {
         this.vue.update_status();
-    }
-};
-frappe.production.ui.Deliverables = class {
-    constructor(wrapper) {
-        this.$wrapper = $(wrapper);
-        this.make_table();
-    }
-    make_table() {
-        this.app = createApp(WorkOrderDeliverables)
-        SetVueGlobals(this.app)
-        this.vue = this.app.mount(this.$wrapper.get(0))
-    }
-    get_deliverables_data() {
-        let items = JSON.parse(JSON.stringify(this.vue.items))
-        return items
-    }
-    load_data(item_details) {
-        let items = JSON.parse(JSON.stringify(item_details));
-        this.vue.load_data(items)
-    }
-    update_status(val) {
-        this.vue.update_status(val);
-    }
-};
-
-frappe.production.ui.WOReworkPopUp = class {
-    constructor(wrapper) {
-        this.$wrapper = $(wrapper);
-        this.make_table();
-    }
-    make_table() {
-        this.app = createApp(WorkOrderRework)
-        SetVueGlobals(this.app)
-        this.vue = this.app.mount(this.$wrapper.get(0))
-    }
-    load_data(item_details) {
-        let items = JSON.parse(JSON.stringify(item_details));
-        this.vue.load_data(items)
-    }
-    get_items() {
-        let items = JSON.parse(JSON.stringify(this.vue.get_items()))
-        return items
-    }
-};
-
-frappe.production.ui.WOReworkDeliverables = class {
-    constructor(wrapper) {
-        this.$wrapper = $(wrapper);
-        this.make_table();
-    }
-    make_table() {
-        this.app = createApp(WOReworkDeliverable)
-        SetVueGlobals(this.app)
-        this.vue = this.app.mount(this.$wrapper.get(0))
-    }
-    load_data(item_details) {
-        let items = JSON.parse(JSON.stringify(item_details));
-        this.vue.load_data(items)
-    }
-};
-
-frappe.production.ui.WOReworkReceivables = class {
-    constructor(wrapper) {
-        this.$wrapper = $(wrapper);
-        this.make_table();
-    }
-    make_table() {
-        this.app = createApp(WOReworkReceivable)
-        SetVueGlobals(this.app)
-        this.vue = this.app.mount(this.$wrapper.get(0))
-    }
-    load_data(item_details) {
-        let items = JSON.parse(JSON.stringify(item_details));
-        this.vue.load_data(items)
-    }
-    get_receivables_data() {
-        let items = JSON.parse(JSON.stringify(this.vue.get_items()))
-        return items
     }
 };
 
@@ -1382,28 +926,6 @@ frappe.production.ui.GRNConsumed = class {
         this.vue = this.app.mount(this.$wrapper.get(0))
     }
     get_deliverables_data() {
-        let items = JSON.parse(JSON.stringify(this.vue.items))
-        return items
-    }
-    load_data(item_details) {
-        let items = JSON.parse(JSON.stringify(item_details));
-        this.vue.load_data(items)
-    }
-    update_status(val) {
-        this.vue.update_status(val);
-    }
-};
-frappe.production.ui.Receivables = class {
-    constructor(wrapper) {
-        this.$wrapper = $(wrapper);
-        this.make_table();
-    }
-    make_table() {
-        this.app = createApp(WorkOrderReceivables)
-        SetVueGlobals(this.app)
-        this.vue = this.app.mount(this.$wrapper.get(0))
-    }
-    get_receivables_data() {
         let items = JSON.parse(JSON.stringify(this.vue.items))
         return items
     }
@@ -1553,6 +1075,40 @@ frappe.production.ui.StockReconciliationItem = StockReconciliationWrapper
 frappe.production.ui.LotTransferItem = LotTransferWrapper
 frappe.production.ui.StockUpdateItem = StockUpdateWrapper
 frappe.production.ui.EditBOMAttributeMapping = EditBOMAttributeMappingWrapper
+
+// Lot components
+frappe.production.ui.LotOrder = LotOrderWrapper
+frappe.production.ui.OCRDetail = OCRDetailWrapper
+frappe.production.ui.WorkStation = WorkStationWrapper
+frappe.production.ui.InwardQuantityReport = InwardQuantityReportWrapper
+frappe.production.ui.InhouseQuantity = InhouseQuantityWrapper
+// frappe.production.ui.CadDetail = CadDetailWrapper;
+
+// WorkOrder components
+frappe.production.ui.Deliverables = DeliverablesWrapper
+frappe.production.ui.WOReworkPopUp = WOReworkPopUpWrapper
+frappe.production.ui.WOReworkDeliverables = WOReworkDeliverablesWrapper
+frappe.production.ui.WOReworkReceivables = WOReworkReceivablesWrapper
+frappe.production.ui.Receivables = ReceivablesWrapper
+frappe.production.ui.ReworkPage = ReworkPageWrapper
+frappe.production.ui.WorkOrderItemView = WorkOrderItemViewWrapper
+frappe.production.ui.WOSummary = WOSummaryWrapper
+frappe.production.ui.QualityInspection = QualityInspectionWrapper
+frappe.production.ui.ReworkCompletion = ReworkCompletionWrapper
+
+// Finishing components
+frappe.production.ui.FinishingGRN = FinishingGRNWrapper
+frappe.production.ui.FinishingDetail = FinishingDetailWrapper
+frappe.production.ui.AlternativeItem = AlternativeItemWrapper
+frappe.production.ui.AlternativeDetail = AlternativeDetailWrapper
+frappe.production.ui.FinishingInward = FinishingInwardWrapper
+frappe.production.ui.FinishingIroningExcess = FinishingIroningExcessWrapper
+frappe.production.ui.FinishingOCR = FinishingOCRWrapper
+frappe.production.ui.FinishingPackReturn = FinishingPackReturnWrapper
+frappe.production.ui.FinishingPlanCompleteTransfer = FinishingPlanCompleteTransferWrapper
+frappe.production.ui.FinishingPlanDispatch = FinishingPlanDispatchWrapper
+frappe.production.ui.FinishingOldLotTransfer = FinishingOldLotTransferWrapper
+frappe.production.ui.FinishingQtyDetail = FinishingQtyDetailWrapper
 
 // Product Development
 frappe.production.product_development.ui.ProductFileVersions = ProductFileVersionsWrapper
