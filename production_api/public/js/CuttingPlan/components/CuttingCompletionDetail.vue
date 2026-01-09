@@ -239,9 +239,6 @@ function get_total(){
                     row.total_qty = x
                     total_cut_qty['qty'] += x
                 }
-                else{
-                    row.total_qty = 0
-                }
             })
         }
         else{
@@ -264,9 +261,6 @@ function get_total(){
                         })
                         row.total_qty = x
                         total_cut_qty[part] += x
-                    }
-                    else{
-                        row.total_qty = 0
                     }
                 })  
             })

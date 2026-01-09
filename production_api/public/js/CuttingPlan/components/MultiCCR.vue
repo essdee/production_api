@@ -33,6 +33,98 @@
                 <p style="padding: 10px;">{{ output_items.join(', ') }}</p>
             </div>
         </div>
+        <div v-if="item_data && Object.keys(item_data).length > 0">
+            <h3>Style Wise Summary</h3>
+            <div v-for="item_name in Object.keys(item_data)">
+                <h3>{{ item_name }}</h3>
+                <table class="table table-sm table-bordered">
+                    <tr v-for="(i, item_index) in item_data[item_name]['completed_json']" :key="item_index">
+                        <template v-if="!i.is_set_item">
+                            <td>
+                                <strong>Panels:</strong>
+                                <span v-for="(panel,index) in i[i.stiching_attr]" :key="panel" class="panel-column">
+                                    {{ panel }}<span v-if="index < i[i.stiching_attr].length - 1">,</span>
+                                </span>
+                            </td>
+                        </template>
+                    </tr>
+                    <tr v-for="(i, item_index) in item_data[item_name]['completed_json']" :key="item_index">
+                        <td>
+                            <table v-if="i.items && i.items.length > 0" class="table table-sm table-bordered">
+                                <tr>
+                                    <th>S.No.</th>
+                                    <th v-for="(j, idx) in i.attributes" :key="idx">{{ j }}</th>
+                                    <th v-for="(j, idx) in i.primary_attribute_values" :key="idx">
+                                        {{ j }}
+                                    </th>
+                                    <th>Total</th>
+                                    <th v-if="i.is_set_item">Panels</th>
+                                </tr>
+                                <tr v-for="(j, item1_index) in i.items" :key="item1_index">
+                                    <td>{{item1_index + 1}}</td>
+                                    <td v-for="(k, idx) in i.attributes" :key="idx">
+                                        {{j.attributes[k]}}
+                                    </td>
+                                    <td v-for="(k, idx) in Object.keys(j.values)" :key="idx">
+                                        <div v-if="j.values[k] > 0">
+                                            {{ j.values[k] }}
+                                        </div>
+                                        <div v-else>--</div>
+                                    </td>
+                                    <th>{{ j.total_qty }}</th>
+                                    <th v-if='i.is_set_item'>
+                                        <div v-for="panel in i[i.stiching_attr][j.attributes[i.set_item_attr]]" :key="panel">
+                                            {{panel}}
+                                        </div>
+                                    </th>
+                                </tr>
+                                <tr>
+                                    <th>Total</th>
+                                    <th v-for="(j, idx) in i.attributes" :key="idx"></th>
+                                    <th v-for="(j, idx) in i.total_qty" :key="idx">{{j}}</th>
+                                    <th>{{ item_data[item_name]['total_qty'] }}</th>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+                </table>
+                <table class="table table-sm table-bordered">
+                    <tr>
+                        <th>S.No.</th>
+                        <th>Cloth</th>
+                        <th>Cloth Type</th>
+                        <th>Colour</th>
+                        <th>Dia</th>
+                        <th>Required Weight</th>
+                        <th>Received Weight</th>
+                        <th>Used Weight</th>
+                        <th>Balance Weight</th>
+                    </tr>
+                    <tr v-for="(i, item_index) in item_data[item_name]['cloth_details']" :key="item_index">
+                        <td>{{ item_index + 1 }}</td>
+                        <td>{{ i.cloth_item_variant }}</td>
+                        <td>{{ i.cloth_type }}</td>
+                        <td>{{ i.colour }}</td>
+                        <td>{{ i.dia }}</td>
+                        <td>{{ get_round(i.required_weight, 3) }}</td>
+                        <td>{{ get_round(i.weight, 3) }}</td>
+                        <td>{{ get_round(i.used_weight, 3) }}</td>
+                        <td>{{ get_round(i.balance_weight, 3) }}</td>
+                    </tr>
+                    <tr v-if="item_data[item_name]['cloth_total']">
+                        <td>Total</td>
+                        <td></td>
+                        <td></td>
+                        <td></td>
+                        <td></td>
+                        <td>{{get_round(item_data[item_name]['cloth_total']['required'], 3)}}</td>
+                        <td>{{get_round(item_data[item_name]['cloth_total']['received'], 3)}}</td>
+                        <td>{{get_round(item_data[item_name]['cloth_total']['used'], 3)}}</td>
+                        <td>{{get_round(item_data[item_name]['cloth_total']['balance'], 3)}}</td>
+                    </tr>
+                </table>
+            </div>
+        </div>
         <div v-if="items && Object.keys(items).length > 0">
             <div v-for="lot in Object.keys(items)">
                 <h3>{{ lot }} - {{ items[lot]['item'] }}</h3>
@@ -126,98 +218,6 @@
                         <td>{{get_round(items[lot]['cloth_total']['balance'], 3)}}</td>
                     </tr>
                 </table>
-            </div>
-            <div v-if="item_data && Object.keys(item_data).length > 0">
-                <h3>Style Wise Summary</h3>
-                <div v-for="item_name in Object.keys(item_data)">
-                    <h3>{{ item_name }}</h3>
-                    <table class="table table-sm table-bordered">
-                        <tr v-for="(i, item_index) in item_data[item_name]['completed_json']" :key="item_index">
-                            <template v-if="!i.is_set_item">
-                                <td>
-                                    <strong>Panels:</strong>
-                                    <span v-for="(panel,index) in i[i.stiching_attr]" :key="panel" class="panel-column">
-                                        {{ panel }}<span v-if="index < i[i.stiching_attr].length - 1">,</span>
-                                    </span>
-                                </td>
-                            </template>
-                        </tr>
-                        <tr v-for="(i, item_index) in item_data[item_name]['completed_json']" :key="item_index">
-                            <td>
-                                <table v-if="i.items && i.items.length > 0" class="table table-sm table-bordered">
-                                    <tr>
-                                        <th>S.No.</th>
-                                        <th v-for="(j, idx) in i.attributes" :key="idx">{{ j }}</th>
-                                        <th v-for="(j, idx) in i.primary_attribute_values" :key="idx">
-                                            {{ j }}
-                                        </th>
-                                        <th>Total</th>
-                                        <th v-if="i.is_set_item">Panels</th>
-                                    </tr>
-                                    <tr v-for="(j, item1_index) in i.items" :key="item1_index">
-                                        <td>{{item1_index + 1}}</td>
-                                        <td v-for="(k, idx) in i.attributes" :key="idx">
-                                            {{j.attributes[k]}}
-                                        </td>
-                                        <td v-for="(k, idx) in Object.keys(j.values)" :key="idx">
-                                            <div v-if="j.values[k] > 0">
-                                                {{ j.values[k] }}
-                                            </div>
-                                            <div v-else>--</div>
-                                        </td>
-                                        <th>{{ j.total_qty }}</th>
-                                        <th v-if='i.is_set_item'>
-                                            <div v-for="panel in i[i.stiching_attr][j.attributes[i.set_item_attr]]" :key="panel">
-                                                {{panel}}
-                                            </div>
-                                        </th>
-                                    </tr>
-                                    <tr>
-                                        <th>Total</th>
-                                        <th v-for="(j, idx) in i.attributes" :key="idx"></th>
-                                        <th v-for="(j, idx) in i.total_qty" :key="idx">{{j}}</th>
-                                        <th>{{ item_data[item_name]['total_qty'] }}</th>
-                                    </tr>
-                                </table>
-                            </td>
-                        </tr>
-                    </table>
-                    <table class="table table-sm table-bordered">
-                        <tr>
-                            <th>S.No.</th>
-                            <th>Cloth</th>
-                            <th>Cloth Type</th>
-                            <th>Colour</th>
-                            <th>Dia</th>
-                            <th>Required Weight</th>
-                            <th>Received Weight</th>
-                            <th>Used Weight</th>
-                            <th>Balance Weight</th>
-                        </tr>
-                        <tr v-for="(i, item_index) in item_data[item_name]['cloth_details']" :key="item_index">
-                            <td>{{ item_index + 1 }}</td>
-                            <td>{{ i.cloth_item_variant }}</td>
-                            <td>{{ i.cloth_type }}</td>
-                            <td>{{ i.colour }}</td>
-                            <td>{{ i.dia }}</td>
-                            <td>{{ get_round(i.required_weight, 3) }}</td>
-                            <td>{{ get_round(i.weight, 3) }}</td>
-                            <td>{{ get_round(i.used_weight, 3) }}</td>
-                            <td>{{ get_round(i.balance_weight, 3) }}</td>
-                        </tr>
-                        <tr v-if="item_data[item_name]['cloth_total']">
-                            <td>Total</td>
-                            <td></td>
-                            <td></td>
-                            <td></td>
-                            <td></td>
-                            <td>{{get_round(item_data[item_name]['cloth_total']['required'], 3)}}</td>
-                            <td>{{get_round(item_data[item_name]['cloth_total']['received'], 3)}}</td>
-                            <td>{{get_round(item_data[item_name]['cloth_total']['used'], 3)}}</td>
-                            <td>{{get_round(item_data[item_name]['cloth_total']['balance'], 3)}}</td>
-                        </tr>
-                    </table>
-                </div>
             </div>
         </div>
         <div v-else>
@@ -381,7 +381,7 @@ function get_multiccr(){
                 "category": category, 
             },
             freeze: true,
-            freeze_message: "Fetching Size wise Report",
+            freeze_message: "Fetching Multi CCR Report",
             callback: function(r){
                 items.value = r.message.data
                 output_lots.value = r.message.output_lots
