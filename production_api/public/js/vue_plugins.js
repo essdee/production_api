@@ -30,7 +30,7 @@ import ClothAccessory from "./Item_Po_detail/ClothAccessory.vue"
 import ClothAccessoryCombination from "./Item_Po_detail/ClothAccessoryCombination.vue"
 import AccessoryItems from "./Item_Po_detail/AccessoryItems.vue"
 import BundleGroup from "./Item_Po_detail/BundleGroup.vue"
-import { StockEntryWrapper, StockReconciliationWrapper, LotTransferWrapper } from "./Stock";
+import { StockEntryWrapper, StockReconciliationWrapper, LotTransferWrapper, StockUpdateWrapper } from "./Stock";
 import WorkOrderDeliverables from "./WorkOrder/components/Deliverables.vue"
 import WorkOrderRework from "./WorkOrder/components/WOReworkPopUp.vue"
 import WOReworkDeliverable from "./WorkOrder/components/WOReworkDeliverables.vue"
@@ -1551,6 +1551,7 @@ frappe.production.ui.GRNItem = GRNItemWrapper
 frappe.production.ui.StockEntryItem = StockEntryWrapper
 frappe.production.ui.StockReconciliationItem = StockReconciliationWrapper
 frappe.production.ui.LotTransferItem = LotTransferWrapper
+frappe.production.ui.StockUpdateItem = StockUpdateWrapper
 frappe.production.ui.EditBOMAttributeMapping = EditBOMAttributeMappingWrapper
 
 // Product Development

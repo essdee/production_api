@@ -2,6 +2,7 @@
 # For license information, please see license.txt
 
 import frappe
+from frappe import bold
 from frappe.model.document import Document
 from production_api.mrp_stock.utils import get_stock_balance
 from production_api.mrp_stock.stock_ledger import make_sl_entries
