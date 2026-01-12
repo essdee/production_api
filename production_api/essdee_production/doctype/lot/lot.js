@@ -26,9 +26,9 @@ frappe.ui.form.on("Lot", {
 		}, false, 'Ctrl+E', false);
 		frappe.call({
 			method: "production_api.essdee_production.doctype.lot.lot.check_enabled_po",
-			callback: function(r){
+			callback: function (r) {
 				let x = true
-				if(!r.message){
+				if (!r.message) {
 					x = false
 				}
 				frm.set_df_property("production_order", "read_only", !x)
@@ -37,7 +37,7 @@ frappe.ui.form.on("Lot", {
 				frm.refresh_field("item")
 			}
 		})
-		
+
 		if (!frm.is_new()) {
 			frm.add_custom_button(__('Purchase Summary'), function () {
 				frappe.set_route("query-report", "Lot Purchase Summary", {
@@ -88,7 +88,7 @@ frappe.ui.form.on("Lot", {
 					},
 					callback: function (r) {
 						frm.item.load_data(r.message)
-						if(frm.doc.production_order){
+						if (frm.doc.production_order) {
 							frm.item.show_inputs()
 							frm.item.load_data(r.message)
 						}
@@ -329,6 +329,9 @@ frappe.ui.form.on("Lot", {
 			$(frm.fields_dict['ocr_detail_html'].wrapper).html("")
 			new frappe.production.ui.OCRDetail(frm.fields_dict['ocr_detail_html'].wrapper)
 		}
+		if (frm.doc.has_transferred) {
+			new frappe.production.ui.AlternativeDetail(frm.fields_dict['alternative_html'].wrapper)
+		}
 	},
 	production_order(frm) {
 		if (frm.doc.production_order) {
@@ -401,7 +404,7 @@ frappe.ui.form.on("Lot", {
 				},
 				callback: function (r) {
 					frm.item.load_data(r.message)
-					if(frm.doc.production_order){
+					if (frm.doc.production_order) {
 						frm.item.show_inputs()
 						frm.item.load_data(r.message)
 					}

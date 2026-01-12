@@ -6,13 +6,17 @@
                 style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px;"
             >
                 <div v-for="(item, idx) in selected" :key="idx"
-                    class="relative border rounded-lg overflow-hidden bg-white shadow-sm"
+                    class="relative border rounded-lg overflow-hidden bg-white shadow-sm cursor-move"
                     style="width: 100%;"
+                    :draggable="doctype != 'Product Release'"
+                    @dragstart="onDragStart($event, idx)"
+                    @dragover.prevent
+                    @drop="onDrop($event, idx)"
                 >
                     <div style="width: 100%; text-align:center; display: flex;">
                         <div style="width: 90%;">
                             <img :src="item.image_url" class="w-full object-cover"
-                                style="height: 140px; "
+                                style="height: 140px; pointer-events: none;"
                             />
                         </div>
                         <div v-if="doctype != 'Product Release'">
@@ -23,10 +27,29 @@
                             </button>
                         </div>
                     </div>    
+
+                    <div class="flex justify-center space-x-4 p-2 text-xs border-b" v-if="set_item">
+                        <label class="flex items-center cursor-pointer" style="padding-right:30px;">
+                            <input type="radio" v-model="item.selected_part" 
+                                value="Top" class="mr-1" @change="make_dirty()"
+                                style="padding-top:4px;"
+                                :disabled="doctype == 'Product Release'"
+                            >
+                            Top
+                        </label>
+                        <label class="flex items-center cursor-pointer">
+                            <input type="radio" v-model="item.selected_part" 
+                                value="Bottom" class="mr-1" @change="make_dirty()"
+                                style="padding-top:4px;"    
+                                :disabled="doctype == 'Product Release'"
+                            >
+                            Bottom
+                        </label>
+                    </div>
                     <div class="grid mt-2 w-full"
                         style="display:grid; grid-template-columns: repeat(2, 1fr); gap:4px; padding-left: 20px;"
                     >
-                        <div v-for="(clr, cidx) in colour_list" :key="cidx"
+                        <div v-for="(clr, cidx) in getColours(item)" :key="cidx"
                             class="flex flex-col items-center text-[9px] cursor-pointer"
                             style="width:100%;"
                         >
@@ -93,32 +116,34 @@
 <script setup>
 import { ref, watch, onMounted, reactive } from "vue"
 
+const set_item = cur_frm.doc.is_set_item
 const query = ref("")
 const results = ref([])
 const selected = ref([])
 const view_page = ref("")
+const top_colours = ref([])
+const bottom_colours = ref([])
 const colour_list = ref([])
 let doctype = cur_frm.doc.doctype
 const colour_codes = reactive({})
 
 onMounted(() => {
-    if (cur_frm.doc.is_set_item) {
+    if (set_item) {
         for (let i = 0; i < cur_frm.doc.product_set_colours.length; i++) {
-            let top = cur_frm.doc.product_set_colours[i]
-            let bottom = cur_frm.doc.product_set_colours[i]
-            if (!colour_list.value.find(c => c.colour === top.top_colour)) {
-                colour_list.value.push({
-                    colour: top.top_colour,
-                    colour_code: top.top_colour_code
+            let row = cur_frm.doc.product_set_colours[i]
+            if (row.top_colour && !top_colours.value.find(c => c.colour === row.top_colour)) {
+                top_colours.value.push({
+                    colour: row.top_colour,
+                    colour_code: row.top_colour_code
                 })
-                colour_codes[top.top_colour] = top.top_colour_code
+                colour_codes[row.top_colour] = row.top_colour_code
             }
-            if (!colour_list.value.find(c => c.colour === bottom.bottom_colour)) {
-                colour_list.value.push({
-                    colour: bottom.bottom_colour,
-                    colour_code: bottom.bottom_colour_code
+            if (row.bottom_colour && !bottom_colours.value.find(c => c.colour === row.bottom_colour)) {
+                bottom_colours.value.push({
+                    colour: row.bottom_colour,
+                    colour_code: row.bottom_colour_code
                 })
-                colour_codes[bottom.bottom_colour] = bottom.bottom_colour_code
+                colour_codes[row.bottom_colour] = row.bottom_colour_code
             }
         }
     } 
@@ -135,6 +160,11 @@ onMounted(() => {
         }
     }
 })
+
+function getColours(item) {
+    if (!set_item) return colour_list.value;
+    return item.selected_part === 'Bottom' ? bottom_colours.value : top_colours.value;
+}
 
 function getTextColour(hex) {
     if (!hex) return '#000'
@@ -164,18 +194,46 @@ watch(query, async (val) => {
 })
 
 function selectItem(item) {
-	if (!selected.value.find(i => i.image_name === item.image_name)) {
-		selected.value.push({
+    if( set_item ) {
+        selected.value.push({
             ...item,
             selected_colours: [],
+            selected_part: 'Top',
             colours_available: [...colour_list.value] 
         })
-	}
+    }
+    else{
+        if (!selected.value.find(i => i.image_name === item.image_name)) {
+            selected.value.push({
+                ...item,
+                selected_colours: [],
+                selected_part: '',
+                colours_available: [...colour_list.value] 
+            })
+        }
+    }
     make_dirty()
 }
 
 function removeSelected(index) {
 	selected.value.splice(index, 1)
+    make_dirty()
+}
+
+const draggedItemIndex = ref(null)
+
+function onDragStart(event, index) {
+    draggedItemIndex.value = index
+    event.dataTransfer.effectAllowed = 'move'
+}
+
+function onDrop(event, targetIndex) {
+    if (draggedItemIndex.value === null || draggedItemIndex.value === targetIndex) return
+
+    const item = selected.value.splice(draggedItemIndex.value, 1)[0]
+    selected.value.splice(targetIndex, 0, item)
+
+    draggedItemIndex.value = null
     make_dirty()
 }
 

@@ -140,6 +140,8 @@ def get_table_onload_data(table, with_list=False):
 			"image_name": row.product_image
 		}
 		if with_list:
+			if row.get('part'):
+				d['selected_part'] = row.part
 			d['selected_colours'] = row.selected_colours.split(",")
 		upload_data.append(d)
 	return upload_data
@@ -153,6 +155,8 @@ def get_tabel_struct_data(data, with_list=False, colour_list=[]):
 			"title_header": row['image_title'],
 		}
 		if with_list:
+			if row.get('selected_part'):
+				d['part'] = row.get('selected_part')
 			selected_colours = row.get("selected_colours") or []
 			colour_list = []
 			for colour in selected_colours:
@@ -409,6 +413,13 @@ def remove_graphic_image(detail, docname):
 @frappe.whitelist()
 def release_tech_pack(doc_name):
 	product_doc = frappe.get_doc("Product", doc_name)
+	if product_doc.is_set_item:
+		for row in product_doc.product_trim_combination:
+			if not row.selected_colours:
+				frappe.throw(f"Please select colours in trim colour combination for {row.title_header}")
+			if not row.part:
+				frappe.throw(f"Please select part in trim colour combination for {row.title_header}")
+			
 	d = {
 		"product": doc_name,
 		"is_cord": product_doc.is_cord,

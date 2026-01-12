@@ -9,11 +9,11 @@
   "section_break_iorc",
   "naming_series",
   "warehouse",
-  "amended_from",
   "update_type",
   "column_break_ojgh",
-  "posting_time",
   "posting_date",
+  "posting_time",
+  "amended_from",
   "section_break_cmwf",
   "stock_update_details",
   "stock_update_html",
@@ -60,10 +60,11 @@
    "reqd": 1
   },
   {
+   "default": "SUE-.YYYY.-",
    "fieldname": "naming_series",
    "fieldtype": "Select",
    "label": "Naming Series",
-   "options": "\nSUE-",
+   "options": "SUE-.YYYY.-",
    "reqd": 1
   },
   {
@@ -103,7 +104,7 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2026-01-09 09:53:32.100458",
+ "modified": "2026-01-12 17:49:37.998465",
  "modified_by": "Administrator",
  "module": "MRP Stock",
  "name": "Stock Update",
@@ -119,6 +120,52 @@
    "read": 1,
    "report": 1,
    "role": "System Manager",
+   "share": 1,
+   "submit": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Stock User",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Store User",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Stock Manager",
+   "share": 1,
+   "submit": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Store Manager",
    "share": 1,
    "submit": 1,
    "write": 1

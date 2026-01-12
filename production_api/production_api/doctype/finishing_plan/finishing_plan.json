@@ -48,7 +48,9 @@
   "incomplete_transfer_tab",
   "incomplete_transfer_items_html",
   "incomplete_transfer_dc_list",
-  "incomplete_transfer_grn_list"
+  "incomplete_transfer_grn_list",
+  "alternatives_tab",
+  "alternative_html"
  ],
  "fields": [
   {
@@ -307,12 +309,22 @@
    "fieldtype": "Small Text",
    "hidden": 1,
    "label": "Incomplete Transfer GRN List"
+  },
+  {
+   "fieldname": "alternatives_tab",
+   "fieldtype": "Tab Break",
+   "label": "Alternatives"
+  },
+  {
+   "fieldname": "alternative_html",
+   "fieldtype": "HTML",
+   "label": "Alternative HTML"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-12-03 18:08:52.927984",
+ "modified": "2026-01-09 15:00:21.567058",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Finishing Plan",

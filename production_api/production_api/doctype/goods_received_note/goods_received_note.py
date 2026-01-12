@@ -46,7 +46,8 @@ class GoodsReceivedNote(Document):
 		else:
 			items = self.get('items')
 			if self.docstatus != 0:
-				items = self.get('items_json')
+				# items = self.get('items_json')
+				items = fetch_onload_data(self.items)
 			if self.includes_packing:
 				item_details = fetch_grn_packing_items(self.items)
 				self.set_onload("pack_items", item_details)
@@ -749,11 +750,11 @@ class GoodsReceivedNote(Document):
 			else:	
 				logger.debug(f"{self.name} On Cancel {self.against} {datetime.now()}")
 				wo_doc = frappe.get_doc(self.against, self.against_id)
-				items = update_if_string_instance(self.items_json)
-				for item in items:
+				# items = update_if_string_instance(self.items_json)
+				for item in self.items:
 					for receivable in wo_doc.receivables:
-						if item['ref_docname'] == receivable.name and flt(item['quantity']) > flt(0):
-							receivable.pending_quantity += item['quantity']
+						if item.ref_docname == receivable.name and flt(item.quantity) > flt(0):
+							receivable.pending_quantity += item.quantity
 							break
 				wo_doc.save(ignore_permissions=True)
 				logger.debug(f"{self.name} WO Receivable Updated {datetime.now()}")
@@ -867,22 +868,23 @@ class GoodsReceivedNote(Document):
 		from production_api.mrp_stock.stock_ledger import make_sl_entries
 		sl_entries = []
 		avg = self.total_receivable_cost / self.total_received_quantity
-		items = update_if_string_instance(self.items_json)
-		for item in items:
-			if item['quantity'] > 0 and res.get(item['item_variant']):
-				received_types = update_if_string_instance(item.get("received_types"))
-				for type, qty in received_types.items():
-					x = item
-					x['quantity'] = qty
-					sl_entries.append(self.get_sl_entries(item, self.delivery_location, {}, 1, type, valuation_rate=avg))
+		# items = update_if_string_instance(self.items_json)
+		for item in self.items:
+			if item.quantity > 0 and res.get(item.item_variant):
+			# if item['quantity'] > 0 and res.get(item['item_variant']):
+				# received_types = update_if_string_instance(item.get("received_types"))
+				# for type, qty in received_types.items():
+				# 	x = item
+				# 	x['quantity'] = qty
+				sl_entries.append(self.get_sl_entries(item, self.delivery_location, {}, 1, item.received_type, valuation_rate=avg))
 		make_sl_entries(sl_entries)	
 
 	def reupdate_wo_deliverables(self, res):
 		from production_api.mrp_stock.stock_ledger import make_sl_entries
 		total_received_qty = 0
-		items = update_if_string_instance(self.items_json)
-		for item in items:
-			total_received_qty += item['quantity']
+		# items = update_if_string_instance(self.items_json)
+		for item in self.items:
+			total_received_qty += item.quantity
 
 		wo_doc = frappe.get_cached_doc(self.against,self.against_id)
 		calculated_items = {}
@@ -1404,7 +1406,8 @@ def fetch_grn_item_details(items, ipd, lot, docstatus = 0):
 	if isinstance(items, string_types):
 		items = json.loads(items)
 	else:	
-		items = [item.as_dict() for item in items]
+		if docstatus == 0:
+			items = [item.as_dict() for item in items]
 	ipd_doc = frappe.get_cached_doc("Item Production Detail", ipd)
 	item_details = []
 	for key, variants in groupby(items, lambda i: i['row_index']):
@@ -2063,7 +2066,8 @@ def get_key(item, attrs):
 def get_grn_structure(doc_name):
 	doc = frappe.get_doc("Goods Received Note", doc_name)
 	ipd = frappe.get_cached_value("Work Order", doc.against_id, "production_detail")
-	item_details = fetch_grn_item_details(doc.items_json, ipd, doc.lot)
+	items = fetch_onload_data(doc.items)
+	item_details = fetch_grn_item_details(items, ipd, doc.lot)
 	return item_details
 
 @frappe.whitelist()
@@ -2763,3 +2767,90 @@ def update_finishing_item_doc(doc_name, finishing_doc_name, update_finishing:boo
 		finishing_doc.set("finishing_plan_details", finshing_items_list)
 		finishing_doc.set("finishing_plan_reworked_details", finishing_rework_items_list)
 		finishing_doc.save()		
+
+def get_variant_attr_values(doc, primary_attr):
+	attrs = []
+	for attr in doc.attributes:
+		if attr.attribute != primary_attr:
+			attrs.append(attr.attribute_value)
+	attrs.sort()
+	if attrs:
+		attrs = tuple(attrs)
+	else:
+		attrs = None			
+	return attrs
+
+def fetch_onload_data(items):
+	grouped_items = {}
+	for item in items:
+		variant = item.item_variant
+		doc = frappe.get_cached_doc("Item Variant", variant)
+		primary_attr = frappe.get_cached_value("Item", doc.item, "primary_attribute")
+		attr_details = get_variant_attr_values(doc, primary_attr)
+		key = (doc.item, attr_details)
+		if key not in grouped_items:
+			grouped_items[key] = []
+		grouped_items[key].append(item)
+	
+	d = {}
+	table_index = -1
+	row_index = -1
+	for (item_name, item), items in grouped_items.items():
+		sorted_items = sorted(items, key=lambda x: x.item_variant)
+		table_index += 1
+		row_index += 1
+		for row in sorted_items:
+			variant = row.item_variant
+			set_comb = update_if_string_instance(row.set_combination)
+			key = (variant, tuple(sorted(set_comb.items())))
+			if key not in d:
+				d[key] = {
+					"item_variant": variant,
+					"tax": row.tax,
+					"lot": row.lot,
+					"quantity":row.quantity,
+					"secondary_qty":0.0,
+					"stock_qty": row.stock_qty,
+					"uom": row.uom,
+					"secondary_uom": row.secondary_uom,
+					"stock_uom": row.stock_uom,
+					"conversion_factor": row.conversion_factor,
+					"rate": row.rate,
+					"amount": row.amount,
+					"stock_uom_rate": row.stock_uom_rate,
+					"table_index":table_index,
+					"row_index":row_index,
+					"ref_doctype": row.ref_doctype,
+					"ref_docname": row.ref_docname,
+					"comments": row.comments,
+					"received_types": {row.received_type: row.quantity},
+					"secondary_qty_json":{row.received_type: row.secondary_qty},
+					"set_combination": row.set_combination,
+				}
+			else:
+				d[key]["quantity"] += row.quantity
+				d[key]["secondary_qty"] += row.secondary_qty
+				d[key]["stock_qty"] += row.stock_qty
+				received_types = d[key]['received_types']
+				if row.received_type in received_types:
+					received_types[row.received_type] += row.quantity
+				else:
+					received_types[row.received_type] = row.quantity
+				d[key]['received_types'] = received_types
+				secondary_qty_json = d[key]['secondary_qty_json']	
+
+				if row.received_type in secondary_qty_json:
+					secondary_qty_json[row.received_type] += row.secondary_qty
+				else:
+					secondary_qty_json[row.received_type] = row.secondary_qty
+
+				d[key]['secondary_qty_json'] = secondary_qty_json
+
+	items_list = []
+	for key in d:
+		item_data = d[key]
+		item_data['received_types'] = frappe.json.dumps(item_data['received_types'])
+		item_data['secondary_qty_json'] = frappe.json.dumps(item_data['secondary_qty_json'])
+		items_list.append(item_data)
+
+	return items_list			
