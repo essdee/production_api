@@ -23,8 +23,8 @@
                             <th v-for="(j, idx) in i.primary_attribute_values" :key="idx">
                                 {{ j }}
                             </th>
-                            <th v-if="i.is_set_item">Panels</th>
                             <th>Total</th>
+                            <th v-if="i.is_set_item">Panels</th>
                             <th v-if="pop_up == 1 || pop_up == 2">Completed</th>
                         </tr>
                         <tr v-for="(j, item1_index) in i.items" :key="item1_index">
@@ -238,6 +238,9 @@ function get_total(){
                     })
                     row.total_qty = x
                     total_cut_qty['qty'] += x
+                }
+                else{
+                    row.total_qty = 0
                 }
             })
         }

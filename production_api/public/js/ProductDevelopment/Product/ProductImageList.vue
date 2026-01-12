@@ -9,13 +9,18 @@
                 style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px;"
             >
                 <div v-for="(item, idx) in selected" :key="idx"
-                    class="relative border rounded-lg overflow-hidden bg-white shadow-sm"
+                    class="relative border rounded-lg overflow-hidden bg-white shadow-sm cursor-move"
                     style="width: 100%;"
+                    :draggable="doctype != 'Product Release'"
+                    @dragstart="onDragStart($event, idx)"
+                    @dragover.prevent
+                    @drop="onDrop($event, idx)"
                 >
+
                     <div style="height: 85%; width: 100%; text-align:center; display: flex;">
                         <div style="width: 90%;">
                             <img :src="item.image_url" class="w-full object-cover"
-                                style="height: 140px; "
+                                style="height: 140px; pointer-events: none;"
                             />
                         </div>
                         <div v-if="doctype != 'Product Release'">
@@ -104,6 +109,26 @@ function selectItem(item) {
 
 function removeSelected(index) {
 	selected.value.splice(index, 1)
+    if(!cur_frm.is_dirty()){
+        cur_frm.dirty()
+    }
+}
+
+const draggedItemIndex = ref(null)
+
+function onDragStart(event, index) {
+    draggedItemIndex.value = index
+    event.dataTransfer.effectAllowed = 'move'
+}
+
+function onDrop(event, targetIndex) {
+    if (draggedItemIndex.value === null || draggedItemIndex.value === targetIndex) return
+    
+    const item = selected.value.splice(draggedItemIndex.value, 1)[0]
+    selected.value.splice(targetIndex, 0, item)
+    
+    draggedItemIndex.value = null
+    
     if(!cur_frm.is_dirty()){
         cur_frm.dirty()
     }

@@ -42,6 +42,9 @@ def get_table_onload_data(table, with_list=False):
 			"image_name": row.product_image
 		}
 		if with_list:
+			if with_list:
+				if row.get('part'):
+					d['selected_part'] = row.part
 			d['selected_colours'] = row.selected_colours.split(",")
 		upload_data.append(d)
 	return upload_data
