@@ -16,10 +16,13 @@
                     <button class="btn btn-primary" @click="create_bulk_stock_entry()">Create Bulk Stock Entry</button> 
                 </div>
                 <div style="padding-left:15px;">
-                    <button class="btn btn-primary" @click="reduce_stock()">Reduce Stock</button>   
+                    <button class="btn btn-primary" @click="stock_reconcile()">Stock Reconcile</button>   
                 </div>
                 <div style="padding-left:15px;">
                     <button class="btn btn-primary" @click="lot_transfer()">Lot Transfer</button>   
+                </div>
+                <div style="padding-left:15px;">
+                    <button class="btn btn-primary" @click="reduce_stock()">Stock Reduce</button>   
                 </div>
             </div>
             <table class="table table-sm table-bordered">
@@ -300,6 +303,44 @@ function create_bulk_stock_entry(){
     type_dialog.show()
 }
 
+function stock_reconcile(){
+    if(selectedItems.value.length === 0){
+        frappe.msgprint("Please select at least one item.");
+        return;
+    }
+    let selected = selectedItems.value
+    let location = selected[0]['warehouse']
+    for(let i = 0 ; i < selected.length ; i++){
+        let cur_location = selected[i]['warehouse']
+        if(location != cur_location){
+            frappe.throw("Please select Item from same location")
+        }
+    }
+    let d = new frappe.ui.Dialog({
+        title: "Are you sure wanna reduce the stock to zero",
+        primary_action_label: __("Yes"),
+        secondary_action_label: __("No"),
+        primary_action: function () {
+            d.hide()
+            frappe.call({
+                method:"production_api.mrp_stock.doctype.stock_summary.stock_summary.stock_reconcile",
+                args:{
+                    selected_items: selected,
+                    warehouse: location,
+                },
+                callback: function(r){
+                    frappe.open_in_new_tab = true
+                    frappe.set_route("Form", "Stock Reconciliation", r.message)
+                }
+            })
+        },
+        secodary_action(){
+            d.hide()
+        }
+    })
+    d.show()
+}
+
 function reduce_stock(){
     if(selectedItems.value.length === 0){
         frappe.msgprint("Please select at least one item.");
@@ -327,7 +368,7 @@ function reduce_stock(){
                 },
                 callback: function(r){
                     frappe.open_in_new_tab = true
-                    frappe.set_route("Form", "Stock Reconciliation", r.message)
+                    frappe.set_route("Form", "Stock Update", r.message)
                 }
             })
         },
