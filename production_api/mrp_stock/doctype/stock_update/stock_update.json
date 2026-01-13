@@ -11,6 +11,7 @@
   "warehouse",
   "update_type",
   "column_break_ojgh",
+  "edit_posting_date_and_time",
   "posting_date",
   "posting_time",
   "amended_from",
@@ -39,7 +40,8 @@
    "default": "Today",
    "fieldname": "posting_date",
    "fieldtype": "Date",
-   "label": "Posting Date"
+   "label": "Posting Date",
+   "read_only_depends_on": "eval: !doc.edit_posting_date_and_time"
   },
   {
    "fieldname": "column_break_ojgh",
@@ -49,7 +51,8 @@
    "default": "Now",
    "fieldname": "posting_time",
    "fieldtype": "Time",
-   "label": "Posting Time"
+   "label": "Posting Time",
+   "read_only_depends_on": "eval: !doc.edit_posting_date_and_time"
   },
   {
    "fieldname": "warehouse",
@@ -98,13 +101,19 @@
   {
    "fieldname": "section_break_dqec",
    "fieldtype": "Section Break"
+  },
+  {
+   "default": "0",
+   "fieldname": "edit_posting_date_and_time",
+   "fieldtype": "Check",
+   "label": "Edit Posting Date and Time"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2026-01-12 17:49:37.998465",
+ "modified": "2026-01-12 19:16:56.865027",
  "modified_by": "Administrator",
  "module": "MRP Stock",
  "name": "Stock Update",

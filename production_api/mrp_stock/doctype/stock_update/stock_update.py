@@ -36,6 +36,19 @@ class StockUpdate(Document):
 		self.set_onload('item_details', item_details)
 
 	def before_validate(self):
+		if self.flags.allow_from_summary:
+			for row in self.stock_update_details:
+				row.rate = get_stock_balance(
+					row.item_variant, 
+					self.warehouse, 
+					row.received_type, 
+					posting_date=self.posting_date, 
+					posting_time=self.posting_time, 
+					with_valuation_rate=True, 
+					uom=row.uom, 
+					lot=row.lot
+				)[1]	
+			return
 		if(self.get('item_details')) and self._action != "submit":
 			items = save_stock_entry_items(self.item_details, self.posting_date, self.posting_time, self.warehouse)
 			self.set('stock_update_details', items)
@@ -126,9 +139,6 @@ def save_stock_entry_items(item_details, post_date, post_time, location):
 					qty, rate = get_stock_balance(
 						variant_name, location, rec_type, posting_date=post_date, posting_time=post_time, with_valuation_rate=True, uom=uom, lot=lot
 					)	
-					print(qty)
-					print(rate)
-					print("IIIIIIIIIIIIIIIIII")
 					item1['rate'] = rate
 					item1['available_stock'] = qty
 					item1['update_diff_qty'] = item['values']['default'].get('qty')
