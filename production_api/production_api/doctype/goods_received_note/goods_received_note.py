@@ -2067,7 +2067,7 @@ def get_grn_structure(doc_name):
 	doc = frappe.get_doc("Goods Received Note", doc_name)
 	ipd = frappe.get_cached_value("Work Order", doc.against_id, "production_detail")
 	items = fetch_onload_data(doc.items)
-	item_details = fetch_grn_item_details(items, ipd, doc.lot)
+	item_details = fetch_grn_item_details(items, ipd, doc.lot, docstatus=doc.docstatus)
 	return item_details
 
 @frappe.whitelist()
