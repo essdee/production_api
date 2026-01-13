@@ -31,11 +31,12 @@ class Item(Document):
 	
 	def after_rename(self, old, new, merge):
 		variants = frappe.get_list('Item Variant', filters={"item": self.name}, pluck="name")
-		for v in variants:
-			doc = frappe.get_doc('Item Variant', v)
-			newname = doc.get_name()
-			if v != newname:
-				doc.rename(name=newname, force=True)
+		batch_size = 50
+
+		for i in range(0, len(variants), batch_size):
+			batch = variants[i:i + batch_size]
+			frappe.enqueue( update_variants, queue="long", variants=batch, enqueue_after_commit=True)
+		frappe.enqueue("frappe.utils.global_search.rebuild_for_doctype", doctype="Item Variant", queue="long", enqueue_after_commit=True)		
 	
 	def load_attribute_list(self):
 		"""Load Attribute List into `__onload`"""
@@ -584,3 +585,11 @@ def sync_updated_item_variant(doc, event):
 	from spine.spine_adapter.doctype.spine_producer_config.spine_producer_config import trigger_event
 	if event == "on_update":
 		trigger_event("Item Variant", event, filters={"item": doc.name}, enqueue_after_commit=True)
+
+def update_variants(variants):
+	from frappe.model.rename_doc import rename_doc
+	for v in variants:
+		doc = frappe.get_doc('Item Variant', v)
+		newname = doc.get_name()
+		if v != newname:
+			x = rename_doc(doc=doc, new=newname, force=True, rebuild_search=False)

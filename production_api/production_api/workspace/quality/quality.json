@@ -1,6 +1,6 @@
 {
  "charts": [],
- "content": "[{\"id\":\"9NtaKEcHzB\",\"type\":\"header\",\"data\":{\"text\":\"<span style=\\\"font-size: 18px; letter-spacing: 0.18px;\\\"><b>Quality</b></span>\",\"col\":12}},{\"id\":\"P2bi1cXHjk\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Essdee Quality Inspection\",\"col\":3}}]",
+ "content": "[{\"id\":\"9NtaKEcHzB\",\"type\":\"header\",\"data\":{\"text\":\"<span style=\\\"font-size: 18px; letter-spacing: 0.18px;\\\"><b>Quality</b></span>\",\"col\":12}},{\"id\":\"P2bi1cXHjk\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Essdee Quality Inspection\",\"col\":3}},{\"id\":\"4SQ2Fafpod\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Qualily Inspection RFT\",\"col\":3}}]",
  "creation": "2025-11-28 18:27:46.103954",
  "custom_blocks": [],
  "docstatus": 0,
@@ -13,7 +13,7 @@
  "is_hidden": 0,
  "label": "Quality",
  "links": [],
- "modified": "2025-12-02 10:14:59.269334",
+ "modified": "2026-01-13 10:03:25.033059",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Quality",
@@ -32,6 +32,14 @@
    "link_to": "Essdee Quality Inspection",
    "stats_filter": "[]",
    "type": "DocType"
+  },
+  {
+   "color": "Grey",
+   "doc_view": "List",
+   "label": "Qualily Inspection RFT",
+   "link_to": "Qualily Inspection RFT",
+   "report_ref_doctype": "Essdee Quality Inspection",
+   "type": "Report"
   }
  ],
  "title": "Quality"
