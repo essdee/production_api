@@ -35,14 +35,13 @@
    "default": "0",
    "fieldname": "sync_with_erp",
    "fieldtype": "Check",
-   "label": "Sync With ERP",
-   "read_only": 1
+   "label": "Sync With ERP"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-01-19 17:06:35.964110",
+ "modified": "2026-01-19 17:33:17.943720",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Item Variant",
