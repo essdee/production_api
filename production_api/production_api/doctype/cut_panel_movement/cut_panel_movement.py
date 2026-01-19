@@ -750,3 +750,6 @@ def get_grouped_data(doc_name, doctype):
 			})
 		row_index += 1
 	return item_list, ipd 
+
+def on_doctype_update():
+	frappe.db.add_index("Cut Panel Movement",["item","lot"])
