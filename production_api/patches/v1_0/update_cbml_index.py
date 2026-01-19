@@ -2,12 +2,14 @@ import frappe
 
 def execute():
     indexes = [
-        "cbm_key_index", 
-        "supplier_posting_datetime_index", 
-        "supplier_item_variant_index", 
-        "supplier_lot_index", 
-        "size_colour_item_panel_lot_index", 
-        "is_cancelled_is_collapsed_transformed_index"
+        # "cbm_key_index", 
+        # "supplier_posting_datetime_index", 
+        # "supplier_item_variant_index", 
+        # "supplier_lot_index", 
+        # "size_colour_item_panel_lot_index", 
+        # "is_cancelled_is_collapsed_transformed_index",
+        "posting_datetime_index",
+        "supplier_index",
     ]
 
     for index in indexes:
