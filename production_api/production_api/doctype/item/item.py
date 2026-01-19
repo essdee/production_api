@@ -30,13 +30,16 @@ class Item(Document):
 		return name
 	
 	def after_rename(self, old, new, merge):
+		from frappe.model.rename_doc import rename_doc
 		variants = frappe.get_list('Item Variant', filters={"item": self.name}, pluck="name")
 		for v in variants:
 			doc = frappe.get_doc('Item Variant', v)
 			newname = doc.get_name()
 			if v != newname:
-				doc.rename(name=newname, force=True)
-	
+				rename_doc(doc=doc, new=newname, force=True, rebuild_search=False)
+				# doc.rename(name=newname, force=True)
+		frappe.enqueue("frappe.utils.global_search.rebuild_for_doctype", doctype="Item Variant")
+
 	def load_attribute_list(self):
 		"""Load Attribute List into `__onload`"""
 		
