@@ -49,6 +49,8 @@ def spine_set_item(payload):
 	doc = payload.get("doc_to_publish")
 	if not doc:
 		return None
+	if not doc.get('sync_with_erp', None):
+		return None
 	if not isinstance(doc, Document):
 		return payload
 	doc.set("__onload", frappe._dict())
