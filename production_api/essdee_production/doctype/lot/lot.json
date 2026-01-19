@@ -8,6 +8,7 @@
  "engine": "InnoDB",
  "field_order": [
   "lot_name",
+  "production_order",
   "item",
   "assigned_person",
   "pack_out_stage",
@@ -23,6 +24,9 @@
   "uom",
   "expected_delivery_date",
   "size_set_colour_colour",
+  "has_transferred",
+  "is_transferred",
+  "transferred_lot",
   "section_break_qubc",
   "tech_pack_version",
   "pattern_version",
@@ -60,7 +64,9 @@
   "section_break_cmku",
   "time_and_action_report_html",
   "ocr_detail_tab",
-  "ocr_detail_html"
+  "ocr_detail_html",
+  "alternative_detail_tab",
+  "alternative_html"
  ],
  "fields": [
   {
@@ -76,7 +82,8 @@
    "fieldtype": "Link",
    "in_standard_filter": 1,
    "label": "Item",
-   "options": "Item"
+   "options": "Item",
+   "read_only": 1
   },
   {
    "fieldname": "column_break_tvkgg",
@@ -352,7 +359,8 @@
    "fetch_if_empty": 1,
    "fieldname": "assigned_person_name",
    "fieldtype": "Data",
-   "label": "Assigned Person Name"
+   "label": "Assigned Person Name",
+   "read_only": 1
   },
   {
    "fieldname": "lot_hash_value",
@@ -386,11 +394,49 @@
    "fieldtype": "Link",
    "label": "Season",
    "options": "Product Season"
+  },
+  {
+   "fieldname": "production_order",
+   "fieldtype": "Link",
+   "label": "Production Order",
+   "options": "Production Order"
+  },
+  {
+   "default": "0",
+   "fieldname": "is_transferred",
+   "fieldtype": "Check",
+   "label": "Is Transferred",
+   "read_only": 1
+  },
+  {
+   "fieldname": "transferred_lot",
+   "fieldtype": "Link",
+   "label": "Transferred Lot",
+   "options": "Lot",
+   "read_only": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "has_transferred",
+   "fieldtype": "Check",
+   "label": "Has Transferred",
+   "read_only": 1
+  },
+  {
+   "depends_on": "eval: doc.has_transferred",
+   "fieldname": "alternative_detail_tab",
+   "fieldtype": "Tab Break",
+   "label": "Alternative Detail"
+  },
+  {
+   "fieldname": "alternative_html",
+   "fieldtype": "HTML",
+   "label": "Alternative HTML"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-11-29 11:27:38.834649",
+ "modified": "2026-01-09 17:03:18.712181",
  "modified_by": "Administrator",
  "module": "Essdee Production",
  "name": "Lot",

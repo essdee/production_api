@@ -1,233 +1,233 @@
 {
- "actions": [],
- "allow_copy": 1,
- "allow_rename": 1,
- "creation": "2025-06-30 14:48:16.156804",
- "doctype": "DocType",
- "engine": "InnoDB",
- "field_order": [
-  "lot",
-  "posting_date",
-  "supplier",
-  "supplier_name",
-  "lay_no",
-  "bundle_no",
-  "panel",
-  "shade",
-  "is_cancelled",
-  "is_collapsed",
-  "collapsed_bundle",
-  "transformed",
-  "posting_datetime",
-  "cbm_key",
-  "column_break_gltp",
-  "item",
-  "item_variant",
-  "posting_time",
-  "voucher_type",
-  "voucher_no",
-  "size",
-  "colour",
-  "quantity",
-  "quantity_after_transaction",
-  "set_combination",
-  "transformed_from",
-  "amended_from"
- ],
- "fields": [
-  {
-   "fieldname": "lot",
-   "fieldtype": "Link",
-   "in_list_view": 1,
-   "in_standard_filter": 1,
-   "label": "Lot",
-   "options": "Lot"
-  },
-  {
-   "fieldname": "item",
-   "fieldtype": "Link",
-   "label": "Item",
-   "options": "Item"
-  },
-  {
-   "fieldname": "colour",
-   "fieldtype": "Link",
-   "label": "Colour",
-   "options": "Item Attribute Value"
-  },
-  {
-   "fieldname": "size",
-   "fieldtype": "Link",
-   "label": "Size",
-   "options": "Item Attribute Value"
-  },
-  {
-   "fieldname": "lay_no",
-   "fieldtype": "Int",
-   "label": "Lay No"
-  },
-  {
-   "fieldname": "bundle_no",
-   "fieldtype": "Int",
-   "label": "Bundle No"
-  },
-  {
-   "fieldname": "quantity",
-   "fieldtype": "Int",
-   "label": "Quantity"
-  },
-  {
-   "fieldname": "panel",
-   "fieldtype": "Data",
-   "label": "Panel"
-  },
-  {
-   "fieldname": "shade",
-   "fieldtype": "Data",
-   "label": "Shade"
-  },
-  {
-   "fieldname": "voucher_type",
-   "fieldtype": "Link",
-   "in_list_view": 1,
-   "in_standard_filter": 1,
-   "label": "Voucher Type",
-   "options": "DocType"
-  },
-  {
-   "fieldname": "voucher_no",
-   "fieldtype": "Dynamic Link",
-   "in_list_view": 1,
-   "label": "Voucher No",
-   "options": "voucher_type"
-  },
-  {
-   "fieldname": "supplier",
-   "fieldtype": "Link",
-   "in_list_view": 1,
-   "in_standard_filter": 1,
-   "label": "Supplier",
-   "options": "Supplier"
-  },
-  {
-   "fieldname": "column_break_gltp",
-   "fieldtype": "Column Break"
-  },
-  {
-   "fieldname": "posting_date",
-   "fieldtype": "Date",
-   "label": "Posting Date"
-  },
-  {
-   "fieldname": "posting_time",
-   "fieldtype": "Time",
-   "label": "Posting Time"
-  },
-  {
-   "fieldname": "set_combination",
-   "fieldtype": "Text",
-   "label": "Set Combination"
-  },
-  {
-   "default": "0",
-   "fieldname": "is_collapsed",
-   "fieldtype": "Check",
-   "label": "Is Collapsed"
-  },
-  {
-   "default": "0",
-   "fieldname": "is_cancelled",
-   "fieldtype": "Check",
-   "label": "Is Cancelled"
-  },
-  {
-   "fieldname": "posting_datetime",
-   "fieldtype": "Datetime",
-   "label": "Posting Datetime"
-  },
-  {
-   "fieldname": "cbm_key",
-   "fieldtype": "Data",
-   "label": "CBM Key"
-  },
-  {
-   "fieldname": "quantity_after_transaction",
-   "fieldtype": "Int",
-   "label": "Quantity After Transaction"
-  },
-  {
-   "fieldname": "item_variant",
-   "fieldtype": "Link",
-   "label": "Item Variant",
-   "options": "Item Variant"
-  },
-  {
-   "default": "0",
-   "fieldname": "collapsed_bundle",
-   "fieldtype": "Check",
-   "label": "Collapsed Bundle"
-  },
-  {
-   "fetch_from": "supplier.supplier_name",
-   "fieldname": "supplier_name",
-   "fieldtype": "Data",
-   "label": "Supplier Name",
-   "read_only": 1
-  },
-  {
-   "default": "0",
-   "fieldname": "transformed",
-   "fieldtype": "Check",
-   "label": "Transformed"
-  },
-  {
-   "fieldname": "transformed_from",
-   "fieldtype": "Data",
-   "label": "Transformed From"
-  },
-  {
-   "fieldname": "amended_from",
-   "fieldtype": "Link",
-   "label": "Amended From",
-   "no_copy": 1,
-   "options": "Cut Bundle Movement Ledger",
-   "print_hide": 1,
-   "read_only": 1,
-   "search_index": 1
-  }
- ],
- "grid_page_length": 50,
- "hide_toolbar": 1,
- "in_create": 1,
- "index_web_pages_for_search": 1,
- "links": [],
- "modified": "2025-08-08 18:56:39.129039",
- "modified_by": "Administrator",
- "module": "Production Api",
- "name": "Cut Bundle Movement Ledger",
- "owner": "Administrator",
- "permissions": [
-  {
-   "email": 1,
-   "export": 1,
-   "print": 1,
-   "read": 1,
-   "report": 1,
-   "role": "System Manager",
-   "share": 1
-  },
-  {
-   "email": 1,
-   "export": 1,
-   "print": 1,
-   "read": 1,
-   "report": 1,
-   "role": "Administrator",
-   "share": 1
-  }
- ],
- "row_format": "Dynamic",
- "sort_field": "modified",
- "sort_order": "DESC",
- "states": []
+    "actions": [],
+    "allow_copy": 1,
+    "allow_rename": 1,
+    "creation": "2025-06-30 14:48:16.156804",
+    "doctype": "DocType",
+    "engine": "InnoDB",
+    "field_order": [
+        "lot",
+        "posting_date",
+        "supplier",
+        "supplier_name",
+        "lay_no",
+        "bundle_no",
+        "panel",
+        "shade",
+        "is_cancelled",
+        "is_collapsed",
+        "collapsed_bundle",
+        "transformed",
+        "posting_datetime",
+        "cbm_key",
+        "column_break_gltp",
+        "item",
+        "item_variant",
+        "posting_time",
+        "voucher_type",
+        "voucher_no",
+        "size",
+        "colour",
+        "quantity",
+        "quantity_after_transaction",
+        "set_combination",
+        "transformed_from",
+        "amended_from"
+    ],
+    "fields": [
+        {
+            "fieldname": "lot",
+            "fieldtype": "Link",
+            "in_list_view": 1,
+            "in_standard_filter": 1,
+            "label": "Lot",
+            "options": "Lot"
+        },
+        {
+            "fieldname": "item",
+            "fieldtype": "Link",
+            "label": "Item",
+            "options": "Item"
+        },
+        {
+            "fieldname": "colour",
+            "fieldtype": "Link",
+            "label": "Colour",
+            "options": "Item Attribute Value"
+        },
+        {
+            "fieldname": "size",
+            "fieldtype": "Link",
+            "label": "Size",
+            "options": "Item Attribute Value"
+        },
+        {
+            "fieldname": "lay_no",
+            "fieldtype": "Int",
+            "label": "Lay No"
+        },
+        {
+            "fieldname": "bundle_no",
+            "fieldtype": "Int",
+            "label": "Bundle No"
+        },
+        {
+            "fieldname": "quantity",
+            "fieldtype": "Int",
+            "label": "Quantity"
+        },
+        {
+            "fieldname": "panel",
+            "fieldtype": "Data",
+            "label": "Panel"
+        },
+        {
+            "fieldname": "shade",
+            "fieldtype": "Data",
+            "label": "Shade"
+        },
+        {
+            "fieldname": "voucher_type",
+            "fieldtype": "Link",
+            "in_list_view": 1,
+            "in_standard_filter": 1,
+            "label": "Voucher Type",
+            "options": "DocType"
+        },
+        {
+            "fieldname": "voucher_no",
+            "fieldtype": "Dynamic Link",
+            "in_list_view": 1,
+            "label": "Voucher No",
+            "options": "voucher_type"
+        },
+        {
+            "fieldname": "supplier",
+            "fieldtype": "Link",
+            "in_list_view": 1,
+            "in_standard_filter": 1,
+            "label": "Supplier",
+            "options": "Supplier"
+        },
+        {
+            "fieldname": "column_break_gltp",
+            "fieldtype": "Column Break"
+        },
+        {
+            "fieldname": "posting_date",
+            "fieldtype": "Date",
+            "label": "Posting Date"
+        },
+        {
+            "fieldname": "posting_time",
+            "fieldtype": "Time",
+            "label": "Posting Time"
+        },
+        {
+            "fieldname": "set_combination",
+            "fieldtype": "Text",
+            "label": "Set Combination"
+        },
+        {
+            "default": "0",
+            "fieldname": "is_collapsed",
+            "fieldtype": "Check",
+            "label": "Is Collapsed"
+        },
+        {
+            "default": "0",
+            "fieldname": "is_cancelled",
+            "fieldtype": "Check",
+            "label": "Is Cancelled"
+        },
+        {
+            "fieldname": "posting_datetime",
+            "fieldtype": "Datetime",
+            "label": "Posting Datetime"
+        },
+        {
+            "fieldname": "cbm_key",
+            "fieldtype": "Data",
+            "label": "CBM Key"
+        },
+        {
+            "fieldname": "quantity_after_transaction",
+            "fieldtype": "Int",
+            "label": "Quantity After Transaction"
+        },
+        {
+            "fieldname": "item_variant",
+            "fieldtype": "Link",
+            "label": "Item Variant",
+            "options": "Item Variant"
+        },
+        {
+            "default": "0",
+            "fieldname": "collapsed_bundle",
+            "fieldtype": "Check",
+            "label": "Collapsed Bundle"
+        },
+        {
+            "fetch_from": "supplier.supplier_name",
+            "fieldname": "supplier_name",
+            "fieldtype": "Data",
+            "label": "Supplier Name",
+            "read_only": 1
+        },
+        {
+            "default": "0",
+            "fieldname": "transformed",
+            "fieldtype": "Check",
+            "label": "Transformed"
+        },
+        {
+            "fieldname": "transformed_from",
+            "fieldtype": "Data",
+            "label": "Transformed From"
+        },
+        {
+            "fieldname": "amended_from",
+            "fieldtype": "Link",
+            "label": "Amended From",
+            "no_copy": 1,
+            "options": "Cut Bundle Movement Ledger",
+            "print_hide": 1,
+            "read_only": 1,
+            "search_index": 1
+        }
+    ],
+    "grid_page_length": 50,
+    "hide_toolbar": 1,
+    "in_create": 1,
+    "index_web_pages_for_search": 1,
+    "links": [],
+    "modified": "2026-01-01 11:51:22.851220",
+    "modified_by": "Administrator",
+    "module": "Production Api",
+    "name": "Cut Bundle Movement Ledger",
+    "owner": "Administrator",
+    "permissions": [
+        {
+            "email": 1,
+            "export": 1,
+            "print": 1,
+            "read": 1,
+            "report": 1,
+            "role": "System Manager",
+            "share": 1
+        },
+        {
+            "email": 1,
+            "export": 1,
+            "print": 1,
+            "read": 1,
+            "report": 1,
+            "role": "Administrator",
+            "share": 1
+        }
+    ],
+    "row_format": "Dynamic",
+    "sort_field": "modified",
+    "sort_order": "DESC",
+    "states": []
 }

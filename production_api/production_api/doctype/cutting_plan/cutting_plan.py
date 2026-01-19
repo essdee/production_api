@@ -479,6 +479,8 @@ def get_cutting_plan_laysheets_report(cutting_plan):
 def get_ccr(doc_name):
 	cp_doc = frappe.get_doc("Cutting Plan", doc_name)
 	cls_list = frappe.get_all("Cutting LaySheet", filters={"cutting_plan": doc_name, "status": "Label Printed"}, pluck="name", order_by="lay_no asc")
+	print_panel_details = get_recut_print_panel_details(doc_name, "Print Panel")
+	recut_details = get_recut_print_panel_details(doc_name, "Recut")
 	markers = {}
 	keys = []
 	for cls in cls_list:
@@ -552,12 +554,15 @@ def get_ccr(doc_name):
 						markers[mark][key]['received_weight'] = markers[mark][key]['used_weight']
 						markers[mark][key]['balance_weight'] = 0
 						cp_doc_colours[key]['received_weight'] -= markers[mark][key]['used_weight']
+	
 	from production_api.essdee_production.doctype.item_production_detail.item_production_detail import get_ipd_primary_values
 	sizes = get_ipd_primary_values(cp_doc.production_detail)
 	if markers:
 		return {
 			"marker_data": markers,
 			"sizes": sizes,
+			"print_panel_details": print_panel_details,
+			"recut_details": recut_details
 		}					
 
 @frappe.whitelist()
@@ -679,3 +684,50 @@ def fetch_received_cloth(docname):
 		item.balance_weight = round(item.weight - item.used_weight, 3)
 
 	cp_doc.save()
+
+@frappe.whitelist()
+def create_recut_print_panel(cutting_plan, type, item_details):
+	item_details = update_if_string_instance(item_details)
+	doc = frappe.new_doc("Recut and Print Panel")	
+	doc.cutting_plan = cutting_plan
+	doc.type = type
+	for row in item_details:
+		doc.append("recut_and_print_panel_details", {
+			"cloth_type": row.get("cloth_type", None),
+			"colour": row.get("colour", None),
+			"dia": row.get("dia", None),
+			"shade": row.get("shade", None),
+			"weight": row.get("weight", 0),
+			"panel_count": row.get("panel_count", 0),
+			"no_of_rolls": row.get("no_of_rolls", 0),
+		})
+	doc.save()
+	doc.submit()	
+
+@frappe.whitelist()
+def get_recut_print_panel_details(cutting_plan, type):
+	doc_list = frappe.get_all("Recut and Print Panel", filters={
+		"cutting_plan": cutting_plan,
+		"docstatus": 1,
+		"type": type
+	}, pluck="name")
+	items = {}
+	for doc in doc_list:
+		recut_print_panel_doc = frappe.get_doc("Recut and Print Panel", doc)
+		for row in recut_print_panel_doc.recut_and_print_panel_details:
+			key = row.cloth_type + "-" + row.colour + "-" + row.dia + "-" + row.shade
+			if key not in items:
+				items[key] = {
+					"cloth_type": row.cloth_type,
+					"colour": row.colour,
+					"dia": row.dia,
+					"shade": row.shade,
+					"weight": row.weight,
+					"panel_count": row.panel_count,
+					"no_of_rolls": row.no_of_rolls,
+				}
+			else:
+				items[key]['weight'] += row.weight
+				items[key]['panel_count'] += row.panel_count
+				items[key]['no_of_rolls'] += row.no_of_rolls
+	return items

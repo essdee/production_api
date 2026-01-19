@@ -89,7 +89,12 @@ class PurchaseInvoice(Document):
 			if grand_total > self.grn_grand_total:
 				frappe.throw("Total amount is greater than GRN total amount")	
 		else:
-			if float(round(grand_total, 2)) != float(round(self.grn_grand_total, 2)):
+			from decimal import Decimal, ROUND_HALF_UP
+			grand_total = Decimal(str(grand_total)) 
+			x1 = grand_total.quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+			self_grand_total = Decimal(str(self.grn_grand_total))
+			x2 = self_grand_total.quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+			if x1 != x2:
 				if not self.allow_to_change_rate:
 					frappe.throw("Total amount is greater than GRN total amount")
 					
@@ -101,7 +106,7 @@ class PurchaseInvoice(Document):
 					frappe.msgprint("All Approvals are Reverted")
 
 			self.set("grn_grand_total", grand_total)
-			if total_quantity != self.total_quantity and not self.is_new():
+			if total_quantity > self.total_quantity and not self.is_new():
 				frappe.throw("Not Allowed to Change Quantity")
 
 		self.set('total', total_amount)
@@ -346,8 +351,10 @@ def fetch_grn_details(grns, against, supplier):
 					"actual_rate": rate,
 					"amount": 0,
 					"tax": grn_item.tax,
+					"actual_qty": 0,
 				})
 				items[key]["qty"] += grn_item.quantity
+				items[key]["actual_qty"] += grn_item.quantity
 				items[key]["amount"] += (grn_item.quantity * rate)
 	else:
 		has_gst = frappe.get_value("Supplier", supplier, "gstin")

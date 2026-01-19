@@ -31,7 +31,7 @@
                                 </td>
                                 <td>Planned</td>
                                 <td v-for="attr in Object.keys(j.values)" :key="attr">
-                                    <div v-if="j.values[attr]['qty'] > 0">{{ j.values[attr]['qty'] }}</div>
+                                    <div v-if="j.values?.[attr]?.['qty'] > 0">{{ j.values?.[attr]?.['qty'] }}</div>
                                     <div v-else>--</div>
                                 </td>
                                 <td>{{ j.total_qty }}</td>
@@ -39,7 +39,7 @@
                             <tr v-if="!is_manual && doctype == 'Work Order'">
                                 <td>Delivered</td>
                                 <td v-for="attr in Object.keys(j.values)" :key="attr">
-                                    <div v-if="j.values[attr]['delivered'] > 0">{{ j.values[attr]['delivered'] }}</div>
+                                    <div v-if="j.values?.[attr]?.['delivered'] > 0">{{ j.values?.[attr]?.['delivered'] }}</div>
                                     <div v-else>--</div>
                                 </td>
                                 <td>{{ j.total_delivered }}</td>
@@ -48,7 +48,7 @@
                                 <td v-if="doctype=='Work Order'">Received</td>
                                 <td v-else>Completed</td>
                                 <td v-for="attr in Object.keys(j.values)" :key="attr">
-                                    <div v-if="j.values[attr]['received'] > 0">{{ j.values[attr]['received'] }}</div>
+                                    <div v-if="j.values ?.[attr]?.['received'] > 0">{{ j.values?.[attr]?.['received'] }}</div>
                                     <div v-else>--</div>
                                 </td>
                                 <td>{{ j.total_received }}</td>
@@ -61,7 +61,7 @@
                             </td>
                             <td>Planned</td>
                             <td v-for="attr in Object.keys(i.items[0]['values'])" :key="attr">
-                                <div v-if="i.total_details[attr]['planned'] > 0">{{ i.total_details[attr]['planned'] }}</div>
+                                <div v-if="i.total_details?.[attr]?.['planned'] > 0">{{ i.total_details?.[attr]?.['planned'] }}</div>
                                 <div v-else>--</div>
                             </td>
                             <td>{{ i.overall_planned }}</td>
@@ -69,7 +69,7 @@
                         <tr v-if="!is_manual && doctype == 'Work Order'">
                             <td>Delivered</td>
                             <td v-for="attr in Object.keys(i.items[0]['values'])" :key="attr">
-                                <div v-if="i.total_details[attr]['delivered'] > 0">{{ i.total_details[attr]['delivered'] }}</div>
+                                <div v-if="i.total_details?.[attr]?.['delivered'] > 0">{{ i.total_details?.[attr]?.['delivered'] }}</div>
                                 <div v-else>--</div>
                             </td>
                             <td>{{ i.overall_delivered }}</td>
@@ -78,7 +78,7 @@
                             <td v-if="doctype=='Work Order'">Received</td>
                             <td v-else>Completed</td>
                             <td v-for="attr in Object.keys(i.items[0]['values'])" :key="attr">
-                                <div v-if="i.total_details[attr]['received'] > 0">{{ i.total_details[attr]['received'] }}</div>
+                                <div v-if="i.total_details?.[attr]?.['received'] > 0">{{ i.total_details?.[attr]?.['received'] }}</div>
                                 <div v-else>--</div>
                             </td>
                             <td>{{ i.overall_received }}</td>
@@ -109,7 +109,7 @@
                                     <span v-else-if="attr == 'Colour' && !j.is_set_item && j.attributes[attr] != j.item_keys['major_colour'] && j.attributes[attr]">({{ j.item_keys['major_colour'] }})</span>
                                 </td>
                                 <td v-for="attr in j.values" :key="attr">
-                                    <div v-if='attr.pending_qty < 0'>
+                                    <div v-if='attr?.pending_qty < 0'>
                                         {{ attr.pending_qty * -1}}
                                         <span v-if="j.default_uom">{{ " " + j.default_uom }}</span>
                                     </div>
@@ -133,8 +133,8 @@
                                 <td>{{ j.lot }}</td>
                                 <td v-for="attr in i.attributes" :key="attr"> {{ j.attributes[attr] }} </td>
                                 <td>
-                                    <div v-if='j.values["default"].pending_qty < 0'>
-                                        {{ j.values["default"].pending_qty * -1 }}
+                                    <div v-if='j.values["default"]?.pending_qty < 0'>
+                                        {{ j.values["default"]?.pending_qty * -1 }}
                                         <span v-if="j.default_uom">{{ " " + j.default_uom }}</span>
                                     </div>
                                     <div v-else> -- </div>

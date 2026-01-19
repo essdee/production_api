@@ -1,0 +1,103 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "field:measurement_name",
+ "creation": "2025-12-24 14:35:50.812695",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "measurement_name",
+  "measurement_image",
+  "measurement_html",
+  "product_measurement_descriptions",
+  "amended_from"
+ ],
+ "fields": [
+  {
+   "fieldname": "measurement_name",
+   "fieldtype": "Data",
+   "label": "Measurement Name",
+   "unique": 1
+  },
+  {
+   "fieldname": "measurement_image",
+   "fieldtype": "Attach Image",
+   "hidden": 1,
+   "label": "Measurement Image"
+  },
+  {
+   "fieldname": "product_measurement_descriptions",
+   "fieldtype": "Table",
+   "label": "Product Measurement Descriptions",
+   "options": "Product Measurement Description"
+  },
+  {
+   "fieldname": "measurement_html",
+   "fieldtype": "HTML",
+   "label": "Measurement HTML"
+  },
+  {
+   "fieldname": "amended_from",
+   "fieldtype": "Link",
+   "label": "Amended From",
+   "no_copy": 1,
+   "options": "Product Measurement",
+   "print_hide": 1,
+   "read_only": 1,
+   "search_index": 1
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "is_submittable": 1,
+ "links": [],
+ "modified": "2026-01-05 18:15:25.699153",
+ "modified_by": "Administrator",
+ "module": "Product Development",
+ "name": "Product Measurement",
+ "naming_rule": "By fieldname",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "PD User",
+   "share": 1,
+   "submit": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "PD Manager",
+   "share": 1,
+   "submit": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

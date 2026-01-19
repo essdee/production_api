@@ -201,11 +201,12 @@ class ItemProductionDetail(Document):
 
 		for bom in self.get('item_bom'):
 			if bom.based_on_attribute_mapping and bom.attribute_mapping:
-				doc = frappe.get_cached_doc("Item BOM Attribute Mapping", bom.attribute_mapping)
-				duplicate_doc = frappe.new_doc("Item BOM Attribute Mapping")
+				doc = frappe.get_doc("Item BOM Attribute Mapping", bom.attribute_mapping)
+				duplicate_doc = frappe.copy_doc(doc)
 				duplicate_doc.item = self.item
 				duplicate_doc.bom_item = bom.item
-				duplicate_doc.save()
+				duplicate_doc.item_production_detail = self.name
+				duplicate_doc.insert()
 				bom.attribute_mapping = duplicate_doc.name
 			else:
 				bom.attribute_mapping = None
@@ -899,7 +900,7 @@ def get_stiching_in_stage_attributes(dependent_attribute_mapping,stiching_in_sta
 def get_combination(doc_name,attributes, combination_type, cloth_list = None):
 	ipd_doc = frappe.get_doc("Item Production Detail",doc_name)
 
-	attributes = json.loads(attributes)
+	attributes = update_if_string_instance(attributes)
 	item_attributes = ipd_doc.item_attributes
 	packing_attr = ipd_doc.packing_attribute
 	packing_attr_details = ipd_doc.packing_attribute_details
@@ -1353,7 +1354,7 @@ def duplicate_ipd(ipd):
 	})
 
 	doc.set("item_attributes", get_dict_table(ipd_doc.item_attributes))
-	doc.set("item_bom", get_dict_table(ipd_doc.item_bom))
+	# doc.set("item_bom", get_dict_table(ipd_doc.item_bom))
 	doc.set("ipd_processes", get_dict_table(ipd_doc.ipd_processes))
 	doc.set("packing_attribute_details", get_dict_table(ipd_doc.packing_attribute_details))
 	doc.set("stiching_item_details", get_dict_table(ipd_doc.stiching_item_details))
@@ -1369,18 +1370,35 @@ def duplicate_ipd(ipd):
 			"set_item_attribute": ipd_doc.set_item_attribute,
 			"major_attribute_value": ipd_doc.major_attribute_value,
 		})
-		doc.set("set_item_combination_details", ipd_doc.set_item_combination_details)
+		doc.set("set_item_combination_details", get_dict_table(ipd_doc.set_item_combination_details))
 		doc.save()
 
+	items = []
+	for row1 in ipd_doc.item_bom:
+		d = {
+			"item": row1.item,
+			"process_name": row1.process_name,
+			"dependent_attribute_value": row1.dependent_attribute_value,
+			"qty_of_product": row1.qty_of_product,
+			"qty_of_bom_item": row1.qty_of_bom_item,
+			"based_on_attribute_mapping": 0,
+			"attribute_mapping": None,
+		}
+		if row1.based_on_attribute_mapping:
+			d['based_on_attribute_mapping'] = 1
+		items.append(d)
+	doc.set("item_bom", items)
+	doc.save()		
+
 	for item1, item2 in zip_longest(ipd_doc.item_bom, doc.item_bom):
-		if item1.based_on_attribute_mapping:
+		if item1.based_on_attribute_mapping and item1.attribute_mapping:
 			bom_doc = frappe.get_doc("Item BOM Attribute Mapping", item1.attribute_mapping)
-			new_bom_doc = frappe.get_doc("Item BOM Attribute Mapping", item2.attribute_mapping)
-			new_bom_doc.set("item_attributes", bom_doc.item_attributes)
-			new_bom_doc.set("bom_item_attributes", bom_doc.bom_item_attributes)
+			new_bom_doc = frappe.copy_doc(bom_doc)
 			new_bom_doc.item_production_detail = doc.name
-			new_bom_doc.set("values", bom_doc.values)
-			new_bom_doc.save()
+			new_bom_doc.insert()
+			item2.attribute_mapping = new_bom_doc.name
+	
+	doc.save()
 
 	return doc.name
 

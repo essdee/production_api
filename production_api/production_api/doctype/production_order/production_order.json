@@ -7,19 +7,22 @@
  "engine": "InnoDB",
  "field_order": [
   "section_break_wmzr",
-  "item",
+  "naming_series",
   "gsm",
   "delivery_date",
   "lead_time_given",
+  "production_term",
   "column_break_sgdb",
-  "naming_series",
+  "item",
   "fabric",
   "dia",
   "posting_date",
+  "dont_deliver_after",
   "section_break_xtaa",
   "details_html",
   "amended_from",
-  "production_order_details"
+  "production_order_details",
+  "production_ordered_details"
  ],
  "fields": [
   {
@@ -106,13 +109,33 @@
    "fieldtype": "Int",
    "label": "Lead Time Given",
    "read_only": 1
+  },
+  {
+   "fieldname": "dont_deliver_after",
+   "fieldtype": "Date",
+   "label": "Don't Deliver After",
+   "reqd": 1
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "production_ordered_details",
+   "fieldtype": "Table",
+   "hidden": 1,
+   "label": "Production Ordered Details",
+   "options": "Production Ordered Detail"
+  },
+  {
+   "fieldname": "production_term",
+   "fieldtype": "Link",
+   "label": "Production Term",
+   "options": "Production Term"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-10-29 18:17:35.576642",
+ "modified": "2026-01-05 10:06:10.142587",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Production Order",

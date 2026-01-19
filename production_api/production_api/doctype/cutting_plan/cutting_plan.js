@@ -2,8 +2,8 @@
 // For license information, please see license.txt
 
 frappe.ui.form.on("Cutting Plan", {
-    setup(frm){
-        frm.set_query('work_order', (doc)=> {
+    setup(frm) {
+        frm.set_query('work_order', (doc) => {
             return {
                 filters: {
                     "lot": doc.lot,
@@ -12,25 +12,25 @@ frappe.ui.form.on("Cutting Plan", {
             }
         })
     },
-	refresh(frm) {
+    refresh(frm) {
         frappe.require("https://cdn.jsdelivr.net/npm/html2canvas-pro@1.5.8/dist/html2canvas-pro.min.js");
         frm.cut_plan_items = new frappe.production.ui.CutPlanItems(frm.fields_dict['items_html'].wrapper)
-        if(frm.is_new()){
+        if (frm.is_new()) {
             ["items_html", "completed_items_html", "incompleted_items_html", "accessory_html", "cloths_html"]
-            .forEach(field => $(frm.fields_dict[field].wrapper).html(""));
+                .forEach(field => $(frm.fields_dict[field].wrapper).html(""));
         }
-        else{
-            if(frm.doc.lay_no != 0){
+        else {
+            if (frm.doc.lay_no != 0) {
                 frm.set_df_property("cutting_location", "read_only", true)
             }
-            else{
+            else {
                 frm.set_df_property("cutting_location", "read_only", false)
             }
-            if(frm.doc.__onload && frm.doc.__onload.item_details){
-                frm.cut_plan_items.load_data(frm.doc.__onload.item_details,0)
+            if (frm.doc.__onload && frm.doc.__onload.item_details) {
+                frm.cut_plan_items.load_data(frm.doc.__onload.item_details, 0)
             }
-            else{
-                frm.cut_plan_items.load_data([],0)
+            else {
+                frm.cut_plan_items.load_data([], 0)
             }
             frm.completed_items = new frappe.production.ui.CuttingCompletionDetail(frm.fields_dict['completed_items_html'].wrapper)
             frm.completed_items.load_data(frm.doc.completed_items_json, 1)
@@ -40,21 +40,37 @@ frappe.ui.form.on("Cutting Plan", {
 
             frm.cut_plan_cloth_items = new frappe.production.ui.CutPlanClothItems(frm.fields_dict['cloths_html'].wrapper)
 
-            if(frm.doc.__onload && frm.doc.__onload.item_cloth_details){
-                frm.cut_plan_cloth_items.load_data(frm.doc.__onload.item_cloth_details,"cloth")
+            if (frm.doc.__onload && frm.doc.__onload.item_cloth_details) {
+                frm.cut_plan_cloth_items.load_data(frm.doc.__onload.item_cloth_details, "cloth")
             }
-            else{
-                frm.cut_plan_cloth_items.load_data([],null)
+            else {
+                frm.cut_plan_cloth_items.load_data([], null)
             }
 
             frm.cut_plan_accessory_items = new frappe.production.ui.CutPlanClothItems(frm.fields_dict['accessory_html'].wrapper)
-            if(frm.doc.__onload && frm.doc.__onload.item_accessory_details){
-                frm.cut_plan_accessory_items.load_data(frm.doc.__onload.item_accessory_details,"accessory")
+            if (frm.doc.__onload && frm.doc.__onload.item_accessory_details) {
+                frm.cut_plan_accessory_items.load_data(frm.doc.__onload.item_accessory_details, "accessory")
             }
-            else{
-                frm.cut_plan_accessory_items.load_data([],null)
+            else {
+                frm.cut_plan_accessory_items.load_data([], null)
             }
-            frm.add_custom_button("Fetch Received Cloth", ()=> {
+            frm.add_custom_button("Generate", function () {
+                if (frm.is_dirty()) {
+                    return;
+                }
+                frappe.call({
+                    method: "production_api.production_api.doctype.cutting_plan.cutting_plan.get_cloth1",
+                    args: {
+                        cutting_plan: frm.doc.name,
+                    },
+                    freeze: true,
+                    freeze_message: "Generating Cloths",
+                    callback: function () {
+                        frm.reload_doc()
+                    }
+                })
+            })
+            frm.add_custom_button("Fetch Received Cloth", () => {
                 frappe.call({
                     method: "production_api.production_api.doctype.cutting_plan.cutting_plan.fetch_received_cloth",
                     args: {
@@ -63,35 +79,19 @@ frappe.ui.form.on("Cutting Plan", {
                     freeze: true,
                     freeze_message: "Fetching Cloth",
                 })
-            })
-            frm.add_custom_button("Generate",function(){
+            }, "Fetch and Calculate")
+            frm.add_custom_button("Calculate LaySheets", function () {
                 if (frm.is_dirty()) {
                     return;
                 }
                 frappe.call({
-                    method:"production_api.production_api.doctype.cutting_plan.cutting_plan.get_cloth1",
-                    args: {
-                        cutting_plan: frm.doc.name,
-                    },
-                    freeze:true,
-                    freeze_message:"Generating Cloths",
-                    callback:function(){
-                        frm.reload_doc()
-                    }
-                })
-            })
-            frm.add_custom_button("Calculate LaySheets",function(){
-                if (frm.is_dirty()) {
-                    return;
-                }
-                frappe.call({
-                    method:"production_api.production_api.doctype.cutting_plan.cutting_plan.calculate_laysheets",
+                    method: "production_api.production_api.doctype.cutting_plan.cutting_plan.calculate_laysheets",
                     args: {
                         cutting_plan: frm.doc.name,
                     },
                 })
-            })
-            
+            }, "Fetch and Calculate")
+
             frm.add_custom_button("Get Completed", () => {
                 let d = new frappe.ui.Dialog({
                     size: "large",
@@ -128,37 +128,103 @@ frappe.ui.form.on("Cutting Plan", {
                 frm.completed_popup = new frappe.production.ui.CuttingCompletionDetail(d.fields_dict.pop_up_html.wrapper);
                 frm.completed_popup.load_data(frm.doc.completed_items_json, 3);
                 d.show();
-            });
+            }, "Get or Update Completed");
 
-            frm.add_custom_button("Update Completed", ()=> {
+            frm.add_custom_button("Update Completed", () => {
                 let d = new frappe.ui.Dialog({
-                    size:"extra-large",
+                    size: "extra-large",
                     fields: [
                         {
-                            "fieldname":"update_pop_up_html",
-                            "fieldtype":"HTML",
+                            "fieldname": "update_pop_up_html",
+                            "fieldtype": "HTML",
                         }
                     ],
-                    primary_action_label:"Submit",
-                    primary_action(){
+                    primary_action_label: "Submit",
+                    primary_action() {
                         frm.dirty()
                         let items = frm.update_completed.get_items()
-                        frm.set_value("completed_items_json",JSON.parse(JSON.stringify(items.json_data[0])))
+                        frm.set_value("completed_items_json", JSON.parse(JSON.stringify(items.json_data[0])))
                         d.hide()
                     }
                 })
                 frm.update_completed = new frappe.production.ui.CuttingCompletionDetail(d.fields_dict.update_pop_up_html.wrapper)
                 frm.update_completed.load_data(frm.doc.completed_items_json, 2)
                 d.show()
-            })
-            if(frm.doc.work_order){
+            }, "Get or Update Completed")
+
+            frm.add_custom_button("Update Recut", () => {
+                let d = new frappe.ui.Dialog({
+                    title: "Add Recut Fabric Details",
+                    size: "extra-large",
+                    fields: [
+                        {
+                            "fieldname": "recut_pop_up_html",
+                            "fieldtype": "HTML",
+                        }
+                    ],
+                    primary_action_label: "Create Recut",
+                    primary_action() {
+                        let items = frm.recut_details.get_items()
+                        frappe.call({
+                            method: "production_api.production_api.doctype.cutting_plan.cutting_plan.create_recut_print_panel",
+                            args: {
+                                cutting_plan: frm.doc.name,
+                                type: "Recut",
+                                item_details: items
+                            },
+                            freeze: true,
+                            freeze_message: "Creating Recut",
+                            callback(r) {
+                                console.log("Inserted")
+                            }
+                        })
+                        d.hide()
+                    }
+                })
+                frm.recut_details = new frappe.production.ui.RecutPrintPanelDetail(d.fields_dict.recut_pop_up_html.wrapper)
+                d.show()
+            }, "Recut and Print Panel")
+            frm.add_custom_button("Update Print Panel", () => {
+                let d = new frappe.ui.Dialog({
+                    title: "Add Print Panel Details",
+                    size: "extra-large",
+                    fields: [
+                        {
+                            "fieldname": "print_panel_pop_up_html",
+                            "fieldtype": "HTML",
+                        }
+                    ],
+                    primary_action_label: "Create Print Panel",
+                    primary_action() {
+                        let items = frm.print_details.get_items()
+                        frappe.call({
+                            method: "production_api.production_api.doctype.cutting_plan.cutting_plan.create_recut_print_panel",
+                            args: {
+                                cutting_plan: frm.doc.name,
+                                type: "Print Panel",
+                                item_details: items
+                            },
+                            freeze: true,
+                            freeze_message: "Creating Print Panel",
+                            callback(r) {
+                                console.log("Inserted")
+                            }
+                        })
+                        d.hide()
+                    }
+                })
+                frm.print_details = new frappe.production.ui.RecutPrintPanelDetail(d.fields_dict.print_panel_pop_up_html.wrapper)
+                frm.print_details.load_data()
+                d.show()
+            }, "Recut and Print Panel")
+            if (frm.doc.work_order) {
                 frappe.call({
                     method: "production_api.production_api.doctype.work_order.work_order.fetch_summary_details",
-                    args : {
+                    args: {
                         doc_name: frm.doc.work_order,
                         production_detail: frm.doc.production_detail,
                     },
-                    callback: function(r){
+                    callback: function (r) {
                         $(frm.fields_dict['planned_details_html'].wrapper).html("")
                         frm.summary = new frappe.production.ui.WOSummary(frm.fields_dict["planned_details_html"].wrapper);
                         frm.summary.load_data(r.message.item_detail, r.message.deliverables)
@@ -166,39 +232,43 @@ frappe.ui.form.on("Cutting Plan", {
                 })
             }
         }
-	},
-    validate(frm){
+        frm.print_panel_summary = new frappe.production.ui.RecutPrintPanelView(frm.fields_dict['print_panel_html'].wrapper)
+        frm.print_panel_summary.load_data('Print Panel')
+        frm.recut_summary = new frappe.production.ui.RecutPrintPanelView(frm.fields_dict['recut_fabric_html'].wrapper)
+        frm.recut_summary.load_data('Recut')
+    },
+    validate(frm) {
         let items = frm.cut_plan_items.get_items()
         frm.doc['item_details'] = JSON.stringify(items)
-        
-        if (frm.cut_plan_cloth_items){
+
+        if (frm.cut_plan_cloth_items) {
             let cloth_items = frm.cut_plan_cloth_items.get_items()
             frm.doc['item_cloth_details'] = JSON.stringify(cloth_items)
         }
-        if(frm.cut_plan_accessory_items){
+        if (frm.cut_plan_accessory_items) {
             let accessory_items = frm.cut_plan_accessory_items.get_items()
             frm.doc['item_accessory_details'] = JSON.stringify(accessory_items)
         }
     },
-    lot(frm){
-        if(frm.doc.lot){
+    lot(frm) {
+        if (frm.doc.lot) {
             frappe.call({
-                method:"production_api.production_api.doctype.cutting_plan.cutting_plan.get_items",
+                method: "production_api.production_api.doctype.cutting_plan.cutting_plan.get_items",
                 args: {
                     lot: frm.doc.lot,
                 },
-                callback: function(r){
+                callback: function (r) {
                     frm.cut_plan_items.load_data(r.message)
                 }
             })
         }
     },
-    generate_report(frm){
+    generate_report(frm) {
         frappe.call({
-            method:"production_api.production_api.doctype.cutting_plan.cutting_plan.get_cutting_laysheet_report",
+            method: "production_api.production_api.doctype.cutting_plan.cutting_plan.get_cutting_laysheet_report",
             args: {
-                cutting_plan:frm.doc.name,
-                production_detail:frm.doc.production_detail,
+                cutting_plan: frm.doc.name,
+                production_detail: frm.doc.production_detail,
             }
         })
     }

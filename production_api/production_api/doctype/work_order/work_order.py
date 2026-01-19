@@ -14,7 +14,16 @@ from production_api.production_api.doctype.purchase_order.purchase_order import 
 from production_api.production_api.doctype.item.item import get_attribute_details, get_or_create_variant
 from production_api.production_api.doctype.delivery_challan.delivery_challan import get_variant_stock_details
 from production_api.essdee_production.doctype.lot.lot import fetch_order_item_details, get_uom_conversion_factor
-from production_api.utils import get_stich_details, get_part_list, update_if_string_instance, get_tuple_attributes, get_panel_colour_combination
+from production_api.utils import (
+	get_stich_details, 
+	get_part_list, 
+	update_if_string_instance, 
+	get_tuple_attributes, 
+	get_panel_colour_combination,
+	get_finishing_plan_dict, 
+	get_finishing_plan_list,
+	get_variant_attr_details,
+)
 from production_api.essdee_production.doctype.item_production_detail.item_production_detail import get_calculated_bom, calculate_accessory, get_cloth_combination, get_stitching_combination
 
 class WorkOrder(Document):
@@ -58,6 +67,54 @@ class WorkOrder(Document):
 		self.set("work_order_tracking_logs", d)
 		self.update_deliverables()
 		if self.includes_packing:
+			is_transferred, transferred_lot = frappe.get_value("Lot", self.lot, ["is_transferred", "transferred_lot"])	
+			if is_transferred:
+				reduce_items = []
+				update_items = []
+				received_type = frappe.db.get_single_value("Stock Settings", "default_received_type")
+				fp_list = frappe.get_all("Finishing Plan", filters={
+					"lot": transferred_lot,
+				}, pluck="name")
+				if not fp_list:
+					frappe.throw(f"There is No Finishing Plan for Parent Lot {transferred_lot}")
+				fp_doc = frappe.get_doc("Finishing Plan", fp_list[0])	
+				fp_item = fp_doc.item
+				fp_uom = frappe.get_value("Item", fp_doc.item, "default_unit_of_measure")
+				self_uom = frappe.get_value("Item", self.item, "default_unit_of_measure")
+				fp_dict = get_finishing_plan_dict(fp_doc)
+				for row in self.deliverables:
+					item = frappe.get_value("Item Variant", row.item_variant, "item")
+					if item == self.item and row.qty > 0:
+						attrs = get_variant_attr_details(row.item_variant)
+						new_variant = get_or_create_variant(fp_item, attrs)
+						reduce_items.append({
+							"item": new_variant,
+							"warehouse": self.supplier,
+							"received_type": received_type,
+							"lot": fp_doc.lot,
+							"item_name": fp_item,
+							"stock_uom": fp_uom,
+							"bal_qty": row.qty,
+						})
+						update_items.append({
+							"item": row.item_variant,
+							"warehouse": self.supplier,
+							"received_type": received_type,
+							"lot": self.lot,
+							"item_name": self.item,
+							"stock_uom": self_uom,
+							"bal_qty": row.qty,
+						})
+						set_comb = update_if_string_instance(row.set_combination)
+						key = (new_variant, tuple(sorted(set_comb.items())))
+						fp_dict[key]['transferred_qty'] += row.qty
+				from production_api.mrp_stock.doctype.stock_summary.stock_summary import create_bulk_stock_entry
+				self.db_set("reduce_stock_entry", create_bulk_stock_entry({"from_warehouse":self.supplier}, reduce_items, "Material Issue", submit=True))
+				self.db_set("update_stock_entry", create_bulk_stock_entry({"to_warehouse":self.supplier}, update_items, "Material Receipt", submit=True))
+				fp_list = get_finishing_plan_list(fp_dict)
+				fp_doc.set("finishing_plan_details", fp_list)
+				fp_doc.save(ignore_permissions=True)	
+
 			self.create_finshing_doc()
 
 	def create_finshing_doc(self):
@@ -73,6 +130,32 @@ class WorkOrder(Document):
 			}, pluck="name")
 			if finishing_detail:
 				frappe.delete_doc("Finishing Plan", finishing_detail[0])
+				is_transferred, transferred_lot = frappe.get_value("Lot", self.lot, ["is_transferred", "transferred_lot"])	
+				if is_transferred:
+					fp_list = frappe.get_all("Finishing Plan", filters={
+						"lot": transferred_lot,
+					}, pluck="name")
+					if not fp_list:
+						frappe.throw(f"There is No Finishing Plan for Parent Lot {transferred_lot}")
+					fp_doc = frappe.get_doc("Finishing Plan", fp_list[0])	
+					fp_item = fp_doc.item
+					fp_dict = get_finishing_plan_dict(fp_doc)
+					for row in self.deliverables:
+						item = frappe.get_value("Item Variant", row.item_variant, "item")
+						if item == self.item:
+							attrs = get_variant_attr_details(row.item_variant)
+							new_variant = get_or_create_variant(fp_item, attrs)
+							set_comb = update_if_string_instance(row.set_combination)
+							key = (new_variant, tuple(sorted(set_comb.items())))
+							fp_dict[key]['transferred_qty'] -= row.qty
+
+					se_doc = frappe.get_doc("Stock Entry", self.update_stock_entry)
+					se_doc.cancel()
+					se_doc = frappe.get_doc("Stock Entry", self.reduce_stock_entry)
+					se_doc.cancel()
+					fp_list = get_finishing_plan_list(fp_dict)
+					fp_doc.set("finishing_plan_details", fp_list)
+					fp_doc.save(ignore_permissions=True)	
 
 	def update_deliverables(self):
 		if self.is_rework:
@@ -229,6 +312,7 @@ class WorkOrder(Document):
 			frappe.throw('No process cost for ' + self.process_name)	
 		if get_name:
 			return docname	
+		self.process_cost = docname	
 		process_doc = frappe.get_doc("Process Cost", docname)
 		ipd_doc = frappe.get_cached_doc("Item Production Detail", self.production_detail)
 		stich_details = {}
@@ -546,7 +630,7 @@ def get_lot_items(lot, doc_name, process, includes_packing=False):
 	return items
 
 @frappe.whitelist()
-def get_deliverable_receivable( items, doc_name, deliverable=False, receivable=False):
+def get_deliverable_receivable( items, doc_name, deliverable=False, receivable=False, is_alternate=False):
 	logger = get_module_logger("work_order")
 	logger.debug(f"{doc_name} Deliverable and Receivable Calculation {datetime.now()}")
 	wo_doc = frappe.get_doc("Work Order", doc_name)
@@ -614,6 +698,9 @@ def get_deliverable_receivable( items, doc_name, deliverable=False, receivable=F
 	wo_doc.set("wo_colours", wo_colour_sets)
 	logger.debug(f"{doc_name} doc saved {datetime.now()}")
 	wo_doc.save(ignore_permissions=True)
+	if is_alternate:
+		return wo_doc.name
+
 	processes = [ipd_doc.cutting_process]
 	dc_processes = [ipd_doc.stiching_process]		
 
@@ -656,7 +743,7 @@ def calc_deliverable_and_receivable(ipd_doc, process, item_list, item_name, dept
 		receivables, total_qty, table_index, row_index = get_receivables(item_list, lot, uom)
 		stiching_attributes = get_attributes(item_list, item_name, stiching_in_stage, dept_attribute, ipd)
 		stiching_attributes.update(bom)
-		deliverables  = get_deliverables(stiching_attributes, lot)
+		deliverables, table_index, row_index  = get_deliverables(stiching_attributes, lot)
 		accessory = get_accessories(item_list, ipd_doc)
 		accessory = get_converted_accessory(ipd_doc, accessory, lot, table_index, row_index)
 		deliverables = deliverables + accessory
@@ -664,7 +751,7 @@ def calc_deliverable_and_receivable(ipd_doc, process, item_list, item_name, dept
 	elif ipd_doc.packing_process == process:
 		packing_attributes = get_attributes(item_list, item_name, pack_out_stage, dept_attribute, pack_ipd=ipd)
 		item_list.update(bom)
-		deliverables  = get_deliverables(item_list, lot)
+		deliverables, table_index, row_index  = get_deliverables(item_list, lot)
 		item_doc = frappe.get_cached_doc("Item", item_name)
 		receivables, total_qty, table_index, row_index = get_receivables(packing_attributes, lot, uom, conversion_details=item_doc.uom_conversion_details, out_uom=pack_out_uom)
 		combine_dict = {}
@@ -694,7 +781,7 @@ def calc_deliverable_and_receivable(ipd_doc, process, item_list, item_name, dept
 		receivables, total_qty, table_index, row_index = get_receivables(cutting_attributes, lot, uom)
 		accessory = get_converted_accessory(ipd_doc, accessory, lot, table_index, row_index)
 		receivables = receivables + accessory
-		deliverables  =  get_deliverables(bom, lot)
+		deliverables, table_index, row_index  =  get_deliverables(bom, lot)
 	else:	
 		for item in ipd_doc.ipd_processes:
 			if item.process_name == process:
@@ -702,42 +789,53 @@ def calc_deliverable_and_receivable(ipd_doc, process, item_list, item_name, dept
 					attributes = get_attributes(item_list, item_name, item.stage, dept_attribute, ipd, process)
 					x = attributes.copy()
 					x.update(bom)
-					deliverables  = get_deliverables(x, lot)
+					deliverables, table_index, row_index  = get_deliverables(x, lot)
 					receivables, total_qty, table_index, row_index = get_receivables(attributes, lot, uom)
 				
 				elif lot_doc.pack_in_stage == item.stage:
 					deliverables = item_list.copy()
 					receivables, total_qty, table_index, row_index = get_receivables(deliverables,lot, uom)
 					item_list.update(bom)
-					deliverables = get_deliverables(item_list, lot)
+					deliverables, table_index, row_index = get_deliverables(item_list, lot)
 
 				else:
 					attributes = get_attributes(item_list, item_name, item.stage, dept_attribute, pack_ipd=ipd)
 					receivables, total_qty, table_index, row_index = get_receivables(attributes,lot, uom)
 					attributes.update(bom)
-					deliverables = get_deliverables(attributes, lot)
+					deliverables,table_index, row_index = get_deliverables(attributes, lot)
 				break
 	return deliverables, receivables, total_qty
 
 def get_deliverables(items, lot):
-    deliverables = []
-    for item_name, variants in items.items():
-        for variant in variants:
-            deliverables.append({
+	deliverables = []
+	table_index = None
+	row_index = None
+	for item_name, variants in items.items():
+		for variant in variants:
+			deliverables.append({
 				'item_variant': variant['item_variant'],
 				'lot':lot,
 				'qty': round(variant['qty'],3),
 				'uom':variant['uom'],
 				'table_index': variant['table_index'],
-				'row_index':str(variant['table_index'])+""+str(variant['row_index']),
+				'row_index': variant['row_index'],
 				'pending_quantity':round(variant['qty'],3),
 				'delivered_quantity':round(variant['qty'],3),
 				'set_combination':variant.get('set_combination', {}),
 				'is_calculated':True,
 			})
-    return deliverables
+			table_index = variant['table_index']
+			row_index = variant['row_index']
+
+	return deliverables, table_index, row_index
 
 def get_converted_accessory(ipd_doc, accessory, lot, table_index, row_index):
+	if isinstance(table_index, str):
+		table_index = int(table_index)
+	if isinstance(row_index, str):
+		row_index = int(row_index)	
+	table_index += 1
+	row_index += 1
 	accessories = []
 	cloth_detail = {}
 	for cloth in ipd_doc.cloth_detail:
@@ -833,8 +931,8 @@ def get_receivables(items,lot, uom, conversion_details = None, out_uom = None):
 			})
 			table_index = variant['table_index']
 			row_index = variant['row_index']
-
-	return receivables, total_qty, int(table_index)+1, int(row_index)+1	
+	x = 1
+	return receivables, total_qty, int(table_index)+x, int(row_index)+x	
 
 def get_attributes_qty(ipd_doc, process, depends_on_attr):
 	if depends_on_attr:
@@ -1049,11 +1147,25 @@ def get_item_structure(items,item_name, process, uom):
 	return item_list, row_index, table_index	
 
 def get_bom_structure(items, row_index, table_index):
+	from production_api.utils import get_variant_attr_details
 	bom = {}
+	primary_item_attrs = {}
 	for item_name,values in items.items():
 		table_index = table_index + 1
+		primary_attr = frappe.get_value("Item", item_name, 'primary_attribute')
 		for item,value in values.items():
-			row_index = row_index + 1
+			if not primary_attr:
+				row_index = row_index + 1
+			else:
+				if item_name not in primary_item_attrs:
+					primary_item_attrs[item_name] = []
+				attrs = get_variant_attr_details(item)
+				del attrs[primary_attr]
+				tup_key = tuple(sorted(attrs.items()))
+				if tup_key not in primary_item_attrs[item_name]:
+					row_index = row_index + 1
+					primary_item_attrs[item_name].append(tup_key)
+
 			if not bom.get(item_name):
 				bom[item_name] = []
 
@@ -1691,19 +1803,18 @@ def create_finishing_detail(work_order, from_finishing=False):
 			for grn in grn_list:
 				stiching_grn_list[grn] = True
 
-	wo_list = frappe.get_all("Work Order", filters={
-		"docstatus": 1,
-		"lot": wo_doc.lot,
-		"process_name": "Cutting",
-	}, pluck="name")	
+	lot_doc = frappe.get_doc("Lot", wo_doc.lot)
+	# wo_list = frappe.get_all("Work Order", filters={
+	# 	"docstatus": 1,
+	# 	"lot": wo_doc.lot,
+	# 	"process_name": "Cutting",
+	# }, pluck="name")	
 
-	for wo in wo_list:
-		doc = frappe.get_doc("Work Order", wo)
-		for row in doc.work_order_calculated_items:
-			if row.quantity > 0:
-				set_comb = update_if_string_instance(row.set_combination)
-				key = (row.item_variant, tuple(sorted(set_comb.items())))
-				items[key]['cutting_qty'] += row.received_qty
+	for row in lot_doc.lot_order_details:
+		set_comb = update_if_string_instance(row.set_combination)
+		key = (row.item_variant, tuple(sorted(set_comb.items())))
+		if items.get(key):
+			items[key]['cutting_qty'] += row.cut_qty
 
 	rework_items = {}
 	rework_list = frappe.get_all("GRN Rework Item", filters={"lot": wo_doc.lot}, pluck="name")

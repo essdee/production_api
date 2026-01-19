@@ -16,40 +16,45 @@
   "enable_tuple_attribute",
   "sales_settings_section",
   "sales_site_url",
+  "column_break_txmw",
   "sales_api_key",
   "sales_api_secret",
   "url_shortner_settings_section",
   "shortned_url_domain",
-  "link_expiry_days",
   "auto_send_notifications",
-  "section_break_45wni",
-  "grn_cancellation_in_days",
-  "column_break_b4fhl",
-  "allow_grn_cancellation",
-  "section_break_inin",
-  "dc_grn_letter_head",
+  "column_break_ywpk",
+  "link_expiry_days",
   "purchase_invoice_section",
   "pi_minimum_grn_date",
   "senior_merch_role",
+  "column_break_boig",
   "merchandising_manager_role",
   "merch_user_role",
-  "raw_printing_printers_section",
-  "printer_list",
-  "cutting_plan_section",
-  "cloth_allowance_percentage",
-  "work_order_section",
-  "allow_excess_grn",
-  "received_type_list",
-  "time_and_action_tracking_order_report_days",
-  "additional_grn_submit_role",
-  "cut_bundle_cancelled_lot",
-  "finishing_inward_process",
-  "default_major_aql_level",
-  "default_minor_aql_level",
   "vendor_bill_tracking_section",
   "enable_vendor_bill_no_unique_restriction",
   "fiscal_year_start_date",
-  "fiscal_year_end_date"
+  "fiscal_year_end_date",
+  "work_order_tab",
+  "work_order_section",
+  "allow_excess_grn",
+  "allow_grn_cancellation",
+  "enable_production_order",
+  "grn_cancellation_in_days",
+  "dc_grn_letter_head",
+  "time_and_action_tracking_order_report_days",
+  "column_break_xjuz",
+  "received_type_list",
+  "finishing_inward_process",
+  "additional_grn_submit_role",
+  "cutting_plan_section",
+  "cloth_allowance_percentage",
+  "printer_list",
+  "column_break_nrkc",
+  "cut_bundle_cancelled_lot",
+  "quality_inspection_section",
+  "default_major_aql_level",
+  "column_break_bvdh",
+  "default_minor_aql_level"
  ],
  "fields": [
   {
@@ -76,12 +81,6 @@
    "options": "MRP Settings Notification Doctype List"
   },
   {
-   "collapsible": 1,
-   "fieldname": "section_break_45wni",
-   "fieldtype": "Section Break",
-   "label": "GRN"
-  },
-  {
    "description": "Allow GRN Cancellation after creation for these days",
    "fieldname": "grn_cancellation_in_days",
    "fieldtype": "Int",
@@ -96,10 +95,6 @@
    "fieldname": "purchase_order_section",
    "fieldtype": "Section Break",
    "label": "Purchase Settings"
-  },
-  {
-   "fieldname": "column_break_b4fhl",
-   "fieldtype": "Column Break"
   },
   {
    "default": "0",
@@ -146,22 +141,10 @@
    "options": "MRP Settings Series Map"
   },
   {
-   "collapsible": 1,
-   "fieldname": "section_break_inin",
-   "fieldtype": "Section Break",
-   "label": "Delivery Challan"
-  },
-  {
    "fieldname": "dc_grn_letter_head",
    "fieldtype": "Link",
    "label": "DC GRN Letter Head",
    "options": "Letter Head"
-  },
-  {
-   "collapsible": 1,
-   "fieldname": "raw_printing_printers_section",
-   "fieldtype": "Section Break",
-   "label": "Raw Printing Printers"
   },
   {
    "fieldname": "printer_list",
@@ -169,7 +152,6 @@
    "label": "Printer List"
   },
   {
-   "collapsible": 1,
    "fieldname": "work_order_section",
    "fieldtype": "Section Break",
    "label": "Work Order"
@@ -283,7 +265,6 @@
    "options": "Role"
   },
   {
-   "collapsible": 1,
    "fieldname": "cutting_plan_section",
    "fieldtype": "Section Break",
    "label": "Cutting Plan"
@@ -310,13 +291,53 @@
    "fieldtype": "Link",
    "label": "Default Minor AQL Level",
    "options": "AQL Level"
+  },
+  {
+   "fieldname": "work_order_tab",
+   "fieldtype": "Tab Break",
+   "label": "Work Order"
+  },
+  {
+   "fieldname": "column_break_txmw",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "column_break_ywpk",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "column_break_boig",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "column_break_xjuz",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "quality_inspection_section",
+   "fieldtype": "Section Break",
+   "label": "Quality Inspection"
+  },
+  {
+   "fieldname": "column_break_bvdh",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "column_break_nrkc",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "0",
+   "fieldname": "enable_production_order",
+   "fieldtype": "Check",
+   "label": "Enable Production Order"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2025-11-29 16:03:49.370112",
+ "modified": "2026-01-06 12:50:47.669375",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "MRP Settings",

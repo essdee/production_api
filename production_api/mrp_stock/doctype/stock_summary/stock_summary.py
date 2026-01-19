@@ -68,7 +68,7 @@ def create_stock_entry(stock_values):
 	return new_doc.name
 
 @frappe.whitelist()
-def create_bulk_stock_entry(locations, selected_items, purpose):
+def create_bulk_stock_entry(locations, selected_items, purpose, submit=False):
 	if isinstance(locations, string_types):
 		locations = frappe.json.loads(locations)
 	if isinstance(selected_items, string_types):
@@ -106,10 +106,50 @@ def create_bulk_stock_entry(locations, selected_items, purpose):
 	new_doc.set("items", final_list)
 	new_doc.flags.allow_from_summary = True		
 	new_doc.save()
+	if submit:
+		new_doc.submit()
 	return new_doc.name
 
 @frappe.whitelist()
 def reduce_stock(selected_items, warehouse):
+	if isinstance(selected_items, string_types):
+		selected_items = frappe.json.loads(selected_items)
+	
+	new_doc = frappe.new_doc("Stock Update")
+	new_doc.warehouse = warehouse
+
+	grouped_items = get_grouped_items(selected_items)
+		
+	final_list = []
+	table_index = -1
+	row_index = -1
+	for (lot, item, received_type, stage), items in grouped_items.items():
+		sorted_items = sorted(items, key=lambda x: x['item'])
+		table_index += 1
+		row_index += 1
+		primary = frappe.get_cached_value("Item", sorted_items[0]['item_name'], "primary_attribute")
+		for item in sorted_items:
+			if not primary:
+				row_index += 1
+			final_list.append({
+				'item_variant': item['item'],
+				'lot': lot,
+				'uom': item['stock_uom'],
+				'update_diff_qty': item['bal_qty'],
+				'rate': 0,
+				'available_stock': item['bal_qty'],
+				'table_index': table_index,
+				'row_index': row_index,
+				'received_type': received_type,
+			})
+	new_doc.set("stock_update_details", final_list)
+	new_doc.flags.allow_from_summary = True		
+	new_doc.update_type = 'Reduce'
+	new_doc.save()
+	return new_doc.name
+
+@frappe.whitelist()
+def stock_reconcile(selected_items, warehouse):
 	if isinstance(selected_items, string_types):
 		selected_items = frappe.json.loads(selected_items)
 	grouped_items = get_grouped_items(selected_items)

@@ -5,6 +5,19 @@ import frappe
 from frappe.model.document import Document
 
 class ItemVariant(Document):
+	def validate(self):
+		dept_attr = frappe.get_value("Item", self.item, "dependent_attribute")
+		if not dept_attr:
+			self.sync_with_erp = 1
+		else:
+			stich_attr = frappe.db.get_single_value("IPD Settings", "default_stitching_attribute")
+			sync = 1
+			for attribute in self.attributes:
+				if attribute.attribute == stich_attr:
+					sync = 0
+					break
+			self.sync_with_erp = sync	
+
 	def set_item(self):
 		item = frappe.get_doc("Item", self.item)
 		self.set_onload('__parent_item', item.as_dict())
@@ -58,4 +71,5 @@ def spine_set_item(payload):
 	return payload
 
 def on_doctype_update():
+	frappe.db.add_index("Item Variant",["item"])
 	frappe.db.add_index("Item Variant",["name","item","item_tuple_attribute"])

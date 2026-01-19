@@ -10,6 +10,9 @@
   "against",
   "column_break_hmzd",
   "against_id",
+  "is_third_party",
+  "third_party_supplier",
+  "third_party_supplier_name",
   "section_break_bljm",
   "inspection_type",
   "order_qty",
@@ -90,6 +93,7 @@
    "read_only": 1
   },
   {
+   "default": "0",
    "fieldname": "offer_qty",
    "fieldtype": "Int",
    "label": "Offer Qty"
@@ -309,13 +313,34 @@
    "fieldname": "supplier_name",
    "fieldtype": "Data",
    "label": "Supplier Name"
+  },
+  {
+   "default": "0",
+   "fieldname": "is_third_party",
+   "fieldtype": "Check",
+   "label": "Is Third Party"
+  },
+  {
+   "depends_on": "eval: doc.is_third_party",
+   "fieldname": "third_party_supplier",
+   "fieldtype": "Link",
+   "label": "Third Party Supplier",
+   "mandatory_depends_on": "eval: doc.is_third_party",
+   "options": "Supplier"
+  },
+  {
+   "fetch_from": "third_party_supplier.supplier_name",
+   "fieldname": "third_party_supplier_name",
+   "fieldtype": "Data",
+   "label": "Third Party Supplier Name",
+   "read_only": 1
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-12-03 09:50:25.154016",
+ "modified": "2026-01-01 11:06:21.634022",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Essdee Quality Inspection",
