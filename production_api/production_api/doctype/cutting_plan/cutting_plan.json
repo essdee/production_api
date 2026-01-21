@@ -45,6 +45,7 @@
  ],
  "fields": [
   {
+   "allow_on_submit": 1,
    "fieldname": "lot",
    "fieldtype": "Link",
    "in_list_view": 1,
@@ -294,7 +295,7 @@
    "link_fieldname": "cutting_plan"
   }
  ],
- "modified": "2025-12-29 18:03:04.311520",
+ "modified": "2026-01-21 17:21:59.607412",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Cutting Plan",
