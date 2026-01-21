@@ -58,3 +58,4 @@ production_api.patches.v1_0.update_cp_status #4
 production_api.patches.v1_0.update_cutting_plan_cpstatus
 production_api.patches.v1_0.update_cbml_index #8
 production_api.patches.v1_0.update_sync_with_erp
+production_api.patches.v1_0.update_cb_ledger
