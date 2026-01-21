@@ -1840,3 +1840,11 @@ def get_alternative_details(lot):
 			"details": details
 		}
 	return lot_dict
+
+@frappe.whitelist()
+def check_is_alternative_item(item):
+	items = frappe.db.get_all("Item Alternative", filters={
+		"item": item
+	}, pluck="alternative_item")
+	
+	return items

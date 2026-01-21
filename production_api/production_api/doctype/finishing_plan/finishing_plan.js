@@ -106,89 +106,92 @@ frappe.ui.form.on("Finishing Plan", {
                 }
             })
         })
-        frappe.db.get_list("Item Alternative", {
-            filters: { item: frm.doc.item },
-            fields: ["alternative_item"]
-        }).then(results => {
-            if (results.length > 0) {
-                frm.add_custom_button("Create Alternative Plan", () => {
-                    let items = results.map(r => r.alternative_item);
-                    if (items.length === 0) {
-                        frappe.msgprint(__("No alternative items found for {0}", [frm.doc.item]));
-                        return;
-                    }
-                    let d = new frappe.ui.Dialog({
-                        title: __("Select Alternative Item and IPD"),
-                        fields: [
-                            {
-                                label: "Lot Name",
-                                fieldname: "lot_name",
-                                fieldtype: "Data",
-                                reqd: 1,
-                                default: frm.doc.lot,
-                            },
-                            {
-                                label: __("Alternative Item"),
-                                fieldname: "alternative_item",
-                                fieldtype: "Link",
-                                options: "Item",
-                                reqd: 1,
-                                get_query: () => {
-                                    return {
-                                        filters: {
-                                            name: ["in", items]
-                                        }
-                                    }
-                                }
-                            },
-                            {
-                                label: __("Item Production Detail"),
-                                fieldname: "production_detail",
-                                fieldtype: "Link",
-                                options: "Item Production Detail",
-                                reqd: 1,
-                                get_query: () => {
-                                    let alternative_item = d.get_value("alternative_item");
-                                    if (!alternative_item) {
-                                        frappe.msgprint(__("Please select an Alternative Item first."));
-                                    }
-                                    return {
-                                        filters: {
-                                            item: alternative_item || ""
-                                        }
-                                    }
-                                }
-                            },
-                            {
-                                fieldtype: "HTML",
-                                fieldname: "item_qty_html",
-                            }
-                        ],
-                        size: "extra-large",
-                        primary_action_label: __("Next"),
-                        primary_action(values) {
-                            let qty_details = frm.alternative_item.get_data();
-                            frappe.call({
-                                method: "production_api.production_api.doctype.finishing_plan.finishing_plan.create_alternative_fp",
-                                args: {
-                                    "doc_name": frm.doc.name,
-                                    "alternative_item": values.alternative_item,
-                                    "production_detail": values.production_detail,
-                                    "lot_name": values.lot_name,
-                                    "qty_details": qty_details
-                                },
-                                freeze: true,
-                                freeze_message: "Creating Alternative FP",
-                                callback: function (r) {
-                                    frappe.set_route("Form", "Work Order", r.message)
-                                    d.hide();
-                                }
-                            })
+        frappe.call({
+            method: "production_api.production_api.doctype.finishing_plan.finishing_plan.check_is_alternative_item",
+            args: {
+                "item": frm.doc.item,
+            },
+            callback: function (r) {
+                if (r.message && r.message.length > 0) {
+                    frm.add_custom_button("Create Alternative Plan", () => {
+                        let items = r.message;
+                        if (items.length === 0) {
+                            frappe.msgprint(__("No alternative items found for {0}", [frm.doc.item]));
+                            return;
                         }
-                    });
-                    frm.alternative_item = new frappe.production.ui.AlternativeItem(d.fields_dict['item_qty_html'].$wrapper, frm.doc.__onload.finishing_qty_data);
-                    d.show();
-                })
+                        let d = new frappe.ui.Dialog({
+                            title: __("Select Alternative Item and IPD"),
+                            fields: [
+                                {
+                                    label: "Lot Name",
+                                    fieldname: "lot_name",
+                                    fieldtype: "Data",
+                                    reqd: 1,
+                                    default: frm.doc.lot,
+                                },
+                                {
+                                    label: __("Alternative Item"),
+                                    fieldname: "alternative_item",
+                                    fieldtype: "Link",
+                                    options: "Item",
+                                    reqd: 1,
+                                    get_query: () => {
+                                        return {
+                                            filters: {
+                                                name: ["in", items]
+                                            }
+                                        }
+                                    }
+                                },
+                                {
+                                    label: __("Item Production Detail"),
+                                    fieldname: "production_detail",
+                                    fieldtype: "Link",
+                                    options: "Item Production Detail",
+                                    reqd: 1,
+                                    get_query: () => {
+                                        let alternative_item = d.get_value("alternative_item");
+                                        if (!alternative_item) {
+                                            frappe.msgprint(__("Please select an Alternative Item first."));
+                                        }
+                                        return {
+                                            filters: {
+                                                item: alternative_item || ""
+                                            }
+                                        }
+                                    }
+                                },
+                                {
+                                    fieldtype: "HTML",
+                                    fieldname: "item_qty_html",
+                                }
+                            ],
+                            size: "extra-large",
+                            primary_action_label: __("Next"),
+                            primary_action(values) {
+                                let qty_details = frm.alternative_item.get_data();
+                                frappe.call({
+                                    method: "production_api.production_api.doctype.finishing_plan.finishing_plan.create_alternative_fp",
+                                    args: {
+                                        "doc_name": frm.doc.name,
+                                        "alternative_item": values.alternative_item,
+                                        "production_detail": values.production_detail,
+                                        "lot_name": values.lot_name,
+                                        "qty_details": qty_details
+                                    },
+                                    freeze: true,
+                                    freeze_message: "Creating Alternative FP",
+                                    callback: function (r) {
+                                        frappe.set_route("Form", "Work Order", r.message)
+                                        d.hide();
+                                    }
+                                })
+                            }
+                        });
+                        frm.alternative_item = new frappe.production.ui.AlternativeItem(d.fields_dict['item_qty_html'].$wrapper, frm.doc.__onload.finishing_qty_data);
+                        d.show();
+                    })
+                }
             }
         })
     },

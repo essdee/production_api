@@ -14,6 +14,7 @@ class ProductionOrder(Document):
 			frappe.throw("Selected Term is not valid")
 			
 		self.posting_date = frappe.utils.nowdate()
+		self.lead_time_given = date_diff(self.delivery_date, self.posting_date)
 			
 	def onload(self):
 		order_qty = get_order_qty(self.production_order_details)
