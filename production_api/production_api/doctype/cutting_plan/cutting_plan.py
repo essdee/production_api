@@ -411,6 +411,29 @@ def calc(cutting_plan):
 	for cls in cls_list:
 		update_cutting_plan(cls)
 
+	cp_doc.reload()
+	cloth = {}	
+	recut_items = frappe.get_all("Recut and Print Panel", filters={
+		"cutting_plan": cutting_plan,
+		"docstatus": 1,
+	}, pluck="name")
+
+	for recut in recut_items:
+		recut_doc = frappe.get_doc("Recut and Print Panel", recut)
+		for item in recut_doc.recut_and_print_panel_details:
+			key = (item.colour, item.cloth_type, item.dia)
+			cloth.setdefault(key,0)
+			cloth[key] += item.weight
+	
+	for item in cp_doc.cutting_plan_cloth_details:
+		key = (item.colour, item.cloth_type, item.dia)
+		if key not in cloth:
+			continue
+		item.used_weight += cloth[key]
+		item.balance_weight = item.weight - item.used_weight
+
+	cp_doc.save()	
+
 @frappe.whitelist()
 def get_cutting_plan_laysheets_report(cutting_plan):
 	cp_doc = frappe.get_doc("Cutting Plan", cutting_plan)

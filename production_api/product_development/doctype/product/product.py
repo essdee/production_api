@@ -458,7 +458,7 @@ def release_tech_pack(doc_name):
 	new_doc.set("product_accessories", get_list_dict(product_doc, "product_accessories"))
 	box_list = get_list_dict(product_doc, "product_box_details")
 	new_doc.set("product_box_details", box_list)
-	new_doc.save()
+	new_doc.save(ignore_permissions=True)
 	for design in product_designs:
 		duplicate_and_attach(design, new_doc.name)
 	for box in box_list:

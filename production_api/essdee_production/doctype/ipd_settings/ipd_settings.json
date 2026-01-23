@@ -19,7 +19,9 @@
   "default_stitching_in_stage",
   "column_break_ihkx",
   "default_stitching_attribute",
-  "default_stitching_out_stage"
+  "default_stitching_out_stage",
+  "set_details_section",
+  "default_set_item_attribute"
  ],
  "fields": [
   {
@@ -117,13 +119,25 @@
   {
    "fieldname": "column_break_ihkx",
    "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "set_details_section",
+   "fieldtype": "Section Break",
+   "label": "Set Details"
+  },
+  {
+   "fieldname": "default_set_item_attribute",
+   "fieldtype": "Link",
+   "label": "Default Set Item Attribute",
+   "options": "Item Attribute",
+   "reqd": 1
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2025-09-05 12:48:16.379024",
+ "modified": "2026-01-20 15:08:56.536450",
  "modified_by": "Administrator",
  "module": "Essdee Production",
  "name": "IPD Settings",
