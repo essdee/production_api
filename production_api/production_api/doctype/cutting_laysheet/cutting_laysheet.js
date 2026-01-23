@@ -85,73 +85,75 @@ frappe.ui.form.on("Cutting LaySheet", {
                 x = true
             } 
             if(x && (frm.doc.status == "Bundles Generated" || frm.doc.status == "Completed") ){
-                frm.add_custom_button("Generate",()=> {
-                    frappe.call({
-                        method:"production_api.production_api.doctype.cutting_laysheet.cutting_laysheet.get_parts",
-                        args: {
-                            cutting_marker: frm.doc.cutting_marker,
-                        },
-                        callback:function(r){
-                            let data = r.message
-                            let fields = [
-                                {
-                                    fieldname:"parts_table",
-                                    fieldtype:"Table",
-                                    fields:[
-                                        {"fieldname":'part',"fieldtype":"Data","read_only":true,"label":"Part","in_list_view":true},
-                                        {"fieldname":"value","fieldtype":"Int","label":"Value","in_list_view":true}
-                                    ],
-                                    data:data,
-                                    cannot_add_rows:true,
-                                    cannot_delete_rows:true,
-                                },
-                            ]
-                            if(!frm.doc.is_manual_entry){
-                                fields = fields.concat([
+                if(!frm.doc.bundle_generated_date || frm.doc.bundle_generated_date == frappe.datetime.nowdate()){
+                    frm.add_custom_button("Generate",()=> {
+                        frappe.call({
+                            method:"production_api.production_api.doctype.cutting_laysheet.cutting_laysheet.get_parts",
+                            args: {
+                                cutting_marker: frm.doc.cutting_marker,
+                            },
+                            callback:function(r){
+                                let data = r.message
+                                let fields = [
                                     {
-                                        fieldtype:"Int",
-                                        fieldname:"maximum_no_of_plys",
-                                        label:"Maximum No of Plys",
-                                        default:frm.doc.maximum_no_of_plys,
-                                        reqd:true,
+                                        fieldname:"parts_table",
+                                        fieldtype:"Table",
+                                        fields:[
+                                            {"fieldname":'part',"fieldtype":"Data","read_only":true,"label":"Part","in_list_view":true},
+                                            {"fieldname":"value","fieldtype":"Int","label":"Value","in_list_view":true}
+                                        ],
+                                        data:data,
+                                        cannot_add_rows:true,
+                                        cannot_delete_rows:true,
                                     },
-                                    {
-                                        fieldname:"maximum_allow_percentage",
-                                        fieldtype:"Int",
-                                        label:"Maximum Allow Percent",
-                                        default: frm.doc.maximum_allow_percentage,
-                                        reqd:true,
-                                    }
-                                ])
-                            }
-                            let d =  new frappe.ui.Dialog({
-                                title : "Enter Details",
-                                fields: fields,
-                                primary_action:async function (values){
-                                    frappe.call({
-                                        method:"production_api.production_api.doctype.cutting_laysheet.cutting_laysheet.get_cut_sheet_data",
-                                        args: {
-                                            doc_name : frm.doc.name,
-                                            cutting_marker:frm.doc.cutting_marker,
-                                            laysheet_details: frm.doc.cutting_laysheet_details,
-                                            manual_item_details: frm.doc.cutting_laysheet_manual_items,
-                                            items:values.parts_table,
-                                            max_plys:values.maximum_no_of_plys || 0,
-                                            maximum_allow : values.maximum_allow_percentage || 0
+                                ]
+                                if(!frm.doc.is_manual_entry){
+                                    fields = fields.concat([
+                                        {
+                                            fieldtype:"Int",
+                                            fieldname:"maximum_no_of_plys",
+                                            label:"Maximum No of Plys",
+                                            default:frm.doc.maximum_no_of_plys,
+                                            reqd:true,
                                         },
-                                        freeze:true,
-                                        freeze_message:"Generating Bundles",
-                                        callback: function(){
-                                            frm.reload_doc()
+                                        {
+                                            fieldname:"maximum_allow_percentage",
+                                            fieldtype:"Int",
+                                            label:"Maximum Allow Percent",
+                                            default: frm.doc.maximum_allow_percentage,
+                                            reqd:true,
                                         }
-                                    })
-                                    d.hide()
+                                    ])
                                 }
-                            })
-                            d.show()
-                        }
+                                let d =  new frappe.ui.Dialog({
+                                    title : "Enter Details",
+                                    fields: fields,
+                                    primary_action:async function (values){
+                                        frappe.call({
+                                            method:"production_api.production_api.doctype.cutting_laysheet.cutting_laysheet.get_cut_sheet_data",
+                                            args: {
+                                                doc_name : frm.doc.name,
+                                                cutting_marker:frm.doc.cutting_marker,
+                                                laysheet_details: frm.doc.cutting_laysheet_details,
+                                                manual_item_details: frm.doc.cutting_laysheet_manual_items,
+                                                items:values.parts_table,
+                                                max_plys:values.maximum_no_of_plys || 0,
+                                                maximum_allow : values.maximum_allow_percentage || 0
+                                            },
+                                            freeze:true,
+                                            freeze_message:"Generating Bundles",
+                                            callback: function(){
+                                                frm.reload_doc()
+                                            }
+                                        })
+                                        d.hide()
+                                    }
+                                })
+                                d.show()
+                            }
+                        })
                     })
-                })
+                }
             }
             if(frm.doc.cutting_laysheet_bundles.length > 0 && frm.doc.status == "Bundles Generated" ){
                 frm.add_custom_button("Print Labels", ()=> {

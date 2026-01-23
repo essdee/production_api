@@ -35,6 +35,7 @@
   "is_set_item",
   "posting_time",
   "avoid_bundle_movement",
+  "bundle_generated_date",
   "section_break_cwpl",
   "cutting_marker_ratios",
   "cutting_marker_ratios_html",
@@ -401,12 +402,19 @@
    "label": "Approved By",
    "options": "User",
    "read_only": 1
+  },
+  {
+   "fieldname": "bundle_generated_date",
+   "fieldtype": "Date",
+   "in_list_view": 1,
+   "label": "Bundle Generated Date",
+   "read_only": 1
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-09-04 15:48:21.199666",
+ "modified": "2026-01-23 16:39:26.098657",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Cutting LaySheet",
