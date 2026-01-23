@@ -436,6 +436,7 @@ def release_tech_pack(doc_name):
 		"category": product_doc.category,
 		"sub_brand": product_doc.sub_brand,
 		"dia": product_doc.dia,
+		"product_image": product_doc.product_image,
 		"top_image": product_doc.top_image,
 		"bottom_image": product_doc.bottom_image,
 		"measurement": product_doc.measurement,
