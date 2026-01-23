@@ -439,12 +439,15 @@ def get_daily_production_report(date, location):
 	from production_api.production_api.doctype.cutting_plan.cutting_plan import get_complete_incomplete_structure
 	cutting_plans = frappe.db.sql(
 		"""
-			SELECT distinct(cutting_plan) FROM `tabCutting LaySheet` WHERE DATE(printed_time) = %(date)s
+			SELECT distinct(cutting_plan) FROM `tabCutting LaySheet` WHERE bundle_generated_date = %(date)s
 		""", {
 			"date": getdate(date)
 		}, as_dict=True
 	)
 	report = []
+	bundle_generated = 0
+	label_printed = 0
+	created = 0
 	for cutting_plan in cutting_plans:
 		cp_doc = frappe.get_doc("Cutting Plan",cutting_plan['cutting_plan'])
 		if cp_doc.version == "V1":
@@ -455,34 +458,66 @@ def get_daily_production_report(date, location):
 		completed, incomplete = get_complete_incomplete_structure(cp_doc.production_detail,item_details)
 		incomplete_items = update_if_string_instance(incomplete)
 		completed_items = update_if_string_instance(completed)
-		previous_cls_list = frappe.db.sql(
+		production_detail = cp_doc.production_detail
+		ipd_doc = frappe.get_cached_doc("Item Production Detail",production_detail)
+		cls_list = frappe.db.sql(
 			"""
-				SELECT name FROM `tabCutting LaySheet` WHERE DATE(printed_time) < %(date)s
+				SELECT name FROM `tabCutting LaySheet` WHERE bundle_generated_date = %(date)s  
+				AND cutting_plan = %(cutting_plan)s
+			""", {
+				"date": getdate(date),
+				"cutting_plan": cutting_plan['cutting_plan']
+			}, as_dict=True
+		)	
+		bundle_generated += len(cls_list)
+		cls_list2 = frappe.db.sql(
+			"""
+				SELECT name FROM `tabCutting LaySheet` WHERE bundle_generated_date = %(date)s  
 				AND cutting_plan = %(cutting_plan)s AND status = 'Label Printed'
 			""", {
 				"date": getdate(date),
 				"cutting_plan": cutting_plan['cutting_plan']
 			}, as_dict=True
 		)
-		production_detail = cp_doc.production_detail
-		ipd_doc = frappe.get_cached_doc("Item Production Detail",production_detail)
-		completed_items, incomplete_items = calculate_completed(previous_cls_list, ipd_doc, completed_items, incomplete_items)
-		cls_list = frappe.db.sql(
+		label_printed += len(cls_list2)
+		cls_list3 = frappe.db.sql(
 			"""
-				SELECT name FROM `tabCutting LaySheet` WHERE DATE(printed_time) = %(date)s  
-				AND cutting_plan = %(cutting_plan)s AND status = 'Label Printed'
+				SELECT name FROM `tabCutting LaySheet` WHERE posting_date = %(date)s  
+				AND cutting_plan = %(cutting_plan)s
 			""", {
 				"date": getdate(date),
 				"cutting_plan": cutting_plan['cutting_plan']
 			}, as_dict=True
-		)	
-		previous_completed = frappe.json.dumps(completed_items)
+		)
+		created += len(cls_list3)
 		completed_items, incomplete_items = calculate_completed(cls_list, ipd_doc, completed_items, incomplete_items)
-		previous_completed = update_if_string_instance(previous_completed)
-		for item1, item2 in zip_longest(previous_completed['items'], completed_items['items']):
-			for size in item1['values']:
-				item2['values'][size] = item2['values'][size] - item1['values'][size]
-		
+		major_panel = {}
+		panel_qty = {}
+		for row in ipd_doc.stiching_item_details:
+			if row.is_default:
+				major_panel[row.set_item_attribute_value] = row.stiching_attribute_value
+			panel_qty[row.stiching_attribute_value] = row.quantity
+
+		if not ipd_doc.is_set_item:
+			major_panel['panel'] = ipd_doc.stiching_major_attribute_value
+
+		for row1, row2 in zip_longest(completed_items['items'], incomplete_items['items']):
+			row1['values1'] = {}
+			if ipd_doc.is_set_item:
+				part = row1['attributes'][row1['set_attr']]
+				panel = major_panel[part]
+				for size in row1['values']:
+					if row2['values'][size][panel] > 0:
+						row1['values'][size] += row2['values'][size][panel]
+						x = get_less_qty_panels(row2['values'][size], panel, panel_qty)
+						row1['values1'][size] = x
+			else:
+				for size in row1['values']:
+					if row2['values'][size][major_panel['panel']] > 0:
+						row1['values'][size] += row2['values'][size][major_panel['panel']]
+						x = get_less_qty_panels(row2['values'][size], major_panel['panel'], panel_qty)
+						row1['values1'][size] = x
+
 		items_list = []
 		total = 0
 		total_planned_qty = 0
@@ -531,7 +566,39 @@ def get_daily_production_report(date, location):
 		completed_items['location'] = cp_doc.cutting_location
 		report.append(completed_items)
 
-	return report
+	return {
+		"report_data": report,
+		"bundle_generated": bundle_generated,
+		"label_printed": label_printed,
+		"created": created
+	}
+
+def get_less_qty_panels(values, major_panel, panel_qty):
+	result = []
+	major_panel_qty = values[major_panel]
+	for panel in values:
+		if panel == major_panel:
+			continue
+
+		if panel_qty[major_panel] == panel_qty[panel]:
+			if values[panel] < major_panel_qty:
+				result.append({
+					"panel": panel,
+					"qty": major_panel_qty - values[panel]
+				})	
+		elif panel_qty[major_panel] < panel_qty[panel]:
+			diff = panel_qty[panel] - panel_qty[major_panel]
+			qty = major_panel_qty
+			while diff > 0:
+				qty = qty + major_panel_qty
+				diff = diff - 1
+			if qty > values[panel]:
+				result.append({
+					"panel": panel,
+					"qty": qty - values[panel]
+				})	
+
+	return result
 
 def calculate_completed(cls_list, ipd_doc, completed_items, incomplete_items):
 	for cls in cls_list:
@@ -631,7 +698,7 @@ def get_cut_sheet_report(date, location):
 	from production_api.production_api.doctype.cutting_plan.cutting_plan import get_complete_incomplete_structure
 	cutting_plans = frappe.db.sql(
 		"""
-			SELECT distinct(cutting_plan) FROM `tabCutting LaySheet` WHERE DATE(printed_time) = %(date)s
+			SELECT distinct(cutting_plan) FROM `tabCutting LaySheet` WHERE bundle_generated_date = %(date)s
 		""", {
 			"date": getdate(date)
 		}, as_dict=True
@@ -648,8 +715,8 @@ def get_cut_sheet_report(date, location):
 		completed, incomplete = get_complete_incomplete_structure(cp_doc.production_detail,item_details)
 		cls_list = frappe.db.sql(
 			"""
-				SELECT name FROM `tabCutting LaySheet` WHERE DATE(printed_time) = %(date)s  
-				AND cutting_plan = %(cutting_plan)s AND status = 'Label Printed'
+				SELECT name FROM `tabCutting LaySheet` WHERE bundle_generated_date = %(date)s  
+				AND cutting_plan = %(cutting_plan)s
 			""", {
 				"date": getdate(date),
 				"cutting_plan": cutting_plan['cutting_plan']

@@ -583,6 +583,7 @@ def get_cut_sheet_data(doc_name,cutting_marker,laysheet_details, manual_item_det
 	doc.maximum_allow_percentage = maximum_allow 
 	doc.status = "Bundles Generated"
 	doc.set("cutting_laysheet_bundles", cut_sheet_data)
+	doc.bundle_generated_date = frappe.utils.nowdate()
 	doc.save()
 	cloth = {}
 	for item in doc.cutting_laysheet_details:

@@ -12,6 +12,11 @@
             </div>
         </div>
         <div v-if="report">
+            <div style="padding-left:30px;">
+                <h3>Bundle Generated - {{ bundle_generated }}</h3>
+                <h3>Label Printed - {{ label_printed }}</h3>
+                <h3>Created - {{ created }}</h3>
+            </div>
             <div v-for="i in items" :key="i" style="padding-left:20px;">
                 <h3> {{ i['style_no'] }} - {{ i['lot_no'] }} ({{i['location']}})</h3>
                 <table class="table table-sm table-bordered">
@@ -41,6 +46,13 @@
                                     <td v-for="(k, idx) in Object.keys(j.values)" :key="idx">
                                         <div v-if="j.values[k] > 0">
                                             {{ j.values[k] }}
+                                            <div
+                                                v-for="p in j.values1[k]"
+                                                :key="p.panel"
+                                                class="panel-pill"
+                                            >
+                                                {{ p.panel }} – {{ p.qty }}
+                                            </div>
                                         </div>
                                         <div v-else>--</div>
                                     </td>
@@ -87,6 +99,9 @@ let date_filter = ref(null)
 let cutting_location = ref(null)
 let items = ref({});
 let report = ref(true)
+let bundle_generated = ref(0)
+let label_printed = ref(0)
+let created = ref(0)
 
 onMounted(() => {
     let el = root.value
@@ -149,13 +164,16 @@ function get_report(){
         freeze_message: "Fetching Completion Report",
         callback: function (r) {
             if (r.message) {
-                if(r.message.length > 0){
+                if(r.message.report_data.length > 0){
                     report.value = true
                 }
                 else{
                     report.value = false
                 }
-                items.value = r.message;
+                items.value = r.message.report_data;
+                bundle_generated.value = r.message.bundle_generated
+                label_printed.value = r.message.label_printed
+                created.value = r.message.created
             } 
             else {
                 frappe.msgprint('No data found for the selected date');
