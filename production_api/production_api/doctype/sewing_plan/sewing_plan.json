@@ -1,0 +1,106 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "naming_series:",
+ "creation": "2026-01-12 11:20:23.736986",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "naming_series",
+  "work_order",
+  "lot",
+  "item",
+  "column_break_ikjy",
+  "supplier",
+  "supplier_address",
+  "section_break_gxqi",
+  "sewing_plan_order_details"
+ ],
+ "fields": [
+  {
+   "fetch_from": "work_order.lot",
+   "fieldname": "lot",
+   "fieldtype": "Link",
+   "label": "Lot",
+   "options": "Lot"
+  },
+  {
+   "fieldname": "column_break_ikjy",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "work_order",
+   "fieldtype": "Link",
+   "label": "Work Order",
+   "options": "Work Order"
+  },
+  {
+   "fetch_from": "work_order.supplier",
+   "fieldname": "supplier",
+   "fieldtype": "Link",
+   "label": "Supplier",
+   "options": "Supplier"
+  },
+  {
+   "fetch_from": "work_order.supplier_address",
+   "fieldname": "supplier_address",
+   "fieldtype": "Link",
+   "label": "Supplier Address",
+   "options": "Address"
+  },
+  {
+   "fetch_from": "lot.item",
+   "fieldname": "item",
+   "fieldtype": "Link",
+   "label": "Item",
+   "options": "Item"
+  },
+  {
+   "fieldname": "section_break_gxqi",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "naming_series",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Naming Series",
+   "options": "\nSP-2526-",
+   "reqd": 1
+  },
+  {
+   "allow_bulk_edit": 1,
+   "fieldname": "sewing_plan_order_details",
+   "fieldtype": "Table",
+   "label": "Sewing Plan Order Details",
+   "options": "Sewing Plan Order Detail"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-01-20 12:20:55.063762",
+ "modified_by": "Administrator",
+ "module": "Production Api",
+ "name": "Sewing Plan",
+ "naming_rule": "By \"Naming Series\" field",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

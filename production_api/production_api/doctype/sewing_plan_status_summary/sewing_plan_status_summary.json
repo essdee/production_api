@@ -1,0 +1,43 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2026-01-20 15:31:45.682733",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "input_type",
+  "received_type"
+ ],
+ "fields": [
+  {
+   "fieldname": "input_type",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Input Type",
+   "options": "Sewing Plan Input Type"
+  },
+  {
+   "fieldname": "received_type",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Received Type",
+   "options": "GRN Item Type"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2026-01-22 10:18:40.646992",
+ "modified_by": "Administrator",
+ "module": "Production Api",
+ "name": "Sewing Plan Status Summary",
+ "owner": "Administrator",
+ "permissions": [],
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}
