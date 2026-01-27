@@ -60,7 +60,9 @@
   "sewing_plan_status_summary",
   "type_wise_diff_summary",
   "sewing_plan_input_orders",
-  "sewing_plan_inspection_type"
+  "sewing_plan_inspection_type",
+  "sewing_line_output_type",
+  "sewing_input_qty_type"
  ],
  "fields": [
   {
@@ -351,9 +353,9 @@
   },
   {
    "fieldname": "type_wise_diff_summary",
-   "fieldtype": "Select",
+   "fieldtype": "Link",
    "label": "Type Wise Diff Summary",
-   "options": "\nInput Qty\nLine Output\nChecking Output\nAQL Output"
+   "options": "Sewing Plan Input Type"
   },
   {
    "fieldname": "sewing_plan_input_orders",
@@ -371,13 +373,25 @@
    "fieldtype": "Link",
    "label": "Sewing Plan Inspection Type",
    "options": "Sewing Plan Input Type"
+  },
+  {
+   "fieldname": "sewing_line_output_type",
+   "fieldtype": "Link",
+   "label": "Sewing Line Output Type",
+   "options": "Sewing Plan Input Type"
+  },
+  {
+   "fieldname": "sewing_input_qty_type",
+   "fieldtype": "Link",
+   "label": "Sewing Input Qty Type",
+   "options": "Sewing Plan Input Type"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2026-01-24 10:59:43.591527",
+ "modified": "2026-01-27 18:10:11.336855",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "MRP Settings",

@@ -75,22 +75,11 @@ watch(() => [props.selected_supplier, props.refresh_counter], fetchData, { immed
 }
 
 .dashboard-grid {
-    display: grid;
-    grid-template-columns: 1fr;
-    gap: 2.5rem;
-    padding-left: 30px;
-}
-
-@media (min-width: 768px) {
-    .dashboard-grid {
-        grid-template-columns: repeat(2, 1fr);
-    }
-}
-
-@media (min-width: 1024px) {
-    .dashboard-grid {
-        grid-template-columns: repeat(3, 1fr);
-    }
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 2rem;
+    width: 100%;
 }
 
 .stat-card {
@@ -106,7 +95,8 @@ watch(() => [props.selected_supplier, props.refresh_counter], fetchData, { immed
     text-align: center;
     transition: all 0.3s ease;
     overflow: hidden;
-    width: 300px;
+    width: 100%;
+    max-width: 280px;
 }
 
 .stat-card:hover {

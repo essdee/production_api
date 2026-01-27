@@ -4,7 +4,7 @@
  "docstatus": 0,
  "doctype": "Page",
  "idx": 0,
- "modified": "2026-01-19 14:48:56.308541",
+ "modified": "2026-01-27 16:13:59.333897",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "sewing-details",
@@ -14,5 +14,6 @@
  "script": null,
  "standard": "Yes",
  "style": null,
- "system_page": 0
+ "system_page": 0,
+ "title": "Sewing Details"
 }
