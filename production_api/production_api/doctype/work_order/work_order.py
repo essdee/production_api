@@ -116,19 +116,19 @@ class WorkOrder(Document):
 				fp_doc.save(ignore_permissions=True)	
 
 			self.create_finshing_doc()
-		self.create_sewing_plan()
+		# self.create_sewing_plan()
 
 	def create_finshing_doc(self):
 		# create_finishing_detail(self.name)
 		frappe.enqueue(create_finishing_detail, "short", work_order=self.name)
 
-	def create_sewing_plan(self):
-		from production_api.production_api.doctype.sewing_plan.sewing_plan import create_sewing_plan	
-		create_sewing_plan(self.name)
+	# def create_sewing_plan(self):
+	# 	from production_api.production_api.doctype.sewing_plan.sewing_plan import create_sewing_plan	
+	# 	create_sewing_plan(self.name)
 
-	def delete_sewing_plan(self):
-		from production_api.production_api.doctype.sewing_plan.sewing_plan import delete_sewing_plan
-		delete_sewing_plan(self.name)
+	# def delete_sewing_plan(self):
+	# 	from production_api.production_api.doctype.sewing_plan.sewing_plan import delete_sewing_plan
+	# 	delete_sewing_plan(self.name)
 
 	def on_cancel(self):
 		self.update_deliverables()
