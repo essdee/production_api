@@ -11,11 +11,18 @@
                             <th v-for="header in items['header2']" :key="header" class="header-cell primary-header">
                                 {{ header }}
                             </th>
+                            <th v-for="header in items['header3']" :key="header" class="header-cell primary-header">
+                                {{ header }}
+                            </th>
                         </tr>
                     </thead>
                     <tbody>
-                        <tr v-for="(row, idx) in items['data']" :key="idx" class="data-row">
+                        <tr v-for="(row, idx) in items['data']" :key="idx" class="data-row" :style="idx === 0 ? 'background: bisque' : ''">
                             <template v-if="idx == 0">
+                                <td class="data-cell"></td>
+                                <td class="data-cell"></td>
+                                <td class="data-cell"></td>
+                                <td class="data-cell"></td>
                                 <td class="data-cell"></td>
                                 <td class="data-cell"></td>
                                 <td class="data-cell"></td>
@@ -23,6 +30,7 @@
                                 <td v-for="header in items['header2']" :key="header" class="data-cell numeric-cell">
                                     {{ formatNumber(row[header]) }}
                                 </td>
+                                <td v-for="header in items['header3']" :key="header" class="data-cell"></td>
                             </template>
                             <template v-else>
                                 <td class="data-cell item-cell">{{ row['item'] }}</td>
@@ -31,8 +39,15 @@
                                 </td>
                                 <td class="data-cell item-cell">{{ row['attr_details'][row['pack_attr']] }}</td>
                                 <td class="data-cell item-cell">{{ row['attr_details'][row['set_attr']] }}</td>
+                                <td class="data-cell item-cell"></td>
+                                <td class="data-cell item-cell"></td>
+                                <td class="data-cell item-cell"></td>
+                                <td class="data-cell item-cell"></td>
                                 <td v-for="header in items['header2']" :key="header" class="data-cell numeric-cell">
                                     {{ formatNumber(row[header]) }}
+                                </td>
+                                <td v-for="header in items['header3']" :key="header" class="data-cell numeric-cell" :style="{ backgroundColor: getStatusStyle(row[header]) }">
+                                    {{ row[header] }}
                                 </td>
                             </template>    
                         </tr>
@@ -69,6 +84,7 @@ const props = defineProps({
 const items = ref({
     "header1": [],
     "header2": [],
+    "header3": [],
     "data": []
 })
 
@@ -77,9 +93,15 @@ const formatNumber = (val) => {
     return new Intl.NumberFormat().format(val)
 }
 
+const getStatusStyle = (value) => {
+    if (!value) return '#fee2e2' // Light Red
+    if (value === 'Completed') return '#dcfce7' // Light Green
+    return '#fef9c3' // Light Yellow
+}
+
 const fetchData = () => {
     if (!props.selected_supplier) {
-        items.value = { "header1": [], "header2": [], "data": [] }
+        items.value = { "header1": [], "header2": [], "data": [], "header3": [] }
         return
     }
     frappe.call({
@@ -92,6 +114,7 @@ const fetchData = () => {
                 items.value = {
                     header1: r.message.header1 || [],
                     header2: r.message.header2 || [],
+                    header3: r.message.header3 || [],
                     data: r.message.data || []
                 }
             }
@@ -124,8 +147,10 @@ watch(() => [props.selected_supplier, props.refresh_counter], fetchData, { immed
 
 .report-table {
     width: 100%;
-    border-collapse: collapse;
+    border-collapse: separate;
     border-spacing: 0;
+    border-top: 1px solid #e2e8f0;
+    border-left: 1px solid #e2e8f0;
 }
 
 /* Header Row */
@@ -133,13 +158,54 @@ watch(() => [props.selected_supplier, props.refresh_counter], fetchData, { immed
     position: sticky;
     top: 0;
     z-index: 20;
-    background: transparent;
+    background: white;
     padding: 15px;
     text-align: left;
     font-size: 0.875rem;
     font-weight: 700;
     color: #475569;
-    border: 1px solid #e2e8f0;
+    border-right: 1px solid #e2e8f0;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+/* Sticky Header1 Columns */
+.report-table th:nth-child(-n+8),
+.report-table td:nth-child(-n+8) {
+    position: sticky;
+    background-color: white;
+    z-index: 10;
+}
+
+/* Higher Z-index for Sticky Headers (intersecting top and side) */
+.report-table th:nth-child(-n+8) {
+    z-index: 30;
+}
+
+.report-table th:nth-child(1), .report-table td:nth-child(1) { left: 0; min-width: 200px; max-width: 200px; }
+.report-table th:nth-child(2), .report-table td:nth-child(2) { left: 200px; min-width: 100px; }
+.report-table th:nth-child(3), .report-table td:nth-child(3) { left: 300px; min-width: 100px; }
+.report-table th:nth-child(4), .report-table td:nth-child(4) { left: 400px; min-width: 70px; }
+.report-table th:nth-child(5), .report-table td:nth-child(5) { left: 470px; min-width: 110px; }
+.report-table th:nth-child(6), .report-table td:nth-child(6) { left: 580px; min-width: 110px; }
+.report-table th:nth-child(7), .report-table td:nth-child(7) { left: 690px; min-width: 120px; }
+.report-table th:nth-child(8), .report-table td:nth-child(8) { left: 810px; min-width: 90px; }
+
+/* Ensure the bisque row maintains its background when sticky */
+.data-row[style*="background: bisque"] td {
+    background-color: bisque !important;
+}
+
+/* Border refining for separate collapse */
+.report-table th, 
+.report-table td {
+    border-right: 1px solid #e2e8f0;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+/* Add a visual shadow/border to the edge of the sticky segment */
+.report-table th:nth-child(8),
+.report-table td:nth-child(8) {
+    border-right: 2px solid #cbd5e1;
 }
 
 .primary-header {
@@ -148,7 +214,8 @@ watch(() => [props.selected_supplier, props.refresh_counter], fetchData, { immed
 
 .data-cell {
     padding: 5px;
-    border: 1px solid #e2e8f0;
+    border-right: 1px solid #e2e8f0;
+    border-bottom: 1px solid #e2e8f0;
     font-size: 0.875rem;
     font-weight: 500;
     color: #4B5563;
@@ -172,6 +239,8 @@ watch(() => [props.selected_supplier, props.refresh_counter], fetchData, { immed
     font-weight: 600;
     color: #111827;
     font-size: 0.875rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .lot-pill {

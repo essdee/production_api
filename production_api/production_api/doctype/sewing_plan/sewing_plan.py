@@ -5,6 +5,7 @@ import frappe
 from frappe.model.document import Document
 from production_api.production_api.doctype.item.item import get_or_create_variant
 from production_api.utils import get_variant_attr_details, update_if_string_instance
+from production_api.mrp_stock.doctype.stock_summary.stock_summary import get_variant_attr_values
 from production_api.essdee_production.doctype.item_production_detail.item_production_detail import get_ipd_primary_values
 
 class SewingPlan(Document):
@@ -39,7 +40,7 @@ def create_sewing_plan(work_order):
 		new_doc = frappe.new_doc("Sewing Plan")	
 		new_doc.work_order = work_order
 		new_doc.set("sewing_plan_order_details", items)
-		new_doc.save()
+		new_doc.save(ignore_permissions=True)
 
 def delete_sewing_plan(work_order):
 	sp_list = frappe.get_all("Sewing Plan", filters={
@@ -96,7 +97,6 @@ def get_dashboard_data(supplier):
 
 @frappe.whitelist()
 def get_sp_status_summary(supplier):
-	from production_api.mrp_stock.doctype.stock_summary.stock_summary import get_variant_attr_values
 	ipd_settings = frappe.get_single("IPD Settings")
 	mrp_doc = frappe.get_single("MRP Settings")
 	type_wise_diff_input = mrp_doc.type_wise_diff_summary
@@ -111,13 +111,10 @@ def get_sp_status_summary(supplier):
 		lot = sp_doc.lot
 		item = sp_doc.item
 		primary_attr = frappe.get_value("Item", item, "primary_attribute")
-		for row in sp_doc.sewing_plan_order_details:
-			doc = frappe.get_doc("Item Variant", row.item_variant)
-			attrs = get_variant_attr_values(doc, primary_attr)
+		wo_doc = frappe.get_doc("Work Order", sp_doc.work_order)
+		for row in wo_doc.work_order_calculated_items:
+			key = get_sp_key(row, item, lot, primary_attr)
 			attr_details = get_variant_attr_details(row.item_variant)
-			set_comb = update_if_string_instance(row.set_combination)
-			set_comb = tuple(sorted(set_comb.items()))
-			key = (item, lot, attrs, set_comb)
 			data.setdefault(key, {
 				"item": item,
 				"lot": lot,
@@ -126,44 +123,52 @@ def get_sp_status_summary(supplier):
 				"pack_attr": ipd_settings.default_packing_attribute,
 				"set_attr": ipd_settings.default_set_item_attribute,
 			})
+			input_key = "GRN Qty"
+			data[key].setdefault(input_key, 0)
+			data[key][input_key] += row.received_qty
+			
+			total.setdefault(input_key, 0)
+			total[input_key] += row.received_qty
+		
+		for row in sp_doc.sewing_plan_order_details:
+			key = get_sp_key(row, item, lot, primary_attr)
+
 			input_key = "Order Qty"
 			data[key].setdefault(input_key, 0)
 			data[key][input_key] += row.quantity
+			
 			total.setdefault(input_key, 0)
 			total[input_key] += row.quantity
+			
 			input_key = "Pre Final"
-			total.setdefault(input_key, 0)
-			total[input_key] += row.pre_final
 			data[key].setdefault(input_key, 0)
 			data[key][input_key] += row.pre_final
-			input_key = "Final Inspection"
+			
 			total.setdefault(input_key, 0)
-			total[input_key] += row.final_inspection
+			total[input_key] += row.pre_final
+
+			input_key = "Final Inspection"
 			data[key].setdefault(input_key, 0)
 			data[key][input_key] += row.final_inspection
+
+			total.setdefault(input_key, 0)
+			total[input_key] += row.final_inspection
 
 		sp_entry_list = frappe.get_all("Sewing Plan Entry Detail", filters={
 			"sewing_plan": sp_name
 		}, pluck="name")
+
+		total.setdefault("checking_total", 0)
+		
 		for sp_entry in sp_entry_list:
 			spe_doc = frappe.get_doc("Sewing Plan Entry Detail", sp_entry)
 			for row in spe_doc.sewing_plan_details:
-				doc = frappe.get_doc("Item Variant", row.item_variant)
-				attrs = get_variant_attr_values(doc, primary_attr)
-				attr_details = get_variant_attr_details(row.item_variant)
-				set_comb = update_if_string_instance(row.set_combination)
-				set_comb = tuple(sorted(set_comb.items()))
-				key = (item, lot, attrs, set_comb)
-				data.setdefault(key, {
-					"item": item,
-					"lot": lot,
-					"item_variant": row.item_variant,
-					"attr_details": attr_details,
-					"pack_attr": ipd_settings.default_packing_attribute,
-					"set_attr": ipd_settings.default_set_item_attribute,
-				})
+				key = get_sp_key(row, item, lot, primary_attr)
 				input_key = spe_doc.input_type
 				if input_key == type_wise_diff_input:
+					total["checking_total"] += row.quantity
+					data[key].setdefault("checking_total", 0)
+					data[key]["checking_total"] += row.quantity
 					if received_type != spe_doc.received_type:
 						input_key = spe_doc.received_type
 				else:
@@ -173,11 +178,48 @@ def get_sp_status_summary(supplier):
 				total[input_key] += row.quantity
 				data[key].setdefault(input_key, 0)
 				data[key][input_key] += row.quantity
-	data_list = [total]
-	for row in data:
-		data_list.append(data[row])		
 
-	header1 = ["Item", "Lot", ipd_settings.default_packing_attribute, ipd_settings.default_set_item_attribute]
+	inspection_type = mrp_doc.sewing_plan_inspection_type
+	line_output = mrp_doc.sewing_line_output_type
+	input_qty = mrp_doc.sewing_input_qty_type
+	data_list = []
+	for row in data:
+		x = data[row]
+		if x.get(line_output) and x.get('checking_total'):
+			x['Ready for Checking'] = "Under Checking" if x[line_output] > x['checking_total'] else "Completed"
+		if x.get(type_wise_diff_input) and x.get(inspection_type):
+			x['Ready for AQL'] = "Under AQL" if x[type_wise_diff_input] > x[inspection_type] else "Completed"
+		if x.get(inspection_type) and x.get('Pre Final', 0) > 0:
+			x['Ready for Pre final'] = "Under Pre Final" if x[inspection_type] > x['Pre Final'] else "Completed"
+		if x.get('Final Inspection', 0) > 0:
+			x['Ready for Final Inspection'] = "Under Final Inspection" if x.get('Pre Final', 0) > x['Final Inspection'] else "Completed"
+		
+		line_stock = x.get(line_output, 0) - x.get(input_qty, 0) 
+		stock = x.get('checking_total', 0) - x.get(line_output, 0)
+		total.setdefault("Line Stock", 0)
+		total["Line Stock"] += line_stock
+		total.setdefault("Stock", 0)
+		total["Stock"] += stock
+		x['Line Stock'] = line_stock
+		x['Stock'] = stock
+		grn_pending = x[line_output] = x['GRN Qty']
+		total.setdefault("GRN Pending", 0)
+		total["GRN Pending"] += grn_pending
+		x['GRN Pending'] = grn_pending
+		data_list.append(x)		
+
+	data_list = [total] + data_list	
+
+	header1 = [
+		"Item", 
+		"Lot", 
+		ipd_settings.default_packing_attribute, 
+		ipd_settings.default_set_item_attribute,
+		"FI Date",
+		"Input Date",
+		"Last Sewing Output",
+		"Total Running Days",
+	]
 	header2 = ["Order Qty"]
 	for row in mrp_doc.sewing_plan_status_summary:
 		if row.input_type == type_wise_diff_input:
@@ -187,15 +229,34 @@ def get_sp_status_summary(supplier):
 				header2.append(row.input_type)
 		else:
 			header2.append(row.input_type)
+	
 	header2.append("Pre Final")
 	header2.append("Final Inspection")	
-
-	print(data_list)	
+	header2.append("GRN Qty")
+	header2.append("GRN Pending")
+	header2.append("Line Stock")
+	header2.append("Stock")
+	header3 = [
+		"Ready for Checking",
+		"Ready for AQL",
+		"Ready for Pre final",
+		"Ready for Final Inspection",
+	]
 	return {
 		"header1": header1,
 		"header2": header2,
-		"data": data_list
+		"data": data_list,
+		"header3": header3,
 	}
+
+def get_sp_key(row, item, lot, primary_attr):
+	doc = frappe.get_doc("Item Variant", row.item_variant)
+	attrs = get_variant_attr_values(doc, primary_attr)
+	set_comb = update_if_string_instance(row.set_combination)
+	set_comb = tuple(sorted(set_comb.items()))
+	key = (item, lot, attrs, set_comb)
+
+	return key
 
 @frappe.whitelist()
 def get_data_entry_data(supplier, lot=None):
@@ -329,7 +390,7 @@ def submit_data_entry_log(payload):
 	new_doc.posting_date = frappe.utils.nowdate()
 	new_doc.posting_time = frappe.utils.nowtime()
 	new_doc.set("sewing_plan_details", items)
-	new_doc.save()
+	new_doc.save(ignore_permissions=True)
 	return new_doc.name
 
 @frappe.whitelist()
@@ -621,6 +682,6 @@ def update_sewing_plan_data(payload):
 			else:
 				row.final_inspection = d[key]
 
-	sp_doc.save()			
+	sp_doc.save(ignore_permissions=True)			
 
 	return "Success"
