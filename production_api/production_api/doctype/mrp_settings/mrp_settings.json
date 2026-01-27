@@ -54,7 +54,13 @@
   "quality_inspection_section",
   "default_major_aql_level",
   "column_break_bvdh",
-  "default_minor_aql_level"
+  "default_minor_aql_level",
+  "sewing_plan_tab",
+  "previous_day_entries",
+  "sewing_plan_status_summary",
+  "type_wise_diff_summary",
+  "sewing_plan_input_orders",
+  "sewing_plan_inspection_type"
  ],
  "fields": [
   {
@@ -331,13 +337,47 @@
    "fieldname": "enable_production_order",
    "fieldtype": "Check",
    "label": "Enable Production Order"
+  },
+  {
+   "fieldname": "sewing_plan_tab",
+   "fieldtype": "Tab Break",
+   "label": "Sewing Plan"
+  },
+  {
+   "fieldname": "sewing_plan_status_summary",
+   "fieldtype": "Table",
+   "label": "Sewing Plan Status Summary",
+   "options": "Sewing Plan Status Summary"
+  },
+  {
+   "fieldname": "type_wise_diff_summary",
+   "fieldtype": "Select",
+   "label": "Type Wise Diff Summary",
+   "options": "\nInput Qty\nLine Output\nChecking Output\nAQL Output"
+  },
+  {
+   "fieldname": "sewing_plan_input_orders",
+   "fieldtype": "Table",
+   "label": "Sewing Plan Input Orders",
+   "options": "Sewing Plan Input Order"
+  },
+  {
+   "fieldname": "previous_day_entries",
+   "fieldtype": "Int",
+   "label": "Previous Day Entries"
+  },
+  {
+   "fieldname": "sewing_plan_inspection_type",
+   "fieldtype": "Link",
+   "label": "Sewing Plan Inspection Type",
+   "options": "Sewing Plan Input Type"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2026-01-06 12:50:47.669375",
+ "modified": "2026-01-24 10:59:43.591527",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "MRP Settings",

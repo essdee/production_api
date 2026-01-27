@@ -924,8 +924,8 @@ def get_inhouse_qty(lot, process):
 	)
 
 	ipd = frappe.get_value("Lot", lot, "production_detail")
-	ipd_fields = ["is_set_item", "packing_attribute", "primary_item_attribute", "set_item_attribute"]
-	is_set_item, pack_attr, primary_attr, set_attr = frappe.get_value("Item Production Detail", ipd, ipd_fields)
+	ipd_fields = ["is_set_item", "packing_attribute", "primary_item_attribute", "set_item_attribute","major_attribute_value"]
+	is_set_item, pack_attr, primary_attr, set_attr, major_attr = frappe.get_value("Item Production Detail", ipd, ipd_fields)
 
 	inward_qty = {"data": {}, "total": {}, "over_all": {}}
 
@@ -943,6 +943,25 @@ def get_inhouse_qty(lot, process):
 		},as_dict=True,
 	)
 
+	eqi_list = frappe.get_all("Essdee Quality Inspection", filters={
+		"docstatus": 1,
+		"against": "Work Order",
+		"against_id": ['in', wo_list]
+	}, order_by = "posting_date desc", pluck="name")
+	
+	d = {}
+	for eqi in eqi_list:
+		eqi_doc = frappe.get_doc("Essdee Quality Inspection", eqi)
+		d.setdefault(eqi_doc.supplier_name, {})
+		for row in eqi_doc.essdee_quality_inspection_colours:
+			if row.selected:
+				d[eqi_doc.supplier_name].setdefault(row.colour, {})
+
+		for row in eqi_doc.essdee_quality_inspection_sizes:
+			if row.selected:
+				for colour in d[eqi_doc.supplier_name]:
+					d[eqi_doc.supplier_name][colour].setdefault(row.size, eqi_doc.result)
+
 	for item in items:
 		sup_name = frappe.get_cached_value("Work Order", item['parent'], "supplier_name")
 		set_comb = update_if_string_instance(item["set_combination"])
@@ -951,22 +970,28 @@ def get_inhouse_qty(lot, process):
 		attr_details = get_variant_attr_details(item["item_variant"])
 		size = attr_details[primary_attr]
 		part = None
-
+		quality_colour = major_colour
 		if is_set_item:
 			variant_colour = attr_details[pack_attr]
 			part = attr_details[set_attr]
-			colour = f"{variant_colour}({major_colour}) @ "+ part
+			colour = f"{variant_colour}({major_colour})"
+			if attr_details[set_attr] != major_attr:
+				quality_colour = f"{variant_colour}({major_colour})"
+
 
 		inward_qty["data"].setdefault(colour, {})
 
 		inward_qty['data'][colour].setdefault(sup_name, {
 			"values": {},
+			"quality": {},
 			"part": part,
 			"colour_total": {
 				"delivered": 0, 
 				"received": 0, 
 			},
 		})
+		status = d.get(sup_name, {}).get(quality_colour, {}).get(size, None)
+		inward_qty['data'][colour][sup_name]['quality'].setdefault(size, status)
 		inward_qty["data"][colour][sup_name]["values"].setdefault(size, {
 			"delivered": 0, 
 			"received": 0, 

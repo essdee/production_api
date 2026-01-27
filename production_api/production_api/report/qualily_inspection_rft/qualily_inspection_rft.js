@@ -37,5 +37,21 @@ frappe.query_reports["Qualily Inspection RFT"] = {
 			"options": "\nPass\nFail\nHold",
 			"label": "Result",
 		}
-	]
+	],
+	"formatter": function (value, row, column, data, default_formatter) {
+		value = default_formatter(value, row, column, data);
+		console.log(column)
+		if (column.fieldname.includes('result')) {
+			if (data && data[column.fieldname] === 'Fail') {
+				value = "<span style='color:red'>" + value + "</span>";
+			}
+			else if (data && data[column.fieldname] === 'Hold') {
+				value = "<span style='color:orange'>" + value + "</span>";
+			}
+			else {
+				value = "<span style='color:green'>" + value + "</span>";
+			}
+		}
+		return value;
+	}
 };

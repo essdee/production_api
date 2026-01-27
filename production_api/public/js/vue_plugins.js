@@ -78,6 +78,8 @@ import {
     FinishingQtyDetailWrapper,
 } from "./Finishing";
 
+import { SewingPlanWrapper } from "./SewingPlan"
+
 import ProductionOrder from "./ProductionOrder/components/ProductionOrder.vue";
 import UpdatePrice from "./ProductionOrder/components/UpdatePrice.vue";
 import ActionDetail from "./ActionMaster/ActionDetail.vue"
@@ -1119,3 +1121,6 @@ frappe.production.product_development.ui.ProductMeasurement = ProductMeasurement
 frappe.production.product_development.ui.ProductSilhoutte = ProductSilhoutteWrapper
 frappe.production.product_development.ui.ProductGraphics = ProductGraphicsWrapper
 frappe.production.product_development.ui.ProductMeasurementImage = ProductMeasurementImageWrapper
+
+// Sewing Plan
+frappe.production.ui.SewingPlan = SewingPlanWrapper

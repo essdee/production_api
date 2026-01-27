@@ -1,0 +1,43 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2026-01-21 15:32:02.263715",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "input_type",
+  "difference_from"
+ ],
+ "fields": [
+  {
+   "fieldname": "input_type",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Input Type",
+   "options": "Sewing Plan Input Type"
+  },
+  {
+   "fieldname": "difference_from",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Difference From",
+   "options": "Sewing Plan Input Type"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2026-01-22 10:23:22.197217",
+ "modified_by": "Administrator",
+ "module": "Production Api",
+ "name": "Sewing Plan Input Order",
+ "owner": "Administrator",
+ "permissions": [],
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}
