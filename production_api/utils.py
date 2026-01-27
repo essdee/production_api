@@ -1282,10 +1282,11 @@ def get_work_in_progress_report(category, status, lot_list_val, item_list, proce
 				"wo_list": tuple(stich_wo_list)
 			}, as_dict=True
 		)
-
 		if sql_data and sql_data[0]['grn_date']:
-			lot_dict['lot_data'][lot]['sew_sent_date'] = sql_data[0]['dc_date']
 			lot_dict['lot_data'][lot]['finishing_inward_date'] = sql_data[0]['grn_date']
+
+		if sql_data and sql_data[0]['dc_date']:
+			lot_dict['lot_data'][lot]['sew_sent_date'] = sql_data[0]['dc_date']
 
 		## Dispatched Qty
 		finishing_plan_list =frappe.get_all("Finishing Plan", filters={
