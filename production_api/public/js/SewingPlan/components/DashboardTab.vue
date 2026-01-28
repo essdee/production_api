@@ -70,6 +70,8 @@ watch(() => [props.selected_supplier, props.refresh_counter], fetchData, { immed
 </script>
 
 <style scoped>
+@import "../SewingPlan.css";
+
 .dashboard-tab {
     padding: 1rem 0;
 }
@@ -141,33 +143,6 @@ watch(() => [props.selected_supplier, props.refresh_counter], fetchData, { immed
 }
 
 .empty-state {
-    grid-column: 1 / -1;
     padding: 8rem 0;
-    text-align: center;
-}
-
-.empty-icon-wrapper {
-    width: 4rem;
-    height: 4rem;
-    background-color: #F9FAFB;
-    border-radius: 1rem;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    margin: 0 auto 1.5rem;
-    opacity: 0.4;
-}
-
-.empty-icon {
-    width: 2rem;
-    height: 2rem;
-    color: #D1D5DB;
-}
-
-.empty-text {
-    color: #9CA3AF;
-    font-weight: 500;
-    font-size: 0.875rem;
-    margin: 0;
 }
 </style>
