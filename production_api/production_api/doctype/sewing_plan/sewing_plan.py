@@ -53,7 +53,7 @@ def delete_sewing_plan(work_order):
 		if sp_entry:
 			frappe.throw("Cannot cancel this Work Order")
 		else:
-			frappe.delete_doc("Sewing Plan", sp_list[0])	
+			frappe.delete_doc("Sewing Plan", sp_list[0], ignore_permissions=True)	
 
 def get_sp_entry_details(supplier, dpr_date=None, work_station=None, input_type=None):
 	sp_list = frappe.get_all("Sewing Plan", filters={
@@ -642,7 +642,7 @@ def get_sewing_plan_entries(supplier, input_type=None, work_station=None, lot_na
 
 @frappe.whitelist()
 def cancel_sewing_plan_entry(doc_id):
-	frappe.delete_doc("Sewing Plan Entry Detail", doc_id)
+	frappe.delete_doc("Sewing Plan Entry Detail", doc_id, ignore_permissions=True)
 
 @frappe.whitelist()
 def update_sewing_plan_data(payload):
