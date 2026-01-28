@@ -24,7 +24,7 @@
                 </div>
             </div>
         </div>
-        <div v-if="items">
+        <div v-if="items && Object.keys(items).length > 0">
             <div v-for="sp_name in Object.keys(items)">
                 <div class="plan-header">
                     <div class="plan-main">
@@ -97,6 +97,14 @@
                     </table>
                 </div>
             </div>    
+        </div>
+        <div v-else class="empty-state">
+            <div class="empty-icon-wrapper">
+                <svg class="empty-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
+                </svg>
+            </div>
+            <p class="empty-text">No production data for this Warehouse</p>
         </div>
     </div>
 </template>
@@ -553,5 +561,36 @@ watch(
     border-radius: 0.5rem;
     white-space: nowrap;
     border: 1px solid #e2e8f0;
+}
+
+.empty-state {
+    grid-column: 1 / -1;
+    padding: 8rem 0;
+    text-align: center;
+}
+
+.empty-icon-wrapper {
+    width: 4rem;
+    height: 4rem;
+    background-color: #F9FAFB;
+    border-radius: 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 1.5rem;
+    opacity: 0.4;
+}
+
+.empty-icon {
+    width: 2rem;
+    height: 2rem;
+    color: #D1D5DB;
+}
+
+.empty-text {
+    color: #9CA3AF;
+    font-weight: 500;
+    font-size: 0.875rem;
+    margin: 0;
 }
 </style>
