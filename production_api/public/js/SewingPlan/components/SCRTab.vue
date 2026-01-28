@@ -18,7 +18,7 @@
         </div>
 
         <div class="response-container">
-            <div v-if="displayedData && displayedData.length > 0" class="response-data">
+            <div v-if="displayedData && Object.keys(displayedData).length > 0" class="response-data">
                 <h3 class="plan-title" style="margin-bottom: 20px;">{{ item_name }}</h3>
                 <div class="table-wrapper no-scrollbar">
                     <table class="data-table">
