@@ -129,6 +129,16 @@ frappe.ui.form.on("Work Order", {
 					})
 					d.show()
 				})
+				if(frappe.user.has_role("System Manager")){
+					frm.add_custom_button("Create Sewing Plan", ()=> {
+						frappe.call({
+							method: "production_api.production_api.doctype.sewing_plan.sewing_plan.create_sewing_plan",
+							args: {
+								"work_order": frm.doc.name
+							}
+						})
+					})
+				}
 				frm.add_custom_button('Close', ()=> {
 					let receivables = frm.doc.receivables
 					let data = []
