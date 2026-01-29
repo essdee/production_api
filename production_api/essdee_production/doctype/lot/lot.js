@@ -31,16 +31,17 @@ frappe.ui.form.on("Lot", {
 				if (!r.message) {
 					x = false
 				}
-				frm.set_df_property("production_order", "read_only", !x)
 				frm.set_df_property("item", "read_only", x)
-				frm.refresh_field("production_order")
 				frm.refresh_field("item")
+				if (frm.doc.item && !frm.doc.production_order) {
+					frm.set_df_property("production_order", "read_only", true)
+				}
+				else{
+					frm.set_df_property("production_order", "read_only", !x)
+				}
+				frm.refresh_field("production_order")
 			}
 		})
-		if (frm.doc.item && !frm.doc.production_order) {
-			frm.set_df_property("production_order", "read_only", true)
-			frm.refresh_field("production_order")
-		}
 
 		if (!frm.is_new()) {
 			frm.add_custom_button(__('Purchase Summary'), function () {

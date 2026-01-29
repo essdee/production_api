@@ -1,7 +1,7 @@
 <template>
     <div class="status-summary-tab">
         <div class="report-wrapper">
-            <div class="report-container no-scrollbar">
+            <div class="report-container no-scrollbar" v-if="items && items['data'].length > 1">
                 <table class="report-table">
                     <thead>
                         <tr class="header-row">
@@ -53,15 +53,14 @@
                         </tr>
                     </tbody>
                 </table>
-                
-                <div v-if="items['data'].length === 0" class="empty-report">
-                    <div class="empty-visual">
-                        <svg class="empty-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
-                        </svg>
-                    </div>
-                    <p class="empty-text">No production data available for this Warehouse</p>
+            </div>
+            <div v-else class="empty-state">
+                <div class="empty-icon-wrapper">
+                    <svg class="empty-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
+                    </svg>
                 </div>
+                <p class="empty-text">No production data for this Warehouse</p>
             </div>
         </div>
     </div>
@@ -182,15 +181,14 @@ watch(() => [props.selected_supplier, props.refresh_counter], fetchData, { immed
 }
 
 .report-table th:nth-child(1), .report-table td:nth-child(1) { left: 0; min-width: 200px; max-width: 200px; }
-.report-table th:nth-child(2), .report-table td:nth-child(2) { left: 200px; min-width: 100px; }
-.report-table th:nth-child(3), .report-table td:nth-child(3) { left: 300px; min-width: 100px; }
-.report-table th:nth-child(4), .report-table td:nth-child(4) { left: 400px; min-width: 70px; }
-.report-table th:nth-child(5), .report-table td:nth-child(5) { left: 470px; min-width: 110px; }
-.report-table th:nth-child(6), .report-table td:nth-child(6) { left: 580px; min-width: 110px; }
-.report-table th:nth-child(7), .report-table td:nth-child(7) { left: 690px; min-width: 120px; }
-.report-table th:nth-child(8), .report-table td:nth-child(8) { left: 810px; min-width: 90px; }
+.report-table th:nth-child(2), .report-table td:nth-child(2) { left: 200px; min-width: 140px; }
+.report-table th:nth-child(3), .report-table td:nth-child(3) { left: 340px; min-width: 140px; }
+.report-table th:nth-child(4), .report-table td:nth-child(4) { left: 440px; min-width: 100px; }
+.report-table th:nth-child(5), .report-table td:nth-child(5) { left: 540px; min-width: 110px; }
+.report-table th:nth-child(6), .report-table td:nth-child(6) { left: 650px; min-width: 110px; }
+.report-table th:nth-child(7), .report-table td:nth-child(7) { left: 760px; min-width: 140px; }
+.report-table th:nth-child(8), .report-table td:nth-child(8) { left: 900px; min-width: 90px; }
 
-/* Ensure the bisque row maintains its background when sticky */
 .data-row[style*="background: bisque"] td {
     background-color: bisque !important;
 }
@@ -271,28 +269,34 @@ watch(() => [props.selected_supplier, props.refresh_counter], fetchData, { immed
     text-align: center;
 }
 
-.empty-visual {
-    width: 5rem;
-    height: 5rem;
-    background: #fdfdfd;
-    border-radius: 2rem;
+.empty-state {
+    grid-column: 1 / -1;
+    padding: 8rem 0;
+    text-align: center;
+}
+
+.empty-icon-wrapper {
+    width: 4rem;
+    height: 4rem;
+    background-color: #F9FAFB;
+    border-radius: 1rem;
     display: flex;
     align-items: center;
     justify-content: center;
-    margin: 0 auto 2rem;
-    border: 1px solid #f3f4f6;
+    margin: 0 auto 1.5rem;
+    opacity: 0.4;
 }
 
 .empty-icon {
-    width: 2.5rem;
-    height: 2.5rem;
-    color: #e5e7eb;
+    width: 2rem;
+    height: 2rem;
+    color: #D1D5DB;
 }
 
 .empty-text {
-    font-size: 0.875rem;
-    font-weight: 500;
     color: #9CA3AF;
+    font-weight: 500;
+    font-size: 0.875rem;
     margin: 0;
 }
 

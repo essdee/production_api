@@ -2263,12 +2263,18 @@ def calculate_pieces(doc_name, complete_json=None, incomplete_json=None, from_pi
 	if from_pi:
 		return completed_items, incomplete_items
 	wo_doc = frappe.get_doc("Work Order", grn_doc.against_id)
+
 	if not wo_doc.first_grn_date:
 		wo_doc.first_grn_date = grn_doc.posting_date
+	elif wo_doc.first_grn_date > grn_doc.posting_date:
+		wo_doc.first_grn_date = grn_doc.posting_date
+
+	if not wo_doc.last_grn_date:
 		wo_doc.last_grn_date = grn_doc.posting_date
-	else:
+	elif wo_doc.last_grn_date < grn_doc.posting_date:
 		wo_doc.last_grn_date = grn_doc.posting_date
-	wo_doc.end_date = grn_doc.posting_date	
+
+	wo_doc.end_date = wo_doc.last_grn_date
 
 	wo_doc.total_no_of_pieces_received += total_received
 	received_json = update_if_string_instance(wo_doc.received_types_json)	

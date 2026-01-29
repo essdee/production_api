@@ -153,6 +153,7 @@ function initSupplierField() {
 </script>
 
 <style scoped>
+@import "./SewingPlan.css";
 
 .sewing-plan-page {
     padding: 2rem;
@@ -389,26 +390,6 @@ function initSupplierField() {
     color: #9CA3AF;
     font-weight: 500;
     margin: 0;
-}
-
-/* Animations */
-@keyframes pulsate {
-    0% { opacity: 1; transform: scale(1); }
-    50% { opacity: 0.6; transform: scale(1.05); }
-    100% { opacity: 1; transform: scale(1); }
-}
-
-.pulsate {
-    animation: pulsate 2s infinite ease-in-out;
-}
-
-/* no-scrollbar utility */
-.no-scrollbar::-webkit-scrollbar {
-    display: none;
-}
-.no-scrollbar {
-    -ms-overflow-style: none;
-    scrollbar-width: none;
 }
 
 /* Frappe Control Overrides */

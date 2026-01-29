@@ -19,7 +19,6 @@
  ],
  "fields": [
   {
-   "allow_bulk_edit": 1,
    "fieldname": "sewing_plan_details",
    "fieldtype": "Table",
    "label": "Sewing Plan Details",
@@ -90,7 +89,7 @@
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-01-23 10:01:00.631688",
+ "modified": "2026-01-28 11:51:24.688983",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Sewing Plan Entry Detail",

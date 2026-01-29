@@ -53,7 +53,7 @@ def delete_sewing_plan(work_order):
 		if sp_entry:
 			frappe.throw("Cannot cancel this Work Order")
 		else:
-			frappe.delete_doc("Sewing Plan", sp_list[0])	
+			frappe.delete_doc("Sewing Plan", sp_list[0], ignore_permissions=True)	
 
 def get_sp_entry_details(supplier, dpr_date=None, work_station=None, input_type=None):
 	sp_list = frappe.get_all("Sewing Plan", filters={
@@ -406,7 +406,7 @@ def get_scr_data(supplier, lot):
 	sp_entry_list = frappe.get_all("Sewing Plan Entry Detail", filters={
 		"sewing_plan": ["in", sp_list]
 	})
-
+	print(sp_list)
 	mrp_doc = frappe.get_single("MRP Settings")
 	type_wise_diff_input = mrp_doc.type_wise_diff_summary
 
@@ -417,7 +417,7 @@ def get_scr_data(supplier, lot):
 	is_set_item, pack_attr, primary_attr, set_attr, item_name = frappe.get_value("Item Production Detail", ipd, ipd_fields)
 	primary_values = get_ipd_primary_values(ipd)
 	colours = []
-
+	print(sp_entry_list)
 	for sp_name in sp_list:
 		sp_doc = frappe.get_doc("Sewing Plan", sp_name)
 		for row in sp_doc.sewing_plan_order_details:
@@ -503,7 +503,8 @@ def get_scr_data(supplier, lot):
 			for size in scr_data[colour]["values"]:
 				total += scr_data[colour]["values"][size].get(header, 0)
 			scr_data[colour]["type_wise_total"][header] = total
-
+	
+	print(scr_data)
 	return {
 		"status": "success",
 		"primary_values": primary_values,
@@ -636,12 +637,12 @@ def get_sewing_plan_entries(supplier, input_type=None, work_station=None, lot_na
 				entry_data[sp_entry]['details'][colour]["values"].setdefault(size, 0)
 				entry_data[sp_entry]['details'][colour]["values"][size] += row.quantity
 				entry_data[sp_entry]['details'][colour]['total'] += row.quantity
-	print(entry_data)
+
 	return entry_data
 
 @frappe.whitelist()
 def cancel_sewing_plan_entry(doc_id):
-	frappe.delete_doc("Sewing Plan Entry Detail", doc_id)
+	frappe.delete_doc("Sewing Plan Entry Detail", doc_id, ignore_permissions=True)
 
 @frappe.whitelist()
 def update_sewing_plan_data(payload):
