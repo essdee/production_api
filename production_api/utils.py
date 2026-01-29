@@ -1235,17 +1235,32 @@ def get_work_in_progress_report(category, status, lot_list_val, item_list, proce
 				"parent": lot,
 			}, as_dict=True
 		)
+		total_order_qty = 0
 		if order_detail:
-			cut_qty = 	order_detail[0]['cutting'] if order_detail[0]['cutting'] else 0
 			order_qty = order_detail[0]['order_qty'] if order_detail[0]['order_qty'] else 0
 			lot_dict['total_data']['cut_details']['order_qty'] += order_qty
-			lot_dict['total_data']['cut_details']['cut_qty'] += cut_qty
-			lot_dict['total_data']['cut_details']['order_to_cut_diff'] += (cut_qty - order_qty)
 			lot_dict['lot_data'][lot]['cut_details']['order_qty'] += order_qty
-			lot_dict['lot_data'][lot]['cut_details']['cut_qty'] += cut_qty
-			lot_dict['lot_data'][lot]['cut_details']['order_to_cut_diff'] += (cut_qty - order_qty)
+			total_order_qty += order_qty
 
 		cutting, sewing = frappe.get_value("Item Production Detail", ipd, ["cutting_process", "stiching_process"])
+		cut_wo_list = get_process_wo_list(cutting, lot)
+		total_cut_qty = 0
+		for cut_wo in cut_wo_list:
+			cut_detail = frappe.db.sql(
+				f"""
+					SELECT sum(received_qty) as cutting FROM `tabWork Order Calculated Item` 
+					WHERE parent = {frappe.db.escape(cut_wo)}
+				""", as_dict=True
+			)
+			if cut_detail:
+				cut_qty = cut_detail[0]['cutting'] if cut_detail[0]['cutting'] else 0
+				total_cut_qty += cut_qty
+				lot_dict['total_data']['cut_details']['cut_qty'] += cut_qty
+				lot_dict['lot_data'][lot]['cut_details']['cut_qty'] += cut_qty
+
+		lot_dict['total_data']['cut_details']['order_to_cut_diff'] += (total_cut_qty - total_order_qty)
+		lot_dict['lot_data'][lot]['cut_details']['order_to_cut_diff'] += (total_cut_qty - total_order_qty)
+
 		sql_data = frappe.db.sql(
 			"""
 				SELECT max(last_grn_date) as date FROM `tabWork Order` WHERE docstatus = 1 AND

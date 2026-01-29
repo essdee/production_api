@@ -29,6 +29,11 @@ def create_sewing_plan(work_order):
 		is_sewing = process_name == finishing_inward_process
 
 	if is_sewing:
+		sp_list = frappe.get_all("Sewing Plan", filters={
+			"work_order": work_order
+		}, pluck="name")
+		if sp_list:
+			return
 		wo_doc = frappe.get_doc("Work Order", work_order)
 		items = []
 		for row in wo_doc.work_order_calculated_items:
