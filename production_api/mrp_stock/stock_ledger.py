@@ -21,6 +21,7 @@ from production_api.mrp_stock.utils import (
 from production_api.mrp_stock.valuation import FIFOValuation, round_off_if_near_zero
 from production_api.utils import get_or_make_bin
 from production_api.mrp_stock.doctype.bin.bin import update_qty as update_bin_qty
+from frappe.query_builder.functions import Sum
 
 
 class NegativeStockError(frappe.ValidationError):
