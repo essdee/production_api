@@ -1508,13 +1508,18 @@ def get_wo_total_delivered_received(wo):
 def get_month_wise_report(lot=None, item=None, start_date=None, end_date=None):
 	conditions = ""
 	con_dict = {}
+	lot = update_if_string_instance(lot)
+	item = update_if_string_instance(item)
+
 	if lot:
-		conditions += " AND lot = %(lot)s"
-		con_dict['lot'] = lot
+		lot.append("")
+		conditions += " AND lot IN %(lot)s"
+		con_dict['lot'] = tuple(lot)
 	
 	if item:
-		conditions += " AND item = %(item)s"
-		con_dict['item'] = item
+		item.append("")
+		conditions += " AND item IN %(item)s"
+		con_dict['item'] = tuple(item)
 
 
 	ipd_settings = frappe.get_single("IPD Settings")
@@ -1553,18 +1558,19 @@ def get_month_wise_report(lot=None, item=None, start_date=None, end_date=None):
 
 	for wo in cut_wo_list:
 		wo_doc = frappe.get_doc("Work Order", wo['name'])
+		month_wise_data.setdefault(wo_doc.item, {})
 		for row in wo_doc.work_order_track_pieces:
 			date = row.date
 			if start and end and (date > end or date < start):
 				continue
 			wo_month = str(months[date.month-1])
-			month_wise_data.setdefault(wo_month, {
+			month_wise_data[wo_doc.item].setdefault(wo_month, {
 				"cut_qty": 0,
 				"sewing_sent": 0,
 				"finishing_inward": 0,
 				"dispatch": 0,
 			})
-			month_wise_data[wo_month]['cut_qty'] += row.received_qty
+			month_wise_data[wo_doc.item][wo_month]['cut_qty'] += row.received_qty
 
 	processes = frappe.db.sql(
 		""" 
@@ -1591,28 +1597,29 @@ def get_month_wise_report(lot=None, item=None, start_date=None, end_date=None):
 
 	for wo in sew_wo_list:
 		wo_doc = frappe.get_doc("Work Order", wo['name'])
+		month_wise_data.setdefault(wo_doc.item, {})
 		for row in wo_doc.work_order_track_pieces:
 			date = row.date
 			if start and end and (date > end or date < start):
 				continue
 			wo_month = str(months[date.month-1])
-			month_wise_data.setdefault(wo_month, {
+			month_wise_data[wo_doc.item].setdefault(wo_month, {
 				"cut_qty": 0,
 				"sewing_sent": 0,
 				"finishing_inward": 0,
 				"dispatch": 0,
 			})
-			month_wise_data[wo_month]['sewing_sent'] += row.delivered_quantity
-			month_wise_data[wo_month]['finishing_inward'] += row.received_qty
+			month_wise_data[wo_doc.item][wo_month]['sewing_sent'] += row.delivered_quantity
+			month_wise_data[wo_doc.item][wo_month]['finishing_inward'] += row.received_qty
 
 	conditions = ""
 	con = {}
 	if lot:
-		conditions += " AND t2.lot = %(lot)s"
-		con['lot'] = lot
+		conditions += " AND t2.lot IN %(lot)s"
+		con['lot'] = tuple(lot)
 	if item:
-		conditions += " AND t4.name = %(item)s"
-		con['item'] = item
+		conditions += " AND t4.name IN %(item)s"
+		con['item'] = tuple(item)
 
 	if start_date and end_date:
 		conditions += " AND t1.posting_date BETWEEN %(start_date)s AND %(end_date)s"
@@ -1635,21 +1642,26 @@ def get_month_wise_report(lot=None, item=None, start_date=None, end_date=None):
 		se_doc = frappe.get_doc("Stock Entry", se['name'])
 		date = se_doc.posting_date
 		wo_month = str(months[date.month-1])
-		month_wise_data.setdefault(wo_month, {
-			"cut_qty": 0,
-			"sewing_sent": 0,
-			"finishing_inward": 0,
-			"dispatch": 0,
-		})
 		for row in se_doc.items:
-			if lot and row.lot != lot:
+			if lot and row.lot not in lot:
 				continue
-			if item and frappe.get_cached_value("Item Variant", row.item, "item") != item:
+			item_name = frappe.get_cached_value("Item Variant", row.item, "item")
+			if item and item_name not in item:
 				continue
-
-			month_wise_data[wo_month]['dispatch'] += (row.qty * row.conversion_factor)
-
-	return month_wise_data
+			month_wise_data.setdefault(item_name, {})
+			month_wise_data[item_name].setdefault(wo_month, {
+				"cut_qty": 0,
+				"sewing_sent": 0,
+				"finishing_inward": 0,
+				"dispatch": 0,
+			})
+			month_wise_data[item_name][wo_month]['dispatch'] += (row.qty * row.conversion_factor)
+	
+	result = {}
+	for item in month_wise_data:
+		if len(month_wise_data[item]) != 0:
+			result[item] = month_wise_data[item]
+	return result
 
 @frappe.whitelist()
 def get_size_wise_stock_report(open_status, lot_list, item_list, category, process_list):

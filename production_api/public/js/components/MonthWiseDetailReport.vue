@@ -8,33 +8,52 @@
             <div style="padding-top:27px;">
                 <button class="btn btn-primary" @click="get_month_wise_report()">Show Report</button>
             </div>
+            <div style="padding-top:27px;padding-left:10px;">
+                <button class="btn btn-primary" @click="get_list_items()">Paste</button>
+            </div>
         </div>
         <div v-if="items && Object.keys(items).length > 0">
-            <table class="table table-md table-sm-bordered bordered-table">
-                <tr>
-                    <th>Month</th>
-                    <th>Cut Qty</th>
-                    <th>Sewing Sent</th>
-                    <th>Finishing Inward</th>
-                    <th>Dispatch</th>
-                </tr>
-                <template v-for="month in Object.keys(items)">
+            <div v-for="item_name in Object.keys(items)">
+                <h3>{{ item_name }}</h3>
+                <table class="table table-md table-sm-bordered bordered-table">
                     <tr>
-                        <td>{{ month }}</td>
-                        <td>{{ items[month]['cut_qty'] }}</td>
-                        <td>{{ items[month]['sewing_sent'] }}</td>
-                        <td>{{ items[month]['finishing_inward'] }}</td>
-                        <td>{{ items[month]['dispatch'] }}</td>
-                    </tr>    
-                </template>
-            </table>
+                        <th>Month</th>
+                        <th>Cut Qty</th>
+                        <th>Sewing Sent</th>
+                        <th>Finishing Inward</th>
+                        <th>Dispatch</th>
+                    </tr>
+                    <template v-for="month in Object.keys(items[item_name])">
+                        <tr>
+                            <td>{{ month }}</td>
+                            <td>{{ items[item_name][month]['cut_qty'] }}</td>
+                            <td>{{ items[item_name][month]['sewing_sent'] }}</td>
+                            <td>{{ items[item_name][month]['finishing_inward'] }}</td>
+                            <td>{{ items[item_name][month]['dispatch'] }}</td>
+                        </tr>    
+                    </template>
+                </table>
+            </div>  
+        </div>
+        <div v-else>
+            <div class="flex justify-center align-center text-muted" style="height: 50vh;">
+                <div>
+                    <div class="msg-box no-border">
+                        <div>
+                            <img src="/assets/frappe/images/ui-states/list-empty-state.svg" alt="Generic Empty State" class="null-state">
+                            <p>Nothing to show</p>
+                        </div>
+                    </div>
+                </div>
+            </div>    
         </div>
     </div>
 </template>
 
 <script setup>
 
-import {ref, onMounted} from 'vue';
+import {ref, onMounted, createApp} from 'vue';
+import MultiSelectListConverter from './MultiSelectListConverter.vue'
 
 let lot = null
 let item = null
@@ -51,14 +70,12 @@ onMounted(()=> {
         parent: $(el).find(".lot-input"),
         df: {
             fieldname: "lot",
-            fieldtype: "Link",
+            fieldtype: "MultiSelectList",
             options: "Lot",
             label: "Lot",
-            async onchange(){
-                let x = await frappe.db.get_value("Lot", lot.get_value(), "item")
-                item.set_value(x.message.item)
-                item.refresh()
-            }
+            get_data: function (txt) {
+                return frappe.db.get_link_options("Lot", txt);
+            },
         },
         doc: sample_doc.value,
         render_input: true,
@@ -68,9 +85,12 @@ onMounted(()=> {
         parent: $(el).find(".item-input"),
         df: {
             fieldname: "item",
-            fieldtype: "Link",
+            fieldtype: "MultiSelectList",
             options: "Item",
             label: "Item",
+            get_data: function(txt){
+                return frappe.db.get_link_options("Item", txt)
+            }
         },
         doc: sample_doc.value,
         render_input: true,
@@ -99,8 +119,38 @@ onMounted(()=> {
     })
 })
 
+function get_list_items(){
+    let i = null
+    let d = new frappe.ui.Dialog({
+        fields: [
+            {
+                "fieldname": "pop_up_html",
+                "fieldtype": "HTML"
+            }
+        ],
+        primary_action(){
+            if (i.select_value == 'Item'){
+                let updated_list = item.get_value().concat(i.list)
+                item.set_value(updated_list)
+            }
+            else if(i.select_value == 'Lot'){
+                let updated_list = lot.get_value().concat(i.list)
+                lot.set_value(updated_list)
+            }
+            d.hide()
+        }
+    })
+    d.fields_dict['pop_up_html'].$wrapper.html("")
+    let el = d.fields_dict['pop_up_html'].$wrapper.get(0)
+    let vue = createApp(MultiSelectListConverter, {
+        "items_list": ['Lot', 'Item']
+    })
+    i = vue.mount(el)
+    d.show()
+}
+
 function get_month_wise_report(){
-    if(!lot.get_value() && !item.get_value()){
+    if(lot.get_value().length == 0 && item.get_value().length == 0){
         frappe.msgprint("Please Set Item or Lot to Generate Report")
         return
     }
