@@ -135,7 +135,7 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2026-01-27 14:09:23.889058",
+ "modified": "2026-01-29 18:48:55.413073",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Production Order",
@@ -213,6 +213,7 @@
   }
  ],
  "row_format": "Dynamic",
+ "search_fields": "item",
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": []
