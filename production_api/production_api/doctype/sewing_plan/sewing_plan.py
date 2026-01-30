@@ -11,6 +11,7 @@ from production_api.essdee_production.doctype.item_production_detail.item_produc
 class SewingPlan(Document):
 	pass
 
+@frappe.whitelist()
 def create_sewing_plan(work_order):
 	finishing_inward_process = frappe.db.get_single_value("MRP Settings", "finishing_inward_process")
 	process_name, internal_unit = frappe.get_value("Work Order", work_order, ["process_name", "is_internal_unit"])	
