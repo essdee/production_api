@@ -92,6 +92,10 @@ const props = defineProps({
         type: String,
         default: null
     },
+    refresh_counter: {
+        type: Number,
+        default: 0
+    }
 })
 
 const lot_filter_wrapper = ref(null)
@@ -212,7 +216,7 @@ onMounted(() => {
     initLotFilter()
 })
 
-watch(() => [props.selected_supplier, selected_lot.value], fetchData)
+watch(() => [props.selected_supplier, selected_lot.value, props.refresh_counter], fetchData)
 </script>
 
 <style scoped>

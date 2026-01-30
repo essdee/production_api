@@ -14,6 +14,9 @@
                 <div class="filter-control">
                      <div ref="ws_filter_wrapper"></div>
                 </div>
+                <div class="filter-control">
+                      <div ref="input_type_filter_wrapper"></div>
+                </div>
                 <div>
                      <button class="btn btn-primary" @click="fetchDPRData()" style="border-radius: 12px; font-weight: 700;">
                         Fetch
@@ -97,16 +100,23 @@ const props = defineProps({
     selected_supplier: {
         type: String,
         required: true
+    },
+    refresh_counter: {
+        type: Number,
+        default: 0
     }
 })
 
 const date_filter_wrapper = ref(null)
 const ws_filter_wrapper = ref(null)
+const input_type_filter_wrapper = ref(null)
 let date_filter_control = null
 let ws_value = null
+let input_type_control = null
 
 const selected_date = ref(null)
 const selected_ws = ref(null)
+const selected_input_type = ref(null)
 const headers = ref([])
 const data = ref({})
 
@@ -147,6 +157,32 @@ const initFilter = () => {
         },
         render_input: true
     })
+
+    if (!input_type_filter_wrapper.value) return
+
+    $(input_type_filter_wrapper.value).empty()
+
+    input_type_control = frappe.ui.form.make_control({
+        parent: $(input_type_filter_wrapper.value),
+        df: {
+            fieldtype: 'Link',
+            fieldname: 'input_type',
+            label: 'Input Type',
+            options: 'Sewing Plan Input Type',
+            placeholder: "Input Type",
+            change: () => {
+                selected_input_type.value = input_type_control.get_value()
+            },
+            get_query: () => {
+                return {
+                    filters: {
+                        'name': ['!=', 'Order Qty']
+                    }
+                }
+            }
+        },
+        render_input: true
+    })
 }
 
 const fetchDPRData = () => {
@@ -157,6 +193,7 @@ const fetchDPRData = () => {
             supplier: props.selected_supplier,
             dpr_date: selected_date.value,
             work_station: selected_ws.value ,
+            input_type: selected_input_type.value
         },
         callback: (r) => {
             headers.value = r.message.headers
@@ -169,7 +206,7 @@ onMounted(() => {
     initFilter()
 })
 
-watch(() => [props.selected_supplier, selected_date.value, selected_ws.value], fetchDPRData)
+watch(() => [props.selected_supplier, selected_date.value, selected_ws.value, selected_input_type.value, props.refresh_counter], fetchDPRData)
 
 </script>
     

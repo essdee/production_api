@@ -69,10 +69,16 @@
                             v-show="current_tab === 'data_entry'" 
                             :selected_supplier="selected_supplier" 
                             :refresh_counter="refresh_counter"
+                            @refresh="refresh_counter++"
                         />
-                        <DPRTab v-show="current_tab === 'dpr'" :selected_supplier="selected_supplier" />
-                        <SCRTab v-show="current_tab === 'scr'" :selected_supplier="selected_supplier" />
-                        <LineTab v-show="current_tab === 'line'" :selected_supplier="selected_supplier" />
+                        <DPRTab v-show="current_tab === 'dpr'" :selected_supplier="selected_supplier" :refresh_counter="refresh_counter" />
+                        <SCRTab v-show="current_tab === 'scr'" :selected_supplier="selected_supplier" :refresh_counter="refresh_counter" />
+                        <LineTab 
+                            v-show="current_tab === 'line'" 
+                            :selected_supplier="selected_supplier" 
+                            :refresh_counter="refresh_counter"
+                            @refresh="refresh_counter++"
+                        />
                     </div>
                     <div v-else class="global-empty-state">
                         <div class="empty-state-visual">

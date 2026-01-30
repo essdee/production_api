@@ -208,7 +208,7 @@ def get_sp_status_summary(supplier):
 		total["Stock"] += stock
 		x['Line Stock'] = line_stock
 		x['Stock'] = stock
-		grn_pending = x[line_output] = x['GRN Qty']
+		grn_pending = x.get(line_output, 0) - x['GRN Qty']
 		total.setdefault("GRN Pending", 0)
 		total["GRN Pending"] += grn_pending
 		x['GRN Pending'] = grn_pending
@@ -539,8 +539,8 @@ def get_colour_size_data(set_combination, item_variant, is_set_item, pack_attr, 
 	return size, part, colour	
 
 @frappe.whitelist()
-def get_sewing_plan_dpr_data(supplier, dpr_date, work_station=None):
-	sp_entry_list = get_sp_entry_details(supplier, dpr_date=dpr_date, work_station=work_station)
+def get_sewing_plan_dpr_data(supplier, dpr_date, work_station=None, input_type=None):
+	sp_entry_list = get_sp_entry_details(supplier, dpr_date=dpr_date, work_station=work_station, input_type=input_type)
 	dpr_data = {}
 	for sp_entry in sp_entry_list:
 		sp_doc = frappe.get_doc("Sewing Plan Entry Detail", sp_entry)
