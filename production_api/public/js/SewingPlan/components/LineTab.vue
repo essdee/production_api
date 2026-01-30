@@ -49,8 +49,8 @@
                     <div style="padding-top:45px; padding-right:20px;">
                         <button class="record-btn" @click="open_popup(sp_name)">
                             <svg class="record-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M12 4v16m8-8H4"></path>
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M6 18L18 6M6 6l12 12"></path>
                             </svg>
                             Cancel Entry
                         </button>
@@ -119,7 +119,13 @@ const props = defineProps({
         type: String,
         default: null
     },
+    refresh_counter: {
+        type: Number,
+        default: 0
+    }
 })
+
+const emit = defineEmits(['refresh'])
 
 const inputTypeWrapper = ref(null)
 const workStationWrapper = ref(null)
@@ -204,6 +210,7 @@ function open_popup(sp_name){
                 callback: function(r){
                     d.hide()
                     delete items.value[sp_name]
+                    emit('refresh')
                 }
             })
         },
@@ -215,7 +222,7 @@ function open_popup(sp_name){
 }
 
 watch(
-    () => props.selected_supplier,
+    () => [props.selected_supplier, props.refresh_counter],
     fetchData,
     { immediate: true }
 )

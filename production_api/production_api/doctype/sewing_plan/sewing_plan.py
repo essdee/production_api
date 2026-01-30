@@ -208,7 +208,7 @@ def get_sp_status_summary(supplier):
 		total["Stock"] += stock
 		x['Line Stock'] = line_stock
 		x['Stock'] = stock
-		grn_pending = x[line_output] = x['GRN Qty']
+		grn_pending = x.get(line_output, 0) - x['GRN Qty']
 		total.setdefault("GRN Pending", 0)
 		total["GRN Pending"] += grn_pending
 		x['GRN Pending'] = grn_pending
@@ -298,12 +298,13 @@ def get_data_entry_data(supplier, lot=None):
 		})
 
 		for item in sp_doc.sewing_plan_order_details:
-			size, part, colour = get_colour_size_data(item.set_combination, item.item_variant, is_set_item, pack_attr, set_attr, primary_attr)
+			size, part, colour, v_colour = get_colour_size_data(item.set_combination, item.item_variant, is_set_item, pack_attr, set_attr, primary_attr)
 			set_comb = update_if_string_instance(item.set_combination)
 			sewing_data[sp_doc.lot][sp_name]['colours'].setdefault(colour, {
 				"values": {},
 				"part": part,
 				"colour": colour,
+				"variant_colour": v_colour,
 				"set_combination": set_comb,
 				"qty": 0,
 				"inspection_total": {
@@ -332,7 +333,7 @@ def get_data_entry_data(supplier, lot=None):
 		for sp_entry in sp_entry_list:
 			spe_doc = frappe.get_doc("Sewing Plan Entry Detail", sp_entry)
 			for row in spe_doc.sewing_plan_details:
-				size, part, colour = get_colour_size_data(row.set_combination, row.item_variant, is_set_item, pack_attr, set_attr, primary_attr)
+				size, part, colour, v_colour = get_colour_size_data(row.set_combination, row.item_variant, is_set_item, pack_attr, set_attr, primary_attr)
 				new_key = spe_doc.input_type.lower().replace(" ", "_")
 				if new_key == inspection_key:
 					sewing_data[sp_doc.lot][sp_name]['colours'][colour]['inspection_total'][new_key] += row.quantity
@@ -371,14 +372,16 @@ def submit_data_entry_log(payload):
 			if check:
 				break	
 		if check:
+			variant_colour = payload['quantities']['colours'][colour]['variant_colour']
 			for size in payload['quantities']['colours'][colour]['values']:
 				attrs = {
-					details['pack_attr']: payload['quantities']['colours'][colour]['colour'],
 					details['primary_attr']: size,
 					ipd_details[1]: ipd_details[2],
 				}
 				if details['is_set_item']:
 					attrs[ipd_details[0]] = payload['quantities']['colours'][colour]['part']
+
+				attrs[details['pack_attr']] = variant_colour
 				variant = get_or_create_variant(details['item'], attrs)
 				items.append({
 					"item_variant": variant,
@@ -423,11 +426,11 @@ def get_scr_data(supplier, lot):
 	is_set_item, pack_attr, primary_attr, set_attr, item_name = frappe.get_value("Item Production Detail", ipd, ipd_fields)
 	primary_values = get_ipd_primary_values(ipd)
 	colours = []
-	print(sp_entry_list)
+
 	for sp_name in sp_list:
 		sp_doc = frappe.get_doc("Sewing Plan", sp_name)
 		for row in sp_doc.sewing_plan_order_details:
-			size, part, colour = get_colour_size_data(row.set_combination, row.item_variant, is_set_item, pack_attr, set_attr, primary_attr)
+			size, part, colour, v_colour = get_colour_size_data(row.set_combination, row.item_variant, is_set_item, pack_attr, set_attr, primary_attr)
 			if colour not in colours:
 				colours.append(colour)
 
@@ -436,6 +439,7 @@ def get_scr_data(supplier, lot):
 				"values": {},
 				"part": part,
 				"colour": colour,
+				"variant_colour": v_colour,
 				"set_combination": set_comb,
 				"type_wise_total": {},
 			})
@@ -447,8 +451,7 @@ def get_scr_data(supplier, lot):
 	for sp_entry in sp_entry_list:
 		sp_doc = frappe.get_doc("Sewing Plan Entry Detail", sp_entry)
 		for row in sp_doc.sewing_plan_details:
-			print(sp_entry)
-			size, part, colour = get_colour_size_data(row.set_combination, row.item_variant, is_set_item, pack_attr, set_attr, primary_attr)
+			size, part, colour, v_colour = get_colour_size_data(row.set_combination, row.item_variant, is_set_item, pack_attr, set_attr, primary_attr)
 			
 			input_key = sp_doc.input_type
 			if input_key == type_wise_diff_input:
@@ -530,17 +533,18 @@ def get_colour_size_data(set_combination, item_variant, is_set_item, pack_attr, 
 	attr_details = get_variant_attr_details(item_variant)
 	size = attr_details[primary_attr]
 	part = None
-
+	real_colour = colour
 	if is_set_item:
 		variant_colour = attr_details[pack_attr]
 		part = attr_details[set_attr]
+		real_colour = variant_colour
 		colour = f"{variant_colour} ({major_colour})"
 
-	return size, part, colour	
+	return size, part, colour, real_colour	
 
 @frappe.whitelist()
-def get_sewing_plan_dpr_data(supplier, dpr_date, work_station=None):
-	sp_entry_list = get_sp_entry_details(supplier, dpr_date=dpr_date, work_station=work_station)
+def get_sewing_plan_dpr_data(supplier, dpr_date, work_station=None, input_type=None):
+	sp_entry_list = get_sp_entry_details(supplier, dpr_date=dpr_date, work_station=work_station, input_type=input_type)
 	dpr_data = {}
 	for sp_entry in sp_entry_list:
 		sp_doc = frappe.get_doc("Sewing Plan Entry Detail", sp_entry)
@@ -565,12 +569,13 @@ def get_sewing_plan_dpr_data(supplier, dpr_date, work_station=None):
 		dpr_data[in_type][lot]['details'][ws].setdefault(rec_type, {})
 		
 		for row in sp_doc.sewing_plan_details:
-			size, part, colour = get_colour_size_data(row.set_combination, row.item_variant, is_set_item, pack_attr, set_attr, primary_attr)
+			size, part, colour, v_colour = get_colour_size_data(row.set_combination, row.item_variant, is_set_item, pack_attr, set_attr, primary_attr)
 			set_comb = update_if_string_instance(row.set_combination)
 			dpr_data[in_type][lot]['details'][ws][rec_type].setdefault(colour, {
 				"values": {},
 				"part": part,
 				"colour": colour,
+				"varaint_colour": v_colour,
 				"set_combination": set_comb,
 				"total": 0
 			})
@@ -631,12 +636,13 @@ def get_sewing_plan_entries(supplier, input_type=None, work_station=None, lot_na
 				"set_attr": set_attr
 			})
 			for row in sp_doc.sewing_plan_details:
-				size, part, colour = get_colour_size_data(row.set_combination, row.item_variant, is_set_item, pack_attr, set_attr, primary_attr)
+				size, part, colour, v_colour = get_colour_size_data(row.set_combination, row.item_variant, is_set_item, pack_attr, set_attr, primary_attr)
 				set_comb = update_if_string_instance(row.set_combination)
 				entry_data[sp_entry]['details'].setdefault(colour, {
 					"values": {},
 					"part": part,
 					"colour": colour,
+					"variant_colour": v_colour,
 					"set_combination": set_comb,
 					"total": 0
 				})

@@ -139,12 +139,19 @@
                                         <th class="type-col">Type</th>
                                         <th v-for="size in modal_data?.details?.primary_values" :key="size">{{ size }}
                                         </th>
+                                        <th class="total-col">Total</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     <template v-for="colour in Object.keys(modal_data?.colours)" :key="colour">
                                         <tr class="order-qty-row">
-                                            <td rowspan="2" class="sticky-col colour-name">{{ colour.split("@")[0] }}
+                                            <td rowspan="2" class="sticky-col colour-name">
+                                                <div class="colour-checkbox-group">
+                                                    <input type="checkbox" 
+                                                        class="fill-checkbox" 
+                                                        @change="(e) => fillColourQuantities(colour, e)">
+                                                    <span>{{ colour.split("@")[0] }}</span>
+                                                </div>
                                             </td>
                                             <td v-if="modal_data?.details['is_set_item']" rowspan="2" class="part-cell">
                                                 <span class="part-pill">{{ modal_data?.colours[colour]['part'] }}</span>
@@ -153,6 +160,9 @@
                                             <td v-for="size in modal_data?.details?.primary_values" :key="size"
                                                 class="matrix-cell planned-val">
                                                 {{ modal_data.colours[colour].values[size]?.[diff_key] ?? 0 }}
+                                            </td>
+                                            <td class="matrix-cell planned-val total-cell-bold">
+                                                {{ getColourTotal(colour, diff_key) }}
                                             </td>
                                         </tr>
                                         <tr class="entry-row">
@@ -164,6 +174,9 @@
                                                         v-model.number="modal_data.colours[colour].values[size].data_entry"
                                                         class="qty-input" placeholder="0">
                                                 </div>
+                                            </td>
+                                            <td class="matrix-cell total-cell-bold">
+                                                {{ getColourTotal(colour, 'data_entry') }}
                                             </td>
                                         </tr>
                                     </template>
@@ -296,6 +309,29 @@ let ws_control = null
 let type_control = null
 let grn_type_control = null
 
+const emit = defineEmits(['refresh'])
+
+const getColourTotal = (colour, field) => {
+    const colourData = modal_data.value.colours[colour]
+    if (!colourData) return 0
+    return Object.values(colourData.values).reduce((acc, curr) => acc + (curr[field] || 0), 0)
+}
+
+const fillColourQuantities = (colour, event) => {
+    const isChecked = event.target.checked
+    const colourData = modal_data.value.colours[colour]
+    if (!colourData) return
+
+    Object.keys(colourData.values).forEach(size => {
+        if (isChecked) {
+            const plannedQty = colourData.values[size]?.[diff_key.value] ?? 0
+            colourData.values[size].data_entry = plannedQty
+        } else {
+            colourData.values[size].data_entry = 0
+        }
+    })
+}
+
 const entry_form = ref({
     date: frappe.datetime.now_date(),
     time: frappe.datetime.now_time(),
@@ -393,6 +429,7 @@ const submitUpdate = () => {
                         })
                         closeUpdateModal()
                         fetchData()
+                        emit('refresh')
                     }
                 }
             })
@@ -498,7 +535,14 @@ const initFrappeControls = () => {
             fieldname: 'grn_item_type',
             options: 'GRN Item Type',
             label: 'GRN Item Type',
-            change: () => { entry_form.value.grn_item_type = grn_type_control.get_value() }
+            change: () => { entry_form.value.grn_item_type = grn_type_control.get_value() },
+            get_query(){
+                return {
+                    filters: {
+                        'show_in_sewing_plan': 1,
+                    }
+                }
+            }
         },
         render_input: true,
     })
@@ -566,6 +610,7 @@ const submitLog = () => {
                     indicator: 'green'
                 })
                 closeModal()
+                emit('refresh')
             }
         }
     })
@@ -844,6 +889,21 @@ watch(() => [props.selected_supplier, props.refresh_counter, selected_lot.value]
     background: #fdfdfd;
     vertical-align: middle;
     text-align: center;
+    padding: 8px !important;
+}
+
+.colour-checkbox-group {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.fill-checkbox {
+    width: 16px;
+    height: 16px;
+    cursor: pointer;
+    accent-color: #1a73e8;
 }
 
 .qty-input {
@@ -867,6 +927,13 @@ watch(() => [props.selected_supplier, props.refresh_counter, selected_lot.value]
 
 .qty-input::-webkit-inner-spin-button {
     display: none;
+}
+
+.total-cell-bold {
+    font-weight: 700;
+    color: #1e293b;
+    text-align: center;
+    background: #f8fafc;
 }
 
 .modal-footer {
