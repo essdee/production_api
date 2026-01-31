@@ -1298,9 +1298,9 @@ def revert_labels(doc_name):
 
 	cls_doc.status = "Bundles Generated"
 	if cls_doc.goods_received_note:
-		update_cloth_stock(cls_doc, 1, -1)
 		grn_doc = frappe.get_doc("Goods Received Note", cls_doc.goods_received_note)
 		grn_doc.cancel()
+		update_cloth_stock(cls_doc, 1, -1)
 		lot_no = cls_doc.lot
 		cancelled_str = frappe.db.get_single_value("MRP Settings", "cut_bundle_cancelled_lot")
 		cancelled_list = cancelled_str.split(",")
