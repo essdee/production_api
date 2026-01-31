@@ -1300,12 +1300,15 @@ def revert_labels(doc_name):
 	if cls_doc.goods_received_note:
 		grn_doc = frappe.get_doc("Goods Received Note", cls_doc.goods_received_note)
 		grn_doc.cancel()
-		update_cloth_stock(cls_doc, 1, -1)
 		lot_no = cls_doc.lot
 		cancelled_str = frappe.db.get_single_value("MRP Settings", "cut_bundle_cancelled_lot")
 		cancelled_list = cancelled_str.split(",")
 		if lot_no not in cancelled_list:
 			cancel_cut_bundle(cls_doc, is_cancelled=1)
+	
+	if cls_doc.goods_received_note:
+		update_cloth_stock(cls_doc, 1, -1)
+
 	cls_doc.goods_received_note =  None
 	cls_doc.reverted = 1
 	cls_doc.save()
@@ -1355,7 +1358,7 @@ def get_sl_entries(variant, supplier, lot, item, uom, doc_name, received_type, m
 		"qty": item.weight * multiplier,
 		"uom": uom,
 		"is_cancelled": 0,
-		"posting_date": item.creation,
+		"posting_date": frappe.utils.nowdate(),
 		"posting_time": frappe.utils.nowtime(),
 	}
 
