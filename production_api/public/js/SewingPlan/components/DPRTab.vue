@@ -32,15 +32,15 @@
                         <table class="data-table" v-for="lot in Object.keys(data[header])">
                             <thead>
                                 <tr class="header-row">
-                                    <th class="sticky-col index-col">#</th>
-                                    <th class="sticky-col colour-col">Lot</th>
-                                    <th class="sticky-col colour-col">Item</th>
-                                    <th class="sticky-col colour-col">Colour</th>
+                                    <th class="index-col">#</th>
+                                    <th class="colour-col">Lot</th>
+                                    <th class="colour-col">Item</th>
+                                    <th class="colour-col">Colour</th>
                                     <th v-if="data[header][lot]['is_set_item']" class="part-col">
                                         {{ data[header][lot]['set_attr'] }}
                                     </th>
-                                    <th class="sticky-col colour-col">Line</th>
-                                    <th class="sticky-col colour-col">Type</th>
+                                    <th class="colour-col">Line</th>
+                                    <th class="colour-col">Type</th>
                                     <th v-for="size in data[header][lot]['primary_values']" :key="size"
                                         class="size-col">
                                         {{ size }}
@@ -54,10 +54,10 @@
                                     <template v-for="(received_type, idx) in Object.keys(data[header][lot]['details'][ws])"
                                         :key="received_type">
                                         <tr v-for="colour in Object.keys(data[header][lot]['details'][ws][received_type])" class="data-row">
-                                            <td class="sticky-col index-cell">{{ idx + 1 }}</td>
-                                            <td class="sticky-col colour-cell">{{ lot }}</td>
-                                            <td class="sticky-col colour-cell">{{ data[header][lot]['item'] }}</td>
-                                            <td class="sticky-col colour-cell">
+                                            <td class="index-cell">{{ idx + 1 }}</td>
+                                            <td class="colour-cell">{{ lot }}</td>
+                                            <td class="colour-cell">{{ data[header][lot]['item'] }}</td>
+                                            <td class="colour-cell">
                                                 <span class="colour-badge">{{ colour.split("@")[0] }}</span>
                                             </td>
                                             <td v-if="data[header][lot]['is_set_item']" class="part-cell">
@@ -65,8 +65,8 @@
                                                     {{ data[header][lot]['details'][ws][received_type][colour]['part']}}
                                                 </span>
                                             </td>
-                                            <td class="sticky-col colour-cell">{{ ws }}</td>
-                                            <td class="sticky-col colour-cell">
+                                            <td class="colour-cell">{{ ws }}</td>
+                                            <td class="colour-cell">
                                                 <span class="colour-badge">{{ received_type }}</span>
                                             </td>
                                             <td v-for="size in data[header][lot]['primary_values']" :key="size"

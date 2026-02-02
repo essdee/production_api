@@ -51,8 +51,8 @@
                         <table class="data-table">
                             <thead>
                                 <tr class="header-row">
-                                    <th class="sticky-col index-col">#</th>
-                                    <th class="sticky-col colour-col">Colour</th>
+                                    <th class="index-col">#</th>
+                                    <th class="colour-col">Colour</th>
                                     <th v-if="items[lot][sewing_plan]['details']['is_set_item']" class="part-col">
                                         {{ items[lot][sewing_plan]['details']['set_attr'] }}
                                     </th>
@@ -66,8 +66,8 @@
                             <tbody>
                                 <tr v-for="(colour, idx) in Object.keys(items[lot][sewing_plan]['colours'])"
                                     :key="colour" class="data-row">
-                                    <td class="sticky-col index-cell">{{ idx + 1 }}</td>
-                                    <td class="sticky-col colour-cell">
+                                    <td class="index-cell">{{ idx + 1 }}</td>
+                                    <td class="colour-cell">
                                         <span class="colour-badge">{{ colour.split("@")[0] }}</span>
                                     </td>
                                     <td v-if="items[lot][sewing_plan]['details']['is_set_item']" class="part-cell">
@@ -145,7 +145,7 @@
                                 <tbody>
                                     <template v-for="colour in Object.keys(modal_data?.colours)" :key="colour">
                                         <tr class="order-qty-row">
-                                            <td rowspan="2" class="sticky-col colour-name">
+                                            <td rowspan="2" class="colour-name">
                                                 <div class="colour-checkbox-group">
                                                     <input type="checkbox" 
                                                         class="fill-checkbox" 

@@ -60,8 +60,8 @@
                     <table class="data-table">
                         <thead>
                             <tr class="header-row">
-                                <th class="sticky-col index-col">#</th>
-                                <th class="sticky-col size-col">Colour</th>
+                                <th class="index-col">#</th>
+                                <th class="size-col">Colour</th>
                                 <th v-if="items[sp_name]['is_set_item']" class="part-col">
                                     {{ items[sp_name]['set_attr'] }}
                                 </th>
@@ -74,8 +74,8 @@
                         </thead>
                         <tbody>
                             <tr v-for="(colour, idx) in Object.keys(items[sp_name]['details'])" class="data-row">
-                                <td class="sticky-col index-cell">{{ idx + 1 }}</td>
-                                <td class="sticky-col size-cell">
+                                <td class="index-cell">{{ idx + 1 }}</td>
+                                <td class="size-cell">
                                     <span class="colour-badge">{{ colour.split("@")[0] }}</span>
                                 </td>
                                 <td v-if="items[sp_name]['is_set_item']" class="part-cell">
