@@ -8,7 +8,10 @@
  "engine": "InnoDB",
  "field_order": [
   "colour",
-  "colour_code"
+  "colour_code",
+  "image",
+  "product_image_html",
+  "amended_from"
  ],
  "fields": [
   {
@@ -25,12 +28,34 @@
    "in_list_view": 1,
    "label": "Colour Code",
    "reqd": 1
+  },
+  {
+   "fieldname": "image",
+   "fieldtype": "Attach Image",
+   "hidden": 1,
+   "label": "Image"
+  },
+  {
+   "fieldname": "product_image_html",
+   "fieldtype": "HTML",
+   "label": "Product Image HTML"
+  },
+  {
+   "fieldname": "amended_from",
+   "fieldtype": "Link",
+   "label": "Amended From",
+   "no_copy": 1,
+   "options": "Product Colour Code",
+   "print_hide": 1,
+   "read_only": 1,
+   "search_index": 1
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
+ "is_submittable": 1,
  "links": [],
- "modified": "2026-01-05 18:19:54.921805",
+ "modified": "2026-01-31 16:58:53.274844",
  "modified_by": "Administrator",
  "module": "Product Development",
  "name": "Product Colour Code",

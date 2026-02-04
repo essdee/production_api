@@ -24,9 +24,9 @@
                     <table class="data-table">
                         <thead>
                             <tr class="header-row">
-                                <th class="sticky-col colour-col">Colour</th>
+                                <th class="colour-col">Colour</th>
                                 <th v-if="is_set_item" class="part-col">{{ set_attr }}</th>
-                                <th class="sticky-col colour-col">Type</th>
+                                <th class="colour-col">Type</th>
                                 <th v-for="size in primary_values" :key="size" class="size-col">{{ size }}</th>
                                 <th class="total-col">Total</th>
                             </tr>
@@ -34,13 +34,13 @@
                         <tbody>
                             <template v-for="header in headers">
                                 <tr v-for="(values, colour) in displayedData" :key="`${header}-${colour}`" class="data-row">
-                                    <td class="sticky-col colour-cell">
+                                    <td class="colour-cell">
                                          <span class="colour-badge">{{ colour }}</span>
                                     </td>
                                     <td v-if="is_set_item" class="part-cell">
                                         <span class="part-pill">{{ displayedData[colour]['part'] }}</span>
                                     </td>
-                                    <td class="sticky-col colour-cell">
+                                    <td class="colour-cell">
                                         <span class="type-badge">{{ header }}</span>
                                     </td>
                                     <td class="size-cell" v-for="size in primary_values"
