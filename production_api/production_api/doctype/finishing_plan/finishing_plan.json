@@ -324,7 +324,7 @@
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-01-09 15:00:21.567058",
+ "modified": "2026-02-06 18:13:01.265273",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Finishing Plan",
@@ -350,17 +350,6 @@
    "print": 1,
    "read": 1,
    "report": 1,
-   "role": "Transaction User",
-   "share": 1,
-   "write": 1
-  },
-  {
-   "create": 1,
-   "email": 1,
-   "export": 1,
-   "print": 1,
-   "read": 1,
-   "report": 1,
    "role": "Stock User",
    "share": 1,
    "write": 1
@@ -373,6 +362,28 @@
    "read": 1,
    "report": 1,
    "role": "Store User",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Production Planner",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Merch User",
    "share": 1,
    "write": 1
   }

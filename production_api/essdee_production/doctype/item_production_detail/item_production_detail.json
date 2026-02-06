@@ -659,7 +659,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-09-22 17:31:23.722818",
+ "modified": "2026-02-06 18:15:56.490222",
  "modified_by": "Administrator",
  "module": "Essdee Production",
  "name": "Item Production Detail",
@@ -679,7 +679,6 @@
   },
   {
    "create": 1,
-   "delete": 1,
    "email": 1,
    "export": 1,
    "print": 1,
@@ -695,18 +694,20 @@
    "print": 1,
    "read": 1,
    "report": 1,
-   "role": "Transaction User",
+   "role": "All",
    "select": 1,
    "share": 1
   },
   {
+   "create": 1,
    "email": 1,
    "export": 1,
    "print": 1,
    "read": 1,
    "report": 1,
-   "role": "All",
-   "share": 1
+   "role": "Production Planner",
+   "share": 1,
+   "write": 1
   }
  ],
  "row_format": "Dynamic",
