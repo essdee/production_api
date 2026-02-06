@@ -245,6 +245,19 @@
 .type-indicator.planned {
     color: #64748b;
     background: #f8fafc;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+}
+
+.remaining-badge {
+    font-size: 0.65rem;
+    font-weight: 600;
+    color: #059669;
+    background: #d1fae5;
+    padding: 1px 4px;
+    border-radius: 4px;
 }
 
 .type-indicator.actual {
