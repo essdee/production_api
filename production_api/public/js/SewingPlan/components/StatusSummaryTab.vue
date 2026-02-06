@@ -37,12 +37,12 @@
                                 <td class="data-cell">
                                     <span class="lot-pill">{{ row['lot'] }}</span>
                                 </td>
-                                <td class="data-cell item-cell">{{ row['attr_details'][row['pack_attr']] }}</td>
-                                <td class="data-cell item-cell">{{ row['attr_details'][row['set_attr']] }}</td>
-                                <td class="data-cell item-cell"></td>
-                                <td class="data-cell item-cell"></td>
-                                <td class="data-cell item-cell"></td>
-                                <td class="data-cell item-cell"></td>
+                                <td class="data-cell item-cell">{{ getAttrValue(row, row['pack_attr']) }}</td>
+                                <td class="data-cell item-cell">{{ getAttrValue(row, row['set_attr']) }}</td>
+                                <td class="data-cell item-cell">{{ formatDate(row['FI Date']) }}</td>
+                                <td class="data-cell item-cell">{{ formatDate(row['Input Date']) }}</td>
+                                <td class="data-cell item-cell">{{ formatDate(row['Last Sewing Output']) }}</td>
+                                <td class="data-cell numeric-cell">{{ row['Total Running Days'] }}</td>
                                 <td v-for="header in items['header2']" :key="header" class="data-cell numeric-cell">
                                     {{ formatNumber(row[header]) }}
                                 </td>
@@ -92,10 +92,24 @@ const formatNumber = (val) => {
     return new Intl.NumberFormat().format(val)
 }
 
+const formatDate = (dateStr) => {
+    if (!dateStr) return '-'
+    const parts = dateStr.split('-')
+    if (parts.length === 3) {
+        return `${parts[2]}-${parts[1]}-${parts[0]}`
+    }
+    return dateStr
+}
+
 const getStatusStyle = (value) => {
     if (!value) return '#fee2e2' // Light Red
     if (value === 'Completed') return '#dcfce7' // Light Green
     return '#fef9c3' // Light Yellow
+}
+
+const getAttrValue = (row, attrName) => {
+    if (!row || !row.attr_details || !attrName) return '-'
+    return row.attr_details[attrName] || '-'
 }
 
 const fetchData = () => {

@@ -156,13 +156,18 @@
                                             <td v-if="modal_data?.details['is_set_item']" rowspan="2" class="part-cell">
                                                 <span class="part-pill">{{ modal_data?.colours[colour]['part'] }}</span>
                                             </td>
-                                            <td class="type-indicator planned">{{ input_type }}</td>
+                                            <td class="type-indicator planned">
+                                                {{ input_type.display }}
+                                                <span class="remaining-badge" v-if="modal_data.colours[colour].values[modal_data?.details?.primary_values[0]]?.[input_type.input_key] > 0">
+                                                    (Remaining)
+                                                </span>
+                                            </td>
                                             <td v-for="size in modal_data?.details?.primary_values" :key="size"
                                                 class="matrix-cell planned-val">
-                                                {{ modal_data.colours[colour].values[size]?.[diff_key] ?? 0 }}
+                                                {{ modal_data.colours[colour].values[size]?.[input_type.remaining_key] ?? modal_data.colours[colour].values[size]?.[input_type.base_key] ?? 0 }}
                                             </td>
                                             <td class="matrix-cell planned-val total-cell-bold">
-                                                {{ getColourTotal(colour, diff_key) }}
+                                                {{ getColourTotal(colour, input_type.remaining_key) || getColourTotal(colour, input_type.base_key) }}
                                             </td>
                                         </tr>
                                         <tr class="entry-row">
@@ -322,10 +327,13 @@ const fillColourQuantities = (colour, event) => {
     const colourData = modal_data.value.colours[colour]
     if (!colourData) return
 
+    const inputTypeInfo = input_type.value
     Object.keys(colourData.values).forEach(size => {
         if (isChecked) {
-            const plannedQty = colourData.values[size]?.[diff_key.value] ?? 0
-            colourData.values[size].data_entry = plannedQty
+            // Use remaining quantity if available, otherwise fall back to base
+            const remainingQty = colourData.values[size]?.[inputTypeInfo.remaining_key] ?? 
+                                 colourData.values[size]?.[inputTypeInfo.base_key] ?? 0
+            colourData.values[size].data_entry = remainingQty
         } else {
             colourData.values[size].data_entry = 0
         }
@@ -559,11 +567,16 @@ const input_type = computed(() => {
     if (!type_val) return 'Order Qty'
     let x = type_val
     let lower = x.toLowerCase()
-    let replaced = lower.replace(" ", "_")
+    let replaced = lower.replace(/ /g, "_")
     diff_key.value = diff.value[replaced]
-    let val = diff.value[replaced]
-    let words = val.split("_")
-    return words.map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')
+    // Store the selected input type key for remaining quantity lookup
+    const remaining_key = `${replaced}_remaining`
+    return {
+        display: diff.value[replaced]?.split("_").map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ') || 'Order Qty',
+        base_key: diff.value[replaced],
+        remaining_key: remaining_key,
+        input_key: replaced
+    }
 })
 
 const submitLog = () => {
@@ -574,14 +587,17 @@ const submitLog = () => {
 
     // Validation Loop
     let validation_failed = false;
+    const inputTypeInfo = input_type.value
     for (const colour of Object.keys(modal_data.value.colours)) {
         if (validation_failed) break;
         for (const size of Object.keys(modal_data.value.colours[colour].values)) {
              const entered_qty = modal_data.value.colours[colour].values[size].data_entry || 0;
-             const position_qty = modal_data.value.colours[colour].values[size]?.[diff_key.value] ?? 0;
+             // Use remaining quantity for validation
+             const remaining_qty = modal_data.value.colours[colour].values[size]?.[inputTypeInfo.remaining_key] ?? 
+                                   modal_data.value.colours[colour].values[size]?.[inputTypeInfo.base_key] ?? 0;
 
-             if (entered_qty > position_qty) {
-                 frappe.throw(`Entered quantity cannot be greater than ${input_type.value}`);
+             if (entered_qty > remaining_qty) {
+                 frappe.throw(`Entered quantity cannot be greater than remaining ${inputTypeInfo.display}`);
                  validation_failed = true;
                  return; 
              }

@@ -18,8 +18,24 @@
         </div>
 
         <div class="response-container">
-            <div v-if="displayedData && Object.keys(displayedData).length > 0" class="response-data">
-                <h3 class="plan-title" style="margin-bottom: 20px;">{{ item_name }}</h3>
+            <div v-if="displayedData && Object.keys(displayedData).length > 0" class="response-data" ref="scrSectionRef">
+                <div class="scr-header">
+                    <h3 class="plan-title">{{ item_name }}</h3>
+                    <button class="copy-btn" @click="copyToClipboard" :disabled="copying" title="Copy to Clipboard">
+                        <template v-if="copying">
+                            <svg class="copy-icon spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                            </svg>
+                            Copying...
+                        </template>
+                        <template v-else>
+                            <svg class="copy-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
+                            </svg>
+                            Copy
+                        </template>
+                    </button>
+                </div>
                 <div class="table-wrapper no-scrollbar">
                     <table class="data-table">
                         <thead>
@@ -109,6 +125,9 @@ const primary_values = ref([])
 const is_set_item = ref(false)
 const set_attr = ref(null)
 const item_name = ref(null)
+const scrSectionRef = ref(null)
+const copying = ref(false)
+const html2canvasLoaded = ref(false)
 let lot_filter_control = null
 let colour_filter_control = null
 
@@ -127,6 +146,44 @@ const displayedData = computed(() => {
 const isNegativeBalance = (header, value) => {
     if (!header) return false
     return header.toLowerCase().includes('balance') && Number(value) < 0
+}
+
+const copyToClipboard = async () => {
+    if (!scrSectionRef.value) return
+    copying.value = true
+
+    const doCopy = async () => {
+        try {
+            const canvas = await html2canvas(scrSectionRef.value, {
+                scale: 1,
+                backgroundColor: '#ffffff',
+                logging: false,
+                removeContainer: true
+            })
+            canvas.toBlob(async (blob) => {
+                await navigator.clipboard.write([
+                    new ClipboardItem({ 'image/png': blob })
+                ])
+                copying.value = false
+                frappe.show_alert({
+                    message: `${item_name.value} copied to clipboard`,
+                    indicator: 'green'
+                })
+            })
+        } catch (err) {
+            copying.value = false
+            frappe.show_alert({
+                message: 'Failed to copy to clipboard',
+                indicator: 'red'
+            })
+        }
+    }
+
+    if (html2canvasLoaded.value) {
+        doCopy()
+    } else {
+        frappe.require("https://cdn.jsdelivr.net/npm/html2canvas-pro@1.5.8/dist/html2canvas-pro.min.js", doCopy)
+    }
 }
 
 const initLotFilter = () => {
@@ -214,6 +271,10 @@ const fetchData = () => {
 
 onMounted(() => {
     initLotFilter()
+    // Pre-load html2canvas for faster copy
+    frappe.require("https://cdn.jsdelivr.net/npm/html2canvas-pro@1.5.8/dist/html2canvas-pro.min.js", () => {
+        html2canvasLoaded.value = true
+    })
 })
 
 watch(() => [props.selected_supplier, selected_lot.value, props.refresh_counter], fetchData)
@@ -273,5 +334,53 @@ watch(() => [props.selected_supplier, selected_lot.value, props.refresh_counter]
     font-weight: 600;
     color: #334155;
     margin: 0;
+}
+
+.scr-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px 25px;
+    background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+    border-bottom: 1px solid #e2e8f0;
+}
+
+.copy-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.5rem 1rem;
+    background: #1a73e8;
+    color: white;
+    border: none;
+    border-radius: 0.5rem;
+    font-size: 0.875rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.copy-btn:hover:not(:disabled) {
+    background: #1557b0;
+    transform: translateY(-1px);
+}
+
+.copy-btn:disabled {
+    background: #94a3b8;
+    cursor: not-allowed;
+}
+
+.copy-icon {
+    width: 1rem;
+    height: 1rem;
+}
+
+.spin {
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
 }
 </style>

@@ -79,6 +79,11 @@
                             :refresh_counter="refresh_counter"
                             @refresh="refresh_counter++"
                         />
+                        <FIUpdatesTab 
+                            v-show="current_tab === 'fi_updates'" 
+                            :selected_supplier="selected_supplier" 
+                            :refresh_counter="refresh_counter"
+                        />
                     </div>
                     <div v-else class="global-empty-state">
                         <div class="empty-state-visual">
@@ -94,13 +99,14 @@
 </template>
 
 <script setup>
-import { ref, h, onMounted } from 'vue'
+import { ref, h, onMounted, computed } from 'vue'
 import DashboardTab from './components/DashboardTab.vue'
 import StatusSummaryTab from './components/StatusSummaryTab.vue'
 import DataEntryTab from './components/DataEntryTab.vue'
 import DPRTab from './components/DPRTab.vue'
 import SCRTab from './components/SCRTab.vue'
 import LineTab from './components/LineTab.vue'
+import FIUpdatesTab from './components/FIUpdatesTab.vue'
 
 const IconOverview = () => h('svg', { fill: 'none', stroke: 'currentColor', viewBox: '0 0 24 24', class: 'w-full h-full text-current' }, [h('path', { 'stroke-linecap': 'round', 'stroke-linejoin': 'round', 'stroke-width': '2.5', d: 'M4 5a1 1 0 011-1h3a1 1 0 011 1v3a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM15 5a1 1 0 011-1h3a1 1 0 011 1v3a1 1 0 01-1 1h-3a1 1 0 01-1-1V5zM4 15a1 1 0 011-1h3a1 1 0 011 1v3a1 1 0 01-1 1H5a1 1 0 01-1-1v-3zM15 15a1 1 0 011-1h3a1 1 0 011 1v3a1 1 0 01-1 1h-3a1 1 0 01-1-1v-3z' })])
 const IconLinePlan = () => h('svg', { fill: 'none', stroke: 'currentColor', viewBox: '0 0 24 24', class: 'w-full h-full text-current' }, [h('path', { 'stroke-linecap': 'round', 'stroke-linejoin': 'round', 'stroke-width': '2.5', d: 'M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2' })])
@@ -108,15 +114,26 @@ const IconManpower = () => h('svg', { fill: 'none', stroke: 'currentColor', view
 const IconMaterials = () => h('svg', { fill: 'none', stroke: 'currentColor', viewBox: '0 0 24 24', class: 'w-full h-full text-current' }, [h('path', { 'stroke-linecap': 'round', 'stroke-linejoin': 'round', 'stroke-width': '2.5', d: 'M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4' })])
 const IconQuality = () => h('svg', { fill: 'none', stroke: 'currentColor', viewBox: '0 0 24 24', class: 'w-full h-full text-current' }, [h('path', { 'stroke-linecap': 'round', 'stroke-linejoin': 'round', 'stroke-width': '2.5', d: 'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z' })])
 const IconHistory = () => h('svg', { fill: 'none', stroke: 'currentColor', viewBox: '0 0 24 24', class: 'w-full h-full text-current' }, [h('path', { 'stroke-linecap': 'round', 'stroke-linejoin': 'round', 'stroke-width': '2.5', d: 'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z' })])
+const IconFI = () => h('svg', { fill: 'none', stroke: 'currentColor', viewBox: '0 0 24 24', class: 'w-full h-full text-current' }, [h('path', { 'stroke-linecap': 'round', 'stroke-linejoin': 'round', 'stroke-width': '2.5', d: 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z' })])
 
-const tabs = [
-    { id: 'dashboard', label: 'Dashboard', icon: IconOverview },
-    { id: 'status_summary', label: 'Status Summary', icon: IconHistory },
-    { id: 'data_entry', label: 'Data Entry', icon: IconManpower },
-    { id: 'dpr', label: 'DPR', icon: IconQuality },
-    { id: 'scr', label: 'SCR', icon: IconMaterials },
-    { id: 'line', label: 'Entries', icon: IconLinePlan },
-]
+const hasProductionPlannerRole = computed(() => {
+    return frappe.user.has_role('Production Planner') || frappe.user.has_role('System Manager')
+})
+
+const tabs = computed(() => {
+    const baseTabs = [
+        { id: 'dashboard', label: 'Dashboard', icon: IconOverview },
+        { id: 'status_summary', label: 'Status Summary', icon: IconHistory },
+        { id: 'data_entry', label: 'Data Entry', icon: IconManpower },
+        { id: 'dpr', label: 'DPR', icon: IconQuality },
+        { id: 'scr', label: 'SCR', icon: IconMaterials },
+        { id: 'line', label: 'Entries', icon: IconLinePlan },
+    ]
+    if (hasProductionPlannerRole.value) {
+        baseTabs.push({ id: 'fi_updates', label: 'FI Updates', icon: IconFI })
+    }
+    return baseTabs
+})
 const current_tab = ref('dashboard')
 const selected_supplier = ref(null)
 const refresh_counter = ref(0)
