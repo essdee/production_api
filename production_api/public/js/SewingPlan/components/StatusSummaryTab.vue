@@ -37,8 +37,8 @@
                                 <td class="data-cell">
                                     <span class="lot-pill">{{ row['lot'] }}</span>
                                 </td>
-                                <td class="data-cell item-cell">{{ getAttrValue(row, row['pack_attr']) }}</td>
-                                <td class="data-cell item-cell">{{ getAttrValue(row, row['set_attr']) }}</td>
+                                <td class="data-cell item-cell">{{ row['display_colour'] || getAttrValue(row, row['pack_attr']) }}</td>
+                                <td class="data-cell item-cell">{{ row['is_set_item'] ? getAttrValue(row, row['set_attr']) : '-' }}</td>
                                 <td class="data-cell item-cell">{{ formatDate(row['FI Date']) }}</td>
                                 <td class="data-cell item-cell">{{ formatDate(row['Input Date']) }}</td>
                                 <td class="data-cell item-cell">{{ formatDate(row['Last Sewing Output']) }}</td>
