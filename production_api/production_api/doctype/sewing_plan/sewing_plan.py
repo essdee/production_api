@@ -134,6 +134,16 @@ def get_sp_status_summary(supplier):
 		for row in wo_doc.work_order_calculated_items:
 			key = get_sp_key(row, item, lot, primary_attr)
 			attr_details = get_variant_attr_details(row.item_variant)
+			set_comb = update_if_string_instance(row.set_combination)
+			major_colour = set_comb.get("major_colour", "")
+			
+			# Format colour for set items: variant_colour (major_colour)
+			if is_set_item:
+				variant_colour = attr_details.get(pack_attr, "")
+				display_colour = f"{variant_colour} ({major_colour})"
+			else:
+				display_colour = major_colour
+			
 			data.setdefault(key, {
 				"item": item,
 				"lot": lot,
@@ -142,6 +152,8 @@ def get_sp_status_summary(supplier):
 				"pack_attr": pack_attr if is_set_item else ipd_settings.default_packing_attribute,
 				"set_attr": set_attr if is_set_item else None,
 				"is_set_item": is_set_item,
+				"major_colour": major_colour,
+				"display_colour": display_colour,
 				"input_dates": [],
 				"output_dates": [],
 			})

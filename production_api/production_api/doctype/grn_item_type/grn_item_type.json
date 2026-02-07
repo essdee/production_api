@@ -33,7 +33,7 @@
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-01-30 18:35:53.330893",
+ "modified": "2026-02-06 18:53:36.690866",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "GRN Item Type",
@@ -58,7 +58,7 @@
    "print": 1,
    "read": 1,
    "report": 1,
-   "role": "Transaction User",
+   "role": "All",
    "select": 1,
    "share": 1
   }
