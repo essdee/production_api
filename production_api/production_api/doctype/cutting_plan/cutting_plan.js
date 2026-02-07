@@ -13,7 +13,7 @@ frappe.ui.form.on("Cutting Plan", {
         })
     },
     refresh(frm) {
-        frappe.require("https://cdn.jsdelivr.net/npm/html2canvas-pro@1.5.8/dist/html2canvas-pro.min.js");
+        frappe.require("https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js")
         frm.cut_plan_items = new frappe.production.ui.CutPlanItems(frm.fields_dict['items_html'].wrapper)
         if (frm.is_new()) {
             ["items_html", "completed_items_html", "incompleted_items_html", "accessory_html", "cloths_html"]

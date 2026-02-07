@@ -623,7 +623,8 @@ def get_colour_size_data(set_combination, item_variant, is_set_item, pack_attr, 
 		variant_colour = attr_details[pack_attr]
 		part = attr_details[set_attr]
 		real_colour = variant_colour
-		colour = f"{variant_colour} ({major_colour})"
+		if set_comb['major_part'] != part:
+			colour = f"{variant_colour} ({major_colour})"
 
 	return size, part, colour, real_colour	
 

@@ -52,8 +52,8 @@
                             </div>
                         </div>
                     </div>
-                    <div class="table-wrapper no-scrollbar" style="margin-bottom: 20px;">
-                        <table class="data-table" v-for="lot in Object.keys(data[header])">
+                    <div class="table-wrapper no-scrollbar">
+                        <table class="data-table table-with-gap" v-for="lot in Object.keys(data[header])">
                             <thead>
                                 <tr class="header-row">
                                     <th class="index-col">#</th>
@@ -118,7 +118,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, watch } from 'vue'
+import { ref, onMounted, watch, nextTick } from 'vue'
 
 const props = defineProps({
     selected_supplier: {
@@ -137,6 +137,7 @@ const input_type_filter_wrapper = ref(null)
 let date_filter_control = null
 let ws_value = null
 let input_type_control = null
+const copyingHeader = ref(null)
 
 const selected_date = ref(null)
 const selected_ws = ref(null)
@@ -144,8 +145,6 @@ const selected_input_type = ref(null)
 const headers = ref([])
 const data = ref({})
 const sectionRefs = ref({})
-const html2canvasLoaded = ref(false)
-const copyingHeader = ref(null)
 
 const setSectionRef = (el, header) => {
     if (el) {
@@ -237,10 +236,6 @@ const fetchDPRData = () => {
 
 onMounted(() => {
     initFilter()
-    // Pre-load html2canvas for faster copy
-    frappe.require("https://cdn.jsdelivr.net/npm/html2canvas-pro@1.5.8/dist/html2canvas-pro.min.js", () => {
-        html2canvasLoaded.value = true
-    })
 })
 
 watch(() => [props.selected_supplier, selected_date.value, selected_ws.value, selected_input_type.value, props.refresh_counter], fetchDPRData)
@@ -265,42 +260,43 @@ const getHeaderTotal = (header) => {
 
 const copyToClipboard = async (header) => {
     const sectionEl = sectionRefs.value[header]
-    if (!sectionEl) return
-
     copyingHeader.value = header
-
-    const doCopy = async () => {
-        try {
-            const canvas = await html2canvas(sectionEl, {
-                scale: 1,
-                backgroundColor: '#ffffff',
-                logging: false,
-                removeContainer: true
-            })
-            canvas.toBlob(async (blob) => {
-                await navigator.clipboard.write([
-                    new ClipboardItem({ 'image/png': blob })
-                ])
-                copyingHeader.value = null
-                frappe.show_alert({
-                    message: `${header} copied to clipboard`,
-                    indicator: 'green'
-                })
-            })
-        } catch (err) {
-            copyingHeader.value = null
-            frappe.show_alert({
-                message: 'Failed to copy to clipboard',
-                indicator: 'red'
-            })
-        }
+    if (!sectionEl) {
+        console.log(`No element found for header: ${header}`)
+        return
     }
-
-    if (html2canvasLoaded.value) {
-        doCopy()
-    } else {
-        frappe.require("https://cdn.jsdelivr.net/npm/html2canvas-pro@1.5.8/dist/html2canvas-pro.min.js", doCopy)
+    if (!sectionEl.id) {
+        sectionEl.id = `dpr-section-${header.replace(/\s+/g, '-').toLowerCase()}`
     }
+    console.log(`Section ID for "${header}":`, sectionEl.id)
+    let ele = document.getElementById(sectionEl.id)
+    if (ele) {
+        let canvas = await html2canvas(ele);
+        canvas.toBlob(async (blob) => {
+            await setImageToClipBoard(blob);
+        });
+    }
+}
+
+const setImageToClipBoard = async (blob) => {
+  try {
+    await navigator.clipboard.write([
+      new ClipboardItem({
+        'image/png': blob,
+      }),
+    ])
+    copyingHeader.value = null
+    frappe.show_alert({
+        message: `copied to clipboard`,
+        indicator: 'green'
+    })
+  } catch (err) {
+    copyingHeader.value = null
+    frappe.show_alert({
+        message: `Failed copied to clipboard`,
+        indicator: 'red'
+    })
+  }
 }
 
 </script>
@@ -349,6 +345,46 @@ const copyToClipboard = async (header) => {
     margin: 0;
 }
 
+.copy-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.5rem 1rem;
+    background: #1a73e8;
+    color: white;
+    border: none;
+    border-radius: 0.5rem;
+    font-size: 0.875rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+
+.copy-btn:hover:not(:disabled) {
+    background: #1557b0;
+    transform: translateY(-1px);
+}
+
+.copy-btn:disabled {
+    background: #94a3b8;
+    cursor: not-allowed;
+}
+
+.copy-icon {
+    width: 1rem;
+    height: 1rem;
+}
+
+.spin {
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
 .section-header {
     display: flex;
     justify-content: space-between;
@@ -394,45 +430,6 @@ const copyToClipboard = async (header) => {
     gap: 0.25rem;
 }
 
-.copy-btn {
-    display: flex;
-    align-items: center;
-    gap: 0.4rem;
-    padding: 0.5rem 1rem;
-    background: #1a73e8;
-    color: white;
-    border: none;
-    border-radius: 0.5rem;
-    font-size: 0.875rem;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.2s ease;
-}
-
-.copy-btn:hover:not(:disabled) {
-    background: #1557b0;
-    transform: translateY(-1px);
-}
-
-.copy-btn:disabled {
-    background: #94a3b8;
-    cursor: not-allowed;
-}
-
-.copy-icon {
-    width: 1rem;
-    height: 1rem;
-}
-
-.spin {
-    animation: spin 1s linear infinite;
-}
-
-@keyframes spin {
-    from { transform: rotate(0deg); }
-    to { transform: rotate(360deg); }
-}
-
 .total-label {
     font-size: 0.75rem;
     font-weight: 600;
@@ -459,5 +456,13 @@ const copyToClipboard = async (header) => {
 .part-cell {
     vertical-align: middle;
     text-align: center;
+}
+
+.table-with-gap {
+    margin-bottom: 24px;
+}
+
+.table-with-gap:last-child {
+    margin-bottom: 0;
 }
 </style>
