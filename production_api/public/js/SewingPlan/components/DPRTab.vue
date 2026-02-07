@@ -119,7 +119,7 @@
 
 <script setup>
 import { ref, onMounted, watch, nextTick } from 'vue'
-import html2canvas from 'html2canvas'
+import * as htmlToImage from 'html-to-image'
 
 const props = defineProps({
     selected_supplier: {
@@ -266,38 +266,21 @@ const copyToClipboard = async (header) => {
         console.log(`No element found for header: ${header}`)
         return
     }
-    if (!sectionEl.id) {
-        sectionEl.id = `dpr-section-${header.replace(/\s+/g, '-').toLowerCase()}`
-    }
-    console.log(`Section ID for "${header}":`, sectionEl.id)
-    let ele = document.getElementById(sectionEl.id)
-    if (ele) {
-        let canvas = await html2canvas(ele);
-        canvas.toBlob(async (blob) => {
-            await setImageToClipBoard(blob);
-        });
-    }
-}
 
-const setImageToClipBoard = async (blob) => {
-  try {
-    await navigator.clipboard.write([
-      new ClipboardItem({
-        'image/png': blob,
-      }),
-    ])
-    copyingHeader.value = null
-    frappe.show_alert({
-        message: `copied to clipboard`,
-        indicator: 'green'
-    })
-  } catch (err) {
-    copyingHeader.value = null
-    frappe.show_alert({
-        message: `Failed copied to clipboard`,
-        indicator: 'red'
-    })
-  }
+    try {
+        const blob = await htmlToImage.toBlob(sectionEl, {
+            backgroundColor: '#ffffff',
+            pixelRatio: 1
+        })
+        await navigator.clipboard.write([
+            new ClipboardItem({ 'image/png': blob })
+        ])
+        copyingHeader.value = null
+        frappe.show_alert({ message: `${header} copied`, indicator: 'green' })
+    } catch (err) {
+        copyingHeader.value = null
+        frappe.show_alert({ message: 'Copy failed', indicator: 'red' })
+    }
 }
 
 </script>

@@ -103,7 +103,7 @@
 
 <script setup>
 import { ref, onMounted, watch, computed, nextTick } from 'vue'
-import html2canvas from 'html2canvas'
+import * as htmlToImage from 'html-to-image'
 
 const props = defineProps({
     selected_supplier: {
@@ -154,25 +154,23 @@ const copyToClipboard = async () => {
     copying.value = true
     if (!ele) {
         console.log('Element not found: scr-section')
+        copying.value = false
         return
     }
-    console.log('Section ID:', ele.id)
-    let canvas = await html2canvas(ele)
-    canvas.toBlob(async (blob) => {
-        await setImageToClipBoard(blob)
-    })
-}
 
-const setImageToClipBoard = async (blob) => {
     try {
+        const blob = await htmlToImage.toBlob(ele, {
+            backgroundColor: '#ffffff',
+            pixelRatio: 1
+        })
         await navigator.clipboard.write([
             new ClipboardItem({ 'image/png': blob })
         ])
         copying.value = false
-        frappe.show_alert({ message: 'Copied to clipboard', indicator: 'green' })
+        frappe.show_alert({ message: `${item_name.value} copied`, indicator: 'green' })
     } catch (err) {
         copying.value = false
-        frappe.show_alert({ message: 'Failed to copy', indicator: 'red' })
+        frappe.show_alert({ message: 'Copy failed', indicator: 'red' })
     }
 }
 
