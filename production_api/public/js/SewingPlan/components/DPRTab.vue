@@ -119,6 +119,7 @@
 
 <script setup>
 import { ref, onMounted, watch, nextTick } from 'vue'
+import html2canvas from 'html2canvas'
 
 const props = defineProps({
     selected_supplier: {
