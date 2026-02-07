@@ -584,7 +584,7 @@
    "link_fieldname": "against_id"
   }
  ],
- "modified": "2026-02-06 18:17:05.799259",
+ "modified": "2026-02-07 14:12:05.577655",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Work Order",
@@ -669,7 +669,8 @@
    "report": 1,
    "role": "Store User",
    "select": 1,
-   "share": 1
+   "share": 1,
+   "write": 1
   },
   {
    "amend": 1,

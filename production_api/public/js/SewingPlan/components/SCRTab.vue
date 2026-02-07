@@ -18,9 +18,10 @@
         </div>
 
         <div class="response-container">
-            <div v-if="displayedData && Object.keys(displayedData).length > 0" class="response-data" ref="scrSectionRef">
+            <div v-if="displayedData && Object.keys(displayedData).length > 0" class="response-data" ref="scrSectionRef" id="scr-section">
                 <div class="scr-header">
                     <h3 class="plan-title">{{ item_name }}</h3>
+                    <span class="scr-center-text">SCR</span>
                     <button class="copy-btn" @click="copyToClipboard" :disabled="copying" title="Copy to Clipboard">
                         <template v-if="copying">
                             <svg class="copy-icon spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -102,6 +103,7 @@
 
 <script setup>
 import { ref, onMounted, watch, computed, nextTick } from 'vue'
+import html2canvas from 'html2canvas'
 
 const props = defineProps({
     selected_supplier: {
@@ -127,7 +129,6 @@ const set_attr = ref(null)
 const item_name = ref(null)
 const scrSectionRef = ref(null)
 const copying = ref(false)
-const html2canvasLoaded = ref(false)
 let lot_filter_control = null
 let colour_filter_control = null
 
@@ -149,40 +150,29 @@ const isNegativeBalance = (header, value) => {
 }
 
 const copyToClipboard = async () => {
-    if (!scrSectionRef.value) return
+    const ele = document.getElementById('scr-section')
     copying.value = true
-
-    const doCopy = async () => {
-        try {
-            const canvas = await html2canvas(scrSectionRef.value, {
-                scale: 1,
-                backgroundColor: '#ffffff',
-                logging: false,
-                removeContainer: true
-            })
-            canvas.toBlob(async (blob) => {
-                await navigator.clipboard.write([
-                    new ClipboardItem({ 'image/png': blob })
-                ])
-                copying.value = false
-                frappe.show_alert({
-                    message: `${item_name.value} copied to clipboard`,
-                    indicator: 'green'
-                })
-            })
-        } catch (err) {
-            copying.value = false
-            frappe.show_alert({
-                message: 'Failed to copy to clipboard',
-                indicator: 'red'
-            })
-        }
+    if (!ele) {
+        console.log('Element not found: scr-section')
+        return
     }
+    console.log('Section ID:', ele.id)
+    let canvas = await html2canvas(ele)
+    canvas.toBlob(async (blob) => {
+        await setImageToClipBoard(blob)
+    })
+}
 
-    if (html2canvasLoaded.value) {
-        doCopy()
-    } else {
-        frappe.require("https://cdn.jsdelivr.net/npm/html2canvas-pro@1.5.8/dist/html2canvas-pro.min.js", doCopy)
+const setImageToClipBoard = async (blob) => {
+    try {
+        await navigator.clipboard.write([
+            new ClipboardItem({ 'image/png': blob })
+        ])
+        copying.value = false
+        frappe.show_alert({ message: 'Copied to clipboard', indicator: 'green' })
+    } catch (err) {
+        copying.value = false
+        frappe.show_alert({ message: 'Failed to copy', indicator: 'red' })
     }
 }
 
@@ -271,10 +261,6 @@ const fetchData = () => {
 
 onMounted(() => {
     initLotFilter()
-    // Pre-load html2canvas for faster copy
-    frappe.require("https://cdn.jsdelivr.net/npm/html2canvas-pro@1.5.8/dist/html2canvas-pro.min.js", () => {
-        html2canvasLoaded.value = true
-    })
 })
 
 watch(() => [props.selected_supplier, selected_lot.value, props.refresh_counter], fetchData)
@@ -343,6 +329,14 @@ watch(() => [props.selected_supplier, selected_lot.value, props.refresh_counter]
     padding: 20px 25px;
     background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
     border-bottom: 1px solid #e2e8f0;
+}
+
+.scr-center-text {
+    font-size: 2rem;
+    font-weight: 700;
+    color: #000000;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
 }
 
 .copy-btn {

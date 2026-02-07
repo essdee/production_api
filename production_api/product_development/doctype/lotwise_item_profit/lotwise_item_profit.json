@@ -476,7 +476,7 @@
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-07-30 16:45:38.888965",
+ "modified": "2026-02-07 14:10:27.583467",
  "modified_by": "Administrator",
  "module": "Product Development",
  "name": "Lotwise Item Profit",
@@ -518,6 +518,26 @@
    "role": "PD User",
    "share": 1,
    "write": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Merch User",
+   "select": 1,
+   "share": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Production Planner",
+   "select": 1,
+   "share": 1
   }
  ],
  "row_format": "Dynamic",

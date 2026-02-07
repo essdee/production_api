@@ -94,7 +94,7 @@ class CuttingLaySheet(Document):
 			self.maximum_allow_percentage = cut_plan_doc.maximum_allow_percent
 			cut_plan_doc.lay_no = self.lay_no
 			cut_plan_doc.flags.ignore_permissions = 1
-			cut_plan_doc.save()
+			cut_plan_doc.save(ignore_permissions=True)
 			
 			marker_list = []
 			for item in cut_marker_doc.cutting_marker_ratios:
@@ -1030,7 +1030,7 @@ def update_cutting_plan(cutting_laysheet, check_cp = False):
 
 			cp_doc.incomplete_items_json = incomplete_items
 			cp_doc.completed_items_json = completed_items
-			cp_doc.save()
+			cp_doc.save(ignore_permissions=True)
 	else:
 		for item in cls_doc.cutting_laysheet_bundles:
 			parts = item.part.split(",")
@@ -1189,7 +1189,7 @@ def update_cutting_plan(cutting_laysheet, check_cp = False):
 
 			cp_doc.incomplete_items_json = incomplete_items
 			cp_doc.completed_items_json = completed_items
-			cp_doc.save()		
+			cp_doc.save(ignore_permissions=True)		
 
 @frappe.whitelist()
 def get_input_fields(cutting_marker, colour, select_attributes):
