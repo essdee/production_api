@@ -335,7 +335,7 @@ def create_repost_item_valuation_entry(args):
 	repost_entry.flags.ignore_links = True
 	repost_entry.flags.ignore_permissions = True
 	repost_entry.via_landed_cost_voucher = args.via_landed_cost_voucher
-	repost_entry.save()
+	repost_entry.save(ignore_permissions=True)
 	repost_entry.submit()
 
 
