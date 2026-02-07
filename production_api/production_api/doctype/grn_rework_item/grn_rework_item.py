@@ -94,7 +94,7 @@ def revert_reworked_item(docname):
 	if finishing_doc:
 		finishing_items_list = get_finishing_rework_list(finishing_items)
 		finishing_doc.set("finishing_item_reworked_details", finishing_items_list)
-		finishing_doc.save()
+		finishing_doc.save(ignore_permissions=True)
 	from production_api.mrp_stock.stock_ledger import make_sl_entries
 	make_sl_entries(sl_entries)
 
@@ -339,7 +339,7 @@ def convert_received_type(rejection_data, docname, lot):
 			if finishing_data.get(key):
 				row.reworked_quantity += finishing_data[key]['reworked']
 				row.rejected_qty += finishing_data[key]['rejected']
-		doc.save()
+		doc.save(ignore_permissions=True)
 
 	from production_api.mrp_stock.stock_ledger import make_sl_entries
 	make_sl_entries(sl_entries)
@@ -438,7 +438,7 @@ def update_partial_quantity(data, lot):
 				if key1 == key:
 					row.reworked_quantity += finishing_data[key]
 					break
-		doc.save()
+		doc.save(ignore_permissions=True)
 
 	from production_api.mrp_stock.stock_ledger import make_sl_entries
 	make_sl_entries(sl_entries)		

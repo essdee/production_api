@@ -245,7 +245,7 @@ class GoodsReceivedNote(Document):
 						cpm_doc = frappe.get_doc("Cut Panel Movement", self.cut_panel_movement)	
 						cpm_doc.against = self.doctype
 						cpm_doc.against_id = self.name
-						cpm_doc.save()
+						cpm_doc.save(ignore_permissions=True)
 						from_warehouse = self.supplier
 						to_warehouse = self.get_to_warehouse()
 
@@ -791,7 +791,7 @@ class GoodsReceivedNote(Document):
 						cpm_doc = frappe.get_doc("Cut Panel Movement", self.cut_panel_movement)	
 						cpm_doc.against = None
 						cpm_doc.against_id = None
-						cpm_doc.save()
+						cpm_doc.save(ignore_permissions=True)
 						from_warehouse = self.supplier
 						to_warehouse = self.get_to_warehouse()
 
@@ -2666,7 +2666,7 @@ def update_finishing_item_doc(doc_name, finishing_doc_name, update_finishing:boo
 			else:
 				grn_list[doc_name] = frappe.utils.now_datetime().strftime("%d-%m-%Y %H:%M:%S")
 		finishing_doc.grn_list = frappe.json.dumps(grn_list)
-		finishing_doc.save()	
+		finishing_doc.save(ignore_permissions=True)	
 		
 	elif update_finishing and self.is_return:
 		finishing_doc = frappe.get_doc("Finishing Plan", finishing_doc_name)
@@ -2729,7 +2729,7 @@ def update_finishing_item_doc(doc_name, finishing_doc_name, update_finishing:boo
 				finishing_doc.return_grn_list = frappe.json.dumps(return_grn_list)
 		finishing_doc.set("finishing_plan_details", finshing_items_list)
 		finishing_doc.set("finishing_plan_reworked_details", finishing_rework_items_list)
-		finishing_doc.save()		
+		finishing_doc.save(ignore_permissions=True)		
 	else:		
 		finishing_doc = frappe.get_doc("Finishing Plan", finishing_doc_name)
 		finishing_items = get_finishing_plan_dict(finishing_doc)
@@ -2772,7 +2772,7 @@ def update_finishing_item_doc(doc_name, finishing_doc_name, update_finishing:boo
 		finishing_rework_items_list = get_finishing_rework_list(finishing_rework_items)
 		finishing_doc.set("finishing_plan_details", finshing_items_list)
 		finishing_doc.set("finishing_plan_reworked_details", finishing_rework_items_list)
-		finishing_doc.save()		
+		finishing_doc.save(ignore_permissions=True)		
 
 def get_variant_attr_values(doc, primary_attr):
 	attrs = []
