@@ -974,8 +974,9 @@ def get_inhouse_qty(lot, process):
 		if is_set_item:
 			variant_colour = attr_details[pack_attr]
 			part = attr_details[set_attr]
-			colour = f"{variant_colour}({major_colour})"
+			colour = variant_colour
 			if attr_details[set_attr] != major_attr:
+				colour = f"{variant_colour}({major_colour})"
 				quality_colour = f"{variant_colour}({major_colour})"
 
 
