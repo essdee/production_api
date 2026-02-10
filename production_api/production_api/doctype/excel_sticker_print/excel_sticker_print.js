@@ -2,27 +2,23 @@
 // For license information, please see license.txt
 
 frappe.ui.form.on("Excel Sticker Print", {
-    on_submit(frm) {
-        // Reload the document to show the generated preview
-        frm.reload_doc();
-    },
-    
 	refresh(frm) {
-        // Render print preview HTML if available
-        setTimeout(() => {
-            if (frm.doc.print_preview_html && frm.fields_dict.print_preview_html) {
-                frm.fields_dict.print_preview_html.$wrapper.html(frm.doc.print_preview_html);
-            } else if (frm.doc.docstatus === 1 && !frm.doc.print_preview_html) {
-                // Preview not generated yet, show message
-                frm.fields_dict.print_preview_html.$wrapper.html('<p class="text-muted">Print preview will be available after page refresh</p>');
-            }
-        }, 100);
-        
         removeDefaultPrintEvent();
         $('[data-original-title=Print]').hide();
         $("li:has(a:has(span[data-label='Print']))").remove();
 
         if (frm.doc.docstatus === 1 && frm.doc.print_format) {
+            frappe.call({
+                method: 'production_api.production_api.doctype.excel_sticker_print.excel_sticker_print.get_raw_code',
+                args: { doc_name: frm.doc.name },
+                callback: function (r) {
+                    let data = encodeURI(r.message.code);
+                    const imageUrl = `http://api.labelary.com/v1/printers/12dpmm/labels/${r.message.width}x${r.message.height}/0/"${data}"`;
+                    frm.fields_dict['print_preview_html'].df.options = `<img src=${imageUrl} style="border: 2px solid #000;">`
+                    frm.fields_dict['print_preview_html'].refresh()
+                }
+            });
+
             frm.add_custom_button("Print", () => {
                 frappe.ui.form.qz_connect()
                     .then(function () {
@@ -130,6 +126,7 @@ function get_printer() {
         return null;
     }
     else if (printers_list.size > 1) {
+        console.log(printers_list)
         frappe.throw("Select only one printer");
         return null;
     }
