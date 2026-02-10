@@ -1,6 +1,6 @@
 {
  "charts": [],
- "content": "[{\"id\":\"9NtaKEcHzB\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">Manufacturing</span>\",\"col\":12}},{\"id\":\"7Nl41d39i_\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Lot\",\"col\":3}},{\"id\":\"SffCjV3lXs\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Work Order\",\"col\":3}},{\"id\":\"dgyhm9E6c2\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"DC\",\"col\":3}},{\"id\":\"8wcboYArR9\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"GRN\",\"col\":3}},{\"id\":\"EZtp0q6_3_\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Process Cost\",\"col\":3}},{\"id\":\"OmqmAP5rlH\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Supplier\",\"col\":3}},{\"id\":\"P2bi1cXHjk\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Item\",\"col\":3}},{\"id\":\"pMft7X-9Pd\",\"type\":\"spacer\",\"data\":{\"col\":12}},{\"id\":\"tmJen2wnlU\",\"type\":\"card\",\"data\":{\"card_name\":\"Reports\",\"col\":4}},{\"id\":\"E_pXGeFjru\",\"type\":\"card\",\"data\":{\"card_name\":\"Rework Detail\",\"col\":4}}]",
+ "content": "[{\"id\":\"9NtaKEcHzB\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">Manufacturing</span>\",\"col\":12}},{\"id\":\"7Nl41d39i_\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Lot\",\"col\":3}},{\"id\":\"SffCjV3lXs\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Work Order\",\"col\":3}},{\"id\":\"dgyhm9E6c2\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"DC\",\"col\":3}},{\"id\":\"8wcboYArR9\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"GRN\",\"col\":3}},{\"id\":\"EZtp0q6_3_\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Process Cost\",\"col\":3}},{\"id\":\"OmqmAP5rlH\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Supplier\",\"col\":3}},{\"id\":\"P2bi1cXHjk\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Item\",\"col\":3}},{\"id\":\"EYGmidcNrS\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Sewing Plan\",\"col\":3}},{\"id\":\"pMft7X-9Pd\",\"type\":\"spacer\",\"data\":{\"col\":12}},{\"id\":\"tmJen2wnlU\",\"type\":\"card\",\"data\":{\"card_name\":\"Reports\",\"col\":4}},{\"id\":\"E_pXGeFjru\",\"type\":\"card\",\"data\":{\"card_name\":\"Rework Detail\",\"col\":4}}]",
  "creation": "2025-01-28 12:33:46.232932",
  "custom_blocks": [],
  "docstatus": 0,
@@ -203,7 +203,7 @@
    "type": "Link"
   }
  ],
- "modified": "2026-01-08 16:21:01.245990",
+ "modified": "2026-01-30 19:18:54.425130",
  "modified_by": "Administrator",
  "module": "Essdee Production",
  "name": "Manufacturing",
@@ -215,6 +215,13 @@
  "roles": [],
  "sequence_id": 1.0,
  "shortcuts": [
+  {
+   "color": "Grey",
+   "doc_view": "List",
+   "label": "Sewing Plan",
+   "link_to": "sewing-details",
+   "type": "Page"
+  },
   {
    "color": "Grey",
    "doc_view": "List",

@@ -25,76 +25,78 @@
             </div>
         </div>
         <div v-if="items && Object.keys(items).length > 0">
-            <div v-for="sp_name in Object.keys(items)">
-                <div class="plan-header">
-                    <div class="plan-main">
-                        <h3 class="plan-title">
-                            {{ items[sp_name].item_name }}
-                        </h3>
-                        <div class="meta-row">
-                            <span class="meta-pill">
-                                LOT: {{ items[sp_name].lot }}
-                            </span>
-                            <span class="meta-pill">
-                                {{ items[sp_name].work_station }}
-                            </span>
-                            <span class="meta-pill">
-                                {{ items[sp_name].input_type }}
-                            </span>
-                            <span class="meta-pill">
-                                {{ items[sp_name].received_type }}
-                            </span>
+            <div v-for="date in Object.keys(groupedItems)" :key="date">
+                <div class="date-section">
+                    <div class="date-header">
+                        <span class="date-label">Date: {{ formatDate(date) }}</span>
+                    </div>
+                    <div v-for="sp_name in groupedItems[date]" :key="sp_name" class="entry-card">
+                        <div class="plan-header">
+                            <div class="plan-main">
+                                <h3 class="plan-title">
+                                    {{ items[sp_name].item_name }}
+                                </h3>
+                                <div class="meta-row">
+                                    <span class="meta-value">{{ items[sp_name].lot }}</span>
+                                    <span class="meta-separator">|</span>
+                                    <span class="meta-value">{{ items[sp_name].work_station }}</span>
+                                    <span class="meta-separator">|</span>
+                                    <span class="meta-value">{{ items[sp_name].input_type }}</span>
+                                    <span class="meta-separator">|</span>
+                                    <span class="meta-value">{{ items[sp_name].received_type }}</span>
+                                </div>
+                            </div>
+                            <div style="padding-top:45px; padding-right:20px;" v-if="items[sp_name].is_cancellable">
+                                <button class="record-btn" @click="open_popup(sp_name)">
+                                    <svg class="record-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M6 18L18 6M6 6l12 12"></path>
+                                    </svg>
+                                    Cancel Entry
+                                </button>
+                            </div>
+                        </div>
+                        <div class="table-wrapper no-scrollbar">
+                            <table class="data-table">
+                                <thead>
+                                    <tr class="header-row">
+                                        <th class="index-col">#</th>
+                                        <th class="size-col">Colour</th>
+                                        <th v-if="items[sp_name]['is_set_item']" class="part-col">
+                                            {{ items[sp_name]['set_attr'] }}
+                                        </th>
+                                        <th v-for="size in items[sp_name]['primary_values']" :key="size"
+                                            class="size-col">
+                                            {{ size }}
+                                        </th>
+                                        <th class="total-col">Total</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr v-for="(colour, idx) in Object.keys(items[sp_name]['details'])" class="data-row">
+                                        <td class="index-cell">{{ idx + 1 }}</td>
+                                        <td class="size-cell">
+                                            <span class="colour-badge">{{ colour.split("@")[0] }}</span>
+                                        </td>
+                                        <td v-if="items[sp_name]['is_set_item']" class="part-cell">
+                                            <span class="part-pill">
+                                                {{ items[sp_name]['details'][colour]['part']}}
+                                            </span>
+                                        </td>
+                                        <td v-for="size in items[sp_name]['primary_values']" :key="size"
+                                            class="size-cell">
+                                            {{ items[sp_name]['details'][colour]['values'][size] }}
+                                        </td>
+                                        <td class="total-cell">
+                                            <span class="total-val">
+                                                {{ items[sp_name]['details'][colour]['total'] }}
+                                            </span>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
                         </div>
                     </div>
-                    <div style="padding-top:45px; padding-right:20px;">
-                        <button class="record-btn" @click="open_popup(sp_name)">
-                            <svg class="record-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M12 4v16m8-8H4"></path>
-                            </svg>
-                            Cancel Entry
-                        </button>
-                    </div>
-                </div>
-                <div class="table-wrapper no-scrollbar">
-                    <table class="data-table">
-                        <thead>
-                            <tr class="header-row">
-                                <th class="sticky-col index-col">#</th>
-                                <th class="sticky-col size-col">Colour</th>
-                                <th v-if="items[sp_name]['is_set_item']" class="part-col">
-                                    {{ items[sp_name]['set_attr'] }}
-                                </th>
-                                <th v-for="size in items[sp_name]['primary_values']" :key="size"
-                                    class="size-col">
-                                    {{ size }}
-                                </th>
-                                <th class="total-col">Total</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr v-for="(colour, idx) in Object.keys(items[sp_name]['details'])" class="data-row">
-                                <td class="sticky-col index-cell">{{ idx + 1 }}</td>
-                                <td class="sticky-col size-cell">
-                                    <span class="colour-badge">{{ colour.split("@")[0] }}</span>
-                                </td>
-                                <td v-if="items[sp_name]['is_set_item']" class="part-cell">
-                                    <span class="part-pill">
-                                        {{ items[sp_name]['details'][colour]['part']}}
-                                    </span>
-                                </td>
-                                <td v-for="size in items[sp_name]['primary_values']" :key="size"
-                                    class="size-cell">
-                                    {{ items[sp_name]['details'][colour]['values'][size] }}
-                                </td>
-                                <td class="total-cell">
-                                    <span class="total-val">
-                                        {{ items[sp_name]['details'][colour]['total'] }}
-                                    </span>
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
                 </div>
             </div>    
         </div>
@@ -111,7 +113,7 @@
 
 <script setup>
 
-import { ref, watch, onMounted } from 'vue'
+import { ref, watch, onMounted, computed } from 'vue'
 
 const items = ref(null)
 const props = defineProps({
@@ -119,7 +121,36 @@ const props = defineProps({
         type: String,
         default: null
     },
+    refresh_counter: {
+        type: Number,
+        default: 0
+    }
 })
+
+const groupedItems = computed(() => {
+    if (!items.value) return {}
+    const grouped = {}
+    for (const sp_name of Object.keys(items.value)) {
+        const entry = items.value[sp_name]
+        const date = entry.entry_date
+        if (!grouped[date]) {
+            grouped[date] = []
+        }
+        grouped[date].push(sp_name)
+    }
+    return grouped
+})
+
+const formatDate = (dateStr) => {
+    if (!dateStr) return ''
+    const parts = dateStr.split('-')
+    if (parts.length === 3) {
+        return `${parts[2]}-${parts[1]}-${parts[0]}`
+    }
+    return dateStr
+}
+
+const emit = defineEmits(['refresh'])
 
 const inputTypeWrapper = ref(null)
 const workStationWrapper = ref(null)
@@ -204,6 +235,7 @@ function open_popup(sp_name){
                 callback: function(r){
                     d.hide()
                     delete items.value[sp_name]
+                    emit('refresh')
                 }
             })
         },
@@ -215,7 +247,7 @@ function open_popup(sp_name){
 }
 
 watch(
-    () => props.selected_supplier,
+    () => [props.selected_supplier, props.refresh_counter],
     fetchData,
     { immediate: true }
 )
@@ -290,19 +322,44 @@ watch(
 .meta-row {
     display: flex;
     align-items: center;
-    gap: 0.5rem;
+    gap: 0.75rem;
     margin-top: 0.5rem;
-    flex-wrap: wrap;
 }
 
-.meta-pill {
-    font-size: 0.75rem;
+.meta-value {
+    font-size: 1rem;
     font-weight: 500;
-    color: #64748b;
-    background-color: #f1f5f9;
-    padding: 0.25rem 0.6rem;
-    border-radius: 0.5rem;
-    white-space: nowrap;
+    color: #475569;
+}
+
+.meta-separator {
+    color: #cbd5e1;
+    font-weight: 300;
+}
+
+.date-section {
+    margin-bottom: 2rem;
+}
+
+.date-header {
+    background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+    padding: 0.75rem 1.5rem;
+    border-radius: 0.75rem;
+    margin-bottom: 1rem;
+}
+
+.date-label {
+    font-size: 1rem;
+    font-weight: 600;
+    color: white;
+}
+
+.entry-card {
+    background: white;
+    border-radius: 1rem;
+    padding: 1rem;
     border: 1px solid #e2e8f0;
+    margin-bottom: 1rem;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
 }
 </style>

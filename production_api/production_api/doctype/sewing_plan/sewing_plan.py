@@ -11,6 +11,7 @@ from production_api.essdee_production.doctype.item_production_detail.item_produc
 class SewingPlan(Document):
 	pass
 
+@frappe.whitelist()
 def create_sewing_plan(work_order):
 	finishing_inward_process = frappe.db.get_single_value("MRP Settings", "finishing_inward_process")
 	process_name, internal_unit = frappe.get_value("Work Order", work_order, ["process_name", "is_internal_unit"])	
@@ -111,22 +112,50 @@ def get_sp_status_summary(supplier):
 		"supplier": supplier
 	}, pluck="name")
 	total = {}
+	
+	# Get input/output types for date tracking
+	input_qty_type = mrp_doc.sewing_input_qty_type
+	line_output_type = mrp_doc.sewing_line_output_type
+	
+	# Track FI dates from sewing_plan_order_details across all sewing plans
+	fi_dates_by_key = {}
+	
 	for sp_name in sp_list:
 		sp_doc = frappe.get_doc("Sewing Plan", sp_name)
 		lot = sp_doc.lot
 		item = sp_doc.item
-		primary_attr = frappe.get_value("Item", item, "primary_attribute")
 		wo_doc = frappe.get_doc("Work Order", sp_doc.work_order)
+		
+		# Get IPD details for this lot's item
+		ipd = frappe.get_value("Lot", lot, "production_detail")
+		ipd_fields = ["is_set_item", "packing_attribute", "primary_item_attribute", "set_item_attribute"]
+		is_set_item, pack_attr, primary_attr, set_attr = frappe.get_value("Item Production Detail", ipd, ipd_fields)
+		
 		for row in wo_doc.work_order_calculated_items:
 			key = get_sp_key(row, item, lot, primary_attr)
 			attr_details = get_variant_attr_details(row.item_variant)
+			set_comb = update_if_string_instance(row.set_combination)
+			major_colour = set_comb.get("major_colour", "")
+			
+			# Format colour for set items: variant_colour (major_colour)
+			if is_set_item:
+				variant_colour = attr_details.get(pack_attr, "")
+				display_colour = f"{variant_colour} ({major_colour})"
+			else:
+				display_colour = major_colour
+			
 			data.setdefault(key, {
 				"item": item,
 				"lot": lot,
 				"item_variant": row.item_variant,
 				"attr_details": attr_details,
-				"pack_attr": ipd_settings.default_packing_attribute,
-				"set_attr": ipd_settings.default_set_item_attribute,
+				"pack_attr": pack_attr if is_set_item else ipd_settings.default_packing_attribute,
+				"set_attr": set_attr if is_set_item else None,
+				"is_set_item": is_set_item,
+				"major_colour": major_colour,
+				"display_colour": display_colour,
+				"input_dates": [],
+				"output_dates": [],
 			})
 			input_key = "GRN Qty"
 			data[key].setdefault(input_key, 0)
@@ -158,6 +187,11 @@ def get_sp_status_summary(supplier):
 
 			total.setdefault(input_key, 0)
 			total[input_key] += row.final_inspection
+			
+			# Collect FI dates from sewing_plan_order_details
+			if row.fi_date:
+				fi_dates_by_key.setdefault(key, [])
+				fi_dates_by_key[key].append(row.fi_date)
 
 		sp_entry_list = frappe.get_all("Sewing Plan Entry Detail", filters={
 			"sewing_plan": sp_name
@@ -167,9 +201,16 @@ def get_sp_status_summary(supplier):
 		
 		for sp_entry in sp_entry_list:
 			spe_doc = frappe.get_doc("Sewing Plan Entry Detail", sp_entry)
+			entry_date = spe_doc.entry_date
 			for row in spe_doc.sewing_plan_details:
 				key = get_sp_key(row, item, lot, primary_attr)
 				input_key = spe_doc.input_type
+				
+				if input_key == input_qty_type:
+					data[key]["input_dates"].append(entry_date)
+				if input_key == line_output_type:
+					data[key]["output_dates"].append(entry_date)
+				
 				if input_key == type_wise_diff_input:
 					total["checking_total"] += row.quantity
 					data[key].setdefault("checking_total", 0)
@@ -199,6 +240,31 @@ def get_sp_status_summary(supplier):
 		if x.get('Final Inspection', 0) > 0:
 			x['Ready for Final Inspection'] = "Under Final Inspection" if x.get('Pre Final', 0) > x['Final Inspection'] else "Completed"
 		
+		input_dates = x.get('input_dates', [])
+		output_dates = x.get('output_dates', [])
+		
+		if input_dates:
+			x['Input Date'] = min(input_dates)
+		else:
+			x['Input Date'] = None
+			
+		if output_dates:
+			x['Last Sewing Output'] = max(output_dates)
+		else:
+			x['Last Sewing Output'] = None
+		
+		if x['Input Date'] and x['Last Sewing Output']:
+			x['Total Running Days'] = (x['Last Sewing Output'] - x['Input Date']).days
+		else:
+			x['Total Running Days'] = None
+		
+		# Get FI Date from sewing_plan_order_details
+		fi_dates = fi_dates_by_key.get(row, [])
+		if fi_dates:
+			x['FI Date'] = min(fi_dates).strftime("%Y-%m-%d")
+		else:
+			x['FI Date'] = None
+		
 		line_stock = x.get(line_output, 0) - x.get(input_qty, 0) 
 		stock = x.get('checking_total', 0) - x.get(line_output, 0)
 		total.setdefault("Line Stock", 0)
@@ -207,7 +273,7 @@ def get_sp_status_summary(supplier):
 		total["Stock"] += stock
 		x['Line Stock'] = line_stock
 		x['Stock'] = stock
-		grn_pending = x[line_output] = x['GRN Qty']
+		grn_pending = x.get(line_output, 0) - x['GRN Qty']
 		total.setdefault("GRN Pending", 0)
 		total["GRN Pending"] += grn_pending
 		x['GRN Pending'] = grn_pending
@@ -297,12 +363,13 @@ def get_data_entry_data(supplier, lot=None):
 		})
 
 		for item in sp_doc.sewing_plan_order_details:
-			size, part, colour = get_colour_size_data(item.set_combination, item.item_variant, is_set_item, pack_attr, set_attr, primary_attr)
+			size, part, colour, v_colour = get_colour_size_data(item.set_combination, item.item_variant, is_set_item, pack_attr, set_attr, primary_attr)
 			set_comb = update_if_string_instance(item.set_combination)
 			sewing_data[sp_doc.lot][sp_name]['colours'].setdefault(colour, {
 				"values": {},
 				"part": part,
 				"colour": colour,
+				"variant_colour": v_colour,
 				"set_combination": set_comb,
 				"qty": 0,
 				"inspection_total": {
@@ -331,7 +398,7 @@ def get_data_entry_data(supplier, lot=None):
 		for sp_entry in sp_entry_list:
 			spe_doc = frappe.get_doc("Sewing Plan Entry Detail", sp_entry)
 			for row in spe_doc.sewing_plan_details:
-				size, part, colour = get_colour_size_data(row.set_combination, row.item_variant, is_set_item, pack_attr, set_attr, primary_attr)
+				size, part, colour, v_colour = get_colour_size_data(row.set_combination, row.item_variant, is_set_item, pack_attr, set_attr, primary_attr)
 				new_key = spe_doc.input_type.lower().replace(" ", "_")
 				if new_key == inspection_key:
 					sewing_data[sp_doc.lot][sp_name]['colours'][colour]['inspection_total'][new_key] += row.quantity
@@ -341,8 +408,24 @@ def get_data_entry_data(supplier, lot=None):
 	
 	diff_keys = {}
 	for row in mrp_doc.sewing_plan_input_orders:
-		diff_keys[row.input_type.lower().replace(" ", "_")] = row.difference_from.lower().replace(" ", "_")		
-
+		diff_keys[row.input_type.lower().replace(" ", "_")] = row.difference_from.lower().replace(" ", "_")
+	
+	# Calculate remaining quantities for each input type
+	# remaining = diff_from_value - already_entered_for_this_input_type
+	for lot in sewing_data:
+		for sp_name in sewing_data[lot]:
+			for colour in sewing_data[lot][sp_name]['colours']:
+				for size in sewing_data[lot][sp_name]['colours'][colour]['values']:
+					size_data = sewing_data[lot][sp_name]['colours'][colour]['values'][size]
+					for input_type_key, diff_from_key in diff_keys.items():
+						# Get the base quantity (e.g., checking_output)
+						base_qty = size_data.get(diff_from_key, 0)
+						# Get already entered quantity for this input type (e.g., aql_output)
+						entered_qty = size_data.get(input_type_key, 0)
+						# Calculate remaining
+						remaining_key = f"{input_type_key}_remaining"
+						size_data[remaining_key] = max(0, base_qty - entered_qty)
+	
 	return {
 		"data": sewing_data,
 		"diff": diff_keys,
@@ -370,14 +453,16 @@ def submit_data_entry_log(payload):
 			if check:
 				break	
 		if check:
+			variant_colour = payload['quantities']['colours'][colour]['variant_colour']
 			for size in payload['quantities']['colours'][colour]['values']:
 				attrs = {
-					details['pack_attr']: payload['quantities']['colours'][colour]['colour'],
 					details['primary_attr']: size,
 					ipd_details[1]: ipd_details[2],
 				}
 				if details['is_set_item']:
 					attrs[ipd_details[0]] = payload['quantities']['colours'][colour]['part']
+
+				attrs[details['pack_attr']] = variant_colour
 				variant = get_or_create_variant(details['item'], attrs)
 				items.append({
 					"item_variant": variant,
@@ -411,7 +496,7 @@ def get_scr_data(supplier, lot):
 	sp_entry_list = frappe.get_all("Sewing Plan Entry Detail", filters={
 		"sewing_plan": ["in", sp_list]
 	})
-	print(sp_list)
+
 	mrp_doc = frappe.get_single("MRP Settings")
 	type_wise_diff_input = mrp_doc.type_wise_diff_summary
 
@@ -422,11 +507,11 @@ def get_scr_data(supplier, lot):
 	is_set_item, pack_attr, primary_attr, set_attr, item_name = frappe.get_value("Item Production Detail", ipd, ipd_fields)
 	primary_values = get_ipd_primary_values(ipd)
 	colours = []
-	print(sp_entry_list)
+
 	for sp_name in sp_list:
 		sp_doc = frappe.get_doc("Sewing Plan", sp_name)
 		for row in sp_doc.sewing_plan_order_details:
-			size, part, colour = get_colour_size_data(row.set_combination, row.item_variant, is_set_item, pack_attr, set_attr, primary_attr)
+			size, part, colour, v_colour = get_colour_size_data(row.set_combination, row.item_variant, is_set_item, pack_attr, set_attr, primary_attr)
 			if colour not in colours:
 				colours.append(colour)
 
@@ -435,6 +520,7 @@ def get_scr_data(supplier, lot):
 				"values": {},
 				"part": part,
 				"colour": colour,
+				"variant_colour": v_colour,
 				"set_combination": set_comb,
 				"type_wise_total": {},
 			})
@@ -446,8 +532,7 @@ def get_scr_data(supplier, lot):
 	for sp_entry in sp_entry_list:
 		sp_doc = frappe.get_doc("Sewing Plan Entry Detail", sp_entry)
 		for row in sp_doc.sewing_plan_details:
-			print(sp_entry)
-			size, part, colour = get_colour_size_data(row.set_combination, row.item_variant, is_set_item, pack_attr, set_attr, primary_attr)
+			size, part, colour, v_colour = get_colour_size_data(row.set_combination, row.item_variant, is_set_item, pack_attr, set_attr, primary_attr)
 			
 			input_key = sp_doc.input_type
 			if input_key == type_wise_diff_input:
@@ -483,6 +568,11 @@ def get_scr_data(supplier, lot):
 						new_size_wise_keys.setdefault(new_key, 0)
 						new_size_wise_keys[new_key] += scr_data[colour]["values"][size][input_type]
 						unlinked_types.append(input_type)
+					elif input_type != 'Order Qty':
+						new_key = type_wise_diff_input + " Total"
+						new_size_wise_keys.setdefault(new_key, 0)
+						new_size_wise_keys[new_key] += scr_data[colour]["values"][size][input_type]
+
 			scr_data[colour]["values"][size].update(new_size_wise_keys)		
 
 	for colour in scr_data:
@@ -509,7 +599,6 @@ def get_scr_data(supplier, lot):
 				total += scr_data[colour]["values"][size].get(header, 0)
 			scr_data[colour]["type_wise_total"][header] = total
 	
-	print(scr_data)
 	return {
 		"status": "success",
 		"primary_values": primary_values,
@@ -529,17 +618,19 @@ def get_colour_size_data(set_combination, item_variant, is_set_item, pack_attr, 
 	attr_details = get_variant_attr_details(item_variant)
 	size = attr_details[primary_attr]
 	part = None
-
+	real_colour = colour
 	if is_set_item:
 		variant_colour = attr_details[pack_attr]
 		part = attr_details[set_attr]
-		colour = f"{variant_colour} ({major_colour})"
+		real_colour = variant_colour
+		if set_comb['major_part'] != part:
+			colour = f"{variant_colour} ({major_colour})"
 
-	return size, part, colour	
+	return size, part, colour, real_colour	
 
 @frappe.whitelist()
-def get_sewing_plan_dpr_data(supplier, dpr_date, work_station=None):
-	sp_entry_list = get_sp_entry_details(supplier, dpr_date=dpr_date, work_station=work_station)
+def get_sewing_plan_dpr_data(supplier, dpr_date, work_station=None, input_type=None):
+	sp_entry_list = get_sp_entry_details(supplier, dpr_date=dpr_date, work_station=work_station, input_type=input_type)
 	dpr_data = {}
 	for sp_entry in sp_entry_list:
 		sp_doc = frappe.get_doc("Sewing Plan Entry Detail", sp_entry)
@@ -564,12 +655,13 @@ def get_sewing_plan_dpr_data(supplier, dpr_date, work_station=None):
 		dpr_data[in_type][lot]['details'][ws].setdefault(rec_type, {})
 		
 		for row in sp_doc.sewing_plan_details:
-			size, part, colour = get_colour_size_data(row.set_combination, row.item_variant, is_set_item, pack_attr, set_attr, primary_attr)
+			size, part, colour, v_colour = get_colour_size_data(row.set_combination, row.item_variant, is_set_item, pack_attr, set_attr, primary_attr)
 			set_comb = update_if_string_instance(row.set_combination)
 			dpr_data[in_type][lot]['details'][ws][rec_type].setdefault(colour, {
 				"values": {},
 				"part": part,
 				"colour": colour,
+				"varaint_colour": v_colour,
 				"set_combination": set_comb,
 				"total": 0
 			})
@@ -590,8 +682,10 @@ def get_sewing_plan_dpr_data(supplier, dpr_date, work_station=None):
 @frappe.whitelist()
 def get_sewing_plan_entries(supplier, input_type=None, work_station=None, lot_name=None):
 	previous_days = frappe.db.get_single_value("MRP Settings", "previous_day_entries")
+	previous_days = int(previous_days or 0)
+	
 	data = frappe.db.sql(
-		f"""
+		"""
 			SELECT 
 				t1.entry_date as date 
 				FROM `tabSewing Plan Entry Detail` t1
@@ -603,9 +697,16 @@ def get_sewing_plan_entries(supplier, input_type=None, work_station=None, lot_na
 				t1.entry_date
 			ORDER BY 
 				t1.entry_date DESC
-			LIMIT {previous_days}
 		""", {"supplier": supplier}, as_dict=True
 	)
+	
+	cancellable_dates = set()
+	for i, row in enumerate(data):
+		if i < previous_days:
+			cancellable_dates.add(row['date'])
+		else:
+			break
+	
 	entry_data = {}
 	for row in data:
 		sp_entries = get_sp_entry_details(supplier, dpr_date=row['date'], work_station=work_station, input_type=input_type)
@@ -617,6 +718,9 @@ def get_sewing_plan_entries(supplier, input_type=None, work_station=None, lot_na
 			ipd = frappe.get_value("Lot", lot, "production_detail")
 			ipd_fields = ["is_set_item", "packing_attribute", "primary_item_attribute", "set_item_attribute", "item"]
 			is_set_item, pack_attr, primary_attr, set_attr, item_name = frappe.get_value("Item Production Detail", ipd, ipd_fields)
+			
+			is_cancellable = sp_doc.entry_date in cancellable_dates
+			
 			entry_data.setdefault(sp_entry, {
 				"lot": lot,
 				"details": {},
@@ -627,15 +731,18 @@ def get_sewing_plan_entries(supplier, input_type=None, work_station=None, lot_na
 				"primary_values": get_ipd_primary_values(ipd),
 				"is_set_item": is_set_item,
 				"pack_attr": pack_attr,
-				"set_attr": set_attr
+				"set_attr": set_attr,
+				"is_cancellable": is_cancellable,
+				"entry_date": sp_doc.entry_date
 			})
 			for row in sp_doc.sewing_plan_details:
-				size, part, colour = get_colour_size_data(row.set_combination, row.item_variant, is_set_item, pack_attr, set_attr, primary_attr)
+				size, part, colour, v_colour = get_colour_size_data(row.set_combination, row.item_variant, is_set_item, pack_attr, set_attr, primary_attr)
 				set_comb = update_if_string_instance(row.set_combination)
 				entry_data[sp_entry]['details'].setdefault(colour, {
 					"values": {},
 					"part": part,
 					"colour": colour,
+					"variant_colour": v_colour,
 					"set_combination": set_comb,
 					"total": 0
 				})
@@ -690,4 +797,88 @@ def update_sewing_plan_data(payload):
 
 	sp_doc.save(ignore_permissions=True)			
 
+	return "Success"
+
+@frappe.whitelist()
+def get_fi_updates_data(supplier):
+	sp_list = frappe.get_all("Sewing Plan", filters={"supplier": supplier}, pluck="name")
+	
+	if not sp_list:
+		return {"data": []}
+	
+	colour_part_data = []
+	seen_combinations = set()
+	
+	for sp_name in sp_list:
+		sp_doc = frappe.get_doc("Sewing Plan", sp_name)
+		lot = sp_doc.lot
+		item = sp_doc.item
+		ipd = frappe.get_value("Lot", lot, "production_detail")
+		ipd_fields = ["is_set_item", "packing_attribute", "primary_item_attribute", "set_item_attribute"]
+		is_set_item, pack_attr, primary_attr, set_attr = frappe.get_value("Item Production Detail", ipd, ipd_fields)
+		
+		for row in sp_doc.sewing_plan_order_details:
+			# Only include rows without FI date
+			if row.fi_date:
+				continue
+			
+			size, part, colour, v_colour = get_colour_size_data(row.set_combination, row.item_variant, is_set_item, pack_attr, set_attr, primary_attr)
+			
+			# Unique key includes lot to show same colour/part in different lots
+			key = (lot, colour, part)
+			if key not in seen_combinations:
+				seen_combinations.add(key)
+				colour_part_data.append({
+					"colour": colour,
+					"part": part,
+					"sewing_plan": sp_name,
+					"lot": lot,
+					"item": item,
+					"is_set_item": is_set_item,
+					"set_attr": set_attr
+				})
+	
+	return {"data": colour_part_data}
+
+@frappe.whitelist()
+def update_fi_dates(data):
+	data = update_if_string_instance(data)
+	
+	# Group data by sewing_plan for efficient updates
+	sp_updates = {}
+	for row in data:
+		sp_name = row.get('sewing_plan')
+		lot = row.get('lot')
+		if not sp_name or not lot:
+			continue
+		
+		if sp_name not in sp_updates:
+			sp_updates[sp_name] = {"lot": lot, "rows": []}
+		sp_updates[sp_name]["rows"].append(row)
+	
+	# Update each sewing plan
+	for sp_name, sp_data in sp_updates.items():
+		lot = sp_data["lot"]
+		rows = sp_data["rows"]
+		
+		ipd = frappe.get_value("Lot", lot, "production_detail")
+		ipd_fields = ["is_set_item", "packing_attribute", "primary_item_attribute", "set_item_attribute"]
+		is_set_item, pack_attr, primary_attr, set_attr = frappe.get_value("Item Production Detail", ipd, ipd_fields)
+		
+		sp_doc = frappe.get_doc("Sewing Plan", sp_name)
+		
+		for update_row in rows:
+			colour = update_row.get('colour')
+			part = update_row.get('part')
+			fi_date = update_row.get('date')
+			
+			# Update all matching rows in sewing_plan_order_details
+			for sp_row in sp_doc.sewing_plan_order_details:
+				size, row_part, row_colour, v_colour = get_colour_size_data(sp_row.set_combination, sp_row.item_variant, is_set_item, pack_attr, set_attr, primary_attr)
+				
+				if row_colour == colour and row_part == part:
+					sp_row.fi_date = fi_date if fi_date else None
+					
+		sp_doc.save(ignore_permissions=True)
+	
 	return "Success"

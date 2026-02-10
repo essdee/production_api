@@ -294,7 +294,7 @@
    "link_fieldname": "cutting_plan"
   }
  ],
- "modified": "2026-01-28 14:05:53.146615",
+ "modified": "2026-02-06 18:50:07.315503",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Cutting Plan",
@@ -355,22 +355,9 @@
    "print": 1,
    "read": 1,
    "report": 1,
-   "role": "Merchandiser",
+   "role": "Merch User",
    "select": 1,
    "share": 1
-  },
-  {
-   "create": 1,
-   "delete": 1,
-   "email": 1,
-   "export": 1,
-   "print": 1,
-   "read": 1,
-   "report": 1,
-   "role": "T & A Manager",
-   "share": 1,
-   "submit": 1,
-   "write": 1
   },
   {
    "email": 1,
@@ -380,17 +367,6 @@
    "read": 1,
    "report": 1,
    "role": "System Manager",
-   "share": 1,
-   "write": 1
-  },
-  {
-   "email": 1,
-   "export": 1,
-   "permlevel": 1,
-   "print": 1,
-   "read": 1,
-   "report": 1,
-   "role": "T & A Manager",
    "share": 1,
    "write": 1
   },
@@ -431,7 +407,7 @@
    "print": 1,
    "read": 1,
    "report": 1,
-   "role": "Merchandiser",
+   "role": "Merch User",
    "share": 1,
    "write": 1
   },
@@ -451,6 +427,15 @@
    "read": 1,
    "report": 1,
    "role": "Brand QA User",
+   "share": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Purchase User",
    "share": 1
   }
  ],

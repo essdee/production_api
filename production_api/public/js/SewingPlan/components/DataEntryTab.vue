@@ -51,8 +51,8 @@
                         <table class="data-table">
                             <thead>
                                 <tr class="header-row">
-                                    <th class="sticky-col index-col">#</th>
-                                    <th class="sticky-col colour-col">Colour</th>
+                                    <th class="index-col">#</th>
+                                    <th class="colour-col">Colour</th>
                                     <th v-if="items[lot][sewing_plan]['details']['is_set_item']" class="part-col">
                                         {{ items[lot][sewing_plan]['details']['set_attr'] }}
                                     </th>
@@ -66,8 +66,8 @@
                             <tbody>
                                 <tr v-for="(colour, idx) in Object.keys(items[lot][sewing_plan]['colours'])"
                                     :key="colour" class="data-row">
-                                    <td class="sticky-col index-cell">{{ idx + 1 }}</td>
-                                    <td class="sticky-col colour-cell">
+                                    <td class="index-cell">{{ idx + 1 }}</td>
+                                    <td class="colour-cell">
                                         <span class="colour-badge">{{ colour.split("@")[0] }}</span>
                                     </td>
                                     <td v-if="items[lot][sewing_plan]['details']['is_set_item']" class="part-cell">
@@ -139,20 +139,35 @@
                                         <th class="type-col">Type</th>
                                         <th v-for="size in modal_data?.details?.primary_values" :key="size">{{ size }}
                                         </th>
+                                        <th class="total-col">Total</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     <template v-for="colour in Object.keys(modal_data?.colours)" :key="colour">
                                         <tr class="order-qty-row">
-                                            <td rowspan="2" class="sticky-col colour-name">{{ colour.split("@")[0] }}
+                                            <td rowspan="2" class="colour-name">
+                                                <div class="colour-checkbox-group">
+                                                    <input type="checkbox" 
+                                                        class="fill-checkbox" 
+                                                        @change="(e) => fillColourQuantities(colour, e)">
+                                                    <span>{{ colour.split("@")[0] }}</span>
+                                                </div>
                                             </td>
                                             <td v-if="modal_data?.details['is_set_item']" rowspan="2" class="part-cell">
                                                 <span class="part-pill">{{ modal_data?.colours[colour]['part'] }}</span>
                                             </td>
-                                            <td class="type-indicator planned">{{ input_type }}</td>
+                                            <td class="type-indicator planned">
+                                                {{ input_type.display }}
+                                                <span class="remaining-badge" v-if="modal_data.colours[colour].values[modal_data?.details?.primary_values[0]]?.[input_type.input_key] > 0">
+                                                    (Remaining)
+                                                </span>
+                                            </td>
                                             <td v-for="size in modal_data?.details?.primary_values" :key="size"
                                                 class="matrix-cell planned-val">
-                                                {{ modal_data.colours[colour].values[size]?.[diff_key] ?? 0 }}
+                                                {{ modal_data.colours[colour].values[size]?.[input_type.remaining_key] ?? modal_data.colours[colour].values[size]?.[input_type.base_key] ?? 0 }}
+                                            </td>
+                                            <td class="matrix-cell planned-val total-cell-bold">
+                                                {{ getColourTotal(colour, input_type.remaining_key) || getColourTotal(colour, input_type.base_key) }}
                                             </td>
                                         </tr>
                                         <tr class="entry-row">
@@ -164,6 +179,9 @@
                                                         v-model.number="modal_data.colours[colour].values[size].data_entry"
                                                         class="qty-input" placeholder="0">
                                                 </div>
+                                            </td>
+                                            <td class="matrix-cell total-cell-bold">
+                                                {{ getColourTotal(colour, 'data_entry') }}
                                             </td>
                                         </tr>
                                     </template>
@@ -296,6 +314,32 @@ let ws_control = null
 let type_control = null
 let grn_type_control = null
 
+const emit = defineEmits(['refresh'])
+
+const getColourTotal = (colour, field) => {
+    const colourData = modal_data.value.colours[colour]
+    if (!colourData) return 0
+    return Object.values(colourData.values).reduce((acc, curr) => acc + (curr[field] || 0), 0)
+}
+
+const fillColourQuantities = (colour, event) => {
+    const isChecked = event.target.checked
+    const colourData = modal_data.value.colours[colour]
+    if (!colourData) return
+
+    const inputTypeInfo = input_type.value
+    Object.keys(colourData.values).forEach(size => {
+        if (isChecked) {
+            // Use remaining quantity if available, otherwise fall back to base
+            const remainingQty = colourData.values[size]?.[inputTypeInfo.remaining_key] ?? 
+                                 colourData.values[size]?.[inputTypeInfo.base_key] ?? 0
+            colourData.values[size].data_entry = remainingQty
+        } else {
+            colourData.values[size].data_entry = 0
+        }
+    })
+}
+
 const entry_form = ref({
     date: frappe.datetime.now_date(),
     time: frappe.datetime.now_time(),
@@ -393,6 +437,7 @@ const submitUpdate = () => {
                         })
                         closeUpdateModal()
                         fetchData()
+                        emit('refresh')
                     }
                 }
             })
@@ -498,7 +543,14 @@ const initFrappeControls = () => {
             fieldname: 'grn_item_type',
             options: 'GRN Item Type',
             label: 'GRN Item Type',
-            change: () => { entry_form.value.grn_item_type = grn_type_control.get_value() }
+            change: () => { entry_form.value.grn_item_type = grn_type_control.get_value() },
+            get_query(){
+                return {
+                    filters: {
+                        'show_in_sewing_plan': 1,
+                    }
+                }
+            }
         },
         render_input: true,
     })
@@ -515,11 +567,16 @@ const input_type = computed(() => {
     if (!type_val) return 'Order Qty'
     let x = type_val
     let lower = x.toLowerCase()
-    let replaced = lower.replace(" ", "_")
+    let replaced = lower.replace(/ /g, "_")
     diff_key.value = diff.value[replaced]
-    let val = diff.value[replaced]
-    let words = val.split("_")
-    return words.map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')
+    // Store the selected input type key for remaining quantity lookup
+    const remaining_key = `${replaced}_remaining`
+    return {
+        display: diff.value[replaced]?.split("_").map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ') || 'Order Qty',
+        base_key: diff.value[replaced],
+        remaining_key: remaining_key,
+        input_key: replaced
+    }
 })
 
 const submitLog = () => {
@@ -530,14 +587,17 @@ const submitLog = () => {
 
     // Validation Loop
     let validation_failed = false;
+    const inputTypeInfo = input_type.value
     for (const colour of Object.keys(modal_data.value.colours)) {
         if (validation_failed) break;
         for (const size of Object.keys(modal_data.value.colours[colour].values)) {
              const entered_qty = modal_data.value.colours[colour].values[size].data_entry || 0;
-             const position_qty = modal_data.value.colours[colour].values[size]?.[diff_key.value] ?? 0;
+             // Use remaining quantity for validation
+             const remaining_qty = modal_data.value.colours[colour].values[size]?.[inputTypeInfo.remaining_key] ?? 
+                                   modal_data.value.colours[colour].values[size]?.[inputTypeInfo.base_key] ?? 0;
 
-             if (entered_qty > position_qty) {
-                 frappe.throw(`Entered quantity cannot be greater than ${input_type.value}`);
+             if (entered_qty > remaining_qty) {
+                 frappe.throw(`Entered quantity cannot be greater than remaining ${inputTypeInfo.display}`);
                  validation_failed = true;
                  return; 
              }
@@ -566,6 +626,7 @@ const submitLog = () => {
                     indicator: 'green'
                 })
                 closeModal()
+                emit('refresh')
             }
         }
     })
@@ -844,6 +905,21 @@ watch(() => [props.selected_supplier, props.refresh_counter, selected_lot.value]
     background: #fdfdfd;
     vertical-align: middle;
     text-align: center;
+    padding: 8px !important;
+}
+
+.colour-checkbox-group {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.fill-checkbox {
+    width: 16px;
+    height: 16px;
+    cursor: pointer;
+    accent-color: #1a73e8;
 }
 
 .qty-input {
@@ -867,6 +943,13 @@ watch(() => [props.selected_supplier, props.refresh_counter, selected_lot.value]
 
 .qty-input::-webkit-inner-spin-button {
     display: none;
+}
+
+.total-cell-bold {
+    font-weight: 700;
+    color: #1e293b;
+    text-align: center;
+    background: #f8fafc;
 }
 
 .modal-footer {

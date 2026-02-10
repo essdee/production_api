@@ -78,7 +78,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-06-26 11:16:16.576547",
+ "modified": "2026-02-06 19:15:23.280671",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Item BOM Attribute Mapping",
@@ -98,7 +98,6 @@
   },
   {
    "create": 1,
-   "delete": 1,
    "email": 1,
    "export": 1,
    "print": 1,
@@ -109,14 +108,26 @@
    "write": 1
   },
   {
+   "create": 1,
    "email": 1,
    "export": 1,
    "print": 1,
    "read": 1,
    "report": 1,
-   "role": "All",
-   "select": 1,
-   "share": 1
+   "role": "Production Planner",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Merch User",
+   "share": 1,
+   "write": 1
   }
  ],
  "row_format": "Dynamic",

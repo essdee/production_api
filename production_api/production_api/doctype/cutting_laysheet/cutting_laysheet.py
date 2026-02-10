@@ -94,7 +94,7 @@ class CuttingLaySheet(Document):
 			self.maximum_allow_percentage = cut_plan_doc.maximum_allow_percent
 			cut_plan_doc.lay_no = self.lay_no
 			cut_plan_doc.flags.ignore_permissions = 1
-			cut_plan_doc.save()
+			cut_plan_doc.save(ignore_permissions=True)
 			
 			marker_list = []
 			for item in cut_marker_doc.cutting_marker_ratios:
@@ -1030,7 +1030,7 @@ def update_cutting_plan(cutting_laysheet, check_cp = False):
 
 			cp_doc.incomplete_items_json = incomplete_items
 			cp_doc.completed_items_json = completed_items
-			cp_doc.save()
+			cp_doc.save(ignore_permissions=True)
 	else:
 		for item in cls_doc.cutting_laysheet_bundles:
 			parts = item.part.split(",")
@@ -1189,7 +1189,7 @@ def update_cutting_plan(cutting_laysheet, check_cp = False):
 
 			cp_doc.incomplete_items_json = incomplete_items
 			cp_doc.completed_items_json = completed_items
-			cp_doc.save()		
+			cp_doc.save(ignore_permissions=True)		
 
 @frappe.whitelist()
 def get_input_fields(cutting_marker, colour, select_attributes):
@@ -1298,7 +1298,6 @@ def revert_labels(doc_name):
 
 	cls_doc.status = "Bundles Generated"
 	if cls_doc.goods_received_note:
-		update_cloth_stock(cls_doc, 1, -1)
 		grn_doc = frappe.get_doc("Goods Received Note", cls_doc.goods_received_note)
 		grn_doc.cancel()
 		lot_no = cls_doc.lot
@@ -1306,6 +1305,10 @@ def revert_labels(doc_name):
 		cancelled_list = cancelled_str.split(",")
 		if lot_no not in cancelled_list:
 			cancel_cut_bundle(cls_doc, is_cancelled=1)
+	
+	if cls_doc.goods_received_note:
+		update_cloth_stock(cls_doc, 1, -1)
+
 	cls_doc.goods_received_note =  None
 	cls_doc.reverted = 1
 	cls_doc.save()
@@ -1352,10 +1355,10 @@ def get_sl_entries(variant, supplier, lot, item, uom, doc_name, received_type, m
 		"voucher_type": "Cutting LaySheet",
 		"voucher_no": doc_name,
 		"voucher_detail_no": item.name,
-		"qty": item.weight * multiplier,
+		"qty": (item.weight - item.get('balance_weight', 0)) * multiplier,
 		"uom": uom,
 		"is_cancelled": 0,
-		"posting_date": item.creation,
+		"posting_date": frappe.utils.nowdate(),
 		"posting_time": frappe.utils.nowtime(),
 	}
 

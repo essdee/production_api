@@ -186,7 +186,7 @@ class ItemProductionDetail(Document):
 				duplicate_doc = frappe.new_doc("Item Item Attribute Mapping")
 				duplicate_doc.attribute_name = doc.attribute_name
 				duplicate_doc.values = doc.values
-				duplicate_doc.save()
+				duplicate_doc.save(ignore_permissions=True)
 				attribute.mapping = duplicate_doc.name
 
 		if self.dependent_attribute_mapping:
@@ -196,7 +196,7 @@ class ItemProductionDetail(Document):
 			duplicate_doc.dependent_attribute = doc.dependent_attribute
 			duplicate_doc.mapping = doc.mapping
 			duplicate_doc.details = doc.details
-			duplicate_doc.save()
+			duplicate_doc.save(ignore_permissions=True)
 			self.dependent_attribute_mapping = duplicate_doc.name
 
 		for bom in self.get('item_bom'):
@@ -216,7 +216,7 @@ class ItemProductionDetail(Document):
 			if attribute.mapping == None:
 				doc = frappe.new_doc("Item Item Attribute Mapping")
 				doc.attribute_name= attribute.attribute 
-				doc.save()
+				doc.save(ignore_permissions=True)
 				attribute.mapping = doc.name
 		frappe.flags.delete_bom_mapping = []
 		for bom in self.get('item_bom'):
@@ -235,7 +235,7 @@ class ItemProductionDetail(Document):
 				doc.set('bom_item_attributes',attr_values)
 
 				doc.flags.ignore_validate = True
-				doc.save()
+				doc.save(ignore_permissions=True)
 				bom.attribute_mapping = doc.name
 			elif not bom.based_on_attribute_mapping and bom.attribute_mapping:
 				name = bom.attribute_mapping
@@ -1363,7 +1363,7 @@ def duplicate_ipd(ipd):
 	doc.set("cloth_detail", get_dict_table(ipd_doc.cloth_detail))
 	doc.set("accessory_attributes", get_dict_table(ipd_doc.accessory_attributes))
 	doc.set("cloth_attributes", get_dict_table(ipd_doc.cloth_attributes))
-	doc.save()
+	doc.save(ignore_permissions=True)
 	if ipd_doc.is_set_item: 
 		doc.update({
 			"is_set_item": ipd_doc.is_set_item,
@@ -1371,7 +1371,7 @@ def duplicate_ipd(ipd):
 			"major_attribute_value": ipd_doc.major_attribute_value,
 		})
 		doc.set("set_item_combination_details", get_dict_table(ipd_doc.set_item_combination_details))
-		doc.save()
+		doc.save(ignore_permissions=True)
 
 	items = []
 	for row1 in ipd_doc.item_bom:
@@ -1388,7 +1388,7 @@ def duplicate_ipd(ipd):
 			d['based_on_attribute_mapping'] = 1
 		items.append(d)
 	doc.set("item_bom", items)
-	doc.save()		
+	doc.save(ignore_permissions=True)		
 
 	for item1, item2 in zip_longest(ipd_doc.item_bom, doc.item_bom):
 		if item1.based_on_attribute_mapping and item1.attribute_mapping:
@@ -1398,7 +1398,7 @@ def duplicate_ipd(ipd):
 			new_bom_doc.insert()
 			item2.attribute_mapping = new_bom_doc.name
 	
-	doc.save()
+	doc.save(ignore_permissions=True)
 
 	return doc.name
 

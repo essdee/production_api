@@ -47,7 +47,7 @@ class DeliveryChallan(Document):
 					if item.cloth_item_variant == dc_item.item_variant:	
 						item.weight -= dc_item.qty
 						break
-			cp_doc.save()		
+			cp_doc.save(ignore_permissions=True)		
 	
 	def on_cancel(self):
 		if self.from_address == self.supplier_address and self.is_internal_unit:
@@ -98,7 +98,7 @@ class DeliveryChallan(Document):
 				cpm_doc = frappe.get_doc("Cut Panel Movement", self.cut_panel_movement)	
 				cpm_doc.against = None
 				cpm_doc.against_id = None
-				cpm_doc.save()
+				cpm_doc.save(ignore_permissions=True)
 				from_warehouse = self.from_location
 				to_warehouse = self.get_to_warehouse()
 
@@ -129,7 +129,7 @@ class DeliveryChallan(Document):
 				cpm_doc = frappe.get_doc("Cut Panel Movement", self.cut_panel_movement)	
 				cpm_doc.against = self.doctype
 				cpm_doc.against_id = self.name
-				cpm_doc.save()
+				cpm_doc.save(ignore_permissions=True)
 				from_warehouse = self.from_location
 				to_warehouse = self.get_to_warehouse()
 
@@ -221,6 +221,8 @@ class DeliveryChallan(Document):
 		default_received_type = stock_settings.default_received_type
 		total_delivered = flt(0)
 		items = []
+		low_stock_items = []
+		total_rate = 0
 		dept_attr, piece_stage, pack_attr = frappe.get_value("Item Production Detail", self.production_detail, ["dependent_attribute","stiching_out_stage", "packing_attribute"])
 		for row in self.items:
 			if res.get(row.item_variant) and row.delivered_quantity > 0:
@@ -230,19 +232,27 @@ class DeliveryChallan(Document):
 					received_type = row.item_type
 				quantity, rate = get_stock_balance(row.item_variant, self.from_location,received_type, with_valuation_rate=True, lot=self.lot)
 				if flt(quantity) < flt(row.delivered_quantity):
-					frappe.throw(f"Required quantity is {row.delivered_quantity} but stock quantity is {quantity} for {row.item_variant}")
-				row.rate = rate	
+					low_stock_items.append(f"Required quantity is {row.delivered_quantity} but stock quantity is {quantity} for {row.item_variant}")
+				row.rate = rate
+				row.valuation_rate = rate	
 				total_delivered += row.delivered_quantity	
 				reduce_sl_entries.append(self.get_sle_data(row, self.from_location, -1, {}, received_type))
 				supplier = self.get_to_warehouse()
+				if not is_product_item(row.item_variant, self.item):
+					total_rate += (rate * quantity)
+
 				if self.includes_packing and check_dependent_stage_variant(row.item_variant, dept_attr, piece_stage):
 					updated_variant = get_lpiece_variant(pack_attr, dept_attr, row.item_variant)
 					add_sl_entries.append(self.get_sle_data(row, supplier, 1, {}, received_type, new_variant=updated_variant))
 				else:	
 					add_sl_entries.append(self.get_sle_data(row, supplier, 1, {}, received_type))
+		
+		if low_stock_items:
+			frappe.throw("<br>".join(low_stock_items))
 
 		if len(items) == 0:
 			frappe.throw("There is no deliverables in this DC")
+
 		self.set("items", items)
 		if not self.cut_panel_movement and not self.allow_non_bundle:
 			cancelled_str = frappe.db.get_single_value("MRP Settings", "cut_bundle_cancelled_lot")
@@ -263,6 +273,7 @@ class DeliveryChallan(Document):
 					if item.get('delivered_quantity'):
 						deliverable.valuation_rate = item.get('rate')
 					break
+		# wo_doc.accessory_cost += total_rate		
 		wo_doc.save(ignore_permissions=True)
 
 		work_order = self.work_order
@@ -287,7 +298,7 @@ class DeliveryChallan(Document):
 					)
 					if cloth_list:
 						frappe.throw(f"Item {dc_item.item_variant} not in Cutting Plan")
-			cp_doc.save()
+			cp_doc.save(ignore_permissions=True)
 			
 		logger.debug(f"{self.name} Work Order deliverables updated {datetime.now()}")
 		make_sl_entries(reduce_sl_entries)
@@ -378,6 +389,12 @@ class DeliveryChallan(Document):
 			to_warehouse = frappe.get_single("Stock Settings").transit_warehouse
 
 		return to_warehouse
+
+def is_product_item(variant, parent):
+	item = frappe.get_value("Item Variant", variant, "item")
+	if item == parent:
+		return True
+	return False
 
 def save_rework_deliverables(item_details, from_location, cut_panel_movement):
 	item_details = update_if_string_instance(item_details)
@@ -1177,4 +1194,4 @@ def update_finishing_item_doc(doc_name, finishing_doc_name, update_dc:bool):
 
 		finishing_doc.incomplete_transfer_dc_list = frappe.json.dumps(incomplete_transfer_dc_list)
 	
-	finishing_doc.save()	
+	finishing_doc.save(ignore_permissions=True)	
