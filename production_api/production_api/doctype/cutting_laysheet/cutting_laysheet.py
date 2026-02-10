@@ -1347,6 +1347,7 @@ def get_table_entries(cls_table, ipd_doc, supplier, lot, doc_name, received_type
 	return sl_entries		
 
 def get_sl_entries(variant, supplier, lot, item, uom, doc_name, received_type, multiplier):
+	balance_weight = item.get("balance_weight") or 0
 	return {
 		"item": variant,
 		"warehouse": supplier,
@@ -1355,7 +1356,7 @@ def get_sl_entries(variant, supplier, lot, item, uom, doc_name, received_type, m
 		"voucher_type": "Cutting LaySheet",
 		"voucher_no": doc_name,
 		"voucher_detail_no": item.name,
-		"qty": (item.weight - item.get('balance_weight', 0)) * multiplier,
+		"qty": (item.weight - balance_weight) * multiplier,
 		"uom": uom,
 		"is_cancelled": 0,
 		"posting_date": frappe.utils.nowdate(),
