@@ -146,6 +146,7 @@ def update_accessory(cutting_plan, cut_panel_movement_json, docstatus):
 		cls_list = frappe.db.sql(
 			f"""
 				SELECT name FROM `tabCutting LaySheet` WHERE cutting_plan = '{cutting_plan}' ORDER BY lay_no {order}
+				AND status = 'Label Printed'
 			""", as_list = True
 		)
 
