@@ -63,6 +63,9 @@ frappe.ui.form.on("Finishing Plan", {
                 },
                 freeze: true,
                 freeze_message: "Fetching Quantity",
+                callback: function () {
+                    frm.reload_doc();
+                }
             })
         })
         frm.add_custom_button("Print Finishing Inward", () => {

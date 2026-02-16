@@ -6,7 +6,8 @@
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
-  "input_type"
+  "input_type",
+  "allowance"
  ],
  "fields": [
   {
@@ -14,6 +15,12 @@
    "fieldtype": "Data",
    "label": "Input Type",
    "unique": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "allowance",
+   "fieldtype": "Percent",
+   "label": "Allowance"
   }
  ],
  "grid_page_length": 50,
