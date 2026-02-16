@@ -269,6 +269,7 @@ import { ref, watch, nextTick, onMounted, computed } from 'vue'
 
 const items = ref([])
 const diff = ref({})
+const allowances = ref({})
 const diff_key = ref(null)
 const show_modal = ref(false)
 const show_update_modal = ref(false)
@@ -592,14 +593,16 @@ const submitLog = () => {
         if (validation_failed) break;
         for (const size of Object.keys(modal_data.value.colours[colour].values)) {
              const entered_qty = modal_data.value.colours[colour].values[size].data_entry || 0;
-             // Use remaining quantity for validation
-             const remaining_qty = modal_data.value.colours[colour].values[size]?.[inputTypeInfo.remaining_key] ?? 
+             // Use remaining quantity for validation (apply allowance on top)
+             const remaining_qty = modal_data.value.colours[colour].values[size]?.[inputTypeInfo.remaining_key] ??
                                    modal_data.value.colours[colour].values[size]?.[inputTypeInfo.base_key] ?? 0;
+             const allowance_pct = allowances.value[inputTypeInfo.input_key] || 0;
+             const allowed_remaining = remaining_qty * (1 + allowance_pct / 100);
 
-             if (entered_qty > remaining_qty) {
+             if (entered_qty > allowed_remaining) {
                  frappe.throw(`Entered quantity cannot be greater than remaining ${inputTypeInfo.display}`);
                  validation_failed = true;
-                 return; 
+                 return;
              }
         }
     }
@@ -657,6 +660,7 @@ const fetchData = () => {
         callback: (r) => {
             items.value = r.message.data || []
             diff.value = r.message.diff
+            allowances.value = r.message.allowances || {}
             inspection_type.value = r.message.inspection_type
             selected_inspection_type.value = r.message.inspection_type
         }

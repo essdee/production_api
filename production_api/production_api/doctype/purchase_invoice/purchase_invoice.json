@@ -305,8 +305,8 @@
    "default": "0",
    "fieldname": "allow_to_change_rate",
    "fieldtype": "Check",
-   "hidden": 1,
-   "label": "Allow to Change Rate"
+   "label": "Allow to Change Rate",
+   "permlevel": 2
   },
   {
    "fieldname": "purchase_invoice_wo_approval_details",
@@ -366,7 +366,7 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-12-23 17:17:41.797725",
+ "modified": "2026-02-16 16:19:32.726302",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Purchase Invoice",
@@ -474,6 +474,27 @@
    "role": "Merch User",
    "share": 1,
    "write": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "permlevel": 2,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "permlevel": 2,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "All",
+   "share": 1
   }
  ],
  "row_format": "Dynamic",

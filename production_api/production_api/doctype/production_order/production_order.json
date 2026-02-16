@@ -135,7 +135,7 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2026-02-06 18:51:57.265703",
+ "modified": "2026-02-16 15:20:27.286254",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Production Order",
@@ -143,6 +143,8 @@
  "owner": "Administrator",
  "permissions": [
   {
+   "amend": 1,
+   "cancel": 1,
    "create": 1,
    "delete": 1,
    "email": 1,
@@ -156,6 +158,7 @@
    "write": 1
   },
   {
+   "amend": 1,
    "create": 1,
    "email": 1,
    "export": 1,
@@ -167,6 +170,7 @@
    "write": 1
   },
   {
+   "amend": 1,
    "create": 1,
    "email": 1,
    "export": 1,
@@ -178,6 +182,7 @@
    "write": 1
   },
   {
+   "amend": 1,
    "create": 1,
    "email": 1,
    "export": 1,
@@ -189,6 +194,7 @@
    "write": 1
   },
   {
+   "amend": 1,
    "cancel": 1,
    "create": 1,
    "email": 1,
