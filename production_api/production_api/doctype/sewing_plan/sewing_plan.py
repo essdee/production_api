@@ -409,9 +409,16 @@ def get_data_entry_data(supplier, lot=None):
 	diff_keys = {}
 	for row in mrp_doc.sewing_plan_input_orders:
 		diff_keys[row.input_type.lower().replace(" ", "_")] = row.difference_from.lower().replace(" ", "_")
-	
+
+	# Fetch allowance percentages for each input type
+	allowances = {}
+	for row in mrp_doc.sewing_plan_input_orders:
+		input_key = row.input_type.lower().replace(" ", "_")
+		allowance = frappe.db.get_value("Sewing Plan Input Type", row.input_type, "allowance") or 0
+		allowances[input_key] = allowance
+
 	# Calculate remaining quantities for each input type
-	# remaining = diff_from_value - already_entered_for_this_input_type
+	# remaining = base_qty - already_entered (exact, no allowance)
 	for lot in sewing_data:
 		for sp_name in sewing_data[lot]:
 			for colour in sewing_data[lot][sp_name]['colours']:
@@ -422,13 +429,14 @@ def get_data_entry_data(supplier, lot=None):
 						base_qty = size_data.get(diff_from_key, 0)
 						# Get already entered quantity for this input type (e.g., aql_output)
 						entered_qty = size_data.get(input_type_key, 0)
-						# Calculate remaining
+						# Calculate remaining (exact quantity, allowance applied only during validation)
 						remaining_key = f"{input_type_key}_remaining"
 						size_data[remaining_key] = max(0, base_qty - entered_qty)
-	
+
 	return {
 		"data": sewing_data,
 		"diff": diff_keys,
+		"allowances": allowances,
 		"inspection_type": inspection_key
 	}
 

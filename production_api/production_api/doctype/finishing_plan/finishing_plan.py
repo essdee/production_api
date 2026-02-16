@@ -618,39 +618,51 @@ def fetch_rejected_quantity(doc_name):
 		"lot": fp_doc.lot
 	}, pluck="name")
 	finishing_rework_items = {}
-	for row in fp_doc.finishing_plan_reworked_details:
-		set_comb = update_if_string_instance(row.set_combination)
-		key = (row.item_variant, tuple(sorted(set_comb.items())))
-		finishing_rework_items.setdefault(key, {
-			"item_variant": row.item_variant,
-			"quantity": row.quantity,
-			"reworked_quantity": 0,
-			"rejected_qty": 0,
-			"set_combination": row.set_combination,
-		})
 
 	for rework_item in rework_item_list:
 		doc = frappe.get_doc("GRN Rework Item", rework_item)
 		for row in doc.grn_rework_item_details:
-			if row.quantity == 0 or not row.completed:
-				continue
-			set_comb = update_if_string_instance(row.set_combination)
-			set_comb = update_if_string_instance(set_comb)
-			key = (row.item_variant, tuple(sorted(set_comb.items())))
-			finishing_rework_items[key]['rejected_qty'] += row.rejection
-
-		for row in doc.grn_reworked_item_details:		
 			if row.quantity == 0:
 				continue
 			set_comb = update_if_string_instance(row.set_combination)
 			set_comb = update_if_string_instance(set_comb)
 			key = (row.item_variant, tuple(sorted(set_comb.items())))
+			finishing_rework_items.setdefault(key, {
+				"item_variant": row.item_variant,
+				"quantity": 0,
+				"reworked_quantity": 0,
+				"rejected_qty": 0,
+				"set_combination": frappe.json.dumps(set_comb),
+			})
+			finishing_rework_items[key]['quantity'] += row.quantity
+			if row.completed:
+				finishing_rework_items[key]['rejected_qty'] += row.rejection
+
+		for row in doc.grn_reworked_item_details:
+			if row.quantity == 0:
+				continue
+			set_comb = update_if_string_instance(row.set_combination)
+			set_comb = update_if_string_instance(set_comb)
+			key = (row.item_variant, tuple(sorted(set_comb.items())))
+			finishing_rework_items.setdefault(key, {
+				"item_variant": row.item_variant,
+				"quantity": 0,
+				"reworked_quantity": 0,
+				"rejected_qty": 0,
+				"set_combination": frappe.json.dumps(set_comb),
+			})
 			finishing_rework_items[key]['reworked_quantity'] += row.quantity
-		
+
 	rework_list = []
 	for key in finishing_rework_items:
 		rework_list.append(finishing_rework_items[key])
-	fp_doc.set("finishing_plan_reworked_details", rework_list)		
+	fp_doc.set("finishing_plan_reworked_details", rework_list)
+
+	for row in fp_doc.finishing_plan_details:
+		set_comb = update_if_string_instance(row.set_combination)
+		key = (row.item_variant, tuple(sorted(set_comb.items())))
+		row.reworked = finishing_rework_items[key]['reworked_quantity'] if finishing_rework_items.get(key) else 0
+
 	fp_doc.save()	
 
 @frappe.whitelist()
