@@ -715,7 +715,10 @@ class update_entries_after(object):
 		self.new_items_found = False
 		self.distinct_item_warehouses = args.get("distinct_item_warehouses", frappe._dict())
 		self.affected_transactions: set[tuple[str, str]] = set()
-		self.reserved_stock = self.get_reserved_stock()
+		if "reserved_stock" in self.args:
+			self.reserved_stock = flt(self.args.reserved_stock)
+		else:
+			self.reserved_stock = self.get_reserved_stock()
 
 		self.data = frappe._dict()
 		self.initialize_previous_data(self.args)
@@ -946,7 +949,11 @@ class update_entries_after(object):
 		validate negative stock for entries current datetime onwards
 		will not consider cancelled entries
 		"""
-		diff = self.wh_data.qty_after_transaction + flt(sle.qty) - flt(self.reserved_stock)
+		if sle.voucher_type == "Stock Reconciliation":
+			# For Stock Reco, qty_after_transaction IS the target value
+			diff = flt(sle.qty_after_transaction) - flt(self.reserved_stock)
+		else:
+			diff = self.wh_data.qty_after_transaction + flt(sle.qty) - flt(self.reserved_stock)
 		diff = flt(diff, self.flt_precision)  # respect system precision
 
 		if diff < 0 and abs(diff) > 0.0001:
@@ -1500,6 +1507,30 @@ def validate_negative_qty_in_future_sle(args, allow_negative_stock=False):
 
 		frappe.throw(message, NegativeStockError, title=_("Insufficient Stock"))
 
+	# Check that future SLEs don't drop below reserved stock level
+	# Only runs for new transactions (args.reserved_stock is set by make_sl_entries)
+	reserved_stock = flt(args.get("reserved_stock", 0))
+	if reserved_stock > 0:
+		below_reserved_sle = get_future_sle_below_reserved_qty(args, reserved_stock)
+		if below_reserved_sle:
+			precision = cint(frappe.db.get_default("float_precision")) or 2
+			deficit = flt(below_reserved_sle[0]["qty_after_transaction"], precision)
+			if deficit < reserved_stock and abs(deficit - reserved_stock) > 0.0001:
+				message = _(
+					"{0} units of {1} needed in {2} on {3} {4} for {5} to complete this transaction."
+				).format(
+					abs(deficit - reserved_stock),
+					frappe.get_desk_link("Item Variant", args.item),
+					frappe.get_desk_link("Supplier", args.warehouse),
+					below_reserved_sle[0]["posting_date"],
+					below_reserved_sle[0]["posting_time"],
+					frappe.get_desk_link(below_reserved_sle[0]["voucher_type"], below_reserved_sle[0]["voucher_no"]),
+				)
+				message += _(" As {0} units are reserved for other sales orders, stock cannot drop below that level.").format(
+					frappe.bold(reserved_stock)
+				)
+				frappe.throw(message, NegativeStockError, title=_("Insufficient Stock"))
+
 def is_negative_with_precision(neg_sle, is_batch=False):
 	"""
 	Returns whether system precision rounded qty is insufficient.
@@ -1534,6 +1565,49 @@ def get_future_sle_with_negative_qty(args):
 		limit 1
 	""",
 		args,
+		as_dict=1,
+	)
+
+
+def get_future_sle_below_reserved_qty(args, reserved_stock):
+	"""Returns future SLEs where qty_after_transaction drops below reserved stock level."""
+	query_args = {
+		"item": args.item,
+		"warehouse": args.warehouse,
+		"lot": args.get("lot"),
+		"received_type": args.get("received_type"),
+		"voucher_no": args.voucher_no,
+		"posting_datetime": args.get("posting_datetime"),
+		"reserved_stock": reserved_stock,
+	}
+
+	lot_condition = ""
+	if args.get("lot"):
+		lot_condition = "and lot = %(lot)s"
+
+	received_type_condition = ""
+	if args.get("received_type"):
+		received_type_condition = "and received_type = %(received_type)s"
+
+	return frappe.db.sql(
+		f"""
+		select
+			name, qty_after_transaction, posting_date, posting_time,
+			voucher_type, voucher_no
+		from `tabStock Ledger Entry`
+		where
+			item = %(item)s
+			and warehouse = %(warehouse)s
+			{lot_condition}
+			{received_type_condition}
+			and voucher_no != %(voucher_no)s
+			and posting_datetime >= %(posting_datetime)s
+			and is_cancelled = 0
+			and qty_after_transaction < %(reserved_stock)s
+		order by posting_datetime asc
+		limit 1
+	""",
+		query_args,
 		as_dict=1,
 	)
 
