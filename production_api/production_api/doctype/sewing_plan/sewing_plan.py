@@ -106,44 +106,142 @@ def get_sp_status_summary(supplier):
 	ipd_settings = frappe.get_single("IPD Settings")
 	mrp_doc = frappe.get_single("MRP Settings")
 	type_wise_diff_input = mrp_doc.type_wise_diff_summary
-	data = {}
 	received_type = frappe.db.get_single_value("Stock Settings", "default_received_type")
-	sp_list = frappe.get_all("Sewing Plan", filters={
-		"supplier": supplier
-	}, pluck="name")
-	total = {}
-	
-	# Get input/output types for date tracking
 	input_qty_type = mrp_doc.sewing_input_qty_type
 	line_output_type = mrp_doc.sewing_line_output_type
-	
-	# Track FI dates from sewing_plan_order_details across all sewing plans
+
+	# Query 1: All sewing plans for this supplier
+	sp_records = frappe.db.sql("""
+		SELECT name, work_order, lot, item
+		FROM `tabSewing Plan`
+		WHERE supplier = %(supplier)s
+	""", {"supplier": supplier}, as_dict=True)
+
+	if not sp_records:
+		return {"header1": [], "header2": [], "data": [], "header3": []}
+
+	sp_names = [r.name for r in sp_records]
+	lots = list({r.lot for r in sp_records})
+	wo_names = list({r.work_order for r in sp_records})
+
+	# Query 2: Lot → production_detail mapping
+	lot_rows = frappe.db.sql("""
+		SELECT name, production_detail
+		FROM `tabLot`
+		WHERE name IN %(lots)s
+	""", {"lots": tuple(lots)}, as_dict=True)
+	lot_to_ipd = {r.name: r.production_detail for r in lot_rows}
+
+	# Query 3: IPD details
+	ipd_names = list({lot_to_ipd[l] for l in lot_to_ipd})
+	ipd_rows = frappe.db.sql("""
+		SELECT name, is_set_item, packing_attribute, primary_item_attribute, set_item_attribute
+		FROM `tabItem Production Detail`
+		WHERE name IN %(ipds)s
+	""", {"ipds": tuple(ipd_names)}, as_dict=True)
+	ipd_map = {r.name: r for r in ipd_rows}
+
+	# Query 4: Work Order Calculated Items
+	wo_calc_rows = frappe.db.sql("""
+		SELECT parent, item_variant, set_combination, received_qty
+		FROM `tabWork Order Calculated Item`
+		WHERE parent IN %(wos)s
+	""", {"wos": tuple(wo_names)}, as_dict=True)
+	wo_calc_by_wo = {}
+	for r in wo_calc_rows:
+		wo_calc_by_wo.setdefault(r.parent, []).append(r)
+
+	# Query 5: Sewing Plan Order Details
+	sp_order_rows = frappe.db.sql("""
+		SELECT parent, item_variant, set_combination, quantity, pre_final, final_inspection, fi_date
+		FROM `tabSewing Plan Order Detail`
+		WHERE parent IN %(sps)s
+	""", {"sps": tuple(sp_names)}, as_dict=True)
+	sp_order_by_sp = {}
+	for r in sp_order_rows:
+		sp_order_by_sp.setdefault(r.parent, []).append(r)
+
+	# Query 6a: Sewing Plan Entry Details
+	entry_rows = frappe.db.sql("""
+		SELECT name, sewing_plan, input_type, received_type, entry_date
+		FROM `tabSewing Plan Entry Detail`
+		WHERE sewing_plan IN %(sps)s
+	""", {"sps": tuple(sp_names)}, as_dict=True)
+	entries_by_sp = {}
+	entry_names = []
+	for r in entry_rows:
+		entries_by_sp.setdefault(r.sewing_plan, []).append(r)
+		entry_names.append(r.name)
+
+	# Query 6b: Sewing Plan Details (child rows of entries)
+	sp_details_by_entry = {}
+	if entry_names:
+		sp_detail_rows = frappe.db.sql("""
+			SELECT parent, item_variant, set_combination, quantity
+			FROM `tabSewing Plan Detail`
+			WHERE parent IN %(entries)s
+		""", {"entries": tuple(entry_names)}, as_dict=True)
+		for r in sp_detail_rows:
+			sp_details_by_entry.setdefault(r.parent, []).append(r)
+
+	# Query 7: Item Variant Attributes — bulk fetch for all variants
+	all_variants = set()
+	for r in wo_calc_rows:
+		all_variants.add(r.item_variant)
+	for r in sp_order_rows:
+		all_variants.add(r.item_variant)
+	for rows in sp_details_by_entry.values():
+		for r in rows:
+			all_variants.add(r.item_variant)
+
+	variant_attr_cache = {}
+	if all_variants:
+		variant_attr_rows = frappe.db.sql("""
+			SELECT parent, attribute, attribute_value
+			FROM `tabItem Variant Attribute`
+			WHERE parent IN %(variants)s
+		""", {"variants": tuple(all_variants)}, as_dict=True)
+		for r in variant_attr_rows:
+			variant_attr_cache.setdefault(r.parent, {})[r.attribute] = r.attribute_value
+
+	def get_sp_key_cached(row, item, lot, primary_attr):
+		attrs_dict = variant_attr_cache.get(row.item_variant, {})
+		attrs = sorted([v for k, v in attrs_dict.items() if k != primary_attr])
+		attrs = tuple(attrs) if attrs else None
+		set_comb = update_if_string_instance(row.set_combination)
+		set_comb_key = tuple(sorted(set_comb.items()))
+		return (item, lot, attrs, set_comb_key)
+
+	# ── Process all data (zero DB calls) ──
+	data = {}
+	total = {}
 	fi_dates_by_key = {}
-	
-	for sp_name in sp_list:
-		sp_doc = frappe.get_doc("Sewing Plan", sp_name)
-		lot = sp_doc.lot
-		item = sp_doc.item
-		wo_doc = frappe.get_doc("Work Order", sp_doc.work_order)
-		
-		# Get IPD details for this lot's item
-		ipd = frappe.get_value("Lot", lot, "production_detail")
-		ipd_fields = ["is_set_item", "packing_attribute", "primary_item_attribute", "set_item_attribute"]
-		is_set_item, pack_attr, primary_attr, set_attr = frappe.get_value("Item Production Detail", ipd, ipd_fields)
-		
-		for row in wo_doc.work_order_calculated_items:
-			key = get_sp_key(row, item, lot, primary_attr)
-			attr_details = get_variant_attr_details(row.item_variant)
+
+	for sp in sp_records:
+		sp_name = sp.name
+		lot = sp.lot
+		item = sp.item
+
+		ipd_name = lot_to_ipd.get(lot)
+		ipd = ipd_map.get(ipd_name, {})
+		is_set_item = ipd.get("is_set_item")
+		pack_attr = ipd.get("packing_attribute")
+		primary_attr = ipd.get("primary_item_attribute")
+		set_attr = ipd.get("set_item_attribute")
+
+		# WO calculated items → GRN Qty
+		for row in wo_calc_by_wo.get(sp.work_order, []):
+			key = get_sp_key_cached(row, item, lot, primary_attr)
+			attr_details = variant_attr_cache.get(row.item_variant, {})
 			set_comb = update_if_string_instance(row.set_combination)
 			major_colour = set_comb.get("major_colour", "")
-			
-			# Format colour for set items: variant_colour (major_colour)
+
 			if is_set_item:
 				variant_colour = attr_details.get(pack_attr, "")
 				display_colour = f"{variant_colour} ({major_colour})"
 			else:
 				display_colour = major_colour
-			
+
 			data.setdefault(key, {
 				"item": item,
 				"lot": lot,
@@ -160,71 +258,64 @@ def get_sp_status_summary(supplier):
 			input_key = "GRN Qty"
 			data[key].setdefault(input_key, 0)
 			data[key][input_key] += row.received_qty
-			
 			total.setdefault(input_key, 0)
 			total[input_key] += row.received_qty
-		
-		for row in sp_doc.sewing_plan_order_details:
-			key = get_sp_key(row, item, lot, primary_attr)
+
+		# SP order details → Order Qty, Pre Final, Final Inspection, FI dates
+		for row in sp_order_by_sp.get(sp_name, []):
+			key = get_sp_key_cached(row, item, lot, primary_attr)
 
 			input_key = "Order Qty"
 			data[key].setdefault(input_key, 0)
 			data[key][input_key] += row.quantity
-			
 			total.setdefault(input_key, 0)
 			total[input_key] += row.quantity
-			
+
 			input_key = "Pre Final"
 			data[key].setdefault(input_key, 0)
 			data[key][input_key] += row.pre_final
-			
 			total.setdefault(input_key, 0)
 			total[input_key] += row.pre_final
 
 			input_key = "Final Inspection"
 			data[key].setdefault(input_key, 0)
 			data[key][input_key] += row.final_inspection
-
 			total.setdefault(input_key, 0)
 			total[input_key] += row.final_inspection
-			
-			# Collect FI dates from sewing_plan_order_details
+
 			if row.fi_date:
 				fi_dates_by_key.setdefault(key, [])
 				fi_dates_by_key[key].append(row.fi_date)
 
-		sp_entry_list = frappe.get_all("Sewing Plan Entry Detail", filters={
-			"sewing_plan": sp_name
-		}, pluck="name")
-
+		# SP entry details → input type quantities, dates
 		total.setdefault("checking_total", 0)
-		
-		for sp_entry in sp_entry_list:
-			spe_doc = frappe.get_doc("Sewing Plan Entry Detail", sp_entry)
-			entry_date = spe_doc.entry_date
-			for row in spe_doc.sewing_plan_details:
-				key = get_sp_key(row, item, lot, primary_attr)
-				input_key = spe_doc.input_type
-				
+
+		for entry in entries_by_sp.get(sp_name, []):
+			entry_date = entry.entry_date
+			for row in sp_details_by_entry.get(entry.name, []):
+				key = get_sp_key_cached(row, item, lot, primary_attr)
+				input_key = entry.input_type
+
 				if input_key == input_qty_type:
 					data[key]["input_dates"].append(entry_date)
 				if input_key == line_output_type:
 					data[key]["output_dates"].append(entry_date)
-				
+
 				if input_key == type_wise_diff_input:
 					total["checking_total"] += row.quantity
 					data[key].setdefault("checking_total", 0)
 					data[key]["checking_total"] += row.quantity
-					if received_type != spe_doc.received_type:
-						input_key = spe_doc.received_type
+					if received_type != entry.received_type:
+						input_key = entry.received_type
 				else:
-					if received_type != spe_doc.received_type:
-						input_key += " " + spe_doc.received_type
+					if received_type != entry.received_type:
+						input_key += " " + entry.received_type
 				total.setdefault(input_key, 0)
 				total[input_key] += row.quantity
 				data[key].setdefault(input_key, 0)
 				data[key][input_key] += row.quantity
 
+	# ── Post-processing (unchanged) ──
 	inspection_type = mrp_doc.sewing_plan_inspection_type
 	line_output = mrp_doc.sewing_line_output_type
 	input_qty = mrp_doc.sewing_input_qty_type
@@ -239,33 +330,32 @@ def get_sp_status_summary(supplier):
 			x['Ready for Pre final'] = "Under Pre Final" if x[inspection_type] > x['Pre Final'] else "Completed"
 		if x.get('Final Inspection', 0) > 0:
 			x['Ready for Final Inspection'] = "Under Final Inspection" if x.get('Pre Final', 0) > x['Final Inspection'] else "Completed"
-		
+
 		input_dates = x.get('input_dates', [])
 		output_dates = x.get('output_dates', [])
-		
+
 		if input_dates:
 			x['Input Date'] = min(input_dates)
 		else:
 			x['Input Date'] = None
-			
+
 		if output_dates:
 			x['Last Sewing Output'] = max(output_dates)
 		else:
 			x['Last Sewing Output'] = None
-		
+
 		if x['Input Date'] and x['Last Sewing Output']:
 			x['Total Running Days'] = (x['Last Sewing Output'] - x['Input Date']).days
 		else:
 			x['Total Running Days'] = None
-		
-		# Get FI Date from sewing_plan_order_details
+
 		fi_dates = fi_dates_by_key.get(row, [])
 		if fi_dates:
 			x['FI Date'] = min(fi_dates).strftime("%Y-%m-%d")
 		else:
 			x['FI Date'] = None
-		
-		line_stock = x.get(line_output, 0) - x.get(input_qty, 0) 
+
+		line_stock = x.get(line_output, 0) - x.get(input_qty, 0)
 		stock = x.get('checking_total', 0) - x.get(line_output, 0)
 		total.setdefault("Line Stock", 0)
 		total["Line Stock"] += line_stock
@@ -277,14 +367,14 @@ def get_sp_status_summary(supplier):
 		total.setdefault("GRN Pending", 0)
 		total["GRN Pending"] += grn_pending
 		x['GRN Pending'] = grn_pending
-		data_list.append(x)		
+		data_list.append(x)
 
-	data_list = [total] + data_list	
+	data_list = [total] + data_list
 
 	header1 = [
-		"Item", 
-		"Lot", 
-		ipd_settings.default_packing_attribute, 
+		"Item",
+		"Lot",
+		ipd_settings.default_packing_attribute,
 		ipd_settings.default_set_item_attribute,
 		"FI Date",
 		"Input Date",
@@ -300,9 +390,9 @@ def get_sp_status_summary(supplier):
 				header2.append(row.input_type)
 		else:
 			header2.append(row.input_type)
-	
+
 	header2.append("Pre Final")
-	header2.append("Final Inspection")	
+	header2.append("Final Inspection")
 	header2.append("GRN Qty")
 	header2.append("GRN Pending")
 	header2.append("Line Stock")

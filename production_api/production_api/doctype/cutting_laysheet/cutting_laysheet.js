@@ -55,6 +55,10 @@ frappe.ui.form.on("Cutting LaySheet", {
         else{
             frm.laysheet.load_data([])
         }
+        if(!frappe.user.has_role("System Manager")){
+            frm.set_df_property("bundle_generated_date", "read_only", true)
+            frm.refresh_field("bundle_generated_date")
+        }
         if(frm.doc.status == "Label Printed"){
             frm.set_df_property("start_datetime", "read_only", true)
             frm.set_df_property("end_datetime", "read_only", true)
