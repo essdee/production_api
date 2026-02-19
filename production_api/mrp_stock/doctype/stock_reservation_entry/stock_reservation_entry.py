@@ -93,7 +93,7 @@ class StockReservationEntry(Document):
 		from production_api.utils import get_or_make_bin
 		received_type = frappe.db.get_single_value("Stock Settings", "default_received_type")
 		bin_name = get_or_make_bin(self.item_code, self.warehouse, self.lot, received_type)
-		bin_doc = frappe.get_cached_doc("Bin", bin_name)
+		bin_doc = frappe.get_doc("Bin", bin_name)
 		bin_doc.update_reserved_stock()
 	
 	def can_be_updated(self) -> None:

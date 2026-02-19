@@ -319,6 +319,11 @@ frappe.ui.form.on("Work Order", {
 					d.show()
 				})
 			}
+			if(frm.doc.docstatus == 1 && frappe.user.has_role("System Manager")){
+				frm.add_custom_button("Calculate Pieces", ()=> {
+					frm.trigger("calculate_pieces")
+				})
+			}
 		}
 	},
 	calculate_pieces(frm){
