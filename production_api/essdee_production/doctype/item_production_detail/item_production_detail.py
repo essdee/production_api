@@ -337,6 +337,25 @@ class ItemProductionDetail(Document):
 			if not update_if_string_instance(self.stiching_accessory_json):
 				frappe.throw("Enter the Details for Stitching Accessory Combination")
 
+		self.sync_emblishment_processes()
+
+	def sync_emblishment_processes(self):
+		emblishment_data = update_if_string_instance(self.emblishment_details_json)
+		if not emblishment_data:
+			return
+
+		existing = {row.process_name: row for row in self.ipd_processes}
+
+		for process_name in emblishment_data:
+			if process_name in existing:
+				if existing[process_name].stage != self.stiching_in_stage:
+					existing[process_name].stage = self.stiching_in_stage
+			else:
+				self.append("ipd_processes", {
+					"process_name": process_name,
+					"stage": self.stiching_in_stage,
+				})
+
 	def on_trash(self):
 		documents = {
 			"Item Item Attribute Mapping":[],
