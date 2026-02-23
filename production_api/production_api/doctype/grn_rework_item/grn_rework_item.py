@@ -89,6 +89,7 @@ def revert_reworked_item(docname):
 		row.reworked = 0
 	doc.completed = 0	
 	doc.set("grn_reworked_item_details", [])
+	doc.set("grn_rejected_item_details", [])
 	doc.save(ignore_permissions=True)
 	finishing_items_list = []	
 	if finishing_doc:
@@ -249,6 +250,7 @@ def convert_received_type(rejection_data, docname, lot):
 	rejected = doc.default_rejected_type	
 	sl_entries = []
 	table_data = []
+	rejected_table_data = []
 	for row in rejection_data:
 		if row['rework_qty'] > 0:
 			sl_entries.append({
@@ -315,9 +317,19 @@ def convert_received_type(rejection_data, docname, lot):
 				"set_combination": frappe.json.dumps(row['set_combination'])
 			})
 
+		if row['rejected'] > 0:
+			rejected_table_data.append({
+				"item_variant": row['variant'],
+				"quantity": row['rejected'],
+				"received_type": row['received_type'],
+				"uom": row['uom'],
+				"rejected_time": frappe.utils.now_datetime(),
+				"set_combination": frappe.json.dumps(row['set_combination'])
+			})
+
 	finishing_docs = frappe.get_all("Finishing Plan", filters={"lot": lot}, pluck="name", limit=1)		
 	finishing_data = {}
-	if table_data:
+	if table_data or rejected_table_data:
 		doc = frappe.get_doc("GRN Rework Item", docname)
 		for row in table_data:
 			if finishing_docs:
@@ -330,6 +342,8 @@ def convert_received_type(rejection_data, docname, lot):
 				finishing_data[key]['reworked'] += row['quantity']
 				finishing_data[key]['rejected'] += row['rejected']
 			doc.append("grn_reworked_item_details", row)
+		for row in rejected_table_data:
+			doc.append("grn_rejected_item_details", row)
 		doc.save(ignore_permissions=True)
 
 	if finishing_docs:

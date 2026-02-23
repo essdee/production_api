@@ -1,0 +1,70 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2026-02-23 10:00:00.000000",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "item_variant",
+  "quantity",
+  "received_type",
+  "uom",
+  "rejected_time",
+  "set_combination"
+ ],
+ "fields": [
+  {
+   "fieldname": "item_variant",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Item Variant",
+   "options": "Item Variant"
+  },
+  {
+   "fieldname": "quantity",
+   "fieldtype": "Float",
+   "in_list_view": 1,
+   "label": "Quantity"
+  },
+  {
+   "fieldname": "received_type",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Received Type",
+   "options": "GRN Item Type"
+  },
+  {
+   "fieldname": "uom",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "UOM",
+   "options": "UOM"
+  },
+  {
+   "fieldname": "rejected_time",
+   "fieldtype": "Datetime",
+   "in_list_view": 1,
+   "label": "Rejected Time"
+  },
+  {
+   "fieldname": "set_combination",
+   "fieldtype": "Small Text",
+   "label": "Set Combination"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2026-02-23 10:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Production Api",
+ "name": "GRN Rejected Item Detail",
+ "owner": "Administrator",
+ "permissions": [],
+ "row_format": "Dynamic",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

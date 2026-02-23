@@ -14,7 +14,8 @@ frappe.ui.form.on("GRN Rework Item", {
                         method: "production_api.production_api.doctype.grn_rework_item.grn_rework_item.revert_reworked_item",
                         args: {
                             "docname": frm.doc.name
-                        }
+                        },
+                        callback: () => frm.reload_doc()
                     })
                 },
                 secondary_action(){

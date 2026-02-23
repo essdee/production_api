@@ -29,7 +29,11 @@
                 <div v-if="data.hasOwnProperty(header)" :ref="el => setSectionRef(el, header)">
                     <div class="section-header">
                         <div class="section-title-block">
-                            <h3 class="section-title">{{ header }}</h3>
+                            <span class="section-title">Daily Production Report</span>
+                            <span class="section-divider">|</span>
+                            <span class="section-title">{{ frappe.datetime.str_to_user(selected_date) }}</span>
+                            <span class="section-divider">|</span>
+                            <span class="section-title">{{ header }}</span>
                         </div>
                         <div class="section-actions">
                             <button class="copy-btn" @click="copyToClipboard(header)" :disabled="copyingHeader === header" title="Copy to Clipboard">
@@ -382,8 +386,9 @@ const copyToClipboard = async (header) => {
 
 .section-title-block {
     display: flex;
-    flex-direction: column;
-    gap: 0.25rem;
+    flex-direction: row;
+    align-items: center;
+    gap: 0.5rem;
 }
 
 .section-label {
@@ -399,6 +404,13 @@ const copyToClipboard = async (header) => {
     font-weight: 700;
     color: #1e293b;
     margin: 0;
+    white-space: nowrap;
+}
+
+.section-divider {
+    color: #cbd5e1;
+    font-size: 1.125rem;
+    font-weight: 300;
 }
 
 .section-actions {
