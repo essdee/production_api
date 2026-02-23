@@ -79,9 +79,14 @@
                             :refresh_counter="refresh_counter"
                             @refresh="refresh_counter++"
                         />
-                        <FIUpdatesTab 
-                            v-show="current_tab === 'fi_updates'" 
-                            :selected_supplier="selected_supplier" 
+                        <MonthlySummaryTab
+                            v-show="current_tab === 'monthly_summary'"
+                            :selected_supplier="selected_supplier"
+                            :refresh_counter="refresh_counter"
+                        />
+                        <FIUpdatesTab
+                            v-show="current_tab === 'fi_updates'"
+                            :selected_supplier="selected_supplier"
                             :refresh_counter="refresh_counter"
                         />
                     </div>
@@ -107,6 +112,7 @@ import DPRTab from './components/DPRTab.vue'
 import SCRTab from './components/SCRTab.vue'
 import LineTab from './components/LineTab.vue'
 import FIUpdatesTab from './components/FIUpdatesTab.vue'
+import MonthlySummaryTab from './components/MonthlySummaryTab.vue'
 
 const IconOverview = () => h('svg', { fill: 'none', stroke: 'currentColor', viewBox: '0 0 24 24', class: 'w-full h-full text-current' }, [h('path', { 'stroke-linecap': 'round', 'stroke-linejoin': 'round', 'stroke-width': '2.5', d: 'M4 5a1 1 0 011-1h3a1 1 0 011 1v3a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM15 5a1 1 0 011-1h3a1 1 0 011 1v3a1 1 0 01-1 1h-3a1 1 0 01-1-1V5zM4 15a1 1 0 011-1h3a1 1 0 011 1v3a1 1 0 01-1 1H5a1 1 0 01-1-1v-3zM15 15a1 1 0 011-1h3a1 1 0 011 1v3a1 1 0 01-1 1h-3a1 1 0 01-1-1v-3z' })])
 const IconLinePlan = () => h('svg', { fill: 'none', stroke: 'currentColor', viewBox: '0 0 24 24', class: 'w-full h-full text-current' }, [h('path', { 'stroke-linecap': 'round', 'stroke-linejoin': 'round', 'stroke-width': '2.5', d: 'M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2' })])
@@ -115,6 +121,7 @@ const IconMaterials = () => h('svg', { fill: 'none', stroke: 'currentColor', vie
 const IconQuality = () => h('svg', { fill: 'none', stroke: 'currentColor', viewBox: '0 0 24 24', class: 'w-full h-full text-current' }, [h('path', { 'stroke-linecap': 'round', 'stroke-linejoin': 'round', 'stroke-width': '2.5', d: 'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z' })])
 const IconHistory = () => h('svg', { fill: 'none', stroke: 'currentColor', viewBox: '0 0 24 24', class: 'w-full h-full text-current' }, [h('path', { 'stroke-linecap': 'round', 'stroke-linejoin': 'round', 'stroke-width': '2.5', d: 'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z' })])
 const IconFI = () => h('svg', { fill: 'none', stroke: 'currentColor', viewBox: '0 0 24 24', class: 'w-full h-full text-current' }, [h('path', { 'stroke-linecap': 'round', 'stroke-linejoin': 'round', 'stroke-width': '2.5', d: 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z' })])
+const IconMonthlySummary = () => h('svg', { fill: 'none', stroke: 'currentColor', viewBox: '0 0 24 24', class: 'w-full h-full text-current' }, [h('rect', { x: '3', y: '4', width: '18', height: '18', rx: '2', ry: '2', 'stroke-linecap': 'round', 'stroke-linejoin': 'round', 'stroke-width': '2.5' }), h('line', { x1: '16', y1: '2', x2: '16', y2: '6', 'stroke-linecap': 'round', 'stroke-linejoin': 'round', 'stroke-width': '2.5' }), h('line', { x1: '8', y1: '2', x2: '8', y2: '6', 'stroke-linecap': 'round', 'stroke-linejoin': 'round', 'stroke-width': '2.5' }), h('line', { x1: '3', y1: '10', x2: '21', y2: '10', 'stroke-linecap': 'round', 'stroke-linejoin': 'round', 'stroke-width': '2.5' })])
 
 const hasProductionPlannerRole = computed(() => {
     return frappe.user.has_role('Production Planner') || frappe.user.has_role('System Manager')
@@ -128,6 +135,7 @@ const tabs = computed(() => {
         { id: 'dpr', label: 'DPR', icon: IconQuality },
         { id: 'scr', label: 'SCR', icon: IconMaterials },
         { id: 'line', label: 'Entries', icon: IconLinePlan },
+        { id: 'monthly_summary', label: 'Monthly Summary', icon: IconMonthlySummary },
     ]
     if (hasProductionPlannerRole.value) {
         baseTabs.push({ id: 'fi_updates', label: 'FI Updates', icon: IconFI })
