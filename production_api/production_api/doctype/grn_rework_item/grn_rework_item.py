@@ -571,6 +571,136 @@ def get_partial_reworked_qty(doc_name, colour_mistake, data):
 	return data
 
 @frappe.whitelist()
+def get_rejection_items(start_date=None, end_date=None, lot=None, item=None, colour=None):
+	conditions = ""
+	con = {}
+	if start_date:
+		conditions += " AND t2.rejected_time >= %(start_date)s"
+		con['start_date'] = start_date
+	if end_date:
+		conditions += " AND t2.rejected_time <= %(end_date)s"
+		con['end_date'] = end_date + " 23:59:59"
+	if lot:
+		conditions += " AND t1.lot = %(lot_name)s"
+		con['lot_name'] = lot
+	if item:
+		conditions += " AND t1.item = %(item_name)s"
+		con['item_name'] = item
+	if colour:
+		conditions += " AND t2.item_variant LIKE %(colour)s"
+		con['colour'] = f"%{colour}%"
+
+	rework_items = frappe.db.sql(
+		f"""
+			SELECT t1.name FROM `tabGRN Rework Item` t1 JOIN `tabGRN Rejected Item Detail` t2
+			ON t1.name = t2.parent WHERE 1 = 1 {conditions} GROUP BY t1.name
+		""", con, as_dict=True
+	)
+
+	data = {
+		"report_detail": {},
+		"types": [],
+		"total_detail": {},
+		"total_sum": 0,
+	}
+
+	for ri in rework_items:
+		ri_name = ri['name']
+		doc = frappe.get_doc("GRN Rework Item", ri_name)
+		ipd = frappe.get_cached_value("Lot", doc.lot, "production_detail")
+		ipd_fields = ['packing_attribute', 'primary_item_attribute', 'is_set_item', 'set_item_attribute']
+		pack_attr, primary_attr, set_item, set_attr = frappe.get_cached_value("Item Production Detail", ipd, ipd_fields)
+
+		earliest_time = None
+		rows_to_process = []
+		for row in doc.grn_rejected_item_details:
+			include = True
+			if start_date and row.rejected_time and str(row.rejected_time) < start_date:
+				include = False
+			if end_date and row.rejected_time and str(row.rejected_time) > end_date + " 23:59:59":
+				include = False
+			if colour and colour not in (row.item_variant or ""):
+				include = False
+			if include:
+				rows_to_process.append(row)
+				if row.rejected_time:
+					if earliest_time is None or row.rejected_time < earliest_time:
+						earliest_time = row.rejected_time
+
+		if not rows_to_process:
+			continue
+
+		data["report_detail"].setdefault(ri_name, {
+			"grn_number": doc.grn_number,
+			"date": earliest_time or doc.creation,
+			"lot": doc.lot,
+			"item": doc.item,
+			"size": primary_attr,
+			"types": {},
+			"total": 0,
+			"rejection_detail": {},
+		})
+
+		for row in rows_to_process:
+			data['total_detail'].setdefault(row.received_type, 0)
+			attr_details = get_variant_attr_details(row.item_variant)
+			key = row.received_type + "-" + attr_details[pack_attr]
+			if set_item:
+				key += "-" + attr_details[set_attr]
+			data["report_detail"][ri_name]['rejection_detail'].setdefault(key, {
+				'items': [],
+			})
+			if row.received_type not in data['types']:
+				data['types'].append(row.received_type)
+			qty = row.quantity
+			data['total_detail'][row.received_type] += qty
+			data['total_sum'] += qty
+			data["report_detail"][ri_name]['types'].setdefault(row.received_type, 0)
+			data["report_detail"][ri_name]['types'][row.received_type] += qty
+			data["report_detail"][ri_name]['total'] += qty
+			data["report_detail"][ri_name]['rejection_detail'][key]['items'].append({
+				primary_attr: attr_details[primary_attr],
+				"rejected_qty": qty,
+				"variant": row.item_variant,
+				"received_type": row.received_type,
+			})
+
+	return data
+
+@frappe.whitelist()
+def download_rejection_xl(data):
+	if isinstance(data, str):
+		data = frappe.json.loads(data)
+	wb = openpyxl.Workbook(write_only=True)
+	ws = wb.create_sheet("Sheet1", 0)
+	columns = ['Series No', "Date", "GRN Number", "Lot", "Item", "Colour"] + data['types'] + ["Total"]
+	ws.append(columns)
+	for series_id in data['report_detail']:
+		x = data['report_detail'][series_id]
+		l_data = list(x['rejection_detail'].keys())[0].split("-")
+		l_data = l_data[1:]
+		colour = "-".join(l_data)
+		from datetime import datetime
+		raw_date = x['date']
+		if isinstance(raw_date, str) and '.' in raw_date:
+			dt = datetime.strptime(raw_date, "%Y-%m-%d %H:%M:%S.%f")
+		elif isinstance(raw_date, str):
+			dt = datetime.strptime(raw_date, "%Y-%m-%d %H:%M:%S")
+		else:
+			dt = raw_date
+		formatted_date = dt.strftime("%d-%m-%Y") if dt else ""
+		d = [series_id, formatted_date, x['grn_number'], x['lot'], x['item'], colour]
+		for ty in data['types']:
+			d.append(x['types'].get(ty, 0))
+		d.append(x['total'])
+		ws.append(d)
+	xlsx_file = BytesIO()
+	wb.save(xlsx_file)
+	frappe.local.response.filename = "rejection_details.xlsx"
+	frappe.local.response.filecontent = xlsx_file.getvalue()
+	frappe.local.response.type = "binary"
+
+@frappe.whitelist()
 def download_xl(data):
 	if isinstance(data, str):
 		data = frappe.json.loads(data)  
