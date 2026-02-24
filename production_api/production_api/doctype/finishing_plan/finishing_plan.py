@@ -657,11 +657,30 @@ def fetch_rejected_quantity(doc_name):
 	for key in finishing_rework_items:
 		rework_list.append(finishing_rework_items[key])
 	fp_doc.set("finishing_plan_reworked_details", rework_list)
+	
+	wo_list = frappe.get_all("Work Order", filters={
+		"docstatus": 1,
+		"lot": fp_doc.lot,
+		"process_name": "Cutting",
+	}, pluck="name")
+
+	cut_key_dict = {} 
+	for wo in wo_list:
+		wo_doc = frappe.get_doc("Work Order", wo)
+		for row in wo_doc.work_order_calculated_items:
+			if row.quantity > 0:
+				key = (row.item_variant, tuple(sorted(set_comb.items())))
+				if cut_key_dict.get(key):
+					cut_key_dict[key] += row.quantity
+				else:
+					cut_key_dict[key] = row.quantity
 
 	for row in fp_doc.finishing_plan_details:
 		set_comb = update_if_string_instance(row.set_combination)
 		key = (row.item_variant, tuple(sorted(set_comb.items())))
 		row.reworked = finishing_rework_items[key]['reworked_quantity'] if finishing_rework_items.get(key) else 0
+		if cut_key_dict.get(key):
+			row.cutting_qty = cut_key_dict[key]
 
 	fp_doc.save()	
 

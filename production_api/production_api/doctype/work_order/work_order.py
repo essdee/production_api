@@ -1814,18 +1814,20 @@ def create_finishing_detail(work_order, from_finishing=False):
 			for grn in grn_list:
 				stiching_grn_list[grn] = True
 
-	lot_doc = frappe.get_doc("Lot", wo_doc.lot)
-	# wo_list = frappe.get_all("Work Order", filters={
-	# 	"docstatus": 1,
-	# 	"lot": wo_doc.lot,
-	# 	"process_name": "Cutting",
-	# }, pluck="name")	
+	wo_list = frappe.get_all("Work Order", filters={
+		"docstatus": 1,
+		"lot": wo_doc.lot,
+		"process_name": "Cutting",
+	}, pluck="name")	
 
-	for row in lot_doc.lot_order_details:
-		set_comb = update_if_string_instance(row.set_combination)
-		key = (row.item_variant, tuple(sorted(set_comb.items())))
-		if items.get(key):
-			items[key]['cutting_qty'] += row.cut_qty
+	for wo in wo_list:
+		doc = frappe.get_doc("Work Order", wo)
+		for row in doc.work_order_calculated_items:
+			if row.quantity > 0:
+				set_comb = update_if_string_instance(row.set_combination)
+				key = (row.item_variant, tuple(sorted(set_comb.items())))
+				if items.get(key):
+					items[key]['cutting_qty'] += row.quantity
 
 	rework_items = {}
 	rework_list = frappe.get_all("GRN Rework Item", filters={"lot": wo_doc.lot}, pluck="name")

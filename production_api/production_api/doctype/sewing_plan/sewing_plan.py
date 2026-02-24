@@ -730,8 +730,20 @@ def get_scr_data(supplier, lot):
 				if received_type != sp_doc.received_type:
 					input_key += " " + sp_doc.received_type
 
+			set_comb = update_if_string_instance(row.set_combination)
+			scr_data.setdefault(colour, {
+				"values": {},
+				"part": part,
+				"colour": colour,
+				"variant_colour": v_colour,
+				"set_combination": set_comb,
+				"type_wise_total": {},
+			})
+			scr_data[colour]["values"].setdefault(size, {})
 			scr_data[colour]["values"][size].setdefault(input_key, 0)
 			scr_data[colour]["values"][size][input_key] += row.quantity
+			if colour not in colours:
+				colours.append(colour)
 
 	diff_keys = {}
 	for row in mrp_doc.sewing_plan_input_orders:
@@ -750,7 +762,7 @@ def get_scr_data(supplier, lot):
 				else:
 					if input_type in diff_keys:
 						new_key = input_type + " Balance"
-						new_size_wise_keys[new_key] = scr_data[colour]["values"][size][input_type] - scr_data[colour]['values'][size][diff_keys[input_type]]
+						new_size_wise_keys[new_key] = scr_data[colour]["values"][size][input_type] - scr_data[colour]['values'][size].get(diff_keys[input_type], 0)
 					elif input_type not in headers and input_type not in unlinked_types:
 						new_key = type_wise_diff_input + " Total"
 						new_size_wise_keys.setdefault(new_key, 0)
@@ -765,8 +777,8 @@ def get_scr_data(supplier, lot):
 
 	for colour in scr_data:
 		for size in scr_data[colour]["values"]:
-			if type_wise_diff_input in scr_data[colour]['values'][size]:
-				scr_data[colour]['values'][size][type_wise_diff_input+ " Balance"] = scr_data[colour]['values'][size][type_wise_diff_input+ " Total"] - scr_data[colour]['values'][size][diff_keys[type_wise_diff_input]]
+			if type_wise_diff_input and type_wise_diff_input in scr_data[colour]['values'][size] and type_wise_diff_input in diff_keys:
+				scr_data[colour]['values'][size][type_wise_diff_input+ " Balance"] = scr_data[colour]['values'][size].get(type_wise_diff_input+ " Total", 0) - scr_data[colour]['values'][size].get(diff_keys[type_wise_diff_input], 0)
 
 	for key in diff_keys:
 		if key == type_wise_diff_input:
