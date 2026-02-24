@@ -420,7 +420,7 @@ def cancel_collapse_bundles(doc, item_variant, set_combination, quantity, locati
 			frappe.throw("Stock Not Available")
 		else:
 			update_is_cancelled_cbml(previous[0]['name'])
-			previous_qty = quantity * -1
+			previous_qty = previous[0]['quantity'] * -1
 			for entry in future:
 				qty = entry['quantity_after_transaction'] + previous_qty
 				update_future_entries_qty_after_transaction(entry['name'], qty)	
