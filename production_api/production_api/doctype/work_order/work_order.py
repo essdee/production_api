@@ -1823,11 +1823,11 @@ def create_finishing_detail(work_order, from_finishing=False):
 	for wo in wo_list:
 		doc = frappe.get_doc("Work Order", wo)
 		for row in doc.work_order_calculated_items:
-			if row.quantity > 0:
+			if row.received_qty > 0:
 				set_comb = update_if_string_instance(row.set_combination)
 				key = (row.item_variant, tuple(sorted(set_comb.items())))
 				if items.get(key):
-					items[key]['cutting_qty'] += row.quantity
+					items[key]['cutting_qty'] += row.received_qty
 
 	rework_items = {}
 	rework_list = frappe.get_all("GRN Rework Item", filters={"lot": wo_doc.lot}, pluck="name")
