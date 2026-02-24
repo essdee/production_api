@@ -377,22 +377,40 @@ def fetch_grn_details(grns, against, supplier):
 			items_list, process_docname = calculate_grns(grn_groups[wo], wo, allow_to_change_rate)
 			qty_list = []
 			cost_list = []
-			order_qty_dict = {} 
+			order_qty_dict = {}
 			tax = None
+			use_attr_rate = False
+
 			if process_docname:
 				process_cost_doc = frappe.get_doc("Process Cost", process_docname)
 				if has_gst:
 					tax = process_cost_doc.tax_slab
-				for row in process_cost_doc.process_cost_values:
-					order_qty_dict.setdefault(str(int(row.min_order_qty)), 0)
-					order_qty_dict[str(int(row.min_order_qty))] += row.price
-			
-				sorted_dict = dict(sorted(order_qty_dict.items(), key=lambda x: float(x[0]), reverse=True))
-				length = len(sorted_dict)
-				
-				for order_qty in sorted_dict:
-					qty_list.append(int(order_qty))
-					cost_list.append(order_qty_dict[order_qty])
+
+				# Determine if attribute-specific pricing applies
+				ipd_name = frappe.get_cached_value("Work Order", wo, "production_detail")
+				stiching_attr = frappe.get_cached_value("Item Production Detail", ipd_name, "stiching_attribute")
+
+				if process_cost_doc.depends_on_attribute and process_cost_doc.attribute != stiching_attr:
+					use_attr_rate = True
+					# Build per-attribute-value rate map
+					attr_rate_map = {}
+					for row in process_cost_doc.process_cost_values:
+						attr_val = row.attribute_value
+						attr_rate_map.setdefault(attr_val, {})
+						attr_rate_map[attr_val].setdefault(str(int(row.min_order_qty)), 0)
+						attr_rate_map[attr_val][str(int(row.min_order_qty))] += row.price
+				else:
+					# Existing sum-all behavior
+					for row in process_cost_doc.process_cost_values:
+						order_qty_dict.setdefault(str(int(row.min_order_qty)), 0)
+						order_qty_dict[str(int(row.min_order_qty))] += row.price
+
+					sorted_dict = dict(sorted(order_qty_dict.items(), key=lambda x: float(x[0]), reverse=True))
+					length = len(sorted_dict)
+
+					for order_qty in sorted_dict:
+						qty_list.append(int(order_qty))
+						cost_list.append(order_qty_dict[order_qty])
 
 			wo_doc = frappe.get_doc("Work Order", wo)
 			for key_val in items_list:
@@ -400,13 +418,29 @@ def fetch_grn_details(grns, against, supplier):
 				qty = items_list[key_val]['current_grn_received']
 				rate = 0
 				if process_docname:
-					if length == 1:
-						rate = cost_list[0]
+					if use_attr_rate:
+						attr_details = get_variant_attr_details(variant)
+						variant_attr_val = attr_details.get(process_cost_doc.attribute)
+						if variant_attr_val and variant_attr_val in attr_rate_map:
+							val_dict = attr_rate_map[variant_attr_val]
+							sorted_val = dict(sorted(val_dict.items(), key=lambda x: float(x[0]), reverse=True))
+							val_qty_list = [int(q) for q in sorted_val]
+							val_cost_list = [val_dict[q] for q in sorted_val]
+							if len(val_qty_list) == 1:
+								rate = val_cost_list[0]
+							else:
+								for idx, oq in enumerate(val_qty_list):
+									if oq < qty:
+										rate = val_cost_list[idx]
+										break
 					else:
-						for idx, order_qty in enumerate(qty_list):
-							if order_qty < qty:
-								rate = cost_list[idx]
-								break 
+						if length == 1:
+							rate = cost_list[0]
+						else:
+							for idx, order_qty in enumerate(qty_list):
+								if order_qty < qty:
+									rate = cost_list[idx]
+									break
 				items_list[key_val]['rate'] = rate
 
 			item_name = frappe.get_cached_value("Process", wo_doc.process_name, "item")
@@ -611,6 +645,8 @@ def calculate_grns(grn_list, wo, allow_to_change_rate):
 			for size in row['values']:
 				attrs[row['primary_attribute']] = size
 				variant = get_or_create_variant(row['name'], attrs)
+				if row['values'][size] == 0:
+					continue
 				for rec_type in row['values'][size]:
 					key = (variant, set_comb['major_colour'])
 					items_list[key]['current_grn_received'] += row['values'][size][rec_type]

@@ -69,6 +69,12 @@ class CuttingLaySheet(Document):
 			items = save_item_details(self.item_details, self.cutting_plan, self.calculated_parts, self.is_manual_entry)
 			self.set("cutting_laysheet_details", items)
 
+		for item in self.cutting_laysheet_details:
+			if item.balance_weight and item.balance_weight >= item.weight:
+				frappe.throw(
+					f"Row {item.idx}: Balance Weight ({item.balance_weight}) must be less than Weight ({item.weight})"
+				)
+
 		if self.get('item_accessory_details'):
 			items = save_accessory_details(self.item_accessory_details, self.cutting_plan)
 			self.set("cutting_laysheet_accessory_details", items)

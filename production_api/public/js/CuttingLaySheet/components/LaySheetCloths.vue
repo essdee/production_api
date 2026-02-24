@@ -324,6 +324,9 @@ function update_readonly(input_fields){
 
 function add_item(){
     check_values()
+    if (balance_weight.get_value() >= cloth_weight.get_value()) {
+        frappe.throw("Balance Weight must be less than Weight")
+    }
     make_dirty()
 
     let set_json = {}
@@ -549,6 +552,9 @@ function delete_item(index){
 
 function update_item(){
     check_values()
+    if (balance_weight.get_value() >= cloth_weight.get_value()) {
+        frappe.throw("Balance Weight must be less than Weight")
+    }
     make_dirty()
     let set_json = {}
     for(let i = 0 ; i < set_parameters.length ; i++){
