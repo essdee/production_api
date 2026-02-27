@@ -211,14 +211,24 @@ frappe.ui.form.on("Item Production Detail", {
 			}
 			frm.add_custom_button("Duplicate IPD", ()=> {
 				let d = new frappe.ui.Dialog({
-					title: "Are you sure want to duplicate this IPD",
-					primary_action_label: "Yes",
-					secondary_action_label: "No",
-					primary_action(){
+					title: "Duplicate IPD",
+					fields: [
+						{
+							label: "Item",
+							fieldname: "item",
+							fieldtype: "Link",
+							options: "Item",
+							default: frm.doc.item,
+							reqd: 1,
+						}
+					],
+					primary_action_label: "Duplicate",
+					primary_action(values){
 						frappe.call({
 							method: "production_api.essdee_production.doctype.item_production_detail.item_production_detail.duplicate_ipd",
 							args: {
-								"ipd": frm.doc.name
+								"ipd": frm.doc.name,
+								"item": values.item,
 							},
 							freeze: true,
 							freeze_message: "Duplicating IPD",
@@ -228,10 +238,21 @@ frappe.ui.form.on("Item Production Detail", {
 							}
 						})
 					},
-					secondary_action(){
-						d.hide()
-					}
 				})
+				frappe.call({
+					method: "production_api.essdee_production.doctype.item_production_detail.item_production_detail.get_ipd_item_group",
+					callback: function(r) {
+						if (r.message) {
+							d.fields_dict.item.get_query = () => {
+								return {
+									filters: {
+										item_group: ["in", r.message]
+									}
+								};
+							};
+						}
+					}
+				});
 				d.show()
 			})
 		}
