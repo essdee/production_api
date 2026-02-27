@@ -238,6 +238,25 @@ frappe.ui.form.on('Purchase Order', {
 			});
 		}
 
+		if (frm.doc.socstatus == 1) {
+			frm.add_custom_button(__('Duplicate PO'), function() {
+				frappe.confirm(
+					__('Create a duplicate of this Purchase Order?'),
+					function() {
+						frappe.call({
+							method: "production_api.production_api.doctype.purchase_order.purchase_order.duplicate_po",
+							args: { po: frm.doc.name },
+							callback: function(r) {
+								if (r.message) {
+									frappe.set_route('Form', 'Purchase Order', r.message);
+								}
+							}
+						});
+					}
+				);
+			});
+		}
+
 		if (frm.doc.open_status == 'Closed') {
 			frm.page.btn_secondary.hide();
 			frm.page.btn_primary.hide();

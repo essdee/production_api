@@ -1340,11 +1340,11 @@ def get_ipd_pf_details(ipd):
 	return ipd_doc
 
 @frappe.whitelist()
-def duplicate_ipd(ipd):
+def duplicate_ipd(ipd, item=None):
 	ipd_doc = frappe.get_doc("Item Production Detail", ipd)
 	doc = frappe.new_doc("Item Production Detail")
 	doc.update({
-		"item": ipd_doc.item,
+		"item": item or ipd_doc.item,
 		"tech_pack_version": ipd_doc.tech_pack_version,
 		"pattern_version": ipd_doc.pattern_version,
 		"primary_item_attribute": ipd_doc.primary_item_attribute,
