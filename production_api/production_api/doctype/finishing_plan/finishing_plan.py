@@ -358,7 +358,7 @@ def get_fp_ocr_details(doc_name):
 		"get_unaccountable": {},
 	}
 	def get_total(part_value, ocr_data):
-		return ((ocr_data[part_value]['packed_box_qty'] + 
+		return ((ocr_data[part_value]['dispatched_piece'] + 
 			ocr_data[part_value]['rejected'] + 
 			ocr_data[part_value]['loose_piece_set'] +
 			ocr_data[part_value]['loose_piece'] +
@@ -373,7 +373,7 @@ def get_fp_ocr_details(doc_name):
 					ocr_data[part_value]['old_lot'] + 
 					ocr_data[part_value]['ironing_excess'] - 
 					ocr_data[part_value]['transferred'] ,
-			"val2": ocr_data[part_value]['packed_box_qty'],
+			"val2": ocr_data[part_value]['dispatched_piece'],
 		}
 	
 	def get_cut_to_inward(part_value, ocr_data):
@@ -388,7 +388,7 @@ def get_fp_ocr_details(doc_name):
 					ocr_data[part_value]['old_lot'] + 
 					ocr_data[part_value]['ironing_excess'] - 
 					ocr_data[part_value]['transferred'] , 
-			"val2": ocr_data[part_value]['packed_box_qty']
+			"val2": ocr_data[part_value]['dispatched_piece']
 		}
 	
 	def get_loose_piece(part_value, ocr_data):
@@ -432,7 +432,7 @@ def get_fp_ocr_details(doc_name):
 			"val2": ocr_data[part_value]['sewing_received'] +
 					ocr_data[part_value]['old_lot'] + 
 					ocr_data[part_value]['ironing_excess'] -
-					(ocr_data[part_value]['packed_box_qty'] + 
+					(ocr_data[part_value]['dispatched_piece'] + 
 					ocr_data[part_value]['rejected'] + 
 					ocr_data[part_value]['loose_piece_set'] +
 					ocr_data[part_value]['loose_piece'] +
@@ -498,6 +498,8 @@ def get_ocr_details(doc):
 			"transferred": 0,
 			"packed_box": 0,
 			"packed_box_qty": 0,
+			"dispatched_box": 0,
+			"dispatched_piece": 0,
 			"rejected": 0,
 			"loose_piece": 0,
 			"loose_piece_set": 0,
@@ -514,6 +516,8 @@ def get_ocr_details(doc):
 			"transferred": 0,
 			"packed_box": 0,
 			"packed_box_qty": 0,
+			"dispatched_box": 0,
+			"dispatched_piece": 0,
 			"rejected": 0,
 			"loose_piece": 0,
 			"loose_piece_set": 0,
@@ -584,7 +588,11 @@ def get_ocr_details(doc):
 			ocr_data[par]['packed_box'] += row.quantity
 			ocr_data[par]['packed_box_qty'] += (row.quantity * doc.pieces_per_box)
 			ocr_data[par]['total'][size]['packed_box'] += row.quantity
-			ocr_data[par]['total'][size]['packed_box_qty'] += (row.quantity * doc.pieces_per_box)	
+			ocr_data[par]['total'][size]['packed_box_qty'] += (row.quantity * doc.pieces_per_box)
+			ocr_data[par]['dispatched_box'] += row.dispatched
+			ocr_data[par]['dispatched_piece'] += (row.dispatched * doc.pieces_per_box)
+			ocr_data[par]['total'][size]['dispatched_box'] += row.dispatched
+			ocr_data[par]['total'][size]['dispatched_piece'] += (row.dispatched * doc.pieces_per_box)	
 	
 	for row in doc.finishing_plan_reworked_details:
 		set_comb = update_if_string_instance(row.set_combination)
