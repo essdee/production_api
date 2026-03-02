@@ -2667,4 +2667,89 @@ def get_lot_data(lot, lot_data, cloth_details, completed, item_name, lay_no, no_
 			"cloth_details": cloth_details,
 			"cloth_total": cloth_total, 
 		}
-	return lot_data	
+	return lot_data
+
+@frappe.whitelist()
+def get_ppo_report_data(from_date=None, to_date=None):
+	from production_api.production_api.doctype.item.item import get_attribute_details
+
+	filters = {"docstatus": 1}
+	if from_date and to_date:
+		filters["delivery_date"] = ["between", [from_date, to_date]]
+	elif from_date:
+		filters["delivery_date"] = [">=", from_date]
+	elif to_date:
+		filters["delivery_date"] = ["<=", to_date]
+
+	orders = frappe.get_all(
+		"Production Order",
+		filters=filters,
+		fields=["name", "item", "fabric", "dia", "gsm", "delivery_date"],
+		order_by="delivery_date asc, name asc",
+	)
+
+	size_groups = {}
+	for order in orders:
+		doc = frappe.get_cached_doc("Production Order", order["name"])
+		attr_details = get_attribute_details(order["item"])
+		primary_attribute_values = attr_details.get("primary_attribute_values", [])
+		group_key = tuple(sorted(primary_attribute_values))
+
+		qty_map = {}
+		total = 0
+		for row in doc.production_order_details:
+			variant = frappe.get_cached_doc("Item Variant", row.item_variant)
+			primary_attribute = attr_details["primary_attribute"]
+			for attr in variant.attributes:
+				if attr.attribute == primary_attribute:
+					qty_map.setdefault(attr.attribute_value, 0)
+					qty_map[attr.attribute_value] += row.quantity
+					total += row.quantity
+					break
+
+		size_groups.setdefault(group_key, {
+			"sizes": primary_attribute_values,
+			"orders": [],
+		})
+		size_groups[group_key]["orders"].append({
+			"name": order["name"],
+			"item": order["item"],
+			"fabric": order.get("fabric") or "",
+			"dia": order.get("dia") or "",
+			"gsm": order.get("gsm") or 0,
+			"delivery_date": str(order["delivery_date"]) if order["delivery_date"] else "",
+			"qty": qty_map,
+			"total": total,
+		})
+
+	groups = list(size_groups.values())
+	return {"groups": groups}
+
+@frappe.whitelist()
+def download_ppo_report(from_date=None, to_date=None):
+	from frappe.utils.xlsxutils import make_xlsx
+
+	data = get_ppo_report_data(from_date, to_date)
+	rows = []
+	for group in data["groups"]:
+		sizes = group["sizes"]
+		rows.append(["Sizes: " + ", ".join(sizes)])
+		rows.append(["S.No", "PPO", "Item", "Fabric", "Dia", "GSM", "Delivery Date"] + sizes + ["Total"])
+		for idx, order in enumerate(group["orders"], 1):
+			row = [idx, order["name"], order["item"], order["fabric"], order["dia"], order["gsm"], order["delivery_date"]]
+			for size in sizes:
+				row.append(order["qty"].get(size, 0))
+			row.append(order["total"])
+			rows.append(row)
+		total_row = ["", "", "", "", "", "", "Total"]
+		for size in sizes:
+			total_row.append(sum(o["qty"].get(size, 0) for o in group["orders"]))
+		total_row.append(sum(o["total"] for o in group["orders"]))
+		rows.append(total_row)
+		rows.append([])
+
+	xlsx_file = make_xlsx(rows, "PPO Report")
+	now = frappe.utils.now_datetime().strftime("%d-%m-%Y_%H-%M-%S")
+	frappe.response["filename"] = f"PPO_Report_{now}.xlsx"
+	frappe.response["filecontent"] = xlsx_file.getvalue()
+	frappe.response["type"] = "binary"
