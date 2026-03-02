@@ -2684,7 +2684,7 @@ def get_ppo_report_data(from_date=None, to_date=None):
 	orders = frappe.get_all(
 		"Production Order",
 		filters=filters,
-		fields=["name", "item", "fabric", "dia", "gsm", "delivery_date"],
+		fields=["name", "item", "fabric", "dia", "gsm", "delivery_date", "posting_date", "dont_deliver_after"],
 		order_by="delivery_date asc, name asc",
 	)
 
@@ -2718,6 +2718,8 @@ def get_ppo_report_data(from_date=None, to_date=None):
 			"dia": order.get("dia") or "",
 			"gsm": order.get("gsm") or 0,
 			"delivery_date": str(order["delivery_date"]) if order["delivery_date"] else "",
+			"posting_date": str(order["posting_date"]) if order["posting_date"] else "",
+			"dont_deliver_after": str(order["dont_deliver_after"]) if order["dont_deliver_after"] else "",
 			"qty": qty_map,
 			"total": total,
 		})
@@ -2734,14 +2736,14 @@ def download_ppo_report(from_date=None, to_date=None):
 	for group in data["groups"]:
 		sizes = group["sizes"]
 		rows.append(["Sizes: " + ", ".join(sizes)])
-		rows.append(["S.No", "PPO", "Item", "Fabric", "Dia", "GSM", "Delivery Date"] + sizes + ["Total"])
+		rows.append(["S.No", "PPO", "Item", "Fabric", "Dia", "GSM", "Posting Date", "Delivery Date", "Don't Deliver After"] + sizes + ["Total"])
 		for idx, order in enumerate(group["orders"], 1):
-			row = [idx, order["name"], order["item"], order["fabric"], order["dia"], order["gsm"], order["delivery_date"]]
+			row = [idx, order["name"], order["item"], order["fabric"], order["dia"], order["gsm"], order["posting_date"], order["delivery_date"], order["dont_deliver_after"]]
 			for size in sizes:
 				row.append(order["qty"].get(size, 0))
 			row.append(order["total"])
 			rows.append(row)
-		total_row = ["", "", "", "", "", "", "Total"]
+		total_row = ["", "", "", "", "", "", "", "", "Total"]
 		for size in sizes:
 			total_row.append(sum(o["qty"].get(size, 0) for o in group["orders"]))
 		total_row.append(sum(o["total"] for o in group["orders"]))

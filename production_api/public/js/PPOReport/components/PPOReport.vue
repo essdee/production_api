@@ -43,44 +43,48 @@
                     <table class="ppo-table">
                         <thead>
                             <tr>
-                                <th class="col-sno">#</th>
-                                <th class="col-ppo">PPO</th>
-                                <th class="col-item">Item</th>
-                                <th class="col-fabric">Fabric</th>
-                                <th class="col-dia">Dia</th>
-                                <th class="col-gsm">GSM</th>
-                                <th class="col-date">Delivery</th>
-                                <th v-for="size in group.sizes" :key="size" class="col-size">{{ size }}</th>
-                                <th class="col-total">Total</th>
+                                <th>#</th>
+                                <th>PPO</th>
+                                <th>Item</th>
+                                <th>Fabric</th>
+                                <th>Dia</th>
+                                <th>GSM</th>
+                                <th>Posting Date</th>
+                                <th>Delivery Date</th>
+                                <th>Don't Deliver After</th>
+                                <th v-for="size in group.sizes" :key="size">{{ size }}</th>
+                                <th>Total</th>
                             </tr>
                         </thead>
                         <tbody>
                             <tr v-for="(order, idx) in group.orders" :key="order.name">
-                                <td class="col-sno cell-dim">{{ idx + 1 }}</td>
-                                <td class="col-ppo">
+                                <td class="cell-dim">{{ idx + 1 }}</td>
+                                <td>
                                     <a :href="'/app/production-order/' + order.name" class="ppo-link">
                                         {{ order.name }}
                                     </a>
                                 </td>
-                                <td class="col-item">{{ order.item }}</td>
-                                <td class="col-fabric">{{ order.fabric }}</td>
-                                <td class="col-dia">{{ order.dia }}</td>
-                                <td class="col-gsm">{{ order.gsm || '' }}</td>
-                                <td class="col-date">{{ formatDate(order.delivery_date) }}</td>
-                                <td v-for="size in group.sizes" :key="size" class="col-size"
+                                <td>{{ order.item }}</td>
+                                <td>{{ order.fabric }}</td>
+                                <td>{{ order.dia }}</td>
+                                <td>{{ order.gsm || '' }}</td>
+                                <td>{{ formatDate(order.posting_date) }}</td>
+                                <td>{{ formatDate(order.delivery_date) }}</td>
+                                <td>{{ formatDate(order.dont_deliver_after) }}</td>
+                                <td v-for="size in group.sizes" :key="size"
                                     :class="{ 'cell-zero': !(order.qty[size]) }">
                                     {{ order.qty[size] || '—' }}
                                 </td>
-                                <td class="col-total cell-total">{{ order.total.toLocaleString() }}</td>
+                                <td class="cell-total">{{ order.total.toLocaleString() }}</td>
                             </tr>
                         </tbody>
                         <tfoot>
                             <tr>
-                                <td :colspan="7" class="foot-label">Total</td>
-                                <td v-for="size in group.sizes" :key="size" class="col-size foot-num">
+                                <td :colspan="9" class="foot-label">Total</td>
+                                <td v-for="size in group.sizes" :key="size" class="foot-num">
                                     {{ column_total(group, size).toLocaleString() }}
                                 </td>
-                                <td class="col-total foot-grand">{{ group_total(group).toLocaleString() }}</td>
+                                <td class="foot-grand">{{ group_total(group).toLocaleString() }}</td>
                             </tr>
                         </tfoot>
                     </table>
@@ -366,12 +370,6 @@ defineExpose({ load_data })
 .ppo-table tbody tr:nth-child(even):hover {
     background: #f3f4f6;
 }
-
-/* Column-specific */
-.col-sno { width: 40px; }
-.col-item, .col-fabric { text-align: left; }
-.ppo-table thead .col-item,
-.ppo-table thead .col-fabric { text-align: left; }
 
 .cell-dim { color: #9ca3af; }
 .cell-zero {
