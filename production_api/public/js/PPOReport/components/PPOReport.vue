@@ -3,6 +3,7 @@
         <div class="ppo-header">
             <h3 class="ppo-title">PPO Report</h3>
             <div class="ppo-controls">
+                <div class="category-input ctrl-slot"></div>
                 <div class="from-date-input ctrl-slot"></div>
                 <div class="to-date-input ctrl-slot"></div>
                 <div class="ppo-actions">
@@ -54,10 +55,12 @@
                                 <th>Don't Deliver After</th>
                                 <th v-for="size in group.sizes" :key="size">{{ size }}</th>
                                 <th>Total</th>
+                                <th>Action</th>
                             </tr>
                         </thead>
                         <tbody>
-                            <tr v-for="(order, idx) in group.orders" :key="order.name">
+                            <template v-for="(order, idx) in group.orders" :key="order.name">
+                            <tr>
                                 <td class="cell-dim">{{ idx + 1 }}</td>
                                 <td>
                                     <a :href="'/app/production-order/' + order.name" class="ppo-link">
@@ -76,15 +79,52 @@
                                     {{ order.qty[size] || '—' }}
                                 </td>
                                 <td class="cell-total">{{ order.total.toLocaleString() }}</td>
+                                <td>
+                                    <button class="btn btn-xs btn-default btn-summarize" @click="show_summary(order.name)">
+                                        {{ summaryState[order.name]?.expanded ? 'Hide' : 'Summarize' }}
+                                    </button>
+                                </td>
                             </tr>
+                            <template v-if="summaryState[order.name]?.expanded">
+                              <tr v-if="summaryState[order.name]?.loading" class="summary-row">
+                                <td :colspan="11 + group.sizes.length" class="summary-status">Loading...</td>
+                              </tr>
+                              <tr v-else-if="!summaryState[order.name]?.data?.rows?.length" class="summary-row">
+                                <td :colspan="11 + group.sizes.length" class="summary-status">No dispatch records found.</td>
+                              </tr>
+                              <template v-else>
+                                <tr v-for="(row, rIdx) in summaryState[order.name].data.rows"
+                                    :key="'s-' + order.name + '-' + rIdx" class="summary-row">
+                                  <td colspan="9" class="summary-label-cell">
+                                    {{ formatDate(row.date) }} &middot; {{ row.lot }}
+                                  </td>
+                                  <td v-for="s in group.sizes" :key="s"
+                                      :class="{ 'cell-zero': !row.sizes[s] }">
+                                    {{ row.sizes[s] || '—' }}
+                                  </td>
+                                  <td class="summary-total-cell">{{ row.total }}</td>
+                                  <td></td>
+                                </tr>
+                                <tr class="summary-footer-row">
+                                  <td colspan="9" class="summary-label-cell summary-footer-label">Dispatched Total</td>
+                                  <td v-for="s in group.sizes" :key="s" class="summary-footer-num">
+                                    {{ summarySizeTotal(order.name, s) }}
+                                  </td>
+                                  <td class="summary-footer-num summary-footer-grand">{{ summaryTotal(order.name) }}</td>
+                                  <td></td>
+                                </tr>
+                              </template>
+                            </template>
+                            </template>
                         </tbody>
                         <tfoot>
                             <tr>
-                                <td :colspan="9" class="foot-label">Total</td>
+                                <td colspan="9" class="foot-label">Total</td>
                                 <td v-for="size in group.sizes" :key="size" class="foot-num">
                                     {{ column_total(group, size).toLocaleString() }}
                                 </td>
                                 <td class="foot-grand">{{ group_total(group).toLocaleString() }}</td>
+                                <td></td>
                             </tr>
                         </tfoot>
                     </table>
@@ -104,13 +144,28 @@ import { ref, computed, onMounted } from 'vue'
 const root = ref(null)
 const groups = ref([])
 const fetched = ref(false)
+const summaryState = ref({})
 
+let category_ctrl = null
 let from_date_ctrl = null
 let to_date_ctrl = null
 const sample_doc = ref({})
 
 onMounted(() => {
     const el = root.value
+
+    $(el).find(".category-input").html("")
+    category_ctrl = frappe.ui.form.make_control({
+        parent: $(el).find(".category-input"),
+        df: {
+            fieldname: "product_category",
+            fieldtype: "Link",
+            options: "Product Category",
+            label: "Product Category",
+        },
+        doc: sample_doc.value,
+        render_input: true,
+    })
 
     $(el).find(".from-date-input").html("")
     from_date_ctrl = frappe.ui.form.make_control({
@@ -138,10 +193,12 @@ onMounted(() => {
 })
 
 function get_report() {
+    const product_category = category_ctrl.get_value()
     const from_date = from_date_ctrl.get_value()
     const to_date = to_date_ctrl.get_value()
 
     const args = {}
+    if (product_category) args.product_category = product_category
     if (from_date) args.from_date = from_date
     if (to_date) args.to_date = to_date
 
@@ -153,6 +210,7 @@ function get_report() {
         callback: function (r) {
             groups.value = r.message.groups || []
             fetched.value = true
+            summaryState.value = {}
         },
     })
 }
@@ -183,9 +241,11 @@ function formatDate(dateStr) {
 }
 
 function download_excel() {
+    const product_category = category_ctrl.get_value()
     const from_date = from_date_ctrl.get_value()
     const to_date = to_date_ctrl.get_value()
     const params = new URLSearchParams()
+    if (product_category) params.set('product_category', product_category)
     if (from_date) params.set('from_date', from_date)
     if (to_date) params.set('to_date', to_date)
     window.open(`/api/method/production_api.utils.download_ppo_report?${params.toString()}`)
@@ -204,6 +264,45 @@ function group_total(group) {
     for (const order of group.orders) {
         total += order.total
     }
+    return total
+}
+
+function show_summary(ppo_name) {
+    const entry = summaryState.value[ppo_name]
+
+    // Already fetched — just toggle
+    if (entry && entry.data !== undefined) {
+        summaryState.value[ppo_name] = { ...entry, expanded: !entry.expanded }
+        return
+    }
+
+    // First click — expand + fetch
+    summaryState.value[ppo_name] = { loading: true, expanded: true }
+
+    frappe.call({
+        method: "production_api.utils.get_ppo_dispatch_summary",
+        args: { production_order: ppo_name },
+        callback(r) {
+            summaryState.value[ppo_name] = {
+                loading: false,
+                data: r.message || { sizes: [], rows: [] },
+                expanded: true,
+            }
+        },
+    })
+}
+
+function summaryTotal(ppo_name) {
+    const rows = summaryState.value[ppo_name]?.data?.rows || []
+    let total = 0
+    for (const row of rows) total += row.total || 0
+    return total
+}
+
+function summarySizeTotal(ppo_name, size) {
+    const rows = summaryState.value[ppo_name]?.data?.rows || []
+    let total = 0
+    for (const row of rows) total += row.sizes[size] || 0
     return total
 }
 
@@ -370,6 +469,12 @@ defineExpose({ load_data })
 .ppo-table tbody tr:nth-child(even):hover {
     background: #f3f4f6;
 }
+.ppo-table tbody tr.summary-row,
+.ppo-table tbody tr.summary-row:nth-child(even),
+.ppo-table tbody tr.summary-footer-row,
+.ppo-table tbody tr.summary-footer-row:nth-child(even) {
+    background: none;
+}
 
 .cell-dim { color: #9ca3af; }
 .cell-zero {
@@ -413,6 +518,64 @@ defineExpose({ load_data })
     font-weight: 800;
     color: #1f2937;
     background: #eef2ff;
+}
+
+.btn-summarize {
+    font-size: 11px;
+    font-weight: 600;
+    padding: 3px 10px;
+    white-space: nowrap;
+}
+
+/* ── Inline Dispatch Summary ── */
+.summary-row td {
+    background: #eef2ff;
+    border-bottom: 1px solid #e0e7ff;
+    font-size: 12px;
+}
+.summary-row:hover td {
+    background: #e0e7ff;
+}
+.summary-label-cell {
+    text-align: right !important;
+    font-weight: 600;
+    color: #4b5563;
+    padding-right: 14px !important;
+}
+.summary-total-cell {
+    font-weight: 700;
+    color: #1f2937;
+}
+.summary-status {
+    text-align: center;
+    color: #9ca3af;
+    font-size: 12.5px;
+    font-weight: 500;
+    padding: 10px 0;
+    background: #eef2ff;
+}
+.summary-footer-row td {
+    background: #e0e7ff;
+    border-bottom: 2px solid #c7d2fe;
+    font-weight: 700;
+    font-size: 12px;
+}
+.summary-footer-row:hover td {
+    background: #d4dbf5;
+}
+.summary-footer-label {
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-size: 11px;
+    color: #6b7280;
+}
+.summary-footer-num {
+    font-weight: 700;
+    color: #374151;
+}
+.summary-footer-grand {
+    font-weight: 800;
+    color: #1f2937;
 }
 
 /* ── Empty state ── */
