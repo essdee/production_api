@@ -238,7 +238,7 @@ frappe.ui.form.on('Purchase Order', {
 			});
 		}
 
-		if (frm.doc.socstatus == 1) {
+		if (frm.doc.docstatus == 1) {
 			frm.add_custom_button(__('Duplicate PO'), function() {
 				frappe.confirm(
 					__('Create a duplicate of this Purchase Order?'),
