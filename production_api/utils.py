@@ -929,9 +929,8 @@ def get_inhouse_qty(lot, process):
 
 	inward_qty = {"data": {}, "total": {}, "over_all": {}}
 
-	wo_list = frappe.get_all(
-		"Work Order", filters={"lot": lot, "process_name": process, "docstatus": 1}, pluck="name"
-	)
+	wo_list = get_process_wo_list(process, lot)
+	
 	if not wo_list:
 		frappe.msgprint(f"No Work Order's for Process {process}")
 		return
@@ -943,24 +942,7 @@ def get_inhouse_qty(lot, process):
 		},as_dict=True,
 	)
 
-	eqi_list = frappe.get_all("Essdee Quality Inspection", filters={
-		"docstatus": 1,
-		"against": "Work Order",
-		"against_id": ['in', wo_list]
-	}, order_by = "posting_date desc", pluck="name")
-	
-	d = {}
-	for eqi in eqi_list:
-		eqi_doc = frappe.get_doc("Essdee Quality Inspection", eqi)
-		d.setdefault(eqi_doc.supplier_name, {})
-		for row in eqi_doc.essdee_quality_inspection_colours:
-			if row.selected:
-				d[eqi_doc.supplier_name].setdefault(row.colour, {})
-
-		for row in eqi_doc.essdee_quality_inspection_sizes:
-			if row.selected:
-				for colour in d[eqi_doc.supplier_name]:
-					d[eqi_doc.supplier_name][colour].setdefault(row.size, eqi_doc.result)
+	d = get_eqi_status(wo_list)
 
 	for item in items:
 		sup_name = frappe.get_cached_value("Work Order", item['parent'], "supplier_name")
@@ -1029,6 +1011,27 @@ def get_inhouse_qty(lot, process):
 		"is_set_item": is_set_item,
 		"set_attr": set_attr,
 	}
+
+def get_eqi_status(wo_list):
+	eqi_list = frappe.get_all("Essdee Quality Inspection", filters={
+		"docstatus": 1,
+		"against": "Work Order",
+		"against_id": ['in', wo_list]
+	}, order_by = "posting_date desc", pluck="name")
+	
+	d = {}
+	for eqi in eqi_list:
+		eqi_doc = frappe.get_doc("Essdee Quality Inspection", eqi)
+		d.setdefault(eqi_doc.supplier_name, {})
+		for row in eqi_doc.essdee_quality_inspection_colours:
+			if row.selected:
+				d[eqi_doc.supplier_name].setdefault(row.colour, {})
+
+		for row in eqi_doc.essdee_quality_inspection_sizes:
+			if row.selected:
+				for colour in d[eqi_doc.supplier_name]:
+					d[eqi_doc.supplier_name][colour].setdefault(row.size, eqi_doc.result)
+	return d
 
 @frappe.whitelist()
 def get_finishing_plan_dict(doc):

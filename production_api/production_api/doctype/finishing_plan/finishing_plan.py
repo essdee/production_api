@@ -1490,9 +1490,24 @@ def get_updated_return(grn_list, finishing_items, finishing_rework_items):
 	return finishing_items, finishing_rework_items
 
 @frappe.whitelist()
-def cache_selected_size(key, size):
+def cache_selected_size(key, size, finishing_id):
+	check_eqi_status(size, finishing_id)
 	key += frappe.session.user
 	frappe.cache.set_value(key, size)
+
+def check_eqi_status(print_size, finishing_id):
+	lot = frappe.get_value("Finishing Plan", finishing_id, "lot")
+	process = frappe.db.get_single_value("MRP Settings", "finishing_inward_process") 
+	wo_list = get_process_wo_list(process, lot)
+	from production_api.utils import get_eqi_status
+	eqi_data = get_eqi_status(wo_list)
+	sup_list = []
+	for sup in eqi_data:
+		for colour in eqi_data[sup]:
+			if eqi_data[sup][colour].get(print_size) and eqi_data[sup][colour][print_size] != 'Pass':
+				sup_list.append(sup)
+	if sup_list:
+		frappe.throw(f"EQI not passed for Size {print_size}: {', '.join(sup_list)}")
 
 @frappe.whitelist()
 def get_finishing_plan_inward_details(key, lot):
