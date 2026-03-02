@@ -92,6 +92,7 @@ frappe.ui.form.on("Finishing Plan", {
                                 args: {
                                     "key": "inward_pf_size",
                                     "size": values.size,
+                                    "finishing_id": frm.doc.name,
                                 },
                                 callback: function (r) {
                                     window.open(
