@@ -1,650 +1,650 @@
 {
- "actions": [],
- "autoname": "naming_series:",
- "creation": "2023-04-14 13:27:37.367617",
- "default_view": "List",
- "doctype": "DocType",
- "editable_grid": 1,
- "engine": "InnoDB",
- "field_order": [
-  "additional_grn",
-  "allow_non_bundle",
-  "naming_series",
-  "against",
-  "delivery_location",
-  "delivery_location_name",
-  "lot",
-  "dc_no",
-  "cutting_laysheet",
-  "is_internal_unit",
-  "transfer_complete",
-  "is_return",
-  "is_rework",
-  "is_pack",
-  "from_finishing",
-  "column_break_1",
-  "rework_created",
-  "edit_posting_date_and_time",
-  "against_id",
-  "grn_date",
-  "posting_date",
-  "posting_time",
-  "process_name",
-  "is_manual_entry",
-  "letter_head",
-  "cut_panel_movement",
-  "includes_packing",
-  "section_break_1",
-  "supplier",
-  "supplier_document_no",
-  "vehicle_no",
-  "freight_charge_per_product",
-  "column_break_vyiz9",
-  "supplier_name",
-  "delivery_date",
-  "freight_charges",
-  "section_addresses",
-  "supplier_address",
-  "supplier_address_display",
-  "contact_person",
-  "contact_display",
-  "contact_mobile",
-  "column_break_fwrcg",
-  "delivery_address",
-  "delivery_address_display",
-  "total_receivable_cost",
-  "total_received_quantity",
-  "section_break_ve8oj",
-  "items",
-  "item_html",
-  "section_break_sgaj",
-  "grn_deliverables",
-  "items_json",
-  "grn_consumed_html",
-  "grn_excess_usage_items",
-  "transfer_section",
-  "total_delivered_qty",
-  "ste_transferred",
-  "ste_transferred_percent",
-  "section_break_8ncnk",
-  "total",
-  "total_tax",
-  "grand_total",
-  "in_words",
-  "section_break_ogawr",
-  "comments",
-  "section_break_zvhdj",
-  "approved_by",
-  "amended_from",
-  "purchase_invoice_name"
- ],
- "fields": [
-  {
-   "fieldname": "naming_series",
-   "fieldtype": "Select",
-   "label": "GRN Series",
-   "options": "GRN-",
-   "reqd": 1
-  },
-  {
-   "fieldname": "against",
-   "fieldtype": "Select",
-   "in_list_view": 1,
-   "label": "Against",
-   "options": "Purchase Order\nWork Order",
-   "reqd": 1
-  },
-  {
-   "fieldname": "delivery_location",
-   "fieldtype": "Link",
-   "label": "Delivery Location",
-   "options": "Supplier",
-   "reqd": 1
-  },
-  {
-   "fieldname": "column_break_1",
-   "fieldtype": "Column Break"
-  },
-  {
-   "fieldname": "against_id",
-   "fieldtype": "Dynamic Link",
-   "label": "PO/WO ID",
-   "options": "against",
-   "reqd": 1
-  },
-  {
-   "default": "Today",
-   "fieldname": "grn_date",
-   "fieldtype": "Date",
-   "hidden": 1,
-   "label": "GRN Date",
-   "read_only": 1
-  },
-  {
-   "fieldname": "section_break_1",
-   "fieldtype": "Section Break"
-  },
-  {
-   "fieldname": "supplier",
-   "fieldtype": "Link",
-   "in_list_view": 1,
-   "in_standard_filter": 1,
-   "label": "Supplier",
-   "options": "Supplier",
-   "reqd": 1
-  },
-  {
-   "default": "Today",
-   "fieldname": "delivery_date",
-   "fieldtype": "Date",
-   "label": "Delivery Date",
-   "reqd": 1
-  },
-  {
-   "fieldname": "column_break_vyiz9",
-   "fieldtype": "Column Break"
-  },
-  {
-   "bold": 1,
-   "fetch_from": "supplier.supplier_name",
-   "fieldname": "supplier_name",
-   "fieldtype": "Data",
-   "label": "Supplier Name",
-   "read_only": 1
-  },
-  {
-   "fieldname": "section_addresses",
-   "fieldtype": "Section Break",
-   "label": "Address and Contact"
-  },
-  {
-   "fieldname": "supplier_address",
-   "fieldtype": "Link",
-   "label": "Supplier Address",
-   "options": "Address",
-   "reqd": 1
-  },
-  {
-   "fieldname": "supplier_address_display",
-   "fieldtype": "Small Text",
-   "label": "Supplier Address Details",
-   "read_only": 1
-  },
-  {
-   "fieldname": "contact_display",
-   "fieldtype": "Small Text",
-   "label": "Contact Name",
-   "read_only": 1
-  },
-  {
-   "fieldname": "contact_mobile",
-   "fieldtype": "Small Text",
-   "label": "Contact Mobile",
-   "read_only": 1
-  },
-  {
-   "fieldname": "column_break_fwrcg",
-   "fieldtype": "Column Break"
-  },
-  {
-   "fieldname": "delivery_address",
-   "fieldtype": "Link",
-   "label": "Delivery Address",
-   "options": "Address",
-   "reqd": 1
-  },
-  {
-   "fieldname": "delivery_address_display",
-   "fieldtype": "Small Text",
-   "label": "Delivery Address Details",
-   "read_only": 1
-  },
-  {
-   "fieldname": "section_break_ve8oj",
-   "fieldtype": "Section Break"
-  },
-  {
-   "allow_on_submit": 1,
-   "fieldname": "items",
-   "fieldtype": "Table",
-   "hidden": 1,
-   "label": "Items",
-   "options": "Goods Received Note Item"
-  },
-  {
-   "fieldname": "amended_from",
-   "fieldtype": "Link",
-   "label": "Amended From",
-   "no_copy": 1,
-   "options": "Goods Received Note",
-   "print_hide": 1,
-   "read_only": 1
-  },
-  {
-   "fieldname": "item_html",
-   "fieldtype": "HTML",
-   "label": "Item"
-  },
-  {
-   "fieldname": "section_break_8ncnk",
-   "fieldtype": "Section Break",
-   "hidden": 1
-  },
-  {
-   "fieldname": "total",
-   "fieldtype": "Currency",
-   "hidden": 1,
-   "label": "Total",
-   "read_only": 1
-  },
-  {
-   "fieldname": "total_tax",
-   "fieldtype": "Currency",
-   "hidden": 1,
-   "label": "Total Tax",
-   "read_only": 1
-  },
-  {
-   "fieldname": "grand_total",
-   "fieldtype": "Currency",
-   "hidden": 1,
-   "label": "Grand Total",
-   "read_only": 1
-  },
-  {
-   "fieldname": "in_words",
-   "fieldtype": "Data",
-   "hidden": 1,
-   "label": "In Words",
-   "read_only": 1
-  },
-  {
-   "fieldname": "section_break_ogawr",
-   "fieldtype": "Section Break"
-  },
-  {
-   "fieldname": "comments",
-   "fieldtype": "Small Text",
-   "label": "Comments"
-  },
-  {
-   "fieldname": "section_break_zvhdj",
-   "fieldtype": "Section Break"
-  },
-  {
-   "fieldname": "approved_by",
-   "fieldtype": "Link",
-   "hidden": 1,
-   "label": "Approved By",
-   "no_copy": 1,
-   "options": "User",
-   "read_only": 1
-  },
-  {
-   "fieldname": "contact_person",
-   "fieldtype": "Link",
-   "in_list_view": 1,
-   "label": "Supplier Contact",
-   "options": "Contact"
-  },
-  {
-   "fieldname": "supplier_document_no",
-   "fieldtype": "Data",
-   "label": "Supplier Document Number"
-  },
-  {
-   "fieldname": "vehicle_no",
-   "fieldtype": "Data",
-   "label": "Vehicle Number"
-  },
-  {
-   "fetch_from": "delivery_location.supplier_name",
-   "fieldname": "delivery_location_name",
-   "fieldtype": "Data",
-   "label": "Delivery Location Name",
-   "read_only": 1
-  },
-  {
-   "default": "Today",
-   "fieldname": "posting_date",
-   "fieldtype": "Date",
-   "label": "Posting Date",
-   "no_copy": 1,
-   "read_only_depends_on": "eval: !doc.edit_posting_date_and_time",
-   "reqd": 1
-  },
-  {
-   "default": "Now",
-   "fieldname": "posting_time",
-   "fieldtype": "Time",
-   "label": "Posting Time",
-   "no_copy": 1,
-   "read_only_depends_on": "eval: !doc.edit_posting_date_and_time",
-   "reqd": 1
-  },
-  {
-   "allow_on_submit": 1,
-   "fieldname": "purchase_invoice_name",
-   "fieldtype": "Link",
-   "label": "Purchase Invoice",
-   "no_copy": 1,
-   "options": "Purchase Invoice",
-   "read_only": 1
-  },
-  {
-   "allow_on_submit": 1,
-   "default": "0",
-   "depends_on": "eval: doc.against == \"Work Order\" && doc.docstatus == 1",
-   "fieldname": "rework_created",
-   "fieldtype": "Check",
-   "label": "Rework Created",
-   "read_only": 1
-  },
-  {
-   "allow_on_submit": 1,
-   "fieldname": "grn_deliverables",
-   "fieldtype": "Table",
-   "hidden": 1,
-   "label": "GRN Deliverables",
-   "options": "GRN Deliverable"
-  },
-  {
-   "fieldname": "total_received_quantity",
-   "fieldtype": "Float",
-   "hidden": 1,
-   "label": "Total Received Quantity",
-   "read_only": 1
-  },
-  {
-   "fieldname": "total_receivable_cost",
-   "fieldtype": "Currency",
-   "hidden": 1,
-   "label": "Total Receivable Cost"
-  },
-  {
-   "fieldname": "lot",
-   "fieldtype": "Link",
-   "in_list_view": 1,
-   "in_standard_filter": 1,
-   "label": "Lot",
-   "options": "Lot",
-   "read_only": 1
-  },
-  {
-   "fieldname": "process_name",
-   "fieldtype": "Link",
-   "in_list_view": 1,
-   "in_standard_filter": 1,
-   "label": "Process Name",
-   "options": "Process",
-   "read_only": 1
-  },
-  {
-   "fieldname": "items_json",
-   "fieldtype": "JSON",
-   "hidden": 1,
-   "label": "Items JSON"
-  },
-  {
-   "depends_on": "eval: doc.against == 'Work Order'",
-   "fieldname": "dc_no",
-   "fieldtype": "Data",
-   "label": "DC No"
-  },
-  {
-   "default": "0",
-   "fieldname": "edit_posting_date_and_time",
-   "fieldtype": "Check",
-   "label": "Edit Posting Date and Time"
-  },
-  {
-   "default": "0",
-   "fetch_from": "process_name.is_manual_entry_in_grn",
-   "fieldname": "is_manual_entry",
-   "fieldtype": "Check",
-   "hidden": 1,
-   "label": "Is Manual Entry",
-   "read_only": 1
-  },
-  {
-   "fieldname": "grn_consumed_html",
-   "fieldtype": "HTML",
-   "label": "GRN Consumed HTML"
-  },
-  {
-   "default": "0",
-   "fieldname": "is_internal_unit",
-   "fieldtype": "Check",
-   "hidden": 1,
-   "label": "Is Internal Unit",
-   "read_only": 1
-  },
-  {
-   "allow_on_submit": 1,
-   "default": "0",
-   "fieldname": "transfer_complete",
-   "fieldtype": "Check",
-   "hidden": 1,
-   "label": "Transfer Complete",
-   "read_only": 1
-  },
-  {
-   "allow_on_submit": 1,
-   "depends_on": "eval: doc.is_internal_unit",
-   "fieldname": "ste_transferred",
-   "fieldtype": "Float",
-   "label": "STE Transferred",
-   "read_only": 1
-  },
-  {
-   "allow_on_submit": 1,
-   "fieldname": "total_delivered_qty",
-   "fieldtype": "Float",
-   "label": "Total Delivered Qty",
-   "read_only": 1
-  },
-  {
-   "fieldname": "letter_head",
-   "fieldtype": "Link",
-   "hidden": 1,
-   "label": "Letter Head",
-   "options": "Letter Head"
-  },
-  {
-   "collapsible": 1,
-   "depends_on": "eval: doc.is_internal_unit",
-   "fieldname": "transfer_section",
-   "fieldtype": "Section Break",
-   "label": "Transfer"
-  },
-  {
-   "allow_on_submit": 1,
-   "fieldname": "ste_transferred_percent",
-   "fieldtype": "Percent",
-   "label": "STE Transferred Percent",
-   "read_only": 1
-  },
-  {
-   "default": "0",
-   "fieldname": "is_return",
-   "fieldtype": "Check",
-   "in_standard_filter": 1,
-   "label": "Is Return",
-   "read_only": 1
-  },
-  {
-   "default": "0",
-   "fieldname": "is_rework",
-   "fieldtype": "Check",
-   "label": "Is Rework",
-   "read_only": 1
-  },
-  {
-   "fieldname": "cutting_laysheet",
-   "fieldtype": "Link",
-   "hidden": 1,
-   "label": "Cutting Laysheet",
-   "options": "Cutting LaySheet"
-  },
-  {
-   "default": "0",
-   "fieldname": "additional_grn",
-   "fieldtype": "Check",
-   "label": "Additional GRN"
-  },
-  {
-   "fieldname": "cut_panel_movement",
-   "fieldtype": "Link",
-   "hidden": 1,
-   "label": "Cut Panel Movement",
-   "options": "Cut Panel Movement"
-  },
-  {
-   "default": "0",
-   "fieldname": "allow_non_bundle",
-   "fieldtype": "Check",
-   "label": "Allow Non Bundle"
-  },
-  {
-   "default": "0",
-   "fetch_from": "process_name.includes_packing",
-   "fieldname": "includes_packing",
-   "fieldtype": "Check",
-   "label": "Includes Packing"
-  },
-  {
-   "fieldname": "section_break_sgaj",
-   "fieldtype": "Section Break"
-  },
-  {
-   "depends_on": "eval: doc.against == 'Purchase Order'",
-   "fieldname": "freight_charges",
-   "fieldtype": "Currency",
-   "label": "Freight And Other Cost",
-   "precision": "2"
-  },
-  {
-   "fieldname": "freight_charge_per_product",
-   "fieldtype": "Currency",
-   "hidden": 1,
-   "label": "Freight Charge Per Product"
-  },
-  {
-   "fieldname": "grn_excess_usage_items",
-   "fieldtype": "Table",
-   "hidden": 1,
-   "label": "GRN Excess Usage Items",
-   "options": "GRN Excess Usage Item"
-  },
-  {
-   "default": "0",
-   "fieldname": "is_pack",
-   "fieldtype": "Check",
-   "hidden": 1,
-   "label": "Is Pack"
-  },
-  {
-   "allow_on_submit": 1,
-   "default": "0",
-   "fieldname": "from_finishing",
-   "fieldtype": "Check",
-   "label": "From Finishing",
-   "read_only": 1
-  }
- ],
- "grid_page_length": 50,
- "index_web_pages_for_search": 1,
- "is_submittable": 1,
- "links": [],
- "modified": "2026-02-06 18:20:03.886223",
- "modified_by": "Administrator",
- "module": "Production Api",
- "name": "Goods Received Note",
- "naming_rule": "By \"Naming Series\" field",
- "owner": "Administrator",
- "permissions": [
-  {
-   "cancel": 1,
-   "create": 1,
-   "delete": 1,
-   "email": 1,
-   "export": 1,
-   "print": 1,
-   "read": 1,
-   "report": 1,
-   "role": "System Manager",
-   "share": 1,
-   "submit": 1,
-   "write": 1
-  },
-  {
-   "cancel": 1,
-   "create": 1,
-   "email": 1,
-   "export": 1,
-   "print": 1,
-   "read": 1,
-   "report": 1,
-   "role": "Store Manager",
-   "share": 1,
-   "submit": 1,
-   "write": 1
-  },
-  {
-   "cancel": 1,
-   "create": 1,
-   "email": 1,
-   "export": 1,
-   "print": 1,
-   "read": 1,
-   "report": 1,
-   "role": "Store User",
-   "share": 1,
-   "submit": 1,
-   "write": 1
-  },
-  {
-   "cancel": 1,
-   "create": 1,
-   "email": 1,
-   "export": 1,
-   "print": 1,
-   "read": 1,
-   "report": 1,
-   "role": "Stock User",
-   "select": 1,
-   "share": 1,
-   "submit": 1,
-   "write": 1
-  },
-  {
-   "cancel": 1,
-   "create": 1,
-   "email": 1,
-   "export": 1,
-   "print": 1,
-   "read": 1,
-   "report": 1,
-   "role": "Stock Manager",
-   "select": 1,
-   "share": 1,
-   "submit": 1,
-   "write": 1
-  },
-  {
-   "email": 1,
-   "export": 1,
-   "print": 1,
-   "read": 1,
-   "report": 1,
-   "role": "All",
-   "select": 1,
-   "share": 1
-  }
- ],
- "row_format": "Dynamic",
- "sort_field": "modified",
- "sort_order": "DESC",
- "states": [],
- "track_changes": 1
+    "actions": [],
+    "autoname": "naming_series:",
+    "creation": "2023-04-14 13:27:37.367617",
+    "default_view": "List",
+    "doctype": "DocType",
+    "editable_grid": 1,
+    "engine": "InnoDB",
+    "field_order": [
+        "additional_grn",
+        "allow_non_bundle",
+        "naming_series",
+        "against",
+        "delivery_location",
+        "delivery_location_name",
+        "lot",
+        "dc_no",
+        "cutting_laysheet",
+        "is_internal_unit",
+        "transfer_complete",
+        "is_return",
+        "is_rework",
+        "is_pack",
+        "from_finishing",
+        "column_break_1",
+        "rework_created",
+        "edit_posting_date_and_time",
+        "against_id",
+        "grn_date",
+        "posting_date",
+        "posting_time",
+        "process_name",
+        "is_manual_entry",
+        "letter_head",
+        "cut_panel_movement",
+        "includes_packing",
+        "section_break_1",
+        "supplier",
+        "supplier_document_no",
+        "vehicle_no",
+        "freight_charge_per_product",
+        "column_break_vyiz9",
+        "supplier_name",
+        "delivery_date",
+        "freight_charges",
+        "section_addresses",
+        "supplier_address",
+        "supplier_address_display",
+        "contact_person",
+        "contact_display",
+        "contact_mobile",
+        "column_break_fwrcg",
+        "delivery_address",
+        "delivery_address_display",
+        "total_receivable_cost",
+        "total_received_quantity",
+        "section_break_ve8oj",
+        "items",
+        "item_html",
+        "section_break_sgaj",
+        "grn_deliverables",
+        "items_json",
+        "grn_consumed_html",
+        "grn_excess_usage_items",
+        "transfer_section",
+        "total_delivered_qty",
+        "ste_transferred",
+        "ste_transferred_percent",
+        "section_break_8ncnk",
+        "total",
+        "total_tax",
+        "grand_total",
+        "in_words",
+        "section_break_ogawr",
+        "comments",
+        "section_break_zvhdj",
+        "approved_by",
+        "amended_from",
+        "purchase_invoice_name"
+    ],
+    "fields": [
+        {
+            "fieldname": "naming_series",
+            "fieldtype": "Select",
+            "label": "GRN Series",
+            "options": "GRN-",
+            "reqd": 1
+        },
+        {
+            "fieldname": "against",
+            "fieldtype": "Select",
+            "in_list_view": 1,
+            "label": "Against",
+            "options": "Purchase Order\nWork Order",
+            "reqd": 1
+        },
+        {
+            "fieldname": "delivery_location",
+            "fieldtype": "Link",
+            "label": "Delivery Location",
+            "options": "Supplier",
+            "reqd": 1
+        },
+        {
+            "fieldname": "column_break_1",
+            "fieldtype": "Column Break"
+        },
+        {
+            "fieldname": "against_id",
+            "fieldtype": "Dynamic Link",
+            "label": "PO/WO ID",
+            "options": "against",
+            "reqd": 1
+        },
+        {
+            "default": "Today",
+            "fieldname": "grn_date",
+            "fieldtype": "Date",
+            "hidden": 1,
+            "label": "GRN Date",
+            "read_only": 1
+        },
+        {
+            "fieldname": "section_break_1",
+            "fieldtype": "Section Break"
+        },
+        {
+            "fieldname": "supplier",
+            "fieldtype": "Link",
+            "in_list_view": 1,
+            "in_standard_filter": 1,
+            "label": "Supplier",
+            "options": "Supplier",
+            "reqd": 1
+        },
+        {
+            "default": "Today",
+            "fieldname": "delivery_date",
+            "fieldtype": "Date",
+            "label": "Delivery Date",
+            "reqd": 1
+        },
+        {
+            "fieldname": "column_break_vyiz9",
+            "fieldtype": "Column Break"
+        },
+        {
+            "bold": 1,
+            "fetch_from": "supplier.supplier_name",
+            "fieldname": "supplier_name",
+            "fieldtype": "Data",
+            "label": "Supplier Name",
+            "read_only": 1
+        },
+        {
+            "fieldname": "section_addresses",
+            "fieldtype": "Section Break",
+            "label": "Address and Contact"
+        },
+        {
+            "fieldname": "supplier_address",
+            "fieldtype": "Link",
+            "label": "Supplier Address",
+            "options": "Address",
+            "reqd": 1
+        },
+        {
+            "fieldname": "supplier_address_display",
+            "fieldtype": "Small Text",
+            "label": "Supplier Address Details",
+            "read_only": 1
+        },
+        {
+            "fieldname": "contact_display",
+            "fieldtype": "Small Text",
+            "label": "Contact Name",
+            "read_only": 1
+        },
+        {
+            "fieldname": "contact_mobile",
+            "fieldtype": "Small Text",
+            "label": "Contact Mobile",
+            "read_only": 1
+        },
+        {
+            "fieldname": "column_break_fwrcg",
+            "fieldtype": "Column Break"
+        },
+        {
+            "fieldname": "delivery_address",
+            "fieldtype": "Link",
+            "label": "Delivery Address",
+            "options": "Address",
+            "reqd": 1
+        },
+        {
+            "fieldname": "delivery_address_display",
+            "fieldtype": "Small Text",
+            "label": "Delivery Address Details",
+            "read_only": 1
+        },
+        {
+            "fieldname": "section_break_ve8oj",
+            "fieldtype": "Section Break"
+        },
+        {
+            "allow_on_submit": 1,
+            "fieldname": "items",
+            "fieldtype": "Table",
+            "hidden": 1,
+            "label": "Items",
+            "options": "Goods Received Note Item"
+        },
+        {
+            "fieldname": "amended_from",
+            "fieldtype": "Link",
+            "label": "Amended From",
+            "no_copy": 1,
+            "options": "Goods Received Note",
+            "print_hide": 1,
+            "read_only": 1
+        },
+        {
+            "fieldname": "item_html",
+            "fieldtype": "HTML",
+            "label": "Item"
+        },
+        {
+            "fieldname": "section_break_8ncnk",
+            "fieldtype": "Section Break",
+            "hidden": 1
+        },
+        {
+            "fieldname": "total",
+            "fieldtype": "Currency",
+            "hidden": 1,
+            "label": "Total",
+            "read_only": 1
+        },
+        {
+            "fieldname": "total_tax",
+            "fieldtype": "Currency",
+            "hidden": 1,
+            "label": "Total Tax",
+            "read_only": 1
+        },
+        {
+            "fieldname": "grand_total",
+            "fieldtype": "Currency",
+            "hidden": 1,
+            "label": "Grand Total",
+            "read_only": 1
+        },
+        {
+            "fieldname": "in_words",
+            "fieldtype": "Data",
+            "hidden": 1,
+            "label": "In Words",
+            "read_only": 1
+        },
+        {
+            "fieldname": "section_break_ogawr",
+            "fieldtype": "Section Break"
+        },
+        {
+            "fieldname": "comments",
+            "fieldtype": "Small Text",
+            "label": "Comments"
+        },
+        {
+            "fieldname": "section_break_zvhdj",
+            "fieldtype": "Section Break"
+        },
+        {
+            "fieldname": "approved_by",
+            "fieldtype": "Link",
+            "hidden": 1,
+            "label": "Approved By",
+            "no_copy": 1,
+            "options": "User",
+            "read_only": 1
+        },
+        {
+            "fieldname": "contact_person",
+            "fieldtype": "Link",
+            "in_list_view": 1,
+            "label": "Supplier Contact",
+            "options": "Contact"
+        },
+        {
+            "fieldname": "supplier_document_no",
+            "fieldtype": "Data",
+            "label": "Supplier Document Number"
+        },
+        {
+            "fieldname": "vehicle_no",
+            "fieldtype": "Data",
+            "label": "Vehicle Number"
+        },
+        {
+            "fetch_from": "delivery_location.supplier_name",
+            "fieldname": "delivery_location_name",
+            "fieldtype": "Data",
+            "label": "Delivery Location Name",
+            "read_only": 1
+        },
+        {
+            "default": "Today",
+            "fieldname": "posting_date",
+            "fieldtype": "Date",
+            "label": "Posting Date",
+            "no_copy": 1,
+            "read_only_depends_on": "eval: !doc.edit_posting_date_and_time",
+            "reqd": 1
+        },
+        {
+            "default": "Now",
+            "fieldname": "posting_time",
+            "fieldtype": "Time",
+            "label": "Posting Time",
+            "no_copy": 1,
+            "read_only_depends_on": "eval: !doc.edit_posting_date_and_time",
+            "reqd": 1
+        },
+        {
+            "allow_on_submit": 1,
+            "fieldname": "purchase_invoice_name",
+            "fieldtype": "Link",
+            "label": "Purchase Invoice",
+            "no_copy": 1,
+            "options": "Purchase Invoice",
+            "read_only": 1
+        },
+        {
+            "allow_on_submit": 1,
+            "default": "0",
+            "depends_on": "eval: doc.against == \"Work Order\" && doc.docstatus == 1",
+            "fieldname": "rework_created",
+            "fieldtype": "Check",
+            "label": "Rework Created",
+            "read_only": 1
+        },
+        {
+            "allow_on_submit": 1,
+            "fieldname": "grn_deliverables",
+            "fieldtype": "Table",
+            "hidden": 1,
+            "label": "GRN Deliverables",
+            "options": "GRN Deliverable"
+        },
+        {
+            "fieldname": "total_received_quantity",
+            "fieldtype": "Float",
+            "hidden": 1,
+            "label": "Total Received Quantity",
+            "read_only": 1
+        },
+        {
+            "fieldname": "total_receivable_cost",
+            "fieldtype": "Currency",
+            "hidden": 1,
+            "label": "Total Receivable Cost"
+        },
+        {
+            "fieldname": "lot",
+            "fieldtype": "Link",
+            "in_list_view": 1,
+            "in_standard_filter": 1,
+            "label": "Lot",
+            "options": "Lot",
+            "read_only": 1
+        },
+        {
+            "fieldname": "process_name",
+            "fieldtype": "Link",
+            "in_list_view": 1,
+            "in_standard_filter": 1,
+            "label": "Process Name",
+            "options": "Process",
+            "read_only": 1
+        },
+        {
+            "fieldname": "items_json",
+            "fieldtype": "JSON",
+            "hidden": 1,
+            "label": "Items JSON"
+        },
+        {
+            "depends_on": "eval: doc.against == 'Work Order'",
+            "fieldname": "dc_no",
+            "fieldtype": "Data",
+            "label": "DC No"
+        },
+        {
+            "default": "0",
+            "fieldname": "edit_posting_date_and_time",
+            "fieldtype": "Check",
+            "label": "Edit Posting Date and Time"
+        },
+        {
+            "default": "0",
+            "fetch_from": "process_name.is_manual_entry_in_grn",
+            "fieldname": "is_manual_entry",
+            "fieldtype": "Check",
+            "hidden": 1,
+            "label": "Is Manual Entry",
+            "read_only": 1
+        },
+        {
+            "fieldname": "grn_consumed_html",
+            "fieldtype": "HTML",
+            "label": "GRN Consumed HTML"
+        },
+        {
+            "default": "0",
+            "fieldname": "is_internal_unit",
+            "fieldtype": "Check",
+            "hidden": 1,
+            "label": "Is Internal Unit",
+            "read_only": 1
+        },
+        {
+            "allow_on_submit": 1,
+            "default": "0",
+            "fieldname": "transfer_complete",
+            "fieldtype": "Check",
+            "hidden": 1,
+            "label": "Transfer Complete",
+            "read_only": 1
+        },
+        {
+            "allow_on_submit": 1,
+            "depends_on": "eval: doc.is_internal_unit",
+            "fieldname": "ste_transferred",
+            "fieldtype": "Float",
+            "label": "STE Transferred",
+            "read_only": 1
+        },
+        {
+            "allow_on_submit": 1,
+            "fieldname": "total_delivered_qty",
+            "fieldtype": "Float",
+            "label": "Total Delivered Qty",
+            "read_only": 1
+        },
+        {
+            "fieldname": "letter_head",
+            "fieldtype": "Link",
+            "hidden": 1,
+            "label": "Letter Head",
+            "options": "Letter Head"
+        },
+        {
+            "collapsible": 1,
+            "depends_on": "eval: doc.is_internal_unit",
+            "fieldname": "transfer_section",
+            "fieldtype": "Section Break",
+            "label": "Transfer"
+        },
+        {
+            "allow_on_submit": 1,
+            "fieldname": "ste_transferred_percent",
+            "fieldtype": "Percent",
+            "label": "STE Transferred Percent",
+            "read_only": 1
+        },
+        {
+            "default": "0",
+            "fieldname": "is_return",
+            "fieldtype": "Check",
+            "in_standard_filter": 1,
+            "label": "Is Return",
+            "read_only": 1
+        },
+        {
+            "default": "0",
+            "fieldname": "is_rework",
+            "fieldtype": "Check",
+            "label": "Is Rework",
+            "read_only": 1
+        },
+        {
+            "fieldname": "cutting_laysheet",
+            "fieldtype": "Link",
+            "hidden": 1,
+            "label": "Cutting Laysheet",
+            "options": "Cutting LaySheet"
+        },
+        {
+            "default": "0",
+            "fieldname": "additional_grn",
+            "fieldtype": "Check",
+            "label": "Additional GRN"
+        },
+        {
+            "fieldname": "cut_panel_movement",
+            "fieldtype": "Link",
+            "hidden": 1,
+            "label": "Cut Panel Movement",
+            "options": "Cut Panel Movement"
+        },
+        {
+            "default": "0",
+            "fieldname": "allow_non_bundle",
+            "fieldtype": "Check",
+            "label": "Allow Non Bundle"
+        },
+        {
+            "default": "0",
+            "fetch_from": "process_name.includes_packing",
+            "fieldname": "includes_packing",
+            "fieldtype": "Check",
+            "label": "Includes Packing"
+        },
+        {
+            "fieldname": "section_break_sgaj",
+            "fieldtype": "Section Break"
+        },
+        {
+            "depends_on": "eval: doc.against == 'Purchase Order'",
+            "fieldname": "freight_charges",
+            "fieldtype": "Currency",
+            "label": "Freight And Other Cost",
+            "precision": "2"
+        },
+        {
+            "fieldname": "freight_charge_per_product",
+            "fieldtype": "Currency",
+            "hidden": 1,
+            "label": "Freight Charge Per Product"
+        },
+        {
+            "fieldname": "grn_excess_usage_items",
+            "fieldtype": "Table",
+            "hidden": 1,
+            "label": "GRN Excess Usage Items",
+            "options": "GRN Excess Usage Item"
+        },
+        {
+            "default": "0",
+            "fieldname": "is_pack",
+            "fieldtype": "Check",
+            "hidden": 1,
+            "label": "Is Pack"
+        },
+        {
+            "allow_on_submit": 1,
+            "default": "0",
+            "fieldname": "from_finishing",
+            "fieldtype": "Check",
+            "label": "From Finishing",
+            "read_only": 1
+        }
+    ],
+    "grid_page_length": 50,
+    "index_web_pages_for_search": 1,
+    "is_submittable": 1,
+    "links": [],
+    "modified": "2026-02-06 18:20:03.886223",
+    "modified_by": "Administrator",
+    "module": "Production Api",
+    "name": "Goods Received Note",
+    "naming_rule": "By \"Naming Series\" field",
+    "owner": "Administrator",
+    "permissions": [
+        {
+            "cancel": 1,
+            "create": 1,
+            "delete": 1,
+            "email": 1,
+            "export": 1,
+            "print": 1,
+            "read": 1,
+            "report": 1,
+            "role": "System Manager",
+            "share": 1,
+            "submit": 1,
+            "write": 1
+        },
+        {
+            "cancel": 1,
+            "create": 1,
+            "email": 1,
+            "export": 1,
+            "print": 1,
+            "read": 1,
+            "report": 1,
+            "role": "Store Manager",
+            "share": 1,
+            "submit": 1,
+            "write": 1
+        },
+        {
+            "cancel": 1,
+            "create": 1,
+            "email": 1,
+            "export": 1,
+            "print": 1,
+            "read": 1,
+            "report": 1,
+            "role": "Store User",
+            "share": 1,
+            "submit": 1,
+            "write": 1
+        },
+        {
+            "cancel": 1,
+            "create": 1,
+            "email": 1,
+            "export": 1,
+            "print": 1,
+            "read": 1,
+            "report": 1,
+            "role": "Stock User",
+            "select": 1,
+            "share": 1,
+            "submit": 1,
+            "write": 1
+        },
+        {
+            "cancel": 1,
+            "create": 1,
+            "email": 1,
+            "export": 1,
+            "print": 1,
+            "read": 1,
+            "report": 1,
+            "role": "Stock Manager",
+            "select": 1,
+            "share": 1,
+            "submit": 1,
+            "write": 1
+        },
+        {
+            "email": 1,
+            "export": 1,
+            "print": 1,
+            "read": 1,
+            "report": 1,
+            "role": "All",
+            "select": 1,
+            "share": 1
+        }
+    ],
+    "row_format": "Dynamic",
+    "sort_field": "modified",
+    "sort_order": "DESC",
+    "states": [],
+    "track_changes": 1
 }
