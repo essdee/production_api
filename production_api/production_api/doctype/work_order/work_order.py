@@ -87,6 +87,8 @@ class WorkOrder(Document):
             else:
                 status = "Partially Billed"
 
+        if self.docstatus == 2:
+            status = "Cancelled"
         if self.open_status == "Close":
             status = "Closed"
 
