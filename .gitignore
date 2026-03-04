@@ -7,3 +7,4 @@ production_api/docs/current
 .vscode
 node_modules
 yarn.lock
+package-lock.json
