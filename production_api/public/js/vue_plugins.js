@@ -92,6 +92,7 @@ import InvoiceWoItems from "./PurchaseInvoice/components/InvoiceWOItems.vue"
 import RecutPrintPanelDetail from "./CuttingPlan/components/RecutPrintPanelDetails.vue"
 import RecutPrintPanelView from "./CuttingPlan/components/RecutPrintPanelView.vue"
 import MultiCCR from "./CuttingPlan/components/MultiCCR.vue"
+import PPOReport from "./PPOReport/components/PPOReport.vue"
 
 // Product Development
 import {
@@ -1123,6 +1124,22 @@ frappe.production.product_development.ui.ProductMeasurement = ProductMeasurement
 frappe.production.product_development.ui.ProductSilhoutte = ProductSilhoutteWrapper
 frappe.production.product_development.ui.ProductGraphics = ProductGraphicsWrapper
 frappe.production.product_development.ui.ProductMeasurementImage = ProductMeasurementImageWrapper
+
+// PPO Report
+frappe.production.ui.PPOReport = class {
+    constructor(wrapper) {
+        this.$wrapper = $(wrapper)
+        this.make_app()
+    }
+    make_app() {
+        this.app = createApp(PPOReport)
+        SetVueGlobals(this.app)
+        this.vue = this.app.mount(this.$wrapper.get(0))
+    }
+    load_data(data) {
+        this.vue.load_data(data)
+    }
+}
 
 // Sewing Plan
 frappe.production.ui.SewingPlan = SewingPlanWrapper

@@ -87,8 +87,6 @@ class WorkOrder(Document):
             else:
                 status = "Partially Billed"
 
-        if self.docstatus == 2:
-            status = "Cancelled"
         if self.open_status == "Close":
             status = "Closed"
 
@@ -249,7 +247,7 @@ class WorkOrder(Document):
                 for grn in grn_details:
                     grn = grn.strip()
                     quantity, rework_quantity = frappe.get_value("Goods Received Note Item", grn, [
-                                                                 "quantity", "rework_quantity"])
+                        "quantity", "rework_quantity"])
                     update_qty = 0
                     valid_qty = 0
                     if self.docstatus == 1:
@@ -1389,7 +1387,7 @@ def update_stock(work_order):
     sl_entries = []
     doc = frappe.get_doc("Work Order", work_order)
     grn_list = frappe.get_all('Goods Received Note', {
-                              "docstatus": 1, "against_id": work_order}, pluck="name")
+        "docstatus": 1, "against_id": work_order}, pluck="name")
     if not grn_list:
         frappe.throw("There is no Goods Received for this Work Order")
 
@@ -1555,7 +1553,7 @@ def calc(doc_name):
     for grn in grn_list:
         calculate_grn_pieces(grn)
     dc_list = frappe.get_list("Delivery Challan", filters={
-                              "work_order": doc_name, "docstatus": 1}, pluck="name")
+        "work_order": doc_name, "docstatus": 1}, pluck="name")
     from production_api.production_api.doctype.delivery_challan.delivery_challan import calculate_pieces as calculate_dc_pieces
     for dc in dc_list:
         calculate_dc_pieces(dc)
@@ -2056,7 +2054,7 @@ def create_finishing_detail(work_order, from_finishing=False):
 
     rework_items = {}
     rework_list = frappe.get_all("GRN Rework Item", filters={
-                                 "lot": wo_doc.lot}, pluck="name")
+        "lot": wo_doc.lot}, pluck="name")
     for rework in rework_list:
         rework_doc = frappe.get_doc("GRN Rework Item", rework)
         for row in rework_doc.grn_rework_item_details:
@@ -2120,7 +2118,7 @@ def create_finishing_detail(work_order, from_finishing=False):
     primary_values = get_primary_values(wo_doc.lot)
     ipd = frappe.get_value("Lot", wo_doc.lot, "production_detail")
     dependent, primary, pack_stage = frappe.get_value("Item Production Detail", ipd, [
-                                                      "dependent_attribute", "primary_item_attribute", "pack_out_stage"])
+        "dependent_attribute", "primary_item_attribute", "pack_out_stage"])
     for size in primary_values:
         variant = get_or_create_variant(
             wo_doc.item, {dependent: pack_stage, primary: size})

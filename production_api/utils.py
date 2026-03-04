@@ -929,9 +929,8 @@ def get_inhouse_qty(lot, process):
 
 	inward_qty = {"data": {}, "total": {}, "over_all": {}}
 
-	wo_list = frappe.get_all(
-		"Work Order", filters={"lot": lot, "process_name": process, "docstatus": 1}, pluck="name"
-	)
+	wo_list = get_process_wo_list(process, lot)
+	
 	if not wo_list:
 		frappe.msgprint(f"No Work Order's for Process {process}")
 		return
@@ -943,24 +942,7 @@ def get_inhouse_qty(lot, process):
 		},as_dict=True,
 	)
 
-	eqi_list = frappe.get_all("Essdee Quality Inspection", filters={
-		"docstatus": 1,
-		"against": "Work Order",
-		"against_id": ['in', wo_list]
-	}, order_by = "posting_date desc", pluck="name")
-	
-	d = {}
-	for eqi in eqi_list:
-		eqi_doc = frappe.get_doc("Essdee Quality Inspection", eqi)
-		d.setdefault(eqi_doc.supplier_name, {})
-		for row in eqi_doc.essdee_quality_inspection_colours:
-			if row.selected:
-				d[eqi_doc.supplier_name].setdefault(row.colour, {})
-
-		for row in eqi_doc.essdee_quality_inspection_sizes:
-			if row.selected:
-				for colour in d[eqi_doc.supplier_name]:
-					d[eqi_doc.supplier_name][colour].setdefault(row.size, eqi_doc.result)
+	d = get_eqi_status(wo_list)
 
 	for item in items:
 		sup_name = frappe.get_cached_value("Work Order", item['parent'], "supplier_name")
@@ -1029,6 +1011,27 @@ def get_inhouse_qty(lot, process):
 		"is_set_item": is_set_item,
 		"set_attr": set_attr,
 	}
+
+def get_eqi_status(wo_list):
+	eqi_list = frappe.get_all("Essdee Quality Inspection", filters={
+		"docstatus": 1,
+		"against": "Work Order",
+		"against_id": ['in', wo_list]
+	}, order_by = "posting_date desc", pluck="name")
+	
+	d = {}
+	for eqi in eqi_list:
+		eqi_doc = frappe.get_doc("Essdee Quality Inspection", eqi)
+		d.setdefault(eqi_doc.supplier_name, {})
+		for row in eqi_doc.essdee_quality_inspection_colours:
+			if row.selected:
+				d[eqi_doc.supplier_name].setdefault(row.colour, {})
+
+		for row in eqi_doc.essdee_quality_inspection_sizes:
+			if row.selected:
+				for colour in d[eqi_doc.supplier_name]:
+					d[eqi_doc.supplier_name][colour].setdefault(row.size, eqi_doc.result)
+	return d
 
 @frappe.whitelist()
 def get_finishing_plan_dict(doc):
@@ -2664,4 +2667,164 @@ def get_lot_data(lot, lot_data, cloth_details, completed, item_name, lay_no, no_
 			"cloth_details": cloth_details,
 			"cloth_total": cloth_total, 
 		}
-	return lot_data	
+	return lot_data
+
+@frappe.whitelist()
+def get_ppo_report_data(from_date=None, to_date=None, product_category=None):
+	from production_api.production_api.doctype.item.item import get_attribute_details
+
+	filters = {"docstatus": 1}
+	if from_date and to_date:
+		filters["delivery_date"] = ["between", [from_date, to_date]]
+	elif from_date:
+		filters["delivery_date"] = [">=", from_date]
+	elif to_date:
+		filters["delivery_date"] = ["<=", to_date]
+
+	if product_category:
+		items_in_cat = frappe.get_all("Item", filters={"product_category": product_category}, pluck="name")
+		if not items_in_cat:
+			return {"groups": []}
+		filters["item"] = ["in", items_in_cat]
+
+	orders = frappe.get_all(
+		"Production Order",
+		filters=filters,
+		fields=["name", "item", "fabric", "dia", "gsm", "delivery_date", "posting_date", "dont_deliver_after"],
+		order_by="delivery_date asc, name asc",
+	)
+
+	size_groups = {}
+	for order in orders:
+		doc = frappe.get_cached_doc("Production Order", order["name"])
+		attr_details = get_attribute_details(order["item"])
+		primary_attribute_values = attr_details.get("primary_attribute_values", [])
+		group_key = tuple(sorted(primary_attribute_values))
+
+		qty_map = {}
+		total = 0
+		for row in doc.production_order_details:
+			variant = frappe.get_cached_doc("Item Variant", row.item_variant)
+			primary_attribute = attr_details["primary_attribute"]
+			for attr in variant.attributes:
+				if attr.attribute == primary_attribute:
+					qty_map.setdefault(attr.attribute_value, 0)
+					qty_map[attr.attribute_value] += row.quantity
+					total += row.quantity
+					break
+
+		size_groups.setdefault(group_key, {
+			"sizes": primary_attribute_values,
+			"orders": [],
+		})
+		size_groups[group_key]["orders"].append({
+			"name": order["name"],
+			"item": order["item"],
+			"fabric": order.get("fabric") or "",
+			"dia": order.get("dia") or "",
+			"gsm": order.get("gsm") or 0,
+			"delivery_date": str(order["delivery_date"]) if order["delivery_date"] else "",
+			"posting_date": str(order["posting_date"]) if order["posting_date"] else "",
+			"dont_deliver_after": str(order["dont_deliver_after"]) if order["dont_deliver_after"] else "",
+			"qty": qty_map,
+			"total": total,
+		})
+
+	groups = list(size_groups.values())
+	return {"groups": groups}
+
+@frappe.whitelist()
+def download_ppo_report(from_date=None, to_date=None, product_category=None):
+	from frappe.utils.xlsxutils import make_xlsx
+
+	data = get_ppo_report_data(from_date, to_date, product_category)
+	rows = []
+	for group in data["groups"]:
+		sizes = group["sizes"]
+		rows.append(["Sizes: " + ", ".join(sizes)])
+		rows.append(["S.No", "PPO", "Item", "Fabric", "Dia", "GSM", "Posting Date", "Delivery Date", "Don't Deliver After"] + sizes + ["Total"])
+		for idx, order in enumerate(group["orders"], 1):
+			row = [idx, order["name"], order["item"], order["fabric"], order["dia"], order["gsm"], order["posting_date"], order["delivery_date"], order["dont_deliver_after"]]
+			for size in sizes:
+				row.append(order["qty"].get(size, 0))
+			row.append(order["total"])
+			rows.append(row)
+		total_row = ["", "", "", "", "", "", "", "", "Total"]
+		for size in sizes:
+			total_row.append(sum(o["qty"].get(size, 0) for o in group["orders"]))
+		total_row.append(sum(o["total"] for o in group["orders"]))
+		rows.append(total_row)
+		rows.append([])
+
+	xlsx_file = make_xlsx(rows, "PPO Report")
+	now = frappe.utils.now_datetime().strftime("%d-%m-%Y_%H-%M-%S")
+	frappe.response["filename"] = f"PPO_Report_{now}.xlsx"
+	frappe.response["filecontent"] = xlsx_file.getvalue()
+	frappe.response["type"] = "binary"
+
+@frappe.whitelist()
+def get_ppo_dispatch_summary(production_order):
+	lots = frappe.get_all("Lot", {"production_order": production_order}, pluck="name")
+	if not lots:
+		return {"sizes": [], "rows": []}
+
+	fps = frappe.get_all("Finishing Plan", {"lot": ["in", lots]}, pluck="name")
+	if not fps:
+		return {"sizes": [], "rows": []}
+
+	# Source 1: Finishing Plan Dispatch → Stock Entry
+	fpd_rows = frappe.db.sql("""
+		SELECT
+			se.posting_date as date,
+			fpdi.lot,
+			iva.attribute_value as size,
+			SUM(fpdi.quantity) as qty
+		FROM `tabFinishing Plan Dispatch Item` fpdi
+		JOIN `tabFinishing Plan Dispatch` fpd ON fpd.name = fpdi.parent
+		JOIN `tabStock Entry` se ON se.name = fpd.stock_entry
+			AND se.purpose = 'Material Issue' AND se.docstatus = 1
+		LEFT JOIN `tabItem Variant Attribute` iva
+			ON iva.parent = fpdi.item_variant AND iva.attribute = 'Size'
+		WHERE fpdi.against_id IN %(fps)s
+		AND fpd.docstatus = 1
+		GROUP BY se.posting_date, fpdi.lot, iva.attribute_value
+	""", {"fps": fps}, as_dict=True)
+
+	# Source 2: Finishing Plan → Stock Entry (direct)
+	fp_rows = frappe.db.sql("""
+		SELECT
+			se.posting_date as date,
+			sed.lot,
+			iva.attribute_value as size,
+			SUM(sed.qty) as qty
+		FROM `tabStock Entry` se
+		JOIN `tabStock Entry Detail` sed ON sed.parent = se.name
+		LEFT JOIN `tabItem Variant Attribute` iva
+			ON iva.parent = sed.item AND iva.attribute = 'Size'
+		WHERE se.against = 'Finishing Plan'
+		AND se.against_id IN %(fps)s
+		AND se.purpose = 'Material Issue'
+		AND se.docstatus = 1
+		GROUP BY se.posting_date, sed.lot, iva.attribute_value
+	""", {"fps": fps}, as_dict=True)
+
+	# Pivot combined rows into {date, lot, sizes: {size: qty}, total}
+	from collections import OrderedDict
+	key_map = OrderedDict()
+	all_sizes = set()
+	for r in fpd_rows + fp_rows:
+		key = (str(r.date) if r.date else "", r.lot or "")
+		if key not in key_map:
+			key_map[key] = {"date": r.date, "lot": r.lot, "sizes": {}, "total": 0}
+		size = r.size or "Unknown"
+		all_sizes.add(size)
+		key_map[key]["sizes"][size] = (key_map[key]["sizes"].get(size, 0)) + (r.qty or 0)
+		key_map[key]["total"] += (r.qty or 0)
+
+	# Sort by date, then lot
+	sorted_rows = sorted(key_map.values(), key=lambda x: (str(x["date"] or ""), x["lot"] or ""))
+
+	return {
+		"sizes": sorted(all_sizes),
+		"rows": sorted_rows,
+	}
