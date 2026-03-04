@@ -11,8 +11,6 @@ from erpnext.accounts.doctype.tax_rule.tax_rule import get_party_details
 from production_api.production_api.doctype.item.item import get_or_create_variant
 from production_api.utils import update_if_string_instance, get_variant_attr_details
 from production_api.production_api.doctype.mrp_settings.mrp_settings import get_purchase_invoice_series, post_erp_request
-from production_api.production_api.doctype.work_order.work_order import update_billing_status
-
 
 class PurchaseInvoice(Document):
     def onload(self):
