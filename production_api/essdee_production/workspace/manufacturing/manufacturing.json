@@ -1,6 +1,6 @@
 {
  "charts": [],
- "content": "[{\"id\":\"9NtaKEcHzB\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">Manufacturing</span>\",\"col\":12}},{\"id\":\"7Nl41d39i_\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Lot\",\"col\":3}},{\"id\":\"SffCjV3lXs\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Work Order\",\"col\":3}},{\"id\":\"dgyhm9E6c2\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"DC\",\"col\":3}},{\"id\":\"8wcboYArR9\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"GRN\",\"col\":3}},{\"id\":\"EZtp0q6_3_\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Process Cost\",\"col\":3}},{\"id\":\"OmqmAP5rlH\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Supplier\",\"col\":3}},{\"id\":\"P2bi1cXHjk\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Item\",\"col\":3}},{\"id\":\"EYGmidcNrS\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Sewing Plan\",\"col\":3}},{\"id\":\"pMft7X-9Pd\",\"type\":\"spacer\",\"data\":{\"col\":12}},{\"id\":\"tmJen2wnlU\",\"type\":\"card\",\"data\":{\"card_name\":\"Reports\",\"col\":4}},{\"id\":\"E_pXGeFjru\",\"type\":\"card\",\"data\":{\"card_name\":\"Rework Detail\",\"col\":4}}]",
+ "content": "[{\"id\":\"9NtaKEcHzB\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">Manufacturing</span>\",\"col\":12}},{\"id\":\"7Nl41d39i_\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Lot\",\"col\":3}},{\"id\":\"SffCjV3lXs\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Work Order\",\"col\":3}},{\"id\":\"dgyhm9E6c2\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"DC\",\"col\":3}},{\"id\":\"8wcboYArR9\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"GRN\",\"col\":3}},{\"id\":\"EZtp0q6_3_\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Process Cost\",\"col\":3}},{\"id\":\"OmqmAP5rlH\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Supplier\",\"col\":3}},{\"id\":\"P2bi1cXHjk\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Item\",\"col\":3}},{\"id\":\"EYGmidcNrS\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Sewing Plan\",\"col\":3}},{\"id\":\"hvdZrzB0XA\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Production Order\",\"col\":3}},{\"id\":\"pMft7X-9Pd\",\"type\":\"spacer\",\"data\":{\"col\":12}},{\"id\":\"tmJen2wnlU\",\"type\":\"card\",\"data\":{\"card_name\":\"Reports\",\"col\":4}},{\"id\":\"VJJhGuyY09\",\"type\":\"card\",\"data\":{\"card_name\":\"Production Reports\",\"col\":4}},{\"id\":\"E_pXGeFjru\",\"type\":\"card\",\"data\":{\"card_name\":\"Rework Detail\",\"col\":4}}]",
  "creation": "2025-01-28 12:33:46.232932",
  "custom_blocks": [],
  "docstatus": 0,
@@ -76,30 +76,10 @@
    "hidden": 0,
    "is_query_report": 0,
    "label": "Reports",
-   "link_count": 14,
+   "link_count": 9,
    "link_type": "DocType",
    "onboard": 0,
    "type": "Card Break"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Daily Production Report",
-   "link_count": 0,
-   "link_to": "daily-production-rep",
-   "link_type": "Page",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Daily Cut Sheet Report",
-   "link_count": 0,
-   "link_to": "daily-cut-sheet-repo",
-   "link_type": "Page",
-   "onboard": 0,
-   "type": "Link"
   },
   {
    "hidden": 0,
@@ -118,26 +98,6 @@
    "link_count": 0,
    "link_to": "Work Order Report",
    "link_type": "Report",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Time and Action Order Tracking",
-   "link_count": 0,
-   "link_to": "time-and-action-orde",
-   "link_type": "Page",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Time and Action Weekly Review Report",
-   "link_count": 0,
-   "link_to": "t-and-a-weekly-revie",
-   "link_type": "Page",
    "onboard": 0,
    "type": "Link"
   },
@@ -204,6 +164,65 @@
   {
    "hidden": 0,
    "is_query_report": 0,
+   "label": "Process Pending Report",
+   "link_count": 0,
+   "link_to": "process-pending",
+   "link_type": "Page",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Production Reports",
+   "link_count": 6,
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Daily Production Report",
+   "link_count": 0,
+   "link_to": "daily-production-rep",
+   "link_type": "Page",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Daily Cut Sheet report",
+   "link_count": 0,
+   "link_to": "daily-cut-sheet-repo",
+   "link_type": "Page",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Time and Action Order Tracking",
+   "link_count": 0,
+   "link_to": "time-and-action-orde",
+   "link_type": "Page",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "T&A Weekly Review Report",
+   "link_count": 0,
+   "link_to": "t-and-a-weekly-revie",
+   "link_type": "Page",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
    "label": "Multi CCR",
    "link_count": 0,
    "link_to": "multi-ccr",
@@ -222,7 +241,7 @@
    "type": "Link"
   }
  ],
- "modified": "2026-03-02 14:28:53.195645",
+ "modified": "2026-03-05 14:36:50.328620",
  "modified_by": "Administrator",
  "module": "Essdee Production",
  "name": "Manufacturing",
@@ -234,6 +253,14 @@
  "roles": [],
  "sequence_id": 1.0,
  "shortcuts": [
+  {
+   "color": "Grey",
+   "doc_view": "List",
+   "label": "Production Order",
+   "link_to": "Production Order",
+   "stats_filter": "[]",
+   "type": "DocType"
+  },
   {
    "color": "Grey",
    "doc_view": "List",

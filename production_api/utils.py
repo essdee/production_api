@@ -2837,3 +2837,109 @@ def get_ppo_dispatch_summary(production_order):
 		"sizes": sorted(all_sizes),
 		"rows": sorted_rows,
 	}
+
+@frappe.whitelist()
+def get_sewing_progress_report(process=None, status=None, category=None, lot_list_val=None, item_list=None):
+	finishing_inward_process = process or frappe.db.get_single_value("MRP Settings", "finishing_inward_process")
+
+	conditions = ""
+	con = {}
+
+	if not status:
+		status = "Open"
+	conditions += ' AND t1.status = %(status)s'
+	con['status'] = status
+
+	if category:
+		conditions += ' AND t2.product_category = %(cat)s'
+		con['cat'] = category
+
+	lot_list_val = update_if_string_instance(lot_list_val)
+	if lot_list_val and isinstance(lot_list_val, list) and len(lot_list_val) > 0:
+		conditions += ' AND t1.name IN %(lot_list)s'
+		lot_list_val.append("")
+		con['lot_list'] = tuple(lot_list_val)
+
+	item_list = update_if_string_instance(item_list)
+	if item_list and isinstance(item_list, list) and len(item_list) > 0:
+		conditions += ' AND t1.item IN %(item_list)s'
+		item_list.append("")
+		con['item_list'] = tuple(item_list)
+
+	lots = frappe.db.sql(
+		f"""
+			SELECT t1.name, t1.item, t1.production_detail
+			FROM `tabLot` t1
+			JOIN `tabItem` t2 ON t1.item = t2.name
+			WHERE 1 = 1 {conditions}
+		""", con, as_dict=True
+	)
+
+	all_company_suppliers = set()
+	result = []
+	for lot in lots:
+		cutting_process = None
+		if lot.production_detail:
+			cutting_process = frappe.db.get_value("Item Production Detail", lot.production_detail, "cutting_process")
+
+		cutting_received_qty = 0
+		cutting_completion_date = None
+		total_qty = 0
+		supplier_qty = {}
+
+		cutting_wo_list = []
+		if cutting_process:
+			cutting_wo_list = get_process_wo_list(cutting_process, lot.name)
+
+		if not cutting_wo_list:
+			continue
+
+		if cutting_wo_list:
+				cutting_agg = frappe.db.sql("""
+					SELECT SUM(woci.received_qty) as received, MAX(wo.last_grn_date) as last_date
+					FROM `tabWork Order Calculated Item` woci
+					JOIN `tabWork Order` wo ON woci.parent = wo.name
+					WHERE wo.name IN %(wo_list)s
+				""", {"wo_list": cutting_wo_list}, as_dict=True)
+				if cutting_agg:
+					cutting_received_qty = flt(cutting_agg[0].get("received"))
+					cutting_completion_date = cutting_agg[0].get("last_date")
+
+		if finishing_inward_process:
+			finishing_wo_list = get_process_wo_list(finishing_inward_process, lot.name)
+			if finishing_wo_list:
+				finishing_agg = frappe.db.sql("""
+					SELECT wo.supplier, s.supplier_name, wo.is_internal_unit,
+						SUM(woci.delivered_quantity) as delivered,
+						SUM(woci.received_qty) as received
+					FROM `tabWork Order Calculated Item` woci
+					JOIN `tabWork Order` wo ON woci.parent = wo.name
+					LEFT JOIN `tabSupplier` s ON s.name = wo.supplier
+					WHERE wo.name IN %(wo_list)s
+					GROUP BY wo.supplier, wo.is_internal_unit
+				""", {"wo_list": finishing_wo_list}, as_dict=True)
+				for row in finishing_agg:
+					delivered = flt(row.get("delivered"))
+					received = flt(row.get("received"))
+					pending = delivered - received
+					total_qty += received
+					if row.get("is_internal_unit"):
+						supplier_name = row.get("supplier_name") or row.get("supplier") or "Others"
+						supplier_qty[supplier_name] = flt(supplier_qty.get(supplier_name)) + pending
+						all_company_suppliers.add(supplier_name)
+					else:
+						supplier_qty["Others"] = flt(supplier_qty.get("Others")) + pending
+
+		result.append({
+			"item": lot.item,
+			"lot": lot.name,
+			"cutting_received_qty": cutting_received_qty,
+			"cutting_completion_date": str(cutting_completion_date) if cutting_completion_date else None,
+			"total_qty": total_qty,
+			"supplier_qty": supplier_qty,
+		})
+
+	return {
+		"suppliers": sorted(all_company_suppliers),
+		"rows": result,
+	}

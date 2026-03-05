@@ -93,6 +93,7 @@ import RecutPrintPanelDetail from "./CuttingPlan/components/RecutPrintPanelDetai
 import RecutPrintPanelView from "./CuttingPlan/components/RecutPrintPanelView.vue"
 import MultiCCR from "./CuttingPlan/components/MultiCCR.vue"
 import PPOReport from "./PPOReport/components/PPOReport.vue"
+import ProcessPending from "./components/ProcessPending.vue"
 
 // Product Development
 import {
@@ -1143,3 +1144,16 @@ frappe.production.ui.PPOReport = class {
 
 // Sewing Plan
 frappe.production.ui.SewingPlan = SewingPlanWrapper
+
+// Process Pending
+frappe.production.ui.ProcessPending = class {
+    constructor(wrapper) {
+        this.$wrapper = $(wrapper)
+        this.make_app()
+    }
+    make_app() {
+        this.app = createApp(ProcessPending)
+        SetVueGlobals(this.app)
+        this.vue = this.app.mount(this.$wrapper.get(0))
+    }
+}

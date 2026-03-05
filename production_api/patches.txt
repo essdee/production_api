@@ -4,6 +4,7 @@ production_api.patches.v1_0.mapping
 production_api.patches.v1_0.update_cutting_marker_ratios #1
 
 [post_model_sync]
+production_api.patches.v1_0.set_production_order_submitted_by
 production_api.patches.v1_0.update_po_item_uom
 production_api.patches.v1_0.update_received_type #1
 production_api.patches.v1_0.update_pending_items_po #1
