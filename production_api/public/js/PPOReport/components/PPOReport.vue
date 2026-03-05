@@ -3,6 +3,7 @@
         <div class="ppo-header">
             <h3 class="ppo-title">PPO Report</h3>
             <div class="ppo-controls">
+                <div class="status-input ctrl-slot"></div>
                 <div class="category-input ctrl-slot"></div>
                 <div class="from-date-input ctrl-slot"></div>
                 <div class="to-date-input ctrl-slot"></div>
@@ -53,6 +54,8 @@
                                 <th>Posting Date</th>
                                 <th>Delivery Date</th>
                                 <th>Don't Deliver After</th>
+                                <th>Status</th>
+                                <th>Comments</th>
                                 <th v-for="size in group.sizes" :key="size">{{ size }}</th>
                                 <th>Total</th>
                                 <th>Action</th>
@@ -74,6 +77,12 @@
                                 <td>{{ formatDate(order.posting_date) }}</td>
                                 <td>{{ formatDate(order.delivery_date) }}</td>
                                 <td>{{ formatDate(order.dont_deliver_after) }}</td>
+                                <td>
+                                    <span :class="order.status === 'Draft' ? 'status-draft' : 'status-submitted'">
+                                        {{ order.status }}
+                                    </span>
+                                </td>
+                                <td class="cell-comments" :title="order.comments">{{ order.comments }}</td>
                                 <td v-for="size in group.sizes" :key="size"
                                     :class="{ 'cell-zero': !(order.qty[size]) }">
                                     {{ order.qty[size] || '—' }}
@@ -87,15 +96,15 @@
                             </tr>
                             <template v-if="summaryState[order.name]?.expanded">
                               <tr v-if="summaryState[order.name]?.loading" class="summary-row">
-                                <td :colspan="11 + group.sizes.length" class="summary-status">Loading...</td>
+                                <td :colspan="13 + group.sizes.length" class="summary-status">Loading...</td>
                               </tr>
                               <tr v-else-if="!summaryState[order.name]?.data?.rows?.length" class="summary-row">
-                                <td :colspan="11 + group.sizes.length" class="summary-status">No dispatch records found.</td>
+                                <td :colspan="13 + group.sizes.length" class="summary-status">No dispatch records found.</td>
                               </tr>
                               <template v-else>
                                 <tr v-for="(row, rIdx) in summaryState[order.name].data.rows"
                                     :key="'s-' + order.name + '-' + rIdx" class="summary-row">
-                                  <td colspan="9" class="summary-label-cell">
+                                  <td colspan="11" class="summary-label-cell">
                                     {{ formatDate(row.date) }} &middot; {{ row.lot }}
                                   </td>
                                   <td v-for="s in group.sizes" :key="s"
@@ -106,7 +115,7 @@
                                   <td></td>
                                 </tr>
                                 <tr class="summary-footer-row">
-                                  <td colspan="9" class="summary-label-cell summary-footer-label">Dispatched Total</td>
+                                  <td colspan="11" class="summary-label-cell summary-footer-label">Dispatched Total</td>
                                   <td v-for="s in group.sizes" :key="s" class="summary-footer-num">
                                     {{ summarySizeTotal(order.name, s) }}
                                   </td>
@@ -119,7 +128,7 @@
                         </tbody>
                         <tfoot>
                             <tr>
-                                <td colspan="9" class="foot-label">Total</td>
+                                <td colspan="11" class="foot-label">Total</td>
                                 <td v-for="size in group.sizes" :key="size" class="foot-num">
                                     {{ column_total(group, size).toLocaleString() }}
                                 </td>
@@ -146,6 +155,7 @@ const groups = ref([])
 const fetched = ref(false)
 const summaryState = ref({})
 
+let status_ctrl = null
 let category_ctrl = null
 let from_date_ctrl = null
 let to_date_ctrl = null
@@ -153,6 +163,19 @@ const sample_doc = ref({})
 
 onMounted(() => {
     const el = root.value
+
+    $(el).find(".status-input").html("")
+    status_ctrl = frappe.ui.form.make_control({
+        parent: $(el).find(".status-input"),
+        df: {
+            fieldname: "status",
+            fieldtype: "Select",
+            options: "\nDraft\nSubmitted",
+            label: "Status",
+        },
+        doc: sample_doc.value,
+        render_input: true,
+    })
 
     $(el).find(".category-input").html("")
     category_ctrl = frappe.ui.form.make_control({
@@ -193,11 +216,13 @@ onMounted(() => {
 })
 
 function get_report() {
+    const status = status_ctrl.get_value()
     const product_category = category_ctrl.get_value()
     const from_date = from_date_ctrl.get_value()
     const to_date = to_date_ctrl.get_value()
 
     const args = {}
+    if (status) args.status = status
     if (product_category) args.product_category = product_category
     if (from_date) args.from_date = from_date
     if (to_date) args.to_date = to_date
@@ -241,10 +266,12 @@ function formatDate(dateStr) {
 }
 
 function download_excel() {
+    const status = status_ctrl.get_value()
     const product_category = category_ctrl.get_value()
     const from_date = from_date_ctrl.get_value()
     const to_date = to_date_ctrl.get_value()
     const params = new URLSearchParams()
+    if (status) params.set('status', status)
     if (product_category) params.set('product_category', product_category)
     if (from_date) params.set('from_date', from_date)
     if (to_date) params.set('to_date', to_date)
@@ -477,6 +504,35 @@ defineExpose({ load_data })
 }
 
 .cell-dim { color: #9ca3af; }
+.status-draft {
+    font-size: 11px;
+    font-weight: 700;
+    color: #b45309;
+    background: #fef3c7;
+    padding: 2px 8px;
+    border-radius: 3px;
+    border: 1px solid #fcd34d;
+}
+.status-submitted {
+    font-size: 11px;
+    font-weight: 700;
+    color: #047857;
+    background: #d1fae5;
+    padding: 2px 8px;
+    border-radius: 3px;
+    border: 1px solid #6ee7b7;
+}
+.cell-comments {
+    text-align: left !important;
+    max-width: 250px;
+    min-width: 120px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-size: 11.5px;
+    color: #6b7280;
+    cursor: default;
+}
 .cell-zero {
     color: #d1d5db;
 }
