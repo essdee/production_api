@@ -2670,10 +2670,17 @@ def get_lot_data(lot, lot_data, cloth_details, completed, item_name, lay_no, no_
 	return lot_data
 
 @frappe.whitelist()
-def get_ppo_report_data(from_date=None, to_date=None, product_category=None):
+def get_ppo_report_data(from_date=None, to_date=None, product_category=None, status=None):
 	from production_api.production_api.doctype.item.item import get_attribute_details
 
-	filters = {"docstatus": 1}
+	status_map = {"Draft": 0, "Submitted": 1}
+	filters = {}
+	if status:
+		docstatus = status_map.get(status, 1)
+		filters = {"docstatus": docstatus}
+	else:
+		filters = {"docstatus": ["!=", 2]}	
+
 	if from_date and to_date:
 		filters["delivery_date"] = ["between", [from_date, to_date]]
 	elif from_date:
@@ -2690,7 +2697,7 @@ def get_ppo_report_data(from_date=None, to_date=None, product_category=None):
 	orders = frappe.get_all(
 		"Production Order",
 		filters=filters,
-		fields=["name", "item", "fabric", "dia", "gsm", "delivery_date", "posting_date", "dont_deliver_after"],
+		fields=["name", "item", "fabric", "dia", "gsm", "delivery_date", "posting_date", "dont_deliver_after", "docstatus", "comments"],
 		order_by="delivery_date asc, name asc",
 	)
 
@@ -2726,6 +2733,8 @@ def get_ppo_report_data(from_date=None, to_date=None, product_category=None):
 			"delivery_date": str(order["delivery_date"]) if order["delivery_date"] else "",
 			"posting_date": str(order["posting_date"]) if order["posting_date"] else "",
 			"dont_deliver_after": str(order["dont_deliver_after"]) if order["dont_deliver_after"] else "",
+			"status": "Draft" if order.get("docstatus") == 0 else "Submitted",
+			"comments": order.get("comments") or "",
 			"qty": qty_map,
 			"total": total,
 		})
@@ -2734,22 +2743,22 @@ def get_ppo_report_data(from_date=None, to_date=None, product_category=None):
 	return {"groups": groups}
 
 @frappe.whitelist()
-def download_ppo_report(from_date=None, to_date=None, product_category=None):
+def download_ppo_report(from_date=None, to_date=None, product_category=None, status=None):
 	from frappe.utils.xlsxutils import make_xlsx
 
-	data = get_ppo_report_data(from_date, to_date, product_category)
+	data = get_ppo_report_data(from_date, to_date, product_category, status)
 	rows = []
 	for group in data["groups"]:
 		sizes = group["sizes"]
 		rows.append(["Sizes: " + ", ".join(sizes)])
-		rows.append(["S.No", "PPO", "Item", "Fabric", "Dia", "GSM", "Posting Date", "Delivery Date", "Don't Deliver After"] + sizes + ["Total"])
+		rows.append(["S.No", "PPO", "Item", "Fabric", "Dia", "GSM", "Posting Date", "Delivery Date", "Don't Deliver After", "Status", "Comments"] + sizes + ["Total"])
 		for idx, order in enumerate(group["orders"], 1):
-			row = [idx, order["name"], order["item"], order["fabric"], order["dia"], order["gsm"], order["posting_date"], order["delivery_date"], order["dont_deliver_after"]]
+			row = [idx, order["name"], order["item"], order["fabric"], order["dia"], order["gsm"], order["posting_date"], order["delivery_date"], order["dont_deliver_after"], order["status"], order["comments"]]
 			for size in sizes:
 				row.append(order["qty"].get(size, 0))
 			row.append(order["total"])
 			rows.append(row)
-		total_row = ["", "", "", "", "", "", "", "", "Total"]
+		total_row = ["", "", "", "", "", "", "", "", "", "", "Total"]
 		for size in sizes:
 			total_row.append(sum(o["qty"].get(size, 0) for o in group["orders"]))
 		total_row.append(sum(o["total"] for o in group["orders"]))
