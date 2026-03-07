@@ -24,6 +24,11 @@ class ProductionOrder(Document):
 			frappe.throw("Selected Term is not valid")
 
 		self.posting_date = frappe.utils.nowdate()
+		if self.delivery_date < self.posting_date:
+			frappe.throw("Delivery date is less than Posting Date")
+		if self.delivery_date < self.dont_deliver_after:
+			frappe.throw("Don't deliver after date is lesss than delivery date")
+				
 		self.lead_time_given = date_diff(self.delivery_date, self.posting_date)
 		self.submitted_by = frappe.session.user
 		self.submitted_time = frappe.utils.now()
