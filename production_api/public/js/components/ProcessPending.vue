@@ -38,8 +38,13 @@
                 </div>
                 <div class="summary-divider"></div>
                 <div class="summary-item">
-                    <span class="summary-label">Pending Qty</span>
+                    <span class="summary-label">Overall Pending Qty</span>
                     <span class="summary-value summary-value--orange">{{ (totalCuttingReceived - totalFinishingQty).toLocaleString() }}</span>
+                </div>
+                <div class="summary-divider"></div>
+                <div class="summary-item">
+                    <span class="summary-label">Not Delivered</span>
+                    <span class="summary-value summary-value--red">{{ notDelivered.toLocaleString() }}</span>
                 </div>
             </div>
 
@@ -247,6 +252,17 @@ const totalFinishingQty = computed(() => {
     return rows.value.reduce((sum, r) => sum + (r.total_qty || 0), 0)
 })
 
+const totalSupplierQty = computed(() => {
+    return rows.value.reduce((sum, r) => {
+        if (!r.supplier_qty) return sum
+        return sum + Object.values(r.supplier_qty).reduce((s, v) => s + (v || 0), 0)
+    }, 0)
+})
+
+const notDelivered = computed(() => {
+    return totalCuttingReceived.value - (totalSupplierQty.value + totalFinishingQty.value)
+})
+
 const hasOthers = computed(() => {
     return rows.value.some(r => r.supplier_qty && r.supplier_qty.Others)
 })
@@ -385,6 +401,9 @@ function formatDate(dateStr) {
 .summary-value--orange {
     color: #d97706;
 }
+.summary-value--red {
+    color: #dc2626;
+}
 .summary-divider {
     width: 1px;
     height: 32px;
@@ -449,6 +468,12 @@ function formatDate(dateStr) {
 }
 .cell-supplier {
     color: #4b5563;
+}
+.sp-table thead th.cell-supplier {
+    max-width: 80px;
+    font-size: 12px;
+    word-break: break-word;
+    white-space: normal;
 }
 .sp-link {
     color: #2563eb;
