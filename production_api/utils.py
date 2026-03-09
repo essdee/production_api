@@ -2701,12 +2701,33 @@ def get_ppo_report_data(from_date=None, to_date=None, product_category=None, sta
 		order_by="delivery_date asc, name asc",
 	)
 
+	# Build FG Item Size Type lookup
+	all_size_types = frappe.get_all("FG Item Size Type", pluck="name")
+	size_type_map = {}  # {frozenset of values: {"name": ..., "ordered_sizes": [...]}}
+	for st_name in all_size_types:
+		st_doc = frappe.get_cached_doc("FG Item Size Type", st_name)
+		details = sorted(st_doc.fg_item_size_type_details, key=lambda d: int(d.size.replace("size ", "")))
+		values = frozenset(d.size_type_value for d in details)
+		ordered_sizes = [d.size_type_value for d in details]
+		size_type_map[values] = {"name": st_name, "ordered_sizes": ordered_sizes}
+
 	size_groups = {}
 	for order in orders:
 		doc = frappe.get_cached_doc("Production Order", order["name"])
 		attr_details = get_attribute_details(order["item"])
 		primary_attribute_values = attr_details.get("primary_attribute_values", [])
-		group_key = tuple(sorted(primary_attribute_values))
+
+		# Match item's attribute values to FG Item Size Type
+		item_values = frozenset(primary_attribute_values)
+		matched_size_type = None
+		matched_sizes = primary_attribute_values  # fallback
+		for st_values, st_info in size_type_map.items():
+			if item_values <= st_values:  # item values are subset of size type values
+				matched_size_type = st_info["name"]
+				matched_sizes = st_info["ordered_sizes"]
+				break
+
+		group_key = matched_size_type or tuple(sorted(primary_attribute_values))
 
 		qty_map = {}
 		total = 0
@@ -2721,8 +2742,9 @@ def get_ppo_report_data(from_date=None, to_date=None, product_category=None, sta
 					break
 
 		size_groups.setdefault(group_key, {
-			"sizes": primary_attribute_values,
+			"sizes": matched_sizes,
 			"orders": [],
+			"label": matched_size_type or "",
 		})
 		size_groups[group_key]["orders"].append({
 			"name": order["name"],
@@ -2740,7 +2762,29 @@ def get_ppo_report_data(from_date=None, to_date=None, product_category=None, sta
 		})
 
 	groups = list(size_groups.values())
-	return {"groups": groups}
+
+	# Build flat view with positional size columns
+	size_group_list = [{"sizes": gd["sizes"], "label": gd.get("label", "")} for gd in groups]
+	max_cols = max((len(sg["sizes"]) for sg in size_group_list), default=0)
+
+	flat_orders = []
+	for gk, gd in size_groups.items():
+		sizes = gd["sizes"]
+		for order in gd["orders"]:
+			qty_by_pos = [order["qty"].get(sizes[i], 0) if i < len(sizes) else 0 for i in range(max_cols)]
+			order["qty_by_pos"] = qty_by_pos
+			order["group_sizes"] = sizes
+			order["group_label"] = gd.get("label", "")
+			flat_orders.append(order)
+
+	flat_orders.sort(key=lambda o: (o["delivery_date"], o["name"]))
+
+	return {
+		"groups": groups,
+		"size_groups": size_group_list,
+		"max_cols": max_cols,
+		"flat_orders": flat_orders,
+	}
 
 @frappe.whitelist()
 def download_ppo_report(from_date=None, to_date=None, product_category=None, status=None):
@@ -2750,18 +2794,20 @@ def download_ppo_report(from_date=None, to_date=None, product_category=None, sta
 	rows = []
 	for group in data["groups"]:
 		sizes = group["sizes"]
-		rows.append(["Sizes: " + ", ".join(sizes)])
-		rows.append(["S.No", "PPO", "Item", "Fabric", "Dia", "GSM", "Posting Date", "Delivery Date", "Don't Deliver After", "Status", "Comments"] + sizes + ["Total"])
+		rows.append(["Size Type: " + (group.get("label") or "Unknown") + " — Sizes: " + ", ".join(sizes)])
+		rows.append(["S.No", "PPO", "Item", "Fabric", "Dia", "GSM", "Posting Date", "Delivery Date", "Don't Deliver After", "Status"] + sizes + ["Total", "Comments"])
 		for idx, order in enumerate(group["orders"], 1):
-			row = [idx, order["name"], order["item"], order["fabric"], order["dia"], order["gsm"], order["posting_date"], order["delivery_date"], order["dont_deliver_after"], order["status"], order["comments"]]
+			row = [idx, order["name"], order["item"], order["fabric"], order["dia"], order["gsm"], order["posting_date"], order["delivery_date"], order["dont_deliver_after"], order["status"]]
 			for size in sizes:
 				row.append(order["qty"].get(size, 0))
 			row.append(order["total"])
+			row.append(order["comments"])
 			rows.append(row)
-		total_row = ["", "", "", "", "", "", "", "", "", "", "Total"]
+		total_row = ["", "", "", "", "", "", "", "", "", "Total"]
 		for size in sizes:
 			total_row.append(sum(o["qty"].get(size, 0) for o in group["orders"]))
 		total_row.append(sum(o["total"] for o in group["orders"]))
+		total_row.append("")
 		rows.append(total_row)
 		rows.append([])
 

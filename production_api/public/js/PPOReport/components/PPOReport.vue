@@ -9,7 +9,7 @@
                 <div class="to-date-input ctrl-slot"></div>
                 <div class="ppo-actions">
                     <button class="btn btn-primary btn-get" @click="get_report">Get Report</button>
-                    <button class="btn btn-default btn-dl" @click="download_excel" v-if="groups.length > 0">
+                    <button class="btn btn-default btn-dl" @click="download_excel" v-if="flat_orders.length > 0">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:5px;vertical-align:-2px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
                         Excel
                     </button>
@@ -17,127 +17,125 @@
             </div>
         </div>
 
-        <div v-if="groups.length > 0" class="ppo-body">
+        <div v-if="flat_orders.length > 0" class="ppo-body">
             <div class="ppo-summary-bar">
                 <div class="summary-item">
                     <span class="summary-label">Total Orders</span>
-                    <span class="summary-value">{{ total_orders }}</span>
+                    <span class="summary-value">{{ flat_orders.length }}</span>
                 </div>
                 <div class="summary-divider"></div>
                 <div class="summary-item">
                     <span class="summary-label">Total Quantity</span>
                     <span class="summary-value summary-value--primary">{{ overall_total.toLocaleString() }}</span>
                 </div>
-                <div class="summary-divider"></div>
-                <div class="summary-item">
-                    <span class="summary-label">Size Groups</span>
-                    <span class="summary-value">{{ groups.length }}</span>
-                </div>
             </div>
 
-            <div v-for="(group, gIdx) in groups" :key="gIdx" class="ppo-group">
-                <div class="group-header">
-                    <span class="group-tag">Group {{ gIdx + 1 }}</span>
-                    <span class="group-sizes">{{ group.sizes.join('  /  ') }}</span>
-                    <span class="group-count">{{ group.orders.length }} order{{ group.orders.length !== 1 ? 's' : '' }}</span>
-                </div>
-                <div class="table-wrap">
-                    <table class="ppo-table">
-                        <thead>
-                            <tr>
-                                <th>#</th>
-                                <th>PPO</th>
-                                <th>Item</th>
-                                <th>Fabric</th>
-                                <th>Dia</th>
-                                <th>GSM</th>
-                                <th>Posting Date</th>
-                                <th>Delivery Date</th>
-                                <th>Don't Deliver After</th>
-                                <th>Status</th>
-                                <th>Comments</th>
-                                <th v-for="size in group.sizes" :key="size">{{ size }}</th>
-                                <th>Total</th>
-                                <th>Action</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <template v-for="(order, idx) in group.orders" :key="order.name">
-                            <tr>
-                                <td class="cell-dim">{{ idx + 1 }}</td>
-                                <td>
-                                    <a :href="'/app/production-order/' + order.name" class="ppo-link">
-                                        {{ order.name }}
-                                    </a>
-                                </td>
-                                <td>{{ order.item }}</td>
-                                <td>{{ order.fabric }}</td>
-                                <td>{{ order.dia }}</td>
-                                <td>{{ order.gsm || '' }}</td>
-                                <td>{{ formatDate(order.posting_date) }}</td>
-                                <td>{{ formatDate(order.delivery_date) }}</td>
-                                <td>{{ formatDate(order.dont_deliver_after) }}</td>
-                                <td>
-                                    <span :class="order.status === 'Draft' ? 'status-draft' : 'status-submitted'">
-                                        {{ order.status }}
-                                    </span>
-                                </td>
-                                <td class="cell-comments" :title="order.comments">{{ order.comments }}</td>
-                                <td v-for="size in group.sizes" :key="size"
-                                    :class="{ 'cell-zero': !(order.qty[size]) }">
-                                    {{ order.qty[size] || '—' }}
-                                </td>
-                                <td class="cell-total">{{ order.total.toLocaleString() }}</td>
-                                <td>
-                                    <button class="btn btn-xs btn-default btn-summarize" @click="show_summary(order.name)">
-                                        {{ summaryState[order.name]?.expanded ? 'Hide' : 'Summarize' }}
-                                    </button>
-                                </td>
-                            </tr>
-                            <template v-if="summaryState[order.name]?.expanded">
-                              <tr v-if="summaryState[order.name]?.loading" class="summary-row">
-                                <td :colspan="13 + group.sizes.length" class="summary-status">Loading...</td>
-                              </tr>
-                              <tr v-else-if="!summaryState[order.name]?.data?.rows?.length" class="summary-row">
-                                <td :colspan="13 + group.sizes.length" class="summary-status">No dispatch records found.</td>
-                              </tr>
-                              <template v-else>
-                                <tr v-for="(row, rIdx) in summaryState[order.name].data.rows"
-                                    :key="'s-' + order.name + '-' + rIdx" class="summary-row">
-                                  <td colspan="11" class="summary-label-cell">
-                                    {{ formatDate(row.date) }} &middot; {{ row.lot }}
-                                  </td>
-                                  <td v-for="s in group.sizes" :key="s"
-                                      :class="{ 'cell-zero': !row.sizes[s] }">
-                                    {{ row.sizes[s] || '—' }}
-                                  </td>
-                                  <td class="summary-total-cell">{{ row.total }}</td>
-                                  <td></td>
-                                </tr>
-                                <tr class="summary-footer-row">
-                                  <td colspan="11" class="summary-label-cell summary-footer-label">Dispatched Total</td>
-                                  <td v-for="s in group.sizes" :key="s" class="summary-footer-num">
-                                    {{ summarySizeTotal(order.name, s) }}
-                                  </td>
-                                  <td class="summary-footer-num summary-footer-grand">{{ summaryTotal(order.name) }}</td>
-                                  <td></td>
-                                </tr>
-                              </template>
+            <div class="table-wrap">
+                <table class="ppo-table">
+                    <thead>
+                        <tr v-for="(sg, sgIdx) in size_groups" :key="'sgr-' + sgIdx"
+                            :class="{ 'header-row-alt': sgIdx % 2 === 1 }">
+                            <template v-if="sgIdx === 0">
+                                <th :rowspan="size_groups.length">#</th>
+                                <th :rowspan="size_groups.length">PPO</th>
+                                <th :rowspan="size_groups.length">Item</th>
+                                <th :rowspan="size_groups.length">Fabric</th>
+                                <th :rowspan="size_groups.length">Dia</th>
+                                <th :rowspan="size_groups.length">GSM</th>
+                                <th :rowspan="size_groups.length">Posting Date</th>
+                                <th :rowspan="size_groups.length">Delivery Date</th>
+                                <th :rowspan="size_groups.length">Don't Deliver After</th>
+                                <th :rowspan="size_groups.length">Status</th>
+                                <th :rowspan="size_groups.length">Comments</th>
                             </template>
+                            <th class="group-label-cell">{{ sg.label }}</th>
+                            <th v-for="colIdx in max_cols" :key="'sh-' + sgIdx + '-' + colIdx"
+                                class="group-header-cell">
+                                {{ colIdx - 1 < sg.sizes.length ? sg.sizes[colIdx - 1] : '' }}
+                            </th>
+                            <template v-if="sgIdx === 0">
+                                <th :rowspan="size_groups.length">Total</th>
+                                <th :rowspan="size_groups.length">Action</th>
                             </template>
-                        </tbody>
-                        <tfoot>
-                            <tr>
-                                <td colspan="11" class="foot-label">Total</td>
-                                <td v-for="size in group.sizes" :key="size" class="foot-num">
-                                    {{ column_total(group, size).toLocaleString() }}
-                                </td>
-                                <td class="foot-grand">{{ group_total(group).toLocaleString() }}</td>
-                                <td></td>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <template v-for="(order, idx) in flat_orders" :key="order.name">
+                        <tr>
+                            <td class="cell-dim">{{ idx + 1 }}</td>
+                            <td>
+                                <a :href="'/app/production-order/' + order.name" class="ppo-link">
+                                    {{ order.name }}
+                                </a>
+                            </td>
+                            <td>{{ order.item }}</td>
+                            <td>{{ order.fabric }}</td>
+                            <td>{{ order.dia }}</td>
+                            <td>{{ order.gsm || '' }}</td>
+                            <td>{{ formatDate(order.posting_date) }}</td>
+                            <td>{{ formatDate(order.delivery_date) }}</td>
+                            <td>{{ formatDate(order.dont_deliver_after) }}</td>
+                            <td>
+                                <span :class="order.status === 'Draft' ? 'status-draft' : 'status-submitted'">
+                                    {{ order.status }}
+                                </span>
+                            </td>
+                            <td class="cell-comments" :title="order.comments">{{ order.comments }}</td>
+                            <td class="cell-group-label" :title="order.group_label">{{ order.group_label }}</td>
+                            <td v-for="colIdx in max_cols" :key="'q-' + colIdx"
+                                :class="{ 'cell-zero': !order.qty_by_pos[colIdx - 1] }">
+                                {{ order.qty_by_pos[colIdx - 1] || '—' }}
+                            </td>
+                            <td class="cell-total">{{ order.total.toLocaleString() }}</td>
+                            <td>
+                                <button class="btn btn-xs btn-default btn-summarize" @click="show_summary(order.name)">
+                                    {{ summaryState[order.name]?.expanded ? 'Hide' : 'Summarize' }}
+                                </button>
+                            </td>
+                        </tr>
+                        <template v-if="summaryState[order.name]?.expanded">
+                          <tr v-if="summaryState[order.name]?.loading" class="summary-row">
+                            <td :colspan="14 + max_cols" class="summary-status">Loading...</td>
+                          </tr>
+                          <tr v-else-if="!summaryState[order.name]?.data?.rows?.length" class="summary-row">
+                            <td :colspan="14 + max_cols" class="summary-status">No dispatch records found.</td>
+                          </tr>
+                          <template v-else>
+                            <tr v-for="(row, rIdx) in summaryState[order.name].data.rows"
+                                :key="'s-' + order.name + '-' + rIdx" class="summary-row">
+                              <td colspan="12" class="summary-label-cell">
+                                {{ formatDate(row.date) }} &middot; {{ row.lot }}
+                              </td>
+                              <td v-for="colIdx in max_cols" :key="'sd-' + colIdx"
+                                  :class="{ 'cell-zero': !row.sizes[order.group_sizes[colIdx - 1]] }">
+                                {{ (order.group_sizes[colIdx - 1] && row.sizes[order.group_sizes[colIdx - 1]]) || '—' }}
+                              </td>
+                              <td class="summary-total-cell">{{ row.total }}</td>
+                              <td></td>
                             </tr>
-                        </tfoot>
-                    </table>
-                </div>
+                            <tr class="summary-footer-row">
+                              <td colspan="12" class="summary-label-cell summary-footer-label">Dispatched Total</td>
+                              <td v-for="colIdx in max_cols" :key="'sf-' + colIdx" class="summary-footer-num">
+                                {{ summarySizeTotalByPos(order.name, order.group_sizes[colIdx - 1]) }}
+                              </td>
+                              <td class="summary-footer-num summary-footer-grand">{{ summaryTotal(order.name) }}</td>
+                              <td></td>
+                            </tr>
+                          </template>
+                        </template>
+                        </template>
+                    </tbody>
+                    <tfoot>
+                        <tr>
+                            <td colspan="12" class="foot-label">Total</td>
+                            <td v-for="colIdx in max_cols" :key="'ft-' + colIdx" class="foot-num">
+                                {{ column_total_flat(colIdx - 1).toLocaleString() }}
+                            </td>
+                            <td class="foot-grand">{{ overall_total.toLocaleString() }}</td>
+                            <td></td>
+                        </tr>
+                    </tfoot>
+                </table>
             </div>
         </div>
 
@@ -152,6 +150,9 @@ import { ref, computed, onMounted } from 'vue'
 
 const root = ref(null)
 const groups = ref([])
+const flat_orders = ref([])
+const max_cols = ref(0)
+const size_groups = ref([])
 const fetched = ref(false)
 const summaryState = ref({})
 
@@ -234,6 +235,9 @@ function get_report() {
         freeze_message: "Fetching PPO Report...",
         callback: function (r) {
             groups.value = r.message.groups || []
+            flat_orders.value = r.message.flat_orders || []
+            max_cols.value = r.message.max_cols || 0
+            size_groups.value = r.message.size_groups || []
             fetched.value = true
             summaryState.value = {}
         },
@@ -242,20 +246,10 @@ function get_report() {
 
 const overall_total = computed(() => {
     let total = 0
-    for (const group of groups.value) {
-        for (const order of group.orders) {
-            total += order.total
-        }
+    for (const order of flat_orders.value) {
+        total += order.total
     }
     return total
-})
-
-const total_orders = computed(() => {
-    let count = 0
-    for (const group of groups.value) {
-        count += group.orders.length
-    }
-    return count
 })
 
 function formatDate(dateStr) {
@@ -278,18 +272,10 @@ function download_excel() {
     window.open(`/api/method/production_api.utils.download_ppo_report?${params.toString()}`)
 }
 
-function column_total(group, size) {
+function column_total_flat(posIdx) {
     let total = 0
-    for (const order of group.orders) {
-        total += order.qty[size] || 0
-    }
-    return total
-}
-
-function group_total(group) {
-    let total = 0
-    for (const order of group.orders) {
-        total += order.total
+    for (const order of flat_orders.value) {
+        total += order.qty_by_pos[posIdx] || 0
     }
     return total
 }
@@ -326,15 +312,19 @@ function summaryTotal(ppo_name) {
     return total
 }
 
-function summarySizeTotal(ppo_name, size) {
+function summarySizeTotalByPos(ppo_name, sizeName) {
+    if (!sizeName) return '—'
     const rows = summaryState.value[ppo_name]?.data?.rows || []
     let total = 0
-    for (const row of rows) total += row.sizes[size] || 0
+    for (const row of rows) total += row.sizes[sizeName] || 0
     return total
 }
 
 function load_data(data) {
     groups.value = data.groups || []
+    flat_orders.value = data.flat_orders || []
+    max_cols.value = data.max_cols || 0
+    size_groups.value = data.size_groups || []
     fetched.value = true
 }
 
@@ -422,39 +412,41 @@ defineExpose({ load_data })
     margin: 0 24px;
 }
 
-/* ── Group ── */
-.ppo-group {
-    margin-bottom: 28px;
+/* ── Group header cell (multi-row thead) ── */
+.group-header-cell {
+    background: #eff6ff !important;
+    color: #2563eb !important;
+    border-left: 2px solid #bfdbfe;
+    border-right: 2px solid #bfdbfe;
+    font-size: 10px !important;
+    letter-spacing: 0.3px;
 }
-.group-header {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    margin-bottom: 8px;
-    padding-bottom: 6px;
-    border-bottom: 2px solid #e5e7eb;
+.header-row-alt .group-header-cell,
+.header-row-alt .group-label-cell {
+    background: #e0e7ff !important;
 }
-.group-tag {
-    font-size: 10px;
+.group-label-cell {
+    background: #eff6ff !important;
+    font-size: 10px !important;
     font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.8px;
-    color: #2563eb;
-    background: #eff6ff;
-    padding: 3px 8px;
-    border-radius: 3px;
-    border: 1px solid #bfdbfe;
+    color: #4338ca !important;
+    white-space: nowrap;
+    text-align: left !important;
+    padding: 4px 8px !important;
+    max-width: 120px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    border-left: 2px solid #bfdbfe;
 }
-.group-sizes {
-    font-size: 13px;
+.cell-group-label {
+    font-size: 10px;
+    color: #6366f1;
     font-weight: 600;
-    color: #4b5563;
-}
-.group-count {
-    margin-left: auto;
-    font-size: 11.5px;
-    font-weight: 500;
-    color: #9ca3af;
+    white-space: nowrap;
+    max-width: 120px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    text-align: left !important;
 }
 
 /* ── Table ── */
