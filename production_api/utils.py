@@ -2791,25 +2791,56 @@ def download_ppo_report(from_date=None, to_date=None, product_category=None, sta
 	from frappe.utils.xlsxutils import make_xlsx
 
 	data = get_ppo_report_data(from_date, to_date, product_category, status)
+	flat_orders = data.get("flat_orders", [])
+	size_groups = data.get("size_groups", [])
+	max_cols = data.get("max_cols", 0)
+
 	rows = []
-	for group in data["groups"]:
-		sizes = group["sizes"]
-		rows.append(["Size Type: " + (group.get("label") or "Unknown") + " — Sizes: " + ", ".join(sizes)])
-		rows.append(["S.No", "PPO", "Item", "Fabric", "Dia", "GSM", "Posting Date", "Delivery Date", "Don't Deliver After", "Status"] + sizes + ["Total", "Comments"])
-		for idx, order in enumerate(group["orders"], 1):
-			row = [idx, order["name"], order["item"], order["fabric"], order["dia"], order["gsm"], order["posting_date"], order["delivery_date"], order["dont_deliver_after"], order["status"]]
-			for size in sizes:
-				row.append(order["qty"].get(size, 0))
-			row.append(order["total"])
-			row.append(order["comments"])
-			rows.append(row)
-		total_row = ["", "", "", "", "", "", "", "", "", "Total"]
-		for size in sizes:
-			total_row.append(sum(o["qty"].get(size, 0) for o in group["orders"]))
-		total_row.append(sum(o["total"] for o in group["orders"]))
-		total_row.append("")
-		rows.append(total_row)
-		rows.append([])
+
+	# Multi-row header matching UI: fixed columns + one sub-row per size group
+	fixed_headers = ["#", "PPO", "Item", "Fabric", "Dia", "GSM", "Posting Date", "Delivery Date", "Don't Deliver After", "Status"]
+	for sg in size_groups:
+		header_row = [""] * len(fixed_headers)
+		header_row.append(sg.get("label") or "")
+		for i in range(max_cols):
+			header_row.append(sg["sizes"][i] if i < len(sg["sizes"]) else "")
+		header_row.append("")  # Total
+		header_row.append("")  # Comments
+		rows.append(header_row)
+
+	# Main header row
+	main_header = fixed_headers + ["Size Group"] + [""] * max_cols + ["Total", "Comments"]
+	rows.append(main_header)
+
+	# Data rows
+	for idx, order in enumerate(flat_orders, 1):
+		row = [
+			idx,
+			order["name"],
+			order["item"],
+			order["fabric"],
+			order["dia"],
+			order["gsm"],
+			order["posting_date"],
+			order["delivery_date"],
+			order["dont_deliver_after"],
+			order["status"],
+			order.get("group_label", ""),
+		]
+		for i in range(max_cols):
+			row.append(order["qty_by_pos"][i] if order["qty_by_pos"][i] else "")
+		row.append(order["total"])
+		row.append(order["comments"])
+		rows.append(row)
+
+	# Footer total row
+	footer = [""] * 10 + ["Total"]  # 10 fixed cols + "Total" in Size Group col
+	for i in range(max_cols):
+		col_total = sum(o["qty_by_pos"][i] for o in flat_orders)
+		footer.append(col_total if col_total else "")
+	footer.append(sum(o["total"] for o in flat_orders))
+	footer.append("")  # Comments
+	rows.append(footer)
 
 	xlsx_file = make_xlsx(rows, "PPO Report")
 	now = frappe.utils.now_datetime().strftime("%d-%m-%Y_%H-%M-%S")

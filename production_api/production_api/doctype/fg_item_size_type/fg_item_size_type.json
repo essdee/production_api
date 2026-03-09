@@ -17,6 +17,7 @@
    "unique": 1
   },
   {
+   "allow_bulk_edit": 1,
    "fieldname": "fg_item_size_type_details",
    "fieldtype": "Table",
    "label": "FG Item Size Type Details",
@@ -26,7 +27,7 @@
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-03-07 13:13:12.543567",
+ "modified": "2026-03-09 12:21:26.171365",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "FG Item Size Type",
