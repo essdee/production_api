@@ -580,6 +580,11 @@ def get_ccr(doc_name):
 	
 	from production_api.essdee_production.doctype.item_production_detail.item_production_detail import get_ipd_primary_values
 	sizes = get_ipd_primary_values(cp_doc.production_detail)
+	# Ensure every colour entry has all IPD sizes (template iterates over full size list)
+	for mark in markers:
+		for key in markers[mark]:
+			for size in sizes:
+				markers[mark][key].setdefault(size, {"bits": 0})
 	if markers:
 		return {
 			"marker_data": markers,
