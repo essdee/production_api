@@ -593,11 +593,12 @@ const submitLog = () => {
         if (validation_failed) break;
         for (const size of Object.keys(modal_data.value.colours[colour].values)) {
              const entered_qty = modal_data.value.colours[colour].values[size].data_entry || 0;
-             // Use remaining quantity for validation (apply allowance on top)
+             // Use remaining quantity for validation (apply allowance on base qty)
              const remaining_qty = modal_data.value.colours[colour].values[size]?.[inputTypeInfo.remaining_key] ??
                                    modal_data.value.colours[colour].values[size]?.[inputTypeInfo.base_key] ?? 0;
+             const base_qty = modal_data.value.colours[colour].values[size]?.[inputTypeInfo.base_key] ?? 0;
              const allowance_pct = allowances.value[inputTypeInfo.input_key] || 0;
-             const allowed_remaining = remaining_qty * (1 + allowance_pct / 100);
+             const allowed_remaining = remaining_qty + base_qty * (allowance_pct / 100);
 
              if (entered_qty > allowed_remaining) {
                  frappe.throw(`Entered quantity cannot be greater than remaining ${inputTypeInfo.display}`);

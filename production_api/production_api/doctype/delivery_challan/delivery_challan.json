@@ -380,7 +380,7 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2026-02-16 15:22:23.047659",
+ "modified": "2026-03-10 17:43:36.475233",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Delivery Challan",
@@ -422,7 +422,6 @@
    "share": 1
   },
   {
-   "cancel": 1,
    "create": 1,
    "email": 1,
    "export": 1,
@@ -435,7 +434,6 @@
    "write": 1
   },
   {
-   "cancel": 1,
    "create": 1,
    "email": 1,
    "export": 1,
@@ -461,7 +459,6 @@
    "write": 1
   },
   {
-   "cancel": 1,
    "create": 1,
    "email": 1,
    "export": 1,
@@ -493,6 +490,37 @@
    "read": 1,
    "report": 1,
    "role": "Production Planner",
+   "share": 1,
+   "submit": 1,
+   "write": 1
+  },
+  {
+   "amend": 1,
+   "cancel": 1,
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Item Master Manager",
+   "share": 1,
+   "submit": 1,
+   "write": 1
+  },
+  {
+   "amend": 1,
+   "cancel": 1,
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Finishing User",
+   "select": 1,
    "share": 1,
    "submit": 1,
    "write": 1
