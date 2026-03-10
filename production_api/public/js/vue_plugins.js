@@ -42,6 +42,7 @@ import {
     WOReworkReceivablesWrapper,
     ReceivablesWrapper,
     ReworkPageWrapper,
+    RejectionPageWrapper,
     WorkOrderItemViewWrapper,
     WOSummaryWrapper,
     QualityInspectionWrapper,
@@ -91,6 +92,8 @@ import InvoiceWoItems from "./PurchaseInvoice/components/InvoiceWOItems.vue"
 import RecutPrintPanelDetail from "./CuttingPlan/components/RecutPrintPanelDetails.vue"
 import RecutPrintPanelView from "./CuttingPlan/components/RecutPrintPanelView.vue"
 import MultiCCR from "./CuttingPlan/components/MultiCCR.vue"
+import PPOReport from "./PPOReport/components/PPOReport.vue"
+import ProcessPending from "./components/ProcessPending.vue"
 
 // Product Development
 import {
@@ -1093,6 +1096,7 @@ frappe.production.ui.WOReworkDeliverables = WOReworkDeliverablesWrapper
 frappe.production.ui.WOReworkReceivables = WOReworkReceivablesWrapper
 frappe.production.ui.Receivables = ReceivablesWrapper
 frappe.production.ui.ReworkPage = ReworkPageWrapper
+frappe.production.ui.RejectionPage = RejectionPageWrapper
 frappe.production.ui.WorkOrderItemView = WorkOrderItemViewWrapper
 frappe.production.ui.WOSummary = WOSummaryWrapper
 frappe.production.ui.QualityInspection = QualityInspectionWrapper
@@ -1122,5 +1126,34 @@ frappe.production.product_development.ui.ProductSilhoutte = ProductSilhoutteWrap
 frappe.production.product_development.ui.ProductGraphics = ProductGraphicsWrapper
 frappe.production.product_development.ui.ProductMeasurementImage = ProductMeasurementImageWrapper
 
+// PPO Report
+frappe.production.ui.PPOReport = class {
+    constructor(wrapper) {
+        this.$wrapper = $(wrapper)
+        this.make_app()
+    }
+    make_app() {
+        this.app = createApp(PPOReport)
+        SetVueGlobals(this.app)
+        this.vue = this.app.mount(this.$wrapper.get(0))
+    }
+    load_data(data) {
+        this.vue.load_data(data)
+    }
+}
+
 // Sewing Plan
 frappe.production.ui.SewingPlan = SewingPlanWrapper
+
+// Process Pending
+frappe.production.ui.ProcessPending = class {
+    constructor(wrapper) {
+        this.$wrapper = $(wrapper)
+        this.make_app()
+    }
+    make_app() {
+        this.app = createApp(ProcessPending)
+        SetVueGlobals(this.app)
+        this.vue = this.app.mount(this.$wrapper.get(0))
+    }
+}

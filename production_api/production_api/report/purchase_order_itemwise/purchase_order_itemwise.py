@@ -119,6 +119,12 @@ def get_columns():
             "width": 100
         },
         {
+            "fieldname": "tax",
+            "label": "Tax",
+            "fieldtype": "Data",
+            "width": 100
+        },
+        {
             "fieldname": "discount_percentage",
             "label": "Discount %",
             "fieldtype": "Float",
@@ -195,6 +201,7 @@ def get_data(filters):
             (po_item.qty - po_item.pending_qty - po_item.cancelled_qty).as_('delivered_qty'),
             po_item.uom,
             po_item.rate,
+            po_item.tax,
             po_item.discount_percentage,
             po_item.delivery_location,
             supplier.supplier_name.as_('delivery_location_name'),

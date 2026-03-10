@@ -417,7 +417,7 @@ const submitUpdate = () => {
                 action: action,
                 rows: selected_rows.value.map(colour => {
                     return {
-                        colour: colour,
+                        colour: update_modal_data.value.colours[colour]['variant_colour'],
                         qty: update_modal_data.value.colours[colour].values,
                         set_combination: update_modal_data.value.colours[colour].set_combination,
                         part: update_modal_data.value.colours[colour].part

@@ -407,14 +407,13 @@
    "fieldname": "bundle_generated_date",
    "fieldtype": "Date",
    "in_list_view": 1,
-   "label": "Bundle Generated Date",
-   "read_only": 1
+   "label": "Bundle Generated Date"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-02-06 18:51:18.295993",
+ "modified": "2026-02-18 11:29:59.697405",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Cutting LaySheet",

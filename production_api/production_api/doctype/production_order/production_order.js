@@ -84,6 +84,25 @@ frappe.ui.form.on("Production Order", {
                 });
                 d.show();
             })
+            if (!frappe.perm.has_perm("Production Order", 0, "submit")) {
+                frm.set_df_property("delivery_date", "read_only", true)
+                frm.set_df_property("dont_deliver_after", "read_only", true)
+                frm.set_df_property("comments", "read_only", true)
+                frm.refresh_field("dont_deliver_after")
+                frm.refresh_field("comments")
+                frm.refresh_field("delivery_date")
+            }
+            frm.add_custom_button("Print", () => {
+                window.open(
+                    frappe.urllib.get_full_url(
+                        "/printview?doctype=Production Order"
+                        + "&name=" + encodeURIComponent(frm.doc.name)
+                        + "&format=Production Order"
+                        + "&trigger_print=1"
+                    ),
+                    "_blank"
+                );
+            })
             frm.add_custom_button("Link Lot", () => {
                 let d = new frappe.ui.Dialog({
                     title: "Link Lot",

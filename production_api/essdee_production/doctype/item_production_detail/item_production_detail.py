@@ -337,6 +337,25 @@ class ItemProductionDetail(Document):
 			if not update_if_string_instance(self.stiching_accessory_json):
 				frappe.throw("Enter the Details for Stitching Accessory Combination")
 
+		self.sync_emblishment_processes()
+
+	def sync_emblishment_processes(self):
+		emblishment_data = update_if_string_instance(self.emblishment_details_json)
+		if not emblishment_data:
+			return
+
+		existing = {row.process_name: row for row in self.ipd_processes}
+
+		for process_name in emblishment_data:
+			if process_name in existing:
+				if existing[process_name].stage != self.stiching_in_stage:
+					existing[process_name].stage = self.stiching_in_stage
+			else:
+				self.append("ipd_processes", {
+					"process_name": process_name,
+					"stage": self.stiching_in_stage,
+				})
+
 	def on_trash(self):
 		documents = {
 			"Item Item Attribute Mapping":[],
@@ -1321,11 +1340,11 @@ def get_ipd_pf_details(ipd):
 	return ipd_doc
 
 @frappe.whitelist()
-def duplicate_ipd(ipd):
+def duplicate_ipd(ipd, item=None):
 	ipd_doc = frappe.get_doc("Item Production Detail", ipd)
 	doc = frappe.new_doc("Item Production Detail")
 	doc.update({
-		"item": ipd_doc.item,
+		"item": item or ipd_doc.item,
 		"tech_pack_version": ipd_doc.tech_pack_version,
 		"pattern_version": ipd_doc.pattern_version,
 		"primary_item_attribute": ipd_doc.primary_item_attribute,

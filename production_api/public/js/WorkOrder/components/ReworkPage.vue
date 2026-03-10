@@ -1,5 +1,6 @@
 <template>
     <div ref="root" class="rework-container">
+        <h3 style="font-weight:700;margin-bottom:15px;color:#333;text-align:center;">Rework Details</h3>
         <div class="input-row">
             <div class="lot-input col-md-3"></div>
             <div class="item-input col-md-3"></div>
@@ -169,6 +170,8 @@ onMounted(() => {
 function get_rework_items() {
     frappe.call({
         method: "production_api.production_api.doctype.grn_rework_item.grn_rework_item.get_rework_items",
+        freeze: true,
+        freeze_message: "Loading Rework Items...",
         args: {
             lot: lot.get_value(),
             item: item.get_value(),
@@ -360,6 +363,13 @@ function download(){
     background-color: #f8f9fa;
     border-radius: 8px;
     padding: 20px;
+}
+
+.page-title {
+    font-weight: 700;
+    margin-bottom: 15px;
+    color: #333;
+    text-align: center;
 }
 
 .input-row {

@@ -15,7 +15,8 @@
   "naming_series",
   "section_break_roqw",
   "grn_rework_item_details",
-  "grn_reworked_item_details"
+  "grn_reworked_item_details",
+  "grn_rejected_item_details"
  ],
  "fields": [
   {
@@ -76,6 +77,12 @@
    "options": "GRN Reworked Item Detail"
   },
   {
+   "fieldname": "grn_rejected_item_details",
+   "fieldtype": "Table",
+   "label": "GRN Rejected Item Details",
+   "options": "GRN Rejected Item Detail"
+  },
+  {
    "default": "RW-",
    "fieldname": "naming_series",
    "fieldtype": "Select",
@@ -87,7 +94,7 @@
  "in_create": 1,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-02-06 18:58:24.989062",
+ "modified": "2026-02-23 10:00:00.000000",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "GRN Rework Item",

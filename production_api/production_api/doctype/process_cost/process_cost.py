@@ -68,6 +68,8 @@ def get_item_attributes(doctype, txt, searchfield, start, page_len, filters):
 		item_attributes = [[ipd_doc.stiching_attribute]]
 	elif ipd_doc.stiching_process == process_name:
 		item_attributes = [[ipd_doc.packing_attribute], [ipd_doc.primary_item_attribute]]
+		if ipd_doc.is_set_item:
+			item_attributes = [[ipd_doc.packing_attribute], [ipd_doc.primary_item_attribute], [ipd_doc.set_item_attribute]]
 	elif ipd_doc.packing_process == process_name:
 		item_attributes = [[ipd_doc.primary_item_attribute]]
 	else:

@@ -8,6 +8,7 @@ import WorkOrderItemView from "./components/WorkOrderItemView.vue"
 import WOSummary from "./components/WoSummary.vue"
 import ReworkCompletion from "./components/ReworkCompletion.vue"
 import ReworkPage from "./components/ReworkPage.vue";
+import RejectionPage from "./components/RejectionPage.vue";
 import QualityInspection from "./components/QualityInspection.vue";
 
 export class DeliverablesWrapper {
@@ -119,6 +120,18 @@ export class ReworkPageWrapper {
     }
     make_app() {
         this.app = createApp(ReworkPage)
+        SetVueGlobals(this.app)
+        this.vue = this.app.mount(this.$wrapper.get(0))
+    }
+}
+
+export class RejectionPageWrapper {
+    constructor(wrapper) {
+        this.$wrapper = $(wrapper)
+        this.make_app()
+    }
+    make_app() {
+        this.app = createApp(RejectionPage)
         SetVueGlobals(this.app)
         this.vue = this.app.mount(this.$wrapper.get(0))
     }

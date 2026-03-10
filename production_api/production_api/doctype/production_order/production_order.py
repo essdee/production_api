@@ -8,13 +8,30 @@ from production_api.utils import update_if_string_instance, get_variant_attr_det
 from production_api.production_api.doctype.item.item import get_attribute_details, get_or_create_variant
 
 class ProductionOrder(Document):
+	def before_cancel(self):
+		lots = frappe.get_all("Lot", filters={
+			"production_order": self.name
+		}, pluck="name")
+		if lots:
+			frappe.throw(f"PPO linked in {','.join(lots)}")
+
+	def on_update_after_submit(self):
+		self.lead_time_given = date_diff(self.delivery_date, self.posting_date)
+
 	def before_submit(self):
 		docstatus = frappe.get_value("Production Term", self.production_term, "docstatus")
 		if docstatus != 1:
 			frappe.throw("Selected Term is not valid")
-			
+
 		self.posting_date = frappe.utils.nowdate()
+		if self.delivery_date < self.posting_date:
+			frappe.throw("Delivery date is less than Posting Date")
+		if self.delivery_date > self.dont_deliver_after:
+			frappe.throw("Don't deliver after date is less than delivery date")
+
 		self.lead_time_given = date_diff(self.delivery_date, self.posting_date)
+		self.submitted_by = frappe.session.user
+		self.submitted_time = frappe.utils.now()
 			
 	def onload(self):
 		order_qty = get_order_qty(self.production_order_details)
@@ -26,6 +43,11 @@ class ProductionOrder(Document):
 		})
 
 	def before_validate(self):
+		if self.is_new():
+			self.set("production_ordered_details", [])
+			self.submitted_by = None
+			self.submitted_time = None
+
 		if not self.is_new() and self.get("item_details"):
 			self.update_order()
 		self.lead_time_given = date_diff(self.delivery_date, self.posting_date)

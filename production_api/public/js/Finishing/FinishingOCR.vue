@@ -148,6 +148,34 @@
                                     </th>
                                 </tr>
                                 <tr>
+                                    <th :colspan="2">Dispatched Box</th>
+                                    <td v-for="size in items.primary_values">
+                                        {{ items['ocr_data'][part_value]['total'][size]['dispatched_box'] }}
+                                    </td>
+                                    <th>
+                                        {{ items['ocr_data'][part_value]['dispatched_box'] }}
+                                    </th>
+                                </tr>
+                                <tr>
+                                    <th :colspan="2">Dispatched Piece(In Pieces) ( H )</th>
+                                    <td v-for="size in items.primary_values">
+                                        {{ items['ocr_data'][part_value]['total'][size]['dispatched_piece'] }}
+                                    </td>
+                                    <th>
+                                        {{ items['ocr_data'][part_value]['dispatched_piece'] }}
+                                    </th>
+                                </tr>
+                                <tr>
+                                    <th :colspan="2">Difference ( H - G )</th>
+                                    <td v-for="size in items.primary_values"
+                                        :style="get_style(items['ocr_data'][part_value]['total'][size]['dispatched_piece'] - items['ocr_data'][part_value]['total'][size]['packed_box_qty'])">
+                                        {{ items['ocr_data'][part_value]['total'][size]['dispatched_piece'] - items['ocr_data'][part_value]['total'][size]['packed_box_qty'] }}
+                                    </td>
+                                    <th :style="get_style(items['ocr_data'][part_value]['dispatched_piece'] - items['ocr_data'][part_value]['packed_box_qty'])">
+                                        {{ items['ocr_data'][part_value]['dispatched_piece'] - items['ocr_data'][part_value]['packed_box_qty'] }}
+                                    </th>
+                                </tr>
+                                <tr>
                                     <th :rowspan="Object.keys(items['ocr_data'][part_value]['data']).length + 1"
                                     style="vertical-align: middle;">Rejection Pieces ( I )</th>
                                 </tr>
@@ -420,7 +448,7 @@ function get_cut_to_dispatch(part_value){
                 items.value['ocr_data'][part_value]['old_lot'] + 
                 items.value['ocr_data'][part_value]['ironing_excess'] - 
                 items.value['ocr_data'][part_value]['transferred'],
-        "val2": items.value['ocr_data'][part_value]['packed_box_qty'] 
+        "val2": items.value['ocr_data'][part_value]['dispatched_piece']
     }
 }
 
@@ -437,7 +465,7 @@ function get_inward_to_dispatch(part_value){
                 items.value['ocr_data'][part_value]['old_lot'] + 
                 items.value['ocr_data'][part_value]['ironing_excess'] - 
                 items.value['ocr_data'][part_value]['transferred'], 
-        "val2": items.value['ocr_data'][part_value]['packed_box_qty']
+        "val2": items.value['ocr_data'][part_value]['dispatched_piece']
     }
 }
 

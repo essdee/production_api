@@ -1,7 +1,35 @@
 <template>
     <div class="status-summary-tab">
+        <!-- Filter Section -->
+        <div class="filter-section" v-if="dataRows.length > 0">
+            <div class="filter-card">
+                <div class="filter-title-group">
+                    <svg class="filter-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"></path>
+                    </svg>
+                    <span class="filter-label">Filters</span>
+                </div>
+                <select class="filter-select" v-model="selected_lot">
+                    <option value="">All Lots</option>
+                    <option v-for="lot in lotOptions" :key="lot" :value="lot">{{ lot }}</option>
+                </select>
+                <select class="filter-select" v-model="selected_item">
+                    <option value="">All Items</option>
+                    <option v-for="item in itemOptions" :key="item" :value="item">{{ item }}</option>
+                </select>
+                <select class="filter-select" v-model="selected_colour">
+                    <option value="">All Colours</option>
+                    <option v-for="colour in colourOptions" :key="colour" :value="colour">{{ colour }}</option>
+                </select>
+                <select class="filter-select" v-model="selected_part">
+                    <option value="">All Parts</option>
+                    <option v-for="part in partOptions" :key="part" :value="part">{{ part }}</option>
+                </select>
+            </div>
+        </div>
+
         <div class="report-wrapper">
-            <div class="report-container no-scrollbar" v-if="items && items['data'].length > 1">
+            <div class="report-container no-scrollbar" v-if="displayData.length > 0">
                 <table class="report-table">
                     <thead>
                         <tr class="header-row">
@@ -17,7 +45,7 @@
                         </tr>
                     </thead>
                     <tbody>
-                        <tr v-for="(row, idx) in items['data']" :key="idx" class="data-row" :style="idx === 0 ? 'background: bisque' : ''">
+                        <tr v-for="(row, idx) in displayData" :key="idx" class="data-row" :style="idx === 0 ? 'background: bisque' : ''">
                             <template v-if="idx == 0">
                                 <td class="data-cell"></td>
                                 <td class="data-cell"></td>
@@ -49,7 +77,7 @@
                                 <td v-for="header in items['header3']" :key="header" class="data-cell numeric-cell" :style="{ backgroundColor: getStatusStyle(row[header]) }">
                                     {{ row[header] }}
                                 </td>
-                            </template>    
+                            </template>
                         </tr>
                     </tbody>
                 </table>
@@ -67,7 +95,7 @@
 </template>
 
 <script setup>
-import { ref, watch } from "vue"
+import { ref, watch, computed } from "vue"
 
 const props = defineProps({
     selected_supplier: {
@@ -86,6 +114,111 @@ const items = ref({
     "header3": [],
     "data": []
 })
+
+// Filter state
+const selected_lot = ref('')
+const selected_item = ref('')
+const selected_colour = ref('')
+const selected_part = ref('')
+
+// Data rows (excluding total row at idx 0)
+const dataRows = computed(() => {
+    return items.value.data.length > 1 ? items.value.data.slice(1) : []
+})
+
+// --- Filter option computeds ---
+
+const lotOptions = computed(() => {
+    const vals = new Set()
+    for (const row of dataRows.value) {
+        if (row.lot) vals.add(row.lot)
+    }
+    return [...vals].sort()
+})
+
+const itemOptions = computed(() => {
+    const vals = new Set()
+    for (const row of dataRows.value) {
+        if (selected_lot.value && row.lot !== selected_lot.value) continue
+        if (row.item) vals.add(row.item)
+    }
+    return [...vals].sort()
+})
+
+const colourOptions = computed(() => {
+    const vals = new Set()
+    for (const row of dataRows.value) {
+        if (selected_lot.value && row.lot !== selected_lot.value) continue
+        if (row.display_colour) vals.add(row.display_colour)
+    }
+    return [...vals].sort()
+})
+
+const partOptions = computed(() => {
+    const vals = new Set()
+    for (const row of dataRows.value) {
+        if (selected_lot.value && row.lot !== selected_lot.value) continue
+        if (row.is_set_item && row.attr_details && row.set_attr) {
+            const part = row.attr_details[row.set_attr]
+            if (part) vals.add(part)
+        }
+    }
+    return [...vals].sort()
+})
+
+// --- Filtered data computeds ---
+
+const filteredRows = computed(() => {
+    return dataRows.value.filter(row => {
+        if (selected_lot.value && row.lot !== selected_lot.value) return false
+        if (selected_item.value && row.item !== selected_item.value) return false
+        if (selected_colour.value && row.display_colour !== selected_colour.value) return false
+        if (selected_part.value) {
+            if (row.is_set_item) {
+                const part = row.attr_details && row.set_attr ? row.attr_details[row.set_attr] : null
+                if (part !== selected_part.value) return false
+            }
+            // Non-set items pass through — they have no part concept
+        }
+        return true
+    })
+})
+
+const filteredTotal = computed(() => {
+    const total = {}
+    for (const key of items.value.header2) {
+        total[key] = 0
+        for (const row of filteredRows.value) {
+            total[key] += (row[key] || 0)
+        }
+    }
+    return total
+})
+
+const displayData = computed(() => {
+    if (filteredRows.value.length === 0) return []
+    return [filteredTotal.value, ...filteredRows.value]
+})
+
+// --- Cascade watchers ---
+
+watch(selected_lot, () => {
+    selected_colour.value = ''
+    selected_part.value = ''
+    if (selected_item.value && !itemOptions.value.includes(selected_item.value)) {
+        selected_item.value = ''
+    }
+})
+
+// Reset all filters on data reload / supplier change
+watch(items, () => {
+    selected_lot.value = ''
+    selected_item.value = ''
+    selected_colour.value = ''
+    selected_part.value = ''
+})
+
+// --- Helpers ---
 
 const formatNumber = (val) => {
     if (!val && val !== 0) return '-'
@@ -139,8 +272,30 @@ watch(() => [props.selected_supplier, props.refresh_counter], fetchData, { immed
 </script>
 
 <style scoped>
+@import "../SewingPlan.css";
+
 .status-summary-tab {
     padding: 1rem 0;
+}
+
+.filter-select {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 0.75rem;
+    height: 38px;
+    font-weight: 500;
+    font-size: 0.875rem;
+    color: #334155;
+    padding: 0 0.75rem;
+    min-width: 150px;
+    outline: none;
+    cursor: pointer;
+    appearance: auto;
+    transition: border-color 0.2s ease;
+}
+
+.filter-select:focus {
+    border-color: #94a3b8;
 }
 
 .report-wrapper {
@@ -208,7 +363,7 @@ watch(() => [props.selected_supplier, props.refresh_counter], fetchData, { immed
 }
 
 /* Border refining for separate collapse */
-.report-table th, 
+.report-table th,
 .report-table td {
     border-right: 1px solid #e2e8f0;
     border-bottom: 1px solid #e2e8f0;

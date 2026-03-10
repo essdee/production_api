@@ -69,9 +69,30 @@ class CuttingLaySheet(Document):
 			items = save_item_details(self.item_details, self.cutting_plan, self.calculated_parts, self.is_manual_entry)
 			self.set("cutting_laysheet_details", items)
 
+		for item in self.cutting_laysheet_details:
+			if item.balance_weight and item.balance_weight >= item.weight:
+				frappe.throw(
+					f"Row {item.idx}: Balance Weight ({item.balance_weight}) must be less than Weight ({item.weight})"
+				)
+
 		if self.get('item_accessory_details'):
-			items = save_accessory_details(self.item_accessory_details, self.cutting_plan)	
+			items = save_accessory_details(self.item_accessory_details, self.cutting_plan)
 			self.set("cutting_laysheet_accessory_details", items)
+
+		if not self.is_new():
+			db_status = frappe.get_value("Cutting LaySheet", self.name, "status")
+			if db_status == "Bundles Generated":
+				old_details = frappe.get_all(
+					"Cutting LaySheet Detail",
+					filters={"parent": self.name},
+					fields=["colour", "no_of_bits", "shade", "fabric_type"],
+					order_by="idx"
+				)
+				old_key = sorted([(d.colour, d.no_of_bits, d.shade, d.fabric_type) for d in old_details])
+				new_key = sorted([(item.colour, item.no_of_bits, item.shade, item.fabric_type) for item in self.cutting_laysheet_details])
+				if old_key != new_key:
+					self.set("cutting_laysheet_bundles", [])
+					self.status = "Completed"
 
 		status = frappe.get_value("Cutting Plan",self.cutting_plan,"cp_status")	
 		if self.is_new() and status == "Completed":
@@ -1347,6 +1368,7 @@ def get_table_entries(cls_table, ipd_doc, supplier, lot, doc_name, received_type
 	return sl_entries		
 
 def get_sl_entries(variant, supplier, lot, item, uom, doc_name, received_type, multiplier):
+	balance_weight = item.get("balance_weight") or 0
 	return {
 		"item": variant,
 		"warehouse": supplier,
@@ -1355,7 +1377,7 @@ def get_sl_entries(variant, supplier, lot, item, uom, doc_name, received_type, m
 		"voucher_type": "Cutting LaySheet",
 		"voucher_no": doc_name,
 		"voucher_detail_no": item.name,
-		"qty": (item.weight - item.get('balance_weight', 0)) * multiplier,
+		"qty": (item.weight - balance_weight) * multiplier,
 		"uom": uom,
 		"is_cancelled": 0,
 		"posting_date": frappe.utils.nowdate(),

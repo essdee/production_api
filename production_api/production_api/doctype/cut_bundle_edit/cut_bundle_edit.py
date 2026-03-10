@@ -90,15 +90,17 @@ class CutBundleEdit(Document):
 	def before_cancel(self):
 		self.ignore_linked_doctypes = ("Cut Bundle Movement Ledger",)
 		posting_datetime = get_combine_datetime(self.posting_date, self.posting_time)
+		lot_hash = frappe.get_cached_value("Lot", self.lot, "lot_hash_value")
+		item_hash = frappe.get_cached_value("Item", self.item, "item_hash_value")
 		output_json = frappe.json.loads(self.output_json)
 		for row in output_json:
 			parts = [
-				str(self.lot),
+				str(lot_hash),
 				str(self.warehouse),
 				str(row['lay_no']),
 				str(row['bundle_no']),
 				str(row['shade']),
-				str(self.item),
+				str(item_hash),
 				str(row['size']),
 				str(row['colour']),
 				str(row['panel']),

@@ -324,6 +324,9 @@ function update_readonly(input_fields){
 
 function add_item(){
     check_values()
+    if (balance_weight.get_value() >= cloth_weight.get_value()) {
+        frappe.throw("Balance Weight must be less than Weight")
+    }
     make_dirty()
 
     let set_json = {}
@@ -549,6 +552,9 @@ function delete_item(index){
 
 function update_item(){
     check_values()
+    if (balance_weight.get_value() >= cloth_weight.get_value()) {
+        frappe.throw("Balance Weight must be less than Weight")
+    }
     make_dirty()
     let set_json = {}
     for(let i = 0 ; i < set_parameters.length ; i++){
@@ -581,14 +587,14 @@ function update_item(){
         "fabric_type": fabric_type.get_value(),
         "actual_dia": actual_dia.get_value(),
         "set_combination":JSON.stringify(set_json),
-        "balance_weight":balance_weight.get_value(),
-        "used_weight": cloth_weight.get_value() - balance_weight.get_value()
+        "balance_weight":balance_weight.get_value() || 0,
+        "used_weight": cloth_weight.get_value() - (balance_weight.get_value() || 0)
     }
     if(!is_manual_entry){
         let x = {
             "comments":cloth_comment.get_value(),
             "no_of_bits":cloth_bits.get_value(),
-            "end_bit_weight":cloth_end_bit.get_value(),
+            "end_bit_weight":cloth_end_bit.get_value() || 0,
             "items_json": JSON.stringify(json_val),
         }
         Object.assign(d, x) 
