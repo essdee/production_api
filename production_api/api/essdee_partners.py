@@ -7,4 +7,4 @@ def get_inward_stock_entry_details(item, warehouselist=[], start_date = None, en
 
 @frappe.whitelist()
 def get_outward_stock_entry_details(item, warehouselist=[], start_date = None, end_date = None):
-    return get_outward_stock(item, warehouselist, start_date = start_date, end_date = end_date)
+    return get_outward_stock(item, warehouselist, start_date = start_date, end_date = end_date) 
