@@ -11,7 +11,36 @@
   "primary_attribute",
   "section_break_attributes",
   "item_attributes",
-  "item_attribute_list_values_html"
+  "item_attribute_list_values_html",
+  "packing_tab",
+  "packing_section",
+  "packing_attribute",
+  "packing_combo",
+  "column_break_packing",
+  "packing_attribute_no",
+  "section_break_packing_btn",
+  "get_packing_attribute_values",
+  "packing_attribute_details",
+  "set_item_tab",
+  "set_item_details_section",
+  "is_set_item",
+  "set_item_attribute",
+  "major_attribute_value",
+  "get_set_item_combination",
+  "set_item_combination_details",
+  "set_items_html",
+  "stiching_tab",
+  "stiching_details_section",
+  "stiching_attribute",
+  "stiching_major_attribute_value",
+  "section_break_stich_btn",
+  "get_stiching_attribute_values",
+  "stiching_item_details",
+  "section_break_stich_combo",
+  "is_same_packing_attribute",
+  "get_stiching_item_combination",
+  "stiching_items_html",
+  "stiching_item_combination_details"
  ],
  "fields": [
   {
@@ -54,11 +83,180 @@
    "fieldname": "item_attribute_list_values_html",
    "fieldtype": "HTML",
    "label": "Item Attribute List Values HTML"
+  },
+  {
+   "depends_on": "eval: !doc.__islocal",
+   "fieldname": "packing_tab",
+   "fieldtype": "Tab Break",
+   "label": "Packing"
+  },
+  {
+   "fieldname": "packing_section",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "packing_attribute",
+   "fieldtype": "Link",
+   "label": "Packing Attribute",
+   "mandatory_depends_on": "eval: !doc.__islocal",
+   "options": "Item Attribute"
+  },
+  {
+   "description": "Pcs per Box",
+   "fieldname": "packing_combo",
+   "fieldtype": "Int",
+   "label": "Packing Combo",
+   "mandatory_depends_on": "eval: !doc.__islocal",
+   "non_negative": 1
+  },
+  {
+   "fieldname": "column_break_packing",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "packing_attribute_no",
+   "fieldtype": "Int",
+   "label": "Packing Attribute No",
+   "mandatory_depends_on": "eval: !doc.__islocal",
+   "non_negative": 1
+  },
+  {
+   "fieldname": "section_break_packing_btn",
+   "fieldtype": "Section Break"
+  },
+  {
+   "depends_on": "eval: doc.packing_attribute_no && doc.packing_attribute",
+   "fieldname": "get_packing_attribute_values",
+   "fieldtype": "Button",
+   "label": "Get Packing Attribute Values"
+  },
+  {
+   "fieldname": "packing_attribute_details",
+   "fieldtype": "Table",
+   "label": "Packing Attribute Details",
+   "options": "Item Production Detail Packing Attribute Detail"
+  },
+  {
+   "depends_on": "eval: !doc.__islocal && doc.packing_attribute",
+   "fieldname": "set_item_tab",
+   "fieldtype": "Tab Break",
+   "label": "Set Item"
+  },
+  {
+   "fieldname": "set_item_details_section",
+   "fieldtype": "Section Break"
+  },
+  {
+   "default": "0",
+   "fieldname": "is_set_item",
+   "fieldtype": "Check",
+   "label": "Is Set Item"
+  },
+  {
+   "depends_on": "eval: doc.is_set_item",
+   "fieldname": "set_item_attribute",
+   "fieldtype": "Link",
+   "label": "Set Item Attribute",
+   "mandatory_depends_on": "eval: doc.is_set_item",
+   "options": "Item Attribute"
+  },
+  {
+   "depends_on": "eval: doc.is_set_item && doc.set_item_attribute",
+   "fieldname": "major_attribute_value",
+   "fieldtype": "Link",
+   "label": "Major Attribute Value",
+   "mandatory_depends_on": "eval: doc.is_set_item",
+   "options": "Item Attribute Value"
+  },
+  {
+   "depends_on": "eval: doc.is_set_item && doc.set_item_attribute && doc.major_attribute_value",
+   "fieldname": "get_set_item_combination",
+   "fieldtype": "Button",
+   "label": "Get Set Item Combination"
+  },
+  {
+   "fieldname": "set_item_combination_details",
+   "fieldtype": "Table",
+   "hidden": 1,
+   "label": "Set Item Combination Details",
+   "options": "Item Production Detail Set Item Combination"
+  },
+  {
+   "fieldname": "set_items_html",
+   "fieldtype": "HTML",
+   "label": "Set Items HTML"
+  },
+  {
+   "depends_on": "eval: !doc.__islocal",
+   "fieldname": "stiching_tab",
+   "fieldtype": "Tab Break",
+   "label": "Stitching"
+  },
+  {
+   "fieldname": "stiching_details_section",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "stiching_attribute",
+   "fieldtype": "Link",
+   "label": "Stiching Attribute",
+   "options": "Item Attribute"
+  },
+  {
+   "depends_on": "eval: doc.stiching_attribute",
+   "fieldname": "stiching_major_attribute_value",
+   "fieldtype": "Link",
+   "label": "Stiching Major Attribute Value",
+   "options": "Item Attribute Value"
+  },
+  {
+   "fieldname": "section_break_stich_btn",
+   "fieldtype": "Section Break"
+  },
+  {
+   "depends_on": "eval: doc.stiching_attribute",
+   "fieldname": "get_stiching_attribute_values",
+   "fieldtype": "Button",
+   "label": "Get Stiching Attribute Values"
+  },
+  {
+   "fieldname": "stiching_item_details",
+   "fieldtype": "Table",
+   "label": "Stiching Item Details",
+   "options": "Stiching Item Detail"
+  },
+  {
+   "fieldname": "section_break_stich_combo",
+   "fieldtype": "Section Break"
+  },
+  {
+   "default": "0",
+   "fieldname": "is_same_packing_attribute",
+   "fieldtype": "Check",
+   "label": "Is Same Packing Attribute"
+  },
+  {
+   "depends_on": "eval: doc.stiching_attribute",
+   "fieldname": "get_stiching_item_combination",
+   "fieldtype": "Button",
+   "label": "Get Stiching Item Combination"
+  },
+  {
+   "fieldname": "stiching_items_html",
+   "fieldtype": "HTML",
+   "label": "Stiching Items HTML"
+  },
+  {
+   "fieldname": "stiching_item_combination_details",
+   "fieldtype": "Table",
+   "hidden": 1,
+   "label": "Stiching Item Combination Details",
+   "options": "Item Production Detail Set Item Combination"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-03-12 12:00:00.000000",
+ "modified": "2026-03-12 12:30:00.000000",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Cutting Order",
