@@ -1,0 +1,108 @@
+{
+ "actions": [],
+ "autoname": "naming_series:",
+ "creation": "2026-03-12 12:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "naming_series",
+  "item",
+  "column_break_main",
+  "primary_attribute",
+  "section_break_attributes",
+  "item_attributes",
+  "item_attribute_list_values_html"
+ ],
+ "fields": [
+  {
+   "fieldname": "naming_series",
+   "fieldtype": "Data",
+   "hidden": 1,
+   "label": "Naming Series"
+  },
+  {
+   "fieldname": "item",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Item",
+   "reqd": 1
+  },
+  {
+   "fieldname": "column_break_main",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "primary_attribute",
+   "fieldtype": "Link",
+   "label": "Primary Attribute",
+   "options": "Item Attribute"
+  },
+  {
+   "fieldname": "section_break_attributes",
+   "fieldtype": "Section Break",
+   "label": "Item Attributes"
+  },
+  {
+   "fieldname": "item_attributes",
+   "fieldtype": "Table",
+   "label": "Item Attributes",
+   "options": "Item Item Attribute"
+  },
+  {
+   "depends_on": "eval: !doc.__islocal",
+   "fieldname": "item_attribute_list_values_html",
+   "fieldtype": "HTML",
+   "label": "Item Attribute List Values HTML"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-03-12 12:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Production Api",
+ "name": "Cutting Order",
+ "naming_rule": "By \"Naming Series\" field",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Cutting User",
+   "select": 1,
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Production Planner",
+   "select": 1,
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1
+}
