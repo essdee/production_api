@@ -541,12 +541,209 @@ def get_daily_production_report(date, location):
 					attrs = row['attributes']
 					attrs[row['primary_attribute']] = val
 					variant = get_or_create_variant(cp_doc.item, attrs)
-					if planned_dict:
+					if planned_dict and variant in planned_dict:
 						total_planned += planned_dict[variant]['planned']
 						total_received += planned_dict[variant]['cumulative']
 
-			if total_qty > 0:	
-				row['total_qty'] = total_qty	
+			if total_qty > 0:
+				row['total_qty'] = total_qty
+				row['planned'] = total_planned
+				row['cumulative'] = total_received
+				items_list.append(row)
+				total += total_qty
+				total_planned_qty += total_planned
+				total_received_qty += total_received
+
+		if len(items_list) == 0:
+			continue
+		else:
+			completed_items['items'] = items_list
+		completed_items['total_sum'] = total
+		completed_items['total_planned_sum'] = total_planned_qty
+		completed_items['total_received_sum'] = total_received_qty
+		completed_items['style_no'] = cp_doc.item
+		completed_items['lot_no'] = cp_doc.lot
+		completed_items['location'] = cp_doc.cutting_location
+		report.append(completed_items)
+
+	return {
+		"report_data": report,
+		"bundle_generated": bundle_generated,
+		"label_printed": label_printed,
+		"created": created
+	}
+
+@frappe.whitelist()
+def get_daily_production_summary_report(items=None, lots=None, location=None):
+	import json as _json
+
+	items_list = _json.loads(items) if items else []
+	lots_list = _json.loads(lots) if lots else []
+
+	if not items_list and not lots_list:
+		frappe.throw("Please select at least one Item or Lot")
+
+	conditions = []
+	values = {}
+	if items_list:
+		conditions.append("item IN %(items)s")
+		values["items"] = items_list
+	if lots_list:
+		conditions.append("lot IN %(lots)s")
+		values["lots"] = lots_list
+
+	where_clause = " OR ".join(conditions)
+
+	dates = frappe.db.sql(
+		f"""
+			SELECT DISTINCT bundle_generated_date
+			FROM `tabCutting LaySheet`
+			WHERE ({where_clause})
+			AND bundle_generated_date IS NOT NULL
+			ORDER BY bundle_generated_date DESC
+		""",
+		values,
+		as_dict=True,
+	)
+
+	result = []
+	for row in dates:
+		d = row["bundle_generated_date"]
+		data = get_daily_production_report(str(d), location)
+		filtered = [
+			entry for entry in data["report_data"]
+			if entry.get("style_no") in items_list or entry.get("lot_no") in lots_list
+		]
+		if filtered:
+			result.append({
+				"date": str(d),
+				"report_data": filtered,
+				"bundle_generated": data["bundle_generated"],
+				"label_printed": data["label_printed"],
+				"created": data["created"],
+			})
+
+	return result
+
+@frappe.whitelist()
+def get_cutting_detail_report(start_date, end_date, location):
+	from production_api.essdee_production.doctype.lot.lot import fetch_order_item_details
+	from production_api.production_api.doctype.cutting_plan.cutting_plan import get_complete_incomplete_structure
+	cutting_plans = frappe.db.sql(
+		"""
+			SELECT distinct(cutting_plan) FROM `tabCutting LaySheet` WHERE bundle_generated_date BETWEEN %(start_date)s AND %(end_date)s
+			AND status = 'Label Printed'
+		""", {
+			"start_date": getdate(start_date),
+			"end_date": getdate(end_date)
+		}, as_dict=True
+	)
+	report = []
+	bundle_generated = 0
+	label_printed = 0
+	created = 0
+	for cutting_plan in cutting_plans:
+		cp_doc = frappe.get_doc("Cutting Plan",cutting_plan['cutting_plan'])
+		if cp_doc.version == "V1":
+			frappe.throw("Can't get report for Cutting Plan Version V1")
+		if location and cp_doc.cutting_location != location:
+			continue
+		item_details = fetch_order_item_details(cp_doc.items,cp_doc.production_detail)
+		completed, incomplete = get_complete_incomplete_structure(cp_doc.production_detail,item_details)
+		incomplete_items = update_if_string_instance(incomplete)
+		completed_items = update_if_string_instance(completed)
+		production_detail = cp_doc.production_detail
+		ipd_doc = frappe.get_cached_doc("Item Production Detail",production_detail)
+		cls_list = frappe.db.sql(
+			"""
+				SELECT name FROM `tabCutting LaySheet` WHERE bundle_generated_date BETWEEN %(start_date)s AND %(end_date)s
+				AND cutting_plan = %(cutting_plan)s AND status = 'Label Printed'
+			""", {
+				"start_date": getdate(start_date),
+				"end_date": getdate(end_date),
+				"cutting_plan": cutting_plan['cutting_plan']
+			}, as_dict=True
+		)
+		bundle_generated += len(cls_list)
+		cls_list2 = frappe.db.sql(
+			"""
+				SELECT name FROM `tabCutting LaySheet` WHERE bundle_generated_date BETWEEN %(start_date)s AND %(end_date)s
+				AND cutting_plan = %(cutting_plan)s AND status = 'Label Printed'
+			""", {
+				"start_date": getdate(start_date),
+				"end_date": getdate(end_date),
+				"cutting_plan": cutting_plan['cutting_plan']
+			}, as_dict=True
+		)
+		label_printed += len(cls_list2)
+		cls_list3 = frappe.db.sql(
+			"""
+				SELECT name FROM `tabCutting LaySheet` WHERE posting_date BETWEEN %(start_date)s AND %(end_date)s
+				AND cutting_plan = %(cutting_plan)s AND status = 'Label Printed'
+			""", {
+				"start_date": getdate(start_date),
+				"end_date": getdate(end_date),
+				"cutting_plan": cutting_plan['cutting_plan']
+			}, as_dict=True
+		)
+		created += len(cls_list3)
+		completed_items, incomplete_items = calculate_completed(cls_list, ipd_doc, completed_items, incomplete_items)
+		major_panel = {}
+		panel_qty = {}
+		for row in ipd_doc.stiching_item_details:
+			if row.is_default:
+				major_panel[row.set_item_attribute_value] = row.stiching_attribute_value
+			panel_qty[row.stiching_attribute_value] = row.quantity
+
+		if not ipd_doc.is_set_item:
+			major_panel['panel'] = ipd_doc.stiching_major_attribute_value
+
+		for row1, row2 in zip_longest(completed_items['items'], incomplete_items['items']):
+			row1['values1'] = {}
+			if ipd_doc.is_set_item:
+				part = row1['attributes'][row1['set_attr']]
+				panel = major_panel[part]
+				for size in row1['values']:
+					if row2['values'][size][panel] > 0:
+						row1['values'][size] += row2['values'][size][panel]
+						x = get_less_qty_panels(row2['values'][size], panel, panel_qty)
+						row1['values1'][size] = x
+			else:
+				for size in row1['values']:
+					if row2['values'][size][major_panel['panel']] > 0:
+						row1['values'][size] += row2['values'][size][major_panel['panel']]
+						x = get_less_qty_panels(row2['values'][size], major_panel['panel'], panel_qty)
+						row1['values1'][size] = x
+
+		items_list = []
+		total = 0
+		total_planned_qty = 0
+		total_received_qty = 0
+		planned_dict = {}
+		if cp_doc.work_order:
+			wo_doc = frappe.get_doc("Work Order", cp_doc.work_order)
+			for row in wo_doc.work_order_calculated_items:
+				planned_dict.setdefault(row.item_variant, {
+					"planned": row.quantity,
+					"cumulative": row.received_qty
+				})
+		from production_api.production_api.doctype.item.item import get_or_create_variant
+		for row in completed_items['items']:
+			total_qty = 0
+			total_planned = 0
+			total_received = 0
+			for val in row['values']:
+				if row['values'][val] > 0:
+					total_qty += row['values'][val]
+					attrs = row['attributes']
+					attrs[row['primary_attribute']] = val
+					variant = get_or_create_variant(cp_doc.item, attrs)
+					if planned_dict and variant in planned_dict:
+						total_planned += planned_dict[variant]['planned']
+						total_received += planned_dict[variant]['cumulative']
+
+			if total_qty > 0:
+				row['total_qty'] = total_qty
 				row['planned'] = total_planned
 				row['cumulative'] = total_received
 				items_list.append(row)
@@ -626,6 +823,7 @@ def calculate_completed(cls_list, ipd_doc, completed_items, incomplete_items):
 					for panel in alter_incomplete_items[colour][val]:
 						if alter_incomplete_items[colour][val][panel] < min:
 							min = alter_incomplete_items[colour][val][panel]
+					total_qty.setdefault(val, 0)
 					total_qty[val] += min
 					item['values'][val] += min
 					for panel in alter_incomplete_items[colour][val]:
@@ -678,11 +876,12 @@ def calculate_completed(cls_list, ipd_doc, completed_items, incomplete_items):
 						if alter_incomplete_items[colour][part][val][panel] < min:
 							min = alter_incomplete_items[colour][part][val][panel]
 					
+					total_qty.setdefault(val, 0)
 					total_qty[val] += min
 					item['values'][val] += min
 					for panel in alter_incomplete_items[colour][part][val]:
-						alter_incomplete_items[colour][part][val][panel] -= min		
-			
+						alter_incomplete_items[colour][part][val][panel] -= min
+
 			completed_items["total_qty"] = total_qty
 			for item in incomplete_items['items']:
 				set_combination = update_if_string_instance(item['item_keys'])

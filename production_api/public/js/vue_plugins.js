@@ -63,6 +63,7 @@ import SuggestedVendorBillDeliveryPerson from "./VendorBillTracking/components/S
 import CutBundleEdit from "./Cut_Bundle_Edit/components/CutBundleEdit.vue";
 import DailyProductionReport from "./CuttingLaySheet/components/DailyProductionReport.vue";
 import DailyCutSheetReport from "./CuttingLaySheet/components/DailyCutSheetReport.vue";
+import CuttingDetailReport from "./CuttingLaySheet/components/CuttingDetailReport.vue";
 import GRNPacking from "./GRN/components/GRNPacking.vue";
 import {
     FinishingGRNWrapper,
@@ -534,6 +535,18 @@ frappe.production.ui.DailyCutSheetReport = class {
     }
     make_app() {
         this.app = createApp(DailyCutSheetReport)
+        SetVueGlobals(this.app)
+        this.vue = this.app.mount(this.$wrapper.get(0))
+    }
+}
+
+frappe.production.ui.CuttingDetailReport = class {
+    constructor(wrapper) {
+        this.$wrapper = $(wrapper);
+        this.make_app()
+    }
+    make_app() {
+        this.app = createApp(CuttingDetailReport)
         SetVueGlobals(this.app)
         this.vue = this.app.mount(this.$wrapper.get(0))
     }
