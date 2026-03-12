@@ -1149,6 +1149,176 @@ def get_fi_updates_data(supplier):
 	return {"data": colour_part_data}
 
 @frappe.whitelist()
+def get_item_summary_options(supplier):
+	sp_records = frappe.db.sql("""
+		SELECT DISTINCT lot, item
+		FROM `tabSewing Plan`
+		WHERE supplier = %(supplier)s
+	""", {"supplier": supplier}, as_dict=True)
+
+	lots = sorted({r.lot for r in sp_records if r.lot})
+	items = sorted({r.item for r in sp_records if r.item})
+
+	return {"lots": lots, "items": items}
+
+@frappe.whitelist()
+def get_item_summary_data(supplier, lots=None, items=None):
+	import json
+
+	if lots and isinstance(lots, str):
+		lots = json.loads(lots)
+	if items and isinstance(items, str):
+		items = json.loads(items)
+
+	if not lots and not items:
+		frappe.throw("Please select at least one Lot or Item")
+
+	# Get sewing plans for this supplier
+	sp_records = frappe.get_all("Sewing Plan", filters={"supplier": supplier},
+		fields=["name", "lot", "item"], limit_page_length=0)
+
+	# Filter by lots/items in memory
+	if lots:
+		sp_records = [r for r in sp_records if r.lot in lots]
+	if items:
+		sp_records = [r for r in sp_records if r.item in items]
+
+	if not sp_records:
+		return {"headers": [], "rows": [], "has_part": False}
+
+	sp_names = [r.name for r in sp_records]
+	sp_map = {r.name: r for r in sp_records}
+
+	# Cache lot → IPD mappings
+	unique_lots = list({r.lot for r in sp_records})
+	lot_ipd_map = {}
+	for l in unique_lots:
+		lot_ipd_map[l] = frappe.get_value("Lot", l, "production_detail")
+
+	ipd_fields = ["is_set_item", "packing_attribute", "primary_item_attribute", "set_item_attribute"]
+	unique_ipds = set(lot_ipd_map.values())
+	ipd_data_map = {}
+	ipd_primary_map = {}
+	for ipd in unique_ipds:
+		ipd_data_map[ipd] = frappe.get_value("Item Production Detail", ipd, ipd_fields)
+		ipd_primary_map[ipd] = get_ipd_primary_values(ipd)
+
+	# Bulk-fetch entry details
+	entry_rows = frappe.db.sql("""
+		SELECT name, sewing_plan, input_type, entry_date, work_station
+		FROM `tabSewing Plan Entry Detail`
+		WHERE sewing_plan IN %(sps)s
+	""", {"sps": tuple(sp_names)}, as_dict=True)
+
+	if not entry_rows:
+		return {"headers": [], "rows": [], "has_part": False}
+
+	entry_names = [e.name for e in entry_rows]
+	entry_map = {e.name: e for e in entry_rows}
+
+	# Bulk-fetch child detail rows
+	detail_rows = frappe.db.sql("""
+		SELECT parent, item_variant, set_combination, quantity
+		FROM `tabSewing Plan Detail`
+		WHERE parent IN %(entries)s
+	""", {"entries": tuple(entry_names)}, as_dict=True)
+
+	# Bulk-fetch variant attributes
+	all_variants = {r.item_variant for r in detail_rows}
+	variant_attr_cache = {}
+	if all_variants:
+		variant_attr_rows = frappe.db.sql("""
+			SELECT parent, attribute, attribute_value
+			FROM `tabItem Variant Attribute`
+			WHERE parent IN %(variants)s
+		""", {"variants": tuple(all_variants)}, as_dict=True)
+		for r in variant_attr_rows:
+			variant_attr_cache.setdefault(r.parent, {})[r.attribute] = r.attribute_value
+
+	# Group data by (item, lot) → then by (date, input_type, colour, part)
+	# group_data[item_lot_key] = { "sizes": set(), "has_part": bool, "rows": {row_key: {size: qty}} }
+	group_data = {}
+
+	for detail in detail_rows:
+		entry = entry_map[detail.parent]
+		sp = sp_map[entry.sewing_plan]
+		lot = sp.lot
+		item = sp.item
+		ipd_name = lot_ipd_map[lot]
+		is_set_item, pack_attr, primary_attr, set_attr = ipd_data_map[ipd_name]
+
+		attr_details = variant_attr_cache.get(detail.item_variant, {})
+		set_comb = update_if_string_instance(detail.set_combination)
+		major_colour = set_comb.get("major_colour", "")
+		size = attr_details.get(primary_attr, "")
+		colour = major_colour
+		part = None
+
+		if is_set_item:
+			variant_colour = attr_details.get(pack_attr, "")
+			part = attr_details.get(set_attr, "")
+			if set_comb.get("major_part") != part:
+				colour = f"{variant_colour} ({major_colour})"
+
+		group_key = (item, lot)
+		if group_key not in group_data:
+			group_data[group_key] = {
+				"sizes": set(),
+				"has_part": is_set_item,
+				"ipd": ipd_name,
+				"rows_map": {},
+			}
+
+		entry_date = str(entry.entry_date)
+		input_type = entry.input_type
+		work_station = entry.work_station or ""
+		row_key = (entry_date, input_type, work_station, colour, part)
+
+		group_data[group_key]["sizes"].add(size)
+		group_data[group_key]["rows_map"].setdefault(row_key, {})
+		group_data[group_key]["rows_map"][row_key].setdefault(size, 0)
+		group_data[group_key]["rows_map"][row_key][size] += detail.quantity
+
+	# Build grouped result
+	groups = []
+	for group_key in sorted(group_data.keys()):
+		item, lot = group_key
+		gd = group_data[group_key]
+
+		# Determine ordered size headers from this group's IPD
+		ordered_sizes = ipd_primary_map[gd["ipd"]]
+		group_sizes = gd["sizes"]
+		headers = [s for s in ordered_sizes if s in group_sizes]
+		for s in sorted(group_sizes):
+			if s not in headers:
+				headers.append(s)
+
+		rows = []
+		for row_key in sorted(gd["rows_map"].keys()):
+			size_qtys = gd["rows_map"][row_key]
+			date, input_type, work_station, colour, part = row_key
+			total = sum(size_qtys.values())
+			rows.append({
+				"date": date,
+				"input_type": input_type,
+				"work_station": work_station,
+				"colour": colour,
+				"part": part,
+				"values": size_qtys,
+				"total": total,
+			})
+
+		groups.append({
+			"item": item,
+			"lot": lot,
+			"headers": headers,
+			"has_part": gd["has_part"],
+			"rows": rows,
+		})
+
+	return {"groups": groups}
+
+@frappe.whitelist()
 def update_fi_dates(data):
 	data = update_if_string_instance(data)
 	
