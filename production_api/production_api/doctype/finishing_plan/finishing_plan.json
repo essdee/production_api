@@ -340,7 +340,7 @@
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-03-13 09:58:10.732790",
+ "modified": "2026-03-13 14:50:38.442152",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Finishing Plan",
@@ -409,5 +409,6 @@
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": [],
- "title_field": "item"
+ "title_field": "item",
+ "track_changes": 1
 }
