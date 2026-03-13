@@ -5,16 +5,7 @@ frappe.ui.form.on("Cutting Order", {
 	setup(frm) {
 		frm.trigger("declarations");
 
-		const setAttributeQuery = (doc) => {
-			const attributes = doc.item_attributes.map(attr => attr.attribute);
-			return { filters: { name: ["in", attributes] } };
-		};
-
-		frm.set_query('packing_attribute', setAttributeQuery);
-		frm.set_query('set_item_attribute', setAttributeQuery);
-		frm.set_query('stiching_attribute', setAttributeQuery);
-
-		frm.set_query('attribute_value', 'packing_attribute_details', () => {
+		frm.set_query('attribute_value', 'attribute_values', () => {
 			if (!frm.doc.packing_attribute) {
 				frappe.throw("Please select the packing attribute first");
 			}
@@ -35,7 +26,7 @@ frappe.ui.form.on("Cutting Order", {
 			};
 		});
 
-		frm.set_query('stiching_major_attribute_value', () => {
+		frm.set_query('major_panel_value', () => {
 			return {
 				query: 'production_api.essdee_production.doctype.item_production_detail.item_production_detail.get_attribute_detail_values',
 				filters: {
@@ -51,6 +42,10 @@ frappe.ui.form.on("Cutting Order", {
 					'mapping': frm.set_item_attr_map_value,
 				}
 			};
+		});
+
+		frm.set_query('dia', 'cloth_detail', () => {
+			return { filters: { 'attribute_name': 'Dia' } };
 		});
 
 		frm.set_query('major_attribute_value', () => {
@@ -152,23 +147,23 @@ frappe.ui.form.on("Cutting Order", {
 	},
 
 	// Button handlers
-	get_packing_attribute_values(frm) {
+	get_colour_values(frm) {
 		frappe.call({
 			method: 'production_api.essdee_production.doctype.item_production_detail.item_production_detail.get_mapping_attribute_values',
 			args: {
 				attribute_mapping_value: frm.set_packing_attr_map_value,
-				attribute_no: frm.doc.packing_attribute_no,
+				attribute_no: frm.doc.attribute_no,
 			},
 			callback: function(r) {
 				if (r.message) {
-					frm.set_value('packing_attribute_details', r.message);
-					frm.refresh_field('packing_attribute_details');
+					frm.set_value('attribute_values', r.message);
+					frm.refresh_field('attribute_values');
 				}
 			}
 		});
 	},
 
-	get_stiching_attribute_values(frm) {
+	get_panel_values(frm) {
 		frappe.call({
 			method: 'production_api.essdee_production.doctype.item_production_detail.item_production_detail.get_mapping_attribute_values',
 			args: {
@@ -193,7 +188,7 @@ frappe.ui.form.on("Cutting Order", {
 			method: 'production_api.essdee_production.doctype.item_production_detail.item_production_detail.get_new_combination',
 			args: {
 				attribute_mapping_value: frm.set_item_attr_map_value,
-				packing_attribute_details: frm.doc.packing_attribute_details,
+				packing_attribute_details: frm.doc.attribute_values,
 				major_attribute_value: frm.doc.major_attribute_value,
 			},
 			callback: async function(r) {
@@ -203,25 +198,25 @@ frappe.ui.form.on("Cutting Order", {
 		});
 	},
 
-	get_stiching_item_combination(frm) {
+	get_panel_combination(frm) {
 		if (!frm.doc.stiching_attribute) {
 			return;
 		}
-		if (!frm.doc.stiching_major_attribute_value) {
-			frappe.msgprint("Set the stiching major attribute value");
+		if (!frm.doc.major_panel_value) {
+			frappe.msgprint("Set the major panel value");
 			return;
 		}
 		if (frm.doc.stiching_item_details.length == 0) {
-			frappe.msgprint("Set the Stiching Item Detail");
+			frappe.msgprint("Set the Panel Details");
 			return;
 		}
 		frappe.call({
 			method: 'production_api.production_api.doctype.cutting_order.cutting_order.get_co_new_combination',
 			args: {
 				attribute_mapping_value: frm.stiching_attribute_mapping,
-				packing_attribute_details: frm.doc.packing_attribute_details,
-				major_attribute_value: frm.doc.stiching_major_attribute_value,
-				is_same_packing_attribute: frm.doc.is_same_packing_attribute,
+				packing_attribute_details: frm.doc.attribute_values,
+				major_attribute_value: frm.doc.major_panel_value,
+				is_same_colour: frm.doc.is_same_colour,
 				doc_name: frm.doc.name,
 			},
 			callback: async function(r) {
@@ -238,32 +233,8 @@ frappe.ui.form.on("Cutting Order", {
 		updateChildTableReqd(frm, ['set_item_attribute_value', 'is_default'], 'stiching_item_details', frm.doc.is_set_item ? 1 : 0);
 	},
 
-	set_item_attribute(frm) {
-		frm.set_item = new frappe.production.ui.CombinationItemDetail(frm.fields_dict['set_items_html'].wrapper);
-		if (frm.doc.major_attribute_value) {
-			frm.trigger('get_set_item_combination');
-		}
-		if (frm.doc.is_set_item && frm.doc.set_item_attribute) {
-			frm.trigger('declarations');
-			unhide_field(['set_items_html']);
-		}
-	},
-
-	packing_attribute(frm) {
-		if (frm.doc.packing_attribute) {
-			frm.trigger('declarations');
-		}
-		frm.trigger('make_hide_and_unhide_tabs');
-	},
-
 	major_attribute_value(frm) {
 		frm.trigger('get_set_item_combination');
-	},
-
-	stiching_attribute(frm) {
-		if (frm.doc.stiching_attribute) {
-			frm.trigger('declarations');
-		}
 	},
 
 	// Serialize Vue data before save

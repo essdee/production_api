@@ -14,6 +14,10 @@ class CuttingOrder(Document):
 	def autoname(self):
 		self.naming_series = "CO-.YY..MM.-.{#####}."
 
+	def on_update(self):
+		for mapping in getattr(self, '_orphaned_mappings', []):
+			frappe.delete_doc("Item Item Attribute Mapping", mapping, ignore_permissions=True)
+
 	def onload(self):
 		self.load_attribute_list()
 
@@ -50,6 +54,24 @@ class CuttingOrder(Document):
 		self.set_onload('attr_list', attribute_list)
 
 	def before_validate(self):
+		if self.is_new():
+			settings = frappe.get_cached_doc("IPD Settings")
+			self.primary_attribute = settings.default_primary_attribute
+			self.packing_attribute = settings.default_packing_attribute
+			self.stiching_attribute = settings.default_stitching_attribute
+			self.set_item_attribute = settings.default_set_item_attribute
+
+			existing_attrs = {row.attribute for row in self.get('item_attributes')}
+			for attr in [
+				settings.default_primary_attribute,
+				settings.default_packing_attribute,
+				settings.default_stitching_attribute,
+				settings.default_set_item_attribute,
+			]:
+				if attr and attr not in existing_attrs:
+					self.append('item_attributes', {'attribute': attr})
+					existing_attrs.add(attr)
+
 		if self.get('set_item_detail') and self.is_set_item:
 			set_details = save_item_details(self.set_item_detail)
 			self.set('set_item_combination_details', set_details)
@@ -85,14 +107,22 @@ class CuttingOrder(Document):
 					frappe.throw("Select Is default for all Set Item Attributes")
 
 	def validate(self):
-		# Delete orphaned mappings for removed attribute rows
+		if len(self.cloth_detail) > 0:
+			names = set()
+			for row in self.cloth_detail:
+				names.add(row.name1)
+			if len(names) != len(self.cloth_detail):
+				frappe.throw("Duplicate names in Cloth Detail")
+
+		# Track orphaned mappings for deletion after save
+		self._orphaned_mappings = []
 		if not self.is_new():
 			previous = self.get_doc_before_save()
 			if previous:
 				current_mappings = {a.mapping for a in self.get('item_attributes') if a.mapping}
 				for attr in previous.get('item_attributes'):
 					if attr.mapping and attr.mapping not in current_mappings:
-						frappe.delete_doc("Item Item Attribute Mapping", attr.mapping, ignore_permissions=True)
+						self._orphaned_mappings.append(attr.mapping)
 
 		# Auto-create mappings for new attribute rows
 		for attribute in self.get('item_attributes'):
@@ -103,17 +133,14 @@ class CuttingOrder(Document):
 				attribute.mapping = doc.name
 
 		if not self.is_new():
-			if self.packing_attribute:
+			if self.packing_attribute and self.attribute_no and len(self.attribute_values) > 0:
 				self.packing_tab_validations()
 
 			if self.stiching_attribute and len(self.stiching_item_details) > 0:
 				self.stiching_tab_validations()
 
 	def packing_tab_validations(self):
-		if self.packing_combo == 0:
-			frappe.throw("The packing combo should not be zero")
-
-		if self.packing_attribute_no == 0:
+		if self.attribute_no == 0:
 			frappe.throw("The packing attribute no should not be zero")
 
 		mapping = None
@@ -124,25 +151,18 @@ class CuttingOrder(Document):
 
 		if mapping:
 			map_doc = frappe.get_cached_doc("Item Item Attribute Mapping", mapping)
-			if len(map_doc.values) < self.packing_attribute_no:
-				frappe.throw(f"The Packing attribute no is {self.packing_attribute_no} But there is only {len(map_doc.values)} attributes are available")
+			if len(map_doc.values) < self.attribute_no:
+				frappe.throw(f"The Packing attribute no is {self.attribute_no} But there is only {len(map_doc.values)} attributes are available")
 
-		if len(self.packing_attribute_details) != self.packing_attribute_no:
-			frappe.throw(f"Only {self.packing_attribute_no} {self.packing_attribute}'s are required")
+		if len(self.attribute_values) != self.attribute_no:
+			frappe.throw(f"Only {self.attribute_no} {self.packing_attribute}'s are required")
 
-		sum_qty = 0.0
 		attr = set()
-		for row in self.packing_attribute_details:
-			if not row.quantity:
-				frappe.throw("Enter value in Packing Attribute Details, Zero is not considered as a valid quantity")
-			sum_qty += row.quantity
+		for row in self.attribute_values:
 			attr.add(row.attribute_value)
 
-		if sum_qty < self.packing_combo or sum_qty > self.packing_combo:
-			frappe.throw(f"In Packing Attribute Details, the sum of quantity should be {self.packing_combo}")
-
-		if len(attr) != len(self.packing_attribute_details):
-			frappe.throw("Duplicate Attribute values are occured in Packing Attribute Details")
+		if len(attr) != len(self.attribute_values):
+			frappe.throw("Duplicate Attribute values are occured in Colour Details")
 
 	def stiching_tab_validations(self):
 		if len(self.stiching_item_details) == 0:
@@ -151,11 +171,11 @@ class CuttingOrder(Document):
 		attr = set()
 		for row in self.stiching_item_details:
 			if not row.quantity:
-				frappe.throw("Enter value in Stiching Item Details, Zero is not considered as a valid quantity")
+				frappe.throw("Enter value in Panel Details, Zero is not considered as a valid quantity")
 			attr.add(row.stiching_attribute_value)
 
 		if len(attr) != len(self.stiching_item_details):
-			frappe.throw("Duplicate Attribute values are occured in Stiching Item Details")
+			frappe.throw("Duplicate Attribute values are occured in Panel Details")
 
 
 @frappe.whitelist()
@@ -170,7 +190,7 @@ def update_attribute_mapping_values(mapping, values):
 
 
 @frappe.whitelist()
-def get_co_new_combination(attribute_mapping_value, packing_attribute_details, major_attribute_value, is_same_packing_attribute=False, doc_name=None):
+def get_co_new_combination(attribute_mapping_value, packing_attribute_details, major_attribute_value, is_same_colour=False, doc_name=None):
 	packing_attribute_details = update_if_string_instance(packing_attribute_details)
 	if isinstance(packing_attribute_details, list):
 		pass
@@ -197,8 +217,8 @@ def get_co_new_combination(attribute_mapping_value, packing_attribute_details, m
 				set_item_details.setdefault(item.major_attribute_value, {})
 				set_item_details[item.major_attribute_value][item.set_item_attribute_value] = item.attribute_value
 
-	if isinstance(is_same_packing_attribute, str):
-		is_same_packing_attribute = is_same_packing_attribute in ('true', 'True', '1')
+	if isinstance(is_same_colour, str):
+		is_same_colour = is_same_colour in ('true', 'True', '1')
 
 	item_detail = []
 	for item in packing_attribute_details:
@@ -208,7 +228,7 @@ def get_co_new_combination(attribute_mapping_value, packing_attribute_details, m
 		for i in attributes:
 			if i == major_attribute_value:
 				item_list['val'][i] = item['attribute_value']
-			elif is_same_packing_attribute:
+			elif is_same_colour:
 				if doc_name and co_doc and co_doc.is_set_item:
 					part = stiching_item_details[i]
 					item_list['val'][i] = set_item_details[item['attribute_value']][part]

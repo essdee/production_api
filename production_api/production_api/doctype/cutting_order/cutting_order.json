@@ -1,7 +1,7 @@
 {
  "actions": [],
  "autoname": "naming_series:",
- "creation": "2026-03-12 12:00:00.000000",
+ "creation": "2026-03-12 12:00:00",
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
@@ -12,15 +12,15 @@
   "section_break_attributes",
   "item_attributes",
   "item_attribute_list_values_html",
-  "packing_tab",
+  "cloth_details_section",
+  "cloth_detail",
+  "colour_detail_tab",
   "packing_section",
   "packing_attribute",
-  "packing_combo",
-  "column_break_packing",
-  "packing_attribute_no",
-  "section_break_packing_btn",
-  "get_packing_attribute_values",
-  "packing_attribute_details",
+  "attribute_no",
+  "section_break_colour_btn",
+  "get_colour_values",
+  "attribute_values",
   "set_item_tab",
   "set_item_details_section",
   "is_set_item",
@@ -29,16 +29,16 @@
   "get_set_item_combination",
   "set_item_combination_details",
   "set_items_html",
-  "stiching_tab",
-  "stiching_details_section",
+  "panel_details_tab",
+  "panel_details_section",
   "stiching_attribute",
-  "stiching_major_attribute_value",
-  "section_break_stich_btn",
-  "get_stiching_attribute_values",
+  "major_panel_value",
+  "section_break_panel_btn",
+  "get_panel_values",
   "stiching_item_details",
-  "section_break_stich_combo",
-  "is_same_packing_attribute",
-  "get_stiching_item_combination",
+  "section_break_panel_combo",
+  "is_same_colour",
+  "get_panel_combination",
   "stiching_items_html",
   "stiching_item_combination_details"
  ],
@@ -64,10 +64,13 @@
   {
    "fieldname": "primary_attribute",
    "fieldtype": "Link",
+   "hidden": 1,
    "label": "Primary Attribute",
-   "options": "Item Attribute"
+   "options": "Item Attribute",
+   "read_only": 1
   },
   {
+   "depends_on": "eval: !doc.__islocal",
    "fieldname": "section_break_attributes",
    "fieldtype": "Section Break",
    "label": "Item Attributes"
@@ -85,10 +88,16 @@
    "label": "Item Attribute List Values HTML"
   },
   {
+   "fieldname": "cloth_detail",
+   "fieldtype": "Table",
+   "label": "Cloth Detail",
+   "options": "Cutting Order Cloth Detail"
+  },
+  {
    "depends_on": "eval: !doc.__islocal",
-   "fieldname": "packing_tab",
+   "fieldname": "colour_detail_tab",
    "fieldtype": "Tab Break",
-   "label": "Packing"
+   "label": "Colour Detail"
   },
   {
    "fieldname": "packing_section",
@@ -97,44 +106,33 @@
   {
    "fieldname": "packing_attribute",
    "fieldtype": "Link",
+   "hidden": 1,
    "label": "Packing Attribute",
-   "mandatory_depends_on": "eval: !doc.__islocal",
-   "options": "Item Attribute"
+   "options": "Item Attribute",
+   "read_only": 1
   },
   {
-   "description": "Pcs per Box",
-   "fieldname": "packing_combo",
+   "fieldname": "attribute_no",
    "fieldtype": "Int",
-   "label": "Packing Combo",
+   "label": "Attribute No",
    "mandatory_depends_on": "eval: !doc.__islocal",
    "non_negative": 1
   },
   {
-   "fieldname": "column_break_packing",
-   "fieldtype": "Column Break"
-  },
-  {
-   "fieldname": "packing_attribute_no",
-   "fieldtype": "Int",
-   "label": "Packing Attribute No",
-   "mandatory_depends_on": "eval: !doc.__islocal",
-   "non_negative": 1
-  },
-  {
-   "fieldname": "section_break_packing_btn",
+   "fieldname": "section_break_colour_btn",
    "fieldtype": "Section Break"
   },
   {
-   "depends_on": "eval: doc.packing_attribute_no && doc.packing_attribute",
-   "fieldname": "get_packing_attribute_values",
+   "depends_on": "eval: doc.attribute_no",
+   "fieldname": "get_colour_values",
    "fieldtype": "Button",
-   "label": "Get Packing Attribute Values"
+   "label": "Get Colour Values"
   },
   {
-   "fieldname": "packing_attribute_details",
+   "fieldname": "attribute_values",
    "fieldtype": "Table",
-   "label": "Packing Attribute Details",
-   "options": "Item Production Detail Packing Attribute Detail"
+   "label": "Attribute Values",
+   "options": "Cutting Order Colour Value"
   },
   {
    "depends_on": "eval: !doc.__islocal && doc.packing_attribute",
@@ -156,9 +154,10 @@
    "depends_on": "eval: doc.is_set_item",
    "fieldname": "set_item_attribute",
    "fieldtype": "Link",
+   "hidden": 1,
    "label": "Set Item Attribute",
-   "mandatory_depends_on": "eval: doc.is_set_item",
-   "options": "Item Attribute"
+   "options": "Item Attribute",
+   "read_only": 1
   },
   {
    "depends_on": "eval: doc.is_set_item && doc.set_item_attribute",
@@ -188,58 +187,60 @@
   },
   {
    "depends_on": "eval: !doc.__islocal",
-   "fieldname": "stiching_tab",
+   "fieldname": "panel_details_tab",
    "fieldtype": "Tab Break",
-   "label": "Stitching"
+   "label": "Panel Details"
   },
   {
-   "fieldname": "stiching_details_section",
+   "fieldname": "panel_details_section",
    "fieldtype": "Section Break"
   },
   {
    "fieldname": "stiching_attribute",
    "fieldtype": "Link",
+   "hidden": 1,
    "label": "Stiching Attribute",
-   "options": "Item Attribute"
+   "options": "Item Attribute",
+   "read_only": 1
   },
   {
    "depends_on": "eval: doc.stiching_attribute",
-   "fieldname": "stiching_major_attribute_value",
+   "fieldname": "major_panel_value",
    "fieldtype": "Link",
-   "label": "Stiching Major Attribute Value",
+   "label": "Major Panel Value",
    "options": "Item Attribute Value"
   },
   {
-   "fieldname": "section_break_stich_btn",
+   "fieldname": "section_break_panel_btn",
    "fieldtype": "Section Break"
   },
   {
    "depends_on": "eval: doc.stiching_attribute",
-   "fieldname": "get_stiching_attribute_values",
+   "fieldname": "get_panel_values",
    "fieldtype": "Button",
-   "label": "Get Stiching Attribute Values"
+   "label": "Get Panel Values"
   },
   {
    "fieldname": "stiching_item_details",
    "fieldtype": "Table",
    "label": "Stiching Item Details",
-   "options": "Stiching Item Detail"
+   "options": "Cutting Order Panel Detail"
   },
   {
-   "fieldname": "section_break_stich_combo",
+   "fieldname": "section_break_panel_combo",
    "fieldtype": "Section Break"
   },
   {
    "default": "0",
-   "fieldname": "is_same_packing_attribute",
+   "fieldname": "is_same_colour",
    "fieldtype": "Check",
-   "label": "Is Same Packing Attribute"
+   "label": "Is Same Colour"
   },
   {
    "depends_on": "eval: doc.stiching_attribute",
-   "fieldname": "get_stiching_item_combination",
+   "fieldname": "get_panel_combination",
    "fieldtype": "Button",
-   "label": "Get Stiching Item Combination"
+   "label": "Get Panel Combination"
   },
   {
    "fieldname": "stiching_items_html",
@@ -252,11 +253,16 @@
    "hidden": 1,
    "label": "Stiching Item Combination Details",
    "options": "Item Production Detail Set Item Combination"
+  },
+  {
+   "fieldname": "cloth_details_section",
+   "fieldtype": "Section Break",
+   "label": "Cloth Details"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-03-12 12:30:00.000000",
+ "modified": "2026-03-12 18:57:08.002491",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Cutting Order",
@@ -299,6 +305,7 @@
    "write": 1
   }
  ],
+ "row_format": "Dynamic",
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": [],
