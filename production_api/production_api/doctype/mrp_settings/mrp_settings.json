@@ -62,7 +62,10 @@
   "sewing_plan_input_orders",
   "sewing_plan_inspection_type",
   "sewing_line_output_type",
-  "sewing_input_qty_type"
+  "sewing_input_qty_type",
+  "cutting_tab",
+  "piece_weight_min",
+  "piece_weight_max"
  ],
  "fields": [
   {
@@ -385,6 +388,25 @@
    "fieldtype": "Link",
    "label": "Sewing Input Qty Type",
    "options": "Sewing Plan Input Type"
+  },
+  {
+   "fieldname": "cutting_tab",
+   "fieldtype": "Tab Break",
+   "label": "Cutting"
+  },
+  {
+   "fieldname": "piece_weight_min",
+   "fieldtype": "Float",
+   "label": "Piece Weight Min (kg)",
+   "default": "0.01",
+   "description": "Minimum allowed piece weight in kg for Cutting LaySheet validation"
+  },
+  {
+   "fieldname": "piece_weight_max",
+   "fieldtype": "Float",
+   "label": "Piece Weight Max (kg)",
+   "default": "0.5",
+   "description": "Maximum allowed piece weight in kg for Cutting LaySheet validation"
   }
  ],
  "grid_page_length": 50,
