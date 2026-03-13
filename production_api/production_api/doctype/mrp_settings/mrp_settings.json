@@ -49,8 +49,10 @@
   "cutting_plan_section",
   "cloth_allowance_percentage",
   "printer_list",
+  "piece_weight_min",
   "column_break_nrkc",
   "cut_bundle_cancelled_lot",
+  "piece_weight_max",
   "quality_inspection_section",
   "default_major_aql_level",
   "column_break_bvdh",
@@ -62,10 +64,7 @@
   "sewing_plan_input_orders",
   "sewing_plan_inspection_type",
   "sewing_line_output_type",
-  "sewing_input_qty_type",
-  "cutting_tab",
-  "piece_weight_min",
-  "piece_weight_max"
+  "sewing_input_qty_type"
  ],
  "fields": [
   {
@@ -390,30 +389,25 @@
    "options": "Sewing Plan Input Type"
   },
   {
-   "fieldname": "cutting_tab",
-   "fieldtype": "Tab Break",
-   "label": "Cutting"
-  },
-  {
+   "default": "0.01",
+   "description": "Minimum allowed piece weight in kg for Cutting LaySheet validation",
    "fieldname": "piece_weight_min",
    "fieldtype": "Float",
-   "label": "Piece Weight Min (kg)",
-   "default": "0.01",
-   "description": "Minimum allowed piece weight in kg for Cutting LaySheet validation"
+   "label": "Piece Weight Min (kg)"
   },
   {
+   "default": "0.5",
+   "description": "Maximum allowed piece weight in kg for Cutting LaySheet validation",
    "fieldname": "piece_weight_max",
    "fieldtype": "Float",
-   "label": "Piece Weight Max (kg)",
-   "default": "0.5",
-   "description": "Maximum allowed piece weight in kg for Cutting LaySheet validation"
+   "label": "Piece Weight Max (kg)"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2026-01-27 18:10:11.336855",
+ "modified": "2026-03-13 11:29:29.143571",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "MRP Settings",
