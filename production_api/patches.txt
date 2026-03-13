@@ -63,3 +63,5 @@ production_api.patches.v1_0.update_cb_ledger
 production_api.patches.v1_0.update_bundle_generated_date
 production_api.patches.v1_0.status_update_for_old #1
 production_api.patches.v1_0.rename_item_variant_sizes
+production_api.patches.v1_0.update_finishing_plan_dates #1
+production_api.patches.v1_0.update_cutting_plan_dates #2

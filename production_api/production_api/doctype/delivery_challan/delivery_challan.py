@@ -8,7 +8,7 @@ from itertools import groupby
 from datetime import datetime
 from itertools import zip_longest
 from frappe.model.document import Document
-from frappe.utils import flt, nowdate, now
+from frappe.utils import flt, nowdate, now, getdate
 from production_api.mrp_stock.utils import get_stock_balance
 from production_api.production_api.logger import get_module_logger
 from production_api.utils import (
@@ -1340,6 +1340,22 @@ def update_finishing_item_doc(doc_name, finishing_doc_name, update_dc: bool):
         dc_list[doc_name] = frappe.utils.now_datetime().strftime(
             "%d-%m-%Y %H:%M:%S")
     finishing_doc.dc_list = frappe.json.dumps(dc_list)
+
+    # Update finishing_start_date based on earliest DC posting_date
+    if docstatus == 2:
+        # Recalculate from remaining DCs
+        if dc_list:
+            remaining_dates = [
+                frappe.db.get_value("Delivery Challan", dc, "posting_date")
+                for dc in dc_list
+            ]
+            remaining_dates = [d for d in remaining_dates if d]
+            finishing_doc.finishing_start_date = min(remaining_dates) if remaining_dates else None
+        else:
+            finishing_doc.finishing_start_date = None
+    else:
+        if not finishing_doc.finishing_start_date or getdate(self.posting_date) < getdate(finishing_doc.finishing_start_date):
+            finishing_doc.finishing_start_date = self.posting_date
 
     if self.is_internal_unit and self.supplier_address != self.from_address:
         incomplete_transfer_dc_list = update_if_string_instance(

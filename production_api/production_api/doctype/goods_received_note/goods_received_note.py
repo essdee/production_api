@@ -11,7 +11,7 @@ from datetime import datetime
 from itertools import groupby, zip_longest
 from frappe.model.document import Document
 from production_api.mrp_stock.utils import get_stock_balance
-from frappe.utils import money_in_words, flt, cstr, date_diff
+from frappe.utils import money_in_words, flt, cstr, date_diff, getdate
 from production_api.production_api.logger import get_module_logger
 from production_api.mrp_stock.doctype.stock_entry.stock_entry import get_uom_details
 from production_api.production_api.doctype.item.item import get_attribute_details, get_or_create_variant
@@ -2938,6 +2938,23 @@ def update_finishing_item_doc(doc_name, finishing_doc_name, update_finishing: bo
                 grn_list[doc_name] = frappe.utils.now_datetime().strftime(
                     "%d-%m-%Y %H:%M:%S")
         finishing_doc.grn_list = frappe.json.dumps(grn_list)
+
+        # Update finishing_end_date based on latest GRN posting_date
+        if docstatus == 2:
+            # Recalculate from remaining GRNs
+            if grn_list:
+                remaining_dates = [
+                    frappe.db.get_value("Goods Received Note", grn, "posting_date")
+                    for grn in grn_list
+                ]
+                remaining_dates = [d for d in remaining_dates if d]
+                finishing_doc.finishing_end_date = max(remaining_dates) if remaining_dates else None
+            else:
+                finishing_doc.finishing_end_date = None
+        else:
+            if not finishing_doc.finishing_end_date or getdate(self.posting_date) > getdate(finishing_doc.finishing_end_date):
+                finishing_doc.finishing_end_date = self.posting_date
+
         finishing_doc.save(ignore_permissions=True)
 
     elif update_finishing and self.is_return:

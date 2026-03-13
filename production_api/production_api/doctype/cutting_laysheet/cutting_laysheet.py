@@ -41,10 +41,11 @@ class CuttingLaySheet(Document):
 		if self.lay_no == 1:
 			frappe.db.sql(
 				f"""
-					UPDATE `tabCutting Plan` SET cp_status = 'Cutting In Progress' 
+					UPDATE `tabCutting Plan` SET cp_status = 'Cutting In Progress'
 					WHERE name = {frappe.db.escape(self.cutting_plan)}
 				"""
 			)
+		update_cutting_plan_dates(self.cutting_plan)
 
 	def before_validate(self):
 		status, docstatus = frappe.get_value("Cutting Plan", self.cutting_plan, ["cp_status", "docstatus"])
@@ -634,7 +635,8 @@ def get_cut_sheet_data(doc_name,cutting_marker,laysheet_details, manual_item_det
 				frappe.throw(f"{bold(item.dia)} {bold(item.colour)}, {bold(item.cloth_type)} was used more than the received weight")
 				return	
 				
-	update_cutting_plan(doc_name, check_cp=True)		
+	update_cutting_plan(doc_name, check_cp=True)
+	update_cutting_plan_dates(doc.cutting_plan)
 
 def check_ratio_parts(parts, marker_ratios):
 	calculated_sizes = []
@@ -1539,6 +1541,7 @@ def cancel_laysheet(doc_name):
 	from production_api.production_api.doctype.cutting_plan.cutting_plan import calculate_laysheets
 	calculate_laysheets(doc.cutting_plan)
 	doc.save()
+	update_cutting_plan_dates(doc.cutting_plan)
 
 @frappe.whitelist()
 def update_label_print_status(doc_name):
@@ -1562,3 +1565,25 @@ def get_primary_values(cutting_laysheet):
 	from production_api.essdee_production.doctype.item_production_detail.item_production_detail import get_ipd_primary_values
 	primary_values = get_ipd_primary_values(ipd)
 	return primary_values
+
+def update_cutting_plan_dates(cutting_plan):
+	"""Recalculate cutting_start_date and cutting_end_date on Cutting Plan from its LaySheets."""
+	# Start date = creation date of Lay 1, fallback to earliest non-cancelled LaySheet
+	lay1_creation = frappe.db.sql("""
+		SELECT creation FROM `tabCutting LaySheet`
+		WHERE cutting_plan = %s AND status != 'Cancelled'
+		ORDER BY lay_no ASC LIMIT 1
+	""", cutting_plan)
+	start_date = getdate(lay1_creation[0][0]) if lay1_creation else None
+
+	# End date = max bundle_generated_date across all non-cancelled LaySheets
+	end_date = frappe.db.sql("""
+		SELECT MAX(bundle_generated_date)
+		FROM `tabCutting LaySheet`
+		WHERE cutting_plan = %s AND status != 'Cancelled' AND bundle_generated_date IS NOT NULL
+	""", cutting_plan)[0][0]
+
+	frappe.db.set_value("Cutting Plan", cutting_plan, {
+		"cutting_start_date": start_date,
+		"cutting_end_date": end_date,
+	}, update_modified=False)

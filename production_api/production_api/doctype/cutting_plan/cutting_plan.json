@@ -11,6 +11,7 @@
   "maximum_no_of_plys",
   "lay_no",
   "naming_series",
+  "cutting_start_date",
   "cp_status",
   "version",
   "no_of_colours",
@@ -20,6 +21,7 @@
   "production_detail",
   "ipd_cutting_attribute",
   "cutting_location",
+  "cutting_end_date",
   "work_order",
   "open_status",
   "no_of_colours_completed",
@@ -220,6 +222,22 @@
    "label": "Planned Details HTML"
   },
   {
+   "allow_on_submit": 1,
+   "description": "Date of first LaySheet created",
+   "fieldname": "cutting_start_date",
+   "fieldtype": "Date",
+   "label": "Cutting Start Date",
+   "read_only": 1
+  },
+  {
+   "allow_on_submit": 1,
+   "description": "Date when all LaySheets reached Bundles Generated",
+   "fieldname": "cutting_end_date",
+   "fieldtype": "Date",
+   "label": "Cutting End Date",
+   "read_only": 1
+  },
+  {
    "fieldname": "amended_from",
    "fieldtype": "Link",
    "label": "Amended From",
@@ -293,7 +311,7 @@
    "link_fieldname": "cutting_plan"
   }
  ],
- "modified": "2026-03-12 11:12:38.490052",
+ "modified": "2026-03-13 10:14:45.796757",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Cutting Plan",
