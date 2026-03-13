@@ -38,6 +38,14 @@ class CuttingMarker(Document):
 		if status == 'Planned':
 			frappe.throw("Cloths Not Received in Cutting Plan")
 			
+		if self.required_piece_weight:
+			min_wt = frappe.db.get_single_value("MRP Settings", "piece_weight_min") or 0
+			max_wt = frappe.db.get_single_value("MRP Settings", "piece_weight_max") or 0
+			if min_wt and max_wt and not (min_wt <= self.required_piece_weight <= max_wt):
+				frappe.throw(
+					f"Required piece weight {self.required_piece_weight} kg is outside the allowed range ({min_wt} - {max_wt} kg)."
+				)
+
 		if self.get("marker_details"):
 			marker_details = self.marker_details['ratio_items']
 			items = []

@@ -677,6 +677,7 @@ def fetch_rejected_quantity(doc_name):
 		wo_doc = frappe.get_doc("Work Order", wo)
 		for row in wo_doc.work_order_calculated_items:
 			if row.received_qty > 0:
+				set_comb = update_if_string_instance(row.set_combination)
 				key = (row.item_variant, tuple(sorted(set_comb.items())))
 				if cut_key_dict.get(key):
 					cut_key_dict[key] += row.received_qty

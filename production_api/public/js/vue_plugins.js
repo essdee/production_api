@@ -34,6 +34,8 @@ import ClothAccessory from "./Item_Po_detail/ClothAccessory.vue"
 import ClothAccessoryCombination from "./Item_Po_detail/ClothAccessoryCombination.vue"
 import AccessoryItems from "./Item_Po_detail/AccessoryItems.vue"
 import BundleGroup from "./Item_Po_detail/BundleGroup.vue"
+import ClothDetail from "./CuttingOrder/ClothDetail.vue"
+import CuttingOrderItems from "./CuttingOrder/CuttingOrderItems.vue"
 import { StockEntryWrapper, StockReconciliationWrapper, LotTransferWrapper, StockUpdateWrapper } from "./Stock";
 import {
     DeliverablesWrapper,
@@ -328,6 +330,45 @@ frappe.production.ui.BundleGroup = class {
     }
     get_items() {
         return this.vue.get_items()
+    }
+}
+
+frappe.production.ui.ClothDetail = class {
+    constructor(wrapper) {
+        this.$wrapper = $(wrapper);
+        this.make_app()
+    }
+    make_app() {
+        this.app = createApp(ClothDetail)
+        SetVueGlobals(this.app)
+        this.vue = this.app.mount(this.$wrapper.get(0))
+    }
+    load_data(data) {
+        this.vue.load_data(data)
+    }
+    get_data() {
+        return this.vue.get_data()
+    }
+}
+
+frappe.production.ui.CuttingOrderItems = class {
+    constructor(wrapper) {
+        this.$wrapper = $(wrapper);
+        this.make_app()
+    }
+    make_app() {
+        this.app = createApp(CuttingOrderItems)
+        SetVueGlobals(this.app)
+        this.vue = this.app.mount(this.$wrapper.get(0))
+    }
+    load_data(data) {
+        this.vue.load_data(data)
+    }
+    get_data() {
+        return this.vue.get_data()
+    }
+    set_read_only(val) {
+        this.vue.set_read_only(val)
     }
 }
 
