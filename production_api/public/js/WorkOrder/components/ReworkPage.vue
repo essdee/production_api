@@ -5,6 +5,7 @@
             <div class="lot-input col-md-3"></div>
             <div class="item-input col-md-3"></div>
             <div class="colour-input col-md-3"></div>
+            <div class="show-reworked-input col-md-2"></div>
             <div class="btn-wrapper">
                 <button class="btn btn-primary" @click="get_rework_items()">Get Rework Items</button>
             </div>
@@ -69,20 +70,20 @@
                                             {{ size['rework_qty'] }}
                                         </td>
                                     </tr>
-                                    <tr>
+                                    <tr v-if="!show_reworked_value">
                                         <td>Rejection</td>
                                         <th v-for="size in colour_data['items']">
                                             <input type="number" v-model="size['rejected']" @blur="update_changed(key, colour_mistake)" class="form-control"/>
                                         </th>
                                     </tr>
-                                    <tr>
+                                    <tr v-if="!show_reworked_value">
                                         <td>Reworked</td>
                                         <th v-for="size in colour_data['items']">
                                             <input type="number" v-model="size['rework']" @blur="update_changed(key, colour_mistake)" class="form-control"/>
                                         </th>
                                     </tr>
                                 </table>
-                                <div style="width:100%;display:flex;justify-content: end;margin-top: 10px;">
+                                <div v-if="!show_reworked_value" style="width:100%;display:flex;justify-content: end;margin-top: 10px;">
                                     <div style="padding-right: 10px;">
                                         <button class="btn btn-primary" @click="update_items(colour_data['items'], colour_data['changed'], 0, value['lot'], key, colour_mistake)">Update Rejection Qty</button>
                                     </div>
@@ -126,6 +127,8 @@ let items = ref({});
 let expandedRowKey = ref(null);
 let item = null
 let colour = null
+let show_reworked = null
+let show_reworked_value = ref(false)
 
 onMounted(() => {
     let el = root.value;
@@ -165,6 +168,20 @@ onMounted(() => {
         doc: sample_doc.value,
         render_input: true,
     });
+    $(el).find(".show-reworked-input").html("");
+    show_reworked = frappe.ui.form.make_control({
+        parent: $(el).find(".show-reworked-input"),
+        df: {
+            fieldname: "show_reworked",
+            fieldtype: "Check",
+            label: "Show Reworked",
+        },
+        doc: sample_doc.value,
+        render_input: true,
+        change() {
+            show_reworked_value.value = !!show_reworked.get_value();
+        }
+    });
 });
 
 function get_rework_items() {
@@ -176,6 +193,7 @@ function get_rework_items() {
             lot: lot.get_value(),
             item: item.get_value(),
             colour: colour.get_value(),
+            show_reworked: show_reworked.get_value() ? 1 : 0,
         },
         callback: function (r) {
             items.value = r.message;
@@ -184,11 +202,12 @@ function get_rework_items() {
 }
 
 function redirect_to_print(grn_number){
+    const format = show_reworked_value.value ? "Reworked Print" : "Rework Print";
     let w = window.open(
         frappe.urllib.get_full_url(
             "/printview?" + "doctype=" + encodeURIComponent("Goods Received Note") + "&name=" +
-                encodeURIComponent(grn_number) + "&trigger_print=1" + "&format=" + 
-                encodeURIComponent("Rework Print") + "&no_letterhead=1"
+                encodeURIComponent(grn_number) + "&trigger_print=1" + "&format=" +
+                encodeURIComponent(format) + "&no_letterhead=1"
         )
     );
     if (!w) {

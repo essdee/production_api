@@ -5,6 +5,7 @@ import frappe
 import openpyxl
 from io import BytesIO
 from frappe.model.document import Document
+from frappe.utils import cint
 from production_api.utils import update_if_string_instance, get_finishing_rework_list, get_finishing_rework_dict, get_variant_attr_details
 
 class GRNReworkItem(Document):
@@ -100,8 +101,8 @@ def revert_reworked_item(docname):
 	make_sl_entries(sl_entries)
 
 @frappe.whitelist()
-def get_rework_items(lot, item, colour, grn_number=None):
-	conditions = " AND t1.completed = 0"
+def get_rework_items(lot, item, colour, grn_number=None, show_reworked=0):
+	conditions = " AND t1.completed = 1" if cint(show_reworked) else " AND t1.completed = 0"
 	con = {}
 	if grn_number:
 		conditions += " AND t1.grn_number = %(grn_number)s"
@@ -131,8 +132,11 @@ def get_rework_items(lot, item, colour, grn_number=None):
 		"total_detail": {},
 		"total_sum": 0,
 		"total_rejection": 0,
-		"total_rejection_detail": {}
+		"total_rejection_detail": {},
+		"total_reworked": 0,
+		"total_reworked_detail": {},
 	}
+	show_reworked_flag = cint(show_reworked)
 	for item in rework_items:
 		item = item['name']
 		doc = frappe.get_doc("GRN Rework Item", item)
@@ -150,10 +154,16 @@ def get_rework_items(lot, item, colour, grn_number=None):
 			"total": 0,
 			'rejection_detail': {},
 			'total_rejection': 0,
+			'reworked_detail': {},
+			'total_reworked': 0,
 		})
 		for row in doc.grn_rework_item_details:
-			if row.completed == 1:
-				continue
+			if show_reworked_flag:
+				if row.completed == 0:
+					continue
+			else:
+				if row.completed == 1:
+					continue
 			data['total_detail'].setdefault(row.received_type, 0)
 			data['total_rejection_detail'].setdefault(row.received_type, 0)
 			attr_details = get_variant_attr_details(row.item_variant)
@@ -166,21 +176,28 @@ def get_rework_items(lot, item, colour, grn_number=None):
 			})
 			if row.received_type not in data['types']:
 				data['types'].append(row.received_type)
-			qty = row.quantity - row.reworked
+			qty = row.quantity if show_reworked_flag else (row.quantity - row.reworked)
 			data['total_detail'][row.received_type] += qty
 			data['total_rejection_detail'][row.received_type] += row.rejection
 			data['total_sum'] += qty
 			data['total_rejection'] += row.rejection
+			data['total_reworked_detail'].setdefault(row.received_type, 0)
+			data['total_reworked_detail'][row.received_type] += row.reworked
+			data['total_reworked'] += row.reworked
 			data["report_detail"][item]['types'].setdefault(row.received_type, 0)
 			data["report_detail"][item]['types'][row.received_type] += qty
 			data["report_detail"][item]['total'] += qty
 			data["report_detail"][item]['total_rejection'] += row.rejection
 			data['report_detail'][item]['rejection_detail'].setdefault(row.received_type, 0)
 			data['report_detail'][item]['rejection_detail'][row.received_type] += row.rejection
+			data['report_detail'][item]['reworked_detail'].setdefault(row.received_type, 0)
+			data['report_detail'][item]['reworked_detail'][row.received_type] += row.reworked
+			data['report_detail'][item]['total_reworked'] += row.reworked
 			data["report_detail"][item]['rework_detail'][key]['items'].append({
 				primary_attr : attr_details[primary_attr],
 				"rework_qty": qty,
-				"rejected": row.rejection, 
+				"reworked_qty": row.reworked,
+				"rejected": row.rejection,
 				"rework": 0,
 				"set_combination": update_if_string_instance(row.set_combination),
 				"row_name": row.name,
