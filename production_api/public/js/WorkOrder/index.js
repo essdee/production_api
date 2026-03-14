@@ -173,10 +173,10 @@ export class WOSummaryWrapper {
         SetVueGlobals(this.app)
         this.vue = this.app.mount(this.$wrapper.get(0))
     }
-    load_data(item_details, delivered_items) {
+    load_data(item_details, delivered_items, options) {
         let items = JSON.parse(JSON.stringify(item_details))
         let delivered = JSON.parse(JSON.stringify(delivered_items))
-        this.vue.load_data(items, delivered)
+        this.vue.load_data(items, delivered, options)
     }
 }
 

@@ -19,14 +19,14 @@
                     <tbody>
                         <template v-for="(j, item1_index) in i.items" :key="item1_index">
                             <tr>
-                                <td :rowspan="is_manual ? 2 : 3">{{ item1_index + 1 }}</td>
-                                <td :rowspan="is_manual ? 2 : 3">
+                                <td :rowspan="is_manual ? 2 : (show_pending ? 4 : 3)">{{ item1_index + 1 }}</td>
+                                <td :rowspan="is_manual ? 2 : (show_pending ? 4 : 3)">
                                     {{ j.attributes[i.pack_attr] }}
                                     <span v-if="j.attributes[i.pack_attr] && i.is_set_item">
                                         ({{ j.item_keys['major_colour'] }})
                                     </span>
                                 </td>
-                                <td v-if="i.is_set_item" :rowspan="is_manual ? 2 : 3">
+                                <td v-if="i.is_set_item" :rowspan="is_manual ? 2 : (show_pending ? 4 : 3)">
                                     {{ j.attributes[i.set_attr] }}
                                 </td>
                                 <td>Planned</td>
@@ -53,11 +53,21 @@
                                 </td>
                                 <td>{{ j.total_received }}</td>
                             </tr>
+                            <tr v-if="show_pending && !is_manual && doctype == 'Work Order'" class="pending-row">
+                                <td><strong>Pending</strong></td>
+                                <td v-for="attr in Object.keys(j.values)" :key="attr">
+                                    <div v-if="(j.values?.[attr]?.['delivered'] || 0) - (j.values?.[attr]?.['received'] || 0) > 0">
+                                        <strong>{{ (j.values?.[attr]?.['delivered'] || 0) - (j.values?.[attr]?.['received'] || 0) }}</strong>
+                                    </div>
+                                    <div v-else>--</div>
+                                </td>
+                                <td><strong>{{ (j.total_delivered || 0) - (j.total_received || 0) }}</strong></td>
+                            </tr>
                         </template>
                         <tr>
-                            <td :rowspan="is_manual ? 2 : 3">Total</td>
-                            <td :rowspan="is_manual ? 2 : 3"></td>
-                            <td v-if="i.is_set_item" :rowspan="is_manual ? 2 : 3">
+                            <td :rowspan="is_manual ? 2 : (show_pending ? 4 : 3)">Total</td>
+                            <td :rowspan="is_manual ? 2 : (show_pending ? 4 : 3)"></td>
+                            <td v-if="i.is_set_item" :rowspan="is_manual ? 2 : (show_pending ? 4 : 3)">
                             </td>
                             <td>Planned</td>
                             <td v-for="attr in Object.keys(i.items[0]['values'])" :key="attr">
@@ -82,6 +92,16 @@
                                 <div v-else>--</div>
                             </td>
                             <td>{{ i.overall_received }}</td>
+                        </tr>
+                        <tr v-if="show_pending && !is_manual && doctype == 'Work Order'" class="pending-row">
+                            <td><strong>Pending</strong></td>
+                            <td v-for="attr in Object.keys(i.items[0]['values'])" :key="attr">
+                                <div v-if="(i.total_details?.[attr]?.['delivered'] || 0) - (i.total_details?.[attr]?.['received'] || 0) > 0">
+                                    <strong>{{ (i.total_details?.[attr]?.['delivered'] || 0) - (i.total_details?.[attr]?.['received'] || 0) }}</strong>
+                                </div>
+                                <div v-else>--</div>
+                            </td>
+                            <td><strong>{{ (i.overall_delivered || 0) - (i.overall_received || 0) }}</strong></td>
                         </tr>
                     </tbody>
                 </table>
@@ -155,8 +175,9 @@ import { ref, onMounted } from 'vue';
 let is_manual = ref(true);
 let items = ref([]);
 let show_title = ref(false);
+let show_pending = ref(false);
 let deliverables_item = ref([])
-let doctype = cur_frm.doc.doctype
+let doctype = ref(cur_frm.doc.doctype)
 
 onMounted(()=> {
     if(cur_frm.doc.doctype == "Work Order"){
@@ -167,10 +188,19 @@ onMounted(()=> {
     }
 })
 
-function load_data(item, delivered_items) {
+function load_data(item, delivered_items, options) {
     items.value = item;
     if (item.length > 0) {
         show_title.value = true;
+    }
+    if (options && options.show_pending) {
+        show_pending.value = true;
+    }
+    if (options && options.doctype) {
+        doctype.value = options.doctype;
+        if (options.doctype === 'Work Order') {
+            is_manual.value = false;
+        }
     }
     deliverables_item.value = delivered_items
 }
@@ -212,5 +242,8 @@ defineExpose({
 <style scoped>
 .input-field {
     margin-bottom: -5;
+}
+.pending-row {
+    background-color: #fff3cd;
 }
 </style>

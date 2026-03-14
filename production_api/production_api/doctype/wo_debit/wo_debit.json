@@ -1,0 +1,92 @@
+{
+  "actions": [],
+  "autoname": "WOD-.#####",
+  "creation": "2026-03-14 00:00:00.000000",
+  "doctype": "DocType",
+  "engine": "InnoDB",
+  "field_order": [
+    "work_order",
+    "debit_type",
+    "debit_no",
+    "debit_value",
+    "reason",
+    "amended_from"
+  ],
+  "fields": [
+    {
+      "fieldname": "work_order",
+      "fieldtype": "Link",
+      "in_list_view": 1,
+      "label": "Work Order",
+      "options": "Work Order",
+      "reqd": 1
+    },
+    {
+      "default": "Permanent",
+      "fieldname": "debit_type",
+      "fieldtype": "Select",
+      "in_list_view": 1,
+      "label": "Debit Type",
+      "options": "Permanent",
+      "reqd": 1
+    },
+    {
+      "fieldname": "debit_no",
+      "fieldtype": "Data",
+      "in_list_view": 1,
+      "label": "Debit No",
+      "reqd": 1
+    },
+    {
+      "fieldname": "debit_value",
+      "fieldtype": "Currency",
+      "in_list_view": 1,
+      "label": "Debit Value",
+      "reqd": 1
+    },
+    {
+      "fieldname": "reason",
+      "fieldtype": "Small Text",
+      "label": "Reason",
+      "reqd": 1
+    },
+    {
+      "fieldname": "amended_from",
+      "fieldtype": "Link",
+      "label": "Amended From",
+      "no_copy": 1,
+      "options": "WO Debit",
+      "print_hide": 1,
+      "read_only": 1
+    }
+  ],
+  "index_web_pages_for_search": 1,
+  "is_submittable": 1,
+  "links": [],
+  "modified": "2026-03-14 00:00:00.000000",
+  "modified_by": "Administrator",
+  "module": "Production Api",
+  "name": "WO Debit",
+  "naming_rule": "Expression (old style)",
+  "owner": "Administrator",
+  "permissions": [
+    {
+      "cancel": 1,
+      "create": 1,
+      "delete": 1,
+      "email": 1,
+      "export": 1,
+      "print": 1,
+      "read": 1,
+      "report": 1,
+      "role": "System Manager",
+      "share": 1,
+      "submit": 1,
+      "write": 1
+    }
+  ],
+  "sort_field": "modified",
+  "sort_order": "DESC",
+  "states": [],
+  "track_changes": 1
+}

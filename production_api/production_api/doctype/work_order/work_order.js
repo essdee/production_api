@@ -171,85 +171,239 @@ frappe.ui.form.on("Work Order", {
           });
         }
         frm.add_custom_button("Close", () => {
-          let receivables = frm.doc.receivables;
-          let data = [];
-          for (let i = 0; i < receivables.length; i++) {
-            let row = receivables[i];
-            if (row.pending_quantity > 0) {
-              data.push({
-                item_variant: row.item_variant,
-                qty: row.qty,
-                pending_qty: row.pending_quantity,
-              });
-            }
-          }
-          let d = new frappe.ui.Dialog({
-            title: "Pending quantity of receivables",
-            fields: [
-              {
-                fieldtype: "Table",
-                fieldname: "receivable_details",
-                label: "Receivables",
-                readonly: true,
-                cannot_add_rows: true,
-                cannot_delete_rows: true,
-                in_place_edit: false,
-                data: data,
-                fields: [
-                  {
-                    fieldname: "item_variant",
-                    fieldtype: "Link",
-                    options: "Item Variant",
-                    in_list_view: true,
-                    read_only: true,
-                    label: "Item",
-                  },
-                  {
-                    fieldname: "qty",
-                    fieldtype: "Float",
-                    in_list_view: true,
-                    label: "Quantity",
-                    read_only: true,
-                  },
-                  {
-                    fieldname: "pending_qty",
-                    fieldtype: "Float",
-                    in_list_view: true,
-                    label: "Pending Quantity",
-                    read_only: true,
-                  },
-                ],
-              },
-            ],
-            primary_action_label: "Close Work Order",
-            size: "extra-large",
-            primary_action() {
-              d.hide();
-              let x = new frappe.ui.Dialog({
-                title: "Are you sure want to close this work order",
-                primary_action_label: "Yes",
-                secondary_action_label: "No",
-                primary_action: () => {
-                  x.hide();
-                  frappe.call({
-                    method:
-                      "production_api.production_api.doctype.work_order.work_order.update_stock",
-                    args: {
-                      work_order: frm.doc.name,
-                    },
-                    callback: function () {
-                      frm.refresh();
+          frappe.call({
+            method:
+              "production_api.production_api.doctype.work_order.work_order.fetch_summary_details",
+            args: {
+              doc_name: frm.doc.name,
+              production_detail: frm.doc.production_detail,
+            },
+            callback: function (r) {
+              let item_detail = JSON.parse(
+                JSON.stringify(r.message.item_detail),
+              );
+
+              // Filter each group: keep only items where total_delivered - total_received > 0
+              let has_pending = false;
+              for (let group of item_detail) {
+                if (!group.items) continue;
+                group.items = group.items.filter((item) => {
+                  return (item.total_delivered || 0) - (item.total_received || 0) > 0;
+                });
+                if (group.items.length > 0) {
+                  has_pending = true;
+                  // Recalculate total_details and overall totals for filtered items
+                  let total_details = {};
+                  let overall_planned = 0;
+                  let overall_delivered = 0;
+                  let overall_received = 0;
+                  for (let item of group.items) {
+                    for (let attr of Object.keys(item.values)) {
+                      if (!total_details[attr]) {
+                        total_details[attr] = {
+                          planned: 0,
+                          delivered: 0,
+                          received: 0,
+                        };
+                      }
+                      total_details[attr].planned +=
+                        item.values[attr]?.qty || 0;
+                      total_details[attr].delivered +=
+                        item.values[attr]?.delivered || 0;
+                      total_details[attr].received +=
+                        item.values[attr]?.received || 0;
+                    }
+                    overall_planned += item.total_qty || 0;
+                    overall_delivered += item.total_delivered || 0;
+                    overall_received += item.total_received || 0;
+                  }
+                  group.total_details = total_details;
+                  group.overall_planned = overall_planned;
+                  group.overall_delivered = overall_delivered;
+                  group.overall_received = overall_received;
+                }
+              }
+
+              // Remove empty groups
+              item_detail = item_detail.filter(
+                (group) => group.items && group.items.length > 0,
+              );
+
+              // Fetch recut details in parallel
+              frappe.call({
+                method:
+                  "production_api.production_api.doctype.work_order.work_order.get_wo_recut_details",
+                args: {
+                  work_order: frm.doc.name,
+                },
+                callback: function (recut_r) {
+                  let recut_data = recut_r.message || [];
+
+                  let d = new frappe.ui.Dialog({
+                    title: "Pending Items - Close Work Order",
+                    fields: [
+                      {
+                        fieldtype: "HTML",
+                        fieldname: "summary_html",
+                      },
+                      {
+                        fieldtype: "HTML",
+                        fieldname: "recut_html",
+                      },
+                      {
+                        fieldtype: "Select",
+                        fieldname: "close_reason",
+                        label: "Close Reason",
+                        options: "\nCutting Shortage\nPrinting Shortage\nSewing Shortage\nSewing Missing\nOthers",
+                        reqd: 1,
+                      },
+                      {
+                        fieldtype: "Data",
+                        fieldname: "close_other_reason",
+                        label: "Other Reason",
+                        depends_on: "eval: doc.close_reason == 'Others'",
+                        mandatory_depends_on: "eval: doc.close_reason == 'Others'",
+                      },
+                      {
+                        fieldtype: "Small Text",
+                        fieldname: "close_remarks",
+                        label: "Close Remarks",
+                      },
+                    ],
+                    primary_action_label: "Close Work Order",
+                    size: "extra-large",
+                    primary_action() {
+                      let values = d.get_values();
+                      if (!values) return;
+                      d.hide();
+                      let x = new frappe.ui.Dialog({
+                        title:
+                          "Are you sure want to close this work order",
+                        primary_action_label: "Yes",
+                        secondary_action_label: "No",
+                        primary_action: () => {
+                          x.hide();
+                          frappe.call({
+                            method:
+                              "production_api.production_api.doctype.work_order.work_order.update_stock",
+                            args: {
+                              work_order: frm.doc.name,
+                              close_reason: values.close_reason,
+                              close_other_reason: values.close_other_reason || "",
+                              close_remarks: values.close_remarks || "",
+                            },
+                            callback: function () {
+                              frm.refresh();
+                            },
+                          });
+                        },
+                        secondary_action: () => {
+                          x.hide();
+                        },
+                      });
+                      x.show();
                     },
                   });
-                },
-                secondary_action: () => {
-                  x.hide();
+                  d.show();
+
+                  let wrapper = d.fields_dict.summary_html.wrapper;
+                  if (has_pending) {
+                    let summary = new frappe.production.ui.WOSummary(
+                      wrapper,
+                    );
+                    summary.load_data(item_detail, [], {
+                      show_pending: true,
+                    });
+                  } else {
+                    $(wrapper).html(
+                      '<p class="text-muted text-center" style="padding: 20px;">All items fully received</p>',
+                    );
+                  }
+
+                  // Render recut details below summary
+                  let recut_wrapper = $(
+                    d.fields_dict.recut_html.wrapper,
+                  );
+                  if (recut_data.length > 0) {
+                    let html = '<hr><h4>WO Recut Details</h4>';
+                    for (let recut of recut_data) {
+                      html +=
+                        '<div style="margin-bottom: 15px;">' +
+                        '<strong><a href="/app/wo-recut/' +
+                        recut.name +
+                        '" target="_blank">' +
+                        recut.name +
+                        "</a></strong>";
+                      for (let group of recut.items) {
+                        html +=
+                          '<table class="table table-sm table-bordered" style="margin-top: 8px;">';
+                        // Header row
+                        html += "<thead><tr>";
+                        html += "<th>S.No.</th>";
+                        html += "<th>Item</th>";
+                        for (let attr of (group.attributes || [])) {
+                          html += "<th>" + attr + "</th>";
+                        }
+                        if (group.primary_attribute) {
+                          for (let pv of (group.primary_attribute_values || [])) {
+                            html += "<th>" + pv + "</th>";
+                          }
+                        } else {
+                          html += "<th>Quantity</th>";
+                        }
+                        html += "<th>Total</th>";
+                        html += "</tr></thead><tbody>";
+
+                        // Item rows
+                        for (
+                          let idx = 0;
+                          idx < group.items.length;
+                          idx++
+                        ) {
+                          let item = group.items[idx];
+                          html += "<tr>";
+                          html += "<td>" + (idx + 1) + "</td>";
+                          html += "<td>" + (item.name || "") + "</td>";
+                          for (let attr of (group.attributes || [])) {
+                            html +=
+                              "<td>" +
+                              (item.attributes?.[attr] || "") +
+                              "</td>";
+                          }
+                          let total = 0;
+                          if (group.primary_attribute) {
+                            for (let pv of (group.primary_attribute_values || [])) {
+                              let qty =
+                                item.values?.[pv]?.qty || 0;
+                              total += qty;
+                              html +=
+                                "<td>" +
+                                (qty > 0 ? qty : "--") +
+                                "</td>";
+                            }
+                          } else {
+                            let qty =
+                              item.values?.["default"]?.qty || 0;
+                            total = qty;
+                            html +=
+                              "<td>" +
+                              (qty > 0 ? qty : "--") +
+                              "</td>";
+                          }
+                          html +=
+                            "<td><strong>" + total + "</strong></td>";
+                          html += "</tr>";
+                        }
+                        html += "</tbody></table>";
+                      }
+                      html += "</div>";
+                    }
+                    recut_wrapper.html(html);
+                  }
                 },
               });
-              x.show();
             },
           });
-          d.show();
         });
         if (frm.doc.__onload && frm.doc.__onload.is_cutting) {
           frm.add_custom_button(
@@ -415,12 +569,106 @@ frappe.ui.form.on("Work Order", {
             },
           });
           d.show();
-        });
+        },__("Create"),);
+      }
+      if (frm.doc.docstatus == 1 && frm.doc.open_status == "Open") {
+        frm.add_custom_button("Create Recut", () => {
+          let d = new frappe.ui.Dialog({
+            title: "Create Recut",
+            size: "extra-large",
+            fields: [{ fieldname: "recut_html", fieldtype: "HTML" }],
+            primary_action_label: "Create",
+            primary_action() {
+              let items = recut_fetcher.get_deliverables_data();
+              frappe.call({
+                method:
+                  "production_api.production_api.doctype.work_order.work_order.create_wo_recut",
+                args: {
+                  work_order: frm.doc.name,
+                  items: items,
+                },
+                freeze: true,
+                freeze_message: __("Creating WO Recut..."),
+                callback: function (r) {
+                  d.hide();
+                  frappe.set_route("Form", "WO Recut", r.message);
+                },
+              });
+            },
+          });
+          let recut_fetcher = new frappe.production.ui.Deliverables(
+            d.fields_dict.recut_html.wrapper,
+          );
+          recut_fetcher.load_data([]);
+          d.show();
+        },__("Create"),);
       }
       if (frm.doc.docstatus == 1 && frappe.user.has_role("System Manager")) {
         frm.add_custom_button("Calculate Pieces", () => {
           frm.trigger("calculate_pieces");
         });
+      }
+      if (frm.doc.docstatus == 1) {
+        frm.add_custom_button("Create Debit", () => {
+          let d = new frappe.ui.Dialog({
+            title: "Create WO Debit",
+            fields: [
+              {
+                fieldname: "debit_type",
+                fieldtype: "Select",
+                label: "Debit Type",
+                options: "Permanent",
+                default: "Permanent",
+                reqd: 1,
+              },
+              {
+                fieldname: "debit_no",
+                fieldtype: "Data",
+                label: "Debit No",
+                reqd: 1,
+              },
+              {
+                fieldname: "debit_value",
+                fieldtype: "Currency",
+                label: "Debit Value",
+                reqd: 1,
+              },
+              {
+                fieldname: "reason",
+                fieldtype: "Small Text",
+                label: "Reason",
+                reqd: 1,
+              },
+            ],
+            primary_action_label: "Create",
+            primary_action(values) {
+              frappe.call({
+                method: "frappe.client.insert",
+                args: {
+                  doc: {
+                    doctype: "WO Debit",
+                    work_order: frm.doc.name,
+                    debit_type: values.debit_type,
+                    debit_no: values.debit_no,
+                    debit_value: values.debit_value,
+                    reason: values.reason,
+                    docstatus: 1,
+                  },
+                },
+                callback(r) {
+                  if (r.message) {
+                    frappe.show_alert({
+                      message: __("WO Debit {0} created and submitted", [r.message.name]),
+                      indicator: "green",
+                    });
+                    d.hide();
+                  }
+                },
+              });
+            },
+          });
+          d.show();
+        }, __("Create"));
       }
     }
   },

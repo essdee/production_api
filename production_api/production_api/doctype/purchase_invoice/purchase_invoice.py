@@ -726,6 +726,21 @@ def get_merch_roles():
 
 
 @frappe.whitelist()
+def check_all_wo_closed(purchase_invoice):
+    work_orders = frappe.get_all(
+        "PI Work Order Billed Detail",
+        filters={"parent": purchase_invoice, "parenttype": "Purchase Invoice"},
+        fields=["distinct work_order as work_order"],
+    )
+    open_wos = []
+    for row in work_orders:
+        status = frappe.db.get_value("Work Order", row.work_order, "open_status")
+        if status != "Close":
+            open_wos.append(row.work_order)
+    return {"all_closed": len(open_wos) == 0, "open_work_orders": open_wos}
+
+
+@frappe.whitelist()
 def get_merch_manager_role():
     return frappe.db.get_single_value("MRP Settings", "merchandising_manager_role")
 

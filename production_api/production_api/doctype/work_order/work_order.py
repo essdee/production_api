@@ -78,6 +78,9 @@ class WorkOrder(Document):
                 else:
                     status = "Partially Received"
 
+        if self.open_status == "Close":
+            status = "Closed"
+
         total_billed_qty = sum(
             flt(woct.billed_qty) for woct in self.work_order_calculated_items
         )
@@ -86,9 +89,6 @@ class WorkOrder(Document):
                 status = "Fully Billed"
             else:
                 status = "Partially Billed"
-
-        if self.open_status == "Close":
-            status = "Closed"
 
         self.status = status
 
@@ -1379,7 +1379,7 @@ def add_comment(doc_name, date, reason):
 
 
 @frappe.whitelist()
-def update_stock(work_order):
+def update_stock(work_order, close_reason=None, close_other_reason=None, close_remarks=None):
     from production_api.mrp_stock.utils import get_stock_balance
     logger = get_module_logger("work_order")
     logger.debug(f"{work_order} data construction {datetime.now()}")
@@ -1441,6 +1441,12 @@ def update_stock(work_order):
     make_sl_entries(sl_entries)
     logger.debug(f"{work_order} SLE Updated {datetime.now()}")
     doc.open_status = "Close"
+    if close_reason:
+        doc.close_reason = close_reason
+    if close_other_reason:
+        doc.close_other_reason = close_other_reason
+    if close_remarks:
+        doc.close_remarks = close_remarks
     doc.is_delivered = True
     doc.total_quantity = 0
     doc.save()
@@ -2145,3 +2151,75 @@ def create_finishing_detail(work_order, from_finishing=False):
     new_doc.set("finishing_plan_reworked_details", finishing_rework_items)
     new_doc.set("finishing_plan_grn_details", grn_items)
     new_doc.save(ignore_permissions=True)
+
+
+@frappe.whitelist()
+def create_wo_recut(work_order, items):
+    items = update_if_string_instance(items)
+    details = []
+    for group in items:
+        primary_attribute = group.get('primary_attribute')
+        for item in group.get('items', []):
+            item_name = item.get('name')
+            item_attributes = item.get('attributes', {})
+            table_index = item.get('table_index', 0)
+            row_index = item.get('row_index', 0)
+            values = item.get('values', {})
+            if primary_attribute:
+                for attr_value, val_data in values.items():
+                    qty = val_data.get('qty', 0)
+                    if not qty:
+                        continue
+                    attrs = dict(item_attributes)
+                    attrs[primary_attribute] = attr_value
+                    variant = get_or_create_variant(item_name, attrs)
+                    details.append({
+                        'item_variant': variant,
+                        'quantity': qty,
+                        'table_index': table_index,
+                        'row_index': row_index,
+                    })
+            else:
+                default_vals = values.get('default', {})
+                qty = default_vals.get('qty', 0)
+                if not qty:
+                    continue
+                variant = get_or_create_variant(item_name, item_attributes)
+                details.append({
+                    'item_variant': variant,
+                    'quantity': qty,
+                    'table_index': table_index,
+                    'row_index': row_index,
+                })
+    wo_doc = frappe.get_doc("Work Order", work_order)
+    doc = frappe.new_doc("WO Recut")
+    doc.work_order = work_order
+    doc.lot = wo_doc.lot
+    doc.set("wo_recut_details", details)
+    doc.save()
+    return doc.name
+
+
+@frappe.whitelist()
+def get_wo_recut_details(work_order):
+    """Fetch all submitted WO Recut records and their grouped item details for a Work Order."""
+    from production_api.production_api.doctype.wo_recut.wo_recut import fetch_recut_item_details
+
+    recut_names = frappe.get_all(
+        "WO Recut",
+        filters={"work_order": work_order, "docstatus": 1},
+        pluck="name",
+        order_by="creation asc",
+    )
+    if not recut_names:
+        return []
+
+    result = []
+    for name in recut_names:
+        doc = frappe.get_doc("WO Recut", name)
+        items = fetch_recut_item_details(doc.get("wo_recut_details"))
+        result.append({
+            "name": name,
+            "items": items,
+        })
+    return result

@@ -2,9 +2,9 @@
     <div ref="root" class="rework-container">
         <h3 style="font-weight:700;margin-bottom:15px;color:#333;text-align:center;">Rework Details</h3>
         <div class="input-row">
-            <div class="lot-input col-md-3"></div>
-            <div class="item-input col-md-3"></div>
-            <div class="colour-input col-md-3"></div>
+            <div class="lot-input col-md-2"></div>
+            <div class="item-input col-md-2"></div>
+            <div class="colour-input col-md-2"></div>
             <div class="show-reworked-input col-md-2"></div>
             <div class="btn-wrapper">
                 <button class="btn btn-primary" @click="get_rework_items()">Get Rework Items</button>

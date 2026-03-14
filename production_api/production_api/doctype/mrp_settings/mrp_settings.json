@@ -27,6 +27,7 @@
   "purchase_invoice_section",
   "pi_minimum_grn_date",
   "senior_merch_role",
+  "override_pi_approve",
   "column_break_boig",
   "merchandising_manager_role",
   "merch_user_role",
@@ -314,6 +315,12 @@
   {
    "fieldname": "column_break_ywpk",
    "fieldtype": "Column Break"
+  },
+  {
+   "default": "0",
+   "fieldname": "override_pi_approve",
+   "fieldtype": "Check",
+   "label": "Override PI Approve"
   },
   {
    "fieldname": "column_break_boig",

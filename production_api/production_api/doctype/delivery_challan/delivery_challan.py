@@ -401,6 +401,11 @@ class DeliveryChallan(Document):
             self.total_value = self.stock_value + self.additional_goods_value
 
     def validate(self):
+        if self.work_order:
+            open_status = frappe.get_value('Work Order', self.work_order, 'open_status')
+            if open_status == 'Close':
+                frappe.throw('Work Order is closed.', title='Delivery Challan')
+
         from production_api.mrp_stock.doctype.stock_entry.stock_entry import get_uom_details
         for row in self.items:
             item_details = get_uom_details(
