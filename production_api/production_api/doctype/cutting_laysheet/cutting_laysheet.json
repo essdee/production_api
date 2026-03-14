@@ -8,6 +8,7 @@
  "field_order": [
   "is_manual_entry",
   "cutting_plan",
+  "cutting_order",
   "lot",
   "length",
   "width",
@@ -68,8 +69,15 @@
    "in_list_view": 1,
    "in_standard_filter": 1,
    "label": "Cutting Plan",
-   "options": "Cutting Plan",
-   "reqd": 1
+   "options": "Cutting Plan"
+  },
+  {
+   "fieldname": "cutting_order",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Cutting Order",
+   "options": "Cutting Order"
   },
   {
    "fetch_from": "cutting_marker.length",
@@ -182,11 +190,10 @@
   {
    "fetch_from": "cutting_plan.item",
    "fieldname": "item",
-   "fieldtype": "Link",
+   "fieldtype": "Data",
    "in_list_view": 1,
    "in_standard_filter": 1,
    "label": "Item",
-   "options": "Item",
    "read_only": 1
   },
   {

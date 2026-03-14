@@ -269,6 +269,28 @@ onMounted(()=> {
                 }
             }
         })
+    } else if(cur_frm.doc.cutting_order){
+        frappe.call({
+            method:"production_api.production_api.doctype.cutting_laysheet.cutting_laysheet.get_select_attributes",
+            args: {
+                cutting_order:cur_frm.doc.cutting_order,
+            },
+            callback:function(r){
+                select_attributes = r.message
+            }
+        })
+        frappe.call({
+            method:"production_api.production_api.doctype.cutting_laysheet.cutting_laysheet.get_cloth_accessories",
+            args: {
+                cutting_order:cur_frm.doc.cutting_order,
+            },
+            callback:function(r){
+                cloth_accessories = r.message
+                if(cloth_accessories.length == 0){
+                    had_accessory.value = false
+                }
+            }
+        })
     }
 })
 

@@ -74,7 +74,7 @@
                     <tr v-for="(item,idx) in items" :key='idx'>
                         <td>{{idx + 1}}</td>
                         <td>{{item.cloth_type}}</td>
-                        <td>{{item.colour}} ({{JSON.parse(item['set_combination'])['major_colour']}})</td>
+                        <td>{{item.colour}} <span v-if="parsedSetCombination(item).major_colour">({{parsedSetCombination(item).major_colour}})</span></td>
                         <td>{{item.dia}}</td>
                         <td>{{item.shade}}</td>
                         <td>{{item.weight}}</td>
@@ -707,7 +707,17 @@ onMounted(()=> {
             callback:function(r){
                 select_attributes.value = r.message
             }
-        })  
+        })
+    } else if(cur_frm.doc.cutting_order){
+        frappe.call({
+            method:"production_api.production_api.doctype.cutting_laysheet.cutting_laysheet.get_select_attributes",
+            args: {
+                cutting_order:cur_frm.doc.cutting_order,
+            },
+            callback:function(r){
+                select_attributes.value = r.message
+            }
+        })
     }
     if(cur_frm.doc.is_manual_entry){
         frappe.call({
@@ -724,6 +734,14 @@ onMounted(()=> {
         disabled.value = true
     }
 })
+
+function parsedSetCombination(item) {
+    try {
+        let val = item['set_combination']
+        if (typeof val === 'string') val = JSON.parse(val)
+        return val || {}
+    } catch { return {} }
+}
 
 function load_data(item_detail){
     manual_items.value = item_detail.manual_items

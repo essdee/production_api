@@ -24,6 +24,94 @@ frappe.ui.form.on("Cutting Order", {
 		// Read-only when submitted
 		if (frm.doc.docstatus === 1) {
 			frm.cutting_order_items.set_read_only(true);
+
+			// Summary tab — completed/incomplete items
+			$(frm.fields_dict['completed_items_html'].wrapper).html("");
+			frm.completed_items = new frappe.production.ui.CuttingCompletionDetail(
+				frm.fields_dict['completed_items_html'].wrapper
+			);
+			frm.completed_items.load_data(frm.doc.completed_items_json, 1);
+
+			$(frm.fields_dict['incompleted_items_html'].wrapper).html("");
+			frm.incompleted_items = new frappe.production.ui.CuttingIncompletionDetail(
+				frm.fields_dict['incompleted_items_html'].wrapper
+			);
+			frm.incompleted_items.load_data(frm.doc.incomplete_items_json);
+
+			// Calculate LaySheets button
+			frm.add_custom_button("Calculate LaySheets", function () {
+				if (frm.is_dirty()) {
+					return;
+				}
+				frappe.call({
+					method: "production_api.production_api.doctype.cutting_order.cutting_order.calculate_laysheets",
+					args: {
+						cutting_order: frm.doc.name,
+					},
+				});
+			}, "Fetch and Calculate");
+
+			// Get Completed button
+			frm.add_custom_button("Get Completed", () => {
+				let d = new frappe.ui.Dialog({
+					size: "large",
+					fields: [
+						{ fieldname: "pop_up_html", fieldtype: "HTML" },
+						{ fieldname: "output_html", fieldtype: "HTML" },
+					],
+					primary_action_label: "Copy to Clipboard",
+					secondary_action_label: "Take Screenshot",
+					async primary_action() {
+						let sourceDiv = d.fields_dict.pop_up_html.wrapper;
+						let canvas = await html2canvas(sourceDiv, { scale: 1, useCORS: true });
+						canvas.toBlob(async (blob) => {
+							await navigator.clipboard.write([
+								new ClipboardItem({ "image/png": blob }),
+							]);
+							frappe.show_alert("Image Copied to Clipboard");
+						});
+					},
+					secondary_action() {
+						let sourceDiv = d.fields_dict.pop_up_html.wrapper;
+						html2canvas(sourceDiv, { scale: 1, useCORS: true }).then((canvas) => {
+							let link = document.createElement("a");
+							link.href = canvas.toDataURL("image/png");
+							link.download = "screenshot.png";
+							link.click();
+						});
+					},
+				});
+				d.$wrapper.find(".btn-modal-secondary").css({
+					"background-color": "cadetblue",
+					color: "white",
+				});
+				frm.completed_popup = new frappe.production.ui.CuttingCompletionDetail(d.fields_dict.pop_up_html.wrapper);
+				frm.completed_popup.load_data(frm.doc.completed_items_json, 3);
+				d.show();
+			}, "Get or Update Completed");
+
+			// Update Completed button
+			frm.add_custom_button("Update Completed", () => {
+				let d = new frappe.ui.Dialog({
+					size: "extra-large",
+					fields: [
+						{
+							"fieldname": "update_pop_up_html",
+							"fieldtype": "HTML",
+						}
+					],
+					primary_action_label: "Submit",
+					primary_action() {
+						frm.dirty();
+						let items = frm.update_completed.get_items();
+						frm.set_value("completed_items_json", JSON.stringify(items.json_data[0]));
+						d.hide();
+					}
+				});
+				frm.update_completed = new frappe.production.ui.CuttingCompletionDetail(d.fields_dict.update_pop_up_html.wrapper);
+				frm.update_completed.load_data(frm.doc.completed_items_json, 2);
+				d.show();
+			}, "Get or Update Completed");
 		}
 	},
 

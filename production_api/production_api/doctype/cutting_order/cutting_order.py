@@ -5,6 +5,7 @@ import frappe
 import json
 import copy
 from frappe.model.document import Document
+from production_api.utils import update_if_string_instance
 
 
 class CuttingOrder(Document):
@@ -34,44 +35,441 @@ class CuttingOrder(Document):
 		):
 			frappe.throw("At least one quantity must be greater than zero")
 
-		# Build panels dict from Cutting Order Detail's stiching_item_details
 		cod = frappe.get_doc("Cutting Order Detail", self.cutting_order_detail)
+
+		# Get sizes from COD
+		sizes = []
+		for attr_row in cod.item_attributes:
+			if attr_row.attribute == cod.primary_attribute and attr_row.mapping:
+				mapping_doc = frappe.get_cached_doc("Item Item Attribute Mapping", attr_row.mapping)
+				sizes = [v.attribute_value for v in mapping_doc.values]
+				break
+
+		# Build panels and stiching_attrs in CP-compatible format
 		if cod.is_set_item:
-			# panels: {part: {panel: 0, ...}, ...}
 			panels = {}
+			stiching_attrs = {cod.stiching_attribute: {}}
 			for row in cod.stiching_item_details:
 				panels.setdefault(row.set_item_attribute_value, {})
 				panels[row.set_item_attribute_value][row.stiching_attribute_value] = 0
+				stiching_attrs[cod.stiching_attribute].setdefault(row.set_item_attribute_value, [])
+				stiching_attrs[cod.stiching_attribute][row.set_item_attribute_value].append(row.stiching_attribute_value)
 		else:
-			# panels: {panel: 0, ...}
 			panels = {}
+			stiching_attrs = {cod.stiching_attribute: []}
 			for row in cod.stiching_item_details:
 				panels[row.stiching_attribute_value] = 0
+				stiching_attrs[cod.stiching_attribute].append(row.stiching_attribute_value)
 
-		# Completed: all quantities zeroed, completed=False
-		completed = copy.deepcopy(data)
-		for item in completed['items']:
-			for size in item['quantities']:
-				item['quantities'][size] = 0
-			item['completed'] = False
-			item['completed_date'] = None
+		# Build CP-compatible items list
+		total_qty = {size: 0 for size in sizes}
+		completed_items = []
+		incomplete_items = []
 
-		# Incomplete: each quantity → panel dict (tracking per-panel cuts remaining)
-		incomplete = copy.deepcopy(data)
-		for item in incomplete['items']:
+		for item in data.get('items', []):
+			# Build attributes dict
+			colour = item.get('colour', '')
+			attributes = {cod.packing_attribute: colour}
+			item_keys = {}
+
 			if cod.is_set_item:
 				part = item.get('part', '')
-				panel_dict = panels.get(part, {})
+				attributes[cod.set_item_attribute] = part
+				item_keys = {
+					"major_colour": item.get('major_colour', colour),
+					"major_part": part,
+				}
+
+			# Build values dict from quantities (keyed by size)
+			values = {}
+			for size in sizes:
+				values[size] = item.get('quantities', {}).get(size, 0)
+
+			# Completed item: zeroed values
+			comp_item = {
+				"attributes": copy.deepcopy(attributes),
+				"values": {size: 0 for size in sizes},
+				"completed": False,
+				"completed_date": None,
+			}
+			if cod.is_set_item:
+				comp_item["item_keys"] = copy.deepcopy(item_keys)
+			completed_items.append(comp_item)
+
+			# Incomplete item: panel dicts
+			inc_item = {
+				"attributes": copy.deepcopy(attributes),
+				"completed": False,
+				"completed_date": None,
+			}
+			if cod.is_set_item:
+				inc_item["item_keys"] = copy.deepcopy(item_keys)
+				inc_item["values"] = {size: copy.deepcopy(panels.get(part, {})) for size in sizes}
 			else:
-				panel_dict = panels
-			for size in item['quantities']:
-				item['quantities'][size] = copy.deepcopy(panel_dict)
+				inc_item["values"] = {size: copy.deepcopy(panels) for size in sizes}
+			incomplete_items.append(inc_item)
+
+		completed = {
+			"items": completed_items,
+			"total_qty": total_qty,
+			"is_set_item": cod.is_set_item,
+			"pack_attr": cod.packing_attribute,
+			"stiching_attr": cod.stiching_attribute,
+			"primary_attribute_values": sizes,
+		}
+		if cod.is_set_item:
+			completed["set_item_attr"] = cod.set_item_attribute
+		completed.update(stiching_attrs)
+
+		incomplete = {
+			"items": incomplete_items,
+			"total_qty": copy.deepcopy(total_qty),
+			"is_set_item": cod.is_set_item,
+			"pack_attr": cod.packing_attribute,
+			"stiching_attr": cod.stiching_attribute,
+			"primary_attribute_values": sizes,
+		}
+		if cod.is_set_item:
+			incomplete["set_item_attr"] = cod.set_item_attribute
+		incomplete.update(copy.deepcopy(stiching_attrs))
 
 		self.completed_items_json = json.dumps(completed)
 		self.incomplete_items_json = json.dumps(incomplete)
+		self.co_status = "Submitted"
 
 	def on_submit(self):
 		pass
+
+	def on_update_after_submit(self):
+		completed_json = update_if_string_instance(self.completed_items_json)
+		all_completed = True
+		any_completed = False
+		for item in completed_json.get('items', []):
+			if item.get('completed'):
+				any_completed = True
+			else:
+				all_completed = False
+
+		has_laysheets = frappe.db.exists("Cutting LaySheet", {
+			"cutting_order": self.name,
+			"status": ["!=", "Cancelled"],
+		})
+
+		if all_completed and any_completed:
+			new_status = "Completed"
+		elif any_completed:
+			new_status = "Partially Completed"
+		elif has_laysheets:
+			new_status = "Cutting In Progress"
+		else:
+			new_status = "Submitted"
+
+		frappe.db.set_value(self.doctype, self.name, "co_status", new_status)
+
+
+@frappe.whitelist()
+def calculate_laysheets(cutting_order):
+	frappe.enqueue(calc_laysheets, "short", cutting_order=cutting_order)
+
+
+def calc_laysheets(cutting_order):
+	co_doc = frappe.get_doc("Cutting Order", cutting_order)
+	cod = frappe.get_cached_doc("Cutting Order Detail", co_doc.cutting_order_detail)
+	data = json.loads(co_doc.items_json)
+
+	# Get sizes from COD
+	sizes = []
+	for attr_row in cod.item_attributes:
+		if attr_row.attribute == cod.primary_attribute and attr_row.mapping:
+			mapping_doc = frappe.get_cached_doc("Item Item Attribute Mapping", attr_row.mapping)
+			sizes = [v.attribute_value for v in mapping_doc.values]
+			break
+
+	# Build panels and stiching_attrs
+	if cod.is_set_item:
+		panels = {}
+		stiching_attrs = {cod.stiching_attribute: {}}
+		for row in cod.stiching_item_details:
+			panels.setdefault(row.set_item_attribute_value, {})
+			panels[row.set_item_attribute_value][row.stiching_attribute_value] = 0
+			stiching_attrs[cod.stiching_attribute].setdefault(row.set_item_attribute_value, [])
+			stiching_attrs[cod.stiching_attribute][row.set_item_attribute_value].append(row.stiching_attribute_value)
+	else:
+		panels = {}
+		stiching_attrs = {cod.stiching_attribute: []}
+		for row in cod.stiching_item_details:
+			panels[row.stiching_attribute_value] = 0
+			stiching_attrs[cod.stiching_attribute].append(row.stiching_attribute_value)
+
+	# Build zeroed completed/incomplete items
+	total_qty = {size: 0 for size in sizes}
+	completed_items = []
+	incomplete_items = []
+
+	for item in data.get('items', []):
+		colour = item.get('colour', '')
+		attributes = {cod.packing_attribute: colour}
+		item_keys = {}
+
+		if cod.is_set_item:
+			part = item.get('part', '')
+			attributes[cod.set_item_attribute] = part
+			item_keys = {
+				"major_colour": item.get('major_colour', colour),
+				"major_part": part,
+			}
+
+		comp_item = {
+			"attributes": copy.deepcopy(attributes),
+			"values": {size: 0 for size in sizes},
+			"completed": False,
+			"completed_date": None,
+		}
+		if cod.is_set_item:
+			comp_item["item_keys"] = copy.deepcopy(item_keys)
+		completed_items.append(comp_item)
+
+		inc_item = {
+			"attributes": copy.deepcopy(attributes),
+			"completed": False,
+			"completed_date": None,
+		}
+		if cod.is_set_item:
+			inc_item["item_keys"] = copy.deepcopy(item_keys)
+			inc_item["values"] = {size: copy.deepcopy(panels.get(part, {})) for size in sizes}
+		else:
+			inc_item["values"] = {size: copy.deepcopy(panels) for size in sizes}
+		incomplete_items.append(inc_item)
+
+	completed = {
+		"items": completed_items,
+		"total_qty": total_qty,
+		"is_set_item": cod.is_set_item,
+		"pack_attr": cod.packing_attribute,
+		"stiching_attr": cod.stiching_attribute,
+		"primary_attribute_values": sizes,
+	}
+	if cod.is_set_item:
+		completed["set_item_attr"] = cod.set_item_attribute
+	completed.update(stiching_attrs)
+
+	incomplete = {
+		"items": incomplete_items,
+		"total_qty": copy.deepcopy(total_qty),
+		"is_set_item": cod.is_set_item,
+		"pack_attr": cod.packing_attribute,
+		"stiching_attr": cod.stiching_attribute,
+		"primary_attribute_values": sizes,
+	}
+	if cod.is_set_item:
+		incomplete["set_item_attr"] = cod.set_item_attribute
+	incomplete.update(copy.deepcopy(stiching_attrs))
+
+	co_doc.completed_items_json = json.dumps(completed)
+	co_doc.incomplete_items_json = json.dumps(incomplete)
+	co_doc.save()
+
+	# Re-process all Label Printed LaySheets
+	from production_api.production_api.doctype.cutting_laysheet.cutting_laysheet import update_cutting_plan
+	cls_list = frappe.get_list("Cutting LaySheet", filters={"cutting_order": cutting_order, "status": "Label Printed"}, pluck="name")
+	for cls in cls_list:
+		update_cutting_plan(cls)
+
+	co_doc.reload()
+	co_doc.save()
+
+
+@frappe.whitelist(allow_guest=True)
+def get_cutting_order_laysheets_report(cutting_order):
+	co_doc = frappe.get_doc("Cutting Order", cutting_order)
+	cod_doc = frappe.get_cached_doc("Cutting Order Detail", co_doc.cutting_order_detail)
+
+	# Get sizes from COD
+	sizes = []
+	for attr_row in cod_doc.item_attributes:
+		if attr_row.attribute == cod_doc.primary_attribute and attr_row.mapping:
+			mapping_doc = frappe.get_cached_doc("Item Item Attribute Mapping", attr_row.mapping)
+			sizes = [v.attribute_value for v in mapping_doc.values]
+			break
+
+	panels = []
+	if cod_doc.is_set_item:
+		panels = {}
+		for row in cod_doc.stiching_item_details:
+			panels.setdefault(row.set_item_attribute_value, [])
+
+	cls_list = frappe.get_list("Cutting LaySheet", filters={"cutting_order": cutting_order, "status": "Label Printed"}, pluck="name", order_by="lay_no asc")
+	lay_details = {}
+	for cls in cls_list:
+		cls_doc = frappe.get_doc("Cutting LaySheet", cls)
+		lay_no = cls_doc.lay_no
+		lay_details[lay_no] = {}
+		for row in cls_doc.cutting_laysheet_bundles:
+			parts = row.part.split(",")
+			parts = ", ".join(parts)
+			set_combination = update_if_string_instance(row.set_combination)
+			major_colour = set_combination['major_colour']
+			if cod_doc.is_set_item:
+				if set_combination.get('set_part'):
+					if parts not in panels[set_combination['set_part']]:
+						panels[set_combination['set_part']].append(parts)
+					major_colour = "("+ major_colour +")" + set_combination["set_colour"] +"-"+set_combination.get('set_part')
+				else:
+					if parts not in panels[set_combination['major_part']]:
+						panels[set_combination['major_part']].append(parts)
+					major_colour = major_colour +"-"+set_combination.get('major_part')
+			else:
+				if parts not in panels:
+					panels.append(parts)
+
+			lay_details[lay_no].setdefault(major_colour, {})
+			lay_details[lay_no][major_colour].setdefault(row.size, {})
+			lay_details[lay_no][major_colour][row.size].setdefault(row.shade, {})
+			lay_details[lay_no][major_colour][row.size][row.shade].setdefault(parts, {})
+			lay_details[lay_no][major_colour][row.size][row.shade][parts].setdefault("qty", 0)
+			lay_details[lay_no][major_colour][row.size][row.shade][parts]["qty"] += row.quantity
+			lay_details[lay_no][major_colour][row.size][row.shade][parts].setdefault("bundles", 0)
+			lay_details[lay_no][major_colour][row.size][row.shade][parts]['bundles'] += 1
+
+	final_data = {}
+	for size in sizes:
+		for lay_number, colour_dict in lay_details.items():
+			if not lay_details.get(lay_number):
+				continue
+			for colour, colour_detail in colour_dict.items():
+				for cur_size, panel_detail in lay_details.get(lay_number).get(colour).items():
+					if cur_size == size:
+						final_data.setdefault(colour, [])
+						for shade in panel_detail:
+							duplicate = {}
+							duplicate['lay_no'] = lay_number
+							duplicate['size'] = size
+							duplicate['shade'] = shade
+							for panel, panel_details in panel_detail[shade].items():
+								duplicate[panel] = panel_details['qty']
+								duplicate[panel+"_Bundle"] = panel_details['bundles']
+							final_data[colour].append(duplicate)
+	return panels, final_data, cod_doc.is_set_item
+
+
+@frappe.whitelist(allow_guest=True)
+def get_cutting_order_size_reports(cutting_order):
+	co_doc = frappe.get_doc("Cutting Order", cutting_order)
+	cod_doc = frappe.get_cached_doc("Cutting Order Detail", co_doc.cutting_order_detail)
+
+	# Get sizes from COD
+	sizes = []
+	for attr_row in cod_doc.item_attributes:
+		if attr_row.attribute == cod_doc.primary_attribute and attr_row.mapping:
+			mapping_doc = frappe.get_cached_doc("Item Item Attribute Mapping", attr_row.mapping)
+			sizes = [v.attribute_value for v in mapping_doc.values]
+			break
+
+	panels = []
+	if cod_doc.is_set_item:
+		panels = {}
+		for row in cod_doc.stiching_item_details:
+			panels.setdefault(row.set_item_attribute_value, [])
+
+	cls_list = frappe.get_list("Cutting LaySheet", filters={"cutting_order": cutting_order, "status": "Label Printed"}, pluck="name", order_by="lay_no asc")
+	size_details = {}
+	for cls in cls_list:
+		cls_doc = frappe.get_doc("Cutting LaySheet", cls)
+		for row in cls_doc.cutting_laysheet_bundles:
+			parts = row.part.split(",")
+			parts = ", ".join(parts)
+			set_combination = update_if_string_instance(row.set_combination)
+			major_colour = set_combination['major_colour']
+			if cod_doc.is_set_item:
+				if set_combination.get('set_part'):
+					if parts not in panels[set_combination['set_part']]:
+						panels[set_combination['set_part']].append(parts)
+					major_colour = "("+ major_colour +")" + set_combination["set_colour"] +"-"+set_combination.get('set_part')
+				else:
+					if parts not in panels[set_combination['major_part']]:
+						panels[set_combination['major_part']].append(parts)
+					major_colour = major_colour +"-"+set_combination.get('major_part')
+			else:
+				if parts not in panels:
+					panels.append(parts)
+			size_details.setdefault(major_colour, {})
+			size_details[major_colour].setdefault(row.size, {})
+			size_details[major_colour][row.size].setdefault(parts, {})
+			size_details[major_colour][row.size][parts].setdefault("qty", 0)
+			size_details[major_colour][row.size][parts]["qty"] += row.quantity
+			size_details[major_colour][row.size][parts].setdefault("bundles", 0)
+			size_details[major_colour][row.size][parts]['bundles'] += 1
+
+	final_data = {}
+	for size in sizes:
+		for colour, colour_details in size_details.items():
+			for dict_size, panel_detail in colour_details.items():
+				if dict_size == size:
+					final_data.setdefault(colour, [])
+					duplicate = {}
+					duplicate['size'] = size
+					for panel in panel_detail:
+						duplicate[panel] = panel_detail[panel]['qty']
+						duplicate[panel+"_Bundle"] = panel_detail[panel]['bundles']
+					final_data[colour].append(duplicate)
+	return panels, final_data, cod_doc.is_set_item
+
+
+@frappe.whitelist(allow_guest=True)
+def get_cutting_order_ccr(doc_name):
+	co_doc = frappe.get_doc("Cutting Order", doc_name)
+	cod_doc = frappe.get_cached_doc("Cutting Order Detail", co_doc.cutting_order_detail)
+
+	cls_list = frappe.get_all("Cutting LaySheet", filters={"cutting_order": doc_name, "status": "Label Printed"}, pluck="name", order_by="lay_no asc")
+	markers = {}
+	for cls in cls_list:
+		cls_doc = frappe.get_doc("Cutting LaySheet", cls)
+		sizes = {}
+		for row in cls_doc.cutting_marker_ratios:
+			if row.size not in sizes:
+				sizes[row.size] = row.ratio
+		panels = cls_doc.calculated_parts.split(",")
+		panels.sort()
+		for idx, panel in enumerate(panels):
+			panels[idx] = panel.strip()
+
+		tup_panels = ", ".join(panels)
+		markers.setdefault(tup_panels, {})
+		for row in cls_doc.cutting_laysheet_details:
+			key = (row.colour, row.cloth_type)
+			markers[tup_panels].setdefault(key, {
+				"used_weight": 0,
+				"total_pieces": 0,
+			})
+
+			markers[tup_panels][key]["used_weight"] += row.used_weight
+			for size in sizes:
+				markers[tup_panels][key].setdefault(size, {"bits": 0})
+				bits = sizes[size] * row.effective_bits
+				markers[tup_panels][key][size]["bits"] += bits
+				markers[tup_panels][key]["total_pieces"] += bits
+
+		sizes = {}
+
+	# Get sizes from COD
+	all_sizes = []
+	for attr_row in cod_doc.item_attributes:
+		if attr_row.attribute == cod_doc.primary_attribute and attr_row.mapping:
+			mapping_doc = frappe.get_cached_doc("Item Item Attribute Mapping", attr_row.mapping)
+			all_sizes = [v.attribute_value for v in mapping_doc.values]
+			break
+
+	# Ensure every colour entry has all sizes
+	for mark in markers:
+		for key in markers[mark]:
+			for size in all_sizes:
+				markers[mark][key].setdefault(size, {"bits": 0})
+
+	if markers:
+		return {
+			"marker_data": markers,
+			"sizes": all_sizes,
+		}
 
 
 @frappe.whitelist()

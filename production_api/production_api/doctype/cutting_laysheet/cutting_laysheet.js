@@ -4,16 +4,16 @@
 frappe.ui.form.on("Cutting LaySheet", {
     setup(frm){
         frm.set_query("cutting_marker", (doc)=> {
-            if(!doc.cutting_plan){
-                frappe.msgprint("Set the Cutting Plan First")
+            let filters = { "docstatus": 1 }
+            if(doc.cutting_plan){
+                filters["cutting_plan"] = doc.cutting_plan
+            } else if(doc.cutting_order){
+                filters["cutting_order"] = doc.cutting_order
+            } else {
+                frappe.msgprint("Set the Cutting Plan or Cutting Order First")
                 return
             }
-            return {
-                filters:{
-                    "cutting_plan":doc.cutting_plan,
-                    "docstatus": 1,
-                }
-            }
+            return { filters: filters }
         })
         frm.set_query("cutting_plan", ()=> {
             return{
@@ -22,27 +22,24 @@ frappe.ui.form.on("Cutting LaySheet", {
                 }
             }
         })
+        frm.set_query("cutting_order", ()=> {
+            return{
+                filters: {
+                    "docstatus": 1,
+                    "co_status":["!=","Completed"]
+                }
+            }
+        })
     },
     refresh(frm) {
+        // Toggle visibility: show one parent, hide the other
+        if (frm.doc.cutting_order) {
+            frm.set_df_property("cutting_plan", "hidden", 1)
+        } else if (frm.doc.cutting_plan) {
+            frm.set_df_property("cutting_order", "hidden", 1)
+        }
+
         $(".layout-side-section").css("display", "None")
-        // if (frappe.user.has_role('System Manager')){
-        //     frm.add_custom_button("Update",()=> {
-        //         frappe.call({
-        //             method: "production_api.production_api.doctype.cutting_laysheet.cutting_laysheet.update_cutting_plan",
-        //             args : {
-        //                 cutting_laysheet: frm.doc.name,
-        //             }
-        //         })
-        //     })
-        //     frm.add_custom_button("Make GRN Entry",()=> {
-        //         frappe.call({
-        //             method: "production_api.production_api.doctype.cutting_laysheet.cutting_laysheet.create_grn_entry",
-        //             args : {
-        //                 doc_name: frm.doc.name,
-        //             }
-        //         })
-        //     })
-        // }
         removeDefaultPrintEvent();
         $('[data-original-title=Print]').hide();
         $("li:has(a:has(span[data-label='Print']))").remove();
@@ -82,12 +79,12 @@ frappe.ui.form.on("Cutting LaySheet", {
 
         frm.set_df_property('cutting_laysheet_bundles','cannot_add_rows',true)
 		frm.set_df_property('cutting_laysheet_bundles','cannot_delete_rows',true)
-        
+
         if(frm.doc.status != "Cancelled"){
             let x = frm.doc.cutting_laysheet_details.length > 0
             if(frm.doc.is_manual_entry){
                 x = true
-            } 
+            }
             if(x && (frm.doc.status == "Bundles Generated" || frm.doc.status == "Completed") ){
                 if(!frm.doc.bundle_generated_date || frm.doc.bundle_generated_date == frappe.datetime.nowdate()){
                     frm.add_custom_button("Generate",()=> {
@@ -196,7 +193,7 @@ frappe.ui.form.on("Cutting LaySheet", {
                     let w = window.open(
                         frappe.urllib.get_full_url(
                             "/printview?" + "doctype=" + encodeURIComponent(frm.doc.doctype) + "&name=" +
-                                encodeURIComponent(frm.doc.name) + "&trigger_print=1" + "&format=" + 
+                                encodeURIComponent(frm.doc.name) + "&trigger_print=1" + "&format=" +
                                 encodeURIComponent(pf) + "&no_letterhead=1"
                         )
                     );
@@ -210,7 +207,7 @@ frappe.ui.form.on("Cutting LaySheet", {
                 let w = window.open(
                     frappe.urllib.get_full_url(
                         "/printview?" + "doctype=" + encodeURIComponent(frm.doc.doctype) + "&name=" +
-                            encodeURIComponent(frm.doc.name) + "&trigger_print=1" + "&format=" + 
+                            encodeURIComponent(frm.doc.name) + "&trigger_print=1" + "&format=" +
                             encodeURIComponent("Cutting LaySheet") + "&no_letterhead=1"
                     )
                 );
@@ -267,7 +264,7 @@ frappe.ui.form.on("Cutting LaySheet", {
                                 d.hide()
                             }
                         })
-                        d.show()    
+                        d.show()
                     })
                 }
                 frm.add_custom_button("Cancel", ()=> {
@@ -290,9 +287,33 @@ frappe.ui.form.on("Cutting LaySheet", {
                     })
                     d.show()
                 })
-            } 
+            }
         }
 	},
+    cutting_plan(frm) {
+        if (frm.doc.cutting_plan) {
+            frm.set_value("cutting_order", "")
+            frm.set_df_property("cutting_order", "hidden", 1)
+        } else {
+            frm.set_df_property("cutting_order", "hidden", 0)
+        }
+    },
+    cutting_order(frm) {
+        if (frm.doc.cutting_order) {
+            frm.set_value("cutting_plan", "")
+            frm.set_df_property("cutting_plan", "hidden", 1)
+            // Fetch item from cutting order
+            if (frm.doc.cutting_order) {
+                frappe.db.get_value("Cutting Order", frm.doc.cutting_order, "item").then(r => {
+                    if (r.message && r.message.item) {
+                        frm.set_value("item", r.message.item)
+                    }
+                })
+            }
+        } else {
+            frm.set_df_property("cutting_plan", "hidden", 0)
+        }
+    },
     validate(frm){
         if(!frm.doc.__islocal){
             let items = frm.laysheet.get_items()
@@ -305,7 +326,7 @@ frappe.ui.form.on("Cutting LaySheet", {
         frappe.call({
             method:"production_api.production_api.doctype.cutting_laysheet.cutting_laysheet.update_cutting_plan",
             args: {
-                cutting_laysheet: frm.doc.name, 
+                cutting_laysheet: frm.doc.name,
                 check_cp: true,
             },
             callback: function(){
@@ -318,13 +339,13 @@ frappe.ui.form.on("Cutting LaySheet", {
                             {
                                 fieldname: 'printer_list_html',
                                 fieldtype: 'HTML',
-                            }, 
+                            },
                             {
                                 fieldname: "print_order",
                                 fieldtype: "Select",
                                 options: ["Panel", "Bundle No"],
                                 label: "Print Order By",
-                                default: "Panel",    
+                                default: "Panel",
                             }
                         ],
                         size:'small',
@@ -379,7 +400,7 @@ function removeDefaultPrintEvent(){
         if ((e.ctrlKey || e.metaKey) && (e.key == "p")) {
             e.preventDefault();
             e.stopImmediatePropagation();
-        }  
+        }
     });
 }
 
@@ -400,21 +421,26 @@ function get_printer(){
         frappe.throw("Select only one printer")
     }
     else{
-        let prints = [...printers_list] 
+        let prints = [...printers_list]
         return prints[0]
     }
 }
 
 function print_labels(frm, printer, print_order){
+    let args = {
+        print_items: frm.doc.cutting_laysheet_bundles,
+        lay_no: frm.doc.lay_no,
+        doc_name: frm.doc.name,
+        print_order: print_order,
+    }
+    if (frm.doc.cutting_order) {
+        args.cutting_order = frm.doc.cutting_order
+    } else {
+        args.cutting_plan = frm.doc.cutting_plan
+    }
     frappe.call({
         method:'production_api.production_api.doctype.cutting_laysheet.cutting_laysheet.print_labels',
-        args: {
-            print_items: frm.doc.cutting_laysheet_bundles,
-            lay_no:frm.doc.lay_no,
-            cutting_plan: frm.doc.cutting_plan,
-            doc_name:frm.doc.name,
-            print_order: print_order,
-        },
+        args: args,
         callback: function(r){
             if(r.message){
                 let config = qz.configs.create(printer)
@@ -431,4 +457,3 @@ function print_labels(frm, printer, print_order){
         }
     })
 }
-

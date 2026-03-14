@@ -79,7 +79,7 @@ def get_item_attributes(doctype, txt, searchfield, start, page_len, filters):
 				if row.process_name != process_name:
 					continue
 				if row.stage == ipd_doc.stiching_in_stage:
-					item_attributes = [[ipd_doc.stiching_attribute]]
+					item_attributes = [[ipd_doc.stiching_attribute], [ipd_doc.packing_attribute]]
 				elif row.stage == ipd_doc.stiching_out_stage:
 					item_attributes = [[ipd_doc.packing_attribute], [ipd_doc.primary_item_attribute]]
 				else:
