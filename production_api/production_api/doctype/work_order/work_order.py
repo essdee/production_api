@@ -80,6 +80,8 @@ class WorkOrder(Document):
 
         if self.open_status == "Close":
             status = "Closed"
+        elif self.open_status == "Close Request":
+            status = "Close Request"
 
         total_billed_qty = sum(
             flt(woct.billed_qty) for woct in self.work_order_calculated_items
@@ -1382,10 +1384,29 @@ def add_comment(doc_name, date, reason):
 def update_stock(work_order, close_reason=None, close_other_reason=None, close_remarks=None):
     from production_api.mrp_stock.utils import get_stock_balance
     logger = get_module_logger("work_order")
+    doc = frappe.get_doc("Work Order", work_order)
+
+    # Role-based close: check if user has the merchandising manager role
+    merch_manager_role = frappe.db.get_single_value("MRP Settings", "merchandising_manager_role")
+    is_merch_manager = merch_manager_role and frappe.session.user != "Guest" and merch_manager_role in frappe.get_roles(frappe.session.user)
+
+    if not is_merch_manager:
+        # Non-merch-manager: set Close Request, no stock updates
+        doc.open_status = "Close Request"
+        if close_reason:
+            doc.close_reason = close_reason
+        if close_other_reason:
+            doc.close_other_reason = close_other_reason
+        if close_remarks:
+            doc.close_remarks = close_remarks
+        doc.save()
+        frappe.msgprint(_("Close Request has been submitted for approval."), alert=True)
+        return
+
+    # Merch manager: proceed with stock updates and close
     logger.debug(f"{work_order} data construction {datetime.now()}")
     res = get_variant_stock_details()
     sl_entries = []
-    doc = frappe.get_doc("Work Order", work_order)
     grn_list = frappe.get_all('Goods Received Note', {
         "docstatus": 1, "against_id": work_order}, pluck="name")
     if not grn_list:
@@ -1441,6 +1462,7 @@ def update_stock(work_order, close_reason=None, close_other_reason=None, close_r
     make_sl_entries(sl_entries)
     logger.debug(f"{work_order} SLE Updated {datetime.now()}")
     doc.open_status = "Close"
+    doc.closed_by = frappe.session.user
     if close_reason:
         doc.close_reason = close_reason
     if close_other_reason:
