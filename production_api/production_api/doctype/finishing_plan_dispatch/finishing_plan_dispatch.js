@@ -17,6 +17,17 @@ frappe.ui.form.on("Finishing Plan Dispatch", {
             frm.add_custom_button("Cancel", ()=> {
                 frm._cancel()
             })
+            frm.add_custom_button("Print Dispatch", ()=> {
+                let w = window.open(
+                    frappe.urllib.get_full_url(
+                        "/printview?doctype=" + encodeURIComponent(frm.doc.doctype) +
+                        "&name=" + encodeURIComponent(frm.doc.name) +
+                        "&trigger_print=1&format=" + encodeURIComponent("Finishing Plan Dispatch") +
+                        "&no_letterhead=1"
+                    )
+                );
+                if (!w) frappe.msgprint(__("Please enable pop-ups"));
+            })
         }
         if(frm.doc.docstatus == 0){
             frm.add_custom_button("Fetch Items", ()=> {

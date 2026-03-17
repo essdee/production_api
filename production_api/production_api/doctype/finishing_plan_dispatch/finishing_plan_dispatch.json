@@ -11,7 +11,8 @@
   "stock_entry",
   "finishing_plan_dispatch_html",
   "finishing_plan_dispatch_items",
-  "amended_from"
+  "amended_from",
+  "fp_total_dispatched"
  ],
  "fields": [
   {
@@ -55,6 +56,13 @@
    "label": "Naming Series",
    "options": "\nFPD-2526-",
    "reqd": 1
+  },
+  {
+   "fieldname": "fp_total_dispatched",
+   "fieldtype": "Int",
+   "hidden": 1,
+   "label": "FP Total Dispatched",
+   "read_only": 1
   }
  ],
  "grid_page_length": 50,

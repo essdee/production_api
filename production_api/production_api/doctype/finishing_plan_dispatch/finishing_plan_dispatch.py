@@ -5,7 +5,7 @@ import frappe
 from itertools import groupby
 from operator import itemgetter
 from frappe.model.document import Document
-from production_api.production_api.doctype.item.item import get_or_create_variant
+from production_api.production_api.doctype.item.item import get_or_create_variant, get_attribute_details
 from production_api.utils import get_variant_attr_details, update_if_string_instance
 
 class FinishingPlanDispatch(Document):
@@ -90,12 +90,38 @@ class FinishingPlanDispatch(Document):
 				"item": row.item,
 				"against_id": row.against_id,
 				"against_id_detail": row.against_id_detail
-			})	
-		items = []	
+			})
+		items = []
 		for grp in group:
 			if group[grp]['check']:
 				items = items + group[grp]['items']
-		self.set("finishing_plan_dispatch_items", items)		
+		self.set("finishing_plan_dispatch_items", items)
+
+		# Freeze dispatch snapshot data for print format
+		fp_cache = {}
+		for row in self.finishing_plan_dispatch_items:
+			fp_name = row.against_id
+			if fp_name not in fp_cache:
+				fp_doc = frappe.get_doc("Finishing Plan", fp_name)
+				ipd = frappe.get_value("Lot", fp_doc.lot, "production_detail")
+				primary = frappe.get_value("Item Production Detail", ipd, "primary_item_attribute")
+				cutting_by_size = {}
+				for fp_row in fp_doc.finishing_plan_details:
+					va = get_variant_attr_details(fp_row.item_variant)
+					size = va.get(primary, "")
+					cutting_by_size[size] = fp_row.cutting_qty
+				fp_cache[fp_name] = {"primary": primary, "cutting_by_size": cutting_by_size}
+
+			cache = fp_cache[fp_name]
+			grn_dispatched = frappe.get_value("Finishing Plan GRN Detail", row.against_id_detail, "dispatched") or 0
+			va = get_variant_attr_details(row.item_variant)
+			size = va.get(cache["primary"], "")
+			cutting_qty = cache["cutting_by_size"].get(size, 0)
+
+			row.total_dispatched = grn_dispatched + row.quantity
+			row.dispatch_pct = round((row.total_dispatched / cutting_qty * 100), 2) if cutting_qty > 0 else 0
+
+		self.fp_total_dispatched = sum(row.total_dispatched for row in self.finishing_plan_dispatch_items)
 
 @frappe.whitelist()
 def fetch_fp_items():
@@ -173,3 +199,104 @@ def create_stock_dispatch(doc_name, from_location, to_location, vehicle_no, good
 	doc.additional_amount = goods_value
 	doc.save()
 	doc.submit()
+
+def get_fpd_print_data(doc_name):
+	"""Return structured print data for a Finishing Plan Dispatch."""
+	fpd = frappe.get_doc("Finishing Plan Dispatch", doc_name)
+	is_submitted = fpd.docstatus == 1
+	items = [row.as_dict() for row in fpd.finishing_plan_dispatch_items]
+	items.sort(key=itemgetter('lot', 'item'))
+
+	result = []
+	for (lot, item_name), variants in groupby(items, key=itemgetter('lot', 'item')):
+		variants_list = list(variants)
+		against_id = variants_list[0]['against_id']
+		uom = variants_list[0]['uom']
+
+		# Get primary attribute and ordered sizes from the Item
+		attr_details = get_attribute_details(item_name)
+		primary = attr_details.get("primary_attribute", "")
+		ordered_sizes = attr_details.get("primary_attribute_values", [])
+
+		# Get pack_out_stage from IPD
+		ipd = frappe.get_value("Lot", lot, "production_detail")
+		pack_out_stage = frappe.get_value("Item Production Detail", ipd, "pack_out_stage") if ipd else ""
+
+		# Build dispatch qty per size from this FPD's items
+		dispatch_by_size = {}
+		frozen_by_size = {}
+		for v in variants_list:
+			va = get_variant_attr_details(v['item_variant'])
+			size = va.get(primary, "")
+			dispatch_by_size[size] = v['quantity']
+			if is_submitted:
+				frozen_by_size[size] = {
+					"total_dispatched": v.get('total_dispatched', 0),
+					"dispatch_pct": v.get('dispatch_pct', 0),
+				}
+
+		if is_submitted:
+			# Use frozen snapshot data from child table
+			all_sizes = set(dispatch_by_size.keys())
+			sizes = [s for s in ordered_sizes if s in all_sizes]
+
+			size_data = {}
+			total_dispatch = 0
+			total_dispatched_all = 0
+			for size in sizes:
+				dq = dispatch_by_size.get(size, 0)
+				frozen = frozen_by_size.get(size, {})
+				size_data[size] = {
+					"dispatch_qty": dq,
+					"dispatch_pct": round(frozen.get("dispatch_pct", 0), 1),
+					"total_dispatched": frozen.get("total_dispatched", 0),
+				}
+				total_dispatch += dq
+				total_dispatched_all += frozen.get("total_dispatched", 0)
+		else:
+			# Draft: compute live from Finishing Plan
+			fp_doc = frappe.get_doc("Finishing Plan", against_id)
+
+			cutting_by_size = {}
+			for row in fp_doc.finishing_plan_details:
+				va = get_variant_attr_details(row.item_variant)
+				size = va.get(primary, "")
+				cutting_by_size[size] = row.cutting_qty
+
+			dispatched_by_size = {}
+			for row in fp_doc.finishing_plan_grn_details:
+				va = get_variant_attr_details(row.item_variant)
+				size = va.get(primary, "")
+				dispatched_by_size[size] = row.dispatched
+
+			all_sizes = set(dispatch_by_size.keys()) | set(cutting_by_size.keys())
+			sizes = [s for s in ordered_sizes if s in all_sizes]
+
+			size_data = {}
+			total_dispatch = 0
+			total_dispatched_all = 0
+			for size in sizes:
+				dq = dispatch_by_size.get(size, 0)
+				cum_dispatched = dispatched_by_size.get(size, 0)
+				cutting = cutting_by_size.get(size, 0)
+				pct = (cum_dispatched / cutting * 100) if cutting else 0
+				size_data[size] = {
+					"dispatch_qty": dq,
+					"dispatch_pct": round(pct, 1),
+					"total_dispatched": cum_dispatched,
+				}
+				total_dispatch += dq
+				total_dispatched_all += cum_dispatched
+
+		result.append({
+			"lot": lot,
+			"item": item_name,
+			"stage": pack_out_stage or "",
+			"uom": uom or "",
+			"sizes": sizes,
+			"size_data": size_data,
+			"total_dispatch": total_dispatch,
+			"total_dispatched_all": total_dispatched_all,
+		})
+
+	return result
