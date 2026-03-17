@@ -789,6 +789,13 @@ def get_cloth_accessories(cutting_plan=None, cutting_order=None):
 
 @frappe.whitelist()
 def print_labels(print_items, lay_no, doc_name, print_order, cutting_plan=None, cutting_order=None):
+	# Validate grammage approval if weight difference exceeds tolerance
+	cls = frappe.get_doc("Cutting LaySheet", doc_name)
+	settings = frappe.get_single("MRP Settings")
+	tolerance = settings.piece_weight_tolerance or 0.003
+	diff = abs((cls.piece_weight or 0) - (cls.required_pcs_weight or 0))
+	if diff > tolerance and not cls.approved_by:
+		frappe.throw("Grammage approval required before printing labels")
 	lot_row = ""
 	if cutting_order:
 		item_name = frappe.get_value("Cutting Order", cutting_order, "item")
@@ -1431,6 +1438,34 @@ def get_input_fields(cutting_marker, colour, select_attributes):
 		"input_fields":inputs, 
 		"part_colours": part_colours if part_colours else None
 	}	
+
+@frappe.whitelist()
+def can_approve_grammage():
+	"""Check if current user has any of the CLS Grammage Approval Roles."""
+	settings = frappe.get_single("MRP Settings")
+	approval_roles = [row.role for row in (settings.cls_grammage_approval_roles or [])]
+	if not approval_roles:
+		return False
+	user_roles = frappe.get_roles(frappe.session.user)
+	return bool(set(approval_roles) & set(user_roles))
+
+@frappe.whitelist()
+def approve_grammage(doc_name):
+	"""Approve grammage for a CLS that is in Approval Pending status."""
+	settings = frappe.get_single("MRP Settings")
+	approval_roles = [row.role for row in (settings.cls_grammage_approval_roles or [])]
+	user_roles = frappe.get_roles(frappe.session.user)
+	if not (set(approval_roles) & set(user_roles)):
+		frappe.throw("You do not have the required role to approve grammage")
+
+	cls_doc = frappe.get_doc("Cutting LaySheet", doc_name)
+	if cls_doc.status != "Approval Pending":
+		frappe.throw("This Cutting LaySheet is not pending approval")
+
+	cls_doc.approved_by = frappe.session.user
+	cls_doc.status = "Bundles Generated"
+	cls_doc.save(ignore_permissions=True)
+	frappe.msgprint("Grammage approved successfully", indicator="green", alert=True)
 
 @frappe.whitelist()
 def revert_labels(doc_name):

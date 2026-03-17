@@ -311,7 +311,7 @@
    "hidden": 1,
    "in_list_view": 1,
    "label": "Status",
-   "options": "Started\nCompleted\nBundles Generated\nLabel Printed\nCancelled"
+   "options": "Started\nCompleted\nBundles Generated\nApproval Pending\nLabel Printed\nCancelled"
   },
   {
    "fieldname": "cutting_marker_ratios_html",

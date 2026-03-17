@@ -158,31 +158,60 @@ frappe.ui.form.on("Cutting LaySheet", {
             }
             if(frm.doc.cutting_laysheet_bundles.length > 0 && frm.doc.status == "Bundles Generated" ){
                 frm.add_custom_button("Print Labels", ()=> {
-                    if(frm.doc.required_pcs_weight != frm.doc.piece_weight){
-                        let d = new frappe.ui.Dialog({
-                            title: `Required Weight is ${frm.doc.required_pcs_weight}, <br>
-                                    Actual Piece Weight is ${frm.doc.piece_weight.toFixed(3)} <br>
-                                    Are you sure want to continue`,
-                            primary_action_label: "Yes",
-                            secondary_action_label: "No",
-                            primary_action(){
-                                frm.set_value("approved_by", frappe.session.user)
-                                frm.refresh_field("approved_by")
-                                d.hide()
-                                frm.trigger("label_print")
-                            },
-                            secondary_action(){
-                                d.hide()
+                    frappe.call({
+                        method: "frappe.client.get_value",
+                        args: {
+                            doctype: "MRP Settings",
+                            fieldname: ["piece_weight_tolerance"]
+                        },
+                        callback: function(r) {
+                            let tolerance = (r.message && r.message.piece_weight_tolerance) || 0.003;
+                            let diff = Math.abs((frm.doc.piece_weight || 0) - (frm.doc.required_pcs_weight || 0));
+                            if (diff > tolerance && !frm.doc.approved_by) {
+                                // Outside tolerance and not yet approved — go to Approval Pending
+                                frm.set_value("status", "Approval Pending");
+                                frm.save().then(() => {
+                                    frappe.msgprint({
+                                        title: __("Approval Required"),
+                                        message: __("Weight difference ({0} kg) exceeds tolerance ({1} kg). Approval required from authorized user.", [diff.toFixed(4), tolerance]),
+                                        indicator: "orange"
+                                    });
+                                });
+                            } else {
+                                // Within tolerance OR already approved — print directly
+                                if (!frm.doc.approved_by) {
+                                    frm.set_value("approved_by", frappe.session.user);
+                                    frm.refresh_field("approved_by");
+                                }
+                                frm.trigger("label_print");
                             }
-                        })
-                        d.show()
-                    }
-                    else{
-                        frm.set_value("approved_by", frappe.session.user)
-                        frm.refresh_field("approved_by")
-                        frm.trigger("label_print")
-                    }
+                        }
+                    });
                 }, "Print")
+            }
+            // Approval Pending: show Approve button for authorized users
+            if(frm.doc.status == "Approval Pending"){
+                frappe.call({
+                    method: "production_api.production_api.doctype.cutting_laysheet.cutting_laysheet.can_approve_grammage",
+                    async: false,
+                    callback: function(r) {
+                        if (r.message) {
+                            frm.add_custom_button(__("Approve"), ()=> {
+                                frappe.call({
+                                    method: "production_api.production_api.doctype.cutting_laysheet.cutting_laysheet.approve_grammage",
+                                    args: { doc_name: frm.doc.name },
+                                    freeze: true,
+                                    freeze_message: __("Approving..."),
+                                    callback: function() {
+                                        frm.reload_doc();
+                                    }
+                                });
+                            }).addClass("btn-primary");
+                        } else {
+                            frm.dashboard.set_headline(__("Grammage approval is pending. An authorized user must approve before labels can be printed."));
+                        }
+                    }
+                });
             }
             if(frm.doc.status == "Label Printed" || frm.doc.status == "Bundles Generated"){
                 frm.add_custom_button("Print Movement Chart", ()=> {

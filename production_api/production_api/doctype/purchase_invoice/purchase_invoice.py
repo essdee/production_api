@@ -733,11 +733,15 @@ def check_all_wo_closed(purchase_invoice):
         fields=["distinct work_order as work_order"],
     )
     open_wos = []
+    close_request_wos = []
     for row in work_orders:
         status = frappe.db.get_value("Work Order", row.work_order, "open_status")
-        if status != "Close":
+        if status == "Close Request":
+            close_request_wos.append(row.work_order)
+        elif status != "Close":
             open_wos.append(row.work_order)
-    return {"all_closed": len(open_wos) == 0, "open_work_orders": open_wos}
+    all_closed = len(open_wos) == 0 and len(close_request_wos) == 0
+    return {"all_closed": all_closed, "open_work_orders": open_wos, "close_request_wos": close_request_wos}
 
 
 @frappe.whitelist()
