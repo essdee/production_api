@@ -85,6 +85,8 @@ class CuttingLaySheet(Document):
 			items = save_accessory_details(self.item_accessory_details, self.cutting_plan, cutting_order=self.cutting_order)
 			self.set("cutting_laysheet_accessory_details", items)
 
+		self._validate_cloth_type_dia()
+
 		if not self.is_new():
 			db_status = frappe.get_value("Cutting LaySheet", self.name, "status")
 			if db_status == "Bundles Generated":
@@ -194,7 +196,46 @@ class CuttingLaySheet(Document):
 			self.total_no_of_pieces = total_bits * ratio_sum
 			if self.total_no_of_pieces:
 				self.piece_weight = used_weight / self.total_no_of_pieces
-		self.set("cutting_laysheet_details",items)			
+		self.set("cutting_laysheet_details",items)
+
+	def _validate_cloth_type_dia(self):
+		cloth_type_dia_map = self._get_cloth_type_dia_map()
+		if not cloth_type_dia_map:
+			return
+		for table_name, label in [
+			("cutting_laysheet_details", "Cloth Detail"),
+			("cutting_laysheet_accessory_details", "Accessory Detail"),
+		]:
+			for row in self.get(table_name) or []:
+				ct = row.get("cloth_type")
+				d = row.get("dia")
+				if ct and d and ct in cloth_type_dia_map:
+					valid_dias = cloth_type_dia_map[ct]
+					if valid_dias and d not in valid_dias:
+						frappe.throw(
+							f"{label} Row {row.idx}: Dia <b>{d}</b> is not valid for Cloth Type <b>{ct}</b>. "
+							f"Valid dias: {', '.join(valid_dias)}"
+						)
+
+	def _get_cloth_type_dia_map(self):
+		if self.cutting_order:
+			co_doc = frappe.get_doc("Cutting Order", self.cutting_order)
+			cod = frappe.get_cached_doc("Cutting Order Detail", co_doc.cutting_order_detail)
+			cloth_data = json.loads(cod.cloth_detail_json or "[]")
+			cloth_type_dia_map = {}
+			for row in cloth_data:
+				if row.get("name1"):
+					cloth_type_dia_map[row["name1"]] = row.get("dia", [])
+			return cloth_type_dia_map
+		elif self.cutting_plan:
+			doc = frappe.get_doc("Cutting Plan", self.cutting_plan)
+			cloth_type_dia_map = {}
+			for item in doc.cutting_plan_cloth_details:
+				cloth_type_dia_map.setdefault(item.cloth_type, [])
+				if item.dia not in cloth_type_dia_map[item.cloth_type]:
+					cloth_type_dia_map[item.cloth_type].append(item.dia)
+			return cloth_type_dia_map
+		return {}
 
 def fetch_manual_item_details(manual_items, cutting_laysheet):
 	grouped_items = get_grouped_items(manual_items, cutting_laysheet)
@@ -411,16 +452,18 @@ def get_select_attributes(cutting_plan=None, cutting_order=None):
 			colour.add(row.attribute_value)
 		cloth_type = set()
 		dia = set()
+		cloth_type_dia_map = {}
 		cloth_data = json.loads(cod.cloth_detail_json or "[]")
 		for row in cloth_data:
 			if row.get("name1"):
 				cloth_type.add(row["name1"])
+				cloth_type_dia_map[row["name1"]] = row.get("dia", [])
 			for d in row.get("dia", []):
 				dia.add(d)
 		part = []
 		if cod.is_set_item:
 			part = list({row.set_item_attribute_value for row in cod.stiching_item_details})
-		return {"cloth_type": cloth_type, "colour": colour, "dia": dia, "part": part}
+		return {"cloth_type": cloth_type, "colour": colour, "dia": dia, "part": part, "cloth_type_dia_map": cloth_type_dia_map}
 	doc = frappe.get_doc("Cutting Plan",cutting_plan)
 	cloth_type = set()
 	colour = set()
@@ -431,15 +474,20 @@ def get_select_attributes(cutting_plan=None, cutting_order=None):
 	if ipd_doc.is_set_item:
 		part = get_part_list(ipd_doc)
 
+	cloth_type_dia_map = {}
 	for item in doc.cutting_plan_cloth_details:
 		cloth_type.add(item.cloth_type)
 		colour.add(item.colour)
 		dia.add(item.dia)
+		cloth_type_dia_map.setdefault(item.cloth_type, [])
+		if item.dia not in cloth_type_dia_map[item.cloth_type]:
+			cloth_type_dia_map[item.cloth_type].append(item.dia)
 	return {
 		"cloth_type":cloth_type,
 		"colour":colour,
 		"dia":dia,
 		"part":part,
+		"cloth_type_dia_map": cloth_type_dia_map,
 	}	
 
 @frappe.whitelist()

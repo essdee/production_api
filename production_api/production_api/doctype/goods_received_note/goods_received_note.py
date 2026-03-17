@@ -78,6 +78,9 @@ class GoodsReceivedNote(Document):
             self.set("grn_excess_usage_items", excess_list)
 
     def before_submit(self):
+        from production_api.utils import validate_supplier_user
+        validate_supplier_user(supplier1=self.supplier, supplier2=self.delivery_location)
+
         if not self.vehicle_no:
             frappe.throw("Enter Vehicle No")
         if not self.supplier_document_no:

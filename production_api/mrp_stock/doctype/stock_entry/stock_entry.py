@@ -39,6 +39,9 @@ class StockEntry(Document):
 			frappe.throw('Add items to Stock Entry.', title='Stock Entry')
 
 	def before_submit(self):
+		from production_api.utils import validate_supplier_user
+		validate_supplier_user(supplier1=self.from_warehouse, supplier2=self.to_warehouse)
+
 		if self.against in ["Finishing Plan", "Finishing Plan Dispatch"]:
 			if self.purpose == 'Material Issue':
 				add_value = frappe.db.get_single_value("Stock Settings", "add_finishing_plan_goods_value")

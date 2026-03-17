@@ -4,6 +4,35 @@ from itertools import zip_longest
 from frappe.query_builder.builder import Order as OrderBy
 from frappe.utils import getdate, add_days, flt
 
+def validate_supplier_user(supplier1=None, supplier2=None):
+	"""Validate session user is mapped to at least one of the given suppliers.
+	Both params are optional. If neither is provided, skip validation.
+	Admins bypass validation.
+	"""
+	user = frappe.session.user
+	if user == "Administrator":
+		return
+
+	roles = frappe.get_cached_value("User", user, "roles") or []
+	if "System Manager" in roles:
+		return
+
+	suppliers = [s for s in [supplier1, supplier2] if s]
+	if not suppliers:
+		return
+
+	has_mapping = frappe.db.exists("Supplier User", {
+		"parent": ["in", suppliers],
+		"parenttype": "Supplier",
+		"user": user,
+	})
+	if not has_mapping:
+		supplier_names = ", ".join(suppliers)
+		frappe.throw(
+			f"User <b>{user}</b> is not permitted to submit this document for suppliers: <b>{supplier_names}</b>",
+			title="Access Denied"
+		)
+
 class MyCustomException(Exception):
     def __init__(self, message):
         super().__init__(message)

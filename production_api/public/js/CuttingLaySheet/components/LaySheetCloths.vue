@@ -158,6 +158,7 @@ let sample_doc = ref({})
 let select_attributes = ref({
     "colour": []
 })
+let cloth_type_dia_map = ref({})
 let is_manual_entry = cur_frm.doc.is_manual_entry
 let primary_values = ref([])
 let cloth_type = null
@@ -197,6 +198,39 @@ function update_actual_dia(){
         let dia = cloth_dia.get_value()
         actual_dia.set_value(dia)
         actual_dia.refresh()
+    }
+}
+
+function on_cloth_type_change(){
+    if(!cloth_type) return
+    let selected = cloth_type.get_value()
+    let valid_dias = cloth_type_dia_map.value[selected]
+    if(valid_dias && valid_dias.length > 0){
+        let dia_options = [""].concat(valid_dias)
+        if(cloth_dia){
+            cloth_dia.df.options = dia_options
+            cloth_dia.set_value("")
+            cloth_dia.refresh()
+        }
+        if(actual_dia){
+            actual_dia.df.options = dia_options
+            actual_dia.set_value("")
+            actual_dia.refresh()
+        }
+    } else {
+        // Reset to all dias
+        let all_dias = select_attributes.value['dia'] || []
+        let dia_options = [""].concat([...all_dias])
+        if(cloth_dia){
+            cloth_dia.df.options = dia_options
+            cloth_dia.set_value("")
+            cloth_dia.refresh()
+        }
+        if(actual_dia){
+            actual_dia.df.options = dia_options
+            actual_dia.set_value("")
+            actual_dia.refresh()
+        }
     }
 }
 
@@ -268,7 +302,7 @@ async function add_cloth_item(index){
     let no_options = null
     let reqd = true
     let not_reqd = false
-    cloth_type = get_input_field(".cloth-type", "Select", "cloth_type","Cloth Type", select_attributes.value['cloth_type'], reqd)
+    cloth_type = get_input_field(".cloth-type", "Select", "cloth_type","Cloth Type", select_attributes.value['cloth_type'], reqd, change=on_cloth_type_change)
     cloth_colour = get_input_field(".cloth-colour", "Select", "cloth_colour", "Colour", select_attributes.value['colour'], reqd, change=onchange_event)
     cloth_dia = get_input_field(".cloth-dia", "Select", "cloth_dia", "Dia", select_attributes.value['dia'], reqd, change=update_actual_dia)
     cloth_shade = get_input_field(".cloth-shade", "Data", "cloth_shade", "Shade", no_options, reqd)
@@ -296,6 +330,22 @@ async function add_cloth_item(index){
             arr2 = ["cloth_type", "colour", "dia", "weight", "shade", "no_of_rolls", "fabric_type", "balance_weight"]
         }
         await set_attr_values(arr1,arr2, index)
+        // Filter dia options based on existing cloth_type, then re-set dia values
+        let existing_ct = items.value[index]['cloth_type']
+        if(existing_ct && cloth_type_dia_map.value[existing_ct]){
+            let valid_dias = cloth_type_dia_map.value[existing_ct]
+            let dia_options = [""].concat(valid_dias)
+            cloth_dia.df.options = dia_options
+            cloth_dia.refresh()
+            actual_dia.df.options = dia_options
+            actual_dia.refresh()
+        }
+        cloth_dia.set_value(items.value[index]['dia'])
+        cloth_dia.refresh()
+        if(items.value[index]['actual_dia']){
+            actual_dia.set_value(items.value[index]['actual_dia'])
+            actual_dia.refresh()
+        }
         if(!cur_frm.doc.is_manual_entry){
             let json = JSON.parse(items.value[index]['items_json'])
             if(typeof(json) == "string"){
@@ -706,6 +756,7 @@ onMounted(()=> {
             },
             callback:function(r){
                 select_attributes.value = r.message
+                cloth_type_dia_map.value = r.message.cloth_type_dia_map || {}
             }
         })
     } else if(cur_frm.doc.cutting_order){
@@ -716,6 +767,7 @@ onMounted(()=> {
             },
             callback:function(r){
                 select_attributes.value = r.message
+                cloth_type_dia_map.value = r.message.cloth_type_dia_map || {}
             }
         })
     }

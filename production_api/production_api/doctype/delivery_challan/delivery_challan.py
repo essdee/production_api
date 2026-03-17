@@ -223,6 +223,9 @@ class DeliveryChallan(Document):
                 frappe.throw(f"Quantity Mismatch on Variant {variant}")
 
     def before_submit(self):
+        from production_api.utils import validate_supplier_user
+        validate_supplier_user(supplier1=self.supplier, supplier2=self.from_location)
+
         if not self.vehicle_no:
             frappe.throw("Enter the Vehicle Number")
         if self.allow_non_bundle:

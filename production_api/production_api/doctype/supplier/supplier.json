@@ -18,6 +18,8 @@
   "contact_html",
   "section_break_8",
   "account_mappings",
+  "user_mapping_section",
+  "supplier_users",
   "section_break_10",
   "price_html"
  ],
@@ -99,6 +101,17 @@
    "fieldtype": "Data",
    "in_list_view": 1,
    "label": "GSTIN / UIN"
+  },
+  {
+   "fieldname": "user_mapping_section",
+   "fieldtype": "Section Break",
+   "label": "User Mapping"
+  },
+  {
+   "fieldname": "supplier_users",
+   "fieldtype": "Table",
+   "label": "Supplier Users",
+   "options": "Supplier User"
   }
  ],
  "grid_page_length": 50,
