@@ -24,6 +24,10 @@ class StockReconciliation(Document):
 		self.set('print_item_details', json.dumps(item_details))
 		self.set_onload('item_details', item_details)
 	
+	def before_submit(self):
+		from production_api.utils import validate_supplier_user
+		validate_supplier_user(supplier1=self.default_warehouse)
+	
 	def before_validate(self):
 		if(self.get('item_details')):
 			items = save_stock_reconciliation_items(self.item_details)

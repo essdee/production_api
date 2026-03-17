@@ -78,6 +78,9 @@ class GoodsReceivedNote(Document):
             self.set("grn_excess_usage_items", excess_list)
 
     def before_submit(self):
+        from production_api.utils import validate_supplier_user
+        validate_supplier_user(supplier1=self.supplier, supplier2=self.delivery_location)
+
         if not self.vehicle_no:
             frappe.throw("Enter Vehicle No")
         if not self.supplier_document_no:
@@ -1164,6 +1167,13 @@ class GoodsReceivedNote(Document):
             if po_docstatus != 1:
                 frappe.throw('Purchase order is not submitted.', title='GRN')
             self.validate_quantity()
+
+        if self.against == 'Work Order':
+            status = frappe.get_value(
+                'Work Order', self.against_id, 'open_status')
+            if status == 'Close':
+                frappe.throw('Work Order is closed.', title='GRN')
+
         self.validate_data()
 
     def validate_quantity(self):

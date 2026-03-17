@@ -223,6 +223,9 @@ class DeliveryChallan(Document):
                 frappe.throw(f"Quantity Mismatch on Variant {variant}")
 
     def before_submit(self):
+        from production_api.utils import validate_supplier_user
+        validate_supplier_user(supplier1=self.supplier, supplier2=self.from_location)
+
         if not self.vehicle_no:
             frappe.throw("Enter the Vehicle Number")
         if self.allow_non_bundle:
@@ -401,6 +404,11 @@ class DeliveryChallan(Document):
             self.total_value = self.stock_value + self.additional_goods_value
 
     def validate(self):
+        if self.work_order:
+            open_status = frappe.get_value('Work Order', self.work_order, 'open_status')
+            if open_status == 'Close':
+                frappe.throw('Work Order is closed.', title='Delivery Challan')
+
         from production_api.mrp_stock.doctype.stock_entry.stock_entry import get_uom_details
         for row in self.items:
             item_details = get_uom_details(

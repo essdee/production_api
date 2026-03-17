@@ -27,6 +27,7 @@
   "purchase_invoice_section",
   "pi_minimum_grn_date",
   "senior_merch_role",
+  "override_pi_approve",
   "column_break_boig",
   "merchandising_manager_role",
   "merch_user_role",
@@ -50,9 +51,11 @@
   "cloth_allowance_percentage",
   "printer_list",
   "piece_weight_min",
+  "piece_weight_tolerance",
   "column_break_nrkc",
   "cut_bundle_cancelled_lot",
   "piece_weight_max",
+  "cls_grammage_approval_roles",
   "quality_inspection_section",
   "default_major_aql_level",
   "column_break_bvdh",
@@ -192,8 +195,7 @@
   {
    "fieldname": "cut_bundle_cancelled_lot",
    "fieldtype": "Text",
-   "label": "Cut Bundle Cancelled Lot",
-   "read_only": 1
+   "label": "Cut Bundle Cancelled Lot"
   },
   {
    "fieldname": "sales_settings_section",
@@ -316,6 +318,12 @@
    "fieldtype": "Column Break"
   },
   {
+   "default": "0",
+   "fieldname": "override_pi_approve",
+   "fieldtype": "Check",
+   "label": "Override PI Approve"
+  },
+  {
    "fieldname": "column_break_boig",
    "fieldtype": "Column Break"
   },
@@ -401,13 +409,26 @@
    "fieldname": "piece_weight_max",
    "fieldtype": "Float",
    "label": "Piece Weight Max (kg)"
+  },
+  {
+   "default": "0.003",
+   "description": "Maximum allowed difference between actual and required piece weight (in kg) before approval is needed",
+   "fieldname": "piece_weight_tolerance",
+   "fieldtype": "Float",
+   "label": "Piece Weight Tolerance (kg)"
+  },
+  {
+   "fieldname": "cls_grammage_approval_roles",
+   "fieldtype": "Table",
+   "label": "CLS Grammage Approval Roles",
+   "options": "CLS Grammage Approval Role"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2026-03-13 11:29:29.143571",
+ "modified": "2026-03-17 12:23:40.914999",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "MRP Settings",
@@ -432,6 +453,10 @@
    "role": "System Manager",
    "share": 1,
    "write": 1
+  },
+  {
+   "read": 1,
+   "role": "All"
   }
  ],
  "row_format": "Dynamic",

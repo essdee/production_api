@@ -116,7 +116,7 @@ fixtures = [
     },
     {
         "dt": 'Role',
-        "filters": [["name", "in",["Merch User","Merch Manager", "Senior Merch", "Brand QA User", "Brand QA Manager", "Finishing User"]]]
+        "filters": [["name", "in",["Merch User","Merch Manager", "Senior Merch", "Brand QA User", "Brand QA Manager", "Finishing User", "Factory Manager"]]]
     },
     {
         'dt': 'Workflow State',
@@ -212,6 +212,9 @@ jinja = {
         "production_api.production_api.doctype.cutting_plan.cutting_plan.get_ccr",
         "production_api.utils.get_item_from_variant",
         "production_api.production_api.doctype.cutting_plan.cutting_plan.remove_empty_rows",
+        "production_api.production_api.doctype.cutting_order.cutting_order.get_cutting_order_laysheets_report",
+        "production_api.production_api.doctype.cutting_order.cutting_order.get_cutting_order_size_reports",
+        "production_api.production_api.doctype.cutting_order.cutting_order.get_cutting_order_ccr",
         "production_api.essdee_production.doctype.lot.lot.get_ironing_mistake_pf_items",
         "production_api.essdee_production.doctype.lot.lot.get_consumption_sheet_data",
         "production_api.production_api.doctype.cutting_marker.cutting_marker.get_panels_and_size",

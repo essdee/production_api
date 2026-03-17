@@ -7,14 +7,23 @@
  "field_order": [
   "naming_series",
   "cutting_order_detail",
+  "co_status",
   "column_break_main",
   "item",
   "is_set_item",
+  "lay_no",
+  "maximum_no_of_plys",
+  "maximum_allow_percent",
   "section_break_items",
   "items_html",
   "items_json",
   "completed_items_json",
   "incomplete_items_json",
+  "cutting_start_date",
+  "cutting_end_date",
+  "report_tab",
+  "completed_items_html",
+  "incompleted_items_html",
   "amended_from"
  ],
  "fields": [
@@ -32,6 +41,16 @@
    "label": "Cutting Order Detail",
    "options": "Cutting Order Detail",
    "reqd": 1
+  },
+  {
+   "allow_on_submit": 1,
+   "default": "Draft",
+   "fieldname": "co_status",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Status",
+   "options": "Draft\nSubmitted\nCutting In Progress\nPartially Completed\nCompleted",
+   "read_only": 1
   },
   {
    "fieldname": "column_break_main",
@@ -55,6 +74,25 @@
    "read_only": 1
   },
   {
+   "allow_on_submit": 1,
+   "default": "0",
+   "fieldname": "lay_no",
+   "fieldtype": "Int",
+   "label": "Lay No",
+   "read_only": 1
+  },
+  {
+   "fieldname": "maximum_no_of_plys",
+   "fieldtype": "Int",
+   "label": "Maximum No of Plys",
+   "reqd": 1
+  },
+  {
+   "fieldname": "maximum_allow_percent",
+   "fieldtype": "Percent",
+   "label": "Maximum Allow Percent"
+  },
+  {
    "depends_on": "eval: doc.cutting_order_detail",
    "fieldname": "section_break_items",
    "fieldtype": "Section Break",
@@ -72,14 +110,45 @@
    "label": "Items JSON"
   },
   {
+   "allow_on_submit": 1,
    "fieldname": "completed_items_json",
    "fieldtype": "Small Text",
    "label": "Completed Items JSON"
   },
   {
+   "allow_on_submit": 1,
    "fieldname": "incomplete_items_json",
    "fieldtype": "Small Text",
    "label": "Incomplete Items JSON"
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "cutting_start_date",
+   "fieldtype": "Date",
+   "label": "Cutting Start Date",
+   "read_only": 1
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "cutting_end_date",
+   "fieldtype": "Date",
+   "label": "Cutting End Date",
+   "read_only": 1
+  },
+  {
+   "fieldname": "report_tab",
+   "fieldtype": "Tab Break",
+   "label": "Summary"
+  },
+  {
+   "fieldname": "completed_items_html",
+   "fieldtype": "HTML",
+   "label": "Completed Items HTML"
+  },
+  {
+   "fieldname": "incompleted_items_html",
+   "fieldtype": "HTML",
+   "label": "Incompleted Items HTML"
   },
   {
    "fieldname": "amended_from",
@@ -93,8 +162,17 @@
  ],
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
- "links": [],
- "modified": "2026-03-13 12:34:21.339850",
+ "links": [
+  {
+   "link_doctype": "Cutting Marker",
+   "link_fieldname": "cutting_order"
+  },
+  {
+   "link_doctype": "Cutting LaySheet",
+   "link_fieldname": "cutting_order"
+  }
+ ],
+ "modified": "2026-03-14 11:16:25.865325",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Cutting Order",
