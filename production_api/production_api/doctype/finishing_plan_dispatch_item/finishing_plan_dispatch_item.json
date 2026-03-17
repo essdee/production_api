@@ -13,7 +13,9 @@
   "lot",
   "item",
   "against_id",
-  "against_id_detail"
+  "against_id_detail",
+  "total_dispatched",
+  "dispatch_pct"
  ],
  "fields": [
   {
@@ -68,6 +70,18 @@
    "fieldtype": "Data",
    "in_list_view": 1,
    "label": "Against ID Detail"
+  },
+  {
+   "fieldname": "total_dispatched",
+   "fieldtype": "Int",
+   "hidden": 1,
+   "label": "Total Dispatched"
+  },
+  {
+   "fieldname": "dispatch_pct",
+   "fieldtype": "Float",
+   "hidden": 1,
+   "label": "Dispatch Pct"
   }
  ],
  "grid_page_length": 50,
