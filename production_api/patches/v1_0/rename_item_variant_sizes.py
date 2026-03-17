@@ -14,6 +14,8 @@ SIZE_MAPPING = {
 }
 
 def execute():
+	if not frappe.db.exists("Item", ITEM_NAME):
+		return
 	# Step 1: Update Item Variant Attributes & Rename Variants
 	variant_name_map = update_variant_attributes_and_rename()
 
@@ -36,9 +38,7 @@ def execute():
 def update_variant_attributes_and_rename():
 	"""Update Item Variant Attribute rows and rename variants. Process in ascending order."""
 	variant_name_map = {}
-	if not frappe.db.exists("Item", ITEM_NAME):
-		return variant_name_map
-		
+
 	variants = frappe.get_all("Item Variant", filters={"item": ITEM_NAME}, pluck="name")
 	if not variants:
 		return variant_name_map
