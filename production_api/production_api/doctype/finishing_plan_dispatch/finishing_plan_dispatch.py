@@ -104,19 +104,26 @@ class FinishingPlanDispatch(Document):
 			if fp_name not in fp_cache:
 				fp_doc = frappe.get_doc("Finishing Plan", fp_name)
 				ipd = frappe.get_value("Lot", fp_doc.lot, "production_detail")
-				primary = frappe.get_value("Item Production Detail", ipd, "primary_item_attribute")
+				ipd_fields = frappe.get_value("Item Production Detail", ipd, ["primary_item_attribute", "is_set_item", "set_item_attribute"], as_dict=True)
+				primary = ipd_fields.primary_item_attribute
+				pieces_per_box = fp_doc.pieces_per_box or 1
+				set_attr = ipd_fields.set_item_attribute if ipd_fields.is_set_item else None
 				cutting_by_size = {}
+				components_by_size = {}
 				for fp_row in fp_doc.finishing_plan_details:
 					va = get_variant_attr_details(fp_row.item_variant)
 					size = va.get(primary, "")
-					cutting_by_size[size] = fp_row.cutting_qty
-				fp_cache[fp_name] = {"primary": primary, "cutting_by_size": cutting_by_size}
+					cutting_by_size[size] = cutting_by_size.get(size, 0) + fp_row.cutting_qty
+					if set_attr:
+						components_by_size.setdefault(size, set()).add(va.get(set_attr, ""))
+				fp_cache[fp_name] = {"primary": primary, "cutting_by_size": cutting_by_size, "pieces_per_box": pieces_per_box, "components_by_size": components_by_size}
 
 			cache = fp_cache[fp_name]
 			grn_dispatched = frappe.get_value("Finishing Plan GRN Detail", row.against_id_detail, "dispatched") or 0
 			va = get_variant_attr_details(row.item_variant)
 			size = va.get(cache["primary"], "")
-			cutting_qty = cache["cutting_by_size"].get(size, 0)
+			num_components = len(cache["components_by_size"].get(size, ())) or 1
+			cutting_qty = cache["cutting_by_size"].get(size, 0) / (cache["pieces_per_box"] * num_components)
 
 			row.total_dispatched = grn_dispatched + row.quantity
 			row.dispatch_pct = round((row.total_dispatched / cutting_qty * 100), 2) if cutting_qty > 0 else 0
@@ -256,18 +263,24 @@ def get_fpd_print_data(doc_name):
 		else:
 			# Draft: compute live from Finishing Plan
 			fp_doc = frappe.get_doc("Finishing Plan", against_id)
+			pieces_per_box = fp_doc.pieces_per_box or 1
+			ipd_fields = frappe.get_value("Item Production Detail", ipd, ["is_set_item", "set_item_attribute"], as_dict=True)
+			set_attr = ipd_fields.set_item_attribute if ipd_fields.is_set_item else None
 
 			cutting_by_size = {}
+			components_by_size = {}
 			for row in fp_doc.finishing_plan_details:
 				va = get_variant_attr_details(row.item_variant)
 				size = va.get(primary, "")
-				cutting_by_size[size] = row.cutting_qty
+				cutting_by_size[size] = cutting_by_size.get(size, 0) + row.cutting_qty
+				if set_attr:
+					components_by_size.setdefault(size, set()).add(va.get(set_attr, ""))
 
 			dispatched_by_size = {}
 			for row in fp_doc.finishing_plan_grn_details:
 				va = get_variant_attr_details(row.item_variant)
 				size = va.get(primary, "")
-				dispatched_by_size[size] = row.dispatched
+				dispatched_by_size[size] = dispatched_by_size.get(size, 0) + row.dispatched
 
 			all_sizes = set(dispatch_by_size.keys()) | set(cutting_by_size.keys())
 			sizes = [s for s in ordered_sizes if s in all_sizes]
@@ -279,7 +292,9 @@ def get_fpd_print_data(doc_name):
 				dq = dispatch_by_size.get(size, 0)
 				cum_dispatched = dispatched_by_size.get(size, 0)
 				cutting = cutting_by_size.get(size, 0)
-				pct = (cum_dispatched / cutting * 100) if cutting else 0
+				num_components = len(components_by_size.get(size, ())) or 1
+				cutting_boxes = cutting / (pieces_per_box * num_components) if pieces_per_box else 0
+				pct = (cum_dispatched / cutting_boxes * 100) if cutting_boxes else 0
 				size_data[size] = {
 					"dispatch_qty": dq,
 					"dispatch_pct": round(pct, 1),
