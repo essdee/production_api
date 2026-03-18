@@ -26,6 +26,7 @@ from production_api.utils import (
     get_finishing_plan_dict,
     get_finishing_plan_list,
     get_variant_attr_details,
+    get_process_wo_list,
 )
 from production_api.essdee_production.doctype.item_production_detail.item_production_detail import get_calculated_bom, calculate_accessory, get_cloth_combination, get_stitching_combination
 
@@ -1567,8 +1568,8 @@ def calculate_completed_pieces(doc_name):
         wo_doc.set("completed_items_json", {})
         wo_doc.set("incompleted_items_json", {})
     wo_doc.save(ignore_permissions=True)
-    # calc(doc_name)
-    frappe.enqueue(calc, "short", doc_name=doc_name)
+    calc(doc_name)
+    # frappe.enqueue(calc, "short", doc_name=doc_name)
 
 
 def calc(doc_name):
@@ -1585,6 +1586,8 @@ def calc(doc_name):
     from production_api.production_api.doctype.delivery_challan.delivery_challan import calculate_pieces as calculate_dc_pieces
     for dc in dc_list:
         calculate_dc_pieces(dc)
+    from production_api.production_api.doctype.goods_received_note.goods_received_note import calculate_return_delivery_pieces
+    calculate_return_delivery_pieces(doc_name)
 
 
 @frappe.whitelist()
@@ -2019,24 +2022,11 @@ def create_finishing_detail(work_order, from_finishing=False):
     if not finishing_inward_process:
         frappe.throw("Set Finishing Inward Process")
 
-    processes = frappe.db.sql(
-        """
-			Select parent FROM `tabProcess Details` WHERE process_name = %(process)s OR parent = %(process)s
-		""", {
-            "process": finishing_inward_process,
-        }, as_dict=1
-    )
-    process_names = [p['parent'] for p in processes]
-    process_names.append(finishing_inward_process)
-    wo_list = frappe.get_all("Work Order", filters={
-        "docstatus": 1,
-        "lot": wo_doc.lot,
-        "process_name": ['in', process_names],
-    }, pluck="name")
+    stich_wo_list = get_process_wo_list(wo_doc.lot, finishing_inward_process)
     stiching_grn_list = {}
-    for wo in wo_list:
-        doc = frappe.get_doc("Work Order", wo)
-        for row in doc.work_order_calculated_items:
+    for wo in stich_wo_list:
+        stich_doc = frappe.get_doc("Work Order", wo)
+        for row in stich_doc.work_order_calculated_items:
             if row.quantity > 0:
                 set_comb = update_if_string_instance(row.set_combination)
                 key = (row.item_variant, tuple(sorted(set_comb.items())))
@@ -2054,7 +2044,7 @@ def create_finishing_detail(work_order, from_finishing=False):
 
                     items[key]['received_types'][ty] += received_types[ty]
 
-        if doc.is_internal_unit:
+        if stich_doc.is_internal_unit:
             grn_list = frappe.get_all("Goods Received Note", filters={
                 "against": "Work Order",
                 "against_id": wo,
@@ -2065,15 +2055,11 @@ def create_finishing_detail(work_order, from_finishing=False):
             for grn in grn_list:
                 stiching_grn_list[grn] = True
 
-    wo_list = frappe.get_all("Work Order", filters={
-        "docstatus": 1,
-        "lot": wo_doc.lot,
-        "process_name": "Cutting",
-    }, pluck="name")
+    cut_wo_list = get_process_wo_list(wo_doc.lot, "Cutting")
 
-    for wo in wo_list:
-        doc = frappe.get_doc("Work Order", wo)
-        for row in doc.work_order_calculated_items:
+    for wo in cut_wo_list:
+        cut_doc = frappe.get_doc("Work Order", wo)
+        for row in cut_doc.work_order_calculated_items:
             if row.received_qty > 0:
                 set_comb = update_if_string_instance(row.set_combination)
                 key = (row.item_variant, tuple(sorted(set_comb.items())))

@@ -53,7 +53,7 @@
                 </tr>
             </table>
         </div>
-        <div v-if="items && items.length > 0">
+        <div v-if="items && items.length > 0 && !override_pi_approve">
             <div v-for="item in items">
                 <h4>{{ item['work_order'] }}</h4>
                 <div v-if="item['bills'].length > 0">
@@ -140,7 +140,7 @@
                 </div>
             </template>
             <!-- non-merch-manager + open WOs: show Request Close buttons (only for truly open), don't block approve -->
-            <template v-else-if="user_role !== 'merch_manager' && !all_wo_closed">
+            <template v-else-if="user_role !== 'merch_manager' && !all_wo_closed && !override_pi_approve">
                 <div class="text-warning" style="font-weight: 500; margin-bottom: 10px;">
                     The following Work Orders are not closed
                 </div>
@@ -209,36 +209,22 @@ onMounted(() => {
             if(r.message){
                 user_role.value = r.message
                 if (cur_frm.doc.against === 'Work Order') {
-                    if (r.message === 'merch_manager') {
-                        frappe.db.get_single_value("MRP Settings", "override_pi_approve").then(val => {
-                            override_pi_approve.value = !!val
-                            if (!val) {
-                                frappe.call({
-                                    method: "production_api.production_api.doctype.purchase_invoice.purchase_invoice.check_all_wo_closed",
-                                    args: { purchase_invoice: cur_frm.doc.name },
-                                    callback: function(res){
-                                        if(res.message){
-                                            all_wo_closed.value = res.message.all_closed
-                                            open_work_orders.value = res.message.open_work_orders || []
-                                            close_request_wos.value = res.message.close_request_wos || []
-                                        }
+                    frappe.db.get_single_value("MRP Settings", "override_pi_approve").then(val => {
+                        override_pi_approve.value = val
+                        if (!val) {
+                            frappe.call({
+                                method: "production_api.production_api.doctype.purchase_invoice.purchase_invoice.check_all_wo_closed",
+                                args: { purchase_invoice: cur_frm.doc.name },
+                                callback: function(res){
+                                    if(res.message){
+                                        all_wo_closed.value = res.message.all_closed
+                                        open_work_orders.value = res.message.open_work_orders || []
+                                        close_request_wos.value = res.message.close_request_wos || []
                                     }
-                                })
-                            }
-                        })
-                    } else {
-                        // non-merch-manager: always check open WOs (no override check)
-                        frappe.call({
-                            method: "production_api.production_api.doctype.purchase_invoice.purchase_invoice.check_all_wo_closed",
-                            args: { purchase_invoice: cur_frm.doc.name },
-                            callback: function(res){
-                                if(res.message){
-                                    all_wo_closed.value = res.message.all_closed
-                                    open_work_orders.value = res.message.open_work_orders || []
                                 }
-                            }
-                        })
-                    }
+                            })
+                        }
+                    })
                 }
             }
         }

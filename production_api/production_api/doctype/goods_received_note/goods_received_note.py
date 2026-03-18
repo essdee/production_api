@@ -257,6 +257,10 @@ class GoodsReceivedNote(Document):
                     self.db_set("ste_transferred", self.total_delivered_qty)
                     self.db_set("transfer_complete", 1)
                 make_piece_calculation = True
+        elif self.is_return and self.against == "Work Order":
+            from production_api.production_api.doctype.work_order.work_order import calculate_completed_pieces
+            frappe.enqueue(calculate_completed_pieces, "short",
+                           doc_name=self.against_id, enqueue_after_commit=True)
 
         cancelled_str = frappe.db.get_single_value(
             "MRP Settings", "cut_bundle_cancelled_lot")
@@ -3176,3 +3180,144 @@ def fetch_onload_data(items):
         items_list.append(item_data)
 
     return items_list
+
+
+def calculate_return_delivery_pieces(work_order_name):
+    return_grns = frappe.get_all("Goods Received Note", filters={
+        "against_id": work_order_name,
+        "docstatus": 1,
+        "is_return": 1,
+    }, pluck="name")
+    if not return_grns:
+        return
+
+    wo_doc = frappe.get_doc("Work Order", work_order_name)
+    ipd_doc = frappe.get_cached_doc("Item Production Detail", wo_doc.production_detail)
+
+    process_name = wo_doc.process_name
+    prs_doc = frappe.get_cached_doc("Process", process_name)
+    if prs_doc.is_group:
+        for detail in prs_doc.process_details:
+            process_name = detail.process_name
+
+    is_panel_process = False
+    if process_name == ipd_doc.cutting_process or process_name == ipd_doc.stiching_process:
+        is_panel_process = True
+    else:
+        for row in ipd_doc.ipd_processes:
+            if row.process_name == process_name and row.stage == ipd_doc.stiching_in_stage:
+                is_panel_process = True
+                break
+
+    if is_panel_process:
+        _process_panel_returns(wo_doc, ipd_doc, return_grns)
+    else:
+        _process_direct_returns(wo_doc, return_grns)
+
+    wo_doc.save(ignore_permissions=True)
+
+
+def _process_panel_returns(wo_doc, ipd_doc, return_grns):
+    from production_api.production_api.doctype.cutting_plan.cutting_plan import get_complete_incomplete_structure
+    from production_api.essdee_production.doctype.lot.lot import fetch_order_item_details
+
+    items = fetch_order_item_details(
+        wo_doc.work_order_calculated_items, wo_doc.production_detail)
+    completed_items, incomplete_items = get_complete_incomplete_structure(
+        wo_doc.production_detail, items)
+
+    panel_list = get_panel_list(ipd_doc)
+    panel_qty = {}
+    set_comb = {}
+    for row in ipd_doc.stiching_item_details:
+        if ipd_doc.is_set_item:
+            set_comb[row.stiching_attribute_value] = row.set_item_attribute_value
+        panel_qty[row.stiching_attribute_value] = row.quantity
+
+    # Aggregate items from ALL return GRNs into incomplete structure
+    for grn_name in return_grns:
+        grn_doc = frappe.get_doc("Goods Received Note", grn_name)
+        for item in grn_doc.items:
+            if item.quantity <= 0:
+                continue
+            variant = frappe.get_cached_doc("Item Variant", item.item_variant)
+            attrs = get_variant_attributes(variant)
+            if not attrs.get(ipd_doc.stiching_attribute):
+                continue
+            set_combination = update_if_string_instance(item.set_combination)
+            for i in incomplete_items['items']:
+                con1 = True
+                if ipd_doc.is_set_item:
+                    con1 = i['attributes'][ipd_doc.set_item_attribute] == set_comb.get(attrs[ipd_doc.stiching_attribute])
+                item_keys = update_if_string_instance(i['item_keys'])
+                set_combination = update_if_string_instance(item.set_combination)
+                con2 = item_keys == set_combination
+                if con1 and con2:
+                    primary_attr = attrs[ipd_doc.primary_item_attribute]
+                    x = i['values'][primary_attr][attrs[ipd_doc.stiching_attribute]]
+                    y = i.copy()
+                    if not x:
+                        i['values'][attrs[ipd_doc.primary_item_attribute]][attrs[ipd_doc.stiching_attribute]] = item.quantity
+                    else:
+                        y['values'][attrs[ipd_doc.primary_item_attribute]][attrs[ipd_doc.stiching_attribute]] += item.quantity
+                    i = y
+                    break
+
+    # Panel completion: find minimum across panels for each size (same as DC logic)
+    total_qty = 0
+    for item1, item2 in zip_longest(completed_items['items'], incomplete_items['items']):
+        for size in item2['values']:
+            min_val = sys.maxsize
+            for panel in item2['values'][size]:
+                if panel in panel_list:
+                    if item2['values'][size][panel]:
+                        if item2['values'][size][panel] < min_val:
+                            min_val = item2['values'][size][panel]
+                    else:
+                        min_val = 0
+            if min_val > 0 and min_val != sys.maxsize:
+                if item1['values'][size]:
+                    item1['values'][size] += min_val
+                else:
+                    item1['values'][size] = min_val
+                total_qty += min_val
+                for panel in item2['values'][size]:
+                    if panel in panel_list:
+                        if item2['values'][size][panel]:
+                            item2['values'][size][panel] -= (min_val * panel_qty[panel])
+
+    # Generate piece variants and subtract from delivered_quantity
+    for item in completed_items['items']:
+        attrs = item['attributes']
+        for val in item['values']:
+            attrs[ipd_doc.primary_item_attribute] = val
+            if item['values'][val]:
+                item_name = item['name']
+                variant_name = get_or_create_variant(item_name, attrs)
+                qty = item['values'][val]
+                set_combination = update_if_string_instance(item['item_keys'])
+                for wo_item in wo_doc.work_order_calculated_items:
+                    wo_set = update_if_string_instance(wo_item.set_combination)
+                    if wo_item.item_variant == variant_name and wo_set == set_combination:
+                        wo_item.delivered_quantity = max(0, wo_item.delivered_quantity - qty)
+                        break
+                item['values'][val] -= qty
+
+    wo_doc.total_no_of_pieces_delivered = max(0, wo_doc.total_no_of_pieces_delivered - total_qty)
+
+
+def _process_direct_returns(wo_doc, return_grns):
+    total_returned = 0
+    for grn_name in return_grns:
+        grn_doc = frappe.get_doc("Goods Received Note", grn_name)
+        for item in grn_doc.items:
+            if item.quantity <= 0:
+                continue
+            set_combination = update_if_string_instance(item.set_combination)
+            for wo_item in wo_doc.work_order_calculated_items:
+                wo_set = update_if_string_instance(wo_item.set_combination)
+                if wo_item.item_variant == item.item_variant and wo_set == set_combination:
+                    wo_item.delivered_quantity = max(0, wo_item.delivered_quantity - item.quantity)
+                    total_returned += item.quantity
+                    break
+    wo_doc.total_no_of_pieces_delivered = max(0, wo_doc.total_no_of_pieces_delivered - total_returned)

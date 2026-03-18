@@ -1238,20 +1238,12 @@ def get_incomplete_transfer_docs(lot, doc_name):
 	finishing_inward_process = frappe.db.get_single_value("MRP Settings", "finishing_inward_process")
 	if not finishing_inward_process:
 		frappe.throw("Set Finishing Inward Process")
-
-	processes = frappe.db.sql(
-		"""
-			Select parent FROM `tabProcess Details` WHERE process_name = %(process)s OR parent = %(process)s
-		""", {
-			"process": finishing_inward_process,
-		}, as_dict=1
-	)
-	process_names = [p['parent'] for p in processes]
-	process_names.append(finishing_inward_process)
+	from production_api.utils import get_process_wo_list
+	wo_list = get_process_wo_list(finishing_inward_process, lot)
 	grn_list = frappe.get_all("Goods Received Note", filters={
 		"docstatus": 1,
 		"against": "Work Order",
-		"process_name": ['in', process_names],
+		"against_id": ['in', wo_list],
 		"lot": lot,
 		"is_internal_unit": 1,
 		"transfer_complete": 0, 
