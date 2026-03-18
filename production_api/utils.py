@@ -13,8 +13,8 @@ def validate_supplier_user(supplier1=None, supplier2=None):
 	if user == "Administrator":
 		return
 
-	roles = frappe.get_cached_value("User", user, "roles") or []
-	if "System Manager" in roles:
+	user_roles = frappe.get_roles(frappe.session.user)
+	if "System Manager" in user_roles:
 		return
 
 	suppliers = [s for s in [supplier1, supplier2] if s]
