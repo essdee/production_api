@@ -97,6 +97,8 @@ import RecutPrintPanelView from "./CuttingPlan/components/RecutPrintPanelView.vu
 import MultiCCR from "./CuttingPlan/components/MultiCCR.vue"
 import PPOReport from "./PPOReport/components/PPOReport.vue"
 import ProcessPending from "./components/ProcessPending.vue"
+import FinishingPlanDPR from "./FinishingPlanDPR/FinishingPlanDPR.vue"
+import FinishingPlanDispa from "./FinishingPlanDispa/FinishingPlanDispa.vue"
 
 // Product Development
 import {
@@ -1198,6 +1200,32 @@ frappe.production.ui.PPOReport = class {
 
 // Sewing Plan
 frappe.production.ui.SewingPlan = SewingPlanWrapper
+
+// Finishing Plan DPR
+frappe.production.ui.FinishingPlanDPR = class {
+    constructor(wrapper) {
+        this.$wrapper = $(wrapper)
+        this.make_app()
+    }
+    make_app() {
+        this.app = createApp(FinishingPlanDPR)
+        SetVueGlobals(this.app)
+        this.vue = this.app.mount(this.$wrapper.get(0))
+    }
+}
+
+// Finishing Plan Dispatch
+frappe.production.ui.FinishingPlanDispa = class {
+    constructor(wrapper) {
+        this.$wrapper = $(wrapper)
+        this.make_app()
+    }
+    make_app() {
+        this.app = createApp(FinishingPlanDispa)
+        SetVueGlobals(this.app)
+        this.vue = this.app.mount(this.$wrapper.get(0))
+    }
+}
 
 // Process Pending
 frappe.production.ui.ProcessPending = class {

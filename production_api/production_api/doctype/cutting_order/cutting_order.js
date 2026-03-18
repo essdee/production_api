@@ -38,6 +38,20 @@ frappe.ui.form.on("Cutting Order", {
 			);
 			frm.incompleted_items.load_data(frm.doc.incomplete_items_json);
 
+			// Planned vs Actual tab
+			frappe.call({
+				method: "production_api.production_api.doctype.cutting_order.cutting_order.get_cutting_order_planned_vs_actual",
+				args: { cutting_order: frm.doc.name },
+				callback: function(r) {
+					if (!r.message) return;
+					$(frm.fields_dict['planned_details_html'].wrapper).html("");
+					frm.planned_summary = new frappe.production.ui.WOSummary(
+						frm.fields_dict['planned_details_html'].wrapper
+					);
+					frm.planned_summary.load_data(r.message, []);
+				}
+			});
+
 			// Calculate LaySheets button
 			frm.add_custom_button("Calculate LaySheets", function () {
 				if (frm.is_dirty()) {
@@ -49,7 +63,7 @@ frappe.ui.form.on("Cutting Order", {
 						cutting_order: frm.doc.name,
 					},
 				});
-			}, "Fetch and Calculate");
+			});
 
 			// Get Completed button
 			frm.add_custom_button("Get Completed", () => {

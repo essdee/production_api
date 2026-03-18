@@ -473,6 +473,111 @@ def get_cutting_order_ccr(doc_name):
 
 
 @frappe.whitelist()
+def get_cutting_order_planned_vs_actual(cutting_order):
+	co_doc = frappe.get_doc("Cutting Order", cutting_order)
+	cod_doc = frappe.get_cached_doc("Cutting Order Detail", co_doc.cutting_order_detail)
+
+	# Get sizes from COD
+	sizes = []
+	for attr_row in cod_doc.item_attributes:
+		if attr_row.attribute == cod_doc.primary_attribute and attr_row.mapping:
+			mapping_doc = frappe.get_cached_doc("Item Item Attribute Mapping", attr_row.mapping)
+			sizes = [v.attribute_value for v in mapping_doc.values]
+			break
+
+	# Parse planned quantities from items_json
+	data = json.loads(co_doc.items_json or '{}')
+	planned_items = data.get('items', [])
+
+	# Aggregate actual quantities from LaySheet bundles
+	# Key: (colour, part_or_none) -> {size: qty}
+	actual_qty = {}
+	cls_list = frappe.get_list(
+		"Cutting LaySheet",
+		filters={"cutting_order": cutting_order, "status": "Label Printed"},
+		pluck="name",
+	)
+	for cls_name in cls_list:
+		cls_doc = frappe.get_doc("Cutting LaySheet", cls_name)
+		for row in cls_doc.cutting_laysheet_bundles:
+			set_combination = update_if_string_instance(row.set_combination)
+			major_colour = set_combination.get('major_colour', '')
+
+			if cod_doc.is_set_item:
+				part = set_combination.get('set_part') or set_combination.get('major_part', '')
+				colour = set_combination.get('set_colour') or major_colour
+				key = (colour, part, major_colour)
+			else:
+				key = (major_colour, None, major_colour)
+
+			actual_qty.setdefault(key, {s: 0 for s in sizes})
+			if row.size in actual_qty[key]:
+				actual_qty[key][row.size] += row.quantity
+
+	# Build WOSummary-shaped result
+	items_list = []
+	total_details = {s: {"planned": 0, "received": 0} for s in sizes}
+	overall_planned = 0
+	overall_received = 0
+
+	for item in planned_items:
+		colour = item.get('colour', '')
+		quantities = item.get('quantities', {})
+
+		attributes = {cod_doc.packing_attribute: colour}
+		item_keys = {}
+
+		if cod_doc.is_set_item:
+			part = item.get('part', '')
+			attributes[cod_doc.set_item_attribute] = part
+			major_colour = item.get('major_colour', colour)
+			item_keys = {"major_colour": major_colour}
+			key = (colour, part, major_colour)
+		else:
+			key = (colour, None, colour)
+
+		values = {}
+		total_qty = 0
+		total_received = 0
+		for s in sizes:
+			planned = quantities.get(s, 0)
+			received = actual_qty.get(key, {}).get(s, 0)
+			values[s] = {"qty": planned, "received": received}
+			total_qty += planned
+			total_received += received
+			total_details[s]["planned"] += planned
+			total_details[s]["received"] += received
+
+		entry = {
+			"attributes": attributes,
+			"values": values,
+			"total_qty": total_qty,
+			"total_received": total_received,
+		}
+		if cod_doc.is_set_item:
+			entry["item_keys"] = item_keys
+
+		items_list.append(entry)
+		overall_planned += total_qty
+		overall_received += total_received
+
+	result = [{
+		"pack_attr": cod_doc.packing_attribute,
+		"is_set_item": cod_doc.is_set_item,
+		"primary_attribute_values": sizes,
+		"items": items_list,
+		"total_details": total_details,
+		"overall_planned": overall_planned,
+		"overall_received": overall_received,
+	}]
+
+	if cod_doc.is_set_item:
+		result[0]["set_attr"] = cod_doc.set_item_attribute
+
+	return result
+
+
+@frappe.whitelist()
 def get_cutting_order_detail_data(cutting_order_detail):
 	doc = frappe.get_doc("Cutting Order Detail", cutting_order_detail)
 

@@ -12,7 +12,18 @@ from production_api.utils import update_if_string_instance
 
 class CuttingOrderDetail(Document):
 	def autoname(self):
-		self.naming_series = "CO-.YY..MM.-.{#####}."
+		item = self.item
+		version = frappe.db.sql(
+			"""SELECT max(version) as max_version FROM `tabCutting Order Detail` WHERE item = %s""",
+			(item,), as_dict=True
+		)[0]['max_version']
+		if version:
+			new_version = version + 1
+		else:
+			new_version = 1
+
+		self.name = f"{item}-{new_version}"
+		self.version = new_version
 
 	def on_update(self):
 		for mapping in getattr(self, '_orphaned_mappings', []):
@@ -189,6 +200,66 @@ class CuttingOrderDetail(Document):
 
 		if len(attr) != len(self.stiching_item_details):
 			frappe.throw("Duplicate Attribute values are occured in Panel Details")
+
+
+@frappe.whitelist()
+def duplicate_cod(cod, item=None):
+	cod_doc = frappe.get_doc("Cutting Order Detail", cod)
+	doc = frappe.new_doc("Cutting Order Detail")
+
+	# Copy scalar fields (primary_attribute, packing_attribute, stiching_attribute,
+	# set_item_attribute are set by before_validate from IPD Settings on new docs)
+	doc.update({
+		"item": item or cod_doc.item,
+		"attribute_no": cod_doc.attribute_no,
+		"major_panel_value": cod_doc.major_panel_value,
+		"is_same_colour": cod_doc.is_same_colour,
+		"cloth_detail_json": cod_doc.cloth_detail_json,
+	})
+
+	# Copy child tables (except item_attributes — handled specially)
+	doc.set("attribute_values", get_dict_table(cod_doc.attribute_values))
+	doc.set("stiching_item_details", get_dict_table(cod_doc.stiching_item_details))
+	doc.set("stiching_item_combination_details", get_dict_table(cod_doc.stiching_item_combination_details))
+
+	# Copy item_attributes WITHOUT mappings — validate() will auto-create empty ones
+	attr_rows = []
+	for row in cod_doc.item_attributes:
+		attr_rows.append({"attribute": row.attribute})
+	doc.set("item_attributes", attr_rows)
+
+	# First save — triggers validate which auto-creates empty mappings
+	doc.save(ignore_permissions=True)
+
+	# Now copy mapping values from source into the new auto-created mappings
+	for src_row in cod_doc.item_attributes:
+		if not src_row.mapping:
+			continue
+		for new_row in doc.item_attributes:
+			if new_row.attribute == src_row.attribute and new_row.mapping:
+				src_map = frappe.get_cached_doc("Item Item Attribute Mapping", src_row.mapping)
+				new_map = frappe.get_doc("Item Item Attribute Mapping", new_row.mapping)
+				new_map.set("values", [])
+				for v in src_map.values:
+					new_map.append("values", {"attribute_value": v.attribute_value})
+				new_map.save(ignore_permissions=True)
+				break
+
+	# Handle set item fields
+	if cod_doc.is_set_item:
+		doc.update({
+			"is_set_item": cod_doc.is_set_item,
+			"set_item_attribute": cod_doc.set_item_attribute,
+			"major_attribute_value": cod_doc.major_attribute_value,
+		})
+		doc.set("set_item_combination_details", get_dict_table(cod_doc.set_item_combination_details))
+		doc.save(ignore_permissions=True)
+
+	return doc.name
+
+
+def get_dict_table(table_data):
+	return [row.as_dict() for row in table_data]
 
 
 @frappe.whitelist()

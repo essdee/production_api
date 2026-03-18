@@ -1,6 +1,6 @@
 {
  "charts": [],
- "content": "[{\"id\":\"JXfNdLisAk\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">Cutting</span>\",\"col\":12}},{\"id\":\"XJZ0cG_t0J\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Cutting Laysheet\",\"col\":3}},{\"id\":\"pgrPSRtvNf\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Cutting Plan\",\"col\":3}}]",
+ "content": "[{\"id\":\"JXfNdLisAk\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">Cutting</span>\",\"col\":12}},{\"id\":\"pgrPSRtvNf\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Cutting Plan\",\"col\":3}},{\"id\":\"XJZ0cG_t0J\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Cutting Laysheet\",\"col\":3}},{\"id\":\"IdiUd-Irvr\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\"><b>Cutting Order</b></span>\",\"col\":12}},{\"id\":\"wJRxKGP5L_\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Cutting Order Detail\",\"col\":3}},{\"id\":\"sYNmmm1yXq\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Cutting Order\",\"col\":3}}]",
  "creation": "2024-11-26 10:23:38.744397",
  "custom_blocks": [],
  "docstatus": 0,
@@ -13,7 +13,7 @@
  "is_hidden": 0,
  "label": "Cutting",
  "links": [],
- "modified": "2026-01-28 14:50:52.433066",
+ "modified": "2026-03-18 15:18:08.149191",
  "modified_by": "Administrator",
  "module": "Essdee Production",
  "name": "Cutting",
@@ -28,8 +28,24 @@
   {
    "color": "Grey",
    "doc_view": "List",
+   "label": "Cutting Order Detail",
+   "link_to": "Cutting Order Detail",
+   "stats_filter": "[]",
+   "type": "DocType"
+  },
+  {
+   "color": "Grey",
+   "doc_view": "List",
    "label": "Cutting Plan",
    "link_to": "Cutting Plan",
+   "stats_filter": "[]",
+   "type": "DocType"
+  },
+  {
+   "color": "Grey",
+   "doc_view": "List",
+   "label": "Cutting Order",
+   "link_to": "Cutting Order",
    "stats_filter": "[]",
    "type": "DocType"
   },

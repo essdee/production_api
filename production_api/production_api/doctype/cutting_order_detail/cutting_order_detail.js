@@ -115,6 +115,40 @@ frappe.ui.form.on("Cutting Order Detail", {
 		$(frm.fields_dict['stiching_items_html'].wrapper).html("");
 
 		frm.trigger('make_hide_and_unhide_tabs');
+
+		if (!frm.doc.__islocal) {
+			frm.add_custom_button("Duplicate COD", () => {
+				let d = new frappe.ui.Dialog({
+					title: "Duplicate COD",
+					fields: [
+						{
+							label: "Item",
+							fieldname: "item",
+							fieldtype: "Data",
+							default: frm.doc.item,
+							reqd: 1,
+						}
+					],
+					primary_action_label: "Duplicate",
+					primary_action(values) {
+						frappe.call({
+							method: "production_api.production_api.doctype.cutting_order_detail.cutting_order_detail.duplicate_cod",
+							args: {
+								cod: frm.doc.name,
+								item: values.item,
+							},
+							freeze: true,
+							freeze_message: "Duplicating COD...",
+							callback: function(r) {
+								d.hide();
+								frappe.set_route("Form", "Cutting Order Detail", r.message);
+							}
+						});
+					},
+				});
+				d.show();
+			});
+		}
 	},
 
 	async make_set_combination(frm) {
