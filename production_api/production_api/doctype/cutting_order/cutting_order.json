@@ -24,7 +24,9 @@
   "report_tab",
   "completed_items_html",
   "incompleted_items_html",
-  "amended_from"
+  "amended_from",
+  "planned_tab",
+  "planned_details_html"
  ],
  "fields": [
   {
@@ -113,12 +115,14 @@
    "allow_on_submit": 1,
    "fieldname": "completed_items_json",
    "fieldtype": "Small Text",
+   "hidden": 1,
    "label": "Completed Items JSON"
   },
   {
    "allow_on_submit": 1,
    "fieldname": "incomplete_items_json",
    "fieldtype": "Small Text",
+   "hidden": 1,
    "label": "Incomplete Items JSON"
   },
   {
@@ -134,6 +138,16 @@
    "fieldtype": "Date",
    "label": "Cutting End Date",
    "read_only": 1
+  },
+  {
+   "fieldname": "planned_tab",
+   "fieldtype": "Tab Break",
+   "label": "Planned"
+  },
+  {
+   "fieldname": "planned_details_html",
+   "fieldtype": "HTML",
+   "label": "Planned Details HTML"
   },
   {
    "fieldname": "report_tab",
@@ -172,7 +186,7 @@
    "link_fieldname": "cutting_order"
   }
  ],
- "modified": "2026-03-14 11:16:25.865325",
+ "modified": "2026-03-18 16:26:22.491037",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Cutting Order",
@@ -180,7 +194,6 @@
  "owner": "Administrator",
  "permissions": [
   {
-   "amend": 1,
    "cancel": 1,
    "create": 1,
    "delete": 1,
@@ -215,8 +228,75 @@
    "role": "Production Planner",
    "select": 1,
    "share": 1,
-   "submit": 1,
    "write": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "CAD User",
+   "select": 1,
+   "share": 1,
+   "write": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Merch User",
+   "select": 1,
+   "share": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Brand QA Manager",
+   "share": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Brand QA User",
+   "share": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Purchase User",
+   "share": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Store User",
+   "select": 1,
+   "share": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Stock User",
+   "select": 1,
+   "share": 1
   }
  ],
  "row_format": "Dynamic",

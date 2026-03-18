@@ -1,12 +1,13 @@
 {
  "actions": [],
- "autoname": "naming_series:",
+ "autoname": "format:CO-{item}-{version}",
  "creation": "2026-03-12 12:00:00",
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
   "naming_series",
   "item",
+  "version",
   "column_break_main",
   "primary_attribute",
   "section_break_attributes",
@@ -57,6 +58,13 @@
    "in_standard_filter": 1,
    "label": "Item",
    "reqd": 1
+  },
+  {
+   "fieldname": "version",
+   "fieldtype": "Int",
+   "in_list_view": 1,
+   "label": "Version",
+   "read_only": 1
   },
   {
    "fieldname": "column_break_main",
@@ -266,11 +274,11 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-03-13 10:44:39.782409",
+ "modified": "2026-03-18 14:22:58.475410",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Cutting Order Detail",
- "naming_rule": "By \"Naming Series\" field",
+ "naming_rule": "Expression",
  "owner": "Administrator",
  "permissions": [
   {
@@ -310,6 +318,7 @@
   }
  ],
  "row_format": "Dynamic",
+ "search_fields": "item",
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": [],

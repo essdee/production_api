@@ -358,7 +358,7 @@ def get_fp_ocr_details(doc_name):
 		"get_unaccountable": {},
 	}
 	def get_total(part_value, ocr_data):
-		return ((ocr_data[part_value]['dispatched_piece'] + 
+		return ((ocr_data[part_value]['packed_box_qty'] +
 			ocr_data[part_value]['rejected'] + 
 			ocr_data[part_value]['loose_piece_set'] +
 			ocr_data[part_value]['loose_piece'] +
@@ -451,13 +451,13 @@ def get_fp_ocr_details(doc_name):
 				ocr_data[part_value]['total'][size]['ironing_excess']))
 	
 	def get_ocr_value(part_value, ocr_data):
-		return (
+		return round(
 			get_ocr_percentage(get_cut_to_dispatch(part_value, ocr_data)) +
 			get_ocr_percentage(get_loose_piece(part_value, ocr_data)) +
 			get_ocr_percentage(get_rejection(part_value, ocr_data)) +
 			get_ocr_percentage(get_rework(part_value, ocr_data)) +
 			get_ocr_percentage(get_not_received(part_value, ocr_data), make_pos=True)
-		)
+		, 2)
 
 	for part_value in ocr_data:
 		d["get_total"].setdefault(part_value, get_total(part_value, ocr_data))
@@ -1893,5 +1893,266 @@ def check_is_alternative_item(item):
 	items = frappe.db.get_all("Item Alternative", filters={
 		"item": item
 	}, pluck="alternative_item")
-	
+
 	return items
+
+
+@frappe.whitelist()
+def get_finishing_packed_details(date, lot_list=None, item_list=None):
+	"""Get lot/item-wise, size-wise box quantities from packing GRNs for a given date."""
+	import json
+	if isinstance(lot_list, str):
+		lot_list = json.loads(lot_list)
+	if isinstance(item_list, str):
+		item_list = json.loads(item_list)
+
+	grns = frappe.get_all("Goods Received Note", filters={
+		"against": "Work Order",
+		"includes_packing": 1,
+		"docstatus": 1,
+		"posting_date": date,
+	}, fields=["name", "lot"])
+
+	lot_grns = {}
+	for grn in grns:
+		lot_grns.setdefault(grn.lot, []).append(grn.name)
+
+	# Filter by lot_list
+	if lot_list:
+		lot_grns = {k: v for k, v in lot_grns.items() if k in lot_list}
+
+	result = []
+	for lot, grn_names in lot_grns.items():
+		lot_item = frappe.get_value("Lot", lot, "item")
+		# Filter by item_list
+		if item_list and lot_item not in item_list:
+			continue
+		ipd = frappe.get_value("Lot", lot, "production_detail")
+		if not ipd:
+			continue
+
+		ipd_doc = frappe.get_cached_doc("Item Production Detail", ipd)
+		primary_attr = ipd_doc.primary_item_attribute
+		pieces_per_box = ipd_doc.packing_combo or 0
+		sizes = get_ipd_primary_values(ipd)
+
+		size_qty = {}
+		for size in sizes:
+			size_qty[size] = 0
+
+		for grn_name in grn_names:
+			grn_items = frappe.get_all("Goods Received Note Item", filters={
+				"parent": grn_name,
+			}, fields=["item_variant", "quantity"])
+
+			for gi in grn_items:
+				attr_details = get_variant_attr_details(gi.item_variant)
+				size = attr_details.get(primary_attr)
+				if size:
+					size_qty.setdefault(size, 0)
+					size_qty[size] += gi.quantity
+
+		total_boxes = sum(size_qty.values())
+		total_pieces = total_boxes * pieces_per_box if pieces_per_box else 0
+
+		result.append({
+			"lot": lot,
+			"item": lot_item,
+			"sizes": sizes,
+			"size_qty": size_qty,
+			"pieces_per_box": pieces_per_box,
+			"total_boxes": total_boxes,
+			"total_pieces": total_pieces,
+		})
+
+	all_sizes = []
+	seen = set()
+	for row in result:
+		for s in row["sizes"]:
+			if s not in seen:
+				seen.add(s)
+				all_sizes.append(s)
+
+	return {"data": result, "sizes": all_sizes}
+
+
+@frappe.whitelist()
+def get_finishing_dispatch_report(from_date, to_date, lot_list=None, item_list=None):
+	"""Get lot/item-wise, size-wise packed and dispatched quantities for a date range."""
+	import json
+	if isinstance(lot_list, str):
+		lot_list = json.loads(lot_list)
+	if isinstance(item_list, str):
+		item_list = json.loads(item_list)
+
+	# --- Packed (same as get_finishing_packed_details but with date range) ---
+	grns = frappe.get_all("Goods Received Note", filters={
+		"against": "Work Order",
+		"includes_packing": 1,
+		"docstatus": 1,
+		"posting_date": ["between", [from_date, to_date]],
+	}, fields=["name", "lot"])
+
+	lot_grns = {}
+	for grn in grns:
+		lot_grns.setdefault(grn.lot, []).append(grn.name)
+
+	# Filter by lot_list
+	if lot_list:
+		lot_grns = {k: v for k, v in lot_grns.items() if k in lot_list}
+
+	packed_result = []
+	for lot, grn_names in lot_grns.items():
+		lot_item = frappe.get_value("Lot", lot, "item")
+		# Filter by item_list
+		if item_list and lot_item not in item_list:
+			continue
+		ipd = frappe.get_value("Lot", lot, "production_detail")
+		if not ipd:
+			continue
+
+		ipd_doc = frappe.get_cached_doc("Item Production Detail", ipd)
+		primary_attr = ipd_doc.primary_item_attribute
+		pieces_per_box = ipd_doc.packing_combo or 0
+		sizes = get_ipd_primary_values(ipd)
+
+		size_qty = {size: 0 for size in sizes}
+
+		for grn_name in grn_names:
+			grn_items = frappe.get_all("Goods Received Note Item", filters={
+				"parent": grn_name,
+			}, fields=["item_variant", "quantity"])
+
+			for gi in grn_items:
+				attr_details = get_variant_attr_details(gi.item_variant)
+				size = attr_details.get(primary_attr)
+				if size:
+					size_qty.setdefault(size, 0)
+					size_qty[size] += gi.quantity
+
+		total_boxes = sum(size_qty.values())
+		total_pieces = total_boxes * pieces_per_box if pieces_per_box else 0
+
+		packed_result.append({
+			"lot": lot,
+			"item": lot_item,
+			"sizes": sizes,
+			"size_qty": size_qty,
+			"pieces_per_box": pieces_per_box,
+			"total_boxes": total_boxes,
+			"total_pieces": total_pieces,
+		})
+
+	# --- Dispatched (Stock Entry Material Issue) ---
+	stock_entries = frappe.get_all("Stock Entry", filters={
+		"against": ["in", ["Finishing Plan", "Finishing Plan Dispatch"]],
+		"purpose": "Material Issue",
+		"docstatus": 1,
+		"posting_date": ["between", [from_date, to_date]],
+	}, fields=["name"])
+
+	lot_dispatched = {}
+	for se in stock_entries:
+		se_items = frappe.get_all("Stock Entry Detail", filters={
+			"parent": se.name,
+		}, fields=["item", "qty", "lot"])
+
+		for si in se_items:
+			if not si.lot:
+				continue
+			lot_dispatched.setdefault(si.lot, []).append(si)
+
+	# Filter by lot_list
+	if lot_list:
+		lot_dispatched = {k: v for k, v in lot_dispatched.items() if k in lot_list}
+
+	dispatched_result = []
+	for lot, items in lot_dispatched.items():
+		lot_item = frappe.get_value("Lot", lot, "item")
+		# Filter by item_list
+		if item_list and lot_item not in item_list:
+			continue
+		ipd = frappe.get_value("Lot", lot, "production_detail")
+		if not ipd:
+			continue
+
+		ipd_doc = frappe.get_cached_doc("Item Production Detail", ipd)
+		primary_attr = ipd_doc.primary_item_attribute
+		pieces_per_box = ipd_doc.packing_combo or 0
+		sizes = get_ipd_primary_values(ipd)
+
+		size_qty = {size: 0 for size in sizes}
+
+		for si in items:
+			attr_details = get_variant_attr_details(si.item)
+			size = attr_details.get(primary_attr)
+			if size:
+				size_qty.setdefault(size, 0)
+				size_qty[size] += si.qty
+
+		total_boxes = sum(size_qty.values())
+		total_pieces = total_boxes * pieces_per_box if pieces_per_box else 0
+
+		dispatched_result.append({
+			"lot": lot,
+			"item": lot_item,
+			"sizes": sizes,
+			"size_qty": size_qty,
+			"pieces_per_box": pieces_per_box,
+			"total_boxes": total_boxes,
+			"total_pieces": total_pieces,
+		})
+
+	# Merge packed and dispatched by lot
+	lot_data = {}
+	for row in packed_result:
+		lot_data[row["lot"]] = {
+			"lot": row["lot"],
+			"item": row["item"],
+			"sizes": row["sizes"],
+			"pieces_per_box": row["pieces_per_box"],
+			"packed_qty": row["size_qty"],
+			"packed_total_boxes": row["total_boxes"],
+			"packed_total_pieces": row["total_pieces"],
+			"dispatched_qty": {},
+			"dispatched_total_boxes": 0,
+			"dispatched_total_pieces": 0,
+		}
+
+	for row in dispatched_result:
+		if row["lot"] in lot_data:
+			lot_data[row["lot"]]["dispatched_qty"] = row["size_qty"]
+			lot_data[row["lot"]]["dispatched_total_boxes"] = row["total_boxes"]
+			lot_data[row["lot"]]["dispatched_total_pieces"] = row["total_pieces"]
+			# Merge sizes
+			existing_sizes = lot_data[row["lot"]]["sizes"]
+			for s in row["sizes"]:
+				if s not in existing_sizes:
+					existing_sizes.append(s)
+		else:
+			lot_data[row["lot"]] = {
+				"lot": row["lot"],
+				"item": row["item"],
+				"sizes": row["sizes"],
+				"pieces_per_box": row["pieces_per_box"],
+				"packed_qty": {},
+				"packed_total_boxes": 0,
+				"packed_total_pieces": 0,
+				"dispatched_qty": row["size_qty"],
+				"dispatched_total_boxes": row["total_boxes"],
+				"dispatched_total_pieces": row["total_pieces"],
+			}
+
+	# Collect all unique sizes
+	all_sizes = []
+	seen = set()
+	for entry in lot_data.values():
+		for s in entry["sizes"]:
+			if s not in seen:
+				seen.add(s)
+				all_sizes.append(s)
+
+	return {
+		"data": list(lot_data.values()),
+		"sizes": all_sizes,
+	}
