@@ -53,7 +53,7 @@
                 </tr>
             </table>
         </div>
-        <div v-if="items && items.length > 0 && !override_pi_approve">
+        <div v-if="items && items.length > 0">
             <div v-for="item in items">
                 <h4>{{ item['work_order'] }}</h4>
                 <div v-if="item['bills'].length > 0">
