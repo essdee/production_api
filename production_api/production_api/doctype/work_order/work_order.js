@@ -1186,6 +1186,7 @@ function open_debit_dialog(frm, parentDialog) {
         label: "Debit Type",
         options: "Permanent",
         default: "Permanent",
+        hidden: 1,
         reqd: 1,
       },
       {
