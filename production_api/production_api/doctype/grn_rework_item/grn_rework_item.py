@@ -209,7 +209,108 @@ def get_rework_items(lot, item, colour, grn_number=None, show_reworked=0):
 	if grn_number:
 		return data, rework_items[0]['name']
 	
-	return data	
+	return data
+
+@frappe.whitelist()
+def get_rework_group_items(lot=None, item=None, colour=None, show_reworked=0):
+	from production_api.essdee_production.doctype.item_production_detail.item_production_detail import get_ipd_primary_values
+
+	conditions = " AND t1.completed = 1" if cint(show_reworked) else " AND t1.completed = 0"
+	con = {}
+	if item:
+		conditions += " AND t1.item = %(item_name)s"
+		con['item_name'] = item
+	if lot:
+		conditions += " AND t1.lot = %(lot_name)s"
+		con['lot_name'] = lot
+	if colour:
+		conditions += " AND t2.item_variant LIKE %(colour)s"
+		con['colour'] = f"%{colour}%"
+
+	rework_items = frappe.db.sql(
+		f"""
+			SELECT t1.name FROM `tabGRN Rework Item` t1 JOIN `tabGRN Rework Item Detail` t2
+			ON t1.name = t2.parent WHERE 1 = 1 {conditions} GROUP BY t1.name
+		""", con, as_dict=True
+	)
+
+	show_reworked_flag = cint(show_reworked)
+	groups = {}
+
+	for ri in rework_items:
+		doc = frappe.get_doc("GRN Rework Item", ri['name'])
+		ipd = frappe.get_cached_value("Lot", doc.lot, "production_detail")
+		ipd_fields = ['packing_attribute', 'primary_item_attribute', 'is_set_item', 'set_item_attribute']
+		pack_attr, primary_attr, is_set_item, set_attr = frappe.get_cached_value("Item Production Detail", ipd, ipd_fields)
+
+		group_key = f"{doc.item}/{doc.lot}"
+		if group_key not in groups:
+			primary_values = get_ipd_primary_values(ipd)
+			groups[group_key] = {
+				"item": doc.item,
+				"lot": doc.lot,
+				"sizes": primary_values,
+				"size_attr": primary_attr,
+				"is_set_item": is_set_item,
+				"rows_dict": {},
+			}
+
+		for row in doc.grn_rework_item_details:
+			if show_reworked_flag:
+				if row.completed == 0:
+					continue
+			else:
+				if row.completed == 1:
+					continue
+
+			attr_details = get_variant_attr_details(row.item_variant)
+			colour_val = attr_details.get(pack_attr, "")
+			size_val = attr_details.get(primary_attr, "")
+			part_val = attr_details.get(set_attr, "") if is_set_item else None
+
+			row_key = f"{colour_val}|{part_val or ''}|{doc.grn_number}|{row.received_type}"
+			rd = groups[group_key]["rows_dict"]
+			if row_key not in rd:
+				rd[row_key] = {
+					"colour": colour_val,
+					"part": part_val,
+					"grn_number": doc.grn_number,
+					"received_type": row.received_type,
+					"lot": doc.lot,
+					"received": {},
+					"rejection": {},
+					"reworked": {},
+					"items": [],
+				}
+
+			qty = row.quantity if show_reworked_flag else (row.quantity - row.reworked)
+			rd[row_key]["received"].setdefault(size_val, 0)
+			rd[row_key]["received"][size_val] += qty
+			rd[row_key]["rejection"].setdefault(size_val, 0)
+			rd[row_key]["rejection"][size_val] += row.rejection
+			rd[row_key]["reworked"].setdefault(size_val, 0)
+			rd[row_key]["reworked"][size_val] += row.reworked
+			rd[row_key]["items"].append({
+				primary_attr: size_val,
+				"rework_qty": qty,
+				"reworked_qty": row.reworked,
+				"rejected": row.rejection,
+				"rework": 0,
+				"set_combination": update_if_string_instance(row.set_combination),
+				"row_name": row.name,
+				"variant": row.item_variant,
+				"received_type": row.received_type,
+				"uom": row.uom,
+			})
+
+	# Convert rows_dict to sorted rows list and remove dict
+	for gk in groups:
+		g = groups[gk]
+		sorted_keys = sorted(g["rows_dict"].keys())
+		g["rows"] = [g["rows_dict"][k] for k in sorted_keys]
+		del g["rows_dict"]
+
+	return {"groups": groups}
 
 @frappe.whitelist()
 def update_rejected_quantity(rejection_data, completed:int, lot):
