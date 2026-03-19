@@ -84,21 +84,21 @@
                     <thead>
                         <tr class="header-row">
                             <th class="index-col">#</th>
-                            <th>Lot</th>
-                            <th>Item</th>
-                            <th>Type</th>
+                            <th class="lot-col">Lot</th>
+                            <th class="item-col">Item</th>
+                            <th class="type-col-header">Type</th>
                             <th v-for="size in row.sizes" :key="size" class="size-col">{{ size }}</th>
-                            <th class="total-col">Total Boxes</th>
-                            <th>Pcs/Box</th>
-                            <th class="total-col">Total Pieces</th>
+                            <th class="total-boxes-col">Total Boxes</th>
+                            <th class="pcs-box-col">Pcs/Box</th>
+                            <th class="total-pieces-col">Total Pieces</th>
                         </tr>
                     </thead>
                     <tbody>
                         <!-- Packed row -->
                         <tr class="data-row packed-row">
                             <td class="index-cell" rowspan="3">{{ idx + 1 }}</td>
-                            <td class="colour-cell" rowspan="3">{{ row.lot }}</td>
-                            <td class="colour-cell" rowspan="3">{{ row.item }}</td>
+                            <td class="colour-cell lot-col" rowspan="3">{{ row.lot }}</td>
+                            <td class="colour-cell item-col" rowspan="3" :title="row.item">{{ row.item }}</td>
                             <td class="type-cell packed-type">Packed</td>
                             <td v-for="size in row.sizes" :key="'p-' + size" class="size-cell">
                                 {{ row.packed_qty[size] || '' }}
@@ -441,6 +441,37 @@ onMounted(() => {
 @keyframes spin {
     from { transform: rotate(0deg); }
     to { transform: rotate(360deg); }
+}
+
+.data-table {
+    table-layout: fixed;
+}
+
+.lot-col, .lot-col-cell {
+    width: 130px;
+}
+
+.item-col, .item-col-cell {
+    width: 280px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.type-col-header, .type-cell {
+    width: 100px;
+}
+
+.total-boxes-col {
+    width: 110px;
+}
+
+.pcs-box-col {
+    width: 80px;
+}
+
+.total-pieces-col {
+    width: 110px;
 }
 
 .type-cell {

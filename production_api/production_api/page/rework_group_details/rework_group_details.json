@@ -1,19 +1,19 @@
 {
  "content": null,
- "creation": "2026-03-13 12:56:34.166737",
+ "creation": "2026-03-19 12:57:16.607905",
  "docstatus": 0,
  "doctype": "Page",
  "idx": 0,
- "modified": "2026-03-13 12:56:34.166737",
+ "modified": "2026-03-19 12:57:16.607905",
  "modified_by": "Administrator",
  "module": "Production Api",
- "name": "reworked-details",
+ "name": "rework-group-details",
  "owner": "Administrator",
- "page_name": "reworked-details",
+ "page_name": "rework-group-details",
  "roles": [],
  "script": null,
  "standard": "Yes",
  "style": null,
  "system_page": 0,
- "title": "Reworked Details"
+ "title": "Rework Group Details"
 }

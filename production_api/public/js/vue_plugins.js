@@ -44,6 +44,7 @@ import {
     WOReworkReceivablesWrapper,
     ReceivablesWrapper,
     ReworkPageWrapper,
+    ReworkGroupPageWrapper,
     RejectionPageWrapper,
     WorkOrderItemViewWrapper,
     WOSummaryWrapper,
@@ -1152,6 +1153,7 @@ frappe.production.ui.WOReworkDeliverables = WOReworkDeliverablesWrapper
 frappe.production.ui.WOReworkReceivables = WOReworkReceivablesWrapper
 frappe.production.ui.Receivables = ReceivablesWrapper
 frappe.production.ui.ReworkPage = ReworkPageWrapper
+frappe.production.ui.ReworkGroupPage = ReworkGroupPageWrapper
 frappe.production.ui.RejectionPage = RejectionPageWrapper
 frappe.production.ui.WorkOrderItemView = WorkOrderItemViewWrapper
 frappe.production.ui.WOSummary = WOSummaryWrapper
