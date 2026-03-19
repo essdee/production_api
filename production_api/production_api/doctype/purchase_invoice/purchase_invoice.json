@@ -46,6 +46,8 @@
   "verification_details_tab",
   "allow_to_change_rate",
   "purchase_invoice_debit_details",
+  "debit_summary_section",
+  "debit_summary_html",
   "section_break_bgxs",
   "work_order_details_html",
   "pi_work_order_billed_details",
@@ -334,8 +336,18 @@
   {
    "fieldname": "purchase_invoice_debit_details",
    "fieldtype": "Table",
+   "hidden": 1,
    "label": "Purchase Invoice Debit Details",
    "options": "Purchase Invoice Debit Detail"
+  },
+  {
+   "fieldname": "debit_summary_section",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "debit_summary_html",
+   "fieldtype": "HTML",
+   "label": "Debit Summary"
   },
   {
    "depends_on": "eval: doc.docstatus != 1 && doc.docstatus != 2",
@@ -366,7 +378,7 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2026-02-16 16:19:32.726302",
+ "modified": "2026-03-19 18:27:32.269871",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Purchase Invoice",

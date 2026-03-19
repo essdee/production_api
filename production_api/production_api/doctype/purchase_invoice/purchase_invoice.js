@@ -77,6 +77,13 @@ frappe.ui.form.on("Purchase Invoice", {
       frm.doc["item_details"] = frm.doc.__onload.item_details;
       frm.pi_wo_items.load_data(frm.doc.__onload.item_details);
     }
+    $(frm.fields_dict["debit_summary_html"].wrapper).html("");
+    if (frm.doc.__onload && frm.doc.__onload.debit_summary && frm.doc.__onload.debit_summary.length > 0) {
+      frm.pi_debit_summary = new frappe.production.ui.InvoiceDebitSummary(
+        frm.fields_dict["debit_summary_html"].wrapper,
+      );
+      frm.pi_debit_summary.load_data(frm.doc.__onload.debit_summary);
+    }
   },
 
   supplier: function (frm) {

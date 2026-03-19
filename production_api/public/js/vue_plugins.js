@@ -93,6 +93,7 @@ import MonthWiseDetailReport from "./components/MonthWiseDetailReport.vue"
 import SizeWiseStockReport from "./components/SizeWiseStockDetail.vue"
 import ColourWiseDiffReport from "./components/ColourWiseDiffReport.vue"
 import InvoiceWoItems from "./PurchaseInvoice/components/InvoiceWOItems.vue"
+import InvoiceDebitSummary from "./PurchaseInvoice/components/InvoiceDebitSummary.vue"
 import RecutPrintPanelDetail from "./CuttingPlan/components/RecutPrintPanelDetails.vue"
 import RecutPrintPanelView from "./CuttingPlan/components/RecutPrintPanelView.vue"
 import MultiCCR from "./CuttingPlan/components/MultiCCR.vue"
@@ -498,6 +499,21 @@ frappe.production.ui.InvoiceWoItems = class {
     }
     make_app() {
         this.app = createApp(InvoiceWoItems)
+        SetVueGlobals(this.app)
+        this.vue = this.app.mount(this.$wrapper.get(0))
+    }
+    load_data(data) {
+        this.vue.load_data(data)
+    }
+}
+
+frappe.production.ui.InvoiceDebitSummary = class {
+    constructor(wrapper) {
+        this.$wrapper = $(wrapper);
+        this.make_app()
+    }
+    make_app() {
+        this.app = createApp(InvoiceDebitSummary)
         SetVueGlobals(this.app)
         this.vue = this.app.mount(this.$wrapper.get(0))
     }

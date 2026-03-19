@@ -432,7 +432,7 @@ function closeWorkOrder(wo) {
                             let debit_d = new frappe.ui.Dialog({
                                 title: "Create WO Debit",
                                 fields: [
-                                    { fieldtype: "Select", fieldname: "debit_type", label: "Debit Type", options: "Permanent", default: "Permanent", reqd: 1 },
+                                    { fieldtype: "Select", fieldname: "debit_type", label: "Debit Type", options: "Permanent", default: "Permanent", reqd: 1, hidden: 1 },
                                     { fieldtype: "Data", fieldname: "debit_no", label: "Debit No", reqd: 1 },
                                     { fieldtype: "Currency", fieldname: "debit_value", label: "Debit Value", reqd: 1 },
                                     { fieldtype: "Small Text", fieldname: "reason", label: "Reason", reqd: 1 },

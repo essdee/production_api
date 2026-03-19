@@ -303,7 +303,6 @@ function completeRework(row, group, groupKey, rowIdx) {
     background: #fff;
     border-radius: 8px;
     box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
-    overflow: hidden;
 }
 
 .group-header {
@@ -317,12 +316,13 @@ function completeRework(row, group, groupKey, rowIdx) {
 }
 
 .table-wrapper {
-    overflow-x: auto;
+    overflow-x: clip;
 }
 
 .table-sm-bordered {
     width: 100%;
-    border-collapse: collapse;
+    border-collapse: separate;
+    border-spacing: 0;
     margin-bottom: 0;
 }
 
@@ -339,6 +339,9 @@ function completeRework(row, group, groupKey, rowIdx) {
     font-weight: 700;
     font-size: 15px;
     color: #495057;
+    position: sticky;
+    top: var(--navbar-height);
+    z-index: 11;
 }
 
 .action-cell {
