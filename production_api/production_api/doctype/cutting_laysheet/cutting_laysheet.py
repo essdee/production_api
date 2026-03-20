@@ -1425,7 +1425,7 @@ def get_input_fields(cutting_marker, colour, select_attributes):
 					inputs.append({"fieldname":"set_panel", "fieldtype":"Data", "label":"Set Panel", "default": default[marker_parts[0]]})
 					inputs.append({"fieldname":"set_colour", "fieldtype":"Select", "label":"Set Colour", "options":list(part_set_colours[marker_parts[0]])})
 	else:
-		if ipd_doc.is_same_packing_attribute or stich_attr_value in panels:
+		if is_same_packing_attr or stich_attr_value in panels:
 			inputs.append({"fieldname":"major_panel", "fieldtype":"Data", "label":"Major Panel", "default": stich_attr_value})
 			inputs.append({"fieldname":"major_colour", "fieldtype":"Data", "label":"Major Colour", "default":colour})
 		else:
