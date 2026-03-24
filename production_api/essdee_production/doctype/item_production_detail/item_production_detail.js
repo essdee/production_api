@@ -162,6 +162,39 @@ frappe.ui.form.on("Item Production Detail", {
 	refresh: async function(frm) {
 		frm.trigger('declarations')
 		frm.trigger('onload_post_render')
+		if (!frm.is_new() && frm.doc.approval_status !== "Approved") {
+			frappe.xcall("frappe.client.get_value", {
+				doctype: "MRP Settings",
+				fieldname: ["senior_merch_role", "merchandising_manager_role"]
+			}).then(settings => {
+				let allowed = [settings.senior_merch_role, settings.merchandising_manager_role].filter(Boolean);
+				if (allowed.some(role => frappe.user_roles.includes(role))) {
+					if (frm.doc.approval_status === "Not Approved") {
+						frm.add_custom_button(__("Approve for Cutting"), () => {
+							frappe.call({
+								method: "production_api.essdee_production.doctype.item_production_detail.item_production_detail.approve_ipd",
+								args: { doc_name: frm.doc.name, approval_type: "Cutting Approved" },
+								callback: function () {
+									frappe.show_alert({ message: __("Approved for Cutting"), indicator: "blue" });
+									frm.reload_doc();
+								}
+							});
+						});
+					}
+					frm.add_custom_button(__("Approve"), () => {
+						frappe.call({
+							method: "production_api.essdee_production.doctype.item_production_detail.item_production_detail.approve_ipd",
+							args: { doc_name: frm.doc.name, approval_type: "Approved" },
+							callback: function () {
+								frappe.show_alert({ message: __("Item Production Detail Approved"), indicator: "green" });
+								frm.reload_doc();
+							}
+						});
+					});
+					frm.change_custom_button_type(__("Approve"), null, "success");
+				}
+			});
+		}
 		$(frm.fields_dict['item_attribute_list_values_html'].wrapper).html("");
 		$(frm.fields_dict['dependent_attribute_details_html'].wrapper).html("");
 		$(frm.fields_dict['bom_attribute_mapping_html'].wrapper).html("");
