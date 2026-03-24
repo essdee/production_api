@@ -56,6 +56,12 @@
   "cut_bundle_cancelled_lot",
   "piece_weight_max",
   "cls_grammage_approval_roles",
+  "box_sticker_print_section",
+  "non_set_box_sticker",
+  "non_set_piece_sticker",
+  "column_break_bsp",
+  "set_item_box_sticker",
+  "set_item_piece_sticker",
   "quality_inspection_section",
   "default_major_aql_level",
   "column_break_bvdh",
@@ -330,6 +336,39 @@
   {
    "fieldname": "column_break_xjuz",
    "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "box_sticker_print_section",
+   "fieldtype": "Section Break",
+   "label": "Box Sticker Print"
+  },
+  {
+   "fieldname": "non_set_box_sticker",
+   "fieldtype": "Link",
+   "label": "Non Set Box Sticker",
+   "options": "Essdee Raw Print Format"
+  },
+  {
+   "fieldname": "non_set_piece_sticker",
+   "fieldtype": "Link",
+   "label": "Non Set Piece Sticker",
+   "options": "Essdee Raw Print Format"
+  },
+  {
+   "fieldname": "column_break_bsp",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "set_item_box_sticker",
+   "fieldtype": "Link",
+   "label": "Set Item Box Sticker",
+   "options": "Essdee Raw Print Format"
+  },
+  {
+   "fieldname": "set_item_piece_sticker",
+   "fieldtype": "Link",
+   "label": "Set Item Piece Sticker",
+   "options": "Essdee Raw Print Format"
   },
   {
    "fieldname": "quality_inspection_section",

@@ -25,7 +25,10 @@
   "production_ordered_details",
   "comments",
   "submitted_by",
-  "submitted_time"
+  "submitted_time",
+  "price_approval_status",
+  "price_changes_tab",
+  "ppo_price_request_html"
  ],
  "fields": [
   {
@@ -155,6 +158,25 @@
    "fieldtype": "Datetime",
    "label": "Submitted Time",
    "read_only": 1
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "price_approval_status",
+   "fieldtype": "Select",
+   "hidden": 1,
+   "label": "Price Approval Status",
+   "options": "\nPending Approval",
+   "read_only": 1
+  },
+  {
+   "fieldname": "price_changes_tab",
+   "fieldtype": "Tab Break",
+   "label": "Price Changes"
+  },
+  {
+   "fieldname": "ppo_price_request_html",
+   "fieldtype": "HTML",
+   "label": "Price Change Requests"
   }
  ],
  "grid_page_length": 50,
