@@ -398,6 +398,17 @@ def approve_ipd(doc_name, approval_type="Approved"):
 		frappe.throw("Invalid approval type")
 	doc = frappe.get_doc("Item Production Detail", doc_name)
 	doc.approval_status = approval_type
+	doc.approved_by = frappe.session.user
+	doc.save(ignore_permissions=True)
+	return {"status": "success"}
+
+@frappe.whitelist()
+def revert_ipd_approval(doc_name):
+	if "System Manager" not in frappe.get_roles():
+		frappe.throw("Only System Manager can revert approval")
+	doc = frappe.get_doc("Item Production Detail", doc_name)
+	doc.approval_status = "Not Approved"
+	doc.approved_by = None
 	doc.save(ignore_permissions=True)
 	return {"status": "success"}
 
