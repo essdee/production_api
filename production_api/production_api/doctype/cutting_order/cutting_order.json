@@ -8,6 +8,7 @@
   "naming_series",
   "cutting_order_detail",
   "co_status",
+  "cutting_location",
   "column_break_main",
   "item",
   "is_set_item",
@@ -53,6 +54,12 @@
    "label": "Status",
    "options": "Draft\nSubmitted\nCutting In Progress\nPartially Completed\nCompleted",
    "read_only": 1
+  },
+  {
+   "fieldname": "cutting_location",
+   "fieldtype": "Select",
+   "label": "Cutting Location",
+   "options": "\nMachine Cutting\nManual Cutting"
   },
   {
    "fieldname": "column_break_main",

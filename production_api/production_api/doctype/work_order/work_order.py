@@ -2022,8 +2022,9 @@ def create_finishing_detail(work_order, from_finishing=False):
     if not finishing_inward_process:
         frappe.throw("Set Finishing Inward Process")
 
-    stich_wo_list = get_process_wo_list(wo_doc.lot, finishing_inward_process)
+    stich_wo_list = get_process_wo_list(finishing_inward_process, wo_doc.lot)
     stiching_grn_list = {}
+    rejected_qty = {}
     for wo in stich_wo_list:
         stich_doc = frappe.get_doc("Work Order", wo)
         for row in stich_doc.work_order_calculated_items:
@@ -2039,7 +2040,9 @@ def create_finishing_detail(work_order, from_finishing=False):
                         items[key]['received_types'][ty] = 0
                     if ty == default_type:
                         items[key]['accepted_qty'] += received_types[ty]
-                    if ty not in [default_type, default_rejected]:
+                    elif ty == default_rejected:
+                        items[key]['rejected_qty'] += received_types[ty]
+                    elif ty not in [default_type, default_rejected]:
                         items[key]['rework_qty'] += received_types[ty]
 
                     items[key]['received_types'][ty] += received_types[ty]
@@ -2055,7 +2058,7 @@ def create_finishing_detail(work_order, from_finishing=False):
             for grn in grn_list:
                 stiching_grn_list[grn] = True
 
-    cut_wo_list = get_process_wo_list(wo_doc.lot, "Cutting")
+    cut_wo_list = get_process_wo_list("Cutting", wo_doc.lot)
 
     for wo in cut_wo_list:
         cut_doc = frappe.get_doc("Work Order", wo)
@@ -2124,7 +2127,8 @@ def create_finishing_detail(work_order, from_finishing=False):
             "reworked": reworked_qty,
             "dc_qty": 0,
             "return_qty": 0,
-            "pack_return_qty": 0
+            "pack_return_qty": 0,
+            "rejected_qty": items[key]['rejected_qty'],
         })
 
     from production_api.production_api.doctype.goods_received_note.goods_received_note import get_primary_values
