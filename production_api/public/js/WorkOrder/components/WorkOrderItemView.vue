@@ -24,10 +24,7 @@
                             <span v-else-if="attr == 'Colour' && !j.is_set_item && j.attributes[attr] != j.item_keys['major_colour'] && j.attributes[attr]">({{ j.item_keys['major_colour'] }})</span>
                         </td>
                         <td v-for="attr in Object.keys(j.values)" :key="attr">
-                            <div v-if="j.values[attr]['qty'] > 0">
-                                <div class="input-field" :class="get_input_class(attr, item1_index)"></div>
-                            </div>
-                            <div v-else>--</div>
+                            <div class="input-field" :class="get_input_class(attr, item1_index)"></div>
                         </td>
                         <td>{{ j.total_qty }}</td>
                     </tr>
@@ -113,34 +110,29 @@ function update_qty(idx1, idx2){
 }
 
 function createInput(key,index,val){
-    if(val > 0){
-        let parent_class = "." + get_input_class(key,index);
-    
-        let el = root.value
-        let df = {
-            fieldtype: 'Int',
-            fieldname: key+""+index,
-        } 
-        let input =  frappe.ui.form.make_control({
-            parent: $(el).find(parent_class),
-            df:df,
-            doc: sample_doc.value,
-            render_input: true,
-        });
+    let parent_class = "." + get_input_class(key,index);
 
-        $(el).find(".control-label").remove();
-        if(val != 0){
-            input.set_value(val)
-            input.refresh()
-        }
-        input['df']['onchange'] = ()=>{
-            let input_value = input.get_value()
-            items.value[0].items[index]['work_order_qty'][key] = input_value;
-            update_total()
-        }
-        return input
+    let el = root.value
+    let df = {
+        fieldtype: 'Int',
+        fieldname: key+""+index,
     }
-    
+    let input =  frappe.ui.form.make_control({
+        parent: $(el).find(parent_class),
+        df:df,
+        doc: sample_doc.value,
+        render_input: true,
+    });
+
+    $(el).find(".control-label").remove();
+    input.set_value(val)
+    input.refresh()
+    input['df']['onchange'] = ()=>{
+        let input_value = input.get_value()
+        items.value[0].items[index]['work_order_qty'][key] = input_value;
+        update_total()
+    }
+    return input
 }
 
 function update_total(){

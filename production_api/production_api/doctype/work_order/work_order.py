@@ -104,6 +104,27 @@ class WorkOrder(Document):
         if len(self.receivables) == 0:
             frappe.throw("There is no receivables on the Work Order")
 
+        if self.production_detail:
+            approval_status = frappe.db.get_value(
+                "Item Production Detail", self.production_detail, "approval_status")
+            if approval_status == "Not Approved":
+                frappe.throw("Item Production Detail is not Approved. Please get it approved before submitting the Work Order.")
+            elif approval_status == "Cutting Approved":
+                cutting_process = frappe.db.get_value(
+                    "Item Production Detail", self.production_detail, "cutting_process")
+                is_cutting = False
+                if cutting_process:
+                    if frappe.db.get_value("Process", self.process_name, "is_group"):
+                        process_doc = frappe.get_doc("Process", self.process_name)
+                        for row in process_doc.process_details:
+                            if row.process_name == cutting_process:
+                                is_cutting = True
+                                break
+                    else:
+                        is_cutting = self.process_name == cutting_process
+                if not is_cutting:
+                    frappe.throw("Item Production Detail is only approved for Cutting. Full approval is required for other processes.")
+
         finishing_wo = frappe.get_all("Work Order", filters={
             "docstatus": 1,
             "includes_packing": 1,
