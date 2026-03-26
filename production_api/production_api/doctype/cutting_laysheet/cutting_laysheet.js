@@ -158,6 +158,14 @@ frappe.ui.form.on("Cutting LaySheet", {
             }
             if(frm.doc.cutting_laysheet_bundles.length > 0 && frm.doc.status == "Bundles Generated" ){
                 frm.add_custom_button("Print Labels", ()=> {
+                    if (frm.doc.goods_received_note) {
+                        frappe.msgprint({
+                            title: __("Cannot Print Labels"),
+                            message: __("A Goods Received Note ({0}) has already been created against this Cutting LaySheet.", [frm.doc.goods_received_note]),
+                            indicator: "red"
+                        });
+                        return;
+                    }
                     frappe.call({
                         method: "frappe.client.get_value",
                         args: {
