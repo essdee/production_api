@@ -1,14 +1,14 @@
 // Copyright (c) 2026, Essdee and contributors
 // For license information, please see license.txt
 
-frappe.ui.form.on("Cutting Laysheet Plan", {
+frappe.ui.form.on("Cutting Laysheet Planner", {
 	refresh(frm) {
 		// Optimize button
 		if (frm.doc.order_details && frm.doc.order_details.length > 0
 			&& frm.doc.max_plies && frm.doc.max_pieces && !frm.is_new()) {
 			frm.add_custom_button(__("Optimize"), () => {
 				frappe.call({
-					method: "production_api.production_api.doctype.cutting_laysheet_plan.cutting_laysheet_plan.optimize",
+					method: "production_api.production_api.doctype.cutting_laysheet_planner.cutting_laysheet_planner.optimize",
 					args: { doc_name: frm.doc.name },
 					freeze: true,
 					freeze_message: __("Running all strategies..."),

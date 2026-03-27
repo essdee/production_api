@@ -5,14 +5,14 @@ import json
 import frappe
 from frappe.model.document import Document
 
-class CuttingLaysheetPlan(Document):
+class CuttingLaysheetPlanner(Document):
 	pass
 
 @frappe.whitelist()
 def optimize(doc_name):
 	from production_api.production_api.utils.lay_optimizer import optimize_all_strategies
 
-	doc = frappe.get_doc("Cutting Laysheet Plan", doc_name)
+	doc = frappe.get_doc("Cutting Laysheet Planner", doc_name)
 
 	if not doc.order_details or len(doc.order_details) == 0:
 		frappe.throw("Please add order details (size and quantity) before optimizing.")
@@ -85,7 +85,7 @@ def optimize(doc_name):
 
 @frappe.whitelist()
 def select_strategy(doc_name, strategy):
-	doc = frappe.get_doc("Cutting Laysheet Plan", doc_name)
+	doc = frappe.get_doc("Cutting Laysheet Planner", doc_name)
 
 	if not doc.result_json:
 		frappe.throw("No optimization results found. Please run Optimize first.")

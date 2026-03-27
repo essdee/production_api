@@ -196,7 +196,7 @@
  "modified": "2026-03-26 12:00:00.000000",
  "modified_by": "Administrator",
  "module": "Production Api",
- "name": "Cutting Laysheet Plan",
+ "name": "Cutting Laysheet Planner",
  "naming_rule": "Expression",
  "owner": "Administrator",
  "permissions": [

@@ -1259,7 +1259,7 @@ frappe.production.ui.ProcessPending = class {
     }
 }
 
-// Cutting Laysheet Plan
+// Cutting Laysheet Planner
 frappe.production.ui.LayPlanResult = class {
     constructor(wrapper) {
         this.$wrapper = $(wrapper)
