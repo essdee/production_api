@@ -55,9 +55,8 @@ def optimize(doc_name):
 				"cut_per_size": json.dumps(lay["cut_per_size"]),
 			})
 
-	# Set the first (best) strategy as selected
+	# Use the first (best) strategy for the document summary
 	best = results[0]
-	doc.selected_strategy = best["strategy"]
 	summary = best["summary"]
 	doc.total_lays = summary["total_lays"]
 	doc.total_cut = summary["total_cut"]
@@ -92,16 +91,24 @@ def select_strategy(doc_name, strategy):
 		frappe.throw("No optimization results found. Please run Optimize first.")
 
 	stored = json.loads(doc.result_json)
-	# Support both old format (list) and new format (dict with results/failed)
-	if isinstance(stored, list):
-		results = stored
-	else:
-		results = stored.get("results", [])
+	results = stored.get("results", [])
+	failed = stored.get("failed", [])
+	
 	selected = None
+	# First check in results
 	for r in results:
 		if r["strategy"] == strategy:
 			selected = r
 			break
+	
+	# If not found, check if it's a deduplicated strategy in 'failed'
+	if not selected:
+		for f in failed:
+			if f["strategy"] == strategy and f.get("deduplicated"):
+				# Resolve to the original plan
+				same_as = f.get("same_as")
+				selected = next((r for r in results if r["strategy"] == same_as), None)
+				break
 
 	if not selected:
 		frappe.throw(f"Strategy '{strategy}' not found in results.")

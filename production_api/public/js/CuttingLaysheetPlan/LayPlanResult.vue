@@ -28,32 +28,30 @@
             <div class="strategy-sidebar">
                 <div class="section-label">Select Strategy</div>
                 <div class="strategy-list">
-                    <div v-for="r in results" :key="r.strategy" 
+                    <div v-for="r in allResults" :key="r.strategy" 
                         class="strategy-card"
-                        :class="{ 'active': r.strategy === selectedStrategy }"
-                        @click="selectStrategy(r.strategy)">
-                        <div class="strategy-icon" :class="r.strategy">
+                        :class="{ 
+                            'active': r.strategy === selectedStrategy,
+                            'disabled': !r.success,
+                            'duplicate': r.deduplicated 
+                        }"
+                        @click="r.success && selectStrategy(r.strategy)">
+                        <div class="strategy-icon" :class="[r.strategy, { 'gray': !r.success }]">
                             <i :class="getStrategyIcon(r.strategy)"></i>
                         </div>
                         <div class="strategy-info">
-                            <div class="strategy-title">{{ formatStrategyName(r.strategy) }}</div>
-                            <div class="strategy-meta">{{ r.summary.total_lays }} Lays | {{ r.summary.overcut_pct }}% Dev</div>
-                        </div>
-                        <div v-if="r.strategy === selectedStrategy" class="active-indicator"></div>
-                    </div>
-                    
-                    <!-- Failed/Deduplicated -->
-                    <div v-for="f in failed" :key="f.strategy" class="strategy-card disabled">
-                         <div class="strategy-icon gray">
-                            <i class="fa fa-ban"></i>
-                        </div>
-                        <div class="strategy-info">
-                            <div class="strategy-title italic">{{ formatStrategyName(f.strategy) }}</div>
-                            <div class="strategy-meta">
-                                <template v-if="f.deduplicated">Duplicate of {{ formatStrategyName(f.same_as) }}</template>
-                                <template v-else>Infeasible</template>
+                            <div class="strategy-title">
+                                {{ formatStrategyName(r.strategy) }}
+                                <span v-if="r.deduplicated" class="badge-duplicate">Same Plan</span>
+                            </div>
+                            <div v-if="r.success" class="strategy-meta">
+                                {{ r.summary.total_lays }} Lays | {{ r.summary.overcut_pct }}% Dev
+                            </div>
+                            <div v-else class="strategy-meta text-danger">
+                                {{ r.error || 'No feasible plan' }}
                             </div>
                         </div>
+                        <div v-if="r.strategy === selectedStrategy" class="active-indicator"></div>
                     </div>
                 </div>
             </div>
@@ -195,7 +193,21 @@ const failed = ref([])
 const selectedStrategy = ref('')
 const params = ref({})
 
-const hasData = computed(() => results.value.length > 0)
+const hasData = computed(() => results.value.length > 0 || failed.value.length > 0)
+
+const allResults = computed(() => {
+    // Merge results and deduplicated ones, keep true failures at end
+    const successful = [...results.value]
+    const deduplicated = failed.value.filter(f => f.deduplicated)
+    const infeasible = failed.value.filter(f => !f.deduplicated)
+    
+    // Sort logically (usually how they come from Python)
+    const all = [...successful, ...deduplicated, ...infeasible]
+    
+    // Re-order by standard strategy names
+    const order = ['min_lays', 'min_overcut', 'balanced', 'max_density', 'single_ratio']
+    return all.sort((a, b) => order.indexOf(a.strategy) - order.indexOf(b.strategy))
+})
 
 const sizes = computed(() => {
     if (!results.value.length) return []
@@ -208,7 +220,17 @@ const totalOrder = computed(() => {
 })
 
 const selectedResult = computed(() => {
-    return results.value.find(r => r.strategy === selectedStrategy.value) || null
+    // If selected belongs to results, easy. 
+    const found = results.value.find(r => r.strategy === selectedStrategy.value)
+    if (found) return found
+    
+    // If selected is a duplicate, find the plan it refers to
+    const dup = failed.value.find(f => f.strategy === selectedStrategy.value && f.deduplicated)
+    if (dup && dup.same_as) {
+        return results.value.find(r => r.strategy === dup.same_as) || null
+    }
+    
+    return null
 })
 
 const selectedLays = computed(() => {
@@ -273,22 +295,7 @@ function deviationCardClass(ps) {
 function selectStrategy(strategy) {
     if (strategy === selectedStrategy.value) return
     selectedStrategy.value = strategy
-    if (window.cur_frm) {
-        frappe.call({
-            method: "production_api.production_api.doctype.cutting_laysheet_plan.cutting_laysheet_plan.select_strategy",
-            args: {
-                doc_name: cur_frm.doc.name,
-                strategy: strategy
-            },
-            freeze: true,
-            freeze_message: __(\"Switching strategy...\"),
-            callback: function(r) {
-                if (r.message) {
-                    cur_frm.reload_doc()
-                }
-            }
-        })
-    }
+    // We no longer emit to parent via frappe call as per request
 }
 
 defineExpose({
@@ -311,20 +318,13 @@ defineExpose({
 
 /* Header */
 .dashboard-header {
-    background: linear-gradient(135deg, #1a2a6c, #b21f1f, #fdbb2d);
-    background-size: 200% 200%;
-    animation: gradientMove 15s ease infinite;
-    color: white;
+    background: #ffffff;
+    color: #1a202c;
     padding: 24px;
     border-radius: 12px;
     margin-bottom: 24px;
-    box-shadow: 0 10px 25px rgba(0,0,0,0.1);
-}
-
-@keyframes gradientMove {
-    0% { background-position: 0% 50%; }
-    50% { background-position: 100% 50%; }
-    100% { background-position: 0% 50%; }
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.05);
 }
 
 .header-main {
@@ -335,14 +335,15 @@ defineExpose({
 
 .header-title h1 {
     margin: 0;
-    font-size: 28px;
+    font-size: 24px;
     font-weight: 800;
     letter-spacing: -0.5px;
+    color: #1a202c;
 }
 
 .header-title p {
     margin: 4px 0 0;
-    opacity: 0.9;
+    color: #718096;
     font-weight: 500;
 }
 
@@ -353,11 +354,10 @@ defineExpose({
 }
 
 .stat-card {
-    background: rgba(255, 255, 255, 0.15);
-    backdrop-filter: blur(8px);
+    background: #f8fafc;
     padding: 10px 18px;
     border-radius: 10px;
-    border: 1px solid rgba(255, 255, 255, 0.2);
+    border: 1px solid #e2e8f0;
     text-align: center;
 }
 
@@ -474,6 +474,18 @@ defineExpose({
     font-weight: 700;
     font-size: 14px;
     color: #2d3748;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.badge-duplicate {
+    font-size: 9px;
+    background: #e2e8f0;
+    color: #4a5568;
+    padding: 1px 6px;
+    border-radius: 4px;
+    text-transform: uppercase;
 }
 
 .strategy-meta {

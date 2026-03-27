@@ -12,7 +12,7 @@ frappe.ui.form.on("Cutting Laysheet Plan", {
 					args: { doc_name: frm.doc.name },
 					freeze: true,
 					freeze_message: __("Running all strategies..."),
-					callback: function(r) {
+					callback: function (r) {
 						if (r.message) {
 							frm.reload_doc();
 						}
@@ -34,15 +34,16 @@ frappe.ui.form.on("Cutting Laysheet Plan", {
 			if (frm.doc.selected_strategy) {
 				frm.lay_plan_result.set_selected(frm.doc.selected_strategy);
 			}
-			
+
 			// Hide the redundant fields if we have the pretty view
 			frm.set_df_property('per_size_section', 'hidden', 1);
 			frm.set_df_property('lay_details_section', 'hidden', 1);
 			frm.set_df_property('result_section', 'hidden', 1);
+			frm.set_df_property('selected_strategy', 'hidden', 1);
 		} else {
 			// Clear component if no results
 			frm.lay_plan_result.load_data({ results: [], failed: [] });
-			
+
 			// Show input sections
 			frm.set_df_property('per_size_section', 'hidden', 0);
 			frm.set_df_property('lay_details_section', 'hidden', 0);
