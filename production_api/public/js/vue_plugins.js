@@ -114,6 +114,7 @@ import {
     ProductMeasurementImageWrapper,
 } from "./ProductDevelopment"
 
+import LayPlanResult from "./CuttingLaysheetPlan/LayPlanResult.vue";
 import EventBus from "./bus.js";
 
 import { EditBOMAttributeMappingWrapper, BOMAttributeMappingWrapper } from "./ItemBOM";
@@ -1255,5 +1256,24 @@ frappe.production.ui.ProcessPending = class {
         this.app = createApp(ProcessPending)
         SetVueGlobals(this.app)
         this.vue = this.app.mount(this.$wrapper.get(0))
+    }
+}
+
+// Cutting Laysheet Plan
+frappe.production.ui.LayPlanResult = class {
+    constructor(wrapper) {
+        this.$wrapper = $(wrapper)
+        this.make_app()
+    }
+    make_app() {
+        this.app = createApp(LayPlanResult)
+        SetVueGlobals(this.app)
+        this.vue = this.app.mount(this.$wrapper.get(0))
+    }
+    load_data(data) {
+        this.vue.load_data(data)
+    }
+    set_selected(strategy) {
+        this.vue.set_selected(strategy)
     }
 }

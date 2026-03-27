@@ -1,0 +1,241 @@
+{
+ "actions": [],
+ "autoname": "CLP-.YYYY.-.#####",
+ "creation": "2026-03-26 12:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "input_section",
+  "max_plies",
+  "max_pieces",
+  "column_break_input",
+  "tolerance_pct",
+  "max_lays",
+  "tubular",
+  "order_section",
+  "order_details",
+  "result_section",
+  "lay_plan_html",
+  "details_section",
+  "total_lays",
+  "total_order",
+  "total_cut",
+  "column_break_result",
+  "overcut",
+  "overcut_pct",
+  "undercut",
+  "undercut_pct",
+  "selected_strategy",
+  "lay_details_section",
+  "lay_details",
+  "result_json"
+ ],
+ "fields": [
+  {
+   "fieldname": "input_section",
+   "fieldtype": "Section Break",
+   "label": "Input Parameters"
+  },
+  {
+   "fieldname": "max_plies",
+   "fieldtype": "Int",
+   "label": "Maximum Plies",
+   "reqd": 1,
+   "non_negative": 1
+  },
+  {
+   "fieldname": "max_pieces",
+   "fieldtype": "Int",
+   "label": "Maximum Pieces Per Marker",
+   "reqd": 1,
+   "non_negative": 1
+  },
+  {
+   "fieldname": "column_break_input",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "3",
+   "fieldname": "tolerance_pct",
+   "fieldtype": "Float",
+   "label": "Tolerance %",
+   "non_negative": 1
+  },
+  {
+   "fieldname": "max_lays",
+   "fieldtype": "Int",
+   "label": "Maximum Lays",
+   "default": "8",
+   "non_negative": 1
+  },
+  {
+   "fieldname": "tubular",
+   "fieldtype": "Check",
+   "label": "Tubular Fabric",
+   "default": "0",
+   "description": "Force all ply counts to even numbers (tubular fabric = folded pairs)"
+  },
+  {
+   "fieldname": "selected_strategy",
+   "fieldtype": "Select",
+   "label": "Selected Strategy",
+   "options": "\nmin_lays\nmin_overcut\nbalanced\nmax_density\nsingle_ratio",
+   "read_only": 1,
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "order_section",
+   "fieldtype": "Section Break",
+   "label": "Order Details (Size wise Quantity)"
+  },
+  {
+   "fieldname": "order_details",
+   "fieldtype": "Table",
+   "label": "Order Details",
+   "options": "Cutting Laysheet Plan Order",
+   "reqd": 1
+  },
+  {
+   "fieldname": "result_section",
+   "fieldtype": "Section Break",
+   "label": "Optimization Summary",
+   "depends_on": "eval:doc.total_lays"
+  },
+  {
+   "fieldname": "total_lays",
+   "fieldtype": "Int",
+   "label": "Total Lays",
+   "read_only": 1
+  },
+  {
+   "fieldname": "total_order",
+   "fieldtype": "Int",
+   "label": "Total Order Qty",
+   "read_only": 1
+  },
+  {
+   "fieldname": "total_cut",
+   "fieldtype": "Int",
+   "label": "Total Cut Qty",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_result",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "overcut",
+   "fieldtype": "Int",
+   "label": "Overcut",
+   "read_only": 1
+  },
+  {
+   "fieldname": "overcut_pct",
+   "fieldtype": "Float",
+   "label": "Overcut %",
+   "read_only": 1,
+   "precision": "1"
+  },
+  {
+   "fieldname": "undercut",
+   "fieldtype": "Int",
+   "label": "Undercut",
+   "read_only": 1
+  },
+  {
+   "fieldname": "undercut_pct",
+   "fieldtype": "Float",
+   "label": "Undercut %",
+   "read_only": 1,
+   "precision": "1"
+  },
+  {
+   "fieldname": "lay_details_section",
+   "fieldtype": "Section Break",
+   "label": "Lay Plan",
+   "depends_on": "eval:doc.total_lays"
+  },
+  {
+   "fieldname": "lay_details",
+   "fieldtype": "Table",
+   "label": "Lay Details",
+   "options": "Cutting Laysheet Plan Detail",
+   "read_only": 1
+  },
+  {
+   "fieldname": "per_size_section",
+   "fieldtype": "Section Break",
+   "label": "Per Size Deviation",
+   "depends_on": "eval:doc.total_lays"
+  },
+  {
+   "fieldname": "per_size_html",
+   "fieldtype": "HTML",
+   "label": "Per Size Deviation"
+  },
+  {
+   "fieldname": "all_strategies_section",
+   "fieldtype": "Section Break",
+   "label": "All Strategies Comparison",
+   "depends_on": "eval:doc.total_lays"
+  },
+  {
+   "fieldname": "all_strategies_html",
+   "fieldtype": "HTML",
+   "label": "All Strategies"
+  },
+  {
+   "fieldname": "result_json",
+   "fieldtype": "JSON",
+   "hidden": 1,
+   "label": "Result JSON"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-03-26 12:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Production Api",
+ "name": "Cutting Laysheet Plan",
+ "naming_rule": "Expression",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Stock User",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Transaction User",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}
