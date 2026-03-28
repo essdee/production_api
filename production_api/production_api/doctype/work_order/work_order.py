@@ -2164,6 +2164,7 @@ def create_finishing_detail(work_order, from_finishing=False):
             "cutting_qty": 0,
             "accepted_qty": 0,
             "rework_qty": 0,
+            "rejected_qty": 0,
         })
     finishing_inward_process = frappe.db.get_single_value(
         "MRP Settings", "finishing_inward_process")
@@ -2276,7 +2277,7 @@ def create_finishing_detail(work_order, from_finishing=False):
             "dc_qty": 0,
             "return_qty": 0,
             "pack_return_qty": 0,
-            "rejected_qty": items[key]['rejected_qty'],
+            "rejected_qty": items[key].get('rejected_qty', 0),
         })
 
     from production_api.production_api.doctype.goods_received_note.goods_received_note import get_primary_values
