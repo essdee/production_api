@@ -251,7 +251,7 @@ class WorkOrder(Document):
             return
 
         # Skip if BSPs already exist for this lot
-        existing_bsp = frappe.db.exists("Box Sticker Print", {"lot": self.lot})
+        existing_bsp = frappe.db.exists("Box Sticker Print", {"lot": self.lot, "docstatus": 1})
         if existing_bsp:
             return
 
