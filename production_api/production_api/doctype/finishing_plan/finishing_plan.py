@@ -1995,6 +1995,7 @@ def get_finishing_dispatch_report(from_date, to_date, lot_list=None, item_list=N
 		"against": "Work Order",
 		"includes_packing": 1,
 		"docstatus": 1,
+		"is_return": 0,
 		"posting_date": ["between", [from_date, to_date]],
 	}, fields=["name", "lot"])
 
