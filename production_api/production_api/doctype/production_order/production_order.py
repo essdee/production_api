@@ -35,12 +35,36 @@ class ProductionOrder(Document):
 			
 	def onload(self):
 		order_qty = get_order_qty(self.production_order_details)
-		self.set_onload("items", order_qty)		
+		self.set_onload("items", order_qty)
 		ordered_detail = get_ordered_details(self.production_ordered_details)
 		self.set_onload("ordered_details", {
 			"items": order_qty,
 			"ordered": ordered_detail
 		})
+		if self.docstatus == 1:
+			price_requests = frappe.get_all(
+				"PPO Price Request",
+				filters={"production_order": self.name},
+				fields=["name", "status", "requested_by", "requested_at", "approved_by", "approved_at"],
+				order_by="creation desc",
+				limit=20
+			)
+			self.set_onload("price_requests", price_requests)
+
+			pending_name = frappe.db.get_value("PPO Price Request", {
+				"production_order": self.name, "status": "Pending"
+			})
+			if pending_name:
+				if self.price_approval_status != "Pending Approval":
+					self.db_set("price_approval_status", "Pending Approval", update_modified=False)
+					self.price_approval_status = "Pending Approval"
+				pending_doc = frappe.get_doc("PPO Price Request", pending_name)
+				self.set_onload("pending_price_request", {
+					"name": pending_doc.name,
+					"requested_by": pending_doc.requested_by,
+					"requested_at": str(pending_doc.requested_at),
+					"details": [row.as_dict() for row in pending_doc.price_details]
+				})
 
 	def before_validate(self):
 		if self.is_new():
@@ -128,9 +152,56 @@ def get_production_order_details(production_order):
 
 @frappe.whitelist()
 def update_price(production_order, item_details):
+	from frappe.utils import flt
 	doc = frappe.get_doc("Production Order", production_order)
 	item_details = update_if_string_instance(item_details)
 	primary = frappe.get_value("Item", doc.item, "primary_attribute")
+
+	# Build old prices map and check for actual changes
+	old_prices = {}
+	has_changes = False
+	for size in item_details:
+		for row in doc.production_order_details:
+			attrs = get_variant_attr_details(row.item_variant)
+			if attrs[primary] == size:
+				old_prices[size] = {
+					"mrp": flt(row.mrp),
+					"wholesale": flt(row.wholesale_price),
+					"retail": flt(row.retail_price),
+				}
+				if (flt(row.mrp) != flt(item_details[size]['mrp']) or
+					flt(row.wholesale_price) != flt(item_details[size]['wholesale']) or
+					flt(row.retail_price) != flt(item_details[size]['retail'])):
+					has_changes = True
+				break
+
+	if not has_changes:
+		return {"status": "no_change"}
+
+	# Check if any BSP exists for linked Lots
+	lots = frappe.get_all("Lot", filters={"production_order": production_order}, pluck="name")
+	has_bsp = False
+	if lots:
+		has_bsp = frappe.db.exists("Box Sticker Print", {"lot": ["in", lots], "docstatus": 1})
+
+	if not has_bsp:
+		# Auto-approve: update directly
+		_apply_prices_to_ppo(doc, item_details, primary)
+		_create_ppo_price_request(production_order, old_prices, item_details, auto_approved=True)
+		return {"status": "approved"}
+	else:
+		# Needs System Manager approval
+		pending = frappe.db.exists("PPO Price Request", {
+			"production_order": production_order, "status": "Pending"
+		})
+		if pending:
+			frappe.throw("A price change request is already pending approval for this Production Order")
+		_create_ppo_price_request(production_order, old_prices, item_details, auto_approved=False)
+		doc.db_set("price_approval_status", "Pending Approval", update_modified=False)
+		return {"status": "pending_approval"}
+
+
+def _apply_prices_to_ppo(doc, item_details, primary):
 	for size in item_details:
 		for row in doc.production_order_details:
 			attrs = get_variant_attr_details(row.item_variant)
@@ -140,6 +211,35 @@ def update_price(production_order, item_details):
 				row.retail_price = item_details[size]['retail']
 				break
 	doc.save(ignore_permissions=True)
+
+
+def _create_ppo_price_request(production_order, old_prices, new_prices, auto_approved=False):
+	from frappe.utils import flt
+	price_details = []
+	for size in new_prices:
+		old = old_prices.get(size, {})
+		price_details.append({
+			"size": size,
+			"old_mrp": flt(old.get("mrp")),
+			"new_mrp": flt(new_prices[size]['mrp']),
+			"old_wholesale_price": flt(old.get("wholesale")),
+			"new_wholesale_price": flt(new_prices[size]['wholesale']),
+			"old_retail_price": flt(old.get("retail")),
+			"new_retail_price": flt(new_prices[size]['retail']),
+		})
+
+	request = frappe.new_doc("PPO Price Request")
+	request.production_order = production_order
+	request.requested_by = frappe.session.user
+	request.requested_at = frappe.utils.now_datetime()
+	if auto_approved:
+		request.status = "Approved"
+		request.approved_by = frappe.session.user
+		request.approved_at = frappe.utils.now_datetime()
+	else:
+		request.status = "Pending"
+	request.set("price_details", price_details)
+	request.insert(ignore_permissions=True)
 
 @frappe.whitelist()
 def create_lot(production_order, lot_name):

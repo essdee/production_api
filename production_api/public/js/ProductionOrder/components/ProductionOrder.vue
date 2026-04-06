@@ -28,7 +28,7 @@
                         <td></td>
                     </tr>
                     <tr>
-                        <td>Wholesale Price</td>
+                        <td>Wholesale Price(Piece)</td>
                         <td v-for="(value, index) in primary_values" :key="index">
                             <input type="number" v-model="box_qty[value]['wholesale']" 
                                 @blur="make_dirty()" :disabled="disables" class="styled-input" />
@@ -36,7 +36,7 @@
                         <td></td>
                     </tr>
                     <tr>
-                        <td>Retail Price</td>
+                        <td>Retail Price(Piece)</td>
                         <td v-for="(value, index) in primary_values" :key="index">
                             <input type="number" v-model="box_qty[value]['retail']" 
                                 @blur="make_dirty()" :disabled="disables" class="styled-input" />
@@ -44,7 +44,7 @@
                         <td></td>
                     </tr>
                     <tr>
-                        <td>MRP</td>
+                        <td>MRP(Piece)</td>
                         <td v-for="(value, index) in primary_values" :key="index">
                             <input type="number" v-model="box_qty[value]['mrp']" 
                                 @blur="make_dirty()" :disabled="disables" class="styled-input" />

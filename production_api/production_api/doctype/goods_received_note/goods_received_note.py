@@ -279,9 +279,10 @@ class GoodsReceivedNote(Document):
                     elif self.cut_panel_movement:
                         cpm_doc = frappe.get_doc(
                             "Cut Panel Movement", self.cut_panel_movement)
-                        cpm_doc.against = self.doctype
-                        cpm_doc.against_id = self.name
-                        cpm_doc.save(ignore_permissions=True)
+                        if not self.is_return:
+                            cpm_doc.against = self.doctype
+                            cpm_doc.against_id = self.name
+                            cpm_doc.save(ignore_permissions=True)
                         from_warehouse = self.supplier
                         to_warehouse = self.get_to_warehouse()
 

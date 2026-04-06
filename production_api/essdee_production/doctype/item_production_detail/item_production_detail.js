@@ -162,6 +162,54 @@ frappe.ui.form.on("Item Production Detail", {
 	refresh: async function(frm) {
 		frm.trigger('declarations')
 		frm.trigger('onload_post_render')
+		if (!frm.is_new() && frm.doc.approval_status !== "Approved") {
+			frappe.xcall("frappe.client.get_value", {
+				doctype: "MRP Settings",
+				fieldname: ["senior_merch_role", "merchandising_manager_role"]
+			}).then(settings => {
+				let allowed = [settings.senior_merch_role, settings.merchandising_manager_role].filter(Boolean);
+				if (allowed.some(role => frappe.user_roles.includes(role))) {
+					if (frm.doc.approval_status === "Not Approved") {
+						frm.add_custom_button(__("Approve for Cutting"), () => {
+							frappe.call({
+								method: "production_api.essdee_production.doctype.item_production_detail.item_production_detail.approve_ipd",
+								args: { doc_name: frm.doc.name, approval_type: "Cutting Approved" },
+								callback: function () {
+									frappe.show_alert({ message: __("Approved for Cutting"), indicator: "blue" });
+									frm.reload_doc();
+								}
+							});
+						});
+					}
+					frm.add_custom_button(__("Approve"), () => {
+						frappe.call({
+							method: "production_api.essdee_production.doctype.item_production_detail.item_production_detail.approve_ipd",
+							args: { doc_name: frm.doc.name, approval_type: "Approved" },
+							callback: function () {
+								frappe.show_alert({ message: __("Item Production Detail Approved"), indicator: "green" });
+								frm.reload_doc();
+							}
+						});
+					});
+					frm.change_custom_button_type(__("Approve"), null, "success");
+				}
+			});
+		}
+		if (!frm.is_new() && frm.doc.approval_status !== "Not Approved" && frappe.user_roles.includes("System Manager")) {
+			frm.add_custom_button(__("Revert Approval"), () => {
+				frappe.confirm(__("Revert approval status to Not Approved?"), () => {
+					frappe.call({
+						method: "production_api.essdee_production.doctype.item_production_detail.item_production_detail.revert_ipd_approval",
+						args: { doc_name: frm.doc.name },
+						callback: function () {
+							frappe.show_alert({ message: __("Approval Reverted"), indicator: "orange" });
+							frm.reload_doc();
+						}
+					});
+				});
+			});
+			frm.change_custom_button_type(__("Revert Approval"), null, "danger");
+		}
 		$(frm.fields_dict['item_attribute_list_values_html'].wrapper).html("");
 		$(frm.fields_dict['dependent_attribute_details_html'].wrapper).html("");
 		$(frm.fields_dict['bom_attribute_mapping_html'].wrapper).html("");
@@ -263,6 +311,62 @@ frappe.ui.form.on("Item Production Detail", {
 		}
 		else{
 			frm.set_df_property('get_cutting_combination','hidden',false);
+		}
+
+		// Lock form when Approved
+		if (!frm.is_new() && frm.doc.approval_status === "Approved") {
+			// Disable all Vue component HTML wrappers
+			let html_fields = [
+				"item_attribute_list_values_html", "dependent_attribute_details_html",
+				"bom_attribute_mapping_html", "set_items_html", "stiching_items_html",
+				"cutting_items_html", "cutting_cloths_html", "cloth_accessories_html",
+				"stiching_accessory_html", "accessory_clothtype_combination_html",
+				"emblishment_details_html", "select_attributes_html",
+				"select_cloths_attribute_html", "select_cloth_accessory_html",
+				"bundle_group_html"
+			];
+			html_fields.forEach(f => {
+				if (frm.fields_dict[f]) {
+					$(frm.fields_dict[f].wrapper).css({
+						"pointer-events": "none",
+						"opacity": "0.7"
+					});
+				}
+			});
+
+			// Make all child tables read-only
+			let tables = [
+				"item_attributes", "item_bom", "packing_attribute_details",
+				"stiching_item_details", "cloth_detail", "ipd_processes",
+				"cutting_marker_groups"
+			];
+			tables.forEach(t => {
+				frm.set_df_property(t, "read_only", 1);
+			});
+
+			// Hide all button fields
+			let buttons = [
+				"get_packing_attribute_values", "get_set_item_combination",
+				"get_stiching_item_combination", "get_cutting_combination",
+				"update_cloth_items", "get_cloth_combination",
+				"get_stiching_attribute_values", "get_accessory_combination",
+				"get_stiching_accessory_combination"
+			];
+			buttons.forEach(b => {
+				frm.set_df_property(b, "hidden", 1);
+			});
+
+			// Make key fields read-only
+			let fields = [
+				"item", "packing_combo", "packing_attribute_no",
+				"primary_item_attribute", "dependent_attribute",
+				"stiching_major_attribute_value", "major_attribute_value",
+				"packing_attribute", "stiching_attribute", "set_item_attribute",
+				"is_set_item", "is_same_packing_attribute", "auto_calculate"
+			];
+			fields.forEach(f => {
+				frm.set_df_property(f, "read_only", 1);
+			});
 		}
 	},
 	make_hide_and_unhide_tabs(frm){

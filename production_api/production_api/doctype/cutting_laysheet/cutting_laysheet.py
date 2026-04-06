@@ -789,6 +789,11 @@ def get_cloth_accessories(cutting_plan=None, cutting_order=None):
 
 @frappe.whitelist()
 def print_labels(print_items, lay_no, doc_name, print_order, cutting_plan=None, cutting_order=None):
+	# Block printing if a Goods Received Note already exists
+	grn = frappe.db.get_value("Goods Received Note", {"cutting_laysheet": doc_name, "docstatus": ["!=", 2]})
+	if grn:
+		frappe.throw(f"A Goods Received Note ({grn}) has already been created against this Cutting LaySheet.")
+
 	# Validate grammage approval if weight difference exceeds tolerance
 	cls = frappe.get_doc("Cutting LaySheet", doc_name)
 	settings = frappe.get_single("MRP Settings")

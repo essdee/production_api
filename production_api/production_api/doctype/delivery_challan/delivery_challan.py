@@ -8,7 +8,7 @@ from itertools import groupby
 from datetime import datetime
 from itertools import zip_longest
 from frappe.model.document import Document
-from frappe.utils import flt, nowdate, now, getdate
+from frappe.utils import flt, nowdate, now, nowtime, getdate
 from production_api.mrp_stock.utils import get_stock_balance
 from production_api.production_api.logger import get_module_logger
 from production_api.utils import (
@@ -1104,6 +1104,10 @@ def get_return_delivery_items(doc_name):
 def create_bundle_return_grn(doc_name, cpm, work_order):
     from production_api.production_api.doctype.cut_panel_movement.cut_panel_movement import create_goods_received_note
     items = create_goods_received_note(cpm, work_order, return_items=True)
+    # Use CPM-specific quantity, not WO receivable total
+    for item in items:
+        if item.get('delivered_quantity'):
+            item['quantity'] = item['delivered_quantity']
     dc_doc = frappe.get_doc("Delivery Challan", doc_name)
     new_doc = frappe.new_doc("Goods Received Note")
     new_doc.update({
@@ -1114,7 +1118,7 @@ def create_bundle_return_grn(doc_name, cpm, work_order):
         "lot": dc_doc.lot,
         "process_name": dc_doc.process_name,
         "posting_date": nowdate(),
-        "posting_time": now(),
+        "posting_time": nowtime(),
         "delivery_date": nowdate(),
         "is_internal_unit": 0,
         "is_manual_entry": 0,
@@ -1169,7 +1173,7 @@ def create_return_grn(doc_name, items, received_type):
         "lot": dc_doc.lot,
         "process_name": dc_doc.process_name,
         "posting_date": nowdate(),
-        "posting_time": now(),
+        "posting_time": nowtime(),
         "delivery_date": nowdate(),
         "is_internal_unit": 0,
         "is_manual_entry": 0,

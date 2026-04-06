@@ -578,6 +578,11 @@ def get_ocr_details(doc):
 		ocr_data[part_value]['total'][size]['loose_piece_set'] += row.pack_return_qty
 		ocr_data[part_value]['loose_piece_set'] += row.pack_return_qty
 
+		ocr_data[part_value]['data'][colour]['values'][size]['rejected'] += row.rejected_qty
+		ocr_data[part_value]['data'][colour]['colour_total']['rejected'] += row.rejected_qty
+		ocr_data[part_value]['total'][size]['rejected'] += row.rejected_qty
+		ocr_data[part_value]['rejected'] += row.rejected_qty
+
 	part_value = ["Item"]
 	if is_set_item:
 		part_value = get_part_value(set_attr, ipd)
@@ -1299,6 +1304,7 @@ def fetch_quantity(doc_name):
 			"pack_return_qty": 0,
 			"return_dc_qty": 0,
 			"pack_dc_qty": 0,
+			"rejected_qty": 0,
 		})
 	finishing_inward_process = frappe.db.get_single_value("MRP Settings", "finishing_inward_process")
 	if not finishing_inward_process:
@@ -1319,25 +1325,21 @@ def fetch_quantity(doc_name):
 						finishing_items[key]['received_types'][ty] = 0
 					if ty == default_type:
 						finishing_items[key]['accepted_qty'] += received_types[ty]
-					if ty not in [default_type, default_rejected]:
+					elif ty == default_rejected:
+						finishing_items[key]['rejected_qty'] += received_types[ty]
+					elif ty not in [default_type, default_rejected]:
 						finishing_items[key]['rework_qty'] += received_types[ty]	
 
 					finishing_items[key]['received_types'][ty] += received_types[ty]	
 
-	lot_doc = frappe.get_doc("Lot", doc.lot)
-	# wo_list = frappe.get_all("Work Order", filters={
-	# 	"docstatus": 1,
-	# 	"lot": wo_doc.lot,
-	# 	"process_name": "Cutting",
-	# }, pluck="name")	
-	for row in lot_doc.lot_order_details:
-	# for wo in wo_list:
-		# cut_wo_doc = frappe.get_doc("Work Order", wo)
-		# for row in cut_wo_doc.work_order_calculated_items:
-			# if row.quantity > 0:
-		set_comb = update_if_string_instance(row.set_combination)
-		key = (row.item_variant, tuple(sorted(set_comb.items())))
-		finishing_items[key]['cutting_qty'] += row.cut_qty
+	cut_wo_list = get_process_wo_list("Cutting", doc.lot)
+	for wo in cut_wo_list:
+		cut_wo_doc = frappe.get_doc("Work Order", wo)
+		for row in cut_wo_doc.work_order_calculated_items:
+			if row.received_qty > 0:
+				set_comb = update_if_string_instance(row.set_combination)
+				key = (row.item_variant, tuple(sorted(set_comb.items())))
+				finishing_items[key]['cutting_qty'] += row.received_qty
 
 	finishing_rework_items = {}
 	rework_list = frappe.get_all("GRN Rework Item", filters={"lot": wo_doc.lot}, pluck="name")
@@ -1438,7 +1440,10 @@ def fetch_quantity(doc_name):
 			"reworked": reworked_qty,
 			"dc_qty": finishing_items[key]['dc_qty'],
 			"return_qty": finishing_items[key]['return_qty'],
-			"pack_return_qty": finishing_items[key]['pack_return_qty']
+			"pack_return_qty": finishing_items[key]['pack_return_qty'],
+			"return_dc_qty": finishing_items[key]['return_dc_qty'],
+			"pack_dc_qty": finishing_items[key]['pack_dc_qty'],
+			"rejected_qty": finishing_items[key]['rejected_qty'],
 		})		
 	doc.set("finishing_plan_details", finishing_items_list)
 	doc.save()
@@ -1990,6 +1995,7 @@ def get_finishing_dispatch_report(from_date, to_date, lot_list=None, item_list=N
 		"against": "Work Order",
 		"includes_packing": 1,
 		"docstatus": 1,
+		"is_return": 0,
 		"posting_date": ["between", [from_date, to_date]],
 	}, fields=["name", "lot"])
 

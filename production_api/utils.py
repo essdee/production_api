@@ -470,38 +470,47 @@ def get_daily_production_report(date, location, items=None, lots=None):
 
 	report_date = getdate(date)
 
-	# Step 1: Single query to get CLS stats grouped by cutting_plan (replaces 3×N queries)
-	cp_filter_sql = ""
-	cp_filter_values = {"date": report_date}
+	# Step 1: Single query to get CLS stats grouped by parent (CP or CO)
+	filter_sql = ""
+	filter_values = {"date": report_date}
 	if items or lots:
-		cp_conditions = []
+		filter_parts = []
 		if items:
-			cp_conditions.append("cp.item IN %(filter_items)s")
-			cp_filter_values["filter_items"] = items
+			filter_values["filter_items"] = items
+			filter_parts.append("cls.cutting_plan IN (SELECT cp.name FROM `tabCutting Plan` cp WHERE cp.item IN %(filter_items)s)")
+			filter_parts.append("cls.cutting_order IN (SELECT co.name FROM `tabCutting Order` co WHERE co.item IN %(filter_items)s)")
 		if lots:
-			cp_conditions.append("cp.lot IN %(filter_lots)s")
-			cp_filter_values["filter_lots"] = lots
-		cp_filter_sql = f" AND cls.cutting_plan IN (SELECT cp.name FROM `tabCutting Plan` cp WHERE {' OR '.join(cp_conditions)})"
+			filter_values["filter_lots"] = lots
+			filter_parts.append("cls.cutting_plan IN (SELECT cp.name FROM `tabCutting Plan` cp WHERE cp.lot IN %(filter_lots)s)")
+		if filter_parts:
+			filter_sql = f" AND ({' OR '.join(filter_parts)})"
 
 	cls_stats_rows = frappe.db.sql(f"""
-		SELECT cls.cutting_plan,
+		SELECT cls.cutting_plan, cls.cutting_order,
 			GROUP_CONCAT(cls.name) as names,
 			COUNT(*) as bundle_count,
 			SUM(CASE WHEN cls.status = 'Label Printed' THEN 1 ELSE 0 END) as label_count,
 			SUM(CASE WHEN cls.posting_date = %(date)s THEN 1 ELSE 0 END) as created_count
 		FROM `tabCutting LaySheet` cls
-		WHERE cls.bundle_generated_date = %(date)s{cp_filter_sql}
-		GROUP BY cls.cutting_plan
-	""", cp_filter_values, as_dict=True)
+		WHERE cls.bundle_generated_date = %(date)s{filter_sql}
+		GROUP BY cls.cutting_plan, cls.cutting_order
+	""", filter_values, as_dict=True)
 
 	if not cls_stats_rows:
 		return {"report_data": [], "bundle_generated": 0, "label_printed": 0, "created": 0}
 
+	# Map by (parent_dt, parent_name)
 	cls_stats_map = {}
 	for row in cls_stats_rows:
-		cls_stats_map[row['cutting_plan']] = row
+		if row['cutting_plan']:
+			key = ("Cutting Plan", row['cutting_plan'])
+		elif row['cutting_order']:
+			key = ("Cutting Order", row['cutting_order'])
+		else:
+			continue
+		cls_stats_map[key] = row
 
-	# Step 2: Bulk-fetch all CLS bundle data (replaces get_doc per CLS in calculate_completed)
+	# Step 2: Bulk-fetch all CLS bundle data
 	all_cls_names = []
 	for stat in cls_stats_map.values():
 		all_cls_names.extend(stat['names'].split(','))
@@ -516,20 +525,21 @@ def get_daily_production_report(date, location, items=None, lots=None):
 		for b in bundles:
 			bundles_by_parent.setdefault(b['parent'], []).append(b)
 
-	# Step 3: Batch-fetch Work Order calculated items
-	cp_names = list(cls_stats_map.keys())
-	wo_map_rows = frappe.db.sql("""
-		SELECT cp.name as cp_name, cp.work_order,
-			woci.item_variant, woci.quantity, woci.received_qty
-		FROM `tabCutting Plan` cp
-		JOIN `tabWork Order Calculated Item` woci ON woci.parent = cp.work_order
-		WHERE cp.name IN %(cp_names)s AND cp.work_order IS NOT NULL AND cp.work_order != ''
-	""", {"cp_names": cp_names}, as_dict=True)
+	# Step 3: Batch-fetch Work Order calculated items (CP only)
+	cp_names = [name for dt, name in cls_stats_map.keys() if dt == "Cutting Plan"]
 	wo_planned_by_cp = {}
-	for row in wo_map_rows:
-		wo_planned_by_cp.setdefault(row['cp_name'], {})[row['item_variant']] = {
-			"planned": row['quantity'], "cumulative": row['received_qty']
-		}
+	if cp_names:
+		wo_map_rows = frappe.db.sql("""
+			SELECT cp.name as cp_name, cp.work_order,
+				woci.item_variant, woci.quantity, woci.received_qty
+			FROM `tabCutting Plan` cp
+			JOIN `tabWork Order Calculated Item` woci ON woci.parent = cp.work_order
+			WHERE cp.name IN %(cp_names)s AND cp.work_order IS NOT NULL AND cp.work_order != ''
+		""", {"cp_names": cp_names}, as_dict=True)
+		for row in wo_map_rows:
+			wo_planned_by_cp.setdefault(row['cp_name'], {})[row['item_variant']] = {
+				"planned": row['quantity'], "cumulative": row['received_qty']
+			}
 
 	# Step 4: Variant cache
 	variant_cache = {}
@@ -544,39 +554,78 @@ def get_daily_production_report(date, location, items=None, lots=None):
 	label_printed = 0
 	created = 0
 
-	for cp_name, stats in cls_stats_map.items():
-		cp_doc = frappe.get_doc("Cutting Plan", cp_name)
-		if cp_doc.version == "V1":
-			frappe.throw("Can't get report for Cutting Plan Version V1")
-		if location and cp_doc.cutting_location != location:
-			continue
+	for (parent_dt, parent_name), stats in cls_stats_map.items():
+		if parent_dt == "Cutting Plan":
+			cp_doc = frappe.get_doc("Cutting Plan", parent_name)
+			if cp_doc.version == "V1":
+				frappe.throw("Can't get report for Cutting Plan Version V1")
+			if location and cp_doc.cutting_location != location:
+				continue
+			detail_doc = frappe.get_cached_doc("Item Production Detail", cp_doc.production_detail)
+			item_details = fetch_order_item_details(cp_doc.items, cp_doc.production_detail)
+			completed, incomplete = get_complete_incomplete_structure(cp_doc.production_detail, item_details)
+			incomplete_items = update_if_string_instance(incomplete)
+			completed_items = update_if_string_instance(completed)
+			parent_item = cp_doc.item
+			parent_lot = cp_doc.lot
+			parent_location = cp_doc.cutting_location
+			planned_dict = wo_planned_by_cp.get(parent_name, {})
+		else:
+			co_doc = frappe.get_doc("Cutting Order", parent_name)
+			if location and co_doc.cutting_location != location:
+				continue
+			detail_doc = frappe.get_cached_doc("Cutting Order Detail", co_doc.cutting_order_detail)
+			completed_items = update_if_string_instance(co_doc.completed_items_json)
+			incomplete_items = update_if_string_instance(co_doc.incomplete_items_json)
+			# Enrich CO structure to match CP format expected by Vue template
+			attr_list = [detail_doc.packing_attribute]
+			if detail_doc.is_set_item and detail_doc.set_item_attribute:
+				attr_list.append(detail_doc.set_item_attribute)
+			completed_items.setdefault('attributes', attr_list)
+			completed_items.setdefault('primary_attribute', detail_doc.primary_attribute)
+			for item in completed_items.get('items', []):
+				item.setdefault('is_set_item', detail_doc.is_set_item)
+				item.setdefault('set_attr', detail_doc.set_item_attribute if detail_doc.is_set_item else None)
+				item.setdefault('pack_attr', detail_doc.packing_attribute)
+				item.setdefault('major_attr_value', None)
+				item.setdefault('primary_attribute', detail_doc.primary_attribute)
+				if item.get('item_keys') is None:
+					colour = item.get('attributes', {}).get(detail_doc.packing_attribute, '')
+					item['item_keys'] = {'major_colour': colour}
+			parent_item = co_doc.item
+			parent_lot = ''
+			parent_location = co_doc.cutting_location
+			planned_dict = {}
 
 		bundle_generated += stats['bundle_count']
 		label_printed += stats['label_count']
 		created += stats['created_count']
 
-		item_details = fetch_order_item_details(cp_doc.items, cp_doc.production_detail)
-		completed, incomplete = get_complete_incomplete_structure(cp_doc.production_detail, item_details)
-		incomplete_items = update_if_string_instance(incomplete)
-		completed_items = update_if_string_instance(completed)
-		ipd_doc = frappe.get_cached_doc("Item Production Detail", cp_doc.production_detail)
-
 		cls_name_list = [{'name': n} for n in stats['names'].split(',')]
-		completed_items, incomplete_items = calculate_completed(cls_name_list, ipd_doc, completed_items, incomplete_items, bundles_by_parent)
+		completed_items, incomplete_items = calculate_completed(cls_name_list, detail_doc, completed_items, incomplete_items, bundles_by_parent)
 
 		major_panel = {}
 		panel_qty = {}
-		for row in ipd_doc.stiching_item_details:
+		for row in detail_doc.stiching_item_details:
 			if row.is_default:
 				major_panel[row.set_item_attribute_value] = row.stiching_attribute_value
 			panel_qty[row.stiching_attribute_value] = row.quantity
 
-		if not ipd_doc.is_set_item:
-			major_panel['panel'] = ipd_doc.stiching_major_attribute_value
+		if not detail_doc.is_set_item:
+			if hasattr(detail_doc, 'stiching_major_attribute_value') and detail_doc.stiching_major_attribute_value:
+				major_panel['panel'] = detail_doc.stiching_major_attribute_value
+			else:
+				# COD may not have stiching_major_attribute_value; derive from is_default or first panel
+				for row in detail_doc.stiching_item_details:
+					if row.is_default:
+						major_panel['panel'] = row.stiching_attribute_value
+						break
+				if 'panel' not in major_panel and detail_doc.stiching_item_details:
+					major_panel['panel'] = detail_doc.stiching_item_details[0].stiching_attribute_value
 
 		for row1, row2 in zip_longest(completed_items['items'], incomplete_items['items']):
 			row1['values1'] = {}
-			if ipd_doc.is_set_item:
+			if detail_doc.is_set_item:
 				part = row1['attributes'][row1['set_attr']]
 				panel = major_panel[part]
 				for size in row1['values']:
@@ -595,7 +644,6 @@ def get_daily_production_report(date, location, items=None, lots=None):
 		total = 0
 		total_planned_qty = 0
 		total_received_qty = 0
-		planned_dict = wo_planned_by_cp.get(cp_name, {})
 
 		for row in completed_items['items']:
 			total_qty = 0
@@ -604,12 +652,13 @@ def get_daily_production_report(date, location, items=None, lots=None):
 			for val in row['values']:
 				if row['values'][val] > 0:
 					total_qty += row['values'][val]
-					attrs = row['attributes']
-					attrs[row['primary_attribute']] = val
-					variant = cached_get_variant(cp_doc.item, attrs)
-					if planned_dict and variant in planned_dict:
-						total_planned += planned_dict[variant]['planned']
-						total_received += planned_dict[variant]['cumulative']
+					if planned_dict:
+						attrs = row['attributes']
+						attrs[row['primary_attribute']] = val
+						variant = cached_get_variant(parent_item, attrs)
+						if variant in planned_dict:
+							total_planned += planned_dict[variant]['planned']
+							total_received += planned_dict[variant]['cumulative']
 
 			if total_qty > 0:
 				row['total_qty'] = total_qty
@@ -627,9 +676,9 @@ def get_daily_production_report(date, location, items=None, lots=None):
 		completed_items['total_sum'] = total
 		completed_items['total_planned_sum'] = total_planned_qty
 		completed_items['total_received_sum'] = total_received_qty
-		completed_items['style_no'] = cp_doc.item
-		completed_items['lot_no'] = cp_doc.lot
-		completed_items['location'] = cp_doc.cutting_location
+		completed_items['style_no'] = parent_item
+		completed_items['lot_no'] = parent_lot
+		completed_items['location'] = parent_location
 		report.append(completed_items)
 
 	return {
@@ -966,67 +1015,101 @@ def calculate_completed(cls_list, ipd_doc, completed_items, incomplete_items, bu
 def get_cut_sheet_report(date, location):
 	from production_api.essdee_production.doctype.lot.lot import fetch_order_item_details
 	from production_api.production_api.doctype.cutting_plan.cutting_plan import get_complete_incomplete_structure
-	cutting_plans = frappe.db.sql(
-		"""
-			SELECT distinct(cutting_plan) FROM `tabCutting LaySheet` WHERE bundle_generated_date = %(date)s
-		""", {
-			"date": getdate(date)
-		}, as_dict=True
-	)
-	report = []
-	for cutting_plan in cutting_plans:
-		cp_doc = frappe.get_doc("Cutting Plan",cutting_plan['cutting_plan'])
-		if cp_doc.version == "V1":
-			frappe.throw("Can't get report for Cutting Plan Version V1")
 
-		if location and cp_doc.cutting_location != location:
+	report_date = getdate(date)
+
+	# Get all parents (CP and CO) for CLS on this date
+	parent_rows = frappe.db.sql("""
+		SELECT DISTINCT cutting_plan, cutting_order
+		FROM `tabCutting LaySheet`
+		WHERE bundle_generated_date = %(date)s
+	""", {"date": report_date}, as_dict=True)
+
+	report = []
+	for parent_row in parent_rows:
+		if parent_row['cutting_plan']:
+			parent_dt = "Cutting Plan"
+			parent_name = parent_row['cutting_plan']
+			cp_doc = frappe.get_doc("Cutting Plan", parent_name)
+			if cp_doc.version == "V1":
+				frappe.throw("Can't get report for Cutting Plan Version V1")
+			if location and cp_doc.cutting_location != location:
+				continue
+			item_details = fetch_order_item_details(cp_doc.items, cp_doc.production_detail)
+			completed, incomplete = get_complete_incomplete_structure(cp_doc.production_detail, item_details)
+			incomplete_items = update_if_string_instance(incomplete)
+			detail_doc = frappe.get_cached_doc("Item Production Detail", cp_doc.production_detail)
+			parent_item = cp_doc.item
+			parent_lot = cp_doc.lot
+			parent_location = cp_doc.cutting_location
+			parent_field = "cutting_plan"
+		elif parent_row['cutting_order']:
+			parent_dt = "Cutting Order"
+			parent_name = parent_row['cutting_order']
+			co_doc = frappe.get_doc("Cutting Order", parent_name)
+			if location and co_doc.cutting_location != location:
+				continue
+			incomplete_items = update_if_string_instance(co_doc.incomplete_items_json)
+			detail_doc = frappe.get_cached_doc("Cutting Order Detail", co_doc.cutting_order_detail)
+			# Enrich CO structure to match CP format expected by Vue template
+			attr_list = [detail_doc.packing_attribute]
+			if detail_doc.is_set_item and detail_doc.set_item_attribute:
+				attr_list.append(detail_doc.set_item_attribute)
+			incomplete_items.setdefault('attributes', attr_list)
+			incomplete_items.setdefault('primary_attribute', detail_doc.primary_attribute)
+			for item in incomplete_items.get('items', []):
+				item.setdefault('is_set_item', detail_doc.is_set_item)
+				item.setdefault('set_attr', detail_doc.set_item_attribute if detail_doc.is_set_item else None)
+				item.setdefault('pack_attr', detail_doc.packing_attribute)
+				item.setdefault('major_attr_value', None)
+				item.setdefault('primary_attribute', detail_doc.primary_attribute)
+				if item.get('item_keys') is None:
+					colour = item.get('attributes', {}).get(detail_doc.packing_attribute, '')
+					item['item_keys'] = {'major_colour': colour}
+			parent_item = co_doc.item
+			parent_lot = ''
+			parent_location = co_doc.cutting_location
+			parent_field = "cutting_order"
+		else:
 			continue
-		item_details = fetch_order_item_details(cp_doc.items,cp_doc.production_detail)
-		completed, incomplete = get_complete_incomplete_structure(cp_doc.production_detail,item_details)
-		cls_list = frappe.db.sql(
-			"""
-				SELECT name FROM `tabCutting LaySheet` WHERE bundle_generated_date = %(date)s  
-				AND cutting_plan = %(cutting_plan)s
-			""", {
-				"date": getdate(date),
-				"cutting_plan": cutting_plan['cutting_plan']
-			}, as_dict=True
-		)	
-		incomplete_items = update_if_string_instance(incomplete)
-		production_detail = cp_doc.production_detail
-		ipd_doc = frappe.get_cached_doc("Item Production Detail",production_detail)
+
+		cls_list = frappe.db.sql(f"""
+			SELECT name FROM `tabCutting LaySheet`
+			WHERE bundle_generated_date = %(date)s AND {parent_field} = %(parent_name)s
+		""", {"date": report_date, "parent_name": parent_name}, as_dict=True)
+
 		alter_incomplete_items = {}
-		if not ipd_doc.is_set_item:
+		if not detail_doc.is_set_item:
 			for item in incomplete_items['items']:
-				colour = item['attributes'][ipd_doc.packing_attribute]
+				colour = item['attributes'][detail_doc.packing_attribute]
 				alter_incomplete_items[colour] = item['values']
 		else:
 			for item in incomplete_items['items']:
 				set_combination = update_if_string_instance(item['item_keys'])
 				colour = set_combination['major_colour']
-				part = item['attributes'][ipd_doc.set_item_attribute]
+				part = item['attributes'][detail_doc.set_item_attribute]
 				if alter_incomplete_items.get(colour):
 					alter_incomplete_items[colour][part] = item['values']
-				else:	
+				else:
 					alter_incomplete_items[colour] = {}
 					alter_incomplete_items[colour][part] = item['values']
 
 		for cls in cls_list:
-			cls_doc = frappe.get_doc("Cutting LaySheet",cls['name'])
-			if not ipd_doc.is_set_item:
+			cls_doc = frappe.get_doc("Cutting LaySheet", cls['name'])
+			if not detail_doc.is_set_item:
 				for item in cls_doc.cutting_laysheet_bundles:
 					parts = item.part.split(",")
 					set_combination = update_if_string_instance(item.set_combination)
 					set_colour = set_combination['major_colour']
 					qty = item.quantity
 					for part in parts:
-						alter_incomplete_items[set_colour][item.size][part] += qty	
+						alter_incomplete_items[set_colour][item.size][part] += qty
 				for item in incomplete_items['items']:
-					colour = item['attributes'][ipd_doc.packing_attribute]
-					item['values'] = alter_incomplete_items[colour]		
-				
+					colour = item['attributes'][detail_doc.packing_attribute]
+					item['values'] = alter_incomplete_items[colour]
+
 			else:
-				stich_details = get_stich_details(ipd_doc)
+				stich_details = get_stich_details(detail_doc)
 				for item in cls_doc.cutting_laysheet_bundles:
 					parts = item.part.split(",")
 					set_combination = update_if_string_instance(item.set_combination)
@@ -1038,7 +1121,7 @@ def get_cut_sheet_report(date, location):
 					if set_combination.get('set_part'):
 						major_part = set_combination['set_part']
 						major_colour = set_combination['set_colour']
-					d['major_part'] = major_part	
+					d['major_part'] = major_part
 
 					qty = item.quantity
 					for part in parts:
@@ -1047,13 +1130,13 @@ def get_cut_sheet_report(date, location):
 						except:
 							secondary_part = stich_details[part]
 							alter_incomplete_items[d['major_colour']][secondary_part][item.size][part] += qty
-				
+
 				for item in incomplete_items['items']:
 					set_combination = update_if_string_instance(item['item_keys'])
 					colour = set_combination['major_colour']
-					part = item['attributes'][ipd_doc.set_item_attribute]
+					part = item['attributes'][detail_doc.set_item_attribute]
 					item['values'] = alter_incomplete_items[colour][part]
-		
+
 		items_list = []
 		for item in incomplete_items['items']:
 			add_item = False
@@ -1063,7 +1146,7 @@ def get_cut_sheet_report(date, location):
 					if item['values'][size][panel] > 0:
 						check = True
 						break
-				if check:	
+				if check:
 					add_item = True
 					break
 			if add_item:
@@ -1072,7 +1155,7 @@ def get_cut_sheet_report(date, location):
 		if len(items_list) == 0:
 			continue
 
-		incomplete_items['items'] = items_list			
+		incomplete_items['items'] = items_list
 
 		for item in incomplete_items['items']:
 			item['total_panel_qty'] = {}
@@ -1080,10 +1163,10 @@ def get_cut_sheet_report(date, location):
 				for panel in item['values'][size]:
 					if item['values'][size][panel] > 0:
 						item['total_panel_qty'].setdefault(panel, 0)
-						item['total_panel_qty'][panel] += item['values'][size][panel] 
-		incomplete_items['style_no'] = cp_doc.item
-		incomplete_items['lot_no'] = cp_doc.lot
-		incomplete_items['location'] = cp_doc.cutting_location
+						item['total_panel_qty'][panel] += item['values'][size][panel]
+		incomplete_items['style_no'] = parent_item
+		incomplete_items['lot_no'] = parent_lot
+		incomplete_items['location'] = parent_location
 		report.append(incomplete_items)
 
 	return report
@@ -1325,6 +1408,7 @@ def get_finishing_plan_dict(doc):
 			"return_dc_qty": row.return_dc_qty,
 			"pack_dc_qty": row.pack_dc_qty,
 			"transferred_qty": row.transferred_qty,
+			"rejected_qty": row.rejected_qty,
 		})
 	return finishing_items	
 
@@ -1350,6 +1434,7 @@ def get_finishing_plan_list(finishing_items):
 			"return_dc_qty": finishing_items[key]['return_dc_qty'],
 			"pack_dc_qty": finishing_items[key]['pack_dc_qty'],
 			"transferred_qty": finishing_items[key]['transferred_qty'],
+			"rejected_qty": finishing_items[key]['rejected_qty'],
 		})
 	return finshing_items_list	
 

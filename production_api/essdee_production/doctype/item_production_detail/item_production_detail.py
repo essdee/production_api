@@ -387,6 +387,32 @@ def delete_docs(documents):
 			frappe.qb.from_(doctype).delete().where(doctype.name.isin(value)).run()
 
 @frappe.whitelist()
+def approve_ipd(doc_name, approval_type="Approved"):
+	mrp_settings = frappe.get_single("MRP Settings")
+	allowed_roles = [mrp_settings.senior_merch_role, mrp_settings.merchandising_manager_role]
+	allowed_roles = [r for r in allowed_roles if r]
+	user_roles = frappe.get_roles()
+	if not any(role in user_roles for role in allowed_roles):
+		frappe.throw("You do not have permission to approve Item Production Detail")
+	if approval_type not in ("Cutting Approved", "Approved"):
+		frappe.throw("Invalid approval type")
+	doc = frappe.get_doc("Item Production Detail", doc_name)
+	doc.approval_status = approval_type
+	doc.approved_by = frappe.session.user
+	doc.save(ignore_permissions=True)
+	return {"status": "success"}
+
+@frappe.whitelist()
+def revert_ipd_approval(doc_name):
+	if "System Manager" not in frappe.get_roles():
+		frappe.throw("Only System Manager can revert approval")
+	doc = frappe.get_doc("Item Production Detail", doc_name)
+	doc.approval_status = "Not Approved"
+	doc.approved_by = None
+	doc.save(ignore_permissions=True)
+	return {"status": "success"}
+
+@frappe.whitelist()
 def get_ipd_primary_values(production_detail):
 	doc = frappe.get_cached_doc("Item Production Detail", production_detail)
 	primary_attr_values = []

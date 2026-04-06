@@ -104,6 +104,27 @@ class WorkOrder(Document):
         if len(self.receivables) == 0:
             frappe.throw("There is no receivables on the Work Order")
 
+        if self.production_detail:
+            approval_status = frappe.db.get_value(
+                "Item Production Detail", self.production_detail, "approval_status")
+            if approval_status == "Not Approved":
+                frappe.throw("Item Production Detail is not Approved. Please get it approved before submitting the Work Order.")
+            elif approval_status == "Cutting Approved":
+                cutting_process = frappe.db.get_value(
+                    "Item Production Detail", self.production_detail, "cutting_process")
+                is_cutting = False
+                if cutting_process:
+                    if frappe.db.get_value("Process", self.process_name, "is_group"):
+                        process_doc = frappe.get_doc("Process", self.process_name)
+                        for row in process_doc.process_details:
+                            if row.process_name == cutting_process:
+                                is_cutting = True
+                                break
+                    else:
+                        is_cutting = self.process_name == cutting_process
+                if not is_cutting:
+                    frappe.throw("Item Production Detail is only approved for Cutting. Full approval is required for other processes.")
+
         finishing_wo = frappe.get_all("Work Order", filters={
             "docstatus": 1,
             "includes_packing": 1,
@@ -183,7 +204,124 @@ class WorkOrder(Document):
                 fp_doc.save(ignore_permissions=True)
 
             self.create_finshing_doc()
+            self.auto_create_box_sticker_print()
         self.create_sewing_plan()
+
+    def auto_create_box_sticker_print(self):
+        production_order = frappe.db.get_value("Lot", self.lot, "production_order")
+        if not production_order:
+            return
+
+        primary = frappe.get_value("Item", self.item, "primary_attribute")
+        if not primary:
+            return
+
+        # Build price map from Production Order: {size: mrp}
+        po_doc = frappe.get_doc("Production Order", production_order)
+        price_map = {}
+        for row in po_doc.production_order_details:
+            attrs = get_variant_attr_details(row.item_variant)
+            size = attrs.get(primary)
+            if size:
+                price_map[size] = flt(row.mrp)
+
+        # Build qty map from Work Order Calculated Items: {size: total_qty}
+        qty_map = {}
+        for row in self.work_order_calculated_items:
+            attrs = get_variant_attr_details(row.item_variant)
+            size = attrs.get(primary)
+            if size:
+                qty_map.setdefault(size, 0)
+                qty_map[size] += row.quantity
+
+        # Validate: sizes with qty > 0 must have mrp > 0
+        missing_prices = []
+        for size, qty in qty_map.items():
+            if qty > 0 and flt(price_map.get(size)) == 0:
+                missing_prices.append(size)
+
+        if missing_prices:
+            frappe.throw(
+                f"MRP is missing in Production Order for sizes: {', '.join(missing_prices)}. "
+                "Please update the price in Production Order before submitting."
+            )
+
+        # Check if FG Item Master exists for this item
+        if not frappe.db.exists("FG Item Master", self.item):
+            return
+
+        # Skip if BSPs already exist for this lot
+        existing_bsp = frappe.db.exists("Box Sticker Print", {"lot": self.lot, "docstatus": 1})
+        if existing_bsp:
+            return
+
+        # Get print formats and packing_combo from MRP Settings / IPD
+        mrp_settings = frappe.get_single("MRP Settings")
+        production_detail = frappe.db.get_value("Lot", self.lot, "production_detail")
+        is_set_item = 0
+        pcs_per_box = 0
+        if production_detail:
+            is_set_item = frappe.db.get_value("Item Production Detail", production_detail, "is_set_item") or 0
+            pcs_per_box = frappe.db.get_value("Item Production Detail", production_detail, "packing_combo") or 0
+
+        # Build BSP detail rows for sizes with qty > 0
+        bsp_details = []
+        for size, qty in qty_map.items():
+            if qty > 0:
+                bsp_details.append({
+                    "size": size,
+                    "quantity": qty,
+                    "mrp": flt(price_map.get(size, 0)),
+                    "allow_excess_percentage": 5,
+                })
+
+        if not bsp_details:
+            return
+        if is_set_item:
+            print_formats = [mrp_settings.set_item_box_sticker, mrp_settings.set_item_piece_sticker]
+        else:
+            print_formats = [mrp_settings.non_set_box_sticker, mrp_settings.non_set_piece_sticker]
+
+        print_formats = [pf for pf in print_formats if pf]
+        if not print_formats:
+            frappe.msgprint("No Box Sticker Print Formats configured in MRP Settings", indicator="orange", alert=True)
+            return
+
+        # Get pcs_per_box from IPD for box sticker quantity calculation
+        pcs_per_box = 0
+        if production_detail:
+            pcs_per_box = frappe.db.get_value("Item Production Detail", production_detail, "packing_combo") or 0
+
+        # Determine which format is the box sticker
+        if is_set_item:
+            box_sticker_format = mrp_settings.set_item_box_sticker
+        else:
+            box_sticker_format = mrp_settings.non_set_box_sticker
+
+        import copy
+        created_bsps = []
+        for pf in print_formats:
+            bsp = frappe.new_doc("Box Sticker Print")
+            bsp.lot = self.lot
+            bsp.fg_item = self.item
+            bsp.print_format = pf
+            bsp.against = "Work Order"
+            bsp.against_id = self.name
+            details = copy.deepcopy(bsp_details)
+            if pf == box_sticker_format and pcs_per_box > 0:
+                for row in details:
+                    row["quantity"] = math.ceil(row["quantity"] / pcs_per_box)
+            bsp.set("box_sticker_print_details", details)
+            bsp.insert(ignore_permissions=True)
+            bsp.submit()
+            created_bsps.append(bsp.name)
+
+        links = ", ".join([f"<a href='/app/box-sticker-print/{n}'>{n}</a>" for n in created_bsps])
+        frappe.msgprint(
+            f"Box Sticker Print created: {links}",
+            indicator="green",
+            alert=True
+        )
 
     def create_finshing_doc(self):
         # create_finishing_detail(self.name)
@@ -239,6 +377,16 @@ class WorkOrder(Document):
                     fp_list = get_finishing_plan_list(fp_dict)
                     fp_doc.set("finishing_plan_details", fp_list)
                     fp_doc.save(ignore_permissions=True)
+
+            # Cancel Box Sticker Prints created from this Work Order
+            bsp_list = frappe.get_all("Box Sticker Print", filters={
+                "against": "Work Order",
+                "against_id": self.name,
+                "docstatus": 1
+            }, pluck="name")
+            for bsp_name in bsp_list:
+                bsp_doc = frappe.get_doc("Box Sticker Print", bsp_name)
+                bsp_doc.cancel()
 
         self.delete_sewing_plan()
 
@@ -2016,14 +2164,16 @@ def create_finishing_detail(work_order, from_finishing=False):
             "cutting_qty": 0,
             "accepted_qty": 0,
             "rework_qty": 0,
+            "rejected_qty": 0,
         })
     finishing_inward_process = frappe.db.get_single_value(
         "MRP Settings", "finishing_inward_process")
     if not finishing_inward_process:
         frappe.throw("Set Finishing Inward Process")
 
-    stich_wo_list = get_process_wo_list(wo_doc.lot, finishing_inward_process)
+    stich_wo_list = get_process_wo_list(finishing_inward_process, wo_doc.lot)
     stiching_grn_list = {}
+    rejected_qty = {}
     for wo in stich_wo_list:
         stich_doc = frappe.get_doc("Work Order", wo)
         for row in stich_doc.work_order_calculated_items:
@@ -2039,7 +2189,9 @@ def create_finishing_detail(work_order, from_finishing=False):
                         items[key]['received_types'][ty] = 0
                     if ty == default_type:
                         items[key]['accepted_qty'] += received_types[ty]
-                    if ty not in [default_type, default_rejected]:
+                    elif ty == default_rejected:
+                        items[key]['rejected_qty'] += received_types[ty]
+                    elif ty not in [default_type, default_rejected]:
                         items[key]['rework_qty'] += received_types[ty]
 
                     items[key]['received_types'][ty] += received_types[ty]
@@ -2055,7 +2207,7 @@ def create_finishing_detail(work_order, from_finishing=False):
             for grn in grn_list:
                 stiching_grn_list[grn] = True
 
-    cut_wo_list = get_process_wo_list(wo_doc.lot, "Cutting")
+    cut_wo_list = get_process_wo_list("Cutting", wo_doc.lot)
 
     for wo in cut_wo_list:
         cut_doc = frappe.get_doc("Work Order", wo)
@@ -2124,7 +2276,8 @@ def create_finishing_detail(work_order, from_finishing=False):
             "reworked": reworked_qty,
             "dc_qty": 0,
             "return_qty": 0,
-            "pack_return_qty": 0
+            "pack_return_qty": 0,
+            "rejected_qty": items[key].get('rejected_qty', 0),
         })
 
     from production_api.production_api.doctype.goods_received_note.goods_received_note import get_primary_values
