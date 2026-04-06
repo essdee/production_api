@@ -1716,8 +1716,7 @@ def calculate_completed_pieces(doc_name):
         wo_doc.set("completed_items_json", {})
         wo_doc.set("incompleted_items_json", {})
     wo_doc.save(ignore_permissions=True)
-    calc(doc_name)
-    # frappe.enqueue(calc, "short", doc_name=doc_name)
+    frappe.enqueue(calc, "short", doc_name=doc_name)
 
 
 def calc(doc_name):
