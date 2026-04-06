@@ -79,7 +79,7 @@
    "fieldname": "selected_strategy",
    "fieldtype": "Select",
    "label": "Selected Strategy",
-   "options": "\nmin_lays\nmin_overcut\nbalanced\nmax_density\nsingle_ratio",
+   "options": "\nmilp\ncolgen\nproportional_decomp\nilp\norder_match\nbalanced\nsingle_ratio",
    "read_only": 1,
    "in_list_view": 1
   },
