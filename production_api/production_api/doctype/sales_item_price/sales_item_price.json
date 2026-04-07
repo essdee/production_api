@@ -1,0 +1,72 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "field:item_variant",
+ "creation": "2026-03-31 17:03:59.442014",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "item_variant",
+  "rate",
+  "uom",
+  "retail_rate",
+  "mrp_rate"
+ ],
+ "fields": [
+  {
+   "fieldname": "item_variant",
+   "fieldtype": "Data",
+   "label": "Item Variant",
+   "unique": 1
+  },
+  {
+   "fieldname": "rate",
+   "fieldtype": "Currency",
+   "label": "Rate"
+  },
+  {
+   "fieldname": "uom",
+   "fieldtype": "Data",
+   "label": "UOM"
+  },
+  {
+   "fieldname": "retail_rate",
+   "fieldtype": "Currency",
+   "label": "Retail rate"
+  },
+  {
+   "fieldname": "mrp_rate",
+   "fieldtype": "Currency",
+   "label": "MRP rate"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-04-03 12:04:02.338742",
+ "modified_by": "Administrator",
+ "module": "Production Api",
+ "name": "Sales Item Price",
+ "naming_rule": "By fieldname",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1
+}
