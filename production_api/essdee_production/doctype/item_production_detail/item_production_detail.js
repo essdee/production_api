@@ -318,7 +318,7 @@ frappe.ui.form.on("Item Production Detail", {
 			// Disable all Vue component HTML wrappers
 			let html_fields = [
 				"item_attribute_list_values_html", "dependent_attribute_details_html",
-				"bom_attribute_mapping_html", "set_items_html", "stiching_items_html",
+				"set_items_html", "stiching_items_html",
 				"cutting_items_html", "cutting_cloths_html", "cloth_accessories_html",
 				"stiching_accessory_html", "accessory_clothtype_combination_html",
 				"emblishment_details_html", "select_attributes_html",
