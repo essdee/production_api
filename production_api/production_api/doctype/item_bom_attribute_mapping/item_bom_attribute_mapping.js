@@ -33,7 +33,6 @@ frappe.ui.form.on('Item BOM Attribute Mapping', {
 		}
 		if(frm.doc.item_production_detail){
 			frappe.db.get_value('Item Production Detail', frm.doc.item_production_detail, 'approval_status', (r) => {
-				console.log(r);
 				if (r.approval_status === "Approved") {
 					frm.disable_save();
 				}
