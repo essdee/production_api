@@ -2604,6 +2604,7 @@ def calculate_pieces(doc_name, complete_json=None, incomplete_json=None, from_pi
             lot_doc.save(ignore_permissions=True)
     else:
         for data in final_calculation:
+            exact_match = False
             for item in wo_doc.work_order_calculated_items:
                 set_combination = update_if_string_instance(
                     item.set_combination)
@@ -2625,7 +2626,52 @@ def calculate_pieces(doc_name, complete_json=None, incomplete_json=None, from_pi
                         wo_types[data['type']] = data['quantity']
 
                     item.received_type_json = wo_types
+                    exact_match = True
                     break
+
+            if not exact_match:
+                # Proportional distribution for aggregated GRN items (e.g., group process)
+                grn_variant = frappe.get_cached_doc("Item Variant", data['item_variant'])
+                grn_attrs = get_variant_attributes(grn_variant)
+                primary_value = grn_attrs.get(ipd_doc.primary_item_attribute)
+
+                matching_items = []
+                total_wo_qty = 0
+                for item in wo_doc.work_order_calculated_items:
+                    wo_variant = frappe.get_cached_doc("Item Variant", item.item_variant)
+                    if wo_variant.item == grn_variant.item:
+                        wo_attrs = get_variant_attributes(wo_variant)
+                        if wo_attrs.get(ipd_doc.primary_item_attribute) == primary_value:
+                            matching_items.append(item)
+                            total_wo_qty += item.quantity
+
+                if matching_items and total_wo_qty > 0:
+                    remaining = data['quantity']
+                    for idx, item in enumerate(matching_items):
+                        if idx == len(matching_items) - 1:
+                            share = remaining
+                        else:
+                            share = int(data['quantity'] * item.quantity / total_wo_qty)
+                            remaining -= share
+
+                        item.received_qty += share
+                        if share > 0:
+                            wo_doc.append("work_order_track_pieces", {
+                                "item_variant": item.item_variant,
+                                "delivered_quantity": 0,
+                                "against": grn_doc.doctype,
+                                "against_id": grn_doc.name,
+                                "received_qty": share,
+                                "date": grn_doc.posting_date,
+                            })
+                        wo_types = update_if_string_instance(
+                            item.received_type_json)
+                        if wo_types.get(data.get('type')):
+                            wo_types[data['type']] += share
+                        else:
+                            wo_types[data['type']] = share
+                        item.received_type_json = wo_types
+
             if lot_doc:
                 for item in lot_doc.lot_order_details:
                     set_combination = update_if_string_instance(
