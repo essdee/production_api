@@ -321,9 +321,8 @@ frappe.ui.form.on("Item Production Detail", {
 				"set_items_html", "stiching_items_html",
 				"cutting_items_html", "cutting_cloths_html", "cloth_accessories_html",
 				"stiching_accessory_html", "accessory_clothtype_combination_html",
-				"emblishment_details_html", "select_attributes_html",
-				"select_cloths_attribute_html", "select_cloth_accessory_html",
-				"bundle_group_html"
+				"select_attributes_html","select_cloths_attribute_html", 
+				"select_cloth_accessory_html", "bundle_group_html"
 			];
 			html_fields.forEach(f => {
 				if (frm.fields_dict[f]) {
@@ -337,8 +336,7 @@ frappe.ui.form.on("Item Production Detail", {
 			// Make all child tables read-only
 			let tables = [
 				"item_attributes", "item_bom", "packing_attribute_details",
-				"stiching_item_details", "cloth_detail", "ipd_processes",
-				"cutting_marker_groups"
+				"stiching_item_details", "cloth_detail", "cutting_marker_groups"
 			];
 			tables.forEach(t => {
 				frm.set_df_property(t, "read_only", 1);
