@@ -4,7 +4,46 @@
 import frappe
 from frappe.model.document import Document
 
+
 class ItemVariant(Document):
+
+	def after_insert(self):
+		if not self.sync_with_erp:
+			return
+
+		att_v = set()
+		primary_att = frappe.db.get_single_value(
+			"IPD Settings", "default_primary_attribute")
+		if primary_att:
+			att_v.add(primary_att)
+
+		dep_att = frappe.get_value("Item", self.item, "dependent_attribute")
+		if dep_att:
+			att_v.add(dep_att)
+
+		iv_attrs = set()
+		iv_attrs = {r.attribute for r in self.attributes}
+
+		if att_v != iv_attrs:
+			return
+
+		if frappe.db.exists("Sales Item Price", {"item_variant": self.name}):
+			return
+
+		FG = frappe.get_doc("FG Item Master", filters={
+			"is_scheme": 0, "item": self.item})
+		if not FG:
+			return
+		sales_item_price = frappe.get_doc({
+			"doctype": "Sales Item Price",
+			"item_variant": self.name,
+			"rate": 0,
+			"uom": "Piece",
+			"retail_rate": 0,
+			"mrp_rate": 0,
+		})
+		sales_item_price.insert(ignore_permissions=True)
+
 	def validate(self):
 		dept_attr = frappe.get_value("Item", self.item, "dependent_attribute")
 		if not dept_attr:
@@ -16,15 +55,12 @@ class ItemVariant(Document):
 				if attribute.attribute == stich_attr:
 					sync = 0
 					break
-			self.sync_with_erp = sync	
-
+			self.sync_with_erp = sync
 	def set_item(self):
 		item = frappe.get_doc("Item", self.item)
 		self.set_onload('__parent_item', item.as_dict())
-	
 	def autoname(self):
 		self.name = self.get_name()
-	
 	def get_name(self):
 		variant_name = self.item
 		for attribute in self.attributes:
@@ -33,14 +69,12 @@ class ItemVariant(Document):
 					frappe.throw("The set of attributes for this item is not correct")
 				variant_name += '-' + (attribute.display_name or attribute.attribute_value)
 		return variant_name
-	
 	def get_attribute_value(self, attribute):
 		attribute_value = None
 		for attr in self.attributes:
 			if attr.attribute == attribute:
 				attribute_value = attr.attribute_value
 				break
-		
 		return attribute_value
 
 	def rename_variant(self):
@@ -48,8 +82,6 @@ class ItemVariant(Document):
 		print(self.name, name)
 		if name != self.name:
 			self.rename(name, force=True)
-
-
 
 @frappe.whitelist()
 def rename_item_variant(variant):
