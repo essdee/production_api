@@ -61,6 +61,8 @@ def apply_price_to_production_order(price_request):
 		for row in po_doc.production_order_details:
 			attrs = get_variant_attr_details(row.item_variant)
 			if attrs[primary] == detail.size:
+				if row.get("production_order_mrp") in (None, ""):
+					row.production_order_mrp = row.mrp
 				row.mrp = detail.new_mrp
 				row.wholesale_price = detail.new_wholesale_price
 				row.retail_price = detail.new_retail_price

@@ -1,284 +1,284 @@
 {
- "actions": [],
- "allow_rename": 1,
- "autoname": "naming_series:",
- "creation": "2025-08-22 11:53:08.697965",
- "doctype": "DocType",
- "engine": "InnoDB",
- "field_order": [
-  "section_break_wmzr",
-  "naming_series",
-  "gsm",
-  "delivery_date",
-  "lead_time_given",
-  "production_term",
-  "column_break_sgdb",
-  "item",
-  "fabric",
-  "dia",
-  "posting_date",
-  "dont_deliver_after",
-  "section_break_xtaa",
-  "details_html",
-  "amended_from",
-  "production_order_details",
-  "production_ordered_details",
-  "comments",
-  "submitted_by",
-  "submitted_time",
-  "price_approval_status",
-  "price_changes_tab",
-  "ppo_price_request_html"
- ],
- "fields": [
-  {
-   "fieldname": "section_break_wmzr",
-   "fieldtype": "Section Break"
-  },
-  {
-   "fieldname": "amended_from",
-   "fieldtype": "Link",
-   "label": "Amended From",
-   "no_copy": 1,
-   "options": "Production Order",
-   "print_hide": 1,
-   "read_only": 1,
-   "search_index": 1
-  },
-  {
-   "fieldname": "item",
-   "fieldtype": "Link",
-   "in_list_view": 1,
-   "label": "Item",
-   "options": "Item",
-   "reqd": 1
-  },
-  {
-   "allow_on_submit": 1,
-   "fieldname": "production_order_details",
-   "fieldtype": "Table",
-   "hidden": 1,
-   "label": "Production Order Details",
-   "options": "Production Order Detail"
-  },
-  {
-   "fieldname": "details_html",
-   "fieldtype": "HTML",
-   "label": "Details HTML"
-  },
-  {
-   "fieldname": "naming_series",
-   "fieldtype": "Select",
-   "label": "Naming Series",
-   "options": "\nPPO-",
-   "reqd": 1
-  },
-  {
-   "fieldname": "column_break_sgdb",
-   "fieldtype": "Column Break"
-  },
-  {
-   "fieldname": "section_break_xtaa",
-   "fieldtype": "Section Break"
-  },
-  {
-   "fieldname": "fabric",
-   "fieldtype": "Data",
-   "label": "Fabric"
-  },
-  {
-   "fieldname": "dia",
-   "fieldtype": "Link",
-   "label": "Dia",
-   "options": "Item Attribute Value"
-  },
-  {
-   "fieldname": "gsm",
-   "fieldtype": "Float",
-   "label": "GSM"
-  },
-  {
-   "allow_on_submit": 1,
-   "fieldname": "delivery_date",
-   "fieldtype": "Date",
-   "label": "Delivery Date",
-   "reqd": 1
-  },
-  {
-   "allow_on_submit": 1,
-   "default": "Today",
-   "fieldname": "posting_date",
-   "fieldtype": "Date",
-   "label": "Posting Date",
-   "read_only": 1
-  },
-  {
-   "allow_on_submit": 1,
-   "fieldname": "lead_time_given",
-   "fieldtype": "Int",
-   "label": "Lead Time Given",
-   "read_only": 1
-  },
-  {
-   "allow_on_submit": 1,
-   "fieldname": "dont_deliver_after",
-   "fieldtype": "Date",
-   "label": "Don't Deliver After",
-   "reqd": 1
-  },
-  {
-   "allow_on_submit": 1,
-   "fieldname": "production_ordered_details",
-   "fieldtype": "Table",
-   "hidden": 1,
-   "label": "Production Ordered Details",
-   "options": "Production Ordered Detail"
-  },
-  {
-   "fieldname": "production_term",
-   "fieldtype": "Link",
-   "label": "Production Term",
-   "options": "Production Term"
-  },
-  {
-   "allow_on_submit": 1,
-   "fieldname": "comments",
-   "fieldtype": "Small Text",
-   "label": "Comments"
-  },
-  {
-   "fieldname": "submitted_by",
-   "fieldtype": "Link",
-   "label": "Submitted By",
-   "options": "User",
-   "read_only": 1
-  },
-  {
-   "fieldname": "submitted_time",
-   "fieldtype": "Datetime",
-   "label": "Submitted Time",
-   "read_only": 1
-  },
-  {
-   "allow_on_submit": 1,
-   "fieldname": "price_approval_status",
-   "fieldtype": "Select",
-   "hidden": 1,
-   "label": "Price Approval Status",
-   "options": "\nPending Approval",
-   "read_only": 1
-  },
-  {
-   "fieldname": "price_changes_tab",
-   "fieldtype": "Tab Break",
-   "label": "Price Changes"
-  },
-  {
-   "fieldname": "ppo_price_request_html",
-   "fieldtype": "HTML",
-   "label": "Price Change Requests"
-  }
- ],
- "grid_page_length": 50,
- "index_web_pages_for_search": 1,
- "is_submittable": 1,
- "links": [],
- "modified": "2026-03-05 12:00:00.000000",
- "modified_by": "Administrator",
- "module": "Production Api",
- "name": "Production Order",
- "naming_rule": "By \"Naming Series\" field",
- "owner": "Administrator",
- "permissions": [
-  {
-   "amend": 1,
-   "cancel": 1,
-   "create": 1,
-   "delete": 1,
-   "email": 1,
-   "export": 1,
-   "print": 1,
-   "read": 1,
-   "report": 1,
-   "role": "System Manager",
-   "share": 1,
-   "submit": 1,
-   "write": 1
-  },
-  {
-   "amend": 1,
-   "create": 1,
-   "email": 1,
-   "export": 1,
-   "print": 1,
-   "read": 1,
-   "report": 1,
-   "role": "PD User",
-   "share": 1,
-   "write": 1
-  },
-  {
-   "amend": 1,
-   "create": 1,
-   "email": 1,
-   "export": 1,
-   "print": 1,
-   "read": 1,
-   "report": 1,
-   "role": "PD Manager",
-   "share": 1,
-   "write": 1
-  },
-  {
-   "amend": 1,
-   "create": 1,
-   "email": 1,
-   "export": 1,
-   "print": 1,
-   "read": 1,
-   "report": 1,
-   "role": "Sales User",
-   "share": 1,
-   "write": 1
-  },
-  {
-   "amend": 1,
-   "cancel": 1,
-   "create": 1,
-   "email": 1,
-   "export": 1,
-   "print": 1,
-   "read": 1,
-   "report": 1,
-   "role": "Sales Manager",
-   "share": 1,
-   "submit": 1,
-   "write": 1
-  },
-  {
-   "email": 1,
-   "export": 1,
-   "print": 1,
-   "read": 1,
-   "report": 1,
-   "role": "Merch User",
-   "select": 1,
-   "share": 1
-  },
-  {
-   "email": 1,
-   "export": 1,
-   "print": 1,
-   "read": 1,
-   "report": 1,
-   "role": "All",
-   "select": 1,
-   "share": 1
-  }
- ],
- "row_format": "Dynamic",
- "search_fields": "item",
- "sort_field": "modified",
- "sort_order": "DESC",
- "states": []
+  "actions": [],
+  "allow_rename": 1,
+  "autoname": "naming_series:",
+  "creation": "2025-08-22 11:53:08.697965",
+  "doctype": "DocType",
+  "engine": "InnoDB",
+  "field_order": [
+    "section_break_wmzr",
+    "naming_series",
+    "gsm",
+    "delivery_date",
+    "lead_time_given",
+    "production_term",
+    "column_break_sgdb",
+    "item",
+    "fabric",
+    "dia",
+    "posting_date",
+    "dont_deliver_after",
+    "section_break_xtaa",
+    "details_html",
+    "amended_from",
+    "production_order_details",
+    "production_ordered_details",
+    "comments",
+    "submitted_by",
+    "submitted_time",
+    "price_approval_status",
+    "price_changes_tab",
+    "ppo_price_request_html"
+  ],
+  "fields": [
+    {
+      "fieldname": "section_break_wmzr",
+      "fieldtype": "Section Break"
+    },
+    {
+      "fieldname": "amended_from",
+      "fieldtype": "Link",
+      "label": "Amended From",
+      "no_copy": 1,
+      "options": "Production Order",
+      "print_hide": 1,
+      "read_only": 1,
+      "search_index": 1
+    },
+    {
+      "fieldname": "item",
+      "fieldtype": "Link",
+      "in_list_view": 1,
+      "label": "Item",
+      "options": "Item",
+      "reqd": 1
+    },
+    {
+      "allow_on_submit": 1,
+      "fieldname": "production_order_details",
+      "fieldtype": "Table",
+      "hidden": 1,
+      "label": "Production Order Details",
+      "options": "Production Order Detail"
+    },
+    {
+      "fieldname": "details_html",
+      "fieldtype": "HTML",
+      "label": "Details HTML"
+    },
+    {
+      "fieldname": "naming_series",
+      "fieldtype": "Select",
+      "label": "Naming Series",
+      "options": "\nPPO-",
+      "reqd": 1
+    },
+    {
+      "fieldname": "column_break_sgdb",
+      "fieldtype": "Column Break"
+    },
+    {
+      "fieldname": "section_break_xtaa",
+      "fieldtype": "Section Break"
+    },
+    {
+      "fieldname": "fabric",
+      "fieldtype": "Data",
+      "label": "Fabric"
+    },
+    {
+      "fieldname": "dia",
+      "fieldtype": "Link",
+      "label": "Dia",
+      "options": "Item Attribute Value"
+    },
+    {
+      "fieldname": "gsm",
+      "fieldtype": "Float",
+      "label": "GSM"
+    },
+    {
+      "allow_on_submit": 1,
+      "fieldname": "delivery_date",
+      "fieldtype": "Date",
+      "label": "Delivery Date",
+      "reqd": 1
+    },
+    {
+      "allow_on_submit": 1,
+      "default": "Today",
+      "fieldname": "posting_date",
+      "fieldtype": "Date",
+      "label": "Posting Date",
+      "read_only": 1
+    },
+    {
+      "allow_on_submit": 1,
+      "fieldname": "lead_time_given",
+      "fieldtype": "Int",
+      "label": "Lead Time Given",
+      "read_only": 1
+    },
+    {
+      "allow_on_submit": 1,
+      "fieldname": "dont_deliver_after",
+      "fieldtype": "Date",
+      "label": "Don't Deliver After",
+      "reqd": 1
+    },
+    {
+      "allow_on_submit": 1,
+      "fieldname": "production_ordered_details",
+      "fieldtype": "Table",
+      "hidden": 1,
+      "label": "Production Ordered Details",
+      "options": "Production Ordered Detail"
+    },
+    {
+      "fieldname": "production_term",
+      "fieldtype": "Link",
+      "label": "Production Term",
+      "options": "Production Term"
+    },
+    {
+      "allow_on_submit": 1,
+      "fieldname": "comments",
+      "fieldtype": "Small Text",
+      "label": "Comments"
+    },
+    {
+      "fieldname": "submitted_by",
+      "fieldtype": "Link",
+      "label": "Submitted By",
+      "options": "User",
+      "read_only": 1
+    },
+    {
+      "fieldname": "submitted_time",
+      "fieldtype": "Datetime",
+      "label": "Submitted Time",
+      "read_only": 1
+    },
+    {
+      "allow_on_submit": 1,
+      "fieldname": "price_approval_status",
+      "fieldtype": "Select",
+      "hidden": 1,
+      "label": "Price Approval Status",
+      "options": "\nPending Approval",
+      "read_only": 1
+    },
+    {
+      "fieldname": "price_changes_tab",
+      "fieldtype": "Tab Break",
+      "label": "Price Changes"
+    },
+    {
+      "fieldname": "ppo_price_request_html",
+      "fieldtype": "HTML",
+      "label": "Price Change Requests"
+    }
+  ],
+  "grid_page_length": 50,
+  "index_web_pages_for_search": 1,
+  "is_submittable": 1,
+  "links": [],
+  "modified": "2026-03-05 12:00:00.000000",
+  "modified_by": "Administrator",
+  "module": "Production Api",
+  "name": "Production Order",
+  "naming_rule": "By \"Naming Series\" field",
+  "owner": "Administrator",
+  "permissions": [
+    {
+      "amend": 1,
+      "cancel": 1,
+      "create": 1,
+      "delete": 1,
+      "email": 1,
+      "export": 1,
+      "print": 1,
+      "read": 1,
+      "report": 1,
+      "role": "System Manager",
+      "share": 1,
+      "submit": 1,
+      "write": 1
+    },
+    {
+      "amend": 1,
+      "create": 1,
+      "email": 1,
+      "export": 1,
+      "print": 1,
+      "read": 1,
+      "report": 1,
+      "role": "PD User",
+      "share": 1,
+      "write": 1
+    },
+    {
+      "amend": 1,
+      "create": 1,
+      "email": 1,
+      "export": 1,
+      "print": 1,
+      "read": 1,
+      "report": 1,
+      "role": "PD Manager",
+      "share": 1,
+      "write": 1
+    },
+    {
+      "amend": 1,
+      "create": 1,
+      "email": 1,
+      "export": 1,
+      "print": 1,
+      "read": 1,
+      "report": 1,
+      "role": "Sales User",
+      "share": 1,
+      "write": 1
+    },
+    {
+      "amend": 1,
+      "cancel": 1,
+      "create": 1,
+      "email": 1,
+      "export": 1,
+      "print": 1,
+      "read": 1,
+      "report": 1,
+      "role": "Sales Manager",
+      "share": 1,
+      "submit": 1,
+      "write": 1
+    },
+    {
+      "email": 1,
+      "export": 1,
+      "print": 1,
+      "read": 1,
+      "report": 1,
+      "role": "Merch User",
+      "select": 1,
+      "share": 1
+    },
+    {
+      "email": 1,
+      "export": 1,
+      "print": 1,
+      "read": 1,
+      "report": 1,
+      "role": "All",
+      "select": 1,
+      "share": 1
+    }
+  ],
+  "row_format": "Dynamic",
+  "search_fields": "item",
+  "sort_field": "modified",
+  "sort_order": "DESC",
+  "states": []
 }
