@@ -10,6 +10,7 @@
   "item_production_detail",
   "column_break_kxpi6",
   "bom_item",
+  "bom_uom",
   "bom_item_attributes",
   "section_break_wrgji",
   "get_combination",
@@ -56,6 +57,13 @@
    "fieldtype": "Link",
    "label": "BOM Item",
    "options": "Item",
+   "read_only": 1
+  },
+  {
+   "fetch_from": "bom_item.default_unit_of_measure",
+   "fieldname": "bom_uom",
+   "fieldtype": "Data",
+   "label": "UOM",
    "read_only": 1
   },
   {
