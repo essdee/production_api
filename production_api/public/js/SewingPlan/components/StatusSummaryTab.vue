@@ -1,7 +1,7 @@
 <template>
     <div class="status-summary-tab">
         <!-- Filter Section -->
-        <div class="filter-section" v-if="dataRows.length > 0">
+        <div class="filter-section" v-show="dataRows.length > 0">
             <div class="filter-card">
                 <div class="filter-title-group">
                     <svg class="filter-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -9,44 +9,8 @@
                     </svg>
                     <span class="filter-label">Filters</span>
                 </div>
-                <div class="multiselect-wrapper" ref="lotDropdownRef">
-                    <div class="multiselect-control" @click="lotDropdownOpen = !lotDropdownOpen">
-                        <div class="multiselect-pills" v-if="selected_lots.length">
-                            <span class="selected-pill" v-for="lot in selected_lots" :key="lot">
-                                {{ lot }}
-                                <span class="pill-remove" @click.stop="removeLot(lot)">&times;</span>
-                            </span>
-                        </div>
-                        <span class="multiselect-placeholder" v-else>All Lots</span>
-                        <svg class="dropdown-chevron" :class="{ open: lotDropdownOpen }" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clip-rule="evenodd"/></svg>
-                    </div>
-                    <div class="multiselect-dropdown" v-show="lotDropdownOpen">
-                        <label class="multiselect-option" v-for="lot in lotOptions" :key="lot">
-                            <input type="checkbox" :value="lot" v-model="selected_lots" />
-                            <span>{{ lot }}</span>
-                        </label>
-                        <div class="multiselect-empty" v-if="!lotOptions.length">No lots available</div>
-                    </div>
-                </div>
-                <div class="multiselect-wrapper" ref="itemDropdownRef">
-                    <div class="multiselect-control" @click="itemDropdownOpen = !itemDropdownOpen">
-                        <div class="multiselect-pills" v-if="selected_items.length">
-                            <span class="selected-pill" v-for="item in selected_items" :key="item">
-                                {{ item }}
-                                <span class="pill-remove" @click.stop="removeItem(item)">&times;</span>
-                            </span>
-                        </div>
-                        <span class="multiselect-placeholder" v-else>All Items</span>
-                        <svg class="dropdown-chevron" :class="{ open: itemDropdownOpen }" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clip-rule="evenodd"/></svg>
-                    </div>
-                    <div class="multiselect-dropdown" v-show="itemDropdownOpen">
-                        <label class="multiselect-option" v-for="item in itemOptions" :key="item">
-                            <input type="checkbox" :value="item" v-model="selected_items" />
-                            <span>{{ item }}</span>
-                        </label>
-                        <div class="multiselect-empty" v-if="!itemOptions.length">No items available</div>
-                    </div>
-                </div>
+                <div ref="lot_wrapper" class="filter-control"></div>
+                <div ref="item_wrapper" class="filter-control"></div>
                 <select class="filter-select" v-model="selected_colour">
                     <option value="">All Colours</option>
                     <option v-for="colour in colourOptions" :key="colour" :value="colour">{{ colour }}</option>
@@ -125,7 +89,7 @@
 </template>
 
 <script setup>
-import { ref, watch, computed, onMounted, onBeforeUnmount } from "vue"
+import { ref, watch, computed, onMounted } from "vue"
 
 const props = defineProps({
     selected_supplier: {
@@ -145,36 +109,82 @@ const items = ref({
     "data": []
 })
 
-// Filter state
+// Filter state (mirrors of the Frappe MultiSelectList controls)
 const selected_lots = ref([])
 const selected_items = ref([])
 const selected_colour = ref('')
 const selected_part = ref('')
 
-// Dropdown open state
-const lotDropdownOpen = ref(false)
-const itemDropdownOpen = ref(false)
-const lotDropdownRef = ref(null)
-const itemDropdownRef = ref(null)
+// Frappe MultiSelectList control refs
+const lot_wrapper = ref(null)
+const item_wrapper = ref(null)
+let lotCtrl = null
+let itemCtrl = null
+const sample_doc = ref({})
 
-const removeLot = (lot) => {
-    selected_lots.value = selected_lots.value.filter(l => l !== lot)
-}
-const removeItem = (item) => {
-    selected_items.value = selected_items.value.filter(i => i !== item)
+const arraysEqual = (a, b) => {
+    if (a.length !== b.length) return false
+    for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) return false
+    return true
 }
 
-// Close dropdowns on outside click
-const handleClickOutside = (e) => {
-    if (lotDropdownRef.value && !lotDropdownRef.value.contains(e.target)) {
-        lotDropdownOpen.value = false
-    }
-    if (itemDropdownRef.value && !itemDropdownRef.value.contains(e.target)) {
-        itemDropdownOpen.value = false
+const syncLotsFromCtrl = () => {
+    const v = (lotCtrl && lotCtrl.get_value()) || []
+    if (!arraysEqual(v, selected_lots.value)) selected_lots.value = v.slice()
+}
+const syncItemsFromCtrl = () => {
+    const v = (itemCtrl && itemCtrl.get_value()) || []
+    if (!arraysEqual(v, selected_items.value)) selected_items.value = v.slice()
+}
+
+// Frappe's base control short-circuits df.change when the new model value equals the
+// current one, and MultiSelectList always writes "" — so df.change stops firing after
+// the first selection. Monkey-patch parse_validate_and_set_in_model to always sync.
+const patchChange = (ctrl, syncFn) => {
+    const orig = ctrl.parse_validate_and_set_in_model.bind(ctrl)
+    ctrl.parse_validate_and_set_in_model = function (value, e) {
+        const result = orig(value, e)
+        syncFn()
+        return result
     }
 }
-onMounted(() => document.addEventListener('click', handleClickOutside))
-onBeforeUnmount(() => document.removeEventListener('click', handleClickOutside))
+
+const initControls = () => {
+    if (lot_wrapper.value && !lotCtrl) {
+        lotCtrl = frappe.ui.form.make_control({
+            parent: $(lot_wrapper.value),
+            df: {
+                fieldtype: 'MultiSelectList',
+                fieldname: 'lot',
+                label: '',
+                placeholder: 'All Lots',
+                get_data: (txt) => lotOptions.value
+                    .filter(l => !txt || l.toLowerCase().includes(txt.toLowerCase()))
+                    .map(l => ({ value: l, description: '' })),
+            },
+            doc: sample_doc.value,
+            render_input: true,
+        })
+        patchChange(lotCtrl, syncLotsFromCtrl)
+    }
+    if (item_wrapper.value && !itemCtrl) {
+        itemCtrl = frappe.ui.form.make_control({
+            parent: $(item_wrapper.value),
+            df: {
+                fieldtype: 'MultiSelectList',
+                fieldname: 'item',
+                label: '',
+                placeholder: 'All Items',
+                get_data: (txt) => itemOptions.value
+                    .filter(i => !txt || i.toLowerCase().includes(txt.toLowerCase()))
+                    .map(i => ({ value: i, description: '' })),
+            },
+            doc: sample_doc.value,
+            render_input: true,
+        })
+        patchChange(itemCtrl, syncItemsFromCtrl)
+    }
+}
 
 // Data rows (excluding total row at idx 0)
 const dataRows = computed(() => {
@@ -262,11 +272,22 @@ watch(selected_lots, () => {
     selected_colour.value = ''
     selected_part.value = ''
     // Remove any selected items that are no longer valid for the new lot selection
-    if (selected_items.value.length) {
+    if (itemCtrl && selected_items.value.length) {
         const valid = new Set(itemOptions.value)
-        selected_items.value = selected_items.value.filter(i => valid.has(i))
+        const filtered = selected_items.value.filter(i => valid.has(i))
+        if (filtered.length !== selected_items.value.length) {
+            if (filtered.length === 0) {
+                itemCtrl.clear_all_selections()
+            } else {
+                itemCtrl.values = filtered
+                itemCtrl._selected_values = (itemCtrl._selected_values || []).filter(v => valid.has(v.value))
+                itemCtrl.update_status()
+                itemCtrl.set_selectable_items(itemCtrl._options || [])
+            }
+            selected_items.value = filtered
+        }
     }
-}, { deep: true })
+})
 
 watch(selected_items, () => {
     // Reset colour/part when item selection changes, if current value is no longer valid
@@ -276,14 +297,20 @@ watch(selected_items, () => {
     if (selected_part.value && !partOptions.value.includes(selected_part.value)) {
         selected_part.value = ''
     }
-}, { deep: true })
+})
 
 // Reset all filters on data reload / supplier change
 watch(items, () => {
+    if (lotCtrl) lotCtrl.clear_all_selections()
+    if (itemCtrl) itemCtrl.clear_all_selections()
     selected_lots.value = []
     selected_items.value = []
     selected_colour.value = ''
     selected_part.value = ''
+})
+
+onMounted(() => {
+    initControls()
 })
 
 // --- Helpers ---
@@ -366,133 +393,36 @@ watch(() => [props.selected_supplier, props.refresh_counter], fetchData, { immed
     border-color: #94a3b8;
 }
 
-/* Multiselect */
-.multiselect-wrapper {
-    position: relative;
-    min-width: 180px;
+/* Frappe MultiSelectList wrapper */
+.filter-control {
+    min-width: 220px;
 }
 
-.multiselect-control {
-    background: #f8fafc;
-    border: 1px solid #e2e8f0;
-    border-radius: 0.75rem;
-    min-height: 38px;
-    font-weight: 500;
-    font-size: 0.875rem;
-    color: #334155;
-    padding: 0.3rem 2rem 0.3rem 0.6rem;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 0.3rem;
-    transition: border-color 0.2s ease;
-    position: relative;
+.filter-control :deep(.frappe-control) {
+    margin-bottom: 0 !important;
 }
 
-.multiselect-control:hover {
-    border-color: #94a3b8;
+.filter-control :deep(.control-label) {
+    display: none !important;
 }
 
-.multiselect-placeholder {
-    color: #94a3b8;
-    font-weight: 500;
-    user-select: none;
+.filter-control :deep(.control-input-wrapper) {
+    background: #f8fafc !important;
+    border: 1px solid #e2e8f0 !important;
+    border-radius: 0.75rem !important;
+    min-height: 38px !important;
+    font-weight: 500 !important;
 }
 
-.dropdown-chevron {
-    width: 16px;
-    height: 16px;
-    color: #94a3b8;
-    position: absolute;
-    right: 0.6rem;
-    top: 50%;
-    transform: translateY(-50%);
-    transition: transform 0.2s ease;
-    flex-shrink: 0;
+.filter-control :deep(.control-input) {
+    background: transparent !important;
+    border: none !important;
 }
 
-.dropdown-chevron.open {
-    transform: translateY(-50%) rotate(180deg);
-}
-
-.multiselect-pills {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.25rem;
-}
-
-.selected-pill {
-    background: #eff6ff;
-    color: #2563eb;
-    padding: 0.15rem 0.5rem;
-    border-radius: 0.75rem;
-    font-size: 0.7rem;
-    font-weight: 600;
-    display: inline-flex;
-    align-items: center;
-    gap: 0.3rem;
-    white-space: nowrap;
-}
-
-.pill-remove {
-    cursor: pointer;
-    font-size: 0.85rem;
-    line-height: 1;
-    color: #2563eb;
-    opacity: 0.6;
-    transition: opacity 0.15s;
-}
-
-.pill-remove:hover {
-    opacity: 1;
-}
-
-.multiselect-dropdown {
-    position: absolute;
-    top: calc(100% + 4px);
-    left: 0;
-    right: 0;
-    background: white;
-    border: 1px solid #e2e8f0;
-    border-radius: 0.75rem;
-    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
-    z-index: 50;
-    max-height: 220px;
-    overflow-y: auto;
-    padding: 0.35rem 0;
-}
-
-.multiselect-option {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.45rem 0.75rem;
-    cursor: pointer;
-    font-size: 0.825rem;
-    font-weight: 500;
-    color: #334155;
-    transition: background-color 0.15s;
-    margin: 0;
-}
-
-.multiselect-option:hover {
-    background: #f1f5f9;
-}
-
-.multiselect-option input[type="checkbox"] {
-    accent-color: #2563eb;
-    width: 15px;
-    height: 15px;
-    cursor: pointer;
-    flex-shrink: 0;
-}
-
-.multiselect-empty {
-    padding: 0.75rem;
-    text-align: center;
-    color: #94a3b8;
-    font-size: 0.8rem;
+.filter-control :deep(.input-with-feedback) {
+    background: transparent !important;
+    border: none !important;
+    font-weight: 500 !important;
 }
 
 .report-wrapper {
