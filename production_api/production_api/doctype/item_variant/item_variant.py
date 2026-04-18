@@ -30,8 +30,8 @@ class ItemVariant(Document):
 		if frappe.db.exists("Sales Item Price", {"item_variant": self.name}):
 			return
 
-		FG = frappe.get_doc("FG Item Master", filters={
-			"is_scheme": 0, "item": self.item})
+		FG = frappe.get_all("FG Item Master", filters={
+			"is_scheme": 0, "item": self.item},pluck="name")
 		if not FG:
 			return
 		sales_item_price = frappe.get_doc({
