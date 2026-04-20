@@ -18,6 +18,7 @@
   "finishing_end_date",
   "naming_series",
   "finishing_process",
+  "fp_status",
   "section_break_umng",
   "finishing_item_html",
   "finishing_plan_details",
@@ -47,6 +48,8 @@
   "ocr_tab",
   "comments",
   "finishing_plan_ocr_html",
+  "p_and_l_tab",
+  "p_and_l_html",
   "incomplete_transfer_tab",
   "incomplete_transfer_items_html",
   "incomplete_transfer_dc_list",
@@ -76,6 +79,16 @@
    "in_standard_filter": 1,
    "label": "Work Order",
    "options": "Work Order",
+   "read_only": 1
+  },
+  {
+   "default": "Planned",
+   "fieldname": "fp_status",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "FP Status",
+   "options": "Planned\nPartially Received\nReady to Pack\nPartially Dispatched\nDispatched\nFully Dispatched\nOCR Requested\nOCR Completed\nP&L Submitted",
    "read_only": 1
   },
   {
@@ -279,6 +292,16 @@
    "fieldname": "finishing_plan_ocr_html",
    "fieldtype": "HTML",
    "label": "Finishing Plan OCR HTML"
+  },
+  {
+   "fieldname": "p_and_l_tab",
+   "fieldtype": "Tab Break",
+   "label": "P & L"
+  },
+  {
+   "fieldname": "p_and_l_html",
+   "fieldtype": "HTML",
+   "label": "P and L Documents"
   },
   {
    "fieldname": "return_grn_list",

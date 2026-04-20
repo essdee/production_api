@@ -2328,6 +2328,8 @@ def create_finishing_detail(work_order, from_finishing=False):
     new_doc.set("finishing_plan_details", finishing_items)
     new_doc.set("finishing_plan_reworked_details", finishing_rework_items)
     new_doc.set("finishing_plan_grn_details", grn_items)
+    from production_api.production_api.doctype.finishing_plan.finishing_plan import apply_auto_fp_status
+    apply_auto_fp_status(new_doc)
     new_doc.save(ignore_permissions=True)
 
 

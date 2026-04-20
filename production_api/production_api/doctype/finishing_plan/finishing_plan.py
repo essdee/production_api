@@ -3,6 +3,7 @@
 
 import frappe
 from itertools import groupby
+from frappe.utils import flt
 from frappe.model.document import Document
 from production_api.production_api.doctype.supplier.supplier import get_primary_address
 from production_api.production_api.doctype.item.item import get_or_create_variant, get_attribute_details
@@ -2234,3 +2235,131 @@ def get_finishing_dispatch_report(from_date, to_date, lot_list=None, item_list=N
 		"data": list(lot_data.values()),
 		"sizes": all_sizes,
 	}
+
+AUTO_FP_STATUSES = ("", "Planned", "Partially Received", "Ready to Pack", "Partially Dispatched", "Dispatched", "Fully Dispatched")
+FULLY_DISPATCHED_PCT = 97.0
+
+
+def _total_unaccountable(finishing_doc):
+	try:
+		ocr_data = get_ocr_details(finishing_doc)
+	except Exception:
+		return None
+	total = 0
+	for part_value in ocr_data:
+		total += (
+			ocr_data[part_value]['sewing_received']
+			+ ocr_data[part_value]['old_lot']
+			+ ocr_data[part_value]['ironing_excess']
+			- (
+				ocr_data[part_value]['dispatched_piece']
+				+ ocr_data[part_value]['rejected']
+				+ ocr_data[part_value]['loose_piece_set']
+				+ ocr_data[part_value]['loose_piece']
+				+ ocr_data[part_value]['pending']
+				+ ocr_data[part_value]['transferred']
+			)
+		)
+	return total
+
+
+def compute_received_status(finishing_doc):
+	total_cutting = 0.0
+	total_received = 0.0
+	total_dispatched_pieces = 0.0
+	for row in finishing_doc.finishing_plan_details:
+		total_cutting += flt(row.cutting_qty)
+		total_received += flt(row.delivered_quantity)
+		total_dispatched_pieces += flt(row.dc_qty)
+
+	pieces_per_box = flt(finishing_doc.pieces_per_box) or 0
+	if pieces_per_box:
+		for row in finishing_doc.finishing_plan_grn_details:
+			total_dispatched_pieces += flt(row.dispatched) * pieces_per_box
+
+	if not total_cutting:
+		return None
+
+	settings = frappe.get_cached_doc("MRP Settings")
+
+	if total_dispatched_pieces > 0:
+		disp_pct = (total_dispatched_pieces / total_cutting) * 100.0
+		disp_threshold = flt(settings.partially_dispatched_percentage) or 0
+		if disp_pct < disp_threshold:
+			return "Partially Dispatched"
+		if disp_pct > FULLY_DISPATCHED_PCT:
+			unaccountable = _total_unaccountable(finishing_doc)
+			if unaccountable is not None and unaccountable == 0:
+				return "Fully Dispatched"
+		return "Dispatched"
+
+	if not total_received:
+		return None
+	recv_pct = (total_received / total_cutting) * 100.0
+	recv_threshold = flt(settings.partial_received_percentage) or 0
+	return "Ready to Pack" if recv_pct >= recv_threshold else "Partially Received"
+
+
+def apply_auto_fp_status(finishing_doc):
+	new_status = compute_received_status(finishing_doc)
+	if not new_status:
+		return
+	current = finishing_doc.fp_status or ""
+	if current in AUTO_FP_STATUSES:
+		finishing_doc.fp_status = new_status
+
+
+@frappe.whitelist()
+def get_p_and_l_documents(doc_name):
+	return frappe.get_all(
+		"P and L Document",
+		filters={"against": "Finishing Plan", "against_id": doc_name},
+		fields=["name", "file", "comments", "modified", "owner"],
+		order_by="creation desc",
+	)
+
+
+@frappe.whitelist()
+def add_p_and_l_document(doc_name, file_url, comments=None):
+	if not frappe.db.exists("Finishing Plan", doc_name):
+		frappe.throw(f"Finishing Plan {doc_name} not found")
+	pld = frappe.new_doc("P and L Document")
+	pld.against = "Finishing Plan"
+	pld.against_id = doc_name
+	pld.file = file_url
+	pld.comments = comments
+	pld.insert(ignore_permissions=True)
+	return pld.name
+
+
+@frappe.whitelist()
+def delete_p_and_l_document(name):
+	pld = frappe.get_doc("P and L Document", name)
+	if pld.against != "Finishing Plan":
+		frappe.throw("Not a Finishing Plan P&L document")
+	frappe.delete_doc("P and L Document", name, ignore_permissions=True)
+	return True
+
+
+@frappe.whitelist()
+def approve_ocr_request(doc_name):
+	if "System Manager" not in frappe.get_roles():
+		frappe.throw("Only System Manager can approve OCR requests.")
+	doc = frappe.get_doc("Finishing Plan", doc_name)
+	if doc.fp_status != "OCR Requested":
+		frappe.throw(f"Finishing Plan is not in OCR Requested state (current: {doc.fp_status}).")
+	doc.fp_status = "OCR Completed"
+	doc.save(ignore_permissions=True)
+	return {"fp_status": doc.fp_status}
+
+
+@frappe.whitelist()
+def complete_ocr(doc_name):
+	doc = frappe.get_doc("Finishing Plan", doc_name)
+	unaccountable = _total_unaccountable(doc)
+	if unaccountable is None:
+		frappe.throw("Unable to compute unaccountable pieces. Please check the OCR tab.")
+	new_status = "OCR Completed" if unaccountable == 0 else "OCR Requested"
+	doc.fp_status = new_status
+	doc.save(ignore_permissions=True)
+	return {"fp_status": new_status, "unaccountable": unaccountable}

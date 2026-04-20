@@ -67,6 +67,8 @@
   "column_break_bvdh",
   "default_minor_aql_level",
   "sewing_plan_tab",
+  "partial_received_percentage",
+  "partially_dispatched_percentage",
   "previous_day_entries",
   "sewing_plan_status_summary",
   "type_wise_diff_summary",
@@ -393,6 +395,22 @@
    "fieldname": "sewing_plan_tab",
    "fieldtype": "Tab Break",
    "label": "Sewing Plan"
+  },
+  {
+   "default": "50",
+   "description": "Finishing Plan moves from Partially Received to Ready to Pack once (received / cutting) qty reaches this percentage.",
+   "fieldname": "partial_received_percentage",
+   "fieldtype": "Percent",
+   "label": "Partial Received Percentage",
+   "non_negative": 1
+  },
+  {
+   "default": "90",
+   "description": "Finishing Plan moves from Partially Dispatched to Dispatched once (dispatched pieces / cutting) reaches this percentage. Dispatched boxes are converted using Pieces Per Box.",
+   "fieldname": "partially_dispatched_percentage",
+   "fieldtype": "Percent",
+   "label": "Partially Dispatched Percentage",
+   "non_negative": 1
   },
   {
    "fieldname": "sewing_plan_status_summary",

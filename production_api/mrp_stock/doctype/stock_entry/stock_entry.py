@@ -13,6 +13,7 @@ from production_api.production_api.doctype.item_price.item_price import get_item
 from production_api.production_api.doctype.item.item import create_variant, get_attribute_details, get_variant
 from production_api.production_api.doctype.purchase_order.purchase_order import get_item_attribute_details, get_item_group_index
 from production_api.utils import update_if_string_instance, get_lpiece_variant, get_finishing_plan_dict, get_finishing_plan_list
+from production_api.production_api.doctype.finishing_plan.finishing_plan import apply_auto_fp_status
 from production_api.production_api.doctype.cut_bundle_movement_ledger.cut_bundle_movement_ledger import make_cut_bundle_ledger, cancel_cut_bundle_ledger
 
 class StockEntry(Document):
@@ -453,21 +454,30 @@ class StockEntry(Document):
 
 		if self.against == "Finishing Plan Dispatch":
 			fp_doc = frappe.get_doc("Finishing Plan Dispatch", self.against_id)
+			finishing_plan_parents = set()
 			for row in fp_doc.finishing_plan_dispatch_items:
 				qty = frappe.db.get_value("Finishing Plan GRN Detail", row.against_id_detail, "dispatched")
 				if self.docstatus == 2:
 					qty -= row.quantity
 				else:
-					qty += row.quantity		
+					qty += row.quantity
 
 				frappe.db.set_value("Finishing Plan GRN Detail", row.against_id_detail, "dispatched", qty)
-			
+				fp_parent = frappe.db.get_value("Finishing Plan GRN Detail", row.against_id_detail, "parent")
+				if fp_parent:
+					finishing_plan_parents.add(fp_parent)
+
 			if self.docstatus == 1:
 				fp_doc.stock_entry = self.name
 			else:
 				fp_doc.stock_entry = None
-				
+
 			fp_doc.save(ignore_permissions=True)
+
+			for fp_name in finishing_plan_parents:
+				finishing_plan_doc = frappe.get_doc("Finishing Plan", fp_name)
+				apply_auto_fp_status(finishing_plan_doc)
+				finishing_plan_doc.save(ignore_permissions=True)
 
 		if self.against == "Finishing Plan":
 			if self.purpose == 'Material Issue':
@@ -498,7 +508,8 @@ class StockEntry(Document):
 					del stock_entry_list[self.name]
 				else:
 					stock_entry_list[self.name] = frappe.utils.now_datetime().strftime("%d-%m-%Y %H:%M:%S")
-				finishing_doc.stock_entry_list = frappe.json.dumps(stock_entry_list)		
+				finishing_doc.stock_entry_list = frappe.json.dumps(stock_entry_list)
+				apply_auto_fp_status(finishing_doc)
 				finishing_doc.save(ignore_permissions=True)
 			else:
 				finishing_doc = frappe.get_doc("Finishing Plan", self.against_id)
