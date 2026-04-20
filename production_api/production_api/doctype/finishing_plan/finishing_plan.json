@@ -38,6 +38,9 @@
   "inward_report_html",
   "fetch_from_old_lot_tab",
   "finishing_old_lot_html",
+  "finishing_old_lot_items",
+  "finishing_old_lot_given_items",
+  "finishing_old_lot_received_items",
   "lot_transfer_list",
   "ironing_excess_tab",
   "finishing_plan_ironing_excess_html",
@@ -232,6 +235,27 @@
    "fieldname": "finishing_old_lot_html",
    "fieldtype": "HTML",
    "label": "Finishing Old Lot HTML"
+  },
+  {
+   "fieldname": "finishing_old_lot_items",
+   "fieldtype": "Table",
+   "hidden": 1,
+   "label": "Fetched Old Lot Items",
+   "options": "Finishing Plan Old Lot Item"
+  },
+  {
+   "fieldname": "finishing_old_lot_given_items",
+   "fieldtype": "Table",
+   "hidden": 1,
+   "label": "Old Lot Items Given",
+   "options": "Finishing Plan Old Lot Given"
+  },
+  {
+   "fieldname": "finishing_old_lot_received_items",
+   "fieldtype": "Table",
+   "hidden": 1,
+   "label": "Old Lot Items Received",
+   "options": "Finishing Plan Old Lot Received"
   },
   {
    "fieldname": "dc_list",
