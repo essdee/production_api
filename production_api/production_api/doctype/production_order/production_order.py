@@ -349,7 +349,7 @@ def update_price(production_order, item_details):
 					has_changes = True
 				break
 	if not has_changes:
-		return {"status": "no_change"}
+		return 
 
 	lots = frappe.get_all(
 		"Lot", filters={"production_order": production_order}, pluck="name")
@@ -364,18 +364,13 @@ def update_price(production_order, item_details):
 		_apply_prices_to_ppo(doc, new_prices, primary)
 		_create_ppo_price_request(
 			production_order, old_prices, new_prices, auto_approved=True)
-		return {"status": "approved"}
-	pending = frappe.db.exists("PPO Price Request", {
-							   "production_order": production_order, "status": "Pending"})
-	if pending:
-		frappe.throw(
-			"A price change request is already pending approval for this Production Order")
+		return 
+	
+	
 	_create_ppo_price_request(
-		production_order, old_prices, new_prices, auto_approved=False)
-	doc.db_set("price_approval_status",
-			   "Pending Approval", update_modified=False)
-	print("Price update request created", item_details)
-	return {"status": "pending_approval"}
+		production_order, old_prices, new_prices, auto_approved=True)
+	
+	return
 
 
 def _apply_prices_to_ppo(doc, item_details, primary):
