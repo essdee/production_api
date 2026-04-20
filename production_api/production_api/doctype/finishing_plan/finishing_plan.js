@@ -52,6 +52,11 @@ frappe.ui.form.on("Finishing Plan", {
             frm.doc['pack_return'] = JSON.stringify(frm.doc.__onload.pack_return);
             frm.pack_return_detail.load_data(frm.doc.__onload.pack_return);
         }
+        $(frm.fields_dict['finishing_rejection_html'].wrapper).html("")
+        frm.rejection_detail = new frappe.production.ui.FinishingRejectionDetail(frm.fields_dict['finishing_rejection_html'].wrapper)
+        if (frm.doc.__onload && frm.doc.__onload.finishing_rejection_data) {
+            frm.rejection_detail.load_data(frm.doc.__onload.finishing_rejection_data)
+        }
         $(frm.fields_dict['incomplete_transfer_items_html'].wrapper).html("")
         new frappe.production.ui.FinishingPlanCompleteTransfer(frm.fields_dict['incomplete_transfer_items_html'].wrapper)
         new frappe.production.ui.AlternativeDetail(frm.fields_dict['alternative_html'].wrapper)

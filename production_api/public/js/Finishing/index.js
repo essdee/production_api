@@ -2,6 +2,7 @@ import { createApp } from 'vue';
 import FinishingGRN from "./FinishingGRN.vue";
 import FinishingDetail from "./FinishingDetail.vue"
 import FinishingQtyDetail from "./FinishingQtyDetail.vue"
+import FinishingRejectionDetail from "./FinishingRejectionDetail.vue"
 import FinishingInward from "./FinishingInward.vue"
 import FinishingOldLotTransfer from "./FinishingOldLotTransfer.vue"
 import FinishingIroningExcess from "./FinishingIroningExcess.vue";
@@ -186,6 +187,21 @@ export class FinishingQtyDetailWrapper {
     }
     make_app() {
         this.app = createApp(FinishingQtyDetail)
+        SetVueGlobals(this.app)
+        this.vue = this.app.mount(this.$wrapper.get(0))
+    }
+    load_data(data) {
+        this.vue.load_data(JSON.parse(JSON.stringify(data)))
+    }
+}
+
+export class FinishingRejectionDetailWrapper {
+    constructor(wrapper) {
+        this.$wrapper = $(wrapper)
+        this.make_app()
+    }
+    make_app() {
+        this.app = createApp(FinishingRejectionDetail)
         SetVueGlobals(this.app)
         this.vue = this.app.mount(this.$wrapper.get(0))
     }

@@ -53,6 +53,11 @@ class FinishingPlan(Document):
 			"ocr_data":ocr_details,
 			"primary_values": data['primary_values']
 		})
+		self.set_onload("finishing_rejection_data", self.get_rejection_details(
+			primary_values=data['primary_values'],
+			is_set_item=data['is_set_item'],
+			set_attr=data['set_attr'],
+		))
 
 	def get_inward_details(self):
 		ipd = frappe.get_value("Lot", self.lot, "production_detail")
@@ -181,7 +186,74 @@ class FinishingPlan(Document):
 			finishing_rework["data"][colour]["values"][size]["rejected"] += item.rejected_qty
 
 		return finishing_rework
-	
+
+	def get_rejection_details(self, primary_values=None, is_set_item=None, set_attr=None):
+		ipd = frappe.get_value("Lot", self.lot, "production_detail")
+		ipd_fields = ["is_set_item", "packing_attribute", "primary_item_attribute", "set_item_attribute"]
+		ipd_is_set_item, pack_attr, primary_attr, ipd_set_attr = frappe.get_value("Item Production Detail", ipd, ipd_fields)
+		if is_set_item is None:
+			is_set_item = ipd_is_set_item
+		if set_attr is None:
+			set_attr = ipd_set_attr
+		if primary_values is None:
+			primary_values = get_ipd_primary_values(ipd)
+
+		rework_item_names = frappe.get_all(
+			"GRN Rework Item", filters={"lot": self.lot}, pluck="name"
+		)
+
+		data = {}
+		grand_rejection_total = 0
+
+		for name in rework_item_names:
+			doc = frappe.get_doc("GRN Rework Item", name)
+			for row in doc.grn_rework_item_details:
+				rework_qty = row.quantity or 0
+				rejection_qty = row.rejection or 0
+				if rework_qty == 0 and rejection_qty == 0:
+					continue
+
+				received_type = row.received_type or "Unspecified"
+
+				set_comb = update_if_string_instance(row.set_combination)
+				if not isinstance(set_comb, dict):
+					set_comb = {}
+				major_colour = set_comb.get("major_colour", "")
+				attr_details = get_variant_attr_details(row.item_variant)
+				size = attr_details.get(primary_attr)
+				part = None
+				if is_set_item:
+					variant_colour = attr_details.get(pack_attr, "")
+					part = attr_details.get(set_attr)
+					colour = f"{variant_colour} ({major_colour}) @ " + (part or "")
+				else:
+					colour = major_colour or attr_details.get(pack_attr, "")
+
+				data.setdefault(received_type, {})
+				data[received_type].setdefault(colour, {
+					"part": part,
+					"rework": {"values": {}, "total": 0},
+					"rejection": {"values": {}, "total": 0},
+				})
+				block = data[received_type][colour]
+				block["rework"]["values"].setdefault(size, 0)
+				block["rework"]["values"][size] += rework_qty
+				block["rework"]["total"] += rework_qty
+
+				block["rejection"]["values"].setdefault(size, 0)
+				block["rejection"]["values"][size] += rejection_qty
+				block["rejection"]["total"] += rejection_qty
+
+				grand_rejection_total += rejection_qty
+
+		return {
+			"primary_values": primary_values,
+			"data": data,
+			"grand_rejection_total": grand_rejection_total,
+			"is_set_item": is_set_item,
+			"set_attr": set_attr,
+		}
+
 	def before_save(self):
 		finishing_plans = get_finishing_plan_dict(self)
 		for key in finishing_plans:

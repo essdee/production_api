@@ -52,7 +52,9 @@
   "incomplete_transfer_dc_list",
   "incomplete_transfer_grn_list",
   "alternatives_tab",
-  "alternative_html"
+  "alternative_html",
+  "rejection_tab",
+  "finishing_rejection_html"
  ],
  "fields": [
   {
@@ -335,6 +337,16 @@
    "fieldname": "alternative_html",
    "fieldtype": "HTML",
    "label": "Alternative HTML"
+  },
+  {
+   "fieldname": "rejection_tab",
+   "fieldtype": "Tab Break",
+   "label": "Rejection"
+  },
+  {
+   "fieldname": "finishing_rejection_html",
+   "fieldtype": "HTML",
+   "label": "Finishing Rejection HTML"
   }
  ],
  "grid_page_length": 50,

@@ -81,6 +81,7 @@ import {
     FinishingPlanDispatchWrapper,
     FinishingOldLotTransferWrapper,
     FinishingQtyDetailWrapper,
+    FinishingRejectionDetailWrapper,
 } from "./Finishing";
 
 import { SewingPlanWrapper } from "./SewingPlan"
@@ -1190,6 +1191,7 @@ frappe.production.ui.FinishingPlanCompleteTransfer = FinishingPlanCompleteTransf
 frappe.production.ui.FinishingPlanDispatch = FinishingPlanDispatchWrapper
 frappe.production.ui.FinishingOldLotTransfer = FinishingOldLotTransferWrapper
 frappe.production.ui.FinishingQtyDetail = FinishingQtyDetailWrapper
+frappe.production.ui.FinishingRejectionDetail = FinishingRejectionDetailWrapper
 
 // Product Development
 frappe.production.product_development.ui.ProductFileVersions = ProductFileVersionsWrapper
