@@ -101,9 +101,12 @@ def get_print_format(doc_name, printer_res="200dpi"):
 
 	templates = ""
 	dpi_value = 203 if '200' in printer_res else 300
-	
+	labels_per_row = print_format_doc.labels_per_row or 1
+
 	for row in data:
-		if row['print_quantity'] > 0:
+		qty = row.get('print_quantity') or 0
+		if qty > 0:
+			row['print_quantity'] = math.ceil(qty / labels_per_row)
 			templates += get_template(row, raw_code, dpi_value=dpi_value)
 
 	return templates
