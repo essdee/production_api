@@ -18,6 +18,7 @@
   "finishing_end_date",
   "naming_series",
   "finishing_process",
+  "fp_status",
   "section_break_umng",
   "finishing_item_html",
   "finishing_plan_details",
@@ -37,6 +38,9 @@
   "inward_report_html",
   "fetch_from_old_lot_tab",
   "finishing_old_lot_html",
+  "finishing_old_lot_items",
+  "finishing_old_lot_given_items",
+  "finishing_old_lot_received_items",
   "lot_transfer_list",
   "ironing_excess_tab",
   "finishing_plan_ironing_excess_html",
@@ -47,12 +51,16 @@
   "ocr_tab",
   "comments",
   "finishing_plan_ocr_html",
+  "p_and_l_tab",
+  "p_and_l_html",
   "incomplete_transfer_tab",
   "incomplete_transfer_items_html",
   "incomplete_transfer_dc_list",
   "incomplete_transfer_grn_list",
   "alternatives_tab",
-  "alternative_html"
+  "alternative_html",
+  "rejection_tab",
+  "finishing_rejection_html"
  ],
  "fields": [
   {
@@ -74,6 +82,16 @@
    "in_standard_filter": 1,
    "label": "Work Order",
    "options": "Work Order",
+   "read_only": 1
+  },
+  {
+   "default": "Planned",
+   "fieldname": "fp_status",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "FP Status",
+   "options": "Planned\nPartially Received\nReady to Pack\nPartially Dispatched\nDispatched\nFully Dispatched\nOCR Requested\nOCR Completed\nP&L Submitted",
    "read_only": 1
   },
   {
@@ -219,6 +237,27 @@
    "label": "Finishing Old Lot HTML"
   },
   {
+   "fieldname": "finishing_old_lot_items",
+   "fieldtype": "Table",
+   "hidden": 1,
+   "label": "Fetched Old Lot Items",
+   "options": "Finishing Plan Old Lot Item"
+  },
+  {
+   "fieldname": "finishing_old_lot_given_items",
+   "fieldtype": "Table",
+   "hidden": 1,
+   "label": "Old Lot Items Given",
+   "options": "Finishing Plan Old Lot Given"
+  },
+  {
+   "fieldname": "finishing_old_lot_received_items",
+   "fieldtype": "Table",
+   "hidden": 1,
+   "label": "Old Lot Items Received",
+   "options": "Finishing Plan Old Lot Received"
+  },
+  {
    "fieldname": "dc_list",
    "fieldtype": "Small Text",
    "hidden": 1,
@@ -279,6 +318,16 @@
    "label": "Finishing Plan OCR HTML"
   },
   {
+   "fieldname": "p_and_l_tab",
+   "fieldtype": "Tab Break",
+   "label": "P & L"
+  },
+  {
+   "fieldname": "p_and_l_html",
+   "fieldtype": "HTML",
+   "label": "P and L Documents"
+  },
+  {
    "fieldname": "return_grn_list",
    "fieldtype": "Small Text",
    "hidden": 1,
@@ -335,6 +384,16 @@
    "fieldname": "alternative_html",
    "fieldtype": "HTML",
    "label": "Alternative HTML"
+  },
+  {
+   "fieldname": "rejection_tab",
+   "fieldtype": "Tab Break",
+   "label": "Rejection"
+  },
+  {
+   "fieldname": "finishing_rejection_html",
+   "fieldtype": "HTML",
+   "label": "Finishing Rejection HTML"
   }
  ],
  "grid_page_length": 50,

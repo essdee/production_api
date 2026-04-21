@@ -235,6 +235,26 @@ const fetchDPRData = () => {
         callback: (r) => {
             headers.value = r.message.headers
             data.value = r.message.dpr_data
+            const pending = r.message.pending_fi || []
+            if (pending.length > 0) {
+                const byLot = {}
+                pending.forEach(p => {
+                    if (!byLot[p.lot]) byLot[p.lot] = []
+                    const label = p.part ? `${p.colour} — ${p.part}` : p.colour
+                    byLot[p.lot].push(label)
+                })
+                const pillStyle = 'display:inline-block;padding:4px 10px;margin:3px 4px 3px 0;background:#fff7ed;border:1px solid #fdba74;color:#9a3412;border-radius:9999px;font-size:12px;font-weight:600;white-space:nowrap;'
+                const lotStyle = 'font-weight:700;color:#111827;margin-right:10px;min-width:110px;display:inline-block;'
+                const rowStyle = 'display:flex;align-items:flex-start;flex-wrap:wrap;padding:8px 0;border-bottom:1px solid #f1f5f9;'
+                const body = Object.keys(byLot).map(lot => {
+                    const pills = byLot[lot].map(l => `<span style="${pillStyle}">${frappe.utils.escape_html(l)}</span>`).join('')
+                    return `<div style="${rowStyle}"><span style="${lotStyle}">${frappe.utils.escape_html(lot)}</span><div style="flex:1;">${pills}</div></div>`
+                }).join('')
+                const html = `
+                    <p>The following Lot / Colour combinations are hidden from the DPR because their FI date is not yet updated. Please update them in the <b>FI Updates</b> tab.</p>
+                    <div style="margin-top:8px;">${body}</div>`
+                frappe.msgprint({ title: __('FI date not updated'), message: html, indicator: 'orange' })
+            }
         }
     })
 }

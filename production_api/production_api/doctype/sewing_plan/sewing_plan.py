@@ -81,22 +81,19 @@ def get_sp_entry_details(supplier, dpr_date=None, work_station=None, input_type=
 
 @frappe.whitelist()
 def get_dashboard_data(supplier):
-	sp_entry_list = get_sp_entry_details(supplier)
-	if not sp_entry_list:
-		return []
 	data = frappe.db.sql(
 		"""
 			SELECT SUM(t1.quantity) AS qty, t2.input_type
 			FROM `tabSewing Plan Detail` t1
-			JOIN `tabSewing Plan Entry Detail` t2
-			ON t1.parent = t2.name
-			WHERE t2.name IN %(entries)s
+			JOIN `tabSewing Plan Entry Detail` t2 ON t1.parent = t2.name
+			JOIN `tabSewing Plan` sp ON t2.sewing_plan = sp.name
+			JOIN `tabWork Order` wo ON wo.name = sp.work_order
+			WHERE sp.supplier = %(supplier)s
+			  AND wo.open_status = 'Open'
 			GROUP BY t2.input_type
 			ORDER BY SUM(t1.quantity) DESC
 		""",
-		{
-			"entries": tuple(sp_entry_list)
-		},
+		{"supplier": supplier},
 		as_dict=True
 	)
 	return data
@@ -110,11 +107,13 @@ def get_sp_status_summary(supplier):
 	input_qty_type = mrp_doc.sewing_input_qty_type
 	line_output_type = mrp_doc.sewing_line_output_type
 
-	# Query 1: All sewing plans for this supplier
+	# Query 1: Sewing plans for this supplier whose Work Order is still Open
 	sp_records = frappe.db.sql("""
-		SELECT name, work_order, lot, item
-		FROM `tabSewing Plan`
-		WHERE supplier = %(supplier)s
+		SELECT sp.name, sp.work_order, sp.lot, sp.item
+		FROM `tabSewing Plan` sp
+		INNER JOIN `tabWork Order` wo ON wo.name = sp.work_order
+		WHERE sp.supplier = %(supplier)s
+		  AND wo.open_status = 'Open'
 	""", {"supplier": supplier}, as_dict=True)
 
 	if not sp_records:
@@ -832,10 +831,12 @@ def get_colour_size_data(set_combination, item_variant, is_set_item, pack_attr, 
 def get_sewing_plan_dpr_data(supplier, dpr_date, work_station=None, input_type=None):
 	sp_entry_list = get_sp_entry_details(supplier, dpr_date=dpr_date, work_station=work_station, input_type=input_type)
 	dpr_data = {}
+	lots_in_dpr = set()
 	for sp_entry in sp_entry_list:
 		sp_doc = frappe.get_doc("Sewing Plan Entry Detail", sp_entry)
 		dpr_data.setdefault(sp_doc.input_type, {})
 		lot = frappe.get_value("Sewing Plan", sp_doc.sewing_plan, "lot")
+		lots_in_dpr.add(lot)
 		ipd = frappe.get_value("Lot", lot, "production_detail")
 		ipd_fields = ["is_set_item", "packing_attribute", "primary_item_attribute", "set_item_attribute", "item"]
 		is_set_item, pack_attr, primary_attr, set_attr, item_name = frappe.get_value("Item Production Detail", ipd, ipd_fields)
@@ -853,7 +854,7 @@ def get_sewing_plan_dpr_data(supplier, dpr_date, work_station=None, input_type=N
 		})
 		dpr_data[in_type][lot]['details'].setdefault(ws, {})
 		dpr_data[in_type][lot]['details'][ws].setdefault(rec_type, {})
-		
+
 		for row in sp_doc.sewing_plan_details:
 			size, part, colour, v_colour = get_colour_size_data(row.set_combination, row.item_variant, is_set_item, pack_attr, set_attr, primary_attr)
 			set_comb = update_if_string_instance(row.set_combination)
@@ -869,15 +870,44 @@ def get_sewing_plan_dpr_data(supplier, dpr_date, work_station=None, input_type=N
 			dpr_data[in_type][lot]['details'][ws][rec_type][colour]["values"][size] += row.quantity
 			dpr_data[in_type][lot]['details'][ws][rec_type][colour]['total'] += row.quantity
 
+	pending_fi_set = set()
+	pending_fi_list = []
+	for lot in lots_in_dpr:
+		sp_names = frappe.get_all("Sewing Plan", filters={"supplier": supplier, "lot": lot}, pluck="name")
+		if not sp_names:
+			continue
+		ipd = frappe.get_value("Lot", lot, "production_detail")
+		ipd_fields = ["is_set_item", "packing_attribute", "primary_item_attribute", "set_item_attribute"]
+		is_set_item, pack_attr, primary_attr, set_attr = frappe.get_value("Item Production Detail", ipd, ipd_fields)
+		for sp_name in sp_names:
+			sp_doc = frappe.get_doc("Sewing Plan", sp_name)
+			for row in sp_doc.sewing_plan_order_details:
+				if row.fi_date:
+					continue
+				_size, part, colour, _v = get_colour_size_data(row.set_combination, row.item_variant, is_set_item, pack_attr, set_attr, primary_attr)
+				key = (lot, colour, part)
+				if key in pending_fi_set:
+					continue
+				pending_fi_set.add(key)
+				pending_fi_list.append({"lot": lot, "colour": colour, "part": part})
+
 	mrp_doc = frappe.get_single("MRP Settings")
 	orders = []
 	for row in mrp_doc.sewing_plan_input_orders:
 		orders.append(row.input_type)
 
+	if pending_fi_list:
+		return {
+			"headers": orders,
+			"dpr_data": {},
+			"pending_fi": pending_fi_list,
+		}
+
 	return {
 		"headers": orders,
 		"dpr_data": dpr_data,
-	}	
+		"pending_fi": [],
+	}
 
 @frappe.whitelist()
 def get_sewing_plan_entries(supplier, input_type=None, work_station=None, lot_name=None):

@@ -202,7 +202,11 @@ frappe.ui.form.on("Item Production Detail", {
 						method: "production_api.essdee_production.doctype.item_production_detail.item_production_detail.revert_ipd_approval",
 						args: { doc_name: frm.doc.name },
 						callback: function () {
-							frappe.show_alert({ message: __("Approval Reverted"), indicator: "orange" });
+							frappe.msgprint({
+								title: __("Success"),
+								message: __("IPD Reverted Successfully"),
+								indicator: "green",
+							});
 							frm.reload_doc();
 						}
 					});
