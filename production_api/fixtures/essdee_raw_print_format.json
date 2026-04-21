@@ -254,7 +254,7 @@
   "doctype": "Essdee Raw Print Format",
   "height": 0.8,
   "labels_per_row": 4,
-  "modified": "2026-04-21 11:57:26.777796",
+  "modified": "2026-04-21 12:45:47.836168",
   "name": "Store Size Sticker",
   "raw_print_format_details": [
    {
@@ -262,14 +262,14 @@
     "parentfield": "raw_print_format_details",
     "parenttype": "Essdee Raw Print Format",
     "printer_type": "300dpi",
-    "raw_code": "^XA\n^PQ{{print_quantity}}\n^CF0,160\n^FO30,70^FD{{size}}^FS\n^FO340,70^FD{{size}}^FS\n^FO640,70^FD{{size}}^FS\n^FO920,70^FD{{size}}^FS\n^XZ"
+    "raw_code": "^XA\n^PQ{{print_quantity}}\n^CF0,160\n^FO0,70^FB300,1,0,C,0^FD{{size}}^FS\n^FO300,70^FB300,1,0,C,0^FD{{size}}^FS\n^FO600,70^FB300,1,0,C,0^FD{{size}}^FS\n^FO900,70^FB300,1,0,C,0^FD{{size}}^FS\n^XZ"
    },
    {
     "parent": "Store Size Sticker",
     "parentfield": "raw_print_format_details",
     "parenttype": "Essdee Raw Print Format",
     "printer_type": "200dpi",
-    "raw_code": "^XA\n^PQ{{print_quantity}}\n^CF0,180\n^FO30,70^FD{{size}}^FS\n^FO340,70^FD{{size}}^FS\n^FO640,70^FD{{size}}^FS\n^FO920,70^FD{{size}}^FS\n^XZ"
+    "raw_code": "^XA\n^PQ{{print_quantity}}\n^CF0,180\n^FO0,70^FB203,1,0,C,0^FD{{size}}^FS\n^FO203,70^FB203,1,0,C,0^FD{{size}}^FS\n^FO406,70^FB203,1,0,C,0^FD{{size}}^FS\n^FO609,70^FB203,1,0,C,0^FD{{size}}^FS\n^XZ"
    }
   ],
   "width": 4.0
