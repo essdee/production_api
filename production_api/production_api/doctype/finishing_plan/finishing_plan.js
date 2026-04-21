@@ -6,6 +6,7 @@ frappe.ui.form.on("Finishing Plan", {
         if (frm.doc.__islocal) {
             return
         }
+        apply_p_and_l_tab_visibility(frm);
         $(".layout-side-section").css("display", "None")
         $(frm.fields_dict['finishing_item_html'].wrapper).html("")
         frm.finishing = new frappe.production.ui.FinishingDetail(frm.fields_dict['finishing_item_html'].wrapper)
@@ -306,6 +307,14 @@ frappe.ui.form.on("Finishing Plan", {
         })
     }
 });
+
+function apply_p_and_l_tab_visibility(frm) {
+    frappe.db.get_single_value("MRP Settings", "merch_user_role").then((merch_role) => {
+        const allowed = merch_role && frappe.user.has_role(merch_role);
+        frm.set_df_property("p_and_l_tab", "hidden", allowed ? 0 : 1);
+        frm.set_df_property("p_and_l_html", "hidden", allowed ? 0 : 1);
+    });
+}
 
 function render_p_and_l_section(frm) {
     const field = frm.fields_dict && frm.fields_dict['p_and_l_html'];

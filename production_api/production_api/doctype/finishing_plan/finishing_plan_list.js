@@ -6,7 +6,7 @@ frappe.listview_settings["Finishing Plan"] = {
       "Partially Received": "yellow",
       "Ready to Pack": "blue",
       "Partially Dispatched": "orange",
-      "Dispatched": "green",
+      "Dispatched": "purple",
       "Fully Dispatched": "green",
       "OCR Requested": "red",
       "OCR Completed": "green",
