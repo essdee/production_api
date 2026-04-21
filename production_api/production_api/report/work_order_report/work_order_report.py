@@ -36,7 +36,8 @@ def get_columns(received_types):
 		)
 	columns = columns + [
 		{"fieldname":"others", "fieldtype":"Int","label":"Others"},
-		{"fieldname":"pending","fieldtype":"Int","label":"Pending"},	
+		{"fieldname":"pending","fieldtype":"Int","label":"Pending"},
+		{"fieldname":"billed_qty","fieldtype":"Float","label":"Billed Qty"},
 		{"fieldname":"first_dc_date","fieldtype":"Date","label":"First DC Date"},
 		{"fieldname":"last_dc_date","fieldtype":"Date","label":"Last DC Date"},
 		{"fieldname":"first_grn_date","fieldtype":"Date","label":"First GRN Date"},
@@ -89,7 +90,24 @@ def get_data(filters, received_types):
 				query = query.where(doctype.open_status == "Open")
 
 	result = query.run(as_dict=True)
+
+	billed_map = {}
+	if result:
+		wo_names = [r['work_order'] for r in result]
+		billed_rows = frappe.db.sql(
+			"""
+			SELECT parent, SUM(billed_qty) AS billed_qty
+			FROM `tabWork Order Calculated Item`
+			WHERE parent IN %(names)s
+			GROUP BY parent
+			""",
+			{"names": tuple(wo_names)},
+			as_dict=True,
+		)
+		billed_map = {row['parent']: row['billed_qty'] or 0 for row in billed_rows}
+
 	for res in result:
+		res['billed_qty'] = billed_map.get(res['work_order'], 0)
 		received_json = res['received_types_json']
 		if isinstance(received_json, string_types):
 			received_json = json.loads(received_json)

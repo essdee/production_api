@@ -612,16 +612,14 @@ class GoodsReceivedNote(Document):
         for item in self.grn_deliverables:
             item_keys = update_if_string_instance(item.set_combination)
             item_keys.update({"variant": item.item_variant})
-            item_keys = item_keys.copy()
-            item_keys = frozenset(item_keys)
-            calculated_items[item_keys] = item.quantity
+            item_keys = frozenset(item_keys.items())
+            calculated_items[item_keys] = calculated_items.get(item_keys, 0) + item.quantity
 
         for item in wo_doc.deliverables:
             check = True
             keys = update_if_string_instance(item.set_combination)
             keys.update({"variant": item.item_variant})
-            keys = keys.copy()
-            keys = frozenset(keys)
+            keys = frozenset(keys.items())
             x = calculated_items.get(keys)
             if x == 0:
                 check = True
@@ -982,16 +980,14 @@ class GoodsReceivedNote(Document):
         for item in self.grn_deliverables:
             item_keys = update_if_string_instance(item.set_combination)
             item_keys.update({"variant": item.item_variant})
-            item_keys = item_keys.copy()
-            item_keys = frozenset(item_keys)
-            calculated_items[item_keys] = item.quantity
+            item_keys = frozenset(item_keys.items())
+            calculated_items[item_keys] = calculated_items.get(item_keys, 0) + item.quantity
 
         for item in wo_doc.deliverables:
             check = True
             keys = update_if_string_instance(item.set_combination)
             keys.update({"variant": item.item_variant})
-            keys = keys.copy()
-            keys = frozenset(keys)
+            keys = frozenset(keys.items())
             x = calculated_items.get(keys)
             if x == 0:
                 check = True
@@ -1581,6 +1577,7 @@ def fetch_grn_item_details(items, ipd, lot, docstatus=0):
             items = [item.as_dict() for item in items]
     ipd_doc = frappe.get_cached_doc("Item Production Detail", ipd)
     item_details = []
+    items = sorted(items, key=lambda i: i['row_index'])
     for key, variants in groupby(items, lambda i: i['row_index']):
         variants = list(variants)
         current_variant = frappe.get_cached_doc(
@@ -3173,11 +3170,16 @@ def fetch_onload_data(items):
     for (item_name, item), items in grouped_items.items():
         sorted_items = sorted(items, key=lambda x: x.item_variant)
         table_index += 1
-        row_index += 1
+        set_comb_to_row_index = {}
         for row in sorted_items:
             variant = row.item_variant
             set_comb = update_if_string_instance(row.set_combination)
-            key = (variant, tuple(sorted(set_comb.items())))
+            set_comb_key = tuple(sorted(set_comb.items())) if set_comb else ()
+            if set_comb_key not in set_comb_to_row_index:
+                row_index += 1
+                set_comb_to_row_index[set_comb_key] = row_index
+            current_row_index = set_comb_to_row_index[set_comb_key]
+            key = (variant, set_comb_key)
             if key not in d:
                 d[key] = {
                     "item_variant": variant,
@@ -3194,7 +3196,7 @@ def fetch_onload_data(items):
                     "amount": row.amount,
                     "stock_uom_rate": row.stock_uom_rate,
                     "table_index": table_index,
-                    "row_index": row_index,
+                    "row_index": current_row_index,
                     "ref_doctype": row.ref_doctype,
                     "ref_docname": row.ref_docname,
                     "comments": row.comments,
