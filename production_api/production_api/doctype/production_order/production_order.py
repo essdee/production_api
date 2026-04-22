@@ -193,6 +193,8 @@ def get_order_editor_context(item, production_order=None):
 		context["items"][size]["mrp"] = order_qty[size].get(
 			"mrp", context["items"][size]["mrp"])
 
+	context["ordered"] = get_ordered_details(doc.production_ordered_details)
+
 	return context
 
 

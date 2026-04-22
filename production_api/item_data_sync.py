@@ -101,8 +101,11 @@ def get_item_data(item_name=None):
 
 				AND NOT EXISTS (
 
-				SELECT 1 FROM `tabItem Variant Attribute` IV1  WHERE IV1.parent=I2.name AND IV1.attribute NOT IN (%(primary_attribute)s,I3.dependent_attribute )
-				
+				SELECT 1 FROM `tabItem Variant Attribute` IV1  WHERE IV1.parent=I2.name AND (
+					IV1.attribute NOT IN (%(primary_attribute)s, I3.dependent_attribute)
+					OR (IV1.attribute = I3.dependent_attribute AND IV1.attribute_value != 'Loose Piece')
+				)
+
 				)
 
 				ORDER BY FGM.name1,FIS.idx ,I1.idx
