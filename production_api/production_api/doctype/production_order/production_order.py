@@ -349,16 +349,8 @@ def update_price(production_order, item_details):
 	if not has_changes:
 		return
 
-	if not has_lot_bsp:
-		_apply_prices_to_ppo(doc, new_prices, primary)
-		_create_ppo_price_request(
-			production_order, old_prices, new_prices, auto_approved=True)
-		return
-	
-	
-	_create_ppo_price_request(
-		production_order, old_prices, new_prices, auto_approved=True)
-	
+	_apply_prices_to_ppo(doc, new_prices, primary)
+	_create_ppo_price_request(production_order, old_prices, new_prices, auto_approved=True)
 	return
 
 
