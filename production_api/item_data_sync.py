@@ -1,3 +1,5 @@
+import json
+
 import frappe
 
 
@@ -99,8 +101,11 @@ def get_item_data(item_name=None):
 
 				AND NOT EXISTS (
 
-				SELECT 1 FROM `tabItem Variant Attribute` IV1  WHERE IV1.parent=I2.name AND IV1.attribute NOT IN (%(primary_attribute)s,I3.dependent_attribute )
-				
+				SELECT 1 FROM `tabItem Variant Attribute` IV1  WHERE IV1.parent=I2.name AND (
+					IV1.attribute NOT IN (%(primary_attribute)s, I3.dependent_attribute)
+					OR (IV1.attribute = I3.dependent_attribute AND IV1.attribute_value != 'Loose Piece')
+				)
+
 				)
 
 				ORDER BY FGM.name1,FIS.idx ,I1.idx
@@ -108,11 +113,89 @@ def get_item_data(item_name=None):
 
 			"""
 	rows = frappe.db.sql(query, arg, as_dict=True)
-	print(rows)
+	
 
 	data, default_uom = orginize_data(rows)
 	return {
 		"status": 200,
 		"data": data,
 		"default_unit_of_measure": default_uom,
+	}
+
+def float_x(value, default=0):
+	try:
+		return float(value)
+	except Exception:
+		return default
+
+
+@frappe.whitelist()
+def upsert_sales_item_price(fieldname, value):
+	if fieldname not in ("rate", "retail_rate", "mrp_rate"):
+		frappe.throw("Field name not in the list")
+	if isinstance(value, str):
+		value = json.loads(value)
+	if not isinstance(value, dict):
+		frappe.throw("Value must be a dict")
+	
+	if not value:
+		return{
+			"status":200,
+			"message":"No data to update"
+		}
+	variant=list(value.keys())
+
+	ex_item=frappe.get_all("Sales Item Price",
+						filters={"item_variant":["in",variant]},
+						fields=["name","item_variant",fieldname]
+	)
+	
+		
+	ex_data={r.get("item_variant"): r for r in ex_item}
+	for iv,v in value.items():
+		row=ex_data.get(iv)
+		if not row:
+			continue
+		value_n=float_x(v)
+		
+		frappe.db.set_value("Sales Item Price", 
+					   row.get("name"),
+						fieldname, value_n)
+
+	return{
+		"status":200,
+		"message":"Price updated successfully	"
+	}
+
+@frappe.whitelist()
+def bulk_upload_data_from_file(value=None):
+	if isinstance(value,str):
+		value=json.loads(value)
+	if not isinstance(value, dict):
+		frappe.throw("Value must be a dict")
+	if not value:
+		return {
+			"status": 200,
+			"message": "No data to update"
+		}
+	vari_file=list(value.keys())
+	ex_item=frappe.get_all("Sales Item Price",
+						filters={"item_variant":["in",vari_file]},
+						fields=["name","item_variant"]
+	)
+	print("ex_item", value)
+	ex_data={r.get("item_variant"): r for r in ex_item}
+	for iv,v in value.items():
+		r=ex_data.get(iv)
+		if not r:
+			continue
+		frappe.db.set_value("Sales Item Price",r.get("name"),{
+			"rate": float_x(v.get("rate"),0),
+			"retail_rate": float_x(v.get("retail_rate"),0),
+			"mrp_rate": float_x(v.get("mrp_rate"),0),
+		})
+
+	return {
+		"status": 200,
+		"message": "Price updated successfully"
 	}

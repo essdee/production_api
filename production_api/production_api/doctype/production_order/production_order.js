@@ -34,21 +34,11 @@ frappe.ui.form.on("Production Order", {
                 item_details: res,
               },
               callback: function (response) {
-                if (response.message) {
-                  let status = response.message.status;
-                  if (status === "approved") {
-                    frappe.show_alert({
-                      message: __("Price updated successfully"),
-                      indicator: "green",
-                    });
-                  } else if (status === "no_change") {
-                    frappe.show_alert({
-                      message: __("No price changes detected"),
-                      indicator: "blue",
-                    });
-                  }
-                }
                 frm.reload_doc();
+                frappe.show_alert({
+                message: __("Price update completed"),
+                indicator: "green",
+                  });
               },
             });
             d.hide();

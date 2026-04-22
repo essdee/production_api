@@ -12,26 +12,22 @@ class ItemVariant(Document):
 			return
 
 		att_v = set()
-		primary_att = frappe.db.get_single_value(
-			"IPD Settings", "default_primary_attribute")
+		primary_att = frappe.db.get_single_value("IPD Settings", "default_primary_attribute")
 		if primary_att:
 			att_v.add(primary_att)
 
 		dep_att = frappe.get_value("Item", self.item, "dependent_attribute")
-		if dep_att:
-			att_v.add(dep_att)
-
-		iv_attrs = set()
-		iv_attrs = {r.attribute for r in self.attributes}
-
-		if att_v != iv_attrs:
-			return
+		for row in self.attributes:
+			if row.attribute not in [primary_att, dep_att]:
+				return
+			if row.attribute == dep_att and row.attribute_value == 'Loose Piece':
+				return
 
 		if frappe.db.exists("Sales Item Price", {"item_variant": self.name}):
 			return
 
-		FG = frappe.get_all("FG Item Master", filters={
-			"is_scheme": 0, "item": self.item},pluck="name")
+		FG = frappe.get_all("FG Item Master", filters={"is_scheme": 0, "item": self.item},pluck="name")
+		
 		if not FG:
 			return
 		sales_item_price = frappe.get_doc({
