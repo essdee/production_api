@@ -95,16 +95,13 @@ def get_item_data(item_name=None):
 
 				AND FIS.attribute_value=I1.attribute_value
 
-				LEFT JOIN `tabSales Item Price` I4 ON  I4.item_variant=I1.parent 
+				INNER JOIN `tabSales Item Price` I4 ON  I4.item_variant=I1.parent
 
 				WHERE FGM.disabled=0 {item_filter} AND FGM.is_scheme=0 AND I1.attribute=%(primary_attribute)s
 
 				AND NOT EXISTS (
 
-				SELECT 1 FROM `tabItem Variant Attribute` IV1  WHERE IV1.parent=I2.name AND (
-					IV1.attribute NOT IN (%(primary_attribute)s, I3.dependent_attribute)
-					OR (IV1.attribute = I3.dependent_attribute AND IV1.attribute_value != 'Loose Piece')
-				)
+				SELECT 1 FROM `tabItem Variant Attribute` IV1  WHERE IV1.parent=I2.name AND IV1.attribute NOT IN (%(primary_attribute)s,I3.dependent_attribute )
 
 				)
 
