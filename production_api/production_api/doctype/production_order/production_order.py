@@ -131,21 +131,16 @@ def get_sales_item_price_map(item):
 
 def get_box_sticker_mrp_map(production_order, item=None):
 	box_sticker_mrp = {}
-	if not item and production_order:
-		item = frappe.get_value("Production Order", production_order, "item")
-	if not item:
+	if not production_order:
 		return box_sticker_mrp
 
-	# item_names = [item, item.replace(" ", "-"), item.replace("-", " ")]
-	# unique_items = []
-	# for name in item_names:
-	#     if name and name not in unique_items:
-	#         unique_items.append(name)
+	lots = frappe.get_all("Lot", filters={"production_order": production_order}, pluck="name")
+	if not lots:
+		return box_sticker_mrp
 
-	filters = {"fg_item": ["in", item], "docstatus": 1}
 	box_sticker_prints = frappe.get_all(
 		"Box Sticker Print",
-		filters=filters,
+		filters={"lot": ["in", lots], "docstatus": 1},
 		fields=["name"],
 		order_by="modified desc, creation desc"
 	)
@@ -302,22 +297,23 @@ def update_price(production_order, item_details):
 	primary = frappe.get_value("Item", doc.item, "primary_attribute")
 	sales_item_price = get_sales_item_price_map(doc.item)
 	box_sticker_mrp = get_box_sticker_mrp_map(production_order, doc.item)
-	has_submitted_item_bsp = has_submitted_box_sticker_for_item(doc.item)
+	lots = frappe.get_all("Lot", filters={"production_order": production_order}, pluck="name")
+	has_lot_bsp = bool(lots) and bool(frappe.db.exists("Box Sticker Print", {"lot": ["in", lots], "docstatus": 1}))
 	old_prices = {}
 	new_prices = {}
 	has_changes = False
 
-	if has_submitted_item_bsp:
+	if has_lot_bsp:
 		for size in item_details:
 			sales_mrp = sales_item_price.get(size, {}).get("sales_mrp")
 			box_mrp = box_sticker_mrp.get(size)
 			if sales_mrp is None or box_mrp is None:
 				frappe.throw(
-					f"Cannot update MRP for size {size}. Submitted Box Sticker exists and Sales/Box Sticker MRP is missing."
+					f"Cannot update MRP for size {size}. Submitted Box Sticker exists for linked Lot and Sales/Box Sticker MRP is missing."
 				)
 			if flt(sales_mrp) != flt(box_mrp):
 				frappe.throw(
-					f"Cannot update MRP for size {size}. Submitted Box Sticker exists and Sales MRP ({flt(sales_mrp)}) does not match Box Sticker MRP ({flt(box_mrp)})."
+					f"Cannot update MRP for size {size}. Submitted Box Sticker exists for linked Lot and Sales MRP ({flt(sales_mrp)}) does not match Box Sticker MRP ({flt(box_mrp)})."
 				)
 
 	for size in item_details:
@@ -351,22 +347,13 @@ def update_price(production_order, item_details):
 					has_changes = True
 				break
 	if not has_changes:
-		return 
+		return
 
-	lots = frappe.get_all(
-		"Lot", filters={"production_order": production_order}, pluck="name")
-
-	has_bsp = False
-	if has_submitted_item_bsp:
-		has_bsp = True
-	elif lots:
-		has_bsp = frappe.db.exists("Box Sticker Print", {
-								   "lot": ["in", lots], "docstatus": 1})
-	if not has_bsp:
+	if not has_lot_bsp:
 		_apply_prices_to_ppo(doc, new_prices, primary)
 		_create_ppo_price_request(
 			production_order, old_prices, new_prices, auto_approved=True)
-		return 
+		return
 	
 	
 	_create_ppo_price_request(
