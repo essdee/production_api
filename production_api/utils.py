@@ -1648,6 +1648,7 @@ def get_work_in_progress_report(category, status, lot_list_val, item_list, proce
 
 		## Sewing Sent and Finishing Inward
 		stich_wo_list = get_process_wo_list(sewing, lot)
+		sewing_finishing_inward = 0
 		for wo in stich_wo_list:
 			stich_detail = get_wo_total_delivered_received(wo)
 			if stich_detail:
@@ -1655,6 +1656,7 @@ def get_work_in_progress_report(category, status, lot_list_val, item_list, proce
 				lot_dict['total_data']['sewing_details']['finishing_inward'] += stich_detail[0]['received']
 				lot_dict['lot_data'][lot]['sewing_details']['sewing_sent'] += stich_detail[0]['sent']
 				lot_dict['lot_data'][lot]['sewing_details']['finishing_inward'] += stich_detail[0]['received']
+				sewing_finishing_inward += stich_detail[0]['received']
 		
 		lot_dict['total_data']['sewing_details']['cut_to_sew_diff'] = lot_dict['total_data']['sewing_details']['sewing_sent'] - lot_dict['total_data']['cut_details']['cut_qty']
 		lot_dict['total_data']['sewing_details']['in_sew'] = lot_dict['total_data']['sewing_details']['finishing_inward'] - lot_dict['total_data']['sewing_details']['sewing_sent']
@@ -1718,6 +1720,50 @@ def get_work_in_progress_report(category, status, lot_list_val, item_list, proce
 			if transfer_detail:
 				lot_dict['total_data']['finishing_details']['transferred'] += transfer_detail[0]['transferred']
 				lot_dict['lot_data'][lot]['finishing_details']['transferred'] += transfer_detail[0]['transferred']
+
+		if not finishing_plan_list:
+			packing_wo_rows = frappe.db.sql(
+				"""
+					SELECT name FROM `tabWork Order`
+					WHERE docstatus = 1 AND lot = %(lot)s AND includes_packing = 1
+				""", {"lot": lot}, as_dict=True
+			) or []
+			packing_wos = [r['name'] for r in packing_wo_rows]
+			if packing_wos:
+				pcs_per_box = frappe.db.get_value("Item Production Detail", ipd, "packing_combo") or 1
+				fin_inward_res = frappe.db.sql(
+					"""
+						SELECT COALESCE(SUM(delivered_quantity), 0) AS qty
+						FROM `tabWork Order Calculated Item`
+						WHERE parent IN %(wos)s
+					""", {"wos": tuple(packing_wos)}, as_dict=True
+				)
+				packing_fin_inward = flt(fin_inward_res[0]['qty']) if fin_inward_res else 0
+				dispatch_res = frappe.db.sql(
+					"""
+						SELECT COALESCE(SUM(gi.quantity), 0) AS qty
+						FROM `tabGoods Received Note Item` gi
+						JOIN `tabGoods Received Note` grn ON gi.parent = grn.name
+						WHERE grn.docstatus = 1 AND grn.against = 'Work Order'
+						  AND grn.against_id IN %(wos)s AND grn.is_return = 0
+					""", {"wos": tuple(packing_wos)}, as_dict=True
+				)
+				grn_qty = flt(dispatch_res[0]['qty']) if dispatch_res else 0
+				dispatch_qty = grn_qty * pcs_per_box * part_qty
+
+				delta = packing_fin_inward - sewing_finishing_inward
+				lot_dict['total_data']['sewing_details']['finishing_inward'] += delta
+				lot_dict['lot_data'][lot]['sewing_details']['finishing_inward'] += delta
+				lot_dict['total_data']['sewing_details']['in_sew'] = (
+					lot_dict['total_data']['sewing_details']['finishing_inward']
+					- lot_dict['total_data']['sewing_details']['sewing_sent']
+				)
+				lot_dict['lot_data'][lot]['sewing_details']['in_sew'] = (
+					lot_dict['lot_data'][lot]['sewing_details']['finishing_inward']
+					- lot_dict['lot_data'][lot]['sewing_details']['sewing_sent']
+				)
+				lot_dict['total_data']['finishing_details']['dispatch'] += dispatch_qty
+				lot_dict['lot_data'][lot]['finishing_details']['dispatch'] += dispatch_qty
 
 		cut_to_dispatch_diff = (
 			lot_dict['total_data']['finishing_details']['dispatch'] +
