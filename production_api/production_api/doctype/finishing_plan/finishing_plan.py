@@ -476,6 +476,7 @@ def get_fp_ocr_details(doc_name):
 		"get_rework": {},
 		"get_not_received": {},
 		"get_unaccountable": {},
+		"get_order_to_dispatch": {},
 	}
 	def get_total(part_value, ocr_data):
 		return ((ocr_data[part_value]['packed_box_qty'] +
@@ -544,6 +545,12 @@ def get_fp_ocr_details(doc_name):
 			"val2": ocr_data[part_value]['sewing_received'] - ocr_data[part_value]['cutting']
 		}
 
+	def get_order_to_dispatch(part_value, ocr_data):
+		return {
+			"val1": ocr_data[part_value].get('order_qty', 0),
+			"val2": ocr_data[part_value]['dispatched_piece'],
+		}
+
 	def get_unaccountable(part_value, ocr_data):
 		return {
 			"val1": ocr_data[part_value]['cutting'] +
@@ -590,6 +597,7 @@ def get_fp_ocr_details(doc_name):
 		d["get_rework"].setdefault(part_value, get_rework(part_value, ocr_data))
 		d["get_not_received"].setdefault(part_value, get_not_received(part_value, ocr_data))
 		d["get_unaccountable"].setdefault(part_value, get_unaccountable(part_value, ocr_data))
+		d["get_order_to_dispatch"].setdefault(part_value, get_order_to_dispatch(part_value, ocr_data))
 		d['get_total_difference'].setdefault(part_value, {})
 		for colour in ocr_data[part_value]['data']:
 			for size in ocr_data[part_value]['data'][colour]['values']:
@@ -628,6 +636,7 @@ def get_ocr_details(doc):
 			"old_lot": 0,
 			"ironing_excess": 0,
 			"total_inward": 0,
+			"order_qty": 0,
 		})
 		size = attr_details[primary_attr]
 		ocr_data[part_value]['total'].setdefault(size, {
@@ -646,6 +655,7 @@ def get_ocr_details(doc):
 			"old_lot": 0,
 			"ironing_excess": 0,
 			"total_inward": 0,
+			"order_qty": 0,
 		})
 		
 		set_comb = update_if_string_instance(row.set_combination)
@@ -790,7 +800,28 @@ def get_ocr_details(doc):
 		ocr_data[part_value]['rejected'] += row.rejected_qty
 		ocr_data[part_value]['pending'] += (row.quantity - row.reworked_quantity - row.rejected_qty)
 
-	return ocr_data	
+	lot_doc = frappe.get_cached_doc("Lot", doc.lot)
+	for row in lot_doc.lot_order_details:
+		if not row.item_variant:
+			continue
+		attr_details = get_variant_attr_details(row.item_variant)
+		size = attr_details.get(primary_attr)
+		part_key = "Item"
+		if is_set_item:
+			part_key = attr_details.get(set_attr)
+		if part_key not in ocr_data:
+			continue
+		ocr_data[part_key]['total'].setdefault(size, {
+			"cutting_qty": 0, "dc_qty": 0, "transferred": 0, "packed_box": 0,
+			"packed_box_qty": 0, "dispatched_box": 0, "dispatched_piece": 0,
+			"rejected": 0, "loose_piece": 0, "loose_piece_set": 0,
+			"pending": 0, "sewing_received": 0, "old_lot": 0,
+			"ironing_excess": 0, "total_inward": 0, "order_qty": 0,
+		})
+		ocr_data[part_key]['order_qty'] += flt(row.quantity)
+		ocr_data[part_key]['total'][size]['order_qty'] += flt(row.quantity)
+
+	return ocr_data
 
 @frappe.whitelist()
 def fetch_rejected_quantity(doc_name):

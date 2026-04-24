@@ -176,6 +176,25 @@
                                     </th>
                                 </tr>
                                 <tr>
+                                    <th :colspan="2">Order Qty ( O )</th>
+                                    <td v-for="size in items.primary_values">
+                                        {{ items['ocr_data'][part_value]['total'][size]['order_qty'] || 0 }}
+                                    </td>
+                                    <th>
+                                        {{ items['ocr_data'][part_value]['order_qty'] || 0 }}
+                                    </th>
+                                </tr>
+                                <tr>
+                                    <th :colspan="2">Order to Dispatch Diff ( O - H )</th>
+                                    <td v-for="size in items.primary_values"
+                                        :style="get_style((items['ocr_data'][part_value]['total'][size]['order_qty'] || 0) - items['ocr_data'][part_value]['total'][size]['dispatched_piece'])">
+                                        {{ (items['ocr_data'][part_value]['total'][size]['order_qty'] || 0) - items['ocr_data'][part_value]['total'][size]['dispatched_piece'] }}
+                                    </td>
+                                    <th :style="get_style((items['ocr_data'][part_value]['order_qty'] || 0) - items['ocr_data'][part_value]['dispatched_piece'])">
+                                        {{ (items['ocr_data'][part_value]['order_qty'] || 0) - items['ocr_data'][part_value]['dispatched_piece'] }}
+                                    </th>
+                                </tr>
+                                <tr>
                                     <th :rowspan="Object.keys(items['ocr_data'][part_value]['data']).length + 1"
                                     style="vertical-align: middle;">Rejection Pieces ( I )</th>
                                 </tr>
@@ -335,6 +354,13 @@
                                     <td>{{ (100 - get_percentage(get_inward_to_dispatch(part_value))).toFixed(2) }}%</td>
                                 </tr>
                                 <tr>
+                                    <td>Order to Dispatch</td>
+                                    <td>
+                                        {{ get_percentage(get_order_to_dispatch(part_value)) }}%
+                                    </td>
+                                    <td>{{ (100 - get_percentage(get_order_to_dispatch(part_value))).toFixed(2) }}%</td>
+                                </tr>
+                                <tr>
                                     <td>Loose Piece</td>
                                     <td>
                                         {{ get_percentage(get_loose_piece(part_value)) }}%
@@ -456,6 +482,13 @@ function get_cut_to_inward(part_value){
     return {
         "val1": items.value['ocr_data'][part_value]['cutting'],
         "val2": items.value['ocr_data'][part_value]['sewing_received'],
+    }
+}
+
+function get_order_to_dispatch(part_value){
+    return {
+        "val1": items.value['ocr_data'][part_value]['order_qty'] || 0,
+        "val2": items.value['ocr_data'][part_value]['dispatched_piece'],
     }
 }
 
