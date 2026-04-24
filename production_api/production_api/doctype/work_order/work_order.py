@@ -461,6 +461,7 @@ class WorkOrder(Document):
         if grn_list:
             frappe.throw(_("Cannot cancel because Goods Received Note {0} is submitted against this Work Order").format(
                 ", ".join(grn_list)))
+        self.status = 'Cancelled'
 
     def before_save(self):
         if self.docstatus == 1:
