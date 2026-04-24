@@ -5,6 +5,8 @@
             <div class="date-input col-md-2" v-show="!isSummaryMode"></div>
             <div class="item-input col-md-3" v-show="isSummaryMode"></div>
             <div class="lot-input col-md-3" v-show="isSummaryMode"></div>
+            <div class="from-date-input col-md-2" v-show="isSummaryMode"></div>
+            <div class="to-date-input col-md-2" v-show="isSummaryMode"></div>
             <div class="select-field col-md-2"></div>
             <div style="padding-top: 27px;">
                 <button class="btn btn-primary" @click="get_report()">Get Report</button>
@@ -206,6 +208,8 @@ let summaryData = ref([])
 let summaryFetched = ref(false)
 let item_multiselect = ref(null)
 let lot_multiselect = ref(null)
+let from_date_filter = ref(null)
+let to_date_filter = ref(null)
 
 onMounted(() => {
     let el = root.value
@@ -260,6 +264,26 @@ onMounted(() => {
         doc: sample_doc.value,
         render_input: true,
     });
+    from_date_filter.value = frappe.ui.form.make_control({
+        parent: el.querySelector('.from-date-input'),
+        df: {
+            fieldtype: 'Date',
+            label: 'From Date',
+            fieldname: 'from_date',
+        },
+        doc: sample_doc.value,
+        render_input: true,
+    });
+    to_date_filter.value = frappe.ui.form.make_control({
+        parent: el.querySelector('.to-date-input'),
+        df: {
+            fieldtype: 'Date',
+            label: 'To Date',
+            fieldname: 'to_date',
+        },
+        doc: sample_doc.value,
+        render_input: true,
+    });
 });
 
 function formatDate(dateStr) {
@@ -278,6 +302,12 @@ function onSummaryToggle() {
     }
     if (lot_multiselect.value) {
         lot_multiselect.value.set_value([]);
+    }
+    if (from_date_filter.value) {
+        from_date_filter.value.set_value('');
+    }
+    if (to_date_filter.value) {
+        to_date_filter.value.set_value('');
     }
 }
 
@@ -304,8 +334,23 @@ function get_report(){
     if (isSummaryMode.value) {
         let selItems = item_multiselect.value ? (item_multiselect.value.get_value() || []) : [];
         let selLots = lot_multiselect.value ? (lot_multiselect.value.get_value() || []) : [];
-        if (selItems.length === 0 && selLots.length === 0) {
-            frappe.msgprint(__('Please select at least one Item or Lot'));
+        let fromDate = from_date_filter.value ? from_date_filter.value.get_value() : null;
+        let toDate = to_date_filter.value ? to_date_filter.value.get_value() : null;
+        if (fromDate && !toDate) {
+            frappe.msgprint(__('Please select To Date'));
+            return;
+        }
+        if (toDate && !fromDate) {
+            frappe.msgprint(__('Please select From Date'));
+            return;
+        }
+        if (fromDate && toDate && fromDate > toDate) {
+            frappe.msgprint(__('From Date cannot be later than To Date'));
+            return;
+        }
+        let hasDateRange = fromDate && toDate;
+        if (!hasDateRange && selItems.length === 0 && selLots.length === 0) {
+            frappe.msgprint(__('Please select at least one Item or Lot, or a From Date and To Date range'));
             return;
         }
         frappe.call({
@@ -314,6 +359,8 @@ function get_report(){
                 items: JSON.stringify(selItems),
                 lots: JSON.stringify(selLots),
                 location: cutting_location.value.get_value(),
+                from_date: fromDate || null,
+                to_date: toDate || null,
             },
             freeze: true,
             freeze_message: "Fetching Summary Report",

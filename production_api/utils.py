@@ -689,14 +689,16 @@ def get_daily_production_report(date, location, items=None, lots=None):
 	}
 
 @frappe.whitelist()
-def get_daily_production_summary_report(items=None, lots=None, location=None):
+def get_daily_production_summary_report(items=None, lots=None, location=None, from_date=None, to_date=None):
 	import json as _json
 
 	items_list = _json.loads(items) if items else []
 	lots_list = _json.loads(lots) if lots else []
 
-	if not items_list and not lots_list:
-		frappe.throw("Please select at least one Item or Lot")
+	has_date_range = bool(from_date and to_date)
+
+	if not items_list and not lots_list and not has_date_range:
+		frappe.throw("Please select at least one Item or Lot, or a From Date and To Date range")
 
 	conditions = []
 	values = {}
@@ -707,14 +709,23 @@ def get_daily_production_summary_report(items=None, lots=None, location=None):
 		conditions.append("lot IN %(lots)s")
 		values["lots"] = lots_list
 
-	where_clause = " OR ".join(conditions)
+	where_clause = "(" + " OR ".join(conditions) + ")" if conditions else "1=1"
+
+	extra_filters = ""
+	if from_date:
+		extra_filters += " AND bundle_generated_date >= %(from_date)s"
+		values["from_date"] = getdate(from_date)
+	if to_date:
+		extra_filters += " AND bundle_generated_date <= %(to_date)s"
+		values["to_date"] = getdate(to_date)
 
 	dates = frappe.db.sql(
 		f"""
 			SELECT DISTINCT bundle_generated_date
 			FROM `tabCutting LaySheet`
-			WHERE ({where_clause})
+			WHERE {where_clause}
 			AND bundle_generated_date IS NOT NULL
+			{extra_filters}
 			ORDER BY bundle_generated_date DESC
 		""",
 		values,
@@ -725,10 +736,13 @@ def get_daily_production_summary_report(items=None, lots=None, location=None):
 	for row in dates:
 		d = row["bundle_generated_date"]
 		data = get_daily_production_report(str(d), location, items=items_list or None, lots=lots_list or None)
-		filtered = [
-			entry for entry in data["report_data"]
-			if entry.get("style_no") in items_list or entry.get("lot_no") in lots_list
-		]
+		if items_list or lots_list:
+			filtered = [
+				entry for entry in data["report_data"]
+				if entry.get("style_no") in items_list or entry.get("lot_no") in lots_list
+			]
+		else:
+			filtered = data["report_data"]
 		if filtered:
 			result.append({
 				"date": str(d),
