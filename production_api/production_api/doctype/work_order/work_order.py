@@ -1590,6 +1590,7 @@ def update_stock(work_order, close_reason=None, close_other_reason=None, close_r
 
     received_type = frappe.db.get_single_value(
         "Stock Settings", "default_received_type")
+    item_variants = {}
     for data in doc.deliverables:
         if (data.qty - data.pending_quantity - data.stock_update) > 0 and res.get(data.item_variant):
             reduce_qty = data.qty - data.pending_quantity - data.stock_update
@@ -1598,6 +1599,14 @@ def update_stock(work_order, close_reason=None, close_other_reason=None, close_r
             if reduce_qty > balance:
                 reduce_qty = balance
             if reduce_qty:
+                if data.item_variant not in item_variants:
+                    item_variants[data.item_variant] = reduce_qty
+                else:
+                    if balance > item_variants[data.item_variant]:
+                        reduce_qty = balance - item_variants[data.item_variant]
+                        item_variants[data.item_variant] += reduce_qty    
+                    else:
+                        continue    
                 sl_entries.append({
                     "item": data.item_variant,
                     "warehouse": doc.supplier,
