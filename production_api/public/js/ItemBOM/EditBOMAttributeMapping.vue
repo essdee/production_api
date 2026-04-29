@@ -329,27 +329,21 @@ export default {
                         return false;
                     }
                     this.data[i][attr_name] = value;
-                
                     attr_name = this.get_attribute_name("quantity", i)
                     let quantity = this.attribute_inputs[i][attr_name]
 					let qty_value = quantity.get_value();
 					if (this.data[i]["included"]&&qty_value==0){
 						frappe.throw("Quantity cannot be Zero");
-						
 					}
-                    
                     this.data[i][attr_name] = quantity.get_value()
                 }
                 if(this.bom_attributes.length == 0){
                     let attr_name = this.get_attribute_name("quantity", i)
-					
                     let quantity = this.attribute_inputs[i][attr_name]
 					let qty_value = quantity.get_value();
 					if (this.data[i]["included"]&&qty_value==0){
-						frappe.throw("Quantity cannot be Zero");
-						
+						frappe.throw("Quantity cannot be Zero");	
 					}
-                    
                     this.data[i][attr_name] = quantity.get_value()
 
                 }

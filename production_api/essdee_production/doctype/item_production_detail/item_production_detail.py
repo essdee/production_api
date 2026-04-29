@@ -717,21 +717,16 @@ def get_bom_combination(bom_items, process_name):
 					bom_combination[bom_item.item][idx]["same_attributes"].append(i.attribute)	
 			c = {}
 			for item in attr_doc.values:
-			
 				if c.get(item.index):
 					if item.type == 'item':
 						c[item.index]["key"] = c[item.index]["key"]|{item.attribute:item.attribute_value}
 					else:
 						c[item.index]["value"] = c[item.index]["value"]|{item.attribute:item.attribute_value}	
 					c[item.index]["qty_of_bom"] = item.quantity	
-					
-					
 				else:
 					c[item.index] = {"key":{},"value":{}, "qty_of_bom": item.quantity or 0}
-				
 					if item.type == 'item':
 						c[item.index]["key"] = {item.attribute:item.attribute_value}
-					
 			bom_combination[bom_item.item][idx] = bom_combination[bom_item.item][idx] | c
 	return bom_combination
 

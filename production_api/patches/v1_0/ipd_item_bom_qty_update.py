@@ -1,8 +1,8 @@
 import frappe
 
 def execute():
-	idp_doc=frappe.get_all("Item Production Detail",pluck="name")
-	for i in idp_doc:
+	ipd_doc=frappe.get_all("Item Production Detail",pluck="name")
+	for i in ipd_doc:
 		ipd_n=frappe.get_doc("Item Production Detail", i)
 		for x in ipd_n.item_bom:
 			if not x.based_on_attribute_mapping:
