@@ -17,7 +17,7 @@
                         </div>
                     </div>
                 </th>
-                <th v-if="bom_attributes.length > 0">
+                <th v-if="bom_attributes.length >=0">
                     Quantity
                     <div style="display:flex;width:100%;">
                         <div :class="get_quantity_input_class('quantity', 1000)"></div>
@@ -44,7 +44,7 @@
                 <td v-for="attr in bom_attributes">
                     <div :class="get_input_class('bom', attr, index)"></div>
                 </td>
-                <td v-if="bom_attributes.length > 0">
+                <td v-if="bom_attributes.length >= 0">
                     <div :class="get_quantity_input_class('quantity', index)"></div>
                 </td>
             </tr>
@@ -181,7 +181,7 @@ export default {
                             this.data[index][attr_name] = g_data[indexes[i]][attr_name]
                             this.attribute_inputs[index][attr_name].set_value(this.data[index][attr_name]);
                         }
-                        if(this.bom_attributes.length > 0){
+                        if(this.bom_attributes.length >= 0){
                             let attr_name = this.get_attribute_name('quantity', index)
                             this.data[index][attr_name] = g_data[indexes[i]][attr_name]
                             this.attribute_inputs[index][attr_name].set_value(this.data[index][attr_name])
@@ -331,7 +331,21 @@ export default {
                     this.data[i][attr_name] = value;
                     attr_name = this.get_attribute_name("quantity", i)
                     let quantity = this.attribute_inputs[i][attr_name]
+					let qty_value = quantity.get_value();
+					if (this.data[i]["included"]&&qty_value==0){
+						frappe.throw("Quantity cannot be Zero");
+					}
                     this.data[i][attr_name] = quantity.get_value()
+                }
+                if(this.bom_attributes.length == 0){
+                    let attr_name = this.get_attribute_name("quantity", i)
+                    let quantity = this.attribute_inputs[i][attr_name]
+					let qty_value = quantity.get_value();
+					if (this.data[i]["included"]&&qty_value==0){
+						frappe.throw("Quantity cannot be Zero");	
+					}
+                    this.data[i][attr_name] = quantity.get_value()
+
                 }
             }
             return true;
@@ -358,7 +372,7 @@ export default {
                         }
                     }
                 }
-                if(this.bom_attributes.length > 0){
+                if(this.bom_attributes.length >= 0){
                     let attr_name = this.get_attribute_name("quantity", i)
                     inputs[attr_name] = this.create_quantity_input("quantity", i)
                     inputs[attr_name].set_value(this.data[i][attr_name])
@@ -439,7 +453,7 @@ export default {
                         break;
                     }
                 }
-                if (this.bom_attributes.length == 0) {
+                if (this.bom_attributes.length >= 0) {
                     flag = true;
                 }
                 if (flag) {
