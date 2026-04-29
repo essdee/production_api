@@ -68,5 +68,6 @@ production_api.patches.v1_0.update_cutting_plan_dates #2
 production_api.patches.v1_0.update_finishing_plan_quantities
 production_api.patches.v1_0.update_ipd_approval_status
 production_api.patches.v1_0.sales_item_price_creation #2
+production_api.patches.v1_0.ipd_item_bom_qty_update #1
 production_api.patches.v1_0.update_item_bom_uom
 production_api.patches.v1_0.set_finishing_plan_fp_status
