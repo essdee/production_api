@@ -76,6 +76,12 @@ class StockUpdate(Document):
 	def get_sl_entries(self):
 		items = []
 		for row in self.stock_update_details:
+			conversion_factor = flt(row.conversion_factor) or 1
+			stock_qty = flt(row.stock_qty)
+			if not stock_qty:
+				stock_qty = flt(row.update_diff_qty) * conversion_factor
+
+			stock_uom_rate = flt(row.rate) / conversion_factor
 			sl_dict = frappe._dict({
 				"item": row.item_variant,
 				"warehouse": self.warehouse,
@@ -84,10 +90,10 @@ class StockUpdate(Document):
 				"voucher_type": self.doctype,
 				"voucher_no": self.name,
 				"voucher_detail_no": row.name,
-				"qty": row.update_diff_qty * (1 if self.update_type == 'Add' else -1),
-				"uom": row.stock_uom,
-				"rate": row.rate,
-				"valuation_rate": row.rate,
+				"qty": stock_qty * (1 if self.update_type == 'Add' else -1),
+				"uom": row.stock_uom or row.uom,
+				"rate": stock_uom_rate if self.update_type == 'Add' else 0,
+				"valuation_rate": stock_uom_rate if self.update_type == 'Add' else 0,
 				"is_cancelled": 1 if self.docstatus == 2 else 0,
 				"posting_date": self.posting_date,
 				"posting_time": self.posting_time,
