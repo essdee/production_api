@@ -123,6 +123,98 @@ def update_if_string_instance(obj):
 
 	return obj
 
+def _normalize_multiselect_filter(value):
+	if isinstance(value, string_types):
+		try:
+			value = json.loads(value)
+		except ValueError:
+			value = [value]
+
+	if not value:
+		return []
+
+	if isinstance(value, dict):
+		value = list(value.values())
+	elif not isinstance(value, (list, tuple, set)):
+		value = [value]
+
+	normalized = []
+	for row in value:
+		if isinstance(row, dict):
+			row = row.get("value") or row.get("name") or row.get("label")
+		if row is None:
+			continue
+
+		row = str(row).strip()
+		if row and row not in normalized:
+			normalized.append(row)
+
+	return normalized
+
+@frappe.whitelist()
+def get_dispatch_percentage_report(percentage=None, lot_list=None, item_list=None):
+	target_percentage = flt(percentage)
+	if target_percentage <= 0:
+		frappe.throw("Percentage must be greater than 0")
+
+	lot_list = _normalize_multiselect_filter(lot_list)
+	item_list = _normalize_multiselect_filter(item_list)
+	conditions = [
+		"fp.docstatus < 2",
+		"log.parenttype = 'Finishing Plan'",
+		"log.parentfield = 'finishing_plan_dispatch_logs'",
+		"ifnull(log.cancelled, 0) = 0",
+		"ifnull(log.dispatch_percentage_before, 0) < %(percentage)s",
+		"ifnull(log.dispatch_percentage_after, 0) >= %(percentage)s",
+	]
+	values = {"percentage": target_percentage}
+
+	if lot_list:
+		conditions.append("fp.lot in %(lot_list)s")
+		values["lot_list"] = tuple(lot_list)
+
+	if item_list:
+		conditions.append("fp.item in %(item_list)s")
+		values["item_list"] = tuple(item_list)
+
+	rows = frappe.db.sql(
+		f"""
+			SELECT
+				log.parent AS finishing_plan,
+				log.stock_entry,
+				log.posting_date AS date,
+				log.posting_time,
+				log.idx,
+				fp.lot,
+				fp.item,
+				log.dispatch_percentage_after AS percentage
+			FROM `tabFinishing Plan Dispatch Log` log
+			INNER JOIN `tabFinishing Plan` fp ON fp.name = log.parent
+			WHERE {" AND ".join(conditions)}
+			ORDER BY log.parent, log.posting_date, log.posting_time, log.idx
+		""",
+		values,
+		as_dict=True,
+	)
+
+	first_crossing_by_plan = {}
+	for row in rows:
+		if row.finishing_plan in first_crossing_by_plan:
+			continue
+
+		first_crossing_by_plan[row.finishing_plan] = {
+			"date": row.date,
+			"stock_entry": row.stock_entry,
+			"lot": row.lot,
+			"item": row.item,
+			"percentage": flt(row.percentage, 3),
+		}
+
+	return sorted(
+		first_crossing_by_plan.values(),
+		key=lambda row: (getdate(row.get("date")), row.get("lot") or "", row.get("item") or ""),
+	)
+
 def get_panel_colour_combination(ipd_doc):
 	indexes = {}
 	comb_details = {}
