@@ -8,6 +8,7 @@
  "field_order": [
   "lot",
   "dc_number",
+  "stock_entry",
   "supplier",
   "warehouse",
   "column_break_bspt",
@@ -115,13 +116,20 @@
    "fieldtype": "Data",
    "label": "Customer",
    "read_only": 1
+  },
+  {
+   "fieldname": "stock_entry",
+   "fieldtype": "Link",
+   "label": "Stock Entry",
+   "no_copy": 1,
+   "options": "Stock Entry"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-10-28 17:00:12.918436",
+ "modified": "2026-05-05 10:00:00.000000",
  "modified_by": "Administrator",
  "module": "MRP Stock",
  "name": "FG Stock Entry",
