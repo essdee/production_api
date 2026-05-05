@@ -2527,6 +2527,113 @@ AUTO_FP_STATUSES = ("", "Planned", "Partially Received", "Ready to Pack", "Parti
 FULLY_DISPATCHED_PCT = 97.0
 
 
+def get_set_item_parts_count(finishing_doc):
+	ipd = finishing_doc.production_detail or frappe.get_value("Lot", finishing_doc.lot, "production_detail")
+	if not ipd:
+		return 1
+
+	ipd_doc = frappe.get_cached_doc("Item Production Detail", ipd)
+	if not ipd_doc.is_set_item:
+		return 1
+
+	parts = {
+		row.set_item_attribute_value
+		for row in ipd_doc.set_item_combination_details
+		if row.set_item_attribute_value
+	}
+	if parts:
+		return len(parts)
+
+	parts = set()
+	if ipd_doc.set_item_attribute:
+		for row in finishing_doc.finishing_plan_details:
+			attr_details = get_variant_attr_details(row.item_variant)
+			part = attr_details.get(ipd_doc.set_item_attribute)
+			if part:
+				parts.add(part)
+
+	return len(parts) or 1
+
+
+def get_finishing_dispatch_totals(finishing_doc):
+	if isinstance(finishing_doc, str):
+		finishing_doc = frappe.get_doc("Finishing Plan", finishing_doc)
+
+	total_cutting = 0.0
+	total_dispatched_pieces = 0.0
+	for row in finishing_doc.finishing_plan_details:
+		total_cutting += flt(row.cutting_qty)
+
+	pieces_per_box = flt(finishing_doc.pieces_per_box) or 0
+	if pieces_per_box:
+		set_item_parts_count = get_set_item_parts_count(finishing_doc)
+		for row in finishing_doc.finishing_plan_grn_details:
+			total_dispatched_pieces += (
+				flt(row.dispatched) * pieces_per_box * set_item_parts_count
+			)
+
+	dispatch_percentage = 0.0
+	if total_cutting:
+		dispatch_percentage = (total_dispatched_pieces / total_cutting) * 100.0
+
+	return frappe._dict({
+		"total_cutting": total_cutting,
+		"total_dispatched_pieces": total_dispatched_pieces,
+		"dispatch_percentage": dispatch_percentage,
+	})
+
+
+def record_finishing_dispatch_log(finishing_doc, stock_entry, dispatch_boxes, source_doctype=None, source_name=None):
+	if not frappe.get_meta("Finishing Plan").has_field("finishing_plan_dispatch_logs"):
+		return
+	if flt(dispatch_boxes) <= 0:
+		return
+
+	source_doctype = source_doctype or stock_entry.against
+	source_name = source_name or stock_entry.against_id
+	set_item_parts_count = get_set_item_parts_count(finishing_doc)
+	dispatch_pieces = flt(dispatch_boxes) * flt(finishing_doc.pieces_per_box) * set_item_parts_count
+	totals = get_finishing_dispatch_totals(finishing_doc)
+	previous_dispatched = max(flt(totals.total_dispatched_pieces) - dispatch_pieces, 0)
+	previous_percentage = 0.0
+	if totals.total_cutting:
+		previous_percentage = (previous_dispatched / flt(totals.total_cutting)) * 100.0
+
+	log_data = {
+		"stock_entry": stock_entry.name,
+		"source_doctype": source_doctype,
+		"source_name": source_name,
+		"posting_date": stock_entry.posting_date,
+		"posting_time": stock_entry.posting_time,
+		"dispatch_boxes": dispatch_boxes,
+		"dispatch_pieces": dispatch_pieces,
+		"total_dispatched_pieces_after": totals.total_dispatched_pieces,
+		"cutting_qty": totals.total_cutting,
+		"dispatch_percentage_before": previous_percentage,
+		"dispatch_percentage_after": totals.dispatch_percentage,
+		"cancelled": 0,
+	}
+
+	for row in finishing_doc.get("finishing_plan_dispatch_logs") or []:
+		if (
+			row.stock_entry == stock_entry.name
+			and row.source_doctype == source_doctype
+			and row.source_name == source_name
+		):
+			row.update(log_data)
+			return
+
+	finishing_doc.append("finishing_plan_dispatch_logs", log_data)
+
+
+def cancel_finishing_dispatch_log(finishing_doc, stock_entry_name):
+	if not frappe.get_meta("Finishing Plan").has_field("finishing_plan_dispatch_logs"):
+		return
+	for row in finishing_doc.get("finishing_plan_dispatch_logs") or []:
+		if row.stock_entry == stock_entry_name:
+			row.cancelled = 1
+
+
 def _total_unaccountable(finishing_doc):
 	try:
 		ocr_data = get_ocr_details(finishing_doc)
@@ -2553,21 +2660,15 @@ def _total_unaccountable(finishing_doc):
 def compute_received_status(finishing_doc):
 	total_cutting = 0.0
 	total_received = 0.0
-	total_dispatched_pieces = 0.0
 	for row in finishing_doc.finishing_plan_details:
 		total_cutting += flt(row.cutting_qty)
 		total_received += flt(row.delivered_quantity)
-		total_dispatched_pieces += flt(row.dc_qty)
-
-	pieces_per_box = flt(finishing_doc.pieces_per_box) or 0
-	if pieces_per_box:
-		for row in finishing_doc.finishing_plan_grn_details:
-			total_dispatched_pieces += flt(row.dispatched) * pieces_per_box
 
 	if not total_cutting:
 		return None
 
 	settings = frappe.get_cached_doc("MRP Settings")
+	total_dispatched_pieces = get_finishing_dispatch_totals(finishing_doc).total_dispatched_pieces
 
 	if total_dispatched_pieces > 0:
 		disp_pct = (total_dispatched_pieces / total_cutting) * 100.0

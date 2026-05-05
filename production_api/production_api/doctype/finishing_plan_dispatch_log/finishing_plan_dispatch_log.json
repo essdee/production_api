@@ -1,0 +1,119 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2026-05-05 00:00:00",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "stock_entry",
+  "source_doctype",
+  "source_name",
+  "posting_date",
+  "posting_time",
+  "dispatch_boxes",
+  "dispatch_pieces",
+  "total_dispatched_pieces_after",
+  "cutting_qty",
+  "dispatch_percentage_before",
+  "dispatch_percentage_after",
+  "cancelled"
+ ],
+ "fields": [
+  {
+   "fieldname": "stock_entry",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Stock Entry",
+   "options": "Stock Entry",
+   "read_only": 1
+  },
+  {
+   "fieldname": "source_doctype",
+   "fieldtype": "Select",
+   "label": "Source DocType",
+   "options": "\nFinishing Plan\nFinishing Plan Dispatch",
+   "read_only": 1
+  },
+  {
+   "fieldname": "source_name",
+   "fieldtype": "Dynamic Link",
+   "label": "Source Name",
+   "options": "source_doctype",
+   "read_only": 1
+  },
+  {
+   "fieldname": "posting_date",
+   "fieldtype": "Date",
+   "in_list_view": 1,
+   "label": "Posting Date",
+   "read_only": 1
+  },
+  {
+   "fieldname": "posting_time",
+   "fieldtype": "Time",
+   "label": "Posting Time",
+   "read_only": 1
+  },
+  {
+   "fieldname": "dispatch_boxes",
+   "fieldtype": "Float",
+   "in_list_view": 1,
+   "label": "Dispatch Boxes",
+   "read_only": 1
+  },
+  {
+   "fieldname": "dispatch_pieces",
+   "fieldtype": "Float",
+   "label": "Dispatch Pieces",
+   "read_only": 1
+  },
+  {
+   "fieldname": "total_dispatched_pieces_after",
+   "fieldtype": "Float",
+   "label": "Total Dispatched Pieces After",
+   "read_only": 1
+  },
+  {
+   "fieldname": "cutting_qty",
+   "fieldtype": "Float",
+   "label": "Cutting Qty",
+   "read_only": 1
+  },
+  {
+   "fieldname": "dispatch_percentage_before",
+   "fieldtype": "Percent",
+   "label": "Dispatch Percentage Before",
+   "read_only": 1
+  },
+  {
+   "fieldname": "dispatch_percentage_after",
+   "fieldtype": "Percent",
+   "in_list_view": 1,
+   "label": "Dispatch Percentage After",
+   "read_only": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "cancelled",
+   "fieldtype": "Check",
+   "in_list_view": 1,
+   "label": "Cancelled",
+   "read_only": 1
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2026-05-05 12:28:05.477737",
+ "modified_by": "Administrator",
+ "module": "Production Api",
+ "name": "Finishing Plan Dispatch Log",
+ "owner": "Administrator",
+ "permissions": [],
+ "row_format": "Dynamic",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

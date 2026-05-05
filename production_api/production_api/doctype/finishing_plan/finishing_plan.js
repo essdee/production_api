@@ -6,6 +6,7 @@ frappe.ui.form.on("Finishing Plan", {
         if (frm.doc.__islocal) {
             return
         }
+        ensure_dispatch_history_visible(frm);
         apply_p_and_l_tab_visibility(frm);
         $(".layout-side-section").css("display", "None")
         $(frm.fields_dict['finishing_item_html'].wrapper).html("")
@@ -314,6 +315,17 @@ function apply_p_and_l_tab_visibility(frm) {
         frm.set_df_property("p_and_l_tab", "hidden", allowed ? 0 : 1);
         frm.set_df_property("p_and_l_html", "hidden", allowed ? 0 : 1);
     });
+}
+
+function ensure_dispatch_history_visible(frm) {
+    if (!frm.fields_dict.dispatch_history_tab || !frm.fields_dict.finishing_plan_dispatch_logs) {
+        return;
+    }
+    frm.set_df_property("dispatch_history_tab", "hidden", 0);
+    frm.set_df_property("finishing_plan_dispatch_logs", "hidden", 0);
+    frm.set_df_property("finishing_plan_dispatch_logs", "cannot_add_rows", true);
+    frm.set_df_property("finishing_plan_dispatch_logs", "cannot_delete_rows", true);
+    frm.refresh_field("finishing_plan_dispatch_logs");
 }
 
 function render_p_and_l_section(frm) {

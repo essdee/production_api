@@ -147,8 +147,7 @@ onMounted(()=> {
             label: "Lot",
             reqd: true,
             async onchange(){
-                let x = await frappe.db.get_value("Lot", lot.get_value(), "item")
-                item_name.value = x.message.item
+                await set_item_name(lot.get_value())
             }
         },
         doc: sample_doc.value,
@@ -167,7 +166,38 @@ onMounted(()=> {
         doc: sample_doc.value,
         render_input: true,
     })
+    load_route_filters()
 })
+
+async function load_route_filters(){
+    const params = new URLSearchParams(window.location.search || '')
+    const lotValue = params.get('lot')
+    const processValue = params.get('process')
+    const shouldShowReport = ['1', 'true', 'yes'].includes(String(params.get('show') || '').toLowerCase())
+
+    if(!lotValue && !processValue){
+        return
+    }
+    if(lotValue){
+        await lot.set_value(lotValue)
+        await set_item_name(lotValue)
+    }
+    if(processValue){
+        await process.set_value(processValue)
+    }
+    if(lotValue && processValue && shouldShowReport){
+        get_inhouse_qty_report()
+    }
+}
+
+async function set_item_name(lotValue){
+    if(!lotValue){
+        item_name.value = null
+        return
+    }
+    let x = await frappe.db.get_value("Lot", lotValue, "item")
+    item_name.value = x.message.item
+}
 
 function get_inhouse_qty_report(){
     if(!lot.get_value()){
@@ -264,4 +294,3 @@ function get_quality_style(val){
     border: 2px solid black;
 }
 </style>
-
