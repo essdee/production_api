@@ -76,7 +76,7 @@ def make_sle_entries(sle_details):
 	make_sl_entries(sle_details)
 
 @frappe.whitelist()
-def create_FG_ste(lot, received_by, dc_number, warehouse, posting_date, posting_time, items_list, comments, created_user, consumed = False, customer = None, supplier = None):
+def create_FG_ste(lot, received_by, dc_number, warehouse, posting_date, posting_time, items_list, comments, created_user, consumed = False, customer = None, supplier = None, stock_entry = None):
 	if isinstance(items_list, string_types):
 		items_list = frappe.json.loads(items_list)
 	received_type =frappe.db.get_single_value("Stock Settings", "default_received_type")
@@ -88,6 +88,7 @@ def create_FG_ste(lot, received_by, dc_number, warehouse, posting_date, posting_
 	doc.set('warehouse', warehouse)
 	doc.set('customer', customer)
 	doc.set('consumed', 1 if consumed else 0)
+	doc.set('stock_entry', stock_entry)
 	doc_items = []
 	for i in items_list:
 		stock_details = get_uom_details(i['item_variant'], i['uom'], i['qty'])
@@ -95,6 +96,7 @@ def create_FG_ste(lot, received_by, dc_number, warehouse, posting_date, posting_
 			"item_variant" : i['item_variant'],
 			"received_type":received_type,
 			"qty" : i['qty'],
+			"stock_entry_quantity": flt(i.get('stock_entry_quantity') or 0),
 			"uom" : i['uom'],
 			"stock_qty" : flt(
 				flt(i['qty'])*flt(stock_details['conversion_factor'])
@@ -153,7 +155,8 @@ def get_stock_entry_detail(stock_entry):
 		"created_at" : doc.creation,
 		"docstatus" : doc.docstatus,
 		"consumed" : True if doc.consumed else False,
-		"customer" : doc.customer
+		"customer" : doc.customer,
+		"stock_entry" : doc.stock_entry,
 	}
 	return resp
 

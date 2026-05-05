@@ -177,7 +177,8 @@ def make_fg_ste_from_sms(fg_ste_req):
         comments=fg_ste_req['comments'],
         created_user=fg_ste_req['user'],
         customer=fg_ste_req['customer'],
-        consumed=fg_ste_req['consumed']
+        consumed=fg_ste_req['consumed'],
+        stock_entry=fg_ste_req.get('stock_entry'),
     )
 
 @frappe.whitelist()
@@ -226,6 +227,58 @@ def get_reserved_stock(warehouse, item):
             }
         item_wh_map[group_by_key]['bal_qty'] += i['qty']
     return item_wh_map
+
+@frappe.whitelist()
+def search_submitted_stock_entries(txt: str = "", limit: int = 20):
+    """Return submitted Stock Entries (docstatus=1) for picker UIs."""
+    try:
+        limit = int(limit)
+    except (TypeError, ValueError):
+        limit = 20
+    limit = max(1, min(limit, 50))
+    txt = (txt or "").strip()
+    filters = {"docstatus": 1}
+    if txt:
+        filters["name"] = ["like", f"%{txt}%"]
+    return frappe.get_list(
+        "Stock Entry",
+        filters=filters,
+        fields=["name", "posting_date", "purpose"],
+        order_by="posting_date desc, modified desc",
+        limit=limit,
+    )
+
+
+@frappe.whitelist()
+def get_stock_entry_for_fg_load(stock_entry: str):
+    """Return Stock Entry items shaped for FG Stock Entry pre-fill."""
+    if not stock_entry:
+        frappe.throw("stock_entry is required")
+    docstatus = frappe.db.get_value("Stock Entry", stock_entry, "docstatus")
+    if docstatus is None:
+        frappe.throw(f"Stock Entry '{stock_entry}' not found")
+    if docstatus != 1:
+        frappe.throw(f"Stock Entry '{stock_entry}' is not submitted")
+
+    rows = frappe.get_all(
+        "Stock Entry Detail",
+        filters={"parent": stock_entry, "parenttype": "Stock Entry"},
+        fields=[
+            "item as item_variant",
+            "qty",
+            "uom",
+            "stock_qty",
+            "stock_uom",
+            "conversion_factor",
+            "rate",
+            "received_type",
+            "row_index",
+            "table_index",
+        ],
+        order_by="idx asc",
+    )
+    return {"stock_entry": stock_entry, "items": rows}
+
 
 @frappe.whitelist()
 def get_fg_stock_entry_datewise_inward(start_date, end_date, item, warehouse):
