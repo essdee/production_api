@@ -155,7 +155,8 @@ def get_stock_entry_detail(stock_entry):
 		"created_at" : doc.creation,
 		"docstatus" : doc.docstatus,
 		"consumed" : True if doc.consumed else False,
-		"customer" : doc.customer
+		"customer" : doc.customer,
+		"stock_entry" : doc.stock_entry,
 	}
 	return resp
 
