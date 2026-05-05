@@ -1,9 +1,11 @@
 <template>
     <div ref="root" class="rework-container">
+        <h3 style="font-weight:700;margin-bottom:15px;color:#333;text-align:center;">Rework Details</h3>
         <div class="input-row">
-            <div class="lot-input col-md-3"></div>
-            <div class="item-input col-md-3"></div>
-            <div class="colour-input col-md-3"></div>
+            <div class="lot-input col-md-2"></div>
+            <div class="item-input col-md-2"></div>
+            <div class="colour-input col-md-2"></div>
+            <div class="show-reworked-input col-md-2"></div>
             <div class="btn-wrapper">
                 <button class="btn btn-primary" @click="get_rework_items()">Get Rework Items</button>
             </div>
@@ -68,20 +70,20 @@
                                             {{ size['rework_qty'] }}
                                         </td>
                                     </tr>
-                                    <tr>
+                                    <tr v-if="!show_reworked_value">
                                         <td>Rejection</td>
                                         <th v-for="size in colour_data['items']">
                                             <input type="number" v-model="size['rejected']" @blur="update_changed(key, colour_mistake)" class="form-control"/>
                                         </th>
                                     </tr>
-                                    <tr>
+                                    <tr v-if="!show_reworked_value">
                                         <td>Reworked</td>
                                         <th v-for="size in colour_data['items']">
                                             <input type="number" v-model="size['rework']" @blur="update_changed(key, colour_mistake)" class="form-control"/>
                                         </th>
                                     </tr>
                                 </table>
-                                <div style="width:100%;display:flex;justify-content: end;margin-top: 10px;">
+                                <div v-if="!show_reworked_value" style="width:100%;display:flex;justify-content: end;margin-top: 10px;">
                                     <div style="padding-right: 10px;">
                                         <button class="btn btn-primary" @click="update_items(colour_data['items'], colour_data['changed'], 0, value['lot'], key, colour_mistake)">Update Rejection Qty</button>
                                     </div>
@@ -125,6 +127,8 @@ let items = ref({});
 let expandedRowKey = ref(null);
 let item = null
 let colour = null
+let show_reworked = null
+let show_reworked_value = ref(false)
 
 onMounted(() => {
     let el = root.value;
@@ -164,15 +168,32 @@ onMounted(() => {
         doc: sample_doc.value,
         render_input: true,
     });
+    $(el).find(".show-reworked-input").html("");
+    show_reworked = frappe.ui.form.make_control({
+        parent: $(el).find(".show-reworked-input"),
+        df: {
+            fieldname: "show_reworked",
+            fieldtype: "Check",
+            label: "Show Reworked",
+        },
+        doc: sample_doc.value,
+        render_input: true,
+        change() {
+            show_reworked_value.value = !!show_reworked.get_value();
+        }
+    });
 });
 
 function get_rework_items() {
     frappe.call({
         method: "production_api.production_api.doctype.grn_rework_item.grn_rework_item.get_rework_items",
+        freeze: true,
+        freeze_message: "Loading Rework Items...",
         args: {
             lot: lot.get_value(),
             item: item.get_value(),
             colour: colour.get_value(),
+            show_reworked: show_reworked.get_value() ? 1 : 0,
         },
         callback: function (r) {
             items.value = r.message;
@@ -181,11 +202,12 @@ function get_rework_items() {
 }
 
 function redirect_to_print(grn_number){
+    const format = show_reworked_value.value ? "Reworked Print" : "Rework Print";
     let w = window.open(
         frappe.urllib.get_full_url(
             "/printview?" + "doctype=" + encodeURIComponent("Goods Received Note") + "&name=" +
-                encodeURIComponent(grn_number) + "&trigger_print=1" + "&format=" + 
-                encodeURIComponent("Rework Print") + "&no_letterhead=1"
+                encodeURIComponent(grn_number) + "&trigger_print=1" + "&format=" +
+                encodeURIComponent(format) + "&no_letterhead=1"
         )
     );
     if (!w) {
@@ -360,6 +382,13 @@ function download(){
     background-color: #f8f9fa;
     border-radius: 8px;
     padding: 20px;
+}
+
+.page-title {
+    font-weight: 700;
+    margin-bottom: 15px;
+    color: #333;
+    text-align: center;
 }
 
 .input-row {

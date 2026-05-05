@@ -145,7 +145,10 @@ def update_accessory(cutting_plan, cut_panel_movement_json, docstatus):
 
 		cls_list = frappe.db.sql(
 			f"""
-				SELECT name FROM `tabCutting LaySheet` WHERE cutting_plan = '{cutting_plan}' ORDER BY lay_no {order}
+				SELECT name FROM `tabCutting LaySheet` 
+				WHERE cutting_plan = '{cutting_plan}'
+				AND status = 'Label Printed' 
+				ORDER BY lay_no {order}
 			""", as_list = True
 		)
 
@@ -181,7 +184,7 @@ def update_accessory(cutting_plan, cut_panel_movement_json, docstatus):
 							accessory[key] -= row.moved_weight
 							row.moved_weight = 0
 			if check:
-				cls_doc.save()
+				cls_doc.save(ignore_permissions=True)
 
 @frappe.whitelist()
 def get_cut_bundle_unmoved_data(from_location, lot, posting_date, posting_time, movement_from_cutting, cutting_plan=None, bundle_colour=None, get_collapsed=False):

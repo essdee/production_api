@@ -482,7 +482,7 @@
    "link_fieldname": "product"
   }
  ],
- "modified": "2026-01-05 17:54:20.391220",
+ "modified": "2026-02-06 18:47:45.742397",
  "modified_by": "Administrator",
  "module": "Product Development",
  "name": "Product",
@@ -523,6 +523,26 @@
    "role": "PD Manager",
    "share": 1,
    "write": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Production Planner",
+   "select": 1,
+   "share": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Merch User",
+   "select": 1,
+   "share": 1
   }
  ],
  "row_format": "Dynamic",

@@ -5,6 +5,7 @@ import frappe
 import openpyxl
 from io import BytesIO
 from frappe.model.document import Document
+from frappe.utils import cint
 from production_api.utils import update_if_string_instance, get_finishing_rework_list, get_finishing_rework_dict, get_variant_attr_details
 
 class GRNReworkItem(Document):
@@ -89,18 +90,19 @@ def revert_reworked_item(docname):
 		row.reworked = 0
 	doc.completed = 0	
 	doc.set("grn_reworked_item_details", [])
+	doc.set("grn_rejected_item_details", [])
 	doc.save(ignore_permissions=True)
 	finishing_items_list = []	
 	if finishing_doc:
 		finishing_items_list = get_finishing_rework_list(finishing_items)
 		finishing_doc.set("finishing_item_reworked_details", finishing_items_list)
-		finishing_doc.save()
+		finishing_doc.save(ignore_permissions=True)
 	from production_api.mrp_stock.stock_ledger import make_sl_entries
 	make_sl_entries(sl_entries)
 
 @frappe.whitelist()
-def get_rework_items(lot, item, colour, grn_number=None):
-	conditions = " AND t1.completed = 0"
+def get_rework_items(lot, item, colour, grn_number=None, show_reworked=0):
+	conditions = " AND t1.completed = 1" if cint(show_reworked) else " AND t1.completed = 0"
 	con = {}
 	if grn_number:
 		conditions += " AND t1.grn_number = %(grn_number)s"
@@ -130,8 +132,11 @@ def get_rework_items(lot, item, colour, grn_number=None):
 		"total_detail": {},
 		"total_sum": 0,
 		"total_rejection": 0,
-		"total_rejection_detail": {}
+		"total_rejection_detail": {},
+		"total_reworked": 0,
+		"total_reworked_detail": {},
 	}
+	show_reworked_flag = cint(show_reworked)
 	for item in rework_items:
 		item = item['name']
 		doc = frappe.get_doc("GRN Rework Item", item)
@@ -149,10 +154,16 @@ def get_rework_items(lot, item, colour, grn_number=None):
 			"total": 0,
 			'rejection_detail': {},
 			'total_rejection': 0,
+			'reworked_detail': {},
+			'total_reworked': 0,
 		})
 		for row in doc.grn_rework_item_details:
-			if row.completed == 1:
-				continue
+			if show_reworked_flag:
+				if row.completed == 0:
+					continue
+			else:
+				if row.completed == 1:
+					continue
 			data['total_detail'].setdefault(row.received_type, 0)
 			data['total_rejection_detail'].setdefault(row.received_type, 0)
 			attr_details = get_variant_attr_details(row.item_variant)
@@ -165,21 +176,28 @@ def get_rework_items(lot, item, colour, grn_number=None):
 			})
 			if row.received_type not in data['types']:
 				data['types'].append(row.received_type)
-			qty = row.quantity - row.reworked
+			qty = row.quantity if show_reworked_flag else (row.quantity - row.reworked)
 			data['total_detail'][row.received_type] += qty
 			data['total_rejection_detail'][row.received_type] += row.rejection
 			data['total_sum'] += qty
 			data['total_rejection'] += row.rejection
+			data['total_reworked_detail'].setdefault(row.received_type, 0)
+			data['total_reworked_detail'][row.received_type] += row.reworked
+			data['total_reworked'] += row.reworked
 			data["report_detail"][item]['types'].setdefault(row.received_type, 0)
 			data["report_detail"][item]['types'][row.received_type] += qty
 			data["report_detail"][item]['total'] += qty
 			data["report_detail"][item]['total_rejection'] += row.rejection
 			data['report_detail'][item]['rejection_detail'].setdefault(row.received_type, 0)
 			data['report_detail'][item]['rejection_detail'][row.received_type] += row.rejection
+			data['report_detail'][item]['reworked_detail'].setdefault(row.received_type, 0)
+			data['report_detail'][item]['reworked_detail'][row.received_type] += row.reworked
+			data['report_detail'][item]['total_reworked'] += row.reworked
 			data["report_detail"][item]['rework_detail'][key]['items'].append({
 				primary_attr : attr_details[primary_attr],
 				"rework_qty": qty,
-				"rejected": row.rejection, 
+				"reworked_qty": row.reworked,
+				"rejected": row.rejection,
 				"rework": 0,
 				"set_combination": update_if_string_instance(row.set_combination),
 				"row_name": row.name,
@@ -191,7 +209,108 @@ def get_rework_items(lot, item, colour, grn_number=None):
 	if grn_number:
 		return data, rework_items[0]['name']
 	
-	return data	
+	return data
+
+@frappe.whitelist()
+def get_rework_group_items(lot=None, item=None, colour=None, show_reworked=0):
+	from production_api.essdee_production.doctype.item_production_detail.item_production_detail import get_ipd_primary_values
+
+	conditions = " AND t1.completed = 1" if cint(show_reworked) else " AND t1.completed = 0"
+	con = {}
+	if item:
+		conditions += " AND t1.item = %(item_name)s"
+		con['item_name'] = item
+	if lot:
+		conditions += " AND t1.lot = %(lot_name)s"
+		con['lot_name'] = lot
+	if colour:
+		conditions += " AND t2.item_variant LIKE %(colour)s"
+		con['colour'] = f"%{colour}%"
+
+	rework_items = frappe.db.sql(
+		f"""
+			SELECT t1.name FROM `tabGRN Rework Item` t1 JOIN `tabGRN Rework Item Detail` t2
+			ON t1.name = t2.parent WHERE 1 = 1 {conditions} GROUP BY t1.name
+		""", con, as_dict=True
+	)
+
+	show_reworked_flag = cint(show_reworked)
+	groups = {}
+
+	for ri in rework_items:
+		doc = frappe.get_doc("GRN Rework Item", ri['name'])
+		ipd = frappe.get_cached_value("Lot", doc.lot, "production_detail")
+		ipd_fields = ['packing_attribute', 'primary_item_attribute', 'is_set_item', 'set_item_attribute']
+		pack_attr, primary_attr, is_set_item, set_attr = frappe.get_cached_value("Item Production Detail", ipd, ipd_fields)
+
+		group_key = f"{doc.item}/{doc.lot}"
+		if group_key not in groups:
+			primary_values = get_ipd_primary_values(ipd)
+			groups[group_key] = {
+				"item": doc.item,
+				"lot": doc.lot,
+				"sizes": primary_values,
+				"size_attr": primary_attr,
+				"is_set_item": is_set_item,
+				"rows_dict": {},
+			}
+
+		for row in doc.grn_rework_item_details:
+			if show_reworked_flag:
+				if row.completed == 0:
+					continue
+			else:
+				if row.completed == 1:
+					continue
+
+			attr_details = get_variant_attr_details(row.item_variant)
+			colour_val = attr_details.get(pack_attr, "")
+			size_val = attr_details.get(primary_attr, "")
+			part_val = attr_details.get(set_attr, "") if is_set_item else None
+
+			row_key = f"{colour_val}|{part_val or ''}|{doc.grn_number}|{row.received_type}"
+			rd = groups[group_key]["rows_dict"]
+			if row_key not in rd:
+				rd[row_key] = {
+					"colour": colour_val,
+					"part": part_val,
+					"grn_number": doc.grn_number,
+					"received_type": row.received_type,
+					"lot": doc.lot,
+					"received": {},
+					"rejection": {},
+					"reworked": {},
+					"items": [],
+				}
+
+			qty = row.quantity if show_reworked_flag else (row.quantity - row.reworked)
+			rd[row_key]["received"].setdefault(size_val, 0)
+			rd[row_key]["received"][size_val] += qty
+			rd[row_key]["rejection"].setdefault(size_val, 0)
+			rd[row_key]["rejection"][size_val] += row.rejection
+			rd[row_key]["reworked"].setdefault(size_val, 0)
+			rd[row_key]["reworked"][size_val] += row.reworked
+			rd[row_key]["items"].append({
+				primary_attr: size_val,
+				"rework_qty": qty,
+				"reworked_qty": row.reworked,
+				"rejected": row.rejection,
+				"rework": 0,
+				"set_combination": update_if_string_instance(row.set_combination),
+				"row_name": row.name,
+				"variant": row.item_variant,
+				"received_type": row.received_type,
+				"uom": row.uom,
+			})
+
+	# Convert rows_dict to sorted rows list and remove dict
+	for gk in groups:
+		g = groups[gk]
+		sorted_keys = sorted(g["rows_dict"].keys())
+		g["rows"] = [g["rows_dict"][k] for k in sorted_keys]
+		del g["rows_dict"]
+
+	return {"groups": groups}
 
 @frappe.whitelist()
 def update_rejected_quantity(rejection_data, completed:int, lot):
@@ -249,6 +368,7 @@ def convert_received_type(rejection_data, docname, lot):
 	rejected = doc.default_rejected_type	
 	sl_entries = []
 	table_data = []
+	rejected_table_data = []
 	for row in rejection_data:
 		if row['rework_qty'] > 0:
 			sl_entries.append({
@@ -315,9 +435,19 @@ def convert_received_type(rejection_data, docname, lot):
 				"set_combination": frappe.json.dumps(row['set_combination'])
 			})
 
+		if row['rejected'] > 0:
+			rejected_table_data.append({
+				"item_variant": row['variant'],
+				"quantity": row['rejected'],
+				"received_type": row['received_type'],
+				"uom": row['uom'],
+				"rejected_time": frappe.utils.now_datetime(),
+				"set_combination": frappe.json.dumps(row['set_combination'])
+			})
+
 	finishing_docs = frappe.get_all("Finishing Plan", filters={"lot": lot}, pluck="name", limit=1)		
 	finishing_data = {}
-	if table_data:
+	if table_data or rejected_table_data:
 		doc = frappe.get_doc("GRN Rework Item", docname)
 		for row in table_data:
 			if finishing_docs:
@@ -330,6 +460,8 @@ def convert_received_type(rejection_data, docname, lot):
 				finishing_data[key]['reworked'] += row['quantity']
 				finishing_data[key]['rejected'] += row['rejected']
 			doc.append("grn_reworked_item_details", row)
+		for row in rejected_table_data:
+			doc.append("grn_rejected_item_details", row)
 		doc.save(ignore_permissions=True)
 
 	if finishing_docs:
@@ -339,7 +471,7 @@ def convert_received_type(rejection_data, docname, lot):
 			if finishing_data.get(key):
 				row.reworked_quantity += finishing_data[key]['reworked']
 				row.rejected_qty += finishing_data[key]['rejected']
-		doc.save()
+		doc.save(ignore_permissions=True)
 
 	from production_api.mrp_stock.stock_ledger import make_sl_entries
 	make_sl_entries(sl_entries)
@@ -438,7 +570,7 @@ def update_partial_quantity(data, lot):
 				if key1 == key:
 					row.reworked_quantity += finishing_data[key]
 					break
-		doc.save()
+		doc.save(ignore_permissions=True)
 
 	from production_api.mrp_stock.stock_ledger import make_sl_entries
 	make_sl_entries(sl_entries)		
@@ -555,6 +687,136 @@ def get_partial_reworked_qty(doc_name, colour_mistake, data):
 			"uom": row.uom,
 		})
 	return data
+
+@frappe.whitelist()
+def get_rejection_items(start_date=None, end_date=None, lot=None, item=None, colour=None):
+	conditions = ""
+	con = {}
+	if start_date:
+		conditions += " AND t2.rejected_time >= %(start_date)s"
+		con['start_date'] = start_date
+	if end_date:
+		conditions += " AND t2.rejected_time <= %(end_date)s"
+		con['end_date'] = end_date + " 23:59:59"
+	if lot:
+		conditions += " AND t1.lot = %(lot_name)s"
+		con['lot_name'] = lot
+	if item:
+		conditions += " AND t1.item = %(item_name)s"
+		con['item_name'] = item
+	if colour:
+		conditions += " AND t2.item_variant LIKE %(colour)s"
+		con['colour'] = f"%{colour}%"
+
+	rework_items = frappe.db.sql(
+		f"""
+			SELECT t1.name FROM `tabGRN Rework Item` t1 JOIN `tabGRN Rejected Item Detail` t2
+			ON t1.name = t2.parent WHERE 1 = 1 {conditions} GROUP BY t1.name
+		""", con, as_dict=True
+	)
+
+	data = {
+		"report_detail": {},
+		"types": [],
+		"total_detail": {},
+		"total_sum": 0,
+	}
+
+	for ri in rework_items:
+		ri_name = ri['name']
+		doc = frappe.get_doc("GRN Rework Item", ri_name)
+		ipd = frappe.get_cached_value("Lot", doc.lot, "production_detail")
+		ipd_fields = ['packing_attribute', 'primary_item_attribute', 'is_set_item', 'set_item_attribute']
+		pack_attr, primary_attr, set_item, set_attr = frappe.get_cached_value("Item Production Detail", ipd, ipd_fields)
+
+		earliest_time = None
+		rows_to_process = []
+		for row in doc.grn_rejected_item_details:
+			include = True
+			if start_date and row.rejected_time and str(row.rejected_time) < start_date:
+				include = False
+			if end_date and row.rejected_time and str(row.rejected_time) > end_date + " 23:59:59":
+				include = False
+			if colour and colour not in (row.item_variant or ""):
+				include = False
+			if include:
+				rows_to_process.append(row)
+				if row.rejected_time:
+					if earliest_time is None or row.rejected_time < earliest_time:
+						earliest_time = row.rejected_time
+
+		if not rows_to_process:
+			continue
+
+		data["report_detail"].setdefault(ri_name, {
+			"grn_number": doc.grn_number,
+			"date": earliest_time or doc.creation,
+			"lot": doc.lot,
+			"item": doc.item,
+			"size": primary_attr,
+			"types": {},
+			"total": 0,
+			"rejection_detail": {},
+		})
+
+		for row in rows_to_process:
+			data['total_detail'].setdefault(row.received_type, 0)
+			attr_details = get_variant_attr_details(row.item_variant)
+			key = row.received_type + "-" + attr_details[pack_attr]
+			if set_item:
+				key += "-" + attr_details[set_attr]
+			data["report_detail"][ri_name]['rejection_detail'].setdefault(key, {
+				'items': [],
+			})
+			if row.received_type not in data['types']:
+				data['types'].append(row.received_type)
+			qty = row.quantity
+			data['total_detail'][row.received_type] += qty
+			data['total_sum'] += qty
+			data["report_detail"][ri_name]['types'].setdefault(row.received_type, 0)
+			data["report_detail"][ri_name]['types'][row.received_type] += qty
+			data["report_detail"][ri_name]['total'] += qty
+			data["report_detail"][ri_name]['rejection_detail'][key]['items'].append({
+				primary_attr: attr_details[primary_attr],
+				"rejected_qty": qty,
+				"variant": row.item_variant,
+				"received_type": row.received_type,
+			})
+
+	return data
+
+@frappe.whitelist()
+def download_rejection_xl(data):
+	if isinstance(data, str):
+		data = frappe.json.loads(data)
+	wb = openpyxl.Workbook(write_only=True)
+	ws = wb.create_sheet("Sheet1", 0)
+	columns = ['Series No', "Date", "GRN Number", "Lot", "Item", "Colour"] + data['types'] + ["Total"]
+	ws.append(columns)
+	for series_id in data['report_detail']:
+		x = data['report_detail'][series_id]
+		l_data = list(x['rejection_detail'].keys())[0].split("-")
+		l_data = l_data[1:]
+		colour = "-".join(l_data)
+		from datetime import datetime
+		raw_date = x['date']
+		if isinstance(raw_date, str) and '.' in raw_date:
+			dt = datetime.strptime(raw_date, "%Y-%m-%d %H:%M:%S.%f")
+		elif isinstance(raw_date, str):
+			dt = datetime.strptime(raw_date, "%Y-%m-%d %H:%M:%S")
+		else:
+			dt = raw_date
+		formatted_date = dt.strftime("%d-%m-%Y") if dt else ""
+		d = [series_id, formatted_date, x['grn_number'], x['lot'], x['item'], colour]
+		for ty in data['types']:
+			d.append(x['types'].get(ty, 0))
+		d.append(x['total'])
+		ws.append(d)
+	xlsx_file = BytesIO()
+	wb.save(xlsx_file)
+	frappe.local.response.filename = "rejection_details.xlsx"
+	frappe.local.response.filecontent = xlsx_file.getvalue()
+	frappe.local.response.type = "binary"
 
 @frappe.whitelist()
 def download_xl(data):

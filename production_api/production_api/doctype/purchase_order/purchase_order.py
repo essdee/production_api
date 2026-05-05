@@ -65,7 +65,7 @@ class PurchaseOrder(Document):
 				pass
 			self.set('items', items)
 			self.calculate_amount()
-		elif self.is_new() or not self.get('items'):
+		elif not self.flags.ignore_item_details_check and (self.is_new() or not self.get('items')):
 			frappe.throw('Add items to Purchase Order.', title='Purchase Order')
 
 	def calculate_amount(self):
@@ -699,3 +699,22 @@ def create_purchase_order_log(doc_name, item, new_date, comment):
 	})
 	log_doc.flags.ignore_permissions = 1
 	log_doc.submit()
+
+@frappe.whitelist()
+def duplicate_po(po):
+	"""Create a duplicate of the given Purchase Order as a new Draft."""
+	doc = frappe.get_doc("Purchase Order", po)
+	new_doc = frappe.copy_doc(doc)
+	new_doc.docstatus = 0
+	new_doc.status = "Draft"
+	new_doc.open_status = "Open"
+	new_doc.approved_by = None
+	new_doc.cancel_reason = None
+	new_doc.amended_from = None
+	for item in new_doc.items:
+		item.pending_qty = item.qty
+		item.cancelled_qty = 0
+		item.expected_delivery_date = item.delivery_date
+	new_doc.flags.ignore_item_details_check = True
+	new_doc.save()
+	return new_doc.name

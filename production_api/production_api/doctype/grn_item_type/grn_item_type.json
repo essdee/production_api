@@ -7,7 +7,8 @@
  "engine": "InnoDB",
  "field_order": [
   "grn_type",
-  "type"
+  "type",
+  "show_in_sewing_plan"
  ],
  "fields": [
   {
@@ -21,11 +22,18 @@
    "fieldtype": "Select",
    "label": "Type",
    "options": "Accepted\nRejected\nMistake"
+  },
+  {
+   "default": "0",
+   "fieldname": "show_in_sewing_plan",
+   "fieldtype": "Check",
+   "label": "Show In Sewing Plan"
   }
  ],
+ "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-03-15 15:12:47.362273",
+ "modified": "2026-02-06 18:53:36.690866",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "GRN Item Type",
@@ -50,11 +58,12 @@
    "print": 1,
    "read": 1,
    "report": 1,
-   "role": "Transaction User",
+   "role": "All",
    "select": 1,
    "share": 1
   }
  ],
+ "row_format": "Dynamic",
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": []

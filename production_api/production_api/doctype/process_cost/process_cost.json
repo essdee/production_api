@@ -28,6 +28,7 @@
  ],
  "fields": [
   {
+   "fetch_from": "lot.item",
    "fieldname": "item",
    "fieldtype": "Link",
    "in_list_view": 1,
@@ -83,10 +84,11 @@
    "reqd": 1
   },
   {
-   "default": "0",
+   "default": "1",
    "fieldname": "depends_on_attribute",
    "fieldtype": "Check",
-   "label": "Depends on Attribute"
+   "label": "Depends on Attribute",
+   "read_only": 1
   },
   {
    "depends_on": "eval:doc.depends_on_attribute",
@@ -109,6 +111,13 @@
    "reqd": 1
   },
   {
+   "fieldname": "lot",
+   "fieldtype": "Link",
+   "label": "Lot",
+   "options": "Lot",
+   "reqd": 1
+  },
+  {
    "default": "PC-",
    "fieldname": "naming_series",
    "fieldtype": "Data",
@@ -116,21 +125,17 @@
    "label": "Naming Series"
   },
   {
+   "default": "0",
+   "fieldname": "is_rework",
+   "fieldtype": "Check",
+   "label": "Is Rework"
+  },
+  {
    "allow_on_submit": 1,
    "default": "0",
    "fieldname": "is_expired",
    "fieldtype": "Check",
    "label": "Is Expired"
-  },
-  {
-   "fieldname": "amended_from",
-   "fieldtype": "Link",
-   "label": "Amended From",
-   "no_copy": 1,
-   "options": "Process Cost",
-   "print_hide": 1,
-   "read_only": 1,
-   "search_index": 1
   },
   {
    "fieldname": "supplier",
@@ -141,16 +146,6 @@
    "reqd": 1
   },
   {
-   "fieldname": "section_break_oriw",
-   "fieldtype": "Section Break"
-  },
-  {
-   "default": "0",
-   "fieldname": "is_rework",
-   "fieldtype": "Check",
-   "label": "Is Rework"
-  },
-  {
    "allow_in_quick_entry": 1,
    "fetch_from": "supplier.supplier_name",
    "fieldname": "supplier_name",
@@ -159,17 +154,25 @@
    "read_only": 1
   },
   {
-   "fieldname": "lot",
+   "fieldname": "section_break_oriw",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "amended_from",
    "fieldtype": "Link",
-   "label": "Lot",
-   "options": "Lot"
+   "label": "Amended From",
+   "no_copy": 1,
+   "options": "Process Cost",
+   "print_hide": 1,
+   "read_only": 1,
+   "search_index": 1
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2026-01-02 14:41:29.314154",
+ "modified": "2026-02-06 19:06:02.138608",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Process Cost",
@@ -212,6 +215,16 @@
    "role": "Merch User",
    "share": 1,
    "write": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Production Planner",
+   "select": 1,
+   "share": 1
   }
  ],
  "row_format": "Dynamic",

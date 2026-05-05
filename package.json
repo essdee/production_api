@@ -15,6 +15,8 @@
   "dependencies": {
     "@vuepic/vue-datepicker": "^11.0.2",
     "frappe-gantt": "^0.6.1",
+    "html-to-image": "^1.11.13",
+    "html2canvas-pro": "^1.5.8",
     "vuedraggable": "^4.1.0"
   }
 }

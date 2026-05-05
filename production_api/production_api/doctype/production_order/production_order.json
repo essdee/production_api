@@ -22,7 +22,13 @@
   "details_html",
   "amended_from",
   "production_order_details",
-  "production_ordered_details"
+  "production_ordered_details",
+  "comments",
+  "submitted_by",
+  "submitted_time",
+  "price_approval_status",
+  "price_changes_tab",
+  "ppo_price_request_html"
  ],
  "fields": [
   {
@@ -92,12 +98,14 @@
    "label": "GSM"
   },
   {
+   "allow_on_submit": 1,
    "fieldname": "delivery_date",
    "fieldtype": "Date",
    "label": "Delivery Date",
    "reqd": 1
   },
   {
+   "allow_on_submit": 1,
    "default": "Today",
    "fieldname": "posting_date",
    "fieldtype": "Date",
@@ -105,12 +113,14 @@
    "read_only": 1
   },
   {
+   "allow_on_submit": 1,
    "fieldname": "lead_time_given",
    "fieldtype": "Int",
    "label": "Lead Time Given",
    "read_only": 1
   },
   {
+   "allow_on_submit": 1,
    "fieldname": "dont_deliver_after",
    "fieldtype": "Date",
    "label": "Don't Deliver After",
@@ -129,13 +139,51 @@
    "fieldtype": "Link",
    "label": "Production Term",
    "options": "Production Term"
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "comments",
+   "fieldtype": "Small Text",
+   "label": "Comments"
+  },
+  {
+   "fieldname": "submitted_by",
+   "fieldtype": "Link",
+   "label": "Submitted By",
+   "options": "User",
+   "read_only": 1
+  },
+  {
+   "fieldname": "submitted_time",
+   "fieldtype": "Datetime",
+   "label": "Submitted Time",
+   "read_only": 1
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "price_approval_status",
+   "fieldtype": "Select",
+   "hidden": 1,
+   "label": "Price Approval Status",
+   "options": "\nPending Approval",
+   "read_only": 1
+  },
+  {
+   "fieldname": "price_changes_tab",
+   "fieldtype": "Tab Break",
+   "label": "Price Changes"
+  },
+  {
+   "fieldname": "ppo_price_request_html",
+   "fieldtype": "HTML",
+   "label": "Price Change Requests"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2026-01-05 10:06:10.142587",
+ "modified": "2026-03-05 12:00:00.000000",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Production Order",
@@ -143,6 +191,8 @@
  "owner": "Administrator",
  "permissions": [
   {
+   "amend": 1,
+   "cancel": 1,
    "create": 1,
    "delete": 1,
    "email": 1,
@@ -154,9 +204,80 @@
    "share": 1,
    "submit": 1,
    "write": 1
+  },
+  {
+   "amend": 1,
+   "create": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "PD User",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "amend": 1,
+   "create": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "PD Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "amend": 1,
+   "create": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Sales User",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "amend": 1,
+   "cancel": 1,
+   "create": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Sales Manager",
+   "share": 1,
+   "submit": 1,
+   "write": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Merch User",
+   "select": 1,
+   "share": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "All",
+   "select": 1,
+   "share": 1
   }
  ],
  "row_format": "Dynamic",
+ "search_fields": "item",
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": []

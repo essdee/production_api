@@ -8,6 +8,7 @@
  "field_order": [
   "is_manual_entry",
   "cutting_plan",
+  "cutting_order",
   "lot",
   "length",
   "total_no_of_plys",
@@ -35,8 +36,15 @@
    "in_list_view": 1,
    "in_standard_filter": 1,
    "label": "Cutting Plan",
-   "options": "Cutting Plan",
-   "reqd": 1
+   "options": "Cutting Plan"
+  },
+  {
+   "fieldname": "cutting_order",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Cutting Order",
+   "options": "Cutting Order"
   },
   {
    "fetch_from": "cutting_plan.lot",
@@ -51,11 +59,10 @@
   {
    "fetch_from": "cutting_plan.item",
    "fieldname": "item",
-   "fieldtype": "Link",
+   "fieldtype": "Data",
    "in_list_view": 1,
    "in_standard_filter": 1,
    "label": "Item",
-   "options": "Item",
    "read_only": 1
   },
   {
@@ -182,7 +189,7 @@
    "link_fieldname": "cutting_marker"
   }
  ],
- "modified": "2025-08-12 12:03:58.070216",
+ "modified": "2026-02-06 18:50:59.186756",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Cutting Marker",
@@ -216,6 +223,7 @@
    "write": 1
   },
   {
+   "create": 1,
    "email": 1,
    "export": 1,
    "print": 1,
@@ -223,7 +231,8 @@
    "report": 1,
    "role": "Cutting User",
    "select": 1,
-   "share": 1
+   "share": 1,
+   "write": 1
   },
   {
    "email": 1,

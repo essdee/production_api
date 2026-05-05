@@ -358,7 +358,7 @@ def get_fp_ocr_details(doc_name):
 		"get_unaccountable": {},
 	}
 	def get_total(part_value, ocr_data):
-		return ((ocr_data[part_value]['packed_box_qty'] + 
+		return ((ocr_data[part_value]['packed_box_qty'] +
 			ocr_data[part_value]['rejected'] + 
 			ocr_data[part_value]['loose_piece_set'] +
 			ocr_data[part_value]['loose_piece'] +
@@ -373,7 +373,7 @@ def get_fp_ocr_details(doc_name):
 					ocr_data[part_value]['old_lot'] + 
 					ocr_data[part_value]['ironing_excess'] - 
 					ocr_data[part_value]['transferred'] ,
-			"val2": ocr_data[part_value]['packed_box_qty'],
+			"val2": ocr_data[part_value]['dispatched_piece'],
 		}
 	
 	def get_cut_to_inward(part_value, ocr_data):
@@ -388,7 +388,7 @@ def get_fp_ocr_details(doc_name):
 					ocr_data[part_value]['old_lot'] + 
 					ocr_data[part_value]['ironing_excess'] - 
 					ocr_data[part_value]['transferred'] , 
-			"val2": ocr_data[part_value]['packed_box_qty']
+			"val2": ocr_data[part_value]['dispatched_piece']
 		}
 	
 	def get_loose_piece(part_value, ocr_data):
@@ -432,7 +432,7 @@ def get_fp_ocr_details(doc_name):
 			"val2": ocr_data[part_value]['sewing_received'] +
 					ocr_data[part_value]['old_lot'] + 
 					ocr_data[part_value]['ironing_excess'] -
-					(ocr_data[part_value]['packed_box_qty'] + 
+					(ocr_data[part_value]['dispatched_piece'] + 
 					ocr_data[part_value]['rejected'] + 
 					ocr_data[part_value]['loose_piece_set'] +
 					ocr_data[part_value]['loose_piece'] +
@@ -451,13 +451,13 @@ def get_fp_ocr_details(doc_name):
 				ocr_data[part_value]['total'][size]['ironing_excess']))
 	
 	def get_ocr_value(part_value, ocr_data):
-		return (
+		return round(
 			get_ocr_percentage(get_cut_to_dispatch(part_value, ocr_data)) +
 			get_ocr_percentage(get_loose_piece(part_value, ocr_data)) +
 			get_ocr_percentage(get_rejection(part_value, ocr_data)) +
 			get_ocr_percentage(get_rework(part_value, ocr_data)) +
 			get_ocr_percentage(get_not_received(part_value, ocr_data), make_pos=True)
-		)
+		, 2)
 
 	for part_value in ocr_data:
 		d["get_total"].setdefault(part_value, get_total(part_value, ocr_data))
@@ -498,6 +498,8 @@ def get_ocr_details(doc):
 			"transferred": 0,
 			"packed_box": 0,
 			"packed_box_qty": 0,
+			"dispatched_box": 0,
+			"dispatched_piece": 0,
 			"rejected": 0,
 			"loose_piece": 0,
 			"loose_piece_set": 0,
@@ -514,6 +516,8 @@ def get_ocr_details(doc):
 			"transferred": 0,
 			"packed_box": 0,
 			"packed_box_qty": 0,
+			"dispatched_box": 0,
+			"dispatched_piece": 0,
 			"rejected": 0,
 			"loose_piece": 0,
 			"loose_piece_set": 0,
@@ -574,6 +578,11 @@ def get_ocr_details(doc):
 		ocr_data[part_value]['total'][size]['loose_piece_set'] += row.pack_return_qty
 		ocr_data[part_value]['loose_piece_set'] += row.pack_return_qty
 
+		ocr_data[part_value]['data'][colour]['values'][size]['rejected'] += row.rejected_qty
+		ocr_data[part_value]['data'][colour]['colour_total']['rejected'] += row.rejected_qty
+		ocr_data[part_value]['total'][size]['rejected'] += row.rejected_qty
+		ocr_data[part_value]['rejected'] += row.rejected_qty
+
 	part_value = ["Item"]
 	if is_set_item:
 		part_value = get_part_value(set_attr, ipd)
@@ -584,7 +593,11 @@ def get_ocr_details(doc):
 			ocr_data[par]['packed_box'] += row.quantity
 			ocr_data[par]['packed_box_qty'] += (row.quantity * doc.pieces_per_box)
 			ocr_data[par]['total'][size]['packed_box'] += row.quantity
-			ocr_data[par]['total'][size]['packed_box_qty'] += (row.quantity * doc.pieces_per_box)	
+			ocr_data[par]['total'][size]['packed_box_qty'] += (row.quantity * doc.pieces_per_box)
+			ocr_data[par]['dispatched_box'] += row.dispatched
+			ocr_data[par]['dispatched_piece'] += (row.dispatched * doc.pieces_per_box)
+			ocr_data[par]['total'][size]['dispatched_box'] += row.dispatched
+			ocr_data[par]['total'][size]['dispatched_piece'] += (row.dispatched * doc.pieces_per_box)	
 	
 	for row in doc.finishing_plan_reworked_details:
 		set_comb = update_if_string_instance(row.set_combination)
@@ -618,39 +631,71 @@ def fetch_rejected_quantity(doc_name):
 		"lot": fp_doc.lot
 	}, pluck="name")
 	finishing_rework_items = {}
-	for row in fp_doc.finishing_plan_reworked_details:
-		set_comb = update_if_string_instance(row.set_combination)
-		key = (row.item_variant, tuple(sorted(set_comb.items())))
-		finishing_rework_items.setdefault(key, {
-			"item_variant": row.item_variant,
-			"quantity": row.quantity,
-			"reworked_quantity": 0,
-			"rejected_qty": 0,
-			"set_combination": row.set_combination,
-		})
 
 	for rework_item in rework_item_list:
 		doc = frappe.get_doc("GRN Rework Item", rework_item)
 		for row in doc.grn_rework_item_details:
-			if row.quantity == 0 or not row.completed:
-				continue
-			set_comb = update_if_string_instance(row.set_combination)
-			set_comb = update_if_string_instance(set_comb)
-			key = (row.item_variant, tuple(sorted(set_comb.items())))
-			finishing_rework_items[key]['rejected_qty'] += row.rejection
-
-		for row in doc.grn_reworked_item_details:		
 			if row.quantity == 0:
 				continue
 			set_comb = update_if_string_instance(row.set_combination)
 			set_comb = update_if_string_instance(set_comb)
 			key = (row.item_variant, tuple(sorted(set_comb.items())))
+			finishing_rework_items.setdefault(key, {
+				"item_variant": row.item_variant,
+				"quantity": 0,
+				"reworked_quantity": 0,
+				"rejected_qty": 0,
+				"set_combination": frappe.json.dumps(set_comb),
+			})
+			finishing_rework_items[key]['quantity'] += row.quantity
+			if row.completed:
+				finishing_rework_items[key]['rejected_qty'] += row.rejection
+
+		for row in doc.grn_reworked_item_details:
+			if row.quantity == 0:
+				continue
+			set_comb = update_if_string_instance(row.set_combination)
+			set_comb = update_if_string_instance(set_comb)
+			key = (row.item_variant, tuple(sorted(set_comb.items())))
+			finishing_rework_items.setdefault(key, {
+				"item_variant": row.item_variant,
+				"quantity": 0,
+				"reworked_quantity": 0,
+				"rejected_qty": 0,
+				"set_combination": frappe.json.dumps(set_comb),
+			})
 			finishing_rework_items[key]['reworked_quantity'] += row.quantity
-		
+
 	rework_list = []
 	for key in finishing_rework_items:
 		rework_list.append(finishing_rework_items[key])
-	fp_doc.set("finishing_plan_reworked_details", rework_list)		
+	fp_doc.set("finishing_plan_reworked_details", rework_list)
+	
+	wo_list = frappe.get_all("Work Order", filters={
+		"docstatus": 1,
+		"lot": fp_doc.lot,
+		"process_name": "Cutting",
+	}, pluck="name")
+
+	cut_key_dict = {} 
+	for wo in wo_list:
+		wo_doc = frappe.get_doc("Work Order", wo)
+		for row in wo_doc.work_order_calculated_items:
+			if row.received_qty > 0:
+				set_comb = update_if_string_instance(row.set_combination)
+				key = (row.item_variant, tuple(sorted(set_comb.items())))
+				if cut_key_dict.get(key):
+					cut_key_dict[key] += row.received_qty
+				else:
+					cut_key_dict[key] = row.received_qty
+
+	for row in fp_doc.finishing_plan_details:
+		set_comb = update_if_string_instance(row.set_combination)
+		key = (row.item_variant, tuple(sorted(set_comb.items())))
+		row.reworked = finishing_rework_items[key]['reworked_quantity'] if finishing_rework_items.get(key) else 0
+		if cut_key_dict.get(key):
+			row.cutting_qty = cut_key_dict[key]
+
 	fp_doc.save()	
 
 @frappe.whitelist()
@@ -1198,20 +1243,12 @@ def get_incomplete_transfer_docs(lot, doc_name):
 	finishing_inward_process = frappe.db.get_single_value("MRP Settings", "finishing_inward_process")
 	if not finishing_inward_process:
 		frappe.throw("Set Finishing Inward Process")
-
-	processes = frappe.db.sql(
-		"""
-			Select parent FROM `tabProcess Details` WHERE process_name = %(process)s OR parent = %(process)s
-		""", {
-			"process": finishing_inward_process,
-		}, as_dict=1
-	)
-	process_names = [p['parent'] for p in processes]
-	process_names.append(finishing_inward_process)
+	from production_api.utils import get_process_wo_list
+	wo_list = get_process_wo_list(finishing_inward_process, lot)
 	grn_list = frappe.get_all("Goods Received Note", filters={
 		"docstatus": 1,
 		"against": "Work Order",
-		"process_name": ['in', process_names],
+		"against_id": ['in', wo_list],
 		"lot": lot,
 		"is_internal_unit": 1,
 		"transfer_complete": 0, 
@@ -1267,6 +1304,7 @@ def fetch_quantity(doc_name):
 			"pack_return_qty": 0,
 			"return_dc_qty": 0,
 			"pack_dc_qty": 0,
+			"rejected_qty": 0,
 		})
 	finishing_inward_process = frappe.db.get_single_value("MRP Settings", "finishing_inward_process")
 	if not finishing_inward_process:
@@ -1287,25 +1325,21 @@ def fetch_quantity(doc_name):
 						finishing_items[key]['received_types'][ty] = 0
 					if ty == default_type:
 						finishing_items[key]['accepted_qty'] += received_types[ty]
-					if ty not in [default_type, default_rejected]:
+					elif ty == default_rejected:
+						finishing_items[key]['rejected_qty'] += received_types[ty]
+					elif ty not in [default_type, default_rejected]:
 						finishing_items[key]['rework_qty'] += received_types[ty]	
 
 					finishing_items[key]['received_types'][ty] += received_types[ty]	
 
-	lot_doc = frappe.get_doc("Lot", doc.lot)
-	# wo_list = frappe.get_all("Work Order", filters={
-	# 	"docstatus": 1,
-	# 	"lot": wo_doc.lot,
-	# 	"process_name": "Cutting",
-	# }, pluck="name")	
-	for row in lot_doc.lot_order_details:
-	# for wo in wo_list:
-		# cut_wo_doc = frappe.get_doc("Work Order", wo)
-		# for row in cut_wo_doc.work_order_calculated_items:
-			# if row.quantity > 0:
-		set_comb = update_if_string_instance(row.set_combination)
-		key = (row.item_variant, tuple(sorted(set_comb.items())))
-		finishing_items[key]['cutting_qty'] += row.cut_qty
+	cut_wo_list = get_process_wo_list("Cutting", doc.lot)
+	for wo in cut_wo_list:
+		cut_wo_doc = frappe.get_doc("Work Order", wo)
+		for row in cut_wo_doc.work_order_calculated_items:
+			if row.received_qty > 0:
+				set_comb = update_if_string_instance(row.set_combination)
+				key = (row.item_variant, tuple(sorted(set_comb.items())))
+				finishing_items[key]['cutting_qty'] += row.received_qty
 
 	finishing_rework_items = {}
 	rework_list = frappe.get_all("GRN Rework Item", filters={"lot": wo_doc.lot}, pluck="name")
@@ -1406,7 +1440,10 @@ def fetch_quantity(doc_name):
 			"reworked": reworked_qty,
 			"dc_qty": finishing_items[key]['dc_qty'],
 			"return_qty": finishing_items[key]['return_qty'],
-			"pack_return_qty": finishing_items[key]['pack_return_qty']
+			"pack_return_qty": finishing_items[key]['pack_return_qty'],
+			"return_dc_qty": finishing_items[key]['return_dc_qty'],
+			"pack_dc_qty": finishing_items[key]['pack_dc_qty'],
+			"rejected_qty": finishing_items[key]['rejected_qty'],
 		})		
 	doc.set("finishing_plan_details", finishing_items_list)
 	doc.save()
@@ -1451,9 +1488,24 @@ def get_updated_return(grn_list, finishing_items, finishing_rework_items):
 	return finishing_items, finishing_rework_items
 
 @frappe.whitelist()
-def cache_selected_size(key, size):
+def cache_selected_size(key, size, finishing_id):
+	check_eqi_status(size, finishing_id)
 	key += frappe.session.user
 	frappe.cache.set_value(key, size)
+
+def check_eqi_status(print_size, finishing_id):
+	lot = frappe.get_value("Finishing Plan", finishing_id, "lot")
+	process = frappe.db.get_single_value("MRP Settings", "finishing_inward_process") 
+	wo_list = get_process_wo_list(process, lot)
+	from production_api.utils import get_eqi_status
+	eqi_data = get_eqi_status(wo_list)
+	sup_list = []
+	for sup in eqi_data:
+		for colour in eqi_data[sup]:
+			if eqi_data[sup][colour].get(print_size) and eqi_data[sup][colour][print_size] != 'Pass':
+				sup_list.append(sup)
+	if sup_list:
+		frappe.throw(f"EQI not passed for Size {print_size}: {', '.join(sup_list)}")
 
 @frappe.whitelist()
 def get_finishing_plan_inward_details(key, lot):
@@ -1840,3 +1892,273 @@ def get_alternative_details(lot):
 			"details": details
 		}
 	return lot_dict
+
+@frappe.whitelist()
+def check_is_alternative_item(item):
+	items = frappe.db.get_all("Item Alternative", filters={
+		"item": item
+	}, pluck="alternative_item")
+
+	return items
+
+
+@frappe.whitelist()
+def get_finishing_packed_details(date, lot_list=None, item_list=None):
+	"""Get lot/item-wise, size-wise box quantities from packing GRNs for a given date."""
+	import json
+	if isinstance(lot_list, str):
+		lot_list = json.loads(lot_list)
+	if isinstance(item_list, str):
+		item_list = json.loads(item_list)
+
+	grns = frappe.get_all("Goods Received Note", filters={
+		"against": "Work Order",
+		"includes_packing": 1,
+		"docstatus": 1,
+		"posting_date": date,
+	}, fields=["name", "lot"])
+
+	lot_grns = {}
+	for grn in grns:
+		lot_grns.setdefault(grn.lot, []).append(grn.name)
+
+	# Filter by lot_list
+	if lot_list:
+		lot_grns = {k: v for k, v in lot_grns.items() if k in lot_list}
+
+	result = []
+	for lot, grn_names in lot_grns.items():
+		lot_item = frappe.get_value("Lot", lot, "item")
+		# Filter by item_list
+		if item_list and lot_item not in item_list:
+			continue
+		ipd = frappe.get_value("Lot", lot, "production_detail")
+		if not ipd:
+			continue
+
+		ipd_doc = frappe.get_cached_doc("Item Production Detail", ipd)
+		primary_attr = ipd_doc.primary_item_attribute
+		pieces_per_box = ipd_doc.packing_combo or 0
+		sizes = get_ipd_primary_values(ipd)
+
+		size_qty = {}
+		for size in sizes:
+			size_qty[size] = 0
+
+		for grn_name in grn_names:
+			grn_items = frappe.get_all("Goods Received Note Item", filters={
+				"parent": grn_name,
+			}, fields=["item_variant", "quantity"])
+
+			for gi in grn_items:
+				attr_details = get_variant_attr_details(gi.item_variant)
+				size = attr_details.get(primary_attr)
+				if size:
+					size_qty.setdefault(size, 0)
+					size_qty[size] += gi.quantity
+
+		total_boxes = sum(size_qty.values())
+		total_pieces = total_boxes * pieces_per_box if pieces_per_box else 0
+
+		result.append({
+			"lot": lot,
+			"item": lot_item,
+			"sizes": sizes,
+			"size_qty": size_qty,
+			"pieces_per_box": pieces_per_box,
+			"total_boxes": total_boxes,
+			"total_pieces": total_pieces,
+		})
+
+	all_sizes = []
+	seen = set()
+	for row in result:
+		for s in row["sizes"]:
+			if s not in seen:
+				seen.add(s)
+				all_sizes.append(s)
+
+	return {"data": result, "sizes": all_sizes}
+
+
+@frappe.whitelist()
+def get_finishing_dispatch_report(from_date, to_date, lot_list=None, item_list=None):
+	"""Get lot/item-wise, size-wise packed and dispatched quantities for a date range."""
+	import json
+	if isinstance(lot_list, str):
+		lot_list = json.loads(lot_list)
+	if isinstance(item_list, str):
+		item_list = json.loads(item_list)
+
+	# --- Packed (same as get_finishing_packed_details but with date range) ---
+	grns = frappe.get_all("Goods Received Note", filters={
+		"against": "Work Order",
+		"includes_packing": 1,
+		"docstatus": 1,
+		"is_return": 0,
+		"posting_date": ["between", [from_date, to_date]],
+	}, fields=["name", "lot"])
+
+	lot_grns = {}
+	for grn in grns:
+		lot_grns.setdefault(grn.lot, []).append(grn.name)
+
+	# Filter by lot_list
+	if lot_list:
+		lot_grns = {k: v for k, v in lot_grns.items() if k in lot_list}
+
+	packed_result = []
+	for lot, grn_names in lot_grns.items():
+		lot_item = frappe.get_value("Lot", lot, "item")
+		# Filter by item_list
+		if item_list and lot_item not in item_list:
+			continue
+		ipd = frappe.get_value("Lot", lot, "production_detail")
+		if not ipd:
+			continue
+
+		ipd_doc = frappe.get_cached_doc("Item Production Detail", ipd)
+		primary_attr = ipd_doc.primary_item_attribute
+		pieces_per_box = ipd_doc.packing_combo or 0
+		sizes = get_ipd_primary_values(ipd)
+
+		size_qty = {size: 0 for size in sizes}
+
+		for grn_name in grn_names:
+			grn_items = frappe.get_all("Goods Received Note Item", filters={
+				"parent": grn_name,
+			}, fields=["item_variant", "quantity"])
+
+			for gi in grn_items:
+				attr_details = get_variant_attr_details(gi.item_variant)
+				size = attr_details.get(primary_attr)
+				if size:
+					size_qty.setdefault(size, 0)
+					size_qty[size] += gi.quantity
+
+		total_boxes = sum(size_qty.values())
+		total_pieces = total_boxes * pieces_per_box if pieces_per_box else 0
+
+		packed_result.append({
+			"lot": lot,
+			"item": lot_item,
+			"sizes": sizes,
+			"size_qty": size_qty,
+			"pieces_per_box": pieces_per_box,
+			"total_boxes": total_boxes,
+			"total_pieces": total_pieces,
+		})
+
+	# --- Dispatched (Stock Entry Material Issue) ---
+	stock_entries = frappe.get_all("Stock Entry", filters={
+		"against": ["in", ["Finishing Plan", "Finishing Plan Dispatch"]],
+		"purpose": "Material Issue",
+		"docstatus": 1,
+		"posting_date": ["between", [from_date, to_date]],
+	}, fields=["name"])
+
+	lot_dispatched = {}
+	for se in stock_entries:
+		se_items = frappe.get_all("Stock Entry Detail", filters={
+			"parent": se.name,
+		}, fields=["item", "qty", "lot"])
+
+		for si in se_items:
+			if not si.lot:
+				continue
+			lot_dispatched.setdefault(si.lot, []).append(si)
+
+	# Filter by lot_list
+	if lot_list:
+		lot_dispatched = {k: v for k, v in lot_dispatched.items() if k in lot_list}
+
+	dispatched_result = []
+	for lot, items in lot_dispatched.items():
+		lot_item = frappe.get_value("Lot", lot, "item")
+		# Filter by item_list
+		if item_list and lot_item not in item_list:
+			continue
+		ipd = frappe.get_value("Lot", lot, "production_detail")
+		if not ipd:
+			continue
+
+		ipd_doc = frappe.get_cached_doc("Item Production Detail", ipd)
+		primary_attr = ipd_doc.primary_item_attribute
+		pieces_per_box = ipd_doc.packing_combo or 0
+		sizes = get_ipd_primary_values(ipd)
+
+		size_qty = {size: 0 for size in sizes}
+
+		for si in items:
+			attr_details = get_variant_attr_details(si.item)
+			size = attr_details.get(primary_attr)
+			if size:
+				size_qty.setdefault(size, 0)
+				size_qty[size] += si.qty
+
+		total_boxes = sum(size_qty.values())
+		total_pieces = total_boxes * pieces_per_box if pieces_per_box else 0
+
+		dispatched_result.append({
+			"lot": lot,
+			"item": lot_item,
+			"sizes": sizes,
+			"size_qty": size_qty,
+			"pieces_per_box": pieces_per_box,
+			"total_boxes": total_boxes,
+			"total_pieces": total_pieces,
+		})
+
+	# Merge packed and dispatched by lot
+	lot_data = {}
+	for row in packed_result:
+		lot_data[row["lot"]] = {
+			"lot": row["lot"],
+			"item": row["item"],
+			"sizes": row["sizes"],
+			"pieces_per_box": row["pieces_per_box"],
+			"packed_qty": row["size_qty"],
+			"packed_total_boxes": row["total_boxes"],
+			"packed_total_pieces": row["total_pieces"],
+			"dispatched_qty": {},
+			"dispatched_total_boxes": 0,
+			"dispatched_total_pieces": 0,
+		}
+
+	for row in dispatched_result:
+		if row["lot"] in lot_data:
+			lot_data[row["lot"]]["dispatched_qty"] = row["size_qty"]
+			lot_data[row["lot"]]["dispatched_total_boxes"] = row["total_boxes"]
+			lot_data[row["lot"]]["dispatched_total_pieces"] = row["total_pieces"]
+			# Merge sizes
+			existing_sizes = lot_data[row["lot"]]["sizes"]
+			for s in row["sizes"]:
+				if s not in existing_sizes:
+					existing_sizes.append(s)
+		else:
+			lot_data[row["lot"]] = {
+				"lot": row["lot"],
+				"item": row["item"],
+				"sizes": row["sizes"],
+				"pieces_per_box": row["pieces_per_box"],
+				"packed_qty": {},
+				"packed_total_boxes": 0,
+				"packed_total_pieces": 0,
+				"dispatched_qty": row["size_qty"],
+				"dispatched_total_boxes": row["total_boxes"],
+				"dispatched_total_pieces": row["total_pieces"],
+			}
+
+	# Collect all unique sizes
+	all_sizes = []
+	seen = set()
+	for entry in lot_data.values():
+		for s in entry["sizes"]:
+			if s not in seen:
+				seen.add(s)
+				all_sizes.append(s)
+
+	return {
+		"data": list(lot_data.values()),
+		"sizes": all_sizes,
+	}

@@ -27,6 +27,7 @@
   "purchase_invoice_section",
   "pi_minimum_grn_date",
   "senior_merch_role",
+  "override_pi_approve",
   "column_break_boig",
   "merchandising_manager_role",
   "merch_user_role",
@@ -49,12 +50,30 @@
   "cutting_plan_section",
   "cloth_allowance_percentage",
   "printer_list",
+  "piece_weight_min",
+  "piece_weight_tolerance",
   "column_break_nrkc",
   "cut_bundle_cancelled_lot",
+  "piece_weight_max",
+  "cls_grammage_approval_roles",
+  "box_sticker_print_section",
+  "non_set_box_sticker",
+  "non_set_piece_sticker",
+  "column_break_bsp",
+  "set_item_box_sticker",
+  "set_item_piece_sticker",
   "quality_inspection_section",
   "default_major_aql_level",
   "column_break_bvdh",
-  "default_minor_aql_level"
+  "default_minor_aql_level",
+  "sewing_plan_tab",
+  "previous_day_entries",
+  "sewing_plan_status_summary",
+  "type_wise_diff_summary",
+  "sewing_plan_input_orders",
+  "sewing_plan_inspection_type",
+  "sewing_line_output_type",
+  "sewing_input_qty_type"
  ],
  "fields": [
   {
@@ -182,8 +201,7 @@
   {
    "fieldname": "cut_bundle_cancelled_lot",
    "fieldtype": "Text",
-   "label": "Cut Bundle Cancelled Lot",
-   "read_only": 1
+   "label": "Cut Bundle Cancelled Lot"
   },
   {
    "fieldname": "sales_settings_section",
@@ -306,12 +324,51 @@
    "fieldtype": "Column Break"
   },
   {
+   "default": "0",
+   "fieldname": "override_pi_approve",
+   "fieldtype": "Check",
+   "label": "Override PI Approve"
+  },
+  {
    "fieldname": "column_break_boig",
    "fieldtype": "Column Break"
   },
   {
    "fieldname": "column_break_xjuz",
    "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "box_sticker_print_section",
+   "fieldtype": "Section Break",
+   "label": "Box Sticker Print"
+  },
+  {
+   "fieldname": "non_set_box_sticker",
+   "fieldtype": "Link",
+   "label": "Non Set Box Sticker",
+   "options": "Essdee Raw Print Format"
+  },
+  {
+   "fieldname": "non_set_piece_sticker",
+   "fieldtype": "Link",
+   "label": "Non Set Piece Sticker",
+   "options": "Essdee Raw Print Format"
+  },
+  {
+   "fieldname": "column_break_bsp",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "set_item_box_sticker",
+   "fieldtype": "Link",
+   "label": "Set Item Box Sticker",
+   "options": "Essdee Raw Print Format"
+  },
+  {
+   "fieldname": "set_item_piece_sticker",
+   "fieldtype": "Link",
+   "label": "Set Item Piece Sticker",
+   "options": "Essdee Raw Print Format"
   },
   {
    "fieldname": "quality_inspection_section",
@@ -331,13 +388,86 @@
    "fieldname": "enable_production_order",
    "fieldtype": "Check",
    "label": "Enable Production Order"
+  },
+  {
+   "fieldname": "sewing_plan_tab",
+   "fieldtype": "Tab Break",
+   "label": "Sewing Plan"
+  },
+  {
+   "fieldname": "sewing_plan_status_summary",
+   "fieldtype": "Table",
+   "label": "Sewing Plan Status Summary",
+   "options": "Sewing Plan Status Summary"
+  },
+  {
+   "fieldname": "type_wise_diff_summary",
+   "fieldtype": "Link",
+   "label": "Type Wise Diff Summary",
+   "options": "Sewing Plan Input Type"
+  },
+  {
+   "fieldname": "sewing_plan_input_orders",
+   "fieldtype": "Table",
+   "label": "Sewing Plan Input Orders",
+   "options": "Sewing Plan Input Order"
+  },
+  {
+   "fieldname": "previous_day_entries",
+   "fieldtype": "Int",
+   "label": "Previous Day Entries"
+  },
+  {
+   "fieldname": "sewing_plan_inspection_type",
+   "fieldtype": "Link",
+   "label": "Sewing Plan Inspection Type",
+   "options": "Sewing Plan Input Type"
+  },
+  {
+   "fieldname": "sewing_line_output_type",
+   "fieldtype": "Link",
+   "label": "Sewing Line Output Type",
+   "options": "Sewing Plan Input Type"
+  },
+  {
+   "fieldname": "sewing_input_qty_type",
+   "fieldtype": "Link",
+   "label": "Sewing Input Qty Type",
+   "options": "Sewing Plan Input Type"
+  },
+  {
+   "default": "0.01",
+   "description": "Minimum allowed piece weight in kg for Cutting LaySheet validation",
+   "fieldname": "piece_weight_min",
+   "fieldtype": "Float",
+   "label": "Piece Weight Min (kg)"
+  },
+  {
+   "default": "0.5",
+   "description": "Maximum allowed piece weight in kg for Cutting LaySheet validation",
+   "fieldname": "piece_weight_max",
+   "fieldtype": "Float",
+   "label": "Piece Weight Max (kg)"
+  },
+  {
+   "default": "0.003",
+   "description": "Maximum allowed difference between actual and required piece weight (in kg) before approval is needed",
+   "fieldname": "piece_weight_tolerance",
+   "fieldtype": "Float",
+   "label": "Piece Weight Tolerance (kg)"
+  },
+  {
+   "fieldname": "cls_grammage_approval_roles",
+   "fieldtype": "Table",
+   "label": "CLS Grammage Approval Roles",
+   "options": "CLS Grammage Approval Role"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2026-01-06 12:50:47.669375",
+ "modified": "2026-03-17 12:23:40.914999",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "MRP Settings",
@@ -362,6 +492,10 @@
    "role": "System Manager",
    "share": 1,
    "write": 1
+  },
+  {
+   "read": 1,
+   "role": "All"
   }
  ],
  "row_format": "Dynamic",

@@ -31,10 +31,15 @@ frappe.ui.form.on("Lot", {
 				if (!r.message) {
 					x = false
 				}
-				frm.set_df_property("production_order", "read_only", !x)
 				frm.set_df_property("item", "read_only", x)
-				frm.refresh_field("production_order")
 				frm.refresh_field("item")
+				if (frm.doc.item && !frm.doc.production_order) {
+					frm.set_df_property("production_order", "read_only", true)
+				}
+				else{
+					frm.set_df_property("production_order", "read_only", !x)
+				}
+				frm.refresh_field("production_order")
 			}
 		})
 
@@ -57,17 +62,29 @@ frappe.ui.form.on("Lot", {
 		frm.set_df_property('bom_summary', 'cannot_delete_rows', true)
 		if (frm.doc.lot_time_and_action_details.length == 0) {
 			frm.add_custom_button("Calculate Order Items", () => {
-				frappe.call({
-					method: "production_api.essdee_production.doctype.lot.lot.update_order_details",
-					args: {
-						doc_name: frm.doc.name,
+				let d = new frappe.ui.Dialog({
+					title: "Confirm Calculation",
+					primary_action_label: "Yes",
+					secondary_action_label: "No",
+					primary_action() {
+						d.hide()
+						frappe.call({
+							method: "production_api.essdee_production.doctype.lot.lot.update_order_details",
+							args: {
+								doc_name: frm.doc.name,
+							},
+							freeze: true,
+							freeze_message: __("Calculating Order Items..."),
+							callback: function (r) {
+								frm.reload_doc()
+							}
+						})
 					},
-					freeze: true,
-					freeze_message: __("Calculating Order Items..."),
-					callback: function (r) {
-						frm.reload_doc()
+					secondary_action() {
+						d.hide()
 					}
 				})
+				d.show()
 			})
 		}
 		$(frm.fields_dict['items_html'].wrapper).html("")

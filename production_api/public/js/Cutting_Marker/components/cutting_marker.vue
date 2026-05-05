@@ -191,6 +191,7 @@ function create_attributes(){
         method:"production_api.production_api.doctype.cutting_marker.cutting_marker.calculate_parts",
         args: {
             cutting_plan: cur_frm.doc.cutting_plan,
+            cutting_order: cur_frm.doc.cutting_order,
         },
         callback: function(r){
             let parts = r.message
@@ -249,6 +250,7 @@ function get_combination(user_input=null){
             selected_value: selected_value,
             panels: panels,
             grp_panels: grp_panel,
+            cutting_order: cur_frm.doc.cutting_order,
         },
         callback:((r)=> {
             items.value = r.message.primary

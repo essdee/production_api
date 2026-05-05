@@ -6,6 +6,7 @@
  "engine": "InnoDB",
  "field_order": [
   "item_group",
+  "default_primary_attribute",
   "column_break_vcvr",
   "default_cutting_process",
   "packing_details_section",
@@ -19,7 +20,9 @@
   "default_stitching_in_stage",
   "column_break_ihkx",
   "default_stitching_attribute",
-  "default_stitching_out_stage"
+  "default_stitching_out_stage",
+  "set_details_section",
+  "default_set_item_attribute"
  ],
  "fields": [
   {
@@ -117,13 +120,31 @@
   {
    "fieldname": "column_break_ihkx",
    "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "set_details_section",
+   "fieldtype": "Section Break",
+   "label": "Set Details"
+  },
+  {
+   "fieldname": "default_set_item_attribute",
+   "fieldtype": "Link",
+   "label": "Default Set Item Attribute",
+   "options": "Item Attribute",
+   "reqd": 1
+  },
+  {
+   "fieldname": "default_primary_attribute",
+   "fieldtype": "Link",
+   "label": "Default Primary Attribute",
+   "options": "Item Attribute"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2025-09-05 12:48:16.379024",
+ "modified": "2026-03-12 16:35:53.315749",
  "modified_by": "Administrator",
  "module": "Essdee Production",
  "name": "IPD Settings",

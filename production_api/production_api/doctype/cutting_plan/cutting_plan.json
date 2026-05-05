@@ -11,6 +11,7 @@
   "maximum_no_of_plys",
   "lay_no",
   "naming_series",
+  "cutting_start_date",
   "cp_status",
   "version",
   "no_of_colours",
@@ -20,6 +21,7 @@
   "production_detail",
   "ipd_cutting_attribute",
   "cutting_location",
+  "cutting_end_date",
   "work_order",
   "open_status",
   "no_of_colours_completed",
@@ -207,8 +209,7 @@
    "default": "0",
    "fieldname": "is_manual_entry",
    "fieldtype": "Check",
-   "label": "Is Manual Entry",
-   "set_only_once": 1
+   "label": "Is Manual Entry"
   },
   {
    "fieldname": "planned_detail_tab",
@@ -219,6 +220,22 @@
    "fieldname": "planned_details_html",
    "fieldtype": "HTML",
    "label": "Planned Details HTML"
+  },
+  {
+   "allow_on_submit": 1,
+   "description": "Date of first LaySheet created",
+   "fieldname": "cutting_start_date",
+   "fieldtype": "Date",
+   "label": "Cutting Start Date",
+   "read_only": 1
+  },
+  {
+   "allow_on_submit": 1,
+   "description": "Date when all LaySheets reached Bundles Generated",
+   "fieldname": "cutting_end_date",
+   "fieldtype": "Date",
+   "label": "Cutting End Date",
+   "read_only": 1
   },
   {
    "fieldname": "amended_from",
@@ -294,7 +311,7 @@
    "link_fieldname": "cutting_plan"
   }
  ],
- "modified": "2025-12-29 18:03:04.311520",
+ "modified": "2026-03-13 10:14:45.796757",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Cutting Plan",
@@ -355,22 +372,9 @@
    "print": 1,
    "read": 1,
    "report": 1,
-   "role": "Merchandiser",
+   "role": "Merch User",
    "select": 1,
    "share": 1
-  },
-  {
-   "create": 1,
-   "delete": 1,
-   "email": 1,
-   "export": 1,
-   "print": 1,
-   "read": 1,
-   "report": 1,
-   "role": "T & A Manager",
-   "share": 1,
-   "submit": 1,
-   "write": 1
   },
   {
    "email": 1,
@@ -380,17 +384,6 @@
    "read": 1,
    "report": 1,
    "role": "System Manager",
-   "share": 1,
-   "write": 1
-  },
-  {
-   "email": 1,
-   "export": 1,
-   "permlevel": 1,
-   "print": 1,
-   "read": 1,
-   "report": 1,
-   "role": "T & A Manager",
    "share": 1,
    "write": 1
   },
@@ -431,9 +424,56 @@
    "print": 1,
    "read": 1,
    "report": 1,
-   "role": "Merchandiser",
+   "role": "Merch User",
    "share": 1,
    "write": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Brand QA Manager",
+   "share": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Brand QA User",
+   "share": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Purchase User",
+   "share": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Store User",
+   "select": 1,
+   "share": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Stock User",
+   "select": 1,
+   "share": 1
   }
  ],
  "row_format": "Dynamic",

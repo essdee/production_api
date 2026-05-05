@@ -17,13 +17,15 @@
    "in_list_view": 1,
    "label": "Item",
    "options": "Item",
+   "read_only": 1,
    "reqd": 1
   },
   {
    "fieldname": "attributes",
    "fieldtype": "Table",
    "label": "Attributes",
-   "options": "Item Variant Attribute"
+   "options": "Item Variant Attribute",
+   "read_only": 1
   },
   {
    "fieldname": "item_tuple_attribute",
@@ -35,13 +37,14 @@
    "default": "0",
    "fieldname": "sync_with_erp",
    "fieldtype": "Check",
-   "label": "Sync With ERP"
+   "label": "Sync With ERP",
+   "read_only": 1
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-01-19 17:33:17.943720",
+ "modified": "2026-02-06 19:08:32.518740",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Item Variant",
@@ -60,6 +63,7 @@
    "write": 1
   },
   {
+   "create": 1,
    "email": 1,
    "export": 1,
    "print": 1,
@@ -67,17 +71,6 @@
    "report": 1,
    "role": "All",
    "select": 1,
-   "share": 1
-  },
-  {
-   "create": 1,
-   "delete": 1,
-   "email": 1,
-   "export": 1,
-   "print": 1,
-   "read": 1,
-   "report": 1,
-   "role": "Item Master Manager",
    "share": 1,
    "write": 1
   }

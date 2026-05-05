@@ -24,6 +24,27 @@ frappe.ui.form.on('Product', {
 				}
 			}
 		})
+		frm.set_query("top_colour", "product_set_colours", function () {
+			return {
+				filters: {
+					"docstatus": 1
+				}
+			}
+		})
+		frm.set_query("bottom_colour", "product_set_colours", function () {
+			return {
+				filters: {
+					"docstatus": 1
+				}
+			}
+		})
+		frm.set_query("product_colour", "product_colours", function () {
+			return {
+				filters: {
+					"docstatus": 1
+				}
+			}
+		})
 	},
 	refresh: function (frm) {
 		if (frm.is_new()) {

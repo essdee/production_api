@@ -282,10 +282,11 @@
    "read_only": 1
   }
  ],
+ "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2024-10-27 00:45:24.774177",
+ "modified": "2026-02-06 18:14:19.261495",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Purchase Order",
@@ -321,7 +322,6 @@
   },
   {
    "create": 1,
-   "delete": 1,
    "email": 1,
    "export": 1,
    "print": 1,
@@ -363,6 +363,7 @@
    "select": 1
   }
  ],
+ "row_format": "Dynamic",
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": [],

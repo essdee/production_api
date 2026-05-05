@@ -5,6 +5,7 @@
   "grn_type": "Misstitch",
   "modified": "2025-08-12 10:48:26.159090",
   "name": "Misstitch",
+  "show_in_sewing_plan": 0,
   "type": "Mistake"
  },
  {
@@ -13,6 +14,7 @@
   "grn_type": "Shade Mistake",
   "modified": "2025-08-14 11:51:15.960983",
   "name": "Shade Mistake",
+  "show_in_sewing_plan": 0,
   "type": "Mistake"
  },
  {
@@ -21,6 +23,7 @@
   "grn_type": "Fabric Mistake",
   "modified": "2025-08-14 11:51:27.276479",
   "name": "Fabric Mistake",
+  "show_in_sewing_plan": 0,
   "type": "Accepted"
  },
  {
@@ -29,6 +32,7 @@
   "grn_type": "Rejected",
   "modified": "2024-10-16 11:01:26.169429",
   "name": "Rejected",
+  "show_in_sewing_plan": 0,
   "type": "Rejected"
  },
  {
@@ -37,30 +41,34 @@
   "grn_type": "Fusing Mistake",
   "modified": "2025-08-09 16:55:26.606075",
   "name": "Fusing Mistake",
+  "show_in_sewing_plan": 0,
   "type": "Mistake"
  },
  {
   "docstatus": 0,
   "doctype": "GRN Item Type",
   "grn_type": "Other Mistake",
-  "modified": "2025-08-09 16:56:31.549619",
+  "modified": "2026-02-06 18:55:18.164990",
   "name": "Other Mistake",
+  "show_in_sewing_plan": 1,
   "type": "Mistake"
  },
  {
   "docstatus": 0,
   "doctype": "GRN Item Type",
   "grn_type": "Adas",
-  "modified": "2024-10-16 11:01:17.670254",
+  "modified": "2026-02-06 18:55:32.502496",
   "name": "Adas",
+  "show_in_sewing_plan": 1,
   "type": "Mistake"
  },
  {
   "docstatus": 0,
   "doctype": "GRN Item Type",
   "grn_type": "Oil Mark",
-  "modified": "2024-10-16 11:01:22.227076",
+  "modified": "2026-02-06 18:55:29.974174",
   "name": "Oil Mark",
+  "show_in_sewing_plan": 1,
   "type": "Mistake"
  },
  {
@@ -69,14 +77,16 @@
   "grn_type": "Printing Mistake",
   "modified": "2025-08-09 16:55:43.106378",
   "name": "Printing Mistake",
+  "show_in_sewing_plan": 0,
   "type": "Mistake"
  },
  {
   "docstatus": 0,
   "doctype": "GRN Item Type",
   "grn_type": "Accepted",
-  "modified": "2024-10-16 11:01:30.111451",
+  "modified": "2026-02-06 18:55:23.022996",
   "name": "Accepted",
+  "show_in_sewing_plan": 1,
   "type": "Accepted"
  }
 ]

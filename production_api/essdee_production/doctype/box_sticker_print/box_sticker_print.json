@@ -16,7 +16,9 @@
   "piece_per_box",
   "preview",
   "amended_from",
-  "naming_series"
+  "naming_series",
+  "against",
+  "against_id"
  ],
  "fields": [
   {
@@ -103,6 +105,22 @@
    "fieldname": "size",
    "fieldtype": "Data",
    "label": "Size"
+  },
+  {
+   "fieldname": "against",
+   "fieldtype": "Select",
+   "hidden": 1,
+   "label": "Against",
+   "options": "\nWork Order",
+   "read_only": 1
+  },
+  {
+   "fieldname": "against_id",
+   "fieldtype": "Dynamic Link",
+   "hidden": 1,
+   "label": "Against ID",
+   "options": "against",
+   "read_only": 1
   }
  ],
  "grid_page_length": 50,

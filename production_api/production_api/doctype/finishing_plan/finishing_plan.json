@@ -8,12 +8,14 @@
  "field_order": [
   "lot",
   "item",
+  "finishing_start_date",
   "production_detail",
   "delivery_location",
   "is_set_item",
   "column_break_klxu",
   "work_order",
   "pieces_per_box",
+  "finishing_end_date",
   "naming_series",
   "finishing_process",
   "section_break_umng",
@@ -193,6 +195,20 @@
    "read_only": 1
   },
   {
+   "description": "Date of first DC inward received",
+   "fieldname": "finishing_start_date",
+   "fieldtype": "Date",
+   "label": "Finishing Start Date",
+   "read_only": 1
+  },
+  {
+   "description": "Date of first GRN dispatch created",
+   "fieldname": "finishing_end_date",
+   "fieldtype": "Date",
+   "label": "Finishing End Date",
+   "read_only": 1
+  },
+  {
    "fieldname": "fetch_from_old_lot_tab",
    "fieldtype": "Tab Break",
    "label": "Fetch From Old Lot"
@@ -324,7 +340,7 @@
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-01-09 15:00:21.567058",
+ "modified": "2026-03-13 14:50:38.442152",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Finishing Plan",
@@ -350,17 +366,6 @@
    "print": 1,
    "read": 1,
    "report": 1,
-   "role": "Transaction User",
-   "share": 1,
-   "write": 1
-  },
-  {
-   "create": 1,
-   "email": 1,
-   "export": 1,
-   "print": 1,
-   "read": 1,
-   "report": 1,
    "role": "Stock User",
    "share": 1,
    "write": 1
@@ -375,6 +380,28 @@
    "role": "Store User",
    "share": 1,
    "write": 1
+  },
+  {
+   "create": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Production Planner",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Merch User",
+   "share": 1,
+   "write": 1
   }
  ],
  "row_format": "Dynamic",
@@ -382,5 +409,6 @@
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": [],
- "title_field": "item"
+ "title_field": "item",
+ "track_changes": 1
 }

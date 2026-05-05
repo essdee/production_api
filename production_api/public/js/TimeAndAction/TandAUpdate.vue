@@ -766,7 +766,7 @@ function check_reason(){
 
 </script>
 
-<style>
+<style scoped>
 .scroll-container1 {
     width: 100%;
     overflow-x: hidden;

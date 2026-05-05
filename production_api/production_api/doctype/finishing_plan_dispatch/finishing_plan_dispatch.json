@@ -11,7 +11,8 @@
   "stock_entry",
   "finishing_plan_dispatch_html",
   "finishing_plan_dispatch_items",
-  "amended_from"
+  "amended_from",
+  "fp_total_dispatched"
  ],
  "fields": [
   {
@@ -55,13 +56,20 @@
    "label": "Naming Series",
    "options": "\nFPD-2526-",
    "reqd": 1
+  },
+  {
+   "fieldname": "fp_total_dispatched",
+   "fieldtype": "Int",
+   "hidden": 1,
+   "label": "FP Total Dispatched",
+   "read_only": 1
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-10-13 16:36:14.435571",
+ "modified": "2026-02-06 19:04:23.117466",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Finishing Plan Dispatch",
@@ -69,6 +77,7 @@
  "owner": "Administrator",
  "permissions": [
   {
+   "cancel": 1,
    "create": 1,
    "delete": 1,
    "email": 1,
@@ -88,30 +97,22 @@
    "print": 1,
    "read": 1,
    "report": 1,
-   "role": "Transaction User",
-   "share": 1,
-   "write": 1
-  },
-  {
-   "create": 1,
-   "email": 1,
-   "export": 1,
-   "print": 1,
-   "read": 1,
-   "report": 1,
-   "role": "Stock User",
-   "share": 1,
-   "write": 1
-  },
-  {
-   "create": 1,
-   "email": 1,
-   "export": 1,
-   "print": 1,
-   "read": 1,
-   "report": 1,
    "role": "Store User",
    "share": 1,
+   "submit": 1,
+   "write": 1
+  },
+  {
+   "cancel": 1,
+   "create": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Store Manager",
+   "share": 1,
+   "submit": 1,
    "write": 1
   }
  ],

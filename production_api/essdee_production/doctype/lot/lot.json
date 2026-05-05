@@ -436,7 +436,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-01-09 17:03:18.712181",
+ "modified": "2026-02-07 14:10:55.203380",
  "modified_by": "Administrator",
  "module": "Essdee Production",
  "name": "Lot",
@@ -474,7 +474,8 @@
    "report": 1,
    "role": "All",
    "select": 1,
-   "share": 1
+   "share": 1,
+   "write": 1
   },
   {
    "create": 1,

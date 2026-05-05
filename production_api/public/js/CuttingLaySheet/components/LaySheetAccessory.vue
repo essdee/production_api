@@ -77,6 +77,7 @@ let items = ref([])
 let root = ref(null)
 let sample_doc = ref({})
 let select_attributes = null
+let cloth_type_dia_map = {}
 let accessory = null
 let cloth_type = null
 let cloth_colour = null
@@ -98,7 +99,39 @@ function on_change_event(){
     }
 }
 
-function add_cloth_item(index){
+function on_cloth_type_change_accessory(){
+    if(!cloth_type) return
+    let selected = cloth_type.get_value()
+    let valid_dias = cloth_type_dia_map[selected]
+    if(valid_dias && valid_dias.length > 0){
+        let dia_options = [""].concat(valid_dias)
+        if(cloth_dia){
+            cloth_dia.df.options = dia_options
+            cloth_dia.set_value("")
+            cloth_dia.refresh()
+        }
+        if(actual_dia){
+            actual_dia.df.options = dia_options
+            actual_dia.set_value("")
+            actual_dia.refresh()
+        }
+    } else {
+        let all_dias = select_attributes['dia'] || []
+        let dia_options = [""].concat([...all_dias])
+        if(cloth_dia){
+            cloth_dia.df.options = dia_options
+            cloth_dia.set_value("")
+            cloth_dia.refresh()
+        }
+        if(actual_dia){
+            actual_dia.df.options = dia_options
+            actual_dia.set_value("")
+            actual_dia.refresh()
+        }
+    }
+}
+
+async function add_cloth_item(index){
     show_button1.value = false
     if(index == null){
         show_button2.value = true
@@ -110,7 +143,7 @@ function add_cloth_item(index){
         show_button5.value = true
     }
     accessory = get_input_field('.accessory-type', 'Select', "accessory", "Accessory", cloth_accessories,true)
-    cloth_type = get_input_field(".cloth-type","Select","cloth_type","Cloth Type",select_attributes['cloth_type'],true)
+    cloth_type = get_input_field(".cloth-type","Select","cloth_type","Cloth Type",select_attributes['cloth_type'],true, change=on_cloth_type_change_accessory)
     cloth_colour = get_input_field(".cloth-colour","Select","cloth_colour","Colour",select_attributes['colour'],true)
     cloth_dia = get_input_field(".cloth-dia","Select","cloth_dia","Dia",select_attributes['dia'],true, change=on_change_event)
     cloth_shade = get_input_field(".cloth-shade","Data","cloth_shade","Shade",null,true)
@@ -120,7 +153,23 @@ function add_cloth_item(index){
     if(index != null){
         let arr1 = [accessory, cloth_type,cloth_colour,cloth_dia,cloth_weight,cloth_shade,cloth_rolls]
         let arr2 = ["accessory","cloth_type","colour","dia","weight","shade","no_of_rolls"]
-        set_attr_values(arr1, arr2, index)
+        await set_attr_values(arr1, arr2, index)
+        // Filter dia options based on existing cloth_type, then re-set dia values
+        let existing_ct = items.value[index]['cloth_type']
+        if(existing_ct && cloth_type_dia_map[existing_ct]){
+            let valid_dias = cloth_type_dia_map[existing_ct]
+            let dia_options = [""].concat(valid_dias)
+            cloth_dia.df.options = dia_options
+            cloth_dia.refresh()
+            actual_dia.df.options = dia_options
+            actual_dia.refresh()
+        }
+        cloth_dia.set_value(items.value[index]['dia'])
+        cloth_dia.refresh()
+        if(items.value[index]['actual_dia']){
+            actual_dia.set_value(items.value[index]['actual_dia'])
+            actual_dia.refresh()
+        }
     }
 }
 
@@ -255,12 +304,36 @@ onMounted(()=> {
             },
             callback:function(r){
                 select_attributes = r.message
+                cloth_type_dia_map = r.message.cloth_type_dia_map || {}
             }
         })
         frappe.call({
             method:"production_api.production_api.doctype.cutting_laysheet.cutting_laysheet.get_cloth_accessories",
             args: {
                 cutting_plan:cur_frm.doc.cutting_plan,
+            },
+            callback:function(r){
+                cloth_accessories = r.message
+                if(cloth_accessories.length == 0){
+                    had_accessory.value = false
+                }
+            }
+        })
+    } else if(cur_frm.doc.cutting_order){
+        frappe.call({
+            method:"production_api.production_api.doctype.cutting_laysheet.cutting_laysheet.get_select_attributes",
+            args: {
+                cutting_order:cur_frm.doc.cutting_order,
+            },
+            callback:function(r){
+                select_attributes = r.message
+                cloth_type_dia_map = r.message.cloth_type_dia_map || {}
+            }
+        })
+        frappe.call({
+            method:"production_api.production_api.doctype.cutting_laysheet.cutting_laysheet.get_cloth_accessories",
+            args: {
+                cutting_order:cur_frm.doc.cutting_order,
             },
             callback:function(r){
                 cloth_accessories = r.message

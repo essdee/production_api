@@ -13,6 +13,21 @@
         </div>
         <div v-if="items && Object.keys(items).length > 0">
             <h3 style="padding-top:20px;">Item: {{ item_name }}</h3>
+            <div style="display: flex; gap: 20px; margin-bottom: 15px; padding: 10px; background-color: #f8f9fa; border-radius: 5px;">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <div style="width: 30px; height: 20px; background-color: #ccffda; border: 1px solid #ccc;"></div>
+                    <span style="font-weight: 500;">Pass</span>
+                </div>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <div style="width: 30px; height: 20px; background-color: #ffa1a7; border: 1px solid #ccc;"></div>
+                    <span style="font-weight: 500;">Fail</span>
+                </div>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <div style="width: 30px; height: 20px; background-color: #ffe7a6; border: 1px solid #ccc;"></div>
+                    <span style="font-weight: 500;">Hold</span>
+                </div>
+            </div>
+            
             <table class="table table-sm table-sm-bordered bordered-table">
                 <thead class="dark-border">
                     <tr>
@@ -30,7 +45,7 @@
                         <template v-for="supplier in Object.keys(items['data']['data'][colour])">
                             <tr>
                                 <td :rowspan="3">{{ idx + 1 }}</td>
-                                <td :rowspan="3">{{ colour.split("@")[0] }}</td>
+                                <td :rowspan="3">{{ colour }}</td>
                                 <td :rowspan="3" v-if="items.is_set_item">{{ items['data']['data'][colour][supplier]['part'] }}</td>
                                 <td :rowspan="3">{{ supplier }}</td>
                                 <td>Delivered</td>
@@ -43,7 +58,9 @@
                             </tr>
                             <tr>
                                 <td>Received</td>
-                                <td v-for="size in items.primary_values" :key="size">
+                                <td v-for="size in items.primary_values" :key="size"
+                                    :style="get_quality_style(items['data']['data'][colour][supplier]['quality']?.[size])"
+                                    >
                                     {{
                                         items['data']['data'][colour][supplier]["values"][size]['received'] ?? 0
                                     }}
@@ -207,6 +224,19 @@ function get_style(val1, val2){
         return {"background":"#98ebae"}
     }
     return {"background":"#ebc96e"};
+}
+
+function get_quality_style(val){
+    if(!val){
+        return {"background":"white"}
+    }
+    else if(val == 'Pass'){
+        return {"background":"#ccffda"};
+    }
+    else if(val == 'Fail'){
+        return {"background":"#ffa1a7"};
+    }
+    return {"background":"#ffe7a6"};
 }
 
 </script>

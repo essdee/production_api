@@ -39,6 +39,9 @@ class StockEntry(Document):
 			frappe.throw('Add items to Stock Entry.', title='Stock Entry')
 
 	def before_submit(self):
+		from production_api.utils import validate_supplier_user
+		validate_supplier_user(supplier1=self.from_warehouse, supplier2=self.to_warehouse)
+
 		if self.against in ["Finishing Plan", "Finishing Plan Dispatch"]:
 			if self.purpose == 'Material Issue':
 				add_value = frappe.db.get_single_value("Stock Settings", "add_finishing_plan_goods_value")
@@ -240,7 +243,7 @@ class StockEntry(Document):
 			if round(doc.ste_transferred,2) == round(doc.total_delivered_qty,2):
 				doc.transfer_complete = 1
 			doc.ste_transferred_percent = round(doc.ste_transferred_percent, 2)
-			doc.save()
+			doc.save(ignore_permissions=True)
 			
 		cancelled_str = frappe.db.get_single_value("MRP Settings", "cut_bundle_cancelled_lot")
 		cancelled_list = cancelled_str.split(",")
@@ -258,7 +261,7 @@ class StockEntry(Document):
 					cpm_doc = frappe.get_doc("Cut Panel Movement", self.cut_panel_movement)	
 					cpm_doc.against = self.doctype
 					cpm_doc.against_id = self.name
-					cpm_doc.save()
+					cpm_doc.save(ignore_permissions=True)
 					from_warehouse, to_warehouse = self.get_from_and_to_warehouse()
 					from production_api.production_api.doctype.cut_bundle_movement_ledger.cut_bundle_movement_ledger import get_cut_bundle_entry
 					bundles, collapsed_details = get_cut_bundle_entry(cpm_doc, self, from_warehouse, -1)
@@ -369,7 +372,7 @@ class StockEntry(Document):
 					if self.purpose == "Send to Warehouse":
 						cpm_doc.against = None
 						cpm_doc.against_id = None
-						cpm_doc.save()
+						cpm_doc.save(ignore_permissions=True)
 					from_warehouse, to_warehouse = self.get_from_and_to_warehouse()
 
 					from production_api.production_api.doctype.cut_bundle_movement_ledger.cut_bundle_movement_ledger import get_cut_bundle_entry

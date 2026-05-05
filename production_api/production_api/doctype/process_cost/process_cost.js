@@ -4,14 +4,20 @@
 frappe.ui.form.on("Process Cost", {
 	setup: function(frm) {
         frm.set_query('attribute', function(doc) {
-			if(!doc.item) {
+            if(!doc.lot) {
 				frappe.throw(__("Please set {0}",
-					[__(frappe.meta.get_label(doc.doctype, 'item', doc.name))]));
+					[__(frappe.meta.get_label(doc.doctype, 'lot', doc.name))]));
 			}
+            if(!doc.process_name){
+                frappe.throw(__("Please set {0}",
+					[__(frappe.meta.get_label(doc.doctype, 'process_name', doc.name))]));
+            }
 			return {
-				query: 'production_api.production_api.doctype.item.item.get_item_attributes',
+				query: 'production_api.production_api.doctype.process_cost.process_cost.get_item_attributes',
 				filters: {
 					item: doc.item,
+                    lot: doc.lot,
+                    process: doc.process_name
 				}
 			};
 		});
@@ -44,6 +50,37 @@ frappe.ui.form.on("Process Cost", {
             removeAttributes(frm)
         }
     },
+    refresh(frm){
+        frm.get_field('process_cost_values').grid.cannot_add_rows = 1;
+        frm.get_field('process_cost_values').grid.cannot_delete_rows = 1;
+    },
+    attribute(frm){
+        if(frm.doc.attribute){
+            frappe.call({
+                method: "production_api.production_api.doctype.process_cost.process_cost.get_pc_attribute_values",
+                args: {
+                    lot: frm.doc.lot,
+                    attribute: frm.doc.attribute,
+                    process_name: frm.doc.process_name
+                },
+                callback: function(r){
+                    frm.set_value('process_cost_values', [])
+                    if(r.message && r.message.length){
+                        r.message.forEach(row => {
+                            let child = frm.add_child('process_cost_values');
+                            child.attribute_value = row.attribute_value;
+                            child.min_order_qty = row.min_order_qty;
+                            child.price = row.price;
+                        });
+                    }
+                    frm.refresh_field('process_cost_values');
+                }
+            })
+        }
+        else{
+            frm.set_value('process_cost_values', []);
+        }
+    }
 });
 
 function removeAttributes(frm) {

@@ -6,15 +6,19 @@ from six import string_types
 from frappe.model.document import Document
 from production_api.production_api.doctype.item.item import get_attribute_details
 from production_api.essdee_production.doctype.item_production_detail.item_production_detail import get_ipd_primary_values
+from production_api.production_api.doctype.cutting_laysheet.cutting_parent_adapter import (
+	get_parent_ref, validate_parent_status, get_detail_doc, get_primary_sizes, get_panels as adapter_get_panels,
+	get_parent_context,
+)
 
 class CuttingMarker(Document):
 	def onload(self):
 		items = fetch_marker_details(self.cutting_marker_ratios, self.selected_type)
-		items2 = fetch_group_marker_details(self.calculated_parts, self.cutting_marker_groups) 
+		items2 = fetch_group_marker_details(self.calculated_parts, self.cutting_marker_groups)
 		details = {
 			"cutting_marker_ratios": items,
 			"cutting_marker_groups": items2,
-		}	
+		}
 		self.set_onload("marker_detail",details)
 
 	def autoname(self):
@@ -23,21 +27,36 @@ class CuttingMarker(Document):
 	def before_submit(self):
 		if not self.length or not self.width:
 			frappe.throw("Enter the Values for Length and Width")
-			
+
 		if self.version == "V3" and len(self.cutting_marker_groups) == 0:
 			items = []
 			for part in self.calculated_parts.split(","):
 				part = part.strip()
 				items.append({"group_panels": part})
-			self.set("cutting_marker_groups", items)	
+			self.set("cutting_marker_groups", items)
 
 	def before_validate(self):
-		status, docstatus = frappe.get_value("Cutting Plan", self.cutting_plan, ["cp_status", "docstatus"])
-		if docstatus == 0:
-			frappe.throw("Cutting Plan was not Submitted")
-		if status == 'Planned':
-			frappe.throw("Cloths Not Received in Cutting Plan")
-			
+		if not self.cutting_plan and not self.cutting_order:
+			frappe.throw("Either Cutting Plan or Cutting Order is required")
+
+		parent_dt, parent_name = get_parent_ref(self)
+		validate_parent_status(parent_dt, parent_name)
+
+		# Populate fields server-side (covers CO path where fetch_from won't fire)
+		ctx = get_parent_context(parent_dt, parent_name)
+		self.item = ctx['item']
+		self.lot = ctx.get('lot')
+		self.version = ctx.get('version') or 'V3'
+		self.is_manual_entry = ctx.get('is_manual_entry') or 0
+
+		if self.required_piece_weight:
+			min_wt = frappe.db.get_single_value("MRP Settings", "piece_weight_min") or 0
+			max_wt = frappe.db.get_single_value("MRP Settings", "piece_weight_max") or 0
+			if min_wt and max_wt and not (min_wt <= self.required_piece_weight <= max_wt):
+				frappe.throw(
+					f"Required piece weight {self.required_piece_weight} kg is outside the allowed range ({min_wt} - {max_wt} kg)."
+				)
+
 		if self.get("marker_details"):
 			marker_details = self.marker_details['ratio_items']
 			items = []
@@ -129,9 +148,12 @@ def fetch_group_marker_details(calculated_parts, cutting_marker_groups):
 	return items			
 
 @frappe.whitelist()
-def get_primary_and_bundle_detail(lot, selected_value, panels, grp_panels):
-	ipd = frappe.get_value("Lot",lot,"production_detail")
-	primary_values = get_ipd_primary_values(ipd)
+def get_primary_and_bundle_detail(lot=None, selected_value=None, panels=None, grp_panels=None, cutting_order=None):
+	if cutting_order:
+		primary_values = get_primary_sizes("Cutting Order", cutting_order)
+	else:
+		ipd = frappe.get_value("Lot", lot, "production_detail")
+		primary_values = get_ipd_primary_values(ipd)
 	primary_attributes = []
 	if isinstance(panels, string_types):
 		panels = json.loads(panels)
@@ -148,42 +170,43 @@ def get_primary_and_bundle_detail(lot, selected_value, panels, grp_panels):
 					"panel":panel,
 					"ratio":0,
 				})
-	grp_items = []		
-	doc = frappe.get_doc("Item Production Detail", ipd)
-	if len(doc.cutting_marker_groups) > 0:
-		d = {}
-		grp_panels = frappe.json.loads(grp_panels)
-		idx = 0
-		for grp_panel in grp_panels:
-			grp_panels[idx] = {
-				"option": grp_panel,
-				"id": grp_panel,
-			}
-			idx += 1
-		for row in doc.cutting_marker_groups:
-			for p in row.group_panels.split(","):
-				d[p] = row.group_panels.split(",")
-		grouped_panels = []
-		for panel in panels:
-			if panel not in grouped_panels:
-				grp_list = d[panel]
-				check = True
-				for p in grp_list:
-					if p not in panels:
-						check = False
-						break
-				if check:
+	grp_items = []
+	if not cutting_order:
+		doc = frappe.get_doc("Item Production Detail", ipd)
+		if len(doc.cutting_marker_groups) > 0:
+			d = {}
+			grp_panels = frappe.json.loads(grp_panels)
+			idx = 0
+			for grp_panel in grp_panels:
+				grp_panels[idx] = {
+					"option": grp_panel,
+					"id": grp_panel,
+				}
+				idx += 1
+			for row in doc.cutting_marker_groups:
+				for p in row.group_panels.split(","):
+					d[p] = row.group_panels.split(",")
+			grouped_panels = []
+			for panel in panels:
+				if panel not in grouped_panels:
+					grp_list = d[panel]
+					check = True
 					for p in grp_list:
-						grouped_panels.append(p)
-					grp_items.append({
-						"options": grp_panels,
-						"defaultList": d[panel],
-						"id": len(grp_items),
-						"selected": d[panel],
-					})
-				else:
-					grp_items = []
-					break	
+						if p not in panels:
+							check = False
+							break
+					if check:
+						for p in grp_list:
+							grouped_panels.append(p)
+						grp_items.append({
+							"options": grp_panels,
+							"defaultList": d[panel],
+							"id": len(grp_items),
+							"selected": d[panel],
+						})
+					else:
+						grp_items = []
+						break
 
 	return {
 		"primary":primary_attributes,
@@ -191,9 +214,11 @@ def get_primary_and_bundle_detail(lot, selected_value, panels, grp_panels):
 	}	
 
 @frappe.whitelist()
-def calculate_parts(cutting_plan):
-	ipd = frappe.get_value("Cutting Plan", cutting_plan,"production_detail")
-	ipd_doc = frappe.get_doc("Item Production Detail",ipd)
+def calculate_parts(cutting_plan=None, cutting_order=None):
+	if cutting_order:
+		return adapter_get_panels("Cutting Order", cutting_order)
+	ipd = frappe.get_value("Cutting Plan", cutting_plan, "production_detail")
+	ipd_doc = frappe.get_doc("Item Production Detail", ipd)
 	attribute_list = []
 	for item in ipd_doc.stiching_item_details:
 		attribute_list.append({
@@ -202,10 +227,14 @@ def calculate_parts(cutting_plan):
 	return attribute_list
 
 @frappe.whitelist()
-def get_panels_and_size(lot, cutting_plan):
-	ipd = frappe.get_value("Lot",lot,"production_detail")
-	primary_values = get_ipd_primary_values(ipd)
-	panels = calculate_parts(cutting_plan)
+def get_panels_and_size(lot=None, cutting_plan=None, cutting_order=None):
+	if cutting_order:
+		primary_values = get_primary_sizes("Cutting Order", cutting_order)
+		panels = calculate_parts(cutting_order=cutting_order)
+	else:
+		ipd = frappe.get_value("Lot", lot, "production_detail")
+		primary_values = get_ipd_primary_values(ipd)
+		panels = calculate_parts(cutting_plan=cutting_plan)
 	return {
 		"sizes": primary_values,
 		"panels": panels,

@@ -1,0 +1,326 @@
+{
+ "actions": [],
+ "autoname": "format:CO-{item}-{version}",
+ "creation": "2026-03-12 12:00:00",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "naming_series",
+  "item",
+  "version",
+  "column_break_main",
+  "primary_attribute",
+  "section_break_attributes",
+  "item_attributes",
+  "item_attribute_list_values_html",
+  "cloth_details_section",
+  "cloth_detail",
+  "cloth_detail_json",
+  "colour_detail_tab",
+  "packing_section",
+  "packing_attribute",
+  "attribute_no",
+  "section_break_colour_btn",
+  "get_colour_values",
+  "attribute_values",
+  "set_item_tab",
+  "set_item_details_section",
+  "is_set_item",
+  "set_item_attribute",
+  "major_attribute_value",
+  "get_set_item_combination",
+  "set_item_combination_details",
+  "set_items_html",
+  "panel_details_tab",
+  "panel_details_section",
+  "stiching_attribute",
+  "major_panel_value",
+  "section_break_panel_btn",
+  "get_panel_values",
+  "stiching_item_details",
+  "section_break_panel_combo",
+  "is_same_colour",
+  "get_panel_combination",
+  "stiching_items_html",
+  "stiching_item_combination_details"
+ ],
+ "fields": [
+  {
+   "fieldname": "naming_series",
+   "fieldtype": "Data",
+   "hidden": 1,
+   "label": "Naming Series"
+  },
+  {
+   "fieldname": "item",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Item",
+   "reqd": 1
+  },
+  {
+   "fieldname": "version",
+   "fieldtype": "Int",
+   "in_list_view": 1,
+   "label": "Version",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_main",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "primary_attribute",
+   "fieldtype": "Link",
+   "hidden": 1,
+   "label": "Primary Attribute",
+   "options": "Item Attribute",
+   "read_only": 1
+  },
+  {
+   "depends_on": "eval: !doc.__islocal",
+   "fieldname": "section_break_attributes",
+   "fieldtype": "Section Break",
+   "label": "Item Attributes"
+  },
+  {
+   "fieldname": "item_attributes",
+   "fieldtype": "Table",
+   "label": "Item Attributes",
+   "options": "Item Item Attribute"
+  },
+  {
+   "depends_on": "eval: !doc.__islocal",
+   "fieldname": "item_attribute_list_values_html",
+   "fieldtype": "HTML",
+   "label": "Item Attribute List Values HTML"
+  },
+  {
+   "fieldname": "cloth_detail",
+   "fieldtype": "HTML",
+   "label": "Cloth Detail"
+  },
+  {
+   "fieldname": "cloth_detail_json",
+   "fieldtype": "Small Text",
+   "hidden": 1,
+   "label": "Cloth Detail JSON"
+  },
+  {
+   "depends_on": "eval: !doc.__islocal",
+   "fieldname": "colour_detail_tab",
+   "fieldtype": "Tab Break",
+   "label": "Colour Detail"
+  },
+  {
+   "fieldname": "packing_section",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "packing_attribute",
+   "fieldtype": "Link",
+   "hidden": 1,
+   "label": "Packing Attribute",
+   "options": "Item Attribute",
+   "read_only": 1
+  },
+  {
+   "fieldname": "attribute_no",
+   "fieldtype": "Int",
+   "label": "Attribute No",
+   "mandatory_depends_on": "eval: !doc.__islocal",
+   "non_negative": 1
+  },
+  {
+   "fieldname": "section_break_colour_btn",
+   "fieldtype": "Section Break"
+  },
+  {
+   "depends_on": "eval: doc.attribute_no",
+   "fieldname": "get_colour_values",
+   "fieldtype": "Button",
+   "label": "Get Colour Values"
+  },
+  {
+   "fieldname": "attribute_values",
+   "fieldtype": "Table",
+   "label": "Attribute Values",
+   "options": "Cutting Order Colour Value"
+  },
+  {
+   "depends_on": "eval: !doc.__islocal && doc.packing_attribute",
+   "fieldname": "set_item_tab",
+   "fieldtype": "Tab Break",
+   "label": "Set Item"
+  },
+  {
+   "fieldname": "set_item_details_section",
+   "fieldtype": "Section Break"
+  },
+  {
+   "default": "0",
+   "fieldname": "is_set_item",
+   "fieldtype": "Check",
+   "label": "Is Set Item"
+  },
+  {
+   "depends_on": "eval: doc.is_set_item",
+   "fieldname": "set_item_attribute",
+   "fieldtype": "Link",
+   "label": "Set Item Attribute",
+   "options": "Item Attribute"
+  },
+  {
+   "depends_on": "eval: doc.is_set_item && doc.set_item_attribute",
+   "fieldname": "major_attribute_value",
+   "fieldtype": "Link",
+   "label": "Major Attribute Value",
+   "mandatory_depends_on": "eval: doc.is_set_item",
+   "options": "Item Attribute Value"
+  },
+  {
+   "depends_on": "eval: doc.is_set_item && doc.set_item_attribute && doc.major_attribute_value",
+   "fieldname": "get_set_item_combination",
+   "fieldtype": "Button",
+   "label": "Get Set Item Combination"
+  },
+  {
+   "fieldname": "set_item_combination_details",
+   "fieldtype": "Table",
+   "hidden": 1,
+   "label": "Set Item Combination Details",
+   "options": "Item Production Detail Set Item Combination"
+  },
+  {
+   "fieldname": "set_items_html",
+   "fieldtype": "HTML",
+   "label": "Set Items HTML"
+  },
+  {
+   "depends_on": "eval: !doc.__islocal",
+   "fieldname": "panel_details_tab",
+   "fieldtype": "Tab Break",
+   "label": "Panel Details"
+  },
+  {
+   "fieldname": "panel_details_section",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "stiching_attribute",
+   "fieldtype": "Link",
+   "hidden": 1,
+   "label": "Stiching Attribute",
+   "options": "Item Attribute",
+   "read_only": 1
+  },
+  {
+   "depends_on": "eval: doc.stiching_attribute",
+   "fieldname": "major_panel_value",
+   "fieldtype": "Link",
+   "label": "Major Panel Value",
+   "options": "Item Attribute Value"
+  },
+  {
+   "fieldname": "section_break_panel_btn",
+   "fieldtype": "Section Break"
+  },
+  {
+   "depends_on": "eval: doc.stiching_attribute",
+   "fieldname": "get_panel_values",
+   "fieldtype": "Button",
+   "label": "Get Panel Values"
+  },
+  {
+   "fieldname": "stiching_item_details",
+   "fieldtype": "Table",
+   "label": "Stiching Item Details",
+   "options": "Cutting Order Panel Detail"
+  },
+  {
+   "fieldname": "section_break_panel_combo",
+   "fieldtype": "Section Break"
+  },
+  {
+   "default": "0",
+   "fieldname": "is_same_colour",
+   "fieldtype": "Check",
+   "label": "Is Same Colour"
+  },
+  {
+   "depends_on": "eval: doc.stiching_attribute",
+   "fieldname": "get_panel_combination",
+   "fieldtype": "Button",
+   "label": "Get Panel Combination"
+  },
+  {
+   "fieldname": "stiching_items_html",
+   "fieldtype": "HTML",
+   "label": "Stiching Items HTML"
+  },
+  {
+   "fieldname": "stiching_item_combination_details",
+   "fieldtype": "Table",
+   "hidden": 1,
+   "label": "Stiching Item Combination Details",
+   "options": "Item Production Detail Set Item Combination"
+  },
+  {
+   "fieldname": "cloth_details_section",
+   "fieldtype": "Section Break",
+   "label": "Cloth Details"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-03-18 14:22:58.475410",
+ "modified_by": "Administrator",
+ "module": "Production Api",
+ "name": "Cutting Order Detail",
+ "naming_rule": "Expression",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Cutting User",
+   "select": 1,
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Production Planner",
+   "select": 1,
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "search_fields": "item",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1
+}

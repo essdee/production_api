@@ -186,7 +186,7 @@ class ItemProductionDetail(Document):
 				duplicate_doc = frappe.new_doc("Item Item Attribute Mapping")
 				duplicate_doc.attribute_name = doc.attribute_name
 				duplicate_doc.values = doc.values
-				duplicate_doc.save()
+				duplicate_doc.save(ignore_permissions=True)
 				attribute.mapping = duplicate_doc.name
 
 		if self.dependent_attribute_mapping:
@@ -196,7 +196,7 @@ class ItemProductionDetail(Document):
 			duplicate_doc.dependent_attribute = doc.dependent_attribute
 			duplicate_doc.mapping = doc.mapping
 			duplicate_doc.details = doc.details
-			duplicate_doc.save()
+			duplicate_doc.save(ignore_permissions=True)
 			self.dependent_attribute_mapping = duplicate_doc.name
 
 		for bom in self.get('item_bom'):
@@ -216,7 +216,7 @@ class ItemProductionDetail(Document):
 			if attribute.mapping == None:
 				doc = frappe.new_doc("Item Item Attribute Mapping")
 				doc.attribute_name= attribute.attribute 
-				doc.save()
+				doc.save(ignore_permissions=True)
 				attribute.mapping = doc.name
 		frappe.flags.delete_bom_mapping = []
 		for bom in self.get('item_bom'):
@@ -235,7 +235,7 @@ class ItemProductionDetail(Document):
 				doc.set('bom_item_attributes',attr_values)
 
 				doc.flags.ignore_validate = True
-				doc.save()
+				doc.save(ignore_permissions=True)
 				bom.attribute_mapping = doc.name
 			elif not bom.based_on_attribute_mapping and bom.attribute_mapping:
 				name = bom.attribute_mapping
@@ -337,6 +337,25 @@ class ItemProductionDetail(Document):
 			if not update_if_string_instance(self.stiching_accessory_json):
 				frappe.throw("Enter the Details for Stitching Accessory Combination")
 
+		self.sync_emblishment_processes()
+
+	def sync_emblishment_processes(self):
+		emblishment_data = update_if_string_instance(self.emblishment_details_json)
+		if not emblishment_data:
+			return
+
+		existing = {row.process_name: row for row in self.ipd_processes}
+
+		for process_name in emblishment_data:
+			if process_name in existing:
+				if existing[process_name].stage != self.stiching_in_stage:
+					existing[process_name].stage = self.stiching_in_stage
+			else:
+				self.append("ipd_processes", {
+					"process_name": process_name,
+					"stage": self.stiching_in_stage,
+				})
+
 	def on_trash(self):
 		documents = {
 			"Item Item Attribute Mapping":[],
@@ -366,6 +385,32 @@ def delete_docs(documents):
 		doctype = frappe.qb.DocType(key)
 		if value:
 			frappe.qb.from_(doctype).delete().where(doctype.name.isin(value)).run()
+
+@frappe.whitelist()
+def approve_ipd(doc_name, approval_type="Approved"):
+	mrp_settings = frappe.get_single("MRP Settings")
+	allowed_roles = [mrp_settings.senior_merch_role, mrp_settings.merchandising_manager_role]
+	allowed_roles = [r for r in allowed_roles if r]
+	user_roles = frappe.get_roles()
+	if not any(role in user_roles for role in allowed_roles):
+		frappe.throw("You do not have permission to approve Item Production Detail")
+	if approval_type not in ("Cutting Approved", "Approved"):
+		frappe.throw("Invalid approval type")
+	doc = frappe.get_doc("Item Production Detail", doc_name)
+	doc.approval_status = approval_type
+	doc.approved_by = frappe.session.user
+	doc.save(ignore_permissions=True)
+	return {"status": "success"}
+
+@frappe.whitelist()
+def revert_ipd_approval(doc_name):
+	if "System Manager" not in frappe.get_roles():
+		frappe.throw("Only System Manager can revert approval")
+	doc = frappe.get_doc("Item Production Detail", doc_name)
+	doc.approval_status = "Not Approved"
+	doc.approved_by = None
+	doc.save(ignore_permissions=True)
+	return {"status": "success"}
 
 @frappe.whitelist()
 def get_ipd_primary_values(production_detail):
@@ -1321,11 +1366,11 @@ def get_ipd_pf_details(ipd):
 	return ipd_doc
 
 @frappe.whitelist()
-def duplicate_ipd(ipd):
+def duplicate_ipd(ipd, item=None):
 	ipd_doc = frappe.get_doc("Item Production Detail", ipd)
 	doc = frappe.new_doc("Item Production Detail")
 	doc.update({
-		"item": ipd_doc.item,
+		"item": item or ipd_doc.item,
 		"tech_pack_version": ipd_doc.tech_pack_version,
 		"pattern_version": ipd_doc.pattern_version,
 		"primary_item_attribute": ipd_doc.primary_item_attribute,
@@ -1363,7 +1408,7 @@ def duplicate_ipd(ipd):
 	doc.set("cloth_detail", get_dict_table(ipd_doc.cloth_detail))
 	doc.set("accessory_attributes", get_dict_table(ipd_doc.accessory_attributes))
 	doc.set("cloth_attributes", get_dict_table(ipd_doc.cloth_attributes))
-	doc.save()
+	doc.save(ignore_permissions=True)
 	if ipd_doc.is_set_item: 
 		doc.update({
 			"is_set_item": ipd_doc.is_set_item,
@@ -1371,7 +1416,7 @@ def duplicate_ipd(ipd):
 			"major_attribute_value": ipd_doc.major_attribute_value,
 		})
 		doc.set("set_item_combination_details", get_dict_table(ipd_doc.set_item_combination_details))
-		doc.save()
+		doc.save(ignore_permissions=True)
 
 	items = []
 	for row1 in ipd_doc.item_bom:
@@ -1388,7 +1433,7 @@ def duplicate_ipd(ipd):
 			d['based_on_attribute_mapping'] = 1
 		items.append(d)
 	doc.set("item_bom", items)
-	doc.save()		
+	doc.save(ignore_permissions=True)		
 
 	for item1, item2 in zip_longest(ipd_doc.item_bom, doc.item_bom):
 		if item1.based_on_attribute_mapping and item1.attribute_mapping:
@@ -1398,7 +1443,7 @@ def duplicate_ipd(ipd):
 			new_bom_doc.insert()
 			item2.attribute_mapping = new_bom_doc.name
 	
-	doc.save()
+	doc.save(ignore_permissions=True)
 
 	return doc.name
 

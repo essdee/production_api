@@ -1,0 +1,314 @@
+{
+ "actions": [],
+ "autoname": "naming_series:",
+ "creation": "2026-03-13 12:00:00",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "naming_series",
+  "cutting_order_detail",
+  "co_status",
+  "cutting_location",
+  "column_break_main",
+  "item",
+  "is_set_item",
+  "lay_no",
+  "maximum_no_of_plys",
+  "maximum_allow_percent",
+  "section_break_items",
+  "items_html",
+  "items_json",
+  "completed_items_json",
+  "incomplete_items_json",
+  "cutting_start_date",
+  "cutting_end_date",
+  "report_tab",
+  "completed_items_html",
+  "incompleted_items_html",
+  "amended_from",
+  "planned_tab",
+  "planned_details_html"
+ ],
+ "fields": [
+  {
+   "fieldname": "naming_series",
+   "fieldtype": "Data",
+   "hidden": 1,
+   "label": "Naming Series"
+  },
+  {
+   "fieldname": "cutting_order_detail",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Cutting Order Detail",
+   "options": "Cutting Order Detail",
+   "reqd": 1
+  },
+  {
+   "allow_on_submit": 1,
+   "default": "Draft",
+   "fieldname": "co_status",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Status",
+   "options": "Draft\nSubmitted\nCutting In Progress\nPartially Completed\nCompleted",
+   "read_only": 1
+  },
+  {
+   "fieldname": "cutting_location",
+   "fieldtype": "Select",
+   "label": "Cutting Location",
+   "options": "\nMachine Cutting\nManual Cutting"
+  },
+  {
+   "fieldname": "column_break_main",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fetch_from": "cutting_order_detail.item",
+   "fieldname": "item",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Item",
+   "read_only": 1
+  },
+  {
+   "default": "0",
+   "fetch_from": "cutting_order_detail.is_set_item",
+   "fieldname": "is_set_item",
+   "fieldtype": "Check",
+   "hidden": 1,
+   "label": "Is Set Item",
+   "read_only": 1
+  },
+  {
+   "allow_on_submit": 1,
+   "default": "0",
+   "fieldname": "lay_no",
+   "fieldtype": "Int",
+   "label": "Lay No",
+   "read_only": 1
+  },
+  {
+   "fieldname": "maximum_no_of_plys",
+   "fieldtype": "Int",
+   "label": "Maximum No of Plys",
+   "reqd": 1
+  },
+  {
+   "fieldname": "maximum_allow_percent",
+   "fieldtype": "Percent",
+   "label": "Maximum Allow Percent"
+  },
+  {
+   "depends_on": "eval: doc.cutting_order_detail",
+   "fieldname": "section_break_items",
+   "fieldtype": "Section Break",
+   "label": "Items"
+  },
+  {
+   "fieldname": "items_html",
+   "fieldtype": "HTML",
+   "label": "Items HTML"
+  },
+  {
+   "fieldname": "items_json",
+   "fieldtype": "Small Text",
+   "hidden": 1,
+   "label": "Items JSON"
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "completed_items_json",
+   "fieldtype": "Small Text",
+   "hidden": 1,
+   "label": "Completed Items JSON"
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "incomplete_items_json",
+   "fieldtype": "Small Text",
+   "hidden": 1,
+   "label": "Incomplete Items JSON"
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "cutting_start_date",
+   "fieldtype": "Date",
+   "label": "Cutting Start Date",
+   "read_only": 1
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "cutting_end_date",
+   "fieldtype": "Date",
+   "label": "Cutting End Date",
+   "read_only": 1
+  },
+  {
+   "fieldname": "planned_tab",
+   "fieldtype": "Tab Break",
+   "label": "Planned"
+  },
+  {
+   "fieldname": "planned_details_html",
+   "fieldtype": "HTML",
+   "label": "Planned Details HTML"
+  },
+  {
+   "fieldname": "report_tab",
+   "fieldtype": "Tab Break",
+   "label": "Summary"
+  },
+  {
+   "fieldname": "completed_items_html",
+   "fieldtype": "HTML",
+   "label": "Completed Items HTML"
+  },
+  {
+   "fieldname": "incompleted_items_html",
+   "fieldtype": "HTML",
+   "label": "Incompleted Items HTML"
+  },
+  {
+   "fieldname": "amended_from",
+   "fieldtype": "Link",
+   "label": "Amended From",
+   "no_copy": 1,
+   "options": "Cutting Order",
+   "print_hide": 1,
+   "read_only": 1
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "is_submittable": 1,
+ "links": [
+  {
+   "link_doctype": "Cutting Marker",
+   "link_fieldname": "cutting_order"
+  },
+  {
+   "link_doctype": "Cutting LaySheet",
+   "link_fieldname": "cutting_order"
+  }
+ ],
+ "modified": "2026-03-18 16:26:22.491037",
+ "modified_by": "Administrator",
+ "module": "Production Api",
+ "name": "Cutting Order",
+ "naming_rule": "By \"Naming Series\" field",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "cancel": 1,
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "submit": 1,
+   "write": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Cutting User",
+   "select": 1,
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Production Planner",
+   "select": 1,
+   "share": 1,
+   "write": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "CAD User",
+   "select": 1,
+   "share": 1,
+   "write": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Merch User",
+   "select": 1,
+   "share": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Brand QA Manager",
+   "share": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Brand QA User",
+   "share": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Purchase User",
+   "share": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Store User",
+   "select": 1,
+   "share": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Stock User",
+   "select": 1,
+   "share": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1
+}

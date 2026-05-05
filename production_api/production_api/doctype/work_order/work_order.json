@@ -1,688 +1,756 @@
 {
- "actions": [],
- "allow_rename": 1,
- "autoname": "naming_series:",
- "creation": "2024-05-20 16:24:53.338011",
- "doctype": "DocType",
- "engine": "InnoDB",
- "field_order": [
-  "is_rework",
-  "naming_series",
-  "edit_wo_date",
-  "wo_date",
-  "lot",
-  "supplier",
-  "supplier_name",
-  "is_delivered",
-  "is_manual_entry",
-  "includes_packing",
-  "column_break_wrym",
-  "is_internal_unit",
-  "parent_wo",
-  "process_name",
-  "item",
-  "production_detail",
-  "delivery_location",
-  "delivery_location_name",
-  "open_status",
-  "section_break_tmhn",
-  "planned_start_date",
-  "planned_end_date",
-  "expected_delivery_date",
-  "process_cost",
-  "column_break_ahbf",
-  "start_date",
-  "end_date",
-  "supplier_type",
-  "rework_type",
-  "address_and_contact_section",
-  "supplier_address",
-  "supplier_address_details",
-  "column_break_ztqp",
-  "delivery_address",
-  "delivery_address_details",
-  "work_order_tracking_section",
-  "work_order_tracking_logs",
-  "section_break_oufa",
-  "deliverables",
-  "deliverable_items",
-  "section_break_qtip",
-  "receivables",
-  "receivable_items",
-  "section_break_axzz",
-  "comments",
-  "amended_from",
-  "total_quantity",
-  "work_order_calculated_items",
-  "completed_items_json",
-  "incompleted_items_json",
-  "wo_delivered_completed_json",
-  "wo_delivered_incompleted_json",
-  "work_order_excess_usage_items",
-  "section_break_lgsu",
-  "column_break_ocbe",
-  "first_dc_date",
-  "last_dc_date",
-  "planned_quantity",
-  "wo_colours",
-  "column_break_uwsv",
-  "first_grn_date",
-  "last_grn_date",
-  "total_no_of_pieces_delivered",
-  "total_no_of_pieces_received",
-  "reduce_stock_entry",
-  "update_stock_entry",
-  "section_break_fewo",
-  "column_break_klzv",
-  "received_types_json",
-  "work_order_track_pieces",
-  "summary_tab",
-  "wo_summary_html"
- ],
- "fields": [
-  {
-   "default": "WO-",
-   "fieldname": "naming_series",
-   "fieldtype": "Select",
-   "in_list_view": 1,
-   "label": "WO Series",
-   "options": "WO-",
-   "reqd": 1
-  },
-  {
-   "allow_on_submit": 1,
-   "fieldname": "start_date",
-   "fieldtype": "Date",
-   "label": "Start Date",
-   "read_only": 1
-  },
-  {
-   "allow_on_submit": 1,
-   "fieldname": "end_date",
-   "fieldtype": "Date",
-   "label": "End Date",
-   "read_only": 1
-  },
-  {
-   "fieldname": "supplier",
-   "fieldtype": "Link",
-   "in_list_view": 1,
-   "in_standard_filter": 1,
-   "label": "Supplier",
-   "options": "Supplier"
-  },
-  {
-   "fieldname": "column_break_wrym",
-   "fieldtype": "Column Break"
-  },
-  {
-   "fieldname": "section_break_oufa",
-   "fieldtype": "Section Break",
-   "label": "Deliverables"
-  },
-  {
-   "fieldname": "section_break_qtip",
-   "fieldtype": "Section Break",
-   "label": "Receivables"
-  },
-  {
-   "fieldname": "deliverable_items",
-   "fieldtype": "HTML",
-   "label": "Deliverable Items"
-  },
-  {
-   "fieldname": "receivable_items",
-   "fieldtype": "HTML",
-   "label": "Receivable Items"
-  },
-  {
-   "allow_on_submit": 1,
-   "fieldname": "deliverables",
-   "fieldtype": "Table",
-   "hidden": 1,
-   "label": "Deliverables",
-   "options": "Work Order Deliverables"
-  },
-  {
-   "fieldname": "receivables",
-   "fieldtype": "Table",
-   "hidden": 1,
-   "label": "Receivables",
-   "options": "Work Order Receivables"
-  },
-  {
-   "default": "Today",
-   "fieldname": "wo_date",
-   "fieldtype": "Date",
-   "label": "WO Date",
-   "read_only_depends_on": "eval: !doc.edit_wo_date",
-   "reqd": 1
-  },
-  {
-   "fieldname": "supplier_address",
-   "fieldtype": "Link",
-   "label": "Supplier Address",
-   "options": "Address",
-   "reqd": 1
-  },
-  {
-   "fieldname": "delivery_address",
-   "fieldtype": "Link",
-   "label": "Delivery Address",
-   "options": "Address",
-   "reqd": 1
-  },
-  {
-   "default": "Today",
-   "fieldname": "planned_start_date",
-   "fieldtype": "Date",
-   "label": "Planned Start Date",
-   "reqd": 1
-  },
-  {
-   "fieldname": "planned_end_date",
-   "fieldtype": "Date",
-   "label": "Planned End Date",
-   "reqd": 1
-  },
-  {
-   "allow_on_submit": 1,
-   "fieldname": "expected_delivery_date",
-   "fieldtype": "Date",
-   "label": "Expected Delivery Date",
-   "read_only": 1,
-   "reqd": 1
-  },
-  {
-   "fieldname": "section_break_axzz",
-   "fieldtype": "Section Break"
-  },
-  {
-   "fieldname": "comments",
-   "fieldtype": "Text",
-   "label": "Comments"
-  },
-  {
-   "fieldname": "process_name",
-   "fieldtype": "Link",
-   "in_standard_filter": 1,
-   "label": "Process Name",
-   "options": "Process",
-   "reqd": 1
-  },
-  {
-   "fieldname": "address_and_contact_section",
-   "fieldtype": "Section Break",
-   "label": "Address and Contact"
-  },
-  {
-   "fieldname": "column_break_ztqp",
-   "fieldtype": "Column Break"
-  },
-  {
-   "fieldname": "delivery_address_details",
-   "fieldtype": "Small Text",
-   "label": "Delivery Address Details",
-   "read_only": 1
-  },
-  {
-   "fieldname": "supplier_address_details",
-   "fieldtype": "Small Text",
-   "label": "Supplier Address Details",
-   "read_only": 1
-  },
-  {
-   "fieldname": "section_break_tmhn",
-   "fieldtype": "Section Break"
-  },
-  {
-   "fieldname": "column_break_ahbf",
-   "fieldtype": "Column Break"
-  },
-  {
-   "fieldname": "amended_from",
-   "fieldtype": "Link",
-   "label": "Amended From",
-   "no_copy": 1,
-   "options": "Work Order",
-   "print_hide": 1,
-   "read_only": 1,
-   "search_index": 1
-  },
-  {
-   "allow_on_submit": 1,
-   "default": "0",
-   "fieldname": "is_delivered",
-   "fieldtype": "Check",
-   "label": "Is Delivered",
-   "read_only": 1
-  },
-  {
-   "fieldname": "lot",
-   "fieldtype": "Link",
-   "in_standard_filter": 1,
-   "label": "Lot",
-   "options": "Lot"
-  },
-  {
-   "fetch_from": "lot.item",
-   "fieldname": "item",
-   "fieldtype": "Link",
-   "in_list_view": 1,
-   "in_standard_filter": 1,
-   "label": "Item",
-   "options": "Item"
-  },
-  {
-   "default": "0",
-   "fieldname": "is_rework",
-   "fieldtype": "Check",
-   "label": "Is Rework",
-   "read_only": 1
-  },
-  {
-   "depends_on": "eval: doc.is_rework",
-   "fieldname": "parent_wo",
-   "fieldtype": "Link",
-   "label": "Parent WO",
-   "mandatory_depends_on": "eval: doc.is_rework",
-   "options": "Work Order",
-   "read_only": 1
-  },
-  {
-   "fetch_from": "lot.production_detail",
-   "fieldname": "production_detail",
-   "fieldtype": "Link",
-   "hidden": 1,
-   "label": "Production Detail",
-   "options": "Item Production Detail"
-  },
-  {
-   "allow_on_submit": 1,
-   "default": "Open",
-   "fieldname": "open_status",
-   "fieldtype": "Select",
-   "label": "Open Status",
-   "options": "Open\nClose",
-   "read_only": 1
-  },
-  {
-   "depends_on": "eval: doc.is_rework",
-   "fieldname": "supplier_type",
-   "fieldtype": "Select",
-   "label": "Supplier Type",
-   "mandatory_depends_on": "eval: doc.is_rework",
-   "options": "Same Supplier\nDifferent Supplier",
-   "read_only_depends_on": "eval: !doc.__islocal"
-  },
-  {
-   "depends_on": "eval: doc.is_rework",
-   "fieldname": "rework_type",
-   "fieldtype": "Select",
-   "label": "Rework Type",
-   "mandatory_depends_on": "eval: doc.is_rework",
-   "options": "\nNo Cost\nNet Cost Nil\nAdditional Cost",
-   "read_only_depends_on": "eval: !doc.__islocal"
-  },
-  {
-   "fieldname": "delivery_location",
-   "fieldtype": "Link",
-   "label": "Delivery Location",
-   "options": "Supplier"
-  },
-  {
-   "allow_on_submit": 1,
-   "fieldname": "total_quantity",
-   "fieldtype": "Float",
-   "hidden": 1,
-   "label": "Total Quantity",
-   "non_negative": 1
-  },
-  {
-   "fieldname": "work_order_calculated_items",
-   "fieldtype": "Table",
-   "hidden": 1,
-   "label": "Work Order Calculated Items",
-   "options": "Work Order Calculated Item"
-  },
-  {
-   "default": "0",
-   "fetch_from": "supplier.is_company_location",
-   "fetch_if_empty": 1,
-   "fieldname": "is_internal_unit",
-   "fieldtype": "Check",
-   "hidden": 1,
-   "label": "Is Internal Unit"
-  },
-  {
-   "fetch_from": "supplier.supplier_name",
-   "fetch_if_empty": 1,
-   "fieldname": "supplier_name",
-   "fieldtype": "Data",
-   "label": "Supplier Name",
-   "read_only": 1
-  },
-  {
-   "fetch_from": "delivery_location.supplier_name",
-   "fetch_if_empty": 1,
-   "fieldname": "delivery_location_name",
-   "fieldtype": "Data",
-   "label": "Delivery Location Name",
-   "read_only": 1
-  },
-  {
-   "allow_on_submit": 1,
-   "fieldname": "first_dc_date",
-   "fieldtype": "Date",
-   "hidden": 1,
-   "label": "First DC Date"
-  },
-  {
-   "allow_on_submit": 1,
-   "fieldname": "first_grn_date",
-   "fieldtype": "Date",
-   "hidden": 1,
-   "label": "First GRN Date"
-  },
-  {
-   "allow_on_submit": 1,
-   "fieldname": "last_dc_date",
-   "fieldtype": "Date",
-   "hidden": 1,
-   "label": "Last DC Date"
-  },
-  {
-   "allow_on_submit": 1,
-   "fieldname": "last_grn_date",
-   "fieldtype": "Date",
-   "hidden": 1,
-   "label": "Last GRN Date"
-  },
-  {
-   "allow_on_submit": 1,
-   "fieldname": "total_no_of_pieces_delivered",
-   "fieldtype": "Int",
-   "hidden": 1,
-   "label": "Total No of Pieces Delivered"
-  },
-  {
-   "allow_on_submit": 1,
-   "fieldname": "total_no_of_pieces_received",
-   "fieldtype": "Int",
-   "hidden": 1,
-   "label": "Total No of Pieces Received"
-  },
-  {
-   "allow_on_submit": 1,
-   "fieldname": "received_types_json",
-   "fieldtype": "JSON",
-   "hidden": 1,
-   "label": "Received Types JSON"
-  },
-  {
-   "fieldname": "section_break_lgsu",
-   "fieldtype": "Section Break",
-   "hidden": 1
-  },
-  {
-   "fieldname": "column_break_ocbe",
-   "fieldtype": "Column Break",
-   "hidden": 1
-  },
-  {
-   "fieldname": "column_break_uwsv",
-   "fieldtype": "Column Break",
-   "hidden": 1
-  },
-  {
-   "fieldname": "section_break_fewo",
-   "fieldtype": "Section Break",
-   "hidden": 1
-  },
-  {
-   "fieldname": "column_break_klzv",
-   "fieldtype": "Column Break",
-   "hidden": 1
-  },
-  {
-   "allow_on_submit": 1,
-   "fieldname": "wo_colours",
-   "fieldtype": "Small Text",
-   "hidden": 1,
-   "label": "WO Colours"
-  },
-  {
-   "allow_on_submit": 1,
-   "fieldname": "completed_items_json",
-   "fieldtype": "JSON",
-   "hidden": 1,
-   "label": "Completed Items JSON"
-  },
-  {
-   "allow_on_submit": 1,
-   "fieldname": "incompleted_items_json",
-   "fieldtype": "JSON",
-   "hidden": 1,
-   "label": "Incompleted Items JSON"
-  },
-  {
-   "fieldname": "summary_tab",
-   "fieldtype": "Tab Break",
-   "label": "Summary"
-  },
-  {
-   "fieldname": "wo_summary_html",
-   "fieldtype": "HTML",
-   "label": "WO Summary HTML"
-  },
-  {
-   "default": "0",
-   "fetch_from": "process_name.is_manual_entry_in_grn",
-   "fieldname": "is_manual_entry",
-   "fieldtype": "Check",
-   "hidden": 1,
-   "label": "Is Manual Entry"
-  },
-  {
-   "allow_on_submit": 1,
-   "fieldname": "wo_delivered_completed_json",
-   "fieldtype": "JSON",
-   "hidden": 1,
-   "label": "WO Delivered Completed JSON",
-   "read_only": 1
-  },
-  {
-   "allow_on_submit": 1,
-   "fieldname": "wo_delivered_incompleted_json",
-   "fieldtype": "JSON",
-   "hidden": 1,
-   "label": "WO Delivered Incompleted JSON",
-   "read_only": 1
-  },
-  {
-   "fieldname": "planned_quantity",
-   "fieldtype": "Int",
-   "label": "Planned Quantity"
-  },
-  {
-   "collapsible": 1,
-   "fieldname": "work_order_tracking_section",
-   "fieldtype": "Section Break",
-   "label": "Work Order Tracking"
-  },
-  {
-   "allow_on_submit": 1,
-   "fieldname": "work_order_tracking_logs",
-   "fieldtype": "Table",
-   "label": "Work Order Tracking Logs",
-   "options": "Work Order Tracking Log"
-  },
-  {
-   "allow_on_submit": 1,
-   "default": "0",
-   "fetch_from": "process_name.includes_packing",
-   "fieldname": "includes_packing",
-   "fieldtype": "Check",
-   "label": "Includes Packing",
-   "read_only": 1
-  },
-  {
-   "allow_on_submit": 1,
-   "fieldname": "work_order_excess_usage_items",
-   "fieldtype": "Table",
-   "hidden": 1,
-   "label": "Work Order Excess Usage Items",
-   "options": "Work Order Excess Usage Item"
-  },
-  {
-   "allow_on_submit": 1,
-   "fieldname": "work_order_track_pieces",
-   "fieldtype": "Table",
-   "label": "Work Order Track Pieces",
-   "options": "Work Order Track Piece"
-  },
-  {
-   "default": "0",
-   "fieldname": "edit_wo_date",
-   "fieldtype": "Check",
-   "label": "Edit WO Date"
-  },
-  {
-   "fieldname": "process_cost",
-   "fieldtype": "Link",
-   "label": "Process Cost",
-   "options": "Process Cost",
-   "read_only": 1
-  },
-  {
-   "allow_on_submit": 1,
-   "fieldname": "reduce_stock_entry",
-   "fieldtype": "Link",
-   "label": "Reduce Stock Entry",
-   "options": "Stock Entry",
-   "read_only": 1
-  },
-  {
-   "allow_on_submit": 1,
-   "fieldname": "update_stock_entry",
-   "fieldtype": "Link",
-   "label": "Update Stock Entry",
-   "options": "Stock Entry",
-   "read_only": 1
-  }
- ],
- "grid_page_length": 50,
- "index_web_pages_for_search": 1,
- "is_submittable": 1,
- "links": [
-  {
-   "link_doctype": "Delivery Challan",
-   "link_fieldname": "work_order"
-  },
-  {
-   "link_doctype": "Goods Received Note",
-   "link_fieldname": "against_id"
-  }
- ],
- "modified": "2026-01-05 16:34:31.354310",
- "modified_by": "Administrator",
- "module": "Production Api",
- "name": "Work Order",
- "naming_rule": "By \"Naming Series\" field",
- "owner": "Administrator",
- "permissions": [
-  {
-   "create": 1,
-   "delete": 1,
-   "email": 1,
-   "export": 1,
-   "print": 1,
-   "read": 1,
-   "report": 1,
-   "role": "System Manager",
-   "share": 1,
-   "write": 1
-  },
-  {
-   "cancel": 1,
-   "create": 1,
-   "email": 1,
-   "export": 1,
-   "print": 1,
-   "read": 1,
-   "report": 1,
-   "role": "Merch Manager",
-   "share": 1,
-   "submit": 1,
-   "write": 1
-  },
-  {
-   "cancel": 1,
-   "create": 1,
-   "email": 1,
-   "export": 1,
-   "print": 1,
-   "read": 1,
-   "report": 1,
-   "role": "Merch User",
-   "share": 1,
-   "submit": 1,
-   "write": 1
-  },
-  {
-   "email": 1,
-   "export": 1,
-   "print": 1,
-   "read": 1,
-   "report": 1,
-   "role": "Stock Manager",
-   "select": 1,
-   "share": 1
-  },
-  {
-   "email": 1,
-   "export": 1,
-   "print": 1,
-   "read": 1,
-   "report": 1,
-   "role": "Stock User",
-   "select": 1,
-   "share": 1
-  },
-  {
-   "email": 1,
-   "export": 1,
-   "print": 1,
-   "read": 1,
-   "report": 1,
-   "role": "Store Manager",
-   "select": 1,
-   "share": 1
-  },
-  {
-   "email": 1,
-   "export": 1,
-   "print": 1,
-   "read": 1,
-   "report": 1,
-   "role": "Store User",
-   "select": 1,
-   "share": 1
-  },
-  {
-   "email": 1,
-   "export": 1,
-   "print": 1,
-   "read": 1,
-   "report": 1,
-   "role": "Transaction User",
-   "select": 1,
-   "share": 1
-  }
- ],
- "row_format": "Dynamic",
- "search_fields": "lot,item,supplier",
- "sort_field": "modified",
- "sort_order": "DESC",
- "states": []
+  "actions": [],
+  "allow_rename": 1,
+  "autoname": "naming_series:",
+  "creation": "2024-05-20 16:24:53.338011",
+  "doctype": "DocType",
+  "engine": "InnoDB",
+  "field_order": [
+    "is_rework",
+    "naming_series",
+    "status",
+    "edit_wo_date",
+    "wo_date",
+    "lot",
+    "supplier",
+    "supplier_name",
+    "is_delivered",
+    "is_manual_entry",
+    "includes_packing",
+    "column_break_wrym",
+    "is_internal_unit",
+    "parent_wo",
+    "process_name",
+    "item",
+    "production_detail",
+    "delivery_location",
+    "delivery_location_name",
+    "open_status",
+    "close_reason",
+    "close_other_reason",
+    "close_remarks",
+    "closed_by",
+    "section_break_tmhn",
+    "planned_start_date",
+    "planned_end_date",
+    "expected_delivery_date",
+    "process_cost",
+    "column_break_ahbf",
+    "start_date",
+    "end_date",
+    "supplier_type",
+    "rework_type",
+    "address_and_contact_section",
+    "supplier_address",
+    "supplier_address_details",
+    "column_break_ztqp",
+    "delivery_address",
+    "delivery_address_details",
+    "work_order_tracking_section",
+    "work_order_tracking_logs",
+    "section_break_oufa",
+    "deliverables",
+    "deliverable_items",
+    "section_break_qtip",
+    "receivables",
+    "receivable_items",
+    "section_break_axzz",
+    "comments",
+    "amended_from",
+    "total_quantity",
+    "work_order_calculated_items",
+    "completed_items_json",
+    "incompleted_items_json",
+    "wo_delivered_completed_json",
+    "wo_delivered_incompleted_json",
+    "work_order_excess_usage_items",
+    "section_break_lgsu",
+    "column_break_ocbe",
+    "first_dc_date",
+    "last_dc_date",
+    "planned_quantity",
+    "wo_colours",
+    "column_break_uwsv",
+    "first_grn_date",
+    "last_grn_date",
+    "total_no_of_pieces_delivered",
+    "total_no_of_pieces_received",
+    "reduce_stock_entry",
+    "update_stock_entry",
+    "section_break_fewo",
+    "column_break_klzv",
+    "received_types_json",
+    "work_order_track_pieces",
+    "summary_tab",
+    "wo_summary_html"
+  ],
+  "fields": [
+    {
+      "default": "WO-",
+      "fieldname": "naming_series",
+      "fieldtype": "Select",
+      "in_list_view": 1,
+      "label": "WO Series",
+      "options": "WO-",
+      "reqd": 1
+    },
+    {
+      "fieldname": "status",
+      "fieldtype": "Select",
+      "in_list_view": 1,
+      "in_standard_filter": 1,
+      "label": "Status",
+      "options": "Draft\nSubmitted\nPartially Delivered\nFully Delivered\nPartially Received\nFully Received\nPartially Billed\nFully Billed\nClose Request\nClosed",
+      "read_only": 1
+    },
+    {
+      "allow_on_submit": 1,
+      "fieldname": "start_date",
+      "fieldtype": "Date",
+      "label": "Start Date",
+      "read_only": 1
+    },
+    {
+      "allow_on_submit": 1,
+      "fieldname": "end_date",
+      "fieldtype": "Date",
+      "label": "End Date",
+      "read_only": 1
+    },
+    {
+      "fieldname": "supplier",
+      "fieldtype": "Link",
+      "in_list_view": 1,
+      "in_standard_filter": 1,
+      "label": "Supplier",
+      "options": "Supplier"
+    },
+    {
+      "fieldname": "column_break_wrym",
+      "fieldtype": "Column Break"
+    },
+    {
+      "fieldname": "section_break_oufa",
+      "fieldtype": "Section Break",
+      "label": "Deliverables"
+    },
+    {
+      "fieldname": "section_break_qtip",
+      "fieldtype": "Section Break",
+      "label": "Receivables"
+    },
+    {
+      "fieldname": "deliverable_items",
+      "fieldtype": "HTML",
+      "label": "Deliverable Items"
+    },
+    {
+      "fieldname": "receivable_items",
+      "fieldtype": "HTML",
+      "label": "Receivable Items"
+    },
+    {
+      "allow_on_submit": 1,
+      "fieldname": "deliverables",
+      "fieldtype": "Table",
+      "hidden": 1,
+      "label": "Deliverables",
+      "options": "Work Order Deliverables"
+    },
+    {
+      "fieldname": "receivables",
+      "fieldtype": "Table",
+      "hidden": 1,
+      "label": "Receivables",
+      "options": "Work Order Receivables"
+    },
+    {
+      "default": "Today",
+      "fieldname": "wo_date",
+      "fieldtype": "Date",
+      "label": "WO Date",
+      "read_only_depends_on": "eval: !doc.edit_wo_date",
+      "reqd": 1
+    },
+    {
+      "fieldname": "supplier_address",
+      "fieldtype": "Link",
+      "label": "Supplier Address",
+      "options": "Address",
+      "reqd": 1
+    },
+    {
+      "fieldname": "delivery_address",
+      "fieldtype": "Link",
+      "label": "Delivery Address",
+      "options": "Address",
+      "reqd": 1
+    },
+    {
+      "default": "Today",
+      "fieldname": "planned_start_date",
+      "fieldtype": "Date",
+      "label": "Planned Start Date",
+      "reqd": 1
+    },
+    {
+      "fieldname": "planned_end_date",
+      "fieldtype": "Date",
+      "label": "Planned End Date",
+      "reqd": 1
+    },
+    {
+      "allow_on_submit": 1,
+      "fieldname": "expected_delivery_date",
+      "fieldtype": "Date",
+      "label": "Expected Delivery Date",
+      "read_only": 1,
+      "reqd": 1
+    },
+    {
+      "fieldname": "section_break_axzz",
+      "fieldtype": "Section Break"
+    },
+    {
+      "fieldname": "comments",
+      "fieldtype": "Text",
+      "label": "Comments"
+    },
+    {
+      "fieldname": "process_name",
+      "fieldtype": "Link",
+      "in_standard_filter": 1,
+      "label": "Process Name",
+      "options": "Process",
+      "reqd": 1
+    },
+    {
+      "fieldname": "address_and_contact_section",
+      "fieldtype": "Section Break",
+      "label": "Address and Contact"
+    },
+    {
+      "fieldname": "column_break_ztqp",
+      "fieldtype": "Column Break"
+    },
+    {
+      "fieldname": "delivery_address_details",
+      "fieldtype": "Small Text",
+      "label": "Delivery Address Details",
+      "read_only": 1
+    },
+    {
+      "fieldname": "supplier_address_details",
+      "fieldtype": "Small Text",
+      "label": "Supplier Address Details",
+      "read_only": 1
+    },
+    {
+      "fieldname": "section_break_tmhn",
+      "fieldtype": "Section Break"
+    },
+    {
+      "fieldname": "column_break_ahbf",
+      "fieldtype": "Column Break"
+    },
+    {
+      "fieldname": "amended_from",
+      "fieldtype": "Link",
+      "label": "Amended From",
+      "no_copy": 1,
+      "options": "Work Order",
+      "print_hide": 1,
+      "read_only": 1,
+      "search_index": 1
+    },
+    {
+      "allow_on_submit": 1,
+      "default": "0",
+      "fieldname": "is_delivered",
+      "fieldtype": "Check",
+      "label": "Is Delivered",
+      "read_only": 1
+    },
+    {
+      "fieldname": "lot",
+      "fieldtype": "Link",
+      "in_standard_filter": 1,
+      "label": "Lot",
+      "options": "Lot"
+    },
+    {
+      "fetch_from": "lot.item",
+      "fieldname": "item",
+      "fieldtype": "Link",
+      "in_list_view": 1,
+      "in_standard_filter": 1,
+      "label": "Item",
+      "options": "Item"
+    },
+    {
+      "default": "0",
+      "fieldname": "is_rework",
+      "fieldtype": "Check",
+      "label": "Is Rework",
+      "read_only": 1
+    },
+    {
+      "depends_on": "eval: doc.is_rework",
+      "fieldname": "parent_wo",
+      "fieldtype": "Link",
+      "label": "Parent WO",
+      "mandatory_depends_on": "eval: doc.is_rework",
+      "options": "Work Order",
+      "read_only": 1
+    },
+    {
+      "fetch_from": "lot.production_detail",
+      "fieldname": "production_detail",
+      "fieldtype": "Link",
+      "hidden": 1,
+      "label": "Production Detail",
+      "options": "Item Production Detail"
+    },
+    {
+      "allow_on_submit": 1,
+      "default": "Open",
+      "fieldname": "open_status",
+      "fieldtype": "Select",
+      "label": "Open Status",
+      "options": "Open\nClose Request\nClose",
+      "read_only": 1
+    },
+    {
+      "allow_on_submit": 1,
+      "depends_on": "eval: doc.open_status == 'Close' || doc.open_status == 'Close Request'",
+      "fieldname": "close_reason",
+      "fieldtype": "Select",
+      "label": "Close Reason",
+      "options": "\nCutting Shortage\nPrinting Shortage\nSewing Shortage\nSewing Missing\nOthers",
+      "read_only": 1
+    },
+    {
+      "allow_on_submit": 1,
+      "depends_on": "eval: doc.close_reason == 'Others' && (doc.open_status == 'Close' || doc.open_status == 'Close Request')",
+      "fieldname": "close_other_reason",
+      "fieldtype": "Data",
+      "label": "Other Reason",
+      "read_only": 1
+    },
+    {
+      "allow_on_submit": 1,
+      "depends_on": "eval: doc.open_status == 'Close' || doc.open_status == 'Close Request'",
+      "fieldname": "close_remarks",
+      "fieldtype": "Small Text",
+      "label": "Close Remarks",
+      "read_only": 1
+    },
+    {
+      "allow_on_submit": 1,
+      "depends_on": "eval: doc.open_status == 'Close'",
+      "fieldname": "closed_by",
+      "fieldtype": "Link",
+      "label": "Closed By",
+      "options": "User",
+      "read_only": 1
+    },
+    {
+      "depends_on": "eval: doc.is_rework",
+      "fieldname": "supplier_type",
+      "fieldtype": "Select",
+      "label": "Supplier Type",
+      "mandatory_depends_on": "eval: doc.is_rework",
+      "options": "Same Supplier\nDifferent Supplier",
+      "read_only_depends_on": "eval: !doc.__islocal"
+    },
+    {
+      "depends_on": "eval: doc.is_rework",
+      "fieldname": "rework_type",
+      "fieldtype": "Select",
+      "label": "Rework Type",
+      "mandatory_depends_on": "eval: doc.is_rework",
+      "options": "\nNo Cost\nNet Cost Nil\nAdditional Cost",
+      "read_only_depends_on": "eval: !doc.__islocal"
+    },
+    {
+      "fieldname": "delivery_location",
+      "fieldtype": "Link",
+      "label": "Delivery Location",
+      "options": "Supplier"
+    },
+    {
+      "allow_on_submit": 1,
+      "fieldname": "total_quantity",
+      "fieldtype": "Float",
+      "hidden": 1,
+      "label": "Total Quantity",
+      "non_negative": 1
+    },
+    {
+      "fieldname": "work_order_calculated_items",
+      "fieldtype": "Table",
+      "hidden": 1,
+      "label": "Work Order Calculated Items",
+      "options": "Work Order Calculated Item"
+    },
+    {
+      "default": "0",
+      "fetch_from": "supplier.is_company_location",
+      "fetch_if_empty": 1,
+      "fieldname": "is_internal_unit",
+      "fieldtype": "Check",
+      "hidden": 1,
+      "label": "Is Internal Unit"
+    },
+    {
+      "fetch_from": "supplier.supplier_name",
+      "fetch_if_empty": 1,
+      "fieldname": "supplier_name",
+      "fieldtype": "Data",
+      "label": "Supplier Name",
+      "read_only": 1
+    },
+    {
+      "fetch_from": "delivery_location.supplier_name",
+      "fetch_if_empty": 1,
+      "fieldname": "delivery_location_name",
+      "fieldtype": "Data",
+      "label": "Delivery Location Name",
+      "read_only": 1
+    },
+    {
+      "allow_on_submit": 1,
+      "fieldname": "first_dc_date",
+      "fieldtype": "Date",
+      "hidden": 1,
+      "label": "First DC Date"
+    },
+    {
+      "allow_on_submit": 1,
+      "fieldname": "first_grn_date",
+      "fieldtype": "Date",
+      "hidden": 1,
+      "label": "First GRN Date"
+    },
+    {
+      "allow_on_submit": 1,
+      "fieldname": "last_dc_date",
+      "fieldtype": "Date",
+      "hidden": 1,
+      "label": "Last DC Date"
+    },
+    {
+      "allow_on_submit": 1,
+      "fieldname": "last_grn_date",
+      "fieldtype": "Date",
+      "hidden": 1,
+      "label": "Last GRN Date"
+    },
+    {
+      "allow_on_submit": 1,
+      "fieldname": "total_no_of_pieces_delivered",
+      "fieldtype": "Int",
+      "hidden": 1,
+      "label": "Total No of Pieces Delivered"
+    },
+    {
+      "allow_on_submit": 1,
+      "fieldname": "total_no_of_pieces_received",
+      "fieldtype": "Int",
+      "hidden": 1,
+      "label": "Total No of Pieces Received"
+    },
+    {
+      "allow_on_submit": 1,
+      "fieldname": "received_types_json",
+      "fieldtype": "JSON",
+      "hidden": 1,
+      "label": "Received Types JSON"
+    },
+    {
+      "fieldname": "section_break_lgsu",
+      "fieldtype": "Section Break",
+      "hidden": 1
+    },
+    {
+      "fieldname": "column_break_ocbe",
+      "fieldtype": "Column Break",
+      "hidden": 1
+    },
+    {
+      "fieldname": "column_break_uwsv",
+      "fieldtype": "Column Break",
+      "hidden": 1
+    },
+    {
+      "fieldname": "section_break_fewo",
+      "fieldtype": "Section Break",
+      "hidden": 1
+    },
+    {
+      "fieldname": "column_break_klzv",
+      "fieldtype": "Column Break",
+      "hidden": 1
+    },
+    {
+      "allow_on_submit": 1,
+      "fieldname": "wo_colours",
+      "fieldtype": "Small Text",
+      "hidden": 1,
+      "label": "WO Colours"
+    },
+    {
+      "allow_on_submit": 1,
+      "fieldname": "completed_items_json",
+      "fieldtype": "JSON",
+      "hidden": 1,
+      "label": "Completed Items JSON"
+    },
+    {
+      "allow_on_submit": 1,
+      "fieldname": "incompleted_items_json",
+      "fieldtype": "JSON",
+      "hidden": 1,
+      "label": "Incompleted Items JSON"
+    },
+    {
+      "fieldname": "summary_tab",
+      "fieldtype": "Tab Break",
+      "label": "Summary"
+    },
+    {
+      "fieldname": "wo_summary_html",
+      "fieldtype": "HTML",
+      "label": "WO Summary HTML"
+    },
+    {
+      "default": "0",
+      "fetch_from": "process_name.is_manual_entry_in_grn",
+      "fieldname": "is_manual_entry",
+      "fieldtype": "Check",
+      "hidden": 1,
+      "label": "Is Manual Entry"
+    },
+    {
+      "allow_on_submit": 1,
+      "fieldname": "wo_delivered_completed_json",
+      "fieldtype": "JSON",
+      "hidden": 1,
+      "label": "WO Delivered Completed JSON",
+      "read_only": 1
+    },
+    {
+      "allow_on_submit": 1,
+      "fieldname": "wo_delivered_incompleted_json",
+      "fieldtype": "JSON",
+      "hidden": 1,
+      "label": "WO Delivered Incompleted JSON",
+      "read_only": 1
+    },
+    {
+      "fieldname": "planned_quantity",
+      "fieldtype": "Int",
+      "label": "Planned Quantity"
+    },
+    {
+      "collapsible": 1,
+      "fieldname": "work_order_tracking_section",
+      "fieldtype": "Section Break",
+      "label": "Work Order Tracking"
+    },
+    {
+      "allow_on_submit": 1,
+      "fieldname": "work_order_tracking_logs",
+      "fieldtype": "Table",
+      "label": "Work Order Tracking Logs",
+      "options": "Work Order Tracking Log"
+    },
+    {
+      "allow_on_submit": 1,
+      "default": "0",
+      "fetch_from": "process_name.includes_packing",
+      "fieldname": "includes_packing",
+      "fieldtype": "Check",
+      "label": "Includes Packing",
+      "read_only": 1
+    },
+    {
+      "allow_on_submit": 1,
+      "fieldname": "work_order_excess_usage_items",
+      "fieldtype": "Table",
+      "hidden": 1,
+      "label": "Work Order Excess Usage Items",
+      "options": "Work Order Excess Usage Item"
+    },
+    {
+      "allow_on_submit": 1,
+      "fieldname": "work_order_track_pieces",
+      "fieldtype": "Table",
+      "label": "Work Order Track Pieces",
+      "options": "Work Order Track Piece"
+    },
+    {
+      "default": "0",
+      "fieldname": "edit_wo_date",
+      "fieldtype": "Check",
+      "label": "Edit WO Date"
+    },
+    {
+      "fieldname": "process_cost",
+      "fieldtype": "Link",
+      "label": "Process Cost",
+      "options": "Process Cost",
+      "read_only": 1
+    },
+    {
+      "allow_on_submit": 1,
+      "fieldname": "reduce_stock_entry",
+      "fieldtype": "Link",
+      "label": "Reduce Stock Entry",
+      "options": "Stock Entry",
+      "read_only": 1
+    },
+    {
+      "allow_on_submit": 1,
+      "fieldname": "update_stock_entry",
+      "fieldtype": "Link",
+      "label": "Update Stock Entry",
+      "options": "Stock Entry",
+      "read_only": 1
+    }
+  ],
+  "grid_page_length": 50,
+  "index_web_pages_for_search": 1,
+  "is_submittable": 1,
+  "links": [
+    {
+      "link_doctype": "Delivery Challan",
+      "link_fieldname": "work_order"
+    },
+    {
+      "link_doctype": "Goods Received Note",
+      "link_fieldname": "against_id"
+    }
+  ],
+  "modified": "2026-02-07 14:12:05.577655",
+  "modified_by": "Administrator",
+  "module": "Production Api",
+  "name": "Work Order",
+  "naming_rule": "By \"Naming Series\" field",
+  "owner": "Administrator",
+  "permissions": [
+    {
+      "create": 1,
+      "delete": 1,
+      "email": 1,
+      "export": 1,
+      "print": 1,
+      "read": 1,
+      "report": 1,
+      "role": "System Manager",
+      "share": 1,
+      "write": 1
+    },
+    {
+      "amend": 1,
+      "cancel": 1,
+      "create": 1,
+      "email": 1,
+      "export": 1,
+      "print": 1,
+      "read": 1,
+      "report": 1,
+      "role": "Merch Manager",
+      "share": 1,
+      "submit": 1,
+      "write": 1
+    },
+    {
+      "amend": 1,
+      "cancel": 1,
+      "create": 1,
+      "email": 1,
+      "export": 1,
+      "print": 1,
+      "read": 1,
+      "report": 1,
+      "role": "Merch User",
+      "share": 1,
+      "submit": 1,
+      "write": 1
+    },
+    {
+      "email": 1,
+      "export": 1,
+      "print": 1,
+      "read": 1,
+      "report": 1,
+      "role": "Stock Manager",
+      "select": 1,
+      "share": 1
+    },
+    {
+      "email": 1,
+      "export": 1,
+      "print": 1,
+      "read": 1,
+      "report": 1,
+      "role": "Stock User",
+      "select": 1,
+      "share": 1
+    },
+    {
+      "email": 1,
+      "export": 1,
+      "print": 1,
+      "read": 1,
+      "report": 1,
+      "role": "Store Manager",
+      "select": 1,
+      "share": 1
+    },
+    {
+      "email": 1,
+      "export": 1,
+      "print": 1,
+      "read": 1,
+      "report": 1,
+      "role": "Store User",
+      "select": 1,
+      "share": 1,
+      "write": 1
+    },
+    {
+      "amend": 1,
+      "create": 1,
+      "email": 1,
+      "export": 1,
+      "print": 1,
+      "read": 1,
+      "report": 1,
+      "role": "Production Planner",
+      "share": 1,
+      "submit": 1,
+      "write": 1
+    },
+    {
+      "amend": 1,
+      "cancel": 1,
+      "create": 1,
+      "email": 1,
+      "export": 1,
+      "print": 1,
+      "read": 1,
+      "report": 1,
+      "role": "Merchandiser",
+      "share": 1,
+      "submit": 1,
+      "write": 1
+    }
+  ],
+  "row_format": "Dynamic",
+  "search_fields": "lot,item,supplier",
+  "sort_field": "modified",
+  "sort_order": "DESC",
+  "states": []
 }

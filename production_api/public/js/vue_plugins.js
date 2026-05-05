@@ -34,6 +34,8 @@ import ClothAccessory from "./Item_Po_detail/ClothAccessory.vue"
 import ClothAccessoryCombination from "./Item_Po_detail/ClothAccessoryCombination.vue"
 import AccessoryItems from "./Item_Po_detail/AccessoryItems.vue"
 import BundleGroup from "./Item_Po_detail/BundleGroup.vue"
+import ClothDetail from "./CuttingOrder/ClothDetail.vue"
+import CuttingOrderItems from "./CuttingOrder/CuttingOrderItems.vue"
 import { StockEntryWrapper, StockReconciliationWrapper, LotTransferWrapper, StockUpdateWrapper } from "./Stock";
 import {
     DeliverablesWrapper,
@@ -42,6 +44,8 @@ import {
     WOReworkReceivablesWrapper,
     ReceivablesWrapper,
     ReworkPageWrapper,
+    ReworkGroupPageWrapper,
+    RejectionPageWrapper,
     WorkOrderItemViewWrapper,
     WOSummaryWrapper,
     QualityInspectionWrapper,
@@ -62,6 +66,7 @@ import SuggestedVendorBillDeliveryPerson from "./VendorBillTracking/components/S
 import CutBundleEdit from "./Cut_Bundle_Edit/components/CutBundleEdit.vue";
 import DailyProductionReport from "./CuttingLaySheet/components/DailyProductionReport.vue";
 import DailyCutSheetReport from "./CuttingLaySheet/components/DailyCutSheetReport.vue";
+import CuttingDetailReport from "./CuttingLaySheet/components/CuttingDetailReport.vue";
 import GRNPacking from "./GRN/components/GRNPacking.vue";
 import {
     FinishingGRNWrapper,
@@ -78,6 +83,8 @@ import {
     FinishingQtyDetailWrapper,
 } from "./Finishing";
 
+import { SewingPlanWrapper } from "./SewingPlan"
+
 import ProductionOrder from "./ProductionOrder/components/ProductionOrder.vue";
 import UpdatePrice from "./ProductionOrder/components/UpdatePrice.vue";
 import ActionDetail from "./ActionMaster/ActionDetail.vue"
@@ -86,9 +93,14 @@ import MonthWiseDetailReport from "./components/MonthWiseDetailReport.vue"
 import SizeWiseStockReport from "./components/SizeWiseStockDetail.vue"
 import ColourWiseDiffReport from "./components/ColourWiseDiffReport.vue"
 import InvoiceWoItems from "./PurchaseInvoice/components/InvoiceWOItems.vue"
+import InvoiceDebitSummary from "./PurchaseInvoice/components/InvoiceDebitSummary.vue"
 import RecutPrintPanelDetail from "./CuttingPlan/components/RecutPrintPanelDetails.vue"
 import RecutPrintPanelView from "./CuttingPlan/components/RecutPrintPanelView.vue"
 import MultiCCR from "./CuttingPlan/components/MultiCCR.vue"
+import PPOReport from "./PPOReport/components/PPOReport.vue"
+import ProcessPending from "./components/ProcessPending.vue"
+import FinishingPlanDPR from "./FinishingPlanDPR/FinishingPlanDPR.vue"
+import FinishingPlanDispa from "./FinishingPlanDispa/FinishingPlanDispa.vue"
 
 // Product Development
 import {
@@ -102,6 +114,7 @@ import {
     ProductMeasurementImageWrapper,
 } from "./ProductDevelopment"
 
+import LayPlanResult from "./CuttingLaysheetPlan/LayPlanResult.vue";
 import EventBus from "./bus.js";
 
 import { EditBOMAttributeMappingWrapper, BOMAttributeMappingWrapper } from "./ItemBOM";
@@ -325,6 +338,45 @@ frappe.production.ui.BundleGroup = class {
     }
 }
 
+frappe.production.ui.ClothDetail = class {
+    constructor(wrapper) {
+        this.$wrapper = $(wrapper);
+        this.make_app()
+    }
+    make_app() {
+        this.app = createApp(ClothDetail)
+        SetVueGlobals(this.app)
+        this.vue = this.app.mount(this.$wrapper.get(0))
+    }
+    load_data(data) {
+        this.vue.load_data(data)
+    }
+    get_data() {
+        return this.vue.get_data()
+    }
+}
+
+frappe.production.ui.CuttingOrderItems = class {
+    constructor(wrapper) {
+        this.$wrapper = $(wrapper);
+        this.make_app()
+    }
+    make_app() {
+        this.app = createApp(CuttingOrderItems)
+        SetVueGlobals(this.app)
+        this.vue = this.app.mount(this.$wrapper.get(0))
+    }
+    load_data(data) {
+        this.vue.load_data(data)
+    }
+    get_data() {
+        return this.vue.get_data()
+    }
+    set_read_only(val) {
+        this.vue.set_read_only(val)
+    }
+}
+
 frappe.production.ui.BomItemAttributeMapping = BOMAttributeMappingWrapper;
 
 frappe.production.ui.ItemPriceList = ItemPriceList;
@@ -456,6 +508,21 @@ frappe.production.ui.InvoiceWoItems = class {
     }
 }
 
+frappe.production.ui.InvoiceDebitSummary = class {
+    constructor(wrapper) {
+        this.$wrapper = $(wrapper);
+        this.make_app()
+    }
+    make_app() {
+        this.app = createApp(InvoiceDebitSummary)
+        SetVueGlobals(this.app)
+        this.vue = this.app.mount(this.$wrapper.get(0))
+    }
+    load_data(data) {
+        this.vue.load_data(data)
+    }
+}
+
 frappe.production.ui.TimeAndActionWeeklyReport = class {
     constructor(wrapper) {
         this.$wrapper = $(wrapper);
@@ -529,6 +596,18 @@ frappe.production.ui.DailyCutSheetReport = class {
     }
     make_app() {
         this.app = createApp(DailyCutSheetReport)
+        SetVueGlobals(this.app)
+        this.vue = this.app.mount(this.$wrapper.get(0))
+    }
+}
+
+frappe.production.ui.CuttingDetailReport = class {
+    constructor(wrapper) {
+        this.$wrapper = $(wrapper);
+        this.make_app()
+    }
+    make_app() {
+        this.app = createApp(CuttingDetailReport)
         SetVueGlobals(this.app)
         this.vue = this.app.mount(this.$wrapper.get(0))
     }
@@ -1091,6 +1170,8 @@ frappe.production.ui.WOReworkDeliverables = WOReworkDeliverablesWrapper
 frappe.production.ui.WOReworkReceivables = WOReworkReceivablesWrapper
 frappe.production.ui.Receivables = ReceivablesWrapper
 frappe.production.ui.ReworkPage = ReworkPageWrapper
+frappe.production.ui.ReworkGroupPage = ReworkGroupPageWrapper
+frappe.production.ui.RejectionPage = RejectionPageWrapper
 frappe.production.ui.WorkOrderItemView = WorkOrderItemViewWrapper
 frappe.production.ui.WOSummary = WOSummaryWrapper
 frappe.production.ui.QualityInspection = QualityInspectionWrapper
@@ -1119,3 +1200,80 @@ frappe.production.product_development.ui.ProductMeasurement = ProductMeasurement
 frappe.production.product_development.ui.ProductSilhoutte = ProductSilhoutteWrapper
 frappe.production.product_development.ui.ProductGraphics = ProductGraphicsWrapper
 frappe.production.product_development.ui.ProductMeasurementImage = ProductMeasurementImageWrapper
+
+// PPO Report
+frappe.production.ui.PPOReport = class {
+    constructor(wrapper) {
+        this.$wrapper = $(wrapper)
+        this.make_app()
+    }
+    make_app() {
+        this.app = createApp(PPOReport)
+        SetVueGlobals(this.app)
+        this.vue = this.app.mount(this.$wrapper.get(0))
+    }
+    load_data(data) {
+        this.vue.load_data(data)
+    }
+}
+
+// Sewing Plan
+frappe.production.ui.SewingPlan = SewingPlanWrapper
+
+// Finishing Plan DPR
+frappe.production.ui.FinishingPlanDPR = class {
+    constructor(wrapper) {
+        this.$wrapper = $(wrapper)
+        this.make_app()
+    }
+    make_app() {
+        this.app = createApp(FinishingPlanDPR)
+        SetVueGlobals(this.app)
+        this.vue = this.app.mount(this.$wrapper.get(0))
+    }
+}
+
+// Finishing Plan Dispatch
+frappe.production.ui.FinishingPlanDispa = class {
+    constructor(wrapper) {
+        this.$wrapper = $(wrapper)
+        this.make_app()
+    }
+    make_app() {
+        this.app = createApp(FinishingPlanDispa)
+        SetVueGlobals(this.app)
+        this.vue = this.app.mount(this.$wrapper.get(0))
+    }
+}
+
+// Process Pending
+frappe.production.ui.ProcessPending = class {
+    constructor(wrapper) {
+        this.$wrapper = $(wrapper)
+        this.make_app()
+    }
+    make_app() {
+        this.app = createApp(ProcessPending)
+        SetVueGlobals(this.app)
+        this.vue = this.app.mount(this.$wrapper.get(0))
+    }
+}
+
+// Cutting Laysheet Planner
+frappe.production.ui.LayPlanResult = class {
+    constructor(wrapper) {
+        this.$wrapper = $(wrapper)
+        this.make_app()
+    }
+    make_app() {
+        this.app = createApp(LayPlanResult)
+        SetVueGlobals(this.app)
+        this.vue = this.app.mount(this.$wrapper.get(0))
+    }
+    load_data(data) {
+        this.vue.load_data(data)
+    }
+    set_selected(strategy) {
+        this.vue.set_selected(strategy)
+    }
+}

@@ -50,27 +50,35 @@
                         style="display:grid; grid-template-columns: repeat(2, 1fr); gap:4px; padding-left: 20px;"
                     >
                         <div v-for="(clr, cidx) in getColours(item)" :key="cidx"
-                            class="flex flex-col items-center text-[9px] cursor-pointer"
+                            class="flex flex-col items-center text-[9px] cursor-pointer p-1"
                             style="width:100%;"
                         >
                             <input 
                                 type="checkbox"
                                 :value="clr.colour"
                                 v-model="item.selected_colours"
-                                class="w-3 h-3"
-                                style="margin-top: 5px;"
+                                class="w-3 h-3 mb-1"
                                 @click="make_dirty()"
                                 :disabled="doctype == 'Product Release'"
                             />
-                            <span class="truncate text-center w-full inline-block rounded-full px-2 py-1"
-                                :style="{ 
-                                    backgroundColor: colour_codes[clr.colour], 
-                                    color: getTextColour(colour_codes[clr.colour]), 
-                                    borderRadius: '10px',
-                                }"
-                            >
-                                {{ clr.colour }}
-                            </span>
+                            <div class="flex flex-col items-center w-full space-y-2">
+                                <span class="text-center w-full rounded-full px-2 py-1 flex items-center justify-center min-h-[20px]"
+                                    :style="{ 
+                                        backgroundColor: colour_codes[clr.colour], 
+                                        color: getTextColour(colour_codes[clr.colour]), 
+                                        borderRadius: '10px',
+                                        lineHeight: '1',
+                                    }"
+                                >
+                                    {{ clr.colour }}  
+                                </span>
+                                <div v-if="get_colour_image(clr.colour)" class="flex justify-center">
+                                    <img :src="get_colour_image(clr.colour)" 
+                                        class="object-cover shadow-sm rounded border" 
+                                        style="height:50px; width:50px;"
+                                    />
+                                </div>
+                            </div>
                         </div>
                     </div>
                     <div class="p-1 text-sm text-center"
@@ -126,6 +134,7 @@ const bottom_colours = ref([])
 const colour_list = ref([])
 let doctype = cur_frm.doc.doctype
 const colour_codes = reactive({})
+const colour_images = reactive({})
 
 onMounted(() => {
     if (set_item) {
@@ -137,6 +146,11 @@ onMounted(() => {
                     colour_code: row.top_colour_code
                 })
                 colour_codes[row.top_colour] = row.top_colour_code
+                frappe.db.get_value("Product Colour Code", row.top_colour, "image").then((res) => {
+                    if(res.message.image){
+                        colour_images[row.top_colour] = res.message.image
+                    }
+                })
             }
             if (row.bottom_colour && !bottom_colours.value.find(c => c.colour === row.bottom_colour)) {
                 bottom_colours.value.push({
@@ -144,6 +158,11 @@ onMounted(() => {
                     colour_code: row.bottom_colour_code
                 })
                 colour_codes[row.bottom_colour] = row.bottom_colour_code
+                frappe.db.get_value("Product Colour Code", row.bottom_colour, "image").then((res) => {
+                    if(res.message.image){
+                        colour_images[row.bottom_colour] = res.message.image
+                    }
+                })
             }
         }
     } 
@@ -156,6 +175,11 @@ onMounted(() => {
                     colour_code: clr.colour_code
                 })
                 colour_codes[clr.product_colour] = clr.product_colour_code
+                frappe.db.get_value("Product Colour Code", clr.product_colour, "image").then((res) => {
+                    if(res.message.image){
+                        colour_images[clr.product_colour] = res.message.image
+                    }
+                })
             }
         }
     }
@@ -178,6 +202,9 @@ function getTextColour(hex) {
     return yiq >= 128 ? '#000' : '#fff'
 }
 
+function get_colour_image(colour){
+    return colour_images[colour] || ''
+}
 
 watch(query, async (val) => {
 	if (!val || val.length < 2) {

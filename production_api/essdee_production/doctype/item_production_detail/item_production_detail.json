@@ -10,6 +10,8 @@
   "tech_pack_version",
   "pattern_version",
   "version",
+  "approval_status",
+  "approved_by",
   "section_break_yqii",
   "primary_item_attribute",
   "dependent_attribute",
@@ -587,6 +589,23 @@
    "label": "Version"
   },
   {
+   "default": "Not Approved",
+   "fieldname": "approval_status",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Approval Status",
+   "options": "Not Approved\nCutting Approved\nApproved",
+   "read_only": 1
+  },
+  {
+   "fieldname": "approved_by",
+   "fieldtype": "Link",
+   "label": "Approved By",
+   "options": "User",
+   "read_only": 1
+  },
+  {
    "fieldname": "emblishment_tab",
    "fieldtype": "Tab Break",
    "label": "Emblishment"
@@ -659,7 +678,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-09-22 17:31:23.722818",
+ "modified": "2026-02-06 18:15:56.490222",
  "modified_by": "Administrator",
  "module": "Essdee Production",
  "name": "Item Production Detail",
@@ -679,7 +698,6 @@
   },
   {
    "create": 1,
-   "delete": 1,
    "email": 1,
    "export": 1,
    "print": 1,
@@ -695,18 +713,20 @@
    "print": 1,
    "read": 1,
    "report": 1,
-   "role": "Transaction User",
+   "role": "All",
    "select": 1,
    "share": 1
   },
   {
+   "create": 1,
    "email": 1,
    "export": 1,
    "print": 1,
    "read": 1,
    "report": 1,
-   "role": "All",
-   "share": 1
+   "role": "Production Planner",
+   "share": 1,
+   "write": 1
   }
  ],
  "row_format": "Dynamic",

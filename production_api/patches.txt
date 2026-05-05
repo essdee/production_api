@@ -1,9 +1,10 @@
 [pre_model_sync]
-production_api.patches.v1_0.custom_field
+production_api.patches.v1_0.custom_field #1
 production_api.patches.v1_0.mapping
 production_api.patches.v1_0.update_cutting_marker_ratios #1
 
 [post_model_sync]
+production_api.patches.v1_0.set_production_order_submitted_by
 production_api.patches.v1_0.update_po_item_uom
 production_api.patches.v1_0.update_received_type #1
 production_api.patches.v1_0.update_pending_items_po #1
@@ -58,3 +59,11 @@ production_api.patches.v1_0.update_cp_status #4
 production_api.patches.v1_0.update_cutting_plan_cpstatus
 production_api.patches.v1_0.update_cbml_index #8
 production_api.patches.v1_0.update_sync_with_erp
+production_api.patches.v1_0.update_cb_ledger
+production_api.patches.v1_0.update_bundle_generated_date
+production_api.patches.v1_0.status_update_for_old #1
+production_api.patches.v1_0.rename_item_variant_sizes
+production_api.patches.v1_0.update_finishing_plan_dates #1
+production_api.patches.v1_0.update_cutting_plan_dates #2
+production_api.patches.v1_0.update_finishing_plan_quantities
+production_api.patches.v1_0.update_ipd_approval_status
