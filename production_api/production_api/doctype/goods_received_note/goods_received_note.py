@@ -660,14 +660,46 @@ class GoodsReceivedNote(Document):
         is_set = frappe.get_value("Item Production Detail", ipd, "is_set_item")
         for item in self.grn_deliverables:
             if res.get(item.item_variant):
-                variant_item = frappe.get_value(
-                    "Item Variant", item.item_variant, "item")
-                multiplier = -1
-                if variant_item == item_name and self.includes_packing and is_set:
-                    multiplier = -2
+                multiplier = self.get_deliverable_stock_multiplier(
+                    item, item_name, is_set)
                 sl_entries.append(self.get_deliverables_data(
                     item, lot, {}, multiplier, received_type))
+        self.validate_deliverable_stock(sl_entries)
         make_sl_entries(sl_entries)
+
+    def get_deliverable_stock_multiplier(self, item, item_name, is_set):
+        variant_item = frappe.get_value("Item Variant", item.item_variant, "item")
+        if variant_item == item_name and self.includes_packing and is_set:
+            return -2
+        return -1
+
+    def validate_deliverable_stock(self, sl_entries):
+        required_stock = {}
+        for entry in sl_entries:
+            if flt(entry.qty) >= 0:
+                continue
+            key = (entry.item, entry.warehouse, entry.lot, entry.received_type)
+            required_stock.setdefault(key, 0)
+            required_stock[key] += abs(flt(entry.qty))
+
+        low_stock_items = []
+        for key, required_qty in required_stock.items():
+            item, warehouse, lot, received_type = key
+            quantity = get_stock_balance(
+                item,
+                warehouse,
+                received_type,
+                posting_date=self.posting_date,
+                posting_time=self.posting_time,
+                lot=lot,
+            )
+            if flt(quantity) < flt(required_qty):
+                low_stock_items.append(
+                    f"Required quantity is {required_qty} but stock quantity is {quantity} for {item}"
+                )
+
+        if low_stock_items:
+            frappe.throw("<br>".join(low_stock_items))
 
     def get_deliverables_data(self, d, lot, args, multiplier, received_type):
         rate = get_stock_balance(

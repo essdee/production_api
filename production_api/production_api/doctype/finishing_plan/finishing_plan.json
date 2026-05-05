@@ -59,6 +59,8 @@
   "incomplete_transfer_grn_list",
   "alternatives_tab",
   "alternative_html",
+  "dispatch_history_tab",
+  "finishing_plan_dispatch_logs",
   "rejection_tab",
   "finishing_rejection_html"
  ],
@@ -276,6 +278,19 @@
    "label": "Stock Entry List"
   },
   {
+   "fieldname": "dispatch_history_tab",
+   "fieldtype": "Tab Break",
+   "hidden": 1,
+   "label": "Dispatch History"
+  },
+  {
+   "fieldname": "finishing_plan_dispatch_logs",
+   "fieldtype": "Table",
+   "label": "Dispatch History",
+   "options": "Finishing Plan Dispatch Log",
+   "read_only": 1
+  },
+  {
    "fieldname": "lot_transfer_list",
    "fieldtype": "Small Text",
    "hidden": 1,
@@ -399,7 +414,7 @@
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-03-13 14:50:38.442152",
+ "modified": "2026-05-05 18:23:02.051561",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Finishing Plan",

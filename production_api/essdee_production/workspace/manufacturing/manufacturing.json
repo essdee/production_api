@@ -17,7 +17,7 @@
    "hidden": 0,
    "is_query_report": 0,
    "label": "Reports",
-   "link_count": 9,
+   "link_count": 10,
    "link_type": "DocType",
    "onboard": 0,
    "type": "Card Break"
@@ -88,6 +88,16 @@
    "label": "Finishing Plan Report",
    "link_count": 0,
    "link_to": "Finishing Plan Report",
+   "link_type": "Report",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 1,
+   "label": "Dispatch Percentage Report",
+   "link_count": 0,
+   "link_to": "Dispatch Percentage Report",
    "link_type": "Report",
    "onboard": 0,
    "type": "Link"
