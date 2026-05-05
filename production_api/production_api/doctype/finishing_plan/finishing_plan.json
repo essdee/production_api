@@ -280,6 +280,7 @@
   {
    "fieldname": "dispatch_history_tab",
    "fieldtype": "Tab Break",
+   "hidden": 1,
    "label": "Dispatch History"
   },
   {
@@ -413,7 +414,7 @@
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-05-05 14:03:55.793845",
+ "modified": "2026-05-05 18:23:02.051561",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Finishing Plan",
