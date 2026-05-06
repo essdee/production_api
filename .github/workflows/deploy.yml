@@ -22,9 +22,7 @@ jobs:
             cd ${{ secrets.BENCH_PATH }}/apps/production_api
 
             OLD_SHA=$(git rev-parse HEAD)
-            git fetch origin
-            git checkout master
-            git pull origin master
+            git pull
             NEW_SHA=$(git rev-parse HEAD)
 
             if [ "$OLD_SHA" = "$NEW_SHA" ]; then
