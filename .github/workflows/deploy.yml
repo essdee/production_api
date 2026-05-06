@@ -1,0 +1,77 @@
+name: Deploy production_api
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-production_api
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_KEY }}
+          script: |
+            set -euo pipefail
+            cd ${{ secrets.BENCH_PATH }}/apps/production_api
+
+            OLD_SHA=$(git rev-parse HEAD)
+            git fetch origin
+            git checkout master
+            git pull origin master
+            NEW_SHA=$(git rev-parse HEAD)
+
+            if [ "$OLD_SHA" = "$NEW_SHA" ]; then
+              echo "No changes pulled. Nothing to deploy."
+              exit 0
+            fi
+
+            CHANGED=$(git diff --name-only "$OLD_SHA" "$NEW_SHA")
+            echo "Changed files:"
+            echo "$CHANGED"
+
+            needs_migrate=false
+            needs_build=false
+            needs_pip=false
+
+            if echo "$CHANGED" | grep -qE '\.json$|(^|/)patches\.txt$|(^|/)patches/'; then
+              needs_migrate=true
+              needs_build=true
+            fi
+            if echo "$CHANGED" | grep -qE '\.(js|vue|css|scss|less|html|svg|png|jpg)$|/public/'; then
+              needs_build=true
+            fi
+            if echo "$CHANGED" | grep -qE '(^|/)pyproject\.toml$|(^|/)setup\.py$|(^|/)MANIFEST\.in$'; then
+              needs_pip=true
+            fi
+
+            cd ${{ secrets.BENCH_PATH }}
+
+            if [ "$needs_pip" = true ]; then
+              echo "==> Reinstalling app (setup metadata changed)"
+              ./env/bin/pip install -e apps/production_api
+            fi
+
+            if [ "$needs_migrate" = true ]; then
+              IFS=',' read -ra SITE_LIST <<< "${{ secrets.SITES }}"
+              for site in "${SITE_LIST[@]}"; do
+                echo "==> Backing up $site"
+                bench --site "$site" backup
+                echo "==> Migrating $site"
+                bench --site "$site" migrate
+              done
+            fi
+
+            if [ "$needs_build" = true ]; then
+              echo "==> Building assets"
+              bench build --app production_api
+            fi
+
+            echo "==> Restarting"
+            bench restart --supervisor
