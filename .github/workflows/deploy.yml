@@ -9,67 +9,67 @@ concurrency:
 
 jobs:
   deploy:
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     steps:
-      - name: Deploy via SSH
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ secrets.SSH_HOST }}
-          username: ${{ secrets.SSH_USER }}
-          key: ${{ secrets.SSH_KEY }}
-          script: |
-            set -euo pipefail
-            cd ${{ secrets.BENCH_PATH }}/apps/production_api
+      - name: Deploy
+        env:
+          BENCH_PATH: ${{ secrets.BENCH_PATH }}
+          SITES: ${{ secrets.SITES }}
+        run: |
+          set -euo pipefail
+          export PATH="/home/essdee_frappe/.nvm/versions/node/v24.14.1/bin:/home/essdee_frappe/.local/bin:/usr/local/bin:/usr/bin:/bin"
 
-            OLD_SHA=$(git rev-parse HEAD)
-            git pull
-            NEW_SHA=$(git rev-parse HEAD)
+          cd "$BENCH_PATH/apps/production_api"
 
-            if [ "$OLD_SHA" = "$NEW_SHA" ]; then
-              echo "No changes pulled. Nothing to deploy."
-              exit 0
-            fi
+          OLD_SHA=$(git rev-parse HEAD)
+          git pull
+          NEW_SHA=$(git rev-parse HEAD)
 
-            CHANGED=$(git diff --name-only "$OLD_SHA" "$NEW_SHA")
-            echo "Changed files:"
-            echo "$CHANGED"
+          if [ "$OLD_SHA" = "$NEW_SHA" ]; then
+            echo "No changes pulled. Nothing to deploy."
+            exit 0
+          fi
 
-            needs_migrate=false
-            needs_build=false
-            needs_pip=false
+          CHANGED=$(git diff --name-only "$OLD_SHA" "$NEW_SHA")
+          echo "Changed files:"
+          echo "$CHANGED"
 
-            if echo "$CHANGED" | grep -qE '\.json$|(^|/)patches\.txt$|(^|/)patches/'; then
-              needs_migrate=true
-              needs_build=true
-            fi
-            if echo "$CHANGED" | grep -qE '\.(js|vue|css|scss|less|html|svg|png|jpg)$|/public/'; then
-              needs_build=true
-            fi
-            if echo "$CHANGED" | grep -qE '(^|/)pyproject\.toml$|(^|/)setup\.py$|(^|/)MANIFEST\.in$'; then
-              needs_pip=true
-            fi
+          needs_migrate=false
+          needs_build=false
+          needs_pip=false
 
-            cd ${{ secrets.BENCH_PATH }}
+          if echo "$CHANGED" | grep -qE '\.json$|(^|/)patches\.txt$|(^|/)patches/'; then
+            needs_migrate=true
+            needs_build=true
+          fi
+          if echo "$CHANGED" | grep -qE '\.(js|vue|css|scss|less|html|svg|png|jpg)$|/public/'; then
+            needs_build=true
+          fi
+          if echo "$CHANGED" | grep -qE '(^|/)pyproject\.toml$|(^|/)setup\.py$|(^|/)MANIFEST\.in$'; then
+            needs_pip=true
+          fi
 
-            if [ "$needs_pip" = true ]; then
-              echo "==> Reinstalling app (setup metadata changed)"
-              ./env/bin/pip install -e apps/production_api
-            fi
+          cd "$BENCH_PATH"
 
-            if [ "$needs_migrate" = true ]; then
-              IFS=',' read -ra SITE_LIST <<< "${{ secrets.SITES }}"
-              for site in "${SITE_LIST[@]}"; do
-                echo "==> Backing up $site"
-                bench --site "$site" backup
-                echo "==> Migrating $site"
-                bench --site "$site" migrate
-              done
-            fi
+          if [ "$needs_pip" = true ]; then
+            echo "==> Reinstalling app (setup metadata changed)"
+            ./env/bin/pip install -e apps/production_api
+          fi
 
-            if [ "$needs_build" = true ]; then
-              echo "==> Building assets"
-              bench build --app production_api
-            fi
+          if [ "$needs_migrate" = true ]; then
+            IFS=',' read -ra SITE_LIST <<< "$SITES"
+            for site in "${SITE_LIST[@]}"; do
+              echo "==> Backing up $site"
+              bench --site "$site" backup
+              echo "==> Migrating $site"
+              bench --site "$site" migrate
+            done
+          fi
 
-            echo "==> Restarting"
-            bench restart --supervisor
+          if [ "$needs_build" = true ]; then
+            echo "==> Building assets"
+            bench build --app production_api
+          fi
+
+          echo "==> Restarting"
+          bench restart --supervisor
