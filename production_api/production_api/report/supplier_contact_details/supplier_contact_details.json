@@ -1,0 +1,28 @@
+{
+ "add_total_row": 0,
+ "add_translate_data": 0,
+ "columns": [],
+ "creation": "2026-05-07 00:00:00.000000",
+ "disabled": 0,
+ "docstatus": 0,
+ "doctype": "Report",
+ "filters": [],
+ "idx": 0,
+ "is_standard": "Yes",
+ "modified": "2026-05-07 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Production Api",
+ "name": "Supplier Contact Details",
+ "owner": "Administrator",
+ "prepared_report": 0,
+ "query": "SELECT\n    s.name AS `Supplier:Link/Supplier:180`,\n    s.supplier_name AS `Supplier Name::200`,\n    s.pan AS `PAN::120`,\n    s.gstin AS `GSTIN::140`,\n    s.department AS `Department::140`,\n    a.name AS `Address:Link/Address:200`,\n    a.address_line1 AS `Address Line 1::200`,\n    a.address_line2 AS `Address Line 2::200`,\n    a.city AS `City::120`,\n    a.state AS `State::120`,\n    a.pincode AS `Pincode::100`,\n    a.country AS `Country::120`,\n    a.phone AS `Address Phone::140`,\n    a.email_id AS `Email::200`,\n    c.mobile_no AS `Mobile No::140`\nFROM `tabSupplier` s\nLEFT JOIN `tabDynamic Link` adl\n    ON adl.link_doctype = 'Supplier'\n    AND adl.link_name = s.name\n    AND adl.parenttype = 'Address'\nLEFT JOIN `tabAddress` a\n    ON a.name = adl.parent\nLEFT JOIN `tabDynamic Link` cdl\n    ON cdl.link_doctype = 'Supplier'\n    AND cdl.link_name = s.name\n    AND cdl.parenttype = 'Contact'\nLEFT JOIN `tabContact` c\n    ON c.name = cdl.parent\nWHERE s.disabled = 0\nORDER BY s.supplier_name",
+ "ref_doctype": "Supplier",
+ "report_name": "Supplier Contact Details",
+ "report_type": "Query Report",
+ "roles": [
+  {
+   "role": "System Manager"
+  }
+ ],
+ "timeout": 0
+}
