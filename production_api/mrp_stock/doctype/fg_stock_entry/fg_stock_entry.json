@@ -6,7 +6,6 @@
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
-  "lot",
   "dc_number",
   "stock_entry",
   "supplier",
@@ -79,12 +78,6 @@
    "hidden": 1,
    "label": "created sms user",
    "read_only": 1
-  },
-  {
-   "fieldname": "lot",
-   "fieldtype": "Link",
-   "label": "Lot",
-   "options": "Lot"
   },
   {
    "fieldname": "supplier",
