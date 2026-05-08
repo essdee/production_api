@@ -1489,7 +1489,6 @@ def get_consumption_mapping_data(lot, supplier=None):
 	section = []
 	for b in bom_rows:
 		item_att = []
-		
 		r_map = {}
 
 		for r in data_in_bom.get(b.attribute_mapping, []):
@@ -1568,7 +1567,6 @@ def save_consumption_data(supplier, lot, sections):
 
 		for sec in sp_n.sewing_plan_order_details:
 			att_de = get_variant_attr_details(sec.item_variant) or {}
-			
 
 			for s in sections or []:
 				item_n = s.get("item")
@@ -1582,7 +1580,6 @@ def save_consumption_data(supplier, lot, sections):
 
 					match = True
 					saved_f = []
-
 					for att in s.get("item_attributes") or []:
 						att_v = r_values.get(att)
 						if att_v in (None, ""):
@@ -1594,11 +1591,9 @@ def save_consumption_data(supplier, lot, sections):
 						else:
 							att_name = att
 
-
 						if att_type == "item":
 							if att_name not in att_in_sec:
 								continue
-
 							if att_de.get(att_name) != att_v:
 								match = False
 								break
