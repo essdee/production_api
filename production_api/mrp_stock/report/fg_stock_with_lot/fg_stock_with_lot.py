@@ -93,17 +93,17 @@ def get_prev_fg_stock_entries(filters, stock):
 	default_fg_lot = frappe.db.get_single_value("Stock Settings", 'default_fg_lot')
 
 	query = """
-		SELECT 
-			t0.item_variant, SUM(t0.qty) as qty, t1.lot, t1.warehouse, t3.supplier_name as warehouse_name, t2.item, t4.pcs_per_box, t1.creation as entry_date
+		SELECT
+			t0.item_variant, SUM(t0.qty) as qty, t0.lot, t1.warehouse, t3.supplier_name as warehouse_name, t2.item, t4.pcs_per_box, t1.creation as entry_date
 		FROM
 		`tabFG Stock Entry Detail` t0 JOIN
 		 `tabFG Stock Entry` t1 ON t0.parent=t1.name
 		JOIN `tabItem Variant` t2 ON t0.item_variant=t2.name
-		JOIN `tabSupplier` t3 ON t3.name=t1.warehouse 
+		JOIN `tabSupplier` t3 ON t3.name=t1.warehouse
 		JOIN `tabFG Item Master` t4 ON t4.item = t2.item
 		WHERE t1.docstatus=1 AND t0.received_type = %(received_type)s AND t1.warehouse = %(warehouse)s
 		AND t1.posting_date <= %(filter_date)s
-		GROUP BY t2.name, t1.name
+		GROUP BY t2.name, t1.name, t0.lot
 		ORDER BY t1.posting_date DESC, t1.posting_time DESC
 	"""
 

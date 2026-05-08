@@ -166,7 +166,6 @@ def make_fg_ste_from_sms(fg_ste_req):
     if isinstance(fg_ste_req, string_types):
         fg_ste_req = frappe.json.loads(fg_ste_req)
     return create_FG_ste(
-        lot=fg_ste_req['lot'],
         received_by=fg_ste_req['received_by'],
         dc_number=fg_ste_req['dc_number'],
         supplier=fg_ste_req['supplier'],
@@ -189,8 +188,8 @@ def get_fg_stock_entry_details(stock_entry):
 def get_fg_stock_entry_details_list(pageLength, curr_page):
 
     list_items = frappe.get_list("FG Stock Entry",
-                    fields=['name','posting_date', 'posting_time', 'dc_number', 
-                    'lot', 'supplier', 'warehouse', 'received_by', 'comments', 'docstatus', 'customer', 'consumed'], 
+                    fields=['name','posting_date', 'posting_time', 'dc_number',
+                    'supplier', 'warehouse', 'received_by', 'comments', 'docstatus', 'customer', 'consumed'],
                 start=((curr_page-1) * pageLength), limit=pageLength, order_by='creation DESC' )
     
     total_pages = frappe.db.count("FG Stock Entry")
@@ -272,6 +271,7 @@ def get_stock_entry_for_fg_load(stock_entry: str):
             "conversion_factor",
             "rate",
             "received_type",
+            "lot",
             "row_index",
             "table_index",
         ],
