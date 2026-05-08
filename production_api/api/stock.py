@@ -271,6 +271,7 @@ def get_stock_entry_for_fg_load(stock_entry: str):
             "conversion_factor",
             "rate",
             "received_type",
+            "lot",
             "row_index",
             "table_index",
         ],
