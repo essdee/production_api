@@ -3,7 +3,6 @@
 
 import frappe
 from frappe.model.document import Document
-
 from production_api.production_api.doctype.item.item import get_or_create_variant
 from production_api.utils import get_variant_attr_details, update_if_string_instance
 from production_api.mrp_stock.doctype.stock_summary.stock_summary import get_variant_attr_values
