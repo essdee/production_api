@@ -76,12 +76,11 @@ def make_sle_entries(sle_details):
 	make_sl_entries(sle_details)
 
 @frappe.whitelist()
-def create_FG_ste(lot, received_by, dc_number, warehouse, posting_date, posting_time, items_list, comments, created_user, consumed = False, customer = None, supplier = None, stock_entry = None):
+def create_FG_ste(received_by, dc_number, warehouse, posting_date, posting_time, items_list, comments, created_user, consumed = False, customer = None, supplier = None, stock_entry = None):
 	if isinstance(items_list, string_types):
 		items_list = frappe.json.loads(items_list)
 	received_type =frappe.db.get_single_value("Stock Settings", "default_received_type")
 	doc = frappe.new_doc("FG Stock Entry")
-	doc.set('lot', lot)
 	doc.set('received_by', received_by)
 	doc.set('dc_number', dc_number)
 	doc.set('supplier', supplier)
@@ -94,6 +93,7 @@ def create_FG_ste(lot, received_by, dc_number, warehouse, posting_date, posting_
 		stock_details = get_uom_details(i['item_variant'], i['uom'], i['qty'])
 		doc_items.append({
 			"item_variant" : i['item_variant'],
+			"lot" : i.get('lot'),
 			"received_type":received_type,
 			"qty" : i['qty'],
 			"stock_entry_quantity": flt(i.get('stock_entry_quantity') or 0),
@@ -123,6 +123,7 @@ def get_stock_entry_detail(stock_entry):
 	for i in doc.get('items'):
 		item = {
 			"item_variant" : i.item_variant,
+			"lot" : i.lot,
 			"qty" : i.qty,
 			"row" : i.row,
 			"col" : i.col,
@@ -150,7 +151,6 @@ def get_stock_entry_detail(stock_entry):
 		"posting_time" : doc.posting_time,
 		"user" : doc.created_sms_user,
 		"dc_number" : doc.dc_number,
-		"lot" : doc.lot,
 		"items" : items_list,
 		"created_at" : doc.creation,
 		"docstatus" : doc.docstatus,
@@ -197,7 +197,7 @@ def get_inward_outward_entry(item, warehouselist, start_date = None, end_date = 
 		`tabFG Stock Entry`.supplier as supplier,
 		`tabFG Stock Entry`.warehouse as warehouse,
 		`tabFG Stock Entry`.received_by as received_by,
-		`tabFG Stock Entry`.lot as lot,
+		`tabFG Stock Entry Detail`.lot as lot,
 		`tabFG Stock Entry`.dc_number as dc_number,
 		`tabFG Stock Entry Detail`.item_variant as item_variant,
 		`tabFG Stock Entry Detail`.uom as uom,

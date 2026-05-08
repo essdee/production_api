@@ -6,6 +6,7 @@
  "engine": "InnoDB",
  "field_order": [
   "item_variant",
+  "lot",
   "qty",
   "stock_entry_quantity",
   "uom",
@@ -94,6 +95,13 @@
    "label": "Stock Entry Qty",
    "no_copy": 1,
    "read_only": 1
+  },
+  {
+   "fieldname": "lot",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Lot",
+   "options": "Lot"
   }
  ],
  "index_web_pages_for_search": 1,
