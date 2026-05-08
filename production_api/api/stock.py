@@ -277,7 +277,16 @@ def get_stock_entry_for_fg_load(stock_entry: str):
         ],
         order_by="idx asc",
     )
-    return {"stock_entry": stock_entry, "items": rows}
+    parent = frappe.db.get_value(
+        "Stock Entry", stock_entry,
+        ["from_warehouse", "to_warehouse"], as_dict=True,
+    ) or {}
+    return {
+        "stock_entry": stock_entry,
+        "from_warehouse": parent.get("from_warehouse"),
+        "to_warehouse": parent.get("to_warehouse"),
+        "items": rows,
+    }
 
 
 @frappe.whitelist()
