@@ -123,6 +123,98 @@ def update_if_string_instance(obj):
 
 	return obj
 
+def _normalize_multiselect_filter(value):
+	if isinstance(value, string_types):
+		try:
+			value = json.loads(value)
+		except ValueError:
+			value = [value]
+
+	if not value:
+		return []
+
+	if isinstance(value, dict):
+		value = list(value.values())
+	elif not isinstance(value, (list, tuple, set)):
+		value = [value]
+
+	normalized = []
+	for row in value:
+		if isinstance(row, dict):
+			row = row.get("value") or row.get("name") or row.get("label")
+		if row is None:
+			continue
+
+		row = str(row).strip()
+		if row and row not in normalized:
+			normalized.append(row)
+
+	return normalized
+
+@frappe.whitelist()
+def get_dispatch_percentage_report(percentage=None, lot_list=None, item_list=None):
+	target_percentage = flt(percentage)
+	if target_percentage <= 0:
+		frappe.throw("Percentage must be greater than 0")
+
+	lot_list = _normalize_multiselect_filter(lot_list)
+	item_list = _normalize_multiselect_filter(item_list)
+	conditions = [
+		"fp.docstatus < 2",
+		"log.parenttype = 'Finishing Plan'",
+		"log.parentfield = 'finishing_plan_dispatch_logs'",
+		"ifnull(log.cancelled, 0) = 0",
+		"ifnull(log.dispatch_percentage_before, 0) < %(percentage)s",
+		"ifnull(log.dispatch_percentage_after, 0) >= %(percentage)s",
+	]
+	values = {"percentage": target_percentage}
+
+	if lot_list:
+		conditions.append("fp.lot in %(lot_list)s")
+		values["lot_list"] = tuple(lot_list)
+
+	if item_list:
+		conditions.append("fp.item in %(item_list)s")
+		values["item_list"] = tuple(item_list)
+
+	rows = frappe.db.sql(
+		f"""
+			SELECT
+				log.parent AS finishing_plan,
+				log.stock_entry,
+				log.posting_date AS date,
+				log.posting_time,
+				log.idx,
+				fp.lot,
+				fp.item,
+				log.dispatch_percentage_after AS percentage
+			FROM `tabFinishing Plan Dispatch Log` log
+			INNER JOIN `tabFinishing Plan` fp ON fp.name = log.parent
+			WHERE {" AND ".join(conditions)}
+			ORDER BY log.parent, log.posting_date, log.posting_time, log.idx
+		""",
+		values,
+		as_dict=True,
+	)
+
+	first_crossing_by_plan = {}
+	for row in rows:
+		if row.finishing_plan in first_crossing_by_plan:
+			continue
+
+		first_crossing_by_plan[row.finishing_plan] = {
+			"date": row.date,
+			"stock_entry": row.stock_entry,
+			"lot": row.lot,
+			"item": row.item,
+			"percentage": flt(row.percentage, 3),
+		}
+
+	return sorted(
+		first_crossing_by_plan.values(),
+		key=lambda row: (getdate(row.get("date")), row.get("lot") or "", row.get("item") or ""),
+	)
+
 def get_panel_colour_combination(ipd_doc):
 	indexes = {}
 	comb_details = {}
@@ -689,14 +781,16 @@ def get_daily_production_report(date, location, items=None, lots=None):
 	}
 
 @frappe.whitelist()
-def get_daily_production_summary_report(items=None, lots=None, location=None):
+def get_daily_production_summary_report(items=None, lots=None, location=None, from_date=None, to_date=None):
 	import json as _json
 
 	items_list = _json.loads(items) if items else []
 	lots_list = _json.loads(lots) if lots else []
 
-	if not items_list and not lots_list:
-		frappe.throw("Please select at least one Item or Lot")
+	has_date_range = bool(from_date and to_date)
+
+	if not items_list and not lots_list and not has_date_range:
+		frappe.throw("Please select at least one Item or Lot, or a From Date and To Date range")
 
 	conditions = []
 	values = {}
@@ -707,14 +801,23 @@ def get_daily_production_summary_report(items=None, lots=None, location=None):
 		conditions.append("lot IN %(lots)s")
 		values["lots"] = lots_list
 
-	where_clause = " OR ".join(conditions)
+	where_clause = "(" + " OR ".join(conditions) + ")" if conditions else "1=1"
+
+	extra_filters = ""
+	if from_date:
+		extra_filters += " AND bundle_generated_date >= %(from_date)s"
+		values["from_date"] = getdate(from_date)
+	if to_date:
+		extra_filters += " AND bundle_generated_date <= %(to_date)s"
+		values["to_date"] = getdate(to_date)
 
 	dates = frappe.db.sql(
 		f"""
 			SELECT DISTINCT bundle_generated_date
 			FROM `tabCutting LaySheet`
-			WHERE ({where_clause})
+			WHERE {where_clause}
 			AND bundle_generated_date IS NOT NULL
+			{extra_filters}
 			ORDER BY bundle_generated_date DESC
 		""",
 		values,
@@ -725,10 +828,13 @@ def get_daily_production_summary_report(items=None, lots=None, location=None):
 	for row in dates:
 		d = row["bundle_generated_date"]
 		data = get_daily_production_report(str(d), location, items=items_list or None, lots=lots_list or None)
-		filtered = [
-			entry for entry in data["report_data"]
-			if entry.get("style_no") in items_list or entry.get("lot_no") in lots_list
-		]
+		if items_list or lots_list:
+			filtered = [
+				entry for entry in data["report_data"]
+				if entry.get("style_no") in items_list or entry.get("lot_no") in lots_list
+			]
+		else:
+			filtered = data["report_data"]
 		if filtered:
 			result.append({
 				"date": str(d),
@@ -1466,6 +1572,34 @@ def get_finishing_rework_list(finishing_rework_items):
 		})	
 	return finishing_rework_items_list	
 
+def get_work_order_process_name(wo_list):
+	wo_list = [wo for wo in wo_list if wo]
+	if not wo_list:
+		return None
+	process_detail = frappe.db.sql(
+		"""
+			SELECT process_name
+			FROM `tabWork Order`
+			WHERE name IN %(wo_list)s
+				AND process_name IS NOT NULL
+				AND process_name != ''
+			ORDER BY creation ASC
+			LIMIT 1
+		""", {
+			"wo_list": tuple(wo_list),
+		}, as_dict=True
+	)
+	if process_detail:
+		return process_detail[0]['process_name']
+	return None
+
+def set_process_drilldown(row, details_key, data_keys, process_name):
+	if not process_name:
+		return
+	row.setdefault("process_drilldown", {}).setdefault(details_key, {})
+	for data_key in data_keys:
+		row["process_drilldown"][details_key][data_key] = process_name
+
 def get_variant_attr_details(variant):
 	attr_details = frappe.db.sql(
 		""" SELECT attribute, attribute_value FROM `tabItem Variant Attribute` WHERE parent = %(parent)s 
@@ -1584,6 +1718,7 @@ def get_work_in_progress_report(category, status, lot_list_val, item_list, proce
 			"last_cut_date": None,
 			"sew_sent_date": None,
 			"finishing_inward_date": None,
+			"process_drilldown": {},
 		})
 		## ORDER QTY
 		order_detail = frappe.db.sql(
@@ -1603,6 +1738,13 @@ def get_work_in_progress_report(category, status, lot_list_val, item_list, proce
 
 		cutting, sewing = frappe.get_value("Item Production Detail", ipd, ["cutting_process", "stiching_process"])
 		cut_wo_list = get_process_wo_list(cutting, lot)
+		cutting_process = get_work_order_process_name(cut_wo_list)
+		set_process_drilldown(
+			lot_dict['lot_data'][lot],
+			"cut_details",
+			["cut_qty", "order_to_cut_diff"],
+			cutting_process
+		)
 		total_cut_qty = 0
 		for cut_wo in cut_wo_list:
 			cut_detail = frappe.db.sql(
@@ -1634,6 +1776,14 @@ def get_work_in_progress_report(category, status, lot_list_val, item_list, proce
 
 		## Sewing Sent and Finishing Inward
 		stich_wo_list = get_process_wo_list(sewing, lot)
+		sewing_process = get_work_order_process_name(stich_wo_list)
+		set_process_drilldown(
+			lot_dict['lot_data'][lot],
+			"sewing_details",
+			["sewing_sent", "cut_to_sew_diff", "finishing_inward", "in_sew"],
+			sewing_process
+		)
+		sewing_finishing_inward = 0
 		for wo in stich_wo_list:
 			stich_detail = get_wo_total_delivered_received(wo)
 			if stich_detail:
@@ -1641,6 +1791,7 @@ def get_work_in_progress_report(category, status, lot_list_val, item_list, proce
 				lot_dict['total_data']['sewing_details']['finishing_inward'] += stich_detail[0]['received']
 				lot_dict['lot_data'][lot]['sewing_details']['sewing_sent'] += stich_detail[0]['sent']
 				lot_dict['lot_data'][lot]['sewing_details']['finishing_inward'] += stich_detail[0]['received']
+				sewing_finishing_inward += stich_detail[0]['received']
 		
 		lot_dict['total_data']['sewing_details']['cut_to_sew_diff'] = lot_dict['total_data']['sewing_details']['sewing_sent'] - lot_dict['total_data']['cut_details']['cut_qty']
 		lot_dict['total_data']['sewing_details']['in_sew'] = lot_dict['total_data']['sewing_details']['finishing_inward'] - lot_dict['total_data']['sewing_details']['sewing_sent']
@@ -1663,9 +1814,26 @@ def get_work_in_progress_report(category, status, lot_list_val, item_list, proce
 			lot_dict['lot_data'][lot]['sew_sent_date'] = sql_data[0]['dc_date']
 
 		## Dispatched Qty
-		finishing_plan_list =frappe.get_all("Finishing Plan", filters={
+		finishing_plan_rows = frappe.get_all("Finishing Plan", filters={
 			"lot": lot,
-		}, pluck="name")
+		}, fields=["name", "work_order"])
+		finishing_plan_list = [row['name'] for row in finishing_plan_rows]
+		packing_wos = [row['work_order'] for row in finishing_plan_rows if row.get('work_order')]
+		if not packing_wos:
+			packing_wo_rows = frappe.db.sql(
+				"""
+					SELECT name FROM `tabWork Order`
+					WHERE docstatus = 1 AND lot = %(lot)s AND includes_packing = 1
+				""", {"lot": lot}, as_dict=True
+			) or []
+			packing_wos = [r['name'] for r in packing_wo_rows]
+		packing_process = get_work_order_process_name(packing_wos)
+		set_process_drilldown(
+			lot_dict['lot_data'][lot],
+			"finishing_details",
+			["dispatch", "in_packing", "cut_to_dispatch_diff"],
+			packing_process
+		)
 		part_qty = 1
 		is_set_item, set_attr = frappe.get_value("Item Production Detail", ipd, ["is_set_item", "set_item_attribute"])
 		if is_set_item:
@@ -1704,6 +1872,43 @@ def get_work_in_progress_report(category, status, lot_list_val, item_list, proce
 			if transfer_detail:
 				lot_dict['total_data']['finishing_details']['transferred'] += transfer_detail[0]['transferred']
 				lot_dict['lot_data'][lot]['finishing_details']['transferred'] += transfer_detail[0]['transferred']
+
+		if not finishing_plan_list:
+			if packing_wos:
+				pcs_per_box = frappe.db.get_value("Item Production Detail", ipd, "packing_combo") or 1
+				fin_inward_res = frappe.db.sql(
+					"""
+						SELECT COALESCE(SUM(delivered_quantity), 0) AS qty
+						FROM `tabWork Order Calculated Item`
+						WHERE parent IN %(wos)s
+					""", {"wos": tuple(packing_wos)}, as_dict=True
+				)
+				packing_fin_inward = flt(fin_inward_res[0]['qty']) if fin_inward_res else 0
+				dispatch_res = frappe.db.sql(
+					"""
+						SELECT COALESCE(SUM(gi.quantity), 0) AS qty
+						FROM `tabGoods Received Note Item` gi
+						JOIN `tabGoods Received Note` grn ON gi.parent = grn.name
+						WHERE grn.docstatus = 1 AND grn.against = 'Work Order'
+						  AND grn.against_id IN %(wos)s AND grn.is_return = 0
+					""", {"wos": tuple(packing_wos)}, as_dict=True
+				)
+				grn_qty = flt(dispatch_res[0]['qty']) if dispatch_res else 0
+				dispatch_qty = grn_qty * pcs_per_box * part_qty
+
+				delta = packing_fin_inward - sewing_finishing_inward
+				lot_dict['total_data']['sewing_details']['finishing_inward'] += delta
+				lot_dict['lot_data'][lot]['sewing_details']['finishing_inward'] += delta
+				lot_dict['total_data']['sewing_details']['in_sew'] = (
+					lot_dict['total_data']['sewing_details']['finishing_inward']
+					- lot_dict['total_data']['sewing_details']['sewing_sent']
+				)
+				lot_dict['lot_data'][lot]['sewing_details']['in_sew'] = (
+					lot_dict['lot_data'][lot]['sewing_details']['finishing_inward']
+					- lot_dict['lot_data'][lot]['sewing_details']['sewing_sent']
+				)
+				lot_dict['total_data']['finishing_details']['dispatch'] += dispatch_qty
+				lot_dict['lot_data'][lot]['finishing_details']['dispatch'] += dispatch_qty
 
 		cut_to_dispatch_diff = (
 			lot_dict['total_data']['finishing_details']['dispatch'] +
@@ -1757,6 +1962,13 @@ def get_work_in_progress_report(category, status, lot_list_val, item_list, proce
 			lot_dict['total_data'][details_key].setdefault(diff_val, 0)
 
 			wo_list = get_process_wo_list(process_name, lot)
+			work_order_process = get_work_order_process_name(wo_list)
+			set_process_drilldown(
+				lot_dict['lot_data'][lot],
+				details_key,
+				[sent_val, rec_val, diff_val],
+				work_order_process
+			)
 			if not wo_list:
 				process_exist = frappe.db.sql(
 					f"""
@@ -1791,6 +2003,7 @@ def get_work_in_progress_report(category, status, lot_list_val, item_list, proce
 						lot_dict['diff_columns'].append(against_val)
 					lot_dict['columns'][column_key].setdefault(against_key, against_val)
 					lot_dict['lot_data'][lot][details_key].setdefault(against_val, 0)
+					set_process_drilldown(lot_dict['lot_data'][lot], details_key, [against_val], work_order_process)
 					lot_dict['lot_data'][lot][details_key][against_val] += (lot_dict['lot_data'][lot][details_key][rec_val] - lot_dict['lot_data'][lot]['cut_details']["cut_qty"])
 					lot_dict['total_data'][details_key].setdefault(against_val, 0)
 					lot_dict['total_data'][details_key][against_val] += (lot_dict['lot_data'][lot][details_key][rec_val] - lot_dict['lot_data'][lot]['cut_details']["cut_qty"])
@@ -1802,6 +2015,7 @@ def get_work_in_progress_report(category, status, lot_list_val, item_list, proce
 					lot_dict['columns'][column_key].setdefault(against_key, against_val)
 					lot_dict['total_data'][details_key].setdefault(against_val, 0)
 					lot_dict['lot_data'][lot][details_key].setdefault(against_val, 0)
+					set_process_drilldown(lot_dict['lot_data'][lot], details_key, [against_val], work_order_process)
 					prev_key = last_cut_process + " Received"
 					prev_val = prev_key.lower().replace(" ", "_")
 					lot_dict['lot_data'][lot][details_key][against_val] += (lot_dict['lot_data'][lot][details_key][rec_val] - lot_dict['lot_data'][lot][details_key][prev_val])
@@ -1816,6 +2030,7 @@ def get_work_in_progress_report(category, status, lot_list_val, item_list, proce
 					lot_dict['columns'][column_key].setdefault(against_key, against_val)
 					lot_dict['lot_data'][lot][details_key].setdefault(against_val, 0)
 					lot_dict['total_data'][details_key].setdefault(against_val, 0)
+					set_process_drilldown(lot_dict['lot_data'][lot], details_key, [against_val], work_order_process)
 					lot_dict['total_data'][details_key][against_val] += (lot_dict['lot_data'][lot][details_key][rec_val] - lot_dict['lot_data'][lot]['sewing_details']["finishing_inward"])
 					lot_dict['lot_data'][lot][details_key][against_val] += (lot_dict['lot_data'][lot][details_key][rec_val] - lot_dict['lot_data'][lot]['sewing_details']["finishing_inward"])
 				else:
@@ -1826,6 +2041,7 @@ def get_work_in_progress_report(category, status, lot_list_val, item_list, proce
 					lot_dict['columns'][column_key].setdefault(against_key, against_val)
 					lot_dict['lot_data'][lot][details_key].setdefault(against_val, 0)
 					lot_dict['total_data'][details_key].setdefault(against_val, 0)
+					set_process_drilldown(lot_dict['lot_data'][lot], details_key, [against_val], work_order_process)
 					prev_key = last_piece_process + " Received"
 					prev_val = prev_key.lower().replace(" ", "_")
 					lot_dict['total_data'][details_key][against_val] += (lot_dict['lot_data'][lot][details_key][rec_val] - lot_dict['lot_data'][lot][details_key][prev_val])

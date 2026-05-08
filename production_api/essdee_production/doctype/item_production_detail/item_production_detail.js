@@ -202,7 +202,11 @@ frappe.ui.form.on("Item Production Detail", {
 						method: "production_api.essdee_production.doctype.item_production_detail.item_production_detail.revert_ipd_approval",
 						args: { doc_name: frm.doc.name },
 						callback: function () {
-							frappe.show_alert({ message: __("Approval Reverted"), indicator: "orange" });
+							frappe.msgprint({
+								title: __("Success"),
+								message: __("IPD Reverted Successfully"),
+								indicator: "green",
+							});
 							frm.reload_doc();
 						}
 					});
@@ -318,12 +322,11 @@ frappe.ui.form.on("Item Production Detail", {
 			// Disable all Vue component HTML wrappers
 			let html_fields = [
 				"item_attribute_list_values_html", "dependent_attribute_details_html",
-				"bom_attribute_mapping_html", "set_items_html", "stiching_items_html",
+				"set_items_html", "stiching_items_html",
 				"cutting_items_html", "cutting_cloths_html", "cloth_accessories_html",
 				"stiching_accessory_html", "accessory_clothtype_combination_html",
-				"emblishment_details_html", "select_attributes_html",
-				"select_cloths_attribute_html", "select_cloth_accessory_html",
-				"bundle_group_html"
+				"select_attributes_html","select_cloths_attribute_html", 
+				"select_cloth_accessory_html", "bundle_group_html"
 			];
 			html_fields.forEach(f => {
 				if (frm.fields_dict[f]) {
@@ -337,8 +340,7 @@ frappe.ui.form.on("Item Production Detail", {
 			// Make all child tables read-only
 			let tables = [
 				"item_attributes", "item_bom", "packing_attribute_details",
-				"stiching_item_details", "cloth_detail", "ipd_processes",
-				"cutting_marker_groups"
+				"stiching_item_details", "cloth_detail", "cutting_marker_groups"
 			];
 			tables.forEach(t => {
 				frm.set_df_property(t, "read_only", 1);

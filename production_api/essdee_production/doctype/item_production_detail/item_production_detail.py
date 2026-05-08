@@ -632,14 +632,11 @@ def get_calculated_bom(item_production_detail, items, lot_name, process_name = N
 				bom[key][variant] = val
 	if process_name:
 		return bom
-	
 	for key, val in bom.items():
 		for k,v in val.items():
 			if key in bom_summary:
 				bom_summary[key][5]+=v[0]
-
-			bom_items.append({'item_name': k,'uom':v[2],'process_name':v[1],'required_qty':v[0]})
-	
+			bom_items.append({'item_name': k,'uom':v[2],'process_name':v[1],'required_qty':v[0]})	
 	lot_doc.set('bom_summary_json',bom_summary)
 	lot_doc.set('bom_summary', bom_items)
 	lot_doc.last_calculated_time = now_datetime()
@@ -727,8 +724,9 @@ def get_bom_combination(bom_items, process_name):
 						c[item.index]["value"] = c[item.index]["value"]|{item.attribute:item.attribute_value}	
 					c[item.index]["qty_of_bom"] = item.quantity	
 				else:
-					c[item.index] = {"key":{},"value":{}, "qty_of_bom": 0}
-					c[item.index]["key"] = {item.attribute:item.attribute_value}	
+					c[item.index] = {"key":{},"value":{}, "qty_of_bom": item.quantity or 0}
+					if item.type == 'item':
+						c[item.index]["key"] = {item.attribute:item.attribute_value}
 			bom_combination[bom_item.item][idx] = bom_combination[bom_item.item][idx] | c
 	return bom_combination
 

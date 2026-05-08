@@ -10,6 +10,7 @@
   "dependent_attribute_value",
   "qty_of_product",
   "qty_of_bom_item",
+  "uom",
   "based_on_attribute_mapping",
   "attribute_mapping"
  ],
@@ -42,6 +43,14 @@
    "fieldtype": "Link",
    "label": "Attribute Mapping",
    "options": "Item BOM Attribute Mapping",
+   "read_only": 1
+  },
+  {
+   "fetch_from": "item.default_unit_of_measure",
+   "fieldname": "uom",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "UOM",
    "read_only": 1
   },
   {

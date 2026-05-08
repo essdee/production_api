@@ -3,6 +3,7 @@
 
 import frappe
 from itertools import groupby
+from frappe.utils import flt
 from frappe.model.document import Document
 from production_api.production_api.doctype.supplier.supplier import get_primary_address
 from production_api.production_api.doctype.item.item import get_or_create_variant, get_attribute_details
@@ -52,6 +53,58 @@ class FinishingPlan(Document):
 		self.set_onload("ocr_details", {
 			"ocr_data":ocr_details,
 			"primary_values": data['primary_values']
+		})
+		self.set_onload("finishing_rejection_data", self.get_rejection_details(
+			primary_values=data['primary_values'],
+			is_set_item=data['is_set_item'],
+			set_attr=data['set_attr'],
+		))
+		if self.finishing_old_lot_items:
+			self.set_onload("old_lot_data", _reshape_old_lot_rows_for_ui(self))
+		else:
+			self.set_onload("old_lot_data", {"data": [], "colours": []})
+		primary_values = data['primary_values'] if data else []
+
+		def _build_matrix(rows, counterpart_fp_field, counterpart_lot_field, lp_field, lps_field):
+			# group by (fp, lot, colour, part) -> {lp: {size: qty}, lps: {size: qty}, lts: set}
+			groups = {}
+			for r in rows:
+				key = (getattr(r, counterpart_fp_field), getattr(r, counterpart_lot_field), r.colour, r.part or "")
+				g = groups.setdefault(key, {
+					"fp": getattr(r, counterpart_fp_field),
+					"lot": getattr(r, counterpart_lot_field),
+					"colour": r.colour,
+					"part": r.part,
+					"lp": {s: 0 for s in primary_values},
+					"lps": {s: 0 for s in primary_values},
+					"lts": [],
+					"lp_total": 0,
+					"lps_total": 0,
+				})
+				if r.size in g["lp"]:
+					g["lp"][r.size] += flt(getattr(r, lp_field))
+					g["lps"][r.size] += flt(getattr(r, lps_field))
+					g["lp_total"] += flt(getattr(r, lp_field))
+					g["lps_total"] += flt(getattr(r, lps_field))
+				if r.lot_transfer and r.lot_transfer not in g["lts"]:
+					g["lts"].append(r.lot_transfer)
+			return list(groups.values())
+
+		self.set_onload("old_lot_given_matrix", {
+			"primary_values": primary_values,
+			"groups": _build_matrix(
+				self.get("finishing_old_lot_given_items") or [],
+				"destination_fp", "destination_lot",
+				"loose_piece_given", "loose_piece_set_given",
+			),
+		})
+		self.set_onload("old_lot_received_matrix", {
+			"primary_values": primary_values,
+			"groups": _build_matrix(
+				self.get("finishing_old_lot_received_items") or [],
+				"source_fp", "source_lot",
+				"loose_piece_taken", "loose_piece_set_taken",
+			),
 		})
 
 	def get_inward_details(self):
@@ -181,7 +234,74 @@ class FinishingPlan(Document):
 			finishing_rework["data"][colour]["values"][size]["rejected"] += item.rejected_qty
 
 		return finishing_rework
-	
+
+	def get_rejection_details(self, primary_values=None, is_set_item=None, set_attr=None):
+		ipd = frappe.get_value("Lot", self.lot, "production_detail")
+		ipd_fields = ["is_set_item", "packing_attribute", "primary_item_attribute", "set_item_attribute"]
+		ipd_is_set_item, pack_attr, primary_attr, ipd_set_attr = frappe.get_value("Item Production Detail", ipd, ipd_fields)
+		if is_set_item is None:
+			is_set_item = ipd_is_set_item
+		if set_attr is None:
+			set_attr = ipd_set_attr
+		if primary_values is None:
+			primary_values = get_ipd_primary_values(ipd)
+
+		rework_item_names = frappe.get_all(
+			"GRN Rework Item", filters={"lot": self.lot}, pluck="name"
+		)
+
+		data = {}
+		grand_rejection_total = 0
+
+		for name in rework_item_names:
+			doc = frappe.get_doc("GRN Rework Item", name)
+			for row in doc.grn_rework_item_details:
+				rework_qty = row.quantity or 0
+				rejection_qty = row.rejection or 0
+				if rework_qty == 0 and rejection_qty == 0:
+					continue
+
+				received_type = row.received_type or "Unspecified"
+
+				set_comb = update_if_string_instance(row.set_combination)
+				if not isinstance(set_comb, dict):
+					set_comb = {}
+				major_colour = set_comb.get("major_colour", "")
+				attr_details = get_variant_attr_details(row.item_variant)
+				size = attr_details.get(primary_attr)
+				part = None
+				if is_set_item:
+					variant_colour = attr_details.get(pack_attr, "")
+					part = attr_details.get(set_attr)
+					colour = f"{variant_colour} ({major_colour}) @ " + (part or "")
+				else:
+					colour = major_colour or attr_details.get(pack_attr, "")
+
+				data.setdefault(received_type, {})
+				data[received_type].setdefault(colour, {
+					"part": part,
+					"rework": {"values": {}, "total": 0},
+					"rejection": {"values": {}, "total": 0},
+				})
+				block = data[received_type][colour]
+				block["rework"]["values"].setdefault(size, 0)
+				block["rework"]["values"][size] += rework_qty
+				block["rework"]["total"] += rework_qty
+
+				block["rejection"]["values"].setdefault(size, 0)
+				block["rejection"]["values"][size] += rejection_qty
+				block["rejection"]["total"] += rejection_qty
+
+				grand_rejection_total += rejection_qty
+
+		return {
+			"primary_values": primary_values,
+			"data": data,
+			"grand_rejection_total": grand_rejection_total,
+			"is_set_item": is_set_item,
+			"set_attr": set_attr,
+		}
+
 	def before_save(self):
 		finishing_plans = get_finishing_plan_dict(self)
 		for key in finishing_plans:
@@ -356,6 +476,7 @@ def get_fp_ocr_details(doc_name):
 		"get_rework": {},
 		"get_not_received": {},
 		"get_unaccountable": {},
+		"get_order_to_dispatch": {},
 	}
 	def get_total(part_value, ocr_data):
 		return ((ocr_data[part_value]['packed_box_qty'] +
@@ -424,6 +545,12 @@ def get_fp_ocr_details(doc_name):
 			"val2": ocr_data[part_value]['sewing_received'] - ocr_data[part_value]['cutting']
 		}
 
+	def get_order_to_dispatch(part_value, ocr_data):
+		return {
+			"val1": ocr_data[part_value].get('order_qty', 0),
+			"val2": ocr_data[part_value]['dispatched_piece'],
+		}
+
 	def get_unaccountable(part_value, ocr_data):
 		return {
 			"val1": ocr_data[part_value]['cutting'] +
@@ -470,6 +597,7 @@ def get_fp_ocr_details(doc_name):
 		d["get_rework"].setdefault(part_value, get_rework(part_value, ocr_data))
 		d["get_not_received"].setdefault(part_value, get_not_received(part_value, ocr_data))
 		d["get_unaccountable"].setdefault(part_value, get_unaccountable(part_value, ocr_data))
+		d["get_order_to_dispatch"].setdefault(part_value, get_order_to_dispatch(part_value, ocr_data))
 		d['get_total_difference'].setdefault(part_value, {})
 		for colour in ocr_data[part_value]['data']:
 			for size in ocr_data[part_value]['data'][colour]['values']:
@@ -508,6 +636,7 @@ def get_ocr_details(doc):
 			"old_lot": 0,
 			"ironing_excess": 0,
 			"total_inward": 0,
+			"order_qty": 0,
 		})
 		size = attr_details[primary_attr]
 		ocr_data[part_value]['total'].setdefault(size, {
@@ -526,6 +655,7 @@ def get_ocr_details(doc):
 			"old_lot": 0,
 			"ironing_excess": 0,
 			"total_inward": 0,
+			"order_qty": 0,
 		})
 		
 		set_comb = update_if_string_instance(row.set_combination)
@@ -599,6 +729,54 @@ def get_ocr_details(doc):
 			ocr_data[par]['total'][size]['dispatched_box'] += row.dispatched
 			ocr_data[par]['total'][size]['dispatched_piece'] += (row.dispatched * doc.pieces_per_box)	
 	
+	major_part = frappe.db.get_value("Item Production Detail", ipd, "major_attribute_value") if is_set_item else None
+
+	def _colour_key(attr_details, set_combination_str, part):
+		colour = attr_details.get(pack_attr)
+		if is_set_item and part != major_part:
+			set_comb = update_if_string_instance(set_combination_str) or {}
+			major_col = set_comb.get("major_colour") if isinstance(set_comb, dict) else None
+			if major_col:
+				colour = f"{colour} ({major_col})"
+		return colour
+
+	def _bump_loose(part_key, colour, size, lp_delta, lps_delta):
+		if part_key not in ocr_data:
+			return
+		if colour not in ocr_data[part_key]['data']:
+			return
+		if size not in ocr_data[part_key]['data'][colour]['values']:
+			return
+		cell = ocr_data[part_key]['data'][colour]['values'][size]
+		cell['loose_piece'] += lp_delta
+		cell['loose_piece_set'] += lps_delta
+		ocr_data[part_key]['data'][colour]['colour_total']['loose_piece'] += lp_delta
+		ocr_data[part_key]['data'][colour]['colour_total']['loose_piece_set'] += lps_delta
+		ocr_data[part_key]['total'][size]['loose_piece'] += lp_delta
+		ocr_data[part_key]['total'][size]['loose_piece_set'] += lps_delta
+		ocr_data[part_key]['loose_piece'] += lp_delta
+		ocr_data[part_key]['loose_piece_set'] += lps_delta
+
+	# GIVEN transfers out -> subtract from source FP's loose counts
+	for g in doc.get("finishing_old_lot_given_items") or []:
+		if not g.item_variant:
+			continue
+		attr_details = get_variant_attr_details(g.item_variant)
+		size_g = attr_details.get(primary_attr)
+		part_g = attr_details.get(set_attr) if is_set_item else "Item"
+		colour_g = _colour_key(attr_details, g.set_combination, part_g)
+		_bump_loose(part_g, colour_g, size_g, -flt(g.loose_piece_given), -flt(g.loose_piece_set_given))
+
+	# RECEIVED transfers in -> add to destination FP's loose counts
+	for t in doc.get("finishing_old_lot_received_items") or []:
+		if not t.item_variant:
+			continue
+		attr_details = get_variant_attr_details(t.item_variant)
+		size_t = attr_details.get(primary_attr)
+		part_t = attr_details.get(set_attr) if is_set_item else "Item"
+		colour_t = _colour_key(attr_details, t.set_combination, part_t)
+		_bump_loose(part_t, colour_t, size_t, flt(t.loose_piece_taken), flt(t.loose_piece_set_taken))
+
 	for row in doc.finishing_plan_reworked_details:
 		set_comb = update_if_string_instance(row.set_combination)
 		major_colour = set_comb["major_colour"]
@@ -622,7 +800,28 @@ def get_ocr_details(doc):
 		ocr_data[part_value]['rejected'] += row.rejected_qty
 		ocr_data[part_value]['pending'] += (row.quantity - row.reworked_quantity - row.rejected_qty)
 
-	return ocr_data	
+	lot_doc = frappe.get_cached_doc("Lot", doc.lot)
+	for row in lot_doc.lot_order_details:
+		if not row.item_variant:
+			continue
+		attr_details = get_variant_attr_details(row.item_variant)
+		size = attr_details.get(primary_attr)
+		part_key = "Item"
+		if is_set_item:
+			part_key = attr_details.get(set_attr)
+		if part_key not in ocr_data:
+			continue
+		ocr_data[part_key]['total'].setdefault(size, {
+			"cutting_qty": 0, "dc_qty": 0, "transferred": 0, "packed_box": 0,
+			"packed_box_qty": 0, "dispatched_box": 0, "dispatched_piece": 0,
+			"rejected": 0, "loose_piece": 0, "loose_piece_set": 0,
+			"pending": 0, "sewing_received": 0, "old_lot": 0,
+			"ironing_excess": 0, "total_inward": 0, "order_qty": 0,
+		})
+		ocr_data[part_key]['order_qty'] += flt(row.quantity)
+		ocr_data[part_key]['total'][size]['order_qty'] += flt(row.quantity)
+
+	return ocr_data
 
 @frappe.whitelist()
 def fetch_rejected_quantity(doc_name):
@@ -1008,83 +1207,169 @@ def cancel_document(doctype, docname):
 	doc.cancel()
 
 @frappe.whitelist()
-def fetch_from_old_lot(lot, item, location):
-	from production_api.mrp_stock.report.item_balance.item_balance import execute as get_item_balance
-	filters = {
-		"remove_zero_balance_item":1,
-		"item": item,
-		"warehouse": location
-	}
-	data = get_item_balance(filters)[1]
-	ipd = frappe.get_value("Lot", lot, "production_detail")
+def fetch_from_old_lot(doc_name):
+	"""Fetch leftover pieces from sibling Finishing Plans whose fp_status='OCR Completed' for the same item.
+
+	Replaces the earlier stock-based fetch. The fetched rows are persisted to
+	finishing_old_lot_items so they survive reload.
+	"""
+	doc = frappe.get_doc("Finishing Plan", doc_name)
+	if doc.fp_status == "OCR Completed":
+		frappe.throw("Fetch Items is disabled for Finishing Plans in OCR Completed status.")
+
+	ipd = frappe.get_value("Lot", doc.lot, "production_detail")
 	ipd_doc = frappe.get_doc("Item Production Detail", ipd)
-	old_lot_data = {} 
-	default_type = frappe.db.get_single_value("Stock Settings", "default_received_type")
-	for d in data:
-		if d['lot'] != lot and d['received_type'] == default_type:
-			if pack_stage_variant(d['item_variant'], ipd_doc.dependent_attribute, ipd_doc.pack_in_stage):
-				key = (d['lot'], d['warehouse'], d['warehouse_name'])
-				old_lot_data.setdefault(key, {})
-				old_lot_data[key].setdefault(d['item_variant'], 0)
-				old_lot_data[key][d['item_variant']] += d['bal_qty']
+
+	open_fps = frappe.get_all(
+		"Finishing Plan",
+		filters={
+			"item": doc.item,
+			"name": ("!=", doc.name),
+			"fp_status": ("not in", ["OCR Completed", "P&L Submitted"]),
+		},
+		fields=["name", "lot", "fp_status"],
+	)
+	if open_fps:
+		rows = "".join(
+			f"<tr><td>{frappe.utils.escape_html(fp.name)}</td>"
+			f"<td>{frappe.utils.escape_html(fp.lot)}</td>"
+			f"<td>{frappe.utils.escape_html(fp.fp_status)}</td></tr>"
+			for fp in open_fps
+		)
+		frappe.throw(
+			"Close Other Finishing Plan's to fetch the Items.<br><br>"
+			"<table class='table table-bordered'>"
+			"<thead><tr><th>Finishing Plan</th><th>Lot</th><th>Status</th></tr></thead>"
+			f"<tbody>{rows}</tbody></table>",
+			title="Other Finishing Plans Still Open",
+		)
+
+	sibling_fps = frappe.get_all(
+		"Finishing Plan",
+		filters={"item": doc.item, "fp_status": "OCR Completed", "name": ("!=", doc.name)},
+		pluck="name",
+	)
+
+	# restrict to colours that actually belong to the CURRENT lot's FP
+	current_colours = set()
+	for row in doc.finishing_plan_details:
+		attrs = get_variant_attr_details(row.item_variant)
+		c = attrs.get(ipd_doc.packing_attribute)
+		if c:
+			current_colours.add(c)
+
+	# aggregate loose_piece (return_qty) and loose_piece_set (pack_return_qty) per (fp, lot, variant)
+	aggregated = {}
+	for sp_name in sibling_fps:
+		sp_doc = frappe.get_doc("Finishing Plan", sp_name)
+		wh_name = frappe.db.get_value("Supplier", sp_doc.delivery_location, "supplier_name") or sp_doc.delivery_location
+		# subtract quantities already given to other FPs from this source FP (per variant)
+		given_loose = {}
+		given_loose_set = {}
+		for g in sp_doc.get("finishing_old_lot_given_items") or []:
+			given_loose[g.item_variant] = given_loose.get(g.item_variant, 0) + flt(g.loose_piece_given)
+			given_loose_set[g.item_variant] = given_loose_set.get(g.item_variant, 0) + flt(g.loose_piece_set_given)
+		for row in sp_doc.finishing_plan_details:
+			lp = flt(row.return_qty) - given_loose.get(row.item_variant, 0)
+			lps = flt(row.pack_return_qty) - given_loose_set.get(row.item_variant, 0)
+			if lp <= 0 and lps <= 0:
+				continue
+			# filter to colours that exist in the CURRENT lot's FP
+			src_attrs = get_variant_attr_details(row.item_variant)
+			if src_attrs.get(ipd_doc.packing_attribute) not in current_colours:
+				continue
+			key = (sp_name, sp_doc.lot, sp_doc.delivery_location, wh_name, row.item_variant)
+			prev = aggregated.get(key, (0.0, 0.0))
+			aggregated[key] = (prev[0] + max(lp, 0), prev[1] + max(lps, 0))
+
+	# Persist into child table (replace previous rows)
+	doc.set("finishing_old_lot_items", [])
+	primary_values = get_ipd_primary_values(ipd)
+	for (sp_name, src_lot, warehouse, wh_name, variant), (loose_bal, loose_set_bal) in aggregated.items():
+		attrs = get_variant_attr_details(variant)
+		size = attrs.get(ipd_doc.primary_item_attribute)
+		colour = attrs.get(ipd_doc.packing_attribute)
+		part = attrs.get(ipd_doc.set_item_attribute) if ipd_doc.is_set_item else None
+		set_value = None
+		if ipd_doc.is_set_item:
+			if ipd_doc.major_attribute_value == part:
+				set_value = colour
+		else:
+			set_value = colour
+		doc.append("finishing_old_lot_items", {
+			"source_fp": sp_name,
+			"source_lot": src_lot,
+			"warehouse": warehouse,
+			"warehouse_name": wh_name,
+			"item_variant": variant,
+			"colour": colour,
+			"part": part,
+			"set_combination": set_value,
+			"size": size,
+			"balance_loose_piece": loose_bal,
+			"balance_loose_piece_set": loose_set_bal,
+			"transfer_loose_piece": 0,
+			"transfer_loose_piece_set": 0,
+		})
+	doc.save(ignore_permissions=True)
+
+	return _reshape_old_lot_rows_for_ui(doc, ipd_doc)
+
+
+def _reshape_old_lot_rows_for_ui(doc, ipd_doc=None):
+	"""Turn the persisted finishing_old_lot_items rows into the matrix structure the Vue component expects."""
+	if ipd_doc is None:
+		ipd = frappe.get_value("Lot", doc.lot, "production_detail")
+		ipd_doc = frappe.get_doc("Item Production Detail", ipd)
+	primary_values = get_ipd_primary_values(ipd_doc.name)
+	groups = {}
+	for r in doc.finishing_old_lot_items:
+		key = (r.source_lot, r.warehouse, r.warehouse_name)
+		groups.setdefault(key, {"data": {}, "total": {}})
+		old_lot_inward = groups[key]
+		colour = r.colour
+		old_lot_inward["data"].setdefault(colour, {
+			"values": {},
+			"part": r.part,
+			"colour": colour,
+			"set_combination": r.set_combination,
+			"colour_total": {
+				"balance_loose_piece": 0, "balance_loose_piece_set": 0,
+				"transfer_loose_piece": 0, "transfer_loose_piece_set": 0,
+			},
+		})
+		for s in primary_values:
+			old_lot_inward["data"][colour]["values"].setdefault(s, {
+				"balance_loose_piece": 0, "balance_loose_piece_set": 0,
+				"transfer_loose_piece": 0, "transfer_loose_piece_set": 0,
+			})
+			old_lot_inward["total"].setdefault(s, 0)
+		if r.size in primary_values:
+			cell = old_lot_inward["data"][colour]["values"][r.size]
+			cell["balance_loose_piece"] += flt(r.balance_loose_piece)
+			cell["balance_loose_piece_set"] += flt(r.balance_loose_piece_set)
+			cell["transfer_loose_piece"] += flt(r.transfer_loose_piece)
+			cell["transfer_loose_piece_set"] += flt(r.transfer_loose_piece_set)
+			ct = old_lot_inward["data"][colour]["colour_total"]
+			ct["balance_loose_piece"] += flt(r.balance_loose_piece)
+			ct["balance_loose_piece_set"] += flt(r.balance_loose_piece_set)
+			ct["transfer_loose_piece"] += flt(r.transfer_loose_piece)
+			ct["transfer_loose_piece_set"] += flt(r.transfer_loose_piece_set)
+			old_lot_inward["total"][r.size] += flt(r.balance_loose_piece) + flt(r.balance_loose_piece_set)
 
 	data = []
-	primary_values = get_ipd_primary_values(ipd)
-	for key in old_lot_data:
-		lot_value, warehouse, warehouse_name = key
-		old_lot_inward = {"data": {}, "total": {}}
-		for variant in old_lot_data[key]:	
-			attr_details = get_variant_attr_details(variant)
-			size = attr_details[ipd_doc.primary_item_attribute]
-			part = None
-			colour = attr_details[ipd_doc.packing_attribute]	
-			if ipd_doc.is_set_item:
-				part = attr_details[ipd_doc.set_item_attribute]
-
-			set_value = None
-			if ipd_doc.is_set_item:
-				if ipd_doc.major_attribute_value == part:
-					set_value = colour
-			else:		
-				set_value = colour
-			old_lot_inward["data"].setdefault(colour, {
-				"values": {},
-				"part": part,
-				"colour": attr_details[ipd_doc.packing_attribute],
-				"set_combination": set_value,
-				"colour_total": {
-					"balance": 0, "transfer": 0
-				},
-			})
-			for size1 in primary_values:
-				old_lot_inward["data"][colour]["values"].setdefault(size1, {
-					"balance": 0, "transfer": 0
-				})
-				old_lot_inward["total"].setdefault(size1, 0)
-			
-			if size in primary_values:
-				qty = old_lot_data[key][variant]
-				old_lot_inward["data"][colour]["colour_total"]["balance"] += qty
-				old_lot_inward["data"][colour]["values"][size]["balance"] += qty
-				old_lot_inward['total'][size] += qty
-
+	for (src_lot, warehouse, wh_name), old_lot_inward in groups.items():
 		data.append({
-			"lot": lot_value,
+			"lot": src_lot,
 			"warehouse": warehouse,
-			"warehouse_name": warehouse_name,
+			"warehouse_name": wh_name,
 			"primary_values": primary_values,
 			"old_lot_inward": old_lot_inward,
 			"is_set_item": ipd_doc.is_set_item,
 			"set_attr": ipd_doc.set_item_attribute,
 		})
-	colours = []
-	for row in ipd_doc.packing_attribute_details:
-		colours.append(row.attribute_value)
-
-	return {
-		"data": data,
-		"colours": colours
-	}	
+	colours = [row.attribute_value for row in ipd_doc.packing_attribute_details]
+	return {"data": data, "colours": colours}
 
 def pack_stage_variant(variant, dept_attr, pack_in_stage):
 	attr_details = get_variant_attr_details(variant)
@@ -1098,39 +1383,56 @@ def create_lot_transfer(data, item_name, ipd, lot, doc_name):
 	ipd_fields = ["primary_item_attribute", "packing_attribute", "is_set_item", "set_item_attribute", "dependent_attribute", "stiching_out_stage", "major_attribute_value"]
 	primary, pack_attr, is_set, set_attr, dept_attr, stich_out, major_part = frappe.get_value("Item Production Detail", ipd, ipd_fields)
 	items = []
+	# split_contributions: used after LT is submitted to update source FP's "given" table + stamp destination rows
+	# key: (variant, set_comb) -> {loose_piece, loose_piece_set, colour, part, size, source_fp, source_lot}
+	split_contributions = []
 	row_index = 0
 	uom = frappe.get_value("Item", item_name, "default_unit_of_measure")
 	received_type = frappe.db.get_single_value("Stock Settings", "default_received_type")
 	for table_index, group in enumerate(data):
 		for colour in group['old_lot_inward']['data']:
-			for size in group['old_lot_inward']['data'][colour]['values']:
+			colour_entry = group['old_lot_inward']['data'][colour]
+			for size in colour_entry['values']:
+				cell = colour_entry['values'][size]
+				t_loose = flt(cell.get('transfer_loose_piece'))
+				t_loose_set = flt(cell.get('transfer_loose_piece_set'))
+				total_transfer = t_loose + t_loose_set
+				if total_transfer <= 0:
+					continue
 				item_attributes = {
 					primary: size,
 					pack_attr: colour,
-					dept_attr: stich_out
+					dept_attr: stich_out,
 				}
 				if is_set:
-					item_attributes[set_attr] = group['old_lot_inward']['data'][colour]['part']
-				if group['old_lot_inward']['data'][colour]['values'][size]['transfer'] > 0:
-					item1 = {}
-					variant_name = get_or_create_variant(item_name, item_attributes)
-					item1['item'] = variant_name
-					item1['from_lot'] = group['lot']
-					item1['to_lot'] = lot
-					item1['warehouse'] = group['warehouse']
-					item1['uom'] = uom
-					item1['qty'] = group['old_lot_inward']['data'][colour]['values'][size]['transfer']
-					item1['rate'] = 0
-					item1['table_index'] = table_index
-					item1['row_index'] = row_index
-					item1['received_type'] = received_type
-					set_comb = {
-						"major_colour": group['old_lot_inward']['data'][colour]['set_combination']
-					}
-					if is_set:
-						set_comb['major_part'] = major_part
-					item1['set_combination'] = set_comb
-					items.append(item1)
+					item_attributes[set_attr] = colour_entry['part']
+				variant_name = get_or_create_variant(item_name, item_attributes)
+				set_comb = {"major_colour": colour_entry['set_combination']}
+				if is_set:
+					set_comb['major_part'] = major_part
+				items.append({
+					"item": variant_name,
+					"from_lot": group['lot'],
+					"to_lot": lot,
+					"warehouse": group['warehouse'],
+					"uom": uom,
+					"qty": total_transfer,
+					"rate": 0,
+					"table_index": table_index,
+					"row_index": row_index,
+					"received_type": received_type,
+					"set_combination": set_comb,
+				})
+				split_contributions.append({
+					"source_lot": group['lot'],
+					"variant": variant_name,
+					"colour": colour,
+					"part": colour_entry.get('part'),
+					"set_combination": set_comb,
+					"size": size,
+					"loose_piece": t_loose,
+					"loose_piece_set": t_loose_set,
+				})
 			row_index += 1
 
 	item_details = []
@@ -1179,6 +1481,64 @@ def create_lot_transfer(data, item_name, ipd, lot, doc_name):
 	doc.finishing_plan = doc_name
 	doc.save()
 	doc.submit()
+
+	# --- Split-tracking: record loose_piece / loose_piece_set split on both FPs ---
+	import json as _json
+	dest_fp_doc = frappe.get_doc("Finishing Plan", doc_name)
+	for entry in split_contributions:
+		# locate the matching available-row on the destination to decrement its balance
+		source_fp_name = None
+		for r in dest_fp_doc.finishing_old_lot_items:
+			if r.source_lot == entry['source_lot'] and r.item_variant == entry['variant']:
+				source_fp_name = r.source_fp
+				# reduce available balance by what was just taken; reset the editable transfer fields
+				r.balance_loose_piece = flt(r.balance_loose_piece) - flt(entry['loose_piece'])
+				r.balance_loose_piece_set = flt(r.balance_loose_piece_set) - flt(entry['loose_piece_set'])
+				if r.balance_loose_piece < 0:
+					r.balance_loose_piece = 0
+				if r.balance_loose_piece_set < 0:
+					r.balance_loose_piece_set = 0
+				r.transfer_loose_piece = 0
+				r.transfer_loose_piece_set = 0
+				r.lot_transfer = None
+				break
+		if not source_fp_name:
+			continue
+		# record the take on destination's received-history
+		dest_fp_doc.append("finishing_old_lot_received_items", {
+			"source_fp": source_fp_name,
+			"source_lot": entry['source_lot'],
+			"item_variant": entry['variant'],
+			"colour": entry['colour'],
+			"part": entry['part'],
+			"set_combination": _json.dumps(entry['set_combination']),
+			"size": entry['size'],
+			"loose_piece_taken": entry['loose_piece'],
+			"loose_piece_set_taken": entry['loose_piece_set'],
+			"lot_transfer": doc.name,
+		})
+		# record the give on source FP's given-history
+		source_fp = frappe.get_doc("Finishing Plan", source_fp_name)
+		source_fp.append("finishing_old_lot_given_items", {
+			"destination_fp": doc_name,
+			"destination_lot": lot,
+			"item_variant": entry['variant'],
+			"colour": entry['colour'],
+			"part": entry['part'],
+			"set_combination": _json.dumps(entry['set_combination']),
+			"size": entry['size'],
+			"loose_piece_given": entry['loose_piece'],
+			"loose_piece_set_given": entry['loose_piece_set'],
+			"lot_transfer": doc.name,
+		})
+		source_fp.save(ignore_permissions=True)
+	# drop fully-consumed rows so the UI only shows what's still available
+	dest_fp_doc.finishing_old_lot_items = [
+		r for r in dest_fp_doc.finishing_old_lot_items
+		if flt(r.balance_loose_piece) > 0 or flt(r.balance_loose_piece_set) > 0
+	]
+	dest_fp_doc.save(ignore_permissions=True)
+	frappe.db.commit()
 
 @frappe.whitelist()
 def create_material_receipt(data, item_name, lot, ipd, doc_name, location):
@@ -2162,3 +2522,232 @@ def get_finishing_dispatch_report(from_date, to_date, lot_list=None, item_list=N
 		"data": list(lot_data.values()),
 		"sizes": all_sizes,
 	}
+
+AUTO_FP_STATUSES = ("", "Planned", "Partially Received", "Ready to Pack", "Partially Dispatched", "Dispatched", "Fully Dispatched")
+FULLY_DISPATCHED_PCT = 97.0
+
+
+def get_set_item_parts_count(finishing_doc):
+	ipd = finishing_doc.production_detail or frappe.get_value("Lot", finishing_doc.lot, "production_detail")
+	if not ipd:
+		return 1
+
+	ipd_doc = frappe.get_cached_doc("Item Production Detail", ipd)
+	if not ipd_doc.is_set_item:
+		return 1
+
+	parts = {
+		row.set_item_attribute_value
+		for row in ipd_doc.set_item_combination_details
+		if row.set_item_attribute_value
+	}
+	if parts:
+		return len(parts)
+
+	parts = set()
+	if ipd_doc.set_item_attribute:
+		for row in finishing_doc.finishing_plan_details:
+			attr_details = get_variant_attr_details(row.item_variant)
+			part = attr_details.get(ipd_doc.set_item_attribute)
+			if part:
+				parts.add(part)
+
+	return len(parts) or 1
+
+
+def get_finishing_dispatch_totals(finishing_doc):
+	if isinstance(finishing_doc, str):
+		finishing_doc = frappe.get_doc("Finishing Plan", finishing_doc)
+
+	total_cutting = 0.0
+	total_dispatched_pieces = 0.0
+	for row in finishing_doc.finishing_plan_details:
+		total_cutting += flt(row.cutting_qty)
+
+	pieces_per_box = flt(finishing_doc.pieces_per_box) or 0
+	if pieces_per_box:
+		set_item_parts_count = get_set_item_parts_count(finishing_doc)
+		for row in finishing_doc.finishing_plan_grn_details:
+			total_dispatched_pieces += (
+				flt(row.dispatched) * pieces_per_box * set_item_parts_count
+			)
+
+	dispatch_percentage = 0.0
+	if total_cutting:
+		dispatch_percentage = (total_dispatched_pieces / total_cutting) * 100.0
+
+	return frappe._dict({
+		"total_cutting": total_cutting,
+		"total_dispatched_pieces": total_dispatched_pieces,
+		"dispatch_percentage": dispatch_percentage,
+	})
+
+
+def record_finishing_dispatch_log(finishing_doc, stock_entry, dispatch_boxes, source_doctype=None, source_name=None):
+	if not frappe.get_meta("Finishing Plan").has_field("finishing_plan_dispatch_logs"):
+		return
+	if flt(dispatch_boxes) <= 0:
+		return
+
+	source_doctype = source_doctype or stock_entry.against
+	source_name = source_name or stock_entry.against_id
+	set_item_parts_count = get_set_item_parts_count(finishing_doc)
+	dispatch_pieces = flt(dispatch_boxes) * flt(finishing_doc.pieces_per_box) * set_item_parts_count
+	totals = get_finishing_dispatch_totals(finishing_doc)
+	previous_dispatched = max(flt(totals.total_dispatched_pieces) - dispatch_pieces, 0)
+	previous_percentage = 0.0
+	if totals.total_cutting:
+		previous_percentage = (previous_dispatched / flt(totals.total_cutting)) * 100.0
+
+	log_data = {
+		"stock_entry": stock_entry.name,
+		"source_doctype": source_doctype,
+		"source_name": source_name,
+		"posting_date": stock_entry.posting_date,
+		"posting_time": stock_entry.posting_time,
+		"dispatch_boxes": dispatch_boxes,
+		"dispatch_pieces": dispatch_pieces,
+		"total_dispatched_pieces_after": totals.total_dispatched_pieces,
+		"cutting_qty": totals.total_cutting,
+		"dispatch_percentage_before": previous_percentage,
+		"dispatch_percentage_after": totals.dispatch_percentage,
+		"cancelled": 0,
+	}
+
+	for row in finishing_doc.get("finishing_plan_dispatch_logs") or []:
+		if (
+			row.stock_entry == stock_entry.name
+			and row.source_doctype == source_doctype
+			and row.source_name == source_name
+		):
+			row.update(log_data)
+			return
+
+	finishing_doc.append("finishing_plan_dispatch_logs", log_data)
+
+
+def cancel_finishing_dispatch_log(finishing_doc, stock_entry_name):
+	if not frappe.get_meta("Finishing Plan").has_field("finishing_plan_dispatch_logs"):
+		return
+	for row in finishing_doc.get("finishing_plan_dispatch_logs") or []:
+		if row.stock_entry == stock_entry_name:
+			row.cancelled = 1
+
+
+def _total_unaccountable(finishing_doc):
+	try:
+		ocr_data = get_ocr_details(finishing_doc)
+	except Exception:
+		return None
+	total = 0
+	for part_value in ocr_data:
+		total += (
+			ocr_data[part_value]['sewing_received']
+			+ ocr_data[part_value]['old_lot']
+			+ ocr_data[part_value]['ironing_excess']
+			- (
+				ocr_data[part_value]['dispatched_piece']
+				+ ocr_data[part_value]['rejected']
+				+ ocr_data[part_value]['loose_piece_set']
+				+ ocr_data[part_value]['loose_piece']
+				+ ocr_data[part_value]['pending']
+				+ ocr_data[part_value]['transferred']
+			)
+		)
+	return total
+
+
+def compute_received_status(finishing_doc):
+	total_cutting = 0.0
+	total_received = 0.0
+	for row in finishing_doc.finishing_plan_details:
+		total_cutting += flt(row.cutting_qty)
+		total_received += flt(row.delivered_quantity)
+
+	if not total_cutting:
+		return None
+
+	settings = frappe.get_cached_doc("MRP Settings")
+	total_dispatched_pieces = get_finishing_dispatch_totals(finishing_doc).total_dispatched_pieces
+
+	if total_dispatched_pieces > 0:
+		disp_pct = (total_dispatched_pieces / total_cutting) * 100.0
+		disp_threshold = flt(settings.partially_dispatched_percentage) or 0
+		if disp_pct < disp_threshold:
+			return "Partially Dispatched"
+		if disp_pct > FULLY_DISPATCHED_PCT:
+			unaccountable = _total_unaccountable(finishing_doc)
+			if unaccountable is not None and unaccountable == 0:
+				return "Fully Dispatched"
+		return "Dispatched"
+
+	if not total_received:
+		return None
+	recv_pct = (total_received / total_cutting) * 100.0
+	recv_threshold = flt(settings.partial_received_percentage) or 0
+	return "Ready to Pack" if recv_pct >= recv_threshold else "Partially Received"
+
+
+def apply_auto_fp_status(finishing_doc):
+	new_status = compute_received_status(finishing_doc)
+	if not new_status:
+		return
+	current = finishing_doc.fp_status or ""
+	if current in AUTO_FP_STATUSES:
+		finishing_doc.fp_status = new_status
+
+
+@frappe.whitelist()
+def get_p_and_l_documents(doc_name):
+	return frappe.get_all(
+		"P and L Document",
+		filters={"against": "Finishing Plan", "against_id": doc_name},
+		fields=["name", "file", "comments", "modified", "owner"],
+		order_by="creation desc",
+	)
+
+
+@frappe.whitelist()
+def add_p_and_l_document(doc_name, file_url, comments=None):
+	if not frappe.db.exists("Finishing Plan", doc_name):
+		frappe.throw(f"Finishing Plan {doc_name} not found")
+	pld = frappe.new_doc("P and L Document")
+	pld.against = "Finishing Plan"
+	pld.against_id = doc_name
+	pld.file = file_url
+	pld.comments = comments
+	pld.insert(ignore_permissions=True)
+	return pld.name
+
+
+@frappe.whitelist()
+def delete_p_and_l_document(name):
+	pld = frappe.get_doc("P and L Document", name)
+	if pld.against != "Finishing Plan":
+		frappe.throw("Not a Finishing Plan P&L document")
+	frappe.delete_doc("P and L Document", name, ignore_permissions=True)
+	return True
+
+
+@frappe.whitelist()
+def approve_ocr_request(doc_name):
+	if "System Manager" not in frappe.get_roles():
+		frappe.throw("Only System Manager can approve OCR requests.")
+	doc = frappe.get_doc("Finishing Plan", doc_name)
+	if doc.fp_status != "OCR Requested":
+		frappe.throw(f"Finishing Plan is not in OCR Requested state (current: {doc.fp_status}).")
+	doc.fp_status = "OCR Completed"
+	doc.save(ignore_permissions=True)
+	return {"fp_status": doc.fp_status}
+
+
+@frappe.whitelist()
+def complete_ocr(doc_name):
+	doc = frappe.get_doc("Finishing Plan", doc_name)
+	unaccountable = _total_unaccountable(doc)
+	if unaccountable is None:
+		frappe.throw("Unable to compute unaccountable pieces. Please check the OCR tab.")
+	new_status = "OCR Completed" if unaccountable == 0 else "OCR Requested"
+	doc.fp_status = new_status
+	doc.save(ignore_permissions=True)
+	return {"fp_status": new_status, "unaccountable": unaccountable}

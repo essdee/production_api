@@ -705,6 +705,11 @@ def duplicate_po(po):
 	"""Create a duplicate of the given Purchase Order as a new Draft."""
 	doc = frappe.get_doc("Purchase Order", po)
 	new_doc = frappe.copy_doc(doc)
+	from frappe.model.naming import get_default_naming_series
+	default_series = get_default_naming_series("Purchase Order")
+	if default_series:
+		new_doc.naming_series = default_series
+	new_doc.po_date = frappe.utils.nowdate()
 	new_doc.docstatus = 0
 	new_doc.status = "Draft"
 	new_doc.open_status = "Open"

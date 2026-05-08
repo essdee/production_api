@@ -16,6 +16,7 @@ from production_api.production_api.logger import get_module_logger
 from production_api.mrp_stock.doctype.stock_entry.stock_entry import get_uom_details
 from production_api.production_api.doctype.item.item import get_attribute_details, get_or_create_variant
 from production_api.production_api.doctype.work_order.work_order import get_bom_structure, get_work_order_items
+from production_api.production_api.doctype.finishing_plan.finishing_plan import apply_auto_fp_status
 from production_api.production_api.doctype.purchase_order.purchase_order import (
     get_item_attribute_details, get_item_group_index)
 from production_api.utils import (
@@ -611,16 +612,14 @@ class GoodsReceivedNote(Document):
         for item in self.grn_deliverables:
             item_keys = update_if_string_instance(item.set_combination)
             item_keys.update({"variant": item.item_variant})
-            item_keys = item_keys.copy()
-            item_keys = frozenset(item_keys)
-            calculated_items[item_keys] = item.quantity
+            item_keys = frozenset(item_keys.items())
+            calculated_items[item_keys] = calculated_items.get(item_keys, 0) + item.quantity
 
         for item in wo_doc.deliverables:
             check = True
             keys = update_if_string_instance(item.set_combination)
             keys.update({"variant": item.item_variant})
-            keys = keys.copy()
-            keys = frozenset(keys)
+            keys = frozenset(keys.items())
             x = calculated_items.get(keys)
             if x == 0:
                 check = True
@@ -661,14 +660,46 @@ class GoodsReceivedNote(Document):
         is_set = frappe.get_value("Item Production Detail", ipd, "is_set_item")
         for item in self.grn_deliverables:
             if res.get(item.item_variant):
-                variant_item = frappe.get_value(
-                    "Item Variant", item.item_variant, "item")
-                multiplier = -1
-                if variant_item == item_name and self.includes_packing and is_set:
-                    multiplier = -2
+                multiplier = self.get_deliverable_stock_multiplier(
+                    item, item_name, is_set)
                 sl_entries.append(self.get_deliverables_data(
                     item, lot, {}, multiplier, received_type))
+        self.validate_deliverable_stock(sl_entries)
         make_sl_entries(sl_entries)
+
+    def get_deliverable_stock_multiplier(self, item, item_name, is_set):
+        variant_item = frappe.get_value("Item Variant", item.item_variant, "item")
+        if variant_item == item_name and self.includes_packing and is_set:
+            return -2
+        return -1
+
+    def validate_deliverable_stock(self, sl_entries):
+        required_stock = {}
+        for entry in sl_entries:
+            if flt(entry.qty) >= 0:
+                continue
+            key = (entry.item, entry.warehouse, entry.lot, entry.received_type)
+            required_stock.setdefault(key, 0)
+            required_stock[key] += abs(flt(entry.qty))
+
+        low_stock_items = []
+        for key, required_qty in required_stock.items():
+            item, warehouse, lot, received_type = key
+            quantity = get_stock_balance(
+                item,
+                warehouse,
+                received_type,
+                posting_date=self.posting_date,
+                posting_time=self.posting_time,
+                lot=lot,
+            )
+            if flt(quantity) < flt(required_qty):
+                low_stock_items.append(
+                    f"Required quantity is {required_qty} but stock quantity is {quantity} for {item}"
+                )
+
+        if low_stock_items:
+            frappe.throw("<br>".join(low_stock_items))
 
     def get_deliverables_data(self, d, lot, args, multiplier, received_type):
         rate = get_stock_balance(
@@ -981,16 +1012,14 @@ class GoodsReceivedNote(Document):
         for item in self.grn_deliverables:
             item_keys = update_if_string_instance(item.set_combination)
             item_keys.update({"variant": item.item_variant})
-            item_keys = item_keys.copy()
-            item_keys = frozenset(item_keys)
-            calculated_items[item_keys] = item.quantity
+            item_keys = frozenset(item_keys.items())
+            calculated_items[item_keys] = calculated_items.get(item_keys, 0) + item.quantity
 
         for item in wo_doc.deliverables:
             check = True
             keys = update_if_string_instance(item.set_combination)
             keys.update({"variant": item.item_variant})
-            keys = keys.copy()
-            keys = frozenset(keys)
+            keys = frozenset(keys.items())
             x = calculated_items.get(keys)
             if x == 0:
                 check = True
@@ -1580,6 +1609,7 @@ def fetch_grn_item_details(items, ipd, lot, docstatus=0):
             items = [item.as_dict() for item in items]
     ipd_doc = frappe.get_cached_doc("Item Production Detail", ipd)
     item_details = []
+    items = sorted(items, key=lambda i: i['row_index'])
     for key, variants in groupby(items, lambda i: i['row_index']):
         variants = list(variants)
         current_variant = frappe.get_cached_doc(
@@ -2604,6 +2634,7 @@ def calculate_pieces(doc_name, complete_json=None, incomplete_json=None, from_pi
             lot_doc.save(ignore_permissions=True)
     else:
         for data in final_calculation:
+            exact_match = False
             for item in wo_doc.work_order_calculated_items:
                 set_combination = update_if_string_instance(
                     item.set_combination)
@@ -2625,7 +2656,52 @@ def calculate_pieces(doc_name, complete_json=None, incomplete_json=None, from_pi
                         wo_types[data['type']] = data['quantity']
 
                     item.received_type_json = wo_types
+                    exact_match = True
                     break
+
+            if not exact_match:
+                # Proportional distribution for aggregated GRN items (e.g., group process)
+                grn_variant = frappe.get_cached_doc("Item Variant", data['item_variant'])
+                grn_attrs = get_variant_attributes(grn_variant)
+                primary_value = grn_attrs.get(ipd_doc.primary_item_attribute)
+
+                matching_items = []
+                total_wo_qty = 0
+                for item in wo_doc.work_order_calculated_items:
+                    wo_variant = frappe.get_cached_doc("Item Variant", item.item_variant)
+                    if wo_variant.item == grn_variant.item:
+                        wo_attrs = get_variant_attributes(wo_variant)
+                        if wo_attrs.get(ipd_doc.primary_item_attribute) == primary_value:
+                            matching_items.append(item)
+                            total_wo_qty += item.quantity
+
+                if matching_items and total_wo_qty > 0:
+                    remaining = data['quantity']
+                    for idx, item in enumerate(matching_items):
+                        if idx == len(matching_items) - 1:
+                            share = remaining
+                        else:
+                            share = int(data['quantity'] * item.quantity / total_wo_qty)
+                            remaining -= share
+
+                        item.received_qty += share
+                        if share > 0:
+                            wo_doc.append("work_order_track_pieces", {
+                                "item_variant": item.item_variant,
+                                "delivered_quantity": 0,
+                                "against": grn_doc.doctype,
+                                "against_id": grn_doc.name,
+                                "received_qty": share,
+                                "date": grn_doc.posting_date,
+                            })
+                        wo_types = update_if_string_instance(
+                            item.received_type_json)
+                        if wo_types.get(data.get('type')):
+                            wo_types[data['type']] += share
+                        else:
+                            wo_types[data['type']] = share
+                        item.received_type_json = wo_types
+
             if lot_doc:
                 for item in lot_doc.lot_order_details:
                     set_combination = update_if_string_instance(
@@ -2970,6 +3046,7 @@ def update_finishing_item_doc(doc_name, finishing_doc_name, update_finishing: bo
             if not finishing_doc.finishing_end_date or getdate(self.posting_date) > getdate(finishing_doc.finishing_end_date):
                 finishing_doc.finishing_end_date = self.posting_date
 
+        apply_auto_fp_status(finishing_doc)
         finishing_doc.save(ignore_permissions=True)
 
     elif update_finishing and self.is_return:
@@ -3042,6 +3119,7 @@ def update_finishing_item_doc(doc_name, finishing_doc_name, update_finishing: bo
         finishing_doc.set("finishing_plan_details", finshing_items_list)
         finishing_doc.set("finishing_plan_reworked_details",
                           finishing_rework_items_list)
+        apply_auto_fp_status(finishing_doc)
         finishing_doc.save(ignore_permissions=True)
     else:
         finishing_doc = frappe.get_doc("Finishing Plan", finishing_doc_name)
@@ -3088,6 +3166,7 @@ def update_finishing_item_doc(doc_name, finishing_doc_name, update_finishing: bo
         finishing_doc.set("finishing_plan_details", finshing_items_list)
         finishing_doc.set("finishing_plan_reworked_details",
                           finishing_rework_items_list)
+        apply_auto_fp_status(finishing_doc)
         finishing_doc.save(ignore_permissions=True)
 
 
@@ -3123,11 +3202,16 @@ def fetch_onload_data(items):
     for (item_name, item), items in grouped_items.items():
         sorted_items = sorted(items, key=lambda x: x.item_variant)
         table_index += 1
-        row_index += 1
+        set_comb_to_row_index = {}
         for row in sorted_items:
             variant = row.item_variant
             set_comb = update_if_string_instance(row.set_combination)
-            key = (variant, tuple(sorted(set_comb.items())))
+            set_comb_key = tuple(sorted(set_comb.items())) if set_comb else ()
+            if set_comb_key not in set_comb_to_row_index:
+                row_index += 1
+                set_comb_to_row_index[set_comb_key] = row_index
+            current_row_index = set_comb_to_row_index[set_comb_key]
+            key = (variant, set_comb_key)
             if key not in d:
                 d[key] = {
                     "item_variant": variant,
@@ -3144,7 +3228,7 @@ def fetch_onload_data(items):
                     "amount": row.amount,
                     "stock_uom_rate": row.stock_uom_rate,
                     "table_index": table_index,
-                    "row_index": row_index,
+                    "row_index": current_row_index,
                     "ref_doctype": row.ref_doctype,
                     "ref_docname": row.ref_docname,
                     "comments": row.comments,

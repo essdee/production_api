@@ -325,7 +325,13 @@ class WorkOrder(Document):
 
     def create_finshing_doc(self):
         # create_finishing_detail(self.name)
-        frappe.enqueue(create_finishing_detail, "short", work_order=self.name)
+        frappe.enqueue(
+            create_finishing_detail,
+            queue="short",
+            job_id=f"create-finishing-plan-{self.name}",
+            deduplicate=True,
+            work_order=self.name,
+        )
 
     def create_sewing_plan(self):
         from production_api.production_api.doctype.sewing_plan.sewing_plan import create_sewing_plan
@@ -455,6 +461,7 @@ class WorkOrder(Document):
         if grn_list:
             frappe.throw(_("Cannot cancel because Goods Received Note {0} is submitted against this Work Order").format(
                 ", ".join(grn_list)))
+        self.status = 'Cancelled'
 
     def before_save(self):
         if self.docstatus == 1:
@@ -1583,6 +1590,7 @@ def update_stock(work_order, close_reason=None, close_other_reason=None, close_r
 
     received_type = frappe.db.get_single_value(
         "Stock Settings", "default_received_type")
+    item_variants = {}
     for data in doc.deliverables:
         if (data.qty - data.pending_quantity - data.stock_update) > 0 and res.get(data.item_variant):
             reduce_qty = data.qty - data.pending_quantity - data.stock_update
@@ -1591,6 +1599,14 @@ def update_stock(work_order, close_reason=None, close_other_reason=None, close_r
             if reduce_qty > balance:
                 reduce_qty = balance
             if reduce_qty:
+                if data.item_variant not in item_variants:
+                    item_variants[data.item_variant] = reduce_qty
+                else:
+                    if balance > item_variants[data.item_variant]:
+                        reduce_qty = balance - item_variants[data.item_variant]
+                        item_variants[data.item_variant] += reduce_qty    
+                    else:
+                        continue    
                 sl_entries.append({
                     "item": data.item_variant,
                     "warehouse": doc.supplier,
@@ -2147,6 +2163,18 @@ def update_receivables(receivables_data, doc_name):
 
 
 def create_finishing_detail(work_order, from_finishing=False):
+    existing_fp = frappe.get_all(
+        "Finishing Plan",
+        filters={"work_order": work_order, "docstatus": ["<", 2]},
+        pluck="name",
+        limit=1,
+    )
+    if existing_fp:
+        frappe.logger().info(
+            f"Skipping duplicate Finishing Plan creation for Work Order {work_order}; existing: {existing_fp[0]}"
+        )
+        return existing_fp[0]
+
     wo_doc = frappe.get_doc("Work Order", work_order)
     items = {}
     default_type = frappe.db.get_single_value(
@@ -2310,6 +2338,8 @@ def create_finishing_detail(work_order, from_finishing=False):
     new_doc.set("finishing_plan_details", finishing_items)
     new_doc.set("finishing_plan_reworked_details", finishing_rework_items)
     new_doc.set("finishing_plan_grn_details", grn_items)
+    from production_api.production_api.doctype.finishing_plan.finishing_plan import apply_auto_fp_status
+    apply_auto_fp_status(new_doc)
     new_doc.save(ignore_permissions=True)
 
 

@@ -308,7 +308,7 @@
    "fieldname": "allow_to_change_rate",
    "fieldtype": "Check",
    "label": "Allow to Change Rate",
-   "permlevel": 2
+   "read_only": 1
   },
   {
    "fieldname": "purchase_invoice_wo_approval_details",
@@ -378,7 +378,7 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2026-03-19 18:27:32.269871",
+ "modified": "2026-04-15 14:43:41.134428",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Purchase Invoice",

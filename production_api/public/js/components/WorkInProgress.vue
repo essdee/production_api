@@ -28,42 +28,69 @@
                     <th>Sewing Sent Date</th>
                     <th>Finishing Inward Date</th>
                 </tr>
+                <tr class="filter-row">
+                    <th><input type="text" class="filter-input" v-model="columnFilters.style"/></th>
+                    <th><input type="text" class="filter-input" v-model="columnFilters.lot"/></th>
+                    <th v-for="col in Object.keys(items['columns']['cut_columns'])" :key="'cf-cut-'+col">
+                        <input type="text" class="filter-input" v-model="columnFilters['cut:'+col]"/>
+                    </th>
+                    <th v-for="col in Object.keys(items['columns']['against_cut_columns'])" :key="'cf-agcut-'+col">
+                        <input type="text" class="filter-input" v-model="columnFilters['against_cut:'+col]"/>
+                    </th>
+                    <th v-for="col in Object.keys(items['columns']['sew_columns'])" :key="'cf-sew-'+col">
+                        <input type="text" class="filter-input" v-model="columnFilters['sew:'+col]"/>
+                    </th>
+                    <th v-for="col in Object.keys(items['columns']['against_sew_columns'])" :key="'cf-agsew-'+col">
+                        <input type="text" class="filter-input" v-model="columnFilters['against_sew:'+col]"/>
+                    </th>
+                    <th v-for="col in Object.keys(items['columns']['finishing_columns'])" :key="'cf-fin-'+col">
+                        <input type="text" class="filter-input" v-model="columnFilters['finishing:'+col]"/>
+                    </th>
+                    <th><input type="text" class="filter-input" v-model="columnFilters.last_cut_date"/></th>
+                    <th><input type="text" class="filter-input" v-model="columnFilters.sew_sent_date"/></th>
+                    <th><input type="text" class="filter-input" v-model="columnFilters.finishing_inward_date"/></th>
+                </tr>
 
-                <tr v-for="row in items['lot_data']">
+                <tr v-for="row in filteredRows">
                     <td>{{ row['style'] }}</td>
                     <td>{{ row['lot'] }}</td>
                     <td v-for="col in items['columns']['cut_columns']"
-                        :style="items['diff_columns'].includes(col) 
-                            ? get_style(row['cut_details'][col]) 
-                            : { background: 'white' }"
+                        :style="get_cell_style(row, 'cut_details', col)"
+                        :class="{ 'clickable-quantity': can_open_inhouse_report(row, 'cut_details', col) }"
+                        :title="get_inhouse_title(row, 'cut_details', col)"
+                        @click="open_inhouse_quantity_report(row, 'cut_details', col)"
                         >
                         {{ row['cut_details'][col] }}
                     </td>
                     <td v-for="col in items['columns']['against_cut_columns']"
-                        :style="items['diff_columns'].includes(col) 
-                            ? get_style(row['against_cut_details'][col]) 
-                            : { background: 'white' }"
+                        :style="get_cell_style(row, 'against_cut_details', col)"
+                        :class="{ 'clickable-quantity': can_open_inhouse_report(row, 'against_cut_details', col) }"
+                        :title="get_inhouse_title(row, 'against_cut_details', col)"
+                        @click="open_inhouse_quantity_report(row, 'against_cut_details', col)"
                         >
                         {{ row['against_cut_details'][col] }}
                     </td>
                     <td v-for="col in items['columns']['sew_columns']"
-                        :style="items['diff_columns'].includes(col) 
-                            ? get_style(row['sewing_details'][col]) 
-                            : { background: 'white' }"
+                        :style="get_cell_style(row, 'sewing_details', col)"
+                        :class="{ 'clickable-quantity': can_open_inhouse_report(row, 'sewing_details', col) }"
+                        :title="get_inhouse_title(row, 'sewing_details', col)"
+                        @click="open_inhouse_quantity_report(row, 'sewing_details', col)"
                         >
                         {{ row['sewing_details'][col] }}
                     </td>
                     <td v-for="col in items['columns']['against_sew_columns']"
-                        :style="items['diff_columns'].includes(col) 
-                            ? get_style(row['against_sew__details'][col]) 
-                            : { background: 'white' }"
+                        :style="get_cell_style(row, 'against_sew_details', col)"
+                        :class="{ 'clickable-quantity': can_open_inhouse_report(row, 'against_sew_details', col) }"
+                        :title="get_inhouse_title(row, 'against_sew_details', col)"
+                        @click="open_inhouse_quantity_report(row, 'against_sew_details', col)"
                         >
-                        {{ row['against_sew__details'][col] }}
+                        {{ row['against_sew_details'][col] }}
                     </td>
                     <td v-for="col in items['columns']['finishing_columns']"
-                        :style="items['diff_columns'].includes(col) 
-                            ? get_style(row['finishing_details'][col]) 
-                            : { background: 'white' }"
+                        :style="get_cell_style(row, 'finishing_details', col)"
+                        :class="{ 'clickable-quantity': can_open_inhouse_report(row, 'finishing_details', col) }"
+                        :title="get_inhouse_title(row, 'finishing_details', col)"
+                        @click="open_inhouse_quantity_report(row, 'finishing_details', col)"
                         >
                         {{ row['finishing_details'][col] }}
                     </td>
@@ -75,19 +102,19 @@
                     <th></th>
                     <th></th>
                     <th v-for="col in items['columns']['cut_columns']">
-                        {{ items['total_data']['cut_details'][col] }}
+                        {{ filteredTotals.cut_details[col] }}
                     </th>
                     <th v-for="col in items['columns']['against_cut_columns']">
-                        {{ items['total_data']['against_cut_details'][col] }}
+                        {{ filteredTotals.against_cut_details[col] }}
                     </th>
                     <th v-for="col in items['columns']['sew_columns']">
-                        {{ items['total_data']['sewing_details'][col] }}
+                        {{ filteredTotals.sewing_details[col] }}
                     </th>
                     <th v-for="col in items['columns']['against_sew_columns']">
-                        {{ items['total_data']['against_sew_details'][col] }}
+                        {{ filteredTotals.against_sew_details[col] }}
                     </th>
                     <th v-for="col in items['columns']['finishing_columns']">
-                        {{ items['total_data']['finishing_details'][col] }}
+                        {{ filteredTotals.finishing_details[col] }}
                     </th>
                     <th></th>
                     <th></th>
@@ -112,7 +139,7 @@
 
 <script setup>
 
-import {ref, onMounted, createApp} from 'vue';
+import {ref, reactive, computed, watch, onMounted, createApp} from 'vue';
 import MultiProcessReport from './MultiProcessReport.vue'
 import MultiSelectListConverter from './MultiSelectListConverter.vue'
 
@@ -125,6 +152,118 @@ let lot_list = null
 let item_list = null
 const multiReport = ref(null)
 let process_list = ref([])
+
+const columnFilters = reactive({})
+
+const matches = (cell, filter) => {
+    if (!filter) return true
+    const s = (cell === null || cell === undefined) ? '' : String(cell)
+    return s.toLowerCase().includes(String(filter).toLowerCase())
+}
+
+const filteredRows = computed(() => {
+    if (!items.value || !items.value.lot_data) return []
+    const raw = items.value.lot_data
+    const rows = Array.isArray(raw) ? raw : Object.values(raw)
+    const cols = items.value.columns || {}
+    const cellMatches = (row, bucket, section, rowKey) => {
+        const map = cols[section] || {}
+        for (const label of Object.keys(map)) {
+            const dataKey = map[label]
+            const src = row[rowKey]
+            const cellVal = src ? src[dataKey] : undefined
+            if (!matches(cellVal, columnFilters[bucket + ':' + label])) return false
+        }
+        return true
+    }
+    return rows.filter(row => {
+        if (!matches(row.style, columnFilters.style)) return false
+        if (!matches(row.lot, columnFilters.lot)) return false
+        if (!cellMatches(row, 'cut', 'cut_columns', 'cut_details')) return false
+        if (!cellMatches(row, 'against_cut', 'against_cut_columns', 'against_cut_details')) return false
+        if (!cellMatches(row, 'sew', 'sew_columns', 'sewing_details')) return false
+        if (!cellMatches(row, 'against_sew', 'against_sew_columns', 'against_sew_details')) return false
+        if (!cellMatches(row, 'finishing', 'finishing_columns', 'finishing_details')) return false
+        if (!matches(get_date(row.last_cut_date), columnFilters.last_cut_date)) return false
+        if (!matches(get_date(row.sew_sent_date), columnFilters.sew_sent_date)) return false
+        if (!matches(get_date(row.finishing_inward_date), columnFilters.finishing_inward_date)) return false
+        return true
+    })
+})
+
+const filteredTotals = computed(() => {
+    const totals = {
+        cut_details: {},
+        against_cut_details: {},
+        sewing_details: {},
+        against_sew_details: {},
+        finishing_details: {},
+    }
+    const cols = (items.value && items.value.columns) || {}
+    const addTo = (bucket, colsKey, rowKey) => {
+        const map = cols[colsKey] || {}
+        for (const label of Object.keys(map)) {
+            const dataKey = map[label]
+            let sum = 0
+            for (const row of filteredRows.value) {
+                const src = row[rowKey]
+                if (!src) continue
+                const v = Number(src[dataKey])
+                if (!isNaN(v)) sum += v
+            }
+            totals[bucket][dataKey] = sum
+        }
+    }
+    addTo('cut_details', 'cut_columns', 'cut_details')
+    addTo('against_cut_details', 'against_cut_columns', 'against_cut_details')
+    addTo('sewing_details', 'sew_columns', 'sewing_details')
+    addTo('against_sew_details', 'against_sew_columns', 'against_sew_details')
+    addTo('finishing_details', 'finishing_columns', 'finishing_details')
+    return totals
+})
+
+function get_process_for_cell(row, detailsKey, dataKey){
+    return row?.process_drilldown?.[detailsKey]?.[dataKey] || null
+}
+
+function can_open_inhouse_report(row, detailsKey, dataKey){
+    return Boolean(row?.lot && get_process_for_cell(row, detailsKey, dataKey))
+}
+
+function get_cell_style(row, detailsKey, dataKey){
+    const diffColumns = items.value.diff_columns || []
+    const details = row[detailsKey] || {}
+    if(diffColumns.includes(dataKey)){
+        return get_style(details[dataKey])
+    }
+    return { background: 'white' }
+}
+
+function get_inhouse_title(row, detailsKey, dataKey){
+    const processName = get_process_for_cell(row, detailsKey, dataKey)
+    if(!processName){
+        return ''
+    }
+    return `Open Inhouse Quantity Report for ${processName}`
+}
+
+function open_inhouse_quantity_report(row, detailsKey, dataKey){
+    const processName = get_process_for_cell(row, detailsKey, dataKey)
+    if(!row?.lot || !processName){
+        return
+    }
+    const params = new URLSearchParams({
+        lot: row.lot,
+        process: processName,
+        show: '1',
+    })
+    window.open(`/app/inhouse-quantity-rep?${params.toString()}`, '_blank', 'noopener')
+}
+
+// Clear filters whenever a new report is loaded
+watch(items, () => {
+    for (const k of Object.keys(columnFilters)) delete columnFilters[k]
+})
 
 onMounted(()=> {
     let el = root.value
@@ -294,6 +433,47 @@ function get_date(date){
     z-index: 1;
     font-weight: 600;
 }
+
+.bordered-table tr.filter-row th {
+    top: 33px;
+    background-color: #fff;
+    padding: 0;
+    z-index: 1;
+    font-weight: 400;
+    border: 1px solid #d1d5db;
+}
+
+.filter-input {
+    width: 100%;
+    height: 100%;
+    min-height: 26px;
+    padding: 4px 8px;
+    border: none;
+    border-radius: 0;
+    font-size: inherit;
+    font-family: inherit;
+    font-weight: 400;
+    color: #374151;
+    background: transparent;
+    outline: none;
+    box-shadow: none;
+}
+
+.filter-input:focus {
+    background: #eff6ff;
+}
+
+.clickable-quantity {
+    color: #0b5cab;
+    cursor: pointer;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+}
+
+.clickable-quantity:hover {
+    color: #063f7a;
+}
+
 .table-container::-webkit-scrollbar {
     height: 8px;
 }

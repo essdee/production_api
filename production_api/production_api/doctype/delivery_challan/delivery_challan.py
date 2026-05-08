@@ -16,6 +16,7 @@ from production_api.utils import (
     get_tuple_attributes, get_finishing_plan_dict, get_finishing_plan_list
 )
 from production_api.mrp_stock.stock_ledger import make_sl_entries, repost_future_stock_ledger_entry
+from production_api.production_api.doctype.finishing_plan.finishing_plan import apply_auto_fp_status
 from production_api.production_api.doctype.item.item import get_attribute_details, get_or_create_variant
 from production_api.production_api.doctype.purchase_order.purchase_order import (
     get_item_attribute_details,
@@ -851,7 +852,7 @@ def calculate_pieces(doc_name):
     is_group = frappe.get_value("Process", dc_doc.process_name, "is_group")
     check = False
     if is_group:
-        prs_doc = frappe.get_doc("Process", process_name)
+        prs_doc = frappe.get_doc("Process", dc_doc.process_name)
         for row in prs_doc.process_details:
             if row.process_name == finishing_inward_process:
                 check = True
@@ -1380,4 +1381,5 @@ def update_finishing_item_doc(doc_name, finishing_doc_name, update_dc: bool):
         finishing_doc.incomplete_transfer_dc_list = frappe.json.dumps(
             incomplete_transfer_dc_list)
 
+    apply_auto_fp_status(finishing_doc)
     finishing_doc.save(ignore_permissions=True)

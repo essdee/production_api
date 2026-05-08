@@ -23,6 +23,7 @@ def get_columns(received_types):
 		{"fieldname":"item","fieldtype":"Link","options":"Item","label":"Item"},
 		{"fieldname":"wo_colours","fieldtype":"Data","label":"WO Colours"},
 		{"fieldname":"process_name","fieldtype":"Link","options":"Process","label":"Process"},
+		{"fieldname":"open_status","fieldtype":"Data","label":"WO Status"},
 		{"fieldname":"planned_quantity","fieldtype":"Int","label":"Pieces Planned"},
 		{"fieldname":"total_no_of_pieces_delivered","fieldtype":"Int","label":"Pieces Delivered"},
 		{"fieldname":"total_no_of_pieces_received","fieldtype":"Int","label":"Pieces Received"},
@@ -35,7 +36,8 @@ def get_columns(received_types):
 		)
 	columns = columns + [
 		{"fieldname":"others", "fieldtype":"Int","label":"Others"},
-		{"fieldname":"pending","fieldtype":"Int","label":"Pending"},	
+		{"fieldname":"pending","fieldtype":"Int","label":"Pending"},
+		{"fieldname":"billed_qty","fieldtype":"Float","label":"Billed Qty"},
 		{"fieldname":"first_dc_date","fieldtype":"Date","label":"First DC Date"},
 		{"fieldname":"last_dc_date","fieldtype":"Date","label":"Last DC Date"},
 		{"fieldname":"first_grn_date","fieldtype":"Date","label":"First GRN Date"},
@@ -45,6 +47,11 @@ def get_columns(received_types):
 
 def get_data(filters, received_types):
 	doctype = frappe.qb.DocType("Work Order")
+	based_on = filters.get("based_on") or "Date"
+	base_where = (doctype.docstatus == 1)
+	if based_on == "Date":
+		base_where &= (doctype.wo_date >= filters.get("from_date")) & (doctype.wo_date <= filters.get("to_date"))
+
 	query = frappe.qb.from_(doctype).select(
 		doctype.name.as_("work_order"),
 		doctype.wo_date,
@@ -54,6 +61,7 @@ def get_data(filters, received_types):
 		doctype.item,
 		doctype.wo_colours,
 		doctype.process_name,
+		doctype.open_status,
 		doctype.planned_quantity,
 		doctype.total_no_of_pieces_delivered,
 		doctype.total_no_of_pieces_received,
@@ -63,7 +71,7 @@ def get_data(filters, received_types):
 		doctype.first_grn_date,
 		doctype.last_grn_date,
 		doctype.received_types_json
-	).where((doctype.docstatus == 1) & (doctype.wo_date >= filters.get("from_date")) & (doctype.wo_date <= filters.get("to_date")))
+	).where(base_where)
 
 
 	if supplier := filters.get('supplier'):
@@ -74,14 +82,32 @@ def get_data(filters, received_types):
 		query = query.where(doctype.lot == lot)
 	if item := filters.get("item"):
 		query = query.where(doctype.item == item)	
-	if status := filters.get("status"):
-		if status == "Close":
-			query = query.where(doctype.open_status == "Close")
-		elif status == "Open":
-			query = query.where(doctype.open_status == "Open")
+	if based_on == "WO Status":
+		if status := filters.get("status"):
+			if status == "Close":
+				query = query.where(doctype.open_status == "Close")
+			elif status == "Open":
+				query = query.where(doctype.open_status == "Open")
 
 	result = query.run(as_dict=True)
+
+	billed_map = {}
+	if result:
+		wo_names = [r['work_order'] for r in result]
+		billed_rows = frappe.db.sql(
+			"""
+			SELECT parent, SUM(billed_qty) AS billed_qty
+			FROM `tabWork Order Calculated Item`
+			WHERE parent IN %(names)s
+			GROUP BY parent
+			""",
+			{"names": tuple(wo_names)},
+			as_dict=True,
+		)
+		billed_map = {row['parent']: row['billed_qty'] or 0 for row in billed_rows}
+
 	for res in result:
+		res['billed_qty'] = billed_map.get(res['work_order'], 0)
 		received_json = res['received_types_json']
 		if isinstance(received_json, string_types):
 			received_json = json.loads(received_json)

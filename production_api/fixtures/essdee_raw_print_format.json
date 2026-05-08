@@ -248,5 +248,80 @@
    }
   ],
   "width": 3.25
+ },
+ {
+  "docstatus": 0,
+  "doctype": "Essdee Raw Print Format",
+  "height": 0.8,
+  "labels_per_row": 4,
+  "modified": "2026-04-21 14:55:41.727167",
+  "name": "Store Size Sticker",
+  "raw_print_format_details": [
+   {
+    "parent": "Store Size Sticker",
+    "parentfield": "raw_print_format_details",
+    "parenttype": "Essdee Raw Print Format",
+    "printer_type": "300dpi",
+    "raw_code": "^XA\n^PQ{{print_quantity}}\n^CF0,160\n^FO30,70^FB250,1,0,C^FD{{size}}^FS\n^FO340,70^FB250,1,0,C^FD{{size}}^FS\n^FO640,70^FB250,1,0,C^FD{{size}}^FS\n^FO920,70^FB250,1,0,C^FD{{size}}^FS\n^XZ"
+   },
+   {
+    "parent": "Store Size Sticker",
+    "parentfield": "raw_print_format_details",
+    "parenttype": "Essdee Raw Print Format",
+    "printer_type": "200dpi",
+    "raw_code": "^XA\n^PQ{{print_quantity}}\n^CF0,180\n^FO30,70^FD{{size}}^FS\n^FO340,70^FD{{size}}^FS\n^FO640,70^FD{{size}}^FS\n^FO920,70^FD{{size}}^FS\n^XZ"
+   }
+  ],
+  "width": 4.0
+ },
+ {
+  "docstatus": 0,
+  "doctype": "Essdee Raw Print Format",
+  "height": 1.0,
+  "labels_per_row": 8,
+  "modified": "2026-04-21 15:07:24.170792",
+  "name": "Store Item Name",
+  "raw_print_format_details": [
+   {
+    "parent": "Store Item Name",
+    "parentfield": "raw_print_format_details",
+    "parenttype": "Essdee Raw Print Format",
+    "printer_type": "300dpi",
+    "raw_code": "^XA\n^PQ{{print_quantity}}\n^FO30,20^A0R,50,50^FD{{item_name}}^FS\n^FO180,20^A0R,50,50^FD{{item_name}}^FS\n^FO330,20^A0R,50,50^FD{{item_name}}^FS\n^FO480,20^A0R,50,50^FD{{item_name}}^FS\n^FO610,20^A0R,50,50^FD{{item_name}}^FS\n^FO760,20^A0R,50,50^FD{{item_name}}^FS\n^FO900,20^A0R,50,50^FD{{item_name}}^FS\n^FO1050,20^A0R,50,50^FD{{item_name}}^FS\n^XZ"
+   },
+   {
+    "parent": "Store Item Name",
+    "parentfield": "raw_print_format_details",
+    "parenttype": "Essdee Raw Print Format",
+    "printer_type": "200dpi",
+    "raw_code": "^XA\n^PQ{{print_quantity}}\n^FO30,20^A0R,50,50^FD{{item_name}}^FS\n^FO180,20^A0R,50,50^FD{{item_name}}^FS\n^FO330,20^A0R,50,50^FD{{item_name}}^FS\n^FO480,20^A0R,50,50^FD{{item_name}}^FS\n^FO610,20^A0R,50,50^FD{{item_name}}^FS\n^FO760,20^A0R,50,50^FD{{item_name}}^FS\n^FO900,20^A0R,50,50^FD{{item_name}}^FS\n^FO1050,20^A0R,50,50^FD{{item_name}}^FS\n^XZ"
+   }
+  ],
+  "width": 4.0
+ },
+ {
+  "docstatus": 0,
+  "doctype": "Essdee Raw Print Format",
+  "height": 0.8,
+  "labels_per_row": 4,
+  "modified": "2026-04-21 15:34:22.945948",
+  "name": "Store Thermal Neck Label",
+  "raw_print_format_details": [
+   {
+    "parent": "Store Thermal Neck Label",
+    "parentfield": "raw_print_format_details",
+    "parenttype": "Essdee Raw Print Format",
+    "printer_type": "300dpi",
+    "raw_code": "^XA\r\n^PQ{{print_quantity}}\r\n^CF0,70\r\n\r\n^FO30,30^FB250,1,0,C^FD{{neck}}^FS\r\n^FO340,30^FB250,1,0,C^FD{{neck}}^FS\r\n^FO640,30^FB250,1,0,C^FD{{neck}}^FS\r\n^FO940,30^FB250,1,0,C^FD{{neck}}^FS\r\n\r\n^FO30,120^GB250,5,5^FS\r\n^FO340,120^GB250,5,5^FS\r\n^FO640,120^GB250,5,5^FS\r\n^FO940,120^GB250,5,5^FS\r\n\r\n^FO30,140^FB250,1,0,C^FD{{size}}^FS\r\n^FO340,140^FB250,1,0,C^FD{{size}}^FS\r\n^FO640,140^FB250,1,0,C^FD{{size}}^FS\r\n^FO940,140^FB250,1,0,C^FD{{size}}^FS\r\n^XZ"
+   },
+   {
+    "parent": "Store Thermal Neck Label",
+    "parentfield": "raw_print_format_details",
+    "parenttype": "Essdee Raw Print Format",
+    "printer_type": "200dpi",
+    "raw_code": "^XA\r\n^PQ{{print_quantity}}\r\n^CF0,70\r\n\r\n^FO30,30^FB250,1,0,C^FD{{neck}}^FS\r\n^FO340,30^FB250,1,0,C^FD{{neck}}^FS\r\n^FO640,30^FB250,1,0,C^FD{{neck}}^FS\r\n^FO940,30^FB250,1,0,C^FD{{neck}}^FS\r\n\r\n^FO30,120^GB250,5,5^FS\r\n^FO340,120^GB250,5,5^FS\r\n^FO640,120^GB250,5,5^FS\r\n^FO940,120^GB250,5,5^FS\r\n\r\n^FO30,140^FB250,1,0,C^FD{{size}}^FS\r\n^FO340,140^FB250,1,0,C^FD{{size}}^FS\r\n^FO640,140^FB250,1,0,C^FD{{size}}^FS\r\n^FO940,140^FB250,1,0,C^FD{{size}}^FS\r\n^XZ"
+   }
+  ],
+  "width": 4.0
  }
 ]

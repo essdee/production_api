@@ -77,8 +77,13 @@
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
- "links": [],
- "modified": "2026-01-28 10:51:43.643408",
+ "links": [
+  {
+   "link_doctype": "Sewing Plan Entry Detail",
+   "link_fieldname": "sewing_plan"
+  }
+ ],
+ "modified": "2026-04-20 13:23:43.996419",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Sewing Plan",
