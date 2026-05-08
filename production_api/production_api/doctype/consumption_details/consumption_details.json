@@ -1,88 +1,70 @@
 {
  "actions": [],
  "allow_rename": 1,
- "creation": "2026-04-30 11:56:01.496598",
+ "creation": "2026-05-08 11:18:40.164148",
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
-  "bom_item",
-  "colour",
-  "part",
-  "quantity",
-  "size",
+  "index",
   "item_name",
-  "row_index",
-  "row_values_json",
-  "panel",
-  "stage"
+  "attribute",
+  "attribute_value",
+  "type",
+  "item_bom_qty",
+  "consumption_qty"
  ],
  "fields": [
   {
-   "fieldname": "bom_item",
-   "fieldtype": "Data",
+   "fieldname": "index",
+   "fieldtype": "Int",
    "in_list_view": 1,
-   "label": "BOM Item"
+   "label": "Index"
   },
   {
-   "fieldname": "colour",
+   "fieldname": "attribute",
    "fieldtype": "Data",
    "in_list_view": 1,
-   "label": "Colour"
+   "label": "Attribute"
   },
   {
-   "fieldname": "part",
+   "fieldname": "attribute_value",
    "fieldtype": "Data",
    "in_list_view": 1,
-   "label": "Part"
+   "label": "Attribute Value"
   },
   {
-   "fieldname": "size",
+   "fieldname": "type",
    "fieldtype": "Data",
-   "label": "Size"
+   "in_list_view": 1,
+   "label": "Type"
+  },
+  {
+   "fieldname": "item_bom_qty",
+   "fieldtype": "Int",
+   "in_list_view": 1,
+   "label": "Item bom qty"
+  },
+  {
+   "fieldname": "consumption_qty",
+   "fieldtype": "Int",
+   "in_list_view": 1,
+   "label": "Consumption qty"
   },
   {
    "fieldname": "item_name",
    "fieldtype": "Data",
-   "label": "Name"
-  },
-  {
-   "fieldname": "quantity",
-   "fieldtype": "Float",
    "in_list_view": 1,
-   "label": "Quantity"
-  },
-  {
-   "fieldname": "row_index",
-   "fieldtype": "Int",
-   "hidden": 1,
-   "label": "Row Index"
-  },
-  {
-   "fieldname": "row_values_json",
-   "fieldtype": "Small Text",
-   "hidden": 1,
-   "label": "Row Values JSON",
-   "read_only": 1
-  },
-  {
-   "fieldname": "panel",
-   "fieldtype": "Data",
-   "label": "Panel"
-  },
-  {
-   "fieldname": "stage",
-   "fieldtype": "Data",
-   "label": "Stage"
+   "label": "Item Name"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2026-05-01 10:56:14.592336",
+ "modified": "2026-05-08 14:40:19.881227",
  "modified_by": "Administrator",
  "module": "Production Api",
- "name": "Consumption details",
+ "name": "Consumption Details",
  "owner": "Administrator",
  "permissions": [],
  "row_format": "Dynamic",

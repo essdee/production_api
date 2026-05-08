@@ -1418,12 +1418,8 @@ def get_the_lot(supplier):
 	return {"lots": rows}
 
 @frappe.whitelist()
-def get_consumption_mapping_data(lot,supplier=None):
+def get_consumption_mapping_data(lot, supplier=None):
 	attr_map = Ipd_setting_att()
-	pack_attr = attr_map.get("pack_attr")
-	set_attr = attr_map.get("set_attr")
-	prim_attr = attr_map.get("prim_attr")
-	sti_attr = attr_map.get("sti_attr")
 	sti_process = attr_map.get("sti_process") or "Stitching"
 
 	ipd = frappe.db.sql("""
@@ -1434,23 +1430,20 @@ def get_consumption_mapping_data(lot,supplier=None):
 
 	if not ipd or not ipd[0].production_detail:
 		return {"ipd": "", "sections": []}
-	
 	sew_p_row_data=[]
+	saved_qty_in_sp={}
 	if supplier:
 		sp_name=frappe.get_all("Sewing Plan", filters={"supplier": supplier, "lot": lot}, pluck="name")
 		for s in sp_name:
-			save_r=frappe.get_doc("Sewing Plan",s)
-			for row in save_r.consumption_details:
+			sp_doc=frappe.get_doc("Sewing Plan", s)
+			for r in sp_doc.consumption_details:
 				sew_p_row_data.append({
-					"bom_item": row.bom_item,
-					"colour": row.colour,
-					"part": row.part,
-					"size": row.size,
-					"panel": row.panel,
-					"stage":row.stage,
-					"quantity": row.quantity or 0,
+					"item_name": r.item_name,
+					"index": r.index,
+					"consumption_qty": r.consumption_qty,
+					
 				})
-
+				saved_qty_in_sp[(r.item_name, r.index)]=r.consumption_qty or 0
 	bom_rows = frappe.db.sql("""
 		SELECT item, attribute_mapping
 		FROM `tabItem BOM`
@@ -1462,95 +1455,103 @@ def get_consumption_mapping_data(lot,supplier=None):
 	if not bom_rows:
 		return {"ipd": ipd[0].production_detail, "sections": []}
 
-	mapping=[] 
+	mapping = []
 	for r in bom_rows:
 		if r.attribute_mapping:
 			mapping.append(r.attribute_mapping)
 
-	data_in_bom={}
-
+	data_in_bom = {}
+	
+	v_in_map = {}
 	if mapping:
-		value_in_row=frappe.get_all("Item BOM Attribute Mapping Value", filters={"parent": ["in", mapping]}, 
-							fields=["parent", "index", "type", "attribute", "attribute_value", "quantity"], 
-							order_by="parent, `index`, type, attribute")
+		value_in_row = frappe.get_all(
+			"Item BOM Attribute Mapping Value",
+			filters={"parent": ["in", mapping]},
+			fields=["parent", "index", "type", "idx", "attribute", "attribute_value", "quantity"],
+			order_by="parent, `index`, `idx`"
+		)
+
 		for r in value_in_row:
 			if r.parent not in data_in_bom:
-				data_in_bom[r.parent]=[]
+				data_in_bom[r.parent] = []
 			data_in_bom[r.parent].append(r)
-			
-	section=[]
-	for b in bom_rows:
-		item_att=[]
-		r_map={}
-		for r in data_in_bom.get(b.attribute_mapping,[]):
-			if r.index not in r_map:
-				r_map[r.index]={"quantity":r.quantity,"item_values":{}}
-			r_map[r.index]["quantity"]=r.quantity
-			if r.type=="item":
-				r_map[r.index]["item_values"][r.attribute]=r.attribute_value
-				if r.attribute not in item_att:
-					item_att.append(r.attribute)
 
-		row_x=[]
-		for r in sorted(r_map):
-			row_d=r_map[r]
-			r_v={}
+		v_in = frappe.get_all(
+			"Item BOM Attribute Mapping Attribute",
+			filters={"parent": ["in", mapping], "same_attribute": 0},
+			fields=["parent", "attribute"]
+		)
+
+		for r in v_in:
+			v_in_map.setdefault(r.parent, []).append(r.attribute)
+
+	section = []
+	for b in bom_rows:
+		item_att = []
+		
+		r_map = {}
+
+		for r in data_in_bom.get(b.attribute_mapping, []):
+			if r.index not in r_map:
+				r_map[r.index] = {
+					"quantity": r.quantity,
+					"item_values": {},
+					"bom_values": {}
+				}
+
+			key=f"{r.type}_{r.attribute}"
+			r_map[r.index]["quantity"] = r.quantity
+
+			if r.type == "item":
+				r_map[r.index]["item_values"][key] = r.attribute_value
+				
+			elif r.type == "bom":
+				r_map[r.index]["bom_values"][key] = r.attribute_value
+			if key not in item_att:
+				
+				item_att.append(key)
+	
+			
+
+		row_x = []
+		for idx in sorted(r_map):
+			row_d = r_map[idx]
+			r_v = {}
+
 			for a in item_att:
-				r_v[a]=row_d["item_values"].get(a, "")
-			saved_qty = None
-			for sr in sew_p_row_data:
-				if sr.get("bom_item") != b.item:
-					continue
-				if pack_attr and r_v.get(pack_attr) and sr.get("colour") != r_v.get(pack_attr):
-					continue
-				if set_attr and r_v.get(set_attr) and sr.get("part") != r_v.get(set_attr):
-					continue
-				if prim_attr and r_v.get(prim_attr) and sr.get("size") != r_v.get(prim_attr):
-					continue
-				if sti_attr and r_v.get(sti_attr) and sr.get("panel") != r_v.get(sti_attr):
-					continue
-				saved_qty = sr.get("quantity", 0)
-				break
+				r_v[a] = row_d["item_values"].get(a, "") or row_d["bom_values"].get(a, "")
+			saved_qty=saved_qty_in_sp.get((b.item, idx),0)
+			
 
 			row_x.append({
-					"index": r,
-					"values": r_v,
-					"quantity": saved_qty if saved_qty is not None else 0
-				})
-			
+				"index": idx,
+				"values": r_v,
+				"quantity": saved_qty or 0,
+				"item_bom_qty": row_d.get("quantity", 0)
+			})
+
 		if not row_x:
 			item_att = ["Item"]
-			saved_qty = None
-			for sr in sew_p_row_data:
-				if sr.get("bom_item") != b.item:
-					continue
-				saved_qty = sr.get("quantity", 0)
-				break
-
 			row_x.append({
 				"index": 0,
-				"values":  {"Item": b.item},
-				"quantity": saved_qty if saved_qty is not None else 0
+				"values": {"Item": b.item},
+				"quantity": 0,
+				"item_bom_qty": 0
 			})
-			
-			
+
 		section.append({
 			"item": b.item,
 			"item_attributes": item_att,
 			"rows": row_x,
+			"attribute_in_item":v_in_map.get(b.attribute_mapping, [])
 		})
+		
 	return {"ipd": ipd[0].production_detail, "sections": section}
 
 
 
 @frappe.whitelist()
 def save_consumption_data(supplier, lot, sections):
-	attr_map = Ipd_setting_att()
-	pack_attr = attr_map.get("pack_attr")
-	set_attr = attr_map.get("set_attr")
-	prim_attr = attr_map.get("prim_attr")
-	sti_attr = attr_map.get("sti_attr")
-
 	sections = update_if_string_instance(sections)
 
 	if not supplier or not lot:
@@ -1565,60 +1566,70 @@ def save_consumption_data(supplier, lot, sections):
 	if not sew_p:
 		frappe.throw(f"No Sewing Plan found for supplier {supplier} and lot {lot}")
 
+	
+
 	for sp in sew_p:
 		sp_n = frappe.get_doc("Sewing Plan", sp)
 		sp_n.set("consumption_details", [])
-		seen = set()
+
+		row_no = 1
 
 		for sec in sp_n.sewing_plan_order_details:
 			att_de = get_variant_attr_details(sec.item_variant) or {}
+			
 
 			for s in sections or []:
-				b_item = s.get("item")
+				item_n = s.get("item")
+				att_in_sec=s.get("attribute_in_item", [])
 
 				for r in s.get("rows", []):
-					r_values = r.get("values", {})
-					r_qty = r.get("quantity", 0)
+					r_values = r.get("values") or {}
+					item_bom_qty = r.get("item_bom_qty") or 0
+					r_qty = r.get("quantity") or 0
+					r_index = r.get("index", 0)
 
-					part = r_values.get(set_attr) if set_attr else None
-					colour = r_values.get(pack_attr) if pack_attr else None
-					size = r_values.get(prim_attr) if prim_attr else None
-					panel = r_values.get(sti_attr) if sti_attr else None
+					match = True
+					saved_f = []
 
-					if part and att_de.get(set_attr) != part:
+					for att in s.get("item_attributes") or []:
+						
+						att_v = r_values.get(att)
+						if att_v in (None, ""):
+							continue
+
+						att_type = "item" if att.startswith("item_") else "bom"
+						att_name = att.split("_", 1)[1] if "_" in str(att) else att
+
+						if att_type == "item":
+							if att_name not in att_in_sec:
+								continue
+
+							if att_de.get(att_name) != att_v:
+								match = False
+								break
+
+						saved_f.append((att_type, att_name, att_v))
+
+					if not match:
 						continue
+					if item_bom_qty<r_qty:
+						frappe.throw(f"Consumption quantity cannot be greater than BOM quantity")
+					for att_type, att_name, att_v in saved_f:
+						sp_n.append("consumption_details", {
+							"item_name": item_n,
+							"index": r_index,
+							"attribute": att_name,
+							"attribute_value": att_v,
+							"type": att_type,
+							"item_bom_qty": item_bom_qty,
+							"consumption_qty": r_qty,
+						})
+						row_no += 1
+						
 
-					if colour and att_de.get(pack_attr) != colour:
-						continue
-
-					if size and att_de.get(prim_attr) != size:
-						continue
-
-					if panel and att_de.get(sti_attr) != panel:
-						continue
-
-					row_key = (
-						b_item,
-						colour,
-						part,
-						size,
-						panel,
-						flt(r_qty),
-					)
-
-					if row_key in seen:
-						continue
-
-					seen.add(row_key)
-
-					sp_n.append("consumption_details", {
-						"bom_item": b_item,
-						"colour": colour,
-						"part": part,
-						"size": size,
-						"quantity": r_qty,
-					})
 		sp_n.save(ignore_permissions=True)
+
 	return {
 		"status": "success",
-		"sewing_plans": sew_p,	}
+		
+	}

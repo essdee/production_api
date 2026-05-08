@@ -33,26 +33,32 @@
                 <div class="report-container no-scrollbar">
                     <table class="report-table">
                         <thead>
-                            <tr class="header-row">
-                                <th class="header-cell primary-header sticky-col-sno">S.No</th>
-                                <th v-for="attr in section.item_attributes" :key="attr" class="header-cell primary-header">{{ attr }}</th>
-                                <th class="header-cell primary-header">Quantity</th>
-                            </tr>
+		                            <tr class="header-row">
+		                                <th class="header-cell primary-header sticky-col-sno">S.No</th>
+		                                <th v-for="attr in section.item_attributes" :key="attr" class="header-cell primary-header">
+		                                    {{ (attr || '').includes('_') ? attr.split('_').slice(1).join('_') : attr }}
+		                                </th>
+		                                <th class="header-cell primary-header">Qty</th>
+		                                <th class="header-cell primary-header"> Consumption Quantity</th>
+		                            </tr>
                         </thead>
                         <tbody>
-                            <tr v-for="(row, idx) in section.rows" :key="section.item + '-' + idx" class="data-row">
-                                <td class="data-cell sticky-col-sno">{{ idx + 1 }}</td>
-                                <td v-for="attr in section.item_attributes" :key="section.item + '-' + attr + '-' + idx" class="data-cell item-cell">
-                                    {{ row.values[attr] || '-' }}
-                                </td>
-                                <td class="data-cell quantity-cell">
-                                    <input
-                                        v-model="row.quantity"
-                                        type="number"
-                                        min="0"
-                                        step="0.001"
-                                        class="quantity-input"
-                                    >
+	                            <tr v-for="(row, idx) in section.rows" :key="section.item + '-' + idx" class="data-row">
+	                                <td class="data-cell sticky-col-sno">{{ idx + 1 }}</td>
+		                                <td v-for="attr in section.item_attributes" :key="section.item + '-' + attr + '-' + idx" class="data-cell item-cell">
+		                                    {{ row.values?.[attr] || '-' }}
+		                                </td>
+		                                <td class="data-cell item-cell">
+		                                    {{ row.item_bom_qty ?? 0 }}
+	                                </td>
+	                                <td class="data-cell quantity-cell">
+	                                    <input
+	                                        v-model.number="row.quantity"
+	                                        type="number"
+	                                        min="0"
+	                                        step="0.001"
+	                                        class="quantity-input"
+	                                    >
                                 </td>
                             </tr>
                         </tbody>

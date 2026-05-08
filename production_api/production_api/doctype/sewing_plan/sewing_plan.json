@@ -84,7 +84,7 @@
    "fieldname": "consumption_details",
    "fieldtype": "Table",
    "label": "Consumption Details",
-   "options": "Consumption details"
+   "options": "Consumption Details"
   }
  ],
  "grid_page_length": 50,
@@ -95,7 +95,7 @@
    "link_fieldname": "sewing_plan"
   }
  ],
- "modified": "2026-04-30 11:54:39.289635",
+ "modified": "2026-05-08 14:11:11.163822",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Sewing Plan",
