@@ -1482,7 +1482,9 @@ def get_consumption_mapping_data(lot, supplier=None):
 		)
 
 		for r in v_in:
-			v_in_map.setdefault(r.parent, []).append(r.attribute)
+			if r.parent not in  v_in_map:
+				v_in_map[r.parent] = []	
+			v_in_map[r.parent].append(r.attribute)
 
 	section = []
 	for b in bom_rows:
@@ -1503,25 +1505,19 @@ def get_consumption_mapping_data(lot, supplier=None):
 
 			if r.type == "item":
 				r_map[r.index]["item_values"][key] = r.attribute_value
-				
 			elif r.type == "bom":
 				r_map[r.index]["bom_values"][key] = r.attribute_value
 			if key not in item_att:
-				
 				item_att.append(key)
-	
-			
 
 		row_x = []
 		for idx in sorted(r_map):
 			row_d = r_map[idx]
 			r_v = {}
-
 			for a in item_att:
 				r_v[a] = row_d["item_values"].get(a, "") or row_d["bom_values"].get(a, "")
 			saved_qty=saved_qty_in_sp.get((b.item, idx),0)
-			
-
+		
 			row_x.append({
 				"index": idx,
 				"values": r_v,
@@ -1559,13 +1555,10 @@ def save_consumption_data(supplier, lot, sections):
 	sew_p = frappe.get_all(
 		"Sewing Plan",
 		filters={"supplier": supplier, "lot": lot},
-		pluck="name"
-	)
+		pluck="name")
 
 	if not sew_p:
 		frappe.throw(f"No Sewing Plan found for supplier {supplier} and lot {lot}")
-
-	
 
 	for sp in sew_p:
 		sp_n = frappe.get_doc("Sewing Plan", sp)
@@ -1591,13 +1584,16 @@ def save_consumption_data(supplier, lot, sections):
 					saved_f = []
 
 					for att in s.get("item_attributes") or []:
-						
 						att_v = r_values.get(att)
 						if att_v in (None, ""):
 							continue
 
 						att_type = "item" if att.startswith("item_") else "bom"
-						att_name = att.split("_", 1)[1] if "_" in str(att) else att
+						if "_" in str(att):
+							att_name = att.split("_", 1)[1]
+						else:
+							att_name = att
+
 
 						if att_type == "item":
 							if att_name not in att_in_sec:
@@ -1625,10 +1621,9 @@ def save_consumption_data(supplier, lot, sections):
 						})
 						row_no += 1
 						
-
-		sp_n.save(ignore_permissions=True)
+		sp_n.save()
 
 	return {
 		"status": "success",
-		
-	}
+		"message": "Consumption data saved successfully"
+		}
