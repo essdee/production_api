@@ -3,6 +3,7 @@
 
 import frappe
 from frappe.model.document import Document
+from frappe.utils import flt
 from production_api.production_api.doctype.item.item import get_or_create_variant
 from production_api.utils import get_variant_attr_details, update_if_string_instance
 from production_api.mrp_stock.doctype.stock_summary.stock_summary import get_variant_attr_values
@@ -1390,3 +1391,245 @@ def update_fi_dates(data):
 		sp_doc.save(ignore_permissions=True)
 	
 	return "Success"
+
+
+def Ipd_setting_att():
+	ipd_s=frappe.get_single("IPD Settings")
+	return {
+		"pack_attr": ipd_s.default_packing_attribute,
+		"set_attr": ipd_s.default_set_item_attribute,
+		"prim_attr": ipd_s.default_primary_attribute,
+		"sti_attr": ipd_s.default_stitching_attribute,
+		"sti_process": ipd_s.default_stitching_process,
+		
+	}
+
+@frappe.whitelist()
+def get_the_lot(supplier):
+	rows = frappe.db.sql("""
+			SELECT DISTINCT lot
+			FROM `tabSewing Plan`
+			WHERE supplier = %(supplier)s
+			AND lot IS NOT NULL
+			AND lot != ''
+			ORDER BY lot
+		""", {"supplier": supplier}, as_dict=True)
+
+	return {"lots": rows}
+
+@frappe.whitelist()
+def get_consumption_mapping_data(lot, supplier=None):
+	attr_map = Ipd_setting_att()
+	sti_process = attr_map.get("sti_process") or "Stitching"
+
+	ipd = frappe.db.sql("""
+		SELECT production_detail
+		FROM `tabLot`
+		WHERE name = %(lot)s
+	""", {"lot": lot}, as_dict=True)
+
+	if not ipd or not ipd[0].production_detail:
+		return {"ipd": "", "sections": []}
+	sew_p_row_data=[]
+	saved_qty_in_sp={}
+	if supplier:
+		sp_name=frappe.get_all("Sewing Plan", filters={"supplier": supplier, "lot": lot}, pluck="name")
+		for s in sp_name:
+			sp_doc=frappe.get_doc("Sewing Plan", s)
+			for r in sp_doc.consumption_details:
+				sew_p_row_data.append({
+					"item_name": r.item_name,
+					"index": r.index,
+					"consumption_qty": r.consumption_qty,
+					
+				})
+				saved_qty_in_sp[(r.item_name, r.index)]=r.consumption_qty or 0
+	bom_rows = frappe.db.sql("""
+		SELECT item, attribute_mapping
+		FROM `tabItem BOM`
+		WHERE parent = %(ipd)s
+		  AND process_name = %(process_name)s
+		ORDER BY item
+	""", {"ipd": ipd[0].production_detail, "process_name": sti_process}, as_dict=True)
+
+	if not bom_rows:
+		return {"ipd": ipd[0].production_detail, "sections": []}
+
+	mapping = []
+	for r in bom_rows:
+		if r.attribute_mapping:
+			mapping.append(r.attribute_mapping)
+
+	data_in_bom = {}
+	
+	v_in_map = {}
+	if mapping:
+		value_in_row = frappe.get_all(
+			"Item BOM Attribute Mapping Value",
+			filters={"parent": ["in", mapping]},
+			fields=["parent", "index", "type", "idx", "attribute", "attribute_value", "quantity"],
+			order_by="parent, `index`, `idx`"
+		)
+
+		for r in value_in_row:
+			if r.parent not in data_in_bom:
+				data_in_bom[r.parent] = []
+			data_in_bom[r.parent].append(r)
+
+		v_in = frappe.get_all(
+			"Item BOM Attribute Mapping Attribute",
+			filters={"parent": ["in", mapping], "same_attribute": 0},
+			fields=["parent", "attribute"]
+		)
+
+		for r in v_in:
+			v_in_map.setdefault(r.parent, []).append(r.attribute)
+
+	section = []
+	for b in bom_rows:
+		item_att = []
+		
+		r_map = {}
+
+		for r in data_in_bom.get(b.attribute_mapping, []):
+			if r.index not in r_map:
+				r_map[r.index] = {
+					"quantity": r.quantity,
+					"item_values": {},
+					"bom_values": {}
+				}
+
+			key=f"{r.type}_{r.attribute}"
+			r_map[r.index]["quantity"] = r.quantity
+
+			if r.type == "item":
+				r_map[r.index]["item_values"][key] = r.attribute_value
+				
+			elif r.type == "bom":
+				r_map[r.index]["bom_values"][key] = r.attribute_value
+			if key not in item_att:
+				
+				item_att.append(key)
+	
+			
+
+		row_x = []
+		for idx in sorted(r_map):
+			row_d = r_map[idx]
+			r_v = {}
+
+			for a in item_att:
+				r_v[a] = row_d["item_values"].get(a, "") or row_d["bom_values"].get(a, "")
+			saved_qty=saved_qty_in_sp.get((b.item, idx),0)
+			
+
+			row_x.append({
+				"index": idx,
+				"values": r_v,
+				"quantity": saved_qty or 0,
+				"item_bom_qty": row_d.get("quantity", 0)
+			})
+
+		if not row_x:
+			item_att = ["Item"]
+			row_x.append({
+				"index": 0,
+				"values": {"Item": b.item},
+				"quantity": 0,
+				"item_bom_qty": 0
+			})
+
+		section.append({
+			"item": b.item,
+			"item_attributes": item_att,
+			"rows": row_x,
+			"attribute_in_item":v_in_map.get(b.attribute_mapping, [])
+		})
+		
+	return {"ipd": ipd[0].production_detail, "sections": section}
+
+
+
+@frappe.whitelist()
+def save_consumption_data(supplier, lot, sections):
+	sections = update_if_string_instance(sections)
+
+	if not supplier or not lot:
+		frappe.throw("Supplier and lot is missing")
+
+	sew_p = frappe.get_all(
+		"Sewing Plan",
+		filters={"supplier": supplier, "lot": lot},
+		pluck="name"
+	)
+
+	if not sew_p:
+		frappe.throw(f"No Sewing Plan found for supplier {supplier} and lot {lot}")
+
+	
+
+	for sp in sew_p:
+		sp_n = frappe.get_doc("Sewing Plan", sp)
+		sp_n.set("consumption_details", [])
+
+		row_no = 1
+
+		for sec in sp_n.sewing_plan_order_details:
+			att_de = get_variant_attr_details(sec.item_variant) or {}
+			
+
+			for s in sections or []:
+				item_n = s.get("item")
+				att_in_sec=s.get("attribute_in_item", [])
+
+				for r in s.get("rows", []):
+					r_values = r.get("values") or {}
+					item_bom_qty = r.get("item_bom_qty") or 0
+					r_qty = r.get("quantity") or 0
+					r_index = r.get("index", 0)
+
+					match = True
+					saved_f = []
+
+					for att in s.get("item_attributes") or []:
+						
+						att_v = r_values.get(att)
+						if att_v in (None, ""):
+							continue
+
+						att_type = "item" if att.startswith("item_") else "bom"
+						att_name = att.split("_", 1)[1] if "_" in str(att) else att
+
+						if att_type == "item":
+							if att_name not in att_in_sec:
+								continue
+
+							if att_de.get(att_name) != att_v:
+								match = False
+								break
+
+						saved_f.append((att_type, att_name, att_v))
+
+					if not match:
+						continue
+					if item_bom_qty<r_qty:
+						frappe.throw(f"Consumption quantity cannot be greater than BOM quantity")
+					for att_type, att_name, att_v in saved_f:
+						sp_n.append("consumption_details", {
+							"item_name": item_n,
+							"index": r_index,
+							"attribute": att_name,
+							"attribute_value": att_v,
+							"type": att_type,
+							"item_bom_qty": item_bom_qty,
+							"consumption_qty": r_qty,
+						})
+						row_no += 1
+						
+
+		sp_n.save(ignore_permissions=True)
+
+	return {
+		"status": "success",
+		
+	}
