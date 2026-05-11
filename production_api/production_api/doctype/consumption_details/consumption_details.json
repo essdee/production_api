@@ -1,0 +1,75 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2026-05-08 11:18:40.164148",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "index",
+  "item_name",
+  "attribute",
+  "attribute_value",
+  "type",
+  "item_bom_qty",
+  "consumption_qty"
+ ],
+ "fields": [
+  {
+   "fieldname": "index",
+   "fieldtype": "Int",
+   "in_list_view": 1,
+   "label": "Index"
+  },
+  {
+   "fieldname": "attribute",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Attribute"
+  },
+  {
+   "fieldname": "attribute_value",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Attribute Value"
+  },
+  {
+   "fieldname": "type",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Type"
+  },
+  {
+   "fieldname": "item_bom_qty",
+   "fieldtype": "Int",
+   "in_list_view": 1,
+   "label": "Item bom qty"
+  },
+  {
+   "fieldname": "consumption_qty",
+   "fieldtype": "Int",
+   "in_list_view": 1,
+   "label": "Consumption qty"
+  },
+  {
+   "fieldname": "item_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Item Name"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2026-05-08 14:40:19.881227",
+ "modified_by": "Administrator",
+ "module": "Production Api",
+ "name": "Consumption Details",
+ "owner": "Administrator",
+ "permissions": [],
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

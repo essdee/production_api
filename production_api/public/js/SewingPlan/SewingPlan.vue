@@ -12,7 +12,7 @@
         <div class="page-container">
             <div class="controls-section">
                 <div class="controls-flex">
-                    <div class="tab-nav no-scrollbar">
+                    <div class="tab-nav tab-scroll">
                         <button 
                             v-for="tab in tabs" 
                             :key="tab.id"
@@ -27,7 +27,7 @@
                         </button>
                     </div>
                     <div class="supplier-section">
-                        <div style="padding-top:22px;">
+                        <div class="refresh-wrap">
                             <button 
                                 @click="refresh_counter++"
                                 class="refresh-btn"
@@ -94,6 +94,11 @@
                             :selected_supplier="selected_supplier"
                             :refresh_counter="refresh_counter"
                         />
+						 <Consumption
+                            v-show="current_tab === 'consumption'"
+                            :selected_supplier="selected_supplier"
+                            :refresh_counter="refresh_counter"
+                        />
                     </div>
                     <div v-else class="global-empty-state">
                         <div class="empty-state-visual">
@@ -119,6 +124,7 @@ import LineTab from './components/LineTab.vue'
 import FIUpdatesTab from './components/FIUpdatesTab.vue'
 import MonthlySummaryTab from './components/MonthlySummaryTab.vue'
 import ItemSummaryTab from './components/ItemSummaryTab.vue'
+import Consumption from './components/Consumption.vue'
 
 const IconOverview = () => h('svg', { fill: 'none', stroke: 'currentColor', viewBox: '0 0 24 24', class: 'w-full h-full text-current' }, [h('path', { 'stroke-linecap': 'round', 'stroke-linejoin': 'round', 'stroke-width': '2.5', d: 'M4 5a1 1 0 011-1h3a1 1 0 011 1v3a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM15 5a1 1 0 011-1h3a1 1 0 011 1v3a1 1 0 01-1 1h-3a1 1 0 01-1-1V5zM4 15a1 1 0 011-1h3a1 1 0 011 1v3a1 1 0 01-1 1H5a1 1 0 01-1-1v-3zM15 15a1 1 0 011-1h3a1 1 0 011 1v3a1 1 0 01-1 1h-3a1 1 0 01-1-1v-3z' })])
 const IconLinePlan = () => h('svg', { fill: 'none', stroke: 'currentColor', viewBox: '0 0 24 24', class: 'w-full h-full text-current' }, [h('path', { 'stroke-linecap': 'round', 'stroke-linejoin': 'round', 'stroke-width': '2.5', d: 'M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2' })])
@@ -144,6 +150,7 @@ const tabs = computed(() => {
         { id: 'line', label: 'Entries', icon: IconLinePlan },
         { id: 'monthly_summary', label: 'Monthly Summary', icon: IconMonthlySummary },
         { id: 'item_summary', label: 'Item Summary', icon: IconItemSummary },
+		{id:'consumption', label:'Consumption', icon: IconItemSummary}
     ]
     if (hasProductionPlannerRole.value) {
         baseTabs.push({ id: 'fi_updates', label: 'FI Updates', icon: IconFI })
@@ -209,6 +216,7 @@ function initSupplierField() {
 
 .header-left {
     display: flex;
+	margin-bottom: 1.5rem;
 }
 
 .page-title {
@@ -226,20 +234,23 @@ function initSupplierField() {
 }
 
 .controls-section {
-    padding: 0 0.5rem;
+    padding: 0 0.25rem;
 }
 
 .controls-flex {
     display: flex;
     flex-direction: column;
     justify-content: space-between;
-    gap: 1.5rem;
+    gap: 1rem;
+    align-items: stretch;
 }
 
 @media (min-width: 1024px) {
     .controls-flex {
-        flex-direction: row;
-        align-items: center;
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        align-items: start;
+        gap: 1rem;
     }
 }
 
@@ -248,18 +259,53 @@ function initSupplierField() {
     display: flex;
     flex-wrap: nowrap;
     align-items: center;
-    gap: 1rem;
-    padding: 0.5rem 0.25rem;
+    gap: 0.3rem;
+    padding: 0.45rem 0.8rem 0.55rem;
     overflow-x: auto;
+    overflow-y: hidden;
+    width: 100%;
+    min-width: 0;
+    border: 1px solid rgba(226, 232, 240, 0.95);
+    border-radius: 1.35rem;
+    background: linear-gradient(180deg, rgba(255,255,255,0.98) 0%, rgba(248,250,252,0.94) 100%);
+    box-shadow: 0 10px 24px rgba(15, 23, 42, 0.045);
+    backdrop-filter: blur(12px);
+    scrollbar-width: thin;
+    scrollbar-color: #cbd5e1 transparent;
+    scroll-padding-inline: 0.9rem;
+    scroll-snap-type: x proximity;
+    min-height: 4.6rem;
+}
+
+.tab-scroll {
+    scrollbar-width: thin;
+    scrollbar-color: #cbd5e1 transparent;
+}
+
+.tab-scroll::-webkit-scrollbar {
+    height: 6px;
+}
+
+.tab-scroll::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.tab-scroll::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 999px;
+}
+
+.tab-scroll::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8;
 }
 
 .tab-button {
     display: flex;
     align-items: center;
-    gap: 0.25rem;
-    padding: 0.7rem 1rem;
-    border-radius: 1.25rem;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    gap: 0.42rem;
+    padding: 0.58rem 0.9rem;
+    border-radius: 999px;
+    transition: transform 0.22s ease, box-shadow 0.22s ease, background-color 0.22s ease, color 0.22s ease;
     border: 1px solid transparent;
     cursor: pointer;
     white-space: nowrap;
@@ -267,19 +313,21 @@ function initSupplierField() {
     color: #94a3b8;
     outline: none;
     position: relative;
+    scroll-snap-align: start;
 }
 
 .tab-button:hover {
-    color: #475569;
-    background-color: rgba(241, 245, 249, 0.8);
+    color: #334155;
+    background-color: rgba(241, 245, 249, 0.92);
+    box-shadow: 0 8px 18px rgba(15, 23, 42, 0.06);
+    transform: translateY(-1px);
 }
 
 .tab-button.active {
-    background-color: #ffffff;
-    color: var(--primary-color, #1a73e8);
-    box-shadow: 0 15px 30px -5px rgba(26, 115, 232, 0.15), 
-                0 10px 10px -5px rgba(26, 115, 232, 0.04);
-    border-color: #e2e8f0;
+    background: linear-gradient(135deg, #1a73e8 0%, #4f8ff0 100%);
+    color: #ffffff;
+    box-shadow: 0 14px 28px rgba(26, 115, 232, 0.22);
+    border-color: transparent;
     transform: translateY(-1px);
 }
 
@@ -308,19 +356,27 @@ function initSupplierField() {
 }
 
 .tab-button.active .tab-icon {
-    color: var(--primary-color, #1a73e8);
+    color: #ffffff;
 }
 
 .tab-label {
-    font-size: 0.875rem;
-    font-weight: 500;
+    font-size: 0.84rem;
+    font-weight: 600;
+    letter-spacing: 0.01em;
 }
 
 .supplier-section {
     position: relative;
     display: flex;
     align-items: center;
-    gap: 0.75rem;
+    gap: 0.6rem;
+    flex: 0 0 auto;
+    padding: 0.4rem 0.45rem;
+    border: 1px solid rgba(226, 232, 240, 0.9);
+    border-radius: 1.25rem;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.98) 0%, rgba(248, 250, 252, 0.94) 100%);
+    box-shadow: 0 8px 20px rgba(15, 23, 42, 0.04);
+    align-self: start;
 }
 
 @media (min-width: 1024px) {
@@ -329,22 +385,94 @@ function initSupplierField() {
     }
 }
 
+.refresh-wrap {
+    display: flex;
+    align-items: center;
+    flex: 0 0 auto;
+    height: 2.55rem;
+}
+
 .supplier-input-flex {
     display: flex;
+    align-items: center;
+    width: 100%;
+    min-width: 0;
+}
+
+.supplier-field-container {
+    display: flex;
+    min-width: 0;
+    width: 100%;
+    position: relative;
 }
 
 .search-hint {
     position: absolute;
-    right: 0.75rem;
+    right: 0.95rem;
     top: 50%;
     transform: translateY(-50%);
     pointer-events: none;
 }
 
+.supplier-field-container :deep(.control-input-wrapper),
+.supplier-field-container :deep(.form-control),
+.supplier-field-container :deep(.input-with-feedback),
+.supplier-field-container :deep(.control-input) {
+    height: 2.55rem;
+    min-height: 2.55rem;
+    border-radius: 999px;
+}
+
+.supplier-field-container :deep(.control-input-wrapper) {
+    border: none;
+    background: #ffffff;
+    box-shadow: inset 0 1px 2px rgba(15, 23, 42, 0.04);
+}
+
+.supplier-field-container :deep(.form-control),
+.supplier-field-container :deep(.input-with-feedback),
+.supplier-field-container :deep(.control-input) {
+    border: 0 !important;
+    outline: none !important;
+    background: transparent;
+    box-shadow: none !important;
+    padding-left: 1rem;
+    padding-right: 2.4rem;
+}
+
+.supplier-field-container :deep(.form-control:focus),
+.supplier-field-container :deep(.input-with-feedback:focus),
+.supplier-field-container :deep(.control-input:focus) {
+    border: 0 !important;
+    outline: none !important;
+    box-shadow: none !important;
+}
+
+.supplier-field-container :deep(.control-input-wrapper:focus-within) {
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.12);
+}
+
+.supplier-field-container :deep(.awesomplete) {
+    width: 100%;
+}
+
+.supplier-field-container :deep(.awesomplete > ul) {
+    left: auto !important;
+    right: 0 !important;
+    width: min(100%, 22rem) !important;
+    max-width: calc(100vw - 3rem);
+    border-radius: 1rem;
+    border: 1px solid #e5e7eb;
+    box-shadow: 0 18px 40px rgba(15, 23, 42, 0.10);
+    overflow: hidden;
+}
+
 .refresh-btn {
-    padding: 0.6rem;
-    background: white;
-    border: 1px solid #f3f4f6;
+    height: 2.55rem;
+    width: 2.55rem;
+    padding: 0;
+    background: rgba(255, 255, 255, 0.92);
+    border: 1px solid #eef2f7;
     border-radius: 1rem;
     color: #94a3b8;
     cursor: pointer;
@@ -434,23 +562,36 @@ function initSupplierField() {
 /* Frappe Control Overrides */
 :deep(.supplier-field-container .frappe-control) {
     margin-bottom: 0 !important;
+    width: 100% !important;
+    min-width: 0 !important;
 }
 
 :deep(.supplier-field-container input) {
-    background-color: #fff !important;
-    border: 1px solid #f3f4f6 !important;
-    border-radius: 1.2rem !important;
-    height: 30px !important;
+    background-color: transparent !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    height: 2.55rem !important;
     font-size: 0.875rem !important;
     font-weight: 500 !important;
-    padding-left: 1.2rem !important;
+    padding-left: 1rem !important;
+    padding-right: 2.4rem !important;
     transition: all 0.2s ease !important;
-    width: 300px !important;
-    box-shadow: 0 4px 15px rgba(0,0,0,0.02);
+    width: 100% !important;
+    max-width: 100% !important;
+    box-shadow: none !important;
 }
 
 :deep(.supplier-field-container input:focus) {
-    border-color: var(--primary-color, #1a73e8) !important;
-    box-shadow: 0 0 0 4px rgba(26, 115, 232, 0.1) !important;
+    border: 0 !important;
+    box-shadow: none !important;
+    outline: none !important;
+}
+
+:deep(.supplier-field-container .awesomplete > ul) {
+    left: 0 !important;
+    right: auto !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box;
 }
 </style>
