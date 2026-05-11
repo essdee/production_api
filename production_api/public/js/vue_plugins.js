@@ -125,6 +125,27 @@ import { createApp } from 'vue';
 frappe.provide("frappe.production.ui");
 frappe.provide("frappe.production.product_development.ui");
 
+function installNumberInputWheelGuard() {
+    if (window.__production_api_number_input_wheel_guard_installed) {
+        return;
+    }
+
+    window.__production_api_number_input_wheel_guard_installed = true;
+    document.addEventListener("wheel", (event) => {
+        const input = event.target;
+        if (!(input instanceof HTMLInputElement) || input.type !== "number") {
+            return;
+        }
+        if (document.activeElement !== input) {
+            return;
+        }
+
+        input.blur();
+    }, { capture: true, passive: true });
+}
+
+installNumberInputWheelGuard();
+
 frappe.production.ui.eventBus = EventBus;
 
 frappe.production.ui.ItemAttributeValues = class {
