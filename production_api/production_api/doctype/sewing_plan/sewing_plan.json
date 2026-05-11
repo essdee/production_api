@@ -14,7 +14,9 @@
   "supplier",
   "supplier_address",
   "section_break_gxqi",
-  "sewing_plan_order_details"
+  "sewing_plan_order_details",
+  "section_break_dmkq",
+  "consumption_details"
  ],
  "fields": [
   {
@@ -73,6 +75,16 @@
    "fieldtype": "Table",
    "label": "Sewing Plan Order Details",
    "options": "Sewing Plan Order Detail"
+  },
+  {
+   "fieldname": "section_break_dmkq",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "consumption_details",
+   "fieldtype": "Table",
+   "label": "Consumption Details",
+   "options": "Consumption Details"
   }
  ],
  "grid_page_length": 50,
@@ -83,7 +95,7 @@
    "link_fieldname": "sewing_plan"
   }
  ],
- "modified": "2026-04-20 13:23:43.996419",
+ "modified": "2026-05-08 14:11:11.163822",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Sewing Plan",

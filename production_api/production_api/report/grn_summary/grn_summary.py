@@ -152,6 +152,7 @@ def get_data(filters):
     po = frappe.qb.DocType('Purchase Order')
     supplier = frappe.qb.DocType('Supplier')
     item_variant = frappe.qb.DocType('Item Variant')
+    item = frappe.qb.DocType('Item')
 
     q = (
         frappe.qb.from_(grn_item)
@@ -163,6 +164,8 @@ def get_data(filters):
         .on(po_item.parent == po.name)
         .left_join(item_variant)
         .on(po_item.item_variant == item_variant.name)
+        .inner_join(item)
+        .on(item_variant.item == item.name)
         .left_join(supplier)
         .on(grn.delivery_location == supplier.name)
         .select(
@@ -185,7 +188,9 @@ def get_data(filters):
             grn_item.comments,
             grn.modified,
             grn.modified_by,
-        ).where(grn.against == "Purchase Order")
+        )
+        .where(grn.against == "Purchase Order")
+        .where(item.is_stock_item == 1)
     )
 
     if filters.get('from_date'):
