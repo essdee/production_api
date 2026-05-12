@@ -1602,8 +1602,8 @@ def save_consumption_data(supplier, lot, sections):
 
 					if not match:
 						continue
-					if item_bom_qty<r_qty:
-						frappe.throw(f"Consumption quantity cannot be greater than BOM quantity")
+					# if item_bom_qty<r_qty:
+					# 	frappe.throw(f"Consumption quantity cannot be greater than BOM quantity")
 					for att_type, att_name, att_v in saved_f:
 						sp_n.append("consumption_details", {
 							"item_name": item_n,
