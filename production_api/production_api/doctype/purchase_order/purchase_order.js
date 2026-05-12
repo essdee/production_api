@@ -90,6 +90,23 @@ frappe.ui.form.on('Purchase Order', {
 		let is_purchase_user = frappe.user.has_role('Purchase User');
 		if (frm.doc.docstatus == 1 && (is_purchase_manager || is_purchase_user)) {
 			frm.page.btn_secondary.hide();
+			if (frm.doc.open_status == 'Open') {
+				frm.add_custom_button(__('Material Issue'), function() {
+					if (!frm.doc.supplier) {
+						frappe.throw(__('Supplier is required to create a Material Issue Stock Entry.'));
+					}
+
+					let stock_entry = frappe.model.get_new_doc("Stock Entry");
+					stock_entry.purpose = "Material Issue";
+					stock_entry.against = "Purchase Order";
+					stock_entry.against_id = frm.doc.name;
+					stock_entry.from_warehouse = frm.doc.supplier;
+					stock_entry.transfer_supplier = frm.doc.supplier;
+					stock_entry.posting_date = frappe.datetime.nowdate();
+					stock_entry.posting_time = new Date().toTimeString().split(" ")[0];
+					frappe.set_route("Form", stock_entry.doctype, stock_entry.name);
+				}, __("Create"));
+			}
 			// Add send notification button if the status is not closed or cancelled or partially cancelled
 			let closed_statuses = ['Closed', 'Cancelled', 'Partially Cancelled']	
 			if (!closed_statuses.includes(frm.doc.status)) {
