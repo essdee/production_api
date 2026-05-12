@@ -69,6 +69,8 @@
   },
   {
    "allow_on_submit": 1,
+   "fetch_from": "supplier.terms_and_condition",
+   "fetch_if_empty": 1,
    "fieldname": "terms_and_condition",
    "fieldtype": "Link",
    "label": "Terms and Condition",

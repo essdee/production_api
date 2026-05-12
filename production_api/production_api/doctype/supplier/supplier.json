@@ -15,6 +15,7 @@
   "disabled",
   "is_company_location",
   "department",
+  "terms_and_condition",
   "contact_html",
   "section_break_8",
   "account_mappings",
@@ -95,6 +96,12 @@
    "fieldtype": "Link",
    "label": "Department",
    "options": "Department"
+  },
+  {
+   "fieldname": "terms_and_condition",
+   "fieldtype": "Link",
+   "label": "Terms and Condition",
+   "options": "Terms and Condition"
   },
   {
    "fieldname": "gstin",
