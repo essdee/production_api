@@ -823,6 +823,306 @@ def get_ocr_details(doc):
 
 	return ocr_data
 
+
+@frappe.whitelist()
+def get_fp_consumption_details(doc_name):
+	doc = frappe.get_doc("Finishing Plan", doc_name)
+	if not doc.lot:
+		return {"lot": doc.lot, "processes": []}
+
+	from production_api.production_api.report.jobwork_issued_items.jobwork_issued_items import (
+		get_data as get_jobwork_issued_items,
+	)
+
+	filters = frappe._dict({"lot": doc.lot})
+	default_received_type = frappe.db.get_single_value("Stock Settings", "default_received_type")
+	rows = []
+	for row in get_jobwork_issued_items(filters):
+		row = frappe._dict(row)
+		if row.get("item") == doc.item:
+			continue
+		if not row.get("received_type"):
+			row.received_type = default_received_type
+		row.source_report = "Jobwork"
+		rows.append(row)
+
+	rows.extend(_get_fp_grn_deduction_rows(doc))
+
+	return {
+		"lot": doc.lot,
+		"processes": _group_fp_item_rows(
+			rows,
+			group_field="process",
+			default_group="Non Process",
+			merge_received_type=True,
+			clamp_negative=True,
+			remove_zero_items=True,
+		),
+	}
+
+
+def _get_fp_grn_deduction_rows(doc):
+	if not doc.work_order:
+		return []
+
+	params = {
+		"lot": doc.lot,
+		"work_order": doc.work_order,
+		"fp_item": doc.item,
+	}
+	conditions = [
+		"grn.docstatus = 1",
+		"gri.docstatus = 1",
+		"grn.against = 'Work Order'",
+		"grn.against_id = %(work_order)s",
+		"(grn.lot = %(lot)s OR gri.lot = %(lot)s)",
+		"IFNULL(gri.quantity, 0) > 0",
+	]
+	if doc.item:
+		conditions.append("(iv.item IS NULL OR iv.item != %(fp_item)s)")
+
+	query = """
+		SELECT
+			'Work Order' AS against,
+			grn.against_id AS against_id,
+			'Goods Received Note' AS source_doctype,
+			grn.name AS source_name,
+			COALESCE(gri.lot, grn.lot) AS lot,
+			COALESCE(grn.process_name, wo.process_name) AS process,
+			iv.item AS item,
+			gri.item_variant AS item_variant,
+			-gri.quantity AS quantity,
+			gri.received_type AS received_type,
+			gri.comments AS remarks,
+			grn.posting_date AS posting_date,
+			grn.posting_time AS posting_time
+		FROM `tabGoods Received Note Item` gri
+		INNER JOIN `tabGoods Received Note` grn ON grn.name = gri.parent
+		LEFT JOIN `tabWork Order` wo ON wo.name = grn.against_id
+		LEFT JOIN `tabItem Variant` iv ON iv.name = gri.item_variant
+		WHERE {conditions}
+	""".format(conditions=" AND ".join(conditions))
+
+	rows = frappe.db.sql(query, params, as_dict=True)
+	for row in rows:
+		row.source_report = "GRN"
+		row.is_grn_deduction = 1
+	return rows
+
+
+def _group_fp_item_rows(
+	rows,
+	group_field,
+	default_group=None,
+	group_name_field=None,
+	item_key_fields=None,
+	merge_received_type=False,
+	clamp_negative=False,
+	remove_zero_items=False,
+):
+	group_map = {}
+	variant_cache = {}
+	item_attribute_cache = {}
+	item_key_fields = tuple(item_key_fields or [])
+
+	for row in rows:
+		if not row.get("item_variant"):
+			continue
+
+		group_value = row.get(group_field) or default_group or ""
+		top_group = group_map.setdefault(group_value, {
+			group_field: group_value,
+			"groups": [],
+			"_group_index": {},
+		})
+		if group_name_field:
+			top_group[group_name_field] = row.get(group_name_field) or group_value
+
+		variant = variant_cache.get(row.item_variant)
+		if not variant:
+			variant = frappe.get_cached_doc("Item Variant", row.item_variant)
+			variant_cache[row.item_variant] = variant
+
+		item_name = row.get("item") or variant.item
+		item_attribute_details = item_attribute_cache.get(item_name)
+		if not item_attribute_details:
+			item_attribute_details = get_attribute_details(item_name)
+			item_attribute_cache[item_name] = item_attribute_details
+
+		attributes = get_item_attribute_details(variant, item_attribute_details)
+		attribute_names = item_attribute_details.get("attributes") or []
+		primary_attribute = item_attribute_details.get("primary_attribute")
+		primary_values = list(item_attribute_details.get("primary_attribute_values") or [])
+		primary_value = _get_primary_attribute_value(variant, primary_attribute)
+
+		group_key = (
+			primary_attribute or "",
+			tuple(attribute_names),
+		)
+		group = top_group["_group_index"].get(group_key)
+		if not group:
+			group = {
+				"attributes": attribute_names,
+				"primary_attribute": primary_attribute,
+				"primary_attribute_values": primary_values,
+				"items": [],
+				"total_details": {value: 0 for value in primary_values} if primary_attribute else {"default": 0},
+				"overall_total": 0,
+				"_item_index": {},
+			}
+			top_group["_group_index"][group_key] = group
+			top_group["groups"].append(group)
+
+		if primary_attribute and primary_value and primary_value not in group["primary_attribute_values"]:
+			group["primary_attribute_values"].append(primary_value)
+			group["total_details"][primary_value] = 0
+			for item in group["items"]:
+				item["values"][primary_value] = {"quantity": 0, "sources": []}
+
+		row_key = (
+			item_name,
+			*(row.get(field) or "" for field in item_key_fields),
+			tuple((attribute, attributes.get(attribute)) for attribute in attribute_names),
+		)
+		item = group["_item_index"].get(row_key)
+		if not item:
+			item = {
+				"source_report": row.get("source_report"),
+				"item": item_name,
+				"attributes": attributes,
+				"received_type": row.get("received_type") if "received_type" in item_key_fields else None,
+				"stock_uom": row.get("stock_uom"),
+				"values": {},
+				"total_quantity": 0,
+			}
+			if primary_attribute:
+				for value in group["primary_attribute_values"]:
+					item["values"][value] = {"quantity": 0, "sources": []}
+			else:
+				item["values"]["default"] = {"quantity": 0, "sources": []}
+			group["_item_index"][row_key] = item
+			group["items"].append(item)
+
+		if merge_received_type and not row.get("is_grn_deduction"):
+			_update_fp_consumption_received_type(item, row.get("received_type"))
+
+		value_key = primary_value if primary_attribute else "default"
+		if primary_attribute and not value_key:
+			continue
+
+		quantity = flt(row.get("quantity"))
+		source = {
+			"source_doctype": row.get("source_doctype"),
+			"source_name": row.get("source_name"),
+		}
+		item["values"][value_key]["quantity"] += quantity
+		item["values"][value_key]["sources"].append(source)
+		item["total_quantity"] += quantity
+
+	grouped_rows = list(group_map.values())
+	for top_group in grouped_rows:
+		top_group["groups"].sort(key=lambda group: group.get("primary_attribute") or "")
+		for group in top_group["groups"]:
+			_recalculate_fp_item_group_totals(
+				group,
+				clamp_negative=clamp_negative,
+				remove_zero_items=remove_zero_items,
+			)
+			group["items"].sort(key=lambda item: (item.get("item") or "", item.get("received_type") or ""))
+			group.pop("_item_index", None)
+		top_group["groups"] = [group for group in top_group["groups"] if group.get("items")]
+		top_group.pop("_group_index", None)
+
+	grouped_rows = [top_group for top_group in grouped_rows if top_group.get("groups")]
+	if group_field == "process":
+		grouped_rows.sort(key=lambda row: (row[group_field] == "Non Process", row[group_field]))
+	elif group_name_field:
+		grouped_rows.sort(key=lambda row: (row.get(group_name_field) or "", row.get(group_field) or ""))
+	else:
+		grouped_rows.sort(key=lambda row: row.get(group_field) or "")
+	return grouped_rows
+
+
+def _update_fp_consumption_received_type(item, received_type):
+	if not received_type:
+		return
+	if not item.get("received_type"):
+		item["received_type"] = received_type
+		return
+
+	received_types = [value.strip() for value in item["received_type"].split(",") if value.strip()]
+	if received_type not in received_types:
+		received_types.append(received_type)
+	item["received_type"] = ", ".join(received_types)
+
+
+def _recalculate_fp_item_group_totals(group, clamp_negative=False, remove_zero_items=False):
+	total_details = {value: 0 for value in group.get("primary_attribute_values") or []}
+	if not group.get("primary_attribute"):
+		total_details = {"default": 0}
+
+	items = []
+	for item in group.get("items") or []:
+		total_quantity = 0
+		for value_key, value in (item.get("values") or {}).items():
+			quantity = flt(value.get("quantity"))
+			if clamp_negative:
+				quantity = max(quantity, 0)
+			value["quantity"] = quantity
+			total_quantity += quantity
+			total_details.setdefault(value_key, 0)
+			total_details[value_key] += quantity
+
+		item["total_quantity"] = total_quantity
+		if not remove_zero_items or total_quantity:
+			items.append(item)
+
+	group["items"] = items
+	group["total_details"] = total_details
+	group["overall_total"] = sum(total_details.values())
+
+
+def _get_primary_attribute_value(variant, primary_attribute):
+	if not primary_attribute:
+		return None
+	for attr in variant.attributes:
+		if attr.attribute == primary_attribute:
+			return attr.attribute_value
+	return None
+
+
+@frappe.whitelist()
+def get_fp_stock_balance_details(doc_name):
+	doc = frappe.get_doc("Finishing Plan", doc_name)
+	if not doc.lot:
+		return {"lot": doc.lot, "warehouses": []}
+
+	from production_api.mrp_stock.report.item_balance.item_balance import get_data as get_item_balance
+
+	rows = []
+	for row in get_item_balance(frappe._dict({
+		"lot": doc.lot,
+		"remove_zero_balance_item": 1,
+	})):
+		row = frappe._dict(row)
+		if row.get("item") == doc.item:
+			continue
+		if not flt(row.get("bal_qty")):
+			continue
+		row.quantity = row.bal_qty
+		rows.append(row)
+
+	return {
+		"lot": doc.lot,
+		"warehouses": _group_fp_item_rows(
+			rows,
+			group_field="warehouse",
+			group_name_field="warehouse_name",
+			item_key_fields=("received_type", "stock_uom"),
+		),
+	}
+
+
 @frappe.whitelist()
 def fetch_rejected_quantity(doc_name):
 	fp_doc = frappe.get_doc("Finishing Plan", doc_name)

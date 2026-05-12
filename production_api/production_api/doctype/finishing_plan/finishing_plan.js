@@ -48,6 +48,8 @@ frappe.ui.form.on("Finishing Plan", {
             frm.doc['ocr_details'] = JSON.stringify(frm.doc.__onload.ocr_details);
             frm.ocr_detail.load_data(frm.doc.__onload.ocr_details);
         }
+        frm.ocr_detail.load_consumption_data(frm.doc.name);
+        frm.ocr_detail.load_stock_balance_data(frm.doc.name);
         $(frm.fields_dict['finishing_pack_return_html'].wrapper).html("")
         frm.pack_return_detail = new frappe.production.ui.FinishingPackReturn(frm.fields_dict["finishing_pack_return_html"].wrapper);
         if (frm.doc.__onload && frm.doc.__onload.pack_return) {

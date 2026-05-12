@@ -121,6 +121,12 @@ export class FinishingOCRWrapper {
     load_data(data) {
         this.vue.load_data(JSON.parse(JSON.stringify(data)))
     }
+    load_consumption_data(doc_name) {
+        this.vue.load_consumption_data(doc_name)
+    }
+    load_stock_balance_data(doc_name) {
+        this.vue.load_stock_balance_data(doc_name)
+    }
 }
 
 export class FinishingPackReturnWrapper {
