@@ -31,6 +31,7 @@
   "item_html",
   "section_break_ncqk",
   "comments",
+  "terms_and_condition",
   "section_break_zvib",
   "amended_from",
   "additional_amount",
@@ -220,6 +221,13 @@
    "fieldname": "comments",
    "fieldtype": "Small Text",
    "label": "Comments"
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "terms_and_condition",
+   "fieldtype": "Link",
+   "label": "Terms and Condition",
+   "options": "Terms and Condition"
   },
   {
    "fieldname": "section_break_ncqk",

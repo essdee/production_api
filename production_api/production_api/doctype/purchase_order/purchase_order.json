@@ -1,7 +1,7 @@
 {
  "actions": [],
  "autoname": "naming_series:",
- "creation": "2021-08-26 16:59:17.200111",
+ "creation": "2026-05-12 16:46:23.978376",
  "doctype": "DocType",
  "editable_grid": 1,
  "engine": "InnoDB",
@@ -14,6 +14,7 @@
   "po_date",
   "default_lot",
   "deliver_to_supplier",
+  "terms_and_condition",
   "section_addresses",
   "supplier_address",
   "supplier_address_display",
@@ -65,6 +66,13 @@
    "fieldname": "comments",
    "fieldtype": "Small Text",
    "label": "Comments"
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "terms_and_condition",
+   "fieldtype": "Link",
+   "label": "Terms and Condition",
+   "options": "Terms and Condition"
   },
   {
    "fieldname": "column_break_4",
@@ -286,7 +294,7 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2026-02-06 18:14:19.261495",
+ "modified": "2026-05-12 16:50:57.179681",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Purchase Order",
