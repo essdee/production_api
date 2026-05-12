@@ -27,6 +27,8 @@
     "submitted_by",
     "submitted_time",
     "price_approval_status",
+    "date_changes_tab",
+    "date_change_history",
     "price_changes_tab",
     "ppo_price_request_html"
   ],
@@ -102,6 +104,7 @@
       "fieldname": "delivery_date",
       "fieldtype": "Date",
       "label": "Delivery Date",
+      "read_only_depends_on": "eval:doc.docstatus == 1",
       "reqd": 1
     },
     {
@@ -124,6 +127,7 @@
       "fieldname": "dont_deliver_after",
       "fieldtype": "Date",
       "label": "Don't Deliver After",
+      "read_only_depends_on": "eval:doc.docstatus == 1",
       "reqd": 1
     },
     {
@@ -166,6 +170,19 @@
       "hidden": 1,
       "label": "Price Approval Status",
       "options": "\nPending Approval",
+      "read_only": 1
+    },
+    {
+      "fieldname": "date_changes_tab",
+      "fieldtype": "Tab Break",
+      "label": "Date Changes"
+    },
+    {
+      "allow_on_submit": 1,
+      "fieldname": "date_change_history",
+      "fieldtype": "Table",
+      "label": "Date Change History",
+      "options": "Production Order Date Change",
       "read_only": 1
     },
     {
