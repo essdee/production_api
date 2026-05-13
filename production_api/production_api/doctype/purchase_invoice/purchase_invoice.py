@@ -142,9 +142,16 @@ class PurchaseInvoice(Document):
         doc.mrp_purchase_invoice = self.name
         doc.save(ignore_permissions=True)
 
-    def remove_vendor_bill_purchase_invoce(self):
-        frappe.db.set_value("Vendor Bill Tracking", self.vendor_bill_tracking,
-                            'mrp_purchase_invoice', None, update_modified=False)
+    def remove_vendor_bill_purchase_invoce(self, origin="MRP-cancel"):
+        from production_api.production_api.doctype.vendor_bill_tracking.vendor_bill_tracking import (
+            revert_purchase_invoice_link,
+        )
+        revert_purchase_invoice_link(
+            self.vendor_bill_tracking,
+            "mrp_purchase_invoice",
+            self.name,
+            origin=origin,
+        )
 
     def before_cancel(self):
         self.ignore_linked_doctypes = ("Vendor Bill Tracking")
@@ -166,11 +173,15 @@ class PurchaseInvoice(Document):
                 frappe.throw(data.get(
                     'exception') or f"Unknown Error - {frappe.get_desk_link(error.doctype, error.name)}")
         if self.vendor_bill_tracking:
-            self.remove_vendor_bill_purchase_invoce()
+            self.remove_vendor_bill_purchase_invoce(origin="MRP-cancel")
 
         if self.against == 'Work Order':
             update_wo_billed_qty(self, docstatus=2)
         self.status = 'Cancelled'
+
+    def on_trash(self):
+        if self.vendor_bill_tracking:
+            self.remove_vendor_bill_purchase_invoce(origin="MRP-delete")
 
     def before_submit(self):
         if not len(self.grn) or not len(self.items):

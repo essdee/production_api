@@ -117,6 +117,39 @@ def reopen_vendor_bill(name, remarks=None):
 	doc.save(ignore_permissions = True)
 
 @frappe.whitelist()
+def revert_purchase_invoice_link(name, pi_field, expected_pi_name, origin=None):
+	allowed_fields = {"mrp_purchase_invoice", "purchase_invoice"}
+	if pi_field not in allowed_fields:
+		frappe.throw(f"Invalid pi_field: {pi_field}")
+
+	doc = frappe.get_doc("Vendor Bill Tracking", name)
+	current = doc.get(pi_field)
+	if current != expected_pi_name:
+		frappe.log_error(
+			title="VBT revert skipped — PI mismatch",
+			message=(
+				f"VBT: {name}\n"
+				f"Field: {pi_field}\n"
+				f"Expected: {expected_pi_name}\n"
+				f"Actual: {current}\n"
+				f"Origin: {origin}"
+			),
+		)
+		return
+
+	doc.set(pi_field, None)
+	doc.append("vendor_bill_tracking_history", {
+		"assigned_to": doc.assigned_to,
+		"assigned_on": frappe.utils.now_datetime(),
+		"assigned_by": frappe.session.user,
+		"remarks": f"Auto-reverted: {pi_field}={expected_pi_name} ({origin or 'cancelled/deleted'})",
+		"action": "Reopen",
+	})
+	if doc.form_status == "Closed":
+		doc.set("form_status", "Reopen")
+	doc.save(ignore_permissions=True)
+
+@frappe.whitelist()
 def cancel_vendor_bill(name, cancel_reason):
 	doc = frappe.get_doc("Vendor Bill Tracking", name)
 	doc.cancel_reason = cancel_reason
