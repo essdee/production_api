@@ -485,6 +485,9 @@ function print_labels(frm, printer, print_order){
                     frm.set_value("printed_time",frappe.datetime.now_datetime())
                     frm.set_value("status","Label Printed")
                     frm.set_value("goods_received_note", r.message.grn)
+                    if(frm.accessory && frm.accessory.set_status){
+                        frm.accessory.set_status("Label Printed")
+                    }
                     frm.save()
                 }).catch((err)=>{
                     frm.set_value("printed_time",null)

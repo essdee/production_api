@@ -89,7 +89,11 @@ let actual_dia = null
 let edit_index = null
 let cloth_accessories = []
 let docstatus = ref(null)
-let status = cur_frm.doc.status
+let status = ref(cur_frm.doc.status)
+
+function set_status(new_status){
+    status.value = new_status
+}
 
 function on_change_event(){
     let cloth_dia_value = cloth_dia.get_value()
@@ -356,6 +360,7 @@ function get_items(){
 defineExpose({
     load_data,
     get_items,
+    set_status,
 })
 </script>
 <style scoped>
