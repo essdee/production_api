@@ -9,6 +9,7 @@
                     <th>Debit No</th>
                     <th>Debit Value</th>
                     <th>Reason</th>
+                    <th>Inspection</th>
                     <th>On Close</th>
                 </tr>
             </thead>
@@ -19,11 +20,13 @@
                     <td>{{ d.debit_no }}</td>
                     <td>{{ fmt_currency(d.debit_value) }}</td>
                     <td>{{ d.reason }}</td>
+                    <td><input type="checkbox" disabled :checked="d.inspection" /></td>
                     <td>{{ d.on_close ? '✔' : '' }}</td>
                 </tr>
                 <tr>
                     <th colspan="3" style="text-align: right;">Total</th>
                     <th>{{ fmt_currency(total_value) }}</th>
+                    <th></th>
                     <th></th>
                     <th></th>
                 </tr>

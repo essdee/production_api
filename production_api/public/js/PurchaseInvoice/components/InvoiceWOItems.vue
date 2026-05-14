@@ -530,7 +530,7 @@ function _fetch_debit_list(wo, dialog, is_merch_manager) {
         args: {
             doctype: "WO Debit",
             filters: { work_order: wo, docstatus: 1 },
-            fields: ["name", "debit_type", "debit_no", "debit_value", "status", "on_close"],
+            fields: ["name", "debit_type", "debit_no", "debit_value", "inspection", "status", "on_close"],
             order_by: "creation asc",
             limit_page_length: 0,
         },
@@ -549,7 +549,7 @@ function _fetch_debit_list(wo, dialog, is_merch_manager) {
 
             let html = '<hr><h4>WO Debit List</h4>';
             html += '<table class="table table-sm table-bordered" style="margin-top: 8px;">';
-            html += '<thead><tr><th>S.No.</th><th>Name</th><th>Debit Type</th><th>Debit No</th><th>Debit Value</th><th>Status</th>';
+            html += '<thead><tr><th>S.No.</th><th>Name</th><th>Debit Type</th><th>Debit No</th><th>Debit Value</th><th>Inspection</th><th>Status</th>';
             if (show_action) html += '<th>Action</th>';
             html += '</tr></thead><tbody>';
 
@@ -564,6 +564,7 @@ function _fetch_debit_list(wo, dialog, is_merch_manager) {
                 html += '<td>' + (db.debit_type || '') + '</td>';
                 html += '<td>' + (db.debit_no || '') + '</td>';
                 html += '<td>' + format_currency(db.debit_value) + '</td>';
+                html += '<td style="text-align: center;"><input type="checkbox" disabled ' + (db.inspection ? 'checked' : '') + '></td>';
                 html += '<td class="debit-status"><span style="color: ' + status_color + '; font-weight: bold;">' + db.status + '</span></td>';
                 if (show_action) {
                     if (db.status !== "Approved") {
@@ -586,6 +587,7 @@ function _fetch_debit_list(wo, dialog, is_merch_manager) {
             // Total row
             html += '<tr><th colspan="4" style="text-align: right;">Total</th>';
             html += '<th>' + format_currency(total_value) + '</th>';
+            html += '<th></th>';
             html += '<th></th>';
             if (show_action) html += '<th></th>';
             html += '</tr>';

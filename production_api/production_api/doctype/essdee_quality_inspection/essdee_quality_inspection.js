@@ -34,6 +34,9 @@ frappe.ui.form.on("Essdee Quality Inspection", {
         }
         if(frm.doc.docstatus == 1){
             frm.set_df_property("result", "read_only", true)
+            frm.add_custom_button("Create Debit", () => {
+                open_inspection_debit_dialog(frm);
+            }, __("Create"));
             frm.add_custom_button("Share", async () => {
                 let sizes = ""
                 frm.doc.essdee_quality_inspection_sizes.forEach((size)=> {
@@ -151,6 +154,69 @@ Result: ${frm.doc.result}
         }
     }
 });
+
+function open_inspection_debit_dialog(frm) {
+    let d = new frappe.ui.Dialog({
+        title: "Create WO Debit",
+        fields: [
+            {
+                fieldname: "debit_type",
+                fieldtype: "Select",
+                label: "Debit Type",
+                options: "Permanent",
+                default: "Permanent",
+                hidden: 1,
+                reqd: 1,
+            },
+            {
+                fieldname: "debit_value",
+                fieldtype: "Currency",
+                label: "Debit Value",
+                reqd: 1,
+            },
+            {
+                fieldname: "reason",
+                fieldtype: "Small Text",
+                label: "Reason",
+                reqd: 1,
+            },
+            {
+                fieldname: "debit_document",
+                fieldtype: "Attach",
+                label: "Debit Document",
+                reqd: 1,
+            },
+        ],
+        primary_action_label: "Create",
+        primary_action(values) {
+            frappe.call({
+                method: "frappe.client.insert",
+                args: {
+                    doc: {
+                        doctype: "WO Debit",
+                        work_order: frm.doc.against_id,
+                        debit_type: values.debit_type,
+                        debit_value: values.debit_value,
+                        reason: values.reason,
+                        debit_document: values.debit_document,
+                        inspection: 1,
+                        docstatus: 1,
+                    },
+                },
+                callback(r) {
+                    if (r.message) {
+                        frappe.show_alert({
+                            message: __("WO Debit {0} created with Debit Requested status", [r.message.name]),
+                            indicator: "green",
+                        });
+                        d.hide();
+                    }
+                },
+            });
+        },
+    });
+    d.show();
+}
 
 function refresh_fields(frm){
     frm.refresh_field("item")
