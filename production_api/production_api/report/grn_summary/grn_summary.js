@@ -31,6 +31,11 @@ frappe.query_reports["GRN Summary"] = {
 			"options": "Item",
 		},
 		{
+			"fieldname": "only_show_stock_item",
+			"label": __("Only Show Stock Item"),
+			"fieldtype": "Check",
+		},
+		{
 			"fieldname": "lot",
 			"label": __("Lot"),
 			"fieldtype": "Link",

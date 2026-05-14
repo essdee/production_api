@@ -212,17 +212,22 @@ class WorkOrder(Document):
         if not production_order:
             return
 
+        if frappe.db.get_value("Production Order", production_order, "skip_box_sticker_print"):
+            return
+
         primary = frappe.get_value("Item", self.item, "primary_attribute")
         if not primary:
             return
 
-        # Build price map from Production Order: {size: mrp}
+        # Build Production Order size scope and price map: {size: mrp}
         po_doc = frappe.get_doc("Production Order", production_order)
+        po_sizes = []
         price_map = {}
         for row in po_doc.production_order_details:
             attrs = get_variant_attr_details(row.item_variant)
             size = attrs.get(primary)
             if size:
+                po_sizes.append(size)
                 price_map[size] = flt(row.mrp)
 
         # Build qty map from Work Order Calculated Items: {size: total_qty}
@@ -264,14 +269,25 @@ class WorkOrder(Document):
             is_set_item = frappe.db.get_value("Item Production Detail", production_detail, "is_set_item") or 0
             pcs_per_box = frappe.db.get_value("Item Production Detail", production_detail, "packing_combo") or 0
 
-        # Build BSP detail rows for sizes with qty > 0
+        sizes = []
+        for size in po_sizes:
+            if size not in sizes:
+                sizes.append(size)
+        for size in qty_map:
+            if size not in sizes:
+                sizes.append(size)
+
+        # Build BSP detail rows for Production Order sizes. Sizes without cut qty
+        # are kept printable by marking the detail row as excess-allowed.
         bsp_details = []
-        for size, qty in qty_map.items():
-            if qty > 0:
+        for size in sizes:
+            qty = flt(qty_map.get(size, 0))
+            if qty > 0 or size in po_sizes:
                 bsp_details.append({
                     "size": size,
                     "quantity": qty,
                     "mrp": flt(price_map.get(size, 0)),
+                    "allow_excess_quantity": 1 if qty <= 0 else 0,
                     "allow_excess_percentage": 5,
                 })
 

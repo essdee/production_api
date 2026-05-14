@@ -2,10 +2,17 @@
 # For license information, please see license.txt
 
 import frappe
-from frappe.utils import date_diff, flt
+from frappe.utils import date_diff, flt, getdate, now_datetime
 from frappe.model.document import Document
 from production_api.utils import update_if_string_instance, get_variant_attr_details
 from production_api.production_api.doctype.item.item import get_attribute_details, get_or_create_variant, get_variant
+
+TRACKED_DATE_FIELDS = {
+	"delivery_date": "Delivery Date",
+	"dont_deliver_after": "Don't Deliver After",
+}
+
+TRACKED_DATE_LABELS = {label: fieldname for fieldname, label in TRACKED_DATE_FIELDS.items()}
 
 
 class ProductionOrder(Document):
@@ -14,6 +21,10 @@ class ProductionOrder(Document):
 			"Lot", filters={"production_order": self.name}, pluck="name")
 		if lots:
 			frappe.throw(f"PPO linked in {','.join(lots)}")
+
+	def validate(self):
+		self.validate_production_dates()
+		self.validate_tracked_date_update()
 
 	def on_update_after_submit(self):
 		self.lead_time_given = date_diff(self.delivery_date, self.posting_date)
@@ -24,10 +35,7 @@ class ProductionOrder(Document):
 		if docstatus != 1:
 			frappe.throw("Selected Term is not valid")
 		self.posting_date = frappe.utils.nowdate()
-		if self.delivery_date < self.posting_date:
-			frappe.throw("Delivery date is less than Posting Date")
-		if self.delivery_date > self.dont_deliver_after:
-			frappe.throw("Don't deliver after date is less than delivery date")
+		self.validate_production_dates()
 		self.lead_time_given = date_diff(self.delivery_date, self.posting_date)
 		self.submitted_by = frappe.session.user
 		self.submitted_time = frappe.utils.now()
@@ -63,6 +71,32 @@ class ProductionOrder(Document):
 		if self.docstatus == 0 and self.get("item") and self.get("item_details"):
 			self.update_order()
 		self.lead_time_given = date_diff(self.delivery_date, self.posting_date)
+
+	def validate_production_dates(self):
+		if self.delivery_date and self.posting_date and getdate(self.delivery_date) < getdate(self.posting_date):
+			frappe.throw("Delivery date is less than Posting Date")
+		if self.delivery_date and self.dont_deliver_after and getdate(self.delivery_date) > getdate(self.dont_deliver_after):
+			frappe.throw("Don't deliver after date is less than delivery date")
+
+	def validate_tracked_date_update(self):
+		if self.docstatus != 1 or self.flags.get("allow_tracked_date_change"):
+			return
+
+		previous = self.get_doc_before_save()
+		if not previous:
+			return
+
+		changed_fields = []
+		for fieldname, label in TRACKED_DATE_FIELDS.items():
+			if get_date_value(self.get(fieldname)) != get_date_value(previous.get(fieldname)):
+				changed_fields.append(label)
+
+		if changed_fields:
+			frappe.throw(
+				frappe._("Use the Change Dates button to update {0} after submission.").format(
+					", ".join(changed_fields)
+				)
+			)
 
 	def update_order(self):
 		item_fields = ["primary_attribute",
@@ -389,6 +423,68 @@ def _create_ppo_price_request(production_order, old_prices, new_prices, auto_app
 		request.status = "Pending"
 	request.set("price_details", price_details)
 	request.insert(ignore_permissions=True)
+
+
+@frappe.whitelist()
+def update_production_order_date(production_order, date_field, new_date, reason):
+	fieldname = get_tracked_date_fieldname(date_field)
+	doc = frappe.get_doc("Production Order", production_order)
+	doc.check_permission("write")
+
+	if doc.docstatus != 1:
+		frappe.throw("Dates can be changed only after Production Order is submitted")
+
+	if not new_date:
+		frappe.throw("New Date is required")
+
+	reason = (reason or "").strip()
+	if not reason:
+		frappe.throw("Reason is required")
+
+	previous_date = get_date_value(doc.get(fieldname))
+	new_date = getdate(new_date)
+	if previous_date == new_date:
+		frappe.throw("New date is same as the current date")
+
+	previous_lead_time = date_diff(doc.delivery_date, doc.posting_date)
+	doc.set(fieldname, new_date)
+	new_lead_time = date_diff(doc.delivery_date, doc.posting_date)
+	doc.lead_time_given = new_lead_time
+	doc.validate_production_dates()
+
+	doc.append("date_change_history", {
+		"date_field": TRACKED_DATE_FIELDS[fieldname],
+		"previous_date": previous_date,
+		"new_date": new_date,
+		"reason": reason,
+		"previous_lead_time": previous_lead_time,
+		"new_lead_time": new_lead_time,
+		"changed_by": frappe.session.user,
+		"changed_on": now_datetime(),
+	})
+	doc.flags.allow_tracked_date_change = True
+	doc.save(ignore_permissions=True)
+
+	return {
+		"date_field": TRACKED_DATE_FIELDS[fieldname],
+		"previous_date": previous_date,
+		"new_date": new_date,
+		"previous_lead_time": previous_lead_time,
+		"new_lead_time": new_lead_time,
+	}
+
+
+def get_tracked_date_fieldname(date_field):
+	date_field = (date_field or "").strip()
+	if date_field in TRACKED_DATE_FIELDS:
+		return date_field
+	if date_field in TRACKED_DATE_LABELS:
+		return TRACKED_DATE_LABELS[date_field]
+	frappe.throw("Invalid date field")
+
+
+def get_date_value(value):
+	return getdate(value) if value else None
 
 
 @frappe.whitelist()

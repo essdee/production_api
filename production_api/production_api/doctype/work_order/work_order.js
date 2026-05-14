@@ -125,6 +125,22 @@ frappe.ui.form.on("Work Order", {
         });
       }
       if (frm.doc.open_status == "Open" && frm.doc.docstatus == 1) {
+        frm.add_custom_button("Material Issue", () => {
+          if (!frm.doc.supplier) {
+            frappe.throw(__("Supplier is required to create a Material Issue Stock Entry."));
+          }
+
+          let stock_entry = frappe.model.get_new_doc("Stock Entry");
+          stock_entry.purpose = "Material Issue";
+          stock_entry.against = "Work Order";
+          stock_entry.against_id = frm.doc.name;
+          stock_entry.from_warehouse = frm.doc.supplier;
+          stock_entry.transfer_supplier = frm.doc.supplier;
+          stock_entry.posting_date = frappe.datetime.nowdate();
+          stock_entry.posting_time = new Date().toTimeString().split(" ")[0];
+          frappe.set_route("Form", stock_entry.doctype, stock_entry.name);
+        }, "Create");
+
         frm.add_custom_button("Change Delivery Date", () => {
           var d = new frappe.ui.Dialog({
             title: "Change Delivery Date",

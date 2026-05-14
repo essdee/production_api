@@ -190,8 +190,10 @@ def get_data(filters):
             grn.modified_by,
         )
         .where(grn.against == "Purchase Order")
-        .where(item.is_stock_item == 1)
     )
+
+    if filters.get('only_show_stock_item'):
+        q = q.where(item.is_stock_item == 1)
 
     if filters.get('from_date'):
         q = q.where(grn.grn_date >= filters.get('from_date'))

@@ -1,0 +1,106 @@
+{
+ "actions": [],
+ "creation": "2026-05-12 00:00:00.000000",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "changed_on",
+  "changed_by",
+  "date_field",
+  "column_break_dates",
+  "previous_date",
+  "new_date",
+  "section_break_lead_time",
+  "previous_lead_time",
+  "new_lead_time",
+  "section_break_reason",
+  "reason"
+ ],
+ "fields": [
+  {
+   "fieldname": "changed_on",
+   "fieldtype": "Datetime",
+   "in_list_view": 1,
+   "label": "Changed On",
+   "read_only": 1
+  },
+  {
+   "fieldname": "changed_by",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Changed By",
+   "options": "User",
+   "read_only": 1
+  },
+  {
+   "fieldname": "date_field",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Date Field",
+   "options": "Delivery Date\nDon't Deliver After",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_dates",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "previous_date",
+   "fieldtype": "Date",
+   "in_list_view": 1,
+   "label": "Previous Date",
+   "read_only": 1
+  },
+  {
+   "fieldname": "new_date",
+   "fieldtype": "Date",
+   "in_list_view": 1,
+   "label": "New Date",
+   "read_only": 1
+  },
+  {
+   "fieldname": "section_break_lead_time",
+   "fieldtype": "Section Break",
+   "label": "Lead Time"
+  },
+  {
+   "fieldname": "previous_lead_time",
+   "fieldtype": "Int",
+   "in_list_view": 1,
+   "label": "Previous Lead Time",
+   "read_only": 1
+  },
+  {
+   "fieldname": "new_lead_time",
+   "fieldtype": "Int",
+   "in_list_view": 1,
+   "label": "New Lead Time",
+   "read_only": 1
+  },
+  {
+   "fieldname": "section_break_reason",
+   "fieldtype": "Section Break",
+   "label": "Reason"
+  },
+  {
+   "fieldname": "reason",
+   "fieldtype": "Small Text",
+   "label": "Reason",
+   "read_only": 1
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2026-05-12 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Production Api",
+ "name": "Production Order Date Change",
+ "owner": "Administrator",
+ "permissions": [],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

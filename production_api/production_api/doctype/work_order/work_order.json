@@ -21,6 +21,7 @@
   "is_internal_unit",
   "parent_wo",
   "process_name",
+  "terms_and_condition",
   "item",
   "production_detail",
   "delivery_location",
@@ -223,6 +224,15 @@
    "label": "Process Name",
    "options": "Process",
    "reqd": 1
+  },
+  {
+   "allow_on_submit": 1,
+   "fetch_from": "supplier.terms_and_condition",
+   "fetch_if_empty": 1,
+   "fieldname": "terms_and_condition",
+   "fieldtype": "Link",
+   "label": "Terms and Condition",
+   "options": "Terms and Condition"
   },
   {
    "fieldname": "address_and_contact_section",

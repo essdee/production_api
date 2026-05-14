@@ -963,6 +963,9 @@ frappe.production.ui.LaySheetAccessory = class {
         let items = this.vue.get_items()
         return items
     }
+    set_status(new_status) {
+        this.vue.set_status(new_status)
+    }
 }
 
 

@@ -1,6 +1,32 @@
 <template>
     <div>
-        <div style="width:100%;" v-if="items && Object.keys(items).length > 0">
+        <div class="ocr-tab-nav">
+            <button
+                type="button"
+                class="ocr-tab-button"
+                :class="{ active: active_tab === 'ocr_details' }"
+                @click="active_tab = 'ocr_details'"
+            >
+                OCR Details
+            </button>
+            <button
+                type="button"
+                class="ocr-tab-button"
+                :class="{ active: active_tab === 'consumption_details' }"
+                @click="active_tab = 'consumption_details'"
+            >
+                Consumption Details
+            </button>
+            <button
+                type="button"
+                class="ocr-tab-button"
+                :class="{ active: active_tab === 'stock_balance' }"
+                @click="active_tab = 'stock_balance'"
+            >
+                Stock balance
+            </button>
+        </div>
+        <div style="width:100%;" v-if="items && Object.keys(items).length > 0" v-show="active_tab === 'ocr_details'">
             <div v-for="part_value in Object.keys(items['ocr_data'])" style="width:100%;">
                 <div style="display:flex;width:100%;gap:20px;">
                     <div style="width:75%;">
@@ -404,16 +430,259 @@
                 </div>
             </div>
         </div>
+        <div v-show="active_tab === 'consumption_details'" class="ocr-tab-panel">
+            <div v-if="consumption_loading" class="consumption-loading">
+                <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                <span>Loading consumption details...</span>
+            </div>
+            <div v-else-if="consumption_error" class="alert alert-danger">
+                {{ consumption_error }}
+            </div>
+            <div v-else-if="!has_consumption_data" class="text-muted consumption-empty">
+                Nothing to show
+            </div>
+            <div v-else>
+                <div v-for="process in consumption_data.processes" :key="process.process" class="consumption-process">
+                    <div class="consumption-process-title">{{ process.process }}</div>
+                    <div v-for="(group, group_index) in process.groups" :key="process.process + '-' + group_index" class="table-responsive">
+                        <table class="table table-sm table-sm-bordered bordered-table consumption-table">
+                            <thead class="dark-border">
+                                <tr>
+                                    <th>Item</th>
+                                    <th v-for="attr in group.attributes" :key="attr">{{ attr }}</th>
+                                    <th>Received Type</th>
+                                    <template v-if="group.primary_attribute">
+                                        <th v-for="attr in group.primary_attribute_values" :key="attr">
+                                            {{ attr }}
+                                        </th>
+                                    </template>
+                                    <th v-else>Quantity</th>
+                                    <th>Total</th>
+                                </tr>
+                            </thead>
+                            <tbody class="dark-border">
+                                <tr v-for="(item, item_index) in group.items" :key="item_index">
+                                    <td>{{ item.item }}</td>
+                                    <td v-for="attr in group.attributes" :key="attr">
+                                        {{ item.attributes[attr] || "--" }}
+                                    </td>
+                                    <td>{{ item.received_type || "--" }}</td>
+                                    <template v-if="group.primary_attribute">
+                                        <td v-for="attr in group.primary_attribute_values" :key="attr" :title="get_sources_title(item, attr)">
+                                            <span v-if="get_cell_quantity(item, attr)">{{ format_qty(get_cell_quantity(item, attr)) }}</span>
+                                            <span v-else>--</span>
+                                        </td>
+                                    </template>
+                                    <td v-else :title="get_sources_title(item, 'default')">
+                                        <span v-if="get_cell_quantity(item, 'default')">{{ format_qty(get_cell_quantity(item, 'default')) }}</span>
+                                        <span v-else>--</span>
+                                    </td>
+                                    <td>{{ format_qty(item.total_quantity) }}</td>
+                                </tr>
+                                <tr class="consumption-total-row">
+                                    <th :colspan="2 + group.attributes.length">Total</th>
+                                    <template v-if="group.primary_attribute">
+                                        <th v-for="attr in group.primary_attribute_values" :key="attr">
+                                            <span v-if="group.total_details[attr]">{{ format_qty(group.total_details[attr]) }}</span>
+                                            <span v-else>--</span>
+                                        </th>
+                                    </template>
+                                    <th v-else>
+                                        <span v-if="group.total_details.default">{{ format_qty(group.total_details.default) }}</span>
+                                        <span v-else>--</span>
+                                    </th>
+                                    <th>{{ format_qty(group.overall_total) }}</th>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div v-show="active_tab === 'stock_balance'" class="ocr-tab-panel">
+            <div v-if="stock_balance_loading" class="consumption-loading">
+                <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                <span>Loading stock balance...</span>
+            </div>
+            <div v-else-if="stock_balance_error" class="alert alert-danger">
+                {{ stock_balance_error }}
+            </div>
+            <div v-else-if="!has_stock_balance_data" class="text-muted consumption-empty">
+                Nothing to show
+            </div>
+            <div v-else>
+                <div v-for="warehouse in stock_balance_data.warehouses" :key="warehouse.warehouse" class="consumption-process">
+                    <div class="consumption-process-title">{{ get_warehouse_title(warehouse) }}</div>
+                    <div v-for="(group, group_index) in warehouse.groups" :key="warehouse.warehouse + '-' + group_index" class="table-responsive">
+                        <table class="table table-sm table-sm-bordered bordered-table consumption-table">
+                            <thead class="dark-border">
+                                <tr>
+                                    <th>Item</th>
+                                    <th v-for="attr in group.attributes" :key="attr">{{ attr }}</th>
+                                    <th>Received Type</th>
+                                    <th>UOM</th>
+                                    <template v-if="group.primary_attribute">
+                                        <th v-for="attr in group.primary_attribute_values" :key="attr">
+                                            {{ attr }}
+                                        </th>
+                                    </template>
+                                    <th v-else>Balance Qty</th>
+                                    <th>Total</th>
+                                </tr>
+                            </thead>
+                            <tbody class="dark-border">
+                                <tr v-for="(item, item_index) in group.items" :key="item_index">
+                                    <td>{{ item.item }}</td>
+                                    <td v-for="attr in group.attributes" :key="attr">
+                                        {{ item.attributes[attr] || "--" }}
+                                    </td>
+                                    <td>{{ item.received_type || "--" }}</td>
+                                    <td>{{ item.stock_uom || "--" }}</td>
+                                    <template v-if="group.primary_attribute">
+                                        <td v-for="attr in group.primary_attribute_values" :key="attr">
+                                            <span v-if="get_cell_quantity(item, attr)">{{ format_qty(get_cell_quantity(item, attr)) }}</span>
+                                            <span v-else>--</span>
+                                        </td>
+                                    </template>
+                                    <td v-else>
+                                        <span v-if="get_cell_quantity(item, 'default')">{{ format_qty(get_cell_quantity(item, 'default')) }}</span>
+                                        <span v-else>--</span>
+                                    </td>
+                                    <td>{{ format_qty(item.total_quantity) }}</td>
+                                </tr>
+                                <tr class="consumption-total-row">
+                                    <th :colspan="3 + group.attributes.length">Total</th>
+                                    <template v-if="group.primary_attribute">
+                                        <th v-for="attr in group.primary_attribute_values" :key="attr">
+                                            <span v-if="group.total_details[attr]">{{ format_qty(group.total_details[attr]) }}</span>
+                                            <span v-else>--</span>
+                                        </th>
+                                    </template>
+                                    <th v-else>
+                                        <span v-if="group.total_details.default">{{ format_qty(group.total_details.default) }}</span>
+                                        <span v-else>--</span>
+                                    </th>
+                                    <th>{{ format_qty(group.overall_total) }}</th>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 </template>
 
 <script setup>
-import {ref} from 'vue'
+import {computed, ref} from 'vue'
 
 let items = ref(null)
+let active_tab = ref("ocr_details")
+let consumption_data = ref(null)
+let consumption_loading = ref(false)
+let consumption_error = ref("")
+let stock_balance_data = ref(null)
+let stock_balance_loading = ref(false)
+let stock_balance_error = ref("")
 let item_name = cur_frm.doc.item
 function load_data(data){
     items.value = data
+}
+
+const has_consumption_data = computed(() => {
+    return Boolean(
+        consumption_data.value &&
+        consumption_data.value.processes &&
+        consumption_data.value.processes.some(process => {
+            return process.groups && process.groups.some(group => group.items && group.items.length > 0)
+        })
+    )
+})
+
+const has_stock_balance_data = computed(() => {
+    return Boolean(
+        stock_balance_data.value &&
+        stock_balance_data.value.warehouses &&
+        stock_balance_data.value.warehouses.some(warehouse => {
+            return warehouse.groups && warehouse.groups.some(group => group.items && group.items.length > 0)
+        })
+    )
+})
+
+function load_consumption_data(doc_name){
+    if(!doc_name){
+        return
+    }
+    consumption_loading.value = true
+    consumption_error.value = ""
+    frappe.call({
+        method: "production_api.production_api.doctype.finishing_plan.finishing_plan.get_fp_consumption_details",
+        args: {
+            doc_name: doc_name,
+        },
+        callback: function(r) {
+            consumption_data.value = r.message || {processes: []}
+            consumption_loading.value = false
+        },
+        error: function() {
+            consumption_error.value = "Unable to load consumption details."
+            consumption_loading.value = false
+        }
+    })
+}
+
+function load_stock_balance_data(doc_name){
+    if(!doc_name){
+        return
+    }
+    stock_balance_loading.value = true
+    stock_balance_error.value = ""
+    frappe.call({
+        method: "production_api.production_api.doctype.finishing_plan.finishing_plan.get_fp_stock_balance_details",
+        args: {
+            doc_name: doc_name,
+        },
+        callback: function(r) {
+            stock_balance_data.value = r.message || {warehouses: []}
+            stock_balance_loading.value = false
+        },
+        error: function() {
+            stock_balance_error.value = "Unable to load stock balance."
+            stock_balance_loading.value = false
+        }
+    })
+}
+
+function get_cell_quantity(item, attr){
+    if(!item || !item.values || !item.values[attr]){
+        return 0
+    }
+    return item.values[attr].quantity || 0
+}
+
+function get_warehouse_title(warehouse){
+    if(!warehouse){
+        return ""
+    }
+    if(warehouse.warehouse_name && warehouse.warehouse_name !== warehouse.warehouse){
+        return warehouse.warehouse_name + " - " + warehouse.warehouse
+    }
+    return warehouse.warehouse || warehouse.warehouse_name || ""
+}
+
+function get_sources_title(item, attr){
+    if(!item || !item.values || !item.values[attr] || !item.values[attr].sources){
+        return ""
+    }
+    return item.values[attr].sources.map(source => source.source_name).filter(Boolean).join(", ")
+}
+
+function format_qty(value){
+    let qty = Number(value || 0)
+    if(Number.isInteger(qty)){
+        return qty
+    }
+    return Number(qty.toFixed(3))
 }
 
 function get_percentage(val_dict, make_pos=false){
@@ -559,11 +828,74 @@ function get_unaccountable(part_value){
 
 defineExpose({
     load_data,
+    load_consumption_data,
+    load_stock_balance_data,
 })
 
 </script>
 
 <style scoped>
+.ocr-tab-nav {
+    display: flex;
+    gap: 4px;
+    border-bottom: 1px solid #d1d8dd;
+    margin-bottom: 12px;
+}
+
+.ocr-tab-button {
+    appearance: none;
+    background: transparent;
+    border: 0;
+    border-bottom: 2px solid transparent;
+    color: #4c5a67;
+    cursor: pointer;
+    font-weight: 600;
+    padding: 8px 12px;
+}
+
+.ocr-tab-button.active {
+    border-bottom-color: #2490ef;
+    color: #1f272e;
+}
+
+.ocr-tab-panel {
+    min-height: 80px;
+}
+
+.consumption-loading {
+    align-items: center;
+    color: #4c5a67;
+    display: flex;
+    gap: 8px;
+    min-height: 120px;
+}
+
+.consumption-empty {
+    align-items: center;
+    display: flex;
+    min-height: 120px;
+}
+
+.consumption-process {
+    margin-bottom: 18px;
+}
+
+.consumption-process-title {
+    background: #f8f9fa;
+    border: 1px solid #d1d8dd;
+    border-bottom: 0;
+    font-weight: 700;
+    padding: 8px 10px;
+}
+
+.consumption-table {
+    margin-bottom: 0;
+}
+
+.consumption-total-row th {
+    background: #eef2f5;
+}
+
 .bordered-table {
     width: 100%;
     border: 1px solid #ccc;

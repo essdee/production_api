@@ -13,6 +13,10 @@ frappe.ui.form.on("Production Order", {
   },
   refresh(frm) {
     render_production_order_editor(frm);
+    const is_submitted = frm.doc.docstatus == 1;
+    frm.set_df_property("delivery_date", "read_only", is_submitted);
+    frm.set_df_property("dont_deliver_after", "read_only", is_submitted);
+
     if (frm.doc.docstatus == 1) {
       frm.add_custom_button("Update Price", () => {
         let d = new frappe.ui.Dialog({
@@ -60,6 +64,76 @@ frappe.ui.form.on("Production Order", {
         });
       });
 
+      frm.add_custom_button("Change Dates", () => {
+        const get_current_date = () =>
+          d.get_value("date_field") == "Don't Deliver After"
+            ? frm.doc.dont_deliver_after
+            : frm.doc.delivery_date;
+        let d = new frappe.ui.Dialog({
+          title: "Change Production Order Date",
+          fields: [
+            {
+              fieldname: "date_field",
+              fieldtype: "Select",
+              label: "Date to Change",
+              options: "Delivery Date\nDon't Deliver After",
+              default: "Delivery Date",
+              reqd: 1,
+              onchange: function () {
+                let current_date = get_current_date();
+                d.set_value("old_date", current_date);
+                d.set_value("new_date", current_date);
+              },
+            },
+            {
+              fieldname: "old_date",
+              fieldtype: "Date",
+              label: "Old Date",
+              default: frm.doc.delivery_date,
+              read_only: 1,
+            },
+            {
+              fieldname: "new_date",
+              fieldtype: "Date",
+              label: "New Date",
+              default: frm.doc.delivery_date,
+              reqd: 1,
+            },
+            {
+              fieldname: "reason",
+              fieldtype: "Small Text",
+              label: "Reason",
+              reqd: 1,
+            },
+          ],
+          primary_action_label: "Update",
+          primary_action: function () {
+            let values = d.get_values();
+            if (!values) return;
+
+            frappe.call({
+              method:
+                "production_api.production_api.doctype.production_order.production_order.update_production_order_date",
+              args: {
+                production_order: frm.doc.name,
+                date_field: values.date_field,
+                new_date: values.new_date,
+                reason: values.reason,
+              },
+              callback: function () {
+                d.hide();
+                frm.reload_doc();
+                frappe.show_alert({
+                  message: __("Date change tracked"),
+                  indicator: "green",
+                });
+              },
+            });
+          },
+        });
+        d.show();
+      });
+
       frm.add_custom_button("Create Lot", () => {
         let d = new frappe.ui.Dialog({
           title: "Create Lot",
@@ -93,12 +167,8 @@ frappe.ui.form.on("Production Order", {
         d.show();
       });
       if (!frappe.perm.has_perm("Production Order", 0, "submit")) {
-        frm.set_df_property("delivery_date", "read_only", true);
-        frm.set_df_property("dont_deliver_after", "read_only", true);
         frm.set_df_property("comments", "read_only", true);
-        frm.refresh_field("dont_deliver_after");
         frm.refresh_field("comments");
-        frm.refresh_field("delivery_date");
       }
       frm.add_custom_button("Print", () => {
         window.open(
