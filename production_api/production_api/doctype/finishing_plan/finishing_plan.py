@@ -2507,8 +2507,8 @@ def check_colours_and_sizes(ipd, converting_colours, converting_sizes):
 		if colour not in colours:
 			frappe.throw(f"Selected Item Production Detail not contains the {pack_attr} {colour}")
 
-	for size in sizes:
-		if size not in converting_sizes:
+	for size in converting_sizes:
+		if size not in sizes:
 			frappe.throw(f"Selected Item Production Detail not contains the {primary_attr} {size}")
 
 def check_process_cost(process_name, item, supplier):
@@ -2855,14 +2855,30 @@ def get_set_item_parts_count(finishing_doc):
 	return len(parts) or 1
 
 
+def get_finishing_plan_total_cutting(finishing_doc):
+	total_cutting = 0.0
+	for row in finishing_doc.finishing_plan_details:
+		total_cutting += flt(row.cutting_qty)
+
+	if total_cutting or not finishing_doc.work_order:
+		return total_cutting
+
+	return flt(frappe.db.sql(
+		"""
+			SELECT SUM(quantity)
+			FROM `tabWork Order Calculated Item`
+			WHERE parent = %s
+		""",
+		finishing_doc.work_order,
+	)[0][0])
+
+
 def get_finishing_dispatch_totals(finishing_doc):
 	if isinstance(finishing_doc, str):
 		finishing_doc = frappe.get_doc("Finishing Plan", finishing_doc)
 
-	total_cutting = 0.0
 	total_dispatched_pieces = 0.0
-	for row in finishing_doc.finishing_plan_details:
-		total_cutting += flt(row.cutting_qty)
+	total_cutting = get_finishing_plan_total_cutting(finishing_doc)
 
 	pieces_per_box = flt(finishing_doc.pieces_per_box) or 0
 	if pieces_per_box:
@@ -2958,11 +2974,15 @@ def _total_unaccountable(finishing_doc):
 
 
 def compute_received_status(finishing_doc):
-	total_cutting = 0.0
+	if isinstance(finishing_doc, str):
+		finishing_doc = frappe.get_doc("Finishing Plan", finishing_doc)
+
+	total_cutting = get_finishing_plan_total_cutting(finishing_doc)
 	total_received = 0.0
+	total_dc_qty = 0.0
 	for row in finishing_doc.finishing_plan_details:
-		total_cutting += flt(row.cutting_qty)
 		total_received += flt(row.delivered_quantity)
+		total_dc_qty += flt(row.dc_qty)
 
 	if not total_cutting:
 		return None
@@ -2980,6 +3000,11 @@ def compute_received_status(finishing_doc):
 			if unaccountable is not None and unaccountable == 0:
 				return "Fully Dispatched"
 		return "Dispatched"
+
+	if not total_received:
+		total_received = total_dc_qty
+	else:
+		total_received = max(total_received, total_dc_qty)
 
 	if not total_received:
 		return None
