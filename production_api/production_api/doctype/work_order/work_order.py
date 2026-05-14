@@ -212,6 +212,9 @@ class WorkOrder(Document):
         if not production_order:
             return
 
+        if frappe.db.get_value("Production Order", production_order, "skip_box_sticker_print"):
+            return
+
         primary = frappe.get_value("Item", self.item, "primary_attribute")
         if not primary:
             return

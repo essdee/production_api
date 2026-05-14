@@ -24,6 +24,7 @@
     "production_order_details",
     "production_ordered_details",
     "comments",
+    "skip_box_sticker_print",
     "submitted_by",
     "submitted_time",
     "price_approval_status",
@@ -149,6 +150,14 @@
       "fieldname": "comments",
       "fieldtype": "Small Text",
       "label": "Comments"
+    },
+    {
+      "allow_on_submit": 1,
+      "default": "0",
+      "description": "Do not auto-create Box Sticker Print from packing Work Orders linked to this Production Order.",
+      "fieldname": "skip_box_sticker_print",
+      "fieldtype": "Check",
+      "label": "Skip Box Sticker Print"
     },
     {
       "fieldname": "submitted_by",
