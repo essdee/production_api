@@ -11,9 +11,12 @@ from six import string_types
 class BoxStickerPrint(Document):
 	def before_validate(self):
 		sum = 0
+		has_allow_excess = False
 		for item in self.box_sticker_print_details:
 			sum = sum+item.quantity
-		if sum == 0:
+			if item.allow_excess_quantity:
+				has_allow_excess = True
+		if sum == 0 and not has_allow_excess:
 			frappe.throw("Enter the quantity")	
 
 @frappe.whitelist()
@@ -166,4 +169,3 @@ def get_printer(printers):
 		return final_printers_list
 	else:
 		return []
-		

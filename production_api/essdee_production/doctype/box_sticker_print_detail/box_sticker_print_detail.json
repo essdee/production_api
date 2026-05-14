@@ -56,7 +56,8 @@
    "fieldname": "allow_excess_quantity",
    "fieldtype": "Check",
    "in_list_view": 1,
-   "label": "Allow Excess Quantity"
+   "label": "Allow Excess Quantity",
+   "read_only": 1
   },
   {
    "columns": 2,
