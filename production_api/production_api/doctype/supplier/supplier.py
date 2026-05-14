@@ -128,6 +128,31 @@ def get_supplier_address_display(supplier):
 	except TemplateSyntaxError:
 		frappe.throw(_("There is an error in your Address Template"))
 
+@frappe.whitelist()
+def update_terms_and_condition(supplier, terms_and_condition=None):
+	if not supplier:
+		frappe.throw(_("Supplier is required"))
+
+	supplier_doc = frappe.get_doc("Supplier", supplier)
+	supplier_doc.check_permission("read")
+
+	if terms_and_condition:
+		if not frappe.db.exists("Terms and Condition", terms_and_condition):
+			frappe.throw(_("Terms and Condition {0} does not exist").format(frappe.bold(terms_and_condition)))
+
+		can_access_terms = (
+			frappe.has_permission("Terms and Condition", "read", doc=terms_and_condition)
+			or frappe.has_permission("Terms and Condition", "select")
+		)
+		if not can_access_terms:
+			frappe.throw(_("Not permitted to use this Terms and Condition"), frappe.PermissionError)
+	else:
+		terms_and_condition = None
+
+	frappe.db.set_value("Supplier", supplier_doc.name, "terms_and_condition", terms_and_condition)
+	frappe.clear_document_cache("Supplier", supplier_doc.name)
+	return {"terms_and_condition": terms_and_condition}
+
 
 # ---------------------------------
 # Spine Sync handler for supplier
