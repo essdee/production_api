@@ -23,7 +23,7 @@ class PurchaseInvoice(Document):
                 debit_summary = frappe.get_all(
                     "WO Debit",
                     filters={"work_order": ["in", work_orders], "docstatus": 1},
-                    fields=["name", "work_order", "debit_no", "debit_value", "reason", "on_close"],
+                    fields=["name", "work_order", "debit_no", "debit_value", "reason", "inspection", "on_close"],
                     order_by="creation asc",
                 )
                 self.set_onload("debit_summary", debit_summary)

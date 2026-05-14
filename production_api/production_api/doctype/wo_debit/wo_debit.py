@@ -3,6 +3,12 @@ from frappe.model.document import Document
 
 
 class WODebit(Document):
+	def validate(self):
+		if not self.inspection and not self.debit_no:
+			frappe.throw("Debit No is required.")
+		if self.inspection and not self.debit_document:
+			frappe.throw("Debit Document is required.")
+
 	def before_submit(self):
 		merch_role = frappe.db.get_single_value("MRP Settings", "merchandising_manager_role")
 		if merch_role and merch_role in frappe.get_roles(frappe.session.user):

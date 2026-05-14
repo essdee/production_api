@@ -1097,7 +1097,7 @@ function _fetch_debit_list(frm, dialog, is_merch_manager) {
     args: {
       doctype: "WO Debit",
       filters: { work_order: frm.doc.name, docstatus: 1 },
-      fields: ["name", "debit_type", "debit_no", "debit_value", "status", "on_close"],
+      fields: ["name", "debit_type", "debit_no", "debit_value", "inspection", "status", "on_close"],
       order_by: "creation asc",
       limit_page_length: 0,
     },
@@ -1112,7 +1112,7 @@ function _fetch_debit_list(frm, dialog, is_merch_manager) {
         let html = '<hr><h4>WO Debits</h4>';
         html += '<table class="table table-sm table-bordered">';
         html += '<thead><tr>';
-        html += '<th>S.No.</th><th>Name</th><th>Debit Type</th><th>Debit No</th><th>Debit Value</th><th>Status</th>';
+        html += '<th>S.No.</th><th>Name</th><th>Debit Type</th><th>Debit No</th><th>Debit Value</th><th>Inspection</th><th>Status</th>';
         if (show_action) html += '<th>Action</th>';
         html += '</tr></thead><tbody>';
         for (let i = 0; i < debits.length; i++) {
@@ -1124,6 +1124,7 @@ function _fetch_debit_list(frm, dialog, is_merch_manager) {
           html += '<td>' + (db.debit_type || '') + '</td>';
           html += '<td>' + (db.debit_no || '') + '</td>';
           html += '<td>' + format_currency(db.debit_value || 0) + '</td>';
+          html += '<td style="text-align: center;"><input type="checkbox" disabled ' + (db.inspection ? 'checked' : '') + '></td>';
           html += '<td class="debit-status"><span style="color: ' + status_color + '; font-weight: bold;">' + (db.status || '') + '</span></td>';
           if (show_action) {
             if (db.status !== "Approved") {
@@ -1135,7 +1136,7 @@ function _fetch_debit_list(frm, dialog, is_merch_manager) {
           html += '</tr>';
         }
         let total_value = debits.reduce((sum, db) => sum + (db.debit_value || 0), 0);
-        let col_span = show_action ? 7 : 6;
+        let col_span = show_action ? 8 : 7;
         html += '</tbody><tfoot><tr>';
         html += '<td colspan="4" style="text-align: right; font-weight: bold;">Total</td>';
         html += '<td style="font-weight: bold;">' + format_currency(total_value) + '</td>';
@@ -1223,6 +1224,11 @@ function open_debit_dialog(frm, parentDialog) {
         label: "Reason",
         reqd: 1,
       },
+      {
+        fieldname: "debit_document",
+        fieldtype: "Attach",
+        label: "Debit Document",
+      },
     ],
     primary_action_label: "Create",
     primary_action(values) {
@@ -1236,6 +1242,7 @@ function open_debit_dialog(frm, parentDialog) {
             debit_no: values.debit_no,
             debit_value: values.debit_value,
             reason: values.reason,
+            debit_document: values.debit_document,
             on_close: parentDialog ? 1 : 0,
             docstatus: 1,
           },
