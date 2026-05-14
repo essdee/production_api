@@ -24,10 +24,12 @@ frappe.ui.form.on("Vendor Bill Tracking", {
 			}
 			frm.page.btn_secondary.hide();
 			if (!frm.doc.purchase_invoice && !frm.doc.mrp_purchase_invoice) {
-				if ( frappe.user.has_role("Accounts Manager") || frappe.user.has_role("Accounts User")) {
+				if (frappe.user.has_role("HR User") || frappe.user.has_role("System Manager")) {
 					frm.add_custom_button(__("Cancel"), () => {
 						get_remarks_and_cancel(frm);
 					});
+				}
+				if (frappe.user.has_role("Accounts Manager") || frappe.user.has_role("Accounts User")) {
 					frm.add_custom_button(__("Create MRP PI"), () => {
 						let x = frappe.model.get_new_doc("Purchase Invoice");
 						x.supplier = frm.doc.supplier;
