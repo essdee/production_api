@@ -12,6 +12,7 @@
   "debit_no",
   "debit_value",
   "reason",
+  "debit_document",
   "on_close",
   "amended_from"
  ],
@@ -71,6 +72,11 @@
    "fieldtype": "Small Text",
    "label": "Reason",
    "reqd": 1
+  },
+  {
+   "fieldname": "debit_document",
+   "fieldtype": "Attach",
+   "label": "Debit Document"
   },
   {
    "default": "0",

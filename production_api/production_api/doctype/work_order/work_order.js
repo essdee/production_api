@@ -1223,6 +1223,11 @@ function open_debit_dialog(frm, parentDialog) {
         label: "Reason",
         reqd: 1,
       },
+      {
+        fieldname: "debit_document",
+        fieldtype: "Attach",
+        label: "Debit Document",
+      },
     ],
     primary_action_label: "Create",
     primary_action(values) {
@@ -1236,6 +1241,7 @@ function open_debit_dialog(frm, parentDialog) {
             debit_no: values.debit_no,
             debit_value: values.debit_value,
             reason: values.reason,
+            debit_document: values.debit_document,
             on_close: parentDialog ? 1 : 0,
             docstatus: 1,
           },
