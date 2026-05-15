@@ -3,6 +3,7 @@ import StockItem from "./StockEntry/StockEntry.vue"
 import StockReconciliation from "./StockReconciliation/StockReconciliation.vue"
 import LotTransfer from "./LotTransfer/LotTransfer.vue"
 import StockUpdate from "./StockUpdate/StockUpdate.vue"
+import ItemConversion from "./ItemConversion/ItemConversion.vue"
 
 export class StockEntryWrapper {
     constructor(wrapper) {
@@ -144,5 +145,36 @@ export class StockUpdateWrapper {
     
     update_status() {
         this.stockUpdate.update_status();
+    }
+};
+
+export class ItemConversionWrapper {
+    constructor(wrapper) {
+        this.$wrapper = $(wrapper);
+        this.make_body();
+    }
+
+    make_body() {
+        let $page_container = $('<div class="item frappe-control">').appendTo(this.$wrapper);
+        this.app = createApp(ItemConversion);
+        SetVueGlobals(this.app);
+        this.itemConversion = this.app.mount(this.$wrapper.get(0))
+    }
+
+    updateWrapper(wrapper) {
+        this.$wrapper = $(wrapper);
+        $(this.vue.$el).appendTo(this.$wrapper)
+    }
+
+    get_items() {
+        return this.itemConversion.get_items();
+    }
+
+    load_data(data) {
+        this.itemConversion.load_data(data);
+    }
+    
+    update_status() {
+        this.itemConversion.update_status();
     }
 };
