@@ -1,6 +1,6 @@
 {
  "charts": [],
- "content": "[{\"id\":\"ZK6zXqEA6l\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">Stock</span>\",\"col\":12}},{\"id\":\"EfeYIF7Bg7\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Stock Entry\",\"col\":3}},{\"id\":\"TFB8gi6pdk\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Stock Reconciliation\",\"col\":3}},{\"id\":\"lHUf_f10-Y\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Lot Transfer\",\"col\":3}},{\"id\":\"Bf3Vg5N8sQ\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Item Conversion\",\"col\":3}},{\"id\":\"z34_BzSBnE\",\"type\":\"spacer\",\"data\":{\"col\":12}},{\"id\":\"WOIVwPoGRS\",\"type\":\"card\",\"data\":{\"card_name\":\"Report\",\"col\":4}}]",
+ "content": "[{\"id\":\"ZK6zXqEA6l\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">Stock</span>\",\"col\":12}},{\"id\":\"EfeYIF7Bg7\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Stock Entry\",\"col\":3}},{\"id\":\"TFB8gi6pdk\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Stock Reconciliation\",\"col\":3}},{\"id\":\"lHUf_f10-Y\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Lot Transfer\",\"col\":3}},{\"id\":\"z34_BzSBnE\",\"type\":\"spacer\",\"data\":{\"col\":12}},{\"id\":\"WOIVwPoGRS\",\"type\":\"card\",\"data\":{\"card_name\":\"Report\",\"col\":4}},{\"id\":\"F3cx3s_9LT\",\"type\":\"card\",\"data\":{\"card_name\":\"Audit Reports\",\"col\":4}}]",
  "creation": "2023-05-10 11:20:41.649840",
  "custom_blocks": [],
  "docstatus": 0,
@@ -12,6 +12,65 @@
  "is_hidden": 0,
  "label": "Stock",
  "links": [
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Audit Reports",
+   "link_count": 5,
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 1,
+   "label": "Jobwork Issued Items",
+   "link_count": 0,
+   "link_to": "Jobwork Issued Items",
+   "link_type": "Report",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 1,
+   "label": "Non Jobwork Issued Items",
+   "link_count": 0,
+   "link_to": "Non Jobwork Issued Items",
+   "link_type": "Report",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 1,
+   "label": "GRN Summary",
+   "link_count": 0,
+   "link_to": "GRN Summary",
+   "link_type": "Report",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 1,
+   "label": "Non-GRN Received Items",
+   "link_count": 0,
+   "link_to": "Non-GRN Received Items",
+   "link_type": "Report",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 1,
+   "label": "Item Conversion Report",
+   "link_count": 0,
+   "link_to": "Item Conversion Report",
+   "link_type": "Report",
+   "onboard": 0,
+   "type": "Link"
+  },
   {
    "hidden": 0,
    "is_query_report": 0,
@@ -114,15 +173,15 @@
   {
    "hidden": 0,
    "is_query_report": 1,
-   "label": "Item Conversion Report",
+   "label": "Stock Update Report",
    "link_count": 0,
-   "link_to": "Item Conversion Report",
+   "link_to": "Stock Update Report",
    "link_type": "Report",
    "onboard": 0,
    "type": "Link"
   }
  ],
- "modified": "2025-07-25 17:07:55.743534",
+ "modified": "2026-05-15 11:33:20.415765",
  "modified_by": "Administrator",
  "module": "MRP Stock",
  "name": "Stock",
@@ -153,13 +212,6 @@
    "doc_view": "List",
    "label": "Lot Transfer",
    "link_to": "Lot Transfer",
-   "type": "DocType"
-  },
-  {
-   "color": "Grey",
-   "doc_view": "List",
-   "label": "Item Conversion",
-   "link_to": "Item Conversion",
    "type": "DocType"
   }
  ],
