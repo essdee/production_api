@@ -1,16 +1,16 @@
 {
  "add_total_row": 1,
+ "add_translate_data": 0,
  "columns": [],
- "creation": "2026-05-12 00:00:00.000000",
- "disable_prepared_report": 1,
+ "creation": "2026-05-12 12:41:34.376847",
  "disabled": 0,
  "docstatus": 0,
  "doctype": "Report",
  "filters": [],
  "idx": 0,
  "is_standard": "Yes",
- "letter_head": "Essdee Knitting Mills Private Limited",
- "modified": "2026-05-12 00:00:00.000000",
+ "letter_head": null,
+ "modified": "2026-05-15 11:33:52.217381",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Non-GRN Received Items",
@@ -43,6 +43,10 @@
   },
   {
    "role": "Production Planner"
+  },
+  {
+   "role": "Accounts User"
   }
- ]
+ ],
+ "timeout": 0
 }

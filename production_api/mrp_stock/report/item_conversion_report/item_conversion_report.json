@@ -1,8 +1,8 @@
 {
- "add_total_row": 1,
+ "add_total_row": 0,
  "add_translate_data": 0,
  "columns": [],
- "creation": "2026-05-12 12:04:03.878766",
+ "creation": "2026-05-15 00:00:00",
  "disabled": 0,
  "docstatus": 0,
  "doctype": "Report",
@@ -10,14 +10,14 @@
  "idx": 0,
  "is_standard": "Yes",
  "letter_head": null,
- "modified": "2026-05-15 11:33:44.404696",
+ "modified": "2026-05-15 11:33:35.208274",
  "modified_by": "Administrator",
- "module": "Production Api",
- "name": "Jobwork Issued Items",
+ "module": "MRP Stock",
+ "name": "Item Conversion Report",
  "owner": "Administrator",
  "prepared_report": 0,
- "ref_doctype": "Stock Entry",
- "report_name": "Jobwork Issued Items",
+ "ref_doctype": "Item Conversion",
+ "report_name": "Item Conversion Report",
  "report_type": "Script Report",
  "roles": [
   {
@@ -34,15 +34,6 @@
   },
   {
    "role": "Store Manager"
-  },
-  {
-   "role": "Merch User"
-  },
-  {
-   "role": "Merch Manager"
-  },
-  {
-   "role": "Production Planner"
   },
   {
    "role": "Accounts User"

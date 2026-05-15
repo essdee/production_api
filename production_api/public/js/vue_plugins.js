@@ -36,7 +36,7 @@ import AccessoryItems from "./Item_Po_detail/AccessoryItems.vue"
 import BundleGroup from "./Item_Po_detail/BundleGroup.vue"
 import ClothDetail from "./CuttingOrder/ClothDetail.vue"
 import CuttingOrderItems from "./CuttingOrder/CuttingOrderItems.vue"
-import { StockEntryWrapper, StockReconciliationWrapper, LotTransferWrapper, StockUpdateWrapper } from "./Stock";
+import { StockEntryWrapper, StockReconciliationWrapper, LotTransferWrapper, StockUpdateWrapper, ItemConversionWrapper } from "./Stock";
 import {
     DeliverablesWrapper,
     WOReworkPopUpWrapper,
@@ -1178,6 +1178,7 @@ frappe.production.ui.StockEntryItem = StockEntryWrapper
 frappe.production.ui.StockReconciliationItem = StockReconciliationWrapper
 frappe.production.ui.LotTransferItem = LotTransferWrapper
 frappe.production.ui.StockUpdateItem = StockUpdateWrapper
+frappe.production.ui.ItemConversion = ItemConversionWrapper
 frappe.production.ui.EditBOMAttributeMapping = EditBOMAttributeMappingWrapper
 
 // Lot components
