@@ -5,7 +5,7 @@ from frappe import bold
 from six import string_types
 from frappe.model.document import Document
 import frappe, json, sys, base64, math, time
-from frappe.utils import getdate, nowdate, now
+from frappe.utils import getdate, nowdate, now, flt
 from secrets import token_bytes as get_random_bytes
 from production_api.mrp_stock.stock_ledger import make_sl_entries
 from production_api.production_api.doctype.item.item import get_or_create_variant
@@ -18,6 +18,26 @@ from production_api.production_api.doctype.cutting_laysheet.cutting_parent_adapt
 	has_work_order, is_parent_completed, get_parent_context, increment_lay_no,
 	update_parent_status_on_first_lay, get_completed_incomplete_json, save_completed_incomplete_json,
 )
+
+DEFAULT_PIECE_WEIGHT_TOLERANCE = 0.003
+
+
+def get_laysheet_piece_weight_tolerance(cls_doc):
+	if cls_doc.cutting_plan:
+		tolerance = flt(frappe.db.get_value("Cutting Plan", cls_doc.cutting_plan, "piece_weight_tolerance"))
+		if not tolerance:
+			frappe.throw("Piece Weight Tolerance is not set in the Cutting Plan.")
+		return tolerance
+
+	settings = frappe.get_single("MRP Settings")
+	return flt(settings.piece_weight_tolerance) or DEFAULT_PIECE_WEIGHT_TOLERANCE
+
+
+@frappe.whitelist()
+def get_piece_weight_tolerance(doc_name):
+	cls_doc = frappe.get_doc("Cutting LaySheet", doc_name)
+	return get_laysheet_piece_weight_tolerance(cls_doc)
+
 
 class CuttingLaySheet(Document):
 	def autoname(self):
@@ -796,8 +816,7 @@ def print_labels(print_items, lay_no, doc_name, print_order, cutting_plan=None, 
 
 	# Validate grammage approval if weight difference exceeds tolerance
 	cls = frappe.get_doc("Cutting LaySheet", doc_name)
-	settings = frappe.get_single("MRP Settings")
-	tolerance = settings.piece_weight_tolerance or 0.003
+	tolerance = get_laysheet_piece_weight_tolerance(cls)
 	diff = abs((cls.piece_weight or 0) - (cls.required_pcs_weight or 0))
 	if diff > tolerance and not cls.approved_by:
 		frappe.throw("Grammage approval required before printing labels")

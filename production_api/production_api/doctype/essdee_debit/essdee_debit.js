@@ -1,4 +1,4 @@
-frappe.ui.form.on("WO Debit", {
+frappe.ui.form.on("Essdee Debit", {
 	refresh(frm) {
 		if (frm.doc.docstatus === 1 && frm.doc.status === "Debit Requested") {
 			frappe.call({
@@ -10,7 +10,7 @@ frappe.ui.form.on("WO Debit", {
 								__("Are you sure you want to approve this debit?"),
 								() => {
 									frappe.call({
-										method: "production_api.production_api.doctype.wo_debit.wo_debit.approve_debit",
+										method: "production_api.production_api.doctype.essdee_debit.essdee_debit.approve_debit",
 										args: { name: frm.doc.name },
 										callback() {
 											frm.reload_doc();

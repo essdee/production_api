@@ -21,9 +21,22 @@ class PurchaseInvoice(Document):
             work_orders = list({row.work_order for row in self.pi_work_order_billed_details})
             if work_orders:
                 debit_summary = frappe.get_all(
-                    "WO Debit",
-                    filters={"work_order": ["in", work_orders], "docstatus": 1},
-                    fields=["name", "work_order", "debit_no", "debit_value", "reason", "inspection", "on_close"],
+                    "Essdee Debit",
+                    filters={
+                        "against": "Work Order",
+                        "against_id": ["in", work_orders],
+                        "docstatus": 1,
+                    },
+                    fields=[
+                        "name",
+                        "against",
+                        "against_id",
+                        "debit_no",
+                        "debit_value",
+                        "reason",
+                        "inspection",
+                        "on_close",
+                    ],
                     order_by="creation asc",
                 )
                 self.set_onload("debit_summary", debit_summary)

@@ -2,8 +2,10 @@ import frappe
 from frappe.model.document import Document
 
 
-class WODebit(Document):
+class EssdeeDebit(Document):
 	def validate(self):
+		if not self.against or not self.against_id:
+			frappe.throw("Against and Against ID are required.")
 		if not self.inspection and not self.debit_no:
 			frappe.throw("Debit No is required.")
 		if self.inspection and not self.debit_document:
@@ -24,11 +26,11 @@ def approve_debit(name):
 	if not merch_role or merch_role not in frappe.get_roles(frappe.session.user):
 		frappe.throw("You do not have permission to approve debits.")
 
-	doc = frappe.get_doc("WO Debit", name)
+	doc = frappe.get_doc("Essdee Debit", name)
 	if doc.docstatus != 1:
-		frappe.throw("WO Debit must be submitted before approval.")
+		frappe.throw("Essdee Debit must be submitted before approval.")
 	if doc.status != "Debit Requested":
-		frappe.throw("WO Debit is already approved.")
+		frappe.throw("Essdee Debit is already approved.")
 
 	doc.status = "Approved"
 	doc.approved_by = frappe.session.user

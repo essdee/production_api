@@ -157,7 +157,7 @@ Result: ${frm.doc.result}
 
 function open_inspection_debit_dialog(frm) {
     let d = new frappe.ui.Dialog({
-        title: "Create WO Debit",
+        title: "Create Essdee Debit",
         fields: [
             {
                 fieldname: "debit_type",
@@ -193,8 +193,9 @@ function open_inspection_debit_dialog(frm) {
                 method: "frappe.client.insert",
                 args: {
                     doc: {
-                        doctype: "WO Debit",
-                        work_order: frm.doc.against_id,
+                        doctype: "Essdee Debit",
+                        against: frm.doc.against || "Work Order",
+                        against_id: frm.doc.against_id,
                         debit_type: values.debit_type,
                         debit_value: values.debit_value,
                         reason: values.reason,
@@ -206,7 +207,7 @@ function open_inspection_debit_dialog(frm) {
                 callback(r) {
                     if (r.message) {
                         frappe.show_alert({
-                            message: __("WO Debit {0} created with Debit Requested status", [r.message.name]),
+                            message: __("Essdee Debit {0} created with Debit Requested status", [r.message.name]),
                             indicator: "green",
                         });
                         d.hide();

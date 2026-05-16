@@ -2,5 +2,5 @@ import frappe
 from frappe.tests.utils import FrappeTestCase
 
 
-class TestWODebit(FrappeTestCase):
+class TestEssdeeDebit(FrappeTestCase):
 	pass

@@ -18,6 +18,7 @@
   "column_break_nvaz",
   "item",
   "maximum_allow_percent",
+  "piece_weight_tolerance",
   "production_detail",
   "ipd_cutting_attribute",
   "cutting_location",
@@ -33,6 +34,8 @@
   "cloths_html",
   "cutting_plan_accessory_details",
   "accessory_html",
+  "grammage_change_log_section",
+  "grammage_change_logs",
   "report_tab",
   "completed_items_json",
   "completed_items_html",
@@ -143,6 +146,15 @@
    "label": "Maximum Allow Percent"
   },
   {
+   "allow_on_submit": 1,
+   "description": "Copied from MRP Settings when blank.",
+   "fieldname": "piece_weight_tolerance",
+   "fieldtype": "Float",
+   "label": "Piece Weight Tolerance (kg)",
+   "precision": "4",
+   "read_only": 1
+  },
+  {
    "fieldname": "cutting_location",
    "fieldtype": "Select",
    "label": "Cutting Location",
@@ -165,6 +177,19 @@
    "fieldname": "accessory_html",
    "fieldtype": "HTML",
    "label": "Accessory HTML"
+  },
+  {
+   "fieldname": "grammage_change_log_section",
+   "fieldtype": "Section Break",
+   "label": "Grammage Change Log"
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "grammage_change_logs",
+   "fieldtype": "Table",
+   "label": "Grammage Change Logs",
+   "options": "Cutting Plan Grammage Change Log",
+   "read_only": 1
   },
   {
    "allow_on_submit": 1,
