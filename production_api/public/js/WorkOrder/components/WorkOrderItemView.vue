@@ -164,7 +164,7 @@ function update_total(){
 }
 
 function get_input_class(key,index){
-    key = key.replaceAll(" ","-")
+    key = String(key).replace(/[^A-Za-z0-9_-]/g, "-")
     return key+"-"+index;
 }
 
