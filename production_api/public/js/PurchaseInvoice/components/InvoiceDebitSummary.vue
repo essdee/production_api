@@ -1,11 +1,12 @@
 <template>
     <div v-if="debits.length > 0">
-        <h4>WO Debit Summary</h4>
+        <h4>Essdee Debit Summary</h4>
         <table class="table table-sm table-sm-bordered bordered-table">
             <thead>
                 <tr>
-                    <th>Work Order</th>
-                    <th>WO Debit Name</th>
+                    <th>Against</th>
+                    <th>Against ID</th>
+                    <th>Essdee Debit Name</th>
                     <th>Debit No</th>
                     <th>Debit Value</th>
                     <th>Reason</th>
@@ -15,8 +16,9 @@
             </thead>
             <tbody>
                 <tr v-for="d in debits" :key="d.name">
-                    <td style="cursor: pointer; color: #2490EF;" @click="openLink('work-order', d.work_order)">{{ d.work_order }}</td>
-                    <td style="cursor: pointer; color: #2490EF;" @click="openLink('wo-debit', d.name)">{{ d.name }}</td>
+                    <td>{{ d.against }}</td>
+                    <td style="cursor: pointer; color: #2490EF;" @click="openLink(routeForDoctype(d.against), d.against_id)">{{ d.against_id }}</td>
+                    <td style="cursor: pointer; color: #2490EF;" @click="openLink('essdee-debit', d.name)">{{ d.name }}</td>
                     <td>{{ d.debit_no }}</td>
                     <td>{{ fmt_currency(d.debit_value) }}</td>
                     <td>{{ d.reason }}</td>
@@ -24,7 +26,7 @@
                     <td>{{ d.on_close ? '✔' : '' }}</td>
                 </tr>
                 <tr>
-                    <th colspan="3" style="text-align: right;">Total</th>
+                    <th colspan="4" style="text-align: right;">Total</th>
                     <th>{{ fmt_currency(total_value) }}</th>
                     <th></th>
                     <th></th>
@@ -52,7 +54,13 @@ function fmt_currency(val) {
     return window.format_currency ? window.format_currency(val) : val;
 }
 
+function routeForDoctype(doctype) {
+    if (!doctype) return '';
+    return doctype.toLowerCase().replace(/\s+/g, '-');
+}
+
 function openLink(doctype, name) {
+    if (!doctype || !name) return;
     window.open(`/app/${doctype}/${name}`, '_blank');
 }
 

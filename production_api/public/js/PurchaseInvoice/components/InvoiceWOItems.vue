@@ -354,21 +354,21 @@ function closeWorkOrder(wo) {
                                 },
                                 {
                                     fieldtype: "Button", fieldname: "create_debit_btn", label: "Create Debit",
-                                    depends_on: "eval: doc.with_debit == 'With Debit' && !doc.wo_debit",
+                                    depends_on: "eval: doc.with_debit == 'With Debit' && !doc.essdee_debit",
                                 },
                                 {
-                                    fieldtype: "Link", fieldname: "wo_debit", label: "WO Debit",
-                                    options: "WO Debit", read_only: 1,
+                                    fieldtype: "Link", fieldname: "essdee_debit", label: "Essdee Debit",
+                                    options: "Essdee Debit", read_only: 1,
                                     depends_on: "eval: doc.with_debit == 'With Debit'",
                                     mandatory_depends_on: "eval: doc.with_debit == 'With Debit'",
                                 },
                                 {
                                     fieldtype: "Data", fieldname: "debit_type", label: "Debit Type",
-                                    read_only: 1, depends_on: "eval: doc.wo_debit",
+                                    read_only: 1, depends_on: "eval: doc.essdee_debit",
                                 },
                                 {
                                     fieldtype: "Currency", fieldname: "debit_value", label: "Debit Value",
-                                    read_only: 1, depends_on: "eval: doc.wo_debit",
+                                    read_only: 1, depends_on: "eval: doc.essdee_debit",
                                 },
                                 { fieldtype: "Section Break", label: "Close Details" },
                                 {
@@ -389,8 +389,8 @@ function closeWorkOrder(wo) {
                             size: "extra-large",
                             primary_action() {
                                 // Gate: merch_manager blocked if unapproved debits
-                                if (user_role.value === 'merch_manager' && d.wo_debits && d.wo_debits.some(db => db.status !== "Approved")) {
-                                    frappe.msgprint(__("All WO Debits must be approved before closing."));
+                                if (user_role.value === 'merch_manager' && d.essdee_debits && d.essdee_debits.some(db => db.status !== "Approved")) {
+                                    frappe.msgprint(__("All Essdee Debits must be approved before closing."));
                                     return;
                                 }
                                 let values = d.get_values();
@@ -430,7 +430,7 @@ function closeWorkOrder(wo) {
                         // Create Debit button click handler
                         d.fields_dict.create_debit_btn.input.onclick = function() {
                             let debit_d = new frappe.ui.Dialog({
-                                title: "Create WO Debit",
+                                title: "Create Essdee Debit",
                                 fields: [
                                     { fieldtype: "Select", fieldname: "debit_type", label: "Debit Type", options: "Permanent", default: "Permanent", reqd: 1, hidden: 1 },
                                     { fieldtype: "Data", fieldname: "debit_no", label: "Debit No", reqd: 1 },
@@ -443,8 +443,9 @@ function closeWorkOrder(wo) {
                                         method: "frappe.client.insert",
                                         args: {
                                             doc: {
-                                                doctype: "WO Debit",
-                                                work_order: wo,
+                                                doctype: "Essdee Debit",
+                                                against: "Work Order",
+                                                against_id: wo,
                                                 debit_type: values.debit_type,
                                                 debit_no: values.debit_no,
                                                 debit_value: values.debit_value,
@@ -455,9 +456,9 @@ function closeWorkOrder(wo) {
                                         },
                                         callback(r) {
                                             if (r.message) {
-                                                frappe.show_alert({ message: __("WO Debit {0} created and submitted", [r.message.name]), indicator: "green" });
+                                                frappe.show_alert({ message: __("Essdee Debit {0} created and submitted", [r.message.name]), indicator: "green" });
                                                 debit_d.hide();
-                                                d.set_value("wo_debit", r.message.name);
+                                                d.set_value("essdee_debit", r.message.name);
                                                 d.set_value("debit_type", r.message.debit_type);
                                                 d.set_value("debit_value", r.message.debit_value);
                                                 // Re-fetch debit list
@@ -528,15 +529,15 @@ function _fetch_debit_list(wo, dialog, is_merch_manager) {
     frappe.call({
         method: "frappe.client.get_list",
         args: {
-            doctype: "WO Debit",
-            filters: { work_order: wo, docstatus: 1 },
+            doctype: "Essdee Debit",
+            filters: { against: "Work Order", against_id: wo, docstatus: 1 },
             fields: ["name", "debit_type", "debit_no", "debit_value", "inspection", "status", "on_close"],
             order_by: "creation asc",
             limit_page_length: 0,
         },
         callback: function(r) {
             let debits = r.message || [];
-            dialog.wo_debits = debits;
+            dialog.essdee_debits = debits;
             let debit_wrapper = $(dialog.fields_dict.debit_list_html.wrapper);
 
             if (debits.length === 0) {
@@ -547,7 +548,7 @@ function _fetch_debit_list(wo, dialog, is_merch_manager) {
             let has_unapproved = debits.some(db => db.status !== "Approved");
             let show_action = is_merch_manager && has_unapproved;
 
-            let html = '<hr><h4>WO Debit List</h4>';
+            let html = '<hr><h4>Essdee Debit List</h4>';
             html += '<table class="table table-sm table-bordered" style="margin-top: 8px;">';
             html += '<thead><tr><th>S.No.</th><th>Name</th><th>Debit Type</th><th>Debit No</th><th>Debit Value</th><th>Inspection</th><th>Status</th>';
             if (show_action) html += '<th>Action</th>';
@@ -560,7 +561,7 @@ function _fetch_debit_list(wo, dialog, is_merch_manager) {
                 let status_color = db.status === "Approved" ? "green" : "orange";
                 html += '<tr data-debit="' + db.name + '">';
                 html += '<td>' + (i + 1) + '</td>';
-                html += '<td><a href="/app/wo-debit/' + db.name + '" target="_blank">' + db.name + '</a></td>';
+                html += '<td><a href="/app/essdee-debit/' + db.name + '" target="_blank">' + db.name + '</a></td>';
                 html += '<td>' + (db.debit_type || '') + '</td>';
                 html += '<td>' + (db.debit_no || '') + '</td>';
                 html += '<td>' + format_currency(db.debit_value) + '</td>';
@@ -578,7 +579,7 @@ function _fetch_debit_list(wo, dialog, is_merch_manager) {
                 // Pre-populate on_close debit into fields
                 if (db.on_close) {
                     dialog.set_value("with_debit", "With Debit");
-                    dialog.set_value("wo_debit", db.name);
+                    dialog.set_value("essdee_debit", db.name);
                     dialog.set_value("debit_type", db.debit_type);
                     dialog.set_value("debit_value", db.debit_value);
                 }
@@ -601,12 +602,12 @@ function _fetch_debit_list(wo, dialog, is_merch_manager) {
                     let btn = $(this);
                     let debit_name = btn.data('name');
                     frappe.call({
-                        method: "production_api.production_api.doctype.wo_debit.wo_debit.approve_debit",
+                        method: "production_api.production_api.doctype.essdee_debit.essdee_debit.approve_debit",
                         args: { name: debit_name },
                         callback: function() {
                             let db = debits.find(d => d.name === debit_name);
                             if (db) db.status = "Approved";
-                            dialog.wo_debits = debits;
+                            dialog.essdee_debits = debits;
                             let row = debit_wrapper.find('tr[data-debit="' + debit_name + '"]');
                             row.find('.debit-status').html('<span style="color: green; font-weight: bold;">Approved</span>');
                             btn.closest('td').html('');

@@ -1,4 +1,4 @@
-frappe.listview_settings["WO Debit"] = {
+frappe.listview_settings["Essdee Debit"] = {
 	get_indicator(doc) {
 		if (doc.docstatus === 1) {
 			if (doc.status === "Approved") {

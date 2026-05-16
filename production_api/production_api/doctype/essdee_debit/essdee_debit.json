@@ -1,11 +1,12 @@
 {
  "actions": [],
- "autoname": "WOD-.#####",
+ "autoname": "ED-.#####",
  "creation": "2026-03-14 00:00:00",
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
-  "work_order",
+  "against",
+  "against_id",
   "status",
   "approved_by",
   "debit_type",
@@ -19,11 +20,20 @@
  ],
  "fields": [
   {
-   "fieldname": "work_order",
-   "fieldtype": "Link",
+   "default": "Work Order",
+   "fieldname": "against",
+   "fieldtype": "Select",
    "in_list_view": 1,
-   "label": "Work Order",
-   "options": "Work Order",
+   "label": "Against",
+   "options": "Lot\nWork Order",
+   "reqd": 1
+  },
+  {
+   "fieldname": "against_id",
+   "fieldtype": "Dynamic Link",
+   "in_list_view": 1,
+   "label": "Against ID",
+   "options": "against",
    "reqd": 1
   },
   {
@@ -82,8 +92,7 @@
    "default": "0",
    "fieldname": "inspection",
    "fieldtype": "Check",
-   "label": "Inspection",
-   "read_only": 1
+   "label": "Inspection"
   },
   {
    "default": "0",
@@ -97,7 +106,7 @@
    "fieldtype": "Link",
    "label": "Amended From",
    "no_copy": 1,
-   "options": "WO Debit",
+   "options": "Essdee Debit",
    "print_hide": 1,
    "read_only": 1
   }
@@ -105,10 +114,10 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2026-03-17 11:16:10.248098",
+ "modified": "2026-05-15 12:48:03.900175",
  "modified_by": "Administrator",
  "module": "Production Api",
- "name": "WO Debit",
+ "name": "Essdee Debit",
  "naming_rule": "Expression (old style)",
  "owner": "Administrator",
  "permissions": [
