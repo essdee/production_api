@@ -1,0 +1,66 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2026-05-16 00:00:00.000000",
+ "doctype": "DocType",
+ "editable_grid": 0,
+ "engine": "InnoDB",
+ "field_order": [
+  "from_grammage_allowance",
+  "to_grammage_allowance",
+  "changed_by",
+  "changed_on"
+ ],
+ "fields": [
+  {
+   "allow_on_submit": 1,
+   "fieldname": "from_grammage_allowance",
+   "fieldtype": "Float",
+   "in_list_view": 1,
+   "label": "From Grammage Allowance (kg)",
+   "precision": "4",
+   "read_only": 1
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "to_grammage_allowance",
+   "fieldtype": "Float",
+   "in_list_view": 1,
+   "label": "To Grammage Allowance (kg)",
+   "precision": "4",
+   "read_only": 1
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "changed_by",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Changed By",
+   "options": "User",
+   "read_only": 1
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "changed_on",
+   "fieldtype": "Datetime",
+   "in_list_view": 1,
+   "label": "Changed On",
+   "read_only": 1
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2026-05-16 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Production Api",
+ "name": "Cutting Plan Grammage Change Log",
+ "owner": "Administrator",
+ "permissions": [],
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

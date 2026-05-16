@@ -167,13 +167,12 @@ frappe.ui.form.on("Cutting LaySheet", {
                         return;
                     }
                     frappe.call({
-                        method: "frappe.client.get_value",
+                        method: "production_api.production_api.doctype.cutting_laysheet.cutting_laysheet.get_piece_weight_tolerance",
                         args: {
-                            doctype: "MRP Settings",
-                            fieldname: ["piece_weight_tolerance"]
+                            doc_name: frm.doc.name
                         },
                         callback: function(r) {
-                            let tolerance = (r.message && r.message.piece_weight_tolerance) || 0.003;
+                            let tolerance = r.message || 0.003;
                             let diff = Math.abs((frm.doc.piece_weight || 0) - (frm.doc.required_pcs_weight || 0));
                             if (diff > tolerance && !frm.doc.approved_by) {
                                 // Outside tolerance and not yet approved — go to Approval Pending

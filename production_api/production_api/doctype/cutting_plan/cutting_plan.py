@@ -2,12 +2,115 @@
 # For license information, please see license.txt
 import frappe, copy
 from datetime import datetime
+from frappe.utils import flt, now
 from frappe.model.document import Document
 from production_api.utils import update_if_string_instance
 from production_api.essdee_production.doctype.lot.lot import fetch_order_item_details
 from production_api.production_api.doctype.item.item import get_attribute_details, get_or_create_variant
 from production_api.production_api.doctype.cutting_laysheet.cutting_laysheet import update_cutting_plan
 from production_api.essdee_production.doctype.item_production_detail.item_production_detail import get_cloth_combination, get_stitching_combination, calculate_cloth, get_ipd_primary_values
+
+DEFAULT_PIECE_WEIGHT_TOLERANCE = 0.003
+
+
+def get_mrp_piece_weight_tolerance():
+	return flt(frappe.db.get_single_value("MRP Settings", "piece_weight_tolerance")) or DEFAULT_PIECE_WEIGHT_TOLERANCE
+
+
+def has_cls_grammage_approval_role(user=None):
+	settings = frappe.get_single("MRP Settings")
+	approval_roles = [row.role for row in (settings.cls_grammage_approval_roles or [])]
+	if not approval_roles:
+		return False
+
+	user_roles = frappe.get_roles(user or frappe.session.user)
+	return bool(set(approval_roles) & set(user_roles))
+
+
+@frappe.whitelist()
+def can_change_approval_grammage():
+	return has_cls_grammage_approval_role()
+
+
+def approve_pending_laysheets_within_tolerance(cutting_plan, piece_weight_tolerance):
+	approved_laysheets = []
+	laysheets = frappe.get_all(
+		"Cutting LaySheet",
+		filters={
+			"cutting_plan": cutting_plan,
+			"status": "Approval Pending",
+		},
+		fields=["name", "piece_weight", "required_pcs_weight"],
+	)
+
+	for laysheet in laysheets:
+		diff = abs(flt(laysheet.piece_weight) - flt(laysheet.required_pcs_weight))
+		if diff > piece_weight_tolerance:
+			continue
+
+		cls_doc = frappe.get_doc("Cutting LaySheet", laysheet.name)
+		cls_doc.approved_by = frappe.session.user
+		cls_doc.status = "Bundles Generated"
+		cls_doc.save(ignore_permissions=True)
+		approved_laysheets.append(laysheet.name)
+
+	return approved_laysheets
+
+
+def add_grammage_change_log(cutting_plan, from_tolerance, to_tolerance):
+	if from_tolerance == to_tolerance:
+		return
+
+	idx = frappe.db.sql(
+		"""
+		SELECT COALESCE(MAX(idx), 0) + 1
+		FROM `tabCutting Plan Grammage Change Log`
+		WHERE parent = %s
+			AND parentfield = 'grammage_change_logs'
+		""",
+		(cutting_plan,),
+	)[0][0]
+	docstatus = frappe.db.get_value("Cutting Plan", cutting_plan, "docstatus")
+	frappe.get_doc({
+		"doctype": "Cutting Plan Grammage Change Log",
+		"parent": cutting_plan,
+		"parenttype": "Cutting Plan",
+		"parentfield": "grammage_change_logs",
+		"docstatus": docstatus,
+		"idx": idx,
+		"from_grammage_allowance": from_tolerance,
+		"to_grammage_allowance": to_tolerance,
+		"changed_by": frappe.session.user,
+		"changed_on": now(),
+	}).insert(ignore_permissions=True)
+
+
+@frappe.whitelist()
+def change_approval_grammage(doc_name, piece_weight_tolerance):
+	if not has_cls_grammage_approval_role():
+		frappe.throw("You do not have the required role to change approval grammage")
+
+	if not frappe.db.exists("Cutting Plan", doc_name):
+		frappe.throw("Cutting Plan not found")
+
+	piece_weight_tolerance = flt(piece_weight_tolerance)
+	if piece_weight_tolerance <= 0:
+		frappe.throw("Grammage Allowance must be greater than zero")
+
+	old_piece_weight_tolerance = flt(frappe.db.get_value("Cutting Plan", doc_name, "piece_weight_tolerance"))
+	frappe.db.set_value("Cutting Plan", doc_name, "piece_weight_tolerance", piece_weight_tolerance)
+	add_grammage_change_log(doc_name, old_piece_weight_tolerance, piece_weight_tolerance)
+	approved_laysheets = approve_pending_laysheets_within_tolerance(doc_name, piece_weight_tolerance)
+	frappe.msgprint(
+		f"Approval grammage changed successfully. {len(approved_laysheets)} pending LaySheet(s) approved.",
+		indicator="green",
+		alert=True,
+	)
+	return {
+		"piece_weight_tolerance": piece_weight_tolerance,
+		"approved_laysheets": approved_laysheets,
+	}
+
 
 class CuttingPlan(Document):
 	def on_update_after_submit(self):
@@ -138,6 +241,9 @@ class CuttingPlan(Document):
 		self.set_onload("item_accessory_details",accessory_items)
 	
 	def before_validate(self):
+		if not flt(self.piece_weight_tolerance):
+			self.piece_weight_tolerance = get_mrp_piece_weight_tolerance()
+
 		if self.is_new():
 			self.version = "V3"
 			if self.get('item_details'):

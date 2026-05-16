@@ -232,6 +232,7 @@ frappe.ui.form.on("Cutting Plan", {
                 })
             }
         }
+        add_change_approval_grammage_button(frm)
         frm.print_panel_summary = new frappe.production.ui.RecutPrintPanelView(frm.fields_dict['print_panel_html'].wrapper)
         frm.print_panel_summary.load_data('Print Panel')
         frm.recut_summary = new frappe.production.ui.RecutPrintPanelView(frm.fields_dict['recut_fabric_html'].wrapper)
@@ -273,3 +274,51 @@ frappe.ui.form.on("Cutting Plan", {
         })
     }
 });
+
+function add_change_approval_grammage_button(frm) {
+    if (frm.is_new()) {
+        return;
+    }
+
+    frappe.call({
+        method: "production_api.production_api.doctype.cutting_plan.cutting_plan.can_change_approval_grammage",
+        callback: function(r) {
+            if (!r.message) {
+                return;
+            }
+
+            frm.add_custom_button(__("Change Approval Grammage"), () => {
+                let d = new frappe.ui.Dialog({
+                    title: __("Change Approval Grammage"),
+                    fields: [
+                        {
+                            fieldname: "piece_weight_tolerance",
+                            fieldtype: "Float",
+                            label: __("Grammage Allowance (kg)"),
+                            precision: "4",
+                            reqd: 1,
+                            default: frm.doc.piece_weight_tolerance,
+                        },
+                    ],
+                    primary_action_label: __("Update"),
+                    primary_action(values) {
+                        frappe.call({
+                            method: "production_api.production_api.doctype.cutting_plan.cutting_plan.change_approval_grammage",
+                            args: {
+                                doc_name: frm.doc.name,
+                                piece_weight_tolerance: values.piece_weight_tolerance,
+                            },
+                            freeze: true,
+                            freeze_message: __("Updating..."),
+                            callback() {
+                                d.hide();
+                                frm.reload_doc();
+                            },
+                        });
+                    },
+                });
+                d.show();
+            }, __("Approval"));
+        },
+    });
+}
