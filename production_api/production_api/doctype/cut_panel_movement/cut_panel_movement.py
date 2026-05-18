@@ -511,12 +511,17 @@ def create_goods_received_note(doc_name, work_order, return_items=False):
 	doc = frappe.get_cached_doc("Work Order", work_order)
 	items = []
 	check_one_panel = True
-	receivables = doc.receivables
-	receivables =[item.as_dict() for item in receivables]
-	receivables = sorted(receivables, key=lambda x: x.get("row_index"))
-	for item in receivables:
+	# Returns reverse panel deliveries -> reference Work Order Deliverables (panel-stage variants).
+	# Non-returns reference Work Order Receivables (post-stitch output variants).
+	source_rows = doc.deliverables if return_items else doc.receivables
+	ref_doctype = "Work Order Deliverables" if return_items else "Work Order Receivables"
+	source_rows = [item.as_dict() for item in source_rows]
+	source_rows = sorted(source_rows, key=lambda x: x.get("row_index"))
+	for item in source_rows:
 		check = True
 		item['quantity'] = item['qty']
+		item['ref_doctype'] = ref_doctype
+		item['ref_docname'] = item.get('name')
 		for data in grn_item_list:
 			set1 = update_if_string_instance(data['set_combination'])
 			set2 = update_if_string_instance(item['set_combination'])
