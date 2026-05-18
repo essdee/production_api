@@ -1613,7 +1613,7 @@ def get_variant_attr_details(variant):
 	return d
 
 @frappe.whitelist()
-def get_work_in_progress_report(category, status, lot_list_val, item_list, process_list):
+def get_work_in_progress_report(category, status, lot_list_val, item_list, process_list, from_date=None, to_date=None):
 	process_list = update_if_string_instance(process_list)
 	conditions = ""
 	con = {}
@@ -1624,6 +1624,12 @@ def get_work_in_progress_report(category, status, lot_list_val, item_list, proce
 	if status:
 		conditions += ' AND t1.status = %(status)s'
 		con['status'] = status
+	if not from_date and to_date:
+		frappe.throw("From Date is required")	
+	if from_date and to_date:
+		conditions += ' AND t1.creation BETWEEN %(from_date)s AND %(to_date)s'
+		con['from_date'] = from_date
+		con['to_date'] = to_date
 
 	lot_list_val = update_if_string_instance(lot_list_val)
 	if lot_list_val:
@@ -2063,6 +2069,24 @@ def get_work_in_progress_report(category, status, lot_list_val, item_list, proce
 					lot_dict['total_data'][details_key][against_val] += (lot_dict['lot_data'][lot][details_key][rec_val] - lot_dict['lot_data'][lot][details_key][prev_val])
 					lot_dict['lot_data'][lot][details_key][against_val] += (lot_dict['lot_data'][lot][details_key][rec_val] - lot_dict['lot_data'][lot][details_key][prev_val])
 				last_piece_process = process_name
+	lot_dict["summary"] = {
+		"total_lots": len(lot_dict["lot_data"]),
+		"total_order_qty": lot_dict["total_data"]["cut_details"]["order_qty"],
+		"total_cut_qty": lot_dict["total_data"]["cut_details"]["cut_qty"],
+		"total_sewing_sent": lot_dict["total_data"]["sewing_details"]["sewing_sent"],
+		"total_finishing_inward": lot_dict["total_data"]["sewing_details"]["finishing_inward"],
+		"total_dispatch": lot_dict["total_data"]["finishing_details"]["dispatch"],
+		"total_transferred": lot_dict["total_data"]["finishing_details"]["transferred"],
+		"dynamic_col": [],
+	}
+	for clo_key, detail_key in [("against_cut_columns","against_cut_details"), ("against_sew_columns","against_sew_details")]:
+		for label,val in lot_dict['columns'].get(clo_key,{}).items():
+			if not (label.endswith(" Sent") or label.endswith(" Received")):
+				continue
+			lot_dict["summary"]["dynamic_col"].append({
+				"label":label,
+				"value":lot_dict["total_data"].get(detail_key, {}).get(val, 0)
+			})
 	return lot_dict	
 
 def get_process_wo_list(process, lot):
