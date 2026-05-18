@@ -9,7 +9,50 @@ from frappe.utils import cint
 from production_api.utils import update_if_string_instance, get_finishing_rework_list, get_finishing_rework_dict, get_variant_attr_details
 
 class GRNReworkItem(Document):
-	pass
+	def on_cancel(self):
+		_decrement_finishing_plan_snapshot(self)
+
+	def on_trash(self):
+		_decrement_finishing_plan_snapshot(self)
+
+
+def _decrement_finishing_plan_snapshot(doc):
+	# Subtract this doc's own contribution from the linked Finishing Plan's
+	# `finishing_plan_reworked_details` snapshot. Mirrors the increment shape used in
+	# update_quantity / update_partial_quantity, and the decrement shape used in
+	# revert_reworked_item — but scoped to this single GRN Rework Item.
+	if not doc.lot:
+		return
+	fp_names = frappe.get_all("Finishing Plan", filters={"lot": doc.lot}, pluck="name", limit=1)
+	if not fp_names:
+		return
+
+	deltas = {}
+	for row in doc.get("grn_rework_item_details") or []:
+		if not row.completed:
+			continue
+		set_comb = update_if_string_instance(row.set_combination)
+		key = (row.item_variant, tuple(sorted(set_comb.items())))
+		entry = deltas.setdefault(key, {"rejected_qty": 0, "reworked_quantity": 0})
+		entry["rejected_qty"] += row.rejection or 0
+		entry["reworked_quantity"] += (row.quantity or 0) - (row.rejection or 0)
+
+	if not deltas:
+		return
+
+	fp_doc = frappe.get_doc("Finishing Plan", fp_names[0])
+	touched = False
+	for row in fp_doc.finishing_plan_reworked_details:
+		set_comb = update_if_string_instance(row.set_combination)
+		key = (row.item_variant, tuple(sorted(set_comb.items())))
+		d = deltas.get(key)
+		if not d:
+			continue
+		row.rejected_qty = max(0, (row.rejected_qty or 0) - d["rejected_qty"])
+		row.reworked_quantity = max(0, (row.reworked_quantity or 0) - d["reworked_quantity"])
+		touched = True
+	if touched:
+		fp_doc.save(ignore_permissions=True)
 
 @frappe.whitelist()
 def revert_reworked_item(docname):

@@ -13,7 +13,49 @@
                 <button class="btn btn-primary" @click="get_list_items()">Paste</button>
             </div>
         </div>
-        <multi-process-report ref="multiReport"/>
+        <div class="date-filter-section">
+            <div class="date-filter-row">
+                <div class="date-field from-date-input"></div>
+                <div class="date-field to-date-input"></div>
+            </div>
+        </div>
+		  <multi-process-report ref="multiReport"/>
+        <div v-if="items && items.summary" class="summary-grid">
+            <div class="summary-card">
+                <div class="summary-label">Lots</div>
+                <div class="summary-value">{{ formatSummaryNumber(items.summary.total_lots) }}</div>
+            </div>
+            <div class="summary-card">
+                <div class="summary-label">Order Qty</div>
+                <div class="summary-value">{{ formatSummaryNumber(items.summary.total_order_qty) }}</div>
+            </div>
+            <div class="summary-card">
+                <div class="summary-label">Cut Qty</div>
+                <div class="summary-value">{{ formatSummaryNumber(items.summary.total_cut_qty) }}</div>
+            </div>
+            <div class="summary-card">
+                <div class="summary-label">Sewing Sent</div>
+                <div class="summary-value">{{ formatSummaryNumber(items.summary.total_sewing_sent) }}</div>
+            </div>
+            <div class="summary-card">
+                <div class="summary-label">Finishing Inward</div>
+                <div class="summary-value">{{ formatSummaryNumber(items.summary.total_finishing_inward) }}</div>
+            </div>
+            <div class="summary-card">
+                <div class="summary-label">Total Dispatch</div>
+                <div class="summary-value">{{ formatSummaryNumber(items.summary.total_dispatch) }}</div>
+            </div>
+            <div class="summary-card">
+                <div class="summary-label">Transferred</div>
+                <div class="summary-value">{{ formatSummaryNumber(items.summary.total_transferred) }}</div>
+            </div>
+			<div v-for="col in items.summary.dynamic_col" :key="col.label" class="summary-card">
+				<div class="summary-label">{{ col.label }}</div>
+				<div class="summary-value">{{ formatSummaryNumber(col.value) }}</div>
+    		</div>
+        </div>
+
+      
         <div v-if="items && Object.keys(items).length > 0" class="table-container">
             <table class="table table-md table-sm-bordered bordered-table">
                 <tr>
@@ -28,7 +70,7 @@
                     <th>Sewing Sent Date</th>
                     <th>Finishing Inward Date</th>
                 </tr>
-                <tr class="filter-row">
+				 <tr class="filter-row">
                     <th><input type="text" class="filter-input" v-model="columnFilters.style"/></th>
                     <th><input type="text" class="filter-input" v-model="columnFilters.lot"/></th>
                     <th v-for="col in Object.keys(items['columns']['cut_columns'])" :key="'cf-cut-'+col">
@@ -150,6 +192,8 @@ let sample_doc = ref({})
 let items = ref({})
 let lot_list = null
 let item_list = null
+let from_date_filter = null
+let to_date_filter = null
 const multiReport = ref(null)
 let process_list = ref([])
 
@@ -324,32 +368,75 @@ onMounted(()=> {
         doc: sample_doc.value,
         render_input: true,
     })
+
+    $(el).find(".from-date-input").html("");
+    from_date_filter = frappe.ui.form.make_control({
+        parent: $(el).find(".from-date-input"),
+        df: {
+            fieldname: "from_date",
+            fieldtype: "Date",
+            label: "Lot From Date",
+            placeholder: "From Date",
+        },
+        doc: sample_doc.value,
+        render_input: true,
+    })
+
+    $(el).find(".to-date-input").html("");
+    to_date_filter = frappe.ui.form.make_control({
+        parent: $(el).find(".to-date-input"),
+        df: {
+            fieldname: "to_date",
+            fieldtype: "Date",
+            label: "Lot To Date",
+            placeholder: "To Date",
+        },
+        doc: sample_doc.value,
+        render_input: true,
+    })
 })
 
 function get_work_in_progress_report(){
-    let lot_list_val = lot_list.get_value()
-    let item_list_val = item_list.get_value()
-    process_list.value = multiReport.value.process_list
-    if(!category.get_value() && lot_list_val.length == 0 && item_list_val.length == 0){
-        frappe.msgprint("Please Set Atleast one filter other than Lot Status")
+    process_list.value = multiReport.value?.process_list || []
+    let from_date = from_date_filter ? from_date_filter.get_value() : null
+    let to_date = to_date_filter ? to_date_filter.get_value() : null
+
+    if(from_date && !to_date){
+        frappe.msgprint("Please Set To Date when From Date is selected")
+        return
     }
-    else{
-        frappe.call({
-            method: "production_api.utils.get_work_in_progress_report",
-            args: {
-                "category": category.get_value(),
-                "status": lot_status.get_value(),
-                "lot_list_val": lot_list_val,
-                "item_list": item_list_val,
-                "process_list": process_list.value
-            },
-            freeze: true,
-            freeze_message: "Fetching Data",
-            callback: function(r){
-                items.value = r.message
-            }
-        })
+
+    if(to_date && !from_date){
+        frappe.msgprint("Please Set From Date when To Date is selected")
+        return
     }
+    const run_report = () => {
+        let lot_list_val = lot_list.get_value()
+        let item_list_val = item_list.get_value()
+        if(!category.get_value() && lot_list_val.length == 0 && item_list_val.length == 0){
+            frappe.msgprint("Please Set Atleast one filter other than Lot Status")
+        }
+        else{
+            frappe.call({
+                method: "production_api.utils.get_work_in_progress_report",
+                args: {
+                    "category": category.get_value(),
+                    "status": lot_status.get_value(),
+                    "lot_list_val": lot_list_val,
+                    "item_list": item_list_val,
+                    "process_list": process_list.value,
+                    "from_date": from_date,
+                    "to_date": to_date,
+                },
+                freeze: true,
+                freeze_message: "Fetching Data",
+                callback: function(r){
+                    items.value = r.message
+                }
+            })
+        }
+    }
+    run_report()
 }
 
 function get_list_items(){
@@ -400,6 +487,11 @@ function get_date(date){
     return ""
 }
 
+function formatSummaryNumber(value){
+    const num = Number(value || 0)
+    return num.toLocaleString()
+}
+
 </script>
 <style scoped>
 .table-container {
@@ -410,6 +502,37 @@ function get_date(date){
     border: 2px solid #000;
     border-radius: 6px;
     background: #fff;
+}
+
+.summary-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 12px;
+    margin: 18px 0 16px;
+}
+
+.summary-card {
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    background: #fff;
+    padding: 14px 16px;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+}
+
+.summary-label {
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    color: #6b7280;
+    margin-bottom: 6px;
+}
+
+.summary-value {
+    font-size: 28px;
+    font-weight: 800;
+    color: #111827;
+    line-height: 1.1;
 }
 
 .bordered-table {
@@ -483,6 +606,37 @@ function get_date(date){
 }
 .table-container::-webkit-scrollbar-thumb:hover {
     background-color: #999;
+}
+
+.filter-heading {
+    font-weight: 600;
+    margin-bottom: 8px;
+    color: #333;
+}
+.date-filter-section {
+    margin-top: 8px;
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+}
+.date-filter-row {
+    display: flex;
+    flex-direction: row;
+    gap: 12px;
+    margin-bottom: 12px;
+    flex-wrap: wrap;
+    width: 100%;
+}
+.date-field {
+    flex: 1 1 280px;
+    min-width: 280px;
+}
+.filter-row1 {
+	display: flex;
+	flex-direction: row;
+	gap: 12px;
+	margin-bottom: 12px;
+	flex-wrap: wrap;
 }
 
 </style>

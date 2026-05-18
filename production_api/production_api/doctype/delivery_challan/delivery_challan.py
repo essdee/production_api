@@ -1104,12 +1104,54 @@ def get_return_delivery_items(doc_name):
 @frappe.whitelist()
 def create_bundle_return_grn(doc_name, cpm, work_order):
     from production_api.production_api.doctype.cut_panel_movement.cut_panel_movement import create_goods_received_note
-    items = create_goods_received_note(cpm, work_order, return_items=True)
-    # Use CPM-specific quantity, not WO receivable total
-    for item in items:
-        if item.get('delivered_quantity'):
-            item['quantity'] = item['delivered_quantity']
+    raw_items = create_goods_received_note(cpm, work_order, return_items=True)
+    # Keep only deliverables actually covered by this CPM
+    raw_items = [item for item in raw_items if item.get('delivered_quantity')]
+
     dc_doc = frappe.get_doc("Delivery Challan", doc_name)
+    default_received_type = frappe.db.get_single_value(
+        "Stock Settings", "default_received_type")
+    ipd = frappe.get_value("Lot", dc_doc.lot, "production_detail")
+    stich_attr, pack_attr = frappe.get_value(
+        "Item Production Detail", ipd, ["stiching_attribute", "packing_attribute"])
+
+    # Group rows by (item, colour, panel) so each panel becomes a single UI row with sizes as columns
+    table_map = {}
+    row_map = {}
+    next_table_index = 0
+    next_row_by_table = {}
+    items = []
+    for it in raw_items:
+        v = frappe.get_cached_doc("Item Variant", it['item_variant'])
+        panel = colour = None
+        for a in v.attributes:
+            if a.attribute == stich_attr:
+                panel = a.attribute_value
+            elif a.attribute == pack_attr:
+                colour = a.attribute_value
+        item_name = v.item
+        if item_name not in table_map:
+            table_map[item_name] = next_table_index
+            next_row_by_table[next_table_index] = 0
+            next_table_index += 1
+        t = table_map[item_name]
+        group_key = (item_name, colour, panel)
+        if group_key not in row_map:
+            row_map[group_key] = next_row_by_table[t]
+            next_row_by_table[t] += 1
+        items.append({
+            "item_variant": it['item_variant'],
+            "lot": dc_doc.lot,
+            "quantity": it['delivered_quantity'],
+            "uom": it.get('uom'),
+            "set_combination": it.get('set_combination', {}),
+            "ref_doctype": "Work Order Deliverables",
+            "ref_docname": it.get('ref_docname'),
+            "table_index": t,
+            "row_index": row_map[group_key],
+            "received_type": default_received_type,
+        })
+
     new_doc = frappe.new_doc("Goods Received Note")
     new_doc.update({
         "against": "Work Order",

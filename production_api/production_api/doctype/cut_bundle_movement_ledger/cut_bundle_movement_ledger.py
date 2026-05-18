@@ -287,6 +287,24 @@ def update_collapsed_bundle(doctype, docname, event, non_stich_process=False):
 					else:
 						cancel_collapse_bundles(doc, variant, row.set_combination, quantity, to_location, d, attrs, item, lot_value)
 
+	elif doctype == "Goods Received Note" and getattr(doc, "is_return", 0):
+		# Return GRN: bundles depleted at supplier above must be restored at delivery_location
+		to_location = doc.delivery_location
+		for row in items:
+			variant = row.item_variant
+			item = frappe.get_value("Item Variant", variant, "item")
+			dept_attr = frappe.get_value("Item", item, "dependent_attribute")
+			if not dept_attr:
+				continue
+			if check_dependent_stage_variant(variant, dept_attr, stich_stage):
+				quantity = row.quantity
+				if quantity > 0:
+					d = get_variant_attr_details(variant)
+					if event == "on_submit":
+						to_new_bundles = on_submit_collapsed_bundles(doc, doctype, docname, to_location, variant, row.set_combination, d, attrs, item, quantity, to_new_bundles, lot_value, add=True)
+					else:
+						cancel_collapse_bundles(doc, variant, row.set_combination, quantity, to_location, d, attrs, item, lot_value)
+
 	if non_stich_process:
 		to_location = doc.delivery_location
 		for row in items:
