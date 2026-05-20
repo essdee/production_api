@@ -253,6 +253,12 @@ function create_dc(){
                 "label": "From Location",
                 "reqd": 1,
                 "default": location
+            }, {
+                "fieldname": "actual_date",
+                "fieldtype": "Date",
+                "label": "Actual Date",
+                "reqd": 1,
+                "default": frappe.datetime.get_today(),
             },
             {
                 "fieldname": 'dc_pop_up_html',
@@ -274,6 +280,8 @@ function create_dc(){
                     from_location: values.from_location,
                     vehicle_no: "NA",
                     fp_name: cur_frm.doc.name,
+					actual_date: values.actual_date,
+
                 },
                 freeze: true,
                 freeze_message: "Creating Delivery Challan...",

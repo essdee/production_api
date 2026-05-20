@@ -1200,6 +1200,8 @@ class GoodsReceivedNote(Document):
             if po_docstatus != 1:
                 frappe.throw('Purchase order is not submitted.', title='GRN')
             self.validate_quantity()
+            if self.posting_date < self.actual_date:
+                frappe.throw('Posting date cannot be before actual date.', title='GRN')
 
         if self.against == 'Work Order':
             status = frappe.get_value(

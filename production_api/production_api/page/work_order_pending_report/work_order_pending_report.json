@@ -1,0 +1,19 @@
+{
+ "content": null,
+ "creation": "2026-05-19 11:20:29.986203",
+ "docstatus": 0,
+ "doctype": "Page",
+ "idx": 0,
+ "modified": "2026-05-19 11:20:29.986203",
+ "modified_by": "Administrator",
+ "module": "Production Api",
+ "name": "work-order-pending-report",
+ "owner": "Administrator",
+ "page_name": "work-order-pending-report",
+ "roles": [],
+ "script": null,
+ "standard": "Yes",
+ "style": null,
+ "system_page": 0,
+ "title": "WORK ORDER PENDING REPORT"
+}

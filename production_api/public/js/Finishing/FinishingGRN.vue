@@ -177,6 +177,13 @@ function make_grn(){
                 "default": location
             },
             {
+                "fieldname": "actual_date",
+                "fieldtype": "Date",
+                "label": "Actual Date",
+                "reqd": 1,
+                "default": frappe.datetime.get_today(),
+            },
+            {
                 "fieldname": "popup_grn_html",
                 "fieldtype": "HTML"
 
@@ -193,7 +200,8 @@ function make_grn(){
                     lot: cur_frm.doc.lot,
                     item_name: cur_frm.doc.item,
                     data: i.box_qty,
-                    delivery_location: values.delivery_location
+                    delivery_location: values.delivery_location,
+                    actual_date: values.actual_date,
                 },
                 freeze: true,
                 freeze_message: "Creating Goods Received Note...",

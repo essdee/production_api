@@ -263,7 +263,7 @@
   {
    "hidden": 0,
    "is_query_report": 0,
-   "label": "Finishing Plan DPR",
+   "label": "Finishing Plan Packing DPR",
    "link_count": 0,
    "link_to": "finishing-plan-dpr",
    "link_type": "Page",
@@ -291,7 +291,7 @@
    "type": "Link"
   }
  ],
- "modified": "2026-03-19 14:29:27.598554",
+ "modified": "2026-05-19 16:34:49.022241",
  "modified_by": "Administrator",
  "module": "Essdee Production",
  "name": "Manufacturing",
