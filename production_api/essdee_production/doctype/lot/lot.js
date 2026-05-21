@@ -357,6 +357,12 @@ frappe.ui.form.on("Lot", {
 				frm.refresh_field("item")
 			})
 		}
+		else{
+			frm.set_value("production_detail", "")
+			frm.set_value("item", "")
+			frm.refresh_field("item")
+			frm.refresh_field("production_detail")
+		}
 	},
 	// fetch_cad_template(frm){
 	// 	frm.cad_detail.load_data([])
@@ -427,6 +433,16 @@ frappe.ui.form.on("Lot", {
 					}
 				}
 			})
+		}
+		else{
+			let fields = ['uom', 'pack_in_stage', 'packing_uom', 'pack_out_stage', 'dependent_attribute_mapping', 'tech_pack_version', 'pattern_version', 'packing_combo']
+			fields.forEach(field => {
+				frm.set_value(field, "")
+				frm.refresh_field(field)
+			})
+			if (frm.item) {
+				frm.item.load_data([])
+			}
 		}
 	},
 	calculate_bom: function (frm) {
