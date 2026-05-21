@@ -1785,8 +1785,6 @@ def get_work_in_progress_report(category, status, lot_list_val, item_list, proce
 
 		## Sewing Sent and Finishing Inward
 		stich_wo_list = get_process_wo_list(sewing, lot)
-		print("sewing",sewing)
-		print("stich_wo_list", stich_wo_list)
 		sewing_process = get_work_order_process_name(stich_wo_list)
 		set_process_drilldown(
 			lot_dict['lot_data'][lot],
@@ -2116,8 +2114,6 @@ def get_process_wo_list(process, lot):
 
 	return wo_list
 
-
-
 def get_wo_total_delivered_received(wo):
 	detail = frappe.db.sql(
 		"""
@@ -2128,7 +2124,6 @@ def get_wo_total_delivered_received(wo):
 		}, as_dict=True
 	)
 	return detail
-
 
 @frappe.whitelist()
 def get_month_wise_report(lot=None, item=None, start_date=None, end_date=None):
@@ -2141,12 +2136,11 @@ def get_month_wise_report(lot=None, item=None, start_date=None, end_date=None):
 		lot.append("")
 		conditions += " AND lot IN %(lot)s"
 		con_dict['lot'] = tuple(lot)
-	
+		
 	if item:
 		item.append("")
 		conditions += " AND item IN %(item)s"
 		con_dict['item'] = tuple(item)
-
 
 	ipd_settings = frappe.get_single("IPD Settings")
 	cutting = ipd_settings.default_cutting_process
@@ -3637,12 +3631,10 @@ def get_sewing_progress_report(process=None, status=None, category=None, lot_lis
 			"total_qty": total_qty,
 			"supplier_qty": supplier_qty,
 		})
-
 	return {
 		"suppliers": sorted(all_company_suppliers),
 		"rows": result,
 	}
-
 
 @frappe.whitelist()
 def get_work_order_pending_report(lot=None,process=None,supplier=None,item=None,wos=None,status=None):
