@@ -59,6 +59,14 @@ app_include_css = ["assets/production_api/node_modules/frappe-gantt/dist/frappe-
 # before_install = "production_api.install.before_install"
 # after_install = "production_api.install.after_install"
 
+after_install = [
+    "production_api.setup.doctype_reader_permissions.setup_doctype_reader_permissions",
+]
+
+after_migrate = [
+    "production_api.setup.doctype_reader_permissions.setup_doctype_reader_permissions",
+]
+
 # Desk Notifications
 # ------------------
 # See frappe.core.notifications.get_notification_config
@@ -118,13 +126,13 @@ fixtures = [
         "dt": 'Role',
         "filters": [["name", "in",[
                         "Merch User",
-                        "Merch Manager", 
-                        "Senior Merch", 
-                        "Brand QA User", 
-                        "Brand QA Manager", 
-                        "Finishing User", 
+                        "Merch Manager",
+                        "Senior Merch",
+                        "Brand QA User",
+                        "Brand QA Manager",
+                        "Finishing User",
                         "Factory Manager",
-                        "Doctype Reader",
+                        "DocType Reader",
                     ]
                 ]]
     },
