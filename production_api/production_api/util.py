@@ -1,7 +1,19 @@
 import frappe
 import json
 from production_api.production_api.doctype.supplier.supplier import Supplier
+from frappe.utils import nowtime
 import requests
+
+
+def fill_posting_time_defaults(doc, method=None):
+	"""On insert only, fill blank `posting_date` / `posting_time` using the
+	*server* clock — not the browser's. JSON `default = "Now"` resolves on
+	the client (browser PC clock + user time_zone), so if the client is
+	misconfigured the prefill is wrong. This guards new docs only; user
+	edits and existing docs are left alone.
+	"""
+	if doc.meta.has_field("posting_time") and not doc.get("posting_time"):
+		doc.posting_time = nowtime()
 
 @frappe.whitelist()
 def send_notification(
