@@ -2,7 +2,6 @@
     <div ref="root" class="wop-root">
         <div class="wop-header">
             <h3 class="wop-title">Work Order Pending Report</h3>
-            <p class="wop-subtitle">Pending quantities against work orders by item.</p>
         </div>
 
         <div class="wop-filters">
@@ -246,7 +245,7 @@ function normalizeMultiValue(value) {
 function loadReport() {
     loading.value = true
     frappe.call({
-        method: "production_api.utils.work_order_report",
+        method: "production_api.utils.get_work_order_pending_report",
         args: {
             lot: lotCtrl ? normalizeMultiValue(lotCtrl.get_value()) : [],
             process: processCtrl ? normalizeMultiValue(processCtrl.get_value()) : [],
@@ -435,6 +434,7 @@ const totalPending = computed(() => rows.value.reduce((sum, row) => sum + Number
     margin: 0;
     font-size: 24px;
     font-weight: 700;
+	text-align: center;
 }
 
 .wop-subtitle {

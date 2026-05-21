@@ -4,7 +4,7 @@
  "docstatus": 0,
  "doctype": "Page",
  "idx": 0,
- "modified": "2026-05-19 11:20:29.986203",
+ "modified": "2026-05-21 12:30:50.198693",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "work-order-pending-report",
@@ -15,5 +15,5 @@
  "standard": "Yes",
  "style": null,
  "system_page": 0,
- "title": "WORK ORDER PENDING REPORT"
+ "title": "Work Order Pending Report"
 }

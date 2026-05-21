@@ -3645,7 +3645,7 @@ def get_sewing_progress_report(process=None, status=None, category=None, lot_lis
 
 
 @frappe.whitelist()
-def work_order_report(lot=None,process=None,supplier=None,item=None,wos=None,status=None):
+def get_work_order_pending_report(lot=None,process=None,supplier=None,item=None,wos=None,status=None):
 	conditions = ""
 	con = {}
 	lot = _normalize_multiselect_filter(lot)
@@ -3785,34 +3785,14 @@ def dc_dpr_report(date=None, lot=None, item=None, dc_name=None):
 		con,
 		as_dict=True
 	)
-
 	from production_api.production_api.doctype.delivery_challan.delivery_challan import fetch_item_details
 
 	ipd_set = frappe.get_single("IPD Settings")
 	colour_attr = ipd_set.default_packing_attribute
 	part_attr = ipd_set.default_set_item_attribute
-	# panel_attr = ipd_set.default_stitching_attribute
-
-
 	lot_map = {}
-
 	for r in dc_rows:
-		dc_data = frappe.get_doc("Delivery Challan", r.name)
-		process_n=dc_data.process_name
-		# is_group = frappe.get_value("Process", process_n, "is_group")
-		# prs_doc = frappe.get_doc("Process", process_n)
-		# child_row=prs_doc.process_details
-		# if is_group:
-		# 	check = False
-		# 	for r in child_row:
-		# 		if finishing_plan_ironing ==r.process_name:
-		# 			check = True
-		# 			break
-		# 	if not check:
-		# 		continue
-		# else:
-		# 	if dc_data.process_name != finishing_plan_ironing:
-		# 		continue		
+		dc_data = frappe.get_doc("Delivery Challan", r.name)		
 		details = fetch_item_details(dc_data.items, dc_data.production_detail, dc_data.lot)
 		lot_set_i=frappe.get_doc("Lot",dc_data.lot)
 		ipd_set_i=frappe.get_value("Item Production Detail",lot_set_i.production_detail,"is_set_item")

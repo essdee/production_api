@@ -1202,6 +1202,8 @@ class GoodsReceivedNote(Document):
             self.validate_quantity()
             if self.posting_date < self.actual_date:
                 frappe.throw('Posting date cannot be before actual date.', title='GRN')
+            if not self.actual_date:
+                self.actual_date = self.posting_date
 
         if self.against == 'Work Order':
             status = frappe.get_value(
