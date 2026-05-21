@@ -91,6 +91,7 @@ after_migrate = [
 
 doc_events = {
     "*": {
+		"before_insert": "production_api.production_api.util.fill_posting_time_defaults",
 		"after_insert": "production_api.production_api.util.send_automatic_notification",
 		"on_submit": "production_api.production_api.util.send_automatic_notification",
         "on_cancel": "production_api.production_api.util.send_automatic_notification",
