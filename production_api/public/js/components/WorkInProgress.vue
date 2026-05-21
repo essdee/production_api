@@ -15,8 +15,10 @@
         </div>
         <div class="date-filter-section">
             <div class="date-filter-row">
-                <div class="date-field from-date-input"></div>
-                <div class="date-field to-date-input"></div>
+                <div class="date-spacer"></div>
+                <div class="date-field from-date-input col-md-2"></div>
+                <div class="date-field to-date-input col-md-2"></div>
+                <div class="date-tail-spacer"></div>
             </div>
         </div>
 		  <multi-process-report ref="multiReport"/>
@@ -26,29 +28,27 @@
                 <div class="summary-value">{{ formatSummaryNumber(items.summary.total_lots) }}</div>
             </div>
             <div class="summary-card">
-                <div class="summary-label">Order Qty</div>
-                <div class="summary-value">{{ formatSummaryNumber(items.summary.total_order_qty) }}</div>
+                <div class="summary-label">Order To Cut Diff</div>
+                <div class="summary-value">{{ formatSummaryNumber(items.summary.total_order_to_cut_diff) }}</div>
+            </div>
+
+            <div class="summary-card">
+                <div class="summary-label">Cut To Sewing Diff</div>
+                <div class="summary-value">{{ formatSummaryNumber(items.summary.total_cut_to_sew_diff) }}</div>
             </div>
             <div class="summary-card">
-                <div class="summary-label">Cut Qty</div>
-                <div class="summary-value">{{ formatSummaryNumber(items.summary.total_cut_qty) }}</div>
+                <div class="summary-label">In Sewing</div>
+                <div class="summary-value">{{ formatSummaryNumber(items.summary.total_in_sew) }}</div>
             </div>
             <div class="summary-card">
-                <div class="summary-label">Sewing Sent</div>
-                <div class="summary-value">{{ formatSummaryNumber(items.summary.total_sewing_sent) }}</div>
+                <div class="summary-label">Cut TO Dispatch Diff</div>
+                <div class="summary-value">{{ formatSummaryNumber(items.summary.total_cut_to_dispatch_diff) }}</div>
             </div>
             <div class="summary-card">
-                <div class="summary-label">Finishing Inward</div>
-                <div class="summary-value">{{ formatSummaryNumber(items.summary.total_finishing_inward) }}</div>
+                <div class="summary-label">In Packing</div>
+                <div class="summary-value">{{ formatSummaryNumber(items.summary.total_in_packing) }}</div>
             </div>
-            <div class="summary-card">
-                <div class="summary-label">Total Dispatch</div>
-                <div class="summary-value">{{ formatSummaryNumber(items.summary.total_dispatch) }}</div>
-            </div>
-            <div class="summary-card">
-                <div class="summary-label">Transferred</div>
-                <div class="summary-value">{{ formatSummaryNumber(items.summary.total_transferred) }}</div>
-            </div>
+
 			<div v-for="col in items.summary.dynamic_col" :key="col.label" class="summary-card">
 				<div class="summary-label">{{ col.label }}</div>
 				<div class="summary-value">{{ formatSummaryNumber(col.value) }}</div>
@@ -506,16 +506,17 @@ function formatSummaryNumber(value){
 
 .summary-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-    gap: 12px;
-    margin: 18px 0 16px;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 220px));
+    justify-content: start;
+    gap: 10px;
+    margin: 16px 0 14px;
 }
 
 .summary-card {
     border: 1px solid #e5e7eb;
     border-radius: 10px;
     background: #fff;
-    padding: 14px 16px;
+    padding: 10px 10px;
     box-shadow: 0 1px 2px rgba(0,0,0,0.04);
 }
 
@@ -529,15 +530,15 @@ function formatSummaryNumber(value){
 }
 
 .summary-value {
-    font-size: 28px;
-    font-weight: 800;
+    font-size: 16px;
+    font-weight: 600;
     color: #111827;
     line-height: 1.1;
 }
 
 .bordered-table {
     width: 100%;
-    min-width: 1200px; /* ensures scrollable area */
+    min-width: 980px; /* keeps the table scrollable without stretching too wide */
     border-collapse: collapse;
     text-align: center;
 }
@@ -626,11 +627,18 @@ function formatSummaryNumber(value){
     margin-bottom: 12px;
     flex-wrap: wrap;
     width: 100%;
+    align-items: start;
 }
-.date-field {
-    flex: 1 1 280px;
-    min-width: 280px;
+/* .date-spacer {
+    flex: 0 0 33.333%;
+} */
+.date-tail-spacer {
+    flex: 0 0 16.667%;
 }
+/* .date-field {
+    flex: 0 0 calc(25% - 8px);
+    min-width: 260px;
+} */
 .filter-row1 {
 	display: flex;
 	flex-direction: row;

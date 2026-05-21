@@ -1198,7 +1198,7 @@ def fetch_rejected_quantity(doc_name):
 	fp_doc.save()	
 
 @frappe.whitelist()
-def create_delivery_challan(data, item_name, work_order, lot, from_location, vehicle_no, fp_name):
+def create_delivery_challan(data, item_name, work_order, lot, from_location, vehicle_no, fp_name,actual_date):
 	data = update_if_string_instance(data)
 	selected_type = data['selected_type']
 	data = data['items']
@@ -1208,6 +1208,7 @@ def create_delivery_challan(data, item_name, work_order, lot, from_location, veh
 	dc_doc.lot = lot
 	dc_doc.from_location = from_location
 	dc_doc.from_address = get_primary_address(from_location)
+	dc_doc.actual_date = actual_date
 	dc_doc.vehicle_no = vehicle_no
 	dc_doc.supplier = wo_doc.supplier
 	dc_doc.supplier_address = get_primary_address(wo_doc.supplier)
@@ -1336,7 +1337,7 @@ def get_delivery_challan_item_list(lot, item_name, data, is_loose_piece=False):
 	return items
 
 @frappe.whitelist()
-def create_grn(work_order, lot, item_name, data, delivery_location):
+def create_grn(work_order, lot, item_name, data, delivery_location,actual_date):
 	box_qty = {}
 	ipd = frappe.get_value("Lot", lot, "production_detail")
 	ipd_fields = ["primary_item_attribute", "dependent_attribute"]
@@ -1362,6 +1363,7 @@ def create_grn(work_order, lot, item_name, data, delivery_location):
 	doc.against = "Work Order"
 	doc.against_id = work_order
 	doc.lot = lot
+	doc.actual_date = actual_date
 	doc.supplier = frappe.get_value("Work Order", work_order, "supplier")
 	doc.supplier_address = frappe.get_value("Work Order", work_order, "supplier_address")
 	doc.delivery_location = delivery_location
@@ -2575,7 +2577,7 @@ def get_finishing_packed_details(date, lot_list=None, item_list=None):
 		"against": "Work Order",
 		"includes_packing": 1,
 		"docstatus": 1,
-		"posting_date": date,
+		"actual_date": date,
 	}, fields=["name", "lot"])
 
 	lot_grns = {}

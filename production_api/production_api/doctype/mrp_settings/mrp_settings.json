@@ -47,6 +47,7 @@
   "received_type_list",
   "finishing_inward_process",
   "additional_grn_submit_role",
+  "finishing_plan_ironing_process",
   "cutting_plan_section",
   "cloth_allowance_percentage",
   "printer_list",
@@ -479,13 +480,19 @@
    "fieldtype": "Table",
    "label": "CLS Grammage Approval Roles",
    "options": "CLS Grammage Approval Role"
+  },
+  {
+   "fieldname": "finishing_plan_ironing_process",
+   "fieldtype": "Link",
+   "label": "Finishing Plan Ironing Process",
+   "options": "Process"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2026-03-17 12:23:40.914999",
+ "modified": "2026-05-20 17:38:21.216504",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "MRP Settings",
