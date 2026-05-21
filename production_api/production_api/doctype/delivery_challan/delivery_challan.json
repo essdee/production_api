@@ -25,6 +25,7 @@
   "supplier_name",
   "posting_date",
   "posting_time",
+  "actual_date",
   "edit_posting_date_and_time",
   "vehicle_no",
   "letter_head",
@@ -374,13 +375,19 @@
    "fieldtype": "Check",
    "hidden": 1,
    "label": "Pack Piece DC"
+  },
+  {
+   "fieldname": "actual_date",
+   "fieldtype": "Date",
+   "label": "Actual Date",
+   "read_only": 1
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2026-03-10 17:43:36.475233",
+ "modified": "2026-05-19 17:09:18.867787",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Delivery Challan",
@@ -400,6 +407,14 @@
    "share": 1,
    "submit": 1,
    "write": 1
+  },
+  {
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "AI Bot",
+   "select": 1
   },
   {
    "email": 1,
