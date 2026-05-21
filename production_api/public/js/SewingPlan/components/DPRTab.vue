@@ -73,6 +73,7 @@
                                         class="size-col">
                                         {{ size }}
                                     </th>
+                                    <th class="remarks-col">Remarks</th>
                                     <th class="total-col">Total</th>
                                 </tr>
                             </thead>
@@ -100,6 +101,15 @@
                                             <td v-for="size in data[header][lot]['primary_values']" :key="size"
                                                 class="size-cell">
                                                 {{ data[header][lot]['details'][ws][received_type][colour]['values'][size] }}
+                                            </td>
+                                            <td class="remarks-cell">
+                                                <input
+                                                    type="text"
+                                                    class="remarks-input"
+                                                    :value="remarks[rowKey(header, lot, ws, received_type, colour)] || ''"
+                                                    @input="remarks[rowKey(header, lot, ws, received_type, colour)] = $event.target.value"
+                                                    placeholder="Remarks"
+                                                />
                                             </td>
                                             <td class="total-cell">
                                                 <span class="total-val">
@@ -150,6 +160,10 @@ const selected_input_type = ref(null)
 const headers = ref([])
 const data = ref({})
 const sectionRefs = ref({})
+const remarks = ref({})
+
+const rowKey = (header, lot, ws, received_type, colour) =>
+    `${header}|${lot}|${ws}|${received_type}|${colour}`
 
 const setSectionRef = (el, header) => {
     if (el) {
@@ -233,6 +247,7 @@ const fetchDPRData = () => {
             input_type: selected_input_type.value
         },
         callback: (r) => {
+            remarks.value = {}
             headers.value = r.message.headers
             data.value = r.message.dpr_data
             const pending = r.message.pending_fi || []
@@ -292,6 +307,12 @@ const copyToClipboard = async (header) => {
     }
 
     try {
+        if (document.activeElement && typeof document.activeElement.blur === 'function') {
+            document.activeElement.blur()
+        }
+        sectionEl.querySelectorAll('input.remarks-input').forEach(inp => {
+            inp.setAttribute('value', inp.value)
+        })
         const blob = await htmlToImage.toBlob(sectionEl, {
             backgroundColor: '#ffffff',
             pixelRatio: 1
@@ -480,5 +501,44 @@ const copyToClipboard = async (header) => {
 
 .table-with-gap:last-child {
     margin-bottom: 0;
+}
+
+.remarks-col {
+    min-width: 140px;
+}
+
+.remarks-cell {
+    padding: 6px 8px;
+    border: 1px solid #e2e8f0;
+    text-align: center;
+    vertical-align: middle;
+}
+
+.remarks-input {
+    width: 100%;
+    min-width: 120px;
+    padding: 6px 8px;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    background: #ffffff;
+    color: #334155;
+    font-size: 0.875rem;
+    font-weight: 500;
+    outline: none;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.remarks-input::placeholder {
+    color: #cbd5e1;
+    font-weight: 400;
+}
+
+.remarks-input:hover {
+    border-color: #cbd5e1;
+}
+
+.remarks-input:focus {
+    border-color: #1a73e8;
+    box-shadow: 0 0 0 3px rgba(26, 115, 232, 0.12);
 }
 </style>
