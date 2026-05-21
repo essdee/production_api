@@ -1,10 +1,11 @@
 <template>
-    <div ref="root" class="fpir-root">
+	<div ref="report_section">
+    <div ref="root" class="fpir-root" >
         <div class="fpir-header">
             <h3 class="fpir-title">Finishing Plan Ironing DPR</h3>
         </div>
 
-        <div class="fpir-filters">
+        <div class="fpir-filters" >
             <div class="fpir-filter">
                 <div class="fpir-control fpir-date-input"></div>
             </div>
@@ -20,10 +21,10 @@
                 </button>
                 <button
                     class="btn btn-success fpir-shot-btn"
-                    :disabled="loading || !reports.length"
-                    @click="takeScreenshot"
+                    :disabled="loading || copying || !reports.length"
+                    @click="copyToClipboard"
                 >
-                    Copy Report as Image
+                    {{ copying ? 'Copying...' : 'Copy' }}
                 </button>
             </div>
         </div>
@@ -113,15 +114,19 @@
 
         <div v-else class="fpir-state">No records found.</div>
     </div>
+	</div>
 </template>
 
 <script setup>
 import { computed, nextTick, onMounted, ref } from 'vue'
+import * as htmlToImage from 'html-to-image'
 
 const root = ref(null)
 const loading = ref(false)
+const copying = ref(false)
 const reports = ref([])
 const sampleDoc = ref({})
+const report_section=ref(null)
 
 let dateCtrl = null
 let lotCtrl = null
@@ -248,40 +253,38 @@ function loadReport() {
     })
 }
 
-function takeScreenshot() {
+const copyToClipboard = async () => {
     const sourceDiv = root.value
-    if (!sourceDiv) return
-
-    if (!reports.value.length) {
+    if (!sourceDiv || !reports.value.length || copying.value) {
         frappe.show_alert({
-            message: 'Please click Show Report before taking a screenshot',
+            message: 'Please click Show Report before copying the report',
             indicator: 'orange',
         })
         return
     }
 
-    frappe.require('https://cdn.jsdelivr.net/npm/html2canvas-pro@1.5.8/dist/html2canvas-pro.min.js', () => {
-        const previousBackground = sourceDiv.style.backgroundColor
-        const previousColor = sourceDiv.style.color
-        sourceDiv.style.backgroundColor = '#ffffff'
-        sourceDiv.style.color = '#000000'
-
-        html2canvas(sourceDiv, {
-            scale: 1,
-            useCORS: true,
+    copying.value = true
+    try {
+        const blob = await htmlToImage.toBlob(sourceDiv, {
             backgroundColor: '#ffffff',
-            logging: false,
-            removeContainer: true,
-        }).then((canvas) => {
-            const link = document.createElement('a')
-            link.href = canvas.toDataURL('image/png')
-            link.download = 'finishing-plan-ironing-report.png'
-            link.click()
-        }).finally(() => {
-            sourceDiv.style.backgroundColor = previousBackground
-            sourceDiv.style.color = previousColor
+            pixelRatio: 1,
         })
-    })
+
+        if (!blob || !navigator.clipboard?.write || typeof ClipboardItem === 'undefined') {
+            throw new Error('Clipboard image copy is not supported')
+        }
+
+        await navigator.clipboard.write([
+            new ClipboardItem({ 'image/png': blob }),
+        ])
+
+        frappe.show_alert({ message: 'Copied to clipboard', indicator: 'green' })
+    } catch (err) {
+        console.error('Failed to copy ironing report image', err)
+        frappe.show_alert({ message: 'Copy failed', indicator: 'red' })
+    } finally {
+        copying.value = false
+    }
 }
 
 function getSizes(report) {
