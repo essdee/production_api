@@ -409,10 +409,10 @@ class DeliveryChallan(Document):
             open_status = frappe.get_value('Work Order', self.work_order, 'open_status')
             if open_status == 'Close':
                 frappe.throw('Work Order is closed.', title='Delivery Challan')
-        if self.posting_date<self.actual_date:
-            frappe.throw('Posting Date cannot be before Actual Date.', title='Delivery Challan')
         if not self.actual_date:
             self.actual_date = self.posting_date
+        if self.posting_date<self.actual_date:
+            frappe.throw('Posting Date cannot be before Actual Date.', title='Delivery Challan')
 
         from production_api.mrp_stock.doctype.stock_entry.stock_entry import get_uom_details
         for row in self.items:
