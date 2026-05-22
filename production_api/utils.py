@@ -1796,8 +1796,11 @@ def get_work_in_progress_report(category, status, lot_list_val, item_list, proce
 		grn_accepte_qty=frappe.db.sql(
 			"""
                 SELECT  SUM(gi.quantity) AS accepted_qty FROM  `tabGoods Received Note` grn  
-				INNER JOIN  `tabGoods Received Note Item`gi ON grn.name=gi.parent  WHERE  gi.received_type=%(received_type)s AND 
-				grn.against_id IN %(wo_list)s
+				INNER JOIN  `tabGoods Received Note Item`gi ON grn.name=gi.parent  
+				WHERE  gi.received_type=%(received_type)s AND 
+				grn.against_id IN %(wo_list)s AND
+				grn.docstatus=1 AND
+				grn.is_return=0
 			""", 
 			{"wo_list": tuple(stich_wo_list), "received_type": accepted_type},as_dict=True)
 		
