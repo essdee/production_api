@@ -1695,7 +1695,6 @@ def get_work_in_progress_report(category, status, lot_list_val, item_list, proce
 			"finishing_details": {
 				"dispatch": 0,
 				"in_packing": 0,
-				
 				"transferred": 0,
 				"cut_to_dispatch_diff": 0,
 			},
@@ -1734,30 +1733,6 @@ def get_work_in_progress_report(category, status, lot_list_val, item_list, proce
 			"finishing_inward_date": None,
 			"process_drilldown": {},
 		})
-
-		# grn_accepted_qty=frappe.db.sql("""
-        #                 SELECT  SUM(gi.quantity) AS accepted_qty FROM `tabGoods Received Note` grn  INNER JOIN  `tabGoods Received Note Item` gi
-		# 				ON  grn.name=gi.parent  WHERE grn.docstatus=1 AND  grn.lot=%(lot)s AND gi.received_type= 'Accepted' 
-		# 				AND grn.process_name='Stitching'
-		# 				""",{"lot":lot},as_dict=True)
-		# if grn_accepted_qty:
-		# 	accepted_qty=grn_accepted_qty[0]['accepted_qty'] 
-		# 	lot_dict['total_data']['finishing_details']['ready_for_packing'] += accepted_qty
-		# 	lot_dict['lot_data'][lot]['finishing_details']['ready_for_packing'] += accepted_qty
-		# grn_rework_qty=frappe.db.sql("""
-        #                         SELECT SUM(grn_de.reworked) FROM `tabGRN Rework Item` grn_re  INNER JOIN 
-		# 					   `tabGRN Rework Item Detail` grn_de ON grn_re.name=grn_de.parent WHERE grn_re.lot=%(lot)s
-                        
-        #                        """,{"lot":lot},as_dict=True)
-		# if grn_rework_qty:
-		# 	rework_qty=grn_rework_qty[0]['SUM(grn_de.reworked)'] 
-		# 	lot_dict['total_data']['finishing_details']['ready_for_packing'] += rework_qty
-		# 	lot_dict['lot_data'][lot]['finishing_details']['ready_for_packing'] += rework_qty
-		
-		
-		# lot_dict['total_data']['finishing_details']['ready_for_packing']-=lot_dict['total_data']['finishing_details']['dispatch']
-		# lot_dict['lot_data'][lot]['finishing_details']['ready_for_packing'] -= lot_dict['lot_data'][lot]['finishing_details']['dispatch']
-		## ORDER QTY
 		order_detail = frappe.db.sql(
 			"""
 				SELECT sum(quantity) as order_qty, sum(cut_qty) as cutting FROM `tabLot Order Detail` 
@@ -1819,12 +1794,13 @@ def get_work_in_progress_report(category, status, lot_list_val, item_list, proce
 			continue
 		received_ty=frappe.get_single("Stock Settings")
 		accepted_type=received_ty.default_received_type
-		grn_accepte_qty=frappe.db.sql("""
-                            SELECT  SUM(gi.quantity) AS accepted_qty FROM  `tabGoods Received Note` grn  
-							INNER JOIN  `tabGoods Received Note Item`
-							gi ON grn.name=gi.parent  WHERE  gi.received_type=%(received_type)s AND 
-							grn.against_id IN %(wo_list)s
-			""", {"wo_list": tuple(stich_wo_list), "received_type": accepted_type},as_dict=True)
+		grn_accepte_qty=frappe.db.sql(
+			"""
+                SELECT  SUM(gi.quantity) AS accepted_qty FROM  `tabGoods Received Note` grn  
+				INNER JOIN  `tabGoods Received Note Item`gi ON grn.name=gi.parent  WHERE  gi.received_type=%(received_type)s AND 
+				grn.against_id IN %(wo_list)s
+			""", 
+			{"wo_list": tuple(stich_wo_list), "received_type": accepted_type},as_dict=True)
 		
 		accepted_qty = grn_accepte_qty[0].get("accepted_qty") if grn_accepte_qty else 0
 		if accepted_qty is None:
@@ -1834,10 +1810,12 @@ def get_work_in_progress_report(category, status, lot_list_val, item_list, proce
 		lot_dict['lot_data'][lot]['sewing_details']['ready_for_packing'] += accepted_qty
 		print(accepted_qty)
 
-		grn_rework_qty=frappe.db.sql("""
-                         SELECT SUM(grn_de.reworked) FROM `tabGRN Rework Item` grn_re  INNER JOIN `tabGRN Rework Item Detail` grn_de ON grn_re.name=grn_de.parent
-						WHERE grn_re.lot=%(lot)s
-                     """, {"lot": lot}, as_dict=True)
+		grn_rework_qty=frappe.db.sql(
+			"""
+                SELECT SUM(grn_de.reworked) FROM `tabGRN Rework Item` grn_re  INNER JOIN `tabGRN Rework Item Detail` grn_de ON grn_re.name=grn_de.parent
+				WHERE grn_re.lot=%(lot)s
+            """, 
+				{"lot": lot}, as_dict=True)
 		
 		
 		if grn_rework_qty:
