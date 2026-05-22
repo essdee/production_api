@@ -1724,7 +1724,6 @@ def get_work_in_progress_report(category, status, lot_list_val, item_list, proce
 			"finishing_details": {
 				"dispatch": 0,
 				"in_packing": 0,
-				"ready_for_packing": 0,
 				"transferred": 0,
 				"cut_to_dispatch_diff": 0,
 			},
