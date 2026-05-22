@@ -2619,6 +2619,9 @@ def get_finishing_packed_details(date, lot_list=None, item_list=None):
 					size_qty.setdefault(size, 0)
 					size_qty[size] += gi.quantity
 
+		if not any(size_qty.values()):
+			continue
+
 		total_boxes = sum(size_qty.values())
 		total_pieces = total_boxes * pieces_per_box if pieces_per_box else 0
 

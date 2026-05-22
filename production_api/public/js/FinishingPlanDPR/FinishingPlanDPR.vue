@@ -49,12 +49,12 @@
                         </template>
                     </button>
                     <div class="section-total-block">
-                        <span class="total-label">Total Boxes</span>
-                        <span class="total-value">{{ grandTotalBoxes }}</span>
-                    </div>
-                    <div class="section-total-block">
                         <span class="total-label">Total Pieces</span>
                         <span class="total-value">{{ grandTotalPieces }}</span>
+                    </div>
+					 <div class="section-total-block">
+                        <span class="total-label">Total Boxes</span>
+                        <span class="total-value">{{ grandTotalBoxes }}</span>
                     </div>
                 </div>
             </div>
@@ -67,25 +67,25 @@
                             <th>Lot</th>
                             <th>Item</th>
                             <th v-for="size in row.sizes" :key="size" class="size-col">{{ size }}</th>
-                            <th class="total-col">Total Boxes</th>
-                            <th>Pcs/Box</th>
                             <th class="total-col">Total Pieces</th>
+                            <th>Pcs/Box</th>
+                            <th class="total-col">Total Boxes</th>
                         </tr>
                     </thead>
                     <tbody>
                         <tr class="data-row">
                             <td class="index-cell">{{ idx + 1 }}</td>
                             <td class="colour-cell">{{ row.lot }}</td>
-                            <td class="colour-cell">{{ row.item }}</td>
+                            <td class="colour-cell">{{ row.item}}</td>
                             <td v-for="size in row.sizes" :key="size" class="size-cell">
-                                {{ row.size_qty[size] || '' }}
+                                {{ row.size_qty[size] * row.pieces_per_box || '' }}
                             </td>
-                            <td class="total-cell">
-                                <span class="total-val">{{ row.total_boxes }}</span>
-                            </td>
-                            <td class="size-cell">{{ row.pieces_per_box }}</td>
                             <td class="total-cell">
                                 <span class="total-val">{{ row.total_pieces }}</span>
+                            </td>
+                            <td class="size-cell">{{ row.pieces_per_box }}</td>
+							 <td class="total-cell">
+                                <span class="total-val">{{ row.total_boxes }}</span>
                             </td>
                         </tr>
                     </tbody>
