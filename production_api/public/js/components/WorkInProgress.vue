@@ -47,6 +47,9 @@
             <div class="summary-card">
                 <div class="summary-label">In Packing</div>
                 <div class="summary-value">{{ formatSummaryNumber(items.summary.total_in_packing) }}</div>
+            </div>  <div class="summary-card">
+                <div class="summary-label"> Ready For Packing</div>
+                <div class="summary-value">{{ formatSummaryNumber(items.summary.total_ready_for_packing) }}</div>
             </div>
 
 			<div v-for="col in items.summary.dynamic_col" :key="col.label" class="summary-card">
