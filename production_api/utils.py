@@ -1787,7 +1787,6 @@ def get_work_in_progress_report(category, status, lot_list_val, item_list, proce
 
 		## Sewing Sent and Finishing Inward
 		stich_wo_list = get_process_wo_list(sewing, lot) 
-		print(f"Stich WO List for lot {lot}: {stich_wo_list}")
 		sewing_process = get_work_order_process_name(stich_wo_list)
 		if not stich_wo_list:
 			continue
@@ -1807,7 +1806,6 @@ def get_work_in_progress_report(category, status, lot_list_val, item_list, proce
 
 		lot_dict['total_data']['sewing_details']['ready_for_packing'] += accepted_qty
 		lot_dict['lot_data'][lot]['sewing_details']['ready_for_packing'] += accepted_qty
-		print(accepted_qty)
 
 		grn_rework_qty=frappe.db.sql(
 			"""
@@ -1816,13 +1814,11 @@ def get_work_in_progress_report(category, status, lot_list_val, item_list, proce
             """, 
 				{"lot": lot}, as_dict=True)
 		
-		
 		if grn_rework_qty:
 			rework_qty=grn_rework_qty[0]['SUM(grn_de.reworked)'] or 0
 			lot_dict['total_data']['sewing_details']['ready_for_packing'] += rework_qty
 			lot_dict['lot_data'][lot]['sewing_details']['ready_for_packing'] += rework_qty
 		
-
 		set_process_drilldown(
 			lot_dict['lot_data'][lot],
 			"sewing_details",
@@ -1913,7 +1909,6 @@ def get_work_in_progress_report(category, status, lot_list_val, item_list, proce
 			if lot_dict['lot_data'][lot]['sewing_details']['ready_for_packing']<0:
 				lot_dict['lot_data'][lot]['sewing_details']['ready_for_packing']=0
 
-			
 			transfer_detail = frappe.db.sql(
 				"""
 					SELECT SUM(transferred_qty) as transferred FROM `tabFinishing Plan Detail` WHERE
@@ -2013,7 +2008,6 @@ def get_work_in_progress_report(category, status, lot_list_val, item_list, proce
 			diff_val = diff_key.lower().replace(" ", "_")
 			if diff_val not in lot_dict['diff_columns']:
 				lot_dict['diff_columns'].append(diff_val)
-
 			against_val = process_name + " to"
 			if process_dict[process_name] == cut:
 				column_key = 'against_cut_columns'
