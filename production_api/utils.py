@@ -1702,6 +1702,7 @@ def get_work_in_progress_report(category, status, lot_list_val, item_list, proce
 	}
 	for lot in lot_list:
 		lot = lot['name']
+		
 		ipd, item = frappe.get_value("Lot", lot, ["production_detail", "item"])
 		lot_dict['lot_data'].setdefault(lot, {
 			"style": item,
@@ -1901,13 +1902,15 @@ def get_work_in_progress_report(category, status, lot_list_val, item_list, proce
 				}, as_dict=True
 			)
 			if finishing_detail:
-				lot_dict['total_data']['finishing_details']['dispatch'] += (finishing_detail[0]['dispatch_qty'] * pcs_per_box * part_qty)
-				lot_dict['lot_data'][lot]['finishing_details']['dispatch'] += (finishing_detail[0]['dispatch_qty'] * pcs_per_box * part_qty)
-				
-				lot_dict['total_data']['sewing_details']['ready_for_packing']=lot_dict['total_data']['sewing_details']['ready_for_packing']-lot_dict['total_data']['finishing_details']['dispatch']
-				lot_dict['lot_data'][lot]['sewing_details']['ready_for_packing']=lot_dict['lot_data'][lot]['sewing_details']['ready_for_packing']-lot_dict['lot_data'][lot]['finishing_details']['dispatch']
-			if lot_dict['lot_data'][lot]['sewing_details']['ready_for_packing']<0:
-				lot_dict['lot_data'][lot]['sewing_details']['ready_for_packing']=0
+				dispatch=(finishing_detail[0]['dispatch_qty'] * pcs_per_box * part_qty)
+				lot_dict['total_data']['finishing_details']['dispatch'] += dispatch
+				lot_dict['lot_data'][lot]['finishing_details']['dispatch'] += dispatch
+				lot_dict['lot_data'][lot]['sewing_details']['ready_for_packing']-=dispatch
+				if lot_dict['lot_data'][lot]['sewing_details']['ready_for_packing'] < 0:
+					lot_dict['lot_data'][lot]['sewing_details']['ready_for_packing'] = 0
+					lot_dict['total_data']['sewing_details']['ready_for_packing'] -= (accepted_qty + rework_qty)
+				else:
+					lot_dict['total_data']['sewing_details']['ready_for_packing'] -= dispatch	
 
 			transfer_detail = frappe.db.sql(
 				"""
