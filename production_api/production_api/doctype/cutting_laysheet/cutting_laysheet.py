@@ -1614,10 +1614,12 @@ def create_grn_entry(doc_name):
 					"set_combination": set_combination,
 				}
 	cls_cloths = {}
+	cls_cloth_source = {}
 	for row in cls_doc.cutting_laysheet_accessory_details:
 		set_combination = {}
 		cls_cloths.setdefault(row.cloth_item_variant, 0)
 		cls_cloths[row.cloth_item_variant] += row.weight
+		cls_cloth_source.setdefault(row.cloth_item_variant, (row.accessory, row.colour, row.cloth_type, row.dia))
 
 	item_name, ipd = frappe.get_value("Lot", cls_doc.lot, ["item","production_detail"])
 	primary, pack_attr, stich_attr, stich_stage, dependent_attr = frappe.get_value("Item Production Detail", ipd, ['primary_item_attribute', "packing_attribute", "stiching_attribute", "stiching_in_stage", "dependent_attribute"])
@@ -1673,6 +1675,7 @@ def create_grn_entry(doc_name):
 				break
 
 	for cloth, weight in cls_cloths.items():
+		matched = False
 		for item in new_doc.items:
 			if item.item_variant == cloth:
 				item.quantity += weight
@@ -1682,8 +1685,17 @@ def create_grn_entry(doc_name):
 					received_types[received_type] += weight
 				else:
 					received_types[received_type] = weight
-				item.received_types = received_types	
+				item.received_types = received_types
+				matched = True
 				break
+		if not matched:
+			accessory, colour, cloth_type, dia = cls_cloth_source.get(cloth, (None, None, None, None))
+			frappe.throw(
+				f"Accessory <b>{accessory}</b> ({cloth_type}, {colour}-{dia}) "
+				f"is not present in Work Order <b>{wo}</b> receivables. "
+				f"Add this variant to the Work Order before printing labels.",
+				title="Receivable Missing"
+			)
 
 	new_doc.total_received_quantity =  total_received_qty
 	deliverables_dict = {}
