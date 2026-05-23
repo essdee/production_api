@@ -1,6 +1,64 @@
 // Copyright (c) 2021, Essdee and contributors
 // For license information, please see license.txt
 
+function flatten_item_details_for_duplicate(item_details) {
+	const rows = [];
+	for (const group of (item_details || [])) {
+		const attribute_names = group.attributes || [];
+		const primary_attribute = group.primary_attribute || '';
+		for (const item of (group.items || [])) {
+			const base_attrs = Object.assign({}, item.attributes || {});
+			if (primary_attribute) {
+				for (const [primary_value, vals] of Object.entries(item.values || {})) {
+					if (!vals || !vals.qty) continue;
+					const attrs = Object.assign({}, base_attrs);
+					attrs[primary_attribute] = primary_value;
+					rows.push({
+						item: item.name,
+						lot: item.lot || '',
+						attributes: attrs,
+						_attribute_names: attribute_names.slice(),
+						qty: vals.qty || 0,
+						secondary_qty: vals.secondary_qty || 0,
+						rate: vals.rate || 0,
+						tax: vals.tax || 0,
+						uom: item.default_uom || '',
+						secondary_uom: item.secondary_uom || '',
+						discount_percentage: item.discount_percentage || 0,
+						delivery_location: item.delivery_location || '',
+						delivery_date: item.delivery_date || '',
+						expected_delivery_date: item.expected_delivery_date || '',
+						comments: item.comments || '',
+						additional_parameters: item.additional_parameters || null,
+					});
+				}
+			} else {
+				const vals = (item.values && item.values.default) || {};
+				if (!vals.qty) continue;
+				rows.push({
+					item: item.name,
+					lot: item.lot || '',
+					attributes: Object.assign({}, base_attrs),
+					_attribute_names: attribute_names.slice(),
+					qty: vals.qty || 0,
+					secondary_qty: vals.secondary_qty || 0,
+					rate: vals.rate || 0,
+					tax: vals.tax || 0,
+					uom: item.default_uom || '',
+					secondary_uom: item.secondary_uom || '',
+					discount_percentage: item.discount_percentage || 0,
+					delivery_location: item.delivery_location || '',
+					delivery_date: item.delivery_date || '',
+					expected_delivery_date: item.expected_delivery_date || '',
+					comments: item.comments || '',
+					additional_parameters: item.additional_parameters || null,
+				});
+			}
+		}
+	}
+	return rows;
+}
+
 frappe.ui.form.on('Purchase Order', {
 	setup: function(frm) {
 		frm.set_query('default_delivery_location', function(doc) {
@@ -257,20 +315,44 @@ frappe.ui.form.on('Purchase Order', {
 
 		if (frm.doc.docstatus == 1) {
 			frm.add_custom_button(__('Duplicate PO'), function() {
-				frappe.confirm(
-					__('Create a duplicate of this Purchase Order?'),
-					function() {
+				const item_details = (frm.doc.__onload && frm.doc.__onload.item_details) || [];
+				const flat_rows = flatten_item_details_for_duplicate(item_details);
+				const d = new frappe.ui.Dialog({
+					title: __('Duplicate Purchase Order'),
+					size: 'extra-large',
+					static: true,
+					primary_action_label: __('Yes, Duplicate'),
+					primary_action: function() {
+						if (!d.editor) return;
+						const items_data = d.editor.get_items();
+						if (!items_data || items_data.length === 0) {
+							frappe.show_alert({ message: __('At least one item is required to duplicate.'), indicator: 'red' });
+							return;
+						}
 						frappe.call({
 							method: "production_api.production_api.doctype.purchase_order.purchase_order.duplicate_po",
-							args: { po: frm.doc.name },
+							args: { po: frm.doc.name, items_data: items_data },
+							freeze: true,
+							freeze_message: __('Creating duplicate Purchase Order'),
 							callback: function(r) {
 								if (r.message) {
+									d.hide();
 									frappe.set_route('Form', 'Purchase Order', r.message);
 								}
 							}
 						});
-					}
-				);
+					},
+					secondary_action_label: __('Close'),
+					secondary_action: function() { d.hide(); },
+				});
+				d.$wrapper.find('.modal-dialog').css('max-width', '1400px');
+				const wrapper = $('<div class="duplicate-po-editor"></div>').appendTo(d.body);
+				d.editor = new frappe.production.ui.DuplicatePOItemTable(wrapper);
+				d.editor.load_data(flat_rows);
+				d.show();
+				d.$wrapper.on('hidden.bs.modal', function() {
+					if (d.editor && d.editor.destroy) d.editor.destroy();
+				});
 			});
 		}
 

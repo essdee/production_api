@@ -7,6 +7,7 @@ import ItemDetail from "./components/ItemDetails.vue";
 import DDItem from "./PurchaseOrder/components/DateUpdateDialog.vue"
 import PONewItem from "./PurchaseOrder/components/NewItem.vue"
 import POItem from "./PurchaseOrder/components/Item.vue"
+import DuplicatePOItemTable from "./PurchaseOrder/components/DuplicatePOItemTable.vue"
 import GRNItemWrapper from "./GRN";
 import GRNPurchaseOrder from "./GRN/components/GRNPurchaseOrder.vue";
 import GRNWorkOrder from "./GRN/components/GRNWorkOrder.vue";
@@ -1018,6 +1019,29 @@ frappe.production.ui.PurchaseOrderItem = class {
     }
     update_status() {
         this.vue.update_status();
+    }
+};
+
+frappe.production.ui.DuplicatePOItemTable = class {
+    constructor(wrapper) {
+        this.$wrapper = $(wrapper);
+        this.make_body();
+    }
+    make_body() {
+        this.app = createApp(DuplicatePOItemTable);
+        SetVueGlobals(this.app);
+        this.vue = this.app.mount(this.$wrapper.get(0));
+    }
+    load_data(rows) {
+        this.vue.load_data(JSON.parse(JSON.stringify(rows || [])));
+    }
+    get_items() {
+        return JSON.parse(JSON.stringify(this.vue.rows));
+    }
+    destroy() {
+        if (this.app && this.app.unmount) {
+            try { this.app.unmount(); } catch (e) {}
+        }
     }
 };
 
