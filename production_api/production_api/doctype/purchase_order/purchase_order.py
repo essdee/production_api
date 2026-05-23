@@ -701,8 +701,18 @@ def create_purchase_order_log(doc_name, item, new_date, comment):
 	log_doc.submit()
 
 @frappe.whitelist()
-def duplicate_po(po):
-	"""Create a duplicate of the given Purchase Order as a new Draft."""
+def duplicate_po(po, items_data=None):
+	"""Create a duplicate of the given Purchase Order as a new Draft.
+
+	`items_data` is a flat list of per-variant rows produced by the duplicate
+	dialog. Each row carries item (parent), lot, attributes (dict), qty,
+	delivery_date, expected_delivery_date, plus carryover fields (rate, tax,
+	delivery_location, etc.) from the original row. For each row we resolve
+	the Item Variant via get_variant/create_variant and assemble the new
+	Purchase Order Item row directly — no save_item_details grouping pass,
+	so rows are independent (changing one row's item/lot/attrs/qty does not
+	clear sibling rows).
+	"""
 	doc = frappe.get_doc("Purchase Order", po)
 	new_doc = frappe.copy_doc(doc)
 	from frappe.model.naming import get_default_naming_series
@@ -716,10 +726,51 @@ def duplicate_po(po):
 	new_doc.approved_by = None
 	new_doc.cancel_reason = None
 	new_doc.amended_from = None
+
+	if items_data is not None:
+		if isinstance(items_data, string_types):
+			items_data = json.loads(items_data)
+		rebuilt = []
+		for row_index, row in enumerate(items_data):
+			item_name = row.get("item")
+			if not item_name:
+				frappe.throw(_("Row {0}: Item is required").format(row_index + 1))
+			attributes = row.get("attributes") or {}
+			variant_name = get_variant(item_name, attributes)
+			if not variant_name:
+				variant = create_variant(item_name, attributes)
+				variant.insert()
+				variant_name = variant.name
+			qty = float(row.get("qty") or 0)
+			if qty <= 0:
+				frappe.throw(_("Row {0} ({1}): Qty must be greater than zero").format(row_index + 1, variant_name))
+			new_row = {
+				"item_variant": variant_name,
+				"lot": row.get("lot") or None,
+				"qty": qty,
+				"secondary_qty": row.get("secondary_qty") or 0,
+				"rate": row.get("rate") or 0,
+				"tax": row.get("tax") or 0,
+				"uom": row.get("uom") or None,
+				"secondary_uom": row.get("secondary_uom") or None,
+				"discount_percentage": row.get("discount_percentage") or 0,
+				"delivery_location": row.get("delivery_location") or new_doc.default_delivery_location,
+				"delivery_date": row.get("delivery_date") or None,
+				"expected_delivery_date": row.get("expected_delivery_date") or row.get("delivery_date") or None,
+				"comments": row.get("comments") or None,
+				"additional_parameters": row.get("additional_parameters") or None,
+				"table_index": 0,
+				"row_index": row_index,
+			}
+			rebuilt.append(new_row)
+		new_doc.set("items", rebuilt)
+
 	for item in new_doc.items:
 		item.pending_qty = item.qty
 		item.cancelled_qty = 0
-		item.expected_delivery_date = item.delivery_date
+		if not item.expected_delivery_date:
+			item.expected_delivery_date = item.delivery_date
+
 	new_doc.flags.ignore_item_details_check = True
 	new_doc.save()
 	return new_doc.name
