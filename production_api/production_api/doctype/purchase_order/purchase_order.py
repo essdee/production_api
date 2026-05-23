@@ -730,11 +730,45 @@ def duplicate_po(po, items_data=None):
 	if items_data is not None:
 		if isinstance(items_data, string_types):
 			items_data = json.loads(items_data)
+
+		primary_attr_cache = {}
+		def _primary_attr(item_name):
+			if item_name not in primary_attr_cache:
+				try:
+					primary_attr_cache[item_name] = (get_attribute_details(item_name) or {}).get("primary_attribute") or None
+				except Exception:
+					primary_attr_cache[item_name] = None
+			return primary_attr_cache[item_name]
+
+		from collections import OrderedDict
+		group_index_map = OrderedDict()
+		def _row_index_for(row):
+			item_name = row.get("item")
+			pk = _primary_attr(item_name)
+			attrs = row.get("attributes") or {}
+			attrs_no_pk = tuple(sorted((k, v) for k, v in attrs.items() if k != pk))
+			key = (
+				item_name,
+				row.get("lot") or "",
+				row.get("delivery_date") or "",
+				row.get("expected_delivery_date") or "",
+				row.get("delivery_location") or "",
+				row.get("uom") or "",
+				round(float(row.get("rate") or 0), 6),
+				round(float(row.get("tax") or 0), 6),
+				round(float(row.get("discount_percentage") or 0), 6),
+				row.get("comments") or "",
+				attrs_no_pk,
+			)
+			if key not in group_index_map:
+				group_index_map[key] = len(group_index_map)
+			return group_index_map[key]
+
 		rebuilt = []
-		for row_index, row in enumerate(items_data):
+		for ordinal, row in enumerate(items_data):
 			item_name = row.get("item")
 			if not item_name:
-				frappe.throw(_("Row {0}: Item is required").format(row_index + 1))
+				frappe.throw(_("Row {0}: Item is required").format(ordinal + 1))
 			attributes = row.get("attributes") or {}
 			variant_name = get_variant(item_name, attributes)
 			if not variant_name:
@@ -743,7 +777,7 @@ def duplicate_po(po, items_data=None):
 				variant_name = variant.name
 			qty = float(row.get("qty") or 0)
 			if qty <= 0:
-				frappe.throw(_("Row {0} ({1}): Qty must be greater than zero").format(row_index + 1, variant_name))
+				frappe.throw(_("Row {0} ({1}): Qty must be greater than zero").format(ordinal + 1, variant_name))
 			new_row = {
 				"item_variant": variant_name,
 				"lot": row.get("lot") or None,
@@ -760,7 +794,7 @@ def duplicate_po(po, items_data=None):
 				"comments": row.get("comments") or None,
 				"additional_parameters": row.get("additional_parameters") or None,
 				"table_index": 0,
-				"row_index": row_index,
+				"row_index": _row_index_for(row),
 			}
 			rebuilt.append(new_row)
 		new_doc.set("items", rebuilt)
