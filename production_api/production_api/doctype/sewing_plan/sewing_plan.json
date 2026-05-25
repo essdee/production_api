@@ -16,7 +16,8 @@
   "section_break_gxqi",
   "sewing_plan_order_details",
   "section_break_dmkq",
-  "consumption_details"
+  "consumption_details",
+  "cloth_accessory_consumption"
  ],
  "fields": [
   {
@@ -85,6 +86,12 @@
    "fieldtype": "Table",
    "label": "Consumption Details",
    "options": "Consumption Details"
+  },
+  {
+   "fieldname": "cloth_accessory_consumption",
+   "fieldtype": "Table",
+   "label": "Cloth Accessory Consumption",
+   "options": "Cloth Accessory Data"
   }
  ],
  "grid_page_length": 50,
@@ -95,7 +102,7 @@
    "link_fieldname": "sewing_plan"
   }
  ],
- "modified": "2026-05-08 14:11:11.163822",
+ "modified": "2026-05-25 14:55:25.776200",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Sewing Plan",

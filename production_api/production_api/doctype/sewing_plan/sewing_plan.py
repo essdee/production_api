@@ -1431,6 +1431,7 @@ def get_consumption_mapping_data(lot, supplier=None):
 		return {"ipd": "", "sections": []}
 	sew_p_row_data=[]
 	saved_qty_in_sp={}
+	saved_cloth_consumption={}
 	if supplier:
 		sp_name=frappe.get_all("Sewing Plan", filters={"supplier": supplier, "lot": lot}, pluck="name")
 		for s in sp_name:
@@ -1443,14 +1444,19 @@ def get_consumption_mapping_data(lot, supplier=None):
 					
 				})
 				saved_qty_in_sp[(r.item_name, r.index)]=r.consumption_qty or 0
+			for r in sp_doc.cloth_accessory_consumption:
+				saved_cloth_consumption[r.index]=r.consumption_weight
+	
 	bom_rows = frappe.db.sql("""
-		SELECT item, attribute_mapping
+		SELECT item, attribute_mapping, uom
 		FROM `tabItem BOM`
 		WHERE parent = %(ipd)s
 		  AND process_name = %(process_name)s
 		ORDER BY item
 	""", {"ipd": ipd[0].production_detail, "process_name": sti_process}, as_dict=True)
-
+	ipd_cloth_acc=frappe.get_doc("Item Production Detail",ipd[0].production_detail)
+	cloth_acc_type=ipd_cloth_acc.get("accessory_clothtype_json")
+	cloth_acc=ipd_cloth_acc.get("cloth_accessory_json")
 	if not bom_rows:
 		return {"ipd": ipd[0].production_detail, "sections": []}
 
@@ -1521,7 +1527,7 @@ def get_consumption_mapping_data(lot, supplier=None):
 				"index": idx,
 				"values": r_v,
 				"quantity": saved_qty or 0,
-				"item_bom_qty": row_d.get("quantity", 0)
+				"item_bom_qty": row_d.get("quantity", 0),
 			})
 
 		if not row_x:
@@ -1530,23 +1536,65 @@ def get_consumption_mapping_data(lot, supplier=None):
 				"index": 0,
 				"values": {"Item": b.item},
 				"quantity": 0,
-				"item_bom_qty": 0
+				"item_bom_qty": 0,
 			})
 
 		section.append({
 			"item": b.item,
 			"item_attributes": item_att,
 			"rows": row_x,
-			"attribute_in_item":v_in_map.get(b.attribute_mapping, [])
+			"attribute_in_item":v_in_map.get(b.attribute_mapping, []),
+			"item_bom_uom": b.uom,
 		})
+	cloth_acc_data = []
+	cloth_acc_type = update_if_string_instance(cloth_acc_type)
+	cloth_acc = update_if_string_instance(cloth_acc)
+
+	if cloth_acc_type and cloth_acc:
+		col=[]
+		attribute_cloth_acc=[]
+		for idx, row in enumerate(cloth_acc.get("items") or [], start=1):
+			saved_weight=saved_cloth_consumption.get(idx)
+			if saved_weight is not None:
+				row["Consumption Weight"]=saved_weight
+			else:
+				row["Consumption Weight"]=row.get("Consumption Weight", 0)
+			col.append(row)
+		for i in cloth_acc.get("attributes") or []:
+			if i not in ("Accessory","Dia","Weight"):
+				attribute_cloth_acc.append(i)
+
+		selected_accessories = set(cloth_acc.get("select_list") or [])
+		cloth_acc_data.append({
+				"accessory_type":selected_accessories,
+				"attributes":cloth_acc.get("attributes"),
+				"columns":col,
+				"att_iv_check":attribute_cloth_acc
+			})
 		
-	return {"ipd": ipd[0].production_detail, "sections": section}
-
-
+	return {"ipd": ipd[0].production_detail, "sections": section, "cloth_acc_data": cloth_acc_data}
 
 @frappe.whitelist()
-def save_consumption_data(supplier, lot, sections):
+def get_sewing_consumption_print_data(ipd, lot=None):
+	lot = lot or frappe.db.get_value("Lot", {"production_detail": ipd}, "name")
+	if not lot:
+		return {
+			"ipd": ipd,
+			"lot": "",
+			"supplier": "",
+			"sections": [],
+			"cloth_acc_data": [],
+		}
+
+	supplier = frappe.db.get_value("Sewing Plan", {"lot": lot}, "supplier")
+	data = get_consumption_mapping_data(lot, supplier=supplier)
+	data["lot"] = lot
+	return data
+
+@frappe.whitelist()
+def save_consumption_data(supplier, lot, sections, cloth_acc_data=None):
 	sections = update_if_string_instance(sections)
+	cloth_acc_data = update_if_string_instance(cloth_acc_data)
 
 	if not supplier or not lot:
 		frappe.throw("Supplier and lot is missing")
@@ -1562,9 +1610,8 @@ def save_consumption_data(supplier, lot, sections):
 	for sp in sew_p:
 		sp_n = frappe.get_doc("Sewing Plan", sp)
 		sp_n.set("consumption_details", [])
-
+		sp_n.set("cloth_accessory_consumption", [])
 		row_no = 1
-
 		for sec in sp_n.sewing_plan_order_details:
 			att_de = get_variant_attr_details(sec.item_variant) or {}
 
@@ -1615,7 +1662,45 @@ def save_consumption_data(supplier, lot, sections):
 							"consumption_qty": r_qty,
 						})
 						row_no += 1
-						
+
+		for r in cloth_acc_data or []:
+			attributes = r.get("attributes") or []
+			acc_c = r.get("att_iv_check") or []
+			if isinstance(acc_c, dict):
+				acc_c = list(acc_c.keys())
+
+			for idx, row in enumerate(r.get("columns") or [], start=1):
+				weight_in_ipd = row.get("Weight") or 0
+				consumption_weight = row.get("Consumption Weight") or row.get("consumption_weight") or 0
+
+				matched_variant = False
+				for sec in sp_n.sewing_plan_order_details:
+					att_de = get_variant_attr_details(sec.item_variant) or {}
+					match = True
+
+					for att_name in acc_c:
+						att_value = row.get(att_name)
+						if att_value in (None, ""):
+							continue
+						if att_de.get(att_name) != att_value:
+							match = False
+							break
+
+					if match:
+						matched_variant = True
+						break
+
+				if not matched_variant:
+					continue
+
+				for attr in attributes:
+					sp_n.append("cloth_accessory_consumption", {
+						"index": idx,
+						"attribute": attr,
+						"attribute_value": row.get(attr),
+						"weight_in_ipd": weight_in_ipd,
+						"consumption_weight": consumption_weight,
+					})
 		sp_n.save()
 
 	return {

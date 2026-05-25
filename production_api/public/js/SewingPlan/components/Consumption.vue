@@ -8,16 +8,28 @@
                     </svg>
                     <span class="filter-label">Filters</span>
                 </div>
-                <div ref="lot_wrapper" class="filter-control"></div>
+                <div class="lot-filter-wrap">
+                    <div ref="lot_wrapper" class="filter-control"></div>
+                </div>
                 <button
                     class="record-btn"
-                    :disabled="!selected_supplier || !selected_lot || !sections.length || saving"
+                    :disabled="!selected_supplier || !selected_lot || (!sections.length && !clothAccData.length) || saving"
                     @click="handleSave"
                 >
                     <svg class="record-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
                     </svg>
                     {{ saving ? 'Saving...' : 'Save' }}
+                </button>
+                <button
+                    class="record-btn print-btn"
+                    :disabled="!selected_ipd || saving"
+                    @click="handlePrint"
+                >
+                    <svg class="record-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 9V2h12v7M6 18H5a2 2 0 01-2-2v-3a2 2 0 012-2h14a2 2 0 012 2v3a2 2 0 01-2 2h-1M6 14h12v8H6z"></path>
+                    </svg>
+                    Print
                 </button>
             </div>
         </div>
@@ -26,26 +38,34 @@
             <div v-for="section in sections" :key="section.item" class="report-wrapper section-wrapper">
                 <div class="group-header">
                     <span class="group-item">{{ section.item }}</span>
-                    <span class="group-lot-pill">{{ selected_lot }}</span>
                 </div>
-                <p v-if="selected_ipd" class="meta-text">IPD: {{ selected_ipd }}</p>
                
                 <div class="report-container no-scrollbar">
                     <table class="report-table">
                         <thead>
 		                            <tr class="header-row">
 		                                <th class="header-cell primary-header sticky-col-sno">S.No</th>
-		                                <th v-for="attr in section.item_attributes" :key="attr" class="header-cell primary-header">
+		                                <th
+                                        v-for="attr in section.item_attributes"
+                                        :key="attr"
+                                        class="header-cell primary-header"
+                                        :class="columnClass(attr)"
+                                    >
 		                                    {{ (attr || '').includes('_') ? attr.split('_').slice(1).join('_') : attr }}
 		                                </th>
-		                                <th class="header-cell primary-header">Qty</th>
+		                                <th class="header-cell primary-header">{{ section.item_bom_uom || 'Nos' }}</th>
 		                                <th class="header-cell primary-header"> Consumption Quantity</th>
 		                            </tr>
                         </thead>
                         <tbody>
 	                            <tr v-for="(row, idx) in section.rows" :key="section.item + '-' + idx" class="data-row">
 	                                <td class="data-cell sticky-col-sno">{{ idx + 1 }}</td>
-		                                <td v-for="attr in section.item_attributes" :key="section.item + '-' + attr + '-' + idx" class="data-cell item-cell">
+		                                <td
+                                        v-for="attr in section.item_attributes"
+                                        :key="section.item + '-' + attr + '-' + idx"
+                                        class="data-cell item-cell"
+                                        :class="columnClass(attr)"
+                                    >
 		                                    {{ row.values?.[attr] || '-' }}
 		                                </td>
 		                                <td class="data-cell item-cell">
@@ -59,6 +79,69 @@
 	                                        step="0.001"
 	                                        class="quantity-input"
 	                                    >
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </template>
+
+        <template v-if="clothAccData.length">
+            <div
+                v-for="(group, groupIdx) in clothAccData"
+                :key="`cloth-group-${groupIdx}`"
+                class="report-wrapper section-wrapper cloth-accessory-wrapper"
+            >
+                <div class="group-header">
+                    <div class="cloth-header-stack">
+                        <span class="group-item">
+                            Cloth Accessory Consumption
+						</span>
+						<p v-if="group.accessory_type?.length" class="cloth-accessory-name">
+							 {{ group.accessory_type.join(', ') }}
+						</p>
+                    </div>
+                </div>
+                <div class="report-container no-scrollbar">
+                    <table class="report-table">
+                        <thead>
+                            <tr class="header-row">
+                                <th class="header-cell primary-header sticky-col-sno">S.No</th>
+                                <th
+                                    v-for="attr in group.attributes || []"
+                                    :key="`cloth-header-${groupIdx}-${attr}`"
+                                    class="header-cell primary-header"
+                                    :class="columnClass(attr)"
+                                    >
+                                    {{ attr }}
+                                </th>
+                                <th class="header-cell primary-header">Consumption Weight</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr
+                                v-for="(row, rowIdx) in group.columns || []"
+                                :key="`cloth-row-${groupIdx}-${rowIdx}`"
+                                class="data-row"
+                            >
+                                <td class="data-cell sticky-col-sno">{{ rowIdx + 1 }}</td>
+                                <td
+                                    v-for="attr in group.attributes || []"
+                                    :key="`cloth-cell-${groupIdx}-${rowIdx}-${attr}`"
+                                    class="data-cell item-cell"
+                                    :class="columnClass(attr)"
+                                >
+                                    {{ row[attr] || '-' }}
+                                </td>
+                                <td class="data-cell quantity-cell">
+                                    <input
+                                        v-model.number="row['Consumption Weight']"
+                                        type="number"
+                                        min="0"
+                                        step="0.001"
+                                        class="quantity-input"
+                                    >
                                 </td>
                             </tr>
                         </tbody>
@@ -97,6 +180,7 @@ const props = defineProps({
 
 const lotOptions = ref([])
 const sections = ref([])
+const clothAccData = ref([])
 const selected_ipd = ref('')
 const selected_lot = ref('')
 const saving = ref(false)
@@ -107,8 +191,8 @@ const sample_doc = ref({})
 let lotCtrl = null
 
 const getSelectedLot = () => {
-    const value = lotCtrl ? lotCtrl.get_value() : []
-    return Array.isArray(value) ? value[0] || null : value || null
+    const value = lotCtrl ? lotCtrl.get_value() : null
+    return value || null
 }
 
 const helperText = computed(() => {
@@ -123,6 +207,7 @@ const helperText = computed(() => {
 
 const clearBomItems = () => {
     sections.value = []
+    clothAccData.value = []
     selected_ipd.value = ''
     selected_lot.value = getSelectedLot() || ''
 }
@@ -132,6 +217,26 @@ const formatNumber = (value) => {
         return '-'
     }
     return new Intl.NumberFormat().format(value)
+}
+
+const normalizeColumnName = (attr) => {
+    const value = (attr || '').includes('_') ? attr.split('_').slice(1).join('_') : attr
+    return String(value || '').trim().toLowerCase()
+}
+
+const columnClass = (attr) => {
+    const name = normalizeColumnName(attr)
+    if (!name) return ''
+    if (name === 's.no') return 'col-sno'
+    if (name === 'colour' || name === 'color') return 'col-colour'
+    if (name === 'part') return 'col-part'
+    if (name === 'name') return 'col-name'
+    if (name === 'accessory') return 'col-accessory'
+    if (name === 'dia') return 'col-dia'
+    if (name === 'weight') return 'col-weight'
+    if (name === 'qty') return 'col-qty'
+    if (name.includes('consumption')) return 'col-consumption'
+    return 'col-generic'
 }
 
 const loadBomItemsFromLot = () => {
@@ -150,6 +255,7 @@ const loadBomItemsFromLot = () => {
         },
         callback: (r) => {
             sections.value = r.message?.sections || []
+            clothAccData.value = r.message?.cloth_acc_data || []
             selected_ipd.value = r.message?.ipd || ''
             selected_lot.value = lot
         }
@@ -159,11 +265,6 @@ const loadBomItemsFromLot = () => {
 const syncLotSelection = () => {
     if (!lotCtrl) return
 
-    const value = lotCtrl.get_value() || []
-    if (Array.isArray(value) && value.length > 1) {
-        lotCtrl.set_value([value[value.length - 1]])
-    }
-
     selected_lot.value = getSelectedLot() || ''
 }
 
@@ -172,18 +273,14 @@ const initControls = () => {
         lotCtrl = frappe.ui.form.make_control({
             parent: $(lot_wrapper.value),
             df: {
-                fieldtype: 'MultiSelectList',
+                fieldtype: 'Link',
                 fieldname: 'lot',
                 label: '',
                 placeholder: 'Select Lot',
+                options: 'Lot',
                 change: () => {
                     syncLotSelection()
                     loadBomItemsFromLot()
-                },
-                get_data: function(txt) {
-                    return lotOptions.value
-                        .filter(row => !txt || row.lot.toLowerCase().includes(txt.toLowerCase()))
-                        .map(row => ({ value: row.lot, description: '' }))
                 },
             },
             doc: sample_doc.value,
@@ -209,7 +306,7 @@ const loadLots = () => {
 }
 
 const handleSave = () => {
-    if (!props.selected_supplier || !selected_lot.value || !sections.value.length) {
+    if (!props.selected_supplier || !selected_lot.value || (!sections.value.length && !clothAccData.value.length)) {
         frappe.msgprint('Please select a Lot and load Consumption rows first')
         return
     }
@@ -222,6 +319,7 @@ const handleSave = () => {
             supplier: props.selected_supplier,
             lot: selected_lot.value,
             sections: JSON.stringify(sections.value),
+            cloth_acc_data: JSON.stringify(clothAccData.value),
         },
         callback: (r) => {
             saving.value = false
@@ -242,13 +340,23 @@ const handleSave = () => {
     })
 }
 
+const handlePrint = () => {
+    if (!selected_ipd.value) {
+        frappe.msgprint('Please load the Consumption rows first')
+        return
+    }
+
+    const printUrl = `/printview?doctype=Item%20Production%20Detail&name=${encodeURIComponent(selected_ipd.value)}&format=Sewing%20Consumption&no_letterhead=1&lot=${encodeURIComponent(selected_lot.value || '')}`
+    window.open(printUrl, '_blank')
+}
+
 onMounted(() => {
     initControls()
 })
 
 watch(() => [props.selected_supplier, props.refresh_counter], () => {
     if (lotCtrl) {
-        lotCtrl.set_value([])
+        lotCtrl.set_value('')
     }
     lotOptions.value = []
     selected_lot.value = ''
@@ -261,11 +369,28 @@ watch(() => [props.selected_supplier, props.refresh_counter], () => {
 @import "../SewingPlan.css";
 
 .consumption-tab {
-    padding: 1rem 0;
+    padding: 0.5rem 0;
 }
 
 .filter-control {
     min-width: 250px;
+}
+
+.lot-filter-wrap {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+}
+
+.selected-lot-note {
+    font-size: 0.85rem;
+    color: #475569;
+    font-weight: 600;
+    padding-left: 0.25rem;
+}
+
+.selected-lot-note span {
+    color: #2563eb;
 }
 
 .filter-control :deep(.frappe-control) {
@@ -304,25 +429,25 @@ watch(() => [props.selected_supplier, props.refresh_counter], () => {
 
 .report-wrapper {
     background: white;
-    border-radius: 3rem;
-    padding: 1rem;
+    border-radius: 2rem;
+    padding: 0.75rem;
     border: 1px solid #f3f4f6;
     box-shadow: 0 40px 100px -20px rgba(0, 0, 0, 0.04);
 }
 
 .section-wrapper {
-    margin-bottom: 1.5rem;
+    margin-bottom: 0.6rem;
 }
 
 .group-header {
     display: flex;
     align-items: center;
-    gap: 1rem;
-    padding: 0.75rem 0.5rem 1rem;
+    gap: 0.8rem;
+    padding: 0.25rem 0.25rem 0.45rem;
 }
 
 .group-item {
-    font-size: 1.1rem;
+    font-size: 1rem;
     font-weight: 700;
     color: #111827;
 }
@@ -338,7 +463,42 @@ watch(() => [props.selected_supplier, props.refresh_counter], () => {
 
 .report-container {
     overflow: auto;
-    border-radius: 1.5rem;
+    border-radius: 1rem;
+}
+
+.filter-section {
+    margin-bottom: 0.6rem;
+}
+
+.filter-card {
+    padding-top: 0.75rem;
+    padding-bottom: 0.75rem;
+}
+
+.report-wrapper.section-wrapper:first-of-type {
+    margin-top: 0.15rem;
+}
+
+.report-wrapper.section-wrapper.cloth-accessory-wrapper {
+    margin-top: 0.25rem;
+}
+
+.cloth-accessory-wrapper .group-header {
+    padding-bottom: 0.25rem;
+}
+
+.cloth-header-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
+}
+
+.cloth-accessory-name {
+    margin: 0;
+    font-size: 0.78rem;
+    line-height: 1.1;
+    color: #475569;
+    font-weight: 600;
 }
 
 .report-table {
@@ -351,13 +511,14 @@ watch(() => [props.selected_supplier, props.refresh_counter], () => {
 
 .header-row th {
     background: white;
-    padding: 15px;
+    padding: 6px 8px;
     text-align: left;
-    font-size: 0.875rem;
+    font-size: 0.8rem;
     font-weight: 700;
     color: #475569;
     border-right: 1px solid #e2e8f0;
     border-bottom: 1px solid #e2e8f0;
+    line-height: 1.15;
 }
 
 .primary-header {
@@ -371,15 +532,17 @@ watch(() => [props.selected_supplier, props.refresh_counter], () => {
 }
 
 .sticky-col-sno {
-    min-width: 80px;
+    min-width: 62px;
 }
 
 .data-cell {
-    padding: 10px 12px;
-    font-size: 0.875rem;
+    padding: 3px 6px;
+    font-size: 0.8rem;
     font-weight: 500;
     color: #4B5563;
     white-space: nowrap;
+    line-height: 1.15;
+    vertical-align: middle;
 }
 
 .data-row:hover {
@@ -392,18 +555,20 @@ watch(() => [props.selected_supplier, props.refresh_counter], () => {
 }
 
 .quantity-cell {
-    min-width: 220px;
+    min-width: 120px;
 }
 
 .quantity-input {
     width: 100%;
-    min-height: 38px;
+    min-height: 26px;
     border: 1px solid #e5e7eb;
-    border-radius: 0.75rem;
+    border-radius: 0.45rem;
     background: #f8fafc;
-    padding: 0.55rem 0.8rem;
+    padding: 0.2rem 0.5rem;
     color: #111827;
-    font-weight: 600;
+    font-weight: 500;
+    font-size: 0.8rem;
+    line-height: 1.1;
     outline: none;
 }
 
@@ -413,7 +578,7 @@ watch(() => [props.selected_supplier, props.refresh_counter], () => {
 }
 
 .empty-state {
-    padding: 8rem 0;
+    padding: 6rem 0;
     text-align: center;
 }
 
