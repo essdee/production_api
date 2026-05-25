@@ -1544,7 +1544,7 @@ def get_consumption_mapping_data(lot, supplier=None):
 			"item_attributes": item_att,
 			"rows": row_x,
 			"attribute_in_item":v_in_map.get(b.attribute_mapping, []),
-			"item_bom_uom": b.uom or "Nos",
+			"item_bom_uom": b.uom,
 		})
 	cloth_acc_data = []
 	cloth_acc_type = update_if_string_instance(cloth_acc_type)
