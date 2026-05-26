@@ -1416,6 +1416,35 @@ def get_the_lot(supplier):
 
 	return {"lots": rows}
 
+
+@frappe.whitelist()
+@frappe.validate_and_sanitize_search_inputs
+def get_supplier_lots(doctype, txt, searchfield, start, page_len, filters):
+	supplier = None
+	supplier=update_if_string_instance(filters)
+	if isinstance(filters, dict):
+			supplier = filters.get("supplier")
+
+	if not supplier:
+		return []
+
+	txt = f"%{txt or ''}%"
+	return frappe.db.sql("""
+		SELECT DISTINCT lot
+		FROM `tabSewing Plan`
+		WHERE supplier = %(supplier)s
+		  AND lot IS NOT NULL
+		  AND lot != ''
+		  AND lot LIKE %(txt)s
+		ORDER BY lot
+		LIMIT %(start)s, %(page_len)s
+	""", {
+		"supplier": supplier,
+		"txt": txt,
+		"start": start or 0,
+		"page_len": page_len or 20,
+	}, as_list=True)
+
 @frappe.whitelist()
 def get_consumption_mapping_data(lot, supplier=None):
 	attr_map = Ipd_setting_att()
@@ -1589,6 +1618,7 @@ def get_sewing_consumption_print_data(ipd, lot=None):
 	supplier = frappe.db.get_value("Sewing Plan", {"lot": lot}, "supplier")
 	data = get_consumption_mapping_data(lot, supplier=supplier)
 	data["lot"] = lot
+	print(data)
 	return data
 
 @frappe.whitelist()

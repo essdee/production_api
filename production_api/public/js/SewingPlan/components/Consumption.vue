@@ -278,6 +278,12 @@ const initControls = () => {
                 label: '',
                 placeholder: 'Select Lot',
                 options: 'Lot',
+                get_query: () => ({
+                    query: 'production_api.production_api.doctype.sewing_plan.sewing_plan.get_supplier_lots',
+                    filters: {
+                        supplier: props.selected_supplier
+                    }
+                }),
                 change: () => {
                     syncLotSelection()
                     loadBomItemsFromLot()
