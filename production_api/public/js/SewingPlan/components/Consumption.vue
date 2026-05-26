@@ -278,6 +278,12 @@ const initControls = () => {
                 label: '',
                 placeholder: 'Select Lot',
                 options: 'Lot',
+                get_query: () => ({
+                    query: 'production_api.production_api.doctype.sewing_plan.sewing_plan.get_supplier_lots',
+                    filters: {
+                        supplier: props.selected_supplier
+                    }
+                }),
                 change: () => {
                     syncLotSelection()
                     loadBomItemsFromLot()
@@ -346,7 +352,7 @@ const handlePrint = () => {
         return
     }
 
-    const printUrl = `/printview?doctype=Item%20Production%20Detail&name=${encodeURIComponent(selected_ipd.value)}&format=Sewing%20Consumption&no_letterhead=1&lot=${encodeURIComponent(selected_lot.value || '')}`
+    const printUrl = `/printview?doctype=Item%20Production%20Detail&name=${encodeURIComponent(selected_ipd.value)}&format=Sewing%20Consumption&no_letterhead=1&lot=${encodeURIComponent(selected_lot.value || '')}&trigger_print=1`
     window.open(printUrl, '_blank')
 }
 
