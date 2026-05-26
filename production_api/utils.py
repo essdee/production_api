@@ -817,7 +817,8 @@ def get_daily_production_summary_report(items=None, lots=None, location=None, fr
 			FROM `tabCutting LaySheet`
 			WHERE {where_clause}
 			AND bundle_generated_date IS NOT NULL
-			{extra_filters}
+			{extra_filters} 
+			AND status = 'Label Printed' 
 			ORDER BY bundle_generated_date DESC
 		""",
 		values,
