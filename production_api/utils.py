@@ -2,7 +2,7 @@ import frappe, json, sys
 from six import string_types
 from itertools import zip_longest
 from frappe.query_builder.builder import Order as OrderBy
-from frappe.utils import getdate, add_days, flt
+from frappe.utils import getdate, add_days, flt, sbool
 
 def validate_supplier_user(supplier1=None, supplier2=None):
 	"""Validate session user is mapped to at least one of the given suppliers.
@@ -555,16 +555,18 @@ def update_wo_checkpoint(datas):
 				wo_doc.save(ignore_permissions=True)			
 
 @frappe.whitelist()
-def get_daily_production_report(date, location, items=None, lots=None):
+def get_daily_production_report(date, location, items=None, lots=None, only_label_printed=False):
 	from production_api.essdee_production.doctype.lot.lot import fetch_order_item_details
 	from production_api.production_api.doctype.cutting_plan.cutting_plan import get_complete_incomplete_structure
 	from production_api.production_api.doctype.item.item import get_or_create_variant
 
 	report_date = getdate(date)
+	only_label_printed = sbool(only_label_printed)
 
 	# Step 1: Single query to get CLS stats grouped by parent (CP or CO)
 	filter_sql = ""
 	filter_values = {"date": report_date}
+	status_sql = " AND cls.status = 'Label Printed'" if only_label_printed else ""
 	if items or lots:
 		filter_parts = []
 		if items:
@@ -584,7 +586,7 @@ def get_daily_production_report(date, location, items=None, lots=None):
 			SUM(CASE WHEN cls.status = 'Label Printed' THEN 1 ELSE 0 END) as label_count,
 			SUM(CASE WHEN cls.posting_date = %(date)s THEN 1 ELSE 0 END) as created_count
 		FROM `tabCutting LaySheet` cls
-		WHERE cls.bundle_generated_date = %(date)s{filter_sql}
+		WHERE cls.bundle_generated_date = %(date)s{filter_sql}{status_sql}
 		GROUP BY cls.cutting_plan, cls.cutting_order
 	""", filter_values, as_dict=True)
 
@@ -828,7 +830,7 @@ def get_daily_production_summary_report(items=None, lots=None, location=None, fr
 	result = []
 	for row in dates:
 		d = row["bundle_generated_date"]
-		data = get_daily_production_report(str(d), location, items=items_list or None, lots=lots_list or None)
+		data = get_daily_production_report(str(d), location, items=items_list or None, lots=lots_list or None, only_label_printed=True)
 		if items_list or lots_list:
 			filtered = [
 				entry for entry in data["report_data"]
