@@ -1618,7 +1618,6 @@ def get_sewing_consumption_print_data(ipd, lot=None):
 	supplier = frappe.db.get_value("Sewing Plan", {"lot": lot}, "supplier")
 	data = get_consumption_mapping_data(lot, supplier=supplier)
 	data["lot"] = lot
-	print(data)
 	return data
 
 @frappe.whitelist()
