@@ -1420,22 +1420,23 @@ def get_the_lot(supplier):
 @frappe.whitelist()
 @frappe.validate_and_sanitize_search_inputs
 def get_supplier_lots(doctype, txt, searchfield, start, page_len, filters):
-	supplier = None
-	supplier=update_if_string_instance(filters)
-	if isinstance(filters, dict):
-			supplier = filters.get("supplier")
+	filters = update_if_string_instance(filters)
+	supplier = filters.get("supplier") if isinstance(filters, dict) else None
 
 	if not supplier:
 		return []
 
 	txt = f"%{txt or ''}%"
 	return frappe.db.sql("""
-		SELECT DISTINCT lot
+		SELECT DISTINCT lot, item
 		FROM `tabSewing Plan`
 		WHERE supplier = %(supplier)s
 		  AND lot IS NOT NULL
 		  AND lot != ''
-		  AND lot LIKE %(txt)s
+		  AND (
+			lot LIKE %(txt)s
+			OR item LIKE %(txt)s
+		  )
 		ORDER BY lot
 		LIMIT %(start)s, %(page_len)s
 	""", {
