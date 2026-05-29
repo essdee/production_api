@@ -26,7 +26,7 @@
                 <div v-for="sewing_plan in Object.keys(items[lot])" :key="sewing_plan" class="plan-card">
                     <div class="plan-header">
                         <div class="plan-info">
-                            <h4 class="plan-title">{{ sewing_plan }} - {{ items[lot][sewing_plan]['details']['item'] }}
+                            <h4 class="plan-title">{{ items[lot][sewing_plan]['details']['work_order'] }} - {{ items[lot][sewing_plan]['details']['item'] }}
                             </h4>
                         </div>
                         <div class="action-buttons">
