@@ -425,7 +425,7 @@ def get_data_entry_data(supplier, lot=None):
 		filters["lot"] = lot
 
 	# Step 1: Bulk-fetch all sewing plans with needed fields
-	sp_list = frappe.get_all("Sewing Plan", filters=filters, fields=["name", "lot", "item", "supplier"], limit_page_length=0)
+	sp_list = frappe.get_all("Sewing Plan", filters=filters, fields=["name", "lot", "item", "supplier", "work_order"], limit_page_length=0)
 	if not sp_list:
 		return []
 
@@ -514,6 +514,7 @@ def get_data_entry_data(supplier, lot=None):
 				"item": sp.item,
 				"lot": sp.lot,
 				"supplier": sp.supplier,
+				"work_order": sp.work_order,
 				"primary_values": ipd_primary_map[ipd],
 				"is_set_item": is_set_item,
 				"pack_attr": pack_attr,
