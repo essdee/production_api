@@ -2348,6 +2348,25 @@ def get_ocr_style(val):
 	return "background:#ebc96e;"
 
 @frappe.whitelist()
+def get_unconfigured_lots(doctype, txt, searchfield, start, page_len, filters):
+	# A Lot is reusable for an Alternative Plan only if it is fully unconfigured:
+	# no IPD, no production order, no item, no order rows, and not Closed.
+	like = f"%{txt or ''}%"
+	return frappe.db.sql("""
+		SELECT l.name
+		FROM `tabLot` l
+		WHERE (l.production_detail IS NULL OR l.production_detail = '')
+		  AND (l.production_order IS NULL OR l.production_order = '')
+		  AND (l.item IS NULL OR l.item = '')
+		  AND IFNULL(l.status, '') != 'Closed'
+		  AND (l.name LIKE %(txt)s OR l.lot_name LIKE %(txt)s)
+		  AND NOT EXISTS (SELECT 1 FROM `tabLot Order Detail` lod WHERE lod.parent = l.name)
+		  AND NOT EXISTS (SELECT 1 FROM `tabLot Order Item` loi WHERE loi.parent = l.name)
+		ORDER BY l.modified DESC
+		LIMIT %(start)s, %(page_len)s
+	""", {"txt": like, "start": int(start or 0), "page_len": int(page_len or 20)})
+
+@frappe.whitelist()
 def create_alternative_fp(doc_name, alternative_item, production_detail, lot_name, qty_details):
 	qty_details = update_if_string_instance(qty_details)
 	fp_doc = frappe.get_doc("Finishing Plan", doc_name)
