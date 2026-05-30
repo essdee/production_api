@@ -2348,6 +2348,7 @@ def get_ocr_style(val):
 	return "background:#ebc96e;"
 
 @frappe.whitelist()
+@frappe.validate_and_sanitize_search_inputs
 def get_unconfigured_lots(doctype, txt, searchfield, start, page_len, filters):
 	# A Lot is reusable for an Alternative Plan only if it is fully unconfigured:
 	# no IPD, no production order, no item, no order rows, and not Closed.
