@@ -218,11 +218,33 @@ frappe.ui.form.on("Finishing Plan", {
                             title: __("Select Alternative Item and IPD"),
                             fields: [
                                 {
+                                    label: __("Lot Source"),
+                                    fieldname: "lot_source",
+                                    fieldtype: "Select",
+                                    options: "New Lot\nExisting Lot",
+                                    default: "New Lot",
+                                    reqd: 1,
+                                },
+                                {
                                     label: "Lot Name",
                                     fieldname: "lot_name",
                                     fieldtype: "Data",
-                                    reqd: 1,
                                     default: frm.doc.lot,
+                                    depends_on: "eval:doc.lot_source=='New Lot'",
+                                    mandatory_depends_on: "eval:doc.lot_source=='New Lot'",
+                                },
+                                {
+                                    label: __("Existing Lot"),
+                                    fieldname: "existing_lot",
+                                    fieldtype: "Link",
+                                    options: "Lot",
+                                    depends_on: "eval:doc.lot_source=='Existing Lot'",
+                                    mandatory_depends_on: "eval:doc.lot_source=='Existing Lot'",
+                                    get_query: () => {
+                                        return {
+                                            query: "production_api.production_api.doctype.finishing_plan.finishing_plan.get_unconfigured_lots"
+                                        }
+                                    }
                                 },
                                 {
                                     label: __("Alternative Item"),
@@ -272,6 +294,8 @@ frappe.ui.form.on("Finishing Plan", {
                                         "alternative_item": values.alternative_item,
                                         "production_detail": values.production_detail,
                                         "lot_name": values.lot_name,
+                                        "lot_source": values.lot_source === "Existing Lot" ? "existing" : "new",
+                                        "existing_lot": values.existing_lot,
                                         "qty_details": qty_details
                                     },
                                     freeze: true,
