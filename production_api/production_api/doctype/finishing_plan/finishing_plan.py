@@ -427,14 +427,14 @@ class FinishingPlan(Document):
 			qty = item.accepted_qty + item.reworked + item.lot_transferred + item.ironing_excess
 			finishing_qty["data"][colour]["colour_total"]["accepted"] += qty
 			finishing_qty["data"][colour]["colour_total"]["dc_qty"] += item.dc_qty
-			finishing_qty["data"][colour]["colour_total"]["balance"] += qty - item.dc_qty - item.return_qty - item.pack_return_qty
-			finishing_qty["data"][colour]["colour_total"]["balance_dc"] += qty - item.dc_qty - item.return_qty - item.pack_return_qty
+			finishing_qty["data"][colour]["colour_total"]["balance"] += qty - item.dc_qty - item.return_qty - item.pack_return_qty - item.transferred_qty
+			finishing_qty["data"][colour]["colour_total"]["balance_dc"] += qty - item.dc_qty - item.return_qty - item.pack_return_qty - item.transferred_qty
 			finishing_qty["data"][colour]["colour_total"]['return_qty'] += item.return_qty
 			finishing_qty["data"][colour]["colour_total"]['pack_return'] += item.pack_return_qty
 			finishing_qty["data"][colour]["values"][size]["accepted"] += qty
 			finishing_qty["data"][colour]["values"][size]["dc_qty"] += item.dc_qty
-			finishing_qty["data"][colour]["values"][size]["balance"] += qty - item.dc_qty - item.return_qty - item.pack_return_qty
-			finishing_qty["data"][colour]["values"][size]["balance_dc"] += qty - item.dc_qty - item.return_qty - item.pack_return_qty
+			finishing_qty["data"][colour]["values"][size]["balance"] += qty - item.dc_qty - item.return_qty - item.pack_return_qty - item.transferred_qty
+			finishing_qty["data"][colour]["values"][size]["balance_dc"] += qty - item.dc_qty - item.return_qty - item.pack_return_qty - item.transferred_qty
 			finishing_qty["data"][colour]["values"][size]['return_qty'] += item.return_qty
 			finishing_qty["data"][colour]["values"][size]['pack_return'] += item.pack_return_qty
 
