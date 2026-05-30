@@ -2387,9 +2387,36 @@ def validate_lot_is_unconfigured(lot_doc):
 			f"for an Alternative Plan ({', '.join(problems)})."
 		)
 
+def resolve_alternative_lot(lot_source, lot_name, existing_lot, production_detail, alternative_item, fp_doc):
+	from production_api.essdee_production.doctype.lot.lot import get_isfinal_uom
+	if lot_source == "existing":
+		if not existing_lot:
+			frappe.throw("Please select an existing Lot.")
+		lot_doc = frappe.get_doc("Lot", existing_lot)
+		validate_lot_is_unconfigured(lot_doc)
+	else:
+		lot_doc = frappe.new_doc("Lot")
+		lot_doc.lot_name = lot_name
+	lot_doc.production_detail = production_detail
+	lot_doc.item = alternative_item
+	response = get_isfinal_uom(production_detail, get_pack_stage=True)
+	lot_doc.uom = response['uom']
+	lot_doc.pack_in_stage = response['pack_in_stage']
+	lot_doc.packing_uom = response['packing_uom']
+	lot_doc.pack_out_stage = response['pack_out_stage']
+	lot_doc.dependent_attribute_mapping = response['dependent_attr_mapping']
+	lot_doc.tech_pack_version = response['tech_pack_version']
+	lot_doc.pattern_version = response['pattern_version']
+	lot_doc.packing_combo = response['packing_combo']
+	lot_doc.is_transferred = 1
+	lot_doc.transferred_lot = fp_doc.lot
+	lot_doc.save()
+	return lot_doc
+
 @frappe.whitelist()
-def create_alternative_fp(doc_name, alternative_item, production_detail, lot_name, qty_details):
+def create_alternative_fp(doc_name, alternative_item, production_detail, lot_name, qty_details, lot_source="new", existing_lot=None):
 	qty_details = update_if_string_instance(qty_details)
+	lot_source = "existing" if str(lot_source).strip().lower() in ("existing", "existing lot") else "new"
 	fp_doc = frappe.get_doc("Finishing Plan", doc_name)
 	converting_colours = []
 	converting_sizes = []
@@ -2407,24 +2434,10 @@ def create_alternative_fp(doc_name, alternative_item, production_detail, lot_nam
 	check_colours_and_sizes(production_detail, converting_colours, converting_sizes)
 	supplier, process = frappe.get_value("Work Order", fp_doc.work_order, ["supplier", "process_name"])
 	check_process_cost(process, alternative_item, supplier)
-	## LOT CREATION
-	lot_doc = frappe.new_doc("Lot")
-	lot_doc.lot_name = lot_name
-	lot_doc.production_detail = production_detail
-	lot_doc.item = alternative_item
-	from production_api.essdee_production.doctype.lot.lot import get_isfinal_uom
-	response = get_isfinal_uom(production_detail, get_pack_stage=True)
-	lot_doc.uom = response['uom']
-	lot_doc.pack_in_stage = response['pack_in_stage']
-	lot_doc.packing_uom = response['packing_uom']
-	lot_doc.pack_out_stage = response['pack_out_stage']
-	lot_doc.dependent_attribute_mapping = response['dependent_attr_mapping']
-	lot_doc.tech_pack_version = response['tech_pack_version']
-	lot_doc.pattern_version = response['pattern_version']
-	lot_doc.packing_combo = response['packing_combo']
-	lot_doc.is_transferred = 1
-	lot_doc.transferred_lot = fp_doc.lot
-	lot_doc.save()
+	## LOT CREATION / REUSE
+	lot_doc = resolve_alternative_lot(
+		lot_source, lot_name, existing_lot, production_detail, alternative_item, fp_doc
+	)
 	ipd_fields = ["packing_combo", "pack_out_stage", "primary_item_attribute", "dependent_attribute", 'packing_attribute', 'pack_in_stage']
 	pcs_per_box, pack_stage, primary_attr, dependent_attr, packing_attr, pack_in_stage = frappe.get_value("Item Production Detail", production_detail, ipd_fields)
 
