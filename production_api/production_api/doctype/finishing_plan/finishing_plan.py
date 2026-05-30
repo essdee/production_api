@@ -2366,6 +2366,27 @@ def get_unconfigured_lots(doctype, txt, searchfield, start, page_len, filters):
 		LIMIT %(start)s, %(page_len)s
 	""", {"txt": like, "start": int(start or 0), "page_len": int(page_len or 20)})
 
+def validate_lot_is_unconfigured(lot_doc):
+	# Server-side guard: a reused Lot must be fully blank at submit time.
+	problems = []
+	if lot_doc.production_detail:
+		problems.append("Item Production Detail")
+	if lot_doc.production_order:
+		problems.append("Production Order")
+	if lot_doc.item:
+		problems.append("Item")
+	if lot_doc.get("lot_order_details"):
+		problems.append("Lot Order Details")
+	if lot_doc.get("items"):
+		problems.append("Items")
+	if lot_doc.status == "Closed":
+		problems.append("Status is Closed")
+	if problems:
+		frappe.throw(
+			f"Lot {lot_doc.name} is already configured and cannot be reused "
+			f"for an Alternative Plan ({', '.join(problems)})."
+		)
+
 @frappe.whitelist()
 def create_alternative_fp(doc_name, alternative_item, production_detail, lot_name, qty_details):
 	qty_details = update_if_string_instance(qty_details)
