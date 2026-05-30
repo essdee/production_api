@@ -33,6 +33,7 @@
   "merch_user_role",
   "vendor_bill_tracking_section",
   "enable_vendor_bill_no_unique_restriction",
+  "enable_grn_document_no_unique_restriction",
   "fiscal_year_start_date",
   "fiscal_year_end_date",
   "work_order_tab",
@@ -256,16 +257,22 @@
    "label": "Enable Vendor Bill No Unique Restriction"
   },
   {
+   "default": "0",
+   "fieldname": "enable_grn_document_no_unique_restriction",
+   "fieldtype": "Check",
+   "label": "Enable GRN Document No Unique Restriction"
+  },
+  {
    "fieldname": "fiscal_year_start_date",
    "fieldtype": "Date",
    "label": "Fiscal Year Start Date",
-   "mandatory_depends_on": "eval: doc.enable_vendor_bill_no_unique_restriction"
+   "mandatory_depends_on": "eval: doc.enable_vendor_bill_no_unique_restriction || doc.enable_grn_document_no_unique_restriction"
   },
   {
    "fieldname": "fiscal_year_end_date",
    "fieldtype": "Date",
    "label": "Fiscal Year End Date",
-   "mandatory_depends_on": "eval: doc.enable_vendor_bill_no_unique_restriction"
+   "mandatory_depends_on": "eval: doc.enable_vendor_bill_no_unique_restriction || doc.enable_grn_document_no_unique_restriction"
   },
   {
    "fieldname": "senior_merch_role",

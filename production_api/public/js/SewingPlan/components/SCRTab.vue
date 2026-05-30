@@ -20,7 +20,10 @@
         <div class="response-container">
             <div v-if="displayedData && Object.keys(displayedData).length > 0" class="response-data" ref="scrSectionRef" id="scr-section">
                 <div class="scr-header">
-                    <h3 class="plan-title">{{ item_name }}</h3>
+                    <div class="title-group">
+                        <h3 class="plan-title">{{ item_name }}</h3>
+                        <div v-if="lineNumbers" class="line-numbers">{{ lineNumbers }}</div>
+                    </div>
                     <span class="scr-center-text">SCR</span>
                     <button class="copy-btn" @click="copyToClipboard" :disabled="copying" title="Copy to Clipboard">
                         <template v-if="copying">
@@ -142,6 +145,20 @@ const displayedData = computed(() => {
     }
     
     return response.value.data
+})
+
+const lineNumbers = computed(() => {
+    if (!displayedData.value) return ''
+    const lines = new Set()
+    for (const colour in displayedData.value) {
+        const ls = displayedData.value[colour]?.lines || []
+        ls.forEach((l) => lines.add(l))
+    }
+    return Array.from(lines).sort((a, b) => {
+        const na = parseInt((String(a).match(/\d+/) || [Number.MAX_SAFE_INTEGER])[0], 10)
+        const nb = parseInt((String(b).match(/\d+/) || [Number.MAX_SAFE_INTEGER])[0], 10)
+        return na - nb || String(a).localeCompare(String(b))
+    }).join(', ')
 })
 
 const isNegativeBalance = (header, value) => {
@@ -318,6 +335,18 @@ watch(() => [props.selected_supplier, selected_lot.value, props.refresh_counter]
     font-weight: 600;
     color: #334155;
     margin: 0;
+}
+
+.title-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.line-numbers {
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: #64748b;
 }
 
 .scr-header {

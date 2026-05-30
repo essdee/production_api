@@ -1,6 +1,7 @@
 # Copyright (c) 2026, Essdee and contributors
 # For license information, please see license.txt
 
+import re
 import frappe
 from frappe.model.document import Document
 from production_api.production_api.doctype.item.item import get_or_create_variant
@@ -671,6 +672,10 @@ def submit_data_entry_log(payload):
 	new_doc.save(ignore_permissions=True)
 	return new_doc.name
 
+def _sewing_line_sort_key(name):
+	m = re.search(r"\d+", name or "")
+	return (int(m.group()) if m else 10**9, name or "")
+
 @frappe.whitelist()
 def get_scr_data(supplier, lot):
 	sp_list = frappe.get_all("Sewing Plan", filters={"lot": lot, "supplier": supplier}, pluck="name")
@@ -695,6 +700,7 @@ def get_scr_data(supplier, lot):
 	is_set_item, pack_attr, primary_attr, set_attr, item_name = frappe.get_value("Item Production Detail", ipd, ipd_fields)
 	primary_values = get_ipd_primary_values(ipd)
 	colours = []
+	lines_by_colour = {}
 
 	for sp_name in sp_list:
 		sp_doc = frappe.get_doc("Sewing Plan", sp_name)
@@ -719,9 +725,13 @@ def get_scr_data(supplier, lot):
 
 	for sp_entry in sp_entry_list:
 		sp_doc = frappe.get_doc("Sewing Plan Entry Detail", sp_entry)
+		work_station = sp_doc.work_station
+		is_sewing_line = bool(work_station) and bool(re.match(r"sewing line\s+\d", str(work_station).strip().lower()))
 		for row in sp_doc.sewing_plan_details:
 			size, part, colour, v_colour = get_colour_size_data(row.set_combination, row.item_variant, is_set_item, pack_attr, set_attr, primary_attr)
-			
+			if is_sewing_line:
+				lines_by_colour.setdefault(colour, set()).add(work_station)
+
 			input_key = sp_doc.input_type
 			if input_key == type_wise_diff_input:
 				if received_type != sp_doc.received_type:
@@ -799,6 +809,9 @@ def get_scr_data(supplier, lot):
 				total += scr_data[colour]["values"][size].get(header, 0)
 			scr_data[colour]["type_wise_total"][header] = total
 	
+	for colour in scr_data:
+		scr_data[colour]["lines"] = sorted(lines_by_colour.get(colour, set()), key=_sewing_line_sort_key)
+
 	return {
 		"status": "success",
 		"primary_values": primary_values,

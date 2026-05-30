@@ -86,6 +86,7 @@ class GoodsReceivedNote(Document):
             frappe.throw("Enter Vehicle No")
         if not self.supplier_document_no:
             frappe.throw("Enter Supplier Document No")
+        self.check_for_unique_supplier_document_no()
 
         if self.against == "Work Order" and self.additional_grn or self.allow_non_bundle:
             role = frappe.db.get_single_value(
@@ -187,6 +188,39 @@ class GoodsReceivedNote(Document):
             self.validate_deliverables()
 
         self.set('approved_by', frappe.get_user().doc.name)
+
+    def check_for_unique_supplier_document_no(self):
+        flag = frappe.db.get_single_value(
+            "MRP Settings", 'enable_grn_document_no_unique_restriction')
+        if not flag:
+            return
+        # "NA"/"N/A" are placeholder values, not real document numbers — skip uniqueness for them.
+        if cstr(self.supplier_document_no).strip().upper() in ("NA", "N/A"):
+            return
+        start_date = frappe.db.get_single_value(
+            "MRP Settings", 'fiscal_year_start_date')
+        end_date = frappe.db.get_single_value(
+            "MRP Settings", 'fiscal_year_end_date')
+        if not start_date or not end_date:
+            frappe.throw(
+                "Please set the Fiscal Year Start and End Date in MRP Settings")
+        existing_grns = frappe.get_all("Goods Received Note", filters=[
+            ['supplier_document_date', 'between', [start_date, end_date]],
+            ['supplier', '=', self.supplier],
+            ['supplier_document_no', '=', self.supplier_document_no],
+            ['docstatus', '=', 1],
+            ['name', '!=', self.name],
+        ])
+        if existing_grns:
+            doc_no = frappe.utils.escape_html(self.supplier_document_no)
+            frappe.throw(
+                f"Supplier Document No <b>{doc_no}</b> is already available for this Supplier in the current fiscal year:<br>" +
+                "<br>".join([
+                    f"<a href='/app/goods-received-note/{i['name']}' target='_blank'>{i['name']}</a>"
+                    for i in existing_grns
+                ]),
+                title="Duplicate Supplier Document No"
+            )
 
     def update_pack_variant_items(self):
         from production_api.production_api.doctype.item.item import get_or_create_variant
