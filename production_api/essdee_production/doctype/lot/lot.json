@@ -436,7 +436,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-02-07 14:10:55.203380",
+ "modified": "2026-06-01 11:44:43.051261",
  "modified_by": "Administrator",
  "module": "Essdee Production",
  "name": "Lot",
@@ -454,6 +454,14 @@
    "role": "System Manager",
    "share": 1,
    "write": 1
+  },
+  {
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "AI Bot",
+   "select": 1
   },
   {
    "create": 1,

@@ -313,6 +313,61 @@ frappe.ui.form.on("Finishing Plan", {
                 }
             }
         })
+        if (!frm.doc.__islocal && frm.doc.lot) {
+            frappe.call({
+                method: "production_api.production_api.doctype.finishing_plan.finishing_plan.get_fp_alternate_lots",
+                args: { fp_lot: frm.doc.lot },
+                callback: function (r) {
+                    let alt_lots = r.message || [];
+                    if (alt_lots.length === 0) { return; }   // no alternate lots -> no button
+                    frm.add_custom_button("Update Quantity", () => {
+                        let d = new frappe.ui.Dialog({
+                            title: __("Update Alternate Lot Quantity"),
+                            fields: [
+                                {
+                                    label: __("Target Lot"),
+                                    fieldname: "target_lot",
+                                    fieldtype: "Select",
+                                    options: alt_lots.join("\n"),
+                                    reqd: 1,
+                                },
+                                {
+                                    fieldtype: "HTML",
+                                    fieldname: "item_qty_html",
+                                },
+                            ],
+                            size: "extra-large",
+                            primary_action_label: __("Update"),
+                            primary_action(values) {
+                                let qty_details = frm.update_qty_grid.get_data();
+                                frappe.call({
+                                    method: "production_api.production_api.doctype.finishing_plan.finishing_plan.update_alternative_lot_quantity",
+                                    args: {
+                                        doc_name: frm.doc.name,
+                                        target_lot: values.target_lot,
+                                        qty_details: qty_details,
+                                    },
+                                    freeze: true,
+                                    freeze_message: "Updating Alternate Lot Quantity",
+                                    callback: function (res) {
+                                        d.hide();
+                                        if (res.message) {
+                                            frappe.set_route("Form", "Work Order", res.message);
+                                        }
+                                    },
+                                });
+                            },
+                        });
+                        // Same conversion grid as Create Alternative Plan, seeded from this FP's balance.
+                        frm.update_qty_grid = new frappe.production.ui.AlternativeItem(
+                            d.fields_dict["item_qty_html"].$wrapper,
+                            frm.doc.__onload.finishing_qty_data
+                        );
+                        d.show();
+                    });
+                },
+            });
+        }
     },
     fetch_incomplete_items(frm) {
         frappe.call({

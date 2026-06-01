@@ -2348,6 +2348,17 @@ def get_ocr_style(val):
 	return "background:#ebc96e;"
 
 @frappe.whitelist()
+def get_fp_alternate_lots(fp_lot):
+	# Alternate lots are lots created against this FP's lot via Create Alternative Plan.
+	# They are flagged is_transferred=1 with transferred_lot pointing back to the source lot.
+	return frappe.get_all(
+		"Lot",
+		filters={"transferred_lot": fp_lot, "is_transferred": 1},
+		pluck="name",
+		order_by="creation desc",
+	)
+
+@frappe.whitelist()
 @frappe.validate_and_sanitize_search_inputs
 def get_unconfigured_lots(doctype, txt, searchfield, start, page_len, filters):
 	# A Lot is reusable for an Alternative Plan only if it is fully unconfigured:
@@ -2514,6 +2525,449 @@ def create_alternative_fp(doc_name, alternative_item, production_detail, lot_nam
 	new_wo_name = get_deliverable_receivable(items, wo_doc.name, is_alternate=True)
 	frappe.db.set_value("Lot", fp_doc.lot, "has_transferred", 1)
 	return new_wo_name
+
+def _collect_conversions(qty_details):
+	# Flatten the AlternativeItem grid into a simple [{colour, size, qty}] list (qty > 0 only).
+	conversions = []
+	data = qty_details["data"]["data"]
+	for colour in data:
+		if not data[colour].get("check_value"):
+			continue
+		for size in data[colour]["values"]:
+			qty = data[colour]["values"][size].get("conversion_qty") or 0
+			if qty > 0:
+				conversions.append({"colour": colour, "size": size, "qty": qty})
+	return conversions
+
+
+def _topup_alternate_lot(lot_doc, conversions):
+	# Add the moved quantity to the alternate lot, in place. Two child tables:
+	#   1) Lot Order Detail  -> per (colour, size) quantity
+	#   2) Lot Order Item    -> per size box quantity = round(cumulative_size_total / pcs_per_box)
+	ipd_fields = ["packing_combo", "primary_item_attribute", "dependent_attribute",
+	              "packing_attribute", "pack_in_stage"]
+	pcs_per_box, primary_attr, dependent_attr, packing_attr, pack_in_stage = frappe.get_value(
+		"Item Production Detail", lot_doc.production_detail, ipd_fields)
+
+	# Map existing Lot Order Detail rows by item_variant, and remember each colour's row_index.
+	rows_by_variant = {row.item_variant: row for row in lot_doc.lot_order_details}
+	row_index_by_colour = {}
+	max_row_index = -1
+	for row in lot_doc.lot_order_details:
+		comb = update_if_string_instance(row.set_combination)
+		row_index_by_colour.setdefault(comb.get("major_colour"), row.row_index)
+		max_row_index = max(max_row_index, row.row_index or 0)
+
+	for conv in conversions:
+		colour, size, qty = conv["colour"], conv["size"], conv["qty"]
+		variant = get_or_create_variant(lot_doc.item, {
+			primary_attr: size,
+			dependent_attr: pack_in_stage,
+			packing_attr: colour,
+		})
+		existing = rows_by_variant.get(variant)
+		if existing:
+			# Same colour+size already on the lot -> just add the quantity.
+			existing.quantity += qty
+			existing.cut_qty = int(existing.quantity)
+		else:
+			# New colour gets a fresh row_index; a new size of an existing colour reuses that colour's.
+			if colour in row_index_by_colour:
+				row_index = row_index_by_colour[colour]
+			else:
+				max_row_index += 1
+				row_index = max_row_index
+				row_index_by_colour[colour] = row_index
+			new_row = lot_doc.append("lot_order_details", {
+				"item_variant": variant,
+				"quantity": qty,
+				"cut_qty": int(qty),
+				"pack_qty": 0,
+				"stich_qty": 0,
+				"table_index": 0,
+				"row_index": row_index,
+				"set_combination": frappe.json.dumps({"major_colour": colour}),
+			})
+			rows_by_variant[variant] = new_row
+
+	_rebuild_lot_order_items(lot_doc, pcs_per_box, primary_attr)
+	lot_doc.save(ignore_permissions=True)
+
+
+def _rebuild_lot_order_items(lot_doc, pcs_per_box, primary_attr):
+	# Recompute the per-size box quantity from the NEW cumulative size totals.
+	# (Always round the cumulative total, never sum rounded deltas, to avoid drift.)
+	size_total = {}
+	for row in lot_doc.lot_order_details:
+		size = get_variant_attr_details(row.item_variant)[primary_attr]
+		size_total[size] = size_total.get(size, 0) + row.quantity
+
+	items_by_size = {}
+	for item_row in lot_doc.items:
+		size = get_variant_attr_details(item_row.item_variant)[primary_attr]
+		items_by_size[size] = item_row
+
+	next_row_index = max([r.row_index or 0 for r in lot_doc.items], default=-1) + 1
+	for size, total in size_total.items():
+		box_qty = round(total / pcs_per_box)
+		if size in items_by_size:
+			items_by_size[size].qty = box_qty
+		else:
+			variant = get_or_create_variant(lot_doc.item, {primary_attr: size})
+			lot_doc.append("items", {
+				"item_variant": variant, "qty": box_qty, "ratio": 1, "mrp": 0,
+				"table_index": 0, "row_index": next_row_index,
+			})
+			next_row_index += 1
+
+
+def _get_packing_wo(target_lot):
+	# The Create-Alternative-Plan WO for this lot. It carries includes_packing (from the Process)
+	# and may be draft (just created) or submitted (user already submitted it).
+	wos = frappe.get_all(
+		"Work Order",
+		filters={"lot": target_lot, "includes_packing": 1, "docstatus": ["in", [0, 1]]},
+		pluck="name",
+		order_by="docstatus desc, creation desc",
+	)
+	if not wos:
+		frappe.throw(f"No packing Work Order found for lot {target_lot}.")
+	return wos[0]
+
+
+def _recompute_wo_rows(wo_doc):
+	# Recompute deliverables/receivables/calculated-items from the lot's NEW cumulative
+	# quantities, exactly the way Create Alternative Plan builds them — but WITHOUT saving
+	# (deliverable=True / receivable=True return the lists only).
+	from production_api.production_api.doctype.work_order.work_order import (
+		get_lot_items, get_deliverable_receivable, get_items,
+	)
+	items = get_lot_items(wo_doc.lot, wo_doc.name, wo_doc.process_name, wo_doc.includes_packing)
+	for item in items:
+		for row in item["items"]:
+			row["work_order_qty"] = {size: row["values"][size]["qty"] for size in row["values"]}
+		# Drop entire all-zero colour groups so the recomputed row-set matches how the
+		# submitted WO was originally built (is_alternate=True / deliverable=False, which
+		# drops all-zero groups). Without this, get_items(deliverable=True) keeps those
+		# zero groups and the merge appends spurious zero-qty rows. A genuinely new colour
+		# (non-zero) is kept and appended as intended.
+		item["items"] = [
+			row for row in item["items"]
+			if any((qty or 0) != 0 for qty in row["work_order_qty"].values())
+		]
+	deliverables = get_deliverable_receivable(items, wo_doc.name, deliverable=True)
+	receivables = get_deliverable_receivable(items, wo_doc.name, receivable=True)
+	calc_items = get_items(items, deliverable=True)
+	return deliverables, receivables, calc_items
+
+
+def _row_key(item_variant, set_combination):
+	# Stable match key shared by deliverables / receivables / calculated items.
+	# set_combination may arrive as a dict (recompute rows), a JSON string (stored
+	# child rows), or None/empty — update_if_string_instance normalises all of these to a dict.
+	comb = update_if_string_instance(set_combination)
+	return (item_variant, tuple(sorted(comb.items())))
+
+
+def _comb_json(set_combination):
+	# Normalise a set_combination to the JSON-string shape stored on child rows.
+	comb = update_if_string_instance(set_combination)
+	return frappe.json.dumps(comb) if comb else None
+
+
+def _merge_into_submitted_wo(wo_doc, deliverables, receivables, calc_items):
+	# Submitted WO: update qty on rows that already exist; insert rows for items that don't.
+	# Returns the per-(variant, set_combination) deliverable DELTA (new_qty - old_qty),
+	# which a later task uses for transferred_qty + stock.
+	deltas = []
+	existing_deliv = {_row_key(r.item_variant, r.set_combination): r for r in wo_doc.deliverables}
+	max_ti = max([int(r.table_index or 0) for r in wo_doc.deliverables], default=0)
+	max_ri = max([int(r.row_index or 0) for r in wo_doc.deliverables], default=0)
+	for new in deliverables:
+		key = _row_key(new["item_variant"], new.get("set_combination"))
+		old = existing_deliv.get(key)
+		old_qty = old.qty if old else 0
+		delta = new["qty"] - old_qty
+		if delta != 0:
+			deltas.append({
+				"item_variant": new["item_variant"],
+				"set_combination": new.get("set_combination"),
+				"qty": delta,
+			})
+		if old:
+			# deliverables has allow_on_submit: mutate the in-memory row so the single
+			# wo_doc.save() below persists it. (A frappe.db.set_value here would be clobbered
+			# by save() re-writing the child table from the stale in-memory qty.)
+			old.qty = new["qty"]
+			# pending_quantity tracks what is STILL to deliver (a DC decrements it). Only the
+			# newly-added delta becomes pending — resetting to new["qty"] would wipe the qty
+			# already delivered. delivered = old.qty - old.pending stays preserved this way.
+			old.pending_quantity = (old.pending_quantity or 0) + delta
+		else:
+			max_ti += 1
+			max_ri += 1
+			row = dict(new)
+			row["table_index"] = max_ti
+			row["row_index"] = str(max_ri)
+			wo_doc.append("deliverables", row)
+	wo_doc.save(ignore_permissions=True)   # deliverables parent has allow_on_submit
+
+	_merge_child_table(wo_doc, "Work Order Receivables", "receivables", receivables)
+	_merge_calculated_items(wo_doc, calc_items)
+
+	# total_quantity is the receivable (output/packed) total — NOT the deliverable sum,
+	# which includes BOM accessories in piece-UOM and would be meaningless.
+	new_total = sum(r["qty"] for r in receivables)
+	frappe.db.set_value("Work Order", wo_doc.name, "total_quantity", new_total)
+	return deltas
+
+
+def _merge_child_table(wo_doc, child_doctype, parentfield, new_rows):
+	# Generic merge for a child table whose PARENT lacks allow_on_submit (receivables):
+	# update existing rows in place (db_set), insert new rows directly via frappe.new_doc
+	# so we never re-validate/re-save the submitted parent.
+	existing = {_row_key(r.item_variant, r.set_combination): r for r in wo_doc.get(parentfield)}
+	max_ti = max([int(r.table_index or 0) for r in wo_doc.get(parentfield)], default=0)
+	max_ri = max([int(r.row_index or 0) for r in wo_doc.get(parentfield)], default=0)
+	for new in new_rows:
+		key = _row_key(new["item_variant"], new.get("set_combination"))
+		old = existing.get(key)
+		if old:
+			# Preserve already-received qty: bump pending by the added delta, NOT reset to the
+			# full new qty (which would wipe what GRN already received against this receivable).
+			new_pending = (old.pending_quantity or 0) + (new["qty"] or 0) - (old.qty or 0)
+			frappe.db.set_value(child_doctype, old.name,
+			                    {"qty": new["qty"], "pending_quantity": new_pending})
+		else:
+			max_ti += 1
+			max_ri += 1
+			child = frappe.new_doc(child_doctype)
+			child.update(new)
+			child.set_combination = _comb_json(new.get("set_combination"))
+			child.parent = wo_doc.name
+			child.parenttype = "Work Order"
+			child.parentfield = parentfield
+			child.table_index = max_ti
+			child.row_index = str(max_ri)
+			child.insert(ignore_permissions=True)
+
+
+def _merge_calculated_items(wo_doc, calc_items):
+	# Work Order Calculated Item parent lacks allow_on_submit, so existing rows are updated
+	# in place and new rows inserted directly via frappe.new_doc.
+	#
+	# ADAPTATION: in THIS codebase get_items(items, deliverable=True) returns a FLAT list of
+	# dicts (verified on WO-2627-00260), each carrying {item_variant, quantity, set_combination,
+	# table_index, row_index}. There is no nested item["items"] / row["values"] shape, so we
+	# iterate the flat list and read row["quantity"] directly. The child field is `quantity`
+	# (NOT qty) and its row_index is Int.
+	existing = {_row_key(r.item_variant, r.set_combination): r for r in wo_doc.work_order_calculated_items}
+	max_ti = max([int(r.table_index or 0) for r in wo_doc.work_order_calculated_items], default=0)
+	max_ri = max([int(r.row_index or 0) for r in wo_doc.work_order_calculated_items], default=0)
+	for row in calc_items:
+		variant = row["item_variant"]
+		comb = row.get("set_combination")
+		qty = row["quantity"]
+		key = _row_key(variant, comb)
+		old = existing.get(key)
+		if old:
+			frappe.db.set_value("Work Order Calculated Item", old.name, "quantity", qty)
+		else:
+			max_ti += 1
+			max_ri += 1
+			child = frappe.new_doc("Work Order Calculated Item")
+			child.item_variant = variant
+			child.quantity = qty
+			child.set_combination = _comb_json(comb)
+			child.parent = wo_doc.name
+			child.parenttype = "Work Order"
+			child.parentfield = "work_order_calculated_items"
+			child.table_index = max_ti
+			child.row_index = max_ri
+			child.insert(ignore_permissions=True)
+
+
+def _validate_alternate_lot(target_lot, source_lot):
+	is_transferred, transferred_lot = frappe.get_value(
+		"Lot", target_lot, ["is_transferred", "transferred_lot"])
+	if not is_transferred or transferred_lot != source_lot:
+		frappe.throw(f"Lot {target_lot} is not an alternate lot of {source_lot}.")
+
+
+def _rebuild_draft_wo(wo_doc):
+	# Draft WO: rebuild its tables from the lot's new totals, exactly like Create Alternative Plan.
+	from production_api.production_api.doctype.work_order.work_order import (
+		get_lot_items, get_deliverable_receivable,
+	)
+	items = get_lot_items(wo_doc.lot, wo_doc.name, wo_doc.process_name, wo_doc.includes_packing)
+	for item in items:
+		for row in item["items"]:
+			row["work_order_qty"] = {size: row["values"][size]["qty"] for size in row["values"]}
+	get_deliverable_receivable(items, wo_doc.name, is_alternate=True)
+
+
+def _apply_transfer_delta(source_fp, wo_doc, deltas):
+	# For the quantity just added: bump the SOURCE FP's transferred_qty and move stock
+	# (Issue from the source lot, Receipt into the alternate lot). Mirrors work_order.on_submit.
+	# Only MAIN-item deliverables transfer (accessories like boxes/cards do not).
+	if not deltas:
+		return
+	received_type = frappe.db.get_single_value("Stock Settings", "default_received_type")
+	fp_item = source_fp.item
+	fp_uom = frappe.get_value("Item", source_fp.item, "default_unit_of_measure")
+	self_uom = frappe.get_value("Item", wo_doc.item, "default_unit_of_measure")
+
+	fp_dict = get_finishing_plan_dict(source_fp)
+	reduce_items, update_items = [], []
+	for d in deltas:
+		if d["qty"] <= 0:
+			continue
+		# Only the main item is transferred from the source FP (skip accessories).
+		item = frappe.get_value("Item Variant", d["item_variant"], "item")
+		if item != wo_doc.item:
+			continue
+		attrs = get_variant_attr_details(d["item_variant"])
+		new_variant = get_or_create_variant(fp_item, attrs)   # remap onto the SOURCE FP's item
+		reduce_items.append({
+			"item": new_variant,
+			"warehouse": wo_doc.supplier,
+			"received_type": received_type,
+			"lot": source_fp.lot,
+			"item_name": fp_item,
+			"stock_uom": fp_uom,
+			"bal_qty": d["qty"],
+		})
+		update_items.append({
+			"item": d["item_variant"],
+			"warehouse": wo_doc.supplier,
+			"received_type": received_type,
+			"lot": wo_doc.lot,
+			"item_name": wo_doc.item,
+			"stock_uom": self_uom,
+			"bal_qty": d["qty"],
+		})
+		key = _row_key(new_variant, d.get("set_combination"))
+		if key in fp_dict:
+			fp_dict[key]["transferred_qty"] += d["qty"]      # cumulative: 10 -> 20
+
+	if not reduce_items:
+		return   # nothing main-item to transfer
+
+	from production_api.mrp_stock.doctype.stock_summary.stock_summary import create_bulk_stock_entry
+	create_bulk_stock_entry({"from_warehouse": wo_doc.supplier}, reduce_items, "Material Issue", submit=True)
+	create_bulk_stock_entry({"to_warehouse": wo_doc.supplier}, update_items, "Material Receipt", submit=True)
+
+	source_fp.set("finishing_plan_details", get_finishing_plan_list(fp_dict))
+	source_fp.save(ignore_permissions=True)
+
+
+# Columns on a Finishing Plan Detail row that create_finishing_detail recomputes from the
+# lot's Work Orders / GRNs. Everything else on the row (dc_qty, return_qty, pack_return_qty,
+# lot_transferred, ironing_excess, transferred_qty) is operational and must be PRESERVED.
+_FP_RECOMPUTE_COLS = [
+	"delivered_quantity", "inward_quantity", "received_type_json",
+	"cutting_qty", "accepted_qty", "rejected_qty", "reworked",
+]
+
+
+def _update_alternate_fp(wo_doc):
+	# The alternate lot's own Finishing Plan was created when its WO was submitted.
+	# Refresh ONLY the recompute-owned columns of finishing_plan_details from the WO,
+	# preserving operational columns; append new variant rows; add GRN scaffold rows for
+	# new sizes. The rework snapshot is intentionally left untouched.
+	from production_api.production_api.doctype.work_order.work_order import create_finishing_detail
+	from production_api.production_api.doctype.finishing_plan.finishing_plan import apply_auto_fp_status
+
+	fp_name = frappe.get_all(
+		"Finishing Plan",
+		filters={"work_order": wo_doc.name, "docstatus": ["<", 2]},
+		pluck="name",
+	)
+	if not fp_name:
+		return   # no FP yet (shouldn't happen for a submitted includes_packing WO)
+	fp_doc = frappe.get_doc("Finishing Plan", fp_name[0])
+
+	finishing_items, _rework_items, grn_items = create_finishing_detail(wo_doc.name, from_finishing=True)
+
+	# Merge finishing_plan_details: update recompute columns in place, preserve operational ones.
+	existing = {_row_key(r.item_variant, r.set_combination): r for r in fp_doc.finishing_plan_details}
+	for new in finishing_items:
+		key = _row_key(new["item_variant"], new["set_combination"])
+		old = existing.get(key)
+		if old:
+			for col in _FP_RECOMPUTE_COLS:
+				old.set(col, new.get(col))
+		else:
+			fp_doc.append("finishing_plan_details", new)   # new variant: operational cols default 0
+
+	# GRN details: keep existing rows, add scaffold rows only for new sizes/variants.
+	existing_grn = {r.item_variant for r in fp_doc.finishing_plan_grn_details}
+	for g in grn_items:
+		if g["item_variant"] not in existing_grn:
+			fp_doc.append("finishing_plan_grn_details", g)
+
+	apply_auto_fp_status(fp_doc)
+	fp_doc.save(ignore_permissions=True)
+
+
+def _handle_submitted_wo(source_fp, wo_doc):
+	# Submitted WO: recompute rows from the lot's new totals, merge the delta into the
+	# submitted WO, then apply the transfer-qty and stock movements for the delta.
+	deliverables, receivables, calc_items = _recompute_wo_rows(wo_doc)
+	deltas = _merge_into_submitted_wo(wo_doc, deliverables, receivables, calc_items)
+	_apply_transfer_delta(source_fp, wo_doc, deltas)
+	_update_alternate_fp(wo_doc)
+
+
+def _validate_conversion_balance(source_fp, conversions):
+	# Server-side guard: the quantity moved for each colour/size must not exceed the source
+	# Finishing Plan's available balance (the same balance the dialog grid is seeded from,
+	# which already nets out earlier transfers). Prevents moving the same pieces twice or
+	# over-issuing source-lot stock, even if the client sent a tampered/oversized quantity.
+	balance_data = source_fp.get_finishing_plans()["finishing_qty"]["data"]
+	for conv in conversions:
+		colour, size, qty = conv["colour"], conv["size"], conv["qty"]
+		available = 0
+		if colour in balance_data and size in balance_data[colour]["values"]:
+			available = balance_data[colour]["values"][size].get("balance", 0)
+		if qty > available:
+			frappe.throw(
+				f"Cannot move {qty} for {colour} / {size}: only {available} available "
+				f"in Finishing Plan {source_fp.name}."
+			)
+
+
+@frappe.whitelist()
+def update_alternative_lot_quantity(doc_name, target_lot, qty_details):
+	qty_details = update_if_string_instance(qty_details)
+	source_fp = frappe.get_doc("Finishing Plan", doc_name)
+
+	# 1. Validate the chosen lot really is an alternate lot of this FP's lot.
+	_validate_alternate_lot(target_lot, source_fp.lot)
+
+	# 2. Read the quantities the user wants to move.
+	conversions = _collect_conversions(qty_details)
+	if not conversions:
+		frappe.throw("Enter a quantity to move.")
+
+	# 2b. Re-validate server-side: never move more than the source FP's available balance.
+	_validate_conversion_balance(source_fp, conversions)
+
+	# 3. Add that quantity to the alternate lot (cumulative).
+	lot_doc = frappe.get_doc("Lot", target_lot)
+	_topup_alternate_lot(lot_doc, conversions)
+
+	# 4. Find the alternate lot's packing Work Order and branch on its state.
+	wo_doc = frappe.get_doc("Work Order", _get_packing_wo(target_lot))
+	if wo_doc.docstatus == 0:
+		# Draft: just rebuild the WO. Transfer-qty / stock / FP happen when the user submits it.
+		_rebuild_draft_wo(wo_doc)
+	else:
+		# Submitted: merge + delta side effects (added in a later task).
+		_handle_submitted_wo(source_fp, wo_doc)
+
+	return wo_doc.name
+
 
 def save_item_details(item_details, alternative_item, pcs_per_box, pack_stage, primary_attr, dependent_attr):
 	item_details = update_if_string_instance(item_details)
