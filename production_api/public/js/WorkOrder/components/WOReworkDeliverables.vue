@@ -21,9 +21,9 @@
                                     {{ j.attributes[attr] }} 
                                     <span v-if="attr == i.pack_attr && j.attributes[attr] != j.item_keys['major_colour']">({{ j.item_keys['major_colour'] }})</span>
                                 </td>
-                                <td v-for="attr in j.values" :key="attr">
-                                    {{ attr.qty}} <span v-if="j.default_uom">{{ " " + j.default_uom }}</span>
-                                    <div style="display:block;">Pending Qty:{{attr.pending_quantity}}</div>
+                                <td v-for="attr in i.primary_attribute_values" :key="attr">
+                                    {{ j.values[attr] ? j.values[attr].qty : 0 }} <span v-if="j.default_uom">{{ " " + j.default_uom }}</span>
+                                    <div style="display:block;">Pending Qty:{{ j.values[attr] ? j.values[attr].pending_quantity : 0 }}</div>
                                 </td>
                             </tr>
                         </table>

@@ -23,9 +23,9 @@
 							<td>
 								{{j.received_type}}
 							</td>
-							<td v-for="attr in j.values" :key="attr">
-								<div v-if="attr.received">
-									{{ attr.received}}
+							<td v-for="attr in i.primary_attribute_values" :key="attr">
+								<div v-if="j.values[attr]?.received">
+									{{ j.values[attr] ? j.values[attr].received : 0 }}
 									<span v-if="j.default_uom">{{" " + j.default_uom}}</span>
 								</div>
 								<div v-else class="text-center">---</div>

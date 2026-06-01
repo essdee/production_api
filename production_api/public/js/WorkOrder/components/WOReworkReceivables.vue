@@ -22,10 +22,10 @@
                                 <span v-if="attr == 'Colour' && j.is_set_item && j.attributes[j.set_attr] != j.major_attr_value && j.attributes[attr]">({{ j.item_keys['major_colour'] }})</span>
                                 <span v-else-if="attr == 'Colour' && !j.is_set_item && j.attributes[attr] != j.item_keys['major_colour'] && j.attributes[attr]">({{ j.item_keys['major_colour'] }})</span>
                             </td>
-                            <td v-for="attr in j.values" :key="attr">
-                                <div>{{attr.qty}} <span v-if="j.default_uom">{{ j.default_uom}}</span></div>
-                                <div>Pending Qty: <span>{{attr.pending_qty}}</span> </div>
-                                Cost: {{attr.cost}}
+                            <td v-for="attr in i.primary_attribute_values" :key="attr">
+                                <div>{{ j.values[attr] ? j.values[attr].qty : 0 }} <span v-if="j.default_uom">{{ j.default_uom}}</span></div>
+                                <div>Pending Qty: <span>{{ j.values[attr] ? j.values[attr].pending_qty : 0 }}</span> </div>
+                                Cost: {{ j.values[attr] ? j.values[attr].cost : 0 }}
                             </td>
                             <td>{{j.total_cost}}</td>
                             <td>

@@ -30,7 +30,7 @@
                                     {{ j.attributes[i.set_attr] }}
                                 </td>
                                 <td>Planned</td>
-                                <td v-for="attr in Object.keys(j.values)" :key="attr">
+                                <td v-for="attr in i.primary_attribute_values" :key="attr">
                                     <div v-if="j.values?.[attr]?.['qty'] > 0">{{ j.values?.[attr]?.['qty'] }}</div>
                                     <div v-else>--</div>
                                 </td>
@@ -38,7 +38,7 @@
                             </tr>
                             <tr v-if="!is_manual && doctype == 'Work Order'">
                                 <td>Delivered</td>
-                                <td v-for="attr in Object.keys(j.values)" :key="attr">
+                                <td v-for="attr in i.primary_attribute_values" :key="attr">
                                     <div v-if="j.values?.[attr]?.['delivered'] > 0">{{ j.values?.[attr]?.['delivered'] }}</div>
                                     <div v-else>--</div>
                                 </td>
@@ -47,7 +47,7 @@
                             <tr>
                                 <td v-if="doctype=='Work Order'">Received</td>
                                 <td v-else>Completed</td>
-                                <td v-for="attr in Object.keys(j.values)" :key="attr">
+                                <td v-for="attr in i.primary_attribute_values" :key="attr">
                                     <div v-if="j.values ?.[attr]?.['received'] > 0">{{ j.values?.[attr]?.['received'] }}</div>
                                     <div v-else>--</div>
                                 </td>
@@ -55,7 +55,7 @@
                             </tr>
                             <tr v-if="show_pending && !is_manual && doctype == 'Work Order'" class="pending-row">
                                 <td><strong>Pending</strong></td>
-                                <td v-for="attr in Object.keys(j.values)" :key="attr">
+                                <td v-for="attr in i.primary_attribute_values" :key="attr">
                                     <div v-if="(j.values?.[attr]?.['delivered'] || 0) - (j.values?.[attr]?.['received'] || 0) > 0">
                                         <strong>{{ (j.values?.[attr]?.['delivered'] || 0) - (j.values?.[attr]?.['received'] || 0) }}</strong>
                                     </div>
@@ -70,7 +70,7 @@
                             <td v-if="i.is_set_item" :rowspan="is_manual ? 2 : (show_pending ? 4 : 3)">
                             </td>
                             <td>Planned</td>
-                            <td v-for="attr in Object.keys(i.items[0]['values'])" :key="attr">
+                            <td v-for="attr in i.primary_attribute_values" :key="attr">
                                 <div v-if="i.total_details?.[attr]?.['planned'] > 0">{{ i.total_details?.[attr]?.['planned'] }}</div>
                                 <div v-else>--</div>
                             </td>
@@ -78,7 +78,7 @@
                         </tr>
                         <tr v-if="!is_manual && doctype == 'Work Order'">
                             <td>Delivered</td>
-                            <td v-for="attr in Object.keys(i.items[0]['values'])" :key="attr">
+                            <td v-for="attr in i.primary_attribute_values" :key="attr">
                                 <div v-if="i.total_details?.[attr]?.['delivered'] > 0">{{ i.total_details?.[attr]?.['delivered'] }}</div>
                                 <div v-else>--</div>
                             </td>
@@ -87,7 +87,7 @@
                         <tr>
                             <td v-if="doctype=='Work Order'">Received</td>
                             <td v-else>Completed</td>
-                            <td v-for="attr in Object.keys(i.items[0]['values'])" :key="attr">
+                            <td v-for="attr in i.primary_attribute_values" :key="attr">
                                 <div v-if="i.total_details?.[attr]?.['received'] > 0">{{ i.total_details?.[attr]?.['received'] }}</div>
                                 <div v-else>--</div>
                             </td>
@@ -95,7 +95,7 @@
                         </tr>
                         <tr v-if="show_pending && !is_manual && doctype == 'Work Order'" class="pending-row">
                             <td><strong>Pending</strong></td>
-                            <td v-for="attr in Object.keys(i.items[0]['values'])" :key="attr">
+                            <td v-for="attr in i.primary_attribute_values" :key="attr">
                                 <div v-if="(i.total_details?.[attr]?.['delivered'] || 0) - (i.total_details?.[attr]?.['received'] || 0) > 0">
                                     <strong>{{ (i.total_details?.[attr]?.['delivered'] || 0) - (i.total_details?.[attr]?.['received'] || 0) }}</strong>
                                 </div>
@@ -128,9 +128,9 @@
                                     <span v-if="attr == 'Colour' && j.is_set_item && j.attributes[j.set_attr] != j.major_attr_value && j.attributes[attr]">({{ j.item_keys['major_colour'] }})</span>
                                     <span v-else-if="attr == 'Colour' && !j.is_set_item && j.attributes[attr] != j.item_keys['major_colour'] && j.attributes[attr]">({{ j.item_keys['major_colour'] }})</span>
                                 </td>
-                                <td v-for="attr in j.values" :key="attr">
-                                    <div v-if='attr?.pending_qty < 0'>
-                                        {{ attr.pending_qty * -1}}
+                                <td v-for="attr in i.primary_attribute_values" :key="attr">
+                                    <div v-if='j.values[attr]?.pending_qty < 0'>
+                                        {{ j.values[attr]?.pending_qty * -1}}
                                         <span v-if="j.default_uom">{{ " " + j.default_uom }}</span>
                                     </div>
                                     <div v-else> -- </div>

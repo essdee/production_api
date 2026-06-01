@@ -22,9 +22,9 @@
                                             <span v-if="attr == 'Colour' && j.is_set_item && j.attributes[j.set_attr] != j.major_attr_value">({{ j.item_keys['major_colour'] }})</span>
                                         </span>
                                     </td>
-                                    <td v-for="attr in j.values" :key="attr">
-                                        <div v-if="attr.qty">
-                                            {{ attr.qty}}
+                                    <td v-for="attr in i.primary_attribute_values" :key="attr">
+                                        <div v-if="j.values[attr]?.qty">
+                                            {{ j.values[attr] ? j.values[attr].qty : 0 }}
                                         </div>
                                         <div v-else class="text-center">---</div>
                                     </td>

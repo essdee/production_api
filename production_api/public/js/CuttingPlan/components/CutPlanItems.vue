@@ -17,9 +17,9 @@
                                     <span v-if="attr == 'Colour' && j.is_set_item && j.attributes[j.set_attr] != j.major_attr_value">({{ j.item_keys['major_colour'] }})</span>
                                 </span>
                             </td>
-							<td v-for="attr in j.values" :key="attr">
-								<div v-if="attr.qty">
-									{{ attr.qty}}
+							<td v-for="attr in i.primary_attribute_values" :key="attr">
+								<div v-if="j.values[attr] && j.values[attr].qty">
+									{{ j.values[attr].qty }}
 								</div>
 								<div v-else class="text-center">---</div>
 							</td>
@@ -44,7 +44,7 @@
                                 <span v-if="attr == 'Colour' && j.is_set_item && j.attributes[j.set_attr] != j.major_attr_value">({{ j.item_keys['major_colour'] }})</span>
                             </span>
                         </td>
-                        <td v-for="attr in Object.keys(j.values)" :key="attr">
+                        <td v-for="attr in i.primary_attribute_values" :key="attr">
                             <form>
                                 <input class="form-control" type="number" v-model.number="j.values[attr]['qty']" min="0" @blur="update_doc()"/>
                             </form>

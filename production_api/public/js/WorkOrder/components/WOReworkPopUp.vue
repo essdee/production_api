@@ -40,11 +40,14 @@
                                         {{ j.attributes[attr] }} 
                                         <span v-if="attr == i.pack_attr && j.attributes[attr] != j.item_keys['major_colour']">({{ j.item_keys['major_colour'] }})</span>
                                     </td>
-                                    <td v-for="attr in j.values" :key="attr">
-                                        {{ attr.qty}} <span v-if="j.default_uom">{{ " " + j.default_uom }}</span>
-                                        <form>
-                                            <input class="form-control" type="number" v-model.number="attr.rework_quantity" min="0" step="0.001"/>
-                                        </form>
+                                    <td v-for="attr in i.primary_attribute_values" :key="attr">
+                                        <template v-if="j.values[attr]">
+                                            {{ j.values[attr].qty }} <span v-if="j.default_uom">{{ " " + j.default_uom }}</span>
+                                            <form>
+                                                <input class="form-control" type="number" v-model.number="j.values[attr].rework_quantity" min="0" step="0.001"/>
+                                            </form>
+                                        </template>
+                                        <div v-else class="text-center">---</div>
                                     </td>
                                 </tr>
                             </table>

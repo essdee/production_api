@@ -30,26 +30,26 @@
 									<span v-if="attr == 'Colour' && j.is_set_item && j.attributes[j.set_attr] != j.major_attr_value && j.attributes[attr]">({{ j.item_keys['major_colour'] }})</span>
 									<span v-else-if="attr == 'Colour' && !j.is_set_item && j.attributes[attr] != j.item_keys['major_colour'] && j.attributes[attr]">({{ j.item_keys['major_colour'] }})</span>
 								</td>
-								<td v-for="attr in j.values" :key="attr">
+								<td v-for="attr in i.primary_attribute_values" :key="attr">
 									<div v-if="docstatus == 0">
-										{{ attr.qty}} <span v-if="j.default_uom">{{ " " + j.default_uom }}</span>
+										{{ j.values[attr] ? j.values[attr].qty : 0 }} <span v-if="j.default_uom">{{ " " + j.default_uom }}</span>
 										<form>
-											<input class="form-control" type="number" v-model.number="attr.delivered_quantity" 
+											<input class="form-control" type="number" v-model.number="j.values[attr].delivered_quantity"
 												min="0" step="0.001" @blur="make_dirty()"/>
 										</form>
 										<div v-if="indexes[item_index]">
-											<input class="form-control pt-2" type="number" v-model.number="attr.secondary_qty" 
+											<input class="form-control pt-2" type="number" v-model.number="j.values[attr].secondary_qty"
 												min="0" step="0.001" @blur="make_dirty()"/>
 										</div>
-										<div v-else-if="attr.secondary_qty > 0 && attr.secondary_uom">
-											({{attr.secondary_qty}} {{attr.secondary_uom}})
+										<div v-else-if="j.values[attr]?.secondary_qty > 0 && j.values[attr]?.secondary_uom">
+											({{j.values[attr].secondary_qty}} {{j.values[attr].secondary_uom}})
 										</div>
 									</div>
 									<div v-else>
-										<div v-if='attr.delivered_quantity > 0'>
-											{{ attr.delivered_quantity}} <span v-if="j.default_uom">{{ " " + j.default_uom }}</span>
-											<div v-if="attr.secondary_qty > 0 && attr.secondary_uom">
-												({{attr.secondary_qty}} {{attr.secondary_uom}})
+										<div v-if='j.values[attr]?.delivered_quantity > 0'>
+											{{ j.values[attr] ? j.values[attr].delivered_quantity : 0 }} <span v-if="j.default_uom">{{ " " + j.default_uom }}</span>
+											<div v-if="j.values[attr]?.secondary_qty > 0 && j.values[attr]?.secondary_uom">
+												({{j.values[attr].secondary_qty}} {{j.values[attr].secondary_uom}})
 											</div>
 										</div>
 										<div v-else> -- </div>
@@ -157,25 +157,25 @@
 									<td>{{ j.name }}</td>
 									<td>{{ j.lot }}</td>
 									<td v-for="attr in i.attributes" :key="attr"> {{ j.attributes[attr] }} </td>
-									<td v-for="attr in j.values" :key="attr">
+									<td v-for="attr in i.primary_attribute_values" :key="attr">
 										<div v-if="docstatus == 0">
-											{{ attr.qty}} <span v-if="j.default_uom">{{ " " + j.default_uom }}</span>
-											<input class="form-control" type="number" v-model.number="attr.delivered_quantity" 
+											{{ j.values[attr] ? j.values[attr].qty : 0 }} <span v-if="j.default_uom">{{ " " + j.default_uom }}</span>
+											<input class="form-control" type="number" v-model.number="j.values[attr].delivered_quantity"
 												min="0" step="0.001" @blur="make_dirty()"/>
 											<div v-if="indexes[received_type][item_index]">
-												<input class="form-control pt-2" type="number" v-model.number="attr.secondary_qty" 
+												<input class="form-control pt-2" type="number" v-model.number="j.values[attr].secondary_qty"
 													min="0" step="0.001" @blur="make_dirty()"/>
 											</div>
-											<div v-else-if="attr.secondary_qty > 0 && attr.secondary_uom">
-												({{attr.secondary_qty}} {{attr.secondary_uom}})
+											<div v-else-if="j.values[attr]?.secondary_qty > 0 && j.values[attr]?.secondary_uom">
+												({{j.values[attr].secondary_qty}} {{j.values[attr].secondary_uom}})
 											</div>
 										</div>
 										<div v-else>
-											<div v-if='attr.delivered_quantity > 0'>
-												{{ attr.delivered_quantity}}
+											<div v-if='j.values[attr]?.delivered_quantity > 0'>
+												{{ j.values[attr] ? j.values[attr].delivered_quantity : 0 }}
 												<span v-if="j.default_uom">{{ " " + j.default_uom }}</span>
-												<div v-if="attr.secondary_qty > 0 && attr.secondary_uom">
-													({{attr.secondary_qty}} {{attr.secondary_uom}})
+												<div v-if="j.values[attr]?.secondary_qty > 0 && j.values[attr]?.secondary_uom">
+													({{j.values[attr].secondary_qty}} {{j.values[attr].secondary_uom}})
 												</div>
 											</div>
 											<div v-else> -- </div>
