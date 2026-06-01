@@ -23,7 +23,7 @@
                             <span v-if="attr == 'Colour' && j.is_set_item && j.attributes[j.set_attr] != j.major_attr_value && j.attributes[attr]">({{ j.item_keys['major_colour'] }})</span>
                             <span v-else-if="attr == 'Colour' && !j.is_set_item && j.attributes[attr] != j.item_keys['major_colour'] && j.attributes[attr]">({{ j.item_keys['major_colour'] }})</span>
                         </td>
-                        <td v-for="attr in Object.keys(j.values)" :key="attr">
+                        <td v-for="attr in i.primary_attribute_values" :key="attr">
                             <div class="input-field" :class="get_input_class(attr, item1_index)"></div>
                         </td>
                         <td>{{ j.total_qty }}</td>

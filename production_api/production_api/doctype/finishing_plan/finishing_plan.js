@@ -218,11 +218,33 @@ frappe.ui.form.on("Finishing Plan", {
                             title: __("Select Alternative Item and IPD"),
                             fields: [
                                 {
+                                    label: __("Lot Source"),
+                                    fieldname: "lot_source",
+                                    fieldtype: "Select",
+                                    options: "New Lot\nExisting Lot",
+                                    default: "New Lot",
+                                    reqd: 1,
+                                },
+                                {
                                     label: "Lot Name",
                                     fieldname: "lot_name",
                                     fieldtype: "Data",
-                                    reqd: 1,
                                     default: frm.doc.lot,
+                                    depends_on: "eval:doc.lot_source=='New Lot'",
+                                    mandatory_depends_on: "eval:doc.lot_source=='New Lot'",
+                                },
+                                {
+                                    label: __("Existing Lot"),
+                                    fieldname: "existing_lot",
+                                    fieldtype: "Link",
+                                    options: "Lot",
+                                    depends_on: "eval:doc.lot_source=='Existing Lot'",
+                                    mandatory_depends_on: "eval:doc.lot_source=='Existing Lot'",
+                                    get_query: () => {
+                                        return {
+                                            query: "production_api.production_api.doctype.finishing_plan.finishing_plan.get_unconfigured_lots"
+                                        }
+                                    }
                                 },
                                 {
                                     label: __("Alternative Item"),
@@ -272,6 +294,8 @@ frappe.ui.form.on("Finishing Plan", {
                                         "alternative_item": values.alternative_item,
                                         "production_detail": values.production_detail,
                                         "lot_name": values.lot_name,
+                                        "lot_source": values.lot_source === "Existing Lot" ? "existing" : "new",
+                                        "existing_lot": values.existing_lot,
                                         "qty_details": qty_details
                                     },
                                     freeze: true,
@@ -289,6 +313,61 @@ frappe.ui.form.on("Finishing Plan", {
                 }
             }
         })
+        if (!frm.doc.__islocal && frm.doc.lot) {
+            frappe.call({
+                method: "production_api.production_api.doctype.finishing_plan.finishing_plan.get_fp_alternate_lots",
+                args: { fp_lot: frm.doc.lot },
+                callback: function (r) {
+                    let alt_lots = r.message || [];
+                    if (alt_lots.length === 0) { return; }   // no alternate lots -> no button
+                    frm.add_custom_button("Update Quantity", () => {
+                        let d = new frappe.ui.Dialog({
+                            title: __("Update Alternate Lot Quantity"),
+                            fields: [
+                                {
+                                    label: __("Target Lot"),
+                                    fieldname: "target_lot",
+                                    fieldtype: "Select",
+                                    options: alt_lots.join("\n"),
+                                    reqd: 1,
+                                },
+                                {
+                                    fieldtype: "HTML",
+                                    fieldname: "item_qty_html",
+                                },
+                            ],
+                            size: "extra-large",
+                            primary_action_label: __("Update"),
+                            primary_action(values) {
+                                let qty_details = frm.update_qty_grid.get_data();
+                                frappe.call({
+                                    method: "production_api.production_api.doctype.finishing_plan.finishing_plan.update_alternative_lot_quantity",
+                                    args: {
+                                        doc_name: frm.doc.name,
+                                        target_lot: values.target_lot,
+                                        qty_details: qty_details,
+                                    },
+                                    freeze: true,
+                                    freeze_message: "Updating Alternate Lot Quantity",
+                                    callback: function (res) {
+                                        d.hide();
+                                        if (res.message) {
+                                            frappe.set_route("Form", "Work Order", res.message);
+                                        }
+                                    },
+                                });
+                            },
+                        });
+                        // Same conversion grid as Create Alternative Plan, seeded from this FP's balance.
+                        frm.update_qty_grid = new frappe.production.ui.AlternativeItem(
+                            d.fields_dict["item_qty_html"].$wrapper,
+                            frm.doc.__onload.finishing_qty_data
+                        );
+                        d.show();
+                    });
+                },
+            });
+        }
     },
     fetch_incomplete_items(frm) {
         frappe.call({

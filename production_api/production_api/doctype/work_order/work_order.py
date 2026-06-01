@@ -2185,7 +2185,7 @@ def create_finishing_detail(work_order, from_finishing=False):
         pluck="name",
         limit=1,
     )
-    if existing_fp:
+    if existing_fp and not from_finishing:
         frappe.logger().info(
             f"Skipping duplicate Finishing Plan creation for Work Order {work_order}; existing: {existing_fp[0]}"
         )

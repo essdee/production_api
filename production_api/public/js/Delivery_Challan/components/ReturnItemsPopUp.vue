@@ -39,10 +39,10 @@
                                 <td v-if="is_rework">
                                     {{j.item_type}}
                                 </td>
-                                <td v-for="attr in j.values" :key="attr">
-                                    {{ attr.delivered_quantity}} <span v-if="j.default_uom">{{ " " + j.default_uom }}</span>
+                                <td v-for="attr in i.primary_attribute_values" :key="attr">
+                                    {{ j.values[attr] ? j.values[attr].delivered_quantity : 0 }} <span v-if="j.default_uom">{{ " " + j.default_uom }}</span>
                                     <form>
-                                        <input class="form-control" type="number" v-model.number="attr.return_quantity" min="0" step="0.001"/>
+                                        <input class="form-control" type="number" v-model.number="j.values[attr].return_quantity" min="0" step="0.001"/>
                                     </form>
                                 </td>
                             </tr>

@@ -17,8 +17,8 @@
 							<td :rowspan="3">{{ item1_index + 1 }}</td>
 							<td :rowspan="3">{{ i.item }}</td>
 							<td v-for="(k, idx) in j.attributes" :key="idx" :rowspan="3">{{ k }}</td>
-							<td v-for="(k, idx) in Object.keys(j.values)" :key="'qty-' + idx">
-								Qty: {{ j.values[k]['qty'] }}
+							<td v-for="(k, idx) in i.primary_attribute_values" :key="'qty-' + idx">
+								Qty: {{ j.values[k] ? j.values[k]['qty'] : 0 }}
 							</td>
 							<td :rowspan="3" v-if="docstatus == 0 && t_and_a == 0 && !transferred">
 								<div class="pull-left cursor-pointer" @click="edit_item(item1_index)"
@@ -28,13 +28,13 @@
 							</td>
 						</tr>
 						<tr v-for="(j, item1_index) in i.items" :key="'ratio-' + item1_index">
-							<td v-for="(k, idx) in Object.keys(j.values)" :key="'ratio-' + idx">
-								Ratio: {{ j.values[k]['ratio'] }}
+							<td v-for="(k, idx) in i.primary_attribute_values" :key="'ratio-' + idx">
+								Ratio: {{ j.values[k] ? j.values[k]['ratio'] : 0 }}
 							</td>
 						</tr>
 						<tr v-for="(j, item1_index) in i.items" :key="'mrp-' + item1_index">
-							<td v-for="(k, idx) in Object.keys(j.values)" :key="'mrp-' + idx">
-								MRP: {{ j.values[k]['mrp'] }}
+							<td v-for="(k, idx) in i.primary_attribute_values" :key="'mrp-' + idx">
+								MRP: {{ j.values[k] ? j.values[k]['mrp'] : 0 }}
 							</td>
 						</tr>
 					</table>

@@ -44,11 +44,11 @@
                                             <span v-else-if="k == 'Colour' && !j.is_set_item && j.attributes[k] != j.item_keys['major_colour'] && j.attributes[k]">({{ j.item_keys['major_colour'] }})</span>
                                         </span>
                                     </td>
-                                    <td v-for="(k, idx) in Object.keys(j.values)" :key="idx">
+                                    <td v-for="(k, idx) in i.primary_attribute_values" :key="idx">
                                         <div v-if="j.values[k] > 0">
                                             {{ j.values[k] }}
                                             <div
-                                                v-for="p in j.values1[k]"
+                                                v-for="p in (j.values1[k] || [])"
                                                 :key="p.panel"
                                                 class="panel-pill"
                                             >
@@ -65,7 +65,7 @@
                                 <tr>
                                     <th>Total</th>
                                     <td v-for="(j, idx) in i.attributes" :key="idx"></td>
-                                    <th v-for="(j, idx) in i.total_qty" :key="idx">{{j}}</th>
+                                    <th v-for="(k, idx) in i.primary_attribute_values" :key="idx">{{ i.total_qty[k] ? i.total_qty[k] : 0 }}</th>
                                     <th>{{ i['total_sum'] }}</th>
                                     <th>{{ i['total_planned_sum'] }}</th>
                                     <th>{{ i['total_received_sum'] }}</th>

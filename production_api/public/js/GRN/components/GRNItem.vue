@@ -22,21 +22,21 @@
 							<td v-for="attr in i.attributes" :key="attr">
 								{{ j.attributes[attr] }}
 							</td>
-							<td v-for="attr in j.values" :key="attr">
+							<td v-for="attr in i.primary_attribute_values" :key="attr">
 								<div v-if="against == 'Purchase Order'">
-									<div v-if="attr.received">
-										{{ attr.received}}
+									<div v-if="j.values[attr] ? j.values[attr].received : false">
+										{{ j.values[attr] ? j.values[attr].received : 0}}
 										<span v-if="j.default_uom">{{" " + j.default_uom}}</span>
-										<span v-if="attr.secondary_qty">
-											({{ attr.secondary_received}}
+										<span v-if="j.values[attr] ? j.values[attr].secondary_qty : false">
+											({{ j.values[attr] ? j.values[attr].secondary_received : 0}}
 											<span v-if="j.secondary_uom">{{" " + j.secondary_uom}}</span>)
 										</span>
 									</div>
 									<div v-else class="text-center">---</div>
 								</div>
 								<div v-else>
-									<div v-if='attr.qty > 0'>
-										{{ attr.qty}}
+									<div v-if='(j.values[attr] ? j.values[attr].qty : 0) > 0'>
+										{{ j.values[attr] ? j.values[attr].qty : 0}}
 										<span v-if="j.default_uom">{{ " " + j.default_uom }}</span>
 									</div>
 									<div v-else> -- </div>
@@ -104,16 +104,16 @@
 							<td v-for="attr in i.attributes" :key="attr">
 								{{ j.attributes[attr] }}
 							</td>
-							<td v-for="attr in j.values" :key="attr">
-								<div v-if="attr.qty">
-									{{ attr.qty}}<span v-if="j.default_uom">{{ " " + j.default_uom }}</span>
-									<span v-if="attr.secondary_qty">
-										({{ attr.secondary_qty}}
+							<td v-for="attr in i.primary_attribute_values" :key="attr">
+								<div v-if="j.values[attr] ? j.values[attr].qty : false">
+									{{ j.values[attr] ? j.values[attr].qty : 0}}<span v-if="j.default_uom">{{ " " + j.default_uom }}</span>
+									<span v-if="j.values[attr] ? j.values[attr].secondary_qty : false">
+										({{ j.values[attr] ? j.values[attr].secondary_qty : 0}}
 										<span v-if="j.secondary_uom">{{" " + j.secondary_uom}}</span>)
 									</span>
 									<form v-if="against == 'Purchase Order'">
-										<input class="form-control" type="number" v-model.number="attr.received"
-											@blur="update_received_qty(attr, 'received')" min="0" step="0.001"/>
+										<input class="form-control" type="number" v-model.number="j.values[attr].received"
+											@blur="update_received_qty(j.values[attr], 'received')" min="0" step="0.001"/>
 									</form>
 								</div>
 								<div v-else class="text-center">---</div>
@@ -209,12 +209,12 @@
 										<td>{{ j.lot }}</td>
 										<td v-for="attr in i.attributes" :key="attr">{{ j.attributes[attr] }}</td>
 										<td>{{m}}</td>
-										<template v-for="attr in Object.keys(j.values)">
-											<template v-if="j.values[attr].qty == 0" :key='attr'>
+										<template v-for="attr in i.primary_attribute_values">
+											<template v-if="!j.values[attr] || j.values[attr].qty == 0" :key='attr'>
 												<td>--</td>
 											</template>
 											<template v-else>
-												<template v-for="v in j.values[attr]['val']" :key='v'> 
+												<template v-for="v in j.values[attr]['val']" :key='v'>
 													<td v-if="v['received_type'] == m">{{v["received_quantity"]}}</td>
 												</template>
 											</template>
