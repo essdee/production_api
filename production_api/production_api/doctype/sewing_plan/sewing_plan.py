@@ -4,7 +4,7 @@
 import re
 import frappe
 from frappe.model.document import Document
-from production_api.production_api.doctype.item.item import get_or_create_variant
+from production_api.production_api.doctype.item.item import get_or_create_variant, build_variant_attributes
 from production_api.utils import get_variant_attr_details, update_if_string_instance
 from production_api.mrp_stock.doctype.stock_summary.stock_summary import get_variant_attr_values
 from production_api.essdee_production.doctype.item_production_detail.item_production_detail import get_ipd_primary_values
@@ -644,14 +644,15 @@ def submit_data_entry_log(payload):
 		if check:
 			variant_colour = payload['quantities']['colours'][colour]['variant_colour']
 			for size in payload['quantities']['colours'][colour]['values']:
-				attrs = {
+				# Pass every attribute we have; build_variant_attributes keeps only the ones
+				# this stage needs (per the IPD mapping). ipd_details[2] is the stage value.
+				my_attributes = {
 					details['primary_attr']: size,
-					ipd_details[1]: ipd_details[2],
+					details['pack_attr']: variant_colour,
 				}
 				if details['is_set_item']:
-					attrs[ipd_details[0]] = payload['quantities']['colours'][colour]['part']
-
-				attrs[details['pack_attr']] = variant_colour
+					my_attributes[ipd_details[0]] = payload['quantities']['colours'][colour]['part']
+				attrs = build_variant_attributes(my_attributes, ipd_details[2], ipd)
 				variant = get_or_create_variant(details['item'], attrs)
 				items.append({
 					"item_variant": variant,
@@ -1004,19 +1005,19 @@ def cancel_sewing_plan_entry(doc_id):
 def update_sewing_plan_data(payload):
 	payload = update_if_string_instance(payload)
 	ipd = frappe.get_value("Lot", payload['lot'], "production_detail")
-	ipd_fields = ["is_set_item", "packing_attribute", "primary_item_attribute", "set_item_attribute", "item", "dependent_attribute", "stiching_out_stage"]
-	is_set_item, pack_attr, primary_attr, set_attr, item_name, dept_attr, stich_out_stage = frappe.get_value("Item Production Detail", ipd, ipd_fields)
+	ipd_fields = ["is_set_item", "packing_attribute", "primary_item_attribute", "set_item_attribute", "item", "stiching_out_stage"]
+	is_set_item, pack_attr, primary_attr, set_attr, item_name, stich_out_stage = frappe.get_value("Item Production Detail", ipd, ipd_fields)
 	d = {}
 	action = payload.get('action', 'update')
 	for row in payload['rows']:
 		for size in row['qty']:
-			attrs = {
+			my_attributes = {
 				primary_attr: size,
 				pack_attr: row['colour'],
-				dept_attr: stich_out_stage,
 			}
 			if is_set_item:
-				attrs[set_attr] = row['part']
+				my_attributes[set_attr] = row['part']
+			attrs = build_variant_attributes(my_attributes, stich_out_stage, ipd)
 			variant = get_or_create_variant(item_name , attrs)
 			set_comb = update_if_string_instance(row['set_combination'])
 			key = (variant, tuple(sorted(set_comb.items())))

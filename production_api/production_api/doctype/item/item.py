@@ -241,6 +241,47 @@ def get_complete_item_details(item_name):
 	
 	return item
 
+def build_variant_attributes(my_attributes, stage, item_or_ipd):
+	"""Build the correct attribute dict for an Item Variant at a dependent-attribute `stage`.
+
+	The dependent-attribute mapping is the source of truth for WHICH attributes belong to a given
+	stage, so callers must NOT hand-pick the attribute keys. Pass every attribute value you have;
+	this helper keeps only the ones the stage needs and adds the dependent attribute itself. Feed
+	the result straight to get_or_create_variant(item, <result>).
+
+	my_attributes : {attribute_name: value} — pass everything you have; extra keys are ignored.
+	stage         : the dependent-attribute value (e.g. stiching_in_stage, pack_in_stage, "Pack").
+	item_or_ipd   : an Item OR an Item Production Detail — doc OR name. Both carry the
+	                dependent_attribute_mapping that decides which attributes the stage needs.
+	"""
+	# Resolve the dependent-attribute mapping from whatever the caller passed (Item / IPD, doc / name).
+	if hasattr(item_or_ipd, "dependent_attribute_mapping"):
+		mapping_name = item_or_ipd.dependent_attribute_mapping
+		source = getattr(item_or_ipd, "name", item_or_ipd)
+	elif frappe.db.exists("Item Production Detail", item_or_ipd):
+		mapping_name = frappe.get_cached_value("Item Production Detail", item_or_ipd, "dependent_attribute_mapping")
+		source = item_or_ipd
+	else:
+		mapping_name = frappe.get_cached_value("Item", item_or_ipd, "dependent_attribute_mapping")
+		source = item_or_ipd
+
+	dependent_attribute = get_dependent_attribute_details(mapping_name)
+	if stage not in dependent_attribute["attr_list"]:
+		frappe.throw(f"Stage '{stage}' is not defined in the dependent attribute mapping of {source}")
+
+	# The dependent attribute itself is always part of the variant.
+	args = {dependent_attribute["attribute"]: stage}
+	# Add the stage's attributes that the caller actually supplied. We do NOT throw on a
+	# missing one: some valid items have a stage attribute their flow doesn't supply (e.g.
+	# is_set_item=0 items whose mapping still lists `Part`, with existing Part-less variants).
+	# This mirrors the original hand-built dicts (which gated such keys on is_set_item) so the
+	# helper is behaviour-preserving. Extra keys the stage doesn't list are still dropped (the
+	# fix), and create_variant downstream still enforces genuinely-required attributes on CREATE.
+	for attribute in dependent_attribute["attr_list"][stage]["attributes"]:
+		if attribute in my_attributes:
+			args[attribute] = my_attributes[attribute]
+	return args
+
 def get_or_create_variant(template, args, dependent_attr=None):
 	variant_name = get_variant(template, args)
 	if not variant_name:

@@ -5,7 +5,7 @@ import frappe
 from frappe.utils import date_diff, flt, getdate, now_datetime
 from frappe.model.document import Document
 from production_api.utils import update_if_string_instance, get_variant_attr_details
-from production_api.production_api.doctype.item.item import get_attribute_details, get_or_create_variant, get_variant
+from production_api.production_api.doctype.item.item import get_attribute_details, get_or_create_variant, get_variant, build_variant_attributes
 
 TRACKED_DATE_FIELDS = {
 	"delivery_date": "Delivery Date",
@@ -99,10 +99,9 @@ class ProductionOrder(Document):
 			)
 
 	def update_order(self):
-		item_fields = ["primary_attribute",
-					   "dependent_attribute", "default_unit_of_measure"]
-		primary, dependent, uom = frappe.get_value(
-			"Item", self.item, item_fields)
+		item_doc = frappe.get_cached_doc("Item", self.item)
+		uom = item_doc.default_unit_of_measure
+		pack_out_stage = frappe.db.get_single_value("IPD Settings", "default_pack_out_stage")
 		item_details = update_if_string_instance(self.item_details) or {}
 		sales_item_price = get_sales_item_price_map(self.item)
 
@@ -112,7 +111,7 @@ class ProductionOrder(Document):
 			price_row = sales_item_price.get(size, {})
 			items.append({
 				"item_variant": get_or_create_variant(
-					self.item, {dependent: "Pack", primary: size}
+					self.item, build_variant_attributes({item_doc.primary_attribute: size}, pack_out_stage, item_doc)
 				),
 				"quantity": current_row.get("qty", 0),
 				"ratio": current_row.get("ratio", 0),
@@ -131,14 +130,14 @@ def get_sales_item_price_map(item):
 
 	item_doc = frappe.get_cached_doc("Item", item)
 	sizes = get_attribute_details(item).get("primary_attribute_values", [])
+	pack_out_stage = frappe.db.get_single_value("IPD Settings", "default_pack_out_stage")
 
 	price_map = {}
 
 	for size in sizes:
-		variant = get_variant(item, {
-			item_doc.dependent_attribute: "Pack",
-			item_doc.primary_attribute: size
-		}) if item_doc.primary_attribute and item_doc.dependent_attribute else None
+		variant = get_variant(
+			item, build_variant_attributes({item_doc.primary_attribute: size}, pack_out_stage, item_doc)
+		) if item_doc.primary_attribute and item_doc.dependent_attribute else None
 		candidates = list(set(filter(None, [
 			variant,
 			f"{item}-{size}",

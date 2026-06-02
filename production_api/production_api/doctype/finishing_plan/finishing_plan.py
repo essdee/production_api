@@ -6,7 +6,7 @@ from itertools import groupby
 from frappe.utils import flt
 from frappe.model.document import Document
 from production_api.production_api.doctype.supplier.supplier import get_primary_address
-from production_api.production_api.doctype.item.item import get_or_create_variant, get_attribute_details
+from production_api.production_api.doctype.item.item import get_or_create_variant, get_attribute_details, build_variant_attributes
 from production_api.essdee_production.doctype.item_production_detail.item_production_detail import get_ipd_primary_values
 from production_api.production_api.doctype.purchase_order.purchase_order import get_item_attribute_details, get_item_group_index
 from production_api.utils import update_if_string_instance, get_finishing_plan_dict, get_finishing_plan_list, get_variant_attr_details, get_tuple_attributes, get_process_wo_list
@@ -1307,8 +1307,8 @@ def get_dc_vue_structure(ipd, lot, items):
 
 def get_delivery_challan_item_list(lot, item_name, data, is_loose_piece=False):
 	ipd = frappe.get_value("Lot", lot, "production_detail")  # to check if lot exists
-	ipd_fields = ["is_set_item", "packing_attribute", "primary_item_attribute", "set_item_attribute", "dependent_attribute", "stiching_out_stage"]
-	is_set_item, pack_attr, primary_attr, set_attr, dept_attr, stich_out = frappe.get_value("Item Production Detail", ipd, ipd_fields)
+	ipd_fields = ["is_set_item", "packing_attribute", "primary_item_attribute", "set_item_attribute", "stiching_out_stage"]
+	is_set_item, pack_attr, primary_attr, set_attr, stich_out = frappe.get_value("Item Production Detail", ipd, ipd_fields)
 	items = {}
 	for colour in data['data']['data']:
 		colour_value = data['data']['data'][colour]['colour']
@@ -1317,15 +1317,15 @@ def get_delivery_challan_item_list(lot, item_name, data, is_loose_piece=False):
 		for size in data['data']['data'][colour]['values']:
 			dict_key = "balance_dc"
 			if is_loose_piece:
-				dict_key = "return_qty" 
+				dict_key = "return_qty"
 			if data['data']['data'][colour]['values'][size][dict_key] > 0:
-				attrs = {
+				my_attributes = {
 					primary_attr: size,
 					pack_attr: colour_value,
-					dept_attr: stich_out,
 				}
 				if is_set_item:
-					attrs[set_attr] = data['data']['data'][colour]['part']
+					my_attributes[set_attr] = data['data']['data'][colour]['part']
+				attrs = build_variant_attributes(my_attributes, stich_out, ipd)
 				item_variant = get_or_create_variant(item_name, attrs)
 				set_comb = update_if_string_instance(data['data']['data'][colour]['set_combination'])
 				key = (item_variant, tuple(sorted(set_comb.items())))
@@ -1340,15 +1340,14 @@ def get_delivery_challan_item_list(lot, item_name, data, is_loose_piece=False):
 def create_grn(work_order, lot, item_name, data, delivery_location,actual_date):
 	box_qty = {}
 	ipd = frappe.get_value("Lot", lot, "production_detail")
-	ipd_fields = ["primary_item_attribute", "dependent_attribute"]
-	primary_attr, dept_attr = frappe.get_value("Item Production Detail", ipd, ipd_fields)
+	primary_attr = frappe.get_value("Item Production Detail", ipd, "primary_item_attribute")
+	lp_stage = frappe.db.get_single_value("IPD Settings", "default_loose_piece_stage")
 
 	data = update_if_string_instance(data)
 	for size in data:
-		variant = get_or_create_variant(item_name, {
+		variant = get_or_create_variant(item_name, build_variant_attributes({
 			primary_attr: size,
-			dept_attr: "Loose Piece",
-		})
+		}, lp_stage, ipd))
 		current_variant = frappe.get_cached_doc("Item Variant", variant)
 		current_item_attribute_details = get_attribute_details(current_variant.item)
 		primary_attribute = current_item_attribute_details['primary_attribute']
@@ -1381,8 +1380,8 @@ def create_grn(work_order, lot, item_name, data, delivery_location,actual_date):
 def return_items(data, work_order, lot, item_name, popup_values, is_pack:bool=False):
 	data = update_if_string_instance(data)
 	ipd = frappe.get_value("Lot", lot, "production_detail")
-	ipd_fields = ["is_set_item", "packing_attribute", "primary_item_attribute", "set_item_attribute", "dependent_attribute", "stiching_out_stage"]
-	is_set_item, pack_attr, primary_attr, set_attr, dept_attr, stich_out = frappe.get_value("Item Production Detail", ipd, ipd_fields)
+	ipd_fields = ["is_set_item", "packing_attribute", "primary_item_attribute", "set_item_attribute", "stiching_out_stage"]
+	is_set_item, pack_attr, primary_attr, set_attr, stich_out = frappe.get_value("Item Production Detail", ipd, ipd_fields)
 	return_items = {}
 	return_key = "return_qty"
 	if is_pack:
@@ -1392,13 +1391,13 @@ def return_items(data, work_order, lot, item_name, popup_values, is_pack:bool=Fa
 		colour_value = data['data']['data'][colour]['colour']
 		for size in data['data']['data'][colour]['values']:
 			if data['data']['data'][colour]['values'][size][return_key] > 0:
-				attrs = {
+				my_attributes = {
 					primary_attr: size,
 					pack_attr: colour_value,
-					dept_attr: stich_out,
 				}
 				if is_set_item:
-					attrs[set_attr] = data['data']['data'][colour]['part']
+					my_attributes[set_attr] = data['data']['data'][colour]['part']
+				attrs = build_variant_attributes(my_attributes, stich_out, ipd)
 				item_variant = get_or_create_variant(item_name, attrs)
 				set_comb = update_if_string_instance(data['data']['data'][colour]['set_combination'])
 				key = (item_variant, tuple(sorted(set_comb.items())))
@@ -1469,15 +1468,14 @@ def return_items(data, work_order, lot, item_name, popup_values, is_pack:bool=Fa
 def create_stock_entry(data, item_name, doc_name, lot, from_location, to_location, goods_value, vehicle_no):
 	data = update_if_string_instance(data)
 	ipd, uom = frappe.get_value("Lot", lot, ["production_detail", "uom"])
-	ipd_fields = ["primary_item_attribute", "dependent_attribute", "pack_out_stage"]
-	primary_attr, dept_attr, pack_out = frappe.get_value("Item Production Detail", ipd, ipd_fields)
+	ipd_fields = ["primary_item_attribute", "pack_out_stage"]
+	primary_attr, pack_out = frappe.get_value("Item Production Detail", ipd, ipd_fields)
 	default_type = frappe.db.get_single_value("Stock Settings", "default_received_type")
 	item_list = []
 	for size in data:
-		variant = get_or_create_variant(item_name, {
+		variant = get_or_create_variant(item_name, build_variant_attributes({
 			primary_attr: size,
-			dept_attr: pack_out
-		})
+		}, pack_out, ipd))
 		item_list.append({
 			"item": variant,
 			"qty": data[size]['cur_dispatch'],
@@ -1682,8 +1680,8 @@ def pack_stage_variant(variant, dept_attr, pack_in_stage):
 @frappe.whitelist()
 def create_lot_transfer(data, item_name, ipd, lot, doc_name):
 	data = update_if_string_instance(data)
-	ipd_fields = ["primary_item_attribute", "packing_attribute", "is_set_item", "set_item_attribute", "dependent_attribute", "stiching_out_stage", "major_attribute_value"]
-	primary, pack_attr, is_set, set_attr, dept_attr, stich_out, major_part = frappe.get_value("Item Production Detail", ipd, ipd_fields)
+	ipd_fields = ["primary_item_attribute", "packing_attribute", "is_set_item", "set_item_attribute", "stiching_out_stage", "major_attribute_value"]
+	primary, pack_attr, is_set, set_attr, stich_out, major_part = frappe.get_value("Item Production Detail", ipd, ipd_fields)
 	items = []
 	# split_contributions: used after LT is submitted to update source FP's "given" table + stamp destination rows
 	# key: (variant, set_comb) -> {loose_piece, loose_piece_set, colour, part, size, source_fp, source_lot}
@@ -1701,13 +1699,13 @@ def create_lot_transfer(data, item_name, ipd, lot, doc_name):
 				total_transfer = t_loose + t_loose_set
 				if total_transfer <= 0:
 					continue
-				item_attributes = {
+				my_attributes = {
 					primary: size,
 					pack_attr: colour,
-					dept_attr: stich_out,
 				}
 				if is_set:
-					item_attributes[set_attr] = colour_entry['part']
+					my_attributes[set_attr] = colour_entry['part']
+				item_attributes = build_variant_attributes(my_attributes, stich_out, ipd)
 				variant_name = get_or_create_variant(item_name, item_attributes)
 				set_comb = {"major_colour": colour_entry['set_combination']}
 				if is_set:
@@ -1847,8 +1845,8 @@ def create_material_receipt(data, item_name, lot, ipd, doc_name, location):
 	data = update_if_string_instance(data)
 	received_type = frappe.db.get_single_value("Stock Settings", "default_received_type")
 	uom = frappe.get_value("Item", item_name, "default_unit_of_measure")
-	ipd_fields = ["is_set_item", "packing_attribute", "primary_item_attribute", "set_item_attribute", "dependent_attribute", "stiching_out_stage"]
-	is_set_item, pack_attr, primary_attr, set_attr, dept_attr, stich_out = frappe.get_value("Item Production Detail", ipd, ipd_fields)
+	ipd_fields = ["is_set_item", "packing_attribute", "primary_item_attribute", "set_item_attribute", "stiching_out_stage"]
+	is_set_item, pack_attr, primary_attr, set_attr, stich_out = frappe.get_value("Item Production Detail", ipd, ipd_fields)
 	row_index = -1
 	item_list = []
 	for colour in data['data']['data']:
@@ -1856,13 +1854,13 @@ def create_material_receipt(data, item_name, lot, ipd, doc_name, location):
 		for size in data['data']['data'][colour]['values']:
 			if not data['data']['data'][colour]['values'][size]['ironing_dc'] > 0:
 				continue
-			attrs = {
+			my_attributes = {
 				primary_attr: size,
 				pack_attr: data['data']['data'][colour]['colour'],
-				dept_attr: stich_out,
 			}
 			if is_set_item:
-				attrs[set_attr] = data['data']['data'][colour]['part']
+				my_attributes[set_attr] = data['data']['data'][colour]['part']
+			attrs = build_variant_attributes(my_attributes, stich_out, ipd)
 			item_list.append({
 				"item": get_or_create_variant(item_name, attrs),
 				"qty": data['data']['data'][colour]['values'][size]['ironing_dc'],
@@ -2464,11 +2462,10 @@ def create_alternative_fp(doc_name, alternative_item, production_detail, lot_nam
 			size_wise_detail[size] += qty
 			
 			order_detail = frappe.new_doc("Lot Order Detail")
-			order_detail.item_variant = get_or_create_variant(alternative_item, {
+			order_detail.item_variant = get_or_create_variant(alternative_item, build_variant_attributes({
 				primary_attr: size,
-				dependent_attr: pack_in_stage,
 				packing_attr: colour,
-			})
+			}, pack_in_stage, production_detail))
 			order_detail.quantity = qty
 			order_detail.cut_qty = qty
 			order_detail.pack_qty = 0
@@ -2544,9 +2541,9 @@ def _topup_alternate_lot(lot_doc, conversions):
 	# Add the moved quantity to the alternate lot, in place. Two child tables:
 	#   1) Lot Order Detail  -> per (colour, size) quantity
 	#   2) Lot Order Item    -> per size box quantity = round(cumulative_size_total / pcs_per_box)
-	ipd_fields = ["packing_combo", "primary_item_attribute", "dependent_attribute",
+	ipd_fields = ["packing_combo", "primary_item_attribute",
 	              "packing_attribute", "pack_in_stage"]
-	pcs_per_box, primary_attr, dependent_attr, packing_attr, pack_in_stage = frappe.get_value(
+	pcs_per_box, primary_attr, packing_attr, pack_in_stage = frappe.get_value(
 		"Item Production Detail", lot_doc.production_detail, ipd_fields)
 
 	# Map existing Lot Order Detail rows by item_variant, and remember each colour's row_index.
@@ -2560,11 +2557,10 @@ def _topup_alternate_lot(lot_doc, conversions):
 
 	for conv in conversions:
 		colour, size, qty = conv["colour"], conv["size"], conv["qty"]
-		variant = get_or_create_variant(lot_doc.item, {
+		variant = get_or_create_variant(lot_doc.item, build_variant_attributes({
 			primary_attr: size,
-			dependent_attr: pack_in_stage,
 			packing_attr: colour,
-		})
+		}, pack_in_stage, lot_doc.production_detail))
 		existing = rows_by_variant.get(variant)
 		if existing:
 			# Same colour+size already on the lot -> just add the quantity.
@@ -2974,10 +2970,9 @@ def save_item_details(item_details, alternative_item, pcs_per_box, pack_stage, p
 	items = []
 	idx = 0
 	for size in item_details:
-		attributes = {
+		attributes = build_variant_attributes({
 			primary_attr: size,
-			dependent_attr: pack_stage
-		}
+		}, pack_stage, alternative_item)
 		item1 = {}
 		variant_name = get_or_create_variant(alternative_item, attributes)
 		item1['item_variant'] = variant_name

@@ -14,7 +14,7 @@ from frappe.utils import flt, nowdate, nowtime
 from production_api.mrp_stock.stock_ledger import make_sl_entries
 from production_api.production_api.logger import get_module_logger
 from production_api.production_api.doctype.purchase_order.purchase_order import get_item_group_index
-from production_api.production_api.doctype.item.item import get_attribute_details, get_or_create_variant
+from production_api.production_api.doctype.item.item import get_attribute_details, get_or_create_variant, build_variant_attributes
 from production_api.production_api.doctype.delivery_challan.delivery_challan import get_variant_stock_details
 from production_api.essdee_production.doctype.lot.lot import fetch_order_item_details, get_uom_conversion_factor
 from production_api.utils import (
@@ -2327,11 +2327,11 @@ def create_finishing_detail(work_order, from_finishing=False):
     grn_items = []
     primary_values = get_primary_values(wo_doc.lot)
     ipd = frappe.get_value("Lot", wo_doc.lot, "production_detail")
-    dependent, primary, pack_stage = frappe.get_value("Item Production Detail", ipd, [
-        "dependent_attribute", "primary_item_attribute", "pack_out_stage"])
+    primary, pack_stage = frappe.get_value("Item Production Detail", ipd, [
+        "primary_item_attribute", "pack_out_stage"])
     for size in primary_values:
         variant = get_or_create_variant(
-            wo_doc.item, {dependent: pack_stage, primary: size})
+            wo_doc.item, build_variant_attributes({primary: size}, pack_stage, ipd))
         grn_items.append({
             "item_variant": variant,
             "quantity": 0,
