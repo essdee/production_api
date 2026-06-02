@@ -281,6 +281,17 @@ class ItemProductionDetail(Document):
 		if len(attr) != len(self.packing_attribute_details):
 			frappe.throw("Duplicate Attribute values are occured in Packing Attribute Details")	
 
+	def packing_assortment_validations(self):
+		"""Validate the 'Based on Other Attribute Mapping' packing config (export assorted boxes)."""
+		data = update_if_string_instance(self.packing_assortment_json) or {}
+		if not data.get("boxes"):
+			frappe.throw("Generate the Packing Assortment (Get Packing Combination) before saving.")
+		separator_attribute = resolve_packing_separator(self)
+		item_attr_names = {row.attribute for row in self.item_attributes}
+		errors = check_assortment_data(data, separator_attribute, item_attr_names)
+		if errors:
+			frappe.throw("<br>".join(errors))
+
 	def stiching_tab_validations(self):
 		if len(self.stiching_item_details) == 0:
 			frappe.throw("Enter stiching attribute details")
@@ -325,7 +336,10 @@ class ItemProductionDetail(Document):
 		self.update_mapping_values()		
 
 		if not self.is_new():
-			self.packing_tab_validations()	
+			if self.based_on_other_attribute_mapping:
+				self.packing_assortment_validations()
+			else:
+				self.packing_tab_validations()
 
 		if self.stiching_process:			
 			self.stiching_tab_validations()
@@ -912,6 +926,138 @@ def get_new_combination(attribute_mapping_value, packing_attribute_details, majo
 	item_details['attributes'] = attributes
 	item_details['values'] = item_detail
 	return item_details
+
+##################   PACKING ASSORTMENT (export box) FUNCTIONS   ###################
+def resolve_packing_separator(ipd_doc):
+	"""The box separator = the single attribute the pack-out stage KEEPS (the box's identity).
+
+	"one colour, many sizes" boxes ⇒ pack stage keeps Colour; the legacy "one size, many colours"
+	⇒ pack stage keeps Size. The box keeps exactly one separator attribute.
+	"""
+	dep = get_dependent_attribute_details(ipd_doc.dependent_attribute_mapping)
+	pack_stage_attrs = dep["attr_list"].get(ipd_doc.pack_out_stage, {}).get("attributes") or []
+	if len(pack_stage_attrs) != 1:
+		frappe.throw(
+			"Packing assortment needs the pack-out stage to keep exactly ONE box attribute "
+			f"(the separator), but it keeps {pack_stage_attrs}. Set the Item Dependent Attribute "
+			"Mapping pack stage to keep just the box attribute (e.g. Colour, for one-colour, "
+			"many-sizes boxes)."
+		)
+	return pack_stage_attrs[0]
+
+
+def derive_assortment_attributes(ipd_doc, separator_attribute):
+	"""The attribute(s) MIXED inside one box = the box dimensions minus the separator.
+
+	Box dimensions are the primary attribute (size) and the packing attribute (colour). The set
+	part attribute is NOT a box dimension — for set items the top + bottom ship together — so it is
+	never assorted. Auto-derived so the user only configures the IDAM pack stage, never a separate
+	picker.
+	"""
+	assorted = []
+	for attr in (ipd_doc.primary_item_attribute, ipd_doc.packing_attribute):
+		if attr and attr != separator_attribute and attr not in assorted:
+			assorted.append(attr)
+	if not assorted:
+		frappe.throw(
+			f"No attribute is left to assort inside the box once the separator ({separator_attribute}) "
+			"is set. Check the IPD's primary and packing attributes."
+		)
+	return assorted
+
+
+def build_assortment_box_grid(separator_attribute, separator_values, assortment_attributes, assorted_value_lists, existing_qty=None):
+	"""Pure builder (no DB): one box per separator value; rows = cartesian of the assorted values.
+
+	existing_qty: optional {(separator_value, frozenset(combo.items())): qty} to preserve prior edits
+	when the user re-runs the Get-Combination button. Returns:
+	[{box, separator_value, rows:[{<assorted_attr>: value, ..., "qty": n}]}]
+	"""
+	existing_qty = existing_qty or {}
+
+	def cartesian(attr_list):
+		combos = [{}]
+		for attr in attr_list:
+			combos = [dict(c, **{attr: v}) for c in combos for v in assorted_value_lists[attr]]
+		return combos
+
+	row_template = cartesian(assortment_attributes)
+	boxes = []
+	for sep_val in separator_values:
+		rows = []
+		for combo in row_template:
+			key = (sep_val, frozenset(combo.items()))
+			rows.append(dict(combo, qty=existing_qty.get(key, 0)))
+		boxes.append({"box": sep_val, "separator_value": sep_val, "rows": rows})
+	return boxes
+
+
+def check_assortment_data(data, separator_attribute, item_attr_names):
+	"""Pure validation (no DB) of the packing assortment grid. Returns a list of error messages.
+
+	Enforces: a grid exists; assorted attrs are real item attributes; every box has qty-sum > 0;
+	and the one-dimension-per-box invariant (a box never mixes more than one separator value).
+	"""
+	errors = []
+	boxes = data.get("boxes") or []
+	if not boxes:
+		errors.append("Generate and fill the Packing Assortment before saving.")
+		return errors
+	for attr in (data.get("assortment_attributes") or []):
+		if attr not in item_attr_names:
+			errors.append(f"Assortment attribute '{attr}' is not an attribute of this item.")
+	for box in boxes:
+		rows = box.get("rows") or []
+		if sum((row.get("qty") or 0) for row in rows) <= 0:
+			errors.append(f"Box '{box.get('box')}' has a zero total quantity.")
+		sep_vals = {row.get(separator_attribute) for row in rows if separator_attribute in row}
+		if box.get("separator_value") is not None:
+			sep_vals.add(box.get("separator_value"))
+		sep_vals.discard(None)
+		if len(sep_vals) > 1:
+			errors.append(
+				f"Box '{box.get('box')}' mixes more than one {separator_attribute} "
+				f"({sorted(sep_vals)}). A box may vary only the assorted dimension."
+			)
+	return errors
+
+
+@frappe.whitelist()
+def get_packing_assortment_combination(doc_name, attributes=None):
+	"""Build the box-assortment grid for the 'Based on Other Attribute Mapping' mode.
+
+	Both the separator (box identity) and the assorted dimension(s) are DERIVED from the IPD — the
+	separator is whatever the IDAM pack-out stage keeps, the assorted attribute(s) are the box
+	dimensions it drops. `attributes` is accepted for backward-compat but ignored.
+	Returns {assortment_attributes, separator_attribute, boxes:[...]} — see build_assortment_box_grid.
+	"""
+	ipd_doc = frappe.get_doc("Item Production Detail", doc_name)
+	separator_attribute = resolve_packing_separator(ipd_doc)
+	assortment_attributes = derive_assortment_attributes(ipd_doc, separator_attribute)
+
+	def values_for(attr):
+		for item in ipd_doc.item_attributes:
+			if item.attribute == attr:
+				return get_attr_mapping_details(item.mapping)
+		frappe.throw(f"Attribute '{attr}' is not configured on this item.")
+
+	separator_values = values_for(separator_attribute)
+	assorted_value_lists = {a: values_for(a) for a in assortment_attributes}
+
+	existing = update_if_string_instance(ipd_doc.packing_assortment_json) or {}
+	existing_qty = {}
+	for box in existing.get("boxes", []):
+		for row in box.get("rows", []):
+			combo = {k: v for k, v in row.items() if k != "qty"}
+			existing_qty[(box.get("separator_value"), frozenset(combo.items()))] = row.get("qty", 0)
+
+	boxes = build_assortment_box_grid(
+		separator_attribute, separator_values, assortment_attributes, assorted_value_lists, existing_qty)
+	return {
+		"assortment_attributes": assortment_attributes,
+		"separator_attribute": separator_attribute,
+		"boxes": boxes,
+	}
 
 ##################       PACKING FUNCTIONS        ###################
 @frappe.whitelist()

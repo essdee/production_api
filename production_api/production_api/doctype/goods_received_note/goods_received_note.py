@@ -14,7 +14,7 @@ from production_api.mrp_stock.utils import get_stock_balance
 from frappe.utils import money_in_words, flt, cstr, date_diff, getdate
 from production_api.production_api.logger import get_module_logger
 from production_api.mrp_stock.doctype.stock_entry.stock_entry import get_uom_details
-from production_api.production_api.doctype.item.item import get_attribute_details, get_or_create_variant
+from production_api.production_api.doctype.item.item import get_attribute_details, get_or_create_variant, build_variant_attributes
 from production_api.production_api.doctype.work_order.work_order import get_bom_structure, get_work_order_items
 from production_api.production_api.doctype.finishing_plan.finishing_plan import apply_auto_fp_status
 from production_api.production_api.doctype.purchase_order.purchase_order import (
@@ -412,12 +412,11 @@ class GoodsReceivedNote(Document):
         bundle_variant_d = {}
         for bundle in bundles:
             for panel in bundle['panel'].split(","):
-                variant = get_or_create_variant(bundle['item'], {
-                    ipd_doc.dependent_attribute: ipd_doc.stiching_in_stage,
+                variant = get_or_create_variant(bundle['item'], build_variant_attributes({
                     ipd_doc.primary_item_attribute: bundle['size'],
                     ipd_doc.packing_attribute: bundle['colour'],
                     ipd_doc.stiching_attribute: panel
-                })
+                }, ipd_doc.stiching_in_stage, ipd_doc))
                 bundle_variant_d.setdefault(variant, 0)
                 bundle_variant_d[variant] += (bundle['quantity']
                                               * panel_count[panel]) * -1
@@ -1595,14 +1594,16 @@ def save_grn_packing_item_details(item_details, lot):
     items = []
     itemname, ipd, uom = frappe.get_value(
         "Lot", lot, ["item", "production_detail", "uom"])
-    primary, dependent = frappe.get_value("Item Production Detail", ipd, [
-                                          "primary_item_attribute", "dependent_attribute"])
+    primary = frappe.get_value(
+        "Item Production Detail", ipd, "primary_item_attribute")
+    loose_piece_stage = frappe.db.get_single_value(
+        "IPD Settings", "default_loose_piece_stage")
     total_qty = 0
     default_received_type = frappe.db.get_single_value(
         "Stock Settings", "default_received_type")
     for item in item_details:
         variant = get_or_create_variant(
-            itemname, {dependent: "Loose Piece", primary: item})
+            itemname, build_variant_attributes({primary: item}, loose_piece_stage, ipd))
         item1 = {}
         item1['item_variant'] = variant
         item1['lot'] = lot

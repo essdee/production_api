@@ -1281,14 +1281,11 @@ def get_cut_sheet_report(date, location):
 	return report
 
 def get_lpiece_variant(pack_attr, dept_attr, variant):
-	from production_api.production_api.doctype.item.item import get_or_create_variant
-	attr_details = get_variant_attr_details(variant)
-	del attr_details[pack_attr]
-	if 'Part' in attr_details:
-		del attr_details['Part']
-	attr_details[dept_attr] = "Loose Piece"
+	from production_api.production_api.doctype.item.item import get_or_create_variant, build_variant_attributes
+	my_attributes = get_variant_attr_details(variant)
+	lp_stage = frappe.db.get_single_value("IPD Settings", "default_loose_piece_stage")
 	item_name = frappe.get_value("Item Variant", variant, "item")
-	variant = get_or_create_variant(item_name, attr_details)
+	variant = get_or_create_variant(item_name, build_variant_attributes(my_attributes, lp_stage, item_name))
 	return variant
 
 @frappe.whitelist()

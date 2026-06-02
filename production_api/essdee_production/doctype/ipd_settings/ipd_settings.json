@@ -15,6 +15,7 @@
   "column_break_vbai",
   "default_packing_attribute",
   "default_pack_out_stage",
+  "default_loose_piece_stage",
   "stitching_details_section",
   "default_stitching_process",
   "default_stitching_in_stage",
@@ -70,6 +71,12 @@
    "label": "Default Pack Out Stage",
    "options": "Item Attribute Value",
    "reqd": 1
+  },
+  {
+   "fieldname": "default_loose_piece_stage",
+   "fieldtype": "Link",
+   "label": "Default Loose Piece Stage",
+   "options": "Item Attribute Value"
   },
   {
    "fieldname": "default_stitching_in_stage",
@@ -144,7 +151,7 @@
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2026-03-12 16:35:53.315749",
+ "modified": "2026-06-01 12:00:00.000000",
  "modified_by": "Administrator",
  "module": "Essdee Production",
  "name": "IPD Settings",

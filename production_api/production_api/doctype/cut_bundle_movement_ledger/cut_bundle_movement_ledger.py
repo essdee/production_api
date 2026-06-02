@@ -5,7 +5,7 @@ import frappe
 from frappe.utils import nowdate, nowtime
 from frappe.model.document import Document
 from production_api.mrp_stock.utils import get_combine_datetime
-from production_api.production_api.doctype.item.item import get_or_create_variant
+from production_api.production_api.doctype.item.item import get_or_create_variant, build_variant_attributes
 from production_api.utils import update_if_string_instance, get_variant_attr_details
 
 class CutBundleMovementLedger(Document):
@@ -21,14 +21,14 @@ class CutBundleMovementLedger(Document):
 		ipd = frappe.get_value("Lot", self.lot, "production_detail")
 		if not ipd:
 			return
-		ipd_fields = ["stiching_in_stage", "primary_item_attribute", "packing_attribute", "stiching_attribute", "dependent_attribute"]
-		stich_stage, primary_attr, pack_attr, stich_attr, dept_attr= frappe.get_value("Item Production Detail", ipd, ipd_fields)
-		attrs = {
-			dept_attr: stich_stage,
+		ipd_fields = ["stiching_in_stage", "primary_item_attribute", "packing_attribute", "stiching_attribute"]
+		stich_stage, primary_attr, pack_attr, stich_attr = frappe.get_value("Item Production Detail", ipd, ipd_fields)
+		my_attributes = {
 			primary_attr: self.size,
 			pack_attr: self.colour,
 			stich_attr: self.panel,
 		}
+		attrs = build_variant_attributes(my_attributes, stich_stage, ipd)
 		variant = get_or_create_variant(self.item, attrs)
 		self.item_variant = variant
 
@@ -465,12 +465,13 @@ def create_new_collapsed_bundle(bundle_key, bundle_total_qty, stock_moved_qty, f
 		frappe.throw("Bundle Qty Less Than Zero")
 
 	lay_no = bundle_no = 0
-	variant = get_or_create_variant(item, {
+	# Let the IPD mapping decide which attributes the stiching stage needs (don't hand-pick keys).
+	my_attributes = {
 		attrs['primary']: size,
 		attrs['pack']: colour,
 		attrs['stich']: panel,
-		attrs['stage']: attrs['stich_stage'],
-	})
+	}
+	variant = get_or_create_variant(item, build_variant_attributes(my_attributes, attrs['stich_stage'], ipd_doc))
 	set_combination = get_tuple_attributes(set_combination)
 	d = {
 		"lot" : lot,

@@ -17,7 +17,7 @@ from production_api.utils import (
 )
 from production_api.mrp_stock.stock_ledger import make_sl_entries, repost_future_stock_ledger_entry
 from production_api.production_api.doctype.finishing_plan.finishing_plan import apply_auto_fp_status
-from production_api.production_api.doctype.item.item import get_attribute_details, get_or_create_variant
+from production_api.production_api.doctype.item.item import get_attribute_details, get_or_create_variant, build_variant_attributes
 from production_api.production_api.doctype.purchase_order.purchase_order import (
     get_item_attribute_details,
     get_item_group_index
@@ -199,12 +199,15 @@ class DeliveryChallan(Document):
         bundle_variant_d = {}
         for bundle in bundles:
             for panel in bundle['panel'].split(","):
-                variant = get_or_create_variant(bundle['item'], {
-                    ipd_doc.dependent_attribute: ipd_doc.stiching_in_stage,
+                my_attributes = {
                     ipd_doc.primary_item_attribute: bundle['size'],
                     ipd_doc.packing_attribute: bundle['colour'],
                     ipd_doc.stiching_attribute: panel
-                })
+                }
+                variant = get_or_create_variant(
+                    bundle['item'],
+                    build_variant_attributes(my_attributes, ipd_doc.stiching_in_stage, ipd_doc)
+                )
                 bundle_variant_d.setdefault(variant, 0)
                 bundle_variant_d[variant] += (bundle['quantity']
                                               * panel_count[panel]) * -1

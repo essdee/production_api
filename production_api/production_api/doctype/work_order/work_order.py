@@ -14,7 +14,7 @@ from frappe.utils import flt, nowdate, nowtime
 from production_api.mrp_stock.stock_ledger import make_sl_entries
 from production_api.production_api.logger import get_module_logger
 from production_api.production_api.doctype.purchase_order.purchase_order import get_item_group_index
-from production_api.production_api.doctype.item.item import get_attribute_details, get_or_create_variant
+from production_api.production_api.doctype.item.item import get_attribute_details, get_or_create_variant, build_variant_attributes
 from production_api.production_api.doctype.delivery_challan.delivery_challan import get_variant_stock_details
 from production_api.essdee_production.doctype.lot.lot import fetch_order_item_details, get_uom_conversion_factor
 from production_api.utils import (
@@ -136,6 +136,13 @@ class WorkOrder(Document):
             frappe.throw("Already Work Order was Created for Packing")
             return
 
+        if not self.is_rework and self.rework_type != "No Cost":
+            if not self.process_cost:
+                frappe.throw(
+                    "No process cost exists for this Work Order — add an approved Process Cost "
+                    "before submitting."
+                )
+
     def on_submit(self):
         d = [{
             "from_date": self.planned_start_date,
@@ -207,6 +214,35 @@ class WorkOrder(Document):
             self.auto_create_box_sticker_print()
         self.create_sewing_plan()
 
+    def get_missing_box_sticker_prices(self):
+        """Sizes that have Work Order qty but no MRP in the linked Production Order.
+
+        Returns [] when the check doesn't apply (no Production Order, box-sticker-print skipped, or
+        the item has no primary attribute). Shared by auto_create_box_sticker_print (hard block on
+        submit) and the Calculate-time combined warning.
+        """
+        production_order = frappe.db.get_value("Lot", self.lot, "production_order")
+        if not production_order:
+            return []
+        if frappe.db.get_value("Production Order", production_order, "skip_box_sticker_print"):
+            return []
+        primary = frappe.get_value("Item", self.item, "primary_attribute")
+        if not primary:
+            return []
+        po_doc = frappe.get_doc("Production Order", production_order)
+        price_map = {}
+        for row in po_doc.production_order_details:
+            size = get_variant_attr_details(row.item_variant).get(primary)
+            if size:
+                price_map[size] = flt(row.mrp)
+        qty_map = {}
+        for row in self.work_order_calculated_items:
+            size = get_variant_attr_details(row.item_variant).get(primary)
+            if size:
+                qty_map.setdefault(size, 0)
+                qty_map[size] += row.quantity
+        return [s for s, qty in qty_map.items() if qty > 0 and flt(price_map.get(s)) == 0]
+
     def auto_create_box_sticker_print(self):
         production_order = frappe.db.get_value("Lot", self.lot, "production_order")
         if not production_order:
@@ -230,21 +266,8 @@ class WorkOrder(Document):
                 po_sizes.append(size)
                 price_map[size] = flt(row.mrp)
 
-        # Build qty map from Work Order Calculated Items: {size: total_qty}
-        qty_map = {}
-        for row in self.work_order_calculated_items:
-            attrs = get_variant_attr_details(row.item_variant)
-            size = attrs.get(primary)
-            if size:
-                qty_map.setdefault(size, 0)
-                qty_map[size] += row.quantity
-
-        # Validate: sizes with qty > 0 must have mrp > 0
-        missing_prices = []
-        for size, qty in qty_map.items():
-            if qty > 0 and flt(price_map.get(size)) == 0:
-                missing_prices.append(size)
-
+        # Validate sizes with qty have an MRP — shared with the Calculate-time combined warning.
+        missing_prices = self.get_missing_box_sticker_prices()
         if missing_prices:
             frappe.throw(
                 f"MRP is missing in Production Order for sizes: {', '.join(missing_prices)}. "
@@ -577,10 +600,15 @@ class WorkOrder(Document):
         if self.is_rework and not docname:
             return
 
-        if not docname and not self.is_rework:
-            frappe.throw('No process cost for ' + self.process_name)
         if get_name:
             return docname
+
+        if not docname:
+            # No approved Process Cost: do NOT block the calculation — leave the rate uncomputed
+            # and let before_submit block submission until a Process Cost exists.
+            self.process_cost = None
+            return
+
         self.process_cost = docname
         process_doc = frappe.get_doc("Process Cost", docname)
         ipd_doc = frappe.get_cached_doc(
@@ -938,6 +966,24 @@ def get_lot_items(lot, doc_name, process, includes_packing=False):
 
 
 @frappe.whitelist()
+def _processes_not_in_ipd(ipd_doc, process_name):
+    """Processes the Work Order uses that are NOT defined in the IPD.
+
+    For a GROUP process each sub-process is checked individually, so a partially-mapped group
+    (e.g. "Ironing and Packing" where Packing is in the IPD but Ironing is not) reports the missing
+    sub-process(es) by name. The three main processes (stitching/packing/cutting) and the
+    ipd_processes table count as "known". Returns [] when every process is defined.
+    """
+    known = {ipd_doc.stiching_process, ipd_doc.packing_process, ipd_doc.cutting_process}
+    known |= {p.process_name for p in ipd_doc.ipd_processes}
+    if frappe.get_value("Process", process_name, "is_group"):
+        proc_doc = frappe.get_cached_doc("Process", process_name)
+        candidates = [p.process_name for p in proc_doc.process_details]
+    else:
+        candidates = [process_name]
+    return [p for p in candidates if p not in known]
+
+@frappe.whitelist()
 def get_deliverable_receivable(items, doc_name, deliverable=False, receivable=False, is_alternate=False):
     logger = get_module_logger("work_order")
     logger.debug(
@@ -1017,6 +1063,38 @@ def get_deliverable_receivable(items, doc_name, deliverable=False, receivable=Fa
     wo_doc.save(ignore_permissions=True)
     if is_alternate:
         return wo_doc.name
+
+    # Surface ALL calc-time issues together (interactive Calculate only — alternate/flag callers
+    # returned above). Soft warnings: no process cost (still calculated; submit is blocked later),
+    # process not in the IPD (empty result), and a packing WO missing Production Order MRP.
+    warnings = []
+    if not wo_doc.is_rework and wo_doc.rework_type != "No Cost" and not wo_doc.calc_receivable_rate(get_name=True):
+        warnings.append(f'No Process Cost found for process "{wo_doc.process_name}".')
+    missing_procs = _processes_not_in_ipd(ipd_doc, wo_doc.process_name)
+    if missing_procs:
+        warnings.append(
+            f"Process(es) not in the Item Production Detail: {', '.join(missing_procs)} — "
+            "no deliverables/receivables were calculated for them."
+        )
+    if wo_doc.includes_packing:
+        missing_prices = wo_doc.get_missing_box_sticker_prices()
+        if missing_prices:
+            warnings.append(
+                f"MRP is missing in Production Order for sizes: {', '.join(missing_prices)}. "
+                "Update the price in Production Order before submitting."
+            )
+    ipd = frappe.get_value("Lot", wo_doc.lot, "production_detail")  # cache the IPD for faster subsequent calls
+    ipd_status = frappe.get_value("Item Production Detail", ipd, "approval_status")
+    if ipd_status != "Approved":
+        warnings.append(
+            f"Item Production Detail {ipd} is not Approved (status: {ipd_status}). "
+        )
+
+    if warnings:
+        frappe.msgprint(
+            "Calculated with warnings:<br>&bull; " + "<br>&bull; ".join(warnings),
+            title="Work Order Calculation", indicator="orange",
+        )
 
     processes = [ipd_doc.cutting_process]
     dc_processes = [ipd_doc.stiching_process]
@@ -2327,11 +2405,11 @@ def create_finishing_detail(work_order, from_finishing=False):
     grn_items = []
     primary_values = get_primary_values(wo_doc.lot)
     ipd = frappe.get_value("Lot", wo_doc.lot, "production_detail")
-    dependent, primary, pack_stage = frappe.get_value("Item Production Detail", ipd, [
-        "dependent_attribute", "primary_item_attribute", "pack_out_stage"])
+    primary, pack_stage = frappe.get_value("Item Production Detail", ipd, [
+        "primary_item_attribute", "pack_out_stage"])
     for size in primary_values:
         variant = get_or_create_variant(
-            wo_doc.item, {dependent: pack_stage, primary: size})
+            wo_doc.item, build_variant_attributes({primary: size}, pack_stage, ipd))
         grn_items.append({
             "item_variant": variant,
             "quantity": 0,

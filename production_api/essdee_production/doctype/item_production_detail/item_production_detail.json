@@ -33,6 +33,11 @@
   "auto_calculate",
   "get_packing_attribute_values",
   "packing_attribute_details",
+  "based_on_other_attribute_mapping",
+  "packing_assortment_attributes",
+  "get_packing_combination",
+  "packing_assortment_html",
+  "packing_assortment_json",
   "set_item_tab",
   "set_item_details_section",
   "is_set_item",
@@ -260,6 +265,39 @@
    "fieldtype": "Table",
    "label": "Packing Attribute Details",
    "options": "Item Production Detail Packing Attribute Detail"
+  },
+  {
+   "default": "0",
+   "fieldname": "based_on_other_attribute_mapping",
+   "fieldtype": "Check",
+   "label": "Based on Other Attribute Mapping"
+  },
+  {
+   "depends_on": "eval: doc.based_on_other_attribute_mapping",
+   "description": "Auto-derived from the pack stage; kept hidden.",
+   "fieldname": "packing_assortment_attributes",
+   "fieldtype": "Table MultiSelect",
+   "hidden": 1,
+   "label": "Packing Assortment Attributes",
+   "options": "Item Production Detail Packing Assortment Attribute"
+  },
+  {
+   "depends_on": "eval: doc.based_on_other_attribute_mapping && !doc.__islocal",
+   "fieldname": "get_packing_combination",
+   "fieldtype": "Button",
+   "label": "Get Packing Combination"
+  },
+  {
+   "depends_on": "eval: doc.based_on_other_attribute_mapping",
+   "fieldname": "packing_assortment_html",
+   "fieldtype": "HTML",
+   "label": "Packing Assortment"
+  },
+  {
+   "fieldname": "packing_assortment_json",
+   "fieldtype": "JSON",
+   "hidden": 1,
+   "label": "Packing Assortment JSON"
   },
   {
    "depends_on": "eval: doc.packing_attribute_no && doc.packing_attribute",

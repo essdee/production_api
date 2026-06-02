@@ -5,7 +5,7 @@ import frappe
 from itertools import groupby
 from operator import itemgetter
 from frappe.model.document import Document
-from production_api.production_api.doctype.item.item import get_or_create_variant, get_attribute_details
+from production_api.production_api.doctype.item.item import get_or_create_variant, get_attribute_details, build_variant_attributes
 from production_api.utils import get_variant_attr_details, update_if_string_instance
 
 class FinishingPlanDispatch(Document):
@@ -54,10 +54,10 @@ class FinishingPlanDispatch(Document):
 			items = []
 			for row in finishing_items:
 				for val in row['values']:
-					attrs = {
+					my_attributes = {
 						row['primary_attribute']: val,
-						row['dependent_attribute']: row['stage'] 
 					}
+					attrs = build_variant_attributes(my_attributes, row['stage'], row['item'])
 					variant = get_or_create_variant(row['item'], attrs)
 					items.append({
 						"item_variant": variant,
