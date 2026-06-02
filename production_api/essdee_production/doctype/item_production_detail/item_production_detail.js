@@ -169,18 +169,18 @@ frappe.ui.form.on("Item Production Detail", {
 			}).then(settings => {
 				let allowed = [settings.senior_merch_role, settings.merchandising_manager_role].filter(Boolean);
 				if (allowed.some(role => frappe.user_roles.includes(role))) {
-					if (frm.doc.approval_status === "Not Approved") {
-						frm.add_custom_button(__("Approve for Cutting"), () => {
-							frappe.call({
-								method: "production_api.essdee_production.doctype.item_production_detail.item_production_detail.approve_ipd",
-								args: { doc_name: frm.doc.name, approval_type: "Cutting Approved" },
-								callback: function () {
-									frappe.show_alert({ message: __("Approved for Cutting"), indicator: "blue" });
-									frm.reload_doc();
-								}
-							});
-						});
-					}
+					// if (frm.doc.approval_status === "Not Approved") {
+					// 	frm.add_custom_button(__("Approve for Cutting"), () => {
+					// 		frappe.call({
+					// 			method: "production_api.essdee_production.doctype.item_production_detail.item_production_detail.approve_ipd",
+					// 			args: { doc_name: frm.doc.name, approval_type: "Cutting Approved" },
+					// 			callback: function () {
+					// 				frappe.show_alert({ message: __("Approved for Cutting"), indicator: "blue" });
+					// 				frm.reload_doc();
+					// 			}
+					// 		});
+					// 	});
+					// }
 					frm.add_custom_button(__("Approve"), () => {
 						frappe.call({
 							method: "production_api.essdee_production.doctype.item_production_detail.item_production_detail.approve_ipd",
