@@ -376,6 +376,7 @@ frappe.ui.form.on("Item Production Detail", {
 			frm.trigger('make_stiching_combination')
 			frm.trigger("bundle_combination")
 			frm.trigger('make_cutting_combination')
+			frm.trigger('make_packing_assortment')
 			frm.trigger('make_cloth_accessories')
 			frm.trigger('make_stiching_accessory_combination')
 			frm.trigger("emblishment_details")
@@ -753,6 +754,23 @@ frappe.ui.form.on("Item Production Detail", {
 			})
 		}
 	},
+	get_packing_combination(frm){
+		// Separator + assorted attributes are derived from the IDAM pack stage on the server.
+		frappe.call({
+			method: 'production_api.essdee_production.doctype.item_production_detail.item_production_detail.get_packing_assortment_combination',
+			args: { doc_name: frm.doc.name },
+			callback: (r) => {
+				if(r.message){
+					frm.doc.packing_assortment_json = r.message
+					frm.dirty()
+					render_packing_assortment(frm)
+				}
+			}
+		})
+	},
+	make_packing_assortment(frm){
+		render_packing_assortment(frm)
+	},
 	get_cloth_combination(frm){
 		if(frm.doc.cloth_detail.length == 0){
 			frappe.msgprint("Fill The Cloth Details")
@@ -904,6 +922,41 @@ function updateChildTableReqd(frm, fields, table, reqd) {
         row.render_row();
     }
     frappe.ui.form.editable_row && frappe.ui.form.editable_row.toggle_editable_row(false)
+}
+
+function render_packing_assortment(frm) {
+	let $w = $(frm.fields_dict['packing_assortment_html'].wrapper).empty()
+	let data = frm.doc.packing_assortment_json
+	if (typeof data === 'string') {
+		try { data = JSON.parse(data) } catch (e) { data = null }
+	}
+	if (!data || !data.boxes) { return }
+	frm.doc.packing_assortment_json = data
+	let assorted = data.assortment_attributes || []
+	data.boxes.forEach((box, bi) => {
+		let $card = $('<div style="margin-bottom:12px;"></div>').appendTo($w)
+		$('<div style="font-weight:600;margin-bottom:4px;"></div>').text('Box: ' + box.box).appendTo($card)
+		let $table = $('<table class="table table-bordered" style="margin-bottom:0;"></table>').appendTo($card)
+		let $thead = $('<thead></thead>').appendTo($table)
+		$('<tr></tr>')
+			.append($('<th></th>').text(assorted.join(' / ')))
+			.append($('<th style="width:120px;">Qty / Box</th>'))
+			.appendTo($thead)
+		let $tbody = $('<tbody></tbody>').appendTo($table)
+		;(box.rows || []).forEach((row, ri) => {
+			let label = assorted.map(a => row[a]).join(' / ')
+			let $tr = $('<tr></tr>').appendTo($tbody)
+			$('<td></td>').text(label).appendTo($tr)
+			let $td = $('<td></td>').appendTo($tr)
+			$('<input type="number" min="0" class="form-control input-sm">')
+				.val(row.qty || 0)
+				.on('input', function () {
+					frm.doc.packing_assortment_json.boxes[bi].rows[ri].qty = parseFloat(this.value) || 0
+					frm.dirty()
+				})
+				.appendTo($td)
+		})
+	})
 }
 
 async function get_stich_in_attributes(dependent_attribute_mapping, stiching_in_stage, item) {
