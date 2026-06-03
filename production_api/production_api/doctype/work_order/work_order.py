@@ -266,6 +266,14 @@ class WorkOrder(Document):
                 po_sizes.append(size)
                 price_map[size] = flt(row.mrp)
 
+        # Work Order cut quantity per size, keyed by primary attribute.
+        qty_map = {}
+        for row in self.work_order_calculated_items:
+            size = get_variant_attr_details(row.item_variant).get(primary)
+            if size:
+                qty_map.setdefault(size, 0)
+                qty_map[size] += row.quantity
+
         # Validate sizes with qty have an MRP — shared with the Calculate-time combined warning.
         missing_prices = self.get_missing_box_sticker_prices()
         if missing_prices:
