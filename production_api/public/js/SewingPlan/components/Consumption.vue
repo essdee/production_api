@@ -1,6 +1,6 @@
 <template>
     <div class="consumption-tab">
-        <div class="filter-section">
+        <div class="sp-filter-section">
             <div class="filter-card">
                 <div class="filter-title-group">
                     <svg class="filter-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -476,7 +476,7 @@ watch(() => [props.selected_supplier, props.refresh_counter], () => {
     border-radius: 1rem;
 }
 
-.filter-section {
+.sp-filter-section {
     margin-bottom: 0.6rem;
 }
 

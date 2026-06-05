@@ -101,7 +101,7 @@ defineExpose({
 });
 </script>
 
-<style> 
+<style scoped> 
 
 .wrapper { 
     width: 100%;

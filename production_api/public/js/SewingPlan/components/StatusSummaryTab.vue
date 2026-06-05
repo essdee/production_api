@@ -1,7 +1,7 @@
 <template>
     <div class="status-summary-tab">
         <!-- Filter Section -->
-        <div class="filter-section" v-show="dataRows.length > 0">
+        <div class="sp-filter-section" v-show="dataRows.length > 0">
             <div class="filter-card">
                 <div class="filter-title-group">
                     <svg class="filter-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">

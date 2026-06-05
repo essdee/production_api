@@ -1,7 +1,7 @@
 <template>
     <div class="monthly-summary-tab">
         <!-- Filter Section -->
-        <div class="filter-section">
+        <div class="sp-filter-section">
             <div class="filter-card">
                 <div class="filter-title-group">
                     <svg class="filter-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
