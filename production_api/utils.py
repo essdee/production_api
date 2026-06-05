@@ -3358,7 +3358,7 @@ def get_ppo_report_data(from_date=None, to_date=None, product_category=None, sta
 	orders = frappe.get_all(
 		"Production Order",
 		filters=filters,
-		fields=["name", "item", "fabric", "dia", "gsm", "delivery_date", "posting_date", "dont_deliver_after", "docstatus", "comments"],
+		fields=["name", "item", "fabric", "dia", "gsm", "delivery_date", "posting_date", "dont_deliver_after", "lead_time_given", "docstatus", "comments"],
 		order_by="delivery_date asc, name asc",
 	)
 
@@ -3417,6 +3417,7 @@ def get_ppo_report_data(from_date=None, to_date=None, product_category=None, sta
 			"posting_date": str(order["posting_date"]) if order["posting_date"] else "",
 			"dont_deliver_after": str(order["dont_deliver_after"]) if order["dont_deliver_after"] else "",
 			"status": "Draft" if order.get("docstatus") == 0 else "Submitted",
+			"lead_time": order.get("lead_time_given") or 0,
 			"comments": order.get("comments") or "",
 			"qty": qty_map,
 			"total": total,
@@ -3459,7 +3460,7 @@ def download_ppo_report(from_date=None, to_date=None, product_category=None, sta
 	rows = []
 
 	# Multi-row header matching UI: fixed columns + one sub-row per size group
-	fixed_headers = ["#", "PPO", "Item", "Fabric", "Dia", "GSM", "Posting Date", "Delivery Date", "Don't Deliver After", "Status"]
+	fixed_headers = ["#", "PPO", "Item", "Fabric", "Dia", "GSM", "Posting Date", "Delivery Date", "Don't Deliver After", "Lead Time", "Status"]
 	for sg in size_groups:
 		header_row = [""] * len(fixed_headers)
 		header_row.append(sg.get("label") or "")
@@ -3485,6 +3486,7 @@ def download_ppo_report(from_date=None, to_date=None, product_category=None, sta
 			order["posting_date"],
 			order["delivery_date"],
 			order["dont_deliver_after"],
+			order.get("lead_time", 0),
 			order["status"],
 			order.get("group_label", ""),
 		]
@@ -3495,7 +3497,7 @@ def download_ppo_report(from_date=None, to_date=None, product_category=None, sta
 		rows.append(row)
 
 	# Footer total row
-	footer = [""] * 10 + ["Total"]  # 10 fixed cols + "Total" in Size Group col
+	footer = [""] * 11 + ["Total"]  # 11 fixed cols + "Total" in Size Group col
 	for i in range(max_cols):
 		col_total = sum(o["qty_by_pos"][i] for o in flat_orders)
 		footer.append(col_total if col_total else "")

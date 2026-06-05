@@ -1,5 +1,5 @@
 <template>
-    <div ref="root" v-if="Object.keys(items).length > 0">
+    <div ref="root" class="work-station-editor" v-if="Object.keys(items).length > 0">
         <div v-for="item in Object.keys(items)" :key="item">
             <div v-if="types == 'update'">
                 <div v-if='items[item].length > 0'>
@@ -153,8 +153,8 @@ defineExpose({
     get_items,
 })
 </script>
-<style>
-.form-group{
-	margin-bottom:0 !important;
+<style scoped>
+.work-station-editor :deep(.form-group) {
+    margin-bottom: 0;
 }
 </style>

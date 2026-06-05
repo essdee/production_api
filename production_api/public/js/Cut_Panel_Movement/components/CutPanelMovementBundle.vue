@@ -389,7 +389,7 @@ defineExpose({
 
 </script>
 
-<style>
+<style scoped>
 .table-head, .table-data {
     text-align:center !important;
 }

@@ -68,7 +68,7 @@ export default {
 }
 </script>
 
-<style>
+<style scoped>
 .d-flex.flex-wrap {
     display: flex;
     flex-wrap: wrap;
