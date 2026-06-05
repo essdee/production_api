@@ -45,7 +45,9 @@
                                 <th :rowspan="size_groups.length">Posting Date</th>
                                 <th :rowspan="size_groups.length">Delivery Date</th>
                                 <th :rowspan="size_groups.length">Don't Deliver After</th>
+                                <th :rowspan="size_groups.length">Lead Time</th>
                                 <th :rowspan="size_groups.length">Status</th>
+                                <th :rowspan="size_groups.length">Action</th>
                             </template>
                             <th class="group-label-cell">{{ sg.label }}</th>
                             <th v-for="colIdx in max_cols" :key="'sh-' + sgIdx + '-' + colIdx"
@@ -55,7 +57,6 @@
                             <template v-if="sgIdx === 0">
                                 <th :rowspan="size_groups.length">Total</th>
                                 <th :rowspan="size_groups.length">Comments</th>
-                                <th :rowspan="size_groups.length">Action</th>
                             </template>
                         </tr>
                     </thead>
@@ -75,10 +76,16 @@
                             <td>{{ formatDate(order.posting_date) }}</td>
                             <td>{{ formatDate(order.delivery_date) }}</td>
                             <td>{{ formatDate(order.dont_deliver_after) }}</td>
+                            <td>{{ order.lead_time }}</td>
                             <td>
                                 <span :class="order.status === 'Draft' ? 'status-draft' : 'status-submitted'">
                                     {{ order.status }}
                                 </span>
+                            </td>
+                            <td>
+                                <button class="btn btn-xs btn-default btn-summarize" @click="show_summary(order.name)">
+                                    {{ summaryState[order.name]?.expanded ? 'Hide' : 'Summarize' }}
+                                </button>
                             </td>
                             <td class="cell-group-label" :title="order.group_label">{{ order.group_label }}</td>
                             <td v-for="colIdx in max_cols" :key="'q-' + colIdx"
@@ -87,11 +94,6 @@
                             </td>
                             <td class="cell-total">{{ order.total.toLocaleString() }}</td>
                             <td class="cell-comments" :title="order.comments">{{ order.comments }}</td>
-                            <td>
-                                <button class="btn btn-xs btn-default btn-summarize" @click="show_summary(order.name)">
-                                    {{ summaryState[order.name]?.expanded ? 'Hide' : 'Summarize' }}
-                                </button>
-                            </td>
                         </tr>
                         <template v-if="summaryState[order.name]?.expanded">
                           <tr v-if="summaryState[order.name]?.loading" class="summary-row">
@@ -103,7 +105,7 @@
                           <template v-else>
                             <tr v-for="(row, rIdx) in summaryState[order.name].data.rows"
                                 :key="'s-' + order.name + '-' + rIdx" class="summary-row">
-                              <td colspan="12" class="summary-label-cell">
+                              <td colspan="13" class="summary-label-cell">
                                 {{ formatDate(row.date) }} &middot; {{ row.lot }}
                               </td>
                               <td v-for="colIdx in max_cols" :key="'sd-' + colIdx"
@@ -114,7 +116,7 @@
                               <td></td>
                             </tr>
                             <tr class="summary-footer-row">
-                              <td colspan="12" class="summary-label-cell summary-footer-label">Dispatched Total</td>
+                              <td colspan="13" class="summary-label-cell summary-footer-label">Dispatched Total</td>
                               <td v-for="colIdx in max_cols" :key="'sf-' + colIdx" class="summary-footer-num">
                                 {{ summarySizeTotalByPos(order.name, order.group_sizes[colIdx - 1]) }}
                               </td>
@@ -127,12 +129,11 @@
                     </tbody>
                     <tfoot>
                         <tr>
-                            <td colspan="12" class="foot-label">Total</td>
+                            <td colspan="13" class="foot-label">Total</td>
                             <td v-for="colIdx in max_cols" :key="'ft-' + colIdx" class="foot-num">
                                 {{ column_total_flat(colIdx - 1).toLocaleString() }}
                             </td>
                             <td class="foot-grand">{{ overall_total.toLocaleString() }}</td>
-                            <td></td>
                             <td></td>
                         </tr>
                     </tfoot>
