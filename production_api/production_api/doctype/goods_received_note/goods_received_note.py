@@ -662,21 +662,42 @@ class GoodsReceivedNote(Document):
 
         wo_doc.save(ignore_permissions=True)
 
+    def get_wo_deliverable_avg_rate(self, res):
+        """Per received-unit value of the consumed materials (GRN deliverables).
+
+        Each deliverable is valued at its REAL stock valuation at posting time
+        (the same get_stock_balance call reduce_uncalculated_stock uses to reduce
+        it), not the stored GRN Deliverable.valuation_rate which is 0.
+        Returns 0 when there are no deliverables / no received quantity.
+        """
+        if not self.total_received_quantity:
+            return 0
+        received_type = frappe.db.get_single_value(
+            "Stock Settings", "default_received_type")
+        total_value = 0
+        for item in self.grn_deliverables:
+            if not (res.get(item.item_variant) and item.quantity):
+                continue
+            valuation = get_stock_balance(
+                item.item_variant, None, received_type,
+                posting_date=self.posting_date, posting_time=self.posting_time,
+                with_valuation_rate=True, uom=item.uom,
+            )[1]
+            total_value += flt(valuation) * flt(item.quantity)
+        return total_value / self.total_received_quantity
+
     def update_wo_stock_ledger(self, res):
         from production_api.mrp_stock.stock_ledger import make_sl_entries
-        deliverables_rate = 0
-        for item in self.grn_deliverables:
-            if res.get(item.item_variant) and item.quantity:
-                deliverables_rate = deliverables_rate + \
-                    (item.valuation_rate * item.quantity)
-        avg = deliverables_rate / self.total_received_quantity
-        # frappe.throw(str(avg))
+        # Received item valuation = deliverable (consumed material) average
+        #   + receivable/process cost (item.rate). (No last-SLE term.)
+        avg = self.get_wo_deliverable_avg_rate(res)
         supplier = self.get_to_warehouse()
         sl_entries = []
         for item in self.items:
             if item.quantity > 0 and res.get(item.item_variant):
                 sl_entries.append(self.get_sl_entries(
-                    item, supplier, {}, 1, item.received_type, valuation_rate=avg))
+                    item, supplier, {}, 1, item.received_type,
+                    valuation_rate=avg + flt(item.rate)))
         make_sl_entries(sl_entries)
 
     def reduce_uncalculated_stock(self, res):
@@ -785,11 +806,9 @@ class GoodsReceivedNote(Document):
         qty = None
         if self.against == "Work Order":
             qty = flt(d.get("stock_qty")) * multiplier
-            rate = get_stock_balance(
-                d.get('item_variant'), None, received_type, posting_date=self.posting_date,
-                posting_time=self.posting_time, with_valuation_rate=True, uom=d.get('stock_uom'),
-            )[1]
-            rate = valuation_rate + rate
+            # Valuation = deliverable average + receivable/process cost (both passed in
+            # via valuation_rate). The item's last-SLE value is intentionally NOT added.
+            rate = valuation_rate
         else:
             rate = d.rate or 0.0
             rate += self.freight_charge_per_product
@@ -1018,18 +1037,15 @@ class GoodsReceivedNote(Document):
 
     def reupdate_stock_ledger(self, res):
         from production_api.mrp_stock.stock_ledger import make_sl_entries
+        # Mirror update_wo_stock_ledger on cancel: reverse using the same
+        # deliverable average + per-line receivable cost. (No last-SLE term.)
+        avg = self.get_wo_deliverable_avg_rate(res)
         sl_entries = []
-        avg = self.total_receivable_cost / self.total_received_quantity
-        # items = update_if_string_instance(self.items_json)
         for item in self.items:
             if item.quantity > 0 and res.get(item.item_variant):
-                # if item['quantity'] > 0 and res.get(item['item_variant']):
-                # received_types = update_if_string_instance(item.get("received_types"))
-                # for type, qty in received_types.items():
-                # 	x = item
-                # 	x['quantity'] = qty
                 sl_entries.append(self.get_sl_entries(
-                    item, self.delivery_location, {}, 1, item.received_type, valuation_rate=avg))
+                    item, self.delivery_location, {}, 1, item.received_type,
+                    valuation_rate=avg + flt(item.rate)))
         make_sl_entries(sl_entries)
 
     def reupdate_wo_deliverables(self, res):

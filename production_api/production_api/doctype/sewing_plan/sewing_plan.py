@@ -1497,6 +1497,7 @@ def get_consumption_mapping_data(lot, supplier=None):
 		FROM `tabItem BOM`
 		WHERE parent = %(ipd)s
 		  AND process_name = %(process_name)s
+		  AND uom NOT IN ('Nos', 'Pieces')
 		ORDER BY item
 	""", {"ipd": ipd[0].production_detail, "process_name": sti_process}, as_dict=True)
 	ipd_cloth_acc=frappe.get_doc("Item Production Detail",ipd[0].production_detail)
