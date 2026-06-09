@@ -1393,6 +1393,7 @@ def get_inhouse_qty(lot, process):
 	if not wo_list:
 		frappe.msgprint(f"No Work Order's for Process {process}")
 		return
+	work_order_date_details = get_work_order_date_details(wo_list)
 	items = frappe.db.sql(
 		"""
 			SELECT * FROM `tabWork Order Calculated Item` WHERE parent IN %(work_orders)s
@@ -1432,6 +1433,10 @@ def get_inhouse_qty(lot, process):
 				"received": 0, 
 			},
 		})
+		update_inhouse_colour_supplier_dates(
+			inward_qty['data'][colour][sup_name],
+			work_order_date_details.get(item['parent'], {}),
+		)
 		status = d.get(sup_name, {}).get(quality_colour, {}).get(size, None)
 		inward_qty['data'][colour][sup_name]['quality'].setdefault(size, status)
 		inward_qty["data"][colour][sup_name]["values"].setdefault(size, {
@@ -1470,6 +1475,55 @@ def get_inhouse_qty(lot, process):
 		"is_set_item": is_set_item,
 		"set_attr": set_attr,
 	}
+
+def get_work_order_date_details(wo_list):
+	date_details = {}
+	for row in frappe.get_all(
+		"Work Order",
+		filters={"name": ["in", wo_list]},
+		fields=[
+			"name",
+			"first_dc_date",
+			"last_dc_date",
+			"first_grn_date",
+			"last_grn_date",
+		],
+	):
+		date_details[row.name] = row
+	return date_details
+
+def update_inhouse_colour_supplier_dates(supplier_data, work_order_dates):
+	supplier_data.setdefault("dates", {
+		"first_dc_date": None,
+		"last_dc_date": None,
+		"first_grn_date": None,
+		"last_grn_date": None,
+	})
+	date_fields = {
+		"first_dc_date": min_date,
+		"first_grn_date": min_date,
+		"last_dc_date": max_date,
+		"last_grn_date": max_date,
+	}
+	for fieldname, reducer in date_fields.items():
+		supplier_data["dates"][fieldname] = reducer(
+			supplier_data["dates"].get(fieldname),
+			work_order_dates.get(fieldname),
+		)
+
+def min_date(current_value, next_value):
+	if not next_value:
+		return current_value
+	if not current_value:
+		return next_value
+	return next_value if getdate(next_value) < getdate(current_value) else current_value
+
+def max_date(current_value, next_value):
+	if not next_value:
+		return current_value
+	if not current_value:
+		return next_value
+	return next_value if getdate(next_value) > getdate(current_value) else current_value
 
 def get_eqi_status(wo_list):
 	eqi_list = frappe.get_all("Essdee Quality Inspection", filters={
