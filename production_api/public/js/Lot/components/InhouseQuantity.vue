@@ -35,6 +35,7 @@
                         <th style="width:20px;">Colour</th>
                         <th style="width:20px;" v-if="items.is_set_item">{{ items['set_attr'] }}</th>
                         <th style="width:20px;">Supplier</th>
+                        <th style="width:120px;">Date</th>
                         <th style="width:150px;">Type</th>
                         <th v-for="size in items.primary_values" :key="size">{{ size }}</th>
                         <th>Total</th>
@@ -48,6 +49,12 @@
                                 <td :rowspan="3">{{ colour }}</td>
                                 <td :rowspan="3" v-if="items.is_set_item">{{ items['data']['data'][colour][supplier]['part'] }}</td>
                                 <td :rowspan="3">{{ supplier }}</td>
+                                <td :rowspan="3" class="date-cell">
+                                    <div>First DC: {{ format_report_date(items['data']['data'][colour][supplier]['dates']?.first_dc_date) }}</div>
+                                    <div>Last DC: {{ format_report_date(items['data']['data'][colour][supplier]['dates']?.last_dc_date) }}</div>
+                                    <div>First GRN: {{ format_report_date(items['data']['data'][colour][supplier]['dates']?.first_grn_date) }}</div>
+                                    <div>Last GRN: {{ format_report_date(items['data']['data'][colour][supplier]['dates']?.last_grn_date) }}</div>
+                                </td>
                                 <td>Delivered</td>
                                 <td v-for="size in items.primary_values" :key="size">
                                     {{
@@ -87,6 +94,7 @@
                             <td :rowspan="3"></td>
                             <td :rowspan="3">Total</td>
                             <td :rowspan="3" v-if="items.is_set_item">{{ key }}</td>
+                            <td :rowspan="3"></td>
                             <td :rowspan="3"></td>
                             <td>Delivered</td>
                             <td v-for="size in items.primary_values" :key="size">
@@ -228,6 +236,13 @@ function get_difference(qty1, qty2){
     return qty1 - qty2
 }
 
+function format_report_date(value){
+    if(!value){
+        return "-"
+    }
+    return frappe.datetime.str_to_user(value)
+}
+
 async function take_screenshot(){
     frappe.require("https://cdn.jsdelivr.net/npm/html2canvas-pro@1.5.8/dist/html2canvas-pro.min.js", async () => {
         let sourceDiv = document.getElementById("page-inhouse-quantity-rep");
@@ -276,6 +291,13 @@ function get_quality_style(val){
     width: 100%;
     border: 1px solid #ccc;
     border-collapse: collapse;
+}
+
+.date-cell {
+    font-size: 11px;
+    line-height: 1.4;
+    min-width: 120px;
+    white-space: nowrap;
 }
 
 .bordered-table th,
