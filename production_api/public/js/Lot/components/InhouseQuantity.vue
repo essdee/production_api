@@ -35,10 +35,12 @@
                         <th style="width:20px;">Colour</th>
                         <th style="width:20px;" v-if="items.is_set_item">{{ items['set_attr'] }}</th>
                         <th style="width:20px;">Supplier</th>
-                        <th style="width:120px;">Date</th>
                         <th style="width:150px;">Type</th>
                         <th v-for="size in items.primary_values" :key="size">{{ size }}</th>
                         <th>Total</th>
+                        <th style="width:110px;">First Date</th>
+                        <th style="width:110px;">Last Date</th>
+                        <th style="width:80px;">Diff</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -49,12 +51,6 @@
                                 <td :rowspan="3">{{ colour }}</td>
                                 <td :rowspan="3" v-if="items.is_set_item">{{ items['data']['data'][colour][supplier]['part'] }}</td>
                                 <td :rowspan="3">{{ supplier }}</td>
-                                <td :rowspan="3" class="date-cell">
-                                    <div>First DC: {{ format_report_date(items['data']['data'][colour][supplier]['dates']?.first_dc_date) }}</div>
-                                    <div>Last DC: {{ format_report_date(items['data']['data'][colour][supplier]['dates']?.last_dc_date) }}</div>
-                                    <div>First GRN: {{ format_report_date(items['data']['data'][colour][supplier]['dates']?.first_grn_date) }}</div>
-                                    <div>Last GRN: {{ format_report_date(items['data']['data'][colour][supplier]['dates']?.last_grn_date) }}</div>
-                                </td>
                                 <td>Delivered</td>
                                 <td v-for="size in items.primary_values" :key="size">
                                     {{
@@ -62,6 +58,9 @@
                                     }}
                                 </td>
                                 <td><strong>{{ items['data']['data'][colour][supplier]['colour_total']['delivered'] ?? 0 }}</strong></td>
+                                <td>{{ format_report_date(items['data']['data'][colour][supplier]['dates']?.first_dc_date) }}</td>
+                                <td>{{ format_report_date(items['data']['data'][colour][supplier]['dates']?.last_dc_date) }}</td>
+                                <td :rowspan="3">{{ date_diff_days(items['data']['data'][colour][supplier]['dates']?.last_grn_date, items['data']['data'][colour][supplier]['dates']?.last_dc_date) }}</td>
                             </tr>
                             <tr>
                                 <td>Received</td>
@@ -73,6 +72,8 @@
                                     }}
                                 </td>
                                 <td><strong>{{ items['data']['data'][colour][supplier]['colour_total']['received'] ?? 0 }}</strong></td>
+                                <td>{{ format_report_date(items['data']['data'][colour][supplier]['dates']?.first_grn_date) }}</td>
+                                <td>{{ format_report_date(items['data']['data'][colour][supplier]['dates']?.last_grn_date) }}</td>
                             </tr>
                             <tr>
                                 <td>Difference</td>
@@ -83,18 +84,19 @@
                                         }}
                                 </td>
                                 <td :style="get_style(items['data']['data'][colour][supplier]['colour_total']['received'] ?? 0, items['data']['data'][colour][supplier]['colour_total']['delivered'] ?? 0)">
-                                <strong>{{ 
+                                <strong>{{
                                     get_difference(items['data']['data'][colour][supplier]['colour_total']['received'] ?? 0, items['data']['data'][colour][supplier]['colour_total']['delivered'] ?? 0)
                                 }}</strong></td>
+                                <td></td>
+                                <td></td>
                             </tr>
-                        </template>    
+                        </template>
                     </template>
                     <template v-for="(row,key) in items.data['total']" :key="row">
                         <tr style="background-color: bisque;">
                             <td :rowspan="3"></td>
                             <td :rowspan="3">Total</td>
                             <td :rowspan="3" v-if="items.is_set_item">{{ key }}</td>
-                            <td :rowspan="3"></td>
                             <td :rowspan="3"></td>
                             <td>Delivered</td>
                             <td v-for="size in items.primary_values" :key="size">
@@ -103,6 +105,9 @@
                                 }}
                             </td>
                             <td>{{ items.data['over_all'][key]['delivered']  ?? 0 }}</td>
+                            <td></td>
+                            <td></td>
+                            <td :rowspan="3"></td>
                         </tr>
                         <tr style="background-color: bisque;">
                             <td>Received</td>
@@ -112,6 +117,8 @@
                                 }}
                             </td>
                             <td>{{ items.data['over_all'][key]['received']  ?? 0}}</td>
+                            <td></td>
+                            <td></td>
                         </tr>
                         <tr style="background-color: bisque;">
                             <td>Difference</td>
@@ -124,6 +131,8 @@
                             <td :style="get_style(items.data['over_all'][key]['received'] ?? 0 , items.data['over_all'][key]['delivered'] ?? 0)">
                                 {{ get_difference(items.data['over_all'][key]['received'] ?? 0 , items.data['over_all'][key]['delivered'] ?? 0) }}
                             </td>
+                            <td></td>
+                            <td></td>
                         </tr>
                     </template>
                 </tbody>
@@ -243,6 +252,13 @@ function format_report_date(value){
     return frappe.datetime.str_to_user(value)
 }
 
+function date_diff_days(end_date, start_date){
+    if(!end_date || !start_date){
+        return "-"
+    }
+    return frappe.datetime.get_day_diff(end_date, start_date)
+}
+
 async function take_screenshot(){
     frappe.require("https://cdn.jsdelivr.net/npm/html2canvas-pro@1.5.8/dist/html2canvas-pro.min.js", async () => {
         let sourceDiv = document.getElementById("page-inhouse-quantity-rep");
@@ -291,13 +307,6 @@ function get_quality_style(val){
     width: 100%;
     border: 1px solid #ccc;
     border-collapse: collapse;
-}
-
-.date-cell {
-    font-size: 11px;
-    line-height: 1.4;
-    min-width: 120px;
-    white-space: nowrap;
 }
 
 .bordered-table th,
