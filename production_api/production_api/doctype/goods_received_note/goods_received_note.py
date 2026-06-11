@@ -127,6 +127,7 @@ class GoodsReceivedNote(Document):
             if len(items) == 0:
                 frappe.throw("There is No Received Items in this GRN")
             self.set("items", items)
+            self.validate_sewing_plan_quantity()
             check = False
             if not self.cut_panel_movement and not self.cutting_laysheet and not self.is_return and not self.allow_non_bundle and not self.includes_packing:
                 cancelled_str = frappe.db.get_single_value(
@@ -188,6 +189,90 @@ class GoodsReceivedNote(Document):
             self.validate_deliverables()
 
         self.set('approved_by', frappe.get_user().doc.name)
+
+    def validate_sewing_plan_quantity(self):
+        # Cap Work Order receipts at the Sewing Plan's "Checking Output", per variant.
+        # Only applies when the Work Order actually has a Sewing Plan (i.e. stitching).
+        # Returns reduce the received total, so a return GRN is never capped here.
+        if self.against != "Work Order" or self.is_return:
+            return
+        if not frappe.db.exists("Sewing Plan", {"work_order": self.against_id}):
+            return
+
+        # The input type that represents checking output is configured in MRP Settings.
+        checking_type = frappe.db.get_single_value("MRP Settings", "type_wise_diff_summary")
+        if not checking_type:
+            return
+
+        # Allowed = total Checking Output recorded across this Work Order's Sewing Plan(s),
+        # summed per item variant (colour + size).
+        allowed = {}
+        cap_rows = frappe.db.sql(
+            """
+            SELECT d.item_variant AS variant, SUM(d.quantity) AS qty
+            FROM `tabSewing Plan Detail` d
+            INNER JOIN `tabSewing Plan Entry Detail` e ON d.parent = e.name
+            INNER JOIN `tabSewing Plan` sp ON e.sewing_plan = sp.name
+            WHERE sp.work_order = %(wo)s AND e.input_type = %(type)s
+            GROUP BY d.item_variant
+            """,
+            {"wo": self.against_id, "type": checking_type},
+            as_dict=True,
+        )
+        for row in cap_rows:
+            allowed[row.variant] = flt(row.qty)
+
+        # Already received = net quantity from earlier *submitted* GRNs of this Work Order
+        # (additional GRNs add, return GRNs subtract). The current GRN is excluded by name,
+        # so it is never double counted. This equals the Work Order's tracked received_qty.
+        already_received = {}
+        received_rows = frappe.db.sql(
+            """
+            SELECT i.item_variant AS variant,
+                   SUM(i.quantity * IF(g.is_return, -1, 1)) AS qty
+            FROM `tabGoods Received Note Item` i
+            INNER JOIN `tabGoods Received Note` g ON i.parent = g.name
+            WHERE g.against = 'Work Order'
+              AND g.against_id = %(wo)s
+              AND g.docstatus = 1
+              AND g.name != %(self_name)s
+            GROUP BY i.item_variant
+            """,
+            {"wo": self.against_id, "self_name": self.name},
+            as_dict=True,
+        )
+        for row in received_rows:
+            already_received[row.variant] = flt(row.qty)
+
+        # Quantity this GRN is trying to receive, per variant.
+        this_grn = {}
+        for item in self.items:
+            qty = flt(item.quantity)
+            if qty > 0:
+                this_grn[item.item_variant] = this_grn.get(item.item_variant, 0) + qty
+
+        # Flag every variant whose running total would exceed its Checking Output (strict).
+        def fmt(value):
+            return "%g" % flt(value)
+
+        mismatches = []
+        for variant, grn_qty in this_grn.items():
+            cap = allowed.get(variant, 0)
+            received = already_received.get(variant, 0)
+            running_total = received + grn_qty
+            # Round away floating-point dust before comparing — real overages are whole
+            # pieces, so this keeps the rule strict (no real tolerance) without a spurious
+            # 413.0000001 > 413 throw.
+            if flt(running_total, 3) > flt(cap, 3):
+                mismatches.append(
+                    f"{variant} &mdash; Checking Output: {fmt(cap)}, "
+                    f"Already received: {fmt(received)}, "
+                    f"This GRN: {fmt(grn_qty)}, "
+                    f"Over by: {fmt(running_total - cap)}"
+                )
+
+        if mismatches:
+            frappe.throw("<br>".join(mismatches), title="Sewing Plan Qty Mismatch")
 
     def check_for_unique_supplier_document_no(self):
         flag = frappe.db.get_single_value(
