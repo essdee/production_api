@@ -137,6 +137,16 @@ def revert_purchase_invoice_link(name, pi_field, expected_pi_name, origin=None):
 		)
 		return
 
+	# MRP-side revert (production_api's own Purchase Invoice cancel/delete): just
+	# remove the MRP purchase invoice link — no reopen row, no status change. A
+	# targeted db.set_value also avoids racing with a concurrent ERP-side revert on
+	# the same document's modified-timestamp.
+	if pi_field == "mrp_purchase_invoice":
+		frappe.db.set_value("Vendor Bill Tracking", name, "mrp_purchase_invoice", None, update_modified=False)
+		return
+
+	# ERP-side revert (purchase_invoice cancelled/deleted): reopen the Vendor Bill
+	# Tracking — clear the link, add a Reopen history row and revert the status.
 	doc.set(pi_field, None)
 	doc.append("vendor_bill_tracking_history", {
 		"assigned_to": doc.assigned_to,

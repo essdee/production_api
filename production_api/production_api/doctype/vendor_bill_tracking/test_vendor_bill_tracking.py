@@ -48,20 +48,35 @@ class TestVendorBillTracking(FrappeTestCase):
 		self.assertEqual(vbt.form_status, "Closed")
 		self.assertGreater(frappe.db.count("Error Log"), before_logs)
 
-	def test_revert_match_closed_clears_and_reopens(self):
+	def test_mrp_revert_clears_field_only(self):
+		# MRP-side revert: only the mrp_purchase_invoice link is cleared — no reopen
+		# row and no status change (the bill's Closed status is driven by the ERP PI).
 		vbt = _make_vbt("mrp_purchase_invoice", "PI-MATCH", "Closed")
 		history_before = len(vbt.vendor_bill_tracking_history)
 		revert_purchase_invoice_link(vbt.name, "mrp_purchase_invoice", "PI-MATCH", origin="MRP-cancel")
 		vbt.reload()
 		self.assertFalse(vbt.mrp_purchase_invoice)
+		self.assertEqual(vbt.form_status, "Closed")
+		self.assertEqual(len(vbt.vendor_bill_tracking_history), history_before)
+
+	def test_erp_revert_closed_reopens_with_history(self):
+		# ERP-side revert of a Closed bill: clear the link, add a Reopen history row
+		# and revert the status to Reopen.
+		vbt = _make_vbt("purchase_invoice", "PI-ERP-CLOSED", "Closed")
+		history_before = len(vbt.vendor_bill_tracking_history)
+		revert_purchase_invoice_link(vbt.name, "purchase_invoice", "PI-ERP-CLOSED", origin="ERP-cancel")
+		vbt.reload()
+		self.assertFalse(vbt.purchase_invoice)
 		self.assertEqual(vbt.form_status, "Reopen")
 		self.assertEqual(len(vbt.vendor_bill_tracking_history), history_before + 1)
 		last = vbt.vendor_bill_tracking_history[-1]
 		self.assertEqual(last.action, "Reopen")
-		self.assertIn("MRP-cancel", last.remarks or "")
-		self.assertIn("PI-MATCH", last.remarks or "")
+		self.assertIn("ERP-cancel", last.remarks or "")
+		self.assertIn("PI-ERP-CLOSED", last.remarks or "")
 
-	def test_revert_match_non_closed_clears_but_keeps_status(self):
+	def test_erp_revert_non_closed_keeps_status_adds_history(self):
+		# ERP-side revert of a non-Closed bill: clear the link and add a Reopen row,
+		# but leave the status untouched.
 		vbt = _make_vbt("purchase_invoice", "PI-ERP-1", "Open")
 		revert_purchase_invoice_link(vbt.name, "purchase_invoice", "PI-ERP-1", origin="ERP-delete")
 		vbt.reload()
