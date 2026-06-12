@@ -15,10 +15,13 @@ class SewingPlan(Document):
 @frappe.whitelist()
 def create_sewing_plan(work_order):
 	finishing_inward_process = frappe.db.get_single_value("MRP Settings", "finishing_inward_process")
-	process_name, internal_unit = frappe.get_value("Work Order", work_order, ["process_name", "is_internal_unit"])	
+	process_name, internal_unit, supplier = frappe.get_value("Work Order", work_order, ["process_name", "is_internal_unit", "supplier"])	
 	if not internal_unit:
 		return
-	
+	apply_sewing_plan = frappe.get_value("Supplier", supplier, "apply_sewing_plan")
+	if not apply_sewing_plan:
+		return
+
 	is_group = frappe.get_value("Process", process_name, "is_group")
 	is_sewing = False
 	if is_group:

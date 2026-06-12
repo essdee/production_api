@@ -15,6 +15,7 @@
   "column_break_4",
   "disabled",
   "is_company_location",
+  "apply_sewing_plan",
   "department",
   "contact_html",
   "section_break_8",
@@ -119,12 +120,18 @@
    "fieldtype": "Table",
    "label": "Supplier Users",
    "options": "Supplier User"
+  },
+  {
+   "default": "0",
+   "fieldname": "apply_sewing_plan",
+   "fieldtype": "Check",
+   "label": "Apply Sewing Plan"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-05-14 16:22:38.585299",
+ "modified": "2026-06-12 11:52:04.940558",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Supplier",
