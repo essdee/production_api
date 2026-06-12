@@ -223,7 +223,7 @@ def get_data(filters):
 					set_dict[set_key]['cut_to_dispatch_diff_percent'] = 100	 
 				sum1 = set_dict[set_key]['sewing_received'] + set_dict[set_key]['old_lot'] + set_dict[set_key]['ironing_excess']
 				if sum1 != 0:
-					set_dict[set_key]['finishing_inward_to_dispatch_diff_percent'] = 100 - (round(set_dict[set_key]['dispatch_piece_qty'] / set_dict[set_key]['finishing_inward'], 2) * 100)
+					set_dict[set_key]['finishing_inward_to_dispatch_diff_percent'] = 100 - (round(set_dict[set_key]['dispatch_piece_qty'] / sum1, 2) * 100)
 				else:
 					set_dict[set_key]['finishing_inward_to_dispatch_diff_percent'] = 100
 
