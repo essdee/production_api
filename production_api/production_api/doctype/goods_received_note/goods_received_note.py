@@ -194,7 +194,7 @@ class GoodsReceivedNote(Document):
         # Cap Work Order receipts at the Sewing Plan's "Checking Output", per variant.
         # Only applies when the Work Order actually has a Sewing Plan (i.e. stitching).
         # Returns reduce the received total, so a return GRN is never capped here.
-        if self.against != "Work Order" or self.is_return:
+        if self.against != "Work Order" or self.is_return or self.avoid_sewing_plan_qty:
             return
         if not frappe.db.exists("Sewing Plan", {"work_order": self.against_id}):
             return
