@@ -375,7 +375,7 @@ def fetch_work_order_items(items):
 
 
 @frappe.whitelist()
-def fetch_grn_details(grns, against, supplier):
+def fetch_grn_details(grns, against, supplier, allow_rate_change):
     if isinstance(grns, string_types):
         grns = json.loads(grns)
     grns = list(set(grns))
@@ -433,6 +433,9 @@ def fetch_grn_details(grns, against, supplier):
 
         if pi_min_grn_date and min_date < pi_min_grn_date:
             allow_to_change_rate = 1
+
+        if allow_rate_change:
+            allow_to_change_rate = 1    
 
         for wo in grn_groups:
             items_list, process_docname = calculate_grns(
