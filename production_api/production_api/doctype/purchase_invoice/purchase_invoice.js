@@ -84,6 +84,10 @@ frappe.ui.form.on("Purchase Invoice", {
       );
       frm.pi_debit_summary.load_data(frm.doc.__onload.debit_summary);
     }
+    if(frappe.user_roles.includes("System Manager")){
+      frm.set_df_property("allow_to_change_rate", "read_only", "false")
+      frm.refresh_field("allow_to_change_rate")
+    }
   },
 
   supplier: function (frm) {
@@ -152,6 +156,7 @@ function fetch_grn(frm) {
       grns: grns,
       against: frm.doc.against,
       supplier: frm.doc.supplier,
+      allow_rate_change: frm.doc.allow_to_change_rate
     },
     callback: function (r) {
       if (r.message) {
