@@ -237,6 +237,7 @@ jinja = {
         "production_api.essdee_production.doctype.lot.lot.get_ironing_mistake_pf_items",
         "production_api.essdee_production.doctype.lot.lot.get_consumption_sheet_data",
         "production_api.production_api.doctype.sewing_plan.sewing_plan.get_sewing_consumption_print_data",
+        "production_api.production_api.doctype.sewing_plan.sewing_plan.get_monthly_summary_print_data",
         "production_api.production_api.doctype.cutting_marker.cutting_marker.get_panels_and_size",
         "production_api.production_api.doctype.production_order.production_order.get_production_order_details",
         "production_api.production_api.doctype.grn_rework_item.grn_rework_item.get_rework_items",

@@ -1,0 +1,32 @@
+{
+ "content": null,
+ "creation": "2026-06-16 15:47:51.312351",
+ "docstatus": 0,
+ "doctype": "Page",
+ "idx": 0,
+ "modified": "2026-06-16 15:56:27.613251",
+ "modified_by": "Administrator",
+ "module": "Production Api",
+ "name": "finishing-plan-report",
+ "owner": "Administrator",
+ "page_name": "finishing-plan-report",
+ "roles": [
+  {
+   "role": "System Manager"
+  },
+  {
+   "role": "Transaction User"
+  },
+  {
+   "role": "Stock User"
+  },
+  {
+   "role": "Store User"
+  }
+ ],
+ "script": null,
+ "standard": "Yes",
+ "style": null,
+ "system_page": 0,
+ "title": "Finishing Plan Report"
+}
