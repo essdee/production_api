@@ -27,11 +27,28 @@
         </div>
 
         <div class="report-wrapper">
+            <div v-if="rows.length > 0 && !loading" class="report-actions">
+                <button class="copy-btn" @click="copyToClipboard" :disabled="copying" title="Copy to Clipboard">
+                    <svg v-if="copying" class="copy-icon spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                    </svg>
+                    <svg v-else class="copy-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
+                    </svg>
+                    {{ copying ? 'Copying...' : 'Copy' }}
+                </button>
+                <button class="record-btn print-btn" @click="handlePrint" title="Print">
+                    <svg class="record-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path>
+                    </svg>
+                    Print
+                </button>
+            </div>
             <div v-if="loading" class="empty-state">
                 <p class="empty-text">Loading...</p>
             </div>
             <div class="report-container no-scrollbar" v-else-if="rows.length > 0">
-                <table class="report-table">
+                <table class="report-table" ref="report_table">
                     <thead>
                         <tr class="header-row">
                             <th class="header-cell primary-header sticky-date-col">Date</th>
@@ -77,6 +94,7 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
+import * as htmlToImage from 'html-to-image'
 
 const props = defineProps({
     selected_supplier: {
@@ -104,6 +122,9 @@ const rows = ref([])
 const grand_total = ref({})
 const loading = ref(false)
 const fetched = ref(false)
+
+const report_table = ref(null)
+const copying = ref(false)
 
 let start_date_ctrl = null
 let end_date_ctrl = null
@@ -163,6 +184,58 @@ const fetchData = () => {
             loading.value = false
         }
     })
+}
+
+// Copy the rendered report table to the clipboard as an image (same approach as DPRTab).
+const copyToClipboard = async () => {
+    if (!report_table.value) return
+    copying.value = true
+    try {
+        if (document.activeElement && typeof document.activeElement.blur === 'function') {
+            document.activeElement.blur()
+        }
+        const blob = await htmlToImage.toBlob(report_table.value, {
+            backgroundColor: '#ffffff',
+            // pixelRatio 1 (matches DPRTab): the Monthly Summary table can be very wide
+            // (40+ style columns), so 2x would risk an oversized clipboard image.
+            pixelRatio: 1,
+        })
+        await navigator.clipboard.write([
+            new ClipboardItem({ 'image/png': blob }),
+        ])
+        copying.value = false
+        frappe.show_alert({ message: 'Copied to clipboard', indicator: 'green' })
+    } catch (err) {
+        copying.value = false
+        frappe.show_alert({ message: 'Copy failed', indicator: 'red' })
+    }
+}
+
+// Open the "Sewing Plan Monthly Summary" print format with the current filters
+// (same approach as the Consumption tab). The print format re-derives the same
+// report data server-side from these query params, so it mirrors the report exactly.
+const handlePrint = () => {
+    if (rows.value.length === 0) {
+        frappe.msgprint('Please fetch the report first')
+        return
+    }
+    const params = new URLSearchParams({
+        doctype: 'Supplier',
+        name: props.selected_supplier,
+        format: 'Sewing Plan Monthly Summary',
+        no_letterhead: '1',
+        supplier: props.selected_supplier,
+        start_date: start_date_val.value || '',
+        end_date: end_date_val.value || '',
+        trigger_print: '1',
+    })
+    if (show_grn_val.value) {
+        params.set('show_grn', '1')
+    } else {
+        params.set('input_type', input_type_val.value || '')
+    }
+    // noopener: keep the print tab's print dialog from freezing this tab (see Consumption.vue).
+    window.open(`/printview?${params.toString()}`, '_blank', 'noopener')
 }
 
 onMounted(() => {
@@ -254,6 +327,59 @@ onMounted(() => {
     padding: 1rem;
     border: 1px solid #f3f4f6;
     box-shadow: 0 40px 100px -20px rgba(0, 0, 0, 0.04);
+}
+
+.report-actions {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 0.75rem;
+    padding: 0 0.5rem;
+}
+
+.copy-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.6rem 1.1rem;
+    background: #1a73e8;
+    color: white;
+    border: none;
+    border-radius: 0.85rem;
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.copy-btn:hover:not(:disabled) {
+    background: #1557b0;
+    transform: translateY(-1px);
+}
+
+.copy-btn:disabled {
+    background: #94a3b8;
+    cursor: not-allowed;
+}
+
+.copy-icon {
+    width: 1rem;
+    height: 1rem;
+}
+
+.print-btn {
+    padding: 0.6rem 1.1rem;
+    font-size: 0.8rem;
+}
+
+.spin {
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
 }
 
 .report-container {

@@ -1156,6 +1156,55 @@ def get_monthly_summary_data(supplier, start_date, end_date, input_type=None, sh
 	}
 
 @frappe.whitelist()
+def get_monthly_summary_print_data():
+	"""Data source for the "Sewing Plan Monthly Summary" print format.
+
+	Reads the report filters from the request (frappe.form_dict) and reuses
+	get_monthly_summary_data, so the print shows exactly the same content as the
+	Monthly Summary tab — no duplicated logic. Exposed to Jinja via hooks.py.
+	"""
+	fd = frappe.form_dict
+	supplier = fd.get("supplier") or fd.get("name")
+	start_date = fd.get("start_date")
+	end_date = fd.get("end_date")
+	input_type = fd.get("input_type") or None
+	show_grn = fd.get("show_grn") or 0
+
+	data = get_monthly_summary_data(supplier, start_date, end_date, input_type, show_grn)
+	styles = data["styles"]
+
+	def fmt(v):
+		# Mirror the Monthly Summary tab's on-screen number formatting: '-' for zero/
+		# blank, otherwise a grouped number using the bench number_format (keeps
+		# decimals only when present). Avoids the print rounding Float (GRN-mode) qtys
+		# or using a different thousands grouping than the report.
+		if not v:
+			return "-"
+		return frappe.format_value(v, {"fieldtype": "Float"})
+
+	display_rows = []
+	for row in data["rows"]:
+		display_row = {"date": row["date"]}
+		for style in styles:
+			display_row[style] = fmt(row.get(style))
+		display_row["total"] = fmt(row.get("total"))
+		display_rows.append(display_row)
+
+	grand_total = {style: fmt(data["grand_total"].get(style)) for style in styles}
+	grand_total["total"] = fmt(data["grand_total"].get("total"))
+
+	return {
+		"styles": styles,
+		"rows": display_rows,
+		"grand_total": grand_total,
+		"supplier": supplier,
+		"start_date": start_date,
+		"end_date": end_date,
+		"input_type": input_type,
+		"show_grn": 1 if int(show_grn or 0) else 0,
+	}
+
+@frappe.whitelist()
 def get_fi_updates_data(supplier):
 	sp_list = frappe.get_all("Sewing Plan", filters={"supplier": supplier}, pluck="name")
 	

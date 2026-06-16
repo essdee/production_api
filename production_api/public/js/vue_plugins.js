@@ -105,6 +105,7 @@ import PPOReport from "./PPOReport/components/PPOReport.vue"
 import ProcessPending from "./components/ProcessPending.vue"
 import FinishingPlanDPR from "./FinishingPlanDPR/FinishingPlanDPR.vue"
 import FinishingPlanDispa from "./FinishingPlanDispa/FinishingPlanDispa.vue"
+import FinishingPlanReport from "./FinishingPlanReport/FinishingPlanReport.vue"
 
 // Product Development
 import {
@@ -1294,6 +1295,19 @@ frappe.production.ui.FinishingPlanDispa = class {
     }
     make_app() {
         this.app = createApp(FinishingPlanDispa)
+        SetVueGlobals(this.app)
+        this.vue = this.app.mount(this.$wrapper.get(0))
+    }
+}
+
+// Finishing Plan Report (frozen-column view of the Finishing Plan Report script report)
+frappe.production.ui.FinishingPlanReport = class {
+    constructor(wrapper) {
+        this.$wrapper = $(wrapper)
+        this.make_app()
+    }
+    make_app() {
+        this.app = createApp(FinishingPlanReport)
         SetVueGlobals(this.app)
         this.vue = this.app.mount(this.$wrapper.get(0))
     }
