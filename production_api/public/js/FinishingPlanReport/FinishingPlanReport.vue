@@ -28,7 +28,7 @@
         </div>
 
         <div v-if="rows.length > 0" class="table-wrapper no-scrollbar fpr-table-wrapper">
-            <table class="data-table fpr-table">
+            <table class="data-table fpr-table" ref="tableEl">
                 <thead>
                     <tr class="header-row">
                         <th
@@ -68,21 +68,18 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onBeforeUnmount, nextTick } from 'vue'
 
 // The page is pure presentation: it reuses the existing "Finishing Plan Report"
 // Script Report through Frappe's built-in query_report.run endpoint, so all
 // columns and formulas live in finishing_plan_report.py — nothing is duplicated here.
 const REPORT_NAME = 'Finishing Plan Report'
 
-// The four left-pinned columns, in column order, with fixed pixel widths.
-// Everything else scrolls horizontally underneath them.
-const FROZEN = [
-    { fieldname: 'item', width: 150 },
-    { fieldname: 'description', width: 180 },
-    { fieldname: 'lot', width: 140 },
-    { fieldname: 'pieces_per_box', width: 110 },
-]
+// The four left-pinned columns, in column order. Widths auto-fit their content
+// (Style grows to the item name, Lot/Description shrink to their short values);
+// the sticky left offsets are measured from the rendered table (see measureFrozen).
+const FROZEN = ['item', 'description', 'lot', 'pieces_per_box']
+const frozenSet = new Set(FROZEN)
 
 // Difference columns the source report colours red (negative) / green (positive).
 const COLOR_COLS = new Set([
@@ -93,17 +90,10 @@ const COLOR_COLS = new Set([
     'finishing_inward_to_dispatch_diff',
 ])
 
-// Pre-compute each frozen column's cumulative left offset from the widths above.
-const frozenMeta = {}
-let runningLeft = 0
-FROZEN.forEach((f, i) => {
-    frozenMeta[f.fieldname] = {
-        left: runningLeft,
-        width: f.width,
-        last: i === FROZEN.length - 1,
-    }
-    runningLeft += f.width
-})
+// Sticky left offsets, measured from the rendered column widths after each load so
+// the frozen columns size to their data and still pin at the correct position.
+const frozenLefts = ref({})
+const tableEl = ref(null)
 
 const lot_filter_wrapper = ref(null)
 const item_filter_wrapper = ref(null)
@@ -116,21 +106,40 @@ const columns = ref([])
 const rows = ref([])
 const fetched = ref(false)
 
-const isFrozen = (col) => Object.prototype.hasOwnProperty.call(frozenMeta, col.fieldname)
-const isFrozenEdge = (col) => isFrozen(col) && frozenMeta[col.fieldname].last
+const isFrozen = (col) => frozenSet.has(col.fieldname)
+const isFrozenEdge = (col) => col.fieldname === FROZEN[FROZEN.length - 1]
 
 const frozenStyle = (col, isHeader) => {
-    const meta = frozenMeta[col.fieldname]
-    if (!meta) return {}
+    if (!isFrozen(col)) return {}
+    const left = frozenLefts.value[col.fieldname]
+    // Until the offsets are measured, render the column in normal flow (no overlap);
+    // it becomes sticky once measureFrozen() has run. Header cells also pin to the top
+    // (via CSS), so a frozen header (the corner) needs the highest z-index.
+    if (left === undefined) return {}
     return {
         position: 'sticky',
-        left: meta.left + 'px',
-        width: meta.width + 'px',
-        minWidth: meta.width + 'px',
-        maxWidth: meta.width + 'px',
-        zIndex: isHeader ? 6 : 5,
+        left: left + 'px',
+        zIndex: isHeader ? 30 : 10,
     }
 }
+
+// Measure each frozen column's rendered width and turn the widths into cumulative
+// left offsets, so the columns fit their content and still pin correctly.
+const measureFrozen = () => {
+    const table = tableEl.value
+    if (!table) return
+    const headerCells = table.querySelectorAll('thead th')
+    if (!headerCells.length) return
+    const lefts = {}
+    let acc = 0
+    for (let i = 0; i < FROZEN.length; i++) {
+        lefts[FROZEN[i]] = acc
+        if (headerCells[i]) acc += headerCells[i].offsetWidth
+    }
+    frozenLefts.value = lefts
+}
+
+const onResize = () => measureFrozen()
 
 const headerClass = (col) => ({
     'frozen-cell': isFrozen(col),
@@ -239,6 +248,8 @@ const runReport = (filters) => {
             const message = r.message || {}
             columns.value = (message.columns || []).map(normalizeColumn)
             rows.value = message.result || []
+            // Re-measure the frozen-column offsets once the new rows have rendered.
+            nextTick(() => measureFrozen())
         },
         error: () => {
             fetched.value = true
@@ -268,6 +279,12 @@ onMounted(() => {
     // just-created control can throw and silently abort the auto-load (which is why the
     // button worked but page-open did not). after_ajax runs immediately if nothing is
     // pending, so this is safe.
+    frappe.after_ajax(() => runReport({}))
+    window.addEventListener('resize', onResize)
+})
+
+onBeforeUnmount(() => {
+    window.removeEventListener('resize', onResize)
 })
 </script>
 
@@ -286,9 +303,10 @@ onMounted(() => {
     margin-bottom: 1rem;
 }
 
-/* The wrapper scrolls horizontally; the frozen columns stay pinned. */
+/* The wrapper scrolls both axes: frozen columns pin left, the header pins top. */
 .fpr-table-wrapper {
-    overflow-x: auto;
+    overflow: auto;
+    max-height: 70vh;
 }
 
 .fpr-table {
@@ -322,6 +340,15 @@ onMounted(() => {
 
 .fpr-table thead th:not(.frozen-cell) {
     min-width: 80px;
+}
+
+/* Sticky header row: stays pinned to the top of the scroll container. Needs a
+   solid background so body rows scroll underneath it. */
+.fpr-table thead th {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    background: #f8fafc;
 }
 
 /* Frozen cells need a solid background so scrolling columns pass underneath. */
