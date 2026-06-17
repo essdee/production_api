@@ -296,6 +296,11 @@
    "label": "Supplier Document Number"
   },
   {
+   "fieldname": "supplier_document_date",
+   "fieldtype": "Date",
+   "label": "Supplier Document Date"
+  },
+  {
    "fieldname": "vehicle_no",
    "fieldtype": "Data",
    "label": "Vehicle Number"
