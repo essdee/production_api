@@ -22,6 +22,7 @@
   "is_rework",
   "is_pack",
   "from_finishing",
+  "avoid_sewing_plan_qty",
   "column_break_1",
   "rework_created",
   "edit_posting_date_and_time",
@@ -295,11 +296,6 @@
    "label": "Supplier Document Number"
   },
   {
-   "fieldname": "supplier_document_date",
-   "fieldtype": "Date",
-   "label": "Supplier Document Date"
-  },
-  {
    "fieldname": "vehicle_no",
    "fieldtype": "Data",
    "label": "Vehicle Number"
@@ -563,6 +559,13 @@
    "fieldtype": "Date",
    "label": "Actual Date",
    "read_only": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "avoid_sewing_plan_qty",
+   "fieldtype": "Check",
+   "label": "Avoid Sewing Plan Qty",
+   "permlevel": 1
   }
  ],
  "grid_page_length": 50,
@@ -683,6 +686,18 @@
    "role": "Finishing User",
    "share": 1,
    "submit": 1,
+   "write": 1
+  },
+  {
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "permlevel": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
    "write": 1
   }
  ],
