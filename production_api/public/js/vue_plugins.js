@@ -8,6 +8,7 @@ import DDItem from "./PurchaseOrder/components/DateUpdateDialog.vue"
 import PONewItem from "./PurchaseOrder/components/NewItem.vue"
 import POItem from "./PurchaseOrder/components/Item.vue"
 import DuplicatePOItemTable from "./PurchaseOrder/components/DuplicatePOItemTable.vue"
+import DuplicateItemTable from "./components/DuplicateItemTable.vue"
 import GRNItemWrapper from "./GRN";
 import GRNPurchaseOrder from "./GRN/components/GRNPurchaseOrder.vue";
 import GRNWorkOrder from "./GRN/components/GRNWorkOrder.vue";
@@ -1030,6 +1031,69 @@ frappe.production.ui.DuplicatePOItemTable = class {
     }
     make_body() {
         this.app = createApp(DuplicatePOItemTable);
+        SetVueGlobals(this.app);
+        this.vue = this.app.mount(this.$wrapper.get(0));
+    }
+    load_data(rows) {
+        this.vue.load_data(JSON.parse(JSON.stringify(rows || [])));
+    }
+    get_items() {
+        return JSON.parse(JSON.stringify(this.vue.rows));
+    }
+    destroy() {
+        if (this.app && this.app.unmount) {
+            try { this.app.unmount(); } catch (e) {}
+        }
+    }
+};
+
+const STOCK_ENTRY_DUPLICATE_COLUMNS = [
+    { key: 'qty', label: 'Qty', type: 'number' },
+    { key: 'rate', label: 'Rate', type: 'number' },
+    { key: 'received_type', label: 'Received Type', type: 'link', options: 'GRN Item Type' },
+    { key: 'remarks', label: 'Remarks', type: 'data' },
+];
+
+const STOCK_RECONCILIATION_DUPLICATE_COLUMNS = [
+    { key: 'qty', label: 'Qty', type: 'number' },
+    { key: 'rate', label: 'Rate', type: 'number' },
+    { key: 'received_type', label: 'Received Type', type: 'link', options: 'GRN Item Type' },
+    { key: 'allow_zero_valuation_rate', label: 'Allow Zero Valuation', type: 'check' },
+    { key: 'make_qty_zero', label: 'Make Qty Zero', type: 'check' },
+];
+
+frappe.production.ui.DuplicateStockEntryItemTable = class {
+    constructor(wrapper) {
+        this.$wrapper = $(wrapper);
+        this.columns = STOCK_ENTRY_DUPLICATE_COLUMNS;
+        this.make_body();
+    }
+    make_body() {
+        this.app = createApp(DuplicateItemTable, { columns: this.columns });
+        SetVueGlobals(this.app);
+        this.vue = this.app.mount(this.$wrapper.get(0));
+    }
+    load_data(rows) {
+        this.vue.load_data(JSON.parse(JSON.stringify(rows || [])));
+    }
+    get_items() {
+        return JSON.parse(JSON.stringify(this.vue.rows));
+    }
+    destroy() {
+        if (this.app && this.app.unmount) {
+            try { this.app.unmount(); } catch (e) {}
+        }
+    }
+};
+
+frappe.production.ui.DuplicateStockReconciliationItemTable = class {
+    constructor(wrapper) {
+        this.$wrapper = $(wrapper);
+        this.columns = STOCK_RECONCILIATION_DUPLICATE_COLUMNS;
+        this.make_body();
+    }
+    make_body() {
+        this.app = createApp(DuplicateItemTable, { columns: this.columns });
         SetVueGlobals(this.app);
         this.vue = this.app.mount(this.$wrapper.get(0));
     }

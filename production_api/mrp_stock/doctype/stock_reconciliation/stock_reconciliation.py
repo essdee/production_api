@@ -386,3 +386,117 @@ def save_stock_reconciliation_items(item_details):
 					items.append(item1)
 			row_index += 1
 	return items
+
+
+@frappe.whitelist()
+def get_stock_reconciliation_duplicate_items(stock_reconciliation):
+	"""Return a flat, per-variant row list for the Duplicate Stock Reconciliation
+	dialog. Built directly from the saved child rows so legitimate zero-qty rows
+	(e.g. Make Qty Zero) are preserved.
+	"""
+	doc = frappe.get_doc("Stock Reconciliation", stock_reconciliation)
+	return build_stock_reconciliation_duplicate_rows(doc.items)
+
+
+def build_stock_reconciliation_duplicate_rows(items):
+	rows = []
+	attr_cache = {}
+	for row in items:
+		variant = frappe.get_cached_doc("Item Variant", row.item)
+		if variant.item not in attr_cache:
+			attr_cache[variant.item] = get_attribute_details(variant.item)
+		attr_details = attr_cache[variant.item]
+		attributes = {attr.attribute: attr.attribute_value for attr in variant.attributes}
+		rows.append({
+			"item": variant.item,
+			"lot": row.lot or "",
+			"attributes": attributes,
+			# Non-primary attributes only as editable columns; primary value is
+			# carried in `attributes` (hidden) so the variant still resolves.
+			"_attribute_names": list(attr_details.get("attributes") or []),
+			"qty": row.qty or 0,
+			"rate": row.rate or 0,
+			"uom": row.uom or attr_details.get("default_uom") or "",
+			"received_type": row.received_type or "",
+			"allow_zero_valuation_rate": bool(row.allow_zero_valuation_rate),
+			"make_qty_zero": bool(row.make_qty_zero),
+		})
+	return rows
+
+
+@frappe.whitelist()
+def duplicate_stock_reconciliation(stock_reconciliation, items_data=None):
+	"""Create a Draft copy of a submitted Stock Reconciliation from edited dialog
+	rows. Child rows are rebuilt directly from `items_data` (one row per variant)
+	so editing one row never disturbs its siblings; warehouse is re-stamped from
+	`default_warehouse` by set_warehouse() during validation.
+	"""
+	doc = frappe.get_doc("Stock Reconciliation", stock_reconciliation)
+	new_doc = frappe.copy_doc(doc)
+
+	from frappe.model.naming import get_default_naming_series
+	default_series = get_default_naming_series("Stock Reconciliation")
+	if default_series:
+		new_doc.naming_series = default_series
+
+	new_doc.docstatus = 0
+	new_doc.posting_date = frappe.utils.nowdate()
+	new_doc.posting_time = frappe.utils.nowtime()
+	new_doc.amended_from = None
+
+	# items_data is always supplied by the dialog; require it so a direct API
+	# call cannot produce an unintended copy.
+	if not items_data:
+		frappe.throw(_("No items to duplicate."))
+
+	if items_data is not None:
+		if isinstance(items_data, string_types):
+			items_data = json.loads(items_data)
+
+		from collections import OrderedDict
+		group_index_map = OrderedDict()
+
+		def _row_index_for(row):
+			attrs = row.get("attributes") or {}
+			attrs_key = tuple(sorted((k, v) for k, v in attrs.items()))
+			key = (
+				row.get("item") or "",
+				row.get("lot") or "",
+				row.get("uom") or "",
+				round(float(row.get("rate") or 0), 6),
+				row.get("received_type") or "",
+				1 if row.get("allow_zero_valuation_rate") else 0,
+				1 if row.get("make_qty_zero") else 0,
+				attrs_key,
+			)
+			if key not in group_index_map:
+				group_index_map[key] = len(group_index_map)
+			return group_index_map[key]
+
+		rebuilt = []
+		for ordinal, row in enumerate(items_data):
+			item_name = row.get("item")
+			if not item_name:
+				frappe.throw(_("Row {0}: Item is required").format(ordinal + 1))
+			attributes = row.get("attributes") or {}
+			variant_name = get_variant(item_name, attributes)
+			if not variant_name:
+				variant = create_variant(item_name, attributes)
+				variant.insert()
+				variant_name = variant.name
+			rebuilt.append({
+				"item": variant_name,
+				"lot": row.get("lot") or None,
+				"qty": float(row.get("qty") or 0),
+				"rate": row.get("rate") or 0,
+				"uom": row.get("uom") or None,
+				"received_type": row.get("received_type") or None,
+				"allow_zero_valuation_rate": 1 if row.get("allow_zero_valuation_rate") else 0,
+				"make_qty_zero": 1 if row.get("make_qty_zero") else 0,
+				"table_index": 0,
+				"row_index": _row_index_for(row),
+			})
+		new_doc.set("items", rebuilt)
+
+	new_doc.save()
+	return new_doc.name
