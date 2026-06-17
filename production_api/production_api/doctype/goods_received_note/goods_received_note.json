@@ -39,6 +39,7 @@
   "section_break_1",
   "supplier",
   "supplier_document_no",
+  "supplier_document_date",
   "vehicle_no",
   "freight_charge_per_product",
   "column_break_vyiz9",
@@ -293,6 +294,11 @@
    "fieldname": "supplier_document_no",
    "fieldtype": "Data",
    "label": "Supplier Document Number"
+  },
+  {
+   "fieldname": "supplier_document_date",
+   "fieldtype": "Date",
+   "label": "Supplier Document Date"
   },
   {
    "fieldname": "vehicle_no",
@@ -571,7 +577,7 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2026-06-13 15:00:44.712458",
+ "modified": "2026-06-17 11:31:02.813262",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Goods Received Note",
