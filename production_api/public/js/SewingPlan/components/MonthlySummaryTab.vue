@@ -194,11 +194,25 @@ const copyToClipboard = async () => {
         if (document.activeElement && typeof document.activeElement.blur === 'function') {
             document.activeElement.blur()
         }
-        const blob = await htmlToImage.toBlob(report_table.value, {
+        const node = report_table.value
+        const blob = await htmlToImage.toBlob(node, {
             backgroundColor: '#ffffff',
             // pixelRatio 1 (matches DPRTab): the Monthly Summary table can be very wide
             // (40+ style columns), so 2x would risk an oversized clipboard image.
             pixelRatio: 1,
+            // The table is width:100%; html-to-image sizes the canvas from clientWidth
+            // and stretches the clone to fill it, so cumulative per-column layout drift
+            // across many columns pushes the rightmost column past the right edge — the
+            // right-aligned "Total" loses its last digit. Render the clone at its natural
+            // content width (max-content, no stretch) inside a canvas with a right/bottom
+            // buffer so nothing is clipped.
+            width: node.scrollWidth + 40,
+            height: node.scrollHeight + 20,
+            style: {
+                width: 'max-content',
+                maxWidth: 'none',
+                margin: '0',
+            },
         })
         await navigator.clipboard.write([
             new ClipboardItem({ 'image/png': blob }),

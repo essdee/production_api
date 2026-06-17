@@ -240,6 +240,12 @@ const runReport = (filters) => {
         args: {
             report_name: REPORT_NAME,
             filters,
+            // Force synchronous execution. Frappe auto-flags slow script reports as
+            // "prepared" (Report.prepared_report = 1), after which query_report.run
+            // returns an async {prepared_report: true} stub with NO result — so the
+            // page showed "No data". ignore_prepared_report makes it run inline and
+            // return result + columns directly.
+            ignore_prepared_report: 1,
         },
         freeze: true,
         freeze_message: 'Fetching report...',

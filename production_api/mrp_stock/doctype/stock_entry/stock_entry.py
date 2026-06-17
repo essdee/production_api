@@ -960,3 +960,143 @@ def make_stock_in_entry(source_name, target_doc=None):
 	)
 
 	return doclist
+
+
+@frappe.whitelist()
+def get_stock_entry_duplicate_items(stock_entry):
+	"""Return a flat, per-variant row list for the Duplicate Stock Entry dialog.
+
+	Built directly from the submitted document's child rows (not the grouped
+	matrix), so each saved row maps to exactly one editable dialog row.
+	"""
+	doc = frappe.get_doc("Stock Entry", stock_entry)
+	return build_stock_entry_duplicate_rows(doc.items)
+
+
+def build_stock_entry_duplicate_rows(items):
+	rows = []
+	attr_cache = {}
+	for row in items:
+		variant = frappe.get_cached_doc("Item Variant", row.item)
+		if variant.item not in attr_cache:
+			attr_cache[variant.item] = get_attribute_details(variant.item)
+		attr_details = attr_cache[variant.item]
+		attributes = {attr.attribute: attr.attribute_value for attr in variant.attributes}
+		rows.append({
+			"item": variant.item,
+			"lot": row.lot or "",
+			"attributes": attributes,
+			# Only non-primary attributes are shown as editable columns; the
+			# primary attribute value is carried in `attributes` (hidden), so the
+			# variant still resolves on submit. Mirrors Duplicate PO.
+			"_attribute_names": list(attr_details.get("attributes") or []),
+			"qty": row.qty or 0,
+			"rate": row.rate or 0,
+			"uom": row.uom or attr_details.get("default_uom") or "",
+			"secondary_qty": row.secondary_qty or 0,
+			"secondary_uom": row.secondary_uom or attr_details.get("secondary_uom") or "",
+			"received_type": row.received_type or "",
+			"remarks": row.remarks or "",
+		})
+	return rows
+
+
+@frappe.whitelist()
+def duplicate_stock_entry(stock_entry, items_data=None):
+	"""Create a Draft copy of a submitted Stock Entry from edited dialog rows.
+
+	The source-document linkage (against / against_id / outgoing_stock_entry /
+	cut_panel_movement and the per-row transit fields) is dropped so the copy is
+	an independent manual entry. Child rows are rebuilt directly from
+	`items_data` (one row per variant) instead of going through the grouped save
+	pass, so editing one row never disturbs its siblings.
+	"""
+	doc = frappe.get_doc("Stock Entry", stock_entry)
+	new_doc = frappe.copy_doc(doc)
+
+	from frappe.model.naming import get_default_naming_series
+	default_series = get_default_naming_series("Stock Entry")
+	if default_series:
+		new_doc.naming_series = default_series
+
+	new_doc.docstatus = 0
+	new_doc.posting_date = frappe.utils.nowdate()
+	new_doc.posting_time = frappe.utils.nowtime()
+
+	# Sever the source-document linkage so the copy is a standalone manual entry.
+	new_doc.against = None
+	new_doc.against_id = None
+	new_doc.outgoing_stock_entry = None
+	new_doc.cut_panel_movement = None
+	new_doc.amended_from = None
+	new_doc.per_transferred = 0
+	new_doc.total_amount = 0
+	# Shipment-specific fields cleared per requirement.
+	new_doc.vehicle_no = None
+	new_doc.packing_slip = None
+	new_doc.additional_amount = 0
+
+	# items_data is always supplied by the dialog; require it so a direct API
+	# call cannot produce a copy that still carries the source-row linkage.
+	if not items_data:
+		frappe.throw(_("No items to duplicate."))
+
+	if items_data is not None:
+		if isinstance(items_data, string_types):
+			items_data = json.loads(items_data)
+
+		from collections import OrderedDict
+		group_index_map = OrderedDict()
+
+		def _row_index_for(row):
+			attrs = row.get("attributes") or {}
+			attrs_key = tuple(sorted((k, v) for k, v in attrs.items()))
+			key = (
+				row.get("item") or "",
+				row.get("lot") or "",
+				row.get("uom") or "",
+				round(float(row.get("rate") or 0), 6),
+				row.get("received_type") or "",
+				row.get("remarks") or "",
+				attrs_key,
+			)
+			if key not in group_index_map:
+				group_index_map[key] = len(group_index_map)
+			return group_index_map[key]
+
+		rebuilt = []
+		for ordinal, row in enumerate(items_data):
+			item_name = row.get("item")
+			if not item_name:
+				frappe.throw(_("Row {0}: Item is required").format(ordinal + 1))
+			attributes = row.get("attributes") or {}
+			variant_name = get_variant(item_name, attributes)
+			if not variant_name:
+				variant = create_variant(item_name, attributes)
+				variant.insert()
+				variant_name = variant.name
+			qty = float(row.get("qty") or 0)
+			if qty <= 0:
+				frappe.throw(_("Row {0} ({1}): Qty must be greater than zero").format(ordinal + 1, variant_name))
+			rebuilt.append({
+				"item": variant_name,
+				"lot": row.get("lot") or None,
+				"qty": qty,
+				"rate": row.get("rate") or 0,
+				"uom": row.get("uom") or None,
+				"secondary_qty": row.get("secondary_qty") or 0,
+				"secondary_uom": row.get("secondary_uom") or None,
+				"received_type": row.get("received_type") or None,
+				"remarks": row.get("remarks") or None,
+				"set_combination": {},
+				"transferred_qty": 0,
+				"table_index": 0,
+				"row_index": _row_index_for(row),
+			})
+		new_doc.set("items", rebuilt)
+
+	# Items are supplied directly (not via the grouped item_details pass); set
+	# the flag so before_validate does not reject the new draft.
+	new_doc.flags.allow_from_summary = True
+	new_doc.save()
+	return new_doc.name

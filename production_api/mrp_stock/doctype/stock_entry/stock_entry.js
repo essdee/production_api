@@ -3,6 +3,50 @@
 
 frappe.provide("production_api.mrp_stock");
 
+// Purposes for which a submitted Stock Entry may be duplicated. Source-linked
+// purposes (Receive at Warehouse / DC Completion / GRN Completion, etc.) are
+// excluded because their copies would not validate as standalone entries.
+const DUPLICATE_SE_PURPOSES = ['Material Issue', 'Material Receipt', 'Send to Warehouse'];
+
+function open_stock_entry_duplicate_dialog(frm, flat_rows) {
+	const d = new frappe.ui.Dialog({
+		title: __('Duplicate Stock Entry'),
+		size: 'extra-large',
+		static: true,
+		primary_action_label: __('Yes, Duplicate'),
+		primary_action: function() {
+			if (!d.editor) return;
+			const items_data = d.editor.get_items();
+			if (!items_data || items_data.length === 0) {
+				frappe.show_alert({ message: __('At least one item is required to duplicate.'), indicator: 'red' });
+				return;
+			}
+			frappe.call({
+				method: "production_api.mrp_stock.doctype.stock_entry.stock_entry.duplicate_stock_entry",
+				args: { stock_entry: frm.doc.name, items_data: items_data },
+				freeze: true,
+				freeze_message: __('Creating duplicate Stock Entry'),
+				callback: function(r) {
+					if (r.message) {
+						d.hide();
+						frappe.set_route('Form', 'Stock Entry', r.message);
+					}
+				}
+			});
+		},
+		secondary_action_label: __('Close'),
+		secondary_action: function() { d.hide(); },
+	});
+	d.$wrapper.find('.modal-dialog').css('max-width', '1400px');
+	const wrapper = $('<div class="duplicate-se-editor"></div>').appendTo(d.body);
+	d.editor = new frappe.production.ui.DuplicateStockEntryItemTable(wrapper);
+	d.editor.load_data(flat_rows);
+	d.show();
+	d.$wrapper.on('hidden.bs.modal', function() {
+		if (d.editor && d.editor.destroy) d.editor.destroy();
+	});
+}
+
 frappe.ui.form.on('Stock Entry', {
 	refresh: function(frm) {
 		frm.page.btn_secondary.hide()
@@ -29,6 +73,19 @@ frappe.ui.form.on('Stock Entry', {
 			frm.add_custom_button("Cancel", ()=> {
 				frm._cancel()
 			})
+
+			if (DUPLICATE_SE_PURPOSES.includes(frm.doc.purpose)) {
+				frm.add_custom_button(__('Duplicate'), function() {
+					frappe.call({
+						method: "production_api.mrp_stock.doctype.stock_entry.stock_entry.get_stock_entry_duplicate_items",
+						args: { stock_entry: frm.doc.name },
+						freeze: true,
+						callback: function(res) {
+							open_stock_entry_duplicate_dialog(frm, res.message || []);
+						}
+					});
+				});
+			}
 		}
 	},
 
