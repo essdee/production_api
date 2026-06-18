@@ -10,7 +10,7 @@ from six import string_types
 from itertools import groupby
 from datetime import datetime
 from frappe.model.document import Document
-from frappe.utils import flt, nowdate, nowtime
+from frappe.utils import flt, nowdate, nowtime, getdate
 from production_api.mrp_stock.stock_ledger import make_sl_entries
 from production_api.production_api.logger import get_module_logger
 from production_api.production_api.doctype.purchase_order.purchase_order import get_item_group_index
@@ -592,17 +592,22 @@ class WorkOrder(Document):
         if self.supplier:
             fil["supplier"] = self.supplier
 
-        filter_variants = [fil.copy()]
-
-        f1 = fil.copy()
-        f1.pop("lot", None)
-        filter_variants.append(f1)
-
+        # Match strictly on lot + supplier + process (all mandatory) within the
+        # cost's validity window. No lot-less fallback: borrowing another lot's
+        # cost is exactly the wrong-cost bug. order_by from_date desc so the most
+        # recent applicable rate wins; then enforce the to_date upper bound
+        # (to_date empty = still open). from_date <= wo_date is already filtered.
+        wo_date = getdate(self.wo_date)
+        candidates = frappe.get_list(
+            "Process Cost",
+            filters=fil,
+            fields=["name", "to_date"],
+            order_by="from_date desc",
+        )
         docname = None
-        for f in filter_variants:
-            docs = frappe.get_list("Process Cost", filters=f)
-            if docs:
-                docname = docs[0].name
+        for c in candidates:
+            if not c.to_date or getdate(c.to_date) >= wo_date:
+                docname = c.name
                 break
 
         if self.is_rework and not docname:
