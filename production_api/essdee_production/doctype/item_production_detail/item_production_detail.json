@@ -715,8 +715,13 @@
   }
  ],
  "index_web_pages_for_search": 1,
- "links": [],
- "modified": "2026-02-06 18:15:56.490222",
+ "links": [
+  {
+   "link_doctype": "Lot",
+   "link_fieldname": "production_detail"
+  }
+ ],
+ "modified": "2026-06-19 13:14:51.508983",
  "modified_by": "Administrator",
  "module": "Essdee Production",
  "name": "Item Production Detail",
