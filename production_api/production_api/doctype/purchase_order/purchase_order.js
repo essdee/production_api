@@ -401,6 +401,17 @@ frappe.ui.form.on('Purchase Order', {
 	supplier: function(frm) {
 		if (frm.doc.supplier) {
 			frappe.production.ui.eventBus.$emit("supplier_updated", frm.doc.supplier)
+			if (!frm.doc.terms_and_condition) {
+				frappe.call({
+					method: "production_api.production_api.doctype.purchase_order.purchase_order.get_purchase_order_terms",
+					args: { supplier: frm.doc.supplier },
+					callback: function(r) {
+						if (r.message && !frm.doc.terms_and_condition) {
+							frm.set_value('terms_and_condition', r.message)
+						}
+					}
+				})
+			}
 		}
 		if (frm.doc.supplier) {
 			frappe.call({
