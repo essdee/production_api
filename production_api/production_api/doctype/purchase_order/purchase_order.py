@@ -57,6 +57,8 @@ class PurchaseOrder(Document):
 		self.set_status()
 
 	def before_validate(self):
+		if not self.terms_and_condition:
+			self.terms_and_condition = get_terms_and_condition(self.supplier)
 		if(self.get('item_details')):
 			items = save_item_details(self.item_details, self.po_date, self.supplier)
 			try:
@@ -139,6 +141,22 @@ class PurchaseOrder(Document):
 			if "Purchase Manager" not in frappe.get_roles():
 				frappe.throw(_("Only Administrators can open a closed document"))
 			self.open_status = "Open"
+
+def get_terms_and_condition(supplier=None):
+	"""Resolve the Terms and Condition for a Purchase Order.
+
+	Precedence: the supplier's own Terms and Condition, otherwise the
+	Terms and Condition flagged as the Default PO Term.
+	"""
+	if supplier:
+		supplier_terms = frappe.db.get_value("Supplier", supplier, "terms_and_condition")
+		if supplier_terms:
+			return supplier_terms
+	return frappe.db.get_value("Terms and Condition", {"is_default_po_term": 1}, "name")
+
+@frappe.whitelist()
+def get_purchase_order_terms(supplier=None):
+	return get_terms_and_condition(supplier)
 
 def validate_price_details(items, supplier):
 	item_list = get_unique_items(items)
