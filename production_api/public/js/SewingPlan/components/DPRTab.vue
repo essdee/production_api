@@ -61,14 +61,14 @@
                             <thead>
                                 <tr class="header-row">
                                     <th class="index-col">#</th>
-                                    <th class="colour-col">Lot</th>
-                                    <th class="colour-col">Item</th>
-                                    <th class="colour-col">Colour</th>
+                                    <th class="lot-col">Lot</th>
+                                    <th class="item-col">Item</th>
+                                    <th class="colourname-col">Colour</th>
+                                    <th class="line-col">Line</th>
+                                    <th class="type-col">Type</th>
                                     <th v-if="data[header][lot]['is_set_item']" class="part-col">
                                         {{ data[header][lot]['set_attr'] }}
                                     </th>
-                                    <th class="colour-col">Line</th>
-                                    <th class="colour-col">Type</th>
                                     <th v-for="size in data[header][lot]['primary_values']" :key="size"
                                         class="size-col">
                                         {{ size }}
@@ -84,19 +84,19 @@
                                         :key="received_type">
                                         <tr v-for="colour in Object.keys(data[header][lot]['details'][ws][received_type])" class="data-row">
                                             <td class="index-cell">{{ idx + 1 }}</td>
-                                            <td class="colour-cell">{{ lot }}</td>
-                                            <td class="colour-cell">{{ data[header][lot]['item'] }}</td>
+                                            <td class="lot-cell">{{ lot }}</td>
+                                            <td class="item-cell">{{ data[header][lot]['item'] }}</td>
                                             <td class="colour-cell">
                                                 <span class="colour-badge">{{ colour.split("@")[0] }}</span>
+                                            </td>
+                                            <td class="colour-cell">{{ ws }}</td>
+                                            <td class="colour-cell">
+                                                <span class="colour-badge">{{ received_type }}</span>
                                             </td>
                                             <td v-if="data[header][lot]['is_set_item']" class="part-cell">
                                                 <span class="part-pill">
                                                     {{ data[header][lot]['details'][ws][received_type][colour]['part']}}
                                                 </span>
-                                            </td>
-                                            <td class="colour-cell">{{ ws }}</td>
-                                            <td class="colour-cell">
-                                                <span class="colour-badge">{{ received_type }}</span>
                                             </td>
                                             <td v-for="size in data[header][lot]['primary_values']" :key="size"
                                                 class="size-cell">
@@ -503,8 +503,55 @@ const copyToClipboard = async (header) => {
     margin-bottom: 0;
 }
 
+/* Fixed-layout so every per-Lot table aligns column-for-column.
+   The mandatory columns get explicit widths; the size matrix absorbs
+   the per-Lot difference, so Lot/Item/Colour/Line/Type stay aligned on
+   the left and Remarks/Total stay aligned on the right across all tables. */
+.data-table {
+    table-layout: fixed;
+}
+
+.index-col { width: 36px; }
+.lot-col { width: 120px; }
+.item-col { width: 200px; }
+.colourname-col { width: 100px; }
+.line-col { width: 130px; }
+.type-col { width: 100px; }
+.part-col { width: 110px; }
+.total-col { width: 80px; }
+
+/* Colour / Line / Type: wrap a long value to a second line instead of letting
+   nowrap text bleed into the next column at these reduced widths. */
+.colour-cell {
+    white-space: normal;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+}
+
+/* Lot fits on one line at 120px */
+.lot-cell {
+    padding: 10px;
+    border: 1px solid #e2e8f0;
+    color: #334155;
+    font-weight: 500;
+    text-align: center;
+    white-space: nowrap;
+}
+
+/* Item names can be long → allow wrapping inside the fixed 200px column */
+.item-cell {
+    padding: 10px;
+    border: 1px solid #e2e8f0;
+    color: #334155;
+    font-weight: 500;
+    text-align: center;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+}
+
 .remarks-col {
-    min-width: 140px;
+    width: 140px;
 }
 
 .remarks-cell {
