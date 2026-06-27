@@ -45,6 +45,8 @@ frappe.ui.form.on("Work Order", {
     });
   },
   async refresh(frm) {
+    frm.set_query("supplier", () => ({ filters: { disabled: 0 } }));
+    frm.set_query("delivery_location", () => ({ filters: { disabled: 0 } }));
     $(".layout-side-section").css("display", "None");
     frm.set_df_property("work_order_tracking_logs", "cannot_add_rows", true);
     frm.set_df_property("work_order_tracking_logs", "cannot_delete_rows", true);

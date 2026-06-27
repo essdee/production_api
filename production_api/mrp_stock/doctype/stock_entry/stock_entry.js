@@ -49,6 +49,9 @@ function open_stock_entry_duplicate_dialog(frm, flat_rows) {
 
 frappe.ui.form.on('Stock Entry', {
 	refresh: function(frm) {
+		frm.set_query("from_warehouse", () => ({ filters: { disabled: 0 } }));
+		frm.set_query("to_warehouse", () => ({ filters: { disabled: 0 } }));
+		frm.set_query("transfer_supplier", () => ({ filters: { disabled: 0 } }));
 		frm.page.btn_secondary.hide()
 		if (frm.doc.docstatus === 1) {
 			if (frm.doc.purpose=='Send to Warehouse' && frm.doc.per_transferred < 100 && !frm.doc.skip_transit) {

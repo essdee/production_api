@@ -43,6 +43,8 @@ frappe.ui.form.on("Delivery Challan", {
         })
     },
     refresh(frm){
+		frm.set_query("from_location", () => ({ filters: { disabled: 0 } }));
+		frm.set_query("supplier", () => ({ filters: { disabled: 0 } }));
 		$(".layout-side-section").css("display", "None");
 		frm.page.btn_secondary.hide()
         $(frm.fields_dict['deliverable_items'].wrapper).html("")

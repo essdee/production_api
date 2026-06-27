@@ -171,7 +171,6 @@ def fetch_fp_items():
 		item['stage'] = pack_out_stage
 		item['packing_config'] = get_ipd_packing_config(fp_doc.lot)
 		check = False
-		print(fp)
 		for row in fp_doc.finishing_plan_grn_details:
 			attr_details = get_variant_attr_details(row.item_variant)
 			if row.quantity - row.dispatched > 0:

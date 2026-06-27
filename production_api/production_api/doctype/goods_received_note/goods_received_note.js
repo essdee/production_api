@@ -83,6 +83,8 @@ frappe.ui.form.on('Goods Received Note', {
 		)
 	},
 	refresh: function(frm) {
+		frm.set_query("delivery_location", () => ({ filters: { disabled: 0 } }));
+		frm.set_query("supplier", () => ({ filters: { disabled: 0 } }));
 		$(".layout-side-section").css("display", "None");
 		$(frm.fields_dict['item_html'].wrapper).html("");
 		if(frm.doc.against == 'Purchase Order'){

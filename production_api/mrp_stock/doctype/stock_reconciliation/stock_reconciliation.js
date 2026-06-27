@@ -44,6 +44,7 @@ function open_stock_reconciliation_duplicate_dialog(frm, flat_rows) {
 
 frappe.ui.form.on('Stock Reconciliation', {
 	refresh: function(frm) {
+		frm.set_query("default_warehouse", () => ({ filters: { disabled: 0 } }));
 		if (frm.doc.docstatus === 1) {
 			frm.add_custom_button(__('Duplicate'), function() {
 				frappe.call({
