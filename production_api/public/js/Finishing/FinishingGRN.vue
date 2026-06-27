@@ -101,6 +101,7 @@ let grn_list = JSON.parse(cur_frm.doc.grn_list || "{}")
 let se_list = JSON.parse(cur_frm.doc.stock_entry_list || "{}")
 let total_packed = ref(0)
 let total_dispatched = ref(0)
+let packing_config = ref({})
 
 onMounted(()=> {
     frappe.call({
@@ -115,6 +116,15 @@ onMounted(()=> {
                     box_qty.value[value] = 0;
                 }
             });
+        }
+    })
+    frappe.call({
+        method: "production_api.production_api.doctype.finishing_plan.finishing_plan.get_ipd_packing_config",
+        args: {
+            lot: cur_frm.doc.lot
+        },
+        callback: function(response) {
+            packing_config.value = response.message || {};
         }
     })
 })
@@ -213,9 +223,10 @@ function make_grn(){
     });
     d.fields_dict['popup_grn_html'].$wrapper.html("")
     const el = d.fields_dict["popup_grn_html"].$wrapper.get(0);
-    const props = { 
+    const props = {
         primary_values: primary_values.value,
         box_qty: box_qty.value,
+        packing_config: packing_config.value,
     };
     const vueApp = createApp(FPPopUpGRN, props);
     i = vueApp.mount(el);
@@ -273,7 +284,8 @@ function make_dispatch(){
                     to_location: values.to_location,
                     goods_value: values.goods_value,
                     vehicle_no: values.vehicle_no,
-                }, 
+                    colour_details: i.colour_details,
+                },
                 freeze: true,
                 freeze_message: "Dispatching Items...",
                 callback: function(response) {
@@ -284,11 +296,12 @@ function make_dispatch(){
     })
     d.fields_dict['dispatch_qty_html'].$wrapper.html("")
     const el = d.fields_dict["dispatch_qty_html"].$wrapper.get(0);
-    const props = { 
+    const props = {
         packed_qty: packed_qty.value,
         primary_values: primary_values.value,
         packed: total_packed.value,
         dispatched: total_dispatched.value,
+        packing_config: packing_config.value,
     };
     const vueApp = createApp(FPDispatch, props);
     i = vueApp.mount(el);

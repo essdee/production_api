@@ -34,6 +34,8 @@
   "get_packing_attribute_values",
   "packing_attribute_details",
   "based_on_other_attribute_mapping",
+  "packing_mode",
+  "packing_size_details",
   "packing_assortment_attributes",
   "get_packing_combination",
   "packing_assortment_html",
@@ -274,6 +276,21 @@
   },
   {
    "depends_on": "eval: doc.based_on_other_attribute_mapping",
+   "description": "Size Ratio Packing: one box mixes sizes in a ratio that sums to Packing Combo. Size Wise Packing: each size is packed in its own box with its own pieces per box.",
+   "fieldname": "packing_mode",
+   "fieldtype": "Select",
+   "label": "Packing Mode",
+   "options": "\nSize Ratio Packing\nSize Wise Packing"
+  },
+  {
+   "depends_on": "eval: doc.based_on_other_attribute_mapping && doc.packing_mode == 'Size Ratio Packing'",
+   "fieldname": "packing_size_details",
+   "fieldtype": "Table",
+   "label": "Packing Size Details",
+   "options": "Item Production Detail Packing Size Detail"
+  },
+  {
+   "depends_on": "eval: doc.based_on_other_attribute_mapping && !doc.packing_mode",
    "description": "Auto-derived from the pack stage; kept hidden.",
    "fieldname": "packing_assortment_attributes",
    "fieldtype": "Table MultiSelect",
@@ -282,13 +299,13 @@
    "options": "Item Production Detail Packing Assortment Attribute"
   },
   {
-   "depends_on": "eval: doc.based_on_other_attribute_mapping && !doc.__islocal",
+   "depends_on": "eval: doc.based_on_other_attribute_mapping && !doc.packing_mode && !doc.__islocal",
    "fieldname": "get_packing_combination",
    "fieldtype": "Button",
    "label": "Get Packing Combination"
   },
   {
-   "depends_on": "eval: doc.based_on_other_attribute_mapping",
+   "depends_on": "eval: doc.based_on_other_attribute_mapping && !doc.packing_mode",
    "fieldname": "packing_assortment_html",
    "fieldtype": "HTML",
    "label": "Packing Assortment"
@@ -721,7 +738,7 @@
    "link_fieldname": "production_detail"
   }
  ],
- "modified": "2026-06-19 13:14:51.508983",
+ "modified": "2026-06-24 09:00:00.000000",
  "modified_by": "Administrator",
  "module": "Essdee Production",
  "name": "Item Production Detail",

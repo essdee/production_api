@@ -292,6 +292,35 @@ class ItemProductionDetail(Document):
 		if errors:
 			frappe.throw("<br>".join(errors))
 
+	def packing_size_validations(self):
+		"""Validate the size-wise packing input for the two packing modes.
+
+		Size Ratio Packing: each row's quantity is the count of that size inside ONE mixed
+			box; the row quantities must sum to packing_combo (the box total).
+		Size Wise Packing: each row's quantity is the pieces-per-box for that size's own
+			single-size box; quantities are independent and packing_combo is not used.
+		"""
+		if not self.packing_size_details:
+			frappe.throw("Enter the Packing Size Details for the selected Packing Mode.")
+
+		valid_sizes = get_ipd_attribute_values(self, self.primary_item_attribute)
+		seen = set()
+		for row in self.packing_size_details:
+			if not row.quantity or row.quantity <= 0:
+				frappe.throw("Quantity should be greater than zero in Packing Size Details.")
+			if row.attribute_value in seen:
+				frappe.throw(f"Duplicate size '{row.attribute_value}' in Packing Size Details.")
+			seen.add(row.attribute_value)
+			if valid_sizes and row.attribute_value not in valid_sizes:
+				frappe.throw(f"'{row.attribute_value}' is not a valid {self.primary_item_attribute} for this item.")
+
+		if self.packing_mode == "Size Ratio Packing":
+			if self.packing_combo <= 0:
+				frappe.throw("The Packing Combo (pieces per box) should be greater than zero for Size Ratio Packing.")
+			total = sum(row.quantity for row in self.packing_size_details)
+			if total != self.packing_combo:
+				frappe.throw(f"In Packing Size Details, the sum of quantity should be {self.packing_combo} (the Packing Combo).")
+
 	def stiching_tab_validations(self):
 		if len(self.stiching_item_details) == 0:
 			frappe.throw("Enter stiching attribute details")
@@ -337,7 +366,13 @@ class ItemProductionDetail(Document):
 
 		if not self.is_new():
 			if self.based_on_other_attribute_mapping:
-				self.packing_assortment_validations()
+				if self.packing_mode == "Size Ratio Packing":
+					self.packing_size_validations()
+				elif self.packing_mode == "Size Wise Packing":
+					# Carton / free-count: pieces are entered freely at GRN; combo = 1 passes them 1:1.
+					self.packing_combo = 1
+				else:
+					self.packing_assortment_validations()
 			else:
 				self.packing_tab_validations()
 
@@ -1058,6 +1093,23 @@ def get_packing_assortment_combination(doc_name, attributes=None):
 		"separator_attribute": separator_attribute,
 		"boxes": boxes,
 	}
+
+##################   SIZE-WISE PACKING (size ratio / size wise) FUNCTIONS   ###################
+def get_ipd_attribute_values(ipd_doc, attribute):
+	"""Return the configured attribute values for `attribute` on this IPD (e.g. the sizes)."""
+	if not attribute:
+		return []
+	for row in ipd_doc.item_attributes:
+		if row.attribute == attribute:
+			return get_attr_mapping_details(row.mapping)
+	return []
+
+
+@frappe.whitelist()
+def get_packing_size_values(doc_name):
+	"""Sizes (primary-attribute values) for auto-filling the Packing Size Details table."""
+	ipd_doc = frappe.get_doc("Item Production Detail", doc_name)
+	return get_ipd_attribute_values(ipd_doc, ipd_doc.primary_item_attribute)
 
 ##################       PACKING FUNCTIONS        ###################
 @frappe.whitelist()
