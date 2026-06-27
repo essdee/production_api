@@ -3,6 +3,7 @@
 
 frappe.ui.form.on("Vendor Bill Tracking", {
   async refresh(frm) {
+		frm.set_query("supplier", () => ({ filters: { disabled: 0 } }));
 		if(frm.is_new()){
 			remove_existing_fields(frm);
 		}

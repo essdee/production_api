@@ -45,6 +45,8 @@ frappe.ui.form.on("Work Order", {
     });
   },
   async refresh(frm) {
+    frm.set_query("supplier", () => ({ filters: { disabled: 0 } }));
+    frm.set_query("delivery_location", () => ({ filters: { disabled: 0 } }));
     $(".layout-side-section").css("display", "None");
     frm.set_df_property("work_order_tracking_logs", "cannot_add_rows", true);
     frm.set_df_property("work_order_tracking_logs", "cannot_delete_rows", true);
@@ -175,6 +177,11 @@ frappe.ui.form.on("Work Order", {
           });
           d.show();
         });
+
+        frm.add_custom_button("Change Item", () => {
+          show_change_item_dialog(frm);
+        });
+
         if (frappe.user.has_role("System Manager")) {
           frm.add_custom_button("Create Sewing Plan", () => {
             frappe.call({
@@ -1315,4 +1322,200 @@ function make_rework(
       }
     },
   });
+}
+
+// Change Item - select accessory rows, preview recalculation, then approve.
+function show_change_item_dialog(frm) {
+  frappe.call({
+    method:
+      "production_api.production_api.doctype.work_order.work_order.get_wo_bom_accessory_items",
+    args: { work_order: frm.doc.name },
+    freeze: true,
+    freeze_message: __("Loading Item BOM rows..."),
+    callback: function (r) {
+      let res = r.message || {};
+      if (!res.supported) {
+        frappe.msgprint({
+          title: __("Change Item"),
+          message: res.message || __("No recalculable Item BOM rows on this Work Order."),
+          indicator: "blue",
+        });
+        return;
+      }
+
+      let items = res.items || [];
+      if (!items.length) {
+        frappe.msgprint({
+          title: __("Change Item"),
+          message: __("No Item BOM rows found on this Work Order."),
+          indicator: "blue",
+        });
+        return;
+      }
+
+      let d = new frappe.ui.Dialog({
+        title: __("Change Item"),
+        size: "large",
+        fields: [{ fieldname: "accessory_items_html", fieldtype: "HTML" }],
+        primary_action_label: __("Recalculate"),
+        primary_action() {
+          let selected = [];
+          d.$wrapper.find(".change-item-accessory-row:checked").each(function () {
+            selected.push($(this).data("name"));
+          });
+          if (selected.length === 0) {
+            frappe.msgprint(__("Select at least one Item BOM row to recalculate."));
+            return;
+          }
+          d.hide();
+          show_change_item_preview_dialog(frm, selected);
+        },
+      });
+
+      d.fields_dict.accessory_items_html.$wrapper.html(
+        build_change_item_selection_html(items),
+      );
+      d.show();
+    },
+  });
+}
+
+function show_change_item_preview_dialog(frm, selected) {
+  frappe.call({
+    method:
+      "production_api.production_api.doctype.work_order.work_order.get_wo_bom_accessory_change_preview",
+    args: { work_order: frm.doc.name, selected: JSON.stringify(selected) },
+    freeze: true,
+    freeze_message: __("Recalculating selected Item BOM rows..."),
+    callback: function (r) {
+      let res = r.message || {};
+      let changes = res.changes || [];
+      let approvable = changes.filter((c) => c.eligible && c.action === "replace");
+
+      let d = new frappe.ui.Dialog({
+        title: __("Approve Item BOM Change"),
+        size: "large",
+        fields: [{ fieldname: "preview_html", fieldtype: "HTML" }],
+        primary_action_label: __("Approve"),
+        primary_action() {
+          if (!approvable.length) {
+            frappe.msgprint(__("There are no eligible changes to approve."));
+            return;
+          }
+          let approved = approvable.map((c) => c.selection_id || c.row_name);
+          frappe.call({
+            method:
+              "production_api.production_api.doctype.work_order.work_order.apply_bom_accessory_changes",
+            args: { work_order: frm.doc.name, selected: JSON.stringify(approved) },
+            freeze: true,
+            freeze_message: __("Updating selected Item BOM rows..."),
+            callback: function (res2) {
+              let out = res2.message || {};
+              let applied = (out.applied || []).length;
+              let skipped = out.skipped || [];
+              let msg = __("Updated {0} Item BOM row(s).", [applied]);
+              if (skipped.length) {
+                msg += "<br>" + build_change_item_skip_html(skipped);
+              }
+              frappe.msgprint({
+                title: __("Change Item"),
+                message: msg,
+                indicator: applied ? "green" : "orange",
+              });
+              d.hide();
+              frm.reload_doc();
+            },
+          });
+        },
+      });
+
+      d.fields_dict.preview_html.$wrapper.html(build_change_item_preview_html(changes));
+      d.show();
+      d.get_primary_btn().toggle(approvable.length > 0);
+    },
+  });
+}
+
+function build_change_item_selection_html(items) {
+  let esc = frappe.utils.escape_html;
+  let rows = items
+    .map((item) => {
+      let checkbox = item.eligible
+        ? `<input type="checkbox" class="change-item-accessory-row" data-name="${esc(item.row_name)}">`
+        : "";
+      let status = item.eligible
+        ? `<span class="text-muted">${__("Available")}</span>`
+        : `<span class="text-danger">${esc(item.reason || __("Not eligible"))}</span>`;
+      return `
+        <tr class="${item.eligible ? "" : "text-muted"}">
+          <td style="text-align:center">${checkbox}</td>
+          <td>${esc(item.branch || "")}</td>
+          <td>${esc(item.item || "")}</td>
+          <td>${esc(item.item_variant)}<br><span class="text-muted">${esc(item.attributes || "")}</span></td>
+          <td class="text-right">${item.qty || 0} ${esc(item.uom || "")}</td>
+          <td>${status}</td>
+        </tr>`;
+    })
+    .join("");
+
+  return `<table class="table table-bordered" style="margin-bottom:0">
+    <thead><tr>
+      <th style="width:40px"></th>
+      <th>${__("Table")}</th>
+      <th>${__("Item BOM")}</th>
+      <th>${__("Variant")}</th>
+      <th class="text-right">${__("Qty")}</th>
+      <th>${__("Status")}</th>
+    </tr></thead>
+    <tbody>${rows}</tbody>
+  </table>`;
+}
+
+function build_change_item_preview_html(changes) {
+  let esc = frappe.utils.escape_html;
+  if (!changes.length) {
+    return `<p class="text-muted">${__("No recalculated changes were found.")}</p>`;
+  }
+
+  let rows = changes
+    .map((c) => {
+      let status = c.eligible
+        ? `<span class="text-success">${__("Ready")}</span>`
+        : `<span class="text-danger">${esc(c.reason || __("Not eligible"))}</span>`;
+      if (c.action === "unchanged") {
+        status = `<span class="text-muted">${__("No change")}</span>`;
+      }
+      return `
+        <tr class="${c.eligible ? "" : "text-muted"}">
+          <td>${esc(c.branch || "")}</td>
+          <td>${esc(c.old_variant || "")}<br><span class="text-muted">${__("Qty")}: ${c.old_qty || 0} ${esc(c.old_uom || "")}</span></td>
+          <td style="text-align:center">&rarr;</td>
+          <td>${esc(c.new_variant || "")}<br><span class="text-muted">${__("Qty")}: ${c.new_qty || 0} ${esc(c.new_uom || "")}</span></td>
+          <td>${status}</td>
+        </tr>`;
+    })
+    .join("");
+
+  return `<table class="table table-bordered" style="margin-bottom:0">
+    <thead><tr>
+      <th>${__("Table")}</th>
+      <th>${__("Current")}</th>
+      <th style="width:30px"></th>
+      <th>${__("Recalculated")}</th>
+      <th>${__("Status")}</th>
+    </tr></thead>
+    <tbody>${rows}</tbody>
+  </table>`;
+}
+
+function build_change_item_skip_html(skipped) {
+  return skipped
+    .map(
+      (s) =>
+        "&bull; " +
+        frappe.utils.escape_html(
+          (s.old_variant || s.row_name || s.old_name || "") + ": " + (s.reason || ""),
+        ),
+    )
+    .join("<br>");
 }

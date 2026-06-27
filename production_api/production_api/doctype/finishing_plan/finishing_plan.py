@@ -1337,6 +1337,34 @@ def get_delivery_challan_item_list(lot, item_name, data, is_loose_piece=False):
 	return items
 
 @frappe.whitelist()
+def get_ipd_packing_config(lot):
+	"""Packing config for the FP GRN colour-entry popup (size-wise packing).
+
+	Lets the popup enter by colour (boxes for Size Ratio, free pieces for Size Wise) and expand to
+	the {size: qty} dict create_grn already expects. Colours are the packing-attribute values.
+	"""
+	ipd_name = frappe.get_value("Lot", lot, "production_detail")
+	ipd = frappe.get_cached_doc("Item Production Detail", ipd_name)
+	colours = []
+	for row in ipd.item_attributes:
+		if row.attribute == ipd.packing_attribute and row.mapping:
+			map_doc = frappe.get_cached_doc("Item Item Attribute Mapping", row.mapping)
+			colours = [v.attribute_value for v in map_doc.values]
+			break
+	return {
+		"based_on_other_attribute_mapping": ipd.based_on_other_attribute_mapping,
+		"packing_mode": ipd.packing_mode,
+		"packing_combo": ipd.packing_combo,
+		"primary_attribute": ipd.primary_item_attribute,
+		"packing_attribute": ipd.packing_attribute,
+		"packing_size_details": [
+			{"attribute_value": r.attribute_value, "quantity": r.quantity}
+			for r in ipd.packing_size_details
+		],
+		"colours": colours,
+	}
+
+@frappe.whitelist()
 def create_grn(work_order, lot, item_name, data, delivery_location,actual_date):
 	box_qty = {}
 	ipd = frappe.get_value("Lot", lot, "production_detail")
@@ -1465,7 +1493,7 @@ def return_items(data, work_order, lot, item_name, popup_values, is_pack:bool=Fa
 	new_doc.submit()
 
 @frappe.whitelist()
-def create_stock_entry(data, item_name, doc_name, lot, from_location, to_location, goods_value, vehicle_no):
+def create_stock_entry(data, item_name, doc_name, lot, from_location, to_location, goods_value, vehicle_no, colour_details=None):
 	data = update_if_string_instance(data)
 	ipd, uom = frappe.get_value("Lot", lot, ["production_detail", "uom"])
 	ipd_fields = ["primary_item_attribute", "pack_out_stage"]
@@ -1497,6 +1525,12 @@ def create_stock_entry(data, item_name, doc_name, lot, from_location, to_locatio
 	doc.item_details = item_details
 	doc.vehicle_no = vehicle_no
 	doc.additional_amount = goods_value
+	# Colour breakdown is print-only metadata (stock stays size-only); store as a list of per-lot-item
+	# grids [{lot, item, grid:{colour:{size:boxes}}}] so one print template serves single- and multi-item.
+	if colour_details:
+		grid = update_if_string_instance(colour_details)
+		if grid:
+			doc.dispatch_colour_details = frappe.as_json([{"lot": lot, "item": item_name, "grid": grid}])
 	doc.save()
 	doc.submit()
 	return doc.name

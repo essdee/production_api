@@ -32,6 +32,7 @@
   "item_html",
   "section_break_ncqk",
   "comments",
+  "dispatch_colour_details",
   "section_break_zvib",
   "amended_from",
   "additional_amount",
@@ -223,6 +224,14 @@
    "label": "Comments"
   },
   {
+   "fieldname": "dispatch_colour_details",
+   "fieldtype": "Long Text",
+   "hidden": 1,
+   "label": "Dispatch Colour Details",
+   "no_copy": 1,
+   "read_only": 1
+  },
+  {
    "allow_on_submit": 1,
    "fetch_from": "to_warehouse.terms_and_condition",
    "fetch_if_empty": 1,
@@ -240,7 +249,7 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2026-05-12 17:09:47.998933",
+ "modified": "2026-06-25 12:00:00.000000",
  "modified_by": "Administrator",
  "module": "MRP Stock",
  "name": "Stock Entry",

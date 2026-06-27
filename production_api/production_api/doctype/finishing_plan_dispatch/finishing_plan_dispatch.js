@@ -6,7 +6,7 @@ frappe.ui.form.on("Finishing Plan Dispatch", {
         $(frm.fields_dict['finishing_plan_dispatch_html'].wrapper).html("")
         frm.finishing = new frappe.production.ui.FinishingPlanDispatch(frm.fields_dict['finishing_plan_dispatch_html'].wrapper)
         if(frm.doc.__onload && frm.doc.__onload.items){
-            frm.doc['finishing_items'] = frm.doc.__onload.items
+            frm.doc['finishing_items'] = JSON.stringify(frm.doc.__onload.items)
             frm.finishing.load_data(frm.doc.__onload.items)
         }
         if(frm.doc.finishing_plan_dispatch_items.length == 0){
@@ -92,7 +92,7 @@ frappe.ui.form.on("Finishing Plan Dispatch", {
         }
 	},
     validate(frm){
-        frm.doc['finishing_items'] = frm.finishing.get_data()
+        frm.doc['finishing_items'] = JSON.stringify(frm.finishing.get_data())
     }
 });
 

@@ -34,7 +34,7 @@
   },
   {
    "fieldname": "quantity",
-   "fieldtype": "Int",
+   "fieldtype": "Float",
    "in_list_view": 1,
    "label": "Quantity"
   },
@@ -54,7 +54,7 @@
   },
   {
    "fieldname": "balance_qty",
-   "fieldtype": "Int",
+   "fieldtype": "Float",
    "in_list_view": 1,
    "label": "Balance Qty"
   },
@@ -73,7 +73,7 @@
   },
   {
    "fieldname": "total_dispatched",
-   "fieldtype": "Int",
+   "fieldtype": "Float",
    "hidden": 1,
    "label": "Total Dispatched"
   },

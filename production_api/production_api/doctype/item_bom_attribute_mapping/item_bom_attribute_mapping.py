@@ -15,15 +15,26 @@ class ItemBOMAttributeMapping(Document):
 			return
 		bom_attributes = list(set([i.attribute for i in self.bom_item_attributes]))
 		bom_item_attributes = get_attributes(self.bom_item)
-		# if len(bom_attributes) != len(bom_item_attributes):
-		# 	frappe.throw("Please use all the BOM Item Attributes")
-		# flag = True
-		# for attr in bom_item_attributes:
-		# 	if attr not in bom_attributes:
-		# 		flag = False
-		# 		break
-		# if not flag:
-		# 	frappe.throw("Please use all the BOM Item Attributes")
+		missing_bom_attributes = [attr for attr in bom_item_attributes if attr not in bom_attributes]
+		if missing_bom_attributes:
+			frappe.throw(
+				"Please add all the BOM Item Attributes for " + frappe.bold(self.bom_item)
+				+ ". Missing: " + ", ".join(missing_bom_attributes)
+			)
+		# "Same Attribute" only makes sense when it is checked on BOTH sides (Item table and
+		# BOM Item table) for the same attribute. Flag any attribute checked on one side only.
+		same_item = set(i.attribute for i in self.item_attributes if i.same_attribute)
+		same_bom = set(i.attribute for i in self.bom_item_attributes if i.same_attribute)
+		if same_item != same_bom:
+			only_item = sorted(same_item - same_bom)
+			only_bom = sorted(same_bom - same_item)
+			messages = []
+			if only_item:
+				messages.append("checked as Same Attribute under Item Attributes but not under BOM Item Attributes: " + ", ".join(only_item))
+			if only_bom:
+				messages.append("checked as Same Attribute under BOM Item Attributes but not under Item Attributes: " + ", ".join(only_bom))
+			frappe.throw("Same Attribute must be selected in both tables for the same attribute. " + "; ".join(messages))
+
 		same_item_attributes = [i.attribute for i in self.item_attributes if i.same_attribute]
 		same_attributes = [i.attribute for i in self.bom_item_attributes if i.same_attribute and i.attribute in same_item_attributes]
 		item_mapping_attributes = [i.attribute for i in self.item_attributes if not i.attribute in same_attributes]
@@ -31,6 +42,7 @@ class ItemBOMAttributeMapping(Document):
 		if same_attributes and len(same_attributes) > 0:
 			item_attributes = get_lot_attribute_values(self.item_production_detail, same_attributes)
 			bom_item_attributes = get_item_attribute_values(self.bom_item, same_attributes)
+			bom_primary_attribute = frappe.get_cached_value("Item", self.bom_item, "primary_attribute")
 			for attr in same_attributes:
 				item_attr_values = item_attributes.get(attr)
 				if not item_attr_values or len(item_attr_values) == 0:
@@ -38,10 +50,15 @@ class ItemBOMAttributeMapping(Document):
 				bom_attr_values = bom_item_attributes.get(attr)
 				if not bom_attr_values:
 					frappe.throw("Bom Item does not have attribute "+attr)
-				# elif len(bom_attr_values) > 0:
-				# 	for value in item_attr_values:
-				# 		if not value in bom_attr_values:
-				# 			frappe.throw("Bom Item does not have all the attribute values as the Item.")
+				elif attr == bom_primary_attribute:
+					# When the same attribute is the BOM Item's primary attribute, every value on
+					# the Item side must also exist on the BOM Item side so the values line up.
+					missing_values = [value for value in item_attr_values if value not in bom_attr_values]
+					if missing_values:
+						frappe.throw(
+							"BOM Item " + frappe.bold(self.bom_item) + " does not have all the "
+							+ frappe.bold(attr) + " values of the Item. Missing: " + ", ".join(missing_values)
+						)
 		
 		first_row = [i for i in self.values if i.index == 0]
 		for r in first_row:

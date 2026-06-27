@@ -6,6 +6,7 @@ from itertools import groupby
 from operator import itemgetter
 from frappe.model.document import Document
 from production_api.production_api.doctype.item.item import get_or_create_variant, get_attribute_details, build_variant_attributes
+from production_api.production_api.doctype.finishing_plan.finishing_plan import get_ipd_packing_config
 from production_api.utils import get_variant_attr_details, update_if_string_instance
 
 class FinishingPlanDispatch(Document):
@@ -35,6 +36,7 @@ class FinishingPlanDispatch(Document):
 			item1['primary_attribute'] = primary
 			item1['dependent_attribute'] = dependent
 			item1['stage'] = pack_out_stage
+			item1['packing_config'] = get_ipd_packing_config(lot)
 			for variant in variants_list:
 				attr_details = get_variant_attr_details(variant['item_variant'])
 				item1['values'][attr_details[primary]] = {
@@ -46,12 +48,22 @@ class FinishingPlanDispatch(Document):
 				item1['total']['total_dispatch'] += variant['quantity']
 
 			item_detail.append(item1)
-		self.set_onload("items", item_detail)		
+
+		# Attach the saved colour grid so the form can restore the per-colour box inputs on reload.
+		colour_map = {}
+		if self.get("dispatch_colour_details"):
+			for entry in update_if_string_instance(self.dispatch_colour_details):
+				colour_map[(entry.get("lot"), entry.get("item"))] = entry.get("grid") or {}
+		for it in item_detail:
+			it["colour_grid"] = colour_map.get((it["lot"], it["item"]), {})
+
+		self.set_onload("items", item_detail)
 
 	def before_validate(self):
 		if self.get('finishing_items'):
 			finishing_items = update_if_string_instance(self.finishing_items)
 			items = []
+			colour_details = []
 			for row in finishing_items:
 				for val in row['values']:
 					my_attributes = {
@@ -69,7 +81,12 @@ class FinishingPlanDispatch(Document):
 						"against_id": row['doc_name'],
 						"against_id_detail": row['values'][val]['row_detail']
 					})
-			self.set("finishing_plan_dispatch_items", items)	
+				# Colour grid is print-only metadata (the per-size dispatch above is unchanged).
+				grid = row.get('colour_grid')
+				if grid:
+					colour_details.append({"lot": row['lot'], "item": row['item'], "grid": grid})
+			self.set("finishing_plan_dispatch_items", items)
+			self.dispatch_colour_details = frappe.as_json(colour_details) if colour_details else None
 
 	def before_submit(self):
 		group = {}
@@ -152,6 +169,7 @@ def fetch_fp_items():
 		item['primary_attribute'] = primary
 		item['dependent_attribute'] = dependent
 		item['stage'] = pack_out_stage
+		item['packing_config'] = get_ipd_packing_config(fp_doc.lot)
 		check = False
 		for row in fp_doc.finishing_plan_grn_details:
 			attr_details = get_variant_attr_details(row.item_variant)
@@ -204,6 +222,9 @@ def create_stock_dispatch(doc_name, from_location, to_location, vehicle_no, good
 	doc.item_details = item_details
 	doc.vehicle_no = vehicle_no
 	doc.additional_amount = goods_value
+	# Carry the print-only colour grid onto the Stock Entry so the dispatch print can render it.
+	if self.get('dispatch_colour_details'):
+		doc.dispatch_colour_details = self.dispatch_colour_details
 	doc.save()
 	doc.submit()
 

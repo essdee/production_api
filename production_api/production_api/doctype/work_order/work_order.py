@@ -1164,33 +1164,42 @@ def calc_deliverable_and_receivable(ipd_doc, process, item_list, item_name, dept
         deliverables = deliverables + accessory
 
     elif ipd_doc.packing_process == process:
-        packing_attributes = get_attributes(
-            item_list, item_name, pack_out_stage, dept_attribute, pack_ipd=ipd)
-        item_list.update(bom)
-        deliverables, table_index, row_index = get_deliverables(item_list, lot)
-        item_doc = frappe.get_cached_doc("Item", item_name)
-        receivables, total_qty, table_index, row_index = get_receivables(
-            packing_attributes, lot, uom, conversion_details=item_doc.uom_conversion_details, out_uom=pack_out_uom)
-        combine_dict = {}
-        for item in receivables:
-            combine_dict.setdefault(item['item_variant'], {
-                "lot": item['lot'],
-                "qty": 0,
-                "uom": item['uom'],
-                "table_index": item['table_index'],
-                "row_index": item['row_index'],
-                "pending_quantity": 0,
-                "set_combination": {},
-            })
-            combine_dict[item['item_variant']]['qty'] += item['qty']
-            combine_dict[item['item_variant']
-                         ]['pending_quantity'] += item['qty']
+        if ipd_doc.based_on_other_attribute_mapping and ipd_doc.packing_mode:
+            # Size-wise packing: receivable = box-fitted size-only pieces at the pack-out stage
+            # (ratio-limited complete boxes, colour dropped). Must be read from item_list BEFORE the
+            # BOM is added, like get_attributes below.
+            receivables, total_qty = get_size_wise_packing_receivables(
+                item_list, ipd_doc, lot, uom)
+            item_list.update(bom)
+            deliverables, table_index, row_index = get_deliverables(item_list, lot)
+        else:
+            packing_attributes = get_attributes(
+                item_list, item_name, pack_out_stage, dept_attribute, pack_ipd=ipd)
+            item_list.update(bom)
+            deliverables, table_index, row_index = get_deliverables(item_list, lot)
+            item_doc = frappe.get_cached_doc("Item", item_name)
+            receivables, total_qty, table_index, row_index = get_receivables(
+                packing_attributes, lot, uom, conversion_details=item_doc.uom_conversion_details, out_uom=pack_out_uom)
+            combine_dict = {}
+            for item in receivables:
+                combine_dict.setdefault(item['item_variant'], {
+                    "lot": item['lot'],
+                    "qty": 0,
+                    "uom": item['uom'],
+                    "table_index": item['table_index'],
+                    "row_index": item['row_index'],
+                    "pending_quantity": 0,
+                    "set_combination": {},
+                })
+                combine_dict[item['item_variant']]['qty'] += item['qty']
+                combine_dict[item['item_variant']
+                             ]['pending_quantity'] += item['qty']
 
-        receivables = []
-        for variant, details in combine_dict.items():
-            x = {"item_variant": variant}
-            x.update(details)
-            receivables.append(x)
+            receivables = []
+            for variant, details in combine_dict.items():
+                x = {"item_variant": variant}
+                x.update(details)
+                receivables.append(x)
 
     elif ipd_doc.cutting_process == process:
         cutting_out_stage = ipd_doc.stiching_in_stage
@@ -1298,6 +1307,509 @@ def get_converted_accessory(ipd_doc, accessory, lot, table_index, row_index):
     return accessories
 
 
+# Change Item - BOM/accessory rows can be replaced only while the Work Order
+# deliverable row is still clean.
+ITEM_BOM_REF_DOCTYPE = "Work Order Deliverables"
+ITEM_BOM_CHILD_DOCTYPE = "Work Order Deliverables"
+
+
+def _as_list(value):
+    if isinstance(value, string_types):
+        value = json.loads(value)
+    return value or []
+
+
+def _qty(value):
+    return flt(value, 3)
+
+
+def _get_submitted_wo_for_change(work_order):
+    wo_doc = frappe.get_doc("Work Order", work_order)
+    wo_doc.check_permission("write")
+    if wo_doc.docstatus != 1:
+        frappe.throw(_("Change Item is available only on submitted Work Orders."))
+    return wo_doc
+
+
+def _wo_item_bom_processes(wo_doc):
+    if frappe.get_value("Process", wo_doc.process_name, "is_group"):
+        return [p.process_name for p in frappe.get_cached_doc("Process", wo_doc.process_name).process_details]
+    return [wo_doc.process_name]
+
+
+def _wo_item_bom_data(wo_doc):
+    lot = frappe.get_cached_doc("Lot", wo_doc.lot)
+    ipd = frappe.get_cached_doc("Item Production Detail", lot.production_detail)
+    processes = _wo_item_bom_processes(wo_doc)
+    item_bom_rows = [row for row in ipd.item_bom if row.process_name in processes]
+    current_templates = {row.item for row in item_bom_rows}
+    if not current_templates:
+        return None
+
+    flat_items = []
+    for row in wo_doc.work_order_calculated_items:
+        flat_items.append({
+            "item_variant": row.item_variant,
+            "quantity": row.quantity,
+            "row_index": row.row_index,
+            "table_index": row.table_index,
+            "set_combination": update_if_string_instance(row.set_combination) or {},
+        })
+    if not flat_items:
+        return None
+
+    item_name = frappe.get_cached_value("Item Variant", flat_items[0]["item_variant"], "item")
+    item_list, row_index, table_index = get_item_structure(
+        flat_items, item_name, wo_doc.process_name, lot.packing_uom)
+
+    raw_bom = {}
+    for process in processes:
+        process_bom = get_calculated_bom(
+            ipd.name, flat_items, wo_doc.lot, process_name=process,
+            doctype="Work Order", deliverable=False) or {}
+        raw_bom.update(process_bom)
+
+    expected_rows = []
+    if raw_bom:
+        for _item, variants in get_bom_structure(raw_bom, row_index, table_index).items():
+            expected_rows.extend(variants)
+
+    expected = {}
+    for row in expected_rows:
+        identity = _variant_item_bom_identity(row["item_variant"])
+        if identity["item"] not in current_templates:
+            continue
+        expected[row["item_variant"]] = {
+            "variant": row["item_variant"],
+            "item": identity["item"],
+            "attributes": identity["attributes"],
+            "qty": _qty(row["qty"]),
+            "uom": row["uom"],
+            "table_index": row.get("table_index"),
+            "row_index": row.get("row_index"),
+        }
+
+    return {
+        "ipd": ipd,
+        "item_bom_rows": item_bom_rows,
+        "expected": expected,
+        "current_templates": current_templates,
+        "cloth_templates": {row.cloth for row in ipd.cloth_detail},
+    }
+
+
+def _variant_item_bom_identity(variant):
+    variant_doc = frappe.get_cached_doc("Item Variant", variant)
+    attributes = {}
+    for attr in variant_doc.attributes:
+        attributes[attr.attribute] = attr.attribute_value
+    return {
+        "item": variant_doc.item,
+        "attributes": attributes,
+    }
+
+
+def _row_reference_reason(ref_doctype, row_name):
+    dc_ref = frappe.db.sql(
+        """
+        SELECT dci.parent
+        FROM `tabDelivery Challan Item` dci
+        INNER JOIN `tabDelivery Challan` dc ON dc.name = dci.parent
+        WHERE dci.ref_doctype = %(ref_doctype)s
+          AND dci.ref_docname = %(row_name)s
+          AND dc.docstatus = 1
+        LIMIT 1
+        """,
+        {"ref_doctype": ref_doctype, "row_name": row_name},
+        as_dict=True,
+    )
+    if dc_ref:
+        return _("referenced by Delivery Challan {0}").format(dc_ref[0].parent)
+
+    grn_ref = frappe.db.sql(
+        """
+        SELECT gri.parent, grn.is_return
+        FROM `tabGoods Received Note Item` gri
+        INNER JOIN `tabGoods Received Note` grn ON grn.name = gri.parent
+        WHERE gri.ref_doctype = %(ref_doctype)s
+          AND gri.ref_docname = %(row_name)s
+          AND grn.docstatus = 1
+        LIMIT 1
+        """,
+        {"ref_doctype": ref_doctype, "row_name": row_name},
+        as_dict=True,
+    )
+    if grn_ref:
+        if grn_ref[0].is_return:
+            return _("referenced by Return Goods Received Note {0}").format(grn_ref[0].parent)
+        return _("referenced by Goods Received Note {0}").format(grn_ref[0].parent)
+
+    return None
+
+
+def _accessory_row_eligibility(row, ref_doctype):
+    if _qty(row.qty) != _qty(row.pending_quantity):
+        return False, _("already delivered/received (pending {0} of {1})").format(
+            _qty(row.pending_quantity), _qty(row.qty))
+    if flt(row.get("stock_update")):
+        return False, _("already consumed in a Goods Received Note")
+    if flt(row.get("cancelled_quantity")):
+        return False, _("has cancelled quantity")
+    if row.get("grn_detail_no"):
+        return False, _("linked to a Goods Received Note")
+    reason = _row_reference_reason(ref_doctype, row.name)
+    if reason:
+        return False, reason
+    return True, None
+
+
+def _format_variant_attributes(attributes):
+    if not attributes:
+        return ""
+    return ", ".join(f"{attr}: {value}" for attr, value in sorted(attributes.items()))
+
+
+def _get_item_bom_row_contexts(wo_doc, data):
+    contexts = []
+    for row in wo_doc.deliverables:
+        if not row.get("is_calculated"):
+            continue
+        if update_if_string_instance(row.set_combination):
+            continue
+        identity = _variant_item_bom_identity(row.item_variant)
+        item_template = identity["item"]
+        if item_template == wo_doc.item or item_template in data["cloth_templates"]:
+            continue
+        eligible, reason = _accessory_row_eligibility(row, ITEM_BOM_REF_DOCTYPE)
+        contexts.append({
+            "row": row,
+            "row_name": row.name,
+            "doctype": ITEM_BOM_CHILD_DOCTYPE,
+            "item_variant": row.item_variant,
+            "qty": _qty(row.qty),
+            "pending_quantity": _qty(row.pending_quantity),
+            "uom": row.uom,
+            "item": item_template,
+            "attributes": identity["attributes"],
+            "attributes_label": _format_variant_attributes(identity["attributes"]),
+            "eligible": eligible,
+            "reason": reason,
+        })
+    return contexts
+
+
+def _item_bom_context_response(ctx):
+    return {
+        "row_name": ctx["row_name"],
+        "doctype": ctx["doctype"],
+        "branch": _("Item BOM"),
+        "item_variant": ctx["item_variant"],
+        "qty": ctx["qty"],
+        "pending_quantity": ctx["pending_quantity"],
+        "uom": ctx["uom"],
+        "item": ctx["item"],
+        "attributes": ctx["attributes_label"],
+        "eligible": ctx["eligible"],
+        "reason": ctx["reason"],
+    }
+
+
+def _item_bom_row_response(row):
+    return {
+        "row_name": row.name,
+        "branch": row.process_name,
+        "item": row.item,
+        "item_variant": row.item,
+        "attributes": _("Attribute Mapping") if row.based_on_attribute_mapping else "",
+        "qty": _qty(row.qty_of_bom_item),
+        "uom": row.uom,
+        "qty_of_product": _qty(row.qty_of_product),
+        "dependent_attribute_value": row.dependent_attribute_value,
+        "eligible": True,
+        "reason": None,
+    }
+
+
+def _item_bom_selection_context(row, doctype=ITEM_BOM_CHILD_DOCTYPE):
+    return {
+        "row": row,
+        "row_name": row.name,
+        "doctype": doctype,
+        "item_variant": "",
+        "qty": 0,
+        "uom": row.uom,
+        "item": row.item,
+        "eligible": False,
+        "reason": None,
+    }
+
+
+def _same_item_bom_row(ctx, new_info):
+    return (
+        ctx["item_variant"] == new_info["variant"]
+        and (ctx["uom"] or "") == (new_info["uom"] or "")
+    )
+
+
+def _make_item_bom_change(ctx, new_variant=None, new_info=None, reason=None):
+    if not new_variant or not new_info:
+        return {
+            "action": "blocked",
+            "eligible": False,
+            "reason": reason or _("No recalculated Item BOM row matches this item."),
+            "row_name": ctx["row_name"],
+            "old_name": ctx["row_name"],
+            "doctype": ctx["doctype"],
+            "branch": _("Item BOM"),
+            "old_variant": ctx["item_variant"],
+            "old_qty": ctx["qty"],
+            "old_uom": ctx["uom"],
+            "new_variant": "",
+            "new_qty": 0,
+            "new_uom": "",
+        }
+
+    new_info = dict(new_info)
+    new_info["variant"] = new_variant
+    unchanged = _same_item_bom_row(ctx, new_info)
+    eligible = bool(ctx["eligible"] and not reason and not unchanged)
+    return {
+        "action": "replace" if eligible else ("unchanged" if unchanged else "blocked"),
+        "eligible": eligible,
+        "reason": reason or ctx["reason"] or (_("already matches recalculation") if unchanged else None),
+        "row_name": ctx["row_name"],
+        "old_name": ctx["row_name"],
+        "doctype": ctx["doctype"],
+        "branch": _("Item BOM"),
+        "old_variant": ctx["item_variant"],
+        "old_qty": ctx["qty"],
+        "old_uom": ctx["uom"],
+        "new_variant": new_variant,
+        "new_qty": ctx["qty"],
+        "new_uom": ctx["uom"],
+        "calculated_qty": _qty(new_info["qty"]),
+        "calculated_uom": new_info["uom"],
+        "new_table_index": new_info.get("table_index"),
+        "new_row_index": new_info.get("row_index"),
+    }
+
+
+def _preview_item_bom_changes(wo_doc, selected):
+    selected = set(_as_list(selected))
+    data = _wo_item_bom_data(wo_doc)
+    if data is None:
+        return None
+
+    selected_item_bom_rows = [row for row in data["item_bom_rows"] if row.name in selected]
+    selected_templates = {row.item for row in selected_item_bom_rows}
+    selected_row_by_item = {}
+    for row in selected_item_bom_rows:
+        selected_row_by_item.setdefault(row.item, row)
+    contexts = _get_item_bom_row_contexts(wo_doc, data)
+    changes = []
+    skipped = [{"row_name": name, "reason": _("not an Item BOM row for this Work Order process")}
+               for name in sorted(selected - {row.name for row in data["item_bom_rows"]})]
+    if not selected_templates:
+        return {"supported": True, "changes": changes, "skipped": skipped}
+
+    stored_variants = {row.item_variant for row in wo_doc.deliverables}
+    missing_expected = {
+        variant: info for variant, info in data["expected"].items()
+        if info["item"] in selected_templates and variant not in stored_variants
+    }
+    missing_by_item = {}
+    for variant, info in missing_expected.items():
+        missing_by_item.setdefault(info["item"], []).append((variant, info))
+
+    used_expected_variants = set()
+    used_context_rows = set()
+
+    for variant, info in data["expected"].items():
+        if info["item"] not in selected_templates:
+            continue
+        exact_contexts = [
+            ctx for ctx in contexts
+            if ctx["item_variant"] == variant and ctx["row_name"] not in used_context_rows
+        ]
+        if exact_contexts:
+            ctx = exact_contexts[0]
+            used_context_rows.add(ctx["row_name"])
+            changes.append(_make_item_bom_change(ctx, variant, info))
+            continue
+
+        index_contexts = [
+            ctx for ctx in contexts
+            if ctx["row_name"] not in used_context_rows
+            and ctx["row"].table_index == info.get("table_index")
+            and str(ctx["row"].row_index) == str(info.get("row_index"))
+        ]
+        if len(index_contexts) == 1:
+            ctx = index_contexts[0]
+            used_context_rows.add(ctx["row_name"])
+            used_expected_variants.add(variant)
+            changes.append(_make_item_bom_change(ctx, variant, info))
+            continue
+
+        item_contexts = [
+            ctx for ctx in contexts
+            if ctx["row_name"] not in used_context_rows
+            and ctx["item"] == info["item"]
+        ]
+        if len(item_contexts) == 1:
+            ctx = item_contexts[0]
+            used_context_rows.add(ctx["row_name"])
+            used_expected_variants.add(variant)
+            changes.append(_make_item_bom_change(ctx, variant, info))
+            continue
+        if len(item_contexts) > 1:
+            selected_row = selected_row_by_item.get(info["item"])
+            if selected_row:
+                changes.append(_make_item_bom_change(
+                    _item_bom_selection_context(selected_row),
+                    variant,
+                    info,
+                    reason=_("{0} existing Work Order rows could match this Item BOM row").format(len(item_contexts)),
+                ))
+
+    stale_contexts = [
+        ctx for ctx in contexts
+        if ctx["row_name"] not in used_context_rows
+        and ctx["item"] not in {info["item"] for info in data["expected"].values()}
+    ]
+    for ctx in stale_contexts:
+        if not missing_expected:
+            continue
+        item_candidates = [
+            (variant, info) for variant, info in missing_by_item.get(ctx["item"], [])
+            if variant not in used_expected_variants
+        ]
+        if len(item_candidates) == 1:
+            variant, info = item_candidates[0]
+            used_expected_variants.add(variant)
+            changes.append(_make_item_bom_change(ctx, variant, info))
+            continue
+
+        remaining_missing = [
+            (variant, info) for variant, info in missing_expected.items()
+            if variant not in used_expected_variants
+        ]
+        if len(missing_expected) == 1 and len(stale_contexts) == 1:
+            variant, info = remaining_missing[0]
+            used_expected_variants.add(variant)
+            changes.append(_make_item_bom_change(ctx, variant, info))
+        elif len(item_candidates) > 1:
+            changes.append(_make_item_bom_change(
+                ctx, reason=_("{0} recalculated Item BOM rows could match this item").format(len(item_candidates))))
+        else:
+            changes.append(_make_item_bom_change(
+                ctx, reason=_("no matching recalculated Item BOM row found")))
+
+    changed_new_variants = {change["new_variant"] for change in changes if change.get("new_variant")}
+    for variant, info in missing_expected.items():
+        if variant in used_expected_variants or variant in changed_new_variants:
+            continue
+        selected_row = selected_row_by_item.get(info["item"])
+        if selected_row:
+            changes.append(_make_item_bom_change(
+                _item_bom_selection_context(selected_row),
+                variant,
+                info,
+                reason=_("no existing Work Order row found to replace"),
+            ))
+
+    for change in changes:
+        if change.get("selection_id"):
+            continue
+        info = data["expected"].get(change.get("new_variant"))
+        if info and selected_row_by_item.get(info["item"]):
+            change["selection_id"] = selected_row_by_item[info["item"]].name
+
+    return {"supported": True, "changes": changes, "skipped": skipped}
+
+
+@frappe.whitelist()
+def get_wo_bom_accessory_items(work_order):
+    wo_doc = _get_submitted_wo_for_change(work_order)
+    data = _wo_item_bom_data(wo_doc)
+    if data is None:
+        return {
+            "supported": False,
+            "message": _("This Work Order's process has no recalculable Item BOM rows."),
+        }
+    return {
+        "supported": True,
+        "items": [_item_bom_row_response(row) for row in data["item_bom_rows"]],
+    }
+
+
+@frappe.whitelist()
+def get_wo_bom_accessory_change_preview(work_order, selected):
+    wo_doc = _get_submitted_wo_for_change(work_order)
+    result = _preview_item_bom_changes(wo_doc, selected)
+    if result is None:
+        return {
+            "supported": False,
+            "message": _("This Work Order has no recalculable Item BOM rows."),
+            "changes": [],
+            "skipped": [],
+        }
+    return result
+
+
+@frappe.whitelist()
+def get_wo_accessory_changes(work_order):
+    wo_doc = _get_submitted_wo_for_change(work_order)
+    item_result = get_wo_bom_accessory_items(work_order)
+    if not item_result.get("supported"):
+        return item_result
+    selected = [item["row_name"] for item in item_result.get("items", []) if item.get("eligible")]
+    return _preview_item_bom_changes(wo_doc, selected)
+
+
+@frappe.whitelist()
+def get_wo_accessory_items(work_order):
+    return get_wo_bom_accessory_items(work_order)
+
+
+@frappe.whitelist()
+def get_wo_accessory_change_preview(work_order, selected):
+    return get_wo_bom_accessory_change_preview(work_order, selected)
+
+
+@frappe.whitelist()
+def apply_bom_accessory_changes(work_order, selected):
+    selected = set(_as_list(selected))
+    wo_doc = _get_submitted_wo_for_change(work_order)
+    result = _preview_item_bom_changes(wo_doc, selected)
+    if not result:
+        frappe.throw(_("This Work Order has no recalculable Item BOM rows."))
+
+    applied = []
+    skipped = result.get("skipped", [])
+    for change in result["changes"]:
+        change_ids = {change.get("row_name"), change.get("old_name"), change.get("selection_id")}
+        change_ids.discard(None)
+        if not selected.intersection(change_ids):
+            continue
+        if change["action"] != "replace" or not change["eligible"]:
+            skipped.append({"row_name": change["row_name"], "old_name": change["row_name"],
+                            "old_variant": change["old_variant"], "reason": change["reason"]})
+            continue
+        frappe.db.set_value(change["doctype"], change["row_name"], {
+            "item_variant": change["new_variant"],
+        })
+        wo_doc.add_comment("Comment", _("Change Item: {0} -> {1} (qty retained {2})").format(
+            change["old_variant"], change["new_variant"], change["old_qty"]))
+        applied.append(change)
+
+    return {"applied": applied, "skipped": skipped}
+
+
+@frappe.whitelist()
+def apply_accessory_changes(work_order, selected):
+    return apply_bom_accessory_changes(work_order, selected)
+
+
 def get_report_data(items, dept_attribute, pack_attr):
     attrs = []
     set_attrs = []
@@ -1368,6 +1880,91 @@ def get_receivables(items, lot, uom, conversion_details=None, out_uom=None):
             row_index = variant['row_index']
     x = 1
     return receivables, total_qty, int(table_index)+x, int(row_index)+x
+
+
+def get_size_wise_packing_receivables(item_list, ipd_doc, lot, uom):
+    """Packing-process receivable when the IPD uses size-wise packing (Phase 2).
+
+    Boxes hold the size ratio; colour is entry-only so stock stays size-only. Loose pieces arrive
+    per colour+size (in item_list); we keep only the pieces that fit into COMPLETE boxes (ratio
+    limited by the scarcest size, per colour), roll up to size totals (colour dropped), and emit one
+    size-only receivable per size at the PACK-OUT stage (Stage=Pack) in packing-uom pieces — i.e. the
+    box-fitted "expected packed pieces", which is the ratio-aware replacement for the legacy per-size
+    ceil(pieces/packing_combo) box count. Total pieces / packing_combo = the complete-box count.
+
+    Size Ratio Packing: per colour, complete boxes = min over the ratio sizes of
+        floor(avail / ratio); consumed[size] = boxes * ratio[size]; pieces that don't fill a box
+        are left unpacked (warned, not blocked).
+    Size Wise Packing: packing_combo = 1, so every available piece is its own box -> all pieces pass.
+    """
+    primary_attr = ipd_doc.primary_item_attribute
+    pack_stage = ipd_doc.pack_out_stage
+
+    # avail[colour][size] = available loose pieces, read from each input variant's attributes
+    avail = {}
+    for variants in item_list.values():
+        for variant in variants:
+            attrs = get_variant_attr_details(variant['item_variant'])
+            size = attrs.get(primary_attr)
+            if size is None:
+                continue
+            colour = attrs.get(ipd_doc.packing_attribute)
+            avail.setdefault(colour, {}).setdefault(size, 0)
+            avail[colour][size] += flt(variant['qty'])
+
+    # consumed[size] = pieces that fit complete boxes, rolled up across colours (colour dropped)
+    consumed = {}
+    leftover = {}
+    if ipd_doc.packing_mode == "Size Ratio Packing":
+        ratio = {row.attribute_value: row.quantity for row in ipd_doc.packing_size_details}
+        for sizes in avail.values():
+            # complete boxes this colour can build = limited by the scarcest ratio size
+            boxes = None
+            for size, per_box in ratio.items():
+                if per_box <= 0:
+                    continue
+                fit = int(flt(sizes.get(size, 0)) // per_box)
+                boxes = fit if boxes is None else min(boxes, fit)
+            boxes = boxes or 0
+            for size, per_box in ratio.items():
+                consumed[size] = consumed.get(size, 0) + boxes * per_box
+            for size, qty in sizes.items():
+                extra = flt(qty) - boxes * ratio.get(size, 0)
+                if extra > 0:
+                    leftover[size] = leftover.get(size, 0) + extra
+    else:
+        # Size Wise (carton, packing_combo = 1): every available piece passes through 1:1.
+        for sizes in avail.values():
+            for size, qty in sizes.items():
+                consumed[size] = consumed.get(size, 0) + flt(qty)
+
+    receivables = []
+    total_qty = 0
+    index = 0
+    for size, qty in consumed.items():
+        if qty <= 0:
+            continue
+        variant = get_or_create_variant(
+            ipd_doc.item, build_variant_attributes({primary_attr: size}, pack_stage, ipd_doc.name))
+        total_qty += qty
+        receivables.append({
+            'item_variant': variant,
+            'lot': lot,
+            'qty': round(qty, 3),
+            'uom': uom,
+            'table_index': 0,
+            'row_index': index,
+            'pending_quantity': round(qty, 3),
+            'set_combination': {},
+        })
+        index += 1
+
+    if leftover:
+        parts = ", ".join(f"{s}: {int(q)}" for s, q in leftover.items() if q > 0)
+        if parts:
+            frappe.msgprint(f"Some loose pieces don't fill a complete box and stay unpacked — {parts}")
+
+    return receivables, total_qty
 
 
 def get_attributes_qty(ipd_doc, process, depends_on_attr):

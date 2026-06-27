@@ -771,6 +771,43 @@ frappe.ui.form.on("Item Production Detail", {
 	make_packing_assortment(frm){
 		render_packing_assortment(frm)
 	},
+	packing_mode(frm){
+		if(!frm.doc.based_on_other_attribute_mapping || !frm.doc.packing_mode){
+			return
+		}
+		if(frm.doc.packing_mode === 'Size Wise Packing'){
+			// Carton / free-count: each carton holds any number of pieces, entered at GRN time.
+			// Packing Combo = 1 makes those pieces pass through 1:1; no size-ratio table is used.
+			frm.set_value('packing_combo', 1)
+			frm.clear_table('packing_size_details')
+			frm.refresh_field('packing_size_details')
+			return
+		}
+		// Size Ratio Packing: pre-fill one row per size (qty 0) so the user just types the ratio.
+		frappe.call({
+			method: 'production_api.essdee_production.doctype.item_production_detail.item_production_detail.get_packing_size_values',
+			args: { doc_name: frm.doc.name },
+			callback: (r) => {
+				if(!r.message){ return }
+				// Preserve any quantities the user already entered for a size.
+				let existing = {}
+				;(frm.doc.packing_size_details || []).forEach(row => { existing[row.attribute_value] = row.quantity })
+				// Sizes that carried a quantity but are no longer valid for this item.
+				let dropped = Object.keys(existing).filter(s => existing[s] > 0 && !r.message.includes(s))
+				frm.clear_table('packing_size_details')
+				r.message.forEach(size => {
+					let row = frm.add_child('packing_size_details')
+					row.attribute_value = size
+					row.quantity = existing[size] || 0
+				})
+				frm.refresh_field('packing_size_details')
+				frm.dirty()
+				if(dropped.length){
+					frappe.msgprint("These sizes are no longer valid for this item; their quantities were cleared: " + dropped.join(', '))
+				}
+			}
+		})
+	},
 	get_cloth_combination(frm){
 		if(frm.doc.cloth_detail.length == 0){
 			frappe.msgprint("Fill The Cloth Details")

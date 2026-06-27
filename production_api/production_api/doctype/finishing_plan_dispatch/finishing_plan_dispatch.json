@@ -10,7 +10,9 @@
   "naming_series",
   "stock_entry",
   "finishing_plan_dispatch_html",
+  "finishing_items",
   "finishing_plan_dispatch_items",
+  "dispatch_colour_details",
   "amended_from",
   "fp_total_dispatched"
  ],
@@ -59,9 +61,24 @@
   },
   {
    "fieldname": "fp_total_dispatched",
-   "fieldtype": "Int",
+   "fieldtype": "Float",
    "hidden": 1,
    "label": "FP Total Dispatched",
+   "read_only": 1
+  },
+  {
+   "fieldname": "dispatch_colour_details",
+   "fieldtype": "Long Text",
+   "hidden": 1,
+   "label": "Dispatch Colour Details",
+   "read_only": 1
+  },
+  {
+   "fieldname": "finishing_items",
+   "fieldtype": "Long Text",
+   "hidden": 1,
+   "label": "Finishing Items",
+   "no_copy": 1,
    "read_only": 1
   }
  ],
@@ -69,7 +86,7 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2026-02-06 19:04:23.117466",
+ "modified": "2026-06-25 12:30:00.000000",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Finishing Plan Dispatch",
