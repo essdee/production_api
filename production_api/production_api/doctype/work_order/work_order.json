@@ -19,6 +19,7 @@
   "includes_packing",
   "column_break_wrym",
   "is_internal_unit",
+  "no_receivables",
   "parent_wo",
   "process_name",
   "terms_and_condition",
@@ -627,6 +628,12 @@
    "label": "Update Stock Entry",
    "options": "Stock Entry",
    "read_only": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "no_receivables",
+   "fieldtype": "Check",
+   "label": "No Receivables"
   }
  ],
  "grid_page_length": 50,
@@ -642,7 +649,7 @@
    "link_fieldname": "against_id"
   }
  ],
- "modified": "2026-04-24 18:52:33.214716",
+ "modified": "2026-06-30 10:10:31.889675",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Work Order",
