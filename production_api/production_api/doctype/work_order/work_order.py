@@ -2269,7 +2269,7 @@ def update_stock(work_order, close_reason=None, close_other_reason=None, close_r
     sl_entries = []
     grn_list = frappe.get_all('Goods Received Note', {
         "docstatus": 1, "against_id": work_order}, pluck="name")
-    if not grn_list:
+    if not grn_list and not doc.no_receivables:
         frappe.throw("There is no Goods Received for this Work Order")
 
     dc_list = frappe.get_all("Delivery Challan", filters={
