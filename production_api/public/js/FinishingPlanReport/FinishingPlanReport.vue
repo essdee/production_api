@@ -19,6 +19,9 @@
                 <div class="filter-control">
                     <div ref="season_filter_wrapper"></div>
                 </div>
+                <div class="filter-control">
+                    <div ref="product_category_filter_wrapper"></div>
+                </div>
                 <div>
                     <button class="btn btn-primary" @click="fetchData()" style="border-radius: 12px; font-weight: 700;">
                         Get Report
@@ -62,7 +65,7 @@
         </div>
 
         <div v-else class="empty-state">
-            <p>Loading…</p>
+            <p>Select your filters and click Get Report.</p>
         </div>
     </div>
 </template>
@@ -98,9 +101,11 @@ const tableEl = ref(null)
 const lot_filter_wrapper = ref(null)
 const item_filter_wrapper = ref(null)
 const season_filter_wrapper = ref(null)
+const product_category_filter_wrapper = ref(null)
 let lot_control = null
 let item_control = null
 let season_control = null
+let product_category_control = null
 
 const columns = ref([])
 const rows = ref([])
@@ -231,6 +236,9 @@ const initFilters = () => {
     if (season_filter_wrapper.value) {
         season_control = makeLinkFilter(season_filter_wrapper.value, 'season', 'Season', 'Product Season')
     }
+    if (product_category_filter_wrapper.value) {
+        product_category_control = makeLinkFilter(product_category_filter_wrapper.value, 'product_category', 'Product Category', 'Product Category')
+    }
 }
 
 // Run the report for a given filters object and render the result.
@@ -272,20 +280,18 @@ const fetchData = () => {
     const lot = lot_control ? lot_control.get_value() : null
     const item = item_control ? item_control.get_value() : null
     const season = season_control ? season_control.get_value() : null
+    const product_category = product_category_control ? product_category_control.get_value() : null
     if (lot) filters.lot = lot
     if (item) filters.item = item
     if (season) filters.season = season
+    if (product_category) filters.product_category = product_category
     runReport(filters)
 }
 
 onMounted(() => {
     initFilters()
-    // Load everything on open (matches the source report). Defer past any pending boot
-    // ajax and run WITHOUT reading the freshly-created filter controls: reading a
-    // just-created control can throw and silently abort the auto-load (which is why the
-    // button worked but page-open did not). after_ajax runs immediately if nothing is
-    // pending, so this is safe.
-    frappe.after_ajax(() => runReport({}))
+    // No auto-fetch: the report stays idle on open and loads only when the user
+    // sets their filters and clicks "Get Report" (see fetchData).
     window.addEventListener('resize', onResize)
 })
 

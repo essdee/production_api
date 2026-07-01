@@ -142,6 +142,22 @@ def get_data(filters):
 	if filters.get('season'):
 		lot_list = frappe.get_all("Lot", filters={"season": filters.get('season')}, pluck="name")			
 		fil['lot'] = ['in', lot_list]
+	if filters.get('product_category'):
+		item_list = frappe.get_all(
+			"Item",
+			filters={"product_category": filters.get('product_category')},
+			pluck="name",
+		)
+		if filters.get('item'):
+			# Item + Product Category both chosen: keep the chosen item only if it
+			# belongs to the selected category, otherwise nothing matches.
+			if filters.get('item') not in item_list:
+				return data
+		else:
+			# Product Category alone: restrict to every item in that category.
+			if not item_list:
+				return data
+			fil['item'] = ['in', item_list]
 
 	fp_list = frappe.get_all("Finishing Plan",filters=fil, pluck="name")
 	for fp_name in fp_list:
