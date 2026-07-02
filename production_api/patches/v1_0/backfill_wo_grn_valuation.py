@@ -14,6 +14,11 @@ This one-off backfill recomputes exactly that for the WO-GRN *receipt* SLEs and
 reposts each GRN so FIFO recomputes valuation_rate / stock_value and carries the
 correction forward to same-key downstream entries.
 
+NOTE (2026-07-02): `get_wo_deliverable_avg_rate` has since gained
+includes_packing behavior (per-piece divisor + IPD colour-mix loose-piece
+valuation). If this patch is ever re-run or extended to packing GRNs it will
+compute with that new logic, not the values it originally wrote.
+
 SCOPE (explicit user decision)
 ------------------------------
 - ONLY `against = "Work Order"`, non-return, submitted GRNs.

@@ -25,7 +25,7 @@ from production_api.utils import (
 from production_api.essdee_production.doctype.item_production_detail.item_production_detail import (
     get_calculated_bom, get_cloth_combination)
 from production_api.production_api.doctype.cut_bundle_movement_ledger.cut_bundle_movement_ledger import (
-    get_cut_bundle_entry, make_cut_bundle_ledger, cancel_cut_bundle_ledger)
+    get_cut_bundle_entry, make_cut_bundle_ledger, cancel_cut_bundle_ledger, check_dependent_stage_variant)
 
 
 class GoodsReceivedNote(Document):
@@ -313,12 +313,31 @@ class GoodsReceivedNote(Document):
             "Lot", self.lot, ["pack_out_stage", "production_detail", "item"])
         dept_attr = frappe.get_value(
             "Item Production Detail", ipd, "dependent_attribute")
+        # Receivable cost is per received UOM (box) — keep item.rate in row-UOM
+        # terms so split_items' amount (rate x box qty) stays correct, and store
+        # the per-piece cost on stock_uom_rate for the SL entry valuation
+        # (the receipt SLE qty is stock_qty, in pieces).
+        wo_doc = frappe.get_cached_doc(self.against, self.against_id)
+        receivable_cost = {}
+        for row in wo_doc.receivables:
+            receivable_cost.setdefault(row.item_variant, flt(row.cost))
         for item in self.items:
             variant = frappe.get_doc("Item Variant", item.item_variant)
             attr_details = get_variant_attributes(variant)
             attr_details[dept_attr] = pack_out_stage
             new_variant = get_or_create_variant(itemname, attr_details)
             item.item_variant = new_variant
+            if new_variant in receivable_cost and flt(item.conversion_factor):
+                item.rate = receivable_cost[new_variant]
+                item.stock_uom_rate = flt(
+                    item.rate) / flt(item.conversion_factor)
+            else:
+                frappe.log_error(
+                    title="Packing GRN process cost missing",
+                    message=(
+                        f"{self.name}: no Work Order receivable cost matched "
+                        f"variant {new_variant} — process cost booked as 0 "
+                        f"for this row."))
 
         sl_entries = []
         default_received_type = frappe.db.get_single_value(
@@ -754,35 +773,128 @@ class GoodsReceivedNote(Document):
         (the same get_stock_balance call reduce_uncalculated_stock uses to reduce
         it), not the stored GRN Deliverable.valuation_rate which is 0.
         Returns 0 when there are no deliverables / no received quantity.
+
+        includes_packing GRNs: total_received_quantity is in boxes but the
+        receipt SL entries are in pieces, so average per piece instead; and the
+        consumed Loose Piece variants carry no valuation of their own (the DC
+        books the colour -> loose-piece conversion against the loose-piece
+        variant's empty history), so their value comes from the IPD packing
+        tab colour mix (get_packing_piece_values).
         """
-        if not self.total_received_quantity:
+        received_qty = flt(self.total_received_quantity)
+        if self.includes_packing:
+            received_qty = sum(flt(item.stock_qty) for item in self.items)
+        if not received_qty:
             return 0
         received_type = frappe.db.get_single_value(
             "Stock Settings", "default_received_type")
+        packing_piece_values = {}
+        if self.includes_packing:
+            packing_piece_values = self.get_packing_piece_values(
+                [item.item_variant for item in self.grn_deliverables], received_type)
         total_value = 0
         for item in self.grn_deliverables:
             if not (res.get(item.item_variant) and item.quantity):
                 continue
-            valuation = get_stock_balance(
-                item.item_variant, None, received_type,
-                posting_date=self.posting_date, posting_time=self.posting_time,
-                with_valuation_rate=True, uom=item.uom,
-            )[1]
+            if item.item_variant in packing_piece_values:
+                valuation = packing_piece_values[item.item_variant]
+            else:
+                valuation = get_stock_balance(
+                    item.item_variant, None, received_type,
+                    posting_date=self.posting_date, posting_time=self.posting_time,
+                    with_valuation_rate=True, uom=item.uom,
+                )[1]
             total_value += flt(valuation) * flt(item.quantity)
-        return total_value / self.total_received_quantity
+        return total_value / received_qty
+
+    def get_packing_piece_values(self, variants, received_type):
+        """Colour-mix average per-piece valuation for Loose Piece variants.
+
+        For each loose-piece variant in `variants`, averages the posting-time
+        stock valuation of the colour-wise pack-in stage piece variants of the
+        same size, weighted by the IPD packing tab mix (equal weights when
+        auto_calculate is set, else each colour's quantity per box).
+        Returns {loose_piece_variant: rate_per_piece}; other variants are
+        left out so callers fall back to the normal stock valuation.
+        """
+        from production_api.production_api.doctype.item.item import get_variant
+        lot_doc = frappe.get_cached_doc("Lot", self.lot)
+        ipd_doc = frappe.get_cached_doc(
+            "Item Production Detail", lot_doc.production_detail)
+        if ipd_doc.is_set_item:
+            # Set-item pack-in variants also need the set/part attribute — the
+            # size+colour lookup below would throw. Fall back to normal stock
+            # valuation until set packing valuation is designed.
+            return {}
+        weights = {}
+        for row in ipd_doc.packing_attribute_details:
+            weight = 1 if ipd_doc.auto_calculate else flt(row.quantity)
+            if weight > 0:
+                weights[row.attribute_value] = weight
+        if not weights:
+            return {}
+        total_weight = sum(weights.values())
+        loose_stage = frappe.db.get_single_value(
+            "IPD Settings", "default_loose_piece_stage")
+        if not loose_stage:
+            frappe.log_error(
+                title="Packing GRN piece valuation skipped",
+                message=(f"{self.name}: IPD Settings default_loose_piece_stage "
+                         "is empty — loose-piece deliverables fall back to "
+                         "their own (zero) stock valuation."))
+            return {}
+        primary_attr = ipd_doc.primary_item_attribute
+        size_rate = {}
+        value_map = {}
+        for variant_name in variants:
+            if not check_dependent_stage_variant(
+                    variant_name, ipd_doc.dependent_attribute, loose_stage):
+                continue
+            variant_doc = frappe.get_cached_doc("Item Variant", variant_name)
+            size = next((
+                attr.attribute_value for attr in variant_doc.attributes
+                if attr.attribute == primary_attr), None)
+            if size is None:
+                continue
+            if size not in size_rate:
+                total_value = 0
+                for colour, weight in weights.items():
+                    attrs = build_variant_attributes(
+                        {primary_attr: size, ipd_doc.packing_attribute: colour},
+                        lot_doc.pack_in_stage, ipd_doc)
+                    piece_variant = get_variant(lot_doc.item, attrs)
+                    if not piece_variant:
+                        # Colour variant never created = data gap; it still
+                        # keeps its weight in the denominator (valued at 0),
+                        # same as an existing variant with zero valuation.
+                        continue
+                    rate = get_stock_balance(
+                        piece_variant, None, received_type,
+                        posting_date=self.posting_date,
+                        posting_time=self.posting_time,
+                        with_valuation_rate=True,
+                    )[1]
+                    total_value += flt(rate) * weight
+                size_rate[size] = total_value / total_weight
+            value_map[variant_name] = size_rate[size]
+        return value_map
 
     def update_wo_stock_ledger(self, res):
         from production_api.mrp_stock.stock_ledger import make_sl_entries
         # Received item valuation = deliverable (consumed material) average
         #   + receivable/process cost (item.rate). (No last-SLE term.)
+        # Packing GRNs: the SLE qty is in pieces while item.rate is per box,
+        # so use the per-piece stock_uom_rate instead.
         avg = self.get_wo_deliverable_avg_rate(res)
         supplier = self.get_to_warehouse()
         sl_entries = []
         for item in self.items:
             if item.quantity > 0 and res.get(item.item_variant):
+                rate = flt(item.stock_uom_rate) if self.includes_packing \
+                    else flt(item.rate)
                 sl_entries.append(self.get_sl_entries(
                     item, supplier, {}, 1, item.received_type,
-                    valuation_rate=avg + flt(item.rate)))
+                    valuation_rate=avg + rate))
         make_sl_entries(sl_entries)
 
     def reduce_uncalculated_stock(self, res):
@@ -1128,9 +1240,11 @@ class GoodsReceivedNote(Document):
         sl_entries = []
         for item in self.items:
             if item.quantity > 0 and res.get(item.item_variant):
+                rate = flt(item.stock_uom_rate) if self.includes_packing \
+                    else flt(item.rate)
                 sl_entries.append(self.get_sl_entries(
                     item, self.delivery_location, {}, 1, item.received_type,
-                    valuation_rate=avg + flt(item.rate)))
+                    valuation_rate=avg + rate))
         make_sl_entries(sl_entries)
 
     def reupdate_wo_deliverables(self, res):
@@ -2243,14 +2357,26 @@ def get_packing_process_deliverables(grn_doc):
     total_box_quantity = 0
     packing_combo = ipd_doc.packing_combo
     lot_item_detail = frappe.get_cached_doc("Item", item)
+    # Loose-piece rows carry no stock valuation of their own — value them by
+    # the IPD packing tab colour mix so the stored rate (and any excess-usage
+    # SL entry) reflects the real per-piece garment value.
+    piece_values = grn_doc.get_packing_piece_values(
+        [row.item_variant for row in grn_doc.items], default_received_type)
     for item in grn_doc.items:
-        rate = get_stock_balance(
-            item.item_variant, None, default_received_type, posting_date=grn_doc.posting_date,
-            posting_time=grn_doc.posting_time, with_valuation_rate=True, uom=item.uom,
-        )[1]
+        if item.item_variant in piece_values:
+            rate = piece_values[item.item_variant]
+        else:
+            rate = get_stock_balance(
+                item.item_variant, None, default_received_type, posting_date=grn_doc.posting_date,
+                posting_time=grn_doc.posting_time, with_valuation_rate=True, uom=item.uom,
+            )[1]
+        # No uom= here: the excess check below compares this against
+        # item.stock_qty (pieces), so the balance must be in stock UOM too —
+        # passing the box uom divided it by the conversion factor and
+        # overstated the excess by ~packing_combo.
         stock = get_stock_balance(
             item.item_variant, None, default_received_type, posting_date=grn_doc.posting_date,
-            posting_time=grn_doc.posting_time, with_valuation_rate=False, uom=item.uom,
+            posting_time=grn_doc.posting_time, with_valuation_rate=False,
         )
         total_box_quantity += item.quantity
         deliverables.append({
