@@ -1883,15 +1883,37 @@ def get_work_in_progress_report(category, status, lot_list_val, item_list, proce
 			["sewing_sent", "sewing_received","cut_to_sew_diff", "finishing_inward", "in_sew"],
 			sewing_process
 		)
+		part_qty = 1
+		is_set_item, set_attr = frappe.get_value("Item Production Detail", ipd, ["is_set_item", "set_item_attribute"])
+		if is_set_item:
+			mapping_value = frappe.db.sql(
+				f"""
+					SELECT mapping FROM `tabItem Item Attribute`
+					WHERE parent = {frappe.db.escape(ipd)} AND attribute = {frappe.db.escape(set_attr)}
+				""", as_dict=True
+			)
+			if len(mapping_value) > 0:
+				map_doc = frappe.get_doc("Item Item Attribute Mapping", mapping_value[0]['mapping'])
+				part_qty = len(map_doc.values)
+
+		packing_combo = flt(frappe.get_value("Item Production Detail", ipd, "packing_combo")) or 1
+		includes_packing_wos = set(frappe.get_all("Work Order", filters={
+			"name": ["in", stich_wo_list], "includes_packing": 1
+		}, pluck="name"))
 		for wo in stich_wo_list:
 			stich_detail = get_wo_total_delivered_received(wo)
 			if stich_detail:
-				lot_dict['total_data']['sewing_details']['sewing_sent'] += stich_detail[0]['sent']
-				lot_dict['total_data']['sewing_details']['sewing_received'] += stich_detail[0]['received']
-				lot_dict['total_data']['sewing_details']['finishing_inward'] += stich_detail[0]['received']
-				lot_dict['lot_data'][lot]['sewing_details']['sewing_sent'] += stich_detail[0]['sent']
-				lot_dict['lot_data'][lot]['sewing_details']['sewing_received'] += stich_detail[0]['received']
-				lot_dict['lot_data'][lot]['sewing_details']['finishing_inward'] += stich_detail[0]['received']
+				sent = flt(stich_detail[0]['sent'])
+				received = flt(stich_detail[0]['received'])
+				if wo in includes_packing_wos:
+					# includes_packing WOs receive boxes; the report counts pieces
+					received = received * packing_combo * part_qty
+				lot_dict['total_data']['sewing_details']['sewing_sent'] += sent
+				lot_dict['total_data']['sewing_details']['sewing_received'] += received
+				lot_dict['total_data']['sewing_details']['finishing_inward'] += received
+				lot_dict['lot_data'][lot]['sewing_details']['sewing_sent'] += sent
+				lot_dict['lot_data'][lot]['sewing_details']['sewing_received'] += received
+				lot_dict['lot_data'][lot]['sewing_details']['finishing_inward'] += received
 		
 		lot_dict['total_data']['sewing_details']['cut_to_sew_diff'] = lot_dict['total_data']['sewing_details']['sewing_sent'] - lot_dict['total_data']['cut_details']['cut_qty']
 		lot_dict['total_data']['sewing_details']['in_sew'] = lot_dict['total_data']['sewing_details']['sewing_received'] - lot_dict['total_data']['sewing_details']['sewing_sent']
@@ -1935,19 +1957,6 @@ def get_work_in_progress_report(category, status, lot_list_val, item_list, proce
 			["dispatch", "in_packing", "cut_to_dispatch_diff"],
 			packing_process
 		)
-		part_qty = 1
-		is_set_item, set_attr = frappe.get_value("Item Production Detail", ipd, ["is_set_item", "set_item_attribute"])
-		if is_set_item:
-			mapping_value = frappe.db.sql(
-				f"""
-					SELECT mapping FROM `tabItem Item Attribute` 
-					WHERE parent = {frappe.db.escape(ipd)} AND attribute = {frappe.db.escape(set_attr)}
-				""", as_dict=True
-			)
-			if len(mapping_value) > 0:
-				map_doc = frappe.get_doc("Item Item Attribute Mapping", mapping_value[0]['mapping'])
-				part_qty = len(map_doc.values)
-
 		for finishing_plan in finishing_plan_list:
 			pcs_per_box = frappe.get_value("Finishing Plan", finishing_plan, "pieces_per_box")
 			finishing_detail = frappe.db.sql(
