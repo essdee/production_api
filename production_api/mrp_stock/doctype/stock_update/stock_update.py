@@ -24,23 +24,6 @@ class StockUpdate(Document):
 			if self.update_type == 'Add' and flt(row.rate) <= 0:
 				frappe.throw(f"Rate must be greater than zero — {row.item_variant} (Lot {row.lot}).")
 
-			# Stock Update adjusts existing stock; it must never create it. Block when
-			# there is no existing stock for this item / lot / warehouse / received_type.
-			current_stock = get_stock_balance(
-				row.item_variant, self.warehouse, row.received_type,
-				posting_date=self.posting_date, posting_time=self.posting_time, lot=row.lot,
-			)
-			if flt(current_stock) <= 0:
-				frappe.throw(
-					f"No existing stock for {row.item_variant} (Lot {row.lot}, Warehouse {self.warehouse}). "
-					"Stock Update adjusts existing stock — it cannot create it. "
-					"Start the stock via GRN, Stock Entry or Stock Reconciliation first."
-				)
-			# item_name = frappe.get_value("Item Variant", row.item_variant, "item")
-			# dept_attr = frappe.get_value("Item", item_name, "dependent_attribute")
-			# if dept_attr:
-			# 	frappe.throw("Can't update Dependent Attribute Item")
-
 		self.update_uom_details()
 
 	def on_submit(self):
