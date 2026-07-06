@@ -24,6 +24,7 @@
  ],
  "fields": [
   {
+   "allow_on_submit": 1,
    "fieldname": "item_variant",
    "fieldtype": "Link",
    "in_list_view": 1,
@@ -120,7 +121,7 @@
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2025-08-25 15:52:48.258095",
+ "modified": "2026-07-06 12:37:09.323088",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Work Order Receivables",

@@ -18,6 +18,7 @@
  ],
  "fields": [
   {
+   "allow_on_submit": 1,
    "fieldname": "item_variant",
    "fieldtype": "Link",
    "in_list_view": 1,
@@ -83,7 +84,7 @@
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2025-10-31 11:17:53.790411",
+ "modified": "2026-07-06 12:37:32.010001",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Work Order Calculated Item",
