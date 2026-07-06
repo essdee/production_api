@@ -273,7 +273,9 @@ def trigger_initial_sync(doctype, filters=None, event="first_sync"):
 			queue="long",
 			doctype=doctype,
 			docnames=docnames,
-			event=event,
+			# NOT `event=` — frappe.enqueue has its own `event` param that would
+			# swallow it; pass under a distinct name so it reaches the function.
+			sync_event=event,
 		)
 	else:
 		process_initial_sync(doctype, docnames, event)
@@ -297,7 +299,8 @@ def trigger_ordered_initial_sync(doctypes=None, event="first_sync"):
 		frappe.enqueue(
 			process_all_initial_sync,
 			queue="long",
-			event=event,
+			# NOT `event=` — see note in trigger_initial_sync.
+			sync_event=event,
 			doctypes=ordered_doctypes,
 		)
 	else:
@@ -320,16 +323,16 @@ def get_ordered_initial_sync_doctypes(doctypes=None):
 	return tuple(doctype for doctype in SD_YRP_INITIAL_SYNC_ORDER if doctype in requested)
 
 
-def process_all_initial_sync(event, doctypes=None):
+def process_all_initial_sync(sync_event, doctypes=None):
 	for doctype in doctypes or SD_YRP_INITIAL_SYNC_ORDER:
 		docnames = _ordered_initial_docnames(doctype)
-		process_initial_sync(doctype, docnames, event)
+		process_initial_sync(doctype, docnames, sync_event)
 
 
-def process_initial_sync(doctype, docnames, event):
+def process_initial_sync(doctype, docnames, sync_event):
 	if doctype not in SD_YRP_SYNC_DOCTYPES:
 		frappe.throw(f"{doctype} is not enabled for SD YRP sync")
 
 	for docname in docnames:
 		doc = frappe.get_doc(doctype, docname)
-		publish_sd_yrp_event(doc, event)
+		publish_sd_yrp_event(doc, sync_event)
