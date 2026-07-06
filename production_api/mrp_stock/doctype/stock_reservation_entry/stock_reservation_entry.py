@@ -356,7 +356,15 @@ def get_stock_reservation_entries_for_voucher(
 	fields: list[str] | None = None,
 	ignore_status: bool = False,
 ) -> list[dict]:
-	"""Returns list of Stock Reservation Entries against a Voucher."""
+	"""Returns list of Stock Reservation Entries against a Voucher.
+
+	By DEFAULT only live reservations are returned — fully Delivered and Cancelled
+	SREs are excluded. This matters because cancel_stock_reservation_entries (the
+	Packing Slip cancel flow) uses the default path: dispatched (Delivered) SREs must
+	never be cancelled after their stock has physically left (2026-07 incident; the
+	old code applied the exclusion only when ignore_status=True — inverted).
+	Pass ignore_status=True to IGNORE the status filter and get every docstatus-1
+	SRE of the voucher, including Delivered ones."""
 
 	if not fields or not isinstance(fields, list):
 		fields = [
@@ -382,7 +390,7 @@ def get_stock_reservation_entries_for_voucher(
 	if voucher_detail_no:
 		query = query.where(sre.voucher_detail_no == voucher_detail_no)
 
-	if ignore_status:
+	if not ignore_status:
 		query = query.where(sre.status.notin(["Delivered", "Cancelled"]))
 
 	return query.run(as_dict=True)
