@@ -45,35 +45,45 @@ SD_YRP_CUSTOM_MAPPER_DOCTYPES = (
 
 SD_YRP_SYNC_DOCTYPES = SD_YRP_EXACT_MATCH_DOCTYPES + SD_YRP_CUSTOM_MAPPER_DOCTYPES
 
+# Dependency-first (topological) publish order, derived from the actual Link
+# fields among these DocTypes — NOT hand-ordered. Every DocType is published
+# after everything it links to. The three inherent circular references are
+# broken master-first, matching what the consumer already tolerates:
+#   Item -> Item Dependent Attribute Mapping (Item first)
+#   Item BOM Attribute Mapping -> Item Production Detail (IBAM first)
+#   Production Order -> Lot (Production Order first; Lot not existence-validated)
+# Notable placements the old order got wrong: MRP Settings links Process
+# (-> Item -> Item Attribute/Value) so it CANNOT be first; Process links Item;
+# Department links User.
 SD_YRP_INITIAL_SYNC_ORDER = (
-	"MRP Settings",
 	"Country",
 	"UOM",
-	"Item Group",
 	"Brand",
-	"Department",
 	"Terms and Condition",
 	"Product Season",
 	"Product Category",
 	"Additional Parameter Key",
 	"Additional Parameter Value",
 	"Item Attribute",
-	"Item Attribute Value",
-	"Process",
 	"Production Term",
 	"User",
 	"Item Category",
+	"Address",
+	"Item Group",
+	"Item Attribute Value",
+	"Department",
+	"Contact",
 	"Item Item Attribute Mapping",
+	"Supplier",
 	"Item",
+	"Process",
 	"Item Variant",
 	"Item Dependent Attribute Mapping",
-	"Supplier",
-	"Address",
-	"Contact",
 	"Item BOM Attribute Mapping",
+	"MRP Settings",
+	"Production Order",
 	"Lot Template",
 	"Item Production Detail",
-	"Production Order",
 	"Lot",
 )
 
@@ -238,12 +248,23 @@ def _self_ref_child_order(doctype, docnames):
 
 
 @frappe.whitelist()
+def get_sd_yrp_sync_doctypes():
+	"""Ordered list of DocTypes enabled for SD YRP sync — powers the sync UI selects."""
+	frappe.only_for("System Manager")
+	return list(SD_YRP_INITIAL_SYNC_ORDER)
+
+
+@frappe.whitelist()
 def trigger_initial_sync(doctype, filters=None, event="first_sync"):
+	frappe.only_for("System Manager")
 	if doctype not in SD_YRP_SYNC_DOCTYPES:
 		frappe.throw(f"{doctype} is not enabled for SD YRP sync")
 
 	if event not in {"first_sync", "on_update"}:
 		frappe.throw("Only first_sync and on_update are allowed for bulk sync")
+
+	if isinstance(filters, str):
+		filters = frappe.parse_json(filters) if filters.strip() else None
 
 	docnames = _ordered_initial_docnames(doctype, filters)
 	if not frappe.conf.developer_mode:
@@ -261,11 +282,13 @@ def trigger_initial_sync(doctype, filters=None, event="first_sync"):
 
 @frappe.whitelist()
 def trigger_all_initial_sync(event="first_sync"):
+	frappe.only_for("System Manager")
 	return trigger_ordered_initial_sync(event=event)
 
 
 @frappe.whitelist()
 def trigger_ordered_initial_sync(doctypes=None, event="first_sync"):
+	frappe.only_for("System Manager")
 	if event not in {"first_sync", "on_update"}:
 		frappe.throw("Only first_sync and on_update are allowed for bulk sync")
 
