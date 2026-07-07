@@ -20,13 +20,13 @@
   },
   {
    "fieldname": "quantity",
-   "fieldtype": "Int",
+   "fieldtype": "Float",
    "in_list_view": 1,
    "label": "Quantity"
   },
   {
    "fieldname": "dispatched",
-   "fieldtype": "Int",
+   "fieldtype": "Float",
    "in_list_view": 1,
    "label": "Dispatched"
   }
