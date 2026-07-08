@@ -21,7 +21,7 @@ from production_api.production_api.doctype.purchase_order.purchase_order import 
     get_item_attribute_details, get_item_group_index)
 from production_api.utils import (
     get_panel_list, get_stich_details, update_if_string_instance, get_lpiece_variant, get_finishing_plan_dict,
-    get_finishing_plan_list, get_finishing_rework_dict, get_finishing_rework_list)
+    get_finishing_plan_list, get_finishing_rework_dict, get_finishing_rework_list, get_variant_attr_details)
 from production_api.essdee_production.doctype.item_production_detail.item_production_detail import (
     get_calculated_bom, get_cloth_combination)
 from production_api.production_api.doctype.cut_bundle_movement_ledger.cut_bundle_movement_ledger import (
@@ -128,6 +128,7 @@ class GoodsReceivedNote(Document):
                 frappe.throw("There is No Received Items in this GRN")
             self.set("items", items)
             self.validate_sewing_plan_quantity()
+            self.validate_eqi_entered()
             check = False
             if not self.cut_panel_movement and not self.cutting_laysheet and not self.is_return and not self.allow_non_bundle and not self.includes_packing:
                 cancelled_str = frappe.db.get_single_value(
@@ -273,6 +274,72 @@ class GoodsReceivedNote(Document):
 
         if mismatches:
             frappe.throw("<br>".join(mismatches), title="Sewing Plan Qty Mismatch")
+
+    def validate_eqi_entered(self):
+        # EQIs are entered per colour and size. A sewing Work Order (one with a
+        # Sewing Plan) may only receive item variants whose (colour, size) combination
+        # is covered by a *submitted* Essdee Quality Inspection against the Work Order.
+        # Returns are exempt — the goods already came in.
+        if self.against != "Work Order" or self.is_return:
+            return
+        if not frappe.db.exists("Sewing Plan", {"work_order": self.against_id}):
+            return
+
+        # Inspected combos = selected colours × selected sizes of each submitted EQI,
+        # the same pairing utils.get_eqi_status builds its status matrix from.
+        combo_rows = frappe.db.sql(
+            """
+            SELECT c.colour, s.size
+            FROM `tabEssdee Quality Inspection Colour` c
+            INNER JOIN `tabEssdee Quality Inspection Size` s ON s.parent = c.parent
+            INNER JOIN `tabEssdee Quality Inspection` e ON e.name = c.parent
+            WHERE e.against = 'Work Order'
+              AND e.against_id = %(wo)s
+              AND e.docstatus = 1
+              AND c.selected = 1
+              AND s.selected = 1
+            """,
+            {"wo": self.against_id},
+            as_dict=True,
+        )
+        inspected = {(row.colour, row.size) for row in combo_rows}
+
+        ipd = frappe.get_value("Work Order", self.against_id, "production_detail")
+        is_set_item, pack_attr, primary_attr, set_attr, major_attr = frappe.get_value(
+            "Item Production Detail", ipd,
+            ["is_set_item", "packing_attribute", "primary_item_attribute",
+             "set_item_attribute", "major_attribute_value"],
+        )
+
+        # Derive each variant's (colour, size) the way utils.get_inhouse_qty does:
+        # size = primary attribute, colour = set_combination's major colour — written
+        # as "VariantColour(MajorColour)" for the non-major part of a set item.
+        missing = []
+        for item in self.items:
+            if flt(item.quantity) <= 0:
+                continue
+            attrs = get_variant_attr_details(item.item_variant)
+            size = attrs.get(primary_attr)
+            set_combination = update_if_string_instance(item.set_combination)
+            colour = set_combination.get("major_colour")
+            if is_set_item and attrs.get(set_attr) != major_attr:
+                variant_colour = attrs.get(pack_attr)
+                colour = f"{variant_colour}({colour})" if variant_colour and colour else None
+            # Variants without a colour or size (e.g. accessories) are not
+            # inspected per combo — skip them rather than block the GRN.
+            if not colour or not size:
+                continue
+            if (colour, size) not in inspected and (colour, size) not in missing:
+                missing.append((colour, size))
+
+        if missing:
+            combos = "<br>".join(f"{colour} / {size}" for colour, size in missing)
+            frappe.throw(
+                f"Quality inspection has not been done for these colour/size combinations"
+                f" of Work Order {self.against_id} (Lot {self.lot}):<br>{combos}<br>"
+                "A quality inspection must be submitted for each combination before receiving.",
+                title="Quality Inspection Missing",
+            )
 
     def check_for_unique_supplier_document_no(self):
         flag = frappe.db.get_single_value(
