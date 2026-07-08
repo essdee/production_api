@@ -128,7 +128,10 @@ class GoodsReceivedNote(Document):
                 frappe.throw("There is No Received Items in this GRN")
             self.set("items", items)
             self.validate_sewing_plan_quantity()
-            self.validate_eqi_entered()
+            ppo = frappe.get_value("Lot", self.lot, "production_order")
+            skip = frappe.get_value("Production Order", ppo, "skip_box_sticker_print")
+            if not skip:
+                self.validate_eqi_entered()
             check = False
             if not self.cut_panel_movement and not self.cutting_laysheet and not self.is_return and not self.allow_non_bundle and not self.includes_packing:
                 cancelled_str = frappe.db.get_single_value(
