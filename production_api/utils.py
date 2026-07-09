@@ -587,6 +587,7 @@ def get_daily_production_report(date, location, items=None, lots=None, only_labe
 			SUM(CASE WHEN cls.posting_date = %(date)s THEN 1 ELSE 0 END) as created_count
 		FROM `tabCutting LaySheet` cls
 		WHERE cls.bundle_generated_date = %(date)s{filter_sql}{status_sql}
+		AND cls.status != 'Cancelled'
 		GROUP BY cls.cutting_plan, cls.cutting_order
 	""", filter_values, as_dict=True)
 
