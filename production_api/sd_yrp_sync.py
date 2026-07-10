@@ -9,6 +9,7 @@ from spine.spine_adapter.kafka_client.kafka_producer import publish_doc_event
 SD_YRP_TOPIC = "sd_yrp_master"
 
 SD_YRP_EXACT_MATCH_DOCTYPES = (
+	"IPD Settings",
 	"MRP Settings",
 	"Country",
 	"UOM",
@@ -80,6 +81,7 @@ SD_YRP_INITIAL_SYNC_ORDER = (
 	"Item Variant",
 	"Item Dependent Attribute Mapping",
 	"Item BOM Attribute Mapping",
+	"IPD Settings",
 	"MRP Settings",
 	"Production Order",
 	"Lot Template",
@@ -118,6 +120,12 @@ def produce_exact_doc(producer_dict):
 		return None
 
 	event = producer_dict.get("event") or producer_dict.get("docevent")
+	# This legacy Spine Producer Config path bypasses publish_sd_yrp_event, so
+	# carry the IPD link-closure here too (idempotent; see publish_ipd_prerequisites).
+	# Same event gate as the main hook: deletes need none; after_insert is always
+	# followed by on_update, whose run publishes the closure once.
+	if getattr(doc, "doctype", None) == "Item Production Detail" and event not in ("on_trash", "after_insert"):
+		publish_ipd_prerequisites(doc)
 	producer_dict["doc_to_publish"] = prepare_sd_yrp_doc_for_publish(doc, event)
 	return producer_dict
 
@@ -141,6 +149,15 @@ def publish_sd_yrp_event(doc, docevent, extra_args=()):
 	if not frappe.local.conf.get("kafka"):
 		return
 
+	# An IPD message is only applicable once every master it links to exists on
+	# the consumer (its apply hard-fails on a missing link). Publish the full
+	# link-closure first so a single IPD push — live event or filtered backfill —
+	# is always self-sufficient. Deletes need no prerequisites, and after_insert
+	# is skipped because frappe's insert() always fires on_update right after —
+	# that event's job publishes the closure once instead of twice per create.
+	if doc.doctype == "Item Production Detail" and docevent not in ("on_trash", "after_insert"):
+		publish_ipd_prerequisites(doc)
+
 	publish_doc_event(
 		doc=prepare_sd_yrp_doc_for_publish(doc, docevent),
 		doctype=doc.doctype,
@@ -148,6 +165,116 @@ def publish_sd_yrp_event(doc, docevent, extra_args=()):
 		event=docevent,
 		args=extra_args,
 	)
+
+
+def publish_ipd_prerequisites(doc):
+	"""Publish every master an Item Production Detail references BEFORE the IPD
+	message itself, in SD_YRP_INITIAL_SYNC_ORDER (dependency) order.
+
+	The consumer existence-validates these links while applying an IPD
+	(essdee_yrp sd_yrp_sync: Item, Item Attribute, Item Item Attribute Mapping,
+	Item BOM Attribute Mapping, UOM, Process, Item Attribute Value) and aborts
+	the whole message on the first miss — 2026-07 backfill incident: IPDs whose
+	accessory Items/mappings were created while the sync was down could never
+	apply. Re-publishing an already-synced master is a harmless idempotent
+	upsert, so no consumer-state tracking is attempted; a per-request/job seen
+	set keeps a filtered bulk IPD sync from republishing the same masters once
+	per IPD.
+	"""
+	published = getattr(frappe.local, "_sd_yrp_published_ipd_prerequisites", None)
+	if published is None:
+		published = set()
+		frappe.local._sd_yrp_published_ipd_prerequisites = published
+	refs = _ipd_prerequisite_names(doc)
+	for doctype in SD_YRP_INITIAL_SYNC_ORDER:
+		names = refs.get(doctype)
+		if not names:
+			continue
+		pending = sorted(names.difference(
+			name for ref_doctype, name in published if ref_doctype == doctype
+		))
+		if not pending:
+			continue
+		# _ordered_initial_docnames also drops names that no longer exist and
+		# orders self-referential doctypes (e.g. Process) referenced-first.
+		for name in _ordered_initial_docnames(doctype, {"name": ["in", pending]}):
+			try:
+				master = frappe.get_doc(doctype, name)
+			except frappe.DoesNotExistError:
+				# Deleted between the name query and this fetch — the closure is
+				# best-effort; the delete publishes its own on_trash event. Clear
+				# the queued "not found" msgprint so the dev-mode synchronous path
+				# doesn't leak it into the saving user's messages.
+				frappe.clear_last_message()
+				continue
+			publish_doc_event(
+				doc=prepare_sd_yrp_doc_for_publish(master, "on_update"),
+				doctype=doctype,
+				target_topic=SD_YRP_TOPIC,
+				event="on_update",
+				args=(),
+			)
+			# Mark as published only after publish_doc_event returns. Defensive
+			# ordering: publish_doc_event currently swallows insert failures, but
+			# if it ever raises, a failed master won't be wrongly marked as sent.
+			published.add((doctype, name))
+
+
+def _ipd_prerequisite_names(doc):
+	"""{doctype: set(docnames)} of every master this IPD references.
+
+	Covers the links the consumer existence-validates (parent item; item_attributes
+	attribute/mapping; item_bom item/attribute_mapping/uom; ipd_processes
+	process_name/stage) plus the cheap single-value parent/row links it writes
+	as-is (garment attributes/stages/processes, BOM process + dependent value),
+	and per referenced Item its default UOM (the consumer resolves a blank BOM
+	uom from it) and its Item Dependent Attribute Mapping (the consumer backfills
+	the Item<->IDAM cycle from it).
+	"""
+	refs = {}
+
+	def add(doctype, name):
+		if name:
+			refs.setdefault(doctype, set()).add(name)
+
+	add("Item", doc.get("item"))
+	add("Item Dependent Attribute Mapping", doc.get("dependent_attribute_mapping"))
+	for fieldname in (
+		"primary_item_attribute", "dependent_attribute", "packing_attribute",
+		"set_item_attribute", "stiching_attribute",
+	):
+		add("Item Attribute", doc.get(fieldname))
+	for fieldname in (
+		"major_attribute_value", "pack_in_stage", "pack_out_stage",
+		"stiching_in_stage", "stiching_out_stage", "stiching_major_attribute_value",
+	):
+		add("Item Attribute Value", doc.get(fieldname))
+	for fieldname in ("packing_process", "stiching_process", "cutting_process"):
+		add("Process", doc.get(fieldname))
+
+	for row in doc.get("item_attributes") or []:
+		add("Item Attribute", row.get("attribute"))
+		add("Item Item Attribute Mapping", row.get("mapping"))
+	for row in doc.get("item_bom") or []:
+		add("Item", row.get("item"))
+		add("Item BOM Attribute Mapping", row.get("attribute_mapping"))
+		add("UOM", row.get("uom"))
+		add("Process", row.get("process_name"))
+		add("Item Attribute Value", row.get("dependent_attribute_value"))
+	for row in doc.get("ipd_processes") or []:
+		add("Process", row.get("process_name"))
+		add("Item Attribute Value", row.get("stage"))
+
+	if refs.get("Item"):
+		for item in frappe.get_all(
+			"Item",
+			filters={"name": ["in", sorted(refs["Item"])]},
+			fields=["default_unit_of_measure", "dependent_attribute_mapping"],
+		):
+			add("UOM", item.default_unit_of_measure)
+			add("Item Dependent Attribute Mapping", item.dependent_attribute_mapping)
+
+	return refs
 
 
 def prepare_sd_yrp_doc_for_publish(doc, event=None):
