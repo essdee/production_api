@@ -233,6 +233,20 @@ def get_columns(filters):
 		]
 	)
 
+	if filters.get("show_inward_date_split"):
+		for idx, column in enumerate(columns):
+			if column.get("fieldname") == "bal_val":
+				columns.insert(
+					idx + 1,
+					{
+						"label": _("Inward Date Split"),
+						"fieldname": "inward_split",
+						"fieldtype": "Data",
+						"width": 220,
+					},
+				)
+				break
+
 	if filters.get("show_stock_ageing_data"):
 		columns += [
 			{"label": _("Average Age"), "fieldname": "average_age", "width": 100},
@@ -358,6 +372,9 @@ def get_item_warehouse_map(filters, sle: List[SLEntry]):
 	to_date = getdate(filters.get("to_date"))
 	opening_vouchers = get_opening_vouchers(to_date)
 	float_precision = cint(frappe.db.get_default("float_precision")) or 3
+	show_inward_date_split = cint(filters.get("show_inward_date_split"))
+	inward_date_queues = {}
+	inward_transfer_buckets = {}
 
 	for d in sle:
 		group_by_key = get_group_by_key(d)
@@ -378,6 +395,11 @@ def get_item_warehouse_map(filters, sle: List[SLEntry]):
 				}
 			)
 		qty_dict = iwb_map[group_by_key]
+
+		if show_inward_date_split:
+			update_inward_date_queue(
+				d, group_by_key, inward_date_queues, inward_transfer_buckets, float_precision
+			)
 
 		if d.voucher_type == "Stock Reconciliation":
 			qty_diff = flt(d.qty_after_transaction) - flt(qty_dict.bal_qty)
@@ -402,8 +424,128 @@ def get_item_warehouse_map(filters, sle: List[SLEntry]):
 		qty_dict.bal_qty += qty_diff
 		qty_dict.bal_val += value_diff
 
+	if show_inward_date_split:
+		for group_by_key, qty_dict in iwb_map.items():
+			qty_dict["inward_split"] = format_inward_date_split(
+				inward_date_queues.get(group_by_key) or [], float_precision
+			)
+
 	iwb_map = filter_items_with_no_transactions(iwb_map, float_precision)
 	return iwb_map
+
+
+def update_inward_date_queue(d, group_by_key, inward_date_queues, inward_transfer_buckets, float_precision):
+	"""Maintain a FIFO queue of [qty, posting_date, is_reco] slots per row key.
+
+	Mirrors the mechanics of FIFOSlots (stock_ageing) but keyed on the full
+	(item, warehouse, lot, received_type) row key, with a hard reset on
+	Stock Reconciliation entries.
+	"""
+	queue = inward_date_queues.setdefault(group_by_key, [])
+
+	if d.voucher_type == "Stock Reconciliation":
+		# stock on hand collapses into a single slot dated the reconciliation
+		queue.clear()
+		reset_qty = flt(d.qty_after_transaction)
+		if flt(reset_qty, float_precision):
+			queue.append([reset_qty, d.posting_date, True])
+		inward_transfer_buckets.pop(group_by_key, None)
+		return
+
+	qty = flt(d.qty)
+	if qty > 0:
+		transfer_data = inward_transfer_buckets.get(group_by_key, {}).get(d.voucher_no)
+		if transfer_data:
+			# inward/outward from same voucher: restore previously consumed
+			# slices with their original dates/flags (oldest first)
+			qty_to_restore = qty
+			while qty_to_restore:
+				if transfer_data and 0 < transfer_data[0][0] <= qty_to_restore:
+					# bucket slice is not enough, restore whole slice
+					qty_to_restore -= transfer_data[0][0]
+					restored = transfer_data.pop(0)
+					push_inward_slot(queue, restored[0], restored[1], restored[2], float_precision)
+				elif not transfer_data:
+					# transfer bucket is empty, extra incoming qty
+					push_inward_slot(queue, qty_to_restore, d.posting_date, False, float_precision)
+					qty_to_restore = 0
+				else:
+					# ample slice qty to consume
+					transfer_data[0][0] -= qty_to_restore
+					push_inward_slot(
+						queue, qty_to_restore, transfer_data[0][1], transfer_data[0][2], float_precision
+					)
+					qty_to_restore = 0
+		else:
+			push_inward_slot(queue, qty, d.posting_date, False, float_precision)
+	elif qty < 0:
+		bucket = inward_transfer_buckets.setdefault(group_by_key, {}).setdefault(d.voucher_no, [])
+		qty_to_pop = abs(qty)
+		while qty_to_pop:
+			slot = queue[0] if queue else None
+			if slot and 0 < flt(slot[0]) <= qty_to_pop:
+				# consume whole slot
+				qty_to_pop -= flt(slot[0])
+				bucket.append(queue.pop(0))
+			elif not queue:
+				# negative stock, no balance but qty yet to consume
+				queue.append([-(qty_to_pop), d.posting_date, False])
+				bucket.append([qty_to_pop, d.posting_date, False])
+				qty_to_pop = 0
+			else:
+				# ample balance (or negative head), consume from first slot
+				slot[0] = flt(slot[0]) - qty_to_pop
+				bucket.append([qty_to_pop, slot[1], slot[2]])
+				qty_to_pop = 0
+
+
+def push_inward_slot(queue, qty, posting_date, is_reco, float_precision):
+	"""Append a positive slot; neutralize a negative/zero head first and
+	merge with the tail slot when it has the same date and reco flag."""
+	qty = flt(qty)
+	if queue and flt(queue[0][0]) <= 0:
+		# neutralize 0/negative stock by adding positive stock
+		head = queue[0]
+		new_qty = flt(head[0]) + qty
+		if flt(new_qty, float_precision) > 0:
+			queue.pop(0)
+			push_inward_slot(queue, new_qty, posting_date, is_reco, float_precision)
+		else:
+			# still negative: re-dated to the neutralizing inward, so it no
+			# longer represents the reconciliation value — drop the tag
+			head[0] = new_qty
+			head[1] = posting_date
+			head[2] = False
+		return
+	if queue and queue[-1][1] == posting_date and queue[-1][2] == is_reco:
+		queue[-1][0] = flt(queue[-1][0]) + qty
+	else:
+		queue.append([qty, posting_date, is_reco])
+
+
+def format_inward_date_split(queue, float_precision):
+	"""Render the queue as one 'dd-mm-yyyy: qty' line per date, oldest first.
+
+	Same-voucher restores append old-date slices at the queue tail, so slots
+	are aggregated by (date, reco flag) and sorted by date before rendering.
+	"""
+	buckets = {}
+	for slot_qty, posting_date, is_reco in queue:
+		key = (posting_date, bool(is_reco))
+		buckets[key] = buckets.get(key, 0.0) + flt(slot_qty)
+
+	lines = []
+	for posting_date, is_reco in sorted(buckets, key=lambda k: (k[0], not k[1])):
+		slot_qty = flt(buckets[(posting_date, is_reco)], float_precision)
+		if not slot_qty:
+			continue
+		qty_str = f"{slot_qty:.{float_precision}f}".rstrip("0").rstrip(".")
+		date_str = posting_date.strftime("%d-%m-%Y")
+		if is_reco:
+			lines.append(f"{date_str} (Reco): {qty_str}")
+		else:
+			lines.append(f"{date_str}: {qty_str}")
+	return "\n".join(lines)
 
 
 def get_group_by_key(row) -> tuple:
@@ -417,10 +559,10 @@ def filter_items_with_no_transactions(iwb_map, float_precision: float):
 		qty_dict = iwb_map[group_by_key]
 		no_transactions = True
 		for key, val in qty_dict.items():
-			if key != "warehouse_name" and key != "received_type":
+			if key != "warehouse_name" and key != "received_type" and key != "inward_split":
 				val = flt(val, float_precision)
 			qty_dict[key] = val
-			if key != "val_rate" and val:
+			if key != "val_rate" and key != "inward_split" and val:
 				no_transactions = False
 
 		if no_transactions:

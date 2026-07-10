@@ -78,7 +78,34 @@ frappe.query_reports["Stock Balance"] = {
 			"fieldtype": 'Check',
 			"default": 1,
 		},
+		{
+			"fieldname": 'show_inward_date_split',
+			"label": __('Show Inward Date Split'),
+			"fieldtype": 'Check',
+		},
 	],
+
+	// datatable rows have a uniform height (HyperList virtual scroll), so the
+	// inward-split lines are shown by raising cellHeight to fit the tallest
+	// cell (capped; overflow readable via the title tooltip). Runs on every
+	// render, so toggling the checkbox resizes back to the default 33.
+	"after_datatable_render": function (datatable) {
+		let max_lines = 1;
+		const rows = (frappe.query_report && frappe.query_report.data) || [];
+		if (rows.length && cint(frappe.query_report.get_filter_value("show_inward_date_split"))) {
+			rows.forEach((row) => {
+				if (row.inward_split) {
+					const lines = String(row.inward_split).split("\n").length;
+					if (lines > max_lines) max_lines = lines;
+				}
+			});
+		}
+		const cell_height = 33 + (Math.min(max_lines, 6) - 1) * 21;
+		if (datatable.options.cellHeight != cell_height) {
+			datatable.options.cellHeight = cell_height;
+			datatable.bodyRenderer.render();
+		}
+	},
 
 	"formatter": function (value, row, column, data, default_formatter) {
 		value = default_formatter(value, row, column, data);
@@ -89,6 +116,9 @@ frappe.query_reports["Stock Balance"] = {
 			value = "<span style='color:green'>" + value + "</span>";
 		}  else if (column.fieldname == "warehouse_name" && data && data.warehouse) {
 			value = `<a href="/app/supplier/${data.warehouse}" data-doctype="Supplier" data-name="${data.warehouse}" data-value="${data.warehouse}">${data.warehouse_name}</a>`;
+		} else if (column.fieldname == "inward_split" && data && data.inward_split) {
+			const escaped = frappe.utils.escape_html(String(data.inward_split));
+			value = `<span title="${escaped}">${escaped.replace(/\n/g, "<br>")}</span>`;
 		}
 
 		return value;
