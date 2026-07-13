@@ -184,9 +184,7 @@ class ItemConversion(Document):
 		)
 
 	def validate_valuation_match(self):
-		# From rates are full-precision stock valuation while To rates are user-entered,
-		# so an exact match is impossible — enforce the match at paise level (2 decimals).
-		if flt(self.difference_amount, 2):
+		if flt(self.difference_amount, self.precision("difference_amount")):
 			frappe.throw(
 				_(
 					"From Items total ({0}) must match To Items total ({1}). Difference: {2}"
