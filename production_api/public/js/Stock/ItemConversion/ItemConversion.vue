@@ -158,7 +158,10 @@ const to_args = ref({
 const from_total = computed(() => get_items_total(from_items.value));
 const to_total = computed(() => get_items_total(to_items.value));
 const difference = computed(() => round_currency(from_total.value - to_total.value));
-const has_difference = computed(() => Math.abs(difference.value) > 0.001);
+// Match is enforced at paise level (2 decimals) — mirrors validate_valuation_match
+// on the server (flt(diff, 2) under Banker's Rounding, where exactly 0.005 rounds
+// to 0); sub-paisa round-off between valuation and user rates must pass.
+const has_difference = computed(() => Math.abs(difference.value) > 0.005);
 const difference_class = computed(() => {
     return has_difference.value ? "text-danger" : "text-success";
 });
