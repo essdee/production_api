@@ -60,3 +60,6 @@ def on_doctype_update():
 	frappe.db.add_index("Stock Ledger Entry", ["lot", "item", "warehouse"], "item_warehouse_lot")
 	frappe.db.add_index("Stock Ledger Entry", ["warehouse", "item"], "item_warehouse")
 	frappe.db.add_index("Stock Ledger Entry", ["posting_datetime", "creation"])
+	# list-view filter dropdown runs SELECT DISTINCT voucher_type — needs an index
+	# leading with voucher_type (the existing voucher_no+voucher_type can't serve it)
+	frappe.db.add_index("Stock Ledger Entry", ["voucher_type"])
