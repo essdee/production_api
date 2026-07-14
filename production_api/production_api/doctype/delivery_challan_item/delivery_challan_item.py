@@ -10,3 +10,5 @@ class DeliveryChallanItem(Document):
 
 def on_doctype_update():
 	frappe.db.add_index("Delivery Challan Item", ["item_variant","lot"])
+	# list-view filter dropdown runs SELECT DISTINCT ref_doctype
+	frappe.db.add_index("Delivery Challan Item", ["ref_doctype"])

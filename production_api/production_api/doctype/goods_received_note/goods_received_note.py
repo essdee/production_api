@@ -3741,3 +3741,8 @@ def _process_direct_returns(wo_doc, return_grns):
                     total_returned += item.quantity
                     break
     wo_doc.total_no_of_pieces_delivered = max(0, wo_doc.total_no_of_pieces_delivered - total_returned)
+
+def on_doctype_update():
+    # prefix serves the list-view SELECT DISTINCT against; full index serves
+    # the (against, against_id) filters used across the app
+    frappe.db.add_index("Goods Received Note", ["against", "against_id"])

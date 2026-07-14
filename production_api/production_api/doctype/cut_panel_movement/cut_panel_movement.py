@@ -761,3 +761,5 @@ def get_grouped_data(doc_name, doctype):
 
 def on_doctype_update():
 	frappe.db.add_index("Cut Panel Movement",["item","lot"])
+	# list-view filter dropdown runs SELECT DISTINCT against
+	frappe.db.add_index("Cut Panel Movement", ["against"])
