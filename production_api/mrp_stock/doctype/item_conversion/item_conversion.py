@@ -120,6 +120,10 @@ class ItemConversion(Document):
 			if row.qty and row.rate in ["", None, 0] and rate_source == "user":
 				validation_messages.append(_get_msg(row.idx, _("Rate is mandatory")))
 
+			# every rate is money entering the ledger — keep it in paise so both
+			# tables compute their amounts from identically rounded rates
+			row.rate = flt(row.rate, 2)
+
 			item_details = get_uom_details(row.item, row.uom, row.qty)
 			row.set("stock_uom", item_details.get("stock_uom"))
 			row.set("conversion_factor", item_details.get("conversion_factor"))
@@ -180,9 +184,7 @@ class ItemConversion(Document):
 		)
 
 	def validate_valuation_match(self):
-		# From rates are full-precision stock valuation while To rates are user-entered,
-		# so an exact match is impossible — enforce the match at paise level (2 decimals).
-		if flt(self.difference_amount, 2):
+		if flt(self.difference_amount, self.precision("difference_amount")):
 			frappe.throw(
 				_(
 					"From Items total ({0}) must match To Items total ({1}). Difference: {2}"
@@ -283,7 +285,7 @@ def get_item_conversion_valuation_rate(
 		uom=uom,
 	)
 
-	return {"item_variant": variant_name, "qty": flt(qty), "rate": flt(rate)}
+	return {"item_variant": variant_name, "qty": flt(qty), "rate": flt(rate, 2)}
 
 
 @frappe.whitelist()

@@ -158,10 +158,7 @@ const to_args = ref({
 const from_total = computed(() => get_items_total(from_items.value));
 const to_total = computed(() => get_items_total(to_items.value));
 const difference = computed(() => round_currency(from_total.value - to_total.value));
-// Match is enforced at paise level (2 decimals) — mirrors validate_valuation_match
-// on the server (flt(diff, 2) under Banker's Rounding, where exactly 0.005 rounds
-// to 0); sub-paisa round-off between valuation and user rates must pass.
-const has_difference = computed(() => Math.abs(difference.value) > 0.005);
+const has_difference = computed(() => Math.abs(difference.value) > 0.001);
 const difference_class = computed(() => {
     return has_difference.value ? "text-danger" : "text-success";
 });
@@ -175,12 +172,17 @@ function round_currency(value) {
     return Math.round(to_number(value) * 1000) / 1000;
 }
 
+function round_paise(value) {
+    return Math.round(to_number(value) * 100) / 100;
+}
+
 function get_items_total(groups) {
     let total = 0;
     (groups || []).forEach((group) => {
         (group.items || []).forEach((item) => {
             Object.values(item.values || {}).forEach((value) => {
-                total += to_number(value.qty) * to_number(value.rate);
+                // rates are rounded to paise, mirroring server validate_items
+                total += to_number(value.qty) * round_paise(value.rate);
             });
         });
     });
@@ -195,6 +197,8 @@ function format_currency_value(value) {
 }
 
 function sync_totals() {
+    // Only a draft may be dirtied — set_value on a submitted doc flips it to "Not Saved".
+    if (cur_frm.doc.docstatus != 0) return;
     const values = {
         from_total_amount: from_total.value,
         to_total_amount: to_total.value,
@@ -217,6 +221,9 @@ function update_status() {
 function load_data(data) {
     from_items.value = data.from_items || [];
     to_items.value = data.to_items || [];
+    // Submitted/cancelled docs show their stored rates — refetching valuation here
+    // would read post-submission stock (including this doc's own ledger entries).
+    if (cur_frm.doc.docstatus != 0) return;
     nextTick(async () => {
         await apply_from_valuation_rates();
         sync_totals();
