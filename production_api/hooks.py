@@ -119,6 +119,7 @@ doc_events = {
         "on_trash": "production_api.sd_yrp_sync.handle_existing_spine_and_sd_yrp",
     },
     (
+        "IPD Settings",
         "MRP Settings",
         "User",
         "Country",

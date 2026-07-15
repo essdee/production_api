@@ -143,6 +143,24 @@ function get_data(){
     return selected.value
 }
 
+async function resolve_unique_title(title) {
+    // Product Image is named by image_title (global PK), so a reused title
+    // ("button", "zipper" …) blocks every later upload. Auto-suffix instead.
+    let unique = title;
+    let i = 1;
+    while (await frappe.db.exists('Product Image', unique)) {
+        i += 1;
+        unique = `${title}-${i}`;
+    }
+    if (unique !== title) {
+        frappe.show_alert({
+            message: __('Product Image "{0}" already exists — creating "{1}" instead.', [title, unique]),
+            indicator: 'orange'
+        });
+    }
+    return unique;
+}
+
 function create_image() {
     let d = new frappe.ui.Dialog({
         title: 'Create Product Image',
@@ -167,12 +185,8 @@ function create_image() {
         ],
         primary_action_label: 'Save',
         async primary_action(values) {
-            let exists = await frappe.db.exists('Product Image', values.image_title);
-            if (exists) {
-                frappe.msgprint(__('Product Image with title "{0}" already exists.', [values.image_title]));
-                return;
-            }
-            
+            values.image_title = await resolve_unique_title(values.image_title);
+
             let res = await frappe.call({
                 method: 'frappe.client.insert',
                 args: {
@@ -206,11 +220,7 @@ function create_image() {
         let values = d.get_values();
         if (!values) return;
 
-        let exists = await frappe.db.exists('Product Image', values.image_title);
-        if (exists) {
-            frappe.msgprint(__('Product Image with title "{0}" already exists.', [values.image_title]));
-            return;
-        }
+        values.image_title = await resolve_unique_title(values.image_title);
 
         let res = await frappe.call({
             method: 'frappe.client.insert',
@@ -256,11 +266,7 @@ function create_image() {
         let values = d.get_values();
         if (!values) return;
 
-        let exists = await frappe.db.exists('Product Image', values.image_title);
-        if (exists) {
-            frappe.msgprint(__('Product Image with title "{0}" already exists.', [values.image_title]));
-            return;
-        }
+        values.image_title = await resolve_unique_title(values.image_title);
 
         let res = await frappe.call({
             method: 'frappe.client.insert',
