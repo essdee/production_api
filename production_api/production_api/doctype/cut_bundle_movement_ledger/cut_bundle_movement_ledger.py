@@ -667,3 +667,6 @@ def on_doctype_update():
 	frappe.db.add_index("Cut Bundle Movement Ledger", ["supplier", "lot"])
 	frappe.db.add_index("Cut Bundle Movement Ledger", ["size", "colour", "item", "panel", "lot"])
 	frappe.db.add_index("Cut Bundle Movement Ledger", ['is_cancelled', "is_collapsed", "transformed"])
+	# prefix serves the list-view SELECT DISTINCT voucher_type; full index serves
+	# the (voucher_type, voucher_no) lookups used on submit/cancel flows
+	frappe.db.add_index("Cut Bundle Movement Ledger", ["voucher_type", "voucher_no"])

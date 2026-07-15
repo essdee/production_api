@@ -120,6 +120,10 @@ class ItemConversion(Document):
 			if row.qty and row.rate in ["", None, 0] and rate_source == "user":
 				validation_messages.append(_get_msg(row.idx, _("Rate is mandatory")))
 
+			# every rate is money entering the ledger — keep it in paise so both
+			# tables compute their amounts from identically rounded rates
+			row.rate = flt(row.rate, 2)
+
 			item_details = get_uom_details(row.item, row.uom, row.qty)
 			row.set("stock_uom", item_details.get("stock_uom"))
 			row.set("conversion_factor", item_details.get("conversion_factor"))
@@ -281,7 +285,7 @@ def get_item_conversion_valuation_rate(
 		uom=uom,
 	)
 
-	return {"item_variant": variant_name, "qty": flt(qty), "rate": flt(rate)}
+	return {"item_variant": variant_name, "qty": flt(qty), "rate": flt(rate, 2)}
 
 
 @frappe.whitelist()
