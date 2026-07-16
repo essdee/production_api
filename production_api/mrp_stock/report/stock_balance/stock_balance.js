@@ -37,9 +37,12 @@ frappe.query_reports["Stock Balance"] = {
 		{
 			"fieldname": "parent_item",
 			"label": __("Item"),
-			"fieldtype": "Link",
+			"fieldtype": "MultiSelectList",
 			"width": "80",
 			"options": "Item",
+			get_data(txt) {
+				return frappe.db.get_link_options("Item", txt);
+			},
 		},
 		{
 			"fieldname": "warehouse",
@@ -51,9 +54,12 @@ frappe.query_reports["Stock Balance"] = {
 		{
 			"fieldname": "lot",
 			"label": __("Lot"),
-			"fieldtype": "Link",
+			"fieldtype": "MultiSelectList",
 			"width": "80",
 			"options": "Lot",
+			get_data(txt) {
+				return frappe.db.get_link_options("Lot", txt);
+			},
 		},
 		{
 			"fieldname":"received_type",

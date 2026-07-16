@@ -2,7 +2,7 @@
 # For license information, please see license.txt
 
 import frappe
-from frappe.utils import date_diff, flt, getdate, now_datetime
+from frappe.utils import cint, date_diff, flt, getdate, now_datetime
 from frappe.model.document import Document
 from production_api.utils import update_if_string_instance, get_variant_attr_details
 from production_api.production_api.doctype.item.item import get_attribute_details, get_or_create_variant, get_variant, build_variant_attributes
@@ -39,6 +39,9 @@ class ProductionOrder(Document):
 		self.lead_time_given = date_diff(self.delivery_date, self.posting_date)
 		self.submitted_by = frappe.session.user
 		self.submitted_time = frappe.utils.now()
+
+	def on_submit(self):
+		self.db_set("status", "Open", update_modified=False)
 
 	def onload(self):
 		order_qty = get_order_qty(self.production_order_details)
@@ -486,6 +489,121 @@ def get_date_value(value):
 	return getdate(value) if value else None
 
 
+QUANTITY_CHANGE_REQUESTED_BY_OPTIONS = ["Sales Team", "Production Team", "Merch Team"]
+
+
+@frappe.whitelist()
+def update_quantity(production_order, size_quantities, requested_by, reason):
+	doc = frappe.get_doc("Production Order", production_order)
+	doc.check_permission("write")
+
+	if doc.docstatus != 1:
+		frappe.throw("Quantity can be changed only after Production Order is submitted")
+
+	if doc.production_ordered_details:
+		frappe.throw("Cannot update quantity. Quantities are already ordered against Lots")
+
+	if not doc.production_order_details:
+		frappe.throw("Production Order has no size details to update")
+
+	if requested_by not in QUANTITY_CHANGE_REQUESTED_BY_OPTIONS:
+		frappe.throw("Who Told to Change must be one of: " + ", ".join(QUANTITY_CHANGE_REQUESTED_BY_OPTIONS))
+
+	reason = (reason or "").strip()
+	if not reason:
+		frappe.throw("Reason is required")
+
+	size_quantities = frappe.parse_json(size_quantities) or {}
+	if not size_quantities:
+		frappe.throw("No quantities were given")
+
+	rows_by_size = get_rows_by_size(doc)
+	new_quantities = validate_size_quantities(size_quantities, rows_by_size)
+
+	old_total = 0
+	new_total = 0
+	changes = []
+	for size, row in rows_by_size.items():
+		old_qty = flt(row.quantity)
+		new_qty = new_quantities.get(size, old_qty)
+		old_total += old_qty
+		new_total += new_qty
+		if new_qty != old_qty:
+			changes.append({"size": size, "old_qty": old_qty, "new_qty": new_qty})
+			row.quantity = new_qty
+
+	if not changes:
+		frappe.throw("No quantity was changed")
+	if new_total <= 0:
+		frappe.throw("At least one size must have a quantity greater than zero")
+
+	doc.save(ignore_permissions=True)
+	add_quantity_update_comment(doc, changes, old_total, new_total, requested_by, reason)
+	append_to_comments_field(doc, changes, old_total, new_total, requested_by, reason)
+
+	return {"old_total": old_total, "new_total": new_total}
+
+
+def get_rows_by_size(doc):
+	"""Map each size (variant's primary attribute value) to its per-size row."""
+	primary_attribute = frappe.get_value("Item", doc.item, "primary_attribute")
+	rows_by_size = {}
+	for row in doc.production_order_details:
+		size = get_variant_attr_details(row.item_variant).get(primary_attribute) or row.item_variant
+		if size in rows_by_size:
+			frappe.throw(f"Production Order has more than one row for size {size}")
+		rows_by_size[size] = row
+	return rows_by_size
+
+
+def validate_size_quantities(size_quantities, rows_by_size):
+	"""Check every payload size exists and every quantity is a whole number >= 0."""
+	new_quantities = {}
+	for size, qty in size_quantities.items():
+		if size not in rows_by_size:
+			frappe.throw(f"Size {size} is not part of this Production Order")
+		qty = flt(qty)
+		if qty < 0:
+			frappe.throw(f"Quantity for size {size} cannot be negative")
+		if qty != cint(qty):
+			frappe.throw(f"Quantity for size {size} must be a whole number")
+		new_quantities[size] = cint(qty)
+	return new_quantities
+
+
+def add_quantity_update_comment(doc, changes, old_total, new_total, requested_by, reason):
+	lines = ["<b>Quantity Updated</b>"]
+	for change in changes:
+		lines.append(
+			f"{change['size']}: {format_comment_qty(change['old_qty'])} -> {format_comment_qty(change['new_qty'])}")
+	lines.append(f"<b>Total</b>: {format_comment_qty(old_total)} -> {format_comment_qty(new_total)}")
+	lines.append(f"<b>Who Told to Change</b>: {requested_by}")
+	lines.append(f"<b>Reason</b>: {frappe.utils.escape_html(reason)}")
+	doc.add_comment("Comment", text="<br>".join(lines))
+
+
+def append_to_comments_field(doc, changes, old_total, new_total, requested_by, reason):
+	"""Append a plain-text summary of the update to the 'comments' field.
+
+	The doc is submitted and 'comments' has no allow_on_submit, so write via db_set."""
+	lines = [f"Quantity Updated - {requested_by}"]
+	for change in changes:
+		lines.append(
+			f"{change['size']}: {format_comment_qty(change['old_qty'])} -> {format_comment_qty(change['new_qty'])}")
+	lines.append(f"Total: {format_comment_qty(old_total)} -> {format_comment_qty(new_total)}")
+	lines.append(f"Reason: {reason}")
+	block = "\n".join(lines)
+	existing = doc.comments or ""
+	doc.db_set("comments", f"{existing}\n{block}" if existing else block)
+
+
+def format_comment_qty(value):
+	value = flt(value)
+	if value == cint(value):
+		return str(cint(value))
+	return str(value)
+
+
 @frappe.whitelist()
 def create_lot(production_order, lot_name):
 	if frappe.db.exists("Lot", lot_name):
@@ -515,3 +633,37 @@ def link_lot(production_order, lot_name):
 	lot.status = "Open"
 	lot.save(ignore_permissions=True)
 	return lot.name
+
+
+# "Closed" exists in the field options but is reserved for Finishing Plan
+# automation - it cannot be set manually through change_status.
+CHANGEABLE_PO_STATUSES = ["Open", "Item Changed", "Not Processed"]
+
+
+@frappe.whitelist()
+def change_status(production_order, new_status, reason):
+	doc = frappe.get_doc("Production Order", production_order)
+	doc.check_permission("write")
+
+	if doc.docstatus != 1:
+		frappe.throw("Status can be changed only after Production Order is submitted")
+
+	if new_status not in CHANGEABLE_PO_STATUSES:
+		frappe.throw("Status must be one of: " + ", ".join(CHANGEABLE_PO_STATUSES))
+
+	reason = (reason or "").strip()
+	if not reason:
+		frappe.throw("Reason is required")
+
+	old_status = doc.status or ""
+	if new_status == old_status:
+		frappe.throw("New status is same as the current status")
+
+	doc.db_set("status", new_status)
+	doc.add_comment("Comment", text="<br>".join([
+		f"<b>Status Changed</b>: {old_status or 'None'} -> {new_status}",
+		f"<b>Changed By</b>: {frappe.session.user}",
+		f"<b>Reason</b>: {frappe.utils.escape_html(reason)}",
+	]))
+
+	return {"old_status": old_status, "new_status": new_status}
