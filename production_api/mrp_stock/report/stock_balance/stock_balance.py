@@ -32,6 +32,28 @@ from production_api.mrp_stock.report.stock_ageing.stock_ageing import FIFOSlots
 SLEntry = Dict[str, Any]
 
 
+def parse_list_filter(value) -> List[str]:
+	"""Normalize a multi-select filter value to a list.
+
+	Accepts a list (MultiSelectList filter), a JSON array string (filters
+	serialized over HTTP) or a plain string (internal callers passing a
+	single value). Falsy input returns [] (= filter absent).
+	"""
+	if not value:
+		return []
+	if isinstance(value, string_types):
+		if value.lstrip().startswith("["):
+			try:
+				value = json.loads(value)
+			except ValueError:
+				value = [value]
+		else:
+			value = [value]
+	if not isinstance(value, list):
+		value = [value]
+	return [v for v in value if v]
+
+
 def execute(filters=None):
 	if not filters:
 		filters = {}
@@ -327,8 +349,8 @@ def get_stock_ledger_entries(filters, items: List[str]) -> List[SLEntry]:
 		if len(w)!=0:
 			query = query.where(sle.warehouse.isin(w))
 
-	if lot := filters.get("lot"):
-		query = query.where(sle.lot == lot)
+	if lots := parse_list_filter(filters.get("lot")):
+		query = query.where(sle.lot.isin(lots))
 	if received_type := filters.get("received_type"):
 		query = query.where(sle.received_type == received_type)	
 	if items and len(items)!=0 :
@@ -587,8 +609,8 @@ def get_items(filters) -> List[str]:
 	# 	item_filters["item_group"] = ("in", children + [item_group])
 	# if brand := filters.get("brand"):
 	# 	item_filters["brand"] = brand
-	if parent_item := filters.get("parent_item"):
-		item_filters["item"] = parent_item
+	if parent_items := parse_list_filter(filters.get("parent_item")):
+		item_filters["item"] = ("in", parent_items)
 
 	return frappe.get_all("Item Variant", filters=item_filters, pluck="name", order_by=None)
 
@@ -620,8 +642,8 @@ def get_item_details(items: List[str], sle: List[SLEntry], filters):
 	 	)
 	)
 
-	if filters.get('parent_item'):
-		query = query.where(item_table.name == filters.get('parent_item'))
+	if parent_items := parse_list_filter(filters.get("parent_item")):
+		query = query.where(item_table.name.isin(parent_items))
 
 	result = query.run(as_dict=1)
 
