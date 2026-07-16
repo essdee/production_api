@@ -132,7 +132,68 @@ frappe.ui.form.on("Production Order", {
           },
         });
         d.show();
-      });
+      }, "Change");
+
+      frm.add_custom_button("Change Status", () => {
+        let d = new frappe.ui.Dialog({
+          title: "Change Production Order Status",
+          fields: [
+            {
+              fieldname: "new_status",
+              fieldtype: "Select",
+              label: "New Status",
+              options: "Open\nItem Changed\nNot Processed",
+              default: frm.doc.status,
+              reqd: 1,
+            },
+            {
+              fieldname: "reason",
+              fieldtype: "Small Text",
+              label: "Reason",
+              reqd: 1,
+            },
+          ],
+          primary_action_label: "Update",
+          primary_action: function () {
+            let values = d.get_values();
+            if (!values) return;
+
+            frappe.call({
+              method:
+                "production_api.production_api.doctype.production_order.production_order.change_status",
+              args: {
+                production_order: frm.doc.name,
+                new_status: values.new_status,
+                reason: values.reason,
+              },
+              callback: function () {
+                d.hide();
+                frm.reload_doc();
+                frappe.show_alert({
+                  message: __("Status updated"),
+                  indicator: "green",
+                });
+              },
+            });
+          },
+        });
+        d.show();
+      }, "Change");
+
+      if (!(frm.doc.production_ordered_details || []).length) {
+        frm.add_custom_button("Update Quantity", () => {
+          frappe.call({
+            method:
+              "production_api.production_api.doctype.production_order.production_order.get_production_order_details",
+            args: {
+              production_order: frm.doc.name,
+            },
+            callback: function (r) {
+              show_update_quantity_dialog(frm, r.message || {});
+            },
+          });
+        });
+      }
 
       frm.add_custom_button("Create Lot", () => {
         let d = new frappe.ui.Dialog({
@@ -165,7 +226,7 @@ frappe.ui.form.on("Production Order", {
           },
         });
         d.show();
-      });
+      }, "Lot");
       if (!frappe.perm.has_perm("Production Order", 0, "submit")) {
         frm.set_df_property("comments", "read_only", true);
         frm.refresh_field("comments");
@@ -214,7 +275,7 @@ frappe.ui.form.on("Production Order", {
           },
         });
         d.show();
-      });
+      }, "Lot");
     }
   },
   item(frm) {
@@ -229,6 +290,91 @@ frappe.ui.form.on("Production Order", {
     }
   },
 });
+
+function show_update_quantity_dialog(frm, size_details) {
+  // size_details comes from get_production_order_details: {size: {qty, ...}}
+  // in the same size order as the rendered grid.
+  const sizes = Object.keys(size_details);
+  if (!sizes.length) {
+    frappe.msgprint(__("Production Order has no size details to update"));
+    return;
+  }
+
+  let d = null;
+  const update_total = () => {
+    let total = 0;
+    sizes.forEach((size, idx) => {
+      total += cint(d.get_value("qty_" + idx));
+    });
+    d.set_value("total_quantity", total);
+  };
+
+  let fields = sizes.map((size, idx) => ({
+    fieldname: "qty_" + idx,
+    fieldtype: "Int",
+    label: size,
+    default: cint(size_details[size].qty),
+    reqd: 1,
+    onchange: update_total,
+  }));
+  fields.push(
+    {
+      fieldname: "total_quantity",
+      fieldtype: "Int",
+      label: "Total",
+      read_only: 1,
+      default: sizes.reduce((total, size) => total + cint(size_details[size].qty), 0),
+    },
+    {
+      fieldname: "requested_by",
+      fieldtype: "Select",
+      label: "Who Told to Change",
+      options: "Sales Team\nProduction Team\nMerch Team",
+      reqd: 1,
+    },
+    {
+      fieldname: "reason",
+      fieldtype: "Small Text",
+      label: "Reason",
+      reqd: 1,
+    },
+  );
+
+  d = new frappe.ui.Dialog({
+    title: "Update Quantity",
+    fields: fields,
+    primary_action_label: "Update",
+    primary_action: function () {
+      let values = d.get_values();
+      if (!values) return;
+
+      let size_quantities = {};
+      sizes.forEach((size, idx) => {
+        size_quantities[size] = values["qty_" + idx];
+      });
+
+      frappe.call({
+        method:
+          "production_api.production_api.doctype.production_order.production_order.update_quantity",
+        args: {
+          production_order: frm.doc.name,
+          size_quantities: size_quantities,
+          requested_by: values.requested_by,
+          reason: values.reason,
+        },
+        callback: function () {
+          d.hide();
+          frm.reload_doc();
+          frappe.show_alert({
+            message: __("Quantity updated"),
+            indicator: "green",
+          });
+        },
+      });
+    },
+  });
+  d.show();
+}
 
 function render_production_order_editor(frm) {
   let details_field = frm.fields_dict["details_html"];
