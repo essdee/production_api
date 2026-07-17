@@ -11,7 +11,6 @@
 							<th v-for="(j, idx) in i.primary_attribute_values" :key="idx">
 								{{ j }}
 							</th>
-							<th v-if="docstatus == 0 && t_and_a == 0 && !transferred">Edit</th>
 						</tr>
 						<tr v-for="(j, item1_index) in i.items" :key="item1_index">
 							<td :rowspan="3">{{ item1_index + 1 }}</td>
@@ -19,12 +18,6 @@
 							<td v-for="(k, idx) in j.attributes" :key="idx" :rowspan="3">{{ k }}</td>
 							<td v-for="(k, idx) in i.primary_attribute_values" :key="'qty-' + idx">
 								Qty: {{ j.values[k] ? j.values[k]['qty'] : 0 }}
-							</td>
-							<td :rowspan="3" v-if="docstatus == 0 && t_and_a == 0 && !transferred">
-								<div class="pull-left cursor-pointer" @click="edit_item(item1_index)"
-									v-html="frappe.utils.icon('edit', 'md', 'mr-1')"></div>
-								<div class="pull-left cursor-pointer" @click="delete_item(item1_index)"
-									v-html="frappe.utils.icon('delete', 'md')"></div>
 							</td>
 						</tr>
 						<tr v-for="(j, item1_index) in i.items" :key="'ratio-' + item1_index">
@@ -48,7 +41,6 @@
 							<th>Qty</th>
 							<th>Ratio</th>
 							<th>MRP</th>
-							<th v-if='docstatus == 0'>Edit</th>
 						</tr>
 						<tr v-for="(j, item1_index) in i.items" :key="item1_index">
 							<td>{{ item1_index + 1 }}</td>
@@ -59,12 +51,6 @@
 							<td>{{ j.values.qty }}</td>
 							<td>{{ j.values.ratio }}</td>
 							<td>{{ j.values.mrp }}</td>
-							<td v-if='docstatus == 0 && !transferred'>
-								<div class="pull-left cursor-pointer" @click="edit_item(item1_index)"
-									v-html="frappe.utils.icon('edit', 'md', 'mr-1')"></div>
-								<div class="pull-left cursor-pointer" @click="delete_item(item1_index)"
-									v-html="frappe.utils.icon('delete', 'md')"></div>
-							</td>
 						</tr>
 					</table>
 				</td>
@@ -403,32 +389,6 @@ function deepEqual(obj1, obj2) {
 	}
 	return true;
 }
-function delete_item(index) {
-	cur_frm.dirty();
-	let len = list_item.value[0].items.length;
-	let item_list = list_item.value[0].items;
-
-	if (index == 0) {
-		list_item.value[0].items = item_list.slice(1, len);
-	} 
-	else if (index == len - 1) {
-		list_item.value[0].items = item_list.slice(0,index);
-	} 
-	else {
-		let lis = item_list.slice(0, index);
-		let lis2 = item_list.slice(index + 1, len);
-		list_item.value[0].items = lis.concat(lis2);
-	}
-}
-
-function edit_item(index) {
-	make_clean()
-	show_parameters.value = true
-	edit.value = true;
-	edit_index.value = index;
-	create_input_fields();
-}
-
 defineExpose({
   list_item,
   load_data,
