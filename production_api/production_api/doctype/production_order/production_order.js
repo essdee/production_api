@@ -329,7 +329,7 @@ function show_update_quantity_dialog(frm, size_details) {
       fieldname: "requested_by",
       fieldtype: "Select",
       label: "Who Told to Change",
-      options: "Sales Team\nProduction Team\nMerch Team",
+      options: "Sales Team\nPlanning Team\nMerch Team",
       reqd: 1,
     },
     {

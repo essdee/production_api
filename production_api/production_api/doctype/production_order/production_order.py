@@ -489,7 +489,7 @@ def get_date_value(value):
 	return getdate(value) if value else None
 
 
-QUANTITY_CHANGE_REQUESTED_BY_OPTIONS = ["Sales Team", "Production Team", "Merch Team"]
+QUANTITY_CHANGE_REQUESTED_BY_OPTIONS = ["Sales Team", "Planning Team", "Merch Team"]
 
 
 @frappe.whitelist()
@@ -539,7 +539,7 @@ def update_quantity(production_order, size_quantities, requested_by, reason):
 
 	doc.save(ignore_permissions=True)
 	add_quantity_update_comment(doc, changes, old_total, new_total, requested_by, reason)
-	append_to_comments_field(doc, changes, old_total, new_total, requested_by, reason)
+	append_to_comment_log(doc, changes, old_total, new_total, requested_by, reason)
 
 	return {"old_total": old_total, "new_total": new_total}
 
@@ -582,19 +582,26 @@ def add_quantity_update_comment(doc, changes, old_total, new_total, requested_by
 	doc.add_comment("Comment", text="<br>".join(lines))
 
 
-def append_to_comments_field(doc, changes, old_total, new_total, requested_by, reason):
-	"""Append a plain-text summary of the update to the 'comments' field.
+def append_to_comment_log(doc, changes, old_total, new_total, requested_by, reason):
+	"""Append a dated, plain-text summary of the update to the 'comment_log' field.
 
-	The doc is submitted and 'comments' has no allow_on_submit, so write via db_set."""
-	lines = [f"Quantity Updated - {requested_by}"]
+	The doc is submitted and 'comment_log' is read_only, so write via db_set."""
+	log_date = frappe.utils.formatdate(frappe.utils.nowdate(), "dd-mm-yyyy")
+	lines = [f"[{log_date}] Quantity Updated - {requested_by}"]
 	for change in changes:
 		lines.append(
 			f"{change['size']}: {format_comment_qty(change['old_qty'])} -> {format_comment_qty(change['new_qty'])}")
 	lines.append(f"Total: {format_comment_qty(old_total)} -> {format_comment_qty(new_total)}")
 	lines.append(f"Reason: {reason}")
-	block = "\n".join(lines)
-	existing = doc.comments or ""
-	doc.db_set("comments", f"{existing}\n{block}" if existing else block)
+	append_comment_log_block(doc, "\n".join(lines))
+
+
+def append_comment_log_block(doc, block):
+	"""Append a plain-text block to the read-only 'comment_log' field.
+
+	The doc is submitted and 'comment_log' is read_only, so write via db_set."""
+	existing = doc.comment_log or ""
+	doc.db_set("comment_log", f"{existing}\n{block}" if existing else block)
 
 
 def format_comment_qty(value):
@@ -664,6 +671,13 @@ def change_status(production_order, new_status, reason):
 		f"<b>Status Changed</b>: {old_status or 'None'} -> {new_status}",
 		f"<b>Changed By</b>: {frappe.session.user}",
 		f"<b>Reason</b>: {frappe.utils.escape_html(reason)}",
+	]))
+
+	log_date = frappe.utils.formatdate(frappe.utils.nowdate(), "dd-mm-yyyy")
+	append_comment_log_block(doc, "\n".join([
+		f"[{log_date}] Status Changed - {frappe.session.user}",
+		f"Status: {old_status or 'None'} -> {new_status}",
+		f"Reason: {reason}",
 	]))
 
 	return {"old_status": old_status, "new_status": new_status}

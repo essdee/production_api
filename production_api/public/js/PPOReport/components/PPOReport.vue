@@ -535,10 +535,39 @@ defineExpose({ load_data })
 
 .table-wrap {
     overflow: auto;
+    max-height: calc(100vh - 360px);
     background: var(--ppo-surface);
     border: 1px solid var(--ppo-border);
     border-radius: 8px;
     box-shadow: var(--ppo-shadow);
+    /* Firefox: always-visible scrollbars */
+    scrollbar-width: auto;
+    scrollbar-color: #94a3b8 #eef2f7;
+}
+
+/* WebKit/Blink: force visible scrollbars on both axes */
+.table-wrap::-webkit-scrollbar {
+    width: 12px;
+    height: 12px;
+}
+
+.table-wrap::-webkit-scrollbar-track {
+    background: #eef2f7;
+    border-radius: 6px;
+}
+
+.table-wrap::-webkit-scrollbar-thumb {
+    background: #94a3b8;
+    border-radius: 6px;
+    border: 2px solid #eef2f7;
+}
+
+.table-wrap::-webkit-scrollbar-thumb:hover {
+    background: #64748b;
+}
+
+.table-wrap::-webkit-scrollbar-corner {
+    background: #eef2f7;
 }
 
 .ppo-table {

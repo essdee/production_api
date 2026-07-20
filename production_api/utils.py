@@ -3422,7 +3422,7 @@ def get_ppo_report_data(from_date=None, to_date=None, product_category=None, sta
 	orders = frappe.get_all(
 		"Production Order",
 		filters=filters,
-		fields=["name", "item", "fabric", "dia", "gsm", "delivery_date", "posting_date", "dont_deliver_after", "lead_time_given", "docstatus", "comments"],
+		fields=["name", "item", "fabric", "dia", "gsm", "delivery_date", "posting_date", "dont_deliver_after", "lead_time_given", "docstatus", "comments", "comment_log"],
 		order_by="delivery_date asc, name asc",
 	)
 
@@ -3482,7 +3482,7 @@ def get_ppo_report_data(from_date=None, to_date=None, product_category=None, sta
 			"dont_deliver_after": str(order["dont_deliver_after"]) if order["dont_deliver_after"] else "",
 			"status": "Draft" if order.get("docstatus") == 0 else "Submitted",
 			"lead_time": order.get("lead_time_given") or 0,
-			"comments": order.get("comments") or "",
+			"comments": "\n".join([p for p in [(order.get("comments") or "").strip(), (order.get("comment_log") or "").strip()] if p]),
 			"qty": qty_map,
 			"total": total,
 		})
