@@ -1,11 +1,12 @@
 <template>
     <div ref="root" style="padding:20px;">
         <h3 style="text-align:center;padding-top:15px;">Work In Progress Report</h3>
-        <div style="display:flex;">
+        <div style="display:flex;flex-wrap:wrap;">
             <div class="category-input col-md-2"></div>
             <div class="lot-status-input col-md-2"></div>
             <div class="lot-input col-md-3"></div>
             <div class="item-input col-md-3"></div>
+            <div class="season-input col-md-2"></div>
             <div style="padding-top:27px;">
                 <button class="btn btn-primary" @click="get_work_in_progress_report()">Show Report</button>
             </div>
@@ -189,6 +190,7 @@ import MultiProcessReport from './MultiProcessReport.vue'
 import MultiSelectListConverter from './MultiSelectListConverter.vue'
 
 let category = null
+let product_season = null
 let lot_status = null
 let root = ref(null)
 let sample_doc = ref({})
@@ -326,6 +328,18 @@ onMounted(()=> {
         doc: sample_doc.value,
         render_input: true,
     })
+    $(el).find(".season-input").html("");
+    product_season = frappe.ui.form.make_control({
+        parent: $(el).find(".season-input"),
+        df: {
+            fieldname: "product_season",
+            fieldtype: "Link",
+            options: "Product Season",
+            label: "Product Season",
+        },
+        doc: sample_doc.value,
+        render_input: true,
+    })
     $(el).find(".lot-status-input").html("");
     lot_status = frappe.ui.form.make_control({
         parent: $(el).find(".lot-status-input"),
@@ -416,7 +430,7 @@ function get_work_in_progress_report(){
     const run_report = () => {
         let lot_list_val = lot_list.get_value()
         let item_list_val = item_list.get_value()
-        if(!category.get_value() && lot_list_val.length == 0 && item_list_val.length == 0){
+        if(!category.get_value() && !product_season.get_value() && lot_list_val.length == 0 && item_list_val.length == 0){
             frappe.msgprint("Please Set Atleast one filter other than Lot Status")
         }
         else{
@@ -430,6 +444,7 @@ function get_work_in_progress_report(){
                     "process_list": process_list.value,
                     "from_date": from_date,
                     "to_date": to_date,
+                    "product_season": product_season.get_value(),
                 },
                 freeze: true,
                 freeze_message: "Fetching Data",
