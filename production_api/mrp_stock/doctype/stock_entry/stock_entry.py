@@ -69,6 +69,16 @@ class StockEntry(Document):
 		self.validation_messages = []
 		item_lot_combinations = []
 
+		# For completion/receive purposes the auto-built rows carry no rate. Derive the
+		# missing rate from the transit warehouse bin (row-wise lot) rather than the
+		# variant's latest SLE across all warehouses/lots, which can pull an unrelated
+		# (even negative) rate. Mirrors update_stock_ledger, which draws the outgoing SLE
+		# for these purposes from Stock Settings.transit_warehouse.
+		rate_purposes = {"Receive at Warehouse", "DC Completion", "GRN Completion"}
+		derivation_warehouse = None
+		if self.purpose in rate_purposes:
+			derivation_warehouse = frappe.get_single("Stock Settings").transit_warehouse
+
 		for row in self.items:
 			# find duplicates
 			# key = [row.item, row.lot]
@@ -97,7 +107,8 @@ class StockEntry(Document):
 				self.validation_messages.append(_get_msg(row.table_index, row.row_index, _("Negative Valuation Rate is not allowed")))
 			if row.qty and row.rate in ["", None, 0]:
 				row.rate = get_stock_balance(
-					row.item, None, row.received_type, self.posting_date, self.posting_time, with_valuation_rate=True, uom=row.uom,
+					row.item, derivation_warehouse, row.received_type, self.posting_date, self.posting_time,
+					with_valuation_rate=True, lot=(row.lot if self.purpose in rate_purposes else None), uom=row.uom,
 				)[1]
 				if not row.rate:
 					# try if there is a buying price list in default currency
