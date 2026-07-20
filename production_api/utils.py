@@ -1668,14 +1668,17 @@ def get_variant_attr_details(variant):
 	return d
 
 @frappe.whitelist()
-def get_work_in_progress_report(category, status, lot_list_val, item_list, process_list, from_date=None, to_date=None):
+def get_work_in_progress_report(category, status, lot_list_val, item_list, process_list, from_date=None, to_date=None, product_season=None):
 	process_list = update_if_string_instance(process_list)
 	conditions = ""
 	con = {}
 	if category:
 		conditions += ' AND t2.product_category = %(cat)s'
 		con['cat'] = category
-	
+	if product_season:
+		conditions += ' AND t1.season = %(season)s'
+		con['season'] = product_season
+
 	if status:
 		conditions += ' AND t1.status = %(status)s'
 		con['status'] = status
