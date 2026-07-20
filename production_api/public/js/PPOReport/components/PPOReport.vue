@@ -5,6 +5,7 @@
             <div class="ppo-controls">
                 <div class="status-input ctrl-slot"></div>
                 <div class="category-input ctrl-slot"></div>
+                <div class="item-input ctrl-slot"></div>
                 <div class="from-date-input ctrl-slot"></div>
                 <div class="to-date-input ctrl-slot"></div>
                 <div class="ppo-actions">
@@ -33,6 +34,17 @@
                 </div>
             </div>
 
+            <div class="ppo-toggles">
+                <span class="ppo-toggles-label">Columns</span>
+                <label class="ppo-toggle"><input type="checkbox" v-model="show_fabric" /> Show Fabric</label>
+                <label class="ppo-toggle"><input type="checkbox" v-model="show_dia" /> Show Dia</label>
+                <label class="ppo-toggle"><input type="checkbox" v-model="show_gsm" /> Show GSM</label>
+                <span class="ppo-toggles-sep"></span>
+                <label class="ppo-toggle ppo-toggle--accent">
+                    <input type="checkbox" v-model="summarized" @change="onSummarizedToggle" /> Summarized
+                </label>
+            </div>
+
             <div class="table-wrap">
                 <table class="ppo-table">
                     <thead>
@@ -42,9 +54,9 @@
                                 <th :rowspan="size_groups.length">#</th>
                                 <th :rowspan="size_groups.length">PPO</th>
                                 <th :rowspan="size_groups.length">Item</th>
-                                <th :rowspan="size_groups.length">Fabric</th>
-                                <th :rowspan="size_groups.length">Dia</th>
-                                <th :rowspan="size_groups.length">GSM</th>
+                                <th v-if="show_fabric" :rowspan="size_groups.length">Fabric</th>
+                                <th v-if="show_dia" :rowspan="size_groups.length">Dia</th>
+                                <th v-if="show_gsm" :rowspan="size_groups.length">GSM</th>
                                 <th :rowspan="size_groups.length">Posting Date</th>
                                 <th :rowspan="size_groups.length">Delivery Date</th>
                                 <th :rowspan="size_groups.length">Don't Deliver After</th>
@@ -73,9 +85,9 @@
                                 </a>
                             </td>
                             <td>{{ order.item }}</td>
-                            <td>{{ order.fabric }}</td>
-                            <td>{{ order.dia }}</td>
-                            <td>{{ order.gsm || '' }}</td>
+                            <td v-if="show_fabric">{{ order.fabric }}</td>
+                            <td v-if="show_dia">{{ order.dia }}</td>
+                            <td v-if="show_gsm">{{ order.gsm || '' }}</td>
                             <td>{{ formatDate(order.posting_date) }}</td>
                             <td>{{ formatDate(order.delivery_date) }}</td>
                             <td>{{ formatDate(order.dont_deliver_after) }}</td>
@@ -100,15 +112,15 @@
                         </tr>
                         <template v-if="summaryState[order.name]?.expanded">
                           <tr v-if="summaryState[order.name]?.loading" class="summary-row">
-                            <td :colspan="15 + max_cols" class="summary-status">Loading...</td>
+                            <td :colspan="full_colspan" class="summary-status">Loading...</td>
                           </tr>
                           <tr v-else-if="!summaryState[order.name]?.data?.rows?.length" class="summary-row">
-                            <td :colspan="15 + max_cols" class="summary-status">No dispatch records found.</td>
+                            <td :colspan="full_colspan" class="summary-status">No dispatch records found.</td>
                           </tr>
                           <template v-else>
                             <tr v-for="(row, rIdx) in summaryState[order.name].data.rows"
                                 :key="'s-' + order.name + '-' + rIdx" class="summary-row">
-                              <td colspan="13" class="summary-label-cell">
+                              <td :colspan="label_colspan" class="summary-label-cell">
                                 {{ formatDate(row.date) }} &middot; {{ row.lot }}
                               </td>
                               <td v-for="colIdx in max_cols" :key="'sd-' + colIdx"
@@ -119,7 +131,7 @@
                               <td></td>
                             </tr>
                             <tr class="summary-footer-row">
-                              <td colspan="13" class="summary-label-cell summary-footer-label">Dispatched Total</td>
+                              <td :colspan="label_colspan" class="summary-label-cell summary-footer-label">Dispatched Total</td>
                               <td v-for="colIdx in max_cols" :key="'sf-' + colIdx" class="summary-footer-num">
                                 {{ summarySizeTotalByPos(order.name, order.group_sizes[colIdx - 1]) }}
                               </td>
@@ -132,7 +144,7 @@
                     </tbody>
                     <tfoot>
                         <tr>
-                            <td colspan="13" class="foot-label">Total</td>
+                            <td :colspan="label_colspan" class="foot-label">Total</td>
                             <td v-for="colIdx in max_cols" :key="'ft-' + colIdx" class="foot-num">
                                 {{ column_total_flat(colIdx - 1).toLocaleString() }}
                             </td>
@@ -162,8 +174,30 @@ const size_groups = ref([])
 const fetched = ref(false)
 const summaryState = ref({})
 
+// Toggle-able columns (all hidden by default). Data is always fetched;
+// these are pure client-side v-if toggles.
+const show_fabric = ref(false)
+const show_dia = ref(false)
+const show_gsm = ref(false)
+
+// "Summarized" — expands the dispatch drill-down for EVERY loaded order at once
+// via a single batched API call (get_ppo_dispatch_summary_bulk).
+const summarized = ref(false)
+
+// Fixed (non-size) column count drives the colspans of the Total row and the
+// Summarize drill-down labels so they stay aligned when columns are toggled.
+// 9 always-on fixed cols + the 3 toggle-able ones (Fabric/Dia/GSM).
+const fixed_col_count = computed(
+    () => 9 + (show_fabric.value ? 1 : 0) + (show_dia.value ? 1 : 0) + (show_gsm.value ? 1 : 0)
+)
+// group-label cell only
+const label_colspan = computed(() => fixed_col_count.value + 1)
+// everything: fixed cols + group-label + size cols + Total + Comments
+const full_colspan = computed(() => fixed_col_count.value + max_cols.value + 3)
+
 let status_ctrl = null
 let category_ctrl = null
+let item_ctrl = null
 let from_date_ctrl = null
 let to_date_ctrl = null
 const sample_doc = ref({})
@@ -197,6 +231,22 @@ onMounted(() => {
         render_input: true,
     })
 
+    $(el).find(".item-input").html("")
+    item_ctrl = frappe.ui.form.make_control({
+        parent: $(el).find(".item-input"),
+        df: {
+            fieldname: "item",
+            fieldtype: "MultiSelectList",
+            options: "Item",
+            label: "Item",
+            get_data: function (txt) {
+                return frappe.db.get_link_options("Item", txt)
+            },
+        },
+        doc: sample_doc.value,
+        render_input: true,
+    })
+
     $(el).find(".from-date-input").html("")
     from_date_ctrl = frappe.ui.form.make_control({
         parent: $(el).find(".from-date-input"),
@@ -225,12 +275,14 @@ onMounted(() => {
 function get_report() {
     const status = status_ctrl.get_value()
     const product_category = category_ctrl.get_value()
+    const item = item_ctrl.get_value()
     const from_date = from_date_ctrl.get_value()
     const to_date = to_date_ctrl.get_value()
 
     const args = {}
     if (status) args.status = status
     if (product_category) args.product_category = product_category
+    if (item && item.length) args.item = JSON.stringify(item)
     if (from_date) args.from_date = from_date
     if (to_date) args.to_date = to_date
 
@@ -246,6 +298,7 @@ function get_report() {
             size_groups.value = r.message.size_groups || []
             fetched.value = true
             summaryState.value = {}
+            summarized.value = false
         },
     })
 }
@@ -268,11 +321,13 @@ function formatDate(dateStr) {
 function download_excel() {
     const status = status_ctrl.get_value()
     const product_category = category_ctrl.get_value()
+    const item = item_ctrl.get_value()
     const from_date = from_date_ctrl.get_value()
     const to_date = to_date_ctrl.get_value()
     const params = new URLSearchParams()
     if (status) params.set('status', status)
     if (product_category) params.set('product_category', product_category)
+    if (item && item.length) params.set('item', JSON.stringify(item))
     if (from_date) params.set('from_date', from_date)
     if (to_date) params.set('to_date', to_date)
     window.open(`/api/method/production_api.utils.download_ppo_report?${params.toString()}`)
@@ -309,6 +364,51 @@ function show_summary(ppo_name) {
             }
         },
     })
+}
+
+// "Summarized" master toggle. Checked → ONE batched call that expands the
+// dispatch drill-down for every loaded order; unchecked → collapse them all.
+function onSummarizedToggle() {
+    if (summarized.value) {
+        load_all_summaries()
+    } else {
+        collapse_all_summaries()
+    }
+}
+
+function load_all_summaries() {
+    const names = flat_orders.value.map((o) => o.name)
+    if (!names.length) return
+
+    frappe.call({
+        method: "production_api.utils.get_ppo_dispatch_summary_bulk",
+        args: { production_orders: JSON.stringify(names) },
+        freeze: true,
+        freeze_message: "Summarizing dispatch...",
+        callback(r) {
+            const map = r.message || {}
+            const next = { ...summaryState.value }
+            for (const name of names) {
+                // Preload rows so the per-row Summarize button re-uses them
+                // (show_summary sees data !== undefined and only toggles —
+                //  no per-order fetch fires).
+                next[name] = {
+                    loading: false,
+                    data: map[name] || { sizes: [], rows: [] },
+                    expanded: true,
+                }
+            }
+            summaryState.value = next
+        },
+    })
+}
+
+function collapse_all_summaries() {
+    const next = { ...summaryState.value }
+    for (const name of Object.keys(next)) {
+        if (next[name]) next[name] = { ...next[name], expanded: false }
+    }
+    summaryState.value = next
 }
 
 function summaryTotal(ppo_name) {
@@ -390,10 +490,57 @@ defineExpose({ load_data })
 
 .ppo-controls {
     display: grid;
-    grid-template-columns: repeat(4, minmax(150px, 1fr)) auto;
+    grid-template-columns: repeat(5, minmax(150px, 1fr)) auto;
     gap: 12px;
     align-items: end;
     margin-top: 18px;
+}
+
+.ppo-toggles {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 16px;
+    padding: 10px 14px;
+    background: var(--ppo-surface);
+    border: 1px solid var(--ppo-border);
+    border-radius: 8px;
+    box-shadow: var(--ppo-shadow);
+}
+
+.ppo-toggles-label {
+    color: var(--ppo-muted);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+
+.ppo-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin: 0;
+    color: var(--ppo-text);
+    cursor: pointer;
+    font-size: 12.5px;
+    font-weight: 600;
+}
+
+.ppo-toggle input {
+    margin: 0;
+    cursor: pointer;
+}
+
+.ppo-toggles-sep {
+    align-self: stretch;
+    width: 1px;
+    margin: 2px 2px;
+    background: var(--ppo-border);
+}
+
+.ppo-toggle--accent {
+    color: var(--ppo-teal);
 }
 
 .ctrl-slot {
@@ -750,6 +897,9 @@ defineExpose({ load_data })
 }
 
 .ppo-table tfoot td {
+    position: sticky;
+    bottom: 0;
+    z-index: 2;
     padding: 10px;
     color: var(--ppo-text);
     background: #f8fafc;
