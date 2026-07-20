@@ -181,7 +181,7 @@ frappe.ui.form.on("Production Order", {
       }, "Change");
 
       if (!(frm.doc.production_ordered_details || []).length) {
-        frm.add_custom_button("Update Quantity", () => {
+        frm.add_custom_button("Update Quantity & Ratio", () => {
           frappe.call({
             method:
               "production_api.production_api.doctype.production_order.production_order.get_production_order_details",
@@ -189,7 +189,7 @@ frappe.ui.form.on("Production Order", {
               production_order: frm.doc.name,
             },
             callback: function (r) {
-              show_update_quantity_dialog(frm, r.message || {});
+              show_update_qty_ratio_dialog(frm, r.message || {});
             },
           });
         });
@@ -291,8 +291,95 @@ frappe.ui.form.on("Production Order", {
   },
 });
 
-function show_update_quantity_dialog(frm, size_details) {
-  // size_details comes from get_production_order_details: {size: {qty, ...}}
+// Render a horizontal size grid into a dialog HTML field wrapper: sizes across
+// the top as a header row (with a leading "Size" corner cell), then one labeled
+// input row per entry in `rows`. Each row is
+//   { key, label, values: {size: value}, step: "1"|"any", parse, onInput? }
+// where the leading column holds the row's label and `key` tags each input so
+// read_size_grid_values can read that row back.
+function build_horizontal_size_grid($wrapper, sizes, rows) {
+  $wrapper.empty();
+
+  const $container = $(
+    '<div class="po-size-grid-wrap" style="overflow-x:auto; margin-bottom:12px;"></div>',
+  );
+  const $table = $(
+    '<table class="po-size-grid table table-bordered" style="margin-bottom:0; width:auto; min-width:100%;"></table>',
+  );
+
+  const $thead = $("<thead></thead>");
+  const $headRow = $("<tr></tr>");
+  $("<th></th>")
+    .text("Size")
+    .css({
+      "text-align": "left",
+      "white-space": "nowrap",
+      "font-size": "11px",
+    })
+    .appendTo($headRow);
+  sizes.forEach((size) => {
+    $("<th></th>")
+      .text(size)
+      .css({
+        "text-align": "center",
+        "white-space": "nowrap",
+        "font-size": "11px",
+      })
+      .appendTo($headRow);
+  });
+  $thead.append($headRow);
+
+  const $tbody = $("<tbody></tbody>");
+  rows.forEach((row) => {
+    const $tr = $("<tr></tr>");
+    $("<td></td>")
+      .text(row.label)
+      .css({
+        "font-weight": "bold",
+        "white-space": "nowrap",
+        "vertical-align": "middle",
+      })
+      .appendTo($tr);
+    sizes.forEach((size) => {
+      const $td = $("<td></td>").css({ padding: "3px" });
+      const $input = $('<input type="number" class="form-control input-sm" />')
+        .attr("data-size", size)
+        .attr("data-row", row.key)
+        .attr("step", row.step || "1")
+        .attr("min", "0")
+        .css({ "text-align": "center", "min-width": "64px" });
+      const initVal = row.values ? row.values[size] : undefined;
+      if (initVal !== undefined && initVal !== null) {
+        $input.val(initVal);
+      }
+      if (row.onInput) {
+        $input.on("input", row.onInput);
+      }
+      $td.append($input);
+      $tr.append($td);
+    });
+    $tbody.append($tr);
+  });
+
+  $table.append($thead).append($tbody);
+  $container.append($table);
+  $wrapper.append($container);
+}
+
+// Read one grid row's inputs (selected by row key) back into {size: value}.
+// HTML-field inputs are NOT surfaced by d.get_values(), so they must be read
+// from the DOM. `parse` is cint for quantities, flt for ratios.
+function read_size_grid_values($wrapper, key, parse) {
+  const values = {};
+  $wrapper.find('input[data-row="' + key + '"]').each(function () {
+    const size = $(this).attr("data-size");
+    values[size] = parse($(this).val());
+  });
+  return values;
+}
+
+function show_update_qty_ratio_dialog(frm, size_details) {
+  // size_details comes from get_production_order_details: {size: {qty, ratio, ...}}
   // in the same size order as the rendered grid.
   const sizes = Object.keys(size_details);
   if (!sizes.length) {
@@ -301,64 +388,82 @@ function show_update_quantity_dialog(frm, size_details) {
   }
 
   let d = null;
-  const update_total = () => {
+  const recompute_total = () => {
+    const vals = read_size_grid_values(
+      d.fields_dict.size_grid.$wrapper,
+      "quantity",
+      cint,
+    );
     let total = 0;
-    sizes.forEach((size, idx) => {
-      total += cint(d.get_value("qty_" + idx));
+    sizes.forEach((size) => {
+      total += cint(vals[size]);
     });
     d.set_value("total_quantity", total);
   };
 
-  let fields = sizes.map((size, idx) => ({
-    fieldname: "qty_" + idx,
-    fieldtype: "Int",
-    label: size,
-    default: cint(size_details[size].qty),
-    reqd: 1,
-    onchange: update_total,
-  }));
-  fields.push(
-    {
-      fieldname: "total_quantity",
-      fieldtype: "Int",
-      label: "Total",
-      read_only: 1,
-      default: sizes.reduce((total, size) => total + cint(size_details[size].qty), 0),
-    },
-    {
-      fieldname: "requested_by",
-      fieldtype: "Select",
-      label: "Who Told to Change",
-      options: "Sales Team\nPlanning Team\nMerch Team",
-      reqd: 1,
-    },
-    {
-      fieldname: "reason",
-      fieldtype: "Small Text",
-      label: "Reason",
-      reqd: 1,
-    },
+  const initial_qty = {};
+  const initial_ratio = {};
+  sizes.forEach((size) => {
+    initial_qty[size] = cint(size_details[size].qty);
+    initial_ratio[size] = flt(size_details[size].ratio);
+  });
+  const initial_total = sizes.reduce(
+    (total, size) => total + initial_qty[size],
+    0,
   );
 
   d = new frappe.ui.Dialog({
-    title: "Update Quantity",
-    fields: fields,
+    title: "Update Quantity & Ratio",
+    size: "large",
+    fields: [
+      {
+        fieldname: "size_grid",
+        fieldtype: "HTML",
+      },
+      {
+        fieldname: "total_quantity",
+        fieldtype: "Int",
+        label: "Total Quantity",
+        read_only: 1,
+        default: initial_total,
+      },
+      {
+        fieldname: "requested_by",
+        fieldtype: "Select",
+        label: "Who Told to Change",
+        options: "Sales Team\nPlanning Team\nMerch Team",
+        reqd: 1,
+      },
+      {
+        fieldname: "reason",
+        fieldtype: "Small Text",
+        label: "Reason",
+        reqd: 1,
+      },
+    ],
     primary_action_label: "Update",
     primary_action: function () {
       let values = d.get_values();
       if (!values) return;
 
-      let size_quantities = {};
-      sizes.forEach((size, idx) => {
-        size_quantities[size] = values["qty_" + idx];
-      });
+      let size_quantities = read_size_grid_values(
+        d.fields_dict.size_grid.$wrapper,
+        "quantity",
+        cint,
+      );
+      let size_ratios = read_size_grid_values(
+        d.fields_dict.size_grid.$wrapper,
+        "ratio",
+        flt,
+      );
 
       frappe.call({
         method:
-          "production_api.production_api.doctype.production_order.production_order.update_quantity",
+          "production_api.production_api.doctype.production_order.production_order.update_quantity_and_ratio",
         args: {
           production_order: frm.doc.name,
           size_quantities: size_quantities,
+          size_ratios: size_ratios,
           requested_by: values.requested_by,
           reason: values.reason,
         },
@@ -366,13 +471,31 @@ function show_update_quantity_dialog(frm, size_details) {
           d.hide();
           frm.reload_doc();
           frappe.show_alert({
-            message: __("Quantity updated"),
+            message: __("Quantity & ratio updated"),
             indicator: "green",
           });
         },
       });
     },
   });
+
+  build_horizontal_size_grid(d.fields_dict.size_grid.$wrapper, sizes, [
+    {
+      key: "quantity",
+      label: "Quantity",
+      values: initial_qty,
+      step: "1",
+      parse: cint,
+      onInput: recompute_total,
+    },
+    {
+      key: "ratio",
+      label: "Ratio",
+      values: initial_ratio,
+      step: "any",
+      parse: flt,
+    },
+  ]);
   d.show();
 }
 

@@ -3394,8 +3394,36 @@ def get_lot_data(lot, lot_data, cloth_details, completed, item_name, lay_no, no_
 		}
 	return lot_data
 
+def _normalize_ppo_item_filter(item):
+	"""Normalize the PPO report `item` filter into a list of Item names.
+
+	The multi-select frontend sends a JSON-encoded list, but we also tolerate a
+	plain single value or a comma-separated string for safety. Returns a
+	de-duplicated list with blanks removed (empty list => no item filter)."""
+	if not item:
+		return []
+	# JSON-encoded list (what the multi-select control sends) or a plain value.
+	if isinstance(item, str):
+		try:
+			item = frappe.parse_json(item)
+		except Exception:
+			pass
+	# A single/comma-separated string -> list of names.
+	if isinstance(item, str):
+		item = item.split(",")
+	if not isinstance(item, (list, tuple)):
+		item = [item]
+	result = []
+	for it in item:
+		if it is None:
+			continue
+		it = str(it).strip()
+		if it and it not in result:
+			result.append(it)
+	return result
+
 @frappe.whitelist()
-def get_ppo_report_data(from_date=None, to_date=None, product_category=None, status=None):
+def get_ppo_report_data(from_date=None, to_date=None, product_category=None, status=None, item=None):
 	from production_api.production_api.doctype.item.item import get_attribute_details
 
 	status_map = {"Draft": 0, "Submitted": 1}
@@ -3413,7 +3441,20 @@ def get_ppo_report_data(from_date=None, to_date=None, product_category=None, sta
 	elif to_date:
 		filters["delivery_date"] = ["<=", to_date]
 
-	if product_category:
+	# item and product_category both map onto Production Order.item. If items are
+	# chosen they win (IN filter); when a category is also chosen, keep it
+	# meaningful by keeping only the selected items that belong to that category.
+	items = _normalize_ppo_item_filter(item)
+	if items:
+		if product_category:
+			items = [
+				it for it in items
+				if frappe.db.get_value("Item", it, "product_category") == product_category
+			]
+			if not items:
+				return {"groups": []}
+		filters["item"] = ["in", items]
+	elif product_category:
 		items_in_cat = frappe.get_all("Item", filters={"product_category": product_category}, pluck="name")
 		if not items_in_cat:
 			return {"groups": []}
@@ -3513,10 +3554,10 @@ def get_ppo_report_data(from_date=None, to_date=None, product_category=None, sta
 	}
 
 @frappe.whitelist()
-def download_ppo_report(from_date=None, to_date=None, product_category=None, status=None):
+def download_ppo_report(from_date=None, to_date=None, product_category=None, status=None, item=None):
 	from frappe.utils.xlsxutils import make_xlsx
 
-	data = get_ppo_report_data(from_date, to_date, product_category, status)
+	data = get_ppo_report_data(from_date, to_date, product_category, status, item)
 	flat_orders = data.get("flat_orders", [])
 	size_groups = data.get("size_groups", [])
 	max_cols = data.get("max_cols", 0)
@@ -3575,6 +3616,30 @@ def download_ppo_report(from_date=None, to_date=None, product_category=None, sta
 	frappe.response["filecontent"] = xlsx_file.getvalue()
 	frappe.response["type"] = "binary"
 
+def _pivot_dispatch_rows(rows):
+	"""Pivot flat dispatch rows [{date, lot, size, qty}] into
+	{"sizes": [...], "rows": [{date, lot, sizes: {size: qty}, total}]}.
+	Shared by get_ppo_dispatch_summary (single) and get_ppo_dispatch_summary_bulk."""
+	from collections import OrderedDict
+	key_map = OrderedDict()
+	all_sizes = set()
+	for r in rows:
+		key = (str(r.date) if r.date else "", r.lot or "")
+		if key not in key_map:
+			key_map[key] = {"date": r.date, "lot": r.lot, "sizes": {}, "total": 0}
+		size = r.size or "Unknown"
+		all_sizes.add(size)
+		key_map[key]["sizes"][size] = (key_map[key]["sizes"].get(size, 0)) + (r.qty or 0)
+		key_map[key]["total"] += (r.qty or 0)
+
+	# Sort by date, then lot
+	sorted_rows = sorted(key_map.values(), key=lambda x: (str(x["date"] or ""), x["lot"] or ""))
+
+	return {
+		"sizes": sorted(all_sizes),
+		"rows": sorted_rows,
+	}
+
 @frappe.whitelist()
 def get_ppo_dispatch_summary(production_order):
 	lots = frappe.get_all("Lot", {"production_order": production_order}, pluck="name")
@@ -3621,26 +3686,116 @@ def get_ppo_dispatch_summary(production_order):
 		GROUP BY se.posting_date, sed.lot, iva.attribute_value
 	""", {"fps": fps}, as_dict=True)
 
-	# Pivot combined rows into {date, lot, sizes: {size: qty}, total}
-	from collections import OrderedDict
-	key_map = OrderedDict()
-	all_sizes = set()
+	return _pivot_dispatch_rows(fpd_rows + fp_rows)
+
+@frappe.whitelist()
+def get_ppo_dispatch_summary_bulk(production_orders):
+	"""Batched variant of get_ppo_dispatch_summary. Accepts a list (or JSON /
+	comma string) of Production Order names and returns
+	{production_order: {"sizes": [...], "rows": [...]}, ...} for every requested
+	order (empty list of rows for orders with no dispatch). Runs the SAME two
+	dispatch aggregates as get_ppo_dispatch_summary, ONCE each, then buckets the
+	results back per order so parity with the single endpoint holds."""
+	if isinstance(production_orders, str):
+		txt = production_orders.strip()
+		if txt.startswith("["):
+			production_orders = frappe.parse_json(txt)
+		else:
+			production_orders = [p.strip() for p in txt.split(",") if p.strip()]
+	if not production_orders:
+		return {}
+	# de-dup while preserving order
+	seen = set()
+	ordered_pos = []
+	for po in production_orders:
+		if po and po not in seen:
+			seen.add(po)
+			ordered_pos.append(po)
+	production_orders = ordered_pos
+
+	# Empty result for every requested order (so callers always get a full map)
+	result = {po: {"sizes": [], "rows": []} for po in production_orders}
+
+	# ONE lot -> production_order map for ALL requested orders
+	lot_records = frappe.get_all(
+		"Lot",
+		{"production_order": ["in", production_orders]},
+		["name", "production_order"],
+	)
+	lot_to_po = {l.name: l.production_order for l in lot_records}
+	all_lots = list(lot_to_po.keys())
+	if not all_lots:
+		return result
+
+	# ONE Finishing Plan -> production_order map (via the FP's lot). Bucketing by
+	# the FP (against_id) mirrors the single endpoint, which selects rows by
+	# `against_id IN fps(order)` — so a row belongs to the PO that owns its FP.
+	fp_records = frappe.get_all(
+		"Finishing Plan",
+		{"lot": ["in", all_lots]},
+		["name", "lot"],
+	)
+	fp_to_po = {}
+	for fp in fp_records:
+		po = lot_to_po.get(fp.lot)
+		if po:
+			fp_to_po[fp.name] = po
+	fps = list(fp_to_po.keys())
+	if not fps:
+		return result
+
+	# Source 1: Finishing Plan Dispatch → Stock Entry (same joins as single,
+	# plus fpdi.against_id so rows can be bucketed back per production order)
+	fpd_rows = frappe.db.sql("""
+		SELECT
+			se.posting_date as date,
+			fpdi.against_id as fp,
+			fpdi.lot,
+			iva.attribute_value as size,
+			SUM(fpdi.quantity) as qty
+		FROM `tabFinishing Plan Dispatch Item` fpdi
+		JOIN `tabFinishing Plan Dispatch` fpd ON fpd.name = fpdi.parent
+		JOIN `tabStock Entry` se ON se.name = fpd.stock_entry
+			AND se.purpose = 'Material Issue' AND se.docstatus = 1
+		LEFT JOIN `tabItem Variant Attribute` iva
+			ON iva.parent = fpdi.item_variant AND iva.attribute = 'Size'
+		WHERE fpdi.against_id IN %(fps)s
+		AND fpd.docstatus = 1
+		GROUP BY fpdi.against_id, se.posting_date, fpdi.lot, iva.attribute_value
+	""", {"fps": fps}, as_dict=True)
+
+	# Source 2: Finishing Plan → Stock Entry direct (same joins as single,
+	# plus se.against_id so rows can be bucketed back per production order)
+	fp_rows = frappe.db.sql("""
+		SELECT
+			se.posting_date as date,
+			se.against_id as fp,
+			sed.lot,
+			iva.attribute_value as size,
+			SUM(sed.qty) as qty
+		FROM `tabStock Entry` se
+		JOIN `tabStock Entry Detail` sed ON sed.parent = se.name
+		LEFT JOIN `tabItem Variant Attribute` iva
+			ON iva.parent = sed.item AND iva.attribute = 'Size'
+		WHERE se.against = 'Finishing Plan'
+		AND se.against_id IN %(fps)s
+		AND se.purpose = 'Material Issue'
+		AND se.docstatus = 1
+		GROUP BY se.against_id, se.posting_date, sed.lot, iva.attribute_value
+	""", {"fps": fps}, as_dict=True)
+
+	# Bucket every aggregate row back to its production order via the FP map
+	from collections import defaultdict
+	per_po_rows = defaultdict(list)
 	for r in fpd_rows + fp_rows:
-		key = (str(r.date) if r.date else "", r.lot or "")
-		if key not in key_map:
-			key_map[key] = {"date": r.date, "lot": r.lot, "sizes": {}, "total": 0}
-		size = r.size or "Unknown"
-		all_sizes.add(size)
-		key_map[key]["sizes"][size] = (key_map[key]["sizes"].get(size, 0)) + (r.qty or 0)
-		key_map[key]["total"] += (r.qty or 0)
+		po = fp_to_po.get(r.fp)
+		if po:
+			per_po_rows[po].append(r)
 
-	# Sort by date, then lot
-	sorted_rows = sorted(key_map.values(), key=lambda x: (str(x["date"] or ""), x["lot"] or ""))
+	for po in production_orders:
+		result[po] = _pivot_dispatch_rows(per_po_rows.get(po, []))
 
-	return {
-		"sizes": sorted(all_sizes),
-		"rows": sorted_rows,
-	}
+	return result
 
 @frappe.whitelist()
 def get_sewing_progress_report(process=None, status=None, category=None, lot_list_val=None, item_list=None):

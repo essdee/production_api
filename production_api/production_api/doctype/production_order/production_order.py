@@ -493,15 +493,15 @@ QUANTITY_CHANGE_REQUESTED_BY_OPTIONS = ["Sales Team", "Planning Team", "Merch Te
 
 
 @frappe.whitelist()
-def update_quantity(production_order, size_quantities, requested_by, reason):
+def update_quantity_and_ratio(production_order, size_quantities, size_ratios, requested_by, reason):
 	doc = frappe.get_doc("Production Order", production_order)
 	doc.check_permission("write")
 
 	if doc.docstatus != 1:
-		frappe.throw("Quantity can be changed only after Production Order is submitted")
+		frappe.throw("Quantity and Ratio can be changed only after Production Order is submitted")
 
 	if doc.production_ordered_details:
-		frappe.throw("Cannot update quantity. Quantities are already ordered against Lots")
+		frappe.throw("Cannot update quantity or ratio. Quantities are already ordered against Lots")
 
 	if not doc.production_order_details:
 		frappe.throw("Production Order has no size details to update")
@@ -514,34 +514,43 @@ def update_quantity(production_order, size_quantities, requested_by, reason):
 		frappe.throw("Reason is required")
 
 	size_quantities = frappe.parse_json(size_quantities) or {}
-	if not size_quantities:
-		frappe.throw("No quantities were given")
+	size_ratios = frappe.parse_json(size_ratios) or {}
 
 	rows_by_size = get_rows_by_size(doc)
 	new_quantities = validate_size_quantities(size_quantities, rows_by_size)
+	new_ratios = validate_size_ratios(size_ratios, rows_by_size)
 
-	old_total = 0
-	new_total = 0
-	changes = []
+	qty_old_total = 0
+	qty_new_total = 0
+	qty_changes = []
+	ratio_changes = []
+	qty_changed = False
 	for size, row in rows_by_size.items():
 		old_qty = flt(row.quantity)
 		new_qty = new_quantities.get(size, old_qty)
-		old_total += old_qty
-		new_total += new_qty
+		qty_old_total += old_qty
+		qty_new_total += new_qty
 		if new_qty != old_qty:
-			changes.append({"size": size, "old_qty": old_qty, "new_qty": new_qty})
+			qty_changes.append({"size": size, "old_qty": old_qty, "new_qty": new_qty})
 			row.quantity = new_qty
+			qty_changed = True
 
-	if not changes:
-		frappe.throw("No quantity was changed")
-	if new_total <= 0:
+		old_ratio = flt(row.ratio)
+		new_ratio = new_ratios.get(size, old_ratio)
+		if new_ratio != old_ratio:
+			ratio_changes.append({"size": size, "old_ratio": old_ratio, "new_ratio": new_ratio})
+			row.ratio = new_ratio
+
+	if not qty_changes and not ratio_changes:
+		frappe.throw("No quantity or ratio was changed")
+	if qty_changed and qty_new_total <= 0:
 		frappe.throw("At least one size must have a quantity greater than zero")
 
 	doc.save(ignore_permissions=True)
-	add_quantity_update_comment(doc, changes, old_total, new_total, requested_by, reason)
-	append_to_comment_log(doc, changes, old_total, new_total, requested_by, reason)
+	add_quantity_ratio_update_comment(doc, qty_changes, ratio_changes, qty_old_total, qty_new_total, requested_by, reason)
+	append_quantity_ratio_to_comment_log(doc, qty_changes, ratio_changes, qty_old_total, qty_new_total, requested_by, reason)
 
-	return {"old_total": old_total, "new_total": new_total}
+	return {"qty_old_total": qty_old_total, "qty_new_total": qty_new_total}
 
 
 def get_rows_by_size(doc):
@@ -571,27 +580,51 @@ def validate_size_quantities(size_quantities, rows_by_size):
 	return new_quantities
 
 
-def add_quantity_update_comment(doc, changes, old_total, new_total, requested_by, reason):
-	lines = ["<b>Quantity Updated</b>"]
-	for change in changes:
-		lines.append(
-			f"{change['size']}: {format_comment_qty(change['old_qty'])} -> {format_comment_qty(change['new_qty'])}")
-	lines.append(f"<b>Total</b>: {format_comment_qty(old_total)} -> {format_comment_qty(new_total)}")
+def validate_size_ratios(size_ratios, rows_by_size):
+	"""Check every payload size exists and every ratio is a number >= 0."""
+	new_ratios = {}
+	for size, ratio in size_ratios.items():
+		if size not in rows_by_size:
+			frappe.throw(f"Size {size} is not part of this Production Order")
+		ratio = flt(ratio)
+		if ratio < 0:
+			frappe.throw(f"Ratio for size {size} cannot be negative")
+		new_ratios[size] = ratio
+	return new_ratios
+
+
+def add_quantity_ratio_update_comment(doc, qty_changes, ratio_changes, qty_old_total, qty_new_total, requested_by, reason):
+	lines = ["<b>Quantity/Ratio Updated</b>"]
+	if qty_changes:
+		lines.append("<b>Quantity</b>")
+		for change in qty_changes:
+			lines.append(
+				f"{change['size']}: {format_comment_qty(change['old_qty'])} -> {format_comment_qty(change['new_qty'])}")
+		lines.append(f"<b>Total</b>: {format_comment_qty(qty_old_total)} -> {format_comment_qty(qty_new_total)}")
+	if ratio_changes:
+		lines.append("<b>Ratio</b>")
+		for change in ratio_changes:
+			lines.append(
+				f"{change['size']}: {format_comment_qty(change['old_ratio'])} -> {format_comment_qty(change['new_ratio'])}")
 	lines.append(f"<b>Who Told to Change</b>: {requested_by}")
 	lines.append(f"<b>Reason</b>: {frappe.utils.escape_html(reason)}")
 	doc.add_comment("Comment", text="<br>".join(lines))
 
 
-def append_to_comment_log(doc, changes, old_total, new_total, requested_by, reason):
-	"""Append a dated, plain-text summary of the update to the 'comment_log' field.
+def append_quantity_ratio_to_comment_log(doc, qty_changes, ratio_changes, qty_old_total, qty_new_total, requested_by, reason):
+	"""Append a single dated, plain-text summary of the combined update to 'comment_log'.
 
 	The doc is submitted and 'comment_log' is read_only, so write via db_set."""
 	log_date = frappe.utils.formatdate(frappe.utils.nowdate(), "dd-mm-yyyy")
-	lines = [f"[{log_date}] Quantity Updated - {requested_by}"]
-	for change in changes:
+	lines = [f"[{log_date}] Quantity/Ratio Updated - {requested_by}"]
+	for change in qty_changes:
 		lines.append(
-			f"{change['size']}: {format_comment_qty(change['old_qty'])} -> {format_comment_qty(change['new_qty'])}")
-	lines.append(f"Total: {format_comment_qty(old_total)} -> {format_comment_qty(new_total)}")
+			f"Quantity {change['size']}: {format_comment_qty(change['old_qty'])} -> {format_comment_qty(change['new_qty'])}")
+	if qty_changes:
+		lines.append(f"Quantity Total: {format_comment_qty(qty_old_total)} -> {format_comment_qty(qty_new_total)}")
+	for change in ratio_changes:
+		lines.append(
+			f"Ratio {change['size']}: {format_comment_qty(change['old_ratio'])} -> {format_comment_qty(change['new_ratio'])}")
 	lines.append(f"Reason: {reason}")
 	append_comment_log_block(doc, "\n".join(lines))
 
