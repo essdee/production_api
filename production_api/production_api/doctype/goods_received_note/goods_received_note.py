@@ -1429,7 +1429,8 @@ class GoodsReceivedNote(Document):
             frappe.throw("Delivery Date is Higher than Posting Date")
         if self.against == 'Purchase Order':
             if (self.get('item_details')):
-                items = save_grn_purchase_item_details(self.item_details)
+                has_lots = _po_has_linked_lots(self.against_id)
+                items = save_grn_purchase_item_details(self.item_details, has_lots=has_lots)
                 self.set('items', items)
         elif not self.is_return and self.against == "Work Order":
             lot, process, internal, includes_packing = frappe.get_cached_value(
@@ -1515,6 +1516,7 @@ class GoodsReceivedNote(Document):
             if po_docstatus != 1:
                 frappe.throw('Purchase order is not submitted.', title='GRN')
             self.validate_quantity()
+            validate_grn_lots_subset(self.against_id, self.items)
             if not self.actual_date:
                 self.actual_date = self.posting_date
             if self.posting_date < self.actual_date:
@@ -1609,8 +1611,85 @@ def check_cut_stage_items(items, lot):
     return False
 
 
-def save_grn_purchase_item_details(item_details):
+def split_lot_rows(cell):
+    """Normalize a PO-GRN cell into a list of {lot, received, secondary_received}.
+
+    Prefers cell['lot_rows'] (the multi-lot split); falls back to a single
+    implicit row from the legacy cell['received'] / cell['lot'].
+    Zero/blank-qty rows are dropped.
+    """
+    def _f(v):
+        if isinstance(v, string_types):
+            v = v.strip()
+            return float(v) if v else 0.0
+        return float(v or 0)
+
+    out = []
+    lot_rows = cell.get("lot_rows")
+    if lot_rows:
+        for lr in lot_rows:
+            received = _f(lr.get("received"))
+            secondary = _f(lr.get("secondary_received"))
+            if received or secondary:
+                out.append({
+                    "lot": lr.get("lot"),
+                    "received": received,
+                    "secondary_received": secondary,
+                })
+    else:
+        received = _f(cell.get("received"))
+        secondary = _f(cell.get("secondary_received"))
+        if received or secondary:
+            out.append({
+                "lot": cell.get("lot"),
+                "received": received,
+                "secondary_received": secondary,
+            })
+    return out
+
+
+def _po_has_linked_lots(po_name):
+    """True when the Purchase Order has any linked lots (`sd_lot` populated).
+
+    The multi-lot vs legacy decision is made from authoritative PO state, NOT
+    from the per-cell presence/absence of `lot_rows` in the frontend payload.
+    That way a multi-lot GRN with some ordered cells left unreceived still
+    routes every cell through the multi-lot path (unreceived cells are simply
+    skipped) and a legacy PO is never dragged into the split path.
+    """
+    if not po_name:
+        return False
+    return bool(frappe.get_all(
+        "Purchase Order Lot",
+        filters={"parent": po_name, "parenttype": "Purchase Order"},
+        limit=1,
+    ))
+
+
+def _po_from_grn_ref(ref_docname):
+    """Resolve the parent Purchase Order name from a GRN row's ref_docname
+    (a Purchase Order Item). Returns None when it cannot be resolved."""
+    if not ref_docname:
+        return None
+    return frappe.db.get_value("Purchase Order Item", ref_docname, "parent")
+
+
+def _item_details_has_lots(item_details):
+    """Derive has_lots from the PO behind these GRN cells (best-effort, used
+    only when the caller does not pass an explicit has_lots)."""
+    for group in item_details:
+        for item in group.get('items', []):
+            for values in (item.get('values') or {}).values():
+                ref = values.get('ref_docname') if isinstance(values, dict) else None
+                if ref:
+                    return _po_has_linked_lots(_po_from_grn_ref(ref))
+    return False
+
+
+def save_grn_purchase_item_details(item_details, has_lots=None):
     item_details = update_if_string_instance(item_details)
+    if has_lots is None:
+        has_lots = _item_details_has_lots(item_details)
     items = []
     row_index = 0
     for table_index, group in enumerate(item_details):
@@ -1619,66 +1698,104 @@ def save_grn_purchase_item_details(item_details):
             item_attributes = item['attributes']
             if (item.get('primary_attribute')):
                 for attr, values in item['values'].items():
-                    if values.get('qty') or values.get('pending_qty') or values.get('received'):
-                        item_attributes[item.get('primary_attribute')] = attr
-                        item1 = {}
-                        variant_name = get_or_create_variant(
-                            item_name, item_attributes)
-                        validate_quantity_tolerance(variant_name, values.get(
-                            'qty'), values.get('pending_qty'), values.get('received'))
-                        item1['item_variant'] = variant_name
-                        item1['lot'] = item.get('lot')
-
-                        if isinstance(values.get('received'), string_types) and values.get('received') != '':
-                            values['received'] = float(values.get('received'))
-                        else:
-                            values['received'] = values.get('received') or 0
-                        item1['quantity'] = values.get('received')
-                        item1['uom'] = item.get('default_uom')
-                        if isinstance(values.get('secondary_received'), string_types) and values.get('secondary_received') != '':
-                            values['secondary_received'] = float(
-                                values.get('secondary_received'))
-                        else:
-                            values['secondary_received'] = values.get(
-                                'secondary_received') or 0
-                        item1['secondary_qty'] = values.get(
-                            'secondary_received')
-                        item1['secondary_uom'] = item.get('secondary_uom')
-                        item1['rate'] = values.get('rate')
-                        item1['tax'] = values.get('tax')
-                        item1['table_index'] = table_index
-                        item1['row_index'] = row_index
-                        item1['comments'] = item.get('comments')
-                        item1['ref_doctype'] = values.get('ref_doctype')
-                        item1['ref_docname'] = values.get('ref_docname')
-                        items.append(item1)
+                    _append_grn_purchase_rows(
+                        items, item, item_name, item_attributes, values,
+                        attr, table_index, row_index, has_lots)
             else:
                 if item['values'].get('default'):
-                    item1 = {}
-                    variant_name = get_or_create_variant(
-                        item_name, item_attributes)
-                    validate_quantity_tolerance(variant_name, item['values']['default'].get(
-                        'qty'), item['values']['default'].get('pending_qty'), item['values']['default'].get('received'))
-                    item1['item_variant'] = variant_name
-                    item1['lot'] = item.get('lot')
-                    item1['quantity'] = item['values']['default'].get(
-                        'received')
-                    item1['uom'] = item.get('default_uom')
-                    item1['secondary_qty'] = item['values']['default'].get(
-                        'secondary_received')
-                    item1['secondary_uom'] = item.get('secondary_uom')
-                    item1['rate'] = item['values']['default'].get('rate')
-                    item1['tax'] = item['values']['default'].get('tax')
-                    item1['table_index'] = table_index
-                    item1['row_index'] = row_index
-                    item1['comments'] = item.get('comments')
-                    item1['ref_doctype'] = item['values']['default'].get(
-                        'ref_doctype')
-                    item1['ref_docname'] = item['values']['default'].get(
-                        'ref_docname')
-                    items.append(item1)
+                    _append_grn_purchase_rows(
+                        items, item, item_name, item_attributes,
+                        item['values']['default'], None, table_index, row_index, has_lots)
             row_index += 1
     return items
+
+
+def _append_grn_purchase_rows(items, item, item_name, item_attributes, values,
+                              attr, table_index, row_index, has_lots):
+    """Emit GRN item dict(s) for one PO-GRN cell.
+
+    Mode is decided by whether the *Purchase Order* is multi-lot (`has_lots`),
+    NOT by the per-cell truthiness of `lot_rows`:
+      * MULTI-LOT PO (`has_lots` True): a cell with a populated `lot_rows`
+        split emits one row per non-zero lot (same ref_docname/rate/tax,
+        different lot; tolerance on the summed qty). A cell with an EMPTY
+        `lot_rows` — ordered but not received yet — is SKIPPED entirely (no
+        row), which is what makes staggered/partial multi-lot receipt work.
+        The inherited-lot single-row emission is never used here (that lot is
+        not in sd_lot and would be rejected by validate_grn_lots_subset).
+      * LEGACY PO (`has_lots` False): reproduce the original single-row
+        emission byte-for-byte — one row using the item's inherited lot. This
+        is the empty-`sd_lot` path and stays identical to pre-feature behavior,
+        ignoring any (possibly stale) lot_rows on the cell so an edited plain
+        `received` is never discarded.
+    """
+    if has_lots:
+        # ---- MULTI-LOT SPLIT PATH ----
+        # Empty lot_rows => cell not received yet => emit nothing. Never fall
+        # back to the legacy inherited-lot row.
+        if not values.get('lot_rows'):
+            return
+        splits = split_lot_rows(values)
+        if not splits:
+            return
+        if attr is not None:
+            item_attributes[item.get('primary_attribute')] = attr
+        variant_name = get_or_create_variant(item_name, item_attributes)
+        # Tolerance is per PO item row => validate the SUM of the split, once.
+        total_received = sum(s['received'] for s in splits)
+        validate_quantity_tolerance(
+            variant_name, values.get('qty'), values.get('pending_qty'), total_received)
+        for s in splits:
+            items.append({
+                'item_variant': variant_name,
+                'lot': s['lot'],
+                'quantity': s['received'],
+                'secondary_qty': s['secondary_received'],
+                'uom': item.get('default_uom'),
+                'secondary_uom': item.get('secondary_uom'),
+                'rate': values.get('rate'),
+                'tax': values.get('tax'),
+                'table_index': table_index,
+                'row_index': row_index,
+                'comments': item.get('comments'),
+                'ref_doctype': values.get('ref_doctype'),
+                'ref_docname': values.get('ref_docname'),
+            })
+        return
+
+    # ---- LEGACY SINGLE-LOT PATH (empty sd_lot) — byte-identical to original ----
+    # The qty/pending/received guard only applied to the primary-attribute
+    # branch in the original; the default branch emitted unconditionally.
+    if attr is not None and not (values.get('qty') or values.get('pending_qty') or values.get('received')):
+        return
+    if attr is not None:
+        item_attributes[item.get('primary_attribute')] = attr
+    variant_name = get_or_create_variant(item_name, item_attributes)
+    validate_quantity_tolerance(
+        variant_name, values.get('qty'), values.get('pending_qty'), values.get('received'))
+    if isinstance(values.get('received'), string_types) and values.get('received') != '':
+        values['received'] = float(values.get('received'))
+    else:
+        values['received'] = values.get('received') or 0
+    if isinstance(values.get('secondary_received'), string_types) and values.get('secondary_received') != '':
+        values['secondary_received'] = float(values.get('secondary_received'))
+    else:
+        values['secondary_received'] = values.get('secondary_received') or 0
+    items.append({
+        'item_variant': variant_name,
+        'lot': item.get('lot'),
+        'quantity': values.get('received'),
+        'secondary_qty': values.get('secondary_received'),
+        'uom': item.get('default_uom'),
+        'secondary_uom': item.get('secondary_uom'),
+        'rate': values.get('rate'),
+        'tax': values.get('tax'),
+        'table_index': table_index,
+        'row_index': row_index,
+        'comments': item.get('comments'),
+        'ref_doctype': values.get('ref_doctype'),
+        'ref_docname': values.get('ref_docname'),
+    })
 
 
 def save_grn_consumed_item_details(item_details):
@@ -1921,6 +2038,33 @@ def validate_quantity_tolerance(item_variant, total_qty, pending_qty, received_q
     return True
 
 
+def validate_grn_lots_subset(po_name, grn_items):
+    """Enforce GRN row lots subset of the PO's linked lot list — ONLY when the
+    PO has a populated sd_lot.
+
+    Conditional per owner spec:
+      * sd_lot EMPTY  -> legacy PO, no linked lots: return immediately. The
+        GRN keeps its single inherited lot (the UI does not allow lot editing),
+        so no new server gate is added and behavior is byte-identical to today.
+      * sd_lot POPULATED -> multi-lot PO: every GRN row lot must be non-empty
+        and present in sd_lot.
+    """
+    po = frappe.get_cached_doc("Purchase Order", po_name)
+    allowed = {row.lot for row in po.get("sd_lot") if row.lot}
+    if not allowed:
+        return  # legacy single-lot PO — untouched
+    for row in grn_items:
+        lot = (row.get("lot") or "").strip() if isinstance(row, dict) else (row.lot or "").strip()
+        variant = row.get("item_variant") if isinstance(row, dict) else row.item_variant
+        if not lot:
+            frappe.throw(_("Lot is required for item {0} in the GRN.").format(variant), title="GRN")
+        if lot not in allowed:
+            frappe.throw(
+                _("Lot {0} is not linked to Purchase Order {1}. Allowed lots: {2}").format(
+                    lot, po_name, ", ".join(sorted(allowed))),
+                title="GRN")
+
+
 def fetch_grn_item_details(items, ipd, lot, docstatus=0):
     if isinstance(items, string_types):
         items = json.loads(items)
@@ -2091,10 +2235,21 @@ def fetch_grn_packing_items(items):
     return box_qty
 
 
-def fetch_grn_purchase_item_details(items, docstatus=0):
+def _grn_rows_has_lots(items):
+    """has_lots for a set of GRN rows (best-effort via the first ref_docname)."""
+    for it in items:
+        ref = it.get('ref_docname')
+        if ref:
+            return _po_has_linked_lots(_po_from_grn_ref(ref))
+    return False
+
+
+def fetch_grn_purchase_item_details(items, docstatus=0, has_lots=None):
     items = [item.as_dict() for item in items]
     if docstatus != 0:
         items = [item for item in items if item.get('quantity') > 0]
+    if has_lots is None:
+        has_lots = _grn_rows_has_lots(items)
     item_details = []
     items = sorted(items, key=lambda i: i['row_index'])
     for key, variants in groupby(items, lambda i: i['row_index']):
@@ -2103,9 +2258,21 @@ def fetch_grn_purchase_item_details(items, docstatus=0):
             "Item Variant", variants[0]['item_variant'])
         current_item_attribute_details = get_attribute_details(
             current_variant.item)
+        if has_lots:
+            # MULTI-LOT: the displayed "Lot" column must show the PO item row's
+            # ORIGINAL raised lot (e.g. the "Open Lot" placeholder), NOT
+            # variants[0]['lot'] — after the feature splits one ordered cell into
+            # several GRN rows, variants[0] is the first received/split lot. The
+            # per-lot split lives in the Received Quantity column (lot_rows).
+            display_lot = frappe.db.get_value(
+                "Purchase Order Item", variants[0]['ref_docname'], "lot"
+            ) or variants[0]['lot']
+        else:
+            # LEGACY / WO — byte-identical to pre-feature: the row's own lot.
+            display_lot = variants[0]['lot']
         item = {
             'name': current_variant.item,
-            'lot': variants[0]['lot'],
+            'lot': display_lot,
             'attributes': get_item_attribute_details(current_variant, current_item_attribute_details),
             'primary_attribute': current_item_attribute_details['primary_attribute'],
             'values': {},
@@ -2121,36 +2288,98 @@ def fetch_grn_purchase_item_details(items, docstatus=0):
                     "Item Variant", variant['item_variant'])
                 for attr in current_variant.attributes:
                     if attr.attribute == item.get('primary_attribute'):
-                        item['values'][attr.attribute_value] = {
-                            'received': variant.quantity,
-                            'secondary_received': variant.secondary_qty,
-                            'rate': variant.rate,
-                            'tax': variant.tax,
-                        }
-                        if docstatus == 0:
-                            doc = frappe.get_cached_doc(
-                                "Purchase Order Item", variant.ref_docname)
-                            item['values'][attr.attribute_value]['qty'] = doc.qty
-                            item['values'][attr.attribute_value]['secondary_qty'] = doc.secondary_qty
-                            item['values'][attr.attribute_value]['pending_qty'] = doc.pending_qty
-                            item['values'][attr.attribute_value]['ref_doctype'] = variant.ref_doctype
-                            item['values'][attr.attribute_value]['ref_docname'] = variant.ref_docname
+                        if has_lots:
+                            # MULTI-LOT: accumulate multiple GRN rows for the
+                            # same attribute value into one cell (each row = one
+                            # lot split). The pre-seeded {'qty':0,'rate':0} cell
+                            # lacks 'received', so replace it with the full
+                            # accumulator shape first.
+                            cell = item['values'].get(attr.attribute_value)
+                            if cell is None or 'received' not in cell:
+                                cell = {
+                                    'received': 0, 'secondary_received': 0,
+                                    'rate': variant.rate, 'tax': variant.tax,
+                                    'lot_rows': [],
+                                }
+                                item['values'][attr.attribute_value] = cell
+                            cell['received'] += (variant.quantity or 0)
+                            cell['secondary_received'] += (variant.secondary_qty or 0)
+                            cell['rate'] = variant.rate
+                            cell['tax'] = variant.tax
+                            cell.setdefault('lot_rows', []).append({
+                                'lot': variant.lot,
+                                'received': variant.quantity,
+                                'secondary_received': variant.secondary_qty,
+                            })
+                            if docstatus == 0:
+                                doc = frappe.get_cached_doc(
+                                    "Purchase Order Item", variant.ref_docname)
+                                cell['qty'] = doc.qty
+                                cell['secondary_qty'] = doc.secondary_qty
+                                cell['pending_qty'] = doc.pending_qty
+                                cell['ref_doctype'] = variant.ref_doctype
+                                cell['ref_docname'] = variant.ref_docname
+                        else:
+                            # LEGACY — byte-identical to pre-feature: one cell
+                            # per attribute value, plain received, no lot_rows.
+                            item['values'][attr.attribute_value] = {
+                                'received': variant.quantity,
+                                'secondary_received': variant.secondary_qty,
+                                'rate': variant.rate,
+                                'tax': variant.tax,
+                            }
+                            if docstatus == 0:
+                                doc = frappe.get_cached_doc(
+                                    "Purchase Order Item", variant.ref_docname)
+                                item['values'][attr.attribute_value]['qty'] = doc.qty
+                                item['values'][attr.attribute_value]['secondary_qty'] = doc.secondary_qty
+                                item['values'][attr.attribute_value]['pending_qty'] = doc.pending_qty
+                                item['values'][attr.attribute_value]['ref_doctype'] = variant.ref_doctype
+                                item['values'][attr.attribute_value]['ref_docname'] = variant.ref_docname
                         break
         else:
-            item['values']['default'] = {
-                'received': variants[0].quantity,
-                'secondary_received': variants[0].secondary_qty,
-                'rate': variants[0].rate,
-                'tax': variants[0].tax
-            }
-            if docstatus == 0:
-                doc = frappe.get_cached_doc(
-                    "Purchase Order Item", variants[0].ref_docname)
-                item['values']['default']['qty'] = doc.qty
-                item['values']['default']['secondary_qty'] = doc.secondary_qty
-                item['values']['default']['pending_qty'] = doc.pending_qty
-                item['values']['default']['ref_doctype'] = variants[0].ref_doctype
-                item['values']['default']['ref_docname'] = variants[0].ref_docname
+            if has_lots:
+                # MULTI-LOT: accumulate all rows (lot splits) into one cell.
+                cell = {
+                    'received': 0, 'secondary_received': 0,
+                    'rate': variants[0].rate, 'tax': variants[0].tax,
+                    'lot_rows': [],
+                }
+                for variant in variants:
+                    cell['received'] += (variant.quantity or 0)
+                    cell['secondary_received'] += (variant.secondary_qty or 0)
+                    cell['rate'] = variant.rate
+                    cell['tax'] = variant.tax
+                    cell['lot_rows'].append({
+                        'lot': variant.lot,
+                        'received': variant.quantity,
+                        'secondary_received': variant.secondary_qty,
+                    })
+                if docstatus == 0:
+                    doc = frappe.get_cached_doc(
+                        "Purchase Order Item", variants[0].ref_docname)
+                    cell['qty'] = doc.qty
+                    cell['secondary_qty'] = doc.secondary_qty
+                    cell['pending_qty'] = doc.pending_qty
+                    cell['ref_doctype'] = variants[0].ref_doctype
+                    cell['ref_docname'] = variants[0].ref_docname
+                item['values']['default'] = cell
+            else:
+                # LEGACY — byte-identical to pre-feature.
+                item['values']['default'] = {
+                    'received': variants[0].quantity,
+                    'secondary_received': variants[0].secondary_qty,
+                    'rate': variants[0].rate,
+                    'tax': variants[0].tax
+                }
+                if docstatus == 0:
+                    doc = frappe.get_cached_doc(
+                        "Purchase Order Item", variants[0].ref_docname)
+                    item['values']['default']['qty'] = doc.qty
+                    item['values']['default']['secondary_qty'] = doc.secondary_qty
+                    item['values']['default']['pending_qty'] = doc.pending_qty
+                    item['values']['default']['ref_doctype'] = variants[0].ref_doctype
+                    item['values']['default']['ref_docname'] = variants[0].ref_docname
         index = -1
         if item_details:
             index = get_item_group_index(

@@ -719,6 +719,157 @@ def create_purchase_order_log(doc_name, item, new_date, comment):
 	log_doc.submit()
 
 @frappe.whitelist()
+def get_purchase_order_lots(purchase_order):
+	"""Return the list of Lot names linked to a Purchase Order (may be empty)."""
+	doc = frappe.get_cached_doc("Purchase Order", purchase_order)
+	return [row.lot for row in doc.get("sd_lot") if row.lot]
+
+
+@frappe.whitelist()
+def get_purchase_orders_for_lot(lot):
+	"""Submitted Purchase Orders whose sd_lot contains `lot`."""
+	rows = frappe.get_all(
+		"Purchase Order Lot",
+		filters={"lot": lot, "parenttype": "Purchase Order"},
+		fields=["parent"],
+	)
+	names = list({r.parent for r in rows})
+	if not names:
+		return []
+	return frappe.get_all(
+		"Purchase Order",
+		filters={"name": ["in", names], "docstatus": 1},
+		pluck="name",
+	)
+
+
+def _lot_has_grn_on_po(po_name, lot):
+	"""True if ANY Goods Received Note (draft OR submitted) against this PO
+	references `lot`.
+
+	Existence-based guard: a draft GRN blocks unlink too, not only submitted
+	ones — unlinking a lot that any GRN already points at would orphan that
+	reference. Uses get_all (no raw SQL) so the security linter stays quiet.
+	"""
+	grns = frappe.get_all(
+		"Goods Received Note",
+		filters={"against": "Purchase Order", "against_id": po_name, "docstatus": ["in", [0, 1]]},
+		pluck="name",
+	)
+	if not grns:
+		return False
+	return bool(frappe.get_all(
+		"Goods Received Note Item",
+		filters={"parent": ["in", grns], "lot": lot},
+		limit=1,
+	))
+
+
+@frappe.whitelist()
+def update_po_lot_links(doc_name, add_lots=None, remove_lots=None, comment=None):
+	"""Single shared path to LINK and/or UNLINK lots on a Purchase Order.
+
+	Idempotent: linking an already-linked lot is a no-op; unlinking an absent
+	lot is a no-op. Post-submit-safe (`sd_lot` is allow_on_submit). Unlink
+	guard (existence-based): a lot referenced by ANY Goods Received Note
+	(draft or submitted) against this PO cannot be removed (would orphan that
+	GRN reference). Writes one Purchase Order Log per action ("Lot Linked" /
+	"Lot Unlinked") and one form comment. Mirrors the update_delivery_date /
+	create_purchase_order_log audit pattern.
+	"""
+	add_lots = json.loads(add_lots) if isinstance(add_lots, string_types) else (add_lots or [])
+	remove_lots = json.loads(remove_lots) if isinstance(remove_lots, string_types) else (remove_lots or [])
+
+	doc = frappe.get_doc("Purchase Order", doc_name)
+	# Enforce write permission on THIS Purchase Order before any mutation, so a
+	# caller without access cannot relink lots (mirrors update_delivery_date /
+	# close_or_open_purchase_orders). This is the single shared write path, so
+	# it also protects the Lot-side update_lot_po_links entry point, which
+	# delegates every affected PO to this function.
+	frappe.has_permission("Purchase Order", "write", doc=doc, throw=True)
+	if doc.docstatus == 2:
+		frappe.throw(_("Cannot change lots on a cancelled Purchase Order"))
+
+	existing = {row.lot for row in doc.get("sd_lot") if row.lot}
+	# Dedupe within the incoming batch as well as against already-linked lots,
+	# preserving order — a lot passed twice in one call links/unlinks only once.
+	seen_add = set(existing)
+	to_add = []
+	for l in add_lots:
+		if l and l not in seen_add:
+			to_add.append(l)
+			seen_add.add(l)
+	seen_remove = set()
+	to_remove = []
+	for l in remove_lots:
+		if l and l in existing and l not in seen_remove:
+			to_remove.append(l)
+			seen_remove.add(l)
+
+	for lot in to_remove:
+		if _lot_has_grn_on_po(doc.name, lot):
+			frappe.throw(_(
+				"Lot {0} is referenced by a Goods Received Note on this Purchase Order and cannot be unlinked."
+			).format(lot))
+
+	if not to_add and not to_remove:
+		return [row.lot for row in doc.get("sd_lot") if row.lot]
+
+	for lot in to_add:
+		doc.append("sd_lot", {"lot": lot})
+	if to_remove:
+		doc.set("sd_lot", [row for row in doc.get("sd_lot") if row.lot not in to_remove])
+
+	doc.flags.ignore_item_details_check = True
+	doc.save(ignore_permissions=True)
+
+	if to_add:
+		_create_po_lot_log(doc, to_add, "Lot Linked", comment)
+	if to_remove:
+		_create_po_lot_log(doc, to_remove, "Lot Unlinked", comment)
+
+	summary = []
+	if to_add:
+		summary.append("Linked: " + ", ".join(to_add))
+	if to_remove:
+		summary.append("Unlinked: " + ", ".join(to_remove))
+	doc.add_comment("Comment", text="<br>".join(summary) + f"<br>Reason: {comment}")
+	return [row.lot for row in doc.get("sd_lot") if row.lot]
+
+
+@frappe.whitelist()
+def update_lot_po_links(lot, add_pos=None, remove_pos=None, comment=None):
+	"""Lot-side entry point: link/unlink ONE lot across many Purchase Orders.
+
+	Delegates each PO to update_po_lot_links so link/unlink/guard/audit logic
+	is shared (one log per action per affected PO) and stays idempotent.
+	"""
+	add_pos = json.loads(add_pos) if isinstance(add_pos, string_types) else (add_pos or [])
+	remove_pos = json.loads(remove_pos) if isinstance(remove_pos, string_types) else (remove_pos or [])
+	for po in add_pos:
+		if frappe.db.get_value("Purchase Order", po, "docstatus") != 1:
+			frappe.throw(_("Purchase Order {0} is not submitted.").format(po))
+		update_po_lot_links(po, add_lots=[lot], comment=comment)
+	for po in remove_pos:
+		update_po_lot_links(po, remove_lots=[lot], comment=comment)
+
+
+def _create_po_lot_log(doc, lots, action, comment):
+	"""Write one Purchase Order Log for a link/unlink action on `doc`."""
+	log_doc = frappe.new_doc("Purchase Order Log")
+	log_doc.update({
+		"purchase_order": doc.name,
+		"po_date": doc.po_date,
+		"supplier": doc.supplier,
+		"type": action,
+		"posting_date": frappe.utils.nowdate(),
+		"posting_time": frappe.utils.now(),
+		"reason": f"{', '.join(lots)}: {comment}",
+	})
+	log_doc.flags.ignore_permissions = 1
+	log_doc.submit()
+
+@frappe.whitelist()
 def duplicate_po(po, items_data=None):
 	"""Create a duplicate of the given Purchase Order as a new Draft.
 

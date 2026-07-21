@@ -49,6 +49,83 @@ frappe.ui.form.on("Lot", {
 					lot: frm.doc.name
 				});
 			}, __("View"));
+
+			frm.add_custom_button(__('Link to PO'), function() {
+				new frappe.ui.form.MultiSelectDialog({
+					doctype: 'Purchase Order',
+					target: frm,
+					date_field: 'po_date',
+					get_query() {
+						return { filters: { docstatus: 1, open_status: 'Open' } };
+					},
+					primary_action_label: __('Link'),
+					action(selections) {
+						if (!selections || !selections.length) {
+							frappe.show_alert({ message: __('Select at least one Purchase Order'), indicator: 'red' });
+							return;
+						}
+						frappe.prompt(
+							[{ fieldname: 'comment', fieldtype: 'Small Text', label: 'Reason', reqd: 1 }],
+							function(values) {
+								frappe.call({
+									method: 'production_api.production_api.doctype.purchase_order.purchase_order.update_lot_po_links',
+									args: { lot: frm.doc.name, add_pos: selections, comment: values.comment },
+									freeze: true,
+									freeze_message: __('Linking lot to Purchase Orders...'),
+									callback: function() {
+										frappe.show_alert({ message: __('Lot linked to {0} PO(s)', [selections.length]), indicator: 'green' });
+									},
+								});
+							},
+							__('Reason for Linking'),
+							__('Link')
+						);
+					},
+				});
+			}, __('Actions'));
+
+			frm.add_custom_button(__('Unlink from PO'), function() {
+				frappe.call({
+					method: 'production_api.production_api.doctype.purchase_order.purchase_order.get_purchase_orders_for_lot',
+					args: { lot: frm.doc.name },
+					callback: function(r) {
+						const linked = r.message || [];
+						if (!linked.length) {
+							frappe.show_alert({ message: __('This lot is not linked to any submitted PO'), indicator: 'blue' });
+							return;
+						}
+						new frappe.ui.form.MultiSelectDialog({
+							doctype: 'Purchase Order',
+							target: frm,
+							date_field: 'po_date',
+							get_query() {
+								return { filters: { name: ['in', linked], docstatus: 1 } };
+							},
+							primary_action_label: __('Unlink'),
+							action(selections) {
+								if (!selections || !selections.length) {
+									frappe.show_alert({ message: __('Select at least one Purchase Order'), indicator: 'red' });
+									return;
+								}
+								frappe.prompt(
+									[{ fieldname: 'comment', fieldtype: 'Small Text', label: 'Reason', reqd: 1 }],
+									function(values) {
+										frappe.call({
+											method: 'production_api.production_api.doctype.purchase_order.purchase_order.update_lot_po_links',
+											args: { lot: frm.doc.name, remove_pos: selections, comment: values.comment },
+											freeze: true,
+											freeze_message: __('Unlinking lot from Purchase Orders...'),
+											// unlink-guard throw (received qty) surfaces via the standard error dialog
+										});
+									},
+									__('Reason for Unlinking'),
+									__('Unlink')
+								);
+							},
+						});
+					},
+				});
+			}, __('Actions'));
 		}
 		frappe.db.get_single_value("T and A Settings", "assigned_person_editer_role").then((res) => {
 			if (!frappe.user.has_role(res)) {
