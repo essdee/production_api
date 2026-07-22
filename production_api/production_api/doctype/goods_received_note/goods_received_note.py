@@ -19,6 +19,7 @@ from production_api.production_api.doctype.work_order.work_order import get_bom_
 from production_api.production_api.doctype.finishing_plan.finishing_plan import apply_auto_fp_status
 from production_api.production_api.doctype.purchase_order.purchase_order import (
     get_item_attribute_details, get_item_group_index)
+from production_api.production_api.doctype.mrp_settings.mrp_settings import post_yrp_request
 from production_api.utils import (
     get_panel_list, get_stich_details, update_if_string_instance, get_lpiece_variant, get_finishing_plan_dict,
     get_finishing_plan_list, get_finishing_rework_dict, get_finishing_rework_list, get_variant_attr_details)
@@ -40,6 +41,21 @@ class GoodsReceivedNote(Document):
             for name in ste_list:
                 doc = frappe.get_doc("Stock Entry", name)
                 doc.cancel()
+        # essdee_yrp transfer: cancel the mrp Material Issue HERE (before_cancel), i.e.
+        # BEFORE on_cancel's update_stock_ledger reverses the GRN's own inward stock.
+        # The issue consumed exactly that inward; if the inward is reversed while the
+        # issue still stands, the ledger repost drives the issue's balance negative
+        # (NegativeStockError). Cancelling the issue first restores the stock so the
+        # inward reversal nets to zero. This is a LOCAL step — a failure aborts the whole
+        # cancel before yrp is touched; the remote yrp reversal stays the LAST on_cancel step.
+        if self.against == "Purchase Order" and self.get("essdee_yrp_stock_entry_created"):
+            mi_name = self.get("mrp_material_issue_ref")
+            if mi_name and frappe.db.get_value("Stock Entry", mi_name, "docstatus") == 1:
+                mi = frappe.get_doc("Stock Entry", mi_name)
+                # This GRN (still docstatus 1 at before_cancel) links the issue via
+                # mrp_material_issue_ref; ignore that back-link so the issue can cancel.
+                mi.flags.ignore_links = True
+                mi.cancel()
 
     def onload(self):
         if self.against == "Purchase Order":
@@ -1100,7 +1116,8 @@ class GoodsReceivedNote(Document):
     def on_cancel(self):
         logger = get_module_logger("goods_received_note")
         self.ignore_linked_doctypes = (
-            "Stock Ledger Entry", "Repost Item Valuation", "Cut Panel Movement", "Cut Bundle Movement Ledger")
+            "Stock Ledger Entry", "Repost Item Valuation", "Cut Panel Movement",
+            "Cut Bundle Movement Ledger", "Stock Entry")
         make_piece_calculation = False
         if self.against == 'Purchase Order':
             logger.debug(
@@ -1262,6 +1279,39 @@ class GoodsReceivedNote(Document):
             )
         self.generate_rework_docs()
         self.update_finishing_doc()
+
+        # --- essdee_yrp reversal (PO-GRN transfer) — remote call LAST, both-or-neither ---
+        if self.against == "Purchase Order" and self.get("essdee_yrp_stock_entry_created"):
+            # The mrp Material Issue was already cancelled in before_cancel (so the core
+            # inward reversal above did not repost negative). REMOTE LAST: reverse on yrp.
+            # Any yrp/HTTP failure rolls back the MI-cancel + the core GRN cancel too, so it
+            # stays strictly both-cancel-or-neither.
+            # The HTTP call, the status-code check AND resp.json() parsing all live INSIDE
+            # this guard: a malformed/non-JSON/500/unexpected response must also roll back
+            # the MI-cancel + core GRN cancel so the GRN stays docstatus==1 (never escapes
+            # the both-or-neither contract with an uncaught error).
+            try:
+                resp = post_yrp_request(
+                    "/api/method/essdee_yrp.api.stock_transfer.cancel_grn_transfer",
+                    {"source_grn": self.name})
+                if resp.status_code != 200:
+                    frappe.throw(_("essdee_yrp returned HTTP {0} reversing the transfer. "
+                                   "GRN not cancelled.").format(resp.status_code))
+                result = (resp.json() or {}).get("message") or {}
+                if not result.get("ok"):
+                    frappe.throw(_("essdee_yrp could not reverse the transfer: {0}. "
+                                   "GRN not cancelled.").format(result.get("error") or _("unknown error")))
+            except frappe.ValidationError:
+                # our own clear throws above (HTTP status / yrp rejection) — roll back once, re-raise.
+                frappe.db.rollback()
+                raise
+            except Exception as e:
+                # network / non-JSON / any unexpected failure -> roll back, GRN stays active.
+                frappe.db.rollback()
+                frappe.throw(_("Could not reverse the essdee_yrp transfer ({0}). "
+                               "GRN not cancelled.").format(str(e)))
+            # 3) yrp reversed -> clear flag; on_cancel returns -> request commits all together.
+            self.db_set("essdee_yrp_stock_entry_created", 0)
 
     def reupdate_rework_stock(self):
         wo_doc = frappe.get_doc(self.against, self.against_id)
@@ -3972,3 +4022,87 @@ def on_doctype_update():
     # prefix serves the list-view SELECT DISTINCT against; full index serves
     # the (against, against_id) filters used across the app
     frappe.db.add_index("Goods Received Note", ["against", "against_id"])
+
+
+@frappe.whitelist()
+def create_essdee_yrp_stock_entry(grn_name):
+    """Atomic cross-bench transfer (PO-GRNs only). The mrp Material Issue (at
+    delivery_location) is created+submitted first but stays uncommitted until the yrp
+    receipt succeeds; any yrp/HTTP/network failure rolls it back. Warehouse is resolved
+    on the yrp side from the supplier (= delivery_location); received_type = 'Accepted'."""
+    doc = frappe.get_doc("Goods Received Note", grn_name)
+
+    # Authorization gate: this transfer creates+submits a Stock Entry with
+    # ignore_permissions, so the caller must hold write access to THIS GRN first
+    # (mirrors the update_po_lot_links permission gate). Raises frappe.PermissionError.
+    frappe.has_permission("Goods Received Note", "write", doc=doc, throw=True)
+
+    if doc.docstatus != 1:
+        frappe.throw(_("GRN must be submitted before transferring to essdee_yrp."))
+    if doc.against != "Purchase Order":
+        frappe.throw(_("Only Purchase-Order GRNs can be transferred to essdee_yrp."))
+    if doc.get("essdee_yrp_stock_entry_created"):
+        frappe.throw(_("Already transferred to essdee_yrp (Stock Entry {0}).")
+                     .format(doc.get("essdee_yrp_stock_entry") or "?"))
+
+    src = [r for r in doc.items if flt(r.quantity) > 0]
+    if not src:
+        frappe.throw(_("No GRN items with positive quantity to transfer."))
+
+    # 1) mrp reduction: Material Issue at delivery_location (uncommitted)
+    mi = frappe.new_doc("Stock Entry")                 # mrp_stock Stock Entry
+    mi.purpose = "Material Issue"
+    mi.against = "Goods Received Note"
+    mi.against_id = grn_name
+    mi.from_warehouse = doc.delivery_location
+    # Give every row its OWN row_index. The mrp Stock Entry desk form does NOT render the
+    # flat child table — its Vue grid renders fetch_stock_entry_items(items) (pushed via
+    # onload -> __onload.item_details), which groups rows by row_index and builds each
+    # group from its FIRST row's parent item. Left unset, the Int column defaults every row
+    # to 0, so rows of different parent items collapse into a single grouped entry and all
+    # but the first silently vanish from the form (child table + amounts stay correct — a
+    # pure display bug). One distinct row_index per row keeps every (item, lot, qty) visible.
+    # Per ROW (not per logical item as a desk-created SE would group): intentional — favours
+    # completeness (every row rendered) over the merged size-grid, and is the only safe choice
+    # since same-item different-lot rows must not share a row_index (the grouping reads lot from
+    # the group's first row only).
+    mi.set("items", [{"item": r.item_variant, "lot": r.lot, "qty": r.quantity, "uom": r.uom,
+                      "received_type": r.received_type, "remarks": "essdee_yrp transfer",
+                      "row_index": idx, "table_index": 0} for idx, r in enumerate(src)])
+    mi.flags.allow_from_grn = True
+    mi.insert(ignore_permissions=True)
+    mi.submit()                                        # -SLE, NOT yet committed
+
+    # 2) POST to essdee_yrp (supplier = delivery_location; lot per row; received_type Accepted)
+    payload = {"source_grn": grn_name, "supplier": doc.delivery_location,
+               "items": [{"item_variant": r.item_variant, "qty": r.quantity, "uom": r.uom,
+                          "rate": r.rate, "lot": r.lot, "received_type": "Accepted"} for r in src]}
+    # The HTTP call, the status-code check AND resp.json() parsing all live INSIDE this
+    # guard: a malformed/non-JSON/500/unexpected response must also roll back the mrp
+    # Material Issue (never leave it committed) and surface a clear error.
+    try:
+        resp = post_yrp_request(
+            "/api/method/essdee_yrp.api.stock_transfer.receive_grn_transfer",
+            {"payload": frappe.as_json(payload)})
+        if resp.status_code != 200:
+            frappe.throw(_("essdee_yrp returned HTTP {0}. Nothing was transferred.").format(resp.status_code))
+        result = (resp.json() or {}).get("message") or {}
+        if not result.get("ok"):
+            frappe.throw(_("essdee_yrp rejected the transfer: {0}").format(result.get("error") or _("unknown error")))
+    except frappe.ValidationError:
+        # our own clear throws above (HTTP status / yrp rejection) — roll back once, re-raise as-is.
+        frappe.db.rollback()
+        raise
+    except Exception as e:
+        # network / non-JSON / any unexpected failure -> roll back the Material Issue + clear error.
+        frappe.db.rollback()
+        frappe.throw(_("Could not complete the essdee_yrp transfer ({0}). "
+                       "Nothing was transferred.").format(str(e)))
+
+    # 3) Success: stamp GRN; both reductions commit together at request end
+    frappe.db.set_value("Goods Received Note", grn_name, {
+        "essdee_yrp_stock_entry_created": 1,
+        "essdee_yrp_stock_entry": result.get("stock_entry"),
+        "mrp_material_issue_ref": mi.name})
+    return {"ok": True, "yrp_stock_entry": result.get("stock_entry"),
+            "mrp_material_issue": mi.name, "message": _("Transferred to essdee_yrp.")}

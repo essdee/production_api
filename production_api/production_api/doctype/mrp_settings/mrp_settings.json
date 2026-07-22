@@ -19,6 +19,10 @@
   "column_break_txmw",
   "sales_api_key",
   "sales_api_secret",
+  "yrp_settings_section",
+  "yrp_site_url",
+  "yrp_api_key",
+  "yrp_api_secret",
   "url_shortner_settings_section",
   "shortned_url_domain",
   "auto_send_notifications",
@@ -226,6 +230,27 @@
    "fieldname": "sales_api_secret",
    "fieldtype": "Password",
    "label": "Sales API Secret"
+  },
+  {
+   "collapsible": 1,
+   "fieldname": "yrp_settings_section",
+   "fieldtype": "Section Break",
+   "label": "essdee_yrp Settings"
+  },
+  {
+   "fieldname": "yrp_site_url",
+   "fieldtype": "Data",
+   "label": "YRP Site URL"
+  },
+  {
+   "fieldname": "yrp_api_key",
+   "fieldtype": "Data",
+   "label": "YRP API Key"
+  },
+  {
+   "fieldname": "yrp_api_secret",
+   "fieldtype": "Password",
+   "label": "YRP API Secret"
   },
   {
    "fieldname": "finishing_inward_process",

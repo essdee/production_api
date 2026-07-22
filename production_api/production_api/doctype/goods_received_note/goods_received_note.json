@@ -18,6 +18,9 @@
   "cutting_laysheet",
   "is_internal_unit",
   "transfer_complete",
+  "essdee_yrp_stock_entry_created",
+  "essdee_yrp_stock_entry",
+  "mrp_material_issue_ref",
   "is_return",
   "is_rework",
   "is_pack",
@@ -434,6 +437,32 @@
    "fieldtype": "Check",
    "hidden": 1,
    "label": "Transfer Complete",
+   "read_only": 1
+  },
+  {
+   "allow_on_submit": 1,
+   "default": "0",
+   "fieldname": "essdee_yrp_stock_entry_created",
+   "fieldtype": "Check",
+   "label": "essdee_yrp Stock Entry Created",
+   "no_copy": 1,
+   "read_only": 1
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "essdee_yrp_stock_entry",
+   "fieldtype": "Data",
+   "label": "essdee_yrp Stock Entry",
+   "no_copy": 1,
+   "read_only": 1
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "mrp_material_issue_ref",
+   "fieldtype": "Link",
+   "label": "mrp Material Issue",
+   "no_copy": 1,
+   "options": "Stock Entry",
    "read_only": 1
   },
   {

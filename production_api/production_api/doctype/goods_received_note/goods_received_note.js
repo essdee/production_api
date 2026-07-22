@@ -230,6 +230,26 @@ frappe.ui.form.on('Goods Received Note', {
 				})
 			})
 		}
+		if(frm.events.check_eligible_to_create_yrp_stock_entry(frm)){
+			frm.add_custom_button("Create essdee_yrp Stock Entry", () => {
+				frappe.confirm(
+					"Transfer this GRN's stock to essdee_yrp? This reduces stock here and " +
+					"increases it on essdee_yrp.",
+					() => frappe.call({
+						method: "production_api.production_api.doctype.goods_received_note.goods_received_note.create_essdee_yrp_stock_entry",
+						args: { grn_name: frm.doc.name },
+						freeze: true, freeze_message: "Transferring to essdee_yrp…",
+						callback: (r) => {
+							if (r.message && r.message.ok) {
+								frappe.msgprint({ title: "Transferred", indicator: "green",
+									message: "essdee_yrp Stock Entry " + r.message.yrp_stock_entry });
+								frm.reload_doc();   // re-fetch -> checkbox now hides the button
+							}
+						}
+					})
+				);
+			});
+		}
 		if(frm.doc.docstatus == 1 && frm.doc.against == "Work Order" && !frm.doc.is_return){
 			frm.add_custom_button("Cancel", ()=> {
 				frm._cancel()
@@ -254,6 +274,13 @@ frappe.ui.form.on('Goods Received Note', {
 			frm.doc.is_internal_unit && 
 			!frm.doc.transfer_complete && 
 			!frm.doc.is_return
+		)
+	},
+	check_eligible_to_create_yrp_stock_entry(frm){
+		return (
+			frm.doc.docstatus == 1 &&
+			frm.doc.against == "Purchase Order" &&
+			!frm.doc.essdee_yrp_stock_entry_created
 		)
 	},
 	save_item_details: function(frm) {
