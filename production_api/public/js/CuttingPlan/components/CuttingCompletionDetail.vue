@@ -248,24 +248,29 @@ function get_total(){
             Object.keys(item.Panel).forEach(part => {
                 total_cut_qty[part] = 0
                 item.items.forEach((row) => {
-                    if(row.completed && row.attributes[item.set_item_attr] == part){
-                        let x = 0
-                        Object.keys(row.values).forEach(key => {
-                            x += row.values[key]
-                            if (!total_dict[part]){
-                                total_dict[part] = {}
-                            }    
-                            if (total_dict[part][key]){
-                                total_dict[part][key] += row.values[key]
-                            }
-                            else{
-                                total_dict[part][key] = row.values[key]
-                            }
-                        })
-                        row.total_qty = x
-                        total_cut_qty[part] += x
+                    if(row.attributes[item.set_item_attr] == part){
+                        if(row.completed){
+                            let x = 0
+                            Object.keys(row.values).forEach(key => {
+                                x += row.values[key]
+                                if (!total_dict[part]){
+                                    total_dict[part] = {}
+                                }
+                                if (total_dict[part][key]){
+                                    total_dict[part][key] += row.values[key]
+                                }
+                                else{
+                                    total_dict[part][key] = row.values[key]
+                                }
+                            })
+                            row.total_qty = x
+                            total_cut_qty[part] += x
+                        }
+                        else{
+                            row.total_qty = 0
+                        }
                     }
-                })  
+                })
             })
         }
     }

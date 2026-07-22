@@ -3470,8 +3470,11 @@ def calculate_cutting_piece(grn_doc, received_types, panel_list, complete_json, 
                     if panel in panel_list:
                         if item2['values'][size][panel]:
                             if item2['values'][size][panel].get(ty):
-                                if item2['values'][size][panel][ty] < min:
-                                    min = item2['values'][size][panel][ty]
+                                # tallies are panel pieces; a garment needs panel_qty of each panel
+                                garments = int(
+                                    item2['values'][size][panel][ty] // (panel_qty.get(panel) or 1))
+                                if garments < min:
+                                    min = garments
                             else:
                                 min = 0
                                 break
