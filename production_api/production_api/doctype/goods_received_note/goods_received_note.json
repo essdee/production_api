@@ -452,7 +452,7 @@
    "allow_on_submit": 1,
    "fieldname": "essdee_yrp_stock_entry",
    "fieldtype": "Data",
-   "label": "essdee_yrp Stock Entry",
+   "label": "Essdee YRP Stock Entry",
    "no_copy": 1,
    "read_only": 1
   },
@@ -606,7 +606,7 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2026-07-14 06:54:06.625121",
+ "modified": "2026-07-22 14:14:27.236876",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Goods Received Note",

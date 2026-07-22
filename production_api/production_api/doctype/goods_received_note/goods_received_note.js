@@ -231,18 +231,18 @@ frappe.ui.form.on('Goods Received Note', {
 			})
 		}
 		if(frm.events.check_eligible_to_create_yrp_stock_entry(frm)){
-			frm.add_custom_button("Create essdee_yrp Stock Entry", () => {
+			frm.add_custom_button("Create YRP Stock Entry", () => {
 				frappe.confirm(
-					"Transfer this GRN's stock to essdee_yrp? This reduces stock here and " +
-					"increases it on essdee_yrp.",
+					"Transfer this GRN's stock to YRP? This reduces stock here and " +
+					"increases it on YRP.",
 					() => frappe.call({
 						method: "production_api.production_api.doctype.goods_received_note.goods_received_note.create_essdee_yrp_stock_entry",
 						args: { grn_name: frm.doc.name },
-						freeze: true, freeze_message: "Transferring to essdee_yrp…",
+						freeze: true, freeze_message: "Transferring to YRP",
 						callback: (r) => {
 							if (r.message && r.message.ok) {
 								frappe.msgprint({ title: "Transferred", indicator: "green",
-									message: "essdee_yrp Stock Entry " + r.message.yrp_stock_entry });
+									message: "YRP Stock Entry " + r.message.yrp_stock_entry });
 								frm.reload_doc();   // re-fetch -> checkbox now hides the button
 							}
 						}
