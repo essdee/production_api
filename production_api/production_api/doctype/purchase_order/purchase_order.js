@@ -131,6 +131,10 @@ frappe.ui.form.on('Purchase Order', {
 	},
 	refresh: function(frm) {
 		$(frm.fields_dict['item_html'].wrapper).html("");
+		// sd_lot: inline-editable while Draft; locked after submit (link via button below)
+		frm.set_df_property('sd_lot', 'read_only', frm.doc.docstatus === 1 ? 1 : 0);
+		// NOTE: Lot is NOT submittable (is_submittable:0, verified in lot.json) — it has no
+		// docstatus/cancelled state, so NO docstatus filter. List all Lots (owner: any Lot).
 		frm.itemEditor = new frappe.production.ui.PurchaseOrderItem(frm.fields_dict["item_html"].wrapper);
 		if(frm.doc.__onload && frm.doc.__onload.item_details) {
 			frm.doc['item_details'] = JSON.stringify(frm.doc.__onload.item_details);
@@ -250,6 +254,52 @@ frappe.ui.form.on('Purchase Order', {
 					dialog.$wrapper.find('.modal-dialog').css("min-width",'max-content')
 
 				})
+			}
+			if (frm.doc.open_status == 'Open') {
+				frm.add_custom_button(__('Manage Linked Lots'), function() {
+					frappe.call({
+						method: 'production_api.production_api.doctype.purchase_order.purchase_order.get_purchase_order_lots',
+						args: { purchase_order: frm.doc.name },
+						callback: function(r) {
+							const current = r.message || [];
+							const d = new frappe.ui.Dialog({
+								title: __('Manage Linked Lots'),
+								fields: [
+									{
+										fieldname: 'lots',
+										fieldtype: 'Table MultiSelect',
+										label: 'Lots',
+										options: 'Purchase Order Lot',
+										get_data: function(txt) {
+											// Lot is not submittable — no docstatus filter; list all Lots
+											return frappe.db.get_link_options('Lot', txt);
+										},
+									},
+									{ fieldname: 'comment', fieldtype: 'Small Text', label: 'Reason', reqd: 1 },
+								],
+								primary_action_label: __('Save'),
+								primary_action: function(values) {
+									const desired = (values.lots || []).map(row => row.lot);
+									const add_lots = desired.filter(l => !current.includes(l));
+									const remove_lots = current.filter(l => !desired.includes(l));
+									if (!add_lots.length && !remove_lots.length) { d.hide(); return; }
+									frappe.call({
+										method: 'production_api.production_api.doctype.purchase_order.purchase_order.update_po_lot_links',
+										args: { doc_name: frm.doc.name, add_lots: add_lots, remove_lots: remove_lots, comment: values.comment },
+										freeze: true,
+										callback: function() { d.hide(); frm.reload_doc(); },
+										// on the unlink-guard throw, the standard error dialog shows the message
+										// and the manage dialog stays open so the user can re-add the lot.
+									});
+								},
+							});
+							// preseed the editor with the currently linked lots
+							d.fields_dict.lots.df.data = current.map(l => ({ lot: l }));
+							d.show();
+							d.fields_dict.lots.grid.refresh();
+						},
+					});
+				});
 			}
 			if (frm.doc.status != 'Partially Cancelled' && frm.doc.open_status == 'Open') {
 				frm.add_custom_button(__('Cancel'), function() {

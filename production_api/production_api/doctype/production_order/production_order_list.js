@@ -7,6 +7,7 @@ frappe.listview_settings["Production Order"] = {
 		if (doc.docstatus === 1 && doc.status) {
 			const status_colors = {
 				"Open": "blue",
+				"Pending Request": "orange",
 				"Item Changed": "yellow",
 				"Not Processed": "red",
 				"Closed": "green",

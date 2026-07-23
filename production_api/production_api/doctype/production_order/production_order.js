@@ -18,6 +18,16 @@ frappe.ui.form.on("Production Order", {
     frm.set_df_property("dont_deliver_after", "read_only", is_submitted);
 
     if (frm.doc.docstatus == 1) {
+      const has_transfer_marker = !!frappe.meta.has_field(
+        "Production Order",
+        "transferred_to_ppo",
+      );
+      const is_transferred =
+        has_transfer_marker && !!frm.doc.transferred_to_ppo;
+      const has_pending_quantity_request =
+        frm.doc.status === "Pending Request" ||
+        !!frm.doc.quantity_ratio_request;
+
       frm.add_custom_button("Update Price", () => {
         let d = new frappe.ui.Dialog({
           title: "Update Price",
@@ -134,53 +144,95 @@ frappe.ui.form.on("Production Order", {
         d.show();
       }, "Change");
 
-      frm.add_custom_button("Change Status", () => {
-        let d = new frappe.ui.Dialog({
-          title: "Change Production Order Status",
-          fields: [
-            {
-              fieldname: "new_status",
-              fieldtype: "Select",
-              label: "New Status",
-              options: "Open\nItem Changed\nNot Processed",
-              default: frm.doc.status,
-              reqd: 1,
-            },
-            {
-              fieldname: "reason",
-              fieldtype: "Small Text",
-              label: "Reason",
-              reqd: 1,
-            },
-          ],
-          primary_action_label: "Update",
-          primary_action: function () {
-            let values = d.get_values();
-            if (!values) return;
+      if (!is_transferred && !has_pending_quantity_request) {
+        frm.add_custom_button("Change Status", () => {
+          let d = new frappe.ui.Dialog({
+            title: "Change Production Order Status",
+            fields: [
+              {
+                fieldname: "new_status",
+                fieldtype: "Select",
+                label: "New Status",
+                options: "Open\nItem Changed\nNot Processed",
+                default: frm.doc.status,
+                reqd: 1,
+              },
+              {
+                fieldname: "reason",
+                fieldtype: "Small Text",
+                label: "Reason",
+                reqd: 1,
+              },
+            ],
+            primary_action_label: "Update",
+            primary_action: function () {
+              let values = d.get_values();
+              if (!values) return;
 
-            frappe.call({
-              method:
-                "production_api.production_api.doctype.production_order.production_order.change_status",
-              args: {
-                production_order: frm.doc.name,
-                new_status: values.new_status,
-                reason: values.reason,
-              },
-              callback: function () {
-                d.hide();
-                frm.reload_doc();
-                frappe.show_alert({
-                  message: __("Status updated"),
-                  indicator: "green",
-                });
-              },
-            });
+              frappe.call({
+                method:
+                  "production_api.production_api.doctype.production_order.production_order.change_status",
+                args: {
+                  production_order: frm.doc.name,
+                  new_status: values.new_status,
+                  reason: values.reason,
+                },
+                callback: function () {
+                  d.hide();
+                  frm.reload_doc();
+                  frappe.show_alert({
+                    message: __("Status updated"),
+                    indicator: "green",
+                  });
+                },
+              });
+            },
+          });
+          d.show();
+        }, "Change");
+      }
+
+      if (
+        frm.doc.status === "Pending Request" &&
+        (frm.doc.__onload || {}).can_approve_quantity_ratio_request
+      ) {
+        frm.add_custom_button(
+          __("Approve"),
+          () => {
+            show_approve_quantity_ratio_dialog(
+              frm,
+              (frm.doc.__onload || {}).pending_quantity_ratio_request || {},
+            );
           },
-        });
-        d.show();
-      }, "Change");
+          __("Change"),
+        );
+      }
 
-      if (!(frm.doc.production_ordered_details || []).length) {
+      // transferred_to_ppo ships with the doctype, so on a bench that has not migrated
+      // yet the value reads as undefined and the one-shot guard would wave everyone
+      // through - check the field exists before offering the button at all.
+      const alternative_items = (frm.doc.__onload || {}).alternative_items || [];
+      if (
+        has_transfer_marker &&
+        !frm.doc.transferred_to_ppo &&
+        ["Item Changed", "Not Processed"].includes(frm.doc.status) &&
+        alternative_items.length
+      ) {
+        frm.add_custom_button(
+          __("Transfer Quantity"),
+          () => {
+            show_transfer_quantity_dialog(frm, alternative_items);
+          },
+          "Change",
+        );
+      }
+
+      if (
+        frm.doc.status === "Open" &&
+        !is_transferred &&
+        !has_pending_quantity_request &&
+        !(frm.doc.production_ordered_details || []).length
+      ) {
         frm.add_custom_button("Update Quantity & Ratio", () => {
           frappe.call({
             method:
@@ -441,7 +493,7 @@ function show_update_qty_ratio_dialog(frm, size_details) {
         reqd: 1,
       },
     ],
-    primary_action_label: "Update",
+    primary_action_label: "Request Approval",
     primary_action: function () {
       let values = d.get_values();
       if (!values) return;
@@ -471,8 +523,8 @@ function show_update_qty_ratio_dialog(frm, size_details) {
           d.hide();
           frm.reload_doc();
           frappe.show_alert({
-            message: __("Quantity & ratio updated"),
-            indicator: "green",
+            message: __("Quantity & ratio update sent for approval"),
+            indicator: "orange",
           });
         },
       });
@@ -496,6 +548,258 @@ function show_update_qty_ratio_dialog(frm, size_details) {
       parse: flt,
     },
   ]);
+  d.show();
+}
+
+function build_quantity_approval_preview($wrapper, request) {
+  const display_value = (value) => String(value == null ? 0 : value);
+  const requested_quantities = request.requested_quantities || {};
+  const requested_ratios = request.requested_ratios || {};
+  const original_quantities = request.original_quantities || {};
+  const original_ratios = request.original_ratios || {};
+  const sizes = Object.keys(requested_quantities).filter(
+    (size) =>
+      flt(original_quantities[size]) !== flt(requested_quantities[size]) ||
+      flt(original_ratios[size]) !== flt(requested_ratios[size]),
+  );
+
+  $wrapper.empty();
+  const $table = $(
+    '<table class="table table-bordered" style="margin-bottom:0;"></table>',
+  );
+  const $head = $("<tr></tr>");
+  [__("Size"), __("Quantity"), __("Ratio")].forEach((label) => {
+    $("<th></th>").text(label).appendTo($head);
+  });
+  const $body = $("<tbody></tbody>");
+  sizes.forEach((size) => {
+    const $row = $("<tr></tr>");
+    $("<td></td>").text(size).appendTo($row);
+    $("<td></td>")
+      .text(
+        display_value(original_quantities[size]) +
+          " -> " +
+          display_value(requested_quantities[size]),
+      )
+      .appendTo($row);
+    $("<td></td>")
+      .text(
+        display_value(original_ratios[size]) +
+          " -> " +
+          display_value(requested_ratios[size]),
+      )
+      .appendTo($row);
+    $body.append($row);
+  });
+  $table.append($("<thead></thead>").append($head)).append($body);
+  $wrapper.append(
+    $('<div style="overflow-x:auto;"></div>').append($table),
+  );
+}
+
+function show_approve_quantity_ratio_dialog(frm, request) {
+  if (!request.requested_quantities) {
+    frappe.msgprint(__("Pending request details are missing"));
+    return;
+  }
+
+  const d = new frappe.ui.Dialog({
+    title: __("Approve Quantity & Ratio"),
+    size: "large",
+    fields: [
+      {
+        fieldname: "change_preview",
+        fieldtype: "HTML",
+      },
+      {
+        fieldname: "requested_user",
+        fieldtype: "Data",
+        label: __("Requested By"),
+        default: request.requested_user,
+        read_only: 1,
+      },
+      {
+        fieldname: "requested_by",
+        fieldtype: "Data",
+        label: __("Who Told to Change"),
+        default: request.requested_by,
+        read_only: 1,
+      },
+      {
+        fieldname: "requested_on",
+        fieldtype: "Datetime",
+        label: __("Requested On"),
+        default: request.requested_on,
+        read_only: 1,
+      },
+      {
+        fieldname: "reason",
+        fieldtype: "Small Text",
+        label: __("Reason"),
+        default: request.reason,
+        read_only: 1,
+      },
+    ],
+    primary_action_label: __("Approve"),
+    primary_action: function () {
+      frappe.call({
+        method:
+          "production_api.production_api.doctype.production_order.production_order.approve_quantity_and_ratio",
+        args: {
+          production_order: frm.doc.name,
+        },
+        callback: function () {
+          d.hide();
+          frm.reload_doc();
+          frappe.show_alert({
+            message: __("Quantity & ratio update approved"),
+            indicator: "green",
+          });
+        },
+      });
+    },
+  });
+  build_quantity_approval_preview(
+    d.fields_dict.change_preview.$wrapper,
+    request,
+  );
+  d.show();
+}
+
+// Read-only size -> quantity table for the Transfer Quantity dialog. The whole source
+// quantity moves and the source is not reduced, so there is nothing here to edit.
+function build_transfer_preview($wrapper, transfers) {
+  const sizes = Object.keys(transfers);
+  $wrapper.empty();
+
+  const $container = $(
+    '<div class="po-transfer-preview-wrap" style="overflow-x:auto; margin-bottom:12px;"></div>',
+  );
+  const $table = $(
+    '<table class="po-transfer-preview table table-bordered" style="margin-bottom:0; width:auto; min-width:100%;"></table>',
+  );
+
+  const $headRow = $("<tr></tr>");
+  $("<th></th>")
+    .text(__("Size"))
+    .css({
+      "text-align": "left",
+      "white-space": "nowrap",
+      "font-size": "11px",
+    })
+    .appendTo($headRow);
+  sizes.forEach((size) => {
+    $("<th></th>")
+      .text(size)
+      .css({
+        "text-align": "center",
+        "white-space": "nowrap",
+        "font-size": "11px",
+      })
+      .appendTo($headRow);
+  });
+
+  const $bodyRow = $("<tr></tr>");
+  $("<td></td>")
+    .text(__("Quantity"))
+    .css({ "font-weight": "bold", "white-space": "nowrap" })
+    .appendTo($bodyRow);
+  let total = 0;
+  sizes.forEach((size) => {
+    total += flt(transfers[size]);
+    $("<td></td>")
+      .text(transfers[size])
+      .css({ "text-align": "center" })
+      .appendTo($bodyRow);
+  });
+
+  $table
+    .append($("<thead></thead>").append($headRow))
+    .append($("<tbody></tbody>").append($bodyRow));
+  $container.append($table);
+  $container.append(
+    $('<div class="text-muted" style="margin-top:6px;"></div>').text(
+      __("Total") + ": " + total,
+    ),
+  );
+  $wrapper.append($container);
+}
+
+function show_transfer_quantity_dialog(frm, alternative_items) {
+  // __onload.items is get_order_qty's {size: {qty, ratio, ...}} for this doc's rows.
+  const size_details = (frm.doc.__onload || {}).items || {};
+  const transfers = {};
+  Object.keys(size_details).forEach((size) => {
+    const qty = flt(size_details[size].qty);
+    if (qty > 0) {
+      transfers[size] = qty;
+    }
+  });
+  if (!Object.keys(transfers).length) {
+    frappe.msgprint(__("Production Order has no quantity to transfer"));
+    return;
+  }
+
+  let d = new frappe.ui.Dialog({
+    title: __("Transfer Quantity"),
+    size: "large",
+    fields: [
+      {
+        fieldname: "target_production_order",
+        fieldtype: "Link",
+        label: __("Target Production Order"),
+        options: "Production Order",
+        reqd: 1,
+        get_query: () => {
+          return {
+            filters: {
+              docstatus: 1,
+              status: ["in", ["Open", "Item Changed", "Not Processed"]],
+              name: ["!=", frm.doc.name],
+              item: ["in", alternative_items],
+              transferred_to_ppo: ["is", "not set"],
+            },
+          };
+        },
+      },
+      {
+        fieldname: "transfer_preview",
+        fieldtype: "HTML",
+        label: __("Quantity to Transfer"),
+      },
+      {
+        fieldname: "reason",
+        fieldtype: "Small Text",
+        label: __("Reason"),
+        reqd: 1,
+      },
+    ],
+    primary_action_label: __("Transfer"),
+    primary_action: function () {
+      let values = d.get_values();
+      if (!values) return;
+
+      frappe.call({
+        method:
+          "production_api.production_api.doctype.production_order.production_order.transfer_quantity_to_ppo",
+        args: {
+          source_production_order: frm.doc.name,
+          target_production_order: values.target_production_order,
+          reason: values.reason,
+        },
+        callback: function () {
+          d.hide();
+          frm.reload_doc();
+          frappe.show_alert({
+            message: __("Quantity transferred"),
+            indicator: "green",
+          });
+        },
+      });
+    },
+  });
+
+  build_transfer_preview(d.fields_dict.transfer_preview.$wrapper, transfers);
   d.show();
 }
 

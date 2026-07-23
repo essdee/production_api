@@ -13,6 +13,7 @@
   "column_break_4",
   "po_date",
   "default_lot",
+  "sd_lot",
   "deliver_to_supplier",
   "terms_and_condition",
   "section_addresses",
@@ -110,6 +111,13 @@
    "fieldtype": "Link",
    "label": "Default Lot",
    "options": "Lot"
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "sd_lot",
+   "fieldtype": "Table",
+   "label": "Linked Lots",
+   "options": "Purchase Order Lot"
   },
   {
    "fieldname": "naming_series",
