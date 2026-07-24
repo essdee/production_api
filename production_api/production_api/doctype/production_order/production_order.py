@@ -55,12 +55,27 @@ class ProductionOrder(Document):
 			# the target filter for the Transfer Quantity dialog, so the button costs no call.
 			if self.status in TRANSFERABLE_PO_STATUSES and not self.get(TRANSFER_MARKER_FIELD):
 				self.set_onload("alternative_items", get_alternative_items(self.item))
-			if self.status == QUANTITY_REQUEST_STATUS and self.get(QUANTITY_REQUEST_FIELD):
-				request = frappe.parse_json(self.get(QUANTITY_REQUEST_FIELD)) or {}
-				self.set_onload("pending_quantity_ratio_request", request)
+			if self.status == QUANTITY_REQUEST_STATUS:
+				request = {}
+				if self.get(QUANTITY_REQUEST_FIELD):
+					request = frappe.parse_json(self.get(QUANTITY_REQUEST_FIELD)) or {}
+					request["request_type"] = "quantity_ratio"
+				elif self.get(STATUS_REQUEST_FIELD):
+					request = frappe.parse_json(self.get(STATUS_REQUEST_FIELD)) or {}
+					request["request_type"] = "status"
+				if request:
+					self.set_onload("pending_production_order_request", request)
+					approver_role = get_quantity_approver_role()
+					self.set_onload(
+						"can_approve_production_order_request",
+						bool(approver_role and approver_role in frappe.get_roles()),
+					)
+			if self.get(INCOMING_TRANSFER_REQUEST_FIELD):
+				request = frappe.parse_json(self.get(INCOMING_TRANSFER_REQUEST_FIELD)) or {}
+				self.set_onload("incoming_quantity_transfer_request", request)
 				approver_role = get_quantity_approver_role()
 				self.set_onload(
-					"can_approve_quantity_ratio_request",
+					"can_approve_quantity_transfer_request",
 					bool(approver_role and approver_role in frappe.get_roles()),
 				)
 			price_requests = frappe.get_all("PPO Price Request", filters={"production_order": self.name},
@@ -129,14 +144,26 @@ class ProductionOrder(Document):
 			if quantity_ratio_changed:
 				frappe.throw("Quantity or Ratio cannot be changed after quantity has been transferred")
 
-		if previous.status == QUANTITY_REQUEST_STATUS or previous.get(QUANTITY_REQUEST_FIELD):
-			request_changed = self.get(QUANTITY_REQUEST_FIELD) != previous.get(QUANTITY_REQUEST_FIELD)
+		if (
+			previous.status == QUANTITY_REQUEST_STATUS
+			or previous.get(QUANTITY_REQUEST_FIELD)
+			or previous.get(STATUS_REQUEST_FIELD)
+		):
+			request_changed = (
+				self.get(QUANTITY_REQUEST_FIELD) != previous.get(QUANTITY_REQUEST_FIELD)
+				or self.get(STATUS_REQUEST_FIELD) != previous.get(STATUS_REQUEST_FIELD)
+			)
 			status_changed = self.status != previous.status
+			approval_allowed = (
+				self.flags.get("allow_quantity_ratio_approval")
+				or self.flags.get("allow_status_change_approval")
+				or self.flags.get("allow_quantity_transfer_approval")
+			)
 			if (
-				not self.flags.get("allow_quantity_ratio_approval")
+				not approval_allowed
 				and (quantity_ratio_changed or request_changed or status_changed)
 			):
-				frappe.throw("Use the Approve button to complete the pending Quantity and Ratio request")
+				frappe.throw("Use the appropriate Approve button to complete the pending request")
 
 		if (
 			previous.status in TRANSFERABLE_PO_STATUSES
@@ -144,6 +171,17 @@ class ProductionOrder(Document):
 			and not self.flags.get("allow_quantity_transfer")
 		):
 			frappe.throw("Quantity or Ratio cannot be changed when Production Order is Item Changed or Not Processed")
+
+		if previous.get(INCOMING_TRANSFER_REQUEST_FIELD):
+			transfer_request_changed = (
+				self.get(INCOMING_TRANSFER_REQUEST_FIELD)
+				!= previous.get(INCOMING_TRANSFER_REQUEST_FIELD)
+			)
+			if (
+				not self.flags.get("allow_quantity_transfer_approval")
+				and (quantity_ratio_changed or transfer_request_changed)
+			):
+				frappe.throw("Use Approve Transfer Quantity to complete the pending transfer request")
 
 	def update_order(self):
 		item_doc = frappe.get_cached_doc("Item", self.item)
@@ -536,6 +574,9 @@ def get_date_value(value):
 QUANTITY_CHANGE_REQUESTED_BY_OPTIONS = ["Sales Team", "Planning Team", "Merch Team"]
 QUANTITY_REQUEST_STATUS = "Pending Request"
 QUANTITY_REQUEST_FIELD = "quantity_ratio_request"
+STATUS_REQUEST_FIELD = "status_change_request"
+STATUS_APPROVAL_REQUIRED_STATUSES = ["Item Changed", "Not Processed"]
+STATUS_CHANGE_LOCKED_STATUSES = ["Item Changed", "Not Processed"]
 
 
 def get_quantity_approver_role():
@@ -581,6 +622,10 @@ def update_quantity_and_ratio(production_order, size_quantities, size_ratios, re
 
 	if doc.get(QUANTITY_REQUEST_FIELD):
 		frappe.throw("A Quantity and Ratio update request is already pending")
+	if doc.get(STATUS_REQUEST_FIELD):
+		frappe.throw("A status change request is already pending")
+	if doc.get(INCOMING_TRANSFER_REQUEST_FIELD):
+		frappe.throw("Approve the incoming quantity transfer before requesting a Quantity and Ratio update")
 
 	if doc.production_ordered_details:
 		frappe.throw("Cannot update quantity or ratio. Quantities are already ordered against Lots")
@@ -627,7 +672,6 @@ def update_quantity_and_ratio(production_order, size_quantities, size_ratios, re
 		QUANTITY_REQUEST_FIELD: frappe.as_json(request),
 		"status": QUANTITY_REQUEST_STATUS,
 	})
-	add_quantity_ratio_request_comment(doc, change_details, request)
 	append_quantity_ratio_request_to_comment_log(doc, change_details, request)
 
 	return {
@@ -651,6 +695,10 @@ def approve_quantity_and_ratio(production_order):
 
 	if doc.docstatus != 1 or doc.status != QUANTITY_REQUEST_STATUS:
 		frappe.throw("Production Order does not have a pending Quantity and Ratio update request")
+	if doc.get(STATUS_REQUEST_FIELD):
+		frappe.throw("Production Order has a pending status change request, not a Quantity and Ratio request")
+	if doc.get(INCOMING_TRANSFER_REQUEST_FIELD):
+		frappe.throw("Approve the incoming quantity transfer before approving a Quantity and Ratio request")
 	if doc.get(TRANSFER_MARKER_FIELD):
 		frappe.throw(f"Quantity is locked because it was already transferred to {doc.get(TRANSFER_MARKER_FIELD)}")
 	if doc.production_ordered_details:
@@ -690,7 +738,6 @@ def approve_quantity_and_ratio(production_order):
 	doc.save(ignore_permissions=True)
 
 	approved_by = frappe.session.user
-	add_quantity_ratio_update_comment(doc, change_details, request, approved_by)
 	append_quantity_ratio_to_comment_log(doc, change_details, request, approved_by)
 
 	return {
@@ -788,17 +835,6 @@ def get_quantity_ratio_change_lines(change_details):
 	return lines
 
 
-def add_quantity_ratio_request_comment(doc, change_details, request):
-	lines = ["<b>Quantity/Ratio Update Requested</b>"]
-	lines.extend(frappe.utils.escape_html(line) for line in get_quantity_ratio_change_lines(change_details))
-	lines.extend([
-		f"<b>Who Told to Change</b>: {frappe.utils.escape_html(request['requested_by'])}",
-		f"<b>Requested By</b>: {frappe.utils.escape_html(request['requested_user'])}",
-		f"<b>Reason</b>: {frappe.utils.escape_html(request['reason'])}",
-	])
-	doc.add_comment("Comment", text="<br>".join(lines))
-
-
 def append_quantity_ratio_request_to_comment_log(doc, change_details, request):
 	log_date = frappe.utils.formatdate(frappe.utils.nowdate(), "dd-mm-yyyy")
 	lines = [f"[{log_date}] Quantity/Ratio Update Requested - {request['requested_user']}"]
@@ -808,31 +844,6 @@ def append_quantity_ratio_request_to_comment_log(doc, change_details, request):
 		f"Reason: {request['reason']}",
 	])
 	append_comment_log_block(doc, "\n".join(lines))
-
-
-def add_quantity_ratio_update_comment(doc, change_details, request, approved_by):
-	lines = ["<b>Quantity/Ratio Update Approved</b>"]
-	if change_details["qty_changes"]:
-		lines.append("<b>Quantity</b>")
-		for change in change_details["qty_changes"]:
-			lines.append(
-				f"{change['size']}: {format_comment_qty(change['old_qty'])} -> {format_comment_qty(change['new_qty'])}")
-		lines.append(
-			f"<b>Total</b>: {format_comment_qty(change_details['qty_old_total'])} -> "
-			f"{format_comment_qty(change_details['qty_new_total'])}"
-		)
-	if change_details["ratio_changes"]:
-		lines.append("<b>Ratio</b>")
-		for change in change_details["ratio_changes"]:
-			lines.append(
-				f"{change['size']}: {format_comment_qty(change['old_ratio'])} -> {format_comment_qty(change['new_ratio'])}")
-	lines.extend([
-		f"<b>Who Told to Change</b>: {frappe.utils.escape_html(request['requested_by'])}",
-		f"<b>Requested By</b>: {frappe.utils.escape_html(request['requested_user'])}",
-		f"<b>Approved By</b>: {frappe.utils.escape_html(approved_by)}",
-		f"<b>Reason</b>: {frappe.utils.escape_html(request['reason'])}",
-	])
-	doc.add_comment("Comment", text="<br>".join(lines))
 
 
 def append_quantity_ratio_to_comment_log(doc, change_details, request, approved_by):
@@ -907,11 +918,20 @@ def change_status(production_order, new_status, reason):
 	if doc.docstatus != 1:
 		frappe.throw("Status can be changed only after Production Order is submitted")
 
+	if doc.status in STATUS_CHANGE_LOCKED_STATUSES:
+		frappe.throw(f"Status cannot be changed after {doc.status} is approved")
+
 	if doc.get(TRANSFER_MARKER_FIELD):
 		frappe.throw(f"Status is locked because quantity was already transferred to {doc.get(TRANSFER_MARKER_FIELD)}")
 
-	if doc.status == QUANTITY_REQUEST_STATUS or doc.get(QUANTITY_REQUEST_FIELD):
-		frappe.throw("Status cannot be changed while a Quantity and Ratio update request is pending")
+	if (
+		doc.status == QUANTITY_REQUEST_STATUS
+		or doc.get(QUANTITY_REQUEST_FIELD)
+		or doc.get(STATUS_REQUEST_FIELD)
+	):
+		frappe.throw("Status cannot be changed while another request is pending")
+	if doc.get(INCOMING_TRANSFER_REQUEST_FIELD):
+		frappe.throw("Status cannot be changed while an incoming quantity transfer is pending")
 
 	if new_status not in CHANGEABLE_PO_STATUSES:
 		frappe.throw("Status must be one of: " + ", ".join(CHANGEABLE_PO_STATUSES))
@@ -924,13 +944,31 @@ def change_status(production_order, new_status, reason):
 	if new_status == old_status:
 		frappe.throw("New status is same as the current status")
 
-	doc.db_set("status", new_status)
-	doc.add_comment("Comment", text="<br>".join([
-		f"<b>Status Changed</b>: {old_status or 'None'} -> {new_status}",
-		f"<b>Changed By</b>: {frappe.session.user}",
-		f"<b>Reason</b>: {frappe.utils.escape_html(reason)}",
-	]))
+	if new_status in STATUS_APPROVAL_REQUIRED_STATUSES:
+		approver_role = get_quantity_approver_role()
+		if not approver_role:
+			frappe.throw("Set Production Order Quantity Approver Role in MRP Settings before requesting a status change")
 
+		request = {
+			"previous_status": old_status,
+			"requested_status": new_status,
+			"reason": reason,
+			"requested_user": frappe.session.user,
+			"requested_on": str(now_datetime()),
+		}
+		doc.db_set({
+			STATUS_REQUEST_FIELD: frappe.as_json(request),
+			"status": QUANTITY_REQUEST_STATUS,
+		})
+		append_status_change_request_to_comment_log(doc, request)
+		return {
+			"old_status": old_status,
+			"new_status": QUANTITY_REQUEST_STATUS,
+			"requested_status": new_status,
+			"approval_required": True,
+		}
+
+	doc.db_set("status", new_status)
 	log_date = frappe.utils.formatdate(frappe.utils.nowdate(), "dd-mm-yyyy")
 	append_comment_log_block(doc, "\n".join([
 		f"[{log_date}] Status Changed - {frappe.session.user}",
@@ -938,7 +976,72 @@ def change_status(production_order, new_status, reason):
 		f"Reason: {reason}",
 	]))
 
-	return {"old_status": old_status, "new_status": new_status}
+	return {
+		"old_status": old_status,
+		"new_status": new_status,
+		"approval_required": False,
+	}
+
+
+@frappe.whitelist()
+def approve_status_change(production_order):
+	approver_role = get_quantity_approver_role()
+	if not approver_role:
+		frappe.throw("Production Order Quantity Approver Role is not configured in MRP Settings")
+	if approver_role not in frappe.get_roles():
+		frappe.throw(f"Only users with the {approver_role} role can approve this request")
+
+	lock_production_orders(production_order)
+	doc = frappe.get_doc("Production Order", production_order)
+	doc.check_permission("read")
+
+	if doc.docstatus != 1 or doc.status != QUANTITY_REQUEST_STATUS:
+		frappe.throw("Production Order does not have a pending status change request")
+	if doc.get(TRANSFER_MARKER_FIELD):
+		frappe.throw(f"Status is locked because quantity was already transferred to {doc.get(TRANSFER_MARKER_FIELD)}")
+	if doc.get(QUANTITY_REQUEST_FIELD):
+		frappe.throw("Production Order has a pending Quantity and Ratio request, not a status change request")
+
+	request = frappe.parse_json(doc.get(STATUS_REQUEST_FIELD)) or {}
+	if not request:
+		frappe.throw("Pending status change request details are missing")
+
+	previous_status = request.get("previous_status")
+	requested_status = request.get("requested_status")
+	if not previous_status or requested_status not in STATUS_APPROVAL_REQUIRED_STATUSES:
+		frappe.throw("Pending status change request is invalid")
+
+	doc.status = requested_status
+	doc.set(STATUS_REQUEST_FIELD, None)
+	doc.flags.allow_status_change_approval = True
+	doc.save(ignore_permissions=True)
+
+	approved_by = frappe.session.user
+	append_status_change_approved_to_comment_log(doc, request, approved_by)
+
+	return {
+		"old_status": previous_status,
+		"new_status": requested_status,
+	}
+
+
+def append_status_change_request_to_comment_log(doc, request):
+	log_date = frappe.utils.formatdate(frappe.utils.nowdate(), "dd-mm-yyyy")
+	append_comment_log_block(doc, "\n".join([
+		f"[{log_date}] Status Change Requested - {request['requested_user']}",
+		f"Status: {request['previous_status']} -> {request['requested_status']}",
+		f"Reason: {request['reason']}",
+	]))
+
+
+def append_status_change_approved_to_comment_log(doc, request, approved_by):
+	log_date = frappe.utils.formatdate(frappe.utils.nowdate(), "dd-mm-yyyy")
+	append_comment_log_block(doc, "\n".join([
+		f"[{log_date}] Status Change Approved - {approved_by}",
+		f"Status: {request['previous_status']} -> {request['requested_status']}",
+		f"Requested By: {request['requested_user']}",
+		f"Reason: {request['reason']}",
+	]))
 
 
 # A PPO can push its quantity out only from these statuses. "Open" is still live and
@@ -947,11 +1050,16 @@ TRANSFERABLE_PO_STATUSES = ["Item Changed", "Not Processed"]
 TRANSFER_TARGET_STATUSES = ["Open", "Item Changed", "Not Processed"]
 
 TRANSFER_MARKER_FIELD = "transferred_to_ppo"
+INCOMING_TRANSFER_REQUEST_FIELD = "incoming_quantity_transfer_request"
 
 
 def has_transfer_marker_field():
 	"""The one-shot marker is a DocType change, so it is absent until migrate has run."""
 	return frappe.get_meta("Production Order").has_field(TRANSFER_MARKER_FIELD)
+
+
+def has_incoming_transfer_request_field():
+	return frappe.get_meta("Production Order").has_field(INCOMING_TRANSFER_REQUEST_FIELD)
 
 
 def get_alternative_items(item):
@@ -991,6 +1099,8 @@ def transfer_quantity_to_ppo(source_production_order, target_production_order, r
 
 	if not has_transfer_marker_field():
 		frappe.throw("Cannot transfer quantity. Run bench migrate first - the transfer marker field is missing")
+	if not has_incoming_transfer_request_field():
+		frappe.throw("Cannot transfer quantity. Run bench migrate first - the incoming transfer request field is missing")
 
 	if doc.docstatus != 1:
 		frappe.throw("Quantity can be transferred only after Production Order is submitted")
@@ -999,7 +1109,9 @@ def transfer_quantity_to_ppo(source_production_order, target_production_order, r
 		frappe.throw("Quantity can be transferred only when status is one of: " + ", ".join(TRANSFERABLE_PO_STATUSES))
 
 	if doc.get(TRANSFER_MARKER_FIELD):
-		frappe.throw(f"Quantity is already transferred to {doc.get(TRANSFER_MARKER_FIELD)}")
+		frappe.throw(f"Quantity is already requested or transferred to {doc.get(TRANSFER_MARKER_FIELD)}")
+	if doc.get(INCOMING_TRANSFER_REQUEST_FIELD):
+		frappe.throw("Approve the incoming quantity transfer before transferring this Production Order")
 
 	if doc.production_ordered_details:
 		frappe.throw("Cannot transfer quantity. Quantities are already ordered against Lots")
@@ -1025,16 +1137,150 @@ def transfer_quantity_to_ppo(source_production_order, target_production_order, r
 
 	if target.get(TRANSFER_MARKER_FIELD):
 		frappe.throw(f"Target Production Order {target.name} already transferred its quantity and is locked")
+	if target.get(INCOMING_TRANSFER_REQUEST_FIELD):
+		frappe.throw(f"Target Production Order {target.name} already has a pending quantity transfer request")
 
 	# The dialog's get_query is advisory only, so the alternative set is re-asserted here.
 	if target.item not in get_alternative_items(doc.item):
 		frappe.throw(f"Item {target.item} is not an alternative item of {doc.item}")
+
+	approver_role = get_quantity_approver_role()
+	if not approver_role:
+		frappe.throw("Set Production Order Quantity Approver Role in MRP Settings before requesting a quantity transfer")
 
 	transfers = get_transfer_quantities(doc)
 	if not transfers:
 		frappe.throw("Production Order has no quantity to transfer")
 
 	target_rows_by_size = get_rows_by_size(target)
+	validate_transfer_target_sizes(target, transfers, target_rows_by_size)
+
+	changes = []
+	for size, qty in transfers.items():
+		old_qty = flt(target_rows_by_size[size].quantity) if size in target_rows_by_size else 0
+		changes.append({
+			"size": size,
+			"qty": qty,
+			"old_qty": old_qty,
+			"new_qty": old_qty + qty,
+		})
+
+	request = {
+		"source_production_order": doc.name,
+		"source_status": doc.status,
+		"target_previous_status": target.status,
+		"transfers": transfers,
+		"target_original_quantities": {
+			change["size"]: change["old_qty"] for change in changes
+		},
+		"requested_user": frappe.session.user,
+		"requested_on": str(now_datetime()),
+		"reason": reason,
+	}
+	target.db_set({
+		INCOMING_TRANSFER_REQUEST_FIELD: frappe.as_json(request),
+		"status": QUANTITY_REQUEST_STATUS,
+	})
+	doc.db_set(TRANSFER_MARKER_FIELD, target.name)
+	append_transfer_request_logs(doc, target, changes, request)
+
+	return {
+		"target_production_order": target.name,
+		"requested": {change["size"]: change["qty"] for change in changes},
+		"status": "Pending Approval",
+	}
+
+
+@frappe.whitelist()
+def approve_quantity_transfer(production_order):
+	approver_role = get_quantity_approver_role()
+	if not approver_role:
+		frappe.throw("Production Order Quantity Approver Role is not configured in MRP Settings")
+	if approver_role not in frappe.get_roles():
+		frappe.throw(f"Only users with the {approver_role} role can approve this request")
+
+	target = frappe.get_doc("Production Order", production_order)
+	request = frappe.parse_json(target.get(INCOMING_TRANSFER_REQUEST_FIELD)) or {}
+	source_name = request.get("source_production_order")
+	if not source_name:
+		frappe.throw("Pending quantity transfer request details are missing")
+
+	lock_production_orders(source_name, production_order)
+	target = frappe.get_doc("Production Order", production_order)
+	target.check_permission("read")
+	source = frappe.get_doc("Production Order", source_name)
+	request = frappe.parse_json(target.get(INCOMING_TRANSFER_REQUEST_FIELD)) or {}
+	if request.get("source_production_order") != source_name:
+		frappe.throw("Quantity transfer request changed while approval was pending. Reload and try again")
+
+	target_previous_status = request.get("target_previous_status")
+	if target_previous_status not in TRANSFER_TARGET_STATUSES:
+		frappe.throw("Pending quantity transfer request has an invalid destination status")
+	if target.docstatus != 1 or target.status != QUANTITY_REQUEST_STATUS:
+		frappe.throw("Destination Production Order does not have a pending quantity transfer request")
+	if target.get(TRANSFER_MARKER_FIELD):
+		frappe.throw(f"Destination Production Order already transferred its quantity to {target.get(TRANSFER_MARKER_FIELD)}")
+	if source.docstatus != 1 or source.status not in TRANSFERABLE_PO_STATUSES:
+		frappe.throw("Source Production Order is no longer eligible to transfer quantity")
+	if source.get(TRANSFER_MARKER_FIELD) != target.name:
+		frappe.throw("Source Production Order transfer marker does not match this request")
+	if source.transferred_on:
+		frappe.throw("This quantity transfer was already approved")
+	if target.item not in get_alternative_items(source.item):
+		frappe.throw(f"Item {target.item} is not an alternative item of {source.item}")
+
+	transfers = {
+		size: flt(qty)
+		for size, qty in (request.get("transfers") or {}).items()
+		if flt(qty) > 0
+	}
+	if not transfers:
+		frappe.throw("Pending quantity transfer request has no quantity")
+
+	target_rows_by_size = get_rows_by_size(target)
+	missing_sizes = validate_transfer_target_sizes(target, transfers, target_rows_by_size)
+	original_quantities = request.get("target_original_quantities") or {}
+	for size in transfers:
+		if size not in original_quantities:
+			frappe.throw(f"Pending quantity transfer request is missing the original quantity for size {size}")
+		current_qty = flt(target_rows_by_size[size].quantity) if size in target_rows_by_size else 0
+		if current_qty != flt(original_quantities[size]):
+			frappe.throw(
+				f"Destination quantity for size {size} changed while approval was pending. Create a new transfer request")
+
+	if missing_sizes:
+		target_rows_by_size.update(add_target_size_rows(target, missing_sizes))
+
+	changes = []
+	for size, qty in transfers.items():
+		row = target_rows_by_size[size]
+		old_qty = flt(row.quantity)
+		row.quantity = old_qty + qty
+		changes.append({
+			"size": size,
+			"qty": qty,
+			"old_qty": old_qty,
+			"new_qty": flt(row.quantity),
+		})
+
+	target.set(INCOMING_TRANSFER_REQUEST_FIELD, None)
+	target.status = target_previous_status
+	target.flags.allow_quantity_transfer = True
+	target.flags.allow_quantity_transfer_approval = True
+	target.save(ignore_permissions=True)
+	approved_by = frappe.session.user
+	source.db_set("transferred_on", now_datetime())
+	append_transfer_approval_logs(source, target, changes, request, approved_by)
+
+	return {
+		"source_production_order": source.name,
+		"target_production_order": target.name,
+		"status": target.status,
+		"transferred": {change["size"]: change["qty"] for change in changes},
+	}
+
+
+def validate_transfer_target_sizes(target, transfers, target_rows_by_size):
 	missing_sizes = [size for size in transfers if size not in target_rows_by_size]
 	if missing_sizes:
 		target_sizes = get_attribute_details(target.item).get("primary_attribute_values", [])
@@ -1042,25 +1288,7 @@ def transfer_quantity_to_ppo(source_production_order, target_production_order, r
 		if unknown_sizes:
 			frappe.throw(
 				f"Item {target.item} of Production Order {target.name} is not made in size {', '.join(unknown_sizes)}")
-		target_rows_by_size.update(add_target_size_rows(target, missing_sizes))
-
-	changes = []
-	for size, qty in transfers.items():
-		row = target_rows_by_size[size]
-		old_qty = flt(row.quantity)
-		# Only quantity moves - the target keeps the ratio it was planned with.
-		row.quantity = old_qty + qty
-		changes.append({"size": size, "qty": qty, "old_qty": old_qty, "new_qty": flt(row.quantity)})
-
-	target.flags.allow_quantity_transfer = True
-	target.save(ignore_permissions=True)
-	doc.db_set({TRANSFER_MARKER_FIELD: target.name, "transferred_on": now_datetime()})
-	add_transfer_comments(doc, target, changes, reason)
-
-	return {
-		"target_production_order": target.name,
-		"transferred": {change["size"]: change["qty"] for change in changes},
-	}
+	return missing_sizes
 
 
 def add_target_size_rows(target, sizes):
@@ -1110,41 +1338,47 @@ def build_transfer_qty_lines(changes):
 	return lines
 
 
-def add_transfer_comments(source, target, changes, reason):
-	"""Write the timeline comment and the dated comment_log block on both docs."""
+def append_transfer_request_logs(source, target, changes, request):
 	log_date = frappe.utils.formatdate(frappe.utils.nowdate(), "dd-mm-yyyy")
 	qty_lines = build_transfer_qty_lines(changes)
-	html_qty_lines = [frappe.utils.escape_html(line) for line in qty_lines]
 	source_status = source.status or "None"
 
-	target.add_comment("Comment", text="<br>".join([
-		"<b>Quantity Received</b>",
-		f"<b>From Production Order</b>: {source.name}",
-		f"<b>Source Status</b>: {source_status}",
-	] + html_qty_lines + [
-		f"<b>Transferred By</b>: {frappe.session.user}",
-		f"<b>Reason</b>: {frappe.utils.escape_html(reason)}",
-	]))
 	append_comment_log_block(target, "\n".join([
-		f"[{log_date}] Quantity Received - {frappe.session.user}",
+		f"[{log_date}] Quantity Transfer Requested - {request['requested_user']}",
 		f"From Production Order: {source.name}",
 		f"Source Status: {source_status}",
 	] + qty_lines + [
-		f"Reason: {reason}",
+		f"Reason: {request['reason']}",
 	]))
 
-	source.add_comment("Comment", text="<br>".join([
-		"<b>Quantity Transferred</b>",
-		f"<b>To Production Order</b>: {target.name}",
-		f"<b>Status</b>: {source_status}",
-	] + html_qty_lines + [
-		f"<b>Transferred By</b>: {frappe.session.user}",
-		f"<b>Reason</b>: {frappe.utils.escape_html(reason)}",
-	]))
 	append_comment_log_block(source, "\n".join([
-		f"[{log_date}] Quantity Transferred - {frappe.session.user}",
+		f"[{log_date}] Quantity Transfer Requested - {request['requested_user']}",
 		f"To Production Order: {target.name}",
 		f"Status: {source_status}",
 	] + qty_lines + [
-		f"Reason: {reason}",
+		f"Reason: {request['reason']}",
+	]))
+
+
+def append_transfer_approval_logs(source, target, changes, request, approved_by):
+	log_date = frappe.utils.formatdate(frappe.utils.nowdate(), "dd-mm-yyyy")
+	qty_lines = build_transfer_qty_lines(changes)
+	source_status = source.status or "None"
+
+	append_comment_log_block(target, "\n".join([
+		f"[{log_date}] Quantity Transfer Approved - {approved_by}",
+		f"From Production Order: {source.name}",
+		f"Source Status: {source_status}",
+	] + qty_lines + [
+		f"Requested By: {request['requested_user']}",
+		f"Reason: {request['reason']}",
+	]))
+
+	append_comment_log_block(source, "\n".join([
+		f"[{log_date}] Quantity Transfer Approved - {approved_by}",
+		f"To Production Order: {target.name}",
+		f"Status: {source_status}",
+	] + qty_lines + [
+		f"Requested By: {request['requested_user']}",
+		f"Reason: {request['reason']}",
 	]))

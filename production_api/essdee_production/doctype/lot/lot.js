@@ -15,6 +15,7 @@ frappe.ui.form.on("Lot", {
 				filters: {
 					"item": doc.item,
 					"docstatus": 1,
+					"status": "Open",
 				}
 			}
 		})

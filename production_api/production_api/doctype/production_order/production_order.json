@@ -27,6 +27,8 @@
     "comments",
     "comment_log",
     "quantity_ratio_request",
+    "status_change_request",
+    "incoming_quantity_transfer_request",
     "transferred_to_ppo",
     "transferred_on",
     "skip_box_sticker_print",
@@ -184,6 +186,24 @@
     },
     {
       "allow_on_submit": 1,
+      "fieldname": "status_change_request",
+      "fieldtype": "Long Text",
+      "hidden": 1,
+      "label": "Status Change Request",
+      "no_copy": 1,
+      "read_only": 1
+    },
+    {
+      "allow_on_submit": 1,
+      "fieldname": "incoming_quantity_transfer_request",
+      "fieldtype": "Long Text",
+      "hidden": 1,
+      "label": "Incoming Quantity Transfer Request",
+      "no_copy": 1,
+      "read_only": 1
+    },
+    {
+      "allow_on_submit": 1,
       "default": "0",
       "description": "Do not auto-create Box Sticker Print from packing Work Orders linked to this Production Order.",
       "fieldname": "skip_box_sticker_print",
@@ -237,7 +257,7 @@
     },
     {
       "allow_on_submit": 1,
-      "description": "Set once the quantity of this Production Order has been pushed into another Production Order. Blocks a second transfer.",
+      "description": "Set when a quantity transfer is requested. Blocks another request; Transferred On is set only after destination approval.",
       "fieldname": "transferred_to_ppo",
       "fieldtype": "Link",
       "label": "Transferred To PPO",

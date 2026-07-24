@@ -24,9 +24,17 @@ frappe.ui.form.on("Production Order", {
       );
       const is_transferred =
         has_transfer_marker && !!frm.doc.transferred_to_ppo;
-      const has_pending_quantity_request =
+      const has_pending_change_request =
         frm.doc.status === "Pending Request" ||
-        !!frm.doc.quantity_ratio_request;
+        !!frm.doc.quantity_ratio_request ||
+        !!frm.doc.status_change_request;
+      const incoming_transfer_request =
+        (frm.doc.__onload || {}).incoming_quantity_transfer_request || {};
+      const has_pending_incoming_transfer =
+        !!frm.doc.incoming_quantity_transfer_request;
+      const is_status_change_locked = ["Item Changed", "Not Processed"].includes(
+        frm.doc.status,
+      );
 
       frm.add_custom_button("Update Price", () => {
         let d = new frappe.ui.Dialog({
@@ -144,7 +152,12 @@ frappe.ui.form.on("Production Order", {
         d.show();
       }, "Change");
 
-      if (!is_transferred && !has_pending_quantity_request) {
+      if (
+        !is_transferred &&
+        !has_pending_change_request &&
+        !has_pending_incoming_transfer &&
+        !is_status_change_locked
+      ) {
         frm.add_custom_button("Change Status", () => {
           let d = new frappe.ui.Dialog({
             title: "Change Production Order Status",
@@ -177,12 +190,16 @@ frappe.ui.form.on("Production Order", {
                   new_status: values.new_status,
                   reason: values.reason,
                 },
-                callback: function () {
+                callback: function (r) {
                   d.hide();
                   frm.reload_doc();
+                  const approval_required =
+                    (r.message || {}).approval_required;
                   frappe.show_alert({
-                    message: __("Status updated"),
-                    indicator: "green",
+                    message: approval_required
+                      ? __("Status change sent for approval")
+                      : __("Status updated"),
+                    indicator: approval_required ? "orange" : "green",
                   });
                 },
               });
@@ -194,14 +211,38 @@ frappe.ui.form.on("Production Order", {
 
       if (
         frm.doc.status === "Pending Request" &&
-        (frm.doc.__onload || {}).can_approve_quantity_ratio_request
+        !has_pending_incoming_transfer &&
+        (frm.doc.__onload || {}).can_approve_production_order_request
+      ) {
+        const request =
+          (frm.doc.__onload || {}).pending_production_order_request || {};
+        const is_status_request = request.request_type === "status";
+        const approval_label = is_status_request
+          ? __("Approve {0}", [request.requested_status])
+          : __("Approve Quantity Changed");
+        frm.add_custom_button(
+          approval_label,
+          () => {
+            if (is_status_request) {
+              show_approve_status_change_dialog(frm, request);
+            } else {
+              show_approve_quantity_ratio_dialog(frm, request);
+            }
+          },
+          __("Change"),
+        );
+      }
+
+      if (
+        has_pending_incoming_transfer &&
+        (frm.doc.__onload || {}).can_approve_quantity_transfer_request
       ) {
         frm.add_custom_button(
-          __("Approve"),
+          __("Approve Transfer Quantity"),
           () => {
-            show_approve_quantity_ratio_dialog(
+            show_approve_quantity_transfer_dialog(
               frm,
-              (frm.doc.__onload || {}).pending_quantity_ratio_request || {},
+              incoming_transfer_request,
             );
           },
           __("Change"),
@@ -215,8 +256,10 @@ frappe.ui.form.on("Production Order", {
       if (
         has_transfer_marker &&
         !frm.doc.transferred_to_ppo &&
+        !has_pending_incoming_transfer &&
         ["Item Changed", "Not Processed"].includes(frm.doc.status) &&
-        alternative_items.length
+        alternative_items.length &&
+        !(frm.doc.production_ordered_details || []).length
       ) {
         frm.add_custom_button(
           __("Transfer Quantity"),
@@ -230,7 +273,8 @@ frappe.ui.form.on("Production Order", {
       if (
         frm.doc.status === "Open" &&
         !is_transferred &&
-        !has_pending_quantity_request &&
+        !has_pending_change_request &&
+        !has_pending_incoming_transfer &&
         !(frm.doc.production_ordered_details || []).length
       ) {
         frm.add_custom_button("Update Quantity & Ratio", () => {
@@ -604,7 +648,7 @@ function show_approve_quantity_ratio_dialog(frm, request) {
   }
 
   const d = new frappe.ui.Dialog({
-    title: __("Approve Quantity & Ratio"),
+    title: __("Approve Quantity Changed"),
     size: "large",
     fields: [
       {
@@ -640,7 +684,7 @@ function show_approve_quantity_ratio_dialog(frm, request) {
         read_only: 1,
       },
     ],
-    primary_action_label: __("Approve"),
+    primary_action_label: __("Approve Quantity Changed"),
     primary_action: function () {
       frappe.call({
         method:
@@ -663,6 +707,74 @@ function show_approve_quantity_ratio_dialog(frm, request) {
     d.fields_dict.change_preview.$wrapper,
     request,
   );
+  d.show();
+}
+
+function show_approve_status_change_dialog(frm, request) {
+  if (!request.requested_status) {
+    frappe.msgprint(__("Pending status request details are missing"));
+    return;
+  }
+
+  const approval_label = __("Approve {0}", [request.requested_status]);
+  const d = new frappe.ui.Dialog({
+    title: approval_label,
+    fields: [
+      {
+        fieldname: "previous_status",
+        fieldtype: "Data",
+        label: __("Current Status"),
+        default: request.previous_status,
+        read_only: 1,
+      },
+      {
+        fieldname: "requested_status",
+        fieldtype: "Data",
+        label: __("Requested Status"),
+        default: request.requested_status,
+        read_only: 1,
+      },
+      {
+        fieldname: "requested_user",
+        fieldtype: "Data",
+        label: __("Requested By"),
+        default: request.requested_user,
+        read_only: 1,
+      },
+      {
+        fieldname: "requested_on",
+        fieldtype: "Datetime",
+        label: __("Requested On"),
+        default: request.requested_on,
+        read_only: 1,
+      },
+      {
+        fieldname: "reason",
+        fieldtype: "Small Text",
+        label: __("Reason"),
+        default: request.reason,
+        read_only: 1,
+      },
+    ],
+    primary_action_label: approval_label,
+    primary_action: function () {
+      frappe.call({
+        method:
+          "production_api.production_api.doctype.production_order.production_order.approve_status_change",
+        args: {
+          production_order: frm.doc.name,
+        },
+        callback: function () {
+          d.hide();
+          frm.reload_doc();
+          frappe.show_alert({
+            message: __("{0} approved", [request.requested_status]),
+            indicator: "green",
+          });
+        },
+      });
+    },
+  });
   d.show();
 }
 
@@ -725,6 +837,126 @@ function build_transfer_preview($wrapper, transfers) {
   $wrapper.append($container);
 }
 
+function build_transfer_approval_preview($wrapper, request) {
+  const transfers = request.transfers || {};
+  const original_quantities = request.target_original_quantities || {};
+  const sizes = Object.keys(transfers);
+  $wrapper.empty();
+
+  const $table = $(
+    '<table class="table table-bordered" style="margin-bottom:0;"></table>',
+  );
+  const $head = $("<tr></tr>");
+  [
+    __("Size"),
+    __("Current Quantity"),
+    __("Transfer Quantity"),
+    __("After Approval"),
+  ].forEach((label) => {
+    $("<th></th>").text(label).appendTo($head);
+  });
+  const $body = $("<tbody></tbody>");
+  sizes.forEach((size) => {
+    const current = flt(original_quantities[size]);
+    const transfer = flt(transfers[size]);
+    const $row = $("<tr></tr>");
+    $("<td></td>").text(size).appendTo($row);
+    $("<td></td>").text(current).appendTo($row);
+    $("<td></td>").text(transfer).appendTo($row);
+    $("<td></td>").text(current + transfer).appendTo($row);
+    $body.append($row);
+  });
+  $table.append($("<thead></thead>").append($head)).append($body);
+  $wrapper.append(
+    $('<div style="overflow-x:auto;"></div>').append($table),
+  );
+}
+
+function show_approve_quantity_transfer_dialog(frm, request) {
+  if (!request.source_production_order || !request.transfers) {
+    frappe.msgprint(__("Pending quantity transfer details are missing"));
+    return;
+  }
+
+  const d = new frappe.ui.Dialog({
+    title: __("Approve Transfer Quantity"),
+    size: "large",
+    fields: [
+      {
+        fieldname: "source_production_order",
+        fieldtype: "Link",
+        label: __("Source Production Order"),
+        options: "Production Order",
+        default: request.source_production_order,
+        read_only: 1,
+      },
+      {
+        fieldname: "source_status",
+        fieldtype: "Data",
+        label: __("Source Status"),
+        default: request.source_status,
+        read_only: 1,
+      },
+      {
+        fieldname: "target_previous_status",
+        fieldtype: "Data",
+        label: __("Destination Status Before Request"),
+        default: request.target_previous_status,
+        read_only: 1,
+      },
+      {
+        fieldname: "transfer_preview",
+        fieldtype: "HTML",
+        label: __("Quantity Changes"),
+      },
+      {
+        fieldname: "requested_user",
+        fieldtype: "Data",
+        label: __("Requested By"),
+        default: request.requested_user,
+        read_only: 1,
+      },
+      {
+        fieldname: "requested_on",
+        fieldtype: "Datetime",
+        label: __("Requested On"),
+        default: request.requested_on,
+        read_only: 1,
+      },
+      {
+        fieldname: "reason",
+        fieldtype: "Small Text",
+        label: __("Reason"),
+        default: request.reason,
+        read_only: 1,
+      },
+    ],
+    primary_action_label: __("Approve Transfer Quantity"),
+    primary_action: function () {
+      frappe.call({
+        method:
+          "production_api.production_api.doctype.production_order.production_order.approve_quantity_transfer",
+        args: {
+          production_order: frm.doc.name,
+        },
+        callback: function () {
+          d.hide();
+          frm.reload_doc();
+          frappe.show_alert({
+            message: __("Transfer quantity approved"),
+            indicator: "green",
+          });
+        },
+      });
+    },
+  });
+  build_transfer_approval_preview(
+    d.fields_dict.transfer_preview.$wrapper,
+    request,
+  );
+  d.show();
+}
+
 function show_transfer_quantity_dialog(frm, alternative_items) {
   // __onload.items is get_order_qty's {size: {qty, ratio, ...}} for this doc's rows.
   const size_details = (frm.doc.__onload || {}).items || {};
@@ -758,6 +990,7 @@ function show_transfer_quantity_dialog(frm, alternative_items) {
               name: ["!=", frm.doc.name],
               item: ["in", alternative_items],
               transferred_to_ppo: ["is", "not set"],
+              incoming_quantity_transfer_request: ["is", "not set"],
             },
           };
         },
@@ -774,7 +1007,7 @@ function show_transfer_quantity_dialog(frm, alternative_items) {
         reqd: 1,
       },
     ],
-    primary_action_label: __("Transfer"),
+    primary_action_label: __("Request Transfer Approval"),
     primary_action: function () {
       let values = d.get_values();
       if (!values) return;
@@ -791,8 +1024,8 @@ function show_transfer_quantity_dialog(frm, alternative_items) {
           d.hide();
           frm.reload_doc();
           frappe.show_alert({
-            message: __("Quantity transferred"),
-            indicator: "green",
+            message: __("Quantity transfer sent for approval"),
+            indicator: "orange",
           });
         },
       });
