@@ -2699,6 +2699,9 @@ def get_packing_process_deliverables(grn_doc):
         "Lot", grn_doc.lot, ["production_detail", "item"])
     ipd_doc = frappe.get_doc("Item Production Detail", ipd)
     lot_doc = frappe.get_doc("Lot", grn_doc.lot)
+    prs_doc = frappe.get_doc("Process", grn_doc.process_name)
+    include_major_deliverables = should_include_packing_major_deliverables(
+        grn_doc, prs_doc)
     deliverables = []
     total_box_quantity = 0
     packing_combo = ipd_doc.packing_combo
@@ -2706,9 +2709,14 @@ def get_packing_process_deliverables(grn_doc):
     # Loose-piece rows carry no stock valuation of their own — value them by
     # the IPD packing tab colour mix so the stored rate (and any excess-usage
     # SL entry) reflects the real per-piece garment value.
-    piece_values = grn_doc.get_packing_piece_values(
-        [row.item_variant for row in grn_doc.items], default_received_type)
+    piece_values = {}
+    if include_major_deliverables:
+        piece_values = grn_doc.get_packing_piece_values(
+            [row.item_variant for row in grn_doc.items], default_received_type)
     for item in grn_doc.items:
+        total_box_quantity += item.quantity
+        if not include_major_deliverables:
+            continue
         if item.item_variant in piece_values:
             rate = piece_values[item.item_variant]
         else:
@@ -2724,7 +2732,6 @@ def get_packing_process_deliverables(grn_doc):
             item.item_variant, None, default_received_type, posting_date=grn_doc.posting_date,
             posting_time=grn_doc.posting_time, with_valuation_rate=False,
         )
-        total_box_quantity += item.quantity
         deliverables.append({
             "item_variant": item.item_variant,
             "quantity": item.stock_qty,
@@ -2735,7 +2742,6 @@ def get_packing_process_deliverables(grn_doc):
         })
 
     total_piece_qty = total_box_quantity * packing_combo
-    prs_doc = frappe.get_doc("Process", grn_doc.process_name)
     bom_items = {}
     if prs_doc.is_group:
         for process in prs_doc.process_details:
@@ -2802,6 +2808,30 @@ def get_packing_process_deliverables(grn_doc):
                 "rate": excess_items[d]['rate'],
             })
     return deliverables, excess_items_list
+
+
+def should_include_packing_major_deliverables(grn_doc, process_doc=None):
+    """Retain the legacy major-input calculation unless this is a grouped
+    packing WO with no active Finishing Plan.
+
+    A grouped WO without a Finishing Plan performs its subprocesses under the
+    same WO. Its packing GRN is size-wise and cannot identify the colours needed
+    to reduce Piece or Panel variants safely, so only subprocess BOM materials
+    are calculated. A Finishing Plan establishes the size-wise Loose Piece
+    stock boundary, where the existing calculation remains valid.
+    """
+    if not grn_doc.includes_packing:
+        return True
+
+    process_doc = process_doc or frappe.get_cached_doc(
+        "Process", grn_doc.process_name)
+    if not process_doc.is_group:
+        return True
+
+    return bool(frappe.db.exists("Finishing Plan", {
+        "work_order": grn_doc.against_id,
+        "docstatus": ["<", 2],
+    }))
 
 
 def get_bom(bom_item, total_piece_qty, lot_item_detail, lot_doc, ipd_doc, packing_combo):
