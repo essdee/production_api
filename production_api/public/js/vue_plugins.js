@@ -32,6 +32,7 @@ import CutPlanClothItems from "./CuttingPlan/components/CutPlanClothItems.vue"
 import CombinationItemDetail from "./Item_Po_detail/CombinationItemDetail.vue"
 import EmblishmentDetails from "./Item_Po_detail/EmblishmentDetails.vue"
 import CuttingItemDetail from "./Item_Po_detail/CuttingItemDetail.vue"
+import PanelWiseConsumptionMatrix from "./Item_Po_detail/PanelWiseConsumptionMatrix.vue"
 import ClothAccessory from "./Item_Po_detail/ClothAccessory.vue"
 import ClothAccessoryCombination from "./Item_Po_detail/ClothAccessoryCombination.vue"
 import AccessoryItems from "./Item_Po_detail/AccessoryItems.vue"
@@ -284,6 +285,24 @@ frappe.production.ui.CuttingItemDetail = class {
     get_data() {
         let items = JSON.parse(JSON.stringify(this.vue.get_data()))
         return items
+    }
+}
+
+frappe.production.ui.PanelWiseConsumptionMatrix = class {
+    constructor(wrapper) {
+        this.$wrapper = $(wrapper);
+        this.make_body();
+    }
+    make_body() {
+        this.app = createApp(PanelWiseConsumptionMatrix);
+        SetVueGlobals(this.app);
+        this.vue = this.app.mount(this.$wrapper.get(0));
+    }
+    load_data(payload, locked = false) {
+        this.vue.load_data(JSON.parse(JSON.stringify(payload || {})), locked);
+    }
+    get_data() {
+        return JSON.parse(JSON.stringify(this.vue.get_data()));
     }
 }
 
