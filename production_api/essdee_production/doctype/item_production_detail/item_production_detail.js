@@ -576,7 +576,12 @@ frappe.ui.form.on("Item Production Detail", {
 			},
 			callback: function(r){
 				if(r.message){
-					frm.set_value('stiching_item_details', r.message)
+					const stitching_details = r.message.map(row => ({
+						...row,
+						quantity: 1,
+						category: "Body",
+					}))
+					frm.set_value('stiching_item_details', stitching_details)
 					frm.refresh_field('stiching_item_details')
 				}
 			}

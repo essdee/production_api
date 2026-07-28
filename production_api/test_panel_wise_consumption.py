@@ -1,10 +1,12 @@
 # Copyright (c) 2026, Essdee and contributors
 # For license information, please see license.txt
 
-import frappe
-from frappe.tests.utils import FrappeTestCase
+from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import Mock, patch
+
+import frappe
+from frappe.tests.utils import FrappeTestCase
 
 from production_api.essdee_production.doctype.item_production_detail.item_production_detail import (
 	ItemProductionDetail,
@@ -69,6 +71,35 @@ def _centre_panel_context():
 
 
 class TestPanelWiseConsumption(FrappeTestCase):
+	def test_panel_copy_resynchronizes_the_dia_link_control(self):
+		source = Path(
+			frappe.get_app_path(
+				"production_api",
+				"public",
+				"js",
+				"Item_Po_detail",
+				"PanelWiseConsumptionMatrix.vue",
+			)
+		).read_text()
+
+		self.assertIn("updated(el, binding)", source)
+		self.assertIn("syncDiaLink(el, binding.value)", source)
+		self.assertIn("state.control.set_value(value)", source)
+
+	def test_stitching_attribute_rows_receive_entry_defaults(self):
+		source = Path(
+			frappe.get_app_path(
+				"production_api",
+				"essdee_production",
+				"doctype",
+				"item_production_detail",
+				"item_production_detail.js",
+			)
+		).read_text()
+
+		self.assertIn("quantity: 1", source)
+		self.assertIn('category: "Body"', source)
+
 	def test_colour_yarn_recipe_table_is_not_in_ipd(self):
 		self.assertIsNone(
 			frappe.get_meta("Item Production Detail").get_field("colour_yarn_recipes")
