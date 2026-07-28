@@ -3,6 +3,8 @@
 
 
 import json
+from collections import OrderedDict
+from io import BytesIO
 from six import string_types
 from operator import itemgetter
 from typing import Any, Dict, List, Optional, Tuple, TypedDict, Union
@@ -678,6 +680,318 @@ def get_variant_values_for(items):
 		attribute_map[attr["parent"]].update({attr["attribute"]: attr["attribute_value"]})
 
 	return attribute_map
+
+
+HORIZONTAL_DETAIL_FIELDS = (
+	("bal_qty", "Balance Qty", "quantity"),
+	("bal_val", "Balance Value", "currency"),
+	("opening_qty", "Opening Qty", "quantity"),
+	("opening_val", "Opening Value", "currency"),
+	("in_qty", "In Qty", "quantity"),
+	("in_val", "In Value", "currency"),
+	("out_qty", "Out Qty", "quantity"),
+	("out_val", "Out Value", "currency"),
+	("val_rate", "Valuation Rate", "currency"),
+)
+
+
+def _format_horizontal_number(value, precision):
+	value = flt(value, precision)
+	return f"{value:,.{precision}f}".rstrip("0").rstrip(".") or "0"
+
+
+def _format_horizontal_detail(row, filters):
+	float_precision = cint(frappe.db.get_default("float_precision")) or 3
+	currency_precision = cint(frappe.db.get_default("currency_precision")) or 2
+	currency = row.get("currency") or "INR"
+	lines = [f"Item Variant: {row.get('item') or ''}"]
+
+	for fieldname, label, value_type in HORIZONTAL_DETAIL_FIELDS:
+		precision = currency_precision if value_type == "currency" else float_precision
+		value = _format_horizontal_number(row.get(fieldname), precision)
+		if value_type == "currency":
+			value = f"{currency} {value}"
+		lines.append(f"{label}: {value}")
+
+		if fieldname == "bal_val" and cint(filters.get("show_inward_date_split")):
+			lines.append("Inward Date Split:")
+			inward_lines = (row.get("inward_split") or "").splitlines()
+			lines.extend([f"  {line}" for line in inward_lines] or ["  --"])
+
+	if cint(filters.get("show_stock_ageing_data")):
+		for fieldname, label in (
+			("average_age", "Average Age"),
+			("earliest_age", "Earliest Age"),
+			("latest_age", "Latest Age"),
+		):
+			lines.append(
+				f"{label}: {_format_horizontal_number(row.get(fieldname), float_precision)} days"
+			)
+
+	return "\n".join(lines)
+
+
+def _get_horizontal_attribute_metadata(data):
+	"""Return variant attributes, primary attributes and their configured order."""
+	variants = list(OrderedDict.fromkeys(row.get("item") for row in data if row.get("item")))
+	parent_items = list(
+		OrderedDict.fromkeys(row.get("item_name") for row in data if row.get("item_name"))
+	)
+
+	variant_attributes = {}
+	if variants:
+		for row in frappe.get_all(
+			"Item Variant Attribute",
+			filters={"parent": ("in", variants)},
+			fields=["parent", "attribute", "attribute_value", "idx"],
+			order_by="parent asc, idx asc",
+		):
+			variant_attributes.setdefault(row.parent, OrderedDict())[row.attribute] = row.attribute_value
+
+	primary_attributes = {}
+	if parent_items:
+		primary_attributes = {
+			row.name: row.primary_attribute
+			for row in frappe.get_all(
+				"Item",
+				filters={"name": ("in", parent_items)},
+				fields=["name", "primary_attribute"],
+				order_by=None,
+			)
+		}
+
+	item_attributes = {}
+	primary_mappings = {}
+	if parent_items:
+		for row in frappe.get_all(
+			"Item Item Attribute",
+			filters={"parent": ("in", parent_items)},
+			fields=["parent", "attribute", "mapping", "idx"],
+			order_by="parent asc, idx asc",
+		):
+			item_attributes.setdefault(row.parent, []).append(row.attribute)
+			if row.attribute == primary_attributes.get(row.parent) and row.mapping:
+				primary_mappings[row.parent] = row.mapping
+
+	mapping_values = {}
+	mapping_names = list(OrderedDict.fromkeys(primary_mappings.values()))
+	if mapping_names:
+		for row in frappe.get_all(
+			"Item Item Attribute Mapping Value",
+			filters={"parent": ("in", mapping_names)},
+			fields=["parent", "attribute_value", "idx"],
+			order_by="parent asc, idx asc",
+		):
+			mapping_values.setdefault(row.parent, []).append(row.attribute_value)
+
+	primary_value_order = {
+		item: mapping_values.get(mapping, []) for item, mapping in primary_mappings.items()
+	}
+	return variant_attributes, primary_attributes, item_attributes, primary_value_order
+
+
+def build_horizontal_stock_balance_data(data, filters=None):
+	"""Split Stock Balance into simple Work Order-style tables per Item.
+
+	Lot, Received Type, Warehouse, UOM and non-primary attributes stay as
+	normal row columns. Only the current Item's primary values are pivoted
+	horizontally, which keeps every table compact and familiar.
+	"""
+	filters = frappe._dict(filters or {})
+	data = data or []
+	(
+		variant_attributes,
+		primary_attributes,
+		item_attributes,
+		primary_value_order,
+	) = _get_horizontal_attribute_metadata(data)
+
+	table_sources = OrderedDict()
+	for row in data:
+		table_sources.setdefault(row.get("item_name"), []).append(row)
+
+	tables = []
+	for parent_item, table_data in table_sources.items():
+		primary_attribute = primary_attributes.get(parent_item)
+		common_attributes = [
+			attribute
+			for attribute in item_attributes.get(parent_item, [])
+			if attribute != primary_attribute
+		]
+
+		if primary_attribute:
+			present_values = []
+			for row in table_data:
+				value = (
+					variant_attributes.get(row.get("item"), {}).get(primary_attribute)
+					or "Unspecified"
+				)
+				if value not in present_values:
+					present_values.append(value)
+			primary_values = [
+				value
+				for value in primary_value_order.get(parent_item, [])
+				if value in present_values
+			]
+			primary_values.extend(value for value in present_values if value not in primary_values)
+			primary_columns = [(primary_attribute, value) for value in primary_values]
+			primary_headers = primary_values
+		else:
+			primary_columns = [(None, "Details")]
+			primary_headers = ["Details"]
+
+		row_groups = OrderedDict()
+		for row in table_data:
+			attributes = variant_attributes.get(row.get("item"), {})
+			common_values = [attributes.get(attribute) or "" for attribute in common_attributes]
+			group_key = (
+				row.get("lot"),
+				row.get("received_type"),
+				row.get("warehouse"),
+				row.get("warehouse_name"),
+				row.get("stock_uom"),
+				*common_values,
+			)
+			row_group = row_groups.setdefault(
+				group_key,
+				{
+					"fixed_values": [
+						parent_item or "",
+						row.get("item_group") or "",
+						row.get("lot") or "",
+						row.get("warehouse_name") or "",
+						row.get("received_type") or "",
+						row.get("stock_uom") or "",
+						*common_values,
+					],
+					"values": {},
+				},
+			)
+			primary_value = (
+				attributes.get(primary_attribute) or "Unspecified"
+				if primary_attribute
+				else "Details"
+			)
+			row_group["values"][(primary_attribute, primary_value)] = _format_horizontal_detail(
+				row, filters
+			)
+
+		rows = []
+		for row_number, row_group in enumerate(row_groups.values(), 1):
+			rows.append(
+				[row_number, *row_group["fixed_values"]]
+				+ [
+					row_group["values"].get(primary_column, "")
+					for primary_column in primary_columns
+				]
+			)
+		tables.append(
+			{
+				"item": parent_item or "",
+				"fixed_headers": [
+					"S.No.",
+					"Item",
+					"Item Group",
+					"Lot",
+					"Warehouse",
+					"Received Type",
+					"Stock UOM",
+					*common_attributes,
+				],
+				"primary_headers": primary_headers,
+				"rows": rows,
+			}
+		)
+
+	return {
+		"tables": tables,
+	}
+
+
+def make_horizontal_stock_balance_workbook(export_data, filters=None):
+	from openpyxl import Workbook
+	from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
+	from openpyxl.utils import get_column_letter
+
+	tables = export_data["tables"]
+	workbook = Workbook()
+	worksheet = workbook.active
+	worksheet.title = "Stock Balance Horizontal"
+	worksheet.sheet_view.showGridLines = False
+
+	thin_border = Border(
+		left=Side(style="thin", color="D1D8DD"),
+		right=Side(style="thin", color="D1D8DD"),
+		top=Side(style="thin", color="D1D8DD"),
+		bottom=Side(style="thin", color="D1D8DD"),
+	)
+	current_row = 1
+	if not tables:
+		worksheet.cell(current_row, 1, "No Stock Balance data found for the selected filters.")
+
+	for table_index, table in enumerate(tables):
+		headers = table["fixed_headers"] + table["primary_headers"]
+		if table_index:
+			current_row += 1
+
+		for column_index, header in enumerate(headers, 1):
+			cell = worksheet.cell(current_row, column_index, header)
+			cell.font = Font(bold=True, color="1F272E")
+			cell.fill = PatternFill("solid", fgColor="F8F9FA")
+			cell.alignment = Alignment(vertical="center", wrap_text=True)
+			cell.border = thin_border
+			width = 28 if header in ("Item", "Warehouse") else 17
+			if header == "S.No.":
+				width = 8
+			if column_index > len(table["fixed_headers"]):
+				width = 34
+			column_letter = get_column_letter(column_index)
+			worksheet.column_dimensions[column_letter].width = max(
+				worksheet.column_dimensions[column_letter].width or 0, width
+			)
+		worksheet.row_dimensions[current_row].height = 32
+		current_row += 1
+
+		first_detail_column = len(table["fixed_headers"]) + 1
+		for table_row_index, values in enumerate(table["rows"]):
+			max_lines = 1
+			for column_index, value in enumerate(values, 1):
+				cell = worksheet.cell(current_row, column_index, value)
+				cell.alignment = Alignment(vertical="top", wrap_text=True)
+				cell.border = thin_border
+				if table_row_index % 2:
+					cell.fill = PatternFill("solid", fgColor="F3F6FA")
+				if column_index >= first_detail_column:
+					max_lines = max(max_lines, str(value or "").count("\n") + 1)
+			worksheet.row_dimensions[current_row].height = min(max(48, max_lines * 14), 300)
+			current_row += 1
+
+	worksheet.freeze_panes = "A2"
+	worksheet.page_setup.orientation = "landscape"
+	worksheet.page_setup.fitToWidth = 1
+	worksheet.sheet_properties.pageSetUpPr.fitToPage = True
+	return workbook
+
+
+@frappe.whitelist()
+def download_horizontal(filters=None):
+	frappe.has_permission("Stock Ledger Entry", "read", throw=True)
+	if isinstance(filters, string_types):
+		filters = json.loads(filters)
+	filters = frappe._dict(filters or {})
+
+	_columns, data = execute(filters)
+	export_data = build_horizontal_stock_balance_data(data, filters)
+	workbook = make_horizontal_stock_balance_workbook(export_data, filters)
+	xlsx_file = BytesIO()
+	workbook.save(xlsx_file)
+
+	from_date = filters.get("from_date") or "start"
+	to_date = filters.get("to_date") or "end"
+	frappe.local.response.filename = f"Stock_Balance_Horizontal_{from_date}_to_{to_date}.xlsx"
+	frappe.local.response.filecontent = xlsx_file.getvalue()
+	frappe.local.response.type = "binary"
+
 
 @frappe.whitelist()
 def get_stock_balance(filters=None):
