@@ -7,96 +7,55 @@ from frappe.utils import flt, format_date, fmt_money
 
 
 MAX_MESSAGE_LENGTH = 3900
-MessageRenderer = Callable[[object, frappe._dict], str]
+MessageContextProvider = Callable[[object], dict]
 
 
 def render_message(doc, route: frappe._dict) -> str:
-	"""Render with a safe registered function, with Jinja as a route-level override."""
+	"""Render a route-configured Jinja template with safe, prepared context."""
+	context = get_message_context(doc, route)
 	if route.get("message_template"):
-		return frappe.render_template(route.message_template, {"doc": doc, "route": route}).strip()
-
-	renderer = MESSAGE_RENDERERS.get(doc.doctype, render_generic)
-	return renderer(doc, route)
-
-
-def render_process_cost(doc, route: frappe._dict) -> str:
-	supplier = doc.supplier_name or doc.supplier or "-"
-	if doc.supplier and doc.supplier_name:
-		supplier = f"{doc.supplier_name} ({doc.supplier})"
-
-	validity = format_date(doc.from_date)
-	if doc.to_date:
-		validity = f"{validity} to {format_date(doc.to_date)}"
+		message = frappe.render_template(route.message_template, context).strip()
 	else:
-		validity = f"{validity} onwards"
+		message = render_generic(doc, route)
 
-	rows = list(doc.process_cost_values or [])
-	lines = [
-		"PROCESS COST APPROVAL",
-		"─────────────────────",
-		f"Document: {doc.name}",
-		f"Lot: {doc.lot}",
-		f"Item: {doc.item}",
-		f"Process: {doc.process_name}",
-		f"Supplier: {supplier}",
-		f"Validity: {validity}",
-		f"Attribute: {doc.attribute or 'Not applicable'}",
-		f"Tax Slab: {doc.tax_slab or '-'}",
-		f"Rework: {'Yes' if doc.is_rework else 'No'}",
-		"",
-		f"PROCESS COST VALUES ({len(rows)})",
-		"─────────────────────",
-	]
-
-	for index, row in enumerate(rows, start=1):
-		row_lines = [
-			f"{index}. {row.attribute_value or 'Default'}",
-			f"   Minimum Order Qty: {_format_qty(row.min_order_qty)} {doc.uom or ''}".rstrip(),
-			f"   Price (Excl. Tax): {_format_currency(row.price)}",
-		]
-		candidate = "\n".join(lines + row_lines)
-		if len(candidate) > MAX_MESSAGE_LENGTH:
-			remaining = len(rows) - index + 1
-			lines.append(f"... {remaining} more value(s). Open the document to view all.")
-			break
-		lines.extend(row_lines)
-
-	return "\n".join(lines)
+	return _truncate_message(message)
 
 
-def render_purchase_invoice(doc, route: frappe._dict) -> str:
+def get_message_context(doc, route: frappe._dict) -> dict:
+	context = {
+		"doc": doc,
+		"route": route,
+		"format_currency": _format_currency,
+		"format_date": format_date,
+		"format_qty": _format_qty,
+	}
+	provider = MESSAGE_CONTEXT_PROVIDERS.get(doc.doctype)
+	if provider:
+		context.update(provider(doc))
+	return context
+
+
+def get_purchase_invoice_context(doc) -> dict:
+	"""Prepare derived PI values that are not directly available to Jinja."""
 	work_order_rows = list(doc.get("pi_work_order_billed_details") or [])
 	work_orders = list(
 		dict.fromkeys(row.work_order for row in work_order_rows if row.work_order)
 	)
-	total_delivered = sum(flt(row.total_delivered) for row in work_order_rows)
-	total_received = sum(flt(row.total_received) for row in work_order_rows)
-	debit_amount = _get_purchase_invoice_debit_amount(doc, work_orders)
-
-	supplier = doc.get("billing_supplier") or doc.get("supplier") or "-"
-	bill_date = format_date(doc.get("bill_date")) if doc.get("bill_date") else "-"
-	work_order_text = ", ".join(work_orders) if work_orders else "Not applicable"
-
-	return "\n".join(
-		[
-			"PURCHASE INVOICE APPROVAL",
-			"─────────────────────────",
-			f"Document: {doc.name}",
-			f"Approval Stage: {route.trigger_value}",
-			f"Supplier: {supplier}",
-			f"Against: {doc.get('against') or '-'}",
-			f"Supplier Bill: {doc.get('bill_no') or '-'}",
-			f"Bill Date: {bill_date}",
-			f"Work Order(s): {work_order_text}",
-			"",
-			"SUMMARY",
-			"─────────────────────────",
-			f"Total Delivered: {_format_qty(total_delivered)}",
-			f"Total Received: {_format_qty(total_received)}",
-			f"Debit Amount: {_format_currency(debit_amount)}",
-			f"Total Amount: {_format_currency(doc.get('total'))}",
-		]
-	)
+	return {
+		"summary": frappe._dict(
+			{
+				"debit_amount": _get_purchase_invoice_debit_amount(doc, work_orders),
+				"total_amount": flt(doc.get("total")),
+				"total_delivered": sum(
+					flt(row.total_delivered) for row in work_order_rows
+				),
+				"total_received": sum(
+					flt(row.total_received) for row in work_order_rows
+				),
+				"work_orders": ", ".join(work_orders) if work_orders else "Not applicable",
+			}
+		)
+	}
 
 
 def render_generic(doc, route: frappe._dict) -> str:
@@ -123,7 +82,6 @@ def _format_currency(value) -> str:
 
 
 def _get_purchase_invoice_debit_amount(doc, work_orders: list[str]) -> float:
-	"""Use the stored PI snapshot when present, otherwise mirror the live debit summary."""
 	debit_rows = list(doc.get("purchase_invoice_debit_details") or [])
 	if debit_rows:
 		return sum(flt(row.debit_value) for row in debit_rows)
@@ -144,7 +102,13 @@ def _get_purchase_invoice_debit_amount(doc, work_orders: list[str]) -> float:
 	return sum(flt(row.debit_value) for row in debits)
 
 
-MESSAGE_RENDERERS: dict[str, MessageRenderer] = {
-	"Process Cost": render_process_cost,
-	"Purchase Invoice": render_purchase_invoice,
+def _truncate_message(message: str) -> str:
+	if len(message) <= MAX_MESSAGE_LENGTH:
+		return message
+	suffix = "\n... Open the document to view the remaining details."
+	return f"{message[: MAX_MESSAGE_LENGTH - len(suffix)].rstrip()}{suffix}"
+
+
+MESSAGE_CONTEXT_PROVIDERS: dict[str, MessageContextProvider] = {
+	"Purchase Invoice": get_purchase_invoice_context,
 }

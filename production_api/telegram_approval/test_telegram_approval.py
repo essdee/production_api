@@ -11,6 +11,47 @@ from production_api.telegram_approval.renderers import render_message
 from production_api.telegram_approval.service import build_approval_keyboard
 
 
+PROCESS_COST_TEMPLATE = """\
+PROCESS COST APPROVAL
+─────────────────────
+Document: {{ doc.name }}
+Lot: {{ doc.lot or "-" }}
+Item: {{ doc.item or "-" }}
+Process: {{ doc.process_name or "-" }}
+Supplier: {{ doc.supplier_name or doc.supplier or "-" }}
+Validity: {{ format_date(doc.from_date) }}{% if doc.to_date %} to {{ format_date(doc.to_date) }}{% else %} onwards{% endif %}
+Attribute: {{ doc.attribute or "Not applicable" }}
+Tax Slab: {{ doc.tax_slab or "-" }}
+Rework: {% if doc.is_rework %}Yes{% else %}No{% endif %}
+
+PROCESS COST VALUES ({{ doc.process_cost_values | length }})
+─────────────────────
+{% for row in doc.process_cost_values %}
+{{ loop.index }}. {{ row.attribute_value or "Default" }}
+   Minimum Order Qty: {{ format_qty(row.min_order_qty) }} {{ doc.uom or "" }}
+   Price (Excl. Tax): {{ format_currency(row.price) }}
+{% endfor %}"""
+
+
+PURCHASE_INVOICE_TEMPLATE = """\
+PURCHASE INVOICE APPROVAL
+─────────────────────────
+Document: {{ doc.name }}
+Approval Stage: {{ route.trigger_value }}
+Supplier: {{ doc.billing_supplier or doc.supplier or "-" }}
+Against: {{ doc.against or "-" }}
+Supplier Bill: {{ doc.bill_no or "-" }}
+Bill Date: {% if doc.bill_date %}{{ format_date(doc.bill_date) }}{% else %}-{% endif %}
+Work Order(s): {{ summary.work_orders }}
+
+SUMMARY
+─────────────────────────
+Total Delivered: {{ format_qty(summary.total_delivered) }}
+Total Received: {{ format_qty(summary.total_received) }}
+Debit Amount: {{ format_currency(summary.debit_amount) }}
+Total Amount: {{ format_currency(summary.total_amount) }}"""
+
+
 class TestTelegramApprovalHelpers(TestCase):
 	def test_role_parser_accepts_commas_and_newlines(self):
 		self.assertEqual(
@@ -74,7 +115,15 @@ class TestTelegramApprovalHelpers(TestCase):
 				],
 			}
 		)
-		message = render_message(doc, frappe._dict({"trigger_value": "Approval Pending"}))
+		message = render_message(
+			doc,
+			frappe._dict(
+				{
+					"trigger_value": "Approval Pending",
+					"message_template": PROCESS_COST_TEMPLATE,
+				}
+			),
+		)
 
 		self.assertIn("PROCESS COST VALUES (2)", message)
 		self.assertIn("1. Red", message)
@@ -118,7 +167,13 @@ class TestTelegramApprovalHelpers(TestCase):
 			}
 		)
 		message = render_message(
-			doc, frappe._dict({"trigger_value": "Approval Initiated"})
+			doc,
+			frappe._dict(
+				{
+					"trigger_value": "Approval Initiated",
+					"message_template": PURCHASE_INVOICE_TEMPLATE,
+				}
+			),
 		)
 
 		self.assertIn("PURCHASE INVOICE APPROVAL", message)
