@@ -1,0 +1,199 @@
+from types import SimpleNamespace
+from unittest import TestCase
+
+from production_api.api.ppo_report import (
+	_inward_quantity_in_boxes,
+	build_production_snapshot,
+)
+
+
+def row(**kwargs):
+	return SimpleNamespace(
+		**kwargs,
+		get=lambda key, default=None: kwargs.get(key, default),
+	)
+
+
+class TestPPOReportSnapshot(TestCase):
+	def test_handles_multiple_lots_and_mismatched_inward_items(self):
+		result = build_production_snapshot(
+			filters={
+				"item": "GYM VEST",
+				"ppo_start_date": "2026-07-01",
+				"ppo_end_date": "2026-07-31",
+				"inward_start_date": "2026-07-01",
+				"inward_end_date": "2026-07-31",
+			},
+			ppo_rows=[
+				row(
+					name="PPO-1",
+					item="GYM VEST",
+					delivery_date="2026-07-15",
+					item_variant="GYM VEST-S",
+					quantity=200,
+				)
+			],
+			lot_rows=[
+				row(
+					lot="LOT-1",
+					production_order="PPO-1",
+					lot_item="GYM VEST",
+					status="Open",
+					is_transferred=0,
+					transferred_lot=None,
+					item="GYM VEST",
+					item_variant="GYM VEST-S",
+					planned_quantity=120,
+				),
+				row(
+					lot="LOT-2",
+					production_order="PPO-1",
+					lot_item="JUNIOR GYM VEST",
+					status="Open",
+					is_transferred=0,
+					transferred_lot=None,
+					item="JUNIOR GYM VEST",
+					item_variant="JUNIOR GYM VEST-S",
+					planned_quantity=80,
+				),
+			],
+			inward_rows=[
+				row(
+					lot="LOT-1",
+					item="GYM VEST",
+					item_variant="GYM VEST-S",
+					inward_quantity=100,
+					uom="Box",
+					stock_entry="FG-1",
+					posting_date="2026-07-20",
+					warehouse="FG",
+				),
+				row(
+					lot="LOT-1",
+					item="OTHER VEST",
+					item_variant="OTHER VEST-S",
+					inward_quantity=5,
+					uom="Box",
+					stock_entry="FG-2",
+					posting_date="2026-07-21",
+					warehouse="FG",
+				),
+			],
+			stock={
+				"GYM VEST-S": {"bal_qty": 10, "uom": "Box"},
+				"JUNIOR GYM VEST-S": {"bal_qty": 20, "uom": "Box"},
+			},
+			warehouses=["FG"],
+		)
+
+		self.assertEqual(result["summary"]["ppo_quantity"], 200)
+		self.assertEqual(result["summary"]["lot_quantity"], 200)
+		self.assertEqual(result["summary"]["inward_quantity"], 105)
+		self.assertEqual(result["summary"]["wip_quantity"], 100)
+		self.assertEqual(result["summary"]["over_inward_quantity"], 5)
+		self.assertEqual(result["ppos"][0]["lot_count"], 2)
+
+		lot_one = next(lot for lot in result["lots"] if lot["name"] == "LOT-1")
+		mismatched = next(
+			item
+			for item in lot_one["items"]
+			if item["item_variant"] == "OTHER VEST-S"
+		)
+		self.assertEqual(mismatched["planned_quantity"], 0)
+		self.assertEqual(mismatched["over_inward_quantity"], 5)
+
+	def test_returns_zero_wip_when_inward_exceeds_plan(self):
+		result = build_production_snapshot(
+			filters={"item": "ITEM"},
+			ppo_rows=[],
+			lot_rows=[
+				row(
+					lot="LOT-1",
+					production_order=None,
+					lot_item="ITEM",
+					status="Open",
+					is_transferred=0,
+					transferred_lot=None,
+					item="ITEM",
+					item_variant="ITEM-A",
+					planned_quantity=10,
+				)
+			],
+			inward_rows=[
+				row(
+					lot="LOT-1",
+					item="ITEM",
+					item_variant="ITEM-A",
+					inward_quantity=12,
+					uom="Box",
+					stock_entry="FG-1",
+					posting_date="2026-07-20",
+					warehouse="FG",
+				)
+			],
+			stock={},
+			warehouses=[],
+		)
+
+		item = result["lots"][0]["items"][0]
+		self.assertEqual(item["wip_quantity"], 0)
+		self.assertEqual(item["over_inward_quantity"], 2)
+
+	def test_converts_piece_inward_to_boxes(self):
+		quantity, warning = _inward_quantity_in_boxes(
+			row(
+				item_variant="ITEM-A",
+				inward_quantity=25,
+				uom="Pieces",
+				stock_qty=25,
+				stock_uom="Pieces",
+				conversion_factor=1,
+				box_conversion_factor=5,
+			)
+		)
+
+		self.assertEqual(quantity, 5)
+		self.assertIsNone(warning)
+
+	def test_excludes_inward_when_box_conversion_is_missing(self):
+		result = build_production_snapshot(
+			filters={"item": "ITEM"},
+			ppo_rows=[],
+			lot_rows=[
+				row(
+					lot="LOT-1",
+					production_order=None,
+					lot_item="ITEM",
+					status="Open",
+					is_transferred=0,
+					transferred_lot=None,
+					item="ITEM",
+					item_variant="ITEM-A",
+					planned_quantity=10,
+				)
+			],
+			inward_rows=[
+				row(
+					lot="LOT-1",
+					item="ITEM",
+					item_variant="ITEM-A",
+					inward_quantity=25,
+					uom="Pieces",
+					stock_qty=25,
+					stock_uom="Pieces",
+					conversion_factor=1,
+					box_conversion_factor=None,
+					stock_entry="FG-1",
+					posting_date="2026-07-20",
+					warehouse="FG",
+				)
+			],
+			stock={},
+			warehouses=[],
+		)
+
+		item = result["lots"][0]["items"][0]
+		self.assertEqual(item["inward_quantity"], 0)
+		self.assertEqual(item["wip_quantity"], 10)
+		self.assertEqual(len(result["warnings"]), 1)
+		self.assertIn("Pieces to Box", result["warnings"][0])
