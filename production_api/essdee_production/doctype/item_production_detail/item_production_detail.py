@@ -445,12 +445,7 @@ def delete_docs(documents):
 
 @frappe.whitelist()
 def get_approval_roles():
-	mrp_settings = frappe.get_single("MRP Settings")
-	roles = [
-		mrp_settings.senior_merch_role,
-		mrp_settings.merchandising_manager_role,
-	]
-	return list(dict.fromkeys([role for role in roles if role] + ["System Manager"]))
+	return ["System Manager"]
 
 
 @frappe.whitelist()

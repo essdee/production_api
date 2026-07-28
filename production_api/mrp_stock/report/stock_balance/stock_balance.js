@@ -91,6 +91,17 @@ frappe.query_reports["Stock Balance"] = {
 		},
 	],
 
+	"onload": function (report) {
+		report.page.add_inner_button(__("Download as Horizontal"), () => {
+			open_url_post(
+				"/api/method/production_api.mrp_stock.report.stock_balance.stock_balance.download_horizontal",
+				{
+					filters: JSON.stringify(report.get_filter_values()),
+				}
+			);
+		});
+	},
+
 	// datatable rows have a uniform height (HyperList virtual scroll), so the
 	// inward-split lines are shown by raising cellHeight to fit the tallest
 	// cell (capped; overflow readable via the title tooltip). Runs on every
