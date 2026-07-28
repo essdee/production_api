@@ -71,7 +71,7 @@
    "reqd": 1
   },
   {
-   "description": "Optional plain-text Jinja template. Available values: doc and route.",
+   "description": "Optional plain-text Jinja template. Available values: doc, route, format_currency, format_date, and format_qty. Purchase Invoice routes also receive summary.",
    "fieldname": "message_template",
    "fieldtype": "Code",
    "label": "Message Template",
