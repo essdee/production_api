@@ -84,6 +84,12 @@ class TestPPOReportSnapshot(TestCase):
 				"JUNIOR GYM VEST-S": {"bal_qty": 20, "uom": "Box"},
 			},
 			warehouses=["FG"],
+			variant_attributes={
+				"GYM VEST-S": "S",
+				"JUNIOR GYM VEST-S": "S",
+				"OTHER VEST-S": "S",
+			},
+			column_order=["S", "M", "L", "XL"],
 		)
 
 		self.assertEqual(result["summary"]["ppo_quantity"], 200)
@@ -92,6 +98,11 @@ class TestPPOReportSnapshot(TestCase):
 		self.assertEqual(result["summary"]["wip_quantity"], 100)
 		self.assertEqual(result["summary"]["over_inward_quantity"], 5)
 		self.assertEqual(result["ppos"][0]["lot_count"], 2)
+		self.assertEqual(
+			result["ppos"][0]["details"][0]["primary_attribute_value"],
+			"S",
+		)
+		self.assertEqual(result["column_order"], ["S", "M", "L", "XL"])
 
 		lot_one = next(lot for lot in result["lots"] if lot["name"] == "LOT-1")
 		mismatched = next(
@@ -101,6 +112,7 @@ class TestPPOReportSnapshot(TestCase):
 		)
 		self.assertEqual(mismatched["planned_quantity"], 0)
 		self.assertEqual(mismatched["over_inward_quantity"], 5)
+		self.assertEqual(mismatched["primary_attribute_value"], "S")
 
 	def test_returns_zero_wip_when_inward_exceeds_plan(self):
 		result = build_production_snapshot(

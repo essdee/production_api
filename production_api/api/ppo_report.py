@@ -6,6 +6,7 @@ import frappe
 from frappe.utils import flt, getdate
 
 from production_api.api.stock import get_stock
+from production_api.production_api.doctype.item.item import get_attribute_details
 
 
 @frappe.whitelist()
@@ -62,6 +63,16 @@ def get_ppo_production_snapshot(
 			if row.get("item_variant")
 		)
 	)
+	ppo_item_variants = [
+		row.item_variant for row in ppo_rows if row.get("item_variant")
+	]
+	all_item_variants = list(
+		dict.fromkeys([*ppo_item_variants, *item_variants])
+	)
+	variant_attributes = _fetch_primary_attribute_values(all_item_variants)
+	column_order = get_attribute_details(filters["item"]).get(
+		"primary_attribute_values", []
+	)
 	stock = {}
 	warnings = []
 	if item_variants and warehouse_names:
@@ -82,6 +93,8 @@ def get_ppo_production_snapshot(
 		inward_rows=inward_rows,
 		stock=stock,
 		warehouses=warehouse_names,
+		variant_attributes=variant_attributes,
+		column_order=column_order,
 		warnings=warnings,
 	)
 
@@ -94,6 +107,8 @@ def build_production_snapshot(
 	inward_rows,
 	stock,
 	warehouses,
+	variant_attributes=None,
+	column_order=None,
 	warnings=None,
 ):
 	"""Build a deterministic report payload from query rows.
@@ -101,6 +116,8 @@ def build_production_snapshot(
 	Kept independent from database access so the multi-lot and mismatched-inward
 	edge cases can be regression-tested without a running site.
 	"""
+	variant_attributes = variant_attributes or {}
+	column_order = list(column_order or [])
 	ppo_map = {}
 	for row in ppo_rows:
 		ppo = ppo_map.setdefault(
@@ -119,6 +136,9 @@ def build_production_snapshot(
 			ppo["details"].append(
 				{
 					"item_variant": row.item_variant,
+					"primary_attribute_value": variant_attributes.get(
+						row.item_variant
+					),
 					"quantity": quantity,
 				}
 			)
@@ -151,6 +171,7 @@ def build_production_snapshot(
 				{
 					"item": item_name,
 					"item_variant": key,
+					"primary_attribute_value": variant_attributes.get(key),
 					"planned_quantity": 0.0,
 					"inward_quantity": 0.0,
 					"wip_quantity": 0.0,
@@ -182,6 +203,9 @@ def build_production_snapshot(
 			{
 				"item": item_name,
 				"item_variant": row.item_variant,
+				"primary_attribute_value": variant_attributes.get(
+					row.item_variant
+				),
 				"planned_quantity": 0.0,
 				"inward_quantity": 0.0,
 				"wip_quantity": 0.0,
@@ -269,11 +293,19 @@ def build_production_snapshot(
 		"ppos": list(ppo_map.values()),
 		"lots": lots,
 		"variants": [
-			{"item_variant": variant, "item": item}
+			{
+				"item_variant": variant,
+				"item": item,
+				"primary_attribute_value": variant_attributes.get(variant),
+			}
 			for variant, item in sorted(
 				variant_items.items(), key=lambda value: (value[1] or "", value[0])
 			)
 		],
+		"column_order": _merge_column_order(
+			column_order,
+			variant_attributes.values(),
+		),
 		"stock": stock_rows,
 		"warnings": report_warnings,
 	}
@@ -379,6 +411,46 @@ def _fetch_inward_rows(lot_names, start_date, end_date):
 		.orderby(stock_entry.name)
 		.orderby(detail.idx)
 	).run(as_dict=True)
+
+
+def _fetch_primary_attribute_values(item_variants):
+	if not item_variants:
+		return {}
+
+	item_variant = frappe.qb.DocType("Item Variant")
+	item = frappe.qb.DocType("Item")
+	attribute = frappe.qb.DocType("Item Variant Attribute")
+
+	rows = (
+		frappe.qb.from_(item_variant)
+		.join(item)
+		.on(item.name == item_variant.item)
+		.left_join(attribute)
+		.on(
+			(attribute.parent == item_variant.name)
+			& (attribute.attribute == item.primary_attribute)
+		)
+		.select(
+			item_variant.name.as_("item_variant"),
+			attribute.attribute_value.as_("primary_attribute_value"),
+		)
+		.where(item_variant.name.isin(item_variants))
+	).run(as_dict=True)
+
+	return {
+		row.item_variant: row.primary_attribute_value
+		for row in rows
+		if row.get("primary_attribute_value")
+	}
+
+
+def _merge_column_order(preferred, observed):
+	columns = []
+	for value in [*(preferred or []), *(observed or [])]:
+		value = str(value or "").strip()
+		if value and value not in columns:
+			columns.append(value)
+	return columns
 
 
 def _inward_quantity_in_boxes(row):
@@ -496,6 +568,7 @@ def _empty_snapshot(filters, warehouses):
 		"ppos": [],
 		"lots": [],
 		"variants": [],
+		"column_order": [],
 		"stock": {},
 		"warnings": [],
 	}
