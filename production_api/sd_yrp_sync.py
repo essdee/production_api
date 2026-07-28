@@ -131,6 +131,12 @@ def produce_exact_doc(producer_dict):
 
 
 def enqueue_sd_yrp_publish(doc, event, args=None):
+	# Multi-step builders such as Duplicate IPD save an intentionally incomplete
+	# document while rebuilding child mappings. They clear this flag before the
+	# final save so the consumer receives one complete document.
+	if getattr(doc.flags, "skip_sd_yrp_sync", False):
+		return
+
 	if not frappe.conf.developer_mode:
 		frappe.utils.background_jobs.enqueue(
 			publish_sd_yrp_event,

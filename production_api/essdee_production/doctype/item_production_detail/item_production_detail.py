@@ -11,6 +11,7 @@ from production_api.utils import get_stich_details, update_if_string_instance
 from production_api.production_api.doctype.item.item import get_or_create_variant
 from production_api.essdee_production.doctype.lot.lot import get_uom_conversion_factor
 from production_api.production_api.doctype.item_dependent_attribute_mapping.item_dependent_attribute_mapping import get_dependent_attribute_details
+from production_api.panel_wise_consumption import sync_panel_wise_consumption_matrix
 
 class ItemProductionDetail(Document):
 	def autoname(self):
@@ -179,6 +180,8 @@ class ItemProductionDetail(Document):
 				if len(check_dict) < len(map_values):
 					frappe.throw("Select Is default for all Set Item Attributes")
 
+		sync_panel_wise_consumption_matrix(self)
+
 	def create_new_mapping_values(self):
 		for attribute in self.get('item_attributes'):
 			if attribute.mapping:
@@ -322,6 +325,8 @@ class ItemProductionDetail(Document):
 				frappe.throw(f"In Packing Size Details, the sum of quantity should be {self.packing_combo} (the Packing Combo).")
 
 	def stiching_tab_validations(self):
+		if self.is_new():
+			return
 		if len(self.stiching_item_details) == 0:
 			frappe.throw("Enter stiching attribute details")
 		attr= set()
@@ -376,7 +381,10 @@ class ItemProductionDetail(Document):
 			else:
 				self.packing_tab_validations()
 
-		if self.stiching_process:			
+		# Packing, Stitching and Cutting tabs are intentionally hidden on the first
+		# draft. Their defaults are applied during before_save, so downstream
+		# details can only be entered after the initial save.
+		if self.stiching_process and not self.is_new():
 			self.stiching_tab_validations()
 			
 		if self.cutting_process:
@@ -436,12 +444,18 @@ def delete_docs(documents):
 			frappe.qb.from_(doctype).delete().where(doctype.name.isin(value)).run()
 
 @frappe.whitelist()
-def approve_ipd(doc_name, approval_type="Approved"):
+def get_approval_roles():
 	mrp_settings = frappe.get_single("MRP Settings")
-	allowed_roles = [mrp_settings.senior_merch_role, mrp_settings.merchandising_manager_role]
-	allowed_roles = [r for r in allowed_roles if r]
-	user_roles = frappe.get_roles()
-	if not any(role in user_roles for role in allowed_roles):
+	roles = [
+		mrp_settings.senior_merch_role,
+		mrp_settings.merchandising_manager_role,
+	]
+	return list(dict.fromkeys([role for role in roles if role] + ["System Manager"]))
+
+
+@frappe.whitelist()
+def approve_ipd(doc_name, approval_type="Approved"):
+	if not any(role in frappe.get_roles() for role in get_approval_roles()):
 		frappe.throw("You do not have permission to approve Item Production Detail")
 	if approval_type not in ("Cutting Approved", "Approved"):
 		frappe.throw("Invalid approval type")
@@ -453,8 +467,8 @@ def approve_ipd(doc_name, approval_type="Approved"):
 
 @frappe.whitelist()
 def revert_ipd_approval(doc_name):
-	if "System Manager" not in frappe.get_roles():
-		frappe.throw("Only System Manager can revert approval")
+	if not any(role in frappe.get_roles() for role in get_approval_roles()):
+		frappe.throw("You do not have permission to revert Item Production Detail approval")
 	doc = frappe.get_doc("Item Production Detail", doc_name)
 	doc.approval_status = "Not Approved"
 	doc.approved_by = None
@@ -692,6 +706,18 @@ def get_calculated_bom(item_production_detail, items, lot_name, process_name = N
 	lot_doc.save()	
 
 ##################       BOM CALCULATION FUNCTIONS       ##################
+def _uses_panel_colour_cutting(ipd_doc):
+	if not ipd_doc.get("enable_panel_wise_consumption_matrix"):
+		return False
+	matrix = update_if_string_instance(
+		ipd_doc.get("panel_wise_consumption_matrix_json")
+	)
+	try:
+		return int(matrix.get("schema_version") or 1) >= 2
+	except (AttributeError, TypeError, ValueError):
+		return False
+
+
 def calculate_cloth(ipd_doc, variant_attrs, qty, cloth_combination, stitching_combination):
 	attrs = variant_attrs.copy()
 	if stitching_combination["stitching_attribute"] in cloth_combination["cloth_attributes"] and stitching_combination["stitching_attribute"] not in cloth_combination["cutting_attributes"]:
@@ -701,16 +727,23 @@ def calculate_cloth(ipd_doc, variant_attrs, qty, cloth_combination, stitching_co
 		for stiching_attr,attr_qty in stitching_combination["stitching_attribute_count"].items():
 			attrs[ipd_doc.stiching_attribute] = stiching_attr
 			cloth_key = get_key(attrs, cloth_combination["cloth_attributes"])
-			cutting_key = get_key(attrs, cloth_combination["cutting_attributes"])
 			stich_key = attrs[ipd_doc.packing_attribute]
 			if ipd_doc.is_set_item:
 				stich_key = (stich_key, attrs[ipd_doc.set_item_attribute])
 
-			if cloth_combination["cutting_combination"].get(cutting_key) and stiching_attr in stitching_combination["stitching_combination"][stich_key]:
-				dia, weight = cloth_combination["cutting_combination"][cutting_key]	
+			panel_colours = stitching_combination["stitching_combination"].get(stich_key, {})
+			if stiching_attr in panel_colours:
+				cloth_colour = panel_colours[stiching_attr]
+				cutting_attrs = attrs.copy()
+				if _uses_panel_colour_cutting(ipd_doc):
+					cutting_attrs[ipd_doc.packing_attribute] = cloth_colour
+				cutting_key = get_key(cutting_attrs, cloth_combination["cutting_attributes"])
+				cutting_row = cloth_combination["cutting_combination"].get(cutting_key)
+				if not cutting_row:
+					continue
+				dia, weight = cutting_row
 				cloth_type = cloth_combination["cloth_combination"][cloth_key]
 				weight = weight * qty * attr_qty
-				cloth_colour = stitching_combination["stitching_combination"][stich_key][stiching_attr]
 				cloth_detail.append(add_cloth_detail(weight,cloth_type,cloth_colour,dia,"cloth"))
 	else:
 		dia, weight = cloth_combination["cutting_combination"][get_key(attrs, cloth_combination["cutting_attributes"])]
@@ -1561,38 +1594,52 @@ def get_ipd_pf_details(ipd):
 	ipd_doc = frappe.get_doc("Item Production Detail", ipd)
 	return ipd_doc
 
+DUPLICATE_IPD_SCALAR_FIELDS = (
+	"tech_pack_version",
+	"pattern_version",
+	"primary_item_attribute",
+	"dependent_attribute",
+	"dependent_attribute_mapping",
+	"packing_process",
+	"packing_attribute",
+	"pack_in_stage",
+	"pack_out_stage",
+	"packing_combo",
+	"packing_attribute_no",
+	"auto_calculate",
+	"stiching_process",
+	"stiching_in_stage",
+	"stiching_attribute",
+	"stiching_out_stage",
+	"stiching_major_attribute_value",
+	"is_same_packing_attribute",
+	"cutting_process",
+	"emblishment_details_json",
+	"cutting_cloths_json",
+	"cutting_items_json",
+	"cloth_accessory_json",
+	"stiching_accessory_json",
+	"accessory_clothtype_json",
+	"enable_panel_wise_consumption_matrix",
+	"panel_wise_consumption_matrix_json",
+)
+
+
+def copy_duplicate_ipd_scalar_fields(source, target, item=None):
+	target.item = item or source.item
+	for fieldname in DUPLICATE_IPD_SCALAR_FIELDS:
+		if source.meta.get_field(fieldname) and target.meta.get_field(fieldname):
+			target.set(fieldname, source.get(fieldname))
+
+
 @frappe.whitelist()
 def duplicate_ipd(ipd, item=None):
 	ipd_doc = frappe.get_doc("Item Production Detail", ipd)
 	doc = frappe.new_doc("Item Production Detail")
-	doc.update({
-		"item": item or ipd_doc.item,
-		"tech_pack_version": ipd_doc.tech_pack_version,
-		"pattern_version": ipd_doc.pattern_version,
-		"primary_item_attribute": ipd_doc.primary_item_attribute,
-		"dependent_attribute": ipd_doc.dependent_attribute,
-		"dependent_attribute_mapping": ipd_doc.dependent_attribute_mapping,
-		"packing_process": ipd_doc.packing_process,
-		"packing_attribute": ipd_doc.packing_attribute,
-		"pack_in_stage": ipd_doc.pack_in_stage,
-		"pack_out_stage": ipd_doc.pack_out_stage,
-		"packing_combo": ipd_doc.packing_combo,
-		"packing_attribute_no": ipd_doc.packing_attribute_no,
-		"auto_calculate": ipd_doc.auto_calculate,
-		"stiching_process": ipd_doc.stiching_process,
-		"stiching_in_stage": ipd_doc.stiching_in_stage,
-		"stiching_attribute": ipd_doc.stiching_attribute,
-		"stiching_out_stage": ipd_doc.stiching_out_stage,
-		"stiching_major_attribute_value": ipd_doc.stiching_major_attribute_value,
-		"is_same_packing_attribute": ipd_doc.is_same_packing_attribute,
-		"cutting_process": ipd_doc.cutting_process,
-		"emblishment_details_json": ipd_doc.emblishment_details_json, 
-		"cutting_cloths_json": ipd_doc.cutting_cloths_json,
-		"cutting_items_json": ipd_doc.cutting_items_json,
-		"cloth_accessory_json": ipd_doc.cloth_accessory_json,
-		"stiching_accessory_json": ipd_doc.stiching_accessory_json,
-		"accessory_clothtype_json": ipd_doc.accessory_clothtype_json,
-	})
+	# The duplicate is assembled over multiple saves. Publish only its final,
+	# complete state rather than transient versions without BOM mappings.
+	doc.flags.skip_sd_yrp_sync = True
+	copy_duplicate_ipd_scalar_fields(ipd_doc, doc, item)
 
 	doc.set("item_attributes", get_dict_table(ipd_doc.item_attributes))
 	# doc.set("item_bom", get_dict_table(ipd_doc.item_bom))
@@ -1639,6 +1686,7 @@ def duplicate_ipd(ipd, item=None):
 			new_bom_doc.insert()
 			item2.attribute_mapping = new_bom_doc.name
 	
+	doc.flags.skip_sd_yrp_sync = False
 	doc.save(ignore_permissions=True)
 
 	return doc.name
