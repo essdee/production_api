@@ -1,7 +1,7 @@
 {
  "actions": [],
  "allow_rename": 1,
- "creation": "2024-07-24 11:16:08.015116",
+ "creation": "2026-07-27 19:12:06.779728",
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
@@ -201,7 +201,7 @@
    "non_negative": 1
   },
   {
-   "default": "0",
+   "default": "1",
    "fieldname": "auto_calculate",
    "fieldtype": "Check",
    "label": "Auto Calculate"
@@ -760,7 +760,7 @@
    "link_fieldname": "production_detail"
   }
  ],
- "modified": "2026-06-24 09:00:00.000000",
+ "modified": "2026-07-28 12:29:43.646217",
  "modified_by": "Administrator",
  "module": "Essdee Production",
  "name": "Item Production Detail",

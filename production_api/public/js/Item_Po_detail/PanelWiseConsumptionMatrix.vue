@@ -226,14 +226,20 @@ function mountDiaLink(el, row) {
 		render_input: true,
 		only_input: true,
 	});
-	const state = { control, row, initializing: true };
+	const state = {
+		control,
+		row,
+		initializing: true,
+		syncing: false,
+		syncSequence: 0,
+	};
 	el.__pwcDiaLink = state;
 	Promise.resolve(control.set_value(row.dia || "")).then(() => {
 		if (el.__pwcDiaLink !== state) return;
 		state.initializing = false;
 		state.cleanupMenuPosition = bindDiaMenuPosition(el);
 		control.df.onchange = () => {
-			if (state.initializing) return;
+			if (state.initializing || state.syncing) return;
 			const value = control.get_value() || null;
 			if (state.row.dia !== value) {
 				state.row.dia = value;
@@ -243,9 +249,29 @@ function mountDiaLink(el, row) {
 	});
 }
 
+function syncDiaLink(el, row) {
+	const state = el.__pwcDiaLink;
+	if (!state) return;
+
+	state.row = row;
+	const value = row.dia || "";
+	if (state.control.get_value() === value) return;
+
+	const syncSequence = ++state.syncSequence;
+	state.syncing = true;
+	Promise.resolve(state.control.set_value(value)).finally(() => {
+		if (el.__pwcDiaLink === state && state.syncSequence === syncSequence) {
+			state.syncing = false;
+		}
+	});
+}
+
 const vDiaLink = {
 	mounted(el, binding) {
 		mountDiaLink(el, binding.value);
+	},
+	updated(el, binding) {
+		syncDiaLink(el, binding.value);
 	},
 	beforeUnmount(el) {
 		if (el.__pwcDiaLink) {
@@ -306,7 +332,9 @@ function copyFirstColourToPanel() {
 		return !cell.dia || !(Number(cell.weight) > 0);
 	});
 	if (missing) {
-		frappe.msgprint(`Enter ${first} consumption for ${missing.primary_value} first.`);
+		frappe.msgprint(
+			`Enter ${first} Dia and consumption for ${missing.primary_value} first.`
+		);
 		return;
 	}
 	currentPanel.value.rows.forEach((row) => {
