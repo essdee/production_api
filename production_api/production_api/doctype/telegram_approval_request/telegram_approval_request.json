@@ -1,0 +1,180 @@
+{
+ "actions": [],
+ "autoname": "hash",
+ "creation": "2026-07-28 00:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "reference_section",
+  "reference_doctype",
+  "reference_name",
+  "route_row",
+  "route_snapshot",
+  "column_break_reference",
+  "state_field",
+  "source_value",
+  "status",
+  "telegram_section",
+  "group_chat_id",
+  "telegram_message_id",
+  "message_text",
+  "result_section",
+  "action_taken",
+  "telegram_user_id",
+  "frappe_user",
+  "acted_on",
+  "error"
+ ],
+ "fields": [
+  {
+   "fieldname": "reference_section",
+   "fieldtype": "Section Break",
+   "label": "Reference"
+  },
+  {
+   "fieldname": "reference_doctype",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Reference DocType",
+   "options": "DocType",
+   "read_only": 1,
+   "reqd": 1
+  },
+  {
+   "fieldname": "reference_name",
+   "fieldtype": "Dynamic Link",
+   "in_list_view": 1,
+   "label": "Reference Name",
+   "options": "reference_doctype",
+   "read_only": 1,
+   "reqd": 1
+  },
+  {
+   "fieldname": "route_row",
+   "fieldtype": "Data",
+   "hidden": 1,
+   "label": "Route Row",
+   "read_only": 1,
+   "reqd": 1
+  },
+  {
+   "fieldname": "route_snapshot",
+   "fieldtype": "Code",
+   "hidden": 1,
+   "label": "Route Snapshot",
+   "options": "JSON",
+   "read_only": 1,
+   "reqd": 1
+  },
+  {
+   "fieldname": "column_break_reference",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "state_field",
+   "fieldtype": "Data",
+   "label": "State Field",
+   "read_only": 1,
+   "reqd": 1
+  },
+  {
+   "fieldname": "source_value",
+   "fieldtype": "Data",
+   "label": "Source Value",
+   "read_only": 1,
+   "reqd": 1
+  },
+  {
+   "default": "Queued",
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Status",
+   "options": "Queued\nPending\nApproved\nRejected\nExpired\nError",
+   "read_only": 1,
+   "reqd": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "telegram_section",
+   "fieldtype": "Section Break",
+   "label": "Telegram"
+  },
+  {
+   "fieldname": "group_chat_id",
+   "fieldtype": "Data",
+   "label": "Group Chat ID",
+   "read_only": 1,
+   "reqd": 1
+  },
+  {
+   "fieldname": "telegram_message_id",
+   "fieldtype": "Data",
+   "label": "Telegram Message ID",
+   "read_only": 1
+  },
+  {
+   "fieldname": "message_text",
+   "fieldtype": "Long Text",
+   "label": "Message Text",
+   "read_only": 1
+  },
+  {
+   "fieldname": "result_section",
+   "fieldtype": "Section Break",
+   "label": "Result"
+  },
+  {
+   "fieldname": "action_taken",
+   "fieldtype": "Data",
+   "label": "Action Taken",
+   "read_only": 1
+  },
+  {
+   "fieldname": "telegram_user_id",
+   "fieldtype": "Data",
+   "label": "Telegram User ID",
+   "read_only": 1
+  },
+  {
+   "fieldname": "frappe_user",
+   "fieldtype": "Link",
+   "label": "Frappe User",
+   "options": "User",
+   "read_only": 1
+  },
+  {
+   "fieldname": "acted_on",
+   "fieldtype": "Datetime",
+   "label": "Acted On",
+   "read_only": 1
+  },
+  {
+   "fieldname": "error",
+   "fieldtype": "Small Text",
+   "label": "Error",
+   "read_only": 1
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-07-28 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Production Api",
+ "name": "Telegram Approval Request",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager"
+  }
+ ],
+ "search_fields": "reference_doctype,reference_name,frappe_user,telegram_user_id",
+ "sort_field": "creation",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1
+}

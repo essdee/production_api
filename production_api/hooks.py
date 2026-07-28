@@ -94,6 +94,8 @@ doc_events = {
     "*": {
 		"before_insert": "production_api.production_api.util.fill_posting_time_defaults",
 		"after_insert": "production_api.production_api.util.send_automatic_notification",
+		"on_update": "production_api.telegram_approval.service.handle_document_event",
+		"on_update_after_submit": "production_api.telegram_approval.service.handle_document_event",
 		"on_submit": "production_api.production_api.util.send_automatic_notification",
         "on_cancel": "production_api.production_api.util.send_automatic_notification",
 	},
@@ -158,6 +160,9 @@ doc_events = {
 }
 
 fixtures = [
+    {
+        "dt": "Custom Field",
+    },
     {
         "dt":'Essdee Raw Print Format',
     },

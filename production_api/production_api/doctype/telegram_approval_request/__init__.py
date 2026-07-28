@@ -1,0 +1,1 @@
+"""Telegram Approval Request DocType."""
