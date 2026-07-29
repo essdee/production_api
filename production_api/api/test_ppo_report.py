@@ -4,6 +4,7 @@ from unittest import TestCase
 from production_api.api.ppo_report import (
 	_empty_snapshot,
 	_inward_quantity_in_boxes,
+	_validate_filters,
 	build_production_snapshot,
 )
 
@@ -16,6 +17,32 @@ def row(**kwargs):
 
 
 class TestPPOReportSnapshot(TestCase):
+	def test_direct_ppo_does_not_require_delivery_dates(self):
+		result = _validate_filters(
+			item="GYM VEST",
+			ppo="PPO-1",
+			ppo_start_date=None,
+			ppo_end_date=None,
+			inward_start_date="2026-07-01",
+			inward_end_date="2026-07-31",
+		)
+
+		self.assertEqual(result["ppo"], "PPO-1")
+		self.assertIsNone(result["ppo_start_date"])
+
+	def test_preserves_an_optional_lot_filter(self):
+		result = _validate_filters(
+			item="GYM VEST",
+			ppo="PPO-1",
+			lot="LOT-1",
+			ppo_start_date=None,
+			ppo_end_date=None,
+			inward_start_date="2026-07-01",
+			inward_end_date="2026-07-31",
+		)
+
+		self.assertEqual(result["lot"], "LOT-1")
+
 	def test_empty_snapshot_explains_missing_delivery_range(self):
 		result = _empty_snapshot(
 			{
@@ -113,8 +140,8 @@ class TestPPOReportSnapshot(TestCase):
 		self.assertEqual(result["summary"]["ppo_quantity"], 200)
 		self.assertEqual(result["summary"]["lot_quantity"], 200)
 		self.assertEqual(result["summary"]["inward_quantity"], 105)
-		self.assertEqual(result["summary"]["wip_quantity"], 100)
-		self.assertEqual(result["summary"]["over_inward_quantity"], 5)
+		self.assertEqual(result["summary"]["wip_quantity"], 95)
+		self.assertEqual(result["summary"]["over_inward_quantity"], 0)
 		self.assertEqual(result["ppos"][0]["lot_count"], 2)
 		self.assertEqual(
 			result["ppos"][0]["details"][0]["primary_attribute_value"],
@@ -123,14 +150,76 @@ class TestPPOReportSnapshot(TestCase):
 		self.assertEqual(result["column_order"], ["S", "M", "L", "XL"])
 
 		lot_one = next(lot for lot in result["lots"] if lot["name"] == "LOT-1")
-		mismatched = next(
-			item
-			for item in lot_one["items"]
-			if item["item_variant"] == "OTHER VEST-S"
+		self.assertEqual(lot_one["size_rows"][0]["planned_quantity"], 120)
+		self.assertEqual(lot_one["size_rows"][0]["inward_quantity"], 105)
+		self.assertEqual(lot_one["size_rows"][0]["wip_quantity"], 15)
+
+	def test_subtracts_transferred_lot_quantities_by_size(self):
+		result = build_production_snapshot(
+			filters={"item": "GYM VEST"},
+			ppo_rows=[
+				row(
+					name="PPO-1",
+					item="GYM VEST",
+					delivery_date="2026-07-15",
+					item_variant="GYM VEST-S",
+					quantity=200,
+				)
+			],
+			lot_rows=[
+				row(
+					lot="LOT-1",
+					production_order="PPO-1",
+					lot_item="GYM VEST",
+					status="Open",
+					has_transferred=1,
+					is_transferred=0,
+					transferred_lot=None,
+					item="GYM VEST",
+					item_variant="GYM VEST-S",
+					planned_quantity=120,
+				)
+			],
+			transferred_lot_rows=[
+				row(
+					source_lot="LOT-1",
+					transferred_lot="ALT-LOT-1",
+					item_variant="OTHER VEST-S",
+					transferred_quantity=30,
+				)
+			],
+			inward_rows=[
+				row(
+					lot="LOT-1",
+					item="OTHER VEST",
+					item_variant="OTHER VEST-S",
+					inward_quantity=20,
+					uom="Box",
+					stock_entry="FG-1",
+					posting_date="2026-07-20",
+					warehouse="FG",
+				)
+			],
+			stock={},
+			warehouses=[],
+			variant_attributes={
+				"GYM VEST-S": "S",
+				"OTHER VEST-S": "S",
+			},
+			column_order=["S"],
 		)
-		self.assertEqual(mismatched["planned_quantity"], 0)
-		self.assertEqual(mismatched["over_inward_quantity"], 5)
-		self.assertEqual(mismatched["primary_attribute_value"], "S")
+
+		ppo = result["ppos"][0]
+		lot = result["lots"][0]
+		self.assertEqual(ppo["original_quantity"], 200)
+		self.assertEqual(ppo["transferred_quantity"], 30)
+		self.assertEqual(ppo["quantity"], 170)
+		self.assertEqual(lot["original_planned_quantity"], 120)
+		self.assertEqual(lot["transferred_quantity"], 30)
+		self.assertEqual(lot["planned_quantity"], 90)
+		self.assertEqual(lot["inward_quantity"], 20)
+		self.assertEqual(lot["wip_quantity"], 70)
+		self.assertEqual(lot["transferred_lots"], ["ALT-LOT-1"])
 
 	def test_returns_zero_wip_when_inward_exceeds_plan(self):
 		result = build_production_snapshot(
