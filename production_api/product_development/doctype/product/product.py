@@ -255,7 +255,10 @@ def get_or_create_product_folder(doctype, docname):
 				"folder": "Home",
 			}
 		)
-		doctype_folder.save(ignore_permissions=True)
+		# ignore_if_duplicate: the folder PK (Home/<doctype>) may already exist
+		# from a concurrent upload or a row whose attributes no longer match the
+		# lookup above — reuse it instead of failing with DuplicateEntryError
+		doctype_folder.insert(ignore_permissions=True, ignore_if_duplicate=True)
 		doctype_folder_name = doctype_folder.name
 
 	# Create folder for docname with parent folder as doctype
@@ -276,7 +279,7 @@ def get_or_create_product_folder(doctype, docname):
 				"folder": doctype_folder_name,
 			}
 		)
-		docname_folder.save(ignore_permissions=True)
+		docname_folder.insert(ignore_permissions=True, ignore_if_duplicate=True)
 		docname_folder_name = docname_folder.name
 
 	return docname_folder_name

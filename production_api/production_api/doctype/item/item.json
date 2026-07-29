@@ -10,6 +10,8 @@
   "item_group",
   "categories",
   "product_category",
+  "is_cloth_item",
+  "yarn_ratio_details",
   "column_break_4",
   "name1",
   "disabled",
@@ -229,6 +231,22 @@
    "fieldtype": "Link",
    "label": "Product Category",
    "options": "Product Category"
+  },
+  {
+   "default": "0",
+   "fieldname": "is_cloth_item",
+   "fieldtype": "Check",
+   "label": "Is Cloth Item",
+   "permlevel": 1
+  },
+  {
+   "depends_on": "eval:doc.is_cloth_item",
+   "description": "Yarn composition for this cloth item. Ratios must total exactly 100%.",
+   "fieldname": "yarn_ratio_details",
+   "fieldtype": "Table",
+   "label": "Yarn Ratio",
+   "options": "Item Yarn Ratio",
+   "permlevel": 1
   }
  ],
  "grid_page_length": 50,

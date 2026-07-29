@@ -1006,6 +1006,10 @@ def calculate_piece_stage(dc_doc, doc_status, total_delivered, final_calculation
     return final_calculation, total_delivered
 
 
+def get_completed_garment_qty(panel_piece_qty, required_panel_qty):
+    return int(panel_piece_qty // (required_panel_qty or 1))
+
+
 def calculate_cutting_piece(dc_doc, panel_list):
     panel_list = update_if_string_instance(panel_list)
     production_detail, incomplete_items_json, completed_items_json = frappe.get_cached_value(
@@ -1054,10 +1058,13 @@ def calculate_cutting_piece(dc_doc, panel_list):
             min = sys.maxsize
             for panel in item2['values'][size]:
                 if panel in panel_list:
-                    if item2['values'][size][panel]:
-                        if item2['values'][size][panel]:
-                            if item2['values'][size][panel] < min:
-                                min = item2['values'][size][panel]
+                    panel_piece_qty = item2['values'][size][panel]
+                    if panel_piece_qty:
+                        # Challan quantities are panel pieces, not completed garments.
+                        garments = get_completed_garment_qty(
+                            panel_piece_qty, panel_qty.get(panel))
+                        if garments < min:
+                            min = garments
                     else:
                         min = 0
             if min > 0 and min != sys.maxsize:

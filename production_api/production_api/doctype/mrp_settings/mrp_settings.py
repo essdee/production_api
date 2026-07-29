@@ -26,6 +26,18 @@ def post_erp_request(endpoint: str, data: dict) -> Response:
 	response = requests.post(url, headers=headers, json=data)
 	return response
 
+def post_yrp_request(endpoint: str, data: dict) -> Response:
+	config = frappe.get_single('MRP Settings')
+	secret = config.get_password('yrp_api_secret') if config.yrp_api_secret else None
+	if not config.yrp_site_url or not config.yrp_api_key or not secret:
+		frappe.throw("Please configure the essdee_yrp credentials in MRP Settings.")
+	url = f"{config.yrp_site_url}{endpoint}"
+	headers = {
+		'Accept': 'application/json',
+		'Authorization': f"token {config.yrp_api_key}:{secret}"
+	}
+	return requests.post(url, headers=headers, json=data, timeout=60)
+
 def get_purchase_invoice_series(series:str) -> str:
 	mapped_series = None
 	config = frappe.get_single('MRP Settings').purchase_invoice_series_map

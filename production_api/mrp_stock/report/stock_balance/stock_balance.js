@@ -37,9 +37,12 @@ frappe.query_reports["Stock Balance"] = {
 		{
 			"fieldname": "parent_item",
 			"label": __("Item"),
-			"fieldtype": "Link",
+			"fieldtype": "MultiSelectList",
 			"width": "80",
 			"options": "Item",
+			get_data(txt) {
+				return frappe.db.get_link_options("Item", txt);
+			},
 		},
 		{
 			"fieldname": "warehouse",
@@ -51,9 +54,12 @@ frappe.query_reports["Stock Balance"] = {
 		{
 			"fieldname": "lot",
 			"label": __("Lot"),
-			"fieldtype": "Link",
+			"fieldtype": "MultiSelectList",
 			"width": "80",
 			"options": "Lot",
+			get_data(txt) {
+				return frappe.db.get_link_options("Lot", txt);
+			},
 		},
 		{
 			"fieldname":"received_type",
@@ -84,6 +90,17 @@ frappe.query_reports["Stock Balance"] = {
 			"fieldtype": 'Check',
 		},
 	],
+
+	"onload": function (report) {
+		report.page.add_inner_button(__("Download as Horizontal"), () => {
+			open_url_post(
+				"/api/method/production_api.mrp_stock.report.stock_balance.stock_balance.download_horizontal",
+				{
+					filters: JSON.stringify(report.get_filter_values()),
+				}
+			);
+		});
+	},
 
 	// datatable rows have a uniform height (HyperList virtual scroll), so the
 	// inward-split lines are shown by raising cellHeight to fit the tallest

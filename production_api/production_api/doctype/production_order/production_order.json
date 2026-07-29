@@ -8,6 +8,7 @@
   "field_order": [
     "section_break_wmzr",
     "naming_series",
+    "status",
     "gsm",
     "delivery_date",
     "lead_time_given",
@@ -24,6 +25,12 @@
     "production_order_details",
     "production_ordered_details",
     "comments",
+    "comment_log",
+    "quantity_ratio_request",
+    "status_change_request",
+    "incoming_quantity_transfer_request",
+    "transferred_to_ppo",
+    "transferred_on",
     "skip_box_sticker_print",
     "submitted_by",
     "submitted_time",
@@ -75,6 +82,17 @@
       "label": "Naming Series",
       "options": "\nPPO-",
       "reqd": 1
+    },
+    {
+      "allow_on_submit": 1,
+      "fieldname": "status",
+      "fieldtype": "Select",
+      "in_list_view": 1,
+      "in_standard_filter": 1,
+      "label": "Status",
+      "no_copy": 1,
+      "options": "\nOpen\nPending Request\nItem Changed\nNot Processed\nClosed",
+      "read_only": 1
     },
     {
       "fieldname": "column_break_sgdb",
@@ -152,6 +170,39 @@
       "label": "Comments"
     },
     {
+      "fieldname": "comment_log",
+      "fieldtype": "Long Text",
+      "label": "Comment Log",
+      "read_only": 1
+    },
+    {
+      "allow_on_submit": 1,
+      "fieldname": "quantity_ratio_request",
+      "fieldtype": "Long Text",
+      "hidden": 1,
+      "label": "Quantity and Ratio Request",
+      "no_copy": 1,
+      "read_only": 1
+    },
+    {
+      "allow_on_submit": 1,
+      "fieldname": "status_change_request",
+      "fieldtype": "Long Text",
+      "hidden": 1,
+      "label": "Status Change Request",
+      "no_copy": 1,
+      "read_only": 1
+    },
+    {
+      "allow_on_submit": 1,
+      "fieldname": "incoming_quantity_transfer_request",
+      "fieldtype": "Long Text",
+      "hidden": 1,
+      "label": "Incoming Quantity Transfer Request",
+      "no_copy": 1,
+      "read_only": 1
+    },
+    {
       "allow_on_submit": 1,
       "default": "0",
       "description": "Do not auto-create Box Sticker Print from packing Work Orders linked to this Production Order.",
@@ -203,13 +254,31 @@
       "fieldname": "ppo_price_request_html",
       "fieldtype": "HTML",
       "label": "Price Change Requests"
+    },
+    {
+      "allow_on_submit": 1,
+      "description": "Set when a quantity transfer is requested. Blocks another request; Transferred On is set only after destination approval.",
+      "fieldname": "transferred_to_ppo",
+      "fieldtype": "Link",
+      "label": "Transferred To PPO",
+      "no_copy": 1,
+      "options": "Production Order",
+      "read_only": 1
+    },
+    {
+      "allow_on_submit": 1,
+      "fieldname": "transferred_on",
+      "fieldtype": "Datetime",
+      "label": "Transferred On",
+      "no_copy": 1,
+      "read_only": 1
     }
   ],
   "grid_page_length": 50,
   "index_web_pages_for_search": 1,
   "is_submittable": 1,
   "links": [],
-  "modified": "2026-03-05 12:00:00.000000",
+  "modified": "2026-07-23 12:00:00.000000",
   "modified_by": "Administrator",
   "module": "Production Api",
   "name": "Production Order",

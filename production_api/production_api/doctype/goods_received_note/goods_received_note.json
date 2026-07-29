@@ -18,6 +18,9 @@
   "cutting_laysheet",
   "is_internal_unit",
   "transfer_complete",
+  "essdee_yrp_stock_entry_created",
+  "essdee_yrp_stock_entry",
+  "mrp_material_issue_ref",
   "is_return",
   "is_rework",
   "is_pack",
@@ -438,6 +441,32 @@
   },
   {
    "allow_on_submit": 1,
+   "default": "0",
+   "fieldname": "essdee_yrp_stock_entry_created",
+   "fieldtype": "Check",
+   "label": "essdee_yrp Stock Entry Created",
+   "no_copy": 1,
+   "read_only": 1
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "essdee_yrp_stock_entry",
+   "fieldtype": "Data",
+   "label": "Essdee YRP Stock Entry",
+   "no_copy": 1,
+   "read_only": 1
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "mrp_material_issue_ref",
+   "fieldtype": "Link",
+   "label": "mrp Material Issue",
+   "no_copy": 1,
+   "options": "Stock Entry",
+   "read_only": 1
+  },
+  {
+   "allow_on_submit": 1,
    "depends_on": "eval: doc.is_internal_unit",
    "fieldname": "ste_transferred",
    "fieldtype": "Float",
@@ -577,7 +606,7 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2026-07-14 06:54:06.625121",
+ "modified": "2026-07-22 14:14:27.236876",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Goods Received Note",

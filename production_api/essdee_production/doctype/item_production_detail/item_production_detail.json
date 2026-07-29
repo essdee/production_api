@@ -1,7 +1,7 @@
 {
  "actions": [],
  "allow_rename": 1,
- "creation": "2024-07-24 11:16:08.015116",
+ "creation": "2026-07-27 19:12:06.779728",
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
@@ -71,6 +71,9 @@
   "cloth_detail",
   "update_cloth_items",
   "section_break_eorj",
+  "enable_panel_wise_consumption_matrix",
+  "panel_wise_consumption_matrix_html",
+  "panel_wise_consumption_matrix_json",
   "cutting_attributes",
   "select_attributes_html",
   "get_cutting_combination",
@@ -198,7 +201,7 @@
    "non_negative": 1
   },
   {
-   "default": "0",
+   "default": "1",
    "fieldname": "auto_calculate",
    "fieldtype": "Check",
    "label": "Auto Calculate"
@@ -425,6 +428,25 @@
    "hidden": 1,
    "label": "Cutting Attributes",
    "options": "Cutting Attribute Detail"
+  },
+  {
+   "default": "0",
+   "fieldname": "enable_panel_wise_consumption_matrix",
+   "fieldtype": "Check",
+   "label": "Enable Panel-wise Consumption Matrix",
+   "read_only_depends_on": "eval:doc.approval_status == 'Approved'"
+  },
+  {
+   "depends_on": "eval:doc.enable_panel_wise_consumption_matrix",
+   "fieldname": "panel_wise_consumption_matrix_html",
+   "fieldtype": "HTML",
+   "label": "Panel-wise Consumption Matrix"
+  },
+  {
+   "fieldname": "panel_wise_consumption_matrix_json",
+   "fieldtype": "JSON",
+   "hidden": 1,
+   "label": "Panel-wise Consumption Matrix JSON"
   },
   {
    "fieldname": "select_attributes_html",
@@ -738,7 +760,7 @@
    "link_fieldname": "production_detail"
   }
  ],
- "modified": "2026-06-24 09:00:00.000000",
+ "modified": "2026-07-28 12:29:43.646217",
  "modified_by": "Administrator",
  "module": "Essdee Production",
  "name": "Item Production Detail",

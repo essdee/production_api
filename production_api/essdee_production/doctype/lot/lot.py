@@ -25,15 +25,17 @@ class Lot(Document):
 		if self.get('order_item_details') and len(self.lot_time_and_action_details) == 0 and self.production_detail:
 			order_items = save_order_item_details(self.production_detail, self.lot_order_details, self.order_item_details)
 			self.set('lot_order_details',order_items)
+			if self.production_order and order_items and len(self.items) > 0:
+				self.derive_items_from_order_details()
 
 		if self.is_new(): 
 			self.lot_hash_value = make_autoname(key="hash")
-			if len(self.items) > 0:
+			if len(self.items) > 0 and not self.flags.get('items_derived'):
 				self.calculate_order()
 		else:
 			if len(self.lot_time_and_action_details) == 0 :	
 				doc = frappe.get_doc("Lot",self.name)
-				if len(doc.items) == 0 and len(self.items) > 0:
+				if len(doc.items) == 0 and len(self.items) > 0 and not self.flags.get('items_derived'):
 					self.calculate_order()
 
 				qty = 0
@@ -113,6 +115,28 @@ class Lot(Document):
 						)
 			self.set('lot_order_details',items)
 			self.set('total_order_quantity', qty)
+
+	def derive_items_from_order_details(self):
+		ipd_doc = frappe.get_cached_doc("Item Production Detail", self.production_detail)
+		combo = ipd_doc.packing_combo
+		if not combo:
+			frappe.throw(f"Packing Combo is not set in Item Production Detail {self.production_detail}")
+		size_wise_pieces = {}
+		for item in self.lot_order_details:
+			attrs = get_variant_attr_details(item.item_variant)
+			if ipd_doc.is_set_item and attrs.get(ipd_doc.set_item_attribute) != ipd_doc.major_attribute_value:
+				continue
+			size = attrs.get(ipd_doc.primary_item_attribute)
+			size_wise_pieces.setdefault(size, 0)
+			size_wise_pieces[size] += item.quantity
+		for item in self.items:
+			attrs = get_variant_attr_details(item.item_variant)
+			size = attrs.get(ipd_doc.primary_item_attribute)
+			item.qty = math.ceil(size_wise_pieces.pop(size, 0) / combo)
+		for size, pieces in size_wise_pieces.items():
+			if pieces > 0:
+				frappe.throw(f"Order details have quantity for size {size} but there is no order item row for that size")
+		self.flags.items_derived = True
 
 	def onload(self):
 		if self.production_detail:

@@ -2572,7 +2572,8 @@ def fetch_summary_details(doc_name, production_detail):
 
     return {
         "item_detail": item_details,
-        "deliverables": deliverables
+        "deliverables": deliverables,
+        "work_order_docstatus": wo_doc.docstatus
     }
 
 

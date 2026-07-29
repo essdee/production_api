@@ -1545,7 +1545,7 @@ def get_consumption_mapping_data(lot, supplier=None):
 				saved_cloth_consumption[r.index]=r.consumption_weight
 	
 	bom_rows = frappe.db.sql("""
-		SELECT item, attribute_mapping, uom
+		SELECT item, attribute_mapping, uom, qty_of_bom_item
 		FROM `tabItem BOM`
 		WHERE parent = %(ipd)s
 		  AND process_name = %(process_name)s
@@ -1634,7 +1634,7 @@ def get_consumption_mapping_data(lot, supplier=None):
 				"index": 0,
 				"values": {"Item": b.item},
 				"quantity": 0,
-				"item_bom_qty": 0,
+				"item_bom_qty": b.qty_of_bom_item or 0,
 			})
 
 		section.append({

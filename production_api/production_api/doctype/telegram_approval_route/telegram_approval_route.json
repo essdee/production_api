@@ -1,0 +1,155 @@
+{
+ "actions": [],
+ "creation": "2026-07-28 00:00:00.000000",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "enabled",
+  "reference_doctype",
+  "process_type",
+  "trigger_field",
+  "trigger_value",
+  "group_chat_id",
+  "message_template",
+  "actions_section",
+  "approve_action",
+  "reject_action",
+  "column_break_actions",
+  "target_field",
+  "approve_value",
+  "reject_value",
+  "roles_section",
+  "approve_roles",
+  "reject_roles"
+ ],
+ "fields": [
+  {
+   "default": "1",
+   "fieldname": "enabled",
+   "fieldtype": "Check",
+   "in_list_view": 1,
+   "label": "Enabled"
+  },
+  {
+   "fieldname": "reference_doctype",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Reference DocType",
+   "options": "DocType",
+   "reqd": 1
+  },
+  {
+   "default": "Workflow",
+   "fieldname": "process_type",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Process Type",
+   "options": "Workflow\nField State",
+   "reqd": 1
+  },
+  {
+   "default": "workflow_state",
+   "fieldname": "trigger_field",
+   "fieldtype": "Data",
+   "label": "Trigger Field",
+   "reqd": 1
+  },
+  {
+   "fieldname": "trigger_value",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Trigger Value",
+   "reqd": 1
+  },
+  {
+   "description": "Telegram group chat ID, normally a negative number.",
+   "fieldname": "group_chat_id",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Group Chat ID",
+   "reqd": 1
+  },
+  {
+   "description": "Optional plain-text Jinja template. Available values: doc, route, format_currency, format_date, and format_qty. Purchase Invoice routes also receive summary.",
+   "fieldname": "message_template",
+   "fieldtype": "Code",
+   "label": "Message Template",
+   "options": "Jinja"
+  },
+  {
+   "fieldname": "actions_section",
+   "fieldtype": "Section Break",
+   "label": "Actions"
+  },
+  {
+   "default": "Approve",
+   "description": "Workflow action name, or button label for a Field State route.",
+   "fieldname": "approve_action",
+   "fieldtype": "Data",
+   "label": "Approve Action"
+  },
+  {
+   "default": "Reject",
+   "description": "Workflow action name, or button label for a Field State route.",
+   "fieldname": "reject_action",
+   "fieldtype": "Data",
+   "label": "Reject Action"
+  },
+  {
+   "fieldname": "column_break_actions",
+   "fieldtype": "Column Break"
+  },
+  {
+   "depends_on": "eval:doc.process_type == 'Field State'",
+   "fieldname": "target_field",
+   "fieldtype": "Data",
+   "label": "Target Field",
+   "mandatory_depends_on": "eval:doc.process_type == 'Field State'"
+  },
+  {
+   "depends_on": "eval:doc.process_type == 'Field State'",
+   "fieldname": "approve_value",
+   "fieldtype": "Data",
+   "label": "Approve Value"
+  },
+  {
+   "depends_on": "eval:doc.process_type == 'Field State'",
+   "fieldname": "reject_value",
+   "fieldtype": "Data",
+   "label": "Reject Value"
+  },
+  {
+   "depends_on": "eval:doc.process_type == 'Field State'",
+   "fieldname": "roles_section",
+   "fieldtype": "Section Break",
+   "label": "Field State Permissions"
+  },
+  {
+   "depends_on": "eval:doc.process_type == 'Field State'",
+   "description": "Comma or newline separated role names.",
+   "fieldname": "approve_roles",
+   "fieldtype": "Small Text",
+   "label": "Approve Roles"
+  },
+  {
+   "depends_on": "eval:doc.process_type == 'Field State'",
+   "description": "Comma or newline separated role names.",
+   "fieldname": "reject_roles",
+   "fieldtype": "Small Text",
+   "label": "Reject Roles"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2026-07-28 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Production Api",
+ "name": "Telegram Approval Route",
+ "owner": "Administrator",
+ "permissions": [],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

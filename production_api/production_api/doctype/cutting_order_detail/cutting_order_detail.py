@@ -259,7 +259,11 @@ def duplicate_cod(cod, item=None):
 
 
 def get_dict_table(table_data):
-	return [row.as_dict() for row in table_data]
+	# Strip name/parent identity so the copy inserts NEW child rows; keeping the
+	# source row's `name` makes a post-insert save() db_update the SOURCE doc's
+	# physical rows onto the duplicate (re-parenting theft).
+	items = [row.as_dict(no_default_fields=True, no_child_table_fields=True) for row in table_data]
+	return items
 
 
 @frappe.whitelist()

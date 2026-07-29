@@ -2,7 +2,7 @@
 # For license information, please see license.txt
 import frappe, copy
 from datetime import datetime
-from frappe.utils import flt, now
+from frappe.utils import flt, now, sbool
 from frappe.model.document import Document
 from production_api.utils import update_if_string_instance
 from production_api.essdee_production.doctype.lot.lot import fetch_order_item_details
@@ -494,9 +494,71 @@ def item_attribute_details(variant, item_attributes):
 			attribute_details[attr.attribute] = attr.attribute_value
 	return attribute_details
 
+def get_phantom_panels(cutting_plan):
+	# Panels present in the current IPD stiching_item_details but cut in none of the
+	# plan's Label Printed laysheet bundles, restricted to panels whose part holds
+	# non-zero completed quantities in the stored completed_items_json. Rebuilding the
+	# summary structure with such a panel makes min-across-panels 0, moving that
+	# completed back to incomplete. Parts with zero completed (a set part deliberately
+	# never cut in this plan, or one whose only laysheet is not yet Label Printed)
+	# recalc to the same zero — harmless, not reported.
+	cls_list = frappe.get_all("Cutting LaySheet", filters={"cutting_plan": cutting_plan, "status": "Label Printed"}, pluck="name")
+	if not cls_list:
+		return []
+	ipd = frappe.get_value("Cutting Plan", cutting_plan, "production_detail")
+	if not ipd:
+		return []
+	ipd_doc = frappe.get_cached_doc("Item Production Detail", ipd)
+	panel_part = {}
+	for row in ipd_doc.stiching_item_details:
+		panel_part[row.stiching_attribute_value] = row.set_item_attribute_value if ipd_doc.is_set_item else None
+	cut_panels = set()
+	bundle_parts = frappe.get_all(
+		"Cutting LaySheet Bundle",
+		filters={"parenttype": "Cutting LaySheet", "parent": ["in", cls_list]},
+		pluck="part",
+	)
+	for parts in bundle_parts:
+		if not parts:
+			continue
+		# no strip: update_cutting_plan replays with raw split values as keys
+		for part in parts.split(","):
+			cut_panels.add(part)
+	phantom_panels = set(panel_part) - cut_panels
+	if not phantom_panels:
+		return []
+	completed_items = update_if_string_instance(frappe.get_value("Cutting Plan", cutting_plan, "completed_items_json"))
+	parts_with_completed = set()
+	for item in completed_items.get("items") or []:
+		# .get chains: legacy/odd-shaped stored JSON must degrade to not-reported,
+		# never raise — this runs inside laysheet cancel/revert/print flows
+		if not any((item.get('values') or {}).values()):
+			continue
+		parts_with_completed.add((item.get('attributes') or {}).get(ipd_doc.set_item_attribute) if ipd_doc.is_set_item else None)
+	return sorted(panel for panel in phantom_panels if panel_part[panel] in parts_with_completed)
+
 @frappe.whitelist()
-def calculate_laysheets(cutting_plan):
+def calculate_laysheets(cutting_plan, ignore_phantom_panels=False):
 	# calc(cutting_plan)
+	phantom_panels = get_phantom_panels(cutting_plan)
+	if phantom_panels:
+		manual_trigger = frappe.form_dict.get("cmd") == "production_api.production_api.doctype.cutting_plan.cutting_plan.calculate_laysheets"
+		if manual_trigger and not sbool(ignore_phantom_panels):
+			frappe.throw(
+				f"Panel(s) <b>{', '.join(phantom_panels)}</b> are in the IPD stitching panels but were not cut in any Label Printed laysheet of this plan, "
+				"while their part already has completed cut quantities. The IPD panel list changed after cutting, and recalculating now would reset "
+				"those completed quantities to zero and move the parts back to incomplete. "
+				"Fix the IPD panel list first, or pass ignore_phantom_panels=1 to recalculate anyway.",
+				title="Panels Never Cut",
+			)
+		frappe.log_error(
+			title=f"Cutting Plan {cutting_plan}: phantom panels on recalculation",
+			message=(
+				f"Panels {phantom_panels} exist in the current IPD stiching_item_details but in no cut bundle "
+				f"of the plan's Label Printed laysheets, and their parts hold non-zero completed quantities. "
+				f"Recalculation proceeded; those completed quantities are stranded back in incomplete_items_json."
+			),
+		)
 	frappe.enqueue(calc, "short", cutting_plan=cutting_plan)
 
 def calc(cutting_plan):	

@@ -226,6 +226,14 @@ frappe.ui.form.on("Cutting Plan", {
                     },
                     callback: function (r) {
                         $(frm.fields_dict['planned_details_html'].wrapper).html("")
+                        if (r.message.work_order_docstatus == 2) {
+                            $(frm.fields_dict['planned_details_html'].wrapper).html(
+                                `<div class="alert alert-danger" role="alert">
+                                    ${__("Work Order {0} is cancelled — planned quantities are not applicable", [frm.doc.work_order])}
+                                </div>`
+                            )
+                            return
+                        }
                         frm.summary = new frappe.production.ui.WOSummary(frm.fields_dict["planned_details_html"].wrapper);
                         frm.summary.load_data(r.message.item_detail, r.message.deliverables)
                     }

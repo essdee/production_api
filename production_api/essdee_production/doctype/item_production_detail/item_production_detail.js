@@ -162,12 +162,19 @@ frappe.ui.form.on("Item Production Detail", {
 	refresh: async function(frm) {
 		frm.trigger('declarations')
 		frm.trigger('onload_post_render')
+		if(!frm.is_new()){
+			const approval_status = frm.doc.approval_status || "Not Approved"
+			const approval_colour = approval_status === "Approved"
+				? "green"
+				: (approval_status === "Cutting Approved" ? "blue" : "orange")
+			frm.page.set_indicator(__(approval_status), approval_colour)
+		}
 		if (!frm.is_new() && frm.doc.approval_status !== "Approved") {
 			frappe.xcall("frappe.client.get_value", {
 				doctype: "MRP Settings",
 				fieldname: ["senior_merch_role", "merchandising_manager_role"]
 			}).then(settings => {
-				let allowed = [settings.senior_merch_role, settings.merchandising_manager_role].filter(Boolean);
+				let allowed = [settings.senior_merch_role, settings.merchandising_manager_role, "System Manager"].filter(Boolean);
 				if (allowed.some(role => frappe.user_roles.includes(role))) {
 					// if (frm.doc.approval_status === "Not Approved") {
 					// 	frm.add_custom_button(__("Approve for Cutting"), () => {
@@ -195,24 +202,30 @@ frappe.ui.form.on("Item Production Detail", {
 				}
 			});
 		}
-		if (!frm.is_new() && frm.doc.approval_status !== "Not Approved" && frappe.user_roles.includes("System Manager")) {
-			frm.add_custom_button(__("Revert Approval"), () => {
-				frappe.confirm(__("Revert approval status to Not Approved?"), () => {
-					frappe.call({
-						method: "production_api.essdee_production.doctype.item_production_detail.item_production_detail.revert_ipd_approval",
-						args: { doc_name: frm.doc.name },
-						callback: function () {
-							frappe.msgprint({
-								title: __("Success"),
-								message: __("IPD Reverted Successfully"),
-								indicator: "green",
+		if (!frm.is_new() && frm.doc.approval_status !== "Not Approved") {
+			frappe.xcall(
+				"production_api.essdee_production.doctype.item_production_detail.item_production_detail.get_approval_roles"
+			).then(allowed => {
+				if ((allowed || []).some(role => frappe.user_roles.includes(role))) {
+					frm.add_custom_button(__("Revert Approval"), () => {
+						frappe.confirm(__("Revert approval status to Not Approved?"), () => {
+							frappe.call({
+								method: "production_api.essdee_production.doctype.item_production_detail.item_production_detail.revert_ipd_approval",
+								args: { doc_name: frm.doc.name },
+								callback: function () {
+									frappe.msgprint({
+										title: __("Success"),
+										message: __("IPD Reverted Successfully"),
+										indicator: "green",
+									});
+									frm.reload_doc();
+								}
 							});
-							frm.reload_doc();
-						}
+						});
 					});
-				});
+					frm.change_custom_button_type(__("Revert Approval"), null, "danger");
+				}
 			});
-			frm.change_custom_button_type(__("Revert Approval"), null, "danger");
 		}
 		$(frm.fields_dict['item_attribute_list_values_html'].wrapper).html("");
 		$(frm.fields_dict['dependent_attribute_details_html'].wrapper).html("");
@@ -229,12 +242,15 @@ frappe.ui.form.on("Item Production Detail", {
 		$(frm.fields_dict['select_attributes_html'].wrapper).html("")
 		$(frm.fields_dict['select_cloth_accessory_html'].wrapper).html("")
 		$(frm.fields_dict['bundle_group_html'].wrapper).html("")
+		$(frm.fields_dict['panel_wise_consumption_matrix_html'].wrapper).html("")
 		if(frm.doc.stiching_in_stage && frm.doc.dependent_attribute){
 			frm.cutting_attrs = await get_stich_in_attributes(frm.doc.dependent_attribute_mapping,frm.doc.stiching_in_stage, frm.doc.item)
 			if(frm.doc.is_set_item){
 				frm.cutting_attrs.push(frm.doc.set_item_attribute)
 			}
-			make_select_attributes(frm,'select_attributes_html','select_attributes_wrapper','select_attrs_multicheck','cutting_attributes','cutting_items_json','get_cutting_combination')
+			if(!frm.doc.enable_panel_wise_consumption_matrix){
+				make_select_attributes(frm,'select_attributes_html','select_attributes_wrapper','select_attrs_multicheck','cutting_attributes','cutting_items_json','get_cutting_combination')
+			}
 			make_select_attributes(frm,'select_cloths_attribute_html','select_cloths_attributes_wrapper','select_cloth_attrs_multicheck','cloth_attributes','cutting_cloths_json', 'get_cloth_combination')
 			let accessoryClothTypeObj = JSON.parse(frm.doc.accessory_clothtype_json || '{}');
 			if (Object.keys(accessoryClothTypeObj).length > 0) {
@@ -316,6 +332,7 @@ frappe.ui.form.on("Item Production Detail", {
 		else{
 			frm.set_df_property('get_cutting_combination','hidden',false);
 		}
+		await frm.trigger("render_panel_wise_consumption_matrix")
 
 		// Lock form when Approved
 		if (!frm.is_new() && frm.doc.approval_status === "Approved") {
@@ -336,6 +353,8 @@ frappe.ui.form.on("Item Production Detail", {
 					});
 				}
 			});
+			// The matrix owns its approved read-only state. Keep its wrapper
+			// clickable so users can inspect each panel tab after approval.
 
 			// Make all child tables read-only
 			let tables = [
@@ -364,7 +383,8 @@ frappe.ui.form.on("Item Production Detail", {
 				"primary_item_attribute", "dependent_attribute",
 				"stiching_major_attribute_value", "major_attribute_value",
 				"packing_attribute", "stiching_attribute", "set_item_attribute",
-				"is_set_item", "is_same_packing_attribute", "auto_calculate"
+				"is_set_item", "is_same_packing_attribute", "auto_calculate",
+				"enable_panel_wise_consumption_matrix"
 			];
 			fields.forEach(f => {
 				frm.set_df_property(f, "read_only", 1);
@@ -466,12 +486,16 @@ frappe.ui.form.on("Item Production Detail", {
 		}
 	},
 	async make_cutting_combination(frm){
-		$(frm.fields_dict['cutting_items_html'].wrapper).html("");
-		frm.cutting_item = new frappe.production.ui.CuttingItemDetail(frm.fields_dict['cutting_items_html'].wrapper);
-		if(frm.doc.cutting_items_json) {
-			await frm.cutting_item.load_data(frm.doc.cutting_items_json);
-			frm.cutting_item.set_attributes()
+		if(!frm.doc.enable_panel_wise_consumption_matrix){
+			$(frm.fields_dict['cutting_items_html'].wrapper).html("");
+			frm.cutting_item = new frappe.production.ui.CuttingItemDetail(frm.fields_dict['cutting_items_html'].wrapper);
+			if(frm.doc.cutting_items_json) {
+				await frm.cutting_item.load_data(frm.doc.cutting_items_json);
+				frm.cutting_item.set_attributes()
+			}
 		}
+		// Cloth Mapping Details is independent of the standard Cutting editor and
+		// must stay mounted while the panel-wise matrix is enabled.
 		$(frm.fields_dict['cutting_cloths_html'].wrapper).html("");
 		frm.cloth_item = new frappe.production.ui.CuttingItemDetail(frm.fields_dict['cutting_cloths_html'].wrapper);
 		if(frm.doc.cutting_cloths_json) {
@@ -552,7 +576,12 @@ frappe.ui.form.on("Item Production Detail", {
 			},
 			callback: function(r){
 				if(r.message){
-					frm.set_value('stiching_item_details', r.message)
+					const stitching_details = r.message.map(row => ({
+						...row,
+						quantity: 1,
+						category: "Body",
+					}))
+					frm.set_value('stiching_item_details', stitching_details)
 					frm.refresh_field('stiching_item_details')
 				}
 			}
@@ -560,6 +589,12 @@ frappe.ui.form.on("Item Production Detail", {
 	},
 	validate:async function(frm){
 		if(!frm.doc.__islocal){
+			if(frm.doc.enable_panel_wise_consumption_matrix && frm.panel_wise_consumption_matrix){
+				let matrix = frm.panel_wise_consumption_matrix.get_data()
+				if(matrix){
+					frm.doc.panel_wise_consumption_matrix_json = matrix
+				}
+			}
 			if(frm.set_item && frm.doc.is_set_item){
 				let item_details = frm.set_item.get_data()
 				frm.doc['set_item_detail'] = JSON.stringify(item_details);
@@ -599,7 +634,7 @@ frappe.ui.form.on("Item Production Detail", {
 				frm.set_value('accessory_attributes',cloth_accessories_list)
 			}
 
-			if(frm.cutting_item){
+			if(frm.cutting_item && !frm.doc.enable_panel_wise_consumption_matrix){
 				let item_details = frm.cutting_item.get_data()
 				if(item_details == null){
 					frm.doc.cutting_items_json = {}
@@ -809,6 +844,10 @@ frappe.ui.form.on("Item Production Detail", {
 		})
 	},
 	get_cloth_combination(frm){
+		if(!frm.cloth_item){
+			$(frm.fields_dict['cutting_cloths_html'].wrapper).html("");
+			frm.cloth_item = new frappe.production.ui.CuttingItemDetail(frm.fields_dict['cutting_cloths_html'].wrapper);
+		}
 		if(frm.doc.cloth_detail.length == 0){
 			frappe.msgprint("Fill The Cloth Details")
 			return
@@ -899,6 +938,54 @@ frappe.ui.form.on("Item Production Detail", {
 		if(frm.doc.stiching_attribute){
 			frm.trigger('declarations')
 		}
+	},
+	async enable_panel_wise_consumption_matrix(frm){
+		await frm.trigger("render_panel_wise_consumption_matrix")
+		if(!frm.doc.enable_panel_wise_consumption_matrix && frm.doc.stiching_in_stage && frm.doc.dependent_attribute){
+			make_select_attributes(frm,'select_attributes_html','select_attributes_wrapper','select_attrs_multicheck','cutting_attributes','cutting_items_json','get_cutting_combination')
+			await frm.trigger("make_cutting_combination")
+		}
+	},
+	async render_panel_wise_consumption_matrix(frm){
+		const enabled = Boolean(frm.doc.enable_panel_wise_consumption_matrix)
+		const standard_fields = [
+			"select_attributes_html", "get_cutting_combination", "cutting_items_html"
+		]
+		standard_fields.forEach(fieldname => {
+			if(frm.fields_dict[fieldname]){
+				const has_cloths = (frm.doc.cloth_detail || []).length > 0
+				const visible = !enabled && (
+					fieldname !== "get_cutting_combination" || has_cloths
+				)
+				frm.toggle_display(fieldname, visible)
+			}
+		})
+
+		const field = frm.fields_dict.panel_wise_consumption_matrix_html
+		if(!field){
+			return
+		}
+		$(field.wrapper).empty()
+		frm.panel_wise_consumption_matrix = null
+		if(!enabled){
+			return
+		}
+		if(!frm.doc.stiching_in_stage || !frm.doc.dependent_attribute){
+			$(field.wrapper).html(
+				'<div class="text-muted">Configure the Stitching input stage before using the matrix.</div>'
+			)
+			return
+		}
+
+		const payload = await frappe.xcall(
+			"production_api.panel_wise_consumption.get_panel_wise_consumption_matrix",
+			{doc: frm.doc}
+		)
+		frm.panel_wise_consumption_matrix = new frappe.production.ui.PanelWiseConsumptionMatrix(field.wrapper)
+		frm.panel_wise_consumption_matrix.load_data(
+			payload,
+			!frm.is_new() && frm.doc.approval_status === "Approved"
+		)
 	}
 });
 
