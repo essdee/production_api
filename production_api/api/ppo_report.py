@@ -552,6 +552,9 @@ def _normalise_warehouses(warehouses):
 
 
 def _empty_snapshot(filters, warehouses):
+	item = filters.get("item")
+	start_date = _date_string(filters.get("ppo_start_date"))
+	end_date = _date_string(filters.get("ppo_end_date"))
 	return {
 		"filters": {
 			key: _date_string(value) if key.endswith("_date") else value
@@ -571,6 +574,13 @@ def _empty_snapshot(filters, warehouses):
 		"column_order": [],
 		"stock": {},
 		"warnings": [],
+		"empty_state": {
+			"code": "no_ppo_for_delivery_range",
+			"message": (
+				f"No submitted PPO was found for {item} with a delivery "
+				f"date from {start_date} to {end_date}."
+			),
+		},
 	}
 
 

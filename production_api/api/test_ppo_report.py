@@ -2,6 +2,7 @@ from types import SimpleNamespace
 from unittest import TestCase
 
 from production_api.api.ppo_report import (
+	_empty_snapshot,
 	_inward_quantity_in_boxes,
 	build_production_snapshot,
 )
@@ -15,6 +16,23 @@ def row(**kwargs):
 
 
 class TestPPOReportSnapshot(TestCase):
+	def test_empty_snapshot_explains_missing_delivery_range(self):
+		result = _empty_snapshot(
+			{
+				"item": "GYM VEST",
+				"ppo_start_date": "2026-07-01",
+				"ppo_end_date": "2026-07-31",
+			},
+			[],
+		)
+
+		self.assertEqual(
+			result["empty_state"]["code"],
+			"no_ppo_for_delivery_range",
+		)
+		self.assertIn("GYM VEST", result["empty_state"]["message"])
+		self.assertIn("2026-07-01", result["empty_state"]["message"])
+
 	def test_handles_multiple_lots_and_mismatched_inward_items(self):
 		result = build_production_snapshot(
 			filters={
