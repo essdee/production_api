@@ -86,6 +86,49 @@ class TestPanelWiseConsumption(FrappeTestCase):
 		self.assertIn("syncDiaLink(el, binding.value)", source)
 		self.assertIn("state.control.set_value(value)", source)
 
+	def test_panel_can_fetch_details_from_another_panel(self):
+		source = Path(
+			frappe.get_app_path(
+				"production_api",
+				"public",
+				"js",
+				"Item_Po_detail",
+				"PanelWiseConsumptionMatrix.vue",
+			)
+		).read_text()
+
+		self.assertIn('v-model="sourcePanelValue"', source)
+		self.assertIn('@click="applyPanelDetails"', source)
+		self.assertIn("targetRow.values = copiedValues", source)
+
+	def test_cutting_and_cloth_accessory_weights_use_four_decimal_precision(self):
+		component_paths = (
+			("Item_Po_detail", "CuttingItemDetail.vue"),
+			("Item_Po_detail", "ClothAccessory.vue"),
+		)
+		for component_path in component_paths:
+			source = Path(
+				frappe.get_app_path(
+					"production_api",
+					"public",
+					"js",
+					*component_path,
+				)
+			).read_text()
+			self.assertIn("df['precision'] = 4", source)
+
+		matrix_source = Path(
+			frappe.get_app_path(
+				"production_api",
+				"public",
+				"js",
+				"Item_Po_detail",
+				"PanelWiseConsumptionMatrix.vue",
+			)
+		).read_text()
+		self.assertIn("Number(parsed.toFixed(4))", matrix_source)
+		self.assertIn("Number(value).toFixed(4)", matrix_source)
+
 	def test_stitching_attribute_rows_receive_entry_defaults(self):
 		source = Path(
 			frappe.get_app_path(
@@ -353,7 +396,10 @@ class TestPanelWiseConsumption(FrappeTestCase):
 				frappe._dict(attribute="Panel"),
 				frappe._dict(attribute="Colour"),
 			],
-			"cloth_attributes": [frappe._dict(attribute="Panel")],
+			"cloth_attributes": [
+				frappe._dict(attribute="Panel"),
+				frappe._dict(attribute="Colour"),
+			],
 			"accessory_attributes": [],
 			"cutting_items_json": frappe.as_json({
 				"items": [{
@@ -365,7 +411,11 @@ class TestPanelWiseConsumption(FrappeTestCase):
 				}],
 			}),
 			"cutting_cloths_json": frappe.as_json({
-				"items": [{"Panel": "Center Panel", "Cloth": "Main Fabric"}],
+				"items": [{
+					"Panel": "Center Panel",
+					"Colour": "Red",
+					"Cloth": "Contrast Fabric",
+				}],
 			}),
 			"cloth_accessory_json": "{}",
 			"accessory_clothtype_json": {},
@@ -394,8 +444,8 @@ class TestPanelWiseConsumption(FrappeTestCase):
 		)
 		self.assertEqual(len(rows), 1)
 		self.assertEqual(
-			(rows[0]["colour"], rows[0]["quantity"]),
-			("Red", 1.0),
+			(rows[0]["colour"], rows[0]["cloth_type"], rows[0]["quantity"]),
+			("Red", "Contrast Fabric", 1.0),
 		)
 
 	def test_incomplete_matrix_is_rejected(self):

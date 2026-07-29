@@ -1,0 +1,44 @@
+{
+ "actions": [],
+ "creation": "2026-07-29 00:00:00.000000",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "yarn_item",
+  "ratio"
+ ],
+ "fields": [
+  {
+   "columns": 7,
+   "fieldname": "yarn_item",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Yarn Item",
+   "options": "Item",
+   "reqd": 1
+  },
+  {
+   "columns": 3,
+   "description": "Percentage of the total yarn blend. All rows must total exactly 100.",
+   "fieldname": "ratio",
+   "fieldtype": "Percent",
+   "in_list_view": 1,
+   "label": "Ratio (%)",
+   "precision": "3",
+   "reqd": 1
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2026-07-29 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Production Api",
+ "name": "Item Yarn Ratio",
+ "owner": "Administrator",
+ "permissions": [],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

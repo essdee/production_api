@@ -403,7 +403,7 @@ def expand_panel_wise_matrix(matrix, context):
 					frappe.throw(
 						_(
 							"Enter consumption in kg/piece for panel {0}, {1}, "
-							"{2} (example: 0.030 for 30 grams)."
+							"{2} (example: 0.0300 for 30 grams)."
 						).format(panel_value, primary_value, packing_value)
 					)
 				items.append(

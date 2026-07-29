@@ -95,6 +95,9 @@ function createInput(attr, index, value, is_header){
         default: value,
         read_only: cur_frm.cutting_attrs.includes(attr)
     }
+    if (attr == 'Weight'){
+        df['precision'] = 4
+    }
     if (fieldtype == 'Link' && attr != 'Dia'){
         df['options'] = 'Item Attribute Value'
         df['get_query'] = function(){

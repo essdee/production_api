@@ -89,6 +89,9 @@ function createInput(attr, index, value, is_header){
         default: value,
         read_only: cur_frm.cutting_attrs.includes(attr) || attr == 'Accessory' || attr == cur_frm.doc.stiching_major_attribute_value
     }
+    if (attr == 'Weight'){
+        df['precision'] = 4
+    }
     if (fieldtype == 'Link' && attr != 'Dia'){
         df['options'] = 'Item Attribute Value'
         df['get_query'] = function(){

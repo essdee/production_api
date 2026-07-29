@@ -23,14 +23,40 @@
 				<strong>{{ currentPanel.panel_value }}</strong>
 				<span>{{ currentPanel.rows.length }} {{ matrix.attributes.primary }} rows</span>
 			</div>
-			<button
-				v-if="!locked && currentPackingValues.length > 1"
-				type="button"
-				class="pwc-copy-button"
-				@click="copyFirstColourToPanel"
-			>
-				Copy {{ currentPackingValues[0] }} across this panel
-			</button>
+			<div v-if="!locked" class="pwc-toolbar-actions">
+				<div v-if="otherPanels.length" class="pwc-panel-fetch">
+					<select
+						v-model="sourcePanelValue"
+						class="form-control input-sm"
+						aria-label="Fetch details from panel"
+					>
+						<option value="">Select panel</option>
+						<option
+							v-for="panel in otherPanels"
+							:key="panel.panel_value"
+							:value="panel.panel_value"
+						>
+							{{ panel.panel_value }}
+						</option>
+					</select>
+					<button
+						type="button"
+						class="pwc-apply-button"
+						:disabled="!sourcePanelValue"
+						@click="applyPanelDetails"
+					>
+						Apply
+					</button>
+				</div>
+				<button
+					v-if="currentPackingValues.length > 1"
+					type="button"
+					class="pwc-copy-button"
+					@click="copyFirstColourToPanel"
+				>
+					Copy {{ currentPackingValues[0] }} across this panel
+				</button>
+			</div>
 		</div>
 
 		<div v-if="currentPanel" class="pwc-scroll">
@@ -59,7 +85,7 @@
 									type="text"
 									inputmode="decimal"
 									:value="formatKg(cellFor(row, packing).weight)"
-									placeholder="0.030"
+									placeholder="0.0300"
 									@change="setWeight(row, packing, $event)"
 								/>
 							</div>
@@ -86,15 +112,21 @@
 </template>
 
 <script setup>
-import { computed, ref } from "vue";
+import { computed, ref, watch } from "vue";
 
 const matrix = ref(null);
 const activePanel = ref("");
+const sourcePanelValue = ref("");
 const locked = ref(false);
 let diaControlSequence = 0;
 
 const currentPanel = computed(() =>
 	(matrix.value?.panels || []).find((panel) => panel.panel_value === activePanel.value)
+);
+const otherPanels = computed(() =>
+	(matrix.value?.panels || []).filter(
+		(panel) => panel.panel_value !== activePanel.value
+	)
 );
 const packingValuesFor = (panel) =>
 	panel?.packing_values || matrix.value?.packing_values || [];
@@ -128,7 +160,12 @@ function load_data(payload, isLocked = false) {
 	matrix.value = payload?.matrix || null;
 	locked.value = Boolean(isLocked);
 	activePanel.value = matrix.value?.panels?.[0]?.panel_value || "";
+	sourcePanelValue.value = "";
 }
+
+watch(activePanel, () => {
+	sourcePanelValue.value = "";
+});
 
 function markDirty() {
 	if (typeof cur_frm !== "undefined") cur_frm.dirty();
@@ -287,22 +324,18 @@ function parseWeight(value) {
 	const normalized = String(value ?? "").trim();
 	if (!normalized) return null;
 	if (!/^(?:0|[1-9]\d*)(?:\.\d+)?$/.test(normalized)) {
-		frappe.throw("Consumption must be a positive kg value, for example 0.030.");
+		frappe.throw("Consumption must be a positive kg value, for example 0.0300.");
 	}
 	const parsed = Number(normalized);
 	if (!Number.isFinite(parsed) || parsed <= 0) {
-		frappe.throw("Consumption must be greater than zero, for example 0.030.");
+		frappe.throw("Consumption must be greater than zero, for example 0.0300.");
 	}
-	return Number(parsed.toFixed(6));
+	return Number(parsed.toFixed(4));
 }
 
 function formatKg(value) {
 	if (value === null || value === undefined || value === "") return "";
-	const fixed = Number(value).toFixed(6);
-	const trimmed = fixed.replace(/0+$/, "");
-	const parts = trimmed.split(".");
-	if (!parts[1]) return `${parts[0]}.000`;
-	return `${parts[0]}.${parts[1].padEnd(3, "0")}`;
+	return Number(value).toFixed(4);
 }
 
 function setWeight(row, packing, event) {
@@ -346,6 +379,82 @@ function copyFirstColourToPanel() {
 	markDirty();
 }
 
+function mappedSourcePacking(sourcePanel, targetPanel, targetPacking, targetIndex) {
+	const sourcePackings = packingValuesFor(sourcePanel);
+	const targetPackings = packingValuesFor(targetPanel);
+	if (sourcePackings.includes(targetPacking)) return targetPacking;
+	if (sourcePackings.length === targetPackings.length) {
+		return sourcePackings[targetIndex];
+	}
+	if (sourcePackings.length === 1) return sourcePackings[0];
+	return null;
+}
+
+function applyPanelDetails() {
+	const sourcePanel = (matrix.value?.panels || []).find(
+		(panel) => panel.panel_value === sourcePanelValue.value
+	);
+	const targetPanel = currentPanel.value;
+	if (!sourcePanel || !targetPanel) {
+		frappe.msgprint("Select a panel to fetch details from.");
+		return;
+	}
+
+	const sourceRows = new Map(
+		sourcePanel.rows.map((row) => [row.primary_value, row])
+	);
+	const copiedRows = [];
+	for (const targetRow of targetPanel.rows) {
+		const sourceRow = sourceRows.get(targetRow.primary_value);
+		if (!sourceRow) {
+			frappe.msgprint(
+				`${targetRow.primary_value} is missing in panel ${sourcePanel.panel_value}.`
+			);
+			return;
+		}
+
+		const copiedValues = {};
+		const targetPackings = packingValuesFor(targetPanel);
+		for (const [targetIndex, targetPacking] of targetPackings.entries()) {
+			const sourcePacking = mappedSourcePacking(
+				sourcePanel,
+				targetPanel,
+				targetPacking,
+				targetIndex
+			);
+			if (!sourcePacking) {
+				frappe.msgprint(
+					`Cannot match ${targetPacking} in ${targetPanel.panel_value} with a ` +
+						`colour column in ${sourcePanel.panel_value}.`
+				);
+				return;
+			}
+			const sourceCell = cellFor(sourceRow, sourcePacking);
+			if (!sourceCell.dia || !(Number(sourceCell.weight) > 0)) {
+				frappe.msgprint(
+					`Enter Dia and consumption for ${sourcePanel.panel_value}, ` +
+						`${sourceRow.primary_value}, ${sourcePacking} first.`
+				);
+				return;
+			}
+			copiedValues[targetPacking] = {
+				dia: sourceCell.dia,
+				weight: sourceCell.weight,
+			};
+		}
+		copiedRows.push({ targetRow, copiedValues });
+	}
+
+	copiedRows.forEach(({ targetRow, copiedValues }) => {
+		targetRow.values = copiedValues;
+	});
+	markDirty();
+	frappe.show_alert({
+		message: `Details fetched from ${sourcePanel.panel_value}.`,
+		indicator: "green",
+	});
+}
+
 function get_data() {
 	if (!matrix.value) return null;
 	for (const panel of matrix.value.panels) {
@@ -360,7 +469,7 @@ function get_data() {
 				if (!(Number(cell.weight) > 0)) {
 					frappe.throw(
 						`Enter consumption for ${panel.panel_value}, ${row.primary_value}, ` +
-						`${packing} (0.030 means 30 grams).`
+						`${packing} (0.0300 means 30 grams).`
 					);
 				}
 			}
@@ -451,7 +560,18 @@ defineExpose({ load_data, get_data });
 	color: var(--text-muted, #64748b);
 	font-size: 10px;
 }
+.pwc-toolbar-actions,
+.pwc-panel-fetch {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+}
+.pwc-panel-fetch select {
+	min-width: 170px;
+	height: 32px;
+}
 .pwc-copy-button,
+.pwc-apply-button,
 .pwc-fill-button {
 	border: 1px solid var(--border-color, #dfe3e8);
 	border-radius: 8px;
@@ -465,11 +585,24 @@ defineExpose({ load_data, get_data });
 .pwc-copy-button {
 	padding: 7px 11px;
 }
+.pwc-apply-button {
+	padding: 7px 14px;
+	border-color: #0f766e;
+	background: #0f766e;
+	color: #fff;
+}
+.pwc-apply-button:disabled {
+	border-color: var(--border-color, #dfe3e8);
+	background: var(--subtle-fg, #f1f5f9);
+	color: var(--text-muted, #94a3b8);
+	cursor: not-allowed;
+}
 .pwc-fill-button {
 	padding: 6px 9px;
 	white-space: nowrap;
 }
 .pwc-copy-button:hover,
+.pwc-apply-button:not(:disabled):hover,
 .pwc-fill-button:hover {
 	border-color: #75bdb3;
 	background: #eef9f7;
@@ -578,5 +711,16 @@ defineExpose({ load_data, get_data });
 .pwc-action {
 	width: 78px;
 	text-align: center;
+}
+@media (max-width: 900px) {
+	.pwc-toolbar,
+	.pwc-toolbar-actions {
+		align-items: stretch;
+		flex-direction: column;
+	}
+	.pwc-panel-fetch select {
+		min-width: 0;
+		flex: 1;
+	}
 }
 </style>

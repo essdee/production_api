@@ -121,11 +121,13 @@ def produce_exact_doc(producer_dict):
 
 	event = producer_dict.get("event") or producer_dict.get("docevent")
 	# This legacy Spine Producer Config path bypasses publish_sd_yrp_event, so
-	# carry the IPD link-closure here too (idempotent; see publish_ipd_prerequisites).
+	# carry the prerequisite closure here too.
 	# Same event gate as the main hook: deletes need none; after_insert is always
 	# followed by on_update, whose run publishes the closure once.
 	if getattr(doc, "doctype", None) == "Item Production Detail" and event not in ("on_trash", "after_insert"):
 		publish_ipd_prerequisites(doc)
+	if getattr(doc, "doctype", None) == "Lot" and event != "on_trash":
+		publish_lot_prerequisites(doc)
 	producer_dict["doc_to_publish"] = prepare_sd_yrp_doc_for_publish(doc, event)
 	return producer_dict
 
@@ -163,6 +165,8 @@ def publish_sd_yrp_event(doc, docevent, extra_args=()):
 	# that event's job publishes the closure once instead of twice per create.
 	if doc.doctype == "Item Production Detail" and docevent not in ("on_trash", "after_insert"):
 		publish_ipd_prerequisites(doc)
+	if doc.doctype == "Lot" and docevent != "on_trash":
+		publish_lot_prerequisites(doc)
 
 	publish_doc_event(
 		doc=prepare_sd_yrp_doc_for_publish(doc, docevent),
@@ -171,6 +175,46 @@ def publish_sd_yrp_event(doc, docevent, extra_args=()):
 		event=docevent,
 		args=extra_args,
 	)
+
+
+def publish_lot_prerequisites(doc):
+	"""Publish the Lot's Production Order immediately before the Lot.
+
+	A Production Order can fail independently on the consumer (configuration,
+	master-data outage, or an earlier out-of-order live event). Without a fresh
+	Production Order message, every later Lot update then fails only as
+	"Missing dependency: Production Order", hiding the original cause. The
+	republish is an idempotent upsert and lets any Lot update self-heal the
+	dependency chain.
+
+	During an initial sync many Lots can share one Production Order, so publish
+	each referenced order only once per request/job.
+	"""
+	production_order = doc.get("production_order")
+	if not production_order:
+		return
+
+	published = getattr(frappe.local, "_sd_yrp_published_lot_prerequisites", None)
+	if published is None:
+		published = set()
+		frappe.local._sd_yrp_published_lot_prerequisites = published
+	if production_order in published:
+		return
+
+	try:
+		order_doc = frappe.get_doc("Production Order", production_order)
+	except frappe.DoesNotExistError:
+		frappe.clear_last_message()
+		return
+
+	publish_doc_event(
+		doc=prepare_sd_yrp_doc_for_publish(order_doc, "on_update"),
+		doctype="Production Order",
+		target_topic=SD_YRP_TOPIC,
+		event="on_update",
+		args=(),
+	)
+	published.add(production_order)
 
 
 def publish_ipd_prerequisites(doc):
