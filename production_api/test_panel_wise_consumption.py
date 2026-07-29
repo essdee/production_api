@@ -353,7 +353,10 @@ class TestPanelWiseConsumption(FrappeTestCase):
 				frappe._dict(attribute="Panel"),
 				frappe._dict(attribute="Colour"),
 			],
-			"cloth_attributes": [frappe._dict(attribute="Panel")],
+			"cloth_attributes": [
+				frappe._dict(attribute="Panel"),
+				frappe._dict(attribute="Colour"),
+			],
 			"accessory_attributes": [],
 			"cutting_items_json": frappe.as_json({
 				"items": [{
@@ -365,7 +368,11 @@ class TestPanelWiseConsumption(FrappeTestCase):
 				}],
 			}),
 			"cutting_cloths_json": frappe.as_json({
-				"items": [{"Panel": "Center Panel", "Cloth": "Main Fabric"}],
+				"items": [{
+					"Panel": "Center Panel",
+					"Colour": "Red",
+					"Cloth": "Contrast Fabric",
+				}],
 			}),
 			"cloth_accessory_json": "{}",
 			"accessory_clothtype_json": {},
@@ -394,8 +401,8 @@ class TestPanelWiseConsumption(FrappeTestCase):
 		)
 		self.assertEqual(len(rows), 1)
 		self.assertEqual(
-			(rows[0]["colour"], rows[0]["quantity"]),
-			("Red", 1.0),
+			(rows[0]["colour"], rows[0]["cloth_type"], rows[0]["quantity"]),
+			("Red", "Contrast Fabric", 1.0),
 		)
 
 	def test_incomplete_matrix_is_rejected(self):

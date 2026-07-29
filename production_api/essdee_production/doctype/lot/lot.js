@@ -165,6 +165,15 @@ frappe.ui.form.on("Lot", {
 				d.show()
 			})
 		}
+		if (!frm.is_new() && frm.doc.production_detail) {
+			frm.add_custom_button(__("Build Cloth Program"), () => {
+				if (frm.is_dirty()) {
+					frappe.msgprint(__("Save the Lot before calculating the cloth program."));
+					return;
+				}
+				open_cloth_program_preview(frm);
+			});
+		}
 		$(frm.fields_dict['items_html'].wrapper).html("")
 		frm.item = new frappe.production.ui.LotOrder(frm.fields_dict['items_html'].wrapper)
 		if (frm.doc.__onload && frm.doc.__onload.item_details) {
@@ -545,6 +554,162 @@ frappe.ui.form.on("Lot", {
 		}
 	}
 });
+
+function open_cloth_program_preview(frm) {
+	const dialog = new frappe.ui.Dialog({
+		title: __("Build Cloth Program"),
+		size: "extra-large",
+		fields: [
+			{
+				label: __("Extra Percentage"),
+				fieldname: "extra_percentage",
+				fieldtype: "Float",
+				default: 0,
+				description: __("Adds this percentage to every calculated cloth Colour and Dia."),
+			},
+			{
+				fieldname: "cloth_program_result",
+				fieldtype: "HTML",
+			},
+		],
+		primary_action_label: __("Calculate"),
+		primary_action(values) {
+			const extra_percentage = Number(values.extra_percentage || 0);
+			if (extra_percentage < 0) {
+				frappe.msgprint(__("Extra Percentage cannot be negative."));
+				return;
+			}
+			frappe.call({
+				method: "production_api.essdee_production.doctype.lot.cloth_program.get_cloth_program_preview",
+				args: {
+					lot: frm.doc.name,
+					extra_percentage: extra_percentage,
+				},
+				freeze: true,
+				freeze_message: __("Calculating cloth program..."),
+				callback(r) {
+					render_cloth_program_preview(dialog, r.message || {});
+				},
+			});
+		},
+	});
+	dialog.show();
+	render_cloth_program_preview(dialog, {});
+}
+
+function render_cloth_program_preview(dialog, preview) {
+	const rows = preview.rows || [];
+	const result_field = dialog.fields_dict.cloth_program_result;
+	if (!rows.length) {
+		$(result_field.wrapper).html(`
+			<div class="text-muted" style="padding: 18px 0;">
+				${__("Enter the extra percentage and click Calculate. No data will be saved.")}
+			</div>
+		`);
+		return;
+	}
+
+	const escape = (value) => frappe.utils.escape_html(String(value ?? ""));
+	const format_weight = (value) => Number(value || 0).toLocaleString(
+		undefined,
+		{ minimumFractionDigits: 3, maximumFractionDigits: 3 }
+	);
+	const cloth_items = {};
+	rows.forEach((row) => {
+		const cloth_item = row.cloth_item || __("Unspecified Cloth");
+		const colour = row.colour || __("No Colour");
+		const dia = row.dia || __("No Dia");
+		if (!cloth_items[cloth_item]) {
+			cloth_items[cloth_item] = {
+				colours: new Set(),
+				dias: new Set(),
+				weights: {},
+			};
+		}
+		cloth_items[cloth_item].colours.add(colour);
+		cloth_items[cloth_item].dias.add(dia);
+		cloth_items[cloth_item].weights[`${dia}\u0000${colour}`] = Number(row.program_weight || 0);
+	});
+
+	const tables = Object.keys(cloth_items).sort().map((cloth_item) => {
+		const item = cloth_items[cloth_item];
+		const colours = Array.from(item.colours).sort();
+		const dias = Array.from(item.dias).sort();
+		const colour_totals = Object.fromEntries(colours.map((colour) => [colour, 0]));
+		let cloth_total = 0;
+		const body = dias.map((dia) => {
+			let dia_total = 0;
+			const cells = colours.map((colour) => {
+				const weight = item.weights[`${dia}\u0000${colour}`] || 0;
+				dia_total += weight;
+				colour_totals[colour] += weight;
+				return `<td class="text-right">${weight ? format_weight(weight) : "—"}</td>`;
+			}).join("");
+			cloth_total += dia_total;
+			return `
+				<tr>
+					<td>${escape(dia)}</td>
+					${cells}
+					<td class="text-right"><strong>${format_weight(dia_total)}</strong></td>
+				</tr>
+			`;
+		}).join("");
+		const colour_total_cells = colours.map(
+			(colour) => `<th class="text-right">${format_weight(colour_totals[colour])}</th>`
+		).join("");
+
+		return `
+			<div style="margin-bottom: 24px;">
+				<h5 style="margin-bottom: 4px;">${escape(cloth_item)}</h5>
+				<div class="text-muted small" style="margin-bottom: 8px;">
+					${__("Knitting Program Kg")}
+				</div>
+				<div class="table-responsive">
+					<table class="table table-bordered table-hover">
+						<thead>
+							<tr>
+								<th>${__("Dia")}</th>
+								${colours.map((colour) => `<th class="text-right">${escape(colour)}</th>`).join("")}
+								<th class="text-right">${__("Total")}</th>
+							</tr>
+						</thead>
+						<tbody>${body}</tbody>
+						<tfoot>
+							<tr>
+								<th>${__("Total")}</th>
+								${colour_total_cells}
+								<th class="text-right">${format_weight(cloth_total)}</th>
+							</tr>
+						</tfoot>
+					</table>
+				</div>
+			</div>
+		`;
+	}).join("");
+	const totals = preview.totals || {};
+
+	$(result_field.wrapper).html(`
+		<div style="margin-top: 18px;">
+			<div class="text-muted small" style="margin-bottom: 10px;">
+				${__("Preview only — no IPD or Lot data is saved.")}
+				${__("Cloth Kg per 1 Kg Yarn")}: <strong>${format_weight(preview.cloth_per_kg_yarn)}</strong>
+				· ${__("Extra")}: <strong>${format_weight(preview.extra_percentage)}%</strong>
+			</div>
+			${tables}
+			<div class="text-right" style="margin-top: -8px;">
+				<span style="margin-left: 18px;">
+					${__("Required Kg")}: <strong>${format_weight(totals.required_weight)}</strong>
+				</span>
+				<span style="margin-left: 18px;">
+					${__("Extra Kg")}: <strong>${format_weight(totals.extra_weight)}</strong>
+				</span>
+				<span style="margin-left: 18px;">
+					${__("Total Knitting Program Kg")}: <strong>${format_weight(totals.program_weight)}</strong>
+				</span>
+			</div>
+		</div>
+	`);
+}
 
 
 // frappe.ui.form.on('Lot', {

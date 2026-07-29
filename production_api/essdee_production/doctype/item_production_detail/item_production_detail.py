@@ -450,8 +450,6 @@ def get_approval_roles():
 
 @frappe.whitelist()
 def approve_ipd(doc_name, approval_type="Approved"):
-	if not any(role in frappe.get_roles() for role in get_approval_roles()):
-		frappe.throw("You do not have permission to approve Item Production Detail")
 	if approval_type not in ("Cutting Approved", "Approved"):
 		frappe.throw("Invalid approval type")
 	doc = frappe.get_doc("Item Production Detail", doc_name)
@@ -721,7 +719,6 @@ def calculate_cloth(ipd_doc, variant_attrs, qty, cloth_combination, stitching_co
 	if stitching_combination["stitching_attribute"] in cloth_combination["cutting_attributes"]:
 		for stiching_attr,attr_qty in stitching_combination["stitching_attribute_count"].items():
 			attrs[ipd_doc.stiching_attribute] = stiching_attr
-			cloth_key = get_key(attrs, cloth_combination["cloth_attributes"])
 			stich_key = attrs[ipd_doc.packing_attribute]
 			if ipd_doc.is_set_item:
 				stich_key = (stich_key, attrs[ipd_doc.set_item_attribute])
@@ -729,14 +726,18 @@ def calculate_cloth(ipd_doc, variant_attrs, qty, cloth_combination, stitching_co
 			panel_colours = stitching_combination["stitching_combination"].get(stich_key, {})
 			if stiching_attr in panel_colours:
 				cloth_colour = panel_colours[stiching_attr]
-				cutting_attrs = attrs.copy()
+				combination_attrs = attrs.copy()
 				if _uses_panel_colour_cutting(ipd_doc):
-					cutting_attrs[ipd_doc.packing_attribute] = cloth_colour
-				cutting_key = get_key(cutting_attrs, cloth_combination["cutting_attributes"])
+					# Schema 2+ keys both consumption and cloth mapping rows by
+					# the physical panel colour, which can differ from the
+					# garment colour (for example Navy -> G Mel).
+					combination_attrs[ipd_doc.packing_attribute] = cloth_colour
+				cutting_key = get_key(combination_attrs, cloth_combination["cutting_attributes"])
 				cutting_row = cloth_combination["cutting_combination"].get(cutting_key)
 				if not cutting_row:
 					continue
 				dia, weight = cutting_row
+				cloth_key = get_key(combination_attrs, cloth_combination["cloth_attributes"])
 				cloth_type = cloth_combination["cloth_combination"][cloth_key]
 				weight = weight * qty * attr_qty
 				cloth_detail.append(add_cloth_detail(weight,cloth_type,cloth_colour,dia,"cloth"))

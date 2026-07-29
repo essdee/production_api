@@ -4,7 +4,7 @@
 import frappe, json
 from frappe import _
 from six import string_types
-from frappe.utils import cstr, flt
+from frappe.utils import cint, cstr, flt
 from frappe.model.document import Document
 from frappe.desk.search import search_widget
 from frappe.model.naming import make_autoname
@@ -93,6 +93,7 @@ class Item(Document):
 		self.load_price()
 
 	def validate(self):
+		validate_cloth_yarn_ratio(self)
 		secondary_only = frappe.get_value("UOM", self.default_unit_of_measure, "secondary_only")
 		if secondary_only:
 			frappe.throw(f"{self.default_unit_of_measure} can only be used as Secondary UOM")
@@ -156,7 +157,58 @@ class Item(Document):
 			if self.dependent_attribute_mapping:
 				frappe.delete_doc("Item Dependent Attribute Mapping", self.dependent_attribute_mapping)
 				self.dependent_attribute_mapping = None
-				
+
+
+def validate_cloth_yarn_ratio(doc):
+	"""Keep a cloth Item's reusable yarn recipe complete and unambiguous."""
+	if not cint(doc.get("is_cloth_item")):
+		return
+
+	rows = doc.get("yarn_ratio_details") or []
+	if not rows:
+		frappe.throw(_("Add at least one Yarn Ratio row for a Cloth Item."))
+
+	seen = set()
+	total = 0.0
+	for row in rows:
+		yarn_item = row.get("yarn_item")
+		ratio = flt(row.get("ratio"))
+		if not yarn_item:
+			frappe.throw(_("Row {0}: select a Yarn Item.").format(row.idx))
+		if yarn_item == doc.name:
+			frappe.throw(_("Row {0}: a Cloth Item cannot use itself as yarn.").format(row.idx))
+		if yarn_item in seen:
+			frappe.throw(
+				_("Row {0}: Yarn Item {1} is duplicated.").format(row.idx, yarn_item)
+			)
+		if ratio <= 0:
+			frappe.throw(_("Row {0}: Ratio must be greater than zero.").format(row.idx))
+		if frappe.db.get_value("Item", yarn_item, "is_cloth_item"):
+			frappe.throw(
+				_("Row {0}: Cloth Item {1} cannot be selected as yarn.").format(
+					row.idx, yarn_item
+				)
+			)
+		if frappe.db.exists(
+			"Item Item Attribute",
+			{"parent": yarn_item, "parenttype": "Item"},
+		):
+			frappe.throw(
+				_("Row {0}: Yarn Item {1} must not have variant attributes.").format(
+					row.idx, yarn_item
+				)
+			)
+		seen.add(yarn_item)
+		total += ratio
+
+	if abs(total - 100.0) > 0.001:
+		frappe.throw(
+			_("Yarn Ratio total must be exactly 100%. Current total is {0}%.").format(
+				flt(total, 3)
+			)
+		)
+
+
 def create_dependent_attribute_mapping(doc, attr_list):
 	d = frappe.new_doc("Item Dependent Attribute Mapping")
 	details = [{"attribute_value": attr, "uom": doc.default_unit_of_measure} for attr in attr_list]
