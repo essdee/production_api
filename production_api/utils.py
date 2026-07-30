@@ -1,3 +1,4 @@
+import base64
 import frappe, json, sys
 from six import string_types
 from itertools import zip_longest
@@ -1703,7 +1704,8 @@ def get_work_in_progress_report(category, status, lot_list_val, item_list, proce
 
 	lot_list = frappe.db.sql(
 		f"""
-			SELECT t1.name FROM `tabLot` t1 JOIN `tabItem` t2 ON t1.item = t2.name
+			SELECT t1.name, t1.production_order
+			FROM `tabLot` t1 JOIN `tabItem` t2 ON t1.item = t2.name
 			WHERE 1 = 1 {conditions} AND (t1.production_detail IS NOT NULL AND t1.production_detail != '')
 		""", con, as_dict=True
 	)
@@ -1758,12 +1760,13 @@ def get_work_in_progress_report(category, status, lot_list_val, item_list, proce
 			},
 		},
 	}
-	for lot in lot_list:
-		lot = lot['name']
+	for lot_row in lot_list:
+		lot = lot_row['name']
 		
 		ipd, item = frappe.get_value("Lot", lot, ["production_detail", "item"])
 		lot_dict['lot_data'].setdefault(lot, {
 			"style": item,
+			"production_order": lot_row.get("production_order") or "",
 			"lot": lot,
 			"cut_details": {
 				"order_qty": 0,
@@ -2206,6 +2209,35 @@ def get_work_in_progress_report(category, status, lot_list_val, item_list, proce
 				"value":lot_dict["total_data"].get(detail_key, {}).get(val, 0)
 			})
 	return lot_dict	
+
+
+@frappe.whitelist()
+def download_work_in_progress_excel(rows):
+	"""Build a real XLSX file from the WIP rows currently visible in the page."""
+	from frappe.utils.xlsxutils import make_xlsx
+
+	rows = update_if_string_instance(rows)
+	if not isinstance(rows, list) or not rows:
+		frappe.throw("There are no Work In Progress rows to export.")
+	if len(rows) > 10000:
+		frappe.throw("A maximum of 10,000 Work In Progress rows can be exported at once.")
+
+	normalized_rows = []
+	for row in rows:
+		if not isinstance(row, (list, tuple)):
+			frappe.throw("Invalid Work In Progress export data.")
+		normalized_rows.append([
+			cell if isinstance(cell, (int, float)) else str(cell or "")
+			for cell in row
+		])
+
+	xlsx_file = make_xlsx(normalized_rows, "Work In Progress")
+	now = frappe.utils.now_datetime().strftime("%d-%m-%Y_%H-%M-%S")
+	return {
+		"filename": f"Work_In_Progress_{now}.xlsx",
+		"filecontent": base64.b64encode(xlsx_file.getvalue()).decode("ascii"),
+	}
+
 
 def get_process_wo_list(process, lot):
 	processes = frappe.db.sql(
