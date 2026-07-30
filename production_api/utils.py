@@ -3938,65 +3938,161 @@ def get_sewing_progress_report(process=None, status=None, category=None, lot_lis
 	}
 
 @frappe.whitelist()
-def get_work_order_pending_report(lot=None,process=None,supplier=None,item=None,wos=None,status=None):
+def get_work_order_pending_report(
+	production_order=None,
+	lot=None,
+	process=None,
+	supplier=None,
+	item=None,
+	item_variant=None,
+	from_date=None,
+	to_date=None,
+	status=None,
+	wos=None,
+):
+	"""Delivered, received, and difference values from submitted Work Orders."""
 	conditions = ""
 	con = {}
+	production_order = _normalize_multiselect_filter(production_order)
 	lot = _normalize_multiselect_filter(lot)
 	process = _normalize_multiselect_filter(process)
 	supplier = _normalize_multiselect_filter(supplier)
 	item = _normalize_multiselect_filter(item)
-	if lot:
-		conditions += ' AND t1.lot IN %(lot)s'
-		con['lot'] = tuple(lot)
-	if process:
-		conditions += ' AND t1.process_name IN %(process)s'
-		con['process'] = tuple(process)
-	if supplier:
-		conditions += ' AND t1.supplier IN %(supplier)s'
-		con['supplier'] = tuple(supplier)
-	if item:
-		conditions += ' AND (t2.item_variant IN %(item)s OR iv.item IN %(item)s OR i.name IN %(item)s OR i.name1 IN %(item)s)'
-		con['item'] = tuple(item)
-	if status:
-		if status == "Open":
-			conditions += ' AND t1.open_status = %(open_status)s'
-			con['open_status'] = "Open"
-		elif status == "Closed":
-			conditions += ' AND t1.open_status IN %(closed_status)s'
-			con['closed_status'] = ("Close", "Close Request")
+	item_variant = _normalize_multiselect_filter(item_variant)
+	wos = _normalize_multiselect_filter(wos)
 
-	work_orders = frappe.db.sql(
+	if production_order:
+		conditions += " AND l.production_order IN %(production_order)s"
+		con["production_order"] = tuple(production_order)
+	if lot:
+		conditions += " AND t1.lot IN %(lot)s"
+		con["lot"] = tuple(lot)
+	if process:
+		conditions += " AND t1.process_name IN %(process)s"
+		con["process"] = tuple(process)
+	if supplier:
+		conditions += " AND t1.supplier IN %(supplier)s"
+		con["supplier"] = tuple(supplier)
+	if item:
+		conditions += (
+			" AND ("
+			"	(COALESCE(t1.includes_packing, 0) = 1 AND t1.item IN %(item)s)"
+			"	OR (COALESCE(t1.includes_packing, 0) = 0 AND ("
+			"		iv.item IN %(item)s OR i.name IN %(item)s OR i.name1 IN %(item)s"
+			"	))"
+			")"
+		)
+		con["item"] = tuple(item)
+	if item_variant:
+		conditions += (
+			" AND ("
+			"	(COALESCE(t1.includes_packing, 0) = 1 AND t1.item IN %(item_variant)s)"
+			"	OR (COALESCE(t1.includes_packing, 0) = 0 "
+			"		AND t2.item_variant IN %(item_variant)s)"
+			")"
+		)
+		con["item_variant"] = tuple(item_variant)
+	if wos:
+		conditions += " AND t1.name IN %(wos)s"
+		con["wos"] = tuple(wos)
+
+	if bool(from_date) != bool(to_date):
+		frappe.throw("Set both From Date and To Date.")
+	if from_date and to_date:
+		conditions += " AND t1.wo_date BETWEEN %(from_date)s AND %(to_date)s"
+		con["from_date"] = from_date
+		con["to_date"] = to_date
+
+	if status:
+		conditions += " AND t1.open_status = %(open_status)s"
+		con["open_status"] = status
+
+	return frappe.db.sql(
 		f"""
 			SELECT
-			t1.lot,
-			t1.process_name,
-			t1.supplier_name,
-			i.name1 AS item_name,
-			SUM(t2.delivered_quantity) AS delivered_qty,
-			SUM(t2.received_qty) AS received_qty,
-			SUM(t2.delivered_quantity) - SUM(t2.received_qty) AS pending_quantity
-			FROM `tabWork Order` t1
-			JOIN `tabWork Order Calculated Item` t2 ON t2.parent = t1.name
-			LEFT JOIN `tabItem Variant` iv 
-				ON iv.name = t2.item_variant
-			LEFT JOIN `tabItem` i 
-				ON i.name = iv.item
-			JOIN `tabSupplier` t3 
-				ON t3.name = t1.supplier
-			WHERE 1=1 {conditions} AND t1.process_name !='cutting'
-			GROUP BY 
+				COALESCE(l.production_order, '') AS production_order,
+				t1.name AS work_order,
 				t1.lot,
 				t1.process_name,
+				COALESCE(t1.supplier_name, t3.supplier_name, t1.supplier, '') AS supplier_name,
+				CASE
+					WHEN COALESCE(t1.includes_packing, 0) = 1
+						THEN COALESCE(t1.item, '')
+					ELSE COALESCE(NULLIF(i.name1, ''), i.name, iv.item, '')
+				END AS item_name,
+				CASE
+					WHEN COALESCE(t1.includes_packing, 0) = 1
+						THEN COALESCE(t1.item, '')
+					ELSE t2.item_variant
+				END AS item_variant,
+				SUM(COALESCE(t2.delivered_quantity, 0)) AS delivered_qty,
+				CASE
+					WHEN COALESCE(t1.includes_packing, 0) = 1
+						THEN COALESCE(packing_grn.received_qty, 0)
+							* COALESCE(NULLIF(ipd.packing_combo, 0), 1)
+					ELSE SUM(COALESCE(t2.received_qty, 0))
+				END AS received_qty,
+				SUM(COALESCE(t2.delivered_quantity, 0))
+					- CASE
+						WHEN COALESCE(t1.includes_packing, 0) = 1
+							THEN COALESCE(packing_grn.received_qty, 0)
+								* COALESCE(NULLIF(ipd.packing_combo, 0), 1)
+						ELSE SUM(COALESCE(t2.received_qty, 0))
+					END AS pending_quantity
+			FROM `tabWork Order` t1
+			JOIN `tabWork Order Calculated Item` t2 ON t2.parent = t1.name
+			LEFT JOIN `tabLot` l ON l.name = t1.lot
+			LEFT JOIN `tabItem Production Detail` ipd ON ipd.name = l.production_detail
+			LEFT JOIN (
+				SELECT
+					grn.against_id AS work_order,
+					SUM(COALESCE(grn_item.quantity, 0)) AS received_qty
+				FROM `tabGoods Received Note` grn
+				JOIN `tabGoods Received Note Item` grn_item
+					ON grn_item.parent = grn.name
+				WHERE
+					grn.docstatus = 1
+					AND grn.against = 'Work Order'
+					AND grn.is_return = 0
+				GROUP BY grn.against_id
+			) packing_grn ON packing_grn.work_order = t1.name
+			LEFT JOIN `tabItem Variant` iv ON iv.name = t2.item_variant
+			LEFT JOIN `tabItem` i ON i.name = iv.item
+			LEFT JOIN `tabSupplier` t3 ON t3.name = t1.supplier
+			WHERE t1.docstatus = 1 {conditions}
+			GROUP BY
+				l.production_order,
+				t1.name,
+				t1.lot,
+				t1.process_name,
+				t1.supplier,
 				t1.supplier_name,
-				i.name1
-				""", con, as_dict=True)
-	filtered_work_orders = []
-	for w in work_orders:
-		if w.get("pending_quantity") <= 0:
-			continue
-		filtered_work_orders.append(w)
-
-	return filtered_work_orders
+				t3.supplier_name,
+				CASE
+					WHEN COALESCE(t1.includes_packing, 0) = 1
+						THEN COALESCE(t1.item, '')
+					ELSE COALESCE(NULLIF(i.name1, ''), i.name, iv.item, '')
+				END,
+				CASE
+					WHEN COALESCE(t1.includes_packing, 0) = 1
+						THEN COALESCE(t1.item, '')
+					ELSE t2.item_variant
+				END,
+				t1.includes_packing,
+				ipd.packing_combo,
+				packing_grn.received_qty
+			ORDER BY
+				l.production_order,
+				t1.lot,
+				t1.name,
+				t1.process_name,
+				supplier_name,
+				item_name,
+				item_variant
+		""",
+		con,
+		as_dict=True,
+	)
 
 @frappe.whitelist()
 def get_the_data_of_each_row(item,process,supplier,lot):
