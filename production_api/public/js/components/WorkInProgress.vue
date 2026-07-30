@@ -13,6 +13,9 @@
             <div style="padding-top:27px;padding-left:10px;">
                 <button class="btn btn-primary" @click="get_list_items()">Paste</button>
             </div>
+            <div v-if="filteredRows.length" style="padding-top:27px;padding-left:10px;">
+                <button class="btn btn-default" @click="download_excel()">Excel</button>
+            </div>
         </div>
         <div class="date-filter-section">
             <div class="date-filter-row">
@@ -64,6 +67,7 @@
             <table class="table table-md table-sm-bordered bordered-table">
                 <tr>
                     <th>Style</th>
+                    <th>PPO</th>
                     <th>Lot No</th>
                     <th v-for="col in Object.keys(items['columns']['cut_columns'])">{{ col }}</th>
                     <th v-for="col in Object.keys(items['columns']['against_cut_columns'])">{{ col }}</th>
@@ -74,8 +78,9 @@
                     <th>Sewing Sent Date</th>
                     <th>Finishing Inward Date</th>
                 </tr>
-				 <tr class="filter-row">
+                <tr class="filter-row">
                     <th><input type="text" class="filter-input" v-model="columnFilters.style"/></th>
+                    <th><input type="text" class="filter-input" v-model="columnFilters.production_order"/></th>
                     <th><input type="text" class="filter-input" v-model="columnFilters.lot"/></th>
                     <th v-for="col in Object.keys(items['columns']['cut_columns'])" :key="'cf-cut-'+col">
                         <input type="text" class="filter-input" v-model="columnFilters['cut:'+col]"/>
@@ -99,6 +104,7 @@
 
                 <tr v-for="row in filteredRows">
                     <td>{{ row['style'] }}</td>
+                    <td>{{ row['production_order'] }}</td>
                     <td>{{ row['lot'] }}</td>
                     <td v-for="col in items['columns']['cut_columns']"
                         :style="get_cell_style(row, 'cut_details', col)"
@@ -145,6 +151,7 @@
                     <td>{{ get_date(row['finishing_inward_date']) }}</td>
                 </tr>
                 <tr>
+                    <th></th>
                     <th></th>
                     <th></th>
                     <th v-for="col in items['columns']['cut_columns']">
@@ -227,6 +234,7 @@ const filteredRows = computed(() => {
     }
     return rows.filter(row => {
         if (!matches(row.style, columnFilters.style)) return false
+        if (!matches(row.production_order, columnFilters.production_order)) return false
         if (!matches(row.lot, columnFilters.lot)) return false
         if (!cellMatches(row, 'cut', 'cut_columns', 'cut_details')) return false
         if (!cellMatches(row, 'against_cut', 'against_cut_columns', 'against_cut_details')) return false
@@ -508,6 +516,88 @@ function get_date(date){
 function formatSummaryNumber(value){
     const num = Number(value || 0)
     return num.toLocaleString()
+}
+
+function reportColumns(){
+    const columns = [
+        { label: "Style", value: (row) => row.style || "" },
+        { label: "PPO", value: (row) => row.production_order || "" },
+        { label: "Lot No", value: (row) => row.lot || "" },
+    ]
+    const sections = [
+        ["cut_columns", "cut_details"],
+        ["against_cut_columns", "against_cut_details"],
+        ["sew_columns", "sewing_details"],
+        ["against_sew_columns", "against_sew_details"],
+        ["finishing_columns", "finishing_details"],
+    ]
+    const configured = items.value?.columns || {}
+    for (const [columnKey, detailsKey] of sections) {
+        for (const [label, dataKey] of Object.entries(configured[columnKey] || {})) {
+            columns.push({
+                label,
+                value: (row) => row?.[detailsKey]?.[dataKey] ?? "",
+                total: () => filteredTotals.value?.[detailsKey]?.[dataKey] ?? "",
+            })
+        }
+    }
+    columns.push(
+        { label: "Cut Last Date", value: (row) => get_date(row.last_cut_date) },
+        { label: "Sewing Sent Date", value: (row) => get_date(row.sew_sent_date) },
+        { label: "Finishing Inward Date", value: (row) => get_date(row.finishing_inward_date) },
+    )
+    return columns
+}
+
+function getExcelRows(){
+    const columns = reportColumns()
+    const rows = [
+        columns.map((column) => column.label),
+        ...filteredRows.value.map((row) =>
+            columns.map((column) => column.value(row))
+        ),
+    ]
+    rows.push(columns.map((column) =>
+        column.total ? column.total() : ""
+    ))
+    return rows
+}
+
+function saveBase64File(filename, content){
+    const binary = window.atob(content)
+    const bytes = new Uint8Array(binary.length)
+    for (let index = 0; index < binary.length; index++) {
+        bytes[index] = binary.charCodeAt(index)
+    }
+    const url = URL.createObjectURL(new Blob(
+        [bytes],
+        { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" },
+    ))
+    const link = document.createElement("a")
+    link.href = url
+    link.download = filename
+    document.body.appendChild(link)
+    link.click()
+    link.remove()
+    URL.revokeObjectURL(url)
+}
+
+function download_excel(){
+    if (!filteredRows.value.length) {
+        frappe.msgprint("There are no Work In Progress rows to export.")
+        return
+    }
+    frappe.call({
+        method: "production_api.utils.download_work_in_progress_excel",
+        args: { rows: getExcelRows() },
+        freeze: true,
+        freeze_message: "Preparing Excel",
+        callback: function(r){
+            if (r.message?.filecontent) {
+                saveBase64File(r.message.filename, r.message.filecontent)
+            }
+        },
+    })
 }
 
 </script>
