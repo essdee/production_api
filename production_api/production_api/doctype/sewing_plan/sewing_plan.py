@@ -1633,7 +1633,7 @@ def get_consumption_mapping_data(lot, supplier=None):
 			row_x.append({
 				"index": 0,
 				"values": {"Item": b.item},
-				"quantity": 0,
+				"quantity": saved_qty_in_sp.get((b.item, 0), 0),
 				"item_bom_qty": b.qty_of_bom_item or 0,
 			})
 
@@ -1689,6 +1689,66 @@ def get_sewing_consumption_print_data(ipd, lot=None):
 	data["lot"] = lot
 	return data
 
+
+def _set_consumption_details(sp_doc, sections):
+	sp_doc.set("consumption_details", [])
+
+	variant_attributes = [
+		get_variant_attr_details(row.item_variant) or {}
+		for row in sp_doc.sewing_plan_order_details
+	]
+	if not variant_attributes:
+		return
+
+	for section in sections or []:
+		item_name = section.get("item")
+		attributes_in_item = set(section.get("attribute_in_item") or [])
+
+		for row in section.get("rows") or []:
+			row_values = row.get("values") or {}
+			item_bom_qty = row.get("item_bom_qty") or 0
+			consumption_qty = row.get("quantity") or 0
+			row_index = row.get("index", 0)
+			details_to_save = []
+			required_item_attributes = {}
+
+			for attribute_key in section.get("item_attributes") or []:
+				attribute_value = row_values.get(attribute_key)
+				if attribute_value in (None, ""):
+					continue
+
+				attribute_type = "item" if attribute_key.startswith("item_") else "bom"
+				attribute_name = (
+					attribute_key.split("_", 1)[1]
+					if "_" in str(attribute_key)
+					else attribute_key
+				)
+
+				if attribute_type == "item":
+					if attribute_name not in attributes_in_item:
+						continue
+					required_item_attributes[attribute_name] = attribute_value
+
+				details_to_save.append((attribute_type, attribute_name, attribute_value))
+
+			if required_item_attributes and not any(
+				all(attributes.get(name) == value for name, value in required_item_attributes.items())
+				for attributes in variant_attributes
+			):
+				continue
+
+			for attribute_type, attribute_name, attribute_value in details_to_save:
+				sp_doc.append("consumption_details", {
+					"item_name": item_name,
+					"index": row_index,
+					"attribute": attribute_name,
+					"attribute_value": attribute_value,
+					"type": attribute_type,
+					"item_bom_qty": item_bom_qty,
+					"consumption_qty": consumption_qty,
+				})
+
+
 @frappe.whitelist()
 def save_consumption_data(supplier, lot, sections, cloth_acc_data=None):
 	sections = update_if_string_instance(sections)
@@ -1707,59 +1767,8 @@ def save_consumption_data(supplier, lot, sections, cloth_acc_data=None):
 
 	for sp in sew_p:
 		sp_n = frappe.get_doc("Sewing Plan", sp)
-		sp_n.set("consumption_details", [])
+		_set_consumption_details(sp_n, sections)
 		sp_n.set("cloth_accessory_consumption", [])
-		row_no = 1
-		for sec in sp_n.sewing_plan_order_details:
-			att_de = get_variant_attr_details(sec.item_variant) or {}
-
-			for s in sections or []:
-				item_n = s.get("item")
-				att_in_sec=s.get("attribute_in_item", [])
-
-				for r in s.get("rows", []):
-					r_values = r.get("values") or {}
-					item_bom_qty = r.get("item_bom_qty") or 0
-					r_qty = r.get("quantity") or 0
-					r_index = r.get("index", 0)
-
-					match = True
-					saved_f = []
-					for att in s.get("item_attributes") or []:
-						att_v = r_values.get(att)
-						if att_v in (None, ""):
-							continue
-
-						att_type = "item" if att.startswith("item_") else "bom"
-						if "_" in str(att):
-							att_name = att.split("_", 1)[1]
-						else:
-							att_name = att
-
-						if att_type == "item":
-							if att_name not in att_in_sec:
-								continue
-							if att_de.get(att_name) != att_v:
-								match = False
-								break
-
-						saved_f.append((att_type, att_name, att_v))
-
-					if not match:
-						continue
-					# if item_bom_qty<r_qty:
-					# 	frappe.throw(f"Consumption quantity cannot be greater than BOM quantity")
-					for att_type, att_name, att_v in saved_f:
-						sp_n.append("consumption_details", {
-							"item_name": item_n,
-							"index": r_index,
-							"attribute": att_name,
-							"attribute_value": att_v,
-							"type": att_type,
-							"item_bom_qty": item_bom_qty,
-							"consumption_qty": r_qty,
-						})
-						row_no += 1
 
 		for r in cloth_acc_data or []:
 			attributes = r.get("attributes") or []
