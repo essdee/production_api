@@ -85,3 +85,4 @@ production_api.patches.v1_0.dc_grn_posting_date_to_actual_date #3
 production_api.patches.v1_0.backfill_wo_grn_valuation #2
 production_api.patches.v1_0.set_production_order_status_open
 production_api.patches.v1_0.add_ppo_report_indexes
+production_api.patches.v1_0.sync_linked_lot_quantities
