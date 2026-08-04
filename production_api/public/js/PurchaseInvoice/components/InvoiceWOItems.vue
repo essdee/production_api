@@ -120,6 +120,23 @@
                             </tr>
                         </template>
                     </tbody>
+                    <tbody v-if="item['grand_total']" class="dark-border grand-total-section">
+                        <tr v-for="(summaryRow, summaryIdx) in verificationGrandTotalRows" :key="summaryRow.key">
+                            <th
+                                v-if="summaryIdx === 0"
+                                :rowspan="verificationGrandTotalRows.length"
+                                :colspan="item['is_set_item'] ? 3 : 2"
+                                class="grand-total-label"
+                            >
+                                Grand Total
+                            </th>
+                            <th>{{ summaryRow.label }}</th>
+                            <th v-for="size in item['sizes']" :key="`${summaryRow.key}-${size}`">
+                                {{ item['grand_total']['sizes'][size][summaryRow.key] }}
+                            </th>
+                            <th>{{ item['grand_total']['total'][summaryRow.key] }}</th>
+                        </tr>
+                    </tbody>
                 </table>
             </div>
         </div>
@@ -175,6 +192,15 @@ let all_wo_closed = ref(true)
 let open_work_orders = ref([])
 let close_request_wos = ref([])
 let override_pi_approve = ref(false)
+
+const verificationGrandTotalRows = [
+    { key: 'total_delivered', label: 'Total Delivered' },
+    { key: 'total_received', label: 'Total Received' },
+    { key: 'difference', label: 'Difference' },
+    { key: 'total_billed', label: 'Total Billed' },
+    { key: 'pending_for_bill', label: 'Pending For Bill' },
+    { key: 'grn_quantity', label: 'GRN Quantity' },
+]
 
 onMounted(() => {
     const grouped = {}
@@ -651,5 +677,15 @@ defineExpose({
 
 .dark-border{
     border: 2px solid black;
+}
+
+.grand-total-section {
+    background-color: #f3f4f6;
+    border-top: 3px double #000;
+}
+
+.grand-total-label {
+    font-size: 1.05rem;
+    vertical-align: middle;
 }
 </style>

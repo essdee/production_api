@@ -295,6 +295,44 @@ def get_item_variant_item_group(item_variant):
     return item_group[0]['item_group'], item_group[0]['item']
 
 
+def _calculate_verification_grand_total(data):
+    fields = (
+        "total_delivered",
+        "total_received",
+        "difference",
+        "total_billed",
+        "pending_for_bill",
+        "grn_quantity",
+    )
+    size_totals = {
+        size: {field: 0 for field in fields}
+        for size in data["sizes"]
+    }
+
+    for colour in data["colours"].values():
+        for size in data["sizes"]:
+            values = colour["data"].get(size) or {}
+            delivered = values.get("total_delivered") or 0
+            received = values.get("total_received") or 0
+            billed = values.get("billed") or 0
+            grn_quantity = values.get("quantity") or 0
+
+            size_totals[size]["total_delivered"] += delivered
+            size_totals[size]["total_received"] += received
+            size_totals[size]["difference"] += delivered - received
+            size_totals[size]["total_billed"] += billed
+            size_totals[size]["pending_for_bill"] += received - billed
+            size_totals[size]["grn_quantity"] += grn_quantity
+
+    return {
+        "sizes": size_totals,
+        "total": {
+            field: sum(size_totals[size][field] for size in data["sizes"])
+            for field in fields
+        },
+    }
+
+
 def fetch_work_order_items(items):
     items = [item.as_dict() for item in items]
     item_details = []
@@ -369,6 +407,7 @@ def fetch_work_order_items(items):
             data['total_qty'][colour]['total_received'] += row['total_received']
             data['total_qty'][colour]['total_billed'] += row['billed']
             data['total_qty'][colour]['total_quantity'] += row['quantity']
+        data["grand_total"] = _calculate_verification_grand_total(data)
         item_details.append(data)
 
     return item_details
