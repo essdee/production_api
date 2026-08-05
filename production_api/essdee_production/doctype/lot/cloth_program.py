@@ -18,6 +18,10 @@ from production_api.essdee_production.doctype.item_production_detail.item_produc
 	get_cloth_combination,
 	get_stitching_combination,
 )
+from production_api.essdee_production.doctype.ipd_compacting.ipd_compacting import (
+	compacting_key,
+	get_compacting_mapping,
+)
 
 
 CLOTH_PER_KG_YARN = 1.0
@@ -55,6 +59,41 @@ def _variant_attributes(item_variant):
 		row.attribute: row.attribute_value
 		for row in variant_doc.get("attributes") or []
 	}
+
+
+def _apply_compacting_details(ipd_doc, rows):
+	if not ipd_doc.get("enable_panel_wise_consumption_matrix"):
+		return False
+
+	mapping = get_compacting_mapping(ipd_doc.name)
+	missing = []
+	for row in rows:
+		key = compacting_key(
+			{
+				"cloth_item": row["cloth_item"],
+				"packing_attribute_value": row["colour"],
+				"input_dia": row["dia"],
+			}
+		)
+		compacting_dia = mapping.get(key)
+		if not compacting_dia:
+			missing.append(" / ".join(key))
+			continue
+		row["input_dia"] = row["dia"]
+		row["compacting_dia"] = compacting_dia
+
+	if missing:
+		frappe.throw(
+			_(
+				"Enter Compacting Dia for the following Cloth Item / {0} / Input Dia "
+				"combination(s) in Item Production Detail {1}: {2}"
+			).format(
+				ipd_doc.get("packing_attribute") or _("Packing Attribute"),
+				ipd_doc.name,
+				", ".join(sorted(missing)),
+			)
+		)
+	return True
 
 
 def _calculate_cloth_program(lot_doc, ipd_doc, extra_percentage=0):
@@ -155,11 +194,13 @@ def _calculate_cloth_program(lot_doc, ipd_doc, extra_percentage=0):
 
 	for key in totals:
 		totals[key] = flt(totals[key], WEIGHT_PRECISION)
+	uses_compacting_details = _apply_compacting_details(ipd_doc, rows)
 
 	return {
 		"lot": lot_doc.name,
 		"extra_percentage": extra_percentage,
 		"cloth_per_kg_yarn": CLOTH_PER_KG_YARN,
+		"uses_compacting_details": uses_compacting_details,
 		"rows": rows,
 		"totals": totals,
 	}

@@ -97,6 +97,8 @@
   "get_stiching_accessory_combination",
   "stiching_accessory_json",
   "stiching_accessory_html",
+  "compacting_details_tab",
+  "compacting_details_html",
   "advance_settings_tab",
   "packing_details_section",
   "packing_process",
@@ -703,6 +705,17 @@
    "fieldtype": "JSON",
    "hidden": 1,
    "label": "Variants JSON"
+  },
+  {
+   "depends_on": "eval:doc.enable_panel_wise_consumption_matrix && !doc.__islocal",
+   "fieldname": "compacting_details_tab",
+   "fieldtype": "Tab Break",
+   "label": "Compacting Details"
+  },
+  {
+   "fieldname": "compacting_details_html",
+   "fieldtype": "HTML",
+   "label": "Compacting Details"
   },
   {
    "fieldname": "advance_settings_tab",

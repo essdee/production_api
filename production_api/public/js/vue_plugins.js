@@ -33,6 +33,7 @@ import CombinationItemDetail from "./Item_Po_detail/CombinationItemDetail.vue"
 import EmblishmentDetails from "./Item_Po_detail/EmblishmentDetails.vue"
 import CuttingItemDetail from "./Item_Po_detail/CuttingItemDetail.vue"
 import PanelWiseConsumptionMatrix from "./Item_Po_detail/PanelWiseConsumptionMatrix.vue"
+import IPDCompactingDetails from "./Item_Po_detail/IPDCompactingDetails.vue"
 import ClothAccessory from "./Item_Po_detail/ClothAccessory.vue"
 import ClothAccessoryCombination from "./Item_Po_detail/ClothAccessoryCombination.vue"
 import AccessoryItems from "./Item_Po_detail/AccessoryItems.vue"
@@ -303,6 +304,18 @@ frappe.production.ui.PanelWiseConsumptionMatrix = class {
     }
     get_data() {
         return JSON.parse(JSON.stringify(this.vue.get_data()));
+    }
+}
+
+frappe.production.ui.IPDCompactingDetails = class {
+    constructor(wrapper) {
+        this.$wrapper = $(wrapper);
+        this.app = createApp(IPDCompactingDetails);
+        SetVueGlobals(this.app);
+        this.vue = this.app.mount(this.$wrapper.get(0));
+    }
+    load_data(payload) {
+        this.vue.load_data(JSON.parse(JSON.stringify(payload || {})));
     }
 }
 
