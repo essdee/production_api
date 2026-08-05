@@ -1,0 +1,58 @@
+{
+ "actions": [],
+ "creation": "2026-08-05 12:00:00.000000",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "cloth_item",
+  "packing_attribute_value",
+  "input_dia",
+  "compacting_dia"
+ ],
+ "fields": [
+  {
+   "fieldname": "cloth_item",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Cloth Item",
+   "options": "Item",
+   "reqd": 1
+  },
+  {
+   "fieldname": "packing_attribute_value",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Packing Attribute Value",
+   "options": "Item Attribute Value",
+   "reqd": 1
+  },
+  {
+   "fieldname": "input_dia",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Input Dia",
+   "options": "Item Attribute Value",
+   "reqd": 1
+  },
+  {
+   "fieldname": "compacting_dia",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Compacting Dia",
+   "options": "Item Attribute Value"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2026-08-05 12:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Essdee Production",
+ "name": "IPD Compacting Details",
+ "owner": "Administrator",
+ "permissions": [],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

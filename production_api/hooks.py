@@ -146,6 +146,7 @@ doc_events = {
         "Production Term",
         "Lot Template",
         "Item Production Detail",
+        "IPD Compacting",
         "Production Order",
         "Lot",
     ): {

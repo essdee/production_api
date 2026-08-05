@@ -7,6 +7,52 @@ from production_api.sd_yrp_sync import publish_sd_yrp_event
 
 
 class TestSDYRPSyncPrerequisites(FrappeTestCase):
+	def test_ipd_compacting_publishes_linked_ipd_before_itself(self):
+		compacting = frappe._dict(
+			doctype="IPD Compacting",
+			name="TEST-IPD",
+			item_production_detail="TEST-IPD",
+			packing_attribute="Colour",
+			compacting_details=[
+				frappe._dict(
+					cloth_item="TEST-CLOTH",
+					packing_attribute_value="Black",
+					input_dia="32 Dia",
+					compacting_dia="30 Dia",
+				)
+			],
+		)
+		ipd = frappe._dict(
+			doctype="Item Production Detail",
+			name="TEST-IPD",
+		)
+
+		with patch.dict(frappe.local.conf, {"kafka": {"enabled": True}}), patch(
+			"production_api.sd_yrp_sync.frappe.get_doc",
+			return_value=ipd,
+		), patch(
+			"production_api.sd_yrp_sync.publish_ipd_prerequisites",
+		) as publish_prerequisites, patch(
+			"production_api.sd_yrp_sync._publish_ipd_prerequisite_names",
+		) as publish_consumption_prerequisites, patch(
+			"production_api.sd_yrp_sync.publish_doc_event",
+		) as publish:
+			publish_sd_yrp_event(compacting, "on_update")
+
+		publish_prerequisites.assert_called_once_with(ipd)
+		self.assertEqual(
+			publish_consumption_prerequisites.call_args.args[0],
+			{
+				"Item Attribute": {"Colour"},
+				"Item": {"TEST-CLOTH"},
+				"Item Attribute Value": {"Black", "32 Dia", "30 Dia"},
+			},
+		)
+		self.assertEqual(
+			[call.kwargs["doctype"] for call in publish.call_args_list],
+			["Item Production Detail", "IPD Compacting"],
+		)
+
 	def test_lot_publishes_its_production_order_first_once_per_request(self):
 		lot = frappe._dict(
 			doctype="Lot",

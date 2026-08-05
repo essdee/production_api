@@ -105,7 +105,16 @@ class ItemProductionDetail(Document):
 		if docs:
 			for mapping in docs:
 				frappe.delete_doc("Item BOM Attribute Mapping", mapping)
-	
+
+	def on_trash(self):
+		compacting = frappe.db.exists(
+			"IPD Compacting", {"item_production_detail": self.name}
+		)
+		if compacting:
+			frappe.delete_doc(
+				"IPD Compacting", compacting, ignore_permissions=True
+			)
+
 	def before_validate(self):
 		items = []
 		for item in self.item_bom:

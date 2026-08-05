@@ -614,11 +614,14 @@ function render_cloth_program_preview(dialog, preview) {
 		undefined,
 		{ minimumFractionDigits: 3, maximumFractionDigits: 3 }
 	);
+	const uses_compacting_details = Boolean(preview.uses_compacting_details);
 	const cloth_items = {};
 	rows.forEach((row) => {
 		const cloth_item = row.cloth_item || __("Unspecified Cloth");
 		const colour = row.colour || __("No Colour");
-		const dia = row.dia || __("No Dia");
+		const dia = uses_compacting_details
+			? `${row.input_dia || __("No Dia")} → ${row.compacting_dia || __("No Dia")}`
+			: (row.dia || __("No Dia"));
 		if (!cloth_items[cloth_item]) {
 			cloth_items[cloth_item] = {
 				colours: new Set(),
@@ -668,7 +671,7 @@ function render_cloth_program_preview(dialog, preview) {
 					<table class="table table-bordered table-hover">
 						<thead>
 							<tr>
-								<th>${__("Dia")}</th>
+								<th>${uses_compacting_details ? __("Input Dia → Compacting Dia") : __("Dia")}</th>
 								${colours.map((colour) => `<th class="text-right">${escape(colour)}</th>`).join("")}
 								<th class="text-right">${__("Total")}</th>
 							</tr>

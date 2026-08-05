@@ -32,6 +32,7 @@ SD_YRP_EXACT_MATCH_DOCTYPES = (
 	"Item BOM Attribute Mapping",
 	"Address",
 	"Contact",
+	"IPD Compacting",
 )
 
 SD_YRP_CUSTOM_MAPPER_DOCTYPES = (
@@ -86,6 +87,7 @@ SD_YRP_INITIAL_SYNC_ORDER = (
 	"Production Order",
 	"Lot Template",
 	"Item Production Detail",
+	"IPD Compacting",
 	"Lot",
 )
 
@@ -126,6 +128,8 @@ def produce_exact_doc(producer_dict):
 	# followed by on_update, whose run publishes the closure once.
 	if getattr(doc, "doctype", None) == "Item Production Detail" and event not in ("on_trash", "after_insert"):
 		publish_ipd_prerequisites(doc)
+	if getattr(doc, "doctype", None) == "IPD Compacting" and event not in ("on_trash", "after_insert"):
+		publish_ipd_compacting_prerequisite(doc)
 	if getattr(doc, "doctype", None) == "Lot" and event != "on_trash":
 		publish_lot_prerequisites(doc)
 	producer_dict["doc_to_publish"] = prepare_sd_yrp_doc_for_publish(doc, event)
@@ -165,6 +169,8 @@ def publish_sd_yrp_event(doc, docevent, extra_args=()):
 	# that event's job publishes the closure once instead of twice per create.
 	if doc.doctype == "Item Production Detail" and docevent not in ("on_trash", "after_insert"):
 		publish_ipd_prerequisites(doc)
+	if doc.doctype == "IPD Compacting" and docevent not in ("on_trash", "after_insert"):
+		publish_ipd_compacting_prerequisite(doc)
 	if doc.doctype == "Lot" and docevent != "on_trash":
 		publish_lot_prerequisites(doc)
 
@@ -231,11 +237,14 @@ def publish_ipd_prerequisites(doc):
 	set keeps a filtered bulk IPD sync from republishing the same masters once
 	per IPD.
 	"""
+	_publish_ipd_prerequisite_names(_ipd_prerequisite_names(doc))
+
+
+def _publish_ipd_prerequisite_names(refs):
 	published = getattr(frappe.local, "_sd_yrp_published_ipd_prerequisites", None)
 	if published is None:
 		published = set()
 		frappe.local._sd_yrp_published_ipd_prerequisites = published
-	refs = _ipd_prerequisite_names(doc)
 	for doctype in SD_YRP_INITIAL_SYNC_ORDER:
 		names = refs.get(doctype)
 		if not names:
@@ -325,6 +334,45 @@ def _ipd_prerequisite_names(doc):
 			add("Item Dependent Attribute Mapping", item.dependent_attribute_mapping)
 
 	return refs
+
+
+def publish_ipd_compacting_prerequisite(doc):
+	"""Publish the linked IPD and its dependency closure before consumption data."""
+	ipd_name = doc.get("item_production_detail")
+	if not ipd_name:
+		return
+	try:
+		ipd_doc = frappe.get_doc("Item Production Detail", ipd_name)
+	except frappe.DoesNotExistError:
+		frappe.clear_last_message()
+		return
+
+	publish_ipd_prerequisites(ipd_doc)
+	consumption_refs = {
+		"Item Attribute": set(),
+		"Item": set(),
+		"Item Attribute Value": set(),
+	}
+	if doc.get("packing_attribute"):
+		consumption_refs["Item Attribute"].add(doc.get("packing_attribute"))
+	for row in doc.get("compacting_details") or []:
+		if row.get("cloth_item"):
+			consumption_refs["Item"].add(row.get("cloth_item"))
+		for fieldname in (
+			"packing_attribute_value",
+			"input_dia",
+			"compacting_dia",
+		):
+			if row.get(fieldname):
+				consumption_refs["Item Attribute Value"].add(row.get(fieldname))
+	_publish_ipd_prerequisite_names(consumption_refs)
+	publish_doc_event(
+		doc=prepare_sd_yrp_doc_for_publish(ipd_doc, "on_update"),
+		doctype="Item Production Detail",
+		target_topic=SD_YRP_TOPIC,
+		event="on_update",
+		args=(),
+	)
 
 
 def prepare_sd_yrp_doc_for_publish(doc, event=None):

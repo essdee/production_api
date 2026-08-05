@@ -243,6 +243,7 @@ frappe.ui.form.on("Item Production Detail", {
 		$(frm.fields_dict['select_cloth_accessory_html'].wrapper).html("")
 		$(frm.fields_dict['bundle_group_html'].wrapper).html("")
 		$(frm.fields_dict['panel_wise_consumption_matrix_html'].wrapper).html("")
+		$(frm.fields_dict['compacting_details_html'].wrapper).html("")
 		if(frm.doc.stiching_in_stage && frm.doc.dependent_attribute){
 			frm.cutting_attrs = await get_stich_in_attributes(frm.doc.dependent_attribute_mapping,frm.doc.stiching_in_stage, frm.doc.item)
 			if(frm.doc.is_set_item){
@@ -333,6 +334,7 @@ frappe.ui.form.on("Item Production Detail", {
 			frm.set_df_property('get_cutting_combination','hidden',false);
 		}
 		await frm.trigger("render_panel_wise_consumption_matrix")
+		await frm.trigger("render_compacting_details")
 
 		// Lock form when Approved
 		if (!frm.is_new() && frm.doc.approval_status === "Approved") {
@@ -941,6 +943,7 @@ frappe.ui.form.on("Item Production Detail", {
 	},
 	async enable_panel_wise_consumption_matrix(frm){
 		await frm.trigger("render_panel_wise_consumption_matrix")
+		await frm.trigger("render_compacting_details")
 		if(!frm.doc.enable_panel_wise_consumption_matrix && frm.doc.stiching_in_stage && frm.doc.dependent_attribute){
 			make_select_attributes(frm,'select_attributes_html','select_attributes_wrapper','select_attrs_multicheck','cutting_attributes','cutting_items_json','get_cutting_combination')
 			await frm.trigger("make_cutting_combination")
@@ -986,6 +989,40 @@ frappe.ui.form.on("Item Production Detail", {
 			payload,
 			!frm.is_new() && frm.doc.approval_status === "Approved"
 		)
+	},
+	async render_compacting_details(frm){
+		const field = frm.fields_dict.compacting_details_html
+		if(!field){
+			return
+		}
+		$(field.wrapper).empty()
+		frm.ipd_compacting_details = null
+
+		const enabled = Boolean(frm.doc.enable_panel_wise_consumption_matrix)
+		const visible = enabled && !frm.is_new()
+		frm.toggle_display("compacting_details_tab", visible)
+		if(!visible){
+			return
+		}
+		if(frm.is_dirty()){
+			$(field.wrapper).html(
+				'<div class="text-muted" style="padding:18px 0;">Save the Item Production Detail to load Compacting Details.</div>'
+			)
+			return
+		}
+
+		try {
+			const payload = await frappe.xcall(
+				"production_api.essdee_production.doctype.ipd_compacting.ipd_compacting.get_compacting_details",
+				{item_production_detail: frm.doc.name}
+			)
+			frm.ipd_compacting_details = new frappe.production.ui.IPDCompactingDetails(field.wrapper)
+			frm.ipd_compacting_details.load_data(payload)
+		} catch (error) {
+			$(field.wrapper).html(
+				`<div class="text-muted" style="padding:18px 0;">${frappe.utils.escape_html(error.message || __("Unable to load Compacting Details."))}</div>`
+			)
+		}
 	}
 });
 
