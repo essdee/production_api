@@ -54,8 +54,7 @@ let items = ref({})
 function load_data(data) {
     Object.keys(data['data']['data']).forEach((colour)=> {
         Object.keys(data['data']['data'][colour]['values']).forEach((size)=> {
-            console.log(data['data']['data'][colour]['values'][size])
-            data['data']['data'][colour]['values'][size]['conversion_qty'] = 10
+            data['data']['data'][colour]['values'][size]['conversion_qty'] = 0
         })
     })
     items.value = data

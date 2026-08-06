@@ -45,6 +45,7 @@
   "allow_excess_grn",
   "allow_grn_cancellation",
   "enable_production_order",
+  "production_order_action_roles",
   "production_order_quantity_approver_role",
   "grn_cancellation_in_days",
   "dc_grn_letter_head",
@@ -424,6 +425,13 @@
    "fieldname": "enable_production_order",
    "fieldtype": "Check",
    "label": "Enable Production Order"
+  },
+  {
+   "description": "Only users with one of these roles can edit/request a PPO or use Update Price, Change Dates/Status, Update Quantity/Ratio, Transfer Quantity, Create Lot, and Link Lot actions.",
+   "fieldname": "production_order_action_roles",
+   "fieldtype": "Table",
+   "label": "Production Order Action Roles",
+   "options": "Production Order Action Role"
   },
   {
    "description": "Users with this role can approve pending Production Order quantity and ratio update requests.",

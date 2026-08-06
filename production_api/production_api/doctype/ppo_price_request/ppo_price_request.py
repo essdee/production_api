@@ -18,6 +18,8 @@ def approve_ppo_price_request(name):
 	doc = frappe.get_doc("PPO Price Request", name)
 	if doc.status != "Pending":
 		frappe.throw(f"Cannot approve a request with status '{doc.status}'")
+	from production_api.production_api.doctype.production_order.production_order import lock_production_orders
+	lock_production_orders(doc.production_order)
 
 	doc.status = "Approved"
 	doc.approved_by = frappe.session.user
@@ -80,24 +82,6 @@ def apply_price_to_box_sticker_prints(price_request):
 	if not lots:
 		return
 
-	bsp_list = frappe.get_all(
-		"Box Sticker Print",
-		filters={"lot": ["in", lots], "docstatus": 1},
-		pluck="name"
-	)
-	if not bsp_list:
-		return
-
-	price_map = {}
-	for detail in price_request.price_details:
-		price_map[detail.size] = detail.new_mrp
-
-	for bsp_name in bsp_list:
-		bsp_doc = frappe.get_doc("Box Sticker Print", bsp_name)
-		changed = False
-		for row in bsp_doc.box_sticker_print_details:
-			if row.printed_quantity == 0 and row.size in price_map:
-				row.mrp = price_map[row.size]
-				changed = True
-		if changed:
-			bsp_doc.save(ignore_permissions=True)
+	from production_api.lot_pricing import sync_unprinted_box_sticker_prices
+	for lot in lots:
+		sync_unprinted_box_sticker_prices(lot, price_request.production_order)

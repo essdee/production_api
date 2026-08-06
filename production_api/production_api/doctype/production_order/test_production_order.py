@@ -1,6 +1,7 @@
 # Copyright (c) 2025, Essdee and Contributors
 # See license.txt
 
+from pathlib import Path
 from unittest import TestCase
 from unittest.mock import MagicMock, patch
 
@@ -9,6 +10,8 @@ from frappe import _dict
 
 from production_api.production_api.doctype.production_order import production_order
 from production_api.production_api.doctype.production_order.production_order import (
+	PPO_DRAFT_STATUS,
+	PPO_REQUEST_STATUS,
 	STATUS_APPROVAL_REQUIRED_STATUSES,
 	STATUS_CHANGE_LOCKED_STATUSES,
 	TRANSFER_TARGET_STATUSES,
@@ -18,6 +21,227 @@ from production_api.production_api.doctype.production_order.production_order imp
 
 
 class TestProductionOrder(TestCase):
+	def test_list_view_shows_ppo_request_instead_of_generic_draft(self):
+		list_source = Path(
+			frappe.get_app_path(
+				"production_api",
+				"production_api",
+				"doctype",
+				"production_order",
+				"production_order_list.js",
+			)
+		).read_text()
+		self.assertIn("has_indicator_for_draft: true", list_source)
+		self.assertIn('doc.docstatus === 0 && doc.status === "PPO Request"', list_source)
+		self.assertIn('return [__("PPO Request"), "orange"', list_source)
+
+	def test_sales_user_can_request_ppo_approval(self):
+		doc = _dict(
+			name="PPO-TEST",
+			docstatus=0,
+			status=PPO_DRAFT_STATUS,
+			comment_log=None,
+			delivery_date="2026-08-20",
+		)
+		doc.check_permission = MagicMock()
+		doc.db_set = MagicMock(side_effect=lambda values: doc.update(values))
+
+		with (
+			patch.object(production_order, "require_ppo_action_role"),
+			patch.object(production_order, "lock_production_orders"),
+			patch.object(production_order.frappe, "get_doc", return_value=doc),
+			patch.object(production_order.frappe, "get_roles", return_value=["Sales User"]),
+			patch.object(production_order.frappe, "session", _dict(user="sales@example.com")),
+			patch.object(production_order.frappe.utils, "nowdate", return_value="2026-08-05"),
+			patch.object(production_order, "now_datetime", return_value="2026-08-05 17:00:00"),
+			patch.object(production_order, "validate_ppo_request_readiness") as validate_readiness,
+			patch.object(production_order, "append_ppo_request_to_comment_log"),
+		):
+			result = production_order.request_ppo_approval("PPO-TEST")
+
+		self.assertEqual(doc.status, PPO_REQUEST_STATUS)
+		self.assertEqual(doc.ppo_requested_by, "sales@example.com")
+		self.assertEqual(doc.posting_date, "2026-08-05")
+		self.assertEqual(doc.lead_time_given, 15)
+		self.assertEqual(result["status"], PPO_REQUEST_STATUS)
+		doc.check_permission.assert_called_once_with("write")
+		validate_readiness.assert_called_once()
+
+	def test_user_without_configured_action_role_cannot_request_ppo_approval(self):
+		with (
+			patch.object(production_order, "get_ppo_action_roles", return_value={"Sales User", "Sales Manager"}),
+			patch.object(production_order, "get_ppo_approver_roles", return_value={"Merch User", "Merch Manager"}),
+			patch.object(production_order.frappe, "get_roles", return_value=["Merch User"]),
+			self.assertRaisesRegex(frappe.ValidationError, "configured Production Order Action Role"),
+		):
+			production_order.require_ppo_action_role()
+
+	def test_configured_action_role_is_allowed(self):
+		with (
+			patch.object(production_order, "get_ppo_action_roles", return_value={"Sales User", "Sales Manager"}),
+			patch.object(production_order, "get_ppo_approver_roles", return_value={"Merch User", "Merch Manager"}),
+			patch.object(production_order.frappe, "get_roles", return_value=["Sales Manager"]),
+		):
+			production_order.require_ppo_action_role()
+
+	def test_merch_approver_role_takes_precedence_over_sales_action_role(self):
+		with (
+			patch.object(production_order, "get_ppo_action_roles", return_value={"Sales User", "Sales Manager"}),
+			patch.object(production_order, "get_ppo_approver_roles", return_value={"Merch User", "Merch Manager"}),
+			patch.object(production_order.frappe, "get_roles", return_value=["Merch Manager", "Sales Manager"]),
+			self.assertRaisesRegex(frappe.ValidationError, "configured Production Order Action Role"),
+		):
+			production_order.require_ppo_action_role()
+
+	def test_ppo_request_requires_a_submitted_production_term(self):
+		doc = _dict(
+			production_term=None,
+			posting_date="2026-08-05",
+			delivery_date="2026-08-10",
+			dont_deliver_after="2026-08-15",
+		)
+		doc._validate_mandatory = MagicMock()
+		doc.flags = _dict(ignore_links=True)
+
+		with self.assertRaisesRegex(frappe.ValidationError, "Production Term is required"):
+			production_order.validate_ppo_request_readiness(doc)
+
+		doc.production_term = "TERM-TEST"
+		with (
+			patch.object(production_order.frappe, "get_value", return_value=0),
+			self.assertRaisesRegex(frappe.ValidationError, "must be submitted"),
+		):
+			production_order.validate_ppo_request_readiness(doc)
+
+	def test_ppo_request_runs_submission_date_validation(self):
+		doc = _dict(
+			production_term="TERM-TEST",
+			posting_date="2026-08-05",
+			delivery_date="2026-08-04",
+			dont_deliver_after="2026-08-15",
+		)
+		doc._validate_mandatory = MagicMock()
+		doc.flags = _dict(ignore_links=True)
+
+		with (
+			patch.object(production_order.frappe, "get_value", return_value=1),
+			self.assertRaisesRegex(frappe.ValidationError, "Delivery date is less than Posting Date"),
+		):
+			production_order.validate_ppo_request_readiness(doc)
+
+	def test_ppo_request_link_validation_does_not_require_save_action(self):
+		doc = _dict(flags=_dict(ignore_links=False), meta=_dict(is_submittable=True))
+		doc.get_invalid_links = MagicMock(return_value=([], []))
+		doc.get_all_children = MagicMock(return_value=[])
+
+		production_order.validate_ppo_request_links(doc)
+
+		doc.get_invalid_links.assert_called_once_with()
+
+	def test_merch_user_can_approve_and_submit_ppo(self):
+		doc = _dict(
+			name="PPO-TEST",
+			docstatus=0,
+			status=PPO_REQUEST_STATUS,
+			flags=_dict(),
+		)
+
+		def submit():
+			doc.docstatus = 1
+			doc.status = "Open"
+
+		doc.submit = MagicMock(side_effect=submit)
+
+		with (
+			patch.object(production_order, "get_ppo_approver_roles", return_value={"Merch User", "Merch Manager"}),
+			patch.object(production_order.frappe, "get_roles", return_value=["Merch User"]),
+			patch.object(production_order.frappe, "session", _dict(user="merch@example.com")),
+			patch.object(production_order, "lock_production_orders"),
+			patch.object(production_order.frappe, "get_doc", return_value=doc),
+			patch.object(production_order, "append_ppo_approval_to_comment_log"),
+		):
+			result = production_order.approve_ppo("PPO-TEST")
+
+		self.assertTrue(doc.flags.ignore_permissions)
+		self.assertTrue(doc.flags.allow_ppo_approval)
+		doc.submit.assert_called_once_with()
+		self.assertEqual(result["docstatus"], 1)
+		self.assertEqual(result["status"], "Open")
+
+	def test_sales_user_cannot_approve_ppo(self):
+		with (
+			patch.object(production_order, "get_ppo_approver_roles", return_value={"Merch User", "Merch Manager"}),
+			patch.object(production_order.frappe, "get_roles", return_value=["Sales User"]),
+			self.assertRaisesRegex(frappe.ValidationError, "Only users with the configured Merch"),
+		):
+			production_order.approve_ppo("PPO-TEST")
+
+	def test_merch_user_can_return_ppo_to_sales_with_comment(self):
+		doc = _dict(
+			name="PPO-TEST",
+			docstatus=0,
+			status=PPO_REQUEST_STATUS,
+			ppo_requested_by="sales@example.com",
+			ppo_requested_on="2026-08-05 17:00:00",
+		)
+		doc.db_set = MagicMock(side_effect=lambda values: doc.update(values))
+
+		with (
+			patch.object(production_order, "get_ppo_approver_roles", return_value={"Merch Manager"}),
+			patch.object(production_order.frappe, "get_roles", return_value=["Merch Manager"]),
+			patch.object(production_order.frappe, "session", _dict(user="merch@example.com")),
+			patch.object(production_order, "lock_production_orders"),
+			patch.object(production_order.frappe, "get_doc", return_value=doc),
+			patch.object(production_order, "append_ppo_changes_requested_to_comment_log") as append_log,
+		):
+			result = production_order.request_ppo_changes("PPO-TEST", "Correct the production term")
+
+		self.assertEqual(doc.status, PPO_DRAFT_STATUS)
+		self.assertIsNone(doc.ppo_requested_by)
+		self.assertEqual(result["status"], PPO_DRAFT_STATUS)
+		append_log.assert_called_once_with(doc, "Correct the production term", "sales@example.com")
+
+	def test_requesting_ppo_changes_requires_a_comment(self):
+		with (
+			patch.object(production_order, "get_ppo_approver_roles", return_value={"Merch Manager"}),
+			patch.object(production_order.frappe, "get_roles", return_value=["Merch Manager"]),
+			self.assertRaisesRegex(frappe.ValidationError, "Reason is required"),
+		):
+			production_order.request_ppo_changes("PPO-TEST", "  ")
+
+	def test_direct_submit_requires_ppo_request_and_merch_role(self):
+		doc = _dict(status=PPO_DRAFT_STATUS)
+		with (
+			patch.object(production_order, "get_ppo_approver_roles", return_value={"Merch User", "Merch Manager"}),
+			patch.object(production_order.frappe, "get_roles", return_value=["Merch Manager"]),
+			self.assertRaisesRegex(frappe.ValidationError, "Send the Production Order for PPO approval"),
+		):
+			production_order.ProductionOrder.validate_ppo_submission(doc)
+
+		doc.status = PPO_REQUEST_STATUS
+		with (
+			patch.object(production_order, "get_ppo_approver_roles", return_value={"Merch User", "Merch Manager"}),
+			patch.object(production_order.frappe, "get_roles", return_value=["Sales Manager"]),
+			self.assertRaisesRegex(frappe.ValidationError, "Only users with the configured Merch"),
+		):
+			production_order.ProductionOrder.validate_ppo_submission(doc)
+
+	def test_ppo_request_status_cannot_be_spoofed_or_edited(self):
+		doc = _dict(
+			docstatus=0,
+			status=PPO_REQUEST_STATUS,
+			flags=_dict(),
+		)
+		doc.get_doc_before_save = MagicMock(
+			return_value=_dict(status=PPO_DRAFT_STATUS)
+		)
+		with self.assertRaisesRegex(frappe.ValidationError, "Use the Request PPO Approval button"):
+			production_order.ProductionOrder.validate_ppo_approval_state(doc)
+
+		doc.get_doc_before_save.return_value = _dict(status=PPO_REQUEST_STATUS)
+		with self.assertRaisesRegex(frappe.ValidationError, "cannot be edited while PPO approval is pending"):
+			production_order.ProductionOrder.validate_ppo_approval_state(doc)
+
 	def test_quantity_ratio_change_details_keep_rows_unchanged(self):
 		rows = {
 			"S": _dict(quantity=10, ratio=1),
@@ -65,8 +289,10 @@ class TestProductionOrder(TestCase):
 				doc.check_permission = MagicMock()
 
 				with (
+					patch.object(production_order, "require_ppo_action_role"),
 					patch.object(production_order, "lock_production_orders"),
 					patch.object(production_order.frappe, "get_doc", return_value=doc),
+					patch.object(production_order, "get_linked_lots", return_value=[]),
 					self.assertRaisesRegex(
 						frappe.ValidationError,
 						f"Status cannot be changed after {status} is approved",
@@ -88,6 +314,7 @@ class TestProductionOrder(TestCase):
 		doc.db_set = MagicMock(side_effect=lambda values: doc.update(values))
 
 		with (
+			patch.object(production_order, "require_ppo_action_role"),
 			patch.object(production_order, "lock_production_orders"),
 			patch.object(production_order.frappe, "get_doc", return_value=doc),
 			patch.object(production_order, "get_quantity_approver_role", return_value="Production Manager"),
@@ -138,6 +365,7 @@ class TestProductionOrder(TestCase):
 		doc.save = MagicMock()
 
 		with (
+			patch.object(production_order, "require_ppo_action_role"),
 			patch.object(production_order, "lock_production_orders"),
 			patch.object(production_order.frappe, "get_doc", return_value=doc),
 			patch.object(production_order, "get_quantity_approver_role", return_value="Production Manager"),
@@ -167,8 +395,10 @@ class TestProductionOrder(TestCase):
 		doc.db_set = MagicMock(side_effect=lambda values: doc.update(values))
 
 		with (
+			patch.object(production_order, "require_ppo_action_role"),
 			patch.object(production_order, "lock_production_orders"),
 			patch.object(production_order.frappe, "get_doc", return_value=doc),
+			patch.object(production_order, "get_linked_lots", return_value=[]),
 			patch.object(production_order, "get_quantity_approver_role", return_value="Production Manager"),
 			patch.object(production_order, "now_datetime", return_value="2026-07-24 12:00:00"),
 			patch.object(production_order, "append_status_change_request_to_comment_log"),
@@ -185,6 +415,32 @@ class TestProductionOrder(TestCase):
 		self.assertEqual(request["requested_status"], "Item Changed")
 		self.assertEqual(request["reason"], "Customer selected another item")
 		self.assertTrue(result["approval_required"])
+
+	def test_status_change_is_blocked_when_lot_is_linked(self):
+		doc = _dict(
+			docstatus=1,
+			status="Open",
+			transferred_to_ppo=None,
+			quantity_ratio_request=None,
+			status_change_request=None,
+		)
+		doc.check_permission = MagicMock()
+
+		with (
+			patch.object(production_order, "require_ppo_action_role"),
+			patch.object(production_order, "lock_production_orders"),
+			patch.object(production_order.frappe, "get_doc", return_value=doc),
+			patch.object(production_order, "get_linked_lots", return_value=["LOT-TEST"]),
+			self.assertRaisesRegex(
+				frappe.ValidationError,
+				"Status cannot be changed.*LOT-TEST",
+			),
+		):
+			production_order.change_status(
+				"PPO-TEST",
+				"Item Changed",
+				"Customer selected another item",
+			)
 
 	def test_status_approval_applies_requested_status(self):
 		request = {
@@ -209,6 +465,7 @@ class TestProductionOrder(TestCase):
 		with (
 			patch.object(production_order, "lock_production_orders"),
 			patch.object(production_order.frappe, "get_doc", return_value=doc),
+			patch.object(production_order, "get_linked_lots", return_value=[]),
 			patch.object(production_order, "get_quantity_approver_role", return_value="Production Manager"),
 			patch.object(production_order.frappe, "get_roles", return_value=["Production Manager"]),
 			patch.object(production_order, "append_status_change_approved_to_comment_log"),
@@ -220,6 +477,36 @@ class TestProductionOrder(TestCase):
 		self.assertTrue(doc.flags.allow_status_change_approval)
 		doc.save.assert_called_once_with(ignore_permissions=True)
 		self.assertEqual(result["new_status"], "Not Processed")
+
+	def test_status_approval_is_blocked_if_lot_was_linked_after_request(self):
+		request = {
+			"previous_status": "Open",
+			"requested_status": "Not Processed",
+			"requested_user": "requester@example.com",
+			"requested_on": "2026-07-24 12:00:00",
+			"reason": "Order put on hold",
+		}
+		doc = _dict(
+			docstatus=1,
+			status="Pending Request",
+			transferred_to_ppo=None,
+			quantity_ratio_request=None,
+			status_change_request=frappe.as_json(request),
+		)
+		doc.check_permission = MagicMock()
+
+		with (
+			patch.object(production_order, "lock_production_orders"),
+			patch.object(production_order.frappe, "get_doc", return_value=doc),
+			patch.object(production_order, "get_linked_lots", return_value=["LOT-TEST"]),
+			patch.object(production_order, "get_quantity_approver_role", return_value="Production Manager"),
+			patch.object(production_order.frappe, "get_roles", return_value=["Production Manager"]),
+			self.assertRaisesRegex(
+				frappe.ValidationError,
+				"Status cannot be approved.*LOT-TEST",
+			),
+		):
+			production_order.approve_status_change("PPO-TEST")
 
 	def test_status_approval_requires_configured_role(self):
 		with (
@@ -262,6 +549,7 @@ class TestProductionOrder(TestCase):
 				fieldname if isinstance(fieldname, dict) else {fieldname: value}))
 
 		with (
+			patch.object(production_order, "require_ppo_action_role"),
 			patch.object(production_order, "lock_production_orders"),
 			patch.object(production_order.frappe, "get_doc", side_effect=[source, target]),
 			patch.object(production_order.frappe.db, "exists", return_value=True),
@@ -286,6 +574,7 @@ class TestProductionOrder(TestCase):
 		self.assertEqual(source.transferred_to_ppo, "PPO-TARGET")
 		self.assertIsNone(source.transferred_on)
 		request = frappe.parse_json(target.incoming_quantity_transfer_request)
+		self.assertTrue(request["transfer_reference"])
 		self.assertEqual(request["target_previous_status"], "Open")
 		self.assertEqual(request["transfers"], {"S": 5})
 		self.assertEqual(request["target_original_quantities"], {"S": 10.0})
@@ -335,6 +624,7 @@ class TestProductionOrder(TestCase):
 			patch.object(production_order, "get_alternative_items", return_value=["TARGET-ITEM"]),
 			patch.object(production_order, "get_rows_by_size", return_value={"S": target_row}),
 			patch.object(production_order, "now_datetime", return_value="2026-07-24 12:30:00"),
+			patch.object(production_order, "append_quantity_transfer_history") as append_history,
 			patch.object(production_order, "append_transfer_approval_logs"),
 		):
 			result = production_order.approve_quantity_transfer("PPO-TARGET")
@@ -348,3 +638,143 @@ class TestProductionOrder(TestCase):
 		target.save.assert_called_once_with(ignore_permissions=True)
 		self.assertEqual(source.transferred_on, "2026-07-24 12:30:00")
 		self.assertEqual(result["transferred"], {"S": 5.0})
+		append_history.assert_called_once()
+
+	def test_transfer_history_builds_reduced_and_added_rows(self):
+		source = _dict(name="PPO-SOURCE")
+		target = _dict(name="PPO-TARGET")
+		changes = [{"size": "S", "qty": 5, "old_qty": 10, "new_qty": 15}]
+		request = {
+			"transfer_reference": "TRANSFER-1",
+			"requested_user": "requester@example.com",
+			"requested_on": "2026-07-24 12:00:00",
+			"reason": "Move to alternative",
+		}
+
+		with patch.object(
+			production_order,
+			"get_rows_by_size",
+			return_value={"S": _dict(quantity=5)},
+		):
+			source_rows, target_rows = production_order.build_quantity_transfer_history_rows(
+				source,
+				target,
+				changes,
+				request,
+				"approver@example.com",
+				"2026-07-24 12:30:00",
+			)
+
+		self.assertEqual(source_rows[0]["movement"], "Reduced")
+		self.assertEqual(source_rows[0]["counterpart_production_order"], "PPO-TARGET")
+		self.assertEqual(source_rows[0]["quantity_before"], 5)
+		self.assertEqual(source_rows[0]["quantity_after"], 0)
+		self.assertEqual(target_rows[0]["movement"], "Added")
+		self.assertEqual(target_rows[0]["counterpart_production_order"], "PPO-SOURCE")
+		self.assertEqual(target_rows[0]["quantity_before"], 10)
+		self.assertEqual(target_rows[0]["quantity_after"], 15)
+		self.assertEqual(target_rows[0]["transfer_reference"], "TRANSFER-1")
+
+	def test_alternative_plan_transfer_reduces_source_and_adds_target(self):
+		source_row = _dict(quantity=100, ratio=1)
+		target_row = _dict(quantity=10, ratio=1)
+		source = _dict(
+			name="PPO-SOURCE",
+			item="SOURCE-ITEM",
+			docstatus=1,
+			status="Open",
+			flags=_dict(),
+		)
+		target = _dict(
+			name="PPO-TARGET",
+			item="TARGET-ITEM",
+			docstatus=1,
+			status="Open",
+			flags=_dict(),
+		)
+		source.save = MagicMock()
+		target.save = MagicMock()
+
+		def get_lot_ppo(_doctype, lot, _fieldname):
+			return {
+				"LOT-SOURCE": "PPO-SOURCE",
+				"LOT-TARGET": "PPO-TARGET",
+			}[lot]
+
+		with (
+			patch.object(production_order, "lock_production_orders"),
+			patch.object(production_order.frappe, "get_doc", side_effect=[source, target]),
+			patch.object(production_order.frappe.db, "get_value", side_effect=get_lot_ppo),
+			patch.object(production_order, "get_alternative_items", return_value=["TARGET-ITEM"]),
+			patch.object(
+				production_order,
+				"get_rows_by_size",
+				side_effect=lambda doc: {"S": source_row} if doc.name == source.name else {"S": target_row},
+			),
+			patch.object(production_order, "now_datetime", return_value="2026-08-06 14:00:00"),
+			patch.object(production_order.frappe, "generate_hash", return_value="ALT-TRANSFER"),
+			patch.object(production_order.frappe, "session", _dict(user="planner@example.com")),
+			patch.object(production_order, "append_quantity_transfer_history") as append_history,
+			patch.object(production_order, "append_transfer_approval_logs") as append_logs,
+		):
+			result = production_order.apply_alternative_plan_ppo_transfer(
+				"PPO-SOURCE",
+				"PPO-TARGET",
+				"LOT-SOURCE",
+				"LOT-TARGET",
+				{"S": 20},
+				"Alternative conversion",
+			)
+
+		self.assertEqual(source_row.quantity, 80)
+		self.assertEqual(target_row.quantity, 30)
+		self.assertTrue(source.flags.allow_quantity_transfer)
+		self.assertTrue(target.flags.allow_quantity_transfer)
+		source.save.assert_called_once_with(ignore_permissions=True)
+		target.save.assert_called_once_with(ignore_permissions=True)
+		changes = append_history.call_args.args[2]
+		self.assertEqual(changes[0]["source_old_qty"], 100)
+		self.assertEqual(changes[0]["source_new_qty"], 80)
+		self.assertEqual(changes[0]["old_qty"], 10)
+		self.assertEqual(changes[0]["new_qty"], 30)
+		append_logs.assert_called_once()
+		self.assertEqual(result["transferred"], {"S": 20.0})
+
+	def test_transfer_history_uses_actual_reduced_source_values(self):
+		source = _dict(name="PPO-SOURCE")
+		target = _dict(name="PPO-TARGET")
+		request = {
+			"transfer_reference": "ALT-TRANSFER",
+			"requested_user": "planner@example.com",
+			"requested_on": "2026-08-06 14:00:00",
+			"reason": "Alternative conversion",
+		}
+		changes = [{
+			"size": "S",
+			"qty": 20,
+			"old_qty": 0,
+			"new_qty": 20,
+			"source_old_qty": 100,
+			"source_new_qty": 80,
+		}]
+
+		with patch.object(
+			production_order,
+			"get_rows_by_size",
+			return_value={"S": _dict(quantity=80)},
+		):
+			source_rows, target_rows = production_order.build_quantity_transfer_history_rows(
+				source,
+				target,
+				changes,
+				request,
+				"planner@example.com",
+				"2026-08-06 14:00:00",
+			)
+
+		self.assertEqual(source_rows[0]["movement"], "Reduced")
+		self.assertEqual(source_rows[0]["quantity_before"], 100)
+		self.assertEqual(source_rows[0]["quantity_after"], 80)
+		self.assertEqual(target_rows[0]["movement"], "Added")
+		self.assertEqual(target_rows[0]["quantity_before"], 0)
+		self.assertEqual(target_rows[0]["quantity_after"], 20)

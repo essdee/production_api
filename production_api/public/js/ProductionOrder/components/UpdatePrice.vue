@@ -87,7 +87,7 @@
               </label>
             </td>
           </tr>
-          <!-- <tr>
+          <tr>
             <td>Production Order MRP</td>
             <td v-for="(value, index) in primary_values" :key="index">
               <input
@@ -109,9 +109,59 @@
                 <span>Use</span>
               </label>
             </td>
-          </tr> -->
+          </tr>
         </tbody>
       </table>
+    </div>
+
+    <div v-if="lots.length" class="section lot-section">
+      <div class="section-heading">
+        <strong>Lot-wise MRP</strong>
+      </div>
+      <div class="table-scroll">
+        <table class="styled-table lot-table">
+          <thead>
+            <tr>
+              <th>Lot</th>
+              <th>Status</th>
+              <th v-for="size in primary_values" :key="size">{{ size }}</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="lot in lots" :key="lot.lot">
+              <td class="lot-name">{{ lot.lot }}</td>
+              <td>
+                <span
+                  :class="['status-pill', lot.locked ? 'locked' : 'editable']"
+                >
+                  {{ lot.locked ? "Printed · Locked" : "Editable" }}
+                </span>
+              </td>
+              <td
+                v-for="size in primary_values"
+                :key="size"
+                class="lot-price-cell"
+              >
+                <template v-if="lot.locked">
+                  <div class="effective-price">
+                    {{ displayValue(lotPrice(lot, size).effective_mrp) }}
+                  </div>
+                </template>
+                <template v-else>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    v-model="lotPrice(lot, size).override_mrp"
+                    :placeholder="String(selectedPpoMrp(size) || '')"
+                    class="styled-input"
+                  />
+                </template>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
     </div>
   </div>
 </template>
@@ -124,9 +174,11 @@ const primary_values = ref([]);
 let box_qty = ref({});
 let total_qty = ref(0);
 let selected_source = ref("production_order_mrp");
+let lots = ref([]);
 let sourceAvailability = ref({
   sales_mrp: false,
   box_sticker_mrp: false,
+  production_order_mrp: true,
 });
 
 function normalizeKey(value) {
@@ -171,7 +223,18 @@ function get_items() {
   Object.keys(items).forEach((key) => {
     items[key].selected_source = selected_source.value;
   });
-  return items;
+  const lot_price_overrides = {};
+  lots.value.forEach((lot) => {
+    lot_price_overrides[lot.lot] = {};
+    primary_values.value.forEach((size) => {
+      const value = lotPrice(lot, size).override_mrp;
+      lot_price_overrides[lot.lot][size] =
+        value === "" || value === null || value === undefined
+          ? null
+          : Number(value);
+    });
+  });
+  return { items, lot_price_overrides };
 }
 
 function load_data(data) {
@@ -179,13 +242,14 @@ function load_data(data) {
   const normalizedItems = getNormalizedItems(payload.items);
   primary_values.value = getNormalizedPrimaryValues(
     payload.primary_values,
-    normalizedItems,
+    normalizedItems
   );
   box_qty.value = {};
   total_qty.value = 0;
   sourceAvailability.value = {
     sales_mrp: false,
     box_sticker_mrp: false,
+    production_order_mrp: true,
   };
 
   primary_values.value.forEach((key) => {
@@ -209,6 +273,20 @@ function load_data(data) {
   });
 
   selected_source.value = getSelectedSourceFromRows() || "production_order_mrp";
+  lots.value = (payload.lots || []).map((lot) => {
+    const prices = {};
+    primary_values.value.forEach((size) => {
+      const price = (lot.prices || {})[size] || {};
+      prices[size] = {
+        ...price,
+        override_mrp:
+          price.override_mrp === null || price.override_mrp === undefined
+            ? null
+            : Number(price.override_mrp),
+      };
+    });
+    return { ...lot, prices };
+  });
 }
 
 function displayValue(value) {
@@ -222,6 +300,28 @@ function getSelectedSourceFromRows() {
     }
   }
   return null;
+}
+
+function lotPrice(lot, size) {
+  if (!lot.prices[size]) {
+    lot.prices[size] = {
+      override_mrp: null,
+      effective_mrp: selectedPpoMrp(size),
+      printed_quantity: 0,
+    };
+  }
+  return lot.prices[size];
+}
+
+function selectedPpoMrp(size) {
+  const row = box_qty.value[size] || {};
+  if (selected_source.value === "sales_mrp" && row.has_sales_mrp) {
+    return row.sales_mrp;
+  }
+  if (selected_source.value === "box_sticker_mrp" && row.has_box_sticker_mrp) {
+    return row.box_sticker_mrp;
+  }
+  return row.production_order_mrp;
 }
 
 defineExpose({
@@ -241,6 +341,80 @@ defineExpose({
   border: 1px solid #d1d8dd;
   border-radius: 4px;
   overflow: hidden;
+}
+
+.lot-section {
+  margin-top: 14px;
+}
+
+.section-heading {
+  padding: 7px 10px;
+  border-bottom: 1px solid #d1d8dd;
+}
+
+.table-scroll {
+  overflow-x: auto;
+}
+
+.lot-table {
+  min-width: max-content;
+}
+
+.lot-table th,
+.lot-table td {
+  padding: 5px 7px;
+}
+
+.lot-table th {
+  font-size: 12px;
+}
+
+.lot-table th:first-child,
+.lot-table td:first-child {
+  min-width: 86px;
+}
+
+.lot-table th:nth-child(2),
+.lot-table td:nth-child(2) {
+  min-width: 104px;
+}
+
+.lot-name {
+  white-space: nowrap;
+  font-weight: 600;
+}
+
+.lot-price-cell {
+  min-width: 84px;
+}
+
+.lot-table .styled-input {
+  width: 72px;
+  height: 26px;
+  padding: 2px 5px;
+}
+
+.status-pill {
+  display: inline-block;
+  padding: 3px 7px;
+  border-radius: 10px;
+  white-space: nowrap;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.status-pill.locked {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.status-pill.editable {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.effective-price {
+  font-weight: 700;
 }
 
 .styled-table {

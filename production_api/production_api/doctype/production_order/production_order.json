@@ -26,6 +26,8 @@
     "production_ordered_details",
     "comments",
     "comment_log",
+    "ppo_requested_by",
+    "ppo_requested_on",
     "quantity_ratio_request",
     "status_change_request",
     "incoming_quantity_transfer_request",
@@ -35,9 +37,12 @@
     "submitted_by",
     "submitted_time",
     "price_approval_status",
+    "quantity_transfers_tab",
+    "quantity_transfer_history",
     "date_changes_tab",
     "date_change_history",
     "price_changes_tab",
+    "lot_price_overrides",
     "ppo_price_request_html"
   ],
   "fields": [
@@ -85,13 +90,14 @@
     },
     {
       "allow_on_submit": 1,
+      "default": "Draft",
       "fieldname": "status",
       "fieldtype": "Select",
       "in_list_view": 1,
       "in_standard_filter": 1,
       "label": "Status",
       "no_copy": 1,
-      "options": "\nOpen\nPending Request\nItem Changed\nNot Processed\nClosed",
+      "options": "\nDraft\nPPO Request\nOpen\nPending Request\nItem Changed\nNot Processed\nClosed",
       "read_only": 1
     },
     {
@@ -176,6 +182,23 @@
       "read_only": 1
     },
     {
+      "fieldname": "ppo_requested_by",
+      "fieldtype": "Link",
+      "hidden": 1,
+      "label": "PPO Requested By",
+      "no_copy": 1,
+      "options": "User",
+      "read_only": 1
+    },
+    {
+      "fieldname": "ppo_requested_on",
+      "fieldtype": "Datetime",
+      "hidden": 1,
+      "label": "PPO Requested On",
+      "no_copy": 1,
+      "read_only": 1
+    },
+    {
       "allow_on_submit": 1,
       "fieldname": "quantity_ratio_request",
       "fieldtype": "Long Text",
@@ -233,6 +256,20 @@
       "read_only": 1
     },
     {
+      "fieldname": "quantity_transfers_tab",
+      "fieldtype": "Tab Break",
+      "label": "Quantity Transfers"
+    },
+    {
+      "allow_on_submit": 1,
+      "fieldname": "quantity_transfer_history",
+      "fieldtype": "Table",
+      "label": "Quantity Transfer History",
+      "no_copy": 1,
+      "options": "PPO Quantity Transfer History",
+      "read_only": 1
+    },
+    {
       "fieldname": "date_changes_tab",
       "fieldtype": "Tab Break",
       "label": "Date Changes"
@@ -249,6 +286,14 @@
       "fieldname": "price_changes_tab",
       "fieldtype": "Tab Break",
       "label": "Price Changes"
+    },
+    {
+      "allow_on_submit": 1,
+      "fieldname": "lot_price_overrides",
+      "fieldtype": "Table",
+      "hidden": 1,
+      "label": "Lot Price Overrides",
+      "options": "PPO Lot Price Detail"
     },
     {
       "fieldname": "ppo_price_request_html",
@@ -297,7 +342,6 @@
       "report": 1,
       "role": "System Manager",
       "share": 1,
-      "submit": 1,
       "write": 1
     },
     {
@@ -347,7 +391,6 @@
       "report": 1,
       "role": "Sales Manager",
       "share": 1,
-      "submit": 1,
       "write": 1
     },
     {

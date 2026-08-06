@@ -3457,6 +3457,63 @@ def _normalize_ppo_item_filter(item):
 			result.append(it)
 	return result
 
+
+def _format_ppo_report_quantity(value):
+	value = flt(value)
+	return str(int(value)) if value == int(value) else str(value)
+
+
+def _group_ppo_transfer_movements(rows):
+	"""Collapse size-wise child rows into report-friendly transfer movements."""
+	from collections import OrderedDict
+
+	movements = OrderedDict()
+	for row in rows or []:
+		transfer_reference = row.get("transfer_reference") or row.get("name")
+		movement = row.get("movement") or ""
+		counterpart = row.get("counterpart_production_order") or ""
+		key = (transfer_reference, movement, counterpart)
+		if key not in movements:
+			movements[key] = {
+				"transfer_reference": transfer_reference,
+				"movement": movement,
+				"counterpart_production_order": counterpart,
+				"approved_on": str(row.get("approved_on") or ""),
+				"approved_by": row.get("approved_by") or "",
+				"requested_by": row.get("requested_by") or "",
+				"reason": row.get("reason") or "",
+				"sizes": OrderedDict(),
+				"quantity": 0,
+			}
+		entry = movements[key]
+		size = row.get("size") or "Unknown"
+		quantity = flt(row.get("quantity"))
+		entry["sizes"][size] = flt(entry["sizes"].get(size)) + quantity
+		entry["quantity"] += quantity
+
+	result = []
+	for entry in movements.values():
+		is_reduced = entry["movement"] == "Reduced"
+		sign = -1 if is_reduced else 1
+		entry["signed_sizes"] = {
+			size: sign * quantity for size, quantity in entry["sizes"].items()
+		}
+		entry["signed_quantity"] = sign * entry["quantity"]
+		preposition = "to" if is_reduced else "from"
+		entry["summary"] = (
+			f"{entry['movement']} {_format_ppo_report_quantity(entry['quantity'])} "
+			f"{preposition} {entry['counterpart_production_order']}"
+		)
+		size_summary = ", ".join(
+			f"{size}: {_format_ppo_report_quantity(quantity)}"
+			for size, quantity in entry["sizes"].items()
+		)
+		entry["detail_summary"] = (
+			f"{entry['summary']} ({size_summary})" if size_summary else entry["summary"]
+		)
+		result.append(entry)
+	return result
+
 @frappe.whitelist()
 def get_ppo_report_data(from_date=None, to_date=None, product_category=None, status=None, item=None):
 	from production_api.production_api.doctype.item.item import get_attribute_details
@@ -3501,6 +3558,33 @@ def get_ppo_report_data(from_date=None, to_date=None, product_category=None, sta
 		fields=["name", "item", "fabric", "dia", "gsm", "delivery_date", "posting_date", "dont_deliver_after", "lead_time_given", "docstatus", "comments", "comment_log"],
 		order_by="delivery_date asc, name asc",
 	)
+	transfer_history_by_ppo = {}
+	order_names = [order["name"] for order in orders]
+	if order_names and frappe.db.table_exists("PPO Quantity Transfer History"):
+		transfer_rows = frappe.get_all(
+			"PPO Quantity Transfer History",
+			filters={
+				"parent": ["in", order_names],
+				"parenttype": "Production Order",
+			},
+			fields=[
+				"name",
+				"parent",
+				"transfer_reference",
+				"movement",
+				"counterpart_production_order",
+				"size",
+				"quantity",
+				"requested_by",
+				"requested_on",
+				"approved_by",
+				"approved_on",
+				"reason",
+			],
+			order_by="approved_on asc, idx asc",
+		)
+		for row in transfer_rows:
+			transfer_history_by_ppo.setdefault(row.parent, []).append(row)
 
 	# Build FG Item Size Type lookup
 	all_size_types = frappe.get_all("FG Item Size Type", pluck="name")
@@ -3541,6 +3625,9 @@ def get_ppo_report_data(from_date=None, to_date=None, product_category=None, sta
 					qty_map[attr.attribute_value] += row.quantity
 					total += row.quantity
 					break
+		transfer_movements = _group_ppo_transfer_movements(
+			transfer_history_by_ppo.get(order["name"], [])
+		)
 
 		size_groups.setdefault(group_key, {
 			"sizes": matched_sizes,
@@ -3559,6 +3646,10 @@ def get_ppo_report_data(from_date=None, to_date=None, product_category=None, sta
 			"status": "Draft" if order.get("docstatus") == 0 else "Submitted",
 			"lead_time": order.get("lead_time_given") or 0,
 			"comments": "\n".join([p for p in [(order.get("comments") or "").strip(), (order.get("comment_log") or "").strip()] if p]),
+			"transfer_movements": transfer_movements,
+			"transfer_summary": "\n".join(
+				movement["detail_summary"] for movement in transfer_movements
+			),
 			"qty": qty_map,
 			"total": total,
 		})
@@ -3607,11 +3698,12 @@ def download_ppo_report(from_date=None, to_date=None, product_category=None, sta
 		for i in range(max_cols):
 			header_row.append(sg["sizes"][i] if i < len(sg["sizes"]) else "")
 		header_row.append("")  # Total
+		header_row.append("")  # Quantity Transfer
 		header_row.append("")  # Comments
 		rows.append(header_row)
 
 	# Main header row
-	main_header = fixed_headers + ["Size Group"] + [""] * max_cols + ["Total", "Comments"]
+	main_header = fixed_headers + ["Size Group"] + [""] * max_cols + ["Total", "Quantity Transfer", "Comments"]
 	rows.append(main_header)
 
 	# Data rows
@@ -3633,6 +3725,7 @@ def download_ppo_report(from_date=None, to_date=None, product_category=None, sta
 		for i in range(max_cols):
 			row.append(order["qty_by_pos"][i] if order["qty_by_pos"][i] else "")
 		row.append(order["total"])
+		row.append(order.get("transfer_summary", ""))
 		row.append(order["comments"])
 		rows.append(row)
 
@@ -3642,6 +3735,7 @@ def download_ppo_report(from_date=None, to_date=None, product_category=None, sta
 		col_total = sum(o["qty_by_pos"][i] for o in flat_orders)
 		footer.append(col_total if col_total else "")
 	footer.append(sum(o["total"] for o in flat_orders))
+	footer.append("")  # Quantity Transfer
 	footer.append("")  # Comments
 	rows.append(footer)
 

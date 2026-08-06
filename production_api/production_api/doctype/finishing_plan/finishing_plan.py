@@ -2462,22 +2462,21 @@ def create_alternative_fp(doc_name, alternative_item, production_detail, lot_nam
 	qty_details = update_if_string_instance(qty_details)
 	lot_source = "existing" if str(lot_source).strip().lower() in ("existing", "existing lot") else "new"
 	fp_doc = frappe.get_doc("Finishing Plan", doc_name)
-	converting_colours = []
-	converting_sizes = []
-	for colour in qty_details['data']['data']:
-		if not qty_details['data']['data'][colour]['check_value']:
-			continue
-		for size in qty_details['data']['data'][colour]['values']:
-			qty = qty_details['data']['data'][colour]['values'][size]['conversion_qty']
-			if qty > 0:
-				if colour not in converting_colours:
-					converting_colours.append(colour)
-				if size not in converting_sizes:
-					converting_sizes.append(size)
+	conversions = _collect_conversions(qty_details)
+	if not conversions:
+		frappe.throw("Enter a quantity to move.")
+	_validate_conversion_balance(fp_doc, conversions)
+	converting_colours = sorted({row["colour"] for row in conversions})
+	converting_sizes = sorted({row["size"] for row in conversions})
 
 	check_colours_and_sizes(production_detail, converting_colours, converting_sizes)
 	supplier, process = frappe.get_value("Work Order", fp_doc.work_order, ["supplier", "process_name"])
 	check_process_cost(process, alternative_item, supplier)
+	source_production_order = frappe.db.get_value("Lot", fp_doc.lot, "production_order")
+	if not source_production_order:
+		frappe.throw(
+			f"Source Lot {fp_doc.lot} must be linked to a Production Order before creating an Alternative Plan"
+		)
 	## LOT CREATION / REUSE
 	lot_doc = resolve_alternative_lot(
 		lot_source, lot_name, existing_lot, production_detail, alternative_item, fp_doc
@@ -2491,8 +2490,10 @@ def create_alternative_fp(doc_name, alternative_item, production_detail, lot_nam
 		if not qty_details['data']['data'][colour]['check_value']:
 			continue
 		for size in qty_details['data']['data'][colour]['values']:
-			size_wise_detail.setdefault(size, 0)
 			qty = qty_details['data']['data'][colour]['values'][size]['conversion_qty']
+			if qty <= 0:
+				continue
+			size_wise_detail.setdefault(size, 0)
 			size_wise_detail[size] += qty
 			
 			order_detail = frappe.new_doc("Lot Order Detail")
@@ -2526,6 +2527,18 @@ def create_alternative_fp(doc_name, alternative_item, production_detail, lot_nam
 		lot_order_item.qty = row['qty']
 		lot_order_item.item_variant = row['item_variant']
 		lot_order_item.save(ignore_permissions=True)
+
+	from production_api.production_api.doctype.production_order.production_order import (
+		create_alternative_plan_production_order,
+	)
+	create_alternative_plan_production_order(
+		source_production_order=source_production_order,
+		source_lot=fp_doc.lot,
+		target_lot=lot_doc.name,
+		alternative_item=alternative_item,
+		transfers=size_wise_detail,
+		finishing_plan=fp_doc.name,
+	)
 
 	old_wo = frappe.get_doc("Work Order", fp_doc.work_order)
 	wo_doc = frappe.new_doc("Work Order")
@@ -2986,6 +2999,27 @@ def update_alternative_lot_quantity(doc_name, target_lot, qty_details):
 	# 3. Add that quantity to the alternate lot (cumulative).
 	lot_doc = frappe.get_doc("Lot", target_lot)
 	_topup_alternate_lot(lot_doc, conversions)
+
+	# Keep the paired PPO quantities and transfer history aligned with every later top-up.
+	source_production_order = frappe.db.get_value("Lot", source_fp.lot, "production_order")
+	target_production_order = frappe.db.get_value("Lot", target_lot, "production_order")
+	if not source_production_order or not target_production_order:
+		frappe.throw("Both source and alternative Lots must be linked to Production Orders")
+	transfers = {}
+	for conversion in conversions:
+		transfers.setdefault(conversion["size"], 0)
+		transfers[conversion["size"]] += conversion["qty"]
+	from production_api.production_api.doctype.production_order.production_order import (
+		apply_alternative_plan_ppo_transfer,
+	)
+	apply_alternative_plan_ppo_transfer(
+		source_production_order=source_production_order,
+		target_production_order=target_production_order,
+		source_lot=source_fp.lot,
+		target_lot=target_lot,
+		transfers=transfers,
+		reason=f"Additional alternative item conversion from Finishing Plan {source_fp.name}",
+	)
 
 	# 4. Find the alternate lot's packing Work Order and branch on its state.
 	wo_doc = frappe.get_doc("Work Order", _get_packing_wo(target_lot))

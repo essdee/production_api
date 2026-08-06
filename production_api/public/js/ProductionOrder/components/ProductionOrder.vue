@@ -180,7 +180,7 @@ function getNormalizedItems(items = {}) {
   return normalized;
 }
 
-function load_data(data) {
+function load_data(data, can_edit = false) {
   let payload = JSON.parse(JSON.stringify(data || {}));
   const normalizedItems = getNormalizedItems(payload.items);
   primary_values.value = getNormalizedPrimaryValues(
@@ -190,7 +190,7 @@ function load_data(data) {
   box_qty.value = {};
   total_qty.value = 0;
   lot_wise_detail.value = payload.ordered || {};
-  disables.value = cur_frm.doc.docstatus != 0;
+  disables.value = cur_frm.doc.docstatus != 0 || !can_edit;
 
   primary_values.value.forEach((key) => {
     let row = normalizedItems[key] || {};

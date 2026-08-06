@@ -1,0 +1,120 @@
+{
+ "actions": [],
+ "creation": "2026-08-06 12:00:00.000000",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "approved_on",
+  "movement",
+  "counterpart_production_order",
+  "size",
+  "quantity",
+  "quantity_before",
+  "quantity_after",
+  "transfer_reference",
+  "requested_by",
+  "requested_on",
+  "approved_by",
+  "reason"
+ ],
+ "fields": [
+  {
+   "fieldname": "approved_on",
+   "fieldtype": "Datetime",
+   "in_list_view": 1,
+   "label": "Approved On",
+   "read_only": 1
+  },
+  {
+   "fieldname": "movement",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Movement",
+   "options": "Reduced\nAdded",
+   "read_only": 1
+  },
+  {
+   "fieldname": "counterpart_production_order",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Other PPO",
+   "options": "Production Order",
+   "read_only": 1
+  },
+  {
+   "fieldname": "size",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Size",
+   "read_only": 1
+  },
+  {
+   "fieldname": "quantity",
+   "fieldtype": "Float",
+   "in_list_view": 1,
+   "label": "Quantity",
+   "read_only": 1
+  },
+  {
+   "fieldname": "quantity_before",
+   "fieldtype": "Float",
+   "in_list_view": 1,
+   "label": "Before",
+   "read_only": 1
+  },
+  {
+   "fieldname": "quantity_after",
+   "fieldtype": "Float",
+   "in_list_view": 1,
+   "label": "After",
+   "read_only": 1
+  },
+  {
+   "fieldname": "transfer_reference",
+   "fieldtype": "Data",
+   "hidden": 1,
+   "label": "Transfer Reference",
+   "read_only": 1
+  },
+  {
+   "fieldname": "requested_by",
+   "fieldtype": "Link",
+   "label": "Requested By",
+   "options": "User",
+   "read_only": 1
+  },
+  {
+   "fieldname": "requested_on",
+   "fieldtype": "Datetime",
+   "label": "Requested On",
+   "read_only": 1
+  },
+  {
+   "fieldname": "approved_by",
+   "fieldtype": "Link",
+   "label": "Approved By",
+   "options": "User",
+   "read_only": 1
+  },
+  {
+   "fieldname": "reason",
+   "fieldtype": "Small Text",
+   "label": "Reason",
+   "read_only": 1
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2026-08-06 12:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Production Api",
+ "name": "PPO Quantity Transfer History",
+ "owner": "Administrator",
+ "permissions": [],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

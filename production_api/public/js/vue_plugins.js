@@ -523,8 +523,8 @@ frappe.production.ui.ProductionOrder = class {
         SetVueGlobals(this.app)
         this.vue = this.app.mount(this.$wrapper.get(0))
     }
-    load_data(data) {
-        this.vue.load_data(data)
+    load_data(data, can_edit = false) {
+        this.vue.load_data(data, can_edit)
     }
     get_data() {
         let items = JSON.parse(JSON.stringify(this.vue.get_items()))

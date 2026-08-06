@@ -229,12 +229,8 @@ class WorkOrder(Document):
         primary = frappe.get_value("Item", self.item, "primary_attribute")
         if not primary:
             return []
-        po_doc = frappe.get_doc("Production Order", production_order)
-        price_map = {}
-        for row in po_doc.production_order_details:
-            size = get_variant_attr_details(row.item_variant).get(primary)
-            if size:
-                price_map[size] = flt(row.mrp)
+        from production_api.lot_pricing import get_effective_lot_price_map
+        price_map = get_effective_lot_price_map(self.lot, production_order)
         qty_map = {}
         for row in self.work_order_calculated_items:
             size = get_variant_attr_details(row.item_variant).get(primary)
@@ -255,16 +251,16 @@ class WorkOrder(Document):
         if not primary:
             return
 
-        # Build Production Order size scope and price map: {size: mrp}
+        # Build Production Order size scope and resolve the Lot-specific MRP.
         po_doc = frappe.get_doc("Production Order", production_order)
         po_sizes = []
-        price_map = {}
         for row in po_doc.production_order_details:
             attrs = get_variant_attr_details(row.item_variant)
             size = attrs.get(primary)
             if size:
                 po_sizes.append(size)
-                price_map[size] = flt(row.mrp)
+        from production_api.lot_pricing import get_effective_lot_price_map
+        price_map = get_effective_lot_price_map(self.lot, production_order)
 
         # Work Order cut quantity per size, keyed by primary attribute.
         qty_map = {}
@@ -278,8 +274,8 @@ class WorkOrder(Document):
         missing_prices = self.get_missing_box_sticker_prices()
         if missing_prices:
             frappe.throw(
-                f"MRP is missing in Production Order for sizes: {', '.join(missing_prices)}. "
-                "Please update the price in Production Order before submitting."
+                f"MRP is missing for Lot {self.lot} in sizes: {', '.join(missing_prices)}. "
+                "Please update the Production Order or Lot price before submitting."
             )
 
         # Check if FG Item Master exists for this item
