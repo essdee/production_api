@@ -1548,7 +1548,6 @@ def transfer_quantity_to_ppo(source_production_order, target_production_order, r
 		"status": QUANTITY_REQUEST_STATUS,
 	})
 	doc.db_set(TRANSFER_MARKER_FIELD, target.name)
-	append_transfer_request_logs(doc, target, changes, request)
 
 	return {
 		"target_production_order": target.name,
@@ -1645,7 +1644,6 @@ def approve_quantity_transfer(production_order):
 		approved_by,
 		approved_on,
 	)
-	append_transfer_approval_logs(source, target, changes, request, approved_by)
 
 	return {
 		"source_production_order": source.name,
@@ -1830,13 +1828,6 @@ def apply_alternative_plan_ppo_transfer(
 		frappe.session.user,
 		approved_on,
 	)
-	append_transfer_approval_logs(
-		source,
-		target,
-		changes,
-		request,
-		frappe.session.user,
-	)
 	return {
 		"source_production_order": source.name,
 		"target_production_order": target.name,
@@ -1968,26 +1959,6 @@ def create_alternative_plan_production_order(
 	return target.name
 
 
-def build_transfer_qty_lines(changes):
-	"""Per-size 'target before + transferred -> target after' lines, plus the totals line.
-
-	Both docs log the same figures: the source quantity is not reduced, so the only numbers
-	worth recording are the ones at the receiving end."""
-	lines = []
-	old_total = 0
-	qty_total = 0
-	new_total = 0
-	for change in changes:
-		old_total += change["old_qty"]
-		qty_total += change["qty"]
-		new_total += change["new_qty"]
-		lines.append(
-			f"Quantity {change['size']}: {format_comment_qty(change['old_qty'])} + {format_comment_qty(change['qty'])} -> {format_comment_qty(change['new_qty'])}")
-	lines.append(
-		f"Quantity Total: {format_comment_qty(old_total)} + {format_comment_qty(qty_total)} -> {format_comment_qty(new_total)}")
-	return lines
-
-
 def build_quantity_transfer_history_rows(
 	source,
 	target,
@@ -2077,49 +2048,3 @@ def append_quantity_transfer_history(
 		for values in rows:
 			parent.append("quantity_transfer_history", values).db_insert()
 		frappe.clear_document_cache("Production Order", parent.name)
-
-
-def append_transfer_request_logs(source, target, changes, request):
-	log_date = frappe.utils.formatdate(frappe.utils.nowdate(), "dd-mm-yyyy")
-	qty_lines = build_transfer_qty_lines(changes)
-	source_status = source.status or "None"
-
-	append_comment_log_block(target, "\n".join([
-		f"[{log_date}] Quantity Transfer Requested - {request['requested_user']}",
-		f"From Production Order: {source.name}",
-		f"Source Status: {source_status}",
-	] + qty_lines + [
-		f"Reason: {request['reason']}",
-	]))
-
-	append_comment_log_block(source, "\n".join([
-		f"[{log_date}] Quantity Transfer Requested - {request['requested_user']}",
-		f"To Production Order: {target.name}",
-		f"Status: {source_status}",
-	] + qty_lines + [
-		f"Reason: {request['reason']}",
-	]))
-
-
-def append_transfer_approval_logs(source, target, changes, request, approved_by):
-	log_date = frappe.utils.formatdate(frappe.utils.nowdate(), "dd-mm-yyyy")
-	qty_lines = build_transfer_qty_lines(changes)
-	source_status = source.status or "None"
-
-	append_comment_log_block(target, "\n".join([
-		f"[{log_date}] Quantity Transfer Approved - {approved_by}",
-		f"From Production Order: {source.name}",
-		f"Source Status: {source_status}",
-	] + qty_lines + [
-		f"Requested By: {request['requested_user']}",
-		f"Reason: {request['reason']}",
-	]))
-
-	append_comment_log_block(source, "\n".join([
-		f"[{log_date}] Quantity Transfer Approved - {approved_by}",
-		f"To Production Order: {target.name}",
-		f"Status: {source_status}",
-	] + qty_lines + [
-		f"Requested By: {request['requested_user']}",
-		f"Reason: {request['reason']}",
-	]))

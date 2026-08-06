@@ -21,6 +21,31 @@ from production_api.production_api.doctype.production_order.production_order imp
 
 
 class TestProductionOrder(TestCase):
+	def test_transfer_comment_cleanup_preserves_other_audit_blocks(self):
+		from production_api.patches.v1_0.remove_ppo_quantity_transfer_comment_logs import (
+			remove_quantity_transfer_comment_blocks,
+		)
+
+		comment_log = "\n".join([
+			"[06-08-2026] PPO Approved and Submitted - merch@example.com",
+			"Requested By: sales@example.com",
+			"[06-08-2026] Quantity Transfer Requested - sales@example.com",
+			"To Production Order: PPO-TARGET",
+			"Quantity 75 cm: 100 + 10 -> 110",
+			"Reason: Convert item",
+			"[06-08-2026] Quantity Transfer Approved - merch@example.com",
+			"To Production Order: PPO-TARGET",
+			"Quantity 75 cm: 100 + 10 -> 110",
+			"[06-08-2026] Status Change Approved - merch@example.com",
+			"Status: Open -> Item Changed",
+		])
+
+		cleaned = remove_quantity_transfer_comment_blocks(comment_log)
+
+		self.assertNotIn("Quantity Transfer", cleaned)
+		self.assertIn("PPO Approved and Submitted", cleaned)
+		self.assertIn("Status Change Approved", cleaned)
+
 	def test_list_view_shows_ppo_request_instead_of_generic_draft(self):
 		list_source = Path(
 			frappe.get_app_path(
@@ -560,7 +585,6 @@ class TestProductionOrder(TestCase):
 			patch.object(production_order, "get_transfer_quantities", return_value={"S": 5}),
 			patch.object(production_order, "get_rows_by_size", return_value={"S": target_row}),
 			patch.object(production_order, "now_datetime", return_value="2026-07-23 12:00:00"),
-			patch.object(production_order, "append_transfer_request_logs"),
 		):
 			result = production_order.transfer_quantity_to_ppo(
 				"PPO-SOURCE",
@@ -625,7 +649,6 @@ class TestProductionOrder(TestCase):
 			patch.object(production_order, "get_rows_by_size", return_value={"S": target_row}),
 			patch.object(production_order, "now_datetime", return_value="2026-07-24 12:30:00"),
 			patch.object(production_order, "append_quantity_transfer_history") as append_history,
-			patch.object(production_order, "append_transfer_approval_logs"),
 		):
 			result = production_order.approve_quantity_transfer("PPO-TARGET")
 
@@ -715,7 +738,6 @@ class TestProductionOrder(TestCase):
 			patch.object(production_order.frappe, "generate_hash", return_value="ALT-TRANSFER"),
 			patch.object(production_order.frappe, "session", _dict(user="planner@example.com")),
 			patch.object(production_order, "append_quantity_transfer_history") as append_history,
-			patch.object(production_order, "append_transfer_approval_logs") as append_logs,
 		):
 			result = production_order.apply_alternative_plan_ppo_transfer(
 				"PPO-SOURCE",
@@ -737,7 +759,6 @@ class TestProductionOrder(TestCase):
 		self.assertEqual(changes[0]["source_new_qty"], 80)
 		self.assertEqual(changes[0]["old_qty"], 10)
 		self.assertEqual(changes[0]["new_qty"], 30)
-		append_logs.assert_called_once()
 		self.assertEqual(result["transferred"], {"S": 20.0})
 
 	def test_transfer_history_uses_actual_reduced_source_values(self):
