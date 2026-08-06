@@ -57,6 +57,10 @@ def get_ppo_production_snapshot(
 	if filters["lot"]:
 		seed_lots = [name for name in seed_lots if name == filters["lot"]]
 	lot_rows = _fetch_lot_rows(ppo_names, seed_lots)
+	ppo_rows = _filter_ppo_rows_for_lots(ppo_rows, lot_rows)
+	if not ppo_rows:
+		return _empty_snapshot(filters, warehouse_names)
+	ppo_names = list(dict.fromkeys(row.name for row in ppo_rows))
 	lot_names = list(
 		dict.fromkeys(row.lot for row in lot_rows if row.get("lot"))
 	)
@@ -411,8 +415,6 @@ def build_production_snapshot(
 
 	ppo_inward_by_size = defaultdict(lambda: defaultdict(float))
 	ppo_lot_planned_by_size = defaultdict(lambda: defaultdict(float))
-	ppo_lot_wip_by_size = defaultdict(lambda: defaultdict(float))
-	ppo_over_inward_by_size = defaultdict(lambda: defaultdict(float))
 	for lot in lots:
 		production_order = lot.get("production_order")
 		if not production_order:
@@ -425,51 +427,44 @@ def build_production_snapshot(
 			ppo_inward_by_size[production_order][size] += flt(
 				size_row.get("inward_quantity")
 			)
-			ppo_lot_wip_by_size[production_order][size] += flt(
-				size_row.get("wip_quantity")
-			)
-			ppo_over_inward_by_size[production_order][size] += flt(
-				size_row.get("over_inward_quantity")
-			)
 
-	total_over_inward = 0.0
 	for ppo in ppo_map.values():
 		remaining_inward = dict(ppo_inward_by_size.get(ppo["name"], {}))
 		remaining_lot_planned = dict(
 			ppo_lot_planned_by_size.get(ppo["name"], {})
-		)
-		remaining_lot_wip = dict(ppo_lot_wip_by_size.get(ppo["name"], {}))
-		remaining_over_inward = dict(
-			ppo_over_inward_by_size.get(ppo["name"], {})
 		)
 		for detail in ppo["details"]:
 			size = _size_key(detail.get("item_variant"), variant_attributes)
 			detail["lot_planned_quantity"] = flt(
 				remaining_lot_planned.pop(size, 0)
 			)
-			detail["inward_quantity"] = flt(remaining_inward.pop(size, 0))
-			detail["wip_quantity"] = flt(remaining_lot_wip.pop(size, 0))
-			detail["over_inward_quantity"] = flt(
-				remaining_over_inward.pop(size, 0)
+			planned = flt(detail.get("quantity"))
+			available_inward = flt(remaining_inward.get(size))
+			applied_inward = min(planned, available_inward)
+			detail["inward_quantity"] = applied_inward
+			detail["wip_quantity"] = max(planned - applied_inward, 0.0)
+			detail["over_inward_quantity"] = 0.0
+			remaining_inward[size] = max(
+				available_inward - applied_inward, 0.0
 			)
 		ppo["planned_quantity"] = sum(
 			flt(detail.get("lot_planned_quantity")) for detail in ppo["details"]
 		)
 		ppo["inward_quantity"] = sum(
-			flt(detail.get("inward_quantity")) for detail in ppo["details"]
+			flt(quantity)
+			for quantity in ppo_inward_by_size.get(ppo["name"], {}).values()
 		)
 		ppo["wip_quantity"] = sum(
 			flt(detail.get("wip_quantity")) for detail in ppo["details"]
 		)
 		ppo["over_inward_quantity"] = sum(
-			flt(detail.get("over_inward_quantity")) for detail in ppo["details"]
+			flt(quantity) for quantity in remaining_inward.values()
 		)
 		ppo["production_stage"] = _aggregate_production_stage(
 			lot.get("production_stage")
 			for lot in lots
 			if lot.get("production_order") == ppo["name"]
 		)
-		total_over_inward += ppo["over_inward_quantity"]
 
 	stock_rows = {}
 	for item_variant, row in (stock or {}).items():
@@ -492,11 +487,15 @@ def build_production_snapshot(
 			lot["original_planned_quantity"] for lot in lots
 		),
 		"lot_quantity": sum(lot["planned_quantity"] for lot in lots),
-		"inward_quantity": sum(lot["inward_quantity"] for lot in lots),
+		"inward_quantity": sum(
+			ppo["inward_quantity"] for ppo in ppo_map.values()
+		),
 		"wip_quantity": sum(
 			ppo["wip_quantity"] for ppo in ppo_map.values()
 		),
-		"over_inward_quantity": total_over_inward,
+		"over_inward_quantity": sum(
+			ppo["over_inward_quantity"] for ppo in ppo_map.values()
+		),
 	}
 
 	return {
@@ -642,6 +641,16 @@ def _fetch_lot_rows(ppo_names, selected_lots):
 	return query.run(as_dict=True)
 
 
+def _filter_ppo_rows_for_lots(ppo_rows, lot_rows):
+	"""Keep only open PPOs linked to the FG-inward seed lots."""
+	selected_ppo_names = {
+		row.production_order
+		for row in lot_rows
+		if row.get("production_order")
+	}
+	return [row for row in ppo_rows if row.name in selected_ppo_names]
+
+
 def _fetch_lot_stage_rows(lot_names):
 	"""Resolve each lot's stage from submitted Work Order movements.
 
@@ -769,6 +778,7 @@ def _fetch_inward_lot_names(item, start_date, end_date):
 		.on(item_variant.name == detail.item_variant)
 		.select(detail.lot)
 		.where(stock_entry.docstatus == 1)
+		.where(stock_entry.consumed == 0)
 		.where(stock_entry.posting_date.between(start_date, end_date))
 		.where(item_variant.item == item)
 		.where(detail.lot.isnotnull())
@@ -833,6 +843,7 @@ def _fetch_inward_rows(lot_names):
 			item_variant.item,
 		)
 		.where(stock_entry.docstatus == 1)
+		.where(stock_entry.consumed == 0)
 		.where(detail.lot.isin(lot_names))
 		.orderby(stock_entry.posting_date)
 		.orderby(stock_entry.name)

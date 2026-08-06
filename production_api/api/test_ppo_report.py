@@ -4,6 +4,7 @@ from unittest import TestCase
 from production_api.api.ppo_report import (
 	_aggregate_production_stage,
 	_empty_snapshot,
+	_filter_ppo_rows_for_lots,
 	_production_stage_from_work_orders,
 	_validate_filters,
 	build_production_snapshot,
@@ -164,7 +165,7 @@ class TestPPOReportSnapshot(TestCase):
 		self.assertEqual(lot_one["size_rows"][0]["inward_quantity"], 105)
 		self.assertEqual(lot_one["size_rows"][0]["wip_quantity"], 15)
 
-	def test_wip_uses_lot_plan_not_ppo_projection(self):
+	def test_wip_is_calculated_separately_for_each_ppo_linked_lots(self):
 		result = build_production_snapshot(
 			filters={"item": "GYM VEST"},
 			ppo_rows=[
@@ -185,6 +186,18 @@ class TestPPOReportSnapshot(TestCase):
 			],
 			lot_rows=[
 				row(
+					lot="LOT-1",
+					production_order="PPO-1",
+					lot_item="GYM VEST",
+					status="Open",
+					has_transferred=0,
+					is_transferred=0,
+					transferred_lot=None,
+					item="GYM VEST",
+					item_variant="GYM VEST-S",
+					planned_quantity=90,
+				),
+				row(
 					lot="LOT-2",
 					production_order="PPO-2",
 					lot_item="GYM VEST",
@@ -199,12 +212,22 @@ class TestPPOReportSnapshot(TestCase):
 			],
 			inward_rows=[
 				row(
+					lot="LOT-1",
+					item="GYM VEST",
+					item_variant="GYM VEST-S",
+					inward_quantity=50,
+					uom="Box",
+					stock_entry="FG-1",
+					posting_date="2026-07-10",
+					warehouse="FG",
+				),
+				row(
 					lot="LOT-2",
 					item="OTHER VEST",
 					item_variant="OTHER VEST-S",
-					inward_quantity=70,
+					inward_quantity=5,
 					uom="Box",
-					stock_entry="FG-1",
+					stock_entry="FG-2",
 					posting_date="2026-07-10",
 					warehouse="FG",
 				),
@@ -219,13 +242,72 @@ class TestPPOReportSnapshot(TestCase):
 		)
 
 		self.assertEqual(result["summary"]["ppo_quantity"], 100)
-		self.assertEqual(result["summary"]["inward_quantity"], 70)
-		self.assertEqual(result["summary"]["wip_quantity"], 0)
-		self.assertEqual(result["summary"]["over_inward_quantity"], 30)
-		self.assertEqual(result["ppos"][0]["inward_quantity"], 0)
-		self.assertEqual(result["ppos"][0]["planned_quantity"], 0)
-		self.assertEqual(result["ppos"][1]["planned_quantity"], 40)
-		self.assertEqual(result["ppos"][1]["inward_quantity"], 70)
+		self.assertEqual(result["summary"]["inward_quantity"], 55)
+		self.assertEqual(result["summary"]["wip_quantity"], 45)
+		self.assertEqual(result["summary"]["over_inward_quantity"], 0)
+		ppos = {ppo["name"]: ppo for ppo in result["ppos"]}
+		self.assertEqual(ppos["PPO-1"]["inward_quantity"], 50)
+		self.assertEqual(ppos["PPO-1"]["wip_quantity"], 10)
+		self.assertEqual(ppos["PPO-2"]["inward_quantity"], 5)
+		self.assertEqual(ppos["PPO-2"]["wip_quantity"], 35)
+
+	def test_wip_uses_ppo_projection_instead_of_lot_plan(self):
+		result = build_production_snapshot(
+			filters={"item": "GYM VEST"},
+			ppo_rows=[
+				row(
+					name="PPO-1",
+					item="GYM VEST",
+					delivery_date="2026-07-01",
+					item_variant="GYM VEST-S",
+					quantity=100,
+				)
+			],
+			lot_rows=[
+				row(
+					lot="LOT-1",
+					production_order="PPO-1",
+					lot_item="GYM VEST",
+					status="Open",
+					has_transferred=0,
+					is_transferred=0,
+					transferred_lot=None,
+					item="GYM VEST",
+					item_variant="GYM VEST-S",
+					planned_quantity=150,
+				)
+			],
+			inward_rows=[
+				row(
+					lot="LOT-1",
+					item="GYM VEST",
+					item_variant="GYM VEST-S",
+					inward_quantity=60,
+					uom="Box",
+					stock_entry="FG-1",
+					posting_date="2026-07-10",
+					warehouse="FG",
+				)
+			],
+			stock={},
+			warehouses=[],
+			variant_attributes={"GYM VEST-S": "S"},
+			column_order=["S"],
+		)
+
+		self.assertEqual(result["summary"]["ppo_quantity"], 100)
+		self.assertEqual(result["summary"]["lot_quantity"], 150)
+		self.assertEqual(result["summary"]["inward_quantity"], 60)
+		self.assertEqual(result["summary"]["wip_quantity"], 40)
+		self.assertEqual(result["ppos"][0]["wip_quantity"], 40)
+
+	def test_only_keeps_ppos_linked_to_the_fg_inward_seed_lots(self):
+		ppo_rows = [row(name="PPO-1"), row(name="PPO-2")]
+		lot_rows = [row(lot="LOT-2", production_order="PPO-2")]
+
+		filtered = _filter_ppo_rows_for_lots(ppo_rows, lot_rows)
+
+		self.assertEqual([ppo.name for ppo in filtered], ["PPO-2"])
 
 	def test_uses_work_order_movements_for_lot_stage(self):
 		result = build_production_snapshot(
