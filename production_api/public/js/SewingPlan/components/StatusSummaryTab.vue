@@ -11,6 +11,8 @@
                 </div>
                 <div ref="lot_wrapper" class="filter-control"></div>
                 <div ref="item_wrapper" class="filter-control"></div>
+                <div ref="from_date_wrapper" class="filter-control date-filter-control"></div>
+                <div ref="to_date_wrapper" class="filter-control date-filter-control"></div>
                 <select class="filter-select" v-model="selected_colour">
                     <option value="">All Colours</option>
                     <option v-for="colour in colourOptions" :key="colour" :value="colour">{{ colour }}</option>
@@ -114,12 +116,18 @@ const selected_lots = ref([])
 const selected_items = ref([])
 const selected_colour = ref('')
 const selected_part = ref('')
+const selected_from_date = ref('')
+const selected_to_date = ref('')
 
 // Frappe MultiSelectList control refs
 const lot_wrapper = ref(null)
 const item_wrapper = ref(null)
+const from_date_wrapper = ref(null)
+const to_date_wrapper = ref(null)
 let lotCtrl = null
 let itemCtrl = null
+let fromDateCtrl = null
+let toDateCtrl = null
 const sample_doc = ref({})
 
 const arraysEqual = (a, b) => {
@@ -184,6 +192,38 @@ const initControls = () => {
         })
         patchChange(itemCtrl, syncItemsFromCtrl)
     }
+    if (from_date_wrapper.value && !fromDateCtrl) {
+        fromDateCtrl = frappe.ui.form.make_control({
+            parent: $(from_date_wrapper.value),
+            df: {
+                fieldtype: 'Date',
+                fieldname: 'status_summary_from_date',
+                label: 'From Date',
+                placeholder: 'From Date',
+                change: () => {
+                    selected_from_date.value = fromDateCtrl.get_value() || ''
+                },
+            },
+            doc: sample_doc.value,
+            render_input: true,
+        })
+    }
+    if (to_date_wrapper.value && !toDateCtrl) {
+        toDateCtrl = frappe.ui.form.make_control({
+            parent: $(to_date_wrapper.value),
+            df: {
+                fieldtype: 'Date',
+                fieldname: 'status_summary_to_date',
+                label: 'To Date',
+                placeholder: 'To Date',
+                change: () => {
+                    selected_to_date.value = toDateCtrl.get_value() || ''
+                },
+            },
+            doc: sample_doc.value,
+            render_input: true,
+        })
+    }
 }
 
 // Data rows (excluding total row at idx 0)
@@ -246,6 +286,12 @@ const filteredRows = computed(() => {
                 if (part !== selected_part.value) return false
             }
         }
+        if (selected_from_date.value || selected_to_date.value) {
+            const inputDate = normalizeInputDate(row['Input Date'])
+            if (!inputDate) return false
+            if (selected_from_date.value && inputDate < selected_from_date.value) return false
+            if (selected_to_date.value && inputDate > selected_to_date.value) return false
+        }
         return true
     })
 })
@@ -271,6 +317,10 @@ const displayData = computed(() => {
 watch(selected_lots, () => {
     selected_colour.value = ''
     selected_part.value = ''
+    selected_from_date.value = ''
+    selected_to_date.value = ''
+    fromDateCtrl?.set_value('')
+    toDateCtrl?.set_value('')
     // Remove any selected items that are no longer valid for the new lot selection
     if (itemCtrl && selected_items.value.length) {
         const valid = new Set(itemOptions.value)
@@ -327,6 +377,13 @@ const formatDate = (dateStr) => {
         return `${parts[2]}-${parts[1]}-${parts[0]}`
     }
     return dateStr
+}
+
+const normalizeInputDate = (dateValue) => {
+    if (!dateValue) return ''
+    const value = String(dateValue)
+    const match = value.match(/^\d{4}-\d{2}-\d{2}/)
+    return match ? match[0] : ''
 }
 
 const getStatusStyle = (value) => {
@@ -391,6 +448,10 @@ watch(() => [props.selected_supplier, props.refresh_counter], fetchData, { immed
 
 .filter-select:focus {
     border-color: #94a3b8;
+}
+
+.date-filter-control {
+    min-width: 155px;
 }
 
 /* Frappe MultiSelectList wrapper */

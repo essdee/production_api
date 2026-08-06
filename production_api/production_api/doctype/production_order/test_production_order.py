@@ -576,7 +576,13 @@ class TestProductionOrder(TestCase):
 		with (
 			patch.object(production_order, "require_ppo_action_role"),
 			patch.object(production_order, "lock_production_orders"),
-			patch.object(production_order.frappe, "get_doc", side_effect=[source, target]),
+			patch.object(
+				production_order.frappe,
+				"get_doc",
+				side_effect=lambda _doctype, name: (
+					source if name == source.name else target
+				),
+			),
 			patch.object(production_order.frappe.db, "exists", return_value=True),
 			patch.object(production_order, "has_transfer_marker_field", return_value=True),
 			patch.object(production_order, "has_incoming_transfer_request_field", return_value=True),
@@ -698,7 +704,7 @@ class TestProductionOrder(TestCase):
 		self.assertEqual(target_rows[0]["quantity_after"], 15)
 		self.assertEqual(target_rows[0]["transfer_reference"], "TRANSFER-1")
 
-	def test_alternative_plan_transfer_reduces_source_and_adds_target(self):
+	def test_alternative_plan_converts_pieces_with_each_lots_packing_combo(self):
 		source_row = _dict(quantity=100, ratio=1)
 		target_row = _dict(quantity=10, ratio=1)
 		source = _dict(
@@ -726,6 +732,11 @@ class TestProductionOrder(TestCase):
 
 		with (
 			patch.object(production_order, "lock_production_orders"),
+			patch.object(
+				production_order,
+				"_get_lot_packing_combo",
+				side_effect=[10, 5],
+			),
 			patch.object(production_order.frappe, "get_doc", side_effect=[source, target]),
 			patch.object(production_order.frappe.db, "get_value", side_effect=get_lot_ppo),
 			patch.object(production_order, "get_alternative_items", return_value=["TARGET-ITEM"]),
@@ -748,18 +759,35 @@ class TestProductionOrder(TestCase):
 				"Alternative conversion",
 			)
 
-		self.assertEqual(source_row.quantity, 80)
-		self.assertEqual(target_row.quantity, 30)
+		self.assertEqual(source_row.quantity, 98)
+		self.assertEqual(target_row.quantity, 14)
 		self.assertTrue(source.flags.allow_quantity_transfer)
 		self.assertTrue(target.flags.allow_quantity_transfer)
 		source.save.assert_called_once_with(ignore_permissions=True)
 		target.save.assert_called_once_with(ignore_permissions=True)
 		changes = append_history.call_args.args[2]
+		self.assertEqual(changes[0]["piece_qty"], 20)
+		self.assertEqual(changes[0]["source_qty"], 2)
+		self.assertEqual(changes[0]["target_qty"], 4)
 		self.assertEqual(changes[0]["source_old_qty"], 100)
-		self.assertEqual(changes[0]["source_new_qty"], 80)
+		self.assertEqual(changes[0]["source_new_qty"], 98)
 		self.assertEqual(changes[0]["old_qty"], 10)
-		self.assertEqual(changes[0]["new_qty"], 30)
+		self.assertEqual(changes[0]["new_qty"], 14)
 		self.assertEqual(result["transferred"], {"S": 20.0})
+		self.assertEqual(result["source_boxes"], {"S": 2.0})
+		self.assertEqual(result["target_boxes"], {"S": 4.0})
+
+	def test_piece_transfer_conversion_example_uses_source_and_target_combos(self):
+		pieces = {"75 cm": 300, "80 cm": 800}
+
+		self.assertEqual(
+			production_order._piece_transfers_to_boxes(pieces, 10),
+			{"75 cm": 30.0, "80 cm": 80.0},
+		)
+		self.assertEqual(
+			production_order._piece_transfers_to_boxes(pieces, 5),
+			{"75 cm": 60.0, "80 cm": 160.0},
+		)
 
 	def test_transfer_history_uses_actual_reduced_source_values(self):
 		source = _dict(name="PPO-SOURCE")
@@ -772,17 +800,19 @@ class TestProductionOrder(TestCase):
 		}
 		changes = [{
 			"size": "S",
-			"qty": 20,
+			"qty": 60,
+			"source_qty": 30,
+			"target_qty": 60,
 			"old_qty": 0,
-			"new_qty": 20,
-			"source_old_qty": 100,
-			"source_new_qty": 80,
+			"new_qty": 60,
+			"source_old_qty": 500,
+			"source_new_qty": 470,
 		}]
 
 		with patch.object(
 			production_order,
 			"get_rows_by_size",
-			return_value={"S": _dict(quantity=80)},
+			return_value={"S": _dict(quantity=470)},
 		):
 			source_rows, target_rows = production_order.build_quantity_transfer_history_rows(
 				source,
@@ -794,8 +824,10 @@ class TestProductionOrder(TestCase):
 			)
 
 		self.assertEqual(source_rows[0]["movement"], "Reduced")
-		self.assertEqual(source_rows[0]["quantity_before"], 100)
-		self.assertEqual(source_rows[0]["quantity_after"], 80)
+		self.assertEqual(source_rows[0]["quantity"], 30)
+		self.assertEqual(source_rows[0]["quantity_before"], 500)
+		self.assertEqual(source_rows[0]["quantity_after"], 470)
 		self.assertEqual(target_rows[0]["movement"], "Added")
+		self.assertEqual(target_rows[0]["quantity"], 60)
 		self.assertEqual(target_rows[0]["quantity_before"], 0)
-		self.assertEqual(target_rows[0]["quantity_after"], 20)
+		self.assertEqual(target_rows[0]["quantity_after"], 60)

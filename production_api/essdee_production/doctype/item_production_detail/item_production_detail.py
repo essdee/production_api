@@ -12,6 +12,11 @@ from production_api.production_api.doctype.item.item import get_or_create_varian
 from production_api.essdee_production.doctype.lot.lot import get_uom_conversion_factor
 from production_api.production_api.doctype.item_dependent_attribute_mapping.item_dependent_attribute_mapping import get_dependent_attribute_details
 from production_api.panel_wise_consumption import sync_panel_wise_consumption_matrix
+from production_api.panel_wise_cloth_mapping import sync_panel_wise_cloth_mapping_matrix
+from production_api.essdee_production.doctype.ipd_compacting.ipd_compacting import (
+	persist_staged_compacting_details,
+	stage_compacting_details_from_ipd,
+)
 
 class ItemProductionDetail(Document):
 	def autoname(self):
@@ -101,6 +106,7 @@ class ItemProductionDetail(Document):
 			self.cutting_process = doc.default_cutting_process
 
 	def on_update(self):	
+		persist_staged_compacting_details(self)
 		docs = frappe.flags.delete_bom_mapping
 		if docs:
 			for mapping in docs:
@@ -190,6 +196,8 @@ class ItemProductionDetail(Document):
 					frappe.throw("Select Is default for all Set Item Attributes")
 
 		sync_panel_wise_consumption_matrix(self)
+		sync_panel_wise_cloth_mapping_matrix(self)
+		stage_compacting_details_from_ipd(self)
 
 	def create_new_mapping_values(self):
 		for attribute in self.get('item_attributes'):
@@ -720,6 +728,29 @@ def _uses_panel_colour_cutting(ipd_doc):
 		return False
 
 
+def _format_combination_key(key):
+	return " / ".join(str(value or "Not Set") for value in key)
+
+
+def _require_cutting_consumption(cloth_combination, key):
+	row = cloth_combination["cutting_combination"].get(key)
+	if not row:
+		frappe.throw(
+			f"No Cutting consumption matches combination {_format_combination_key(key)}."
+		)
+	return row
+
+
+def _require_cutting_cloth_mapping(cloth_combination, key):
+	cloth_type = cloth_combination["cloth_combination"].get(key)
+	if not cloth_type:
+		frappe.throw(
+			"No Cutting Cloth mapping matches consumption combination "
+			f"{_format_combination_key(key)}."
+		)
+	return cloth_type
+
+
 def calculate_cloth(ipd_doc, variant_attrs, qty, cloth_combination, stitching_combination):
 	attrs = variant_attrs.copy()
 	if stitching_combination["stitching_attribute"] in cloth_combination["cloth_attributes"] and stitching_combination["stitching_attribute"] not in cloth_combination["cutting_attributes"]:
@@ -742,17 +773,21 @@ def calculate_cloth(ipd_doc, variant_attrs, qty, cloth_combination, stitching_co
 					# garment colour (for example Navy -> G Mel).
 					combination_attrs[ipd_doc.packing_attribute] = cloth_colour
 				cutting_key = get_key(combination_attrs, cloth_combination["cutting_attributes"])
-				cutting_row = cloth_combination["cutting_combination"].get(cutting_key)
-				if not cutting_row:
-					continue
+				cutting_row = _require_cutting_consumption(
+					cloth_combination, cutting_key
+				)
 				dia, weight = cutting_row
 				cloth_key = get_key(combination_attrs, cloth_combination["cloth_attributes"])
-				cloth_type = cloth_combination["cloth_combination"][cloth_key]
+				cloth_type = _require_cutting_cloth_mapping(
+					cloth_combination, cloth_key
+				)
 				weight = weight * qty * attr_qty
 				cloth_detail.append(add_cloth_detail(weight,cloth_type,cloth_colour,dia,"cloth"))
 	else:
-		dia, weight = cloth_combination["cutting_combination"][get_key(attrs, cloth_combination["cutting_attributes"])]
-		cloth_type = cloth_combination["cloth_combination"][get_key(attrs, cloth_combination["cloth_attributes"])]
+		cutting_key = get_key(attrs, cloth_combination["cutting_attributes"])
+		dia, weight = _require_cutting_consumption(cloth_combination, cutting_key)
+		cloth_key = get_key(attrs, cloth_combination["cloth_attributes"])
+		cloth_type = _require_cutting_cloth_mapping(cloth_combination, cloth_key)
 		weight = weight * qty
 		cloth_detail.append(add_cloth_detail(weight,cloth_type,attrs[ipd_doc.packing_attribute],dia,"cloth"))
 	accessory_detail = calculate_accessory(ipd_doc, cloth_combination, stitching_combination, attrs, qty)
@@ -1627,6 +1662,7 @@ DUPLICATE_IPD_SCALAR_FIELDS = (
 	"accessory_clothtype_json",
 	"enable_panel_wise_consumption_matrix",
 	"panel_wise_consumption_matrix_json",
+	"panel_wise_cloth_mapping_json",
 )
 
 
