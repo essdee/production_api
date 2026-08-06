@@ -60,6 +60,7 @@ def get_ppo_production_snapshot(
 	lot_names = list(
 		dict.fromkeys(row.lot for row in lot_rows if row.get("lot"))
 	)
+	stage_rows = _fetch_lot_stage_rows(lot_names)
 	transferred_source_lots = list(
 		dict.fromkeys(
 			row.lot
@@ -70,16 +71,12 @@ def get_ppo_production_snapshot(
 	transferred_lot_rows = _fetch_transferred_lot_rows(
 		transferred_source_lots
 	)
-	inward_rows = _fetch_inward_rows(
-		lot_names,
-		filters["inward_start_date"],
-		filters["inward_end_date"],
-	)
+	inward_rows = _fetch_inward_rows(lot_names)
 
 	item_variants = list(
 		dict.fromkeys(
 			row.item_variant
-			for row in [*lot_rows, *inward_rows]
+			for row in [*lot_rows, *inward_rows, *stage_rows]
 			if row.get("item_variant")
 		)
 	)
@@ -120,6 +117,7 @@ def get_ppo_production_snapshot(
 		filters=filters,
 		ppo_rows=ppo_rows,
 		lot_rows=lot_rows,
+		stage_rows=stage_rows,
 		transferred_lot_rows=transferred_lot_rows,
 		inward_rows=inward_rows,
 		stock=stock,
@@ -138,12 +136,14 @@ def build_production_snapshot(
 	inward_rows,
 	stock,
 	warehouses,
+	stage_rows=None,
 	transferred_lot_rows=None,
 	variant_attributes=None,
 	column_order=None,
 	warnings=None,
 ):
 	"""Build the size-wise PPO, Lot, transfer, inward, and WIP snapshot."""
+	stage_rows = stage_rows or []
 	transferred_lot_rows = transferred_lot_rows or []
 	variant_attributes = variant_attributes or {}
 	column_order = list(column_order or [])
@@ -214,6 +214,9 @@ def build_production_snapshot(
 					"transferred_quantity": 0.0,
 					"planned_quantity": 0.0,
 					"inward_quantity": 0.0,
+					"cutting_quantity": 0.0,
+					"stitching_quantity": 0.0,
+					"packing_quantity": 0.0,
 					"wip_quantity": 0.0,
 					"over_inward_quantity": 0.0,
 					"inward_entries": [],
@@ -268,16 +271,15 @@ def build_production_snapshot(
 				"transferred_quantity": 0.0,
 				"planned_quantity": 0.0,
 				"inward_quantity": 0.0,
+				"cutting_quantity": 0.0,
+				"stitching_quantity": 0.0,
+				"packing_quantity": 0.0,
 				"wip_quantity": 0.0,
 				"over_inward_quantity": 0.0,
 				"inward_entries": [],
 			},
 		)
-		quantity, conversion_warning = _inward_quantity_in_boxes(row)
-		if conversion_warning and conversion_warning not in report_warnings:
-			report_warnings.append(conversion_warning)
-		if quantity is None:
-			continue
+		quantity = flt(row.get("inward_quantity"))
 		item_row["inward_quantity"] += quantity
 		item_row["inward_entries"].append(
 			{
@@ -289,6 +291,38 @@ def build_production_snapshot(
 				"reported_uom": "Box",
 			}
 		)
+
+	for row in stage_rows:
+		if not row.get("lot") or not row.get("item_variant"):
+			continue
+		lot = lot_map.get(row.lot)
+		if not lot:
+			continue
+		item_name = row.get("item") or lot.get("header_item")
+		variant_items[row.item_variant] = item_name
+		item_row = lot["items"].setdefault(
+			row.item_variant,
+			{
+				"item": item_name,
+				"item_variant": row.item_variant,
+				"primary_attribute_value": variant_attributes.get(
+					row.item_variant
+				),
+				"original_planned_quantity": 0.0,
+				"transferred_quantity": 0.0,
+				"planned_quantity": 0.0,
+				"inward_quantity": 0.0,
+				"cutting_quantity": 0.0,
+				"stitching_quantity": 0.0,
+				"packing_quantity": 0.0,
+				"wip_quantity": 0.0,
+				"over_inward_quantity": 0.0,
+				"inward_entries": [],
+			},
+		)
+		stage_quantities = _stage_quantities(row)
+		for fieldname, quantity in stage_quantities.items():
+			item_row[fieldname] += quantity
 
 	lots = []
 	ppo_transfer_deductions = defaultdict(lambda: defaultdict(float))
@@ -320,6 +354,9 @@ def build_production_snapshot(
 					"transferred_quantity": 0.0,
 					"planned_quantity": 0.0,
 					"inward_quantity": 0.0,
+					"cutting_quantity": 0.0,
+					"stitching_quantity": 0.0,
+					"packing_quantity": 0.0,
 					"wip_quantity": 0.0,
 					"over_inward_quantity": 0.0,
 					"inward_entries": [],
@@ -330,6 +367,9 @@ def build_production_snapshot(
 				"transferred_quantity",
 				"planned_quantity",
 				"inward_quantity",
+				"cutting_quantity",
+				"stitching_quantity",
+				"packing_quantity",
 			):
 				size_row[fieldname] += flt(item_row.get(fieldname))
 			size_row["inward_entries"].extend(
@@ -371,6 +411,16 @@ def build_production_snapshot(
 		lot["inward_quantity"] = sum(
 			row["inward_quantity"] for row in lot["size_rows"]
 		)
+		lot["cutting_quantity"] = sum(
+			row["cutting_quantity"] for row in lot["size_rows"]
+		)
+		lot["stitching_quantity"] = sum(
+			row["stitching_quantity"] for row in lot["size_rows"]
+		)
+		lot["packing_quantity"] = sum(
+			row["packing_quantity"] for row in lot["size_rows"]
+		)
+		lot["production_stage"] = _production_stage(lot)
 		lot["wip_quantity"] = sum(
 			row["wip_quantity"] for row in lot["size_rows"]
 		)
@@ -398,34 +448,94 @@ def build_production_snapshot(
 			1 for lot in lots if lot.get("production_order") == ppo["name"]
 		)
 
-	total_inward_by_size = defaultdict(float)
+	ppo_inward_by_size = defaultdict(lambda: defaultdict(float))
+	ppo_lot_planned_by_size = defaultdict(lambda: defaultdict(float))
+	ppo_lot_wip_by_size = defaultdict(lambda: defaultdict(float))
+	ppo_over_inward_by_size = defaultdict(lambda: defaultdict(float))
+	ppo_cutting_by_size = defaultdict(lambda: defaultdict(float))
+	ppo_stitching_by_size = defaultdict(lambda: defaultdict(float))
+	ppo_packing_by_size = defaultdict(lambda: defaultdict(float))
 	for lot in lots:
+		production_order = lot.get("production_order")
+		if not production_order:
+			continue
 		for size_row in lot.get("size_rows") or []:
-			total_inward_by_size[
-				size_row.get("primary_attribute_value") or "Unspecified"
-			] += flt(size_row.get("inward_quantity"))
+			size = size_row.get("primary_attribute_value") or "Unspecified"
+			ppo_lot_planned_by_size[production_order][size] += flt(
+				size_row.get("planned_quantity")
+			)
+			ppo_inward_by_size[production_order][size] += flt(
+				size_row.get("inward_quantity")
+			)
+			ppo_lot_wip_by_size[production_order][size] += flt(
+				size_row.get("wip_quantity")
+			)
+			ppo_over_inward_by_size[production_order][size] += flt(
+				size_row.get("over_inward_quantity")
+			)
+			ppo_cutting_by_size[production_order][size] += flt(
+				size_row.get("cutting_quantity")
+			)
+			ppo_stitching_by_size[production_order][size] += flt(
+				size_row.get("stitching_quantity")
+			)
+			ppo_packing_by_size[production_order][size] += flt(
+				size_row.get("packing_quantity")
+			)
 
-	remaining_inward = dict(total_inward_by_size)
+	total_over_inward = 0.0
 	for ppo in ppo_map.values():
+		remaining_inward = dict(ppo_inward_by_size.get(ppo["name"], {}))
+		remaining_lot_planned = dict(
+			ppo_lot_planned_by_size.get(ppo["name"], {})
+		)
+		remaining_lot_wip = dict(ppo_lot_wip_by_size.get(ppo["name"], {}))
+		remaining_over_inward = dict(
+			ppo_over_inward_by_size.get(ppo["name"], {})
+		)
+		remaining_cutting = dict(ppo_cutting_by_size.get(ppo["name"], {}))
+		remaining_stitching = dict(
+			ppo_stitching_by_size.get(ppo["name"], {})
+		)
+		remaining_packing = dict(ppo_packing_by_size.get(ppo["name"], {}))
 		for detail in ppo["details"]:
 			size = _size_key(detail.get("item_variant"), variant_attributes)
-			planned = flt(detail.get("quantity"))
-			available_inward = flt(remaining_inward.get(size))
-			inward = min(planned, available_inward)
-			detail["inward_quantity"] = inward
-			detail["wip_quantity"] = max(planned - inward, 0.0)
-			remaining_inward[size] = max(available_inward - inward, 0.0)
+			detail["lot_planned_quantity"] = flt(
+				remaining_lot_planned.pop(size, 0)
+			)
+			detail["inward_quantity"] = flt(remaining_inward.pop(size, 0))
+			detail["wip_quantity"] = flt(remaining_lot_wip.pop(size, 0))
+			detail["over_inward_quantity"] = flt(
+				remaining_over_inward.pop(size, 0)
+			)
+			detail["cutting_quantity"] = flt(remaining_cutting.pop(size, 0))
+			detail["stitching_quantity"] = flt(
+				remaining_stitching.pop(size, 0)
+			)
+			detail["packing_quantity"] = flt(remaining_packing.pop(size, 0))
+		ppo["planned_quantity"] = sum(
+			flt(detail.get("lot_planned_quantity")) for detail in ppo["details"]
+		)
 		ppo["inward_quantity"] = sum(
 			flt(detail.get("inward_quantity")) for detail in ppo["details"]
 		)
 		ppo["wip_quantity"] = sum(
 			flt(detail.get("wip_quantity")) for detail in ppo["details"]
 		)
-		ppo["over_inward_quantity"] = 0.0
-
-	over_inward_quantity = sum(
-		flt(quantity) for quantity in remaining_inward.values()
-	)
+		ppo["cutting_quantity"] = sum(
+			flt(detail.get("cutting_quantity")) for detail in ppo["details"]
+		)
+		ppo["stitching_quantity"] = sum(
+			flt(detail.get("stitching_quantity")) for detail in ppo["details"]
+		)
+		ppo["packing_quantity"] = sum(
+			flt(detail.get("packing_quantity")) for detail in ppo["details"]
+		)
+		ppo["over_inward_quantity"] = sum(
+			flt(detail.get("over_inward_quantity")) for detail in ppo["details"]
+		)
+		ppo["production_stage"] = _production_stage(ppo)
+		total_over_inward += ppo["over_inward_quantity"]
 
 	stock_rows = {}
 	for item_variant, row in (stock or {}).items():
@@ -452,7 +562,7 @@ def build_production_snapshot(
 		"wip_quantity": sum(
 			ppo["wip_quantity"] for ppo in ppo_map.values()
 		),
-		"over_inward_quantity": over_inward_quantity,
+		"over_inward_quantity": total_over_inward,
 	}
 
 	return {
@@ -598,6 +708,33 @@ def _fetch_lot_rows(ppo_names, selected_lots):
 	return query.run(as_dict=True)
 
 
+def _fetch_lot_stage_rows(lot_names):
+	if not lot_names:
+		return []
+
+	stage = frappe.qb.DocType("Lot Order Detail")
+	item_variant = frappe.qb.DocType("Item Variant")
+
+	return (
+		frappe.qb.from_(stage)
+		.left_join(item_variant)
+		.on(item_variant.name == stage.item_variant)
+		.select(
+			stage.parent.as_("lot"),
+			stage.item_variant,
+			stage.quantity,
+			stage.cut_qty,
+			stage.stich_qty,
+			stage.pack_qty,
+			stage.idx,
+			item_variant.item,
+		)
+		.where(stage.parent.isin(lot_names))
+		.orderby(stage.parent)
+		.orderby(stage.idx)
+	).run(as_dict=True)
+
+
 def _fetch_inward_lot_names(item, start_date, end_date):
 	"""Seed lots from submitted FG entries for the selected item/date range."""
 	stock_entry = frappe.qb.DocType("FG Stock Entry")
@@ -651,42 +788,31 @@ def _fetch_transferred_lot_rows(source_lot_names):
 	).run(as_dict=True)
 
 
-def _fetch_inward_rows(lot_names, start_date, end_date):
+def _fetch_inward_rows(lot_names):
+	"""Fetch every submitted inward row for the lots seeded by the date filter."""
 	if not lot_names:
 		return []
 
 	stock_entry = frappe.qb.DocType("FG Stock Entry")
 	detail = frappe.qb.DocType("FG Stock Entry Detail")
 	item_variant = frappe.qb.DocType("Item Variant")
-	box_uom = frappe.qb.DocType("UOM Conversion Detail").as_("box_uom")
-
 	return (
 		frappe.qb.from_(detail)
 		.join(stock_entry)
 		.on(stock_entry.name == detail.parent)
 		.left_join(item_variant)
 		.on(item_variant.name == detail.item_variant)
-		.left_join(box_uom)
-		.on(
-			(box_uom.parent == item_variant.item)
-			& (box_uom.uom == "Box")
-		)
 		.select(
 			detail.lot,
 			detail.item_variant,
 			detail.qty.as_("inward_quantity"),
 			detail.uom,
-			detail.stock_qty,
-			detail.stock_uom,
-			detail.conversion_factor,
-			box_uom.conversion_factor.as_("box_conversion_factor"),
 			stock_entry.name.as_("stock_entry"),
 			stock_entry.posting_date,
 			stock_entry.warehouse,
 			item_variant.item,
 		)
 		.where(stock_entry.docstatus == 1)
-		.where(stock_entry.posting_date.between(start_date, end_date))
 		.where(detail.lot.isin(lot_names))
 		.orderby(stock_entry.posting_date)
 		.orderby(stock_entry.name)
@@ -734,34 +860,21 @@ def _merge_column_order(preferred, observed):
 	return columns
 
 
-def _inward_quantity_in_boxes(row):
-	"""Return an FG inward row in boxes, or a warning when it cannot be converted."""
-	source_uom = str(row.get("uom") or "").strip()
-	if source_uom.lower() in {"box", "boxes"}:
-		return flt(row.get("inward_quantity")), None
+def _stage_quantities(row):
+	"""Return Lot Order Detail process quantities, which are stored in boxes."""
+	return {
+		"cutting_quantity": flt(row.get("cut_qty")),
+		"stitching_quantity": flt(row.get("stich_qty")),
+		"packing_quantity": flt(row.get("pack_qty")),
+	}
 
-	stock_uom = str(row.get("stock_uom") or "").strip()
-	stock_quantity = row.get("stock_qty")
-	if stock_quantity is None:
-		stock_quantity = (
-			flt(row.get("inward_quantity"))
-			* flt(row.get("conversion_factor") or 1)
-		)
-	stock_quantity = flt(stock_quantity)
 
-	if stock_uom.lower() in {"box", "boxes"}:
-		return stock_quantity, None
-
-	box_factor = flt(row.get("box_conversion_factor"))
-	if box_factor:
-		return stock_quantity / box_factor, None
-
-	item_variant_name = row.get("item_variant") or "Unknown item variant"
-	return None, (
-		f"FG inward UOM conversion is missing for {item_variant_name}: "
-		f"{source_uom or stock_uom or 'Unknown UOM'} to Box. "
-		"The affected inward row was excluded."
-	)
+def _production_stage(row):
+	if flt(row.get("stitching_quantity")) > 0:
+		return "Packing"
+	if flt(row.get("cutting_quantity")) > 0:
+		return "Stitching"
+	return "Cutting"
 
 
 def _validate_filters(

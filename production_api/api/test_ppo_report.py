@@ -3,7 +3,7 @@ from unittest import TestCase
 
 from production_api.api.ppo_report import (
 	_empty_snapshot,
-	_inward_quantity_in_boxes,
+	_production_stage,
 	_validate_filters,
 	build_production_snapshot,
 )
@@ -53,6 +53,20 @@ class TestPPOReportSnapshot(TestCase):
 		)
 		self.assertIn("GYM VEST", result["empty_state"]["message"])
 		self.assertIn("open or pending", result["empty_state"]["message"])
+
+	def test_derives_cutting_stitching_and_packing_stages(self):
+		self.assertEqual(_production_stage({}), "Cutting")
+		self.assertEqual(
+			_production_stage({"cutting_quantity": 10}),
+			"Stitching",
+		)
+		self.assertEqual(
+			_production_stage({
+				"cutting_quantity": 10,
+				"stitching_quantity": 5,
+			}),
+			"Packing",
+		)
 
 	def test_handles_multiple_lots_and_mismatched_inward_items(self):
 		result = build_production_snapshot(
@@ -148,7 +162,7 @@ class TestPPOReportSnapshot(TestCase):
 		self.assertEqual(lot_one["size_rows"][0]["inward_quantity"], 105)
 		self.assertEqual(lot_one["size_rows"][0]["wip_quantity"], 15)
 
-	def test_wip_uses_total_ppo_and_all_inward_for_the_related_lots(self):
+	def test_wip_uses_lot_plan_not_ppo_projection(self):
 		result = build_production_snapshot(
 			filters={"item": "GYM VEST"},
 			ppo_rows=[
@@ -204,8 +218,79 @@ class TestPPOReportSnapshot(TestCase):
 
 		self.assertEqual(result["summary"]["ppo_quantity"], 100)
 		self.assertEqual(result["summary"]["inward_quantity"], 70)
-		self.assertEqual(result["summary"]["wip_quantity"], 30)
-		self.assertEqual(result["summary"]["over_inward_quantity"], 0)
+		self.assertEqual(result["summary"]["wip_quantity"], 0)
+		self.assertEqual(result["summary"]["over_inward_quantity"], 30)
+		self.assertEqual(result["ppos"][0]["inward_quantity"], 0)
+		self.assertEqual(result["ppos"][0]["planned_quantity"], 0)
+		self.assertEqual(result["ppos"][1]["planned_quantity"], 40)
+		self.assertEqual(result["ppos"][1]["inward_quantity"], 70)
+
+	def test_uses_lot_cutting_and_stitching_box_quantities(self):
+		result = build_production_snapshot(
+			filters={"item": "GYM VEST"},
+			ppo_rows=[
+				row(
+					name="PPO-1",
+					item="GYM VEST",
+					delivery_date="2026-07-01",
+					item_variant="GYM VEST-S",
+					quantity=100,
+				)
+			],
+			lot_rows=[
+				row(
+					lot="LOT-1",
+					production_order="PPO-1",
+					lot_item="GYM VEST",
+					status="Open",
+					has_transferred=0,
+					is_transferred=0,
+					transferred_lot=None,
+					packing_combo=10,
+					uom="Box",
+					packing_uom="Pieces",
+					item="GYM VEST",
+					item_variant="GYM VEST-S",
+					planned_quantity=100,
+				)
+			],
+			stage_rows=[
+				row(
+					lot="LOT-1",
+					item="GYM VEST",
+					item_variant="GYM VEST-S",
+					cut_qty=800,
+					stich_qty=500,
+					pack_qty=200,
+				)
+			],
+			inward_rows=[
+				row(
+					lot="LOT-1",
+					item="GYM VEST",
+					item_variant="GYM VEST-S",
+					inward_quantity=40,
+					uom="Box",
+					stock_entry="FG-1",
+					posting_date="2026-07-10",
+					warehouse="FG",
+				)
+			],
+			stock={},
+			warehouses=[],
+			variant_attributes={"GYM VEST-S": "S"},
+			column_order=["S"],
+		)
+
+		lot = result["lots"][0]
+		ppo = result["ppos"][0]
+		self.assertEqual(lot["cutting_quantity"], 800)
+		self.assertEqual(lot["stitching_quantity"], 500)
+		self.assertEqual(lot["packing_quantity"], 200)
+		self.assertEqual(lot["production_stage"], "Packing")
+		self.assertEqual(ppo["inward_quantity"], 40)
+		self.assertEqual(ppo["wip_quantity"], 60)
+		self.assertEqual(ppo["cutting_quantity"], 800)
 
 	def test_subtracts_transferred_lot_quantities_by_size(self):
 		result = build_production_snapshot(
@@ -310,62 +395,3 @@ class TestPPOReportSnapshot(TestCase):
 		item = result["lots"][0]["items"][0]
 		self.assertEqual(item["wip_quantity"], 0)
 		self.assertEqual(item["over_inward_quantity"], 2)
-
-	def test_converts_piece_inward_to_boxes(self):
-		quantity, warning = _inward_quantity_in_boxes(
-			row(
-				item_variant="ITEM-A",
-				inward_quantity=25,
-				uom="Pieces",
-				stock_qty=25,
-				stock_uom="Pieces",
-				conversion_factor=1,
-				box_conversion_factor=5,
-			)
-		)
-
-		self.assertEqual(quantity, 5)
-		self.assertIsNone(warning)
-
-	def test_excludes_inward_when_box_conversion_is_missing(self):
-		result = build_production_snapshot(
-			filters={"item": "ITEM"},
-			ppo_rows=[],
-			lot_rows=[
-				row(
-					lot="LOT-1",
-					production_order=None,
-					lot_item="ITEM",
-					status="Open",
-					is_transferred=0,
-					transferred_lot=None,
-					item="ITEM",
-					item_variant="ITEM-A",
-					planned_quantity=10,
-				)
-			],
-			inward_rows=[
-				row(
-					lot="LOT-1",
-					item="ITEM",
-					item_variant="ITEM-A",
-					inward_quantity=25,
-					uom="Pieces",
-					stock_qty=25,
-					stock_uom="Pieces",
-					conversion_factor=1,
-					box_conversion_factor=None,
-					stock_entry="FG-1",
-					posting_date="2026-07-20",
-					warehouse="FG",
-				)
-			],
-			stock={},
-			warehouses=[],
-		)
-
-		item = result["lots"][0]["items"][0]
-		self.assertEqual(item["inward_quantity"], 0)
-		self.assertEqual(item["wip_quantity"], 10)
-		self.assertEqual(len(result["warnings"]), 1)
-		self.assertIn("Pieces to Box", result["warnings"][0])
