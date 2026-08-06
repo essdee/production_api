@@ -87,3 +87,7 @@ production_api.patches.v1_0.backfill_wo_grn_valuation #2
 production_api.patches.v1_0.set_production_order_status_open
 production_api.patches.v1_0.add_ppo_report_indexes
 production_api.patches.v1_0.sync_linked_lot_quantities
+production_api.patches.v1_0.remove_work_order_pending_report_page
+production_api.patches.v1_0.add_work_order_pending_report_workspace_link
+production_api.patches.v1_0.backfill_ppo_quantity_transfer_history
+production_api.patches.v1_0.remove_ppo_quantity_transfer_comment_logs

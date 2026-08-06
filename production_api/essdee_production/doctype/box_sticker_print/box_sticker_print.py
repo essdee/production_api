@@ -10,6 +10,7 @@ from six import string_types
 
 class BoxStickerPrint(Document):
 	def before_validate(self):
+		self.apply_linked_lot_prices()
 		sum = 0
 		has_allow_excess = False
 		for item in self.box_sticker_print_details:
@@ -19,10 +20,37 @@ class BoxStickerPrint(Document):
 		if sum == 0 and not has_allow_excess:
 			frappe.throw("Enter the quantity")	
 
+	def apply_linked_lot_prices(self):
+		if not self.lot:
+			return
+		production_order = frappe.db.get_value("Lot", self.lot, "production_order")
+		if not production_order:
+			return
+		from production_api.production_api.doctype.production_order.production_order import lock_production_orders
+		lock_production_orders(production_order)
+		from production_api.lot_pricing import get_effective_lot_price_map
+		price_map = get_effective_lot_price_map(self.lot, production_order, for_update=True)
+		for item in self.box_sticker_print_details:
+			mrp = price_map.get(item.size)
+			if mrp is None or float(mrp) <= 0:
+				frappe.throw(f"MRP is missing for Lot {self.lot}, size {item.size}")
+			item.mrp = mrp
+
 @frappe.whitelist()
-def get_fg_details(fg_item):
+def get_fg_details(fg_item, lot=None):
 	sizes, mrp = frappe.get_value("FG Item Master",fg_item,['available_sizes','mrp'])
-	sizes = sizes.split(",")
+	sizes = (sizes or "").split(",")
+	if lot and frappe.db.get_value("Lot", lot, "production_order"):
+		from production_api.lot_pricing import get_effective_lot_price_map
+		price_map = get_effective_lot_price_map(lot)
+		for size in price_map:
+			if size not in sizes:
+				sizes.append(size)
+		return [
+			{"size": size, "mrp": price_map.get(size)}
+			for size in sizes
+			if size
+		]
 	fg_data = []
 	if mrp is None or mrp == "":
 		box_print_list = frappe.get_list("Box Sticker Print",filters= {"fg_item":fg_item}, order_by='creation desc',pluck='name',limit=1)
@@ -49,6 +77,12 @@ def get_fg_details(fg_item):
 @frappe.whitelist()
 def get_print_format(doc, print_items, printer_type):
 	doc = frappe.get_doc("Box Sticker Print", doc)
+	if doc.docstatus != 1:
+		frappe.throw("Submit the Box Sticker Print before printing")
+	production_order = frappe.db.get_value("Lot", doc.lot, "production_order")
+	if production_order:
+		from production_api.production_api.doctype.production_order.production_order import lock_production_orders
+		lock_production_orders(production_order)
 	fg_item = doc.fg_item
 
 	print_format_doc = frappe.get_doc("Essdee Raw Print Format", doc.print_format)
@@ -65,9 +99,24 @@ def get_print_format(doc, print_items, printer_type):
 	if isinstance(print_items, string_types):
 		print_items = json.loads(print_items)
 	
-	templates = ""
+	prepared_items = []
 	for item in print_items:
-		print_qty, qty , allow_excess, allow_excess_percent= frappe.get_value('Box Sticker Print Detail',item['doc_name'],['printed_quantity','quantity','allow_excess_quantity','allow_excess_percentage'])
+		row = frappe.db.sql(
+			"""
+			SELECT detail.parent, detail.size, detail.mrp, detail.printed_quantity,
+				detail.quantity, detail.allow_excess_quantity, detail.allow_excess_percentage
+			FROM `tabBox Sticker Print Detail` detail
+			WHERE detail.name = %s
+			FOR UPDATE
+			""",
+			(item['doc_name'],),
+			as_dict=True,
+		)
+		if not row or row[0].parent != doc.name:
+			frappe.throw("Invalid Box Sticker Print detail")
+		row = row[0]
+		print_qty, qty = row.printed_quantity, row.quantity
+		allow_excess, allow_excess_percent = row.allow_excess_quantity, row.allow_excess_percentage
 		check_print_qty = int(print_qty) + int(item['quantity'])
 		
 		if check_print_qty > qty and not allow_excess:
@@ -75,19 +124,21 @@ def get_print_format(doc, print_items, printer_type):
 				allowed_qty = int(math.ceil((qty/100) * allow_excess_percent))
 				qty = allowed_qty + qty
 				if check_print_qty > qty:
-					frappe.msgprint("Not applicable to print more than the required quantity")
-					return None
+					frappe.throw("Not applicable to print more than the required quantity")
 			else:
-				frappe.msgprint("Not applicable to print more than the required quantity")
-				return None
+				frappe.throw("Not applicable to print more than the required quantity")
 		
 		print_quantity = int(math.ceil(int(item['quantity']) / int(label_count)))
+		item['size'] = row.size
+		item['mrp'] = row.mrp
 		if doc.size and len(doc.size) > 0:
 			item['size'] = doc.size
+		prepared_items.append((item, print_qty, print_quantity))
+
+	templates = ""
+	for item, print_qty, print_quantity in prepared_items:
 		templates += get_template(doc, item, raw_code, label_count, fg_item)
-	
 		frappe.db.set_value('Box Sticker Print Detail',item['doc_name'],'printed_quantity',print_qty + (print_quantity * label_count))
-		frappe.db.commit()
 	
 	return templates
 
@@ -122,11 +173,35 @@ def override_print_quantity(print_items, print_format):
 	if isinstance(print_items, string_types):
 		print_items = json.loads(print_items)
 	label_count = frappe.get_value("Essdee Raw Print Format", print_format,'labels_per_row')
-	for item in print_items:
+	parent_rows = frappe.get_all(
+		"Box Sticker Print Detail",
+		filters={"name": ["in", [item["doc_name"] for item in print_items]]},
+		fields=["name", "parent"],
+	)
+	parents = frappe.get_all(
+		"Box Sticker Print",
+		filters={"name": ["in", [row.parent for row in parent_rows]]},
+		fields=["name", "lot"],
+	)
+	production_orders = {
+		frappe.db.get_value("Lot", row.lot, "production_order") for row in parents
+	}
+	production_orders.discard(None)
+	if production_orders:
+		from production_api.production_api.doctype.production_order.production_order import lock_production_orders
+		lock_production_orders(*production_orders)
+	for item in sorted(print_items, key=lambda value: value["doc_name"]):
 		print_quantity = int(math.ceil(int(item['quantity']) / int(label_count)))
-		print_qty = frappe.get_value('Box Sticker Print Detail',item['doc_name'],'printed_quantity')
-		frappe.db.set_value('Box Sticker Print Detail',item['doc_name'],'printed_quantity',int(print_qty)- (print_quantity*label_count))
-		frappe.db.commit()
+		row = frappe.db.sql(
+			"SELECT printed_quantity FROM `tabBox Sticker Print Detail` WHERE name = %s FOR UPDATE",
+			(item['doc_name'],),
+		)
+		if not row:
+			frappe.throw("Invalid Box Sticker Print detail")
+		new_quantity = int(row[0][0]) - (print_quantity * label_count)
+		if new_quantity < 0:
+			frappe.throw("Printed quantity cannot be negative")
+		frappe.db.set_value('Box Sticker Print Detail',item['doc_name'],'printed_quantity',new_quantity)
 
 @frappe.whitelist()
 def get_raw_code(doc_name):

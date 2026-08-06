@@ -12,6 +12,9 @@ class MRPSettings(Document):
 		if self.fiscal_year_start_date and self.fiscal_year_end_date:
 			if self.fiscal_year_end_date < self.fiscal_year_start_date:
 				frappe.throw("Please set the fiscal year start and end date correctly")
+		roles = [row.role for row in self.production_order_action_roles]
+		if len(roles) != len(set(roles)):
+			frappe.throw("Production Order Action Roles cannot contain duplicate roles")
 
 def post_erp_request(endpoint: str, data: dict) -> Response:
 	config = frappe.get_single('MRP Settings')

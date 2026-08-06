@@ -16,11 +16,15 @@ frappe.ui.form.on("Production Order", {
     const is_submitted = frm.doc.docstatus == 1;
     frm.set_df_property("delivery_date", "read_only", is_submitted);
     frm.set_df_property("dont_deliver_after", "read_only", is_submitted);
+    setup_ppo_approval_actions(frm);
+    const can_manage_production_order = Boolean(
+      (frm.doc.__onload || {}).can_manage_production_order
+    );
 
     if (frm.doc.docstatus == 1) {
       const has_transfer_marker = !!frappe.meta.has_field(
         "Production Order",
-        "transferred_to_ppo",
+        "transferred_to_ppo"
       );
       const is_transferred =
         has_transfer_marker && !!frm.doc.transferred_to_ppo;
@@ -32,181 +36,199 @@ frappe.ui.form.on("Production Order", {
         (frm.doc.__onload || {}).incoming_quantity_transfer_request || {};
       const has_pending_incoming_transfer =
         !!frm.doc.incoming_quantity_transfer_request;
-      const is_status_change_locked = ["Item Changed", "Not Processed"].includes(
-        frm.doc.status,
+      const is_status_change_locked = [
+        "Item Changed",
+        "Not Processed",
+      ].includes(frm.doc.status);
+      const has_linked_lot = Boolean(
+        ((frm.doc.__onload || {}).linked_lots || []).length
       );
 
-      frm.add_custom_button("Update Price", () => {
-        let d = new frappe.ui.Dialog({
-          title: "Update Price",
-          size: "extra-large",
-          fields: [
-            {
-              fieldname: "price_html",
-              fieldtype: "HTML",
-            },
-          ],
-          primary_action: function () {
-            let res = frm.pop_up.get_data();
-            frappe.call({
-              method:
-                "production_api.production_api.doctype.production_order.production_order.update_price",
-              args: {
-                production_order: frm.doc.name,
-                item_details: res,
-              },
-              callback: function (response) {
-                frm.reload_doc();
-                frappe.show_alert({
-                message: __("Price update completed"),
-                indicator: "green",
-                  });
-              },
-            });
-            d.hide();
-          },
-        });
-        frm.pop_up = new frappe.production.ui.UpdatePrice(
-          d.fields_dict.price_html.$wrapper,
-        );
-        frappe.call({
-          method:
-            "production_api.production_api.doctype.production_order.production_order.get_price_update_context",
-          args: {
-            production_order: frm.doc.name,
-          },
-          callback: function (response) {
-            frm.pop_up.load_data(response.message || {});
-            d.show();
-          },
-        });
-      });
-
-      frm.add_custom_button("Change Dates", () => {
-        const get_current_date = () =>
-          d.get_value("date_field") == "Don't Deliver After"
-            ? frm.doc.dont_deliver_after
-            : frm.doc.delivery_date;
-        let d = new frappe.ui.Dialog({
-          title: "Change Production Order Date",
-          fields: [
-            {
-              fieldname: "date_field",
-              fieldtype: "Select",
-              label: "Date to Change",
-              options: "Delivery Date\nDon't Deliver After",
-              default: "Delivery Date",
-              reqd: 1,
-              onchange: function () {
-                let current_date = get_current_date();
-                d.set_value("old_date", current_date);
-                d.set_value("new_date", current_date);
-              },
-            },
-            {
-              fieldname: "old_date",
-              fieldtype: "Date",
-              label: "Old Date",
-              default: frm.doc.delivery_date,
-              read_only: 1,
-            },
-            {
-              fieldname: "new_date",
-              fieldtype: "Date",
-              label: "New Date",
-              default: frm.doc.delivery_date,
-              reqd: 1,
-            },
-            {
-              fieldname: "reason",
-              fieldtype: "Small Text",
-              label: "Reason",
-              reqd: 1,
-            },
-          ],
-          primary_action_label: "Update",
-          primary_action: function () {
-            let values = d.get_values();
-            if (!values) return;
-
-            frappe.call({
-              method:
-                "production_api.production_api.doctype.production_order.production_order.update_production_order_date",
-              args: {
-                production_order: frm.doc.name,
-                date_field: values.date_field,
-                new_date: values.new_date,
-                reason: values.reason,
-              },
-              callback: function () {
-                d.hide();
-                frm.reload_doc();
-                frappe.show_alert({
-                  message: __("Date change tracked"),
-                  indicator: "green",
-                });
-              },
-            });
-          },
-        });
-        d.show();
-      }, "Change");
-
-      if (
-        !is_transferred &&
-        !has_pending_change_request &&
-        !has_pending_incoming_transfer &&
-        !is_status_change_locked
-      ) {
-        frm.add_custom_button("Change Status", () => {
+      if (can_manage_production_order) {
+        frm.add_custom_button("Update Price", () => {
           let d = new frappe.ui.Dialog({
-            title: "Change Production Order Status",
+            title: "Update Price",
+            size: "extra-large",
             fields: [
               {
-                fieldname: "new_status",
-                fieldtype: "Select",
-                label: "New Status",
-                options: "Open\nItem Changed\nNot Processed",
-                default: frm.doc.status,
-                reqd: 1,
-              },
-              {
-                fieldname: "reason",
-                fieldtype: "Small Text",
-                label: "Reason",
-                reqd: 1,
+                fieldname: "price_html",
+                fieldtype: "HTML",
               },
             ],
-            primary_action_label: "Update",
             primary_action: function () {
-              let values = d.get_values();
-              if (!values) return;
-
+              let res = frm.pop_up.get_data();
               frappe.call({
                 method:
-                  "production_api.production_api.doctype.production_order.production_order.change_status",
+                  "production_api.production_api.doctype.production_order.production_order.update_price",
                 args: {
                   production_order: frm.doc.name,
-                  new_status: values.new_status,
-                  reason: values.reason,
+                  item_details: res,
                 },
-                callback: function (r) {
+                callback: function (response) {
                   d.hide();
                   frm.reload_doc();
-                  const approval_required =
-                    (r.message || {}).approval_required;
                   frappe.show_alert({
-                    message: approval_required
-                      ? __("Status change sent for approval")
-                      : __("Status updated"),
-                    indicator: approval_required ? "orange" : "green",
+                    message: __("Price update completed"),
+                    indicator: "green",
                   });
                 },
               });
             },
           });
-          d.show();
-        }, "Change");
+          frm.pop_up = new frappe.production.ui.UpdatePrice(
+            d.fields_dict.price_html.$wrapper
+          );
+          frappe.call({
+            method:
+              "production_api.production_api.doctype.production_order.production_order.get_price_update_context",
+            args: {
+              production_order: frm.doc.name,
+            },
+            callback: function (response) {
+              frm.pop_up.load_data(response.message || {});
+              d.show();
+            },
+          });
+        });
+      }
+
+      if (can_manage_production_order) {
+        frm.add_custom_button(
+          "Change Dates",
+          () => {
+            const get_current_date = () =>
+              d.get_value("date_field") == "Don't Deliver After"
+                ? frm.doc.dont_deliver_after
+                : frm.doc.delivery_date;
+            let d = new frappe.ui.Dialog({
+              title: "Change Production Order Date",
+              fields: [
+                {
+                  fieldname: "date_field",
+                  fieldtype: "Select",
+                  label: "Date to Change",
+                  options: "Delivery Date\nDon't Deliver After",
+                  default: "Delivery Date",
+                  reqd: 1,
+                  onchange: function () {
+                    let current_date = get_current_date();
+                    d.set_value("old_date", current_date);
+                    d.set_value("new_date", current_date);
+                  },
+                },
+                {
+                  fieldname: "old_date",
+                  fieldtype: "Date",
+                  label: "Old Date",
+                  default: frm.doc.delivery_date,
+                  read_only: 1,
+                },
+                {
+                  fieldname: "new_date",
+                  fieldtype: "Date",
+                  label: "New Date",
+                  default: frm.doc.delivery_date,
+                  reqd: 1,
+                },
+                {
+                  fieldname: "reason",
+                  fieldtype: "Small Text",
+                  label: "Reason",
+                  reqd: 1,
+                },
+              ],
+              primary_action_label: "Update",
+              primary_action: function () {
+                let values = d.get_values();
+                if (!values) return;
+
+                frappe.call({
+                  method:
+                    "production_api.production_api.doctype.production_order.production_order.update_production_order_date",
+                  args: {
+                    production_order: frm.doc.name,
+                    date_field: values.date_field,
+                    new_date: values.new_date,
+                    reason: values.reason,
+                  },
+                  callback: function () {
+                    d.hide();
+                    frm.reload_doc();
+                    frappe.show_alert({
+                      message: __("Date change tracked"),
+                      indicator: "green",
+                    });
+                  },
+                });
+              },
+            });
+            d.show();
+          },
+          "Change"
+        );
+      }
+
+      if (
+        can_manage_production_order &&
+        !is_transferred &&
+        !has_pending_change_request &&
+        !has_pending_incoming_transfer &&
+        !is_status_change_locked &&
+        !has_linked_lot
+      ) {
+        frm.add_custom_button(
+          "Change Status",
+          () => {
+            let d = new frappe.ui.Dialog({
+              title: "Change Production Order Status",
+              fields: [
+                {
+                  fieldname: "new_status",
+                  fieldtype: "Select",
+                  label: "New Status",
+                  options: "Open\nItem Changed\nNot Processed",
+                  default: frm.doc.status,
+                  reqd: 1,
+                },
+                {
+                  fieldname: "reason",
+                  fieldtype: "Small Text",
+                  label: "Reason",
+                  reqd: 1,
+                },
+              ],
+              primary_action_label: "Update",
+              primary_action: function () {
+                let values = d.get_values();
+                if (!values) return;
+
+                frappe.call({
+                  method:
+                    "production_api.production_api.doctype.production_order.production_order.change_status",
+                  args: {
+                    production_order: frm.doc.name,
+                    new_status: values.new_status,
+                    reason: values.reason,
+                  },
+                  callback: function (r) {
+                    d.hide();
+                    frm.reload_doc();
+                    const approval_required = (r.message || {})
+                      .approval_required;
+                    frappe.show_alert({
+                      message: approval_required
+                        ? __("Status change sent for approval")
+                        : __("Status updated"),
+                      indicator: approval_required ? "orange" : "green",
+                    });
+                  },
+                });
+              },
+            });
+            d.show();
+          },
+          "Change"
+        );
       }
 
       if (
@@ -229,7 +251,7 @@ frappe.ui.form.on("Production Order", {
               show_approve_quantity_ratio_dialog(frm, request);
             }
           },
-          __("Change"),
+          __("Change")
         );
       }
 
@@ -242,18 +264,20 @@ frappe.ui.form.on("Production Order", {
           () => {
             show_approve_quantity_transfer_dialog(
               frm,
-              incoming_transfer_request,
+              incoming_transfer_request
             );
           },
-          __("Change"),
+          __("Change")
         );
       }
 
       // transferred_to_ppo ships with the doctype, so on a bench that has not migrated
       // yet the value reads as undefined and the one-shot guard would wave everyone
       // through - check the field exists before offering the button at all.
-      const alternative_items = (frm.doc.__onload || {}).alternative_items || [];
+      const alternative_items =
+        (frm.doc.__onload || {}).alternative_items || [];
       if (
+        can_manage_production_order &&
         has_transfer_marker &&
         !frm.doc.transferred_to_ppo &&
         !has_pending_incoming_transfer &&
@@ -266,11 +290,12 @@ frappe.ui.form.on("Production Order", {
           () => {
             show_transfer_quantity_dialog(frm, alternative_items);
           },
-          "Change",
+          "Change"
         );
       }
 
       if (
+        can_manage_production_order &&
         frm.doc.status === "Open" &&
         !is_transferred &&
         !has_pending_change_request &&
@@ -291,38 +316,44 @@ frappe.ui.form.on("Production Order", {
         });
       }
 
-      frm.add_custom_button("Create Lot", () => {
-        let d = new frappe.ui.Dialog({
-          title: "Create Lot",
-          fields: [
-            {
-              fieldname: "lot_name",
-              fieldtype: "Data",
-              label: "Lot Name",
-              reqd: 1,
-            },
-          ],
-          primary_action: function () {
-            let values = d.get_values();
-            if (!values) return;
+      if (can_manage_production_order) {
+        frm.add_custom_button(
+          "Create Lot",
+          () => {
+            let d = new frappe.ui.Dialog({
+              title: "Create Lot",
+              fields: [
+                {
+                  fieldname: "lot_name",
+                  fieldtype: "Data",
+                  label: "Lot Name",
+                  reqd: 1,
+                },
+              ],
+              primary_action: function () {
+                let values = d.get_values();
+                if (!values) return;
 
-            frappe.call({
-              method:
-                "production_api.production_api.doctype.production_order.production_order.create_lot",
-              args: {
-                production_order: frm.doc.name,
-                lot_name: values.lot_name,
-              },
-              callback: function (response) {
-                d.hide();
-                frappe.open_in_new_tab = true;
-                frappe.set_route("Form", "Lot", response.message);
+                frappe.call({
+                  method:
+                    "production_api.production_api.doctype.production_order.production_order.create_lot",
+                  args: {
+                    production_order: frm.doc.name,
+                    lot_name: values.lot_name,
+                  },
+                  callback: function (response) {
+                    d.hide();
+                    frappe.open_in_new_tab = true;
+                    frappe.set_route("Form", "Lot", response.message);
+                  },
+                });
               },
             });
+            d.show();
           },
-        });
-        d.show();
-      }, "Lot");
+          "Lot"
+        );
+      }
       if (!frappe.perm.has_perm("Production Order", 0, "submit")) {
         frm.set_df_property("comments", "read_only", true);
         frm.refresh_field("comments");
@@ -334,44 +365,50 @@ frappe.ui.form.on("Production Order", {
               "&name=" +
               encodeURIComponent(frm.doc.name) +
               "&format=Production Order" +
-              "&trigger_print=1",
+              "&trigger_print=1"
           ),
-          "_blank",
+          "_blank"
         );
       });
-      frm.add_custom_button("Link Lot", () => {
-        let d = new frappe.ui.Dialog({
-          title: "Link Lot",
-          fields: [
-            {
-              fieldname: "lot_name",
-              fieldtype: "Link",
-              label: "Lot Name",
-              reqd: 1,
-              options: "Lot",
-            },
-          ],
-          primary_action: function () {
-            let values = d.get_values();
-            if (!values) return;
+      if (can_manage_production_order) {
+        frm.add_custom_button(
+          "Link Lot",
+          () => {
+            let d = new frappe.ui.Dialog({
+              title: "Link Lot",
+              fields: [
+                {
+                  fieldname: "lot_name",
+                  fieldtype: "Link",
+                  label: "Lot Name",
+                  reqd: 1,
+                  options: "Lot",
+                },
+              ],
+              primary_action: function () {
+                let values = d.get_values();
+                if (!values) return;
 
-            frappe.call({
-              method:
-                "production_api.production_api.doctype.production_order.production_order.link_lot",
-              args: {
-                production_order: frm.doc.name,
-                lot_name: values.lot_name,
-              },
-              callback: function (response) {
-                d.hide();
-                frappe.open_in_new_tab = true;
-                frappe.set_route("Form", "Lot", values.lot_name);
+                frappe.call({
+                  method:
+                    "production_api.production_api.doctype.production_order.production_order.link_lot",
+                  args: {
+                    production_order: frm.doc.name,
+                    lot_name: values.lot_name,
+                  },
+                  callback: function (response) {
+                    d.hide();
+                    frappe.open_in_new_tab = true;
+                    frappe.set_route("Form", "Lot", values.lot_name);
+                  },
+                });
               },
             });
+            d.show();
           },
-        });
-        d.show();
-      }, "Lot");
+          "Lot"
+        );
+      }
     }
   },
   item(frm) {
@@ -387,6 +424,123 @@ frappe.ui.form.on("Production Order", {
   },
 });
 
+function setup_ppo_approval_actions(frm) {
+  if (frm.doc.docstatus !== 0 || frm.is_new()) return;
+
+  const onload = frm.doc.__onload || {};
+  const status = frm.doc.status || "Draft";
+  if (status === "PPO Request") {
+    // frm.disable_save();
+
+    if (onload.can_approve_ppo) {
+      const request = onload.ppo_approval_request || {};
+      const requester = request.requested_by
+        ? frappe.utils.escape_html(request.requested_by)
+        : __("the Sales team");
+      frm.add_custom_button(__("Approve & Submit PPO"), () => {
+        frappe.confirm(
+          __("Approve and submit this PPO requested by {0}?", [requester]),
+          () => {
+            frappe.call({
+              method:
+                "production_api.production_api.doctype.production_order.production_order.approve_ppo",
+              args: { production_order: frm.doc.name },
+              freeze: true,
+              freeze_message: __("Approving PPO..."),
+              callback: () => {
+                frappe.show_alert({
+                  message: __("PPO approved and submitted"),
+                  indicator: "green",
+                });
+                frm.reload_doc();
+              },
+            });
+          }
+        );
+      });
+
+      const request_changes_button = frm.add_custom_button(
+        __("Request Changes"),
+        () => {
+          const dialog = new frappe.ui.Dialog({
+            title: __("Request PPO Changes"),
+            fields: [
+              {
+                fieldname: "reason",
+                fieldtype: "Small Text",
+                label: __("Comment / Required Changes"),
+                reqd: 1,
+              },
+            ],
+            primary_action_label: __("Return to Sales"),
+            primary_action: (values) => {
+              if (!values) return;
+              frappe.call({
+                method:
+                  "production_api.production_api.doctype.production_order.production_order.request_ppo_changes",
+                args: {
+                  production_order: frm.doc.name,
+                  reason: values.reason,
+                },
+                freeze: true,
+                freeze_message: __("Returning PPO to Sales..."),
+                callback: () => {
+                  dialog.hide();
+                  frappe.show_alert({
+                    message: __("PPO returned to Sales for changes"),
+                    indicator: "orange",
+                  });
+                  frm.reload_doc();
+                },
+              });
+            },
+          });
+          dialog.show();
+        }
+      );
+      request_changes_button.addClass("btn-warning");
+    }
+    return;
+  }
+
+  if (status !== "Draft" || !onload.can_request_ppo_approval) return;
+
+  frm.add_custom_button(__("Request PPO Approval"), () => {
+    frappe.confirm(__("Send this Production Order for PPO approval?"), () => {
+      const send_request = () => {
+        frappe.call({
+          method:
+            "production_api.production_api.doctype.production_order.production_order.request_ppo_approval",
+          args: { production_order: frm.doc.name },
+          freeze: true,
+          freeze_message: __("Sending PPO approval request..."),
+          callback: () => {
+            frappe.show_alert({
+              message: __("PPO approval requested"),
+              indicator: "orange",
+            });
+            frm.reload_doc();
+          },
+        });
+      };
+
+      if (frm.is_dirty()) {
+        frm.save().then(send_request);
+      } else {
+        send_request();
+      }
+    });
+  });
+}
+
+function can_edit_ppo_ui(frm) {
+  return (
+    frm.doc.docstatus === 0 &&
+    frm.doc.status !== "PPO Request" &&
+    Boolean((frm.doc.__onload || {}).can_manage_production_order)
+  );
+}
+
 // Render a horizontal size grid into a dialog HTML field wrapper: sizes across
 // the top as a header row (with a leading "Size" corner cell), then one labeled
 // input row per entry in `rows`. Each row is
@@ -397,10 +551,10 @@ function build_horizontal_size_grid($wrapper, sizes, rows) {
   $wrapper.empty();
 
   const $container = $(
-    '<div class="po-size-grid-wrap" style="overflow-x:auto; margin-bottom:12px;"></div>',
+    '<div class="po-size-grid-wrap" style="overflow-x:auto; margin-bottom:12px;"></div>'
   );
   const $table = $(
-    '<table class="po-size-grid table table-bordered" style="margin-bottom:0; width:auto; min-width:100%;"></table>',
+    '<table class="po-size-grid table table-bordered" style="margin-bottom:0; width:auto; min-width:100%;"></table>'
   );
 
   const $thead = $("<thead></thead>");
@@ -488,7 +642,7 @@ function show_update_qty_ratio_dialog(frm, size_details) {
     const vals = read_size_grid_values(
       d.fields_dict.size_grid.$wrapper,
       "quantity",
-      cint,
+      cint
     );
     let total = 0;
     sizes.forEach((size) => {
@@ -505,7 +659,7 @@ function show_update_qty_ratio_dialog(frm, size_details) {
   });
   const initial_total = sizes.reduce(
     (total, size) => total + initial_qty[size],
-    0,
+    0
   );
 
   d = new frappe.ui.Dialog({
@@ -545,12 +699,12 @@ function show_update_qty_ratio_dialog(frm, size_details) {
       let size_quantities = read_size_grid_values(
         d.fields_dict.size_grid.$wrapper,
         "quantity",
-        cint,
+        cint
       );
       let size_ratios = read_size_grid_values(
         d.fields_dict.size_grid.$wrapper,
         "ratio",
-        flt,
+        flt
       );
 
       frappe.call({
@@ -604,12 +758,12 @@ function build_quantity_approval_preview($wrapper, request) {
   const sizes = Object.keys(requested_quantities).filter(
     (size) =>
       flt(original_quantities[size]) !== flt(requested_quantities[size]) ||
-      flt(original_ratios[size]) !== flt(requested_ratios[size]),
+      flt(original_ratios[size]) !== flt(requested_ratios[size])
   );
 
   $wrapper.empty();
   const $table = $(
-    '<table class="table table-bordered" style="margin-bottom:0;"></table>',
+    '<table class="table table-bordered" style="margin-bottom:0;"></table>'
   );
   const $head = $("<tr></tr>");
   [__("Size"), __("Quantity"), __("Ratio")].forEach((label) => {
@@ -623,22 +777,20 @@ function build_quantity_approval_preview($wrapper, request) {
       .text(
         display_value(original_quantities[size]) +
           " -> " +
-          display_value(requested_quantities[size]),
+          display_value(requested_quantities[size])
       )
       .appendTo($row);
     $("<td></td>")
       .text(
         display_value(original_ratios[size]) +
           " -> " +
-          display_value(requested_ratios[size]),
+          display_value(requested_ratios[size])
       )
       .appendTo($row);
     $body.append($row);
   });
   $table.append($("<thead></thead>").append($head)).append($body);
-  $wrapper.append(
-    $('<div style="overflow-x:auto;"></div>').append($table),
-  );
+  $wrapper.append($('<div style="overflow-x:auto;"></div>').append($table));
 }
 
 function show_approve_quantity_ratio_dialog(frm, request) {
@@ -705,7 +857,7 @@ function show_approve_quantity_ratio_dialog(frm, request) {
   });
   build_quantity_approval_preview(
     d.fields_dict.change_preview.$wrapper,
-    request,
+    request
   );
   d.show();
 }
@@ -785,10 +937,10 @@ function build_transfer_preview($wrapper, transfers) {
   $wrapper.empty();
 
   const $container = $(
-    '<div class="po-transfer-preview-wrap" style="overflow-x:auto; margin-bottom:12px;"></div>',
+    '<div class="po-transfer-preview-wrap" style="overflow-x:auto; margin-bottom:12px;"></div>'
   );
   const $table = $(
-    '<table class="po-transfer-preview table table-bordered" style="margin-bottom:0; width:auto; min-width:100%;"></table>',
+    '<table class="po-transfer-preview table table-bordered" style="margin-bottom:0; width:auto; min-width:100%;"></table>'
   );
 
   const $headRow = $("<tr></tr>");
@@ -831,8 +983,8 @@ function build_transfer_preview($wrapper, transfers) {
   $container.append($table);
   $container.append(
     $('<div class="text-muted" style="margin-top:6px;"></div>').text(
-      __("Total") + ": " + total,
-    ),
+      __("Total") + ": " + total
+    )
   );
   $wrapper.append($container);
 }
@@ -844,7 +996,7 @@ function build_transfer_approval_preview($wrapper, request) {
   $wrapper.empty();
 
   const $table = $(
-    '<table class="table table-bordered" style="margin-bottom:0;"></table>',
+    '<table class="table table-bordered" style="margin-bottom:0;"></table>'
   );
   const $head = $("<tr></tr>");
   [
@@ -863,13 +1015,13 @@ function build_transfer_approval_preview($wrapper, request) {
     $("<td></td>").text(size).appendTo($row);
     $("<td></td>").text(current).appendTo($row);
     $("<td></td>").text(transfer).appendTo($row);
-    $("<td></td>").text(current + transfer).appendTo($row);
+    $("<td></td>")
+      .text(current + transfer)
+      .appendTo($row);
     $body.append($row);
   });
   $table.append($("<thead></thead>").append($head)).append($body);
-  $wrapper.append(
-    $('<div style="overflow-x:auto;"></div>').append($table),
-  );
+  $wrapper.append($('<div style="overflow-x:auto;"></div>').append($table));
 }
 
 function show_approve_quantity_transfer_dialog(frm, request) {
@@ -952,7 +1104,7 @@ function show_approve_quantity_transfer_dialog(frm, request) {
   });
   build_transfer_approval_preview(
     d.fields_dict.transfer_preview.$wrapper,
-    request,
+    request
   );
   d.show();
 }
@@ -1046,7 +1198,7 @@ function render_production_order_editor(frm) {
   if (!frm.doc.item) return;
 
   frm.packed_item = new frappe.production.ui.ProductionOrder(
-    details_field.wrapper,
+    details_field.wrapper
   );
   frappe.call({
     method:
@@ -1061,7 +1213,7 @@ function render_production_order_editor(frm) {
       let context = response.message || {};
       frm.doc["item_details"] = JSON.stringify(context.items || {});
       if (frm.packed_item) {
-        frm.packed_item.load_data(context);
+        frm.packed_item.load_data(context, can_edit_ppo_ui(frm));
       }
     },
   });

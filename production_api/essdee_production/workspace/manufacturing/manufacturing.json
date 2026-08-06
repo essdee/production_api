@@ -302,16 +302,16 @@
   },
   {
    "hidden": 0,
-   "is_query_report": 0,
+   "is_query_report": 1,
    "label": "WO Pending Report",
    "link_count": 0,
-   "link_to": "work-order-pending-report",
-   "link_type": "Page",
+   "link_to": "Work Order Pending Report",
+   "link_type": "Report",
    "onboard": 0,
    "type": "Link"
   }
  ],
- "modified": "2026-07-30 11:17:13.259614",
+ "modified": "2026-08-05 15:34:46.774172",
  "modified_by": "Administrator",
  "module": "Essdee Production",
  "name": "Manufacturing",

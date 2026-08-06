@@ -1,8 +1,13 @@
+import json
+from pathlib import Path
 from unittest.mock import patch
 
 import frappe
 from frappe.tests.utils import FrappeTestCase
 
+from production_api.production_api.report.work_order_pending_report import (
+	work_order_pending_report as report,
+)
 from production_api.utils import get_work_order_pending_report
 
 
@@ -62,32 +67,112 @@ class TestWorkOrderPendingReport(FrappeTestCase):
 		with self.assertRaisesRegex(frappe.ValidationError, "both From Date and To Date"):
 			get_work_order_pending_report(from_date="2026-07-01")
 
-	def test_page_has_requested_filters_and_columns(self):
-		from pathlib import Path
+	def test_script_report_forwards_filters_and_returns_native_summary(self):
+		rows = [{
+			"delivered_qty": 10,
+			"received_qty": 4,
+			"pending_quantity": 6,
+		}]
+		filters = {
+			"production_order": ["PPO-TEST"],
+			"lot": ["LOT-TEST"],
+			"item": ["ITEM-TEST"],
+			"item_variant": ["VARIANT-TEST"],
+			"process": ["Sewing"],
+			"supplier": ["SUP-TEST"],
+			"from_date": "2026-07-01",
+			"to_date": "2026-07-31",
+			"status": "Open",
+		}
+		with patch.object(
+			report,
+			"get_work_order_pending_report",
+			return_value=rows,
+		) as get_data:
+			columns, data, _message, _chart, summary = report.execute(filters)
 
-		source = Path(
+		get_data.assert_called_once_with(**filters)
+		self.assertEqual(data, rows)
+		self.assertEqual(
+			[column["fieldname"] for column in columns],
+			[
+				"production_order",
+				"work_order",
+				"lot",
+				"process_name",
+				"supplier_name",
+				"item_name",
+				"item_variant",
+				"delivered_qty",
+				"received_qty",
+				"pending_quantity",
+			],
+		)
+		self.assertEqual(
+			[(row["label"], row["value"]) for row in summary],
+			[("Rows", 1), ("Delivered", 10.0), ("Received", 4.0), ("Diff", 6.0)],
+		)
+
+	def test_standard_report_replaces_page_and_keeps_all_filters(self):
+		report_dir = Path(
 			frappe.get_app_path(
 				"production_api",
-				"public",
-				"js",
-				"components",
-				"WorkOrderPendingReport.vue",
+				"production_api",
+				"report",
+				"work_order_pending_report",
 			)
-		).read_text()
+		)
+		metadata = json.loads(
+			(report_dir / "work_order_pending_report.json").read_text()
+		)
+		self.assertEqual(metadata["report_type"], "Script Report")
+		self.assertEqual(metadata["ref_doctype"], "Work Order")
+		self.assertEqual(metadata["add_total_row"], 1)
 
-		for label in (
-			"Production Order",
-			"WO",
-			"Lot",
-			"Process",
-			"Supplier",
-			"Item",
-			"Item Variant",
-			"Delivered",
-			"Received",
-			"Diff",
+		source = (report_dir / "work_order_pending_report.js").read_text()
+		for fieldname in (
+			"production_order",
+			"lot",
+			"item",
+			"item_variant",
+			"process",
+			"supplier",
+			"from_date",
+			"to_date",
+			"status",
 		):
-			self.assertIn(f">{label}<", source)
-		self.assertIn('"from_date"', source)
-		self.assertIn('"to_date"', source)
-		self.assertIn('"status"', source)
+			self.assertIn(f'"{fieldname}"', source)
+
+		page_dir = Path(
+			frappe.get_app_path(
+				"production_api",
+				"production_api",
+				"page",
+				"work_order_pending_report",
+			)
+		)
+		self.assertFalse(
+			(page_dir / "work_order_pending_report.json").exists()
+		)
+		self.assertFalse(
+			(page_dir / "work_order_pending_report.js").exists()
+		)
+
+		workspace_path = Path(
+			frappe.get_app_path(
+				"production_api",
+				"essdee_production",
+				"workspace",
+				"manufacturing",
+				"manufacturing.json",
+			)
+		)
+		workspace = json.loads(workspace_path.read_text())
+		links = [
+			link
+			for link in workspace["links"]
+			if link.get("link_to") == "Work Order Pending Report"
+		]
+		self.assertEqual(len(links), 1)
+		self.assertEqual(links[0]["link_type"], "Report")
+		self.assertEqual(links[0]["is_query_report"], 1)
