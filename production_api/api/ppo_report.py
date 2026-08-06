@@ -57,10 +57,6 @@ def get_ppo_production_snapshot(
 	if filters["lot"]:
 		seed_lots = [name for name in seed_lots if name == filters["lot"]]
 	lot_rows = _fetch_lot_rows(ppo_names, seed_lots)
-	ppo_rows = _filter_ppo_rows_for_lots(ppo_rows, lot_rows)
-	if not ppo_rows:
-		return _empty_snapshot(filters, warehouse_names)
-	ppo_names = list(dict.fromkeys(row.name for row in ppo_rows))
 	lot_names = list(
 		dict.fromkeys(row.lot for row in lot_rows if row.get("lot"))
 	)
@@ -439,14 +435,11 @@ def build_production_snapshot(
 				remaining_lot_planned.pop(size, 0)
 			)
 			planned = flt(detail.get("quantity"))
-			available_inward = flt(remaining_inward.get(size))
-			applied_inward = min(planned, available_inward)
-			detail["inward_quantity"] = applied_inward
-			detail["wip_quantity"] = max(planned - applied_inward, 0.0)
-			detail["over_inward_quantity"] = 0.0
-			remaining_inward[size] = max(
-				available_inward - applied_inward, 0.0
-			)
+			inward = flt(remaining_inward.pop(size, 0))
+			difference = planned - inward
+			detail["inward_quantity"] = inward
+			detail["wip_quantity"] = difference
+			detail["over_inward_quantity"] = max(-difference, 0.0)
 		ppo["planned_quantity"] = sum(
 			flt(detail.get("lot_planned_quantity")) for detail in ppo["details"]
 		)
@@ -454,12 +447,9 @@ def build_production_snapshot(
 			flt(quantity)
 			for quantity in ppo_inward_by_size.get(ppo["name"], {}).values()
 		)
-		ppo["wip_quantity"] = sum(
-			flt(detail.get("wip_quantity")) for detail in ppo["details"]
-		)
-		ppo["over_inward_quantity"] = sum(
-			flt(quantity) for quantity in remaining_inward.values()
-		)
+		net_wip = ppo["quantity"] - ppo["inward_quantity"]
+		ppo["wip_quantity"] = max(net_wip, 0.0)
+		ppo["over_inward_quantity"] = max(-net_wip, 0.0)
 		ppo["production_stage"] = _aggregate_production_stage(
 			lot.get("production_stage")
 			for lot in lots
@@ -639,16 +629,6 @@ def _fetch_lot_rows(ppo_names, selected_lots):
 		.orderby(lot_item.idx)
 	)
 	return query.run(as_dict=True)
-
-
-def _filter_ppo_rows_for_lots(ppo_rows, lot_rows):
-	"""Keep only open PPOs linked to the FG-inward seed lots."""
-	selected_ppo_names = {
-		row.production_order
-		for row in lot_rows
-		if row.get("production_order")
-	}
-	return [row for row in ppo_rows if row.name in selected_ppo_names]
 
 
 def _fetch_lot_stage_rows(lot_names):
