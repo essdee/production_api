@@ -1,5 +1,5 @@
 <template>
-	<div v-if="matrix" class="pwc-card">
+	<div v-if="matrix" ref="matrixRoot" class="pwc-card">
 		<div class="pwc-head">
 			<h4>Panel-wise consumption matrix</h4>
 			<div class="pwc-progress">{{ completeCount }} / {{ totalCount }} complete</div>
@@ -8,22 +8,53 @@
 		<div class="pwc-tabs">
 			<button
 				v-for="panel in matrix.panels"
-				:key="panel.panel_value"
+				:key="panel.group_id"
 				type="button"
 				class="pwc-tab"
-				:class="{ active: panel.panel_value === activePanel }"
-				@click="activePanel = panel.panel_value"
+				:class="{ active: panel.group_id === activePanel }"
+				@click="activePanel = panel.group_id"
 			>
 				{{ panel.panel_value }}
+			</button>
+		</div>
+
+		<div v-if="!locked && singletonPanels.length > 1" class="pwc-group-editor">
+			<strong>Group panels</strong>
+			<div class="pwc-group-options">
+				<label v-for="panel in singletonPanels" :key="panel">
+					<input v-model="selectedPanelValues" type="checkbox" :value="panel" />
+					<span>{{ panel }}</span>
+				</label>
+			</div>
+			<button
+				type="button"
+				class="pwc-apply-button"
+				:disabled="selectedPanelValues.length < 2"
+				@click="groupSelectedPanels"
+			>
+				Group selected
 			</button>
 		</div>
 
 		<div v-if="currentPanel" class="pwc-toolbar">
 			<div>
 				<strong>{{ currentPanel.panel_value }}</strong>
-				<span>{{ currentPanel.rows.length }} {{ matrix.attributes.primary }} rows</span>
+				<span>
+					{{ currentPanel.rows.length }} {{ matrix.attributes.primary }} rows
+					<template v-if="panelValuesFor(currentPanel).length > 1">
+						· totals split across {{ panelValuesFor(currentPanel).length }} panels
+					</template>
+				</span>
 			</div>
 			<div v-if="!locked" class="pwc-toolbar-actions">
+				<button
+					v-if="panelValuesFor(currentPanel).length > 1"
+					type="button"
+					class="pwc-copy-button"
+					@click="ungroupCurrentPanel"
+				>
+					Ungroup panels
+				</button>
 				<div v-if="otherPanels.length" class="pwc-panel-fetch">
 					<select
 						v-model="sourcePanelValue"
@@ -33,8 +64,8 @@
 						<option value="">Select panel</option>
 						<option
 							v-for="panel in otherPanels"
-							:key="panel.panel_value"
-							:value="panel.panel_value"
+							:key="panel.group_id"
+							:value="panel.group_id"
 						>
 							{{ panel.panel_value }}
 						</option>
@@ -66,27 +97,44 @@
 						<th class="pwc-primary">{{ matrix.attributes.primary }}</th>
 						<th v-for="packing in currentPackingValues" :key="packing">
 							{{ packing }}
-							<small>Dia · kg / piece</small>
+							<small>
+								Dia · {{ panelValuesFor(currentPanel).length > 1 ? "group kg / piece" : "kg / piece" }}
+							</small>
+							<button
+								v-if="!locked"
+								type="button"
+								class="pwc-column-fill-button"
+								@click="fillConsumptionColumn(packing)"
+							>
+								Fill column
+							</button>
 						</th>
 						<th v-if="!locked" class="pwc-action">Action</th>
 					</tr>
 				</thead>
 				<tbody>
 					<tr
-						v-for="row in currentPanel.rows"
+						v-for="(row, rowIndex) in currentPanel.rows"
 						:key="`${currentPanel.panel_value}::${row.primary_value}`"
 					>
 						<td class="pwc-primary-value">{{ row.primary_value }}</td>
-						<td v-for="packing in currentPackingValues" :key="packing">
+						<td v-for="(packing, packingIndex) in currentPackingValues" :key="packing">
 							<div v-if="!locked" class="pwc-cell">
-								<div v-dia-link="cellFor(row, packing)" class="pwc-dia-link"></div>
+								<div
+									v-dia-link="{ cell: cellFor(row, packing), rowIndex, packingIndex }"
+									class="pwc-dia-link"
+								></div>
 								<input
 									class="form-control input-sm pwc-input pwc-weight"
 									type="text"
 									inputmode="decimal"
+									:data-pwc-row="rowIndex"
+									:data-pwc-column="packingIndex"
+									data-pwc-field="weight"
 									:value="formatKg(cellFor(row, packing).weight)"
 									placeholder="0.0300"
 									@change="setWeight(row, packing, $event)"
+									@keydown="handleVerticalKeydown($event, rowIndex, packingIndex, 'weight')"
 								/>
 							</div>
 							<span v-else>
@@ -115,18 +163,26 @@
 import { computed, ref, watch } from "vue";
 
 const matrix = ref(null);
+const matrixRoot = ref(null);
 const activePanel = ref("");
 const sourcePanelValue = ref("");
+const selectedPanelValues = ref([]);
 const locked = ref(false);
 let diaControlSequence = 0;
 
 const currentPanel = computed(() =>
-	(matrix.value?.panels || []).find((panel) => panel.panel_value === activePanel.value)
+	(matrix.value?.panels || []).find((panel) => panel.group_id === activePanel.value)
 );
 const otherPanels = computed(() =>
 	(matrix.value?.panels || []).filter(
-		(panel) => panel.panel_value !== activePanel.value
+		(panel) => panel.group_id !== activePanel.value
 	)
+);
+const panelValuesFor = (panel) => panel?.panel_values || [panel?.panel_value].filter(Boolean);
+const singletonPanels = computed(() =>
+	(matrix.value?.panels || [])
+		.filter((panel) => panelValuesFor(panel).length === 1)
+		.map((panel) => panelValuesFor(panel)[0])
 );
 const packingValuesFor = (panel) =>
 	panel?.packing_values || matrix.value?.packing_values || [];
@@ -158,17 +214,37 @@ const completeCount = computed(() =>
 
 function load_data(payload, isLocked = false) {
 	matrix.value = payload?.matrix || null;
+	(matrix.value?.panels || []).forEach(normalizePanelGroup);
 	locked.value = Boolean(isLocked);
-	activePanel.value = matrix.value?.panels?.[0]?.panel_value || "";
+	activePanel.value = matrix.value?.panels?.[0]?.group_id || "";
 	sourcePanelValue.value = "";
+	selectedPanelValues.value = [];
 }
 
 watch(activePanel, () => {
 	sourcePanelValue.value = "";
 });
 
+function normalizePanelGroup(panel) {
+	panel.panel_values = panelValuesFor(panel);
+	panel.group_id ||= panel.panel_values.join("\u001f");
+	panel.panel_value = panel.panel_values.join(" + ");
+	return panel;
+}
+
 function markDirty() {
 	if (typeof cur_frm !== "undefined") cur_frm.dirty();
+}
+
+function refreshClothMappingMatrix() {
+	if (typeof cur_frm === "undefined" || !cur_frm.doc.enable_panel_wise_consumption_matrix) {
+		return;
+	}
+	if (cur_frm.panel_wise_cloth_mapping) {
+		cur_frm.doc.panel_wise_cloth_mapping_json =
+			cur_frm.panel_wise_cloth_mapping.get_data();
+	}
+	Promise.resolve(cur_frm.trigger("render_panel_wise_cloth_mapping")).catch(() => {});
 }
 
 function cellFor(row, packing) {
@@ -247,7 +323,22 @@ function bindDiaMenuPosition(el) {
 	};
 }
 
-function mountDiaLink(el, row) {
+function handleVerticalKeydown(event, rowIndex, packingIndex, fieldType) {
+	if (event.key !== "ArrowDown" || !(event.ctrlKey || event.shiftKey)) return;
+	event.preventDefault();
+	const targetRow = Number(rowIndex) + 1;
+	const target = [...(matrixRoot.value?.querySelectorAll("[data-pwc-field]") || [])].find(
+		(input) =>
+			input.dataset.pwcField === fieldType &&
+			Number(input.dataset.pwcRow) === targetRow &&
+			Number(input.dataset.pwcColumn) === Number(packingIndex)
+	);
+	target?.focus();
+	target?.select?.();
+}
+
+function mountDiaLink(el, bindingValue) {
+	const { cell, rowIndex, packingIndex } = bindingValue;
 	const control = frappe.ui.form.make_control({
 		parent: el,
 		df: {
@@ -265,33 +356,53 @@ function mountDiaLink(el, row) {
 	});
 	const state = {
 		control,
-		row,
+		cell,
+		rowIndex,
+		packingIndex,
 		initializing: true,
 		syncing: false,
 		syncSequence: 0,
 	};
 	el.__pwcDiaLink = state;
-	Promise.resolve(control.set_value(row.dia || "")).then(() => {
+	Promise.resolve(control.set_value(cell.dia || "")).then(() => {
 		if (el.__pwcDiaLink !== state) return;
 		state.initializing = false;
 		state.cleanupMenuPosition = bindDiaMenuPosition(el);
+		const input = el.querySelector("input");
+		if (input) {
+			input.dataset.pwcField = "dia";
+			input.dataset.pwcRow = String(state.rowIndex);
+			input.dataset.pwcColumn = String(state.packingIndex);
+			state.keydown = (event) =>
+				handleVerticalKeydown(
+					event, state.rowIndex, state.packingIndex, "dia"
+				);
+			input.addEventListener("keydown", state.keydown, true);
+			state.input = input;
+		}
 		control.df.onchange = () => {
 			if (state.initializing || state.syncing) return;
 			const value = control.get_value() || null;
-			if (state.row.dia !== value) {
-				state.row.dia = value;
+			if (state.cell.dia !== value) {
+				state.cell.dia = value;
 				markDirty();
 			}
 		};
 	});
 }
 
-function syncDiaLink(el, row) {
+function syncDiaLink(el, bindingValue) {
 	const state = el.__pwcDiaLink;
 	if (!state) return;
 
-	state.row = row;
-	const value = row.dia || "";
+	state.cell = bindingValue.cell;
+	state.rowIndex = bindingValue.rowIndex;
+	state.packingIndex = bindingValue.packingIndex;
+	if (state.input) {
+		state.input.dataset.pwcRow = String(state.rowIndex);
+		state.input.dataset.pwcColumn = String(state.packingIndex);
+	}
+	const value = bindingValue.cell.dia || "";
 	if (state.control.get_value() === value) return;
 
 	const syncSequence = ++state.syncSequence;
@@ -313,6 +424,11 @@ const vDiaLink = {
 	beforeUnmount(el) {
 		if (el.__pwcDiaLink) {
 			el.__pwcDiaLink.cleanupMenuPosition?.();
+			if (el.__pwcDiaLink.input && el.__pwcDiaLink.keydown) {
+				el.__pwcDiaLink.input.removeEventListener(
+					"keydown", el.__pwcDiaLink.keydown, true
+				);
+			}
 			el.__pwcDiaLink.control.df.onchange = null;
 			delete el.__pwcDiaLink;
 		}
@@ -358,6 +474,49 @@ function copyFirstColourToRow(row) {
 	markDirty();
 }
 
+function fillConsumptionColumn(packing) {
+	if (!currentPanel.value) return;
+	const isGroup = panelValuesFor(currentPanel.value).length > 1;
+	const dialog = new frappe.ui.Dialog({
+		title: `Fill ${packing} column`,
+		fields: [
+			{
+				fieldtype: "Link",
+				fieldname: "dia",
+				label: "Dia",
+				options: "Item Attribute Value",
+				reqd: 1,
+				only_select: true,
+				get_query: () => ({
+					filters: { attribute_name: "Dia" },
+				}),
+			},
+			{
+				fieldtype: "Float",
+				fieldname: "weight",
+				label: isGroup
+					? "Group Consumption (kg / piece)"
+					: "Consumption (kg / piece)",
+				precision: 4,
+				reqd: 1,
+			},
+		],
+		primary_action_label: "Fill Column",
+		primary_action(values) {
+			const weight = parseWeight(values.weight);
+			currentPanel.value.rows.forEach((row) => {
+				row.values[packing] = {
+					dia: values.dia,
+					weight,
+				};
+			});
+			dialog.hide();
+			markDirty();
+		},
+	});
+	dialog.show();
+}
+
 function copyFirstColourToPanel() {
 	const first = currentPackingValues.value[0];
 	const missing = currentPanel.value.rows.find((row) => {
@@ -392,7 +551,7 @@ function mappedSourcePacking(sourcePanel, targetPanel, targetPacking, targetInde
 
 function applyPanelDetails() {
 	const sourcePanel = (matrix.value?.panels || []).find(
-		(panel) => panel.panel_value === sourcePanelValue.value
+		(panel) => panel.group_id === sourcePanelValue.value
 	);
 	const targetPanel = currentPanel.value;
 	if (!sourcePanel || !targetPanel) {
@@ -439,7 +598,12 @@ function applyPanelDetails() {
 			}
 			copiedValues[targetPacking] = {
 				dia: sourceCell.dia,
-				weight: sourceCell.weight,
+				weight: Number(
+					(
+						Number(sourceCell.weight) *
+						(panelValuesFor(targetPanel).length / panelValuesFor(sourcePanel).length)
+					).toFixed(6)
+				),
 			};
 		}
 		copiedRows.push({ targetRow, copiedValues });
@@ -455,26 +619,130 @@ function applyPanelDetails() {
 	});
 }
 
+function splitWeight(total, count) {
+	if (total === null || total === undefined || total === "") {
+		return Array(count).fill(null);
+	}
+	const share = Number((Number(total) / count).toFixed(6));
+	const values = Array(count).fill(share);
+	values[count - 1] = Number(
+		(Number(total) - values.slice(0, -1).reduce((sum, value) => sum + value, 0)).toFixed(6)
+	);
+	return values;
+}
+
+function groupSelectedPanels() {
+	const order = matrix.value?.panel_values || [];
+	const selected = order.filter((panel) => selectedPanelValues.value.includes(panel));
+	if (selected.length < 2) return;
+	const sourceGroups = selected.map((panelValue) =>
+		(matrix.value?.panels || []).find(
+			(panel) =>
+				panelValuesFor(panel).length === 1 &&
+				panelValuesFor(panel)[0] === panelValue
+		)
+	);
+	if (sourceGroups.some((panel) => !panel)) {
+		frappe.msgprint("Ungroup an existing group before creating a different group.");
+		return;
+	}
+	const packingValues = packingValuesFor(sourceGroups[0]);
+	if (
+		sourceGroups.some(
+			(panel) => JSON.stringify(packingValuesFor(panel)) !== JSON.stringify(packingValues)
+		)
+	) {
+		frappe.msgprint("The selected panels have different fabric colour columns and cannot be grouped.");
+		return;
+	}
+
+	const rows = sourceGroups[0].rows.map((sourceRow) => {
+		const matchingRows = sourceGroups.map((panel) =>
+			panel.rows.find((row) => row.primary_value === sourceRow.primary_value)
+		);
+		const values = {};
+		for (const packing of packingValues) {
+			const cells = matchingRows.map((row) => cellFor(row, packing));
+			const started = cells.map(
+				(cell) => Boolean(cell.dia) || ![null, undefined, ""].includes(cell.weight)
+			);
+			const complete = cells.map(
+				(cell) => Boolean(cell.dia) && Number(cell.weight) > 0
+			);
+			if (started.some(Boolean) && !complete.every(Boolean)) {
+				frappe.throw(
+					`Complete or clear ${sourceRow.primary_value}, ${packing} for every selected panel before grouping.`
+				);
+			}
+			const dias = [...new Set(cells.map((cell) => cell.dia).filter(Boolean))];
+			if (dias.length > 1) {
+				frappe.throw(
+					`The selected panels use different Dia values for ${sourceRow.primary_value}, ${packing}.`
+				);
+			}
+			values[packing] = {
+				dia: dias[0] || null,
+				weight: complete.every(Boolean)
+					? Number(cells.reduce((sum, cell) => sum + Number(cell.weight || 0), 0).toFixed(6))
+					: null,
+			};
+		}
+		return { primary_value: sourceRow.primary_value, values };
+	});
+
+	const newGroup = normalizePanelGroup({
+		panel_values: selected,
+		packing_values: [...packingValues],
+		rows,
+	});
+	const selectedIds = new Set(sourceGroups.map((panel) => panel.group_id));
+	const firstIndex = Math.min(
+		...sourceGroups.map((panel) => matrix.value.panels.indexOf(panel))
+	);
+	matrix.value.panels = matrix.value.panels.filter(
+		(panel) => !selectedIds.has(panel.group_id)
+	);
+	matrix.value.panels.splice(firstIndex, 0, newGroup);
+	activePanel.value = newGroup.group_id;
+	selectedPanelValues.value = [];
+	markDirty();
+	refreshClothMappingMatrix();
+}
+
+function ungroupCurrentPanel() {
+	const group = currentPanel.value;
+	const panelValues = panelValuesFor(group);
+	if (panelValues.length < 2) return;
+	const splitGroups = panelValues.map((panelValue, panelIndex) =>
+		normalizePanelGroup({
+			panel_values: [panelValue],
+			packing_values: [...packingValuesFor(group)],
+			rows: group.rows.map((row) => ({
+				primary_value: row.primary_value,
+				values: Object.fromEntries(
+					packingValuesFor(group).map((packing) => {
+						const cell = cellFor(row, packing);
+						return [
+							packing,
+							{
+								dia: cell.dia || null,
+								weight: splitWeight(cell.weight, panelValues.length)[panelIndex],
+							},
+						];
+					})
+				),
+			})),
+		})
+	);
+	const index = matrix.value.panels.indexOf(group);
+	matrix.value.panels.splice(index, 1, ...splitGroups);
+	activePanel.value = splitGroups[0].group_id;
+	markDirty();
+	refreshClothMappingMatrix();
+}
+
 function get_data() {
 	if (!matrix.value) return null;
-	for (const panel of matrix.value.panels) {
-		for (const row of panel.rows) {
-			for (const packing of packingValuesFor(panel)) {
-				const cell = cellFor(row, packing);
-				if (!cell.dia) {
-					frappe.throw(
-						`Enter Dia for ${panel.panel_value}, ${row.primary_value}, ${packing}.`
-					);
-				}
-				if (!(Number(cell.weight) > 0)) {
-					frappe.throw(
-						`Enter consumption for ${panel.panel_value}, ${row.primary_value}, ` +
-						`${packing} (0.0300 means 30 grams).`
-					);
-				}
-			}
-		}
-	}
 	return JSON.parse(JSON.stringify(matrix.value));
 }
 
@@ -541,6 +809,35 @@ defineExpose({ load_data, get_data });
 	color: #0f766e;
 	box-shadow: 0 2px 7px rgba(15, 118, 110, 0.1);
 }
+.pwc-group-editor {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	padding: 10px 16px;
+	border-bottom: 1px solid var(--border-color, #e5e7eb);
+	background: var(--card-bg, #fff);
+	font-size: 11px;
+}
+.pwc-group-options {
+	display: flex;
+	flex: 1;
+	flex-wrap: wrap;
+	gap: 6px;
+}
+.pwc-group-options label {
+	display: inline-flex;
+	align-items: center;
+	gap: 5px;
+	margin: 0;
+	padding: 5px 8px;
+	border: 1px solid var(--border-color, #dfe3e8);
+	border-radius: 999px;
+	cursor: pointer;
+	font-weight: 500;
+}
+.pwc-group-options input {
+	margin: 0;
+}
 .pwc-toolbar {
 	display: flex;
 	align-items: center;
@@ -600,6 +897,23 @@ defineExpose({ load_data, get_data });
 .pwc-fill-button {
 	padding: 6px 9px;
 	white-space: nowrap;
+}
+.pwc-column-fill-button {
+	display: block;
+	width: 100%;
+	margin-top: 6px;
+	padding: 4px 7px;
+	border: 1px solid var(--border-color, #dfe3e8);
+	border-radius: 6px;
+	background: var(--card-bg, #fff);
+	color: #0f766e;
+	font-size: 10px;
+	font-weight: 600;
+	line-height: 1.2;
+}
+.pwc-column-fill-button:hover {
+	border-color: #75bdb3;
+	background: #eef9f7;
 }
 .pwc-copy-button:hover,
 .pwc-apply-button:not(:disabled):hover,
@@ -714,7 +1028,8 @@ defineExpose({ load_data, get_data });
 }
 @media (max-width: 900px) {
 	.pwc-toolbar,
-	.pwc-toolbar-actions {
+	.pwc-toolbar-actions,
+	.pwc-group-editor {
 		align-items: stretch;
 		flex-direction: column;
 	}

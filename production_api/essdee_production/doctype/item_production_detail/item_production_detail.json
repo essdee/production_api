@@ -74,6 +74,7 @@
   "enable_panel_wise_consumption_matrix",
   "panel_wise_consumption_matrix_html",
   "panel_wise_consumption_matrix_json",
+  "panel_wise_cloth_mapping_json",
   "cutting_attributes",
   "select_attributes_html",
   "get_cutting_combination",
@@ -97,6 +98,7 @@
   "get_stiching_accessory_combination",
   "stiching_accessory_json",
   "stiching_accessory_html",
+  "compacting_details_json",
   "compacting_details_tab",
   "compacting_details_html",
   "advance_settings_tab",
@@ -451,6 +453,12 @@
    "label": "Panel-wise Consumption Matrix JSON"
   },
   {
+   "fieldname": "panel_wise_cloth_mapping_json",
+   "fieldtype": "JSON",
+   "hidden": 1,
+   "label": "Panel-wise Cloth Mapping JSON"
+  },
+  {
    "fieldname": "select_attributes_html",
    "fieldtype": "HTML",
    "label": "Select Attributes HTML"
@@ -705,6 +713,12 @@
    "fieldtype": "JSON",
    "hidden": 1,
    "label": "Variants JSON"
+  },
+  {
+   "fieldname": "compacting_details_json",
+   "fieldtype": "JSON",
+   "hidden": 1,
+   "label": "Compacting Details Save Payload"
   },
   {
    "depends_on": "eval:doc.enable_panel_wise_consumption_matrix && !doc.__islocal",

@@ -66,7 +66,7 @@ def _apply_compacting_details(ipd_doc, rows):
 		return False
 
 	mapping = get_compacting_mapping(ipd_doc.name)
-	missing = []
+	uses_compacting_details = False
 	for row in rows:
 		key = compacting_key(
 			{
@@ -77,23 +77,14 @@ def _apply_compacting_details(ipd_doc, rows):
 		)
 		compacting_dia = mapping.get(key)
 		if not compacting_dia:
-			missing.append(" / ".join(key))
 			continue
 		row["input_dia"] = row["dia"]
 		row["compacting_dia"] = compacting_dia
+		uses_compacting_details = True
 
-	if missing:
-		frappe.throw(
-			_(
-				"Enter Compacting Dia for the following Cloth Item / {0} / Input Dia "
-				"combination(s) in Item Production Detail {1}: {2}"
-			).format(
-				ipd_doc.get("packing_attribute") or _("Packing Attribute"),
-				ipd_doc.name,
-				", ".join(sorted(missing)),
-			)
-		)
-	return True
+	# Compacting is optional for this preview. When a matching value exists it is
+	# shown beside the input Dia; otherwise the cutting Dia remains sufficient.
+	return uses_compacting_details
 
 
 def _calculate_cloth_program(lot_doc, ipd_doc, extra_percentage=0):
@@ -143,8 +134,18 @@ def _calculate_cloth_program(lot_doc, ipd_doc, extra_percentage=0):
 			weight = flt(cloth.get("quantity"))
 			if weight <= 0:
 				continue
+			requirement_type = (
+				"accessory" if cloth.get("type") == "accessory" else "cloth"
+			)
+			accessory_name = (
+				cloth.get("accessory_name") or ""
+				if requirement_type == "accessory"
+				else ""
+			)
 			key = (
 				cloth_item,
+				requirement_type,
+				accessory_name,
 				cloth.get("colour") or "",
 				cloth.get("dia") or "",
 			)
@@ -171,7 +172,23 @@ def _calculate_cloth_program(lot_doc, ipd_doc, extra_percentage=0):
 		"extra_weight": 0.0,
 		"program_weight": 0.0,
 	}
-	for (cloth_item, colour, dia), raw_weight in sorted(weights.items()):
+	ordered_weights = sorted(
+		weights.items(),
+		key=lambda item: (
+			item[0][0],
+			item[0][1] != "cloth",
+			item[0][2],
+			item[0][3],
+			item[0][4],
+		),
+	)
+	for (
+		cloth_item,
+		requirement_type,
+		accessory_name,
+		colour,
+		dia,
+	), raw_weight in ordered_weights:
 		required_weight = flt(raw_weight, WEIGHT_PRECISION)
 		extra_weight = flt(raw_weight * extra_percentage / 100.0, WEIGHT_PRECISION)
 		program_weight = flt(
@@ -181,6 +198,8 @@ def _calculate_cloth_program(lot_doc, ipd_doc, extra_percentage=0):
 		rows.append(
 			{
 				"cloth_item": cloth_item,
+				"requirement_type": requirement_type,
+				"accessory_name": accessory_name or None,
 				"colour": colour or None,
 				"dia": dia or None,
 				"required_weight": required_weight,

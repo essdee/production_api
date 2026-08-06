@@ -16,6 +16,7 @@ from production_api.essdee_production.doctype.item_production_detail.item_produc
 	get_cloth_combination,
 	get_dict_table,
 	get_stitching_combination,
+	_require_cutting_cloth_mapping,
 	revert_ipd_approval,
 )
 from production_api.panel_wise_consumption import (
@@ -100,6 +101,38 @@ class TestPanelWiseConsumption(FrappeTestCase):
 		self.assertIn('v-model="sourcePanelValue"', source)
 		self.assertIn('@click="applyPanelDetails"', source)
 		self.assertIn("targetRow.values = copiedValues", source)
+
+	def test_panel_groups_and_vertical_keyboard_navigation_are_available(self):
+		source = Path(
+			frappe.get_app_path(
+				"production_api",
+				"public",
+				"js",
+				"Item_Po_detail",
+				"PanelWiseConsumptionMatrix.vue",
+			)
+		).read_text()
+
+		self.assertIn("groupSelectedPanels", source)
+		self.assertIn("ungroupCurrentPanel", source)
+		self.assertIn('event.key !== "ArrowDown"', source)
+		self.assertIn("event.ctrlKey || event.shiftKey", source)
+
+	def test_panel_consumption_has_overwriting_column_fill(self):
+		source = Path(
+			frappe.get_app_path(
+				"production_api",
+				"public",
+				"js",
+				"Item_Po_detail",
+				"PanelWiseConsumptionMatrix.vue",
+			)
+		).read_text()
+
+		self.assertIn("fillConsumptionColumn(packing)", source)
+		self.assertIn('primary_action_label: "Fill Column"', source)
+		self.assertIn("currentPanel.value.rows.forEach", source)
+		self.assertIn("row.values[packing] =", source)
 
 	def test_cutting_and_cloth_accessory_weights_use_four_decimal_precision(self):
 		component_paths = (
@@ -188,6 +221,10 @@ class TestPanelWiseConsumption(FrappeTestCase):
 			"schema_version": 2,
 			"panels": [{"panel_value": "Back", "rows": []}],
 		}
+		source.panel_wise_cloth_mapping_json = {
+			"schema_version": 1,
+			"panels": [{"panel_values": ["Back"], "rows": []}],
+		}
 		source.cutting_items_json = {
 			"attributes": ["Size", "Panel", "Colour", "Dia", "Weight"],
 			"items": [],
@@ -205,6 +242,10 @@ class TestPanelWiseConsumption(FrappeTestCase):
 		self.assertEqual(
 			frappe.parse_json(target.cutting_items_json),
 			source.cutting_items_json,
+		)
+		self.assertEqual(
+			frappe.parse_json(target.panel_wise_cloth_mapping_json),
+			source.panel_wise_cloth_mapping_json,
 		)
 		self.assertEqual(payload["enable_panel_wise_consumption_matrix"], 1)
 		self.assertEqual(
@@ -310,6 +351,40 @@ class TestPanelWiseConsumption(FrappeTestCase):
 			},
 		)
 		self.assertEqual(expanded["items"][1]["Dia"], "27 Dia")
+
+	def test_group_total_is_split_into_individual_panel_rows(self):
+		context = _context()
+		matrix = _blank_matrix(context, panel_groups=[["Back", "Front"]])
+		cell = matrix["panels"][0]["rows"][0]["values"]["Black"]
+		cell.update({"dia": "26 Dia", "weight": 0.1})
+
+		expanded = expand_panel_wise_matrix(
+			matrix, context, require_complete=False
+		)
+
+		self.assertEqual(len(expanded["items"]), 2)
+		self.assertEqual(
+			[row["Panel"] for row in expanded["items"]], ["Back", "Front"]
+		)
+		self.assertEqual(
+			[row["Weight"] for row in expanded["items"]], [0.05, 0.05]
+		)
+
+	def test_partial_matrix_can_expand_without_inventing_blank_rows(self):
+		context = _context()
+		matrix = _blank_matrix(context)
+		matrix["panels"][0]["rows"][0]["values"]["Black"].update(
+			{"dia": "26 Dia", "weight": 0.03}
+		)
+		matrix["panels"][0]["rows"][0]["values"]["Maroon"]["dia"] = "27 Dia"
+
+		expanded = expand_panel_wise_matrix(
+			matrix, context, require_complete=False
+		)
+
+		self.assertEqual(len(expanded["items"]), 1)
+		self.assertEqual(expanded["items"][0]["Panel"], "Back")
+		self.assertEqual(expanded["items"][0]["Colour"], "Black")
 
 	def test_panel_uses_only_actual_stitching_colours(self):
 		context = _centre_panel_context()
@@ -447,6 +522,23 @@ class TestPanelWiseConsumption(FrappeTestCase):
 			(rows[0]["colour"], rows[0]["cloth_type"], rows[0]["quantity"]),
 			("Red", "Contrast Fabric", 1.0),
 		)
+
+	def test_lot_cloth_calculation_rejects_an_unmapped_consumption_route(self):
+		cloth_combination = {
+			"cloth_combination": {
+				("Front", "Airforce", "75 cm"): "Main Fabric",
+			}
+		}
+
+		with self.assertRaisesRegex(
+			frappe.ValidationError,
+			"No Cutting Cloth mapping matches consumption combination "
+			"Sleeve / Airforce / 75 cm",
+		):
+			_require_cutting_cloth_mapping(
+				cloth_combination,
+				("Sleeve", "Airforce", "75 cm"),
+			)
 
 	def test_incomplete_matrix_is_rejected(self):
 		context = _context()

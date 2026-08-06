@@ -1,6 +1,7 @@
 # Copyright (c) 2026, Essdee and Contributors
 # See license.txt
 
+from pathlib import Path
 from unittest.mock import patch
 
 import frappe
@@ -25,6 +26,66 @@ class FakeSewingPlan:
 
 
 class TestSewingPlan(FrappeTestCase):
+	def test_scr_aggregates_delivered_and_calculates_delivered_minus_input(self):
+		scr_data = {}
+		colours = []
+		rows = [
+			frappe._dict(
+				item_variant="NAVY-S",
+				set_combination={"major_colour": "Navy"},
+				delivered_quantity=7,
+			),
+			frappe._dict(
+				item_variant="NAVY-S",
+				set_combination={"major_colour": "Navy"},
+				delivered_quantity=3,
+			),
+		]
+
+		with patch.object(
+			sewing_plan,
+			"get_colour_size_data",
+			return_value=("S", None, "Navy", "Navy"),
+		):
+			sewing_plan._add_scr_delivered_quantities(
+				scr_data,
+				rows,
+				False,
+				"Colour",
+				None,
+				"Size",
+				colours,
+			)
+
+		values = scr_data["Navy"]["values"]["S"]
+		values["Input Qty"] = 6
+		values["Delivered - Input"] = (
+			values["Delivered Qty"] - values["Input Qty"]
+		)
+		self.assertEqual(values["Delivered Qty"], 10)
+		self.assertEqual(values["Delivered - Input"], 4)
+		self.assertEqual(colours, ["Navy"])
+
+	def test_sewing_detail_ui_has_scr_and_input_date_range_controls(self):
+		scr_source = Path(
+			frappe.get_app_path(
+				"production_api", "public", "js", "SewingPlan", "components", "SCRTab.vue"
+			)
+		).read_text()
+		status_source = Path(
+			frappe.get_app_path(
+				"production_api", "public", "js", "SewingPlan", "components", "StatusSummaryTab.vue"
+			)
+		).read_text()
+
+		self.assertIn("Delivered - Input", scr_source)
+		self.assertIn("selected_from_date", status_source)
+		self.assertIn("selected_to_date", status_source)
+		self.assertIn("fieldname: 'status_summary_from_date'", status_source)
+		self.assertIn("fieldname: 'status_summary_to_date'", status_source)
+		self.assertIn("fieldtype: 'Date'", status_source)
+		self.assertIn("normalizeInputDate(row['Input Date'])", status_source)
+
 	def test_unmapped_bom_item_loads_saved_consumption_by_item(self):
 		saved_row = frappe._dict(
 			item_name="Jobwork-Mobilon Tape",
