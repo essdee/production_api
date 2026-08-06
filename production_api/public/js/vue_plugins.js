@@ -99,7 +99,6 @@ import SizeWiseStockReport from "./components/SizeWiseStockDetail.vue"
 import ColourWiseDiffReport from "./components/ColourWiseDiffReport.vue"
 import InvoiceWoItems from "./PurchaseInvoice/components/InvoiceWOItems.vue"
 import InvoiceDebitSummary from "./PurchaseInvoice/components/InvoiceDebitSummary.vue"
-import WorkOrderPendingReport from "./components/WorkOrderPendingReport.vue"
 import FinishingPlanIroningReport from "./components/FinishingPlanIroningReport.vue"
 import RecutPrintPanelDetail from "./CuttingPlan/components/RecutPrintPanelDetails.vue"
 import RecutPrintPanelView from "./CuttingPlan/components/RecutPrintPanelView.vue"
@@ -1417,19 +1416,6 @@ frappe.production.ui.ProcessPending = class {
     }
     make_app() {
         this.app = createApp(ProcessPending)
-        SetVueGlobals(this.app)
-        this.vue = this.app.mount(this.$wrapper.get(0))
-    }
-}
-
-// Work Order Pending Report
-frappe.production.ui.WorkOrderPendingReport = class {
-    constructor(wrapper) {
-        this.$wrapper = $(wrapper)
-        this.make_app()
-    }
-    make_app() {
-        this.app = createApp(WorkOrderPendingReport)
         SetVueGlobals(this.app)
         this.vue = this.app.mount(this.$wrapper.get(0))
     }
