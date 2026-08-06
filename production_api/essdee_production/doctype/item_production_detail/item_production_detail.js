@@ -496,8 +496,11 @@ frappe.ui.form.on("Item Production Detail", {
 				frm.cutting_item.set_attributes()
 			}
 		}
-		// Cloth Mapping Details is independent of the standard Cutting editor and
-		// must stay mounted while the panel-wise matrix is enabled.
+		if(frm.doc.enable_panel_wise_consumption_matrix){
+			frm.cloth_item = null
+			await frm.trigger("render_panel_wise_cloth_mapping")
+			return
+		}
 		$(frm.fields_dict['cutting_cloths_html'].wrapper).html("");
 		frm.cloth_item = new frappe.production.ui.CuttingItemDetail(frm.fields_dict['cutting_cloths_html'].wrapper);
 		if(frm.doc.cutting_cloths_json) {
@@ -596,6 +599,15 @@ frappe.ui.form.on("Item Production Detail", {
 				if(matrix){
 					frm.doc.panel_wise_consumption_matrix_json = matrix
 				}
+			}
+			if(frm.doc.enable_panel_wise_consumption_matrix && frm.panel_wise_cloth_mapping){
+				let matrix = frm.panel_wise_cloth_mapping.get_data()
+				if(matrix){
+					frm.doc.panel_wise_cloth_mapping_json = matrix
+				}
+			}
+			if(frm.ipd_compacting_details){
+				frm.doc.compacting_details_json = frm.ipd_compacting_details.get_data()
 			}
 			if(frm.set_item && frm.doc.is_set_item){
 				let item_details = frm.set_item.get_data()
@@ -846,6 +858,20 @@ frappe.ui.form.on("Item Production Detail", {
 		})
 	},
 	get_cloth_combination(frm){
+		if(frm.doc.enable_panel_wise_consumption_matrix){
+			if(frm.doc.cloth_detail.length == 0){
+				frappe.msgprint("Fill The Cloth Details")
+				return
+			}
+			const checked = frm.select_cloth_attrs_multicheck
+				? frm.select_cloth_attrs_multicheck.get_checked_options()
+				: []
+			frm.set_value(
+				"cloth_attributes",
+				checked.map(attribute => ({ attribute }))
+			).then(() => frm.trigger("render_panel_wise_cloth_mapping"))
+			return
+		}
 		if(!frm.cloth_item){
 			$(frm.fields_dict['cutting_cloths_html'].wrapper).html("");
 			frm.cloth_item = new frappe.production.ui.CuttingItemDetail(frm.fields_dict['cutting_cloths_html'].wrapper);
@@ -943,6 +969,7 @@ frappe.ui.form.on("Item Production Detail", {
 	},
 	async enable_panel_wise_consumption_matrix(frm){
 		await frm.trigger("render_panel_wise_consumption_matrix")
+		await frm.trigger("render_panel_wise_cloth_mapping")
 		await frm.trigger("render_compacting_details")
 		if(!frm.doc.enable_panel_wise_consumption_matrix && frm.doc.stiching_in_stage && frm.doc.dependent_attribute){
 			make_select_attributes(frm,'select_attributes_html','select_attributes_wrapper','select_attrs_multicheck','cutting_attributes','cutting_items_json','get_cutting_combination')
@@ -986,6 +1013,39 @@ frappe.ui.form.on("Item Production Detail", {
 		)
 		frm.panel_wise_consumption_matrix = new frappe.production.ui.PanelWiseConsumptionMatrix(field.wrapper)
 		frm.panel_wise_consumption_matrix.load_data(
+			payload,
+			!frm.is_new() && frm.doc.approval_status === "Approved"
+		)
+	},
+	async render_panel_wise_cloth_mapping(frm){
+		const field = frm.fields_dict.cutting_cloths_html
+		if(!field){
+			return
+		}
+		if(!frm.doc.enable_panel_wise_consumption_matrix){
+			frm.panel_wise_cloth_mapping = null
+			return
+		}
+		$(field.wrapper).empty()
+		frm.panel_wise_cloth_mapping = null
+		if(!frm.doc.stiching_in_stage || !frm.doc.dependent_attribute){
+			$(field.wrapper).html(
+				'<div class="text-muted">Configure the Stitching input stage before using the Cloth Mapping matrix.</div>'
+			)
+			return
+		}
+
+		const stagedDoc = {...frm.doc}
+		if(frm.panel_wise_consumption_matrix){
+			stagedDoc.panel_wise_consumption_matrix_json =
+				frm.panel_wise_consumption_matrix.get_data()
+		}
+		const payload = await frappe.xcall(
+			"production_api.panel_wise_cloth_mapping.get_panel_wise_cloth_mapping_matrix",
+			{doc: stagedDoc}
+		)
+		frm.panel_wise_cloth_mapping = new frappe.production.ui.PanelWiseClothMappingMatrix(field.wrapper)
+		frm.panel_wise_cloth_mapping.load_data(
 			payload,
 			!frm.is_new() && frm.doc.approval_status === "Approved"
 		)

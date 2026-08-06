@@ -185,11 +185,10 @@ def get_expected_compacting_details(ipd_doc):
 		cloth_key = _attribute_key(row, cloth_attributes)
 		cloth_item = cloth_by_attributes.get(cloth_key)
 		if not cloth_item:
-			frappe.throw(
-				_("No Cutting Cloth mapping matches consumption combination {0}.").format(
-					_format_key(cloth_key)
-				)
-			)
+			# Cloth Mapping is draft-saveable. Compacting can be entered for the
+			# completed routes now; missing routes are enforced when a Lot builds
+			# its Cloth Program.
+			continue
 		packing_value = row.get(packing_attribute)
 		input_dia = row.get("Dia")
 		if not packing_value or not input_dia:
@@ -337,6 +336,57 @@ def save_compacting_details(item_production_detail, rows, expected_modified=None
 	compacting.flags.ignore_permissions = True
 	compacting.save()
 	return _context(ipd_doc)
+
+
+def stage_compacting_details_from_ipd(ipd_doc):
+	"""Validate the form payload now and save it after the parent IPD updates."""
+	payload = _as_json(ipd_doc.get("compacting_details_json"))
+	# This field is only a transport for the standard form Save. IPD Compacting
+	# remains the canonical persisted document.
+	ipd_doc.compacting_details_json = None
+	if not payload or not ipd_doc.get("enable_panel_wise_consumption_matrix"):
+		return
+
+	compacting = get_ipd_compacting(ipd_doc.name)
+	expected_modified = payload.get("expected_modified")
+	if compacting and expected_modified and str(compacting.modified) != str(expected_modified):
+		frappe.throw(
+			_("Compacting Details changed after you opened this tab. Reload and try again."),
+			frappe.TimestampMismatchError,
+		)
+
+	try:
+		expected = get_expected_compacting_details(ipd_doc)
+	except frappe.ValidationError:
+		# Consumption and Cloth Mapping matrices are intentionally draft-saveable.
+		# If they are incomplete, there is no valid compacting route to persist yet.
+		ipd_doc.flags.staged_compacting_details = []
+		return
+
+	expected_keys = {compacting_key(row) for row in expected}
+	submitted = [
+		row
+		for row in (payload.get("rows") or [])
+		if compacting_key(row) in expected_keys
+	]
+	ipd_doc.flags.staged_compacting_details = validate_submitted_details(
+		expected, submitted
+	)
+
+
+def persist_staged_compacting_details(ipd_doc):
+	if "staged_compacting_details" not in ipd_doc.flags:
+		return
+	rows = ipd_doc.flags.staged_compacting_details
+	compacting = get_ipd_compacting(ipd_doc.name)
+	if not compacting:
+		compacting = frappe.new_doc("IPD Compacting")
+		compacting.item_production_detail = ipd_doc.name
+	compacting.packing_attribute = ipd_doc.packing_attribute
+	compacting.set("compacting_details", rows)
+	compacting.flags.ignore_permissions = True
+	compacting.save()
+	del ipd_doc.flags.staged_compacting_details
 
 
 class IPDCompacting(Document):

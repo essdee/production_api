@@ -3,6 +3,7 @@
 
 import re
 import frappe
+from frappe.utils import flt
 from frappe.model.document import Document
 from production_api.production_api.doctype.item.item import get_or_create_variant, build_variant_attributes
 from production_api.utils import get_variant_attr_details, update_if_string_instance
@@ -705,6 +706,7 @@ def get_scr_data(supplier, lot):
 	primary_values = get_ipd_primary_values(ipd)
 	colours = []
 	lines_by_colour = {}
+	processed_work_orders = set()
 
 	for sp_name in sp_list:
 		sp_doc = frappe.get_doc("Sewing Plan", sp_name)
@@ -726,6 +728,19 @@ def get_scr_data(supplier, lot):
 			input_key = "Order Qty"
 			scr_data[colour]["values"][size].setdefault(input_key, 0)
 			scr_data[colour]["values"][size][input_key] += row.quantity
+
+		if sp_doc.work_order and sp_doc.work_order not in processed_work_orders:
+			work_order = frappe.get_cached_doc("Work Order", sp_doc.work_order)
+			_add_scr_delivered_quantities(
+				scr_data,
+				work_order.get("work_order_calculated_items") or [],
+				is_set_item,
+				pack_attr,
+				set_attr,
+				primary_attr,
+				colours,
+			)
+			processed_work_orders.add(sp_doc.work_order)
 
 	for sp_entry in sp_entry_list:
 		sp_doc = frappe.get_doc("Sewing Plan Entry Detail", sp_entry)
@@ -763,12 +778,14 @@ def get_scr_data(supplier, lot):
 	for row in mrp_doc.sewing_plan_input_orders:
 		diff_keys[row.input_type] = row.difference_from
 
-	headers = ["Order Qty"]
+	headers = ["Order Qty", "Delivered Qty", "Delivered - Input"]
 	unlinked_types = []
 	for colour in scr_data:
 		for size in scr_data[colour]["values"]:
 			new_size_wise_keys = {}
 			for input_type in scr_data[colour]["values"][size]:
+				if input_type in ("Order Qty", "Delivered Qty", "Delivered - Input"):
+					continue
 				if input_type == type_wise_diff_input:
 					new_key = input_type + " Total"
 					new_size_wise_keys.setdefault(new_key, 0)
@@ -793,6 +810,14 @@ def get_scr_data(supplier, lot):
 		for size in scr_data[colour]["values"]:
 			if type_wise_diff_input and type_wise_diff_input in scr_data[colour]['values'][size] and type_wise_diff_input in diff_keys:
 				scr_data[colour]['values'][size][type_wise_diff_input+ " Balance"] = scr_data[colour]['values'][size].get(type_wise_diff_input+ " Total", 0) - scr_data[colour]['values'][size].get(diff_keys[type_wise_diff_input], 0)
+
+	for colour in scr_data:
+		for size in scr_data[colour]["values"]:
+			values = scr_data[colour]["values"][size]
+			values.setdefault("Delivered Qty", 0)
+			values["Delivered - Input"] = (
+				values["Delivered Qty"] - values.get(mrp_doc.sewing_input_qty_type, 0)
+			)
 
 	for key in diff_keys:
 		if key == type_wise_diff_input:
@@ -826,6 +851,41 @@ def get_scr_data(supplier, lot):
 		"set_attr": set_attr,
 		"item": item_name
 	}
+
+
+def _add_scr_delivered_quantities(
+	scr_data,
+	calculated_items,
+	is_set_item,
+	pack_attr,
+	set_attr,
+	primary_attr,
+	colours,
+):
+	for row in calculated_items:
+		size, part, colour, variant_colour = get_colour_size_data(
+			row.set_combination,
+			row.item_variant,
+			is_set_item,
+			pack_attr,
+			set_attr,
+			primary_attr,
+		)
+		set_combination = update_if_string_instance(row.set_combination)
+		scr_data.setdefault(colour, {
+			"values": {},
+			"part": part,
+			"colour": colour,
+			"variant_colour": variant_colour,
+			"set_combination": set_combination,
+			"type_wise_total": {},
+		})
+		scr_data[colour]["values"].setdefault(size, {})
+		values = scr_data[colour]["values"][size]
+		values.setdefault("Delivered Qty", 0)
+		values["Delivered Qty"] += flt(row.delivered_quantity)
+		if colour not in colours:
+			colours.append(colour)
 
 
 def get_colour_size_data(set_combination, item_variant, is_set_item, pack_attr, set_attr, primary_attr):

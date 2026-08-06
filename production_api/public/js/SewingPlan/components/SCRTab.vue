@@ -163,7 +163,9 @@ const lineNumbers = computed(() => {
 
 const isNegativeBalance = (header, value) => {
     if (!header) return false
-    return header.toLowerCase().includes('balance') && Number(value) < 0
+    return (
+        header.toLowerCase().includes('balance') || header === 'Delivered - Input'
+    ) && Number(value) < 0
 }
 
 const copyToClipboard = async () => {

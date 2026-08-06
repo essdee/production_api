@@ -610,32 +610,50 @@ function render_cloth_program_preview(dialog, preview) {
 	}
 
 	const escape = (value) => frappe.utils.escape_html(String(value ?? ""));
-	const format_weight = (value) => Number(value || 0).toLocaleString(
-		undefined,
-		{ minimumFractionDigits: 3, maximumFractionDigits: 3 }
-	);
+	const ceil_weight = (value) => Math.ceil(Number(value || 0));
+	const format_weight = (value) => ceil_weight(value).toLocaleString();
+	const accessory_block_label = (value) => {
+		const label = String(value || __("Accessory"))
+			.trim()
+			.replace(/\s+/g, " ")
+			.replace(/\b\w/g, (letter) => letter.toUpperCase());
+		return /\bFabric$/i.test(label) ? label : `${label} Fabric`;
+	};
 	const uses_compacting_details = Boolean(preview.uses_compacting_details);
-	const cloth_items = {};
+	const table_groups = {};
 	rows.forEach((row) => {
 		const cloth_item = row.cloth_item || __("Unspecified Cloth");
+		const requirement_type = row.requirement_type === "accessory" ? "accessory" : "cloth";
+		const accessory_name = row.accessory_name || __("Accessory");
+		const table_key = [cloth_item, requirement_type, accessory_name].join("\u0000");
 		const colour = row.colour || __("No Colour");
-		const dia = uses_compacting_details
+		const dia = row.compacting_dia
 			? `${row.input_dia || __("No Dia")} → ${row.compacting_dia || __("No Dia")}`
 			: (row.dia || __("No Dia"));
-		if (!cloth_items[cloth_item]) {
-			cloth_items[cloth_item] = {
+		if (!table_groups[table_key]) {
+			table_groups[table_key] = {
+				cloth_item,
+				requirement_type,
+				accessory_name,
 				colours: new Set(),
 				dias: new Set(),
 				weights: {},
 			};
 		}
-		cloth_items[cloth_item].colours.add(colour);
-		cloth_items[cloth_item].dias.add(dia);
-		cloth_items[cloth_item].weights[`${dia}\u0000${colour}`] = Number(row.program_weight || 0);
+		table_groups[table_key].colours.add(colour);
+		table_groups[table_key].dias.add(dia);
+		table_groups[table_key].weights[`${dia}\u0000${colour}`] = ceil_weight(row.program_weight);
 	});
 
-	const tables = Object.keys(cloth_items).sort().map((cloth_item) => {
-		const item = cloth_items[cloth_item];
+	const tables = Object.values(table_groups).sort((left, right) => {
+		const clothCompare = left.cloth_item.localeCompare(right.cloth_item);
+		if (clothCompare) return clothCompare;
+		if (left.requirement_type !== right.requirement_type) {
+			return left.requirement_type === "cloth" ? -1 : 1;
+		}
+		return left.accessory_name.localeCompare(right.accessory_name);
+	}).map((item) => {
+		const accessory_label = accessory_block_label(item.accessory_name);
 		const colours = Array.from(item.colours).sort();
 		const dias = Array.from(item.dias).sort();
 		const colour_totals = Object.fromEntries(colours.map((colour) => [colour, 0]));
@@ -663,10 +681,18 @@ function render_cloth_program_preview(dialog, preview) {
 
 		return `
 			<div style="margin-bottom: 24px;">
-				<h5 style="margin-bottom: 4px;">${escape(cloth_item)}</h5>
-				<div class="text-muted small" style="margin-bottom: 8px;">
-					${__("Knitting Program Kg")}
-				</div>
+				<h5 style="margin-bottom: 4px;">${escape(item.cloth_item)}</h5>
+				${item.requirement_type === "accessory" ? `
+					<div style="display: block; margin: 8px 0; padding: 8px 10px;
+						border-left: 3px solid var(--primary); background: var(--subtle-fg);
+						font-weight: 700;">
+						${escape(accessory_label)}
+					</div>
+				` : `
+					<div class="text-muted small" style="margin-bottom: 8px;">
+						${__("Main Fabric")} · ${__("Knitting Program Kg")}
+					</div>
+				`}
 				<div class="table-responsive">
 					<table class="table table-bordered table-hover">
 						<thead>
@@ -689,7 +715,14 @@ function render_cloth_program_preview(dialog, preview) {
 			</div>
 		`;
 	}).join("");
-	const totals = preview.totals || {};
+	const totals = rows.reduce((result, row) => {
+		const required = ceil_weight(row.required_weight);
+		const program = ceil_weight(row.program_weight);
+		result.required_weight += required;
+		result.extra_weight += Math.max(program - required, 0);
+		result.program_weight += program;
+		return result;
+	}, { required_weight: 0, extra_weight: 0, program_weight: 0 });
 
 	$(result_field.wrapper).html(`
 		<div style="margin-top: 18px;">

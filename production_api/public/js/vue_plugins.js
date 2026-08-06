@@ -33,6 +33,7 @@ import CombinationItemDetail from "./Item_Po_detail/CombinationItemDetail.vue"
 import EmblishmentDetails from "./Item_Po_detail/EmblishmentDetails.vue"
 import CuttingItemDetail from "./Item_Po_detail/CuttingItemDetail.vue"
 import PanelWiseConsumptionMatrix from "./Item_Po_detail/PanelWiseConsumptionMatrix.vue"
+import PanelWiseClothMappingMatrix from "./Item_Po_detail/PanelWiseClothMappingMatrix.vue"
 import IPDCompactingDetails from "./Item_Po_detail/IPDCompactingDetails.vue"
 import ClothAccessory from "./Item_Po_detail/ClothAccessory.vue"
 import ClothAccessoryCombination from "./Item_Po_detail/ClothAccessoryCombination.vue"
@@ -306,6 +307,21 @@ frappe.production.ui.PanelWiseConsumptionMatrix = class {
     }
 }
 
+frappe.production.ui.PanelWiseClothMappingMatrix = class {
+    constructor(wrapper) {
+        this.$wrapper = $(wrapper);
+        this.app = createApp(PanelWiseClothMappingMatrix);
+        SetVueGlobals(this.app);
+        this.vue = this.app.mount(this.$wrapper.get(0));
+    }
+    load_data(payload, locked = false) {
+        this.vue.load_data(JSON.parse(JSON.stringify(payload || {})), locked);
+    }
+    get_data() {
+        return JSON.parse(JSON.stringify(this.vue.get_data()));
+    }
+}
+
 frappe.production.ui.IPDCompactingDetails = class {
     constructor(wrapper) {
         this.$wrapper = $(wrapper);
@@ -315,6 +331,9 @@ frappe.production.ui.IPDCompactingDetails = class {
     }
     load_data(payload) {
         this.vue.load_data(JSON.parse(JSON.stringify(payload || {})));
+    }
+    get_data() {
+        return JSON.parse(JSON.stringify(this.vue.get_data()));
     }
 }
 

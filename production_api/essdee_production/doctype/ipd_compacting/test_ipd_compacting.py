@@ -10,6 +10,7 @@ from frappe.tests.utils import FrappeTestCase
 from production_api.essdee_production.doctype.ipd_compacting.ipd_compacting import (
 	get_expected_compacting_details,
 	merge_compacting_details,
+	stage_compacting_details_from_ipd,
 	validate_submitted_details,
 )
 from production_api.essdee_production.doctype.lot import cloth_program
@@ -102,6 +103,26 @@ class TestIPDCompacting(FrappeTestCase):
 			],
 		)
 
+	def test_incomplete_draft_cloth_mapping_does_not_block_compacting_tab(self):
+		ipd = _ipd()
+		ipd.cutting_items_json["items"].append(
+			{
+				"Size": "S",
+				"Panel": "Sleeve",
+				"Colour": "Black",
+				"Dia": "32",
+				"Weight": 0.03,
+			}
+		)
+
+		details = get_expected_compacting_details(ipd)
+
+		self.assertEqual(len(details), 2)
+		self.assertEqual(
+			{row["cloth_item"] for row in details},
+			{"CLOTH-MAIN", "CLOTH-RIB"},
+		)
+
 	def test_expected_details_include_cloth_accessory_fabrics(self):
 		details = get_expected_compacting_details(_ipd_with_accessory())
 		accessory_details = [
@@ -169,12 +190,25 @@ class TestIPDCompacting(FrappeTestCase):
 		self.assertEqual(rows[1]["compacting_dia"], "31")
 
 	@patch.object(cloth_program, "get_compacting_mapping", return_value={})
-	def test_cloth_program_rejects_missing_compacting_mapping(self, _mapping):
-		with self.assertRaisesRegex(frappe.ValidationError, "CLOTH-MAIN / Black / 32"):
-			cloth_program._apply_compacting_details(
-				_ipd(),
-				[{"cloth_item": "CLOTH-MAIN", "colour": "Black", "dia": "32"}],
-			)
+	def test_cloth_program_allows_missing_compacting_mapping(self, _mapping):
+		rows = [{"cloth_item": "CLOTH-MAIN", "colour": "Black", "dia": "32"}]
+
+		self.assertFalse(cloth_program._apply_compacting_details(_ipd(), rows))
+		self.assertNotIn("compacting_dia", rows[0])
+
+	@patch.object(cloth_program, "get_compacting_mapping")
+	def test_cloth_program_uses_available_compacting_and_allows_missing_routes(
+		self, mapping
+	):
+		mapping.return_value = {("CLOTH-MAIN", "Black", "32"): "30"}
+		rows = [
+			{"cloth_item": "CLOTH-MAIN", "colour": "Black", "dia": "32"},
+			{"cloth_item": "CLOTH-RIB", "colour": "Black", "dia": "32"},
+		]
+
+		self.assertTrue(cloth_program._apply_compacting_details(_ipd(), rows))
+		self.assertEqual(rows[0]["compacting_dia"], "30")
+		self.assertNotIn("compacting_dia", rows[1])
 
 	def test_ipd_form_loads_the_compacting_editor(self):
 		source = Path(
@@ -202,3 +236,36 @@ class TestIPDCompacting(FrappeTestCase):
 		self.assertIn("copyColourToBlanks", component_source)
 		self.assertIn("v-compacting-dia-link", component_source)
 		self.assertIn('fieldtype: "Link"', component_source)
+		self.assertNotIn("Save Compacting Details", component_source)
+		self.assertNotIn("Fill blanks", component_source)
+		self.assertIn("get_data", component_source)
+
+	@patch(
+		"production_api.essdee_production.doctype.ipd_compacting.ipd_compacting.get_ipd_compacting",
+		return_value=None,
+	)
+	@patch.object(frappe, "get_all", return_value=["32", "30"])
+	def test_standard_ipd_save_stages_compacting_rows(self, _get_all, _get_compacting):
+		ipd = _ipd()
+		ipd.flags = frappe._dict()
+		ipd.compacting_details_json = {
+			"rows": [
+				{
+					"cloth_item": "CLOTH-MAIN",
+					"packing_attribute_value": "Black",
+					"input_dia": "32",
+					"compacting_dia": "30",
+				}
+			],
+			"expected_modified": None,
+		}
+
+		stage_compacting_details_from_ipd(ipd)
+
+		self.assertIsNone(ipd.compacting_details_json)
+		self.assertEqual(
+			ipd.flags.staged_compacting_details[0]["compacting_dia"], "30"
+		)
+		self.assertIsNone(
+			ipd.flags.staged_compacting_details[1]["compacting_dia"]
+		)

@@ -3,10 +3,6 @@
 		<div class="ipd-compacting-head">
 			<div>
 				<h4>Compacting Details</h4>
-				<p>
-					Maintain the finished Dia for each Cloth Item,
-					{{ packingAttribute || "Packing Attribute" }}, and Input Dia.
-				</p>
 			</div>
 			<div class="ipd-compacting-progress">
 				{{ completedCount }} / {{ rows.length }} complete
@@ -15,7 +11,7 @@
 
 		<div v-if="!rows.length" class="ipd-compacting-empty">
 			No compacting combinations are available. Save the panel-wise consumption
-			and Cutting Cloth mapping first.
+			and Cloth Mapping first.
 		</div>
 
 		<div v-else class="ipd-compacting-groups">
@@ -36,13 +32,13 @@
 					>
 						<span>Copy colour:</span>
 						<div
-							v-colour-template-link="{ group, disabled: saving }"
+							v-colour-template-link="{ group, disabled: false }"
 							class="ipd-compacting-link ipd-compacting-copy-colour-link"
 						></div>
 						<button
 							type="button"
 							class="btn btn-default btn-sm"
-							:disabled="saving"
+							:disabled="false"
 							@click="copyColourToBlanks(group)"
 						>
 							Copy to blanks
@@ -62,12 +58,11 @@
 									class="ipd-compacting-dia-column"
 								>
 									<span>{{ dia }}</span>
-									<small>Input Dia</small>
 									<div
 										v-column-fill-dia-link="{
 											group,
 											inputDia: dia,
-											disabled: !canWrite || saving,
+											disabled: !canWrite,
 										}"
 										class="ipd-compacting-link ipd-compacting-column-fill"
 									></div>
@@ -91,7 +86,7 @@
 										v-if="cell"
 										v-compacting-dia-link="{
 											cell,
-											disabled: !canWrite || saving,
+											disabled: !canWrite,
 										}"
 										class="ipd-compacting-link"
 									></div>
@@ -102,21 +97,6 @@
 					</table>
 				</div>
 			</section>
-		</div>
-
-		<div v-if="rows.length" class="ipd-compacting-actions">
-			<span v-if="!canWrite" class="text-muted">
-				You do not have permission to update this Item Production Detail.
-			</span>
-			<button
-				v-else
-				type="button"
-				class="btn btn-primary btn-sm"
-				:disabled="saving"
-				@click="saveDetails"
-			>
-				{{ saving ? "Saving…" : "Save Compacting Details" }}
-			</button>
 		</div>
 	</div>
 </template>
@@ -129,7 +109,6 @@ const packingAttribute = ref("");
 const rows = ref([]);
 const modified = ref(null);
 const canWrite = ref(false);
-const saving = ref(false);
 const templateColours = ref({});
 let linkControlSequence = 0;
 
@@ -333,6 +312,7 @@ const vCompactingDiaLink = {
 		state.binding = binding.value;
 		state.onChange = (value) => {
 			state.binding.cell.compacting_dia = value;
+			markDirty();
 		};
 	},
 	updated(el, binding) {
@@ -350,7 +330,7 @@ const vColumnFillDiaLink = {
 		const state = mountLinkControl(el, {
 			value: "",
 			disabled: binding.value.disabled,
-			placeholder: __("Fill blanks"),
+			placeholder: "",
 			getQuery: diaQuery,
 		});
 		state.binding = binding.value;
@@ -410,9 +390,13 @@ const vColourTemplateLink = {
 	beforeUnmount: unmountLinkControl,
 };
 
+function markDirty() {
+	if (typeof cur_frm !== "undefined") cur_frm.dirty();
+}
+
 function showFillResult(count, message) {
 	frappe.show_alert({
-		message: count ? message : __("No blank cells were available to fill"),
+		message: count ? message : __("No cells were available to update"),
 		indicator: count ? "green" : "orange",
 	});
 }
@@ -426,14 +410,15 @@ function fillDiaColumn(group, inputDia, compactingDia) {
 	let filled = 0;
 	group.colourRows.forEach((colourRow) => {
 		const cell = colourRow.cells[columnIndex];
-		if (cell && !cell.compacting_dia) {
+		if (cell) {
 			cell.compacting_dia = compactingDia;
 			filled += 1;
 		}
 	});
+	if (filled) markDirty();
 	showFillResult(
 		filled,
-		__("Filled {0} blank cell(s) in {1}", [filled, inputDia])
+		__("Updated {0} cell(s) in {1}", [filled, inputDia])
 	);
 }
 
@@ -462,6 +447,7 @@ function copyColourToBlanks(group) {
 			}
 		});
 	});
+	if (filled) markDirty();
 	showFillResult(
 		filled,
 		__("Copied {0} value(s) from {1}", [filled, sourceName])
@@ -494,34 +480,14 @@ function load_data(payload) {
 	);
 }
 
-async function saveDetails() {
-	if (typeof cur_frm !== "undefined" && cur_frm.is_dirty()) {
-		frappe.msgprint(__("Save the Item Production Detail before saving Compacting Details."));
-		return;
-	}
-	saving.value = true;
-	try {
-		const response = await frappe.call({
-			method: "production_api.essdee_production.doctype.ipd_compacting.ipd_compacting.save_compacting_details",
-			args: {
-				item_production_detail: itemProductionDetail.value,
-				rows: rows.value,
-				expected_modified: modified.value,
-			},
-			freeze: true,
-			freeze_message: __("Saving Compacting Details…"),
-		});
-		load_data(response.message || {});
-		frappe.show_alert({
-			message: __("Compacting Details saved"),
-			indicator: "green",
-		});
-	} finally {
-		saving.value = false;
-	}
+function get_data() {
+	return {
+		rows: JSON.parse(JSON.stringify(rows.value)),
+		expected_modified: modified.value,
+	};
 }
 
-defineExpose({ load_data });
+defineExpose({ load_data, get_data });
 </script>
 
 <style scoped>
@@ -542,11 +508,6 @@ defineExpose({ load_data });
 
 .ipd-compacting-head h4 {
 	margin: 0 0 4px;
-}
-
-.ipd-compacting-head p {
-	margin: 0;
-	color: var(--text-muted);
 }
 
 .ipd-compacting-progress {
@@ -697,10 +658,4 @@ thead .ipd-compacting-colour-column {
 	color: var(--text-muted);
 }
 
-.ipd-compacting-actions {
-	display: flex;
-	justify-content: flex-end;
-	align-items: center;
-	margin-top: 14px;
-}
 </style>

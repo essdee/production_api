@@ -2490,7 +2490,9 @@ def create_alternative_fp(doc_name, alternative_item, production_detail, lot_nam
 		if not qty_details['data']['data'][colour]['check_value']:
 			continue
 		for size in qty_details['data']['data'][colour]['values']:
-			qty = qty_details['data']['data'][colour]['values'][size]['conversion_qty']
+			qty = flt(
+				qty_details['data']['data'][colour]['values'][size]['conversion_qty']
+			)
 			if qty <= 0:
 				continue
 			size_wise_detail.setdefault(size, 0)
@@ -2539,6 +2541,7 @@ def create_alternative_fp(doc_name, alternative_item, production_detail, lot_nam
 		transfers=size_wise_detail,
 		finishing_plan=fp_doc.name,
 	)
+	_reduce_source_lot_quantity(fp_doc.lot, conversions)
 
 	old_wo = frappe.get_doc("Work Order", fp_doc.work_order)
 	wo_doc = frappe.new_doc("Work Order")
@@ -2578,7 +2581,7 @@ def _collect_conversions(qty_details):
 		if not data[colour].get("check_value"):
 			continue
 		for size in data[colour]["values"]:
-			qty = data[colour]["values"][size].get("conversion_qty") or 0
+			qty = flt(data[colour]["values"][size].get("conversion_qty"))
 			if qty > 0:
 				conversions.append({"colour": colour, "size": size, "qty": qty})
 	return conversions
@@ -2639,7 +2642,7 @@ def _topup_alternate_lot(lot_doc, conversions):
 
 def _rebuild_lot_order_items(lot_doc, pcs_per_box, primary_attr):
 	# Recompute the per-size box quantity from the NEW cumulative size totals.
-	# (Always round the cumulative total, never sum rounded deltas, to avoid drift.)
+	# Always divide the cumulative pieces, never sum separately converted deltas.
 	size_total = {}
 	for row in lot_doc.lot_order_details:
 		size = get_variant_attr_details(row.item_variant)[primary_attr]
@@ -2652,7 +2655,7 @@ def _rebuild_lot_order_items(lot_doc, pcs_per_box, primary_attr):
 
 	next_row_index = max([r.row_index or 0 for r in lot_doc.items], default=-1) + 1
 	for size, total in size_total.items():
-		box_qty = round(total / pcs_per_box)
+		box_qty = round(total / pcs_per_box, 6)
 		if size in items_by_size:
 			items_by_size[size].qty = box_qty
 		else:
@@ -2662,6 +2665,82 @@ def _rebuild_lot_order_items(lot_doc, pcs_per_box, primary_attr):
 				"table_index": 0, "row_index": next_row_index,
 			})
 			next_row_index += 1
+
+
+def _source_lot_row_key(row, primary_attr, packing_attr):
+	attributes = get_variant_attr_details(row.item_variant)
+	size = attributes.get(primary_attr)
+	colour = attributes.get(packing_attr)
+	if not colour:
+		combination = update_if_string_instance(row.set_combination) or {}
+		colour = combination.get("major_colour") or combination.get(packing_attr)
+	return (str(colour or ""), str(size or ""))
+
+
+def _reduce_source_lot_quantity(source_lot, conversions):
+	"""Reduce the source Lot by the exact colour/size quantities moved out of it."""
+	# PPO rows are locked separately by the PPO transfer. Lock the Lot as well so two
+	# simultaneous alternative conversions cannot both consume the same balance.
+	frappe.db.sql(
+		"SELECT name FROM `tabLot` WHERE name = %s FOR UPDATE",
+		(source_lot,),
+	)
+	lot_doc = frappe.get_doc("Lot", source_lot)
+	if not lot_doc.production_detail:
+		frappe.throw(f"Source Lot {source_lot} has no Item Production Detail")
+
+	pcs_per_box, primary_attr, packing_attr = frappe.get_value(
+		"Item Production Detail",
+		lot_doc.production_detail,
+		["packing_combo", "primary_item_attribute", "packing_attribute"],
+	)
+	pcs_per_box = flt(pcs_per_box)
+	if pcs_per_box <= 0 or not primary_attr or not packing_attr:
+		frappe.throw(
+			f"Item Production Detail {lot_doc.production_detail} has invalid packing details"
+		)
+
+	requested_by_key = {}
+	for conversion in conversions:
+		key = (str(conversion["colour"]), str(conversion["size"]))
+		requested_by_key[key] = requested_by_key.get(key, 0) + flt(
+			conversion["qty"]
+		)
+
+	rows_by_key = {}
+	for row in lot_doc.lot_order_details:
+		rows_by_key.setdefault(
+			_source_lot_row_key(row, primary_attr, packing_attr), []
+		).append(row)
+
+	# Validate every requested cell before changing any row. This gives all-or-nothing
+	# behaviour even before the request transaction is rolled back on an exception.
+	for (colour, size), requested in requested_by_key.items():
+		available = sum(
+			max(flt(row.quantity), 0) for row in rows_by_key.get((colour, size), [])
+		)
+		if requested > available:
+			frappe.throw(
+				f"Cannot move {requested:g} for {colour} / {size} from Lot {source_lot}: "
+				f"only {available:g} available."
+			)
+
+	for key, requested in requested_by_key.items():
+		remaining = requested
+		for row in rows_by_key[key]:
+			available = max(flt(row.quantity), 0)
+			deduction = min(available, remaining)
+			row.quantity = available - deduction
+			remaining -= deduction
+			if remaining <= 0:
+				break
+
+	_rebuild_lot_order_items(lot_doc, pcs_per_box, primary_attr)
+	lot_doc.total_order_quantity = sum(
+		flt(row.quantity) for row in lot_doc.lot_order_details
+	)
+	lot_doc.total_quantity = sum(flt(row.qty) for row in lot_doc.items)
+	lot_doc.save(ignore_permissions=True)
 
 
 def _get_packing_wo(target_lot):
@@ -3020,6 +3099,7 @@ def update_alternative_lot_quantity(doc_name, target_lot, qty_details):
 		transfers=transfers,
 		reason=f"Additional alternative item conversion from Finishing Plan {source_fp.name}",
 	)
+	_reduce_source_lot_quantity(source_fp.lot, conversions)
 
 	# 4. Find the alternate lot's packing Work Order and branch on its state.
 	wo_doc = frappe.get_doc("Work Order", _get_packing_wo(target_lot))
@@ -3035,6 +3115,9 @@ def update_alternative_lot_quantity(doc_name, target_lot, qty_details):
 
 def save_item_details(item_details, alternative_item, pcs_per_box, pack_stage, primary_attr, dependent_attr):
 	item_details = update_if_string_instance(item_details)
+	pcs_per_box = flt(pcs_per_box)
+	if pcs_per_box <= 0:
+		frappe.throw("Packing Combo must be greater than zero")
 	items = []
 	idx = 0
 	for size in item_details:
@@ -3044,7 +3127,7 @@ def save_item_details(item_details, alternative_item, pcs_per_box, pack_stage, p
 		item1 = {}
 		variant_name = get_or_create_variant(alternative_item, attributes)
 		item1['item_variant'] = variant_name
-		item1['qty'] = round(item_details[size]/pcs_per_box)
+		item1['qty'] = round(item_details[size] / pcs_per_box, 6)
 		item1['ratio'] = 1
 		item1['mrp'] = 0
 		item1['table_index'] = 0

@@ -1718,6 +1718,29 @@ def _normalise_alternative_transfers(transfers):
 	return transfers
 
 
+def _get_lot_packing_combo(lot):
+	production_detail = frappe.db.get_value("Lot", lot, "production_detail")
+	if not production_detail:
+		frappe.throw(f"Lot {lot} has no Item Production Detail")
+	packing_combo = flt(
+		frappe.db.get_value(
+			"Item Production Detail", production_detail, "packing_combo"
+		)
+	)
+	if packing_combo <= 0:
+		frappe.throw(
+			f"Set a valid Packing Combo in Item Production Detail {production_detail}"
+		)
+	return packing_combo
+
+
+def _piece_transfers_to_boxes(piece_transfers, packing_combo):
+	return {
+		size: round(piece_quantity / packing_combo, 6)
+		for size, piece_quantity in piece_transfers.items()
+	}
+
+
 def _validate_alternative_ppo_pair(source, target, source_lot, target_lot):
 	if source.docstatus != 1 or target.docstatus != 1:
 		frappe.throw("Alternative quantity can be moved only between submitted Production Orders")
@@ -1768,8 +1791,14 @@ def apply_alternative_plan_ppo_transfer(
 	transfers,
 	reason,
 ):
-	"""Move a partial finishing conversion between PPOs and persist paired audit rows."""
-	transfers = _normalise_alternative_transfers(transfers)
+	"""Convert finishing pieces to each Lot's box UOM and persist paired PPO movements."""
+	piece_transfers = _normalise_alternative_transfers(transfers)
+	source_box_transfers = _piece_transfers_to_boxes(
+		piece_transfers, _get_lot_packing_combo(source_lot)
+	)
+	target_box_transfers = _piece_transfers_to_boxes(
+		piece_transfers, _get_lot_packing_combo(target_lot)
+	)
 	lock_production_orders(source_production_order, target_production_order)
 	source = frappe.get_doc("Production Order", source_production_order)
 	target = frappe.get_doc("Production Order", target_production_order)
@@ -1778,15 +1807,19 @@ def apply_alternative_plan_ppo_transfer(
 	source_rows = get_rows_by_size(source)
 	target_rows = get_rows_by_size(target)
 	changes = []
-	for size, quantity in transfers.items():
+	for size, piece_quantity in piece_transfers.items():
+		source_quantity = source_box_transfers[size]
+		target_quantity = target_box_transfers[size]
 		source_row = source_rows.get(size)
 		if not source_row:
 			frappe.throw(f"Size {size} is not present in source Production Order {source.name}")
 		source_before = flt(source_row.quantity)
-		if quantity > source_before:
+		if source_quantity > source_before:
 			frappe.throw(
-				f"Cannot move {format_comment_qty(quantity)} for size {size}; "
-				f"Production Order {source.name} has only {format_comment_qty(source_before)}"
+				f"Cannot move {format_comment_qty(piece_quantity)} pieces "
+				f"({format_comment_qty(source_quantity)} boxes) for size {size}; "
+				f"Production Order {source.name} has only "
+				f"{format_comment_qty(source_before)} boxes"
 			)
 		target_row = target_rows.get(size)
 		if not target_row:
@@ -1795,14 +1828,17 @@ def apply_alternative_plan_ppo_transfer(
 		target_before = flt(target_row.quantity)
 		changes.append({
 			"size": size,
-			"qty": quantity,
+			"qty": target_quantity,
+			"piece_qty": piece_quantity,
+			"source_qty": source_quantity,
+			"target_qty": target_quantity,
 			"old_qty": target_before,
-			"new_qty": target_before + quantity,
+			"new_qty": target_before + target_quantity,
 			"source_old_qty": source_before,
-			"source_new_qty": source_before - quantity,
+			"source_new_qty": source_before - source_quantity,
 		})
-		source_row.quantity = source_before - quantity
-		target_row.quantity = target_before + quantity
+		source_row.quantity = source_before - source_quantity
+		target_row.quantity = target_before + target_quantity
 
 	source.flags.allow_quantity_transfer = True
 	target.flags.allow_quantity_transfer = True
@@ -1815,7 +1851,10 @@ def apply_alternative_plan_ppo_transfer(
 		"source_production_order": source.name,
 		"source_status": source.status,
 		"target_previous_status": target.status,
-		"transfers": transfers,
+		"transfers": target_box_transfers,
+		"piece_transfers": piece_transfers,
+		"source_box_transfers": source_box_transfers,
+		"target_box_transfers": target_box_transfers,
 		"requested_user": frappe.session.user,
 		"requested_on": str(approved_on),
 		"reason": reason,
@@ -1831,7 +1870,9 @@ def apply_alternative_plan_ppo_transfer(
 	return {
 		"source_production_order": source.name,
 		"target_production_order": target.name,
-		"transferred": transfers,
+		"transferred": piece_transfers,
+		"source_boxes": source_box_transfers,
+		"target_boxes": target_box_transfers,
 	}
 
 
@@ -1990,6 +2031,8 @@ def build_quantity_transfer_history_rows(
 	for change in changes:
 		size = change["size"]
 		quantity = flt(change["qty"])
+		source_quantity = flt(change.get("source_qty", quantity))
+		target_quantity = flt(change.get("target_qty", quantity))
 		source_row = source_rows_by_size.get(size)
 		source_before = flt(
 			change["source_old_qty"]
@@ -1999,9 +2042,9 @@ def build_quantity_transfer_history_rows(
 		source_after = flt(
 			change["source_new_qty"]
 			if "source_new_qty" in change
-			else source_before - quantity
+			else source_before - source_quantity
 		)
-		if not source_row or source_before < quantity:
+		if not source_row or source_before < source_quantity:
 			frappe.throw(
 				f"Source quantity for size {size} changed while approval was pending. Create a new transfer request"
 			)
@@ -2010,7 +2053,7 @@ def build_quantity_transfer_history_rows(
 			"movement": "Reduced",
 			"counterpart_production_order": target.name,
 			"size": size,
-			"quantity": quantity,
+			"quantity": source_quantity,
 			"quantity_before": source_before,
 			"quantity_after": source_after,
 		})
@@ -2019,7 +2062,7 @@ def build_quantity_transfer_history_rows(
 			"movement": "Added",
 			"counterpart_production_order": source.name,
 			"size": size,
-			"quantity": quantity,
+			"quantity": target_quantity,
 			"quantity_before": flt(change["old_qty"]),
 			"quantity_after": flt(change["new_qty"]),
 		})
