@@ -2,8 +2,9 @@ from types import SimpleNamespace
 from unittest import TestCase
 
 from production_api.api.ppo_report import (
+	_aggregate_production_stage,
 	_empty_snapshot,
-	_production_stage,
+	_production_stage_from_work_orders,
 	_validate_filters,
 	build_production_snapshot,
 )
@@ -55,17 +56,18 @@ class TestPPOReportSnapshot(TestCase):
 		self.assertIn("open or pending", result["empty_state"]["message"])
 
 	def test_derives_cutting_stitching_and_packing_stages(self):
-		self.assertEqual(_production_stage({}), "Cutting")
+		self.assertEqual(_production_stage_from_work_orders([], []), "Cutting")
 		self.assertEqual(
-			_production_stage({"cutting_quantity": 10}),
+			_production_stage_from_work_orders(["DC-1"], []),
 			"Stitching",
 		)
 		self.assertEqual(
-			_production_stage({
-				"cutting_quantity": 10,
-				"stitching_quantity": 5,
-			}),
+			_production_stage_from_work_orders(["DC-1"], ["GRN-1"]),
 			"Packing",
+		)
+		self.assertEqual(
+			_aggregate_production_stage(["Packing", "Cutting", "Stitching"]),
+			"Cutting",
 		)
 
 	def test_handles_multiple_lots_and_mismatched_inward_items(self):
@@ -225,7 +227,7 @@ class TestPPOReportSnapshot(TestCase):
 		self.assertEqual(result["ppos"][1]["planned_quantity"], 40)
 		self.assertEqual(result["ppos"][1]["inward_quantity"], 70)
 
-	def test_uses_lot_cutting_and_stitching_box_quantities(self):
+	def test_uses_work_order_movements_for_lot_stage(self):
 		result = build_production_snapshot(
 			filters={"item": "GYM VEST"},
 			ppo_rows=[
@@ -257,11 +259,11 @@ class TestPPOReportSnapshot(TestCase):
 			stage_rows=[
 				row(
 					lot="LOT-1",
-					item="GYM VEST",
-					item_variant="GYM VEST-S",
-					cut_qty=800,
-					stich_qty=500,
-					pack_qty=200,
+					production_stage="Packing",
+					cutting_work_orders=["WO-CUT-1"],
+					stitching_work_orders=["WO-STITCH-1"],
+					stitching_has_delivery_challan=True,
+					stitching_has_goods_received_note=True,
 				)
 			],
 			inward_rows=[
@@ -284,13 +286,16 @@ class TestPPOReportSnapshot(TestCase):
 
 		lot = result["lots"][0]
 		ppo = result["ppos"][0]
-		self.assertEqual(lot["cutting_quantity"], 800)
-		self.assertEqual(lot["stitching_quantity"], 500)
-		self.assertEqual(lot["packing_quantity"], 200)
 		self.assertEqual(lot["production_stage"], "Packing")
+		self.assertTrue(
+			lot["stage_details"]["stitching_has_delivery_challan"]
+		)
+		self.assertTrue(
+			lot["stage_details"]["stitching_has_goods_received_note"]
+		)
 		self.assertEqual(ppo["inward_quantity"], 40)
 		self.assertEqual(ppo["wip_quantity"], 60)
-		self.assertEqual(ppo["cutting_quantity"], 800)
+		self.assertEqual(ppo["production_stage"], "Packing")
 
 	def test_subtracts_transferred_lot_quantities_by_size(self):
 		result = build_production_snapshot(

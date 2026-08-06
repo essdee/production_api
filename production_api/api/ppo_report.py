@@ -76,7 +76,7 @@ def get_ppo_production_snapshot(
 	item_variants = list(
 		dict.fromkeys(
 			row.item_variant
-			for row in [*lot_rows, *inward_rows, *stage_rows]
+			for row in [*lot_rows, *inward_rows]
 			if row.get("item_variant")
 		)
 	)
@@ -144,6 +144,9 @@ def build_production_snapshot(
 ):
 	"""Build the size-wise PPO, Lot, transfer, inward, and WIP snapshot."""
 	stage_rows = stage_rows or []
+	stage_by_lot = {
+		row.get("lot"): row for row in stage_rows if row.get("lot")
+	}
 	transferred_lot_rows = transferred_lot_rows or []
 	variant_attributes = variant_attributes or {}
 	column_order = list(column_order or [])
@@ -214,9 +217,6 @@ def build_production_snapshot(
 					"transferred_quantity": 0.0,
 					"planned_quantity": 0.0,
 					"inward_quantity": 0.0,
-					"cutting_quantity": 0.0,
-					"stitching_quantity": 0.0,
-					"packing_quantity": 0.0,
 					"wip_quantity": 0.0,
 					"over_inward_quantity": 0.0,
 					"inward_entries": [],
@@ -271,9 +271,6 @@ def build_production_snapshot(
 				"transferred_quantity": 0.0,
 				"planned_quantity": 0.0,
 				"inward_quantity": 0.0,
-				"cutting_quantity": 0.0,
-				"stitching_quantity": 0.0,
-				"packing_quantity": 0.0,
 				"wip_quantity": 0.0,
 				"over_inward_quantity": 0.0,
 				"inward_entries": [],
@@ -291,38 +288,6 @@ def build_production_snapshot(
 				"reported_uom": "Box",
 			}
 		)
-
-	for row in stage_rows:
-		if not row.get("lot") or not row.get("item_variant"):
-			continue
-		lot = lot_map.get(row.lot)
-		if not lot:
-			continue
-		item_name = row.get("item") or lot.get("header_item")
-		variant_items[row.item_variant] = item_name
-		item_row = lot["items"].setdefault(
-			row.item_variant,
-			{
-				"item": item_name,
-				"item_variant": row.item_variant,
-				"primary_attribute_value": variant_attributes.get(
-					row.item_variant
-				),
-				"original_planned_quantity": 0.0,
-				"transferred_quantity": 0.0,
-				"planned_quantity": 0.0,
-				"inward_quantity": 0.0,
-				"cutting_quantity": 0.0,
-				"stitching_quantity": 0.0,
-				"packing_quantity": 0.0,
-				"wip_quantity": 0.0,
-				"over_inward_quantity": 0.0,
-				"inward_entries": [],
-			},
-		)
-		stage_quantities = _stage_quantities(row)
-		for fieldname, quantity in stage_quantities.items():
-			item_row[fieldname] += quantity
 
 	lots = []
 	ppo_transfer_deductions = defaultdict(lambda: defaultdict(float))
@@ -354,9 +319,6 @@ def build_production_snapshot(
 					"transferred_quantity": 0.0,
 					"planned_quantity": 0.0,
 					"inward_quantity": 0.0,
-					"cutting_quantity": 0.0,
-					"stitching_quantity": 0.0,
-					"packing_quantity": 0.0,
 					"wip_quantity": 0.0,
 					"over_inward_quantity": 0.0,
 					"inward_entries": [],
@@ -367,9 +329,6 @@ def build_production_snapshot(
 				"transferred_quantity",
 				"planned_quantity",
 				"inward_quantity",
-				"cutting_quantity",
-				"stitching_quantity",
-				"packing_quantity",
 			):
 				size_row[fieldname] += flt(item_row.get(fieldname))
 			size_row["inward_entries"].extend(
@@ -411,16 +370,18 @@ def build_production_snapshot(
 		lot["inward_quantity"] = sum(
 			row["inward_quantity"] for row in lot["size_rows"]
 		)
-		lot["cutting_quantity"] = sum(
-			row["cutting_quantity"] for row in lot["size_rows"]
-		)
-		lot["stitching_quantity"] = sum(
-			row["stitching_quantity"] for row in lot["size_rows"]
-		)
-		lot["packing_quantity"] = sum(
-			row["packing_quantity"] for row in lot["size_rows"]
-		)
-		lot["production_stage"] = _production_stage(lot)
+		stage = stage_by_lot.get(lot["name"], {})
+		lot["production_stage"] = stage.get("production_stage") or "Cutting"
+		lot["stage_details"] = {
+			"cutting_work_orders": list(stage.get("cutting_work_orders") or []),
+			"stitching_work_orders": list(stage.get("stitching_work_orders") or []),
+			"stitching_has_delivery_challan": bool(
+				stage.get("stitching_has_delivery_challan")
+			),
+			"stitching_has_goods_received_note": bool(
+				stage.get("stitching_has_goods_received_note")
+			),
+		}
 		lot["wip_quantity"] = sum(
 			row["wip_quantity"] for row in lot["size_rows"]
 		)
@@ -452,9 +413,6 @@ def build_production_snapshot(
 	ppo_lot_planned_by_size = defaultdict(lambda: defaultdict(float))
 	ppo_lot_wip_by_size = defaultdict(lambda: defaultdict(float))
 	ppo_over_inward_by_size = defaultdict(lambda: defaultdict(float))
-	ppo_cutting_by_size = defaultdict(lambda: defaultdict(float))
-	ppo_stitching_by_size = defaultdict(lambda: defaultdict(float))
-	ppo_packing_by_size = defaultdict(lambda: defaultdict(float))
 	for lot in lots:
 		production_order = lot.get("production_order")
 		if not production_order:
@@ -473,15 +431,6 @@ def build_production_snapshot(
 			ppo_over_inward_by_size[production_order][size] += flt(
 				size_row.get("over_inward_quantity")
 			)
-			ppo_cutting_by_size[production_order][size] += flt(
-				size_row.get("cutting_quantity")
-			)
-			ppo_stitching_by_size[production_order][size] += flt(
-				size_row.get("stitching_quantity")
-			)
-			ppo_packing_by_size[production_order][size] += flt(
-				size_row.get("packing_quantity")
-			)
 
 	total_over_inward = 0.0
 	for ppo in ppo_map.values():
@@ -493,11 +442,6 @@ def build_production_snapshot(
 		remaining_over_inward = dict(
 			ppo_over_inward_by_size.get(ppo["name"], {})
 		)
-		remaining_cutting = dict(ppo_cutting_by_size.get(ppo["name"], {}))
-		remaining_stitching = dict(
-			ppo_stitching_by_size.get(ppo["name"], {})
-		)
-		remaining_packing = dict(ppo_packing_by_size.get(ppo["name"], {}))
 		for detail in ppo["details"]:
 			size = _size_key(detail.get("item_variant"), variant_attributes)
 			detail["lot_planned_quantity"] = flt(
@@ -508,11 +452,6 @@ def build_production_snapshot(
 			detail["over_inward_quantity"] = flt(
 				remaining_over_inward.pop(size, 0)
 			)
-			detail["cutting_quantity"] = flt(remaining_cutting.pop(size, 0))
-			detail["stitching_quantity"] = flt(
-				remaining_stitching.pop(size, 0)
-			)
-			detail["packing_quantity"] = flt(remaining_packing.pop(size, 0))
 		ppo["planned_quantity"] = sum(
 			flt(detail.get("lot_planned_quantity")) for detail in ppo["details"]
 		)
@@ -522,19 +461,14 @@ def build_production_snapshot(
 		ppo["wip_quantity"] = sum(
 			flt(detail.get("wip_quantity")) for detail in ppo["details"]
 		)
-		ppo["cutting_quantity"] = sum(
-			flt(detail.get("cutting_quantity")) for detail in ppo["details"]
-		)
-		ppo["stitching_quantity"] = sum(
-			flt(detail.get("stitching_quantity")) for detail in ppo["details"]
-		)
-		ppo["packing_quantity"] = sum(
-			flt(detail.get("packing_quantity")) for detail in ppo["details"]
-		)
 		ppo["over_inward_quantity"] = sum(
 			flt(detail.get("over_inward_quantity")) for detail in ppo["details"]
 		)
-		ppo["production_stage"] = _production_stage(ppo)
+		ppo["production_stage"] = _aggregate_production_stage(
+			lot.get("production_stage")
+			for lot in lots
+			if lot.get("production_order") == ppo["name"]
+		)
 		total_over_inward += ppo["over_inward_quantity"]
 
 	stock_rows = {}
@@ -709,30 +643,116 @@ def _fetch_lot_rows(ppo_names, selected_lots):
 
 
 def _fetch_lot_stage_rows(lot_names):
+	"""Resolve each lot's stage from submitted Work Order movements.
+
+	The Work Order's Item Production Detail identifies which configured process
+	is Cutting or Stitching. A submitted Stitching DC moves the lot into
+	Stitching; a submitted non-return Stitching GRN moves it into Packing.
+	"""
 	if not lot_names:
 		return []
 
-	stage = frappe.qb.DocType("Lot Order Detail")
-	item_variant = frappe.qb.DocType("Item Variant")
-
-	return (
-		frappe.qb.from_(stage)
-		.left_join(item_variant)
-		.on(item_variant.name == stage.item_variant)
+	work_order = frappe.qb.DocType("Work Order")
+	production_detail = frappe.qb.DocType("Item Production Detail")
+	work_orders = (
+		frappe.qb.from_(work_order)
+		.left_join(production_detail)
+		.on(production_detail.name == work_order.production_detail)
 		.select(
-			stage.parent.as_("lot"),
-			stage.item_variant,
-			stage.quantity,
-			stage.cut_qty,
-			stage.stich_qty,
-			stage.pack_qty,
-			stage.idx,
-			item_variant.item,
+			work_order.name,
+			work_order.lot,
+			work_order.process_name,
+			production_detail.cutting_process,
+			production_detail.stiching_process,
 		)
-		.where(stage.parent.isin(lot_names))
-		.orderby(stage.parent)
-		.orderby(stage.idx)
+		.where(work_order.docstatus == 1)
+		.where(work_order.lot.isin(lot_names))
+		.orderby(work_order.lot)
+		.orderby(work_order.name)
 	).run(as_dict=True)
+
+	process_names = list(
+		dict.fromkeys(
+			row.process_name for row in work_orders if row.get("process_name")
+		)
+	)
+	grouped_processes = defaultdict(set)
+	if process_names:
+		process_detail = frappe.qb.DocType("Process Details")
+		for row in (
+			frappe.qb.from_(process_detail)
+			.select(process_detail.parent, process_detail.process_name)
+			.where(process_detail.parent.isin(process_names))
+		).run(as_dict=True):
+			if row.get("process_name"):
+				grouped_processes[row.parent].add(row.process_name)
+
+	lot_states = {
+		lot_name: {
+			"lot": lot_name,
+			"cutting_work_orders": [],
+			"stitching_work_orders": [],
+			"stitching_has_delivery_challan": False,
+			"stitching_has_goods_received_note": False,
+		}
+		for lot_name in lot_names
+	}
+	stitching_work_order_lots = {}
+	for row in work_orders:
+		state = lot_states.setdefault(
+			row.lot,
+			{
+				"lot": row.lot,
+				"cutting_work_orders": [],
+				"stitching_work_orders": [],
+				"stitching_has_delivery_challan": False,
+				"stitching_has_goods_received_note": False,
+			},
+		)
+		processes = {
+			row.get("process_name"),
+			*grouped_processes.get(row.get("process_name"), set()),
+		}
+		if row.get("cutting_process") in processes:
+			state["cutting_work_orders"].append(row.name)
+		if row.get("stiching_process") in processes:
+			state["stitching_work_orders"].append(row.name)
+			stitching_work_order_lots[row.name] = row.lot
+
+	stitching_work_orders = list(stitching_work_order_lots)
+	if stitching_work_orders:
+		delivery_challan = frappe.qb.DocType("Delivery Challan")
+		for row in (
+			frappe.qb.from_(delivery_challan)
+			.select(delivery_challan.work_order)
+			.where(delivery_challan.docstatus == 1)
+			.where(delivery_challan.work_order.isin(stitching_work_orders))
+			.distinct()
+		).run(as_dict=True):
+			lot_states[stitching_work_order_lots[row.work_order]][
+				"stitching_has_delivery_challan"
+			] = True
+
+		goods_received_note = frappe.qb.DocType("Goods Received Note")
+		for row in (
+			frappe.qb.from_(goods_received_note)
+			.select(goods_received_note.against_id.as_("work_order"))
+			.where(goods_received_note.docstatus == 1)
+			.where(goods_received_note.against == "Work Order")
+			.where(goods_received_note.is_return == 0)
+			.where(goods_received_note.against_id.isin(stitching_work_orders))
+			.distinct()
+		).run(as_dict=True):
+			lot_states[stitching_work_order_lots[row.work_order]][
+				"stitching_has_goods_received_note"
+			] = True
+
+	for state in lot_states.values():
+		state["production_stage"] = _production_stage_from_work_orders(
+			state["stitching_has_delivery_challan"],
+			state["stitching_has_goods_received_note"],
+		)
+	return [lot_states[lot_name] for lot_name in lot_names]
 
 
 def _fetch_inward_lot_names(item, start_date, end_date):
@@ -860,21 +880,20 @@ def _merge_column_order(preferred, observed):
 	return columns
 
 
-def _stage_quantities(row):
-	"""Return Lot Order Detail process quantities, which are stored in boxes."""
-	return {
-		"cutting_quantity": flt(row.get("cut_qty")),
-		"stitching_quantity": flt(row.get("stich_qty")),
-		"packing_quantity": flt(row.get("pack_qty")),
-	}
-
-
-def _production_stage(row):
-	if flt(row.get("stitching_quantity")) > 0:
+def _production_stage_from_work_orders(stitching_dcs, stitching_grns):
+	if stitching_grns:
 		return "Packing"
-	if flt(row.get("cutting_quantity")) > 0:
+	if stitching_dcs:
 		return "Stitching"
 	return "Cutting"
+
+
+def _aggregate_production_stage(stages):
+	stage_rank = {"Cutting": 0, "Stitching": 1, "Packing": 2}
+	stages = [stage for stage in stages if stage in stage_rank]
+	if not stages:
+		return None
+	return min(stages, key=stage_rank.get)
 
 
 def _validate_filters(
