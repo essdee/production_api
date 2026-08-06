@@ -21,14 +21,12 @@ class TestPPOReportSnapshot(TestCase):
 		result = _validate_filters(
 			item="GYM VEST",
 			ppo="PPO-1",
-			ppo_start_date=None,
-			ppo_end_date=None,
 			inward_start_date="2026-07-01",
 			inward_end_date="2026-07-31",
 		)
 
 		self.assertEqual(result["ppo"], "PPO-1")
-		self.assertIsNone(result["ppo_start_date"])
+		self.assertNotIn("ppo_start_date", result)
 
 	def test_preserves_an_optional_lot_filter(self):
 		result = _validate_filters(
@@ -43,22 +41,18 @@ class TestPPOReportSnapshot(TestCase):
 
 		self.assertEqual(result["lot"], "LOT-1")
 
-	def test_empty_snapshot_explains_missing_delivery_range(self):
+	def test_empty_snapshot_explains_missing_open_ppo(self):
 		result = _empty_snapshot(
-			{
-				"item": "GYM VEST",
-				"ppo_start_date": "2026-07-01",
-				"ppo_end_date": "2026-07-31",
-			},
+			{"item": "GYM VEST"},
 			[],
 		)
 
 		self.assertEqual(
 			result["empty_state"]["code"],
-			"no_ppo_for_delivery_range",
+			"no_open_ppo",
 		)
 		self.assertIn("GYM VEST", result["empty_state"]["message"])
-		self.assertIn("2026-07-01", result["empty_state"]["message"])
+		self.assertIn("open or pending", result["empty_state"]["message"])
 
 	def test_handles_multiple_lots_and_mismatched_inward_items(self):
 		result = build_production_snapshot(
@@ -153,6 +147,65 @@ class TestPPOReportSnapshot(TestCase):
 		self.assertEqual(lot_one["size_rows"][0]["planned_quantity"], 120)
 		self.assertEqual(lot_one["size_rows"][0]["inward_quantity"], 105)
 		self.assertEqual(lot_one["size_rows"][0]["wip_quantity"], 15)
+
+	def test_wip_uses_total_ppo_and_all_inward_for_the_related_lots(self):
+		result = build_production_snapshot(
+			filters={"item": "GYM VEST"},
+			ppo_rows=[
+				row(
+					name="PPO-1",
+					item="GYM VEST",
+					delivery_date="2026-07-01",
+					item_variant="GYM VEST-S",
+					quantity=60,
+				),
+				row(
+					name="PPO-2",
+					item="GYM VEST",
+					delivery_date="2026-07-02",
+					item_variant="GYM VEST-S",
+					quantity=40,
+				),
+			],
+			lot_rows=[
+				row(
+					lot="LOT-2",
+					production_order="PPO-2",
+					lot_item="GYM VEST",
+					status="Open",
+					has_transferred=0,
+					is_transferred=0,
+					transferred_lot=None,
+					item="GYM VEST",
+					item_variant="GYM VEST-S",
+					planned_quantity=40,
+				),
+			],
+			inward_rows=[
+				row(
+					lot="LOT-2",
+					item="OTHER VEST",
+					item_variant="OTHER VEST-S",
+					inward_quantity=70,
+					uom="Box",
+					stock_entry="FG-1",
+					posting_date="2026-07-10",
+					warehouse="FG",
+				),
+			],
+			stock={},
+			warehouses=[],
+			variant_attributes={
+				"GYM VEST-S": "S",
+				"OTHER VEST-S": "S",
+			},
+			column_order=["S"],
+		)
+
+		self.assertEqual(result["summary"]["ppo_quantity"], 100)
+		self.assertEqual(result["summary"]["inward_quantity"], 70)
+		self.assertEqual(result["summary"]["wip_quantity"], 30)
+		self.assertEqual(result["summary"]["over_inward_quantity"], 0)
 
 	def test_subtracts_transferred_lot_quantities_by_size(self):
 		result = build_production_snapshot(

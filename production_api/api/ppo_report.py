@@ -12,13 +12,13 @@ from production_api.production_api.doctype.item.item import get_attribute_detail
 @frappe.whitelist()
 def get_ppo_production_snapshot(
 	item,
-	ppo_start_date,
-	ppo_end_date,
 	inward_start_date,
 	inward_end_date,
 	warehouses=None,
 	ppo=None,
 	lot=None,
+	ppo_start_date=None,
+	ppo_end_date=None,
 ):
 	"""Return the MRP-side PPO, lot, inward, WIP, and stock snapshot.
 
@@ -42,8 +42,6 @@ def get_ppo_production_snapshot(
 
 	ppo_rows = _fetch_ppo_rows(
 		filters["item"],
-		filters["ppo_start_date"],
-		filters["ppo_end_date"],
 		filters["ppo"],
 	)
 	ppo_names = list(dict.fromkeys(row.name for row in ppo_rows))
@@ -51,19 +49,14 @@ def get_ppo_production_snapshot(
 	if not ppo_names:
 		return _empty_snapshot(filters, warehouse_names)
 
-	lot_rows = _fetch_lot_rows(ppo_names, filters["lot"])
+	seed_lots = _fetch_inward_lot_names(
+		filters["item"],
+		filters["inward_start_date"],
+		filters["inward_end_date"],
+	)
 	if filters["lot"]:
-		selected_ppo_names = {
-			row.production_order
-			for row in lot_rows
-			if row.get("production_order")
-		}
-		ppo_rows = [
-			row for row in ppo_rows if row.name in selected_ppo_names
-		]
-		ppo_names = list(dict.fromkeys(row.name for row in ppo_rows))
-		if not lot_rows:
-			return _empty_snapshot(filters, warehouse_names)
+		seed_lots = [name for name in seed_lots if name == filters["lot"]]
+	lot_rows = _fetch_lot_rows(ppo_names, seed_lots)
 	lot_names = list(
 		dict.fromkeys(row.lot for row in lot_rows if row.get("lot"))
 	)
@@ -112,13 +105,13 @@ def get_ppo_production_snapshot(
 	)
 	stock = {}
 	warnings = []
-	if item_variants and warehouse_names:
+	if all_item_variants and warehouse_names:
 		stock = get_stock(
-			item=item_variants,
+			item=all_item_variants,
 			warehouse=warehouse_names,
 			remove_zero_balance_item=0,
 		)
-	elif item_variants:
+	elif all_item_variants:
 		warnings.append(
 			"No enabled Sales warehouses were supplied; current stock was not calculated."
 		)
@@ -157,6 +150,7 @@ def build_production_snapshot(
 	report_warnings = list(warnings or [])
 
 	ppo_map = {}
+	variant_items = {}
 	for row in ppo_rows:
 		ppo = ppo_map.setdefault(
 			row.name,
@@ -172,6 +166,7 @@ def build_production_snapshot(
 			},
 		)
 		if row.get("item_variant"):
+			variant_items[row.item_variant] = row.item
 			quantity = flt(row.get("quantity"))
 			ppo["details"].append(
 				{
@@ -188,7 +183,6 @@ def build_production_snapshot(
 			ppo["quantity"] += quantity
 
 	lot_map = {}
-	variant_items = {}
 	for row in lot_rows:
 		if not row.get("lot"):
 			continue
@@ -404,6 +398,35 @@ def build_production_snapshot(
 			1 for lot in lots if lot.get("production_order") == ppo["name"]
 		)
 
+	total_inward_by_size = defaultdict(float)
+	for lot in lots:
+		for size_row in lot.get("size_rows") or []:
+			total_inward_by_size[
+				size_row.get("primary_attribute_value") or "Unspecified"
+			] += flt(size_row.get("inward_quantity"))
+
+	remaining_inward = dict(total_inward_by_size)
+	for ppo in ppo_map.values():
+		for detail in ppo["details"]:
+			size = _size_key(detail.get("item_variant"), variant_attributes)
+			planned = flt(detail.get("quantity"))
+			available_inward = flt(remaining_inward.get(size))
+			inward = min(planned, available_inward)
+			detail["inward_quantity"] = inward
+			detail["wip_quantity"] = max(planned - inward, 0.0)
+			remaining_inward[size] = max(available_inward - inward, 0.0)
+		ppo["inward_quantity"] = sum(
+			flt(detail.get("inward_quantity")) for detail in ppo["details"]
+		)
+		ppo["wip_quantity"] = sum(
+			flt(detail.get("wip_quantity")) for detail in ppo["details"]
+		)
+		ppo["over_inward_quantity"] = 0.0
+
+	over_inward_quantity = sum(
+		flt(quantity) for quantity in remaining_inward.values()
+	)
+
 	stock_rows = {}
 	for item_variant, row in (stock or {}).items():
 		stock_rows[item_variant] = {
@@ -426,10 +449,10 @@ def build_production_snapshot(
 		),
 		"lot_quantity": sum(lot["planned_quantity"] for lot in lots),
 		"inward_quantity": sum(lot["inward_quantity"] for lot in lots),
-		"wip_quantity": sum(lot["wip_quantity"] for lot in lots),
-		"over_inward_quantity": sum(
-			lot["over_inward_quantity"] for lot in lots
+		"wip_quantity": sum(
+			ppo["wip_quantity"] for ppo in ppo_map.values()
 		),
+		"over_inward_quantity": over_inward_quantity,
 	}
 
 	return {
@@ -509,7 +532,7 @@ def _column_sort_key(value, preferred):
 		return (1, value)
 
 
-def _fetch_ppo_rows(item, start_date=None, end_date=None, ppo=None):
+def _fetch_ppo_rows(item, ppo=None):
 	production_order = frappe.qb.DocType("Production Order")
 	detail = frappe.qb.DocType("Production Order Detail")
 
@@ -527,13 +550,10 @@ def _fetch_ppo_rows(item, start_date=None, end_date=None, ppo=None):
 		)
 		.where(production_order.docstatus == 1)
 		.where(production_order.item == item)
+		.where(production_order.status.isin(["Open", "Pending Request"]))
 	)
 	if ppo:
 		query = query.where(production_order.name == ppo)
-	else:
-		query = query.where(
-			production_order.delivery_date.between(start_date, end_date)
-		)
 	return (
 		query.orderby(production_order.delivery_date)
 		.orderby(production_order.name)
@@ -541,8 +561,8 @@ def _fetch_ppo_rows(item, start_date=None, end_date=None, ppo=None):
 	).run(as_dict=True)
 
 
-def _fetch_lot_rows(ppo_names, selected_lot=None):
-	if not ppo_names:
+def _fetch_lot_rows(ppo_names, selected_lots):
+	if not ppo_names or not selected_lots:
 		return []
 
 	lot = frappe.qb.DocType("Lot")
@@ -569,14 +589,35 @@ def _fetch_lot_rows(ppo_names, selected_lot=None):
 			item_variant.item,
 		)
 		.where(lot.production_order.isin(ppo_names))
+		.where(lot.name.isin(selected_lots))
 		.where(lot.is_transferred == 0)
 		.orderby(lot.production_order)
 		.orderby(lot.name)
 		.orderby(lot_item.idx)
 	)
-	if selected_lot:
-		query = query.where(lot.name == selected_lot)
 	return query.run(as_dict=True)
+
+
+def _fetch_inward_lot_names(item, start_date, end_date):
+	"""Seed lots from submitted FG entries for the selected item/date range."""
+	stock_entry = frappe.qb.DocType("FG Stock Entry")
+	detail = frappe.qb.DocType("FG Stock Entry Detail")
+	item_variant = frappe.qb.DocType("Item Variant")
+
+	rows = (
+		frappe.qb.from_(detail)
+		.join(stock_entry)
+		.on(stock_entry.name == detail.parent)
+		.join(item_variant)
+		.on(item_variant.name == detail.item_variant)
+		.select(detail.lot)
+		.where(stock_entry.docstatus == 1)
+		.where(stock_entry.posting_date.between(start_date, end_date))
+		.where(item_variant.item == item)
+		.where(detail.lot.isnotnull())
+		.distinct()
+	).run(as_dict=True)
+	return list(dict.fromkeys(row.lot for row in rows if row.get("lot")))
 
 
 def _fetch_transferred_lot_rows(source_lot_names):
@@ -645,7 +686,6 @@ def _fetch_inward_rows(lot_names, start_date, end_date):
 			item_variant.item,
 		)
 		.where(stock_entry.docstatus == 1)
-		.where(stock_entry.consumed == 0)
 		.where(stock_entry.posting_date.between(start_date, end_date))
 		.where(detail.lot.isin(lot_names))
 		.orderby(stock_entry.posting_date)
@@ -727,12 +767,12 @@ def _inward_quantity_in_boxes(row):
 def _validate_filters(
 	*,
 	item,
-	ppo_start_date,
-	ppo_end_date,
 	inward_start_date,
 	inward_end_date,
 	ppo=None,
 	lot=None,
+	ppo_start_date=None,
+	ppo_end_date=None,
 ):
 	required = {
 		"item": item,
@@ -750,24 +790,9 @@ def _validate_filters(
 		"item": str(item).strip(),
 		"ppo": str(ppo or "").strip() or None,
 		"lot": str(lot or "").strip() or None,
-		"ppo_start_date": (
-			getdate(ppo_start_date) if ppo_start_date else None
-		),
-		"ppo_end_date": getdate(ppo_end_date) if ppo_end_date else None,
 		"inward_start_date": getdate(inward_start_date),
 		"inward_end_date": getdate(inward_end_date),
 	}
-	if not result["ppo"]:
-		if not result["ppo_start_date"] or not result["ppo_end_date"]:
-			frappe.throw(
-				"Select a PPO or provide the PPO delivery date range",
-				frappe.ValidationError,
-			)
-		_validate_date_range(
-			result["ppo_start_date"],
-			result["ppo_end_date"],
-			"PPO delivery",
-		)
 	_validate_date_range(
 		result["inward_start_date"],
 		result["inward_end_date"],
@@ -804,8 +829,6 @@ def _empty_snapshot(filters, warehouses):
 	item = filters.get("item")
 	ppo = filters.get("ppo")
 	lot = filters.get("lot")
-	start_date = _date_string(filters.get("ppo_start_date"))
-	end_date = _date_string(filters.get("ppo_end_date"))
 	if lot:
 		message = (
 			f"Lot {lot} was not found among the selected submitted PPOs "
@@ -817,10 +840,9 @@ def _empty_snapshot(filters, warehouses):
 		code = "ppo_not_found"
 	else:
 		message = (
-			f"No submitted PPO was found for {item} with a delivery "
-			f"date from {start_date} to {end_date}."
+			f"No open or pending submitted PPO was found for {item}."
 		)
-		code = "no_ppo_for_delivery_range"
+		code = "no_open_ppo"
 	return {
 		"filters": {
 			key: _date_string(value) if key.endswith("_date") else value
