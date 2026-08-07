@@ -60,6 +60,10 @@
   "delivery_address_display",
   "total_receivable_cost",
   "total_received_quantity",
+  "packing_calculation_version",
+  "total_packing_boxes",
+  "total_packing_pieces",
+  "packing_batches",
   "section_break_ve8oj",
   "items",
   "item_html",
@@ -373,6 +377,37 @@
    "label": "Total Receivable Cost"
   },
   {
+   "default": "0",
+   "fieldname": "packing_calculation_version",
+   "fieldtype": "Int",
+   "hidden": 1,
+   "label": "Packing Calculation Version",
+   "read_only": 1
+  },
+  {
+   "fieldname": "total_packing_boxes",
+   "fieldtype": "Float",
+   "hidden": 1,
+   "label": "Total Packing Boxes",
+   "read_only": 1
+  },
+  {
+   "fieldname": "total_packing_pieces",
+   "fieldtype": "Float",
+   "hidden": 1,
+   "label": "Total Packing Pieces",
+   "read_only": 1
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "packing_batches",
+   "fieldtype": "Table",
+   "hidden": 1,
+   "label": "Packing Batches",
+   "options": "GRN Packing Batch",
+   "read_only": 1
+  },
+  {
    "fieldname": "lot",
    "fieldtype": "Link",
    "in_list_view": 1,
@@ -606,7 +641,7 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2026-07-22 14:14:27.236876",
+ "modified": "2026-08-07 16:43:00.616167",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Goods Received Note",

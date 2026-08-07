@@ -36,8 +36,41 @@
                     </tbody>
                 </table>
 
-                <!-- Size Ratio: enter boxes per colour (draft only) -->
-                <table v-if="row._mode === 'Size Ratio Packing' && docstatus == 0"
+                <!-- Dynamic ratios: select the exact persisted GRN batches. -->
+                <table v-if="row._dynamic_ratio_packing"
+                    class="table table-sm table-sm-bordered bordered-table">
+                    <thead class="dark-border">
+                        <tr>
+                            <th>GRN</th><th>Colour</th><th>Ratio</th><th>Received</th>
+                            <th>Already Dispatched</th><th>Available</th><th>Dispatch Boxes</th><th>Dispatch Pieces</th>
+                        </tr>
+                    </thead>
+                    <tbody class="dark-border">
+                        <tr v-for="batch in row._packing_batches" :key="batch.batch_row">
+                            <td>{{ batch.grn }}</td>
+                            <td>{{ batch.colour }}</td>
+                            <td>{{ ratio_text(batch.ratio) }}</td>
+                            <td>{{ batch.box_quantity }}</td>
+                            <td>{{ batch.dispatched_boxes }}</td>
+                            <td>{{ batch.available_boxes }}</td>
+                            <td>
+                                <input v-if="docstatus == 0" type="number" min="0" step="1"
+                                    :max="batch.available_boxes" v-model.number="row._batch_dispatch_boxes[batch.batch_row]"
+                                    class="form-control" @input="recompute_dynamic(row)" />
+                                <span v-else>{{ row._batch_dispatch_boxes[batch.batch_row] || 0 }}</span>
+                            </td>
+                            <td>{{ (Number(row._batch_dispatch_boxes[batch.batch_row]) || 0) * Number(batch.pieces_per_box || 0) }}</td>
+                        </tr>
+                        <tr>
+                            <td colspan="6"><b>Total</b></td>
+                            <td><b>{{ dynamic_total_boxes(row) }}</b></td>
+                            <td><b>{{ row.total.total_dispatch }}</b></td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <!-- Legacy Size Ratio: enter boxes per colour (draft only) -->
+                <table v-else-if="row._mode === 'Size Ratio Packing' && docstatus == 0"
                     class="table table-sm table-sm-bordered bordered-table">
                     <thead class="dark-border">
                         <tr>
@@ -107,6 +140,12 @@ function load_data(data) {
     items.value.forEach(item => {
         const cfg = item.packing_config || {}
         item._mode = (cfg.based_on_other_attribute_mapping && cfg.packing_mode) ? cfg.packing_mode : null
+		item._dynamic_ratio_packing = Boolean(item.dynamic_ratio_packing)
+		item._packing_batches = item.packing_batches || []
+		item._batch_dispatch_boxes = {}
+		;(item.batch_dispatches || []).forEach(batch => {
+			item._batch_dispatch_boxes[batch.batch_row] = Number(batch.box_quantity) || 0
+		})
         item._colours = cfg.colours || []
         item._combo = Number(cfg.packing_combo) || 1
         item._ratio = {}
@@ -134,7 +173,42 @@ function load_data(data) {
             }
         }
         if (!item.colour_grid) item.colour_grid = {}
+		if (item._dynamic_ratio_packing) recompute_dynamic(item, false)
     })
+}
+
+function ratio_text(ratio) {
+	return Object.entries(ratio || {})
+		.filter(([, qty]) => Number(qty))
+		.map(([size, qty]) => `${size}:${qty}`)
+		.join(', ')
+}
+
+function recompute_dynamic(item, markDirty = true) {
+	for (const size in item.values) item.values[size].dispatch_qty = 0
+	const grid = {}
+	item.batch_dispatches = []
+	item._packing_batches.forEach(batch => {
+		const boxes = Number(item._batch_dispatch_boxes[batch.batch_row]) || 0
+		if (!boxes) return
+		item.batch_dispatches.push({batch_row: batch.batch_row, box_quantity: boxes})
+		if (!grid[batch.colour]) grid[batch.colour] = {}
+		for (const size in (batch.ratio || {})) {
+			const pieces = boxes * (Number(batch.ratio[size]) || 0)
+			if (!item.values[size]) continue
+			item.values[size].dispatch_qty += pieces
+			if (pieces) grid[batch.colour][size] = (grid[batch.colour][size] || 0) + pieces
+		}
+	})
+	item.colour_grid = grid
+	update_total(item)
+	if (markDirty) make_dirty()
+}
+
+function dynamic_total_boxes(item) {
+	return item._packing_batches.reduce(
+		(sum, batch) => sum + (Number(item._batch_dispatch_boxes[batch.batch_row]) || 0), 0
+	)
 }
 
 function recompute(item) {

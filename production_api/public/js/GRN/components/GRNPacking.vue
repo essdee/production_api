@@ -1,6 +1,10 @@
 <template>
     <div ref="root">
-        <h3>Enter Box Quantity</h3>
+        <h3>{{ dynamic_packing ? 'Size-wise Piece Breakdown' : 'Enter Box Quantity' }}</h3>
+        <p v-if="dynamic_packing" class="text-muted">
+            These values are pieces, calculated as boxes × ratio per box. The physical box
+            quantity is stored in Packing Batches above.
+        </p>
         <table>
             <tr>
                 <th v-for="(value, index) in primary_values" :key="index"> {{ value }}</th>
@@ -21,6 +25,7 @@ const root = ref(null);
 const primary_values = ref([])
 let box_qty = ref({})
 let disables = ref(false)
+const dynamic_packing = ref(Number(cur_frm.doc.packing_calculation_version || 0) >= 2)
 
 onMounted(()=> {
     frappe.call({

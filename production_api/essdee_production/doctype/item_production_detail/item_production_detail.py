@@ -389,7 +389,11 @@ class ItemProductionDetail(Document):
 		if not self.is_new():
 			if self.based_on_other_attribute_mapping:
 				if self.packing_mode == "Size Ratio Packing":
-					self.packing_size_validations()
+					# A ratio entered here is only an optional GRN default. Actual packing
+					# ratios are transaction data and are validated when the Finishing GRN
+					# is created. An entirely blank table is therefore valid.
+					if any(row.quantity for row in self.packing_size_details):
+						self.packing_size_validations()
 				elif self.packing_mode == "Size Wise Packing":
 					# Carton / free-count: pieces are entered freely at GRN; combo = 1 passes them 1:1.
 					self.packing_combo = 1

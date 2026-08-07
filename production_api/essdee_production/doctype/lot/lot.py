@@ -902,15 +902,18 @@ def get_ocr_details(lot):
 	grn_item_dict = {}
 	for grn in grn_list:
 		grn_doc = frappe.get_doc("Goods Received Note", grn)
+		dynamic_packing = int(grn_doc.packing_calculation_version or 0) >= 2
 		for row in grn_doc.items:
 			grn_item_dict.setdefault(row.item_variant, 0)
-			grn_item_dict[row.item_variant] += row.quantity
+			grn_item_dict[row.item_variant] += (
+				row.quantity if dynamic_packing else row.quantity * pcs_per_box
+			)
 
 	for variant in grn_item_dict:
 		attr_details = get_variant_attr_details(variant)
 		size = attr_details[primary]
-		lot_dict['processes'][includes_packing_process]['total_received'] += (grn_item_dict[variant] * pcs_per_box)
-		lot_dict['processes'][includes_packing_process]['data'][size]['received'] += (grn_item_dict[variant] * pcs_per_box)
+		lot_dict['processes'][includes_packing_process]['total_received'] += grn_item_dict[variant]
+		lot_dict['processes'][includes_packing_process]['data'][size]['received'] += grn_item_dict[variant]
 
 	finishing_plan_list =frappe.get_all("Finishing Plan", filters={
 		"lot": lot,
@@ -919,12 +922,23 @@ def get_ocr_details(lot):
 	for finishing_plan in finishing_plan_list:
 		lot_dict['finishing_plan_list'].append(finishing_plan)
 		fp_doc = frappe.get_doc("Finishing Plan", finishing_plan)
+		dynamic_packing = bool(fp_doc.work_order and frappe.db.exists(
+			"Goods Received Note",
+			{
+				"against": "Work Order",
+				"against_id": fp_doc.work_order,
+				"docstatus": 1,
+				"is_return": 0,
+				"packing_calculation_version": [">=", 2],
+			},
+		))
+		dispatch_multiplier = 1 if dynamic_packing else fp_doc.pieces_per_box
 		for row in fp_doc.finishing_plan_grn_details:
 			attr_details = get_variant_attr_details(row.item_variant)
 			size = attr_details[primary]
 			lot_dict['dispatch_detail'].setdefault(size, 0)
-			lot_dict['dispatch_detail'][size] += (row.dispatched * fp_doc.pieces_per_box)
-			lot_dict['total_dispatch'] += (row.dispatched * fp_doc.pieces_per_box)
+			lot_dict['dispatch_detail'][size] += row.dispatched * dispatch_multiplier
+			lot_dict['total_dispatch'] += row.dispatched * dispatch_multiplier
 
 	return lot_dict
 

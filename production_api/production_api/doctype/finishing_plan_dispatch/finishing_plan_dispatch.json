@@ -12,6 +12,7 @@
   "finishing_plan_dispatch_html",
   "finishing_items",
   "finishing_plan_dispatch_items",
+  "packing_batch_dispatch_json",
   "dispatch_colour_details",
   "amended_from",
   "fp_total_dispatched"
@@ -71,6 +72,14 @@
    "fieldtype": "Long Text",
    "hidden": 1,
    "label": "Dispatch Colour Details",
+   "read_only": 1
+  },
+  {
+   "fieldname": "packing_batch_dispatch_json",
+   "fieldtype": "Long Text",
+   "hidden": 1,
+   "label": "Packing Batch Dispatch JSON",
+   "no_copy": 1,
    "read_only": 1
   },
   {

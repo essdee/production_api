@@ -56,7 +56,9 @@ class TestWorkOrderPendingReport(FrappeTestCase):
 		query = sql.call_args.args[0]
 		self.assertIn("t1.name AS work_order", query)
 		self.assertIn("ipd.packing_combo", query)
-		self.assertIn("packing_grn.received_qty", query)
+		self.assertIn("packing_grn.dynamic_received_qty", query)
+		self.assertIn("packing_grn.legacy_received_qty", query)
+		self.assertIn("grn.packing_calculation_version", query)
 		self.assertIn("grn.is_return = 0", query)
 		self.assertIn("THEN COALESCE(t1.item, '')", query)
 		self.assertIn("t1.includes_packing", query)

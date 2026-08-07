@@ -3,13 +3,18 @@
 
 import frappe
 from itertools import groupby
-from frappe.utils import flt
+from frappe.utils import cint, flt
 from frappe.model.document import Document
 from production_api.production_api.doctype.supplier.supplier import get_primary_address
 from production_api.production_api.doctype.item.item import get_or_create_variant, get_attribute_details, build_variant_attributes
 from production_api.essdee_production.doctype.item_production_detail.item_production_detail import get_ipd_primary_values
 from production_api.production_api.doctype.purchase_order.purchase_order import get_item_attribute_details, get_item_group_index
 from production_api.utils import update_if_string_instance, get_finishing_plan_dict, get_finishing_plan_list, get_variant_attr_details, get_tuple_attributes, get_process_wo_list
+from production_api.dynamic_packing import (
+	DYNAMIC_PACKING_VERSION,
+	aggregate_batch_pieces,
+	normalize_packing_batches,
+)
 
 class FinishingPlan(Document):
 	def onload(self):
@@ -167,6 +172,21 @@ class FinishingPlan(Document):
 		return inward_details
 
 	def get_packed_qty(self):
+		dynamic_grns = frappe.get_all(
+			"Goods Received Note",
+			filters={
+				"against": "Work Order",
+				"against_id": self.work_order,
+				"lot": self.lot,
+				"docstatus": 1,
+				"is_return": 0,
+				"packing_calculation_version": [">=", DYNAMIC_PACKING_VERSION],
+			},
+			pluck="name",
+		)
+		if dynamic_grns:
+			return self.get_dynamic_packed_qty(dynamic_grns)
+
 		items = [item.as_dict() for item in self.finishing_plan_grn_details]
 		box_qty = {
 			"sizes": {},
@@ -190,6 +210,62 @@ class FinishingPlan(Document):
 					box_qty['total_dispatched'] += row['dispatched']
 					break	
 		return box_qty
+
+	def get_dynamic_packed_qty(self, grn_names):
+		data = {
+			"sizes": {},
+			"total_packed": 0,
+			"total_dispatched": 0,
+			"total_packed_boxes": 0,
+			"total_dispatched_boxes": 0,
+			"dynamic_ratio_packing": True,
+			"packing_batches": [],
+		}
+		for size in get_ipd_primary_values(self.production_detail):
+			data["sizes"][size] = {
+				"packed": 0,
+				"dispatched": 0,
+				"packed_boxes": 0,
+				"dispatched_boxes": 0,
+				"cur_dispatch": 0,
+			}
+		for grn_name in grn_names:
+			grn = frappe.get_doc("Goods Received Note", grn_name)
+			for batch in grn.packing_batches:
+				ratio = update_if_string_instance(batch.ratio_json) or {}
+				boxes = flt(batch.box_quantity)
+				dispatched_boxes = flt(batch.dispatched_boxes)
+				available_boxes = max(boxes - dispatched_boxes, 0)
+				for size, per_box in ratio.items():
+					row = data["sizes"].setdefault(size, {
+						"packed": 0,
+						"dispatched": 0,
+						"packed_boxes": 0,
+						"dispatched_boxes": 0,
+						"cur_dispatch": 0,
+					})
+					row["packed"] += boxes * flt(per_box)
+					row["dispatched"] += dispatched_boxes * flt(per_box)
+					row["packed_boxes"] += boxes
+					row["dispatched_boxes"] += dispatched_boxes
+				data["packing_batches"].append({
+					"grn": grn_name,
+					"batch_row": batch.name,
+					"batch_id": batch.batch_id,
+					"colour": batch.colour,
+					"box_quantity": boxes,
+					"dispatched_boxes": dispatched_boxes,
+					"available_boxes": available_boxes,
+					"pieces_per_box": flt(batch.pieces_per_box),
+					"total_pieces": flt(batch.total_pieces),
+					"ratio": ratio,
+				})
+				data["total_packed_boxes"] += boxes
+				data["total_dispatched_boxes"] += dispatched_boxes
+
+		data["total_packed"] = sum(flt(row["packed"]) for row in data["sizes"].values())
+		data["total_dispatched"] = sum(flt(row["dispatched"]) for row in data["sizes"].values())
+		return data
 
 	def get_rework_item_details(self):
 		ipd = frappe.get_value("Lot", self.lot, "production_detail")
@@ -716,18 +792,34 @@ def get_ocr_details(doc):
 	part_value = ["Item"]
 	if is_set_item:
 		part_value = get_part_value(set_attr, ipd)
+	packing_summary = get_finishing_packing_summary(doc)
+	dynamic_packing = packing_summary.dynamic_ratio_packing
 	for row in doc.finishing_plan_grn_details:
 		attr_details = get_variant_attr_details(row.item_variant)
 		for par in part_value:
 			size = attr_details[primary_attr]
-			ocr_data[par]['packed_box'] += row.quantity
-			ocr_data[par]['packed_box_qty'] += (row.quantity * doc.pieces_per_box)
-			ocr_data[par]['total'][size]['packed_box'] += row.quantity
-			ocr_data[par]['total'][size]['packed_box_qty'] += (row.quantity * doc.pieces_per_box)
-			ocr_data[par]['dispatched_box'] += row.dispatched
-			ocr_data[par]['dispatched_piece'] += (row.dispatched * doc.pieces_per_box)
-			ocr_data[par]['total'][size]['dispatched_box'] += row.dispatched
-			ocr_data[par]['total'][size]['dispatched_piece'] += (row.dispatched * doc.pieces_per_box)	
+			if dynamic_packing:
+				packed_pieces = flt(row.quantity)
+				dispatched_pieces = flt(row.dispatched)
+				size_summary = packing_summary.sizes.get(size, {})
+				packed_boxes = flt(size_summary.get("packed_boxes"))
+				dispatched_boxes = flt(size_summary.get("dispatched_boxes"))
+			else:
+				packed_boxes = flt(row.quantity)
+				dispatched_boxes = flt(row.dispatched)
+				packed_pieces = packed_boxes * flt(doc.pieces_per_box)
+				dispatched_pieces = dispatched_boxes * flt(doc.pieces_per_box)
+			ocr_data[par]['packed_box_qty'] += packed_pieces
+			ocr_data[par]['total'][size]['packed_box'] += packed_boxes
+			ocr_data[par]['total'][size]['packed_box_qty'] += packed_pieces
+			ocr_data[par]['dispatched_piece'] += dispatched_pieces
+			ocr_data[par]['total'][size]['dispatched_box'] += dispatched_boxes
+			ocr_data[par]['total'][size]['dispatched_piece'] += dispatched_pieces
+
+	if dynamic_packing:
+		for par in part_value:
+			ocr_data[par]['packed_box'] = packing_summary.total_packed_boxes
+			ocr_data[par]['dispatched_box'] = packing_summary.total_dispatched_boxes
 	
 	major_part = frappe.db.get_value("Item Production Detail", ipd, "major_attribute_value") if is_set_item else None
 
@@ -1354,6 +1446,9 @@ def get_ipd_packing_config(lot):
 	return {
 		"based_on_other_attribute_mapping": ipd.based_on_other_attribute_mapping,
 		"packing_mode": ipd.packing_mode,
+		"dynamic_ratio_packing": bool(
+			ipd.based_on_other_attribute_mapping and ipd.packing_mode == "Size Ratio Packing"
+		),
 		"packing_combo": ipd.packing_combo,
 		"primary_attribute": ipd.primary_item_attribute,
 		"packing_attribute": ipd.packing_attribute,
@@ -1364,28 +1459,130 @@ def get_ipd_packing_config(lot):
 		"colours": colours,
 	}
 
+
+def _validate_dynamic_packing_availability(work_order, ipd_doc, batches):
+	"""Validate exact colour/size pieces against the packing Work Order balance."""
+	# Serialize simultaneous GRNs for the same Work Order. The lock remains held until
+	# the request commits, including the synchronous Work Order receipt update on submit.
+	if not frappe.db.sql(
+		"SELECT name FROM `tabWork Order` WHERE name = %s FOR UPDATE",
+		work_order,
+	):
+		frappe.throw(f"Work Order {work_order} does not exist")
+
+	requested = {}
+	for batch in batches:
+		for size, pieces in batch["size_pieces"].items():
+			key = (batch["colour"], size)
+			requested[key] = requested.get(key, 0) + flt(pieces)
+
+	work_order_doc = frappe.get_doc("Work Order", work_order)
+	balances = {}
+	for row in work_order_doc.work_order_calculated_items:
+		if frappe.get_cached_value("Item Variant", row.item_variant, "item") != ipd_doc.item:
+			continue
+		attrs = get_variant_attr_details(row.item_variant)
+		colour = attrs.get(ipd_doc.packing_attribute)
+		size = attrs.get(ipd_doc.primary_item_attribute)
+		if not colour or not size:
+			continue
+		pending = max(flt(row.delivered_quantity) - flt(row.received_qty), 0)
+		key = (colour, size)
+		if ipd_doc.is_set_item:
+			part = attrs.get(ipd_doc.set_item_attribute)
+			if not part:
+				continue
+			balances.setdefault(key, {})
+			balances[key][part] = balances[key].get(part, 0) + pending
+		else:
+			balances[key] = flt(balances.get(key)) + pending
+
+	for (colour, size), qty in requested.items():
+		balance = balances.get((colour, size), {}) if ipd_doc.is_set_item else balances.get((colour, size), 0)
+		if ipd_doc.is_set_item:
+			available = min(balance.values()) if balance else 0
+		else:
+			available = flt(balance)
+		if qty > available:
+			frappe.throw(
+				f"Packing ratio needs {qty:g} pieces for {colour} / {size}, "
+				f"but only {available:g} pieces are pending in Work Order {work_order}"
+			)
+
+
+def _validate_dynamic_packing_transition(work_order, lot):
+	"""Do not mix legacy box quantities with exact-piece batches on one plan.
+
+	Once the first version-2 GRN exists, every later GRN follows the same exact-piece
+	model. A plan that already has historical fixed-ratio GRNs must stay on its legacy
+	unit model; otherwise its cumulative child-table and report values would mix boxes
+	and pieces.
+	"""
+	if frappe.db.exists("Goods Received Note", {
+		"against": "Work Order",
+		"against_id": work_order,
+		"lot": lot,
+		"docstatus": 1,
+		"is_return": 0,
+		"packing_calculation_version": [">=", DYNAMIC_PACKING_VERSION],
+	}):
+		return
+
+	legacy_grn = frappe.db.exists("Goods Received Note", {
+		"against": "Work Order",
+		"against_id": work_order,
+		"lot": lot,
+		"docstatus": 1,
+		"is_return": 0,
+		"packing_calculation_version": ["<", DYNAMIC_PACKING_VERSION],
+	})
+	if not legacy_grn:
+		return
+
+	frappe.throw(
+		"This Finishing Plan already has GRNs created with the previous fixed ratio. "
+		"Transaction-wise packing ratios can start only on a Finishing Plan without legacy packing GRNs."
+	)
+
+
 @frappe.whitelist()
-def create_grn(work_order, lot, item_name, data, delivery_location,actual_date):
+def create_grn(work_order, lot, item_name, data, delivery_location, actual_date, packing_batches=None):
 	box_qty = {}
 	ipd = frappe.get_value("Lot", lot, "production_detail")
-	primary_attr = frappe.get_value("Item Production Detail", ipd, "primary_item_attribute")
+	ipd_doc = frappe.get_cached_doc("Item Production Detail", ipd)
+	primary_attr = ipd_doc.primary_item_attribute
 	lp_stage = frappe.db.get_single_value("IPD Settings", "default_loose_piece_stage")
+	dynamic_ratio_packing = bool(
+		ipd_doc.based_on_other_attribute_mapping and ipd_doc.packing_mode == "Size Ratio Packing"
+	)
+	normalized_batches = []
+	if dynamic_ratio_packing:
+		_validate_dynamic_packing_transition(work_order, lot)
+		config = get_ipd_packing_config(lot)
+		normalized_batches = normalize_packing_batches(
+			packing_batches,
+			get_ipd_primary_values(ipd),
+			config.get("colours"),
+			config.get("packing_combo"),
+		)
+		_validate_dynamic_packing_availability(work_order, ipd_doc, normalized_batches)
+		box_qty, total_boxes, total_pieces = aggregate_batch_pieces(normalized_batches)
+	else:
+		data = update_if_string_instance(data)
+		for size in data:
+			variant = get_or_create_variant(item_name, build_variant_attributes({
+				primary_attr: size,
+			}, lp_stage, ipd))
+			current_variant = frappe.get_cached_doc("Item Variant", variant)
+			current_item_attribute_details = get_attribute_details(current_variant.item)
+			primary_attribute = current_item_attribute_details['primary_attribute']
+			for attr in current_variant.attributes:
+				if attr.attribute == primary_attribute:
+					box_qty.setdefault(attr.attribute_value, 0)
+					if data[size]:
+						box_qty[attr.attribute_value] += data.get(size, 0)
+					break
 
-	data = update_if_string_instance(data)
-	for size in data:
-		variant = get_or_create_variant(item_name, build_variant_attributes({
-			primary_attr: size,
-		}, lp_stage, ipd))
-		current_variant = frappe.get_cached_doc("Item Variant", variant)
-		current_item_attribute_details = get_attribute_details(current_variant.item)
-		primary_attribute = current_item_attribute_details['primary_attribute']
-		for attr in current_variant.attributes:
-			if attr.attribute == primary_attribute:
-				box_qty.setdefault(attr.attribute_value, 0)
-				if data[size]:
-					box_qty[attr.attribute_value] += data.get(size, 0)
-				break	
-	
 	doc = frappe.new_doc("Goods Received Note")
 	doc.against = "Work Order"
 	doc.against_id = work_order
@@ -1401,8 +1598,23 @@ def create_grn(work_order, lot, item_name, data, delivery_location,actual_date):
 	doc.item_details = box_qty
 	doc.process_name = frappe.get_value("Work Order", work_order, "process_name")
 	doc.from_finishing = 1
+	if dynamic_ratio_packing:
+		doc.packing_calculation_version = DYNAMIC_PACKING_VERSION
+		doc.total_packing_boxes = total_boxes
+		doc.total_packing_pieces = total_pieces
+		for batch in normalized_batches:
+			doc.append("packing_batches", {
+				"batch_id": batch["batch_id"],
+				"colour": batch["colour"],
+				"box_quantity": batch["box_quantity"],
+				"dispatched_boxes": 0,
+				"pieces_per_box": batch["pieces_per_box"],
+				"total_pieces": batch["total_pieces"],
+				"ratio_json": frappe.as_json(batch["ratio"]),
+			})
 	doc.save()
 	doc.submit()
+	return doc.name
 
 @frappe.whitelist()
 def return_items(data, work_order, lot, item_name, popup_values, is_pack:bool=False):
@@ -1492,13 +1704,93 @@ def return_items(data, work_order, lot, item_name, popup_values, is_pack:bool=Fa
 	new_doc.from_finishing = 1
 	new_doc.submit()
 
+def _prepare_dynamic_batch_dispatch(finishing_doc, dispatches):
+	dispatches = update_if_string_instance(dispatches) or []
+	if not isinstance(dispatches, list) or not dispatches:
+		frappe.throw("Select at least one packing batch to dispatch")
+
+	seen = set()
+	normalized = []
+	for index, request in enumerate(dispatches, 1):
+		request = update_if_string_instance(request) or {}
+		batch_row = request.get("batch_row")
+		if not batch_row or batch_row in seen:
+			frappe.throw(f"Invalid or duplicate packing batch in dispatch row {index}")
+		seen.add(batch_row)
+		boxes = flt(request.get("box_quantity"))
+		if boxes <= 0 or boxes != int(boxes):
+			frappe.throw(f"Dispatch boxes in row {index} should be a positive whole number")
+
+		locked = frappe.db.sql(
+			"""
+				SELECT name, parent, batch_id, colour, box_quantity, dispatched_boxes,
+					pieces_per_box, ratio_json
+				FROM `tabGRN Packing Batch`
+				WHERE name = %s FOR UPDATE
+			""",
+			batch_row,
+			as_dict=True,
+		)
+		if not locked:
+			frappe.throw(f"Packing batch {batch_row} does not exist")
+		batch = locked[0]
+		grn = frappe.get_cached_doc("Goods Received Note", batch.parent)
+		if (
+			grn.docstatus != 1
+			or grn.against != "Work Order"
+			or grn.against_id != finishing_doc.work_order
+			or grn.lot != finishing_doc.lot
+			or cint(grn.packing_calculation_version) < DYNAMIC_PACKING_VERSION
+		):
+			frappe.throw(f"Packing batch {batch_row} does not belong to this Finishing Plan")
+
+		available = flt(batch.box_quantity) - flt(batch.dispatched_boxes)
+		if boxes > available:
+			frappe.throw(
+				f"Only {available:g} boxes are available in {grn.name} / {batch.batch_id or batch_row}"
+			)
+		ratio = update_if_string_instance(batch.ratio_json) or {}
+		normalized.append({
+			"batch_row": batch_row,
+			"grn": grn.name,
+			"batch_id": batch.batch_id,
+			"colour": batch.colour,
+			"box_quantity": int(boxes),
+			"pieces_per_box": flt(batch.pieces_per_box),
+			"ratio": ratio,
+			"size_pieces": {size: int(boxes) * flt(per_box) for size, per_box in ratio.items()},
+		})
+	return normalized
+
+
 @frappe.whitelist()
-def create_stock_entry(data, item_name, doc_name, lot, from_location, to_location, goods_value, vehicle_no, colour_details=None):
+def create_stock_entry(
+	data, item_name, doc_name, lot, from_location, to_location, goods_value, vehicle_no,
+	colour_details=None, packing_batch_dispatches=None,
+):
 	data = update_if_string_instance(data)
-	ipd, uom = frappe.get_value("Lot", lot, ["production_detail", "uom"])
+	ipd, box_uom, piece_uom = frappe.get_value("Lot", lot, ["production_detail", "uom", "packing_uom"])
 	ipd_fields = ["primary_item_attribute", "pack_out_stage"]
 	primary_attr, pack_out = frappe.get_value("Item Production Detail", ipd, ipd_fields)
 	default_type = frappe.db.get_single_value("Stock Settings", "default_received_type")
+	finishing_doc = frappe.get_doc("Finishing Plan", doc_name)
+	packing_summary = get_finishing_packing_summary(finishing_doc)
+	requested_batches = update_if_string_instance(packing_batch_dispatches) or []
+	if packing_summary.dynamic_ratio_packing and not requested_batches:
+		frappe.throw("Select packing batches and box quantities for this dispatch")
+	if not packing_summary.dynamic_ratio_packing and requested_batches:
+		frappe.throw("Packing batches are not valid for the legacy fixed-ratio flow")
+	dynamic_dispatches = []
+	if requested_batches:
+		dynamic_dispatches = _prepare_dynamic_batch_dispatch(finishing_doc, requested_batches)
+		size_pieces, _boxes, _pieces = aggregate_batch_pieces(
+			[{**batch, "box_quantity": batch["box_quantity"]} for batch in dynamic_dispatches]
+		)
+		data = {
+			size: {"cur_dispatch": qty}
+			for size, qty in size_pieces.items()
+		}
+	uom = piece_uom if dynamic_dispatches else box_uom
 	item_list = []
 	for size in data:
 		variant = get_or_create_variant(item_name, build_variant_attributes({
@@ -1525,6 +1817,8 @@ def create_stock_entry(data, item_name, doc_name, lot, from_location, to_locatio
 	doc.item_details = item_details
 	doc.vehicle_no = vehicle_no
 	doc.additional_amount = goods_value
+	if dynamic_dispatches:
+		doc.packing_batch_dispatch_json = frappe.as_json(dynamic_dispatches)
 	# Colour breakdown is print-only metadata (stock stays size-only); store as a list of per-lot-item
 	# grids [{lot, item, grid:{colour:{size:boxes}}}] so one print template serves single- and multi-item.
 	if colour_details:
@@ -3210,9 +3504,53 @@ def check_is_alternative_item(item):
 	return items
 
 
+def _get_packing_grn_report_values(grn_names, ipd_doc):
+	"""Aggregate packing GRNs as exact pieces by size plus physical boxes."""
+	sizes = get_ipd_primary_values(ipd_doc.name)
+	size_pieces = {size: 0 for size in sizes}
+	total_boxes = 0
+	total_pieces = 0
+	has_dynamic_ratio = False
+	legacy_combo = flt(ipd_doc.packing_combo)
+
+	for grn_name in grn_names:
+		grn = frappe.get_cached_doc("Goods Received Note", grn_name)
+		dynamic_ratio = cint(grn.packing_calculation_version) >= DYNAMIC_PACKING_VERSION
+		has_dynamic_ratio = has_dynamic_ratio or dynamic_ratio
+		grn_boxes = 0
+		grn_pieces = 0
+		for item in grn.items:
+			attr_details = get_variant_attr_details(item.item_variant)
+			size = attr_details.get(ipd_doc.primary_item_attribute)
+			if not size:
+				continue
+			pieces = flt(item.quantity)
+			if not dynamic_ratio:
+				grn_boxes += flt(item.quantity)
+				pieces *= legacy_combo
+			size_pieces.setdefault(size, 0)
+			size_pieces[size] += pieces
+			grn_pieces += pieces
+
+		if dynamic_ratio:
+			grn_boxes = flt(grn.total_packing_boxes)
+		total_boxes += grn_boxes
+		total_pieces += grn_pieces
+
+	size_pieces = {size: flt(qty, 3) for size, qty in size_pieces.items()}
+	return frappe._dict({
+		"sizes": sizes,
+		"size_pieces": size_pieces,
+		"total_boxes": flt(total_boxes, 3),
+		"total_pieces": flt(total_pieces, 3),
+		"dynamic_ratio_packing": has_dynamic_ratio,
+		"pieces_per_box": "Mixed" if has_dynamic_ratio else legacy_combo,
+	})
+
+
 @frappe.whitelist()
 def get_finishing_packed_details(date, lot_list=None, item_list=None):
-	"""Get lot/item-wise, size-wise box quantities from packing GRNs for a given date."""
+	"""Get exact size pieces and physical box totals from packing GRNs."""
 	import json
 	if isinstance(lot_list, str):
 		lot_list = json.loads(lot_list)
@@ -3245,40 +3583,19 @@ def get_finishing_packed_details(date, lot_list=None, item_list=None):
 			continue
 
 		ipd_doc = frappe.get_cached_doc("Item Production Detail", ipd)
-		primary_attr = ipd_doc.primary_item_attribute
-		pieces_per_box = ipd_doc.packing_combo or 0
-		sizes = get_ipd_primary_values(ipd)
-
-		size_qty = {}
-		for size in sizes:
-			size_qty[size] = 0
-
-		for grn_name in grn_names:
-			grn_items = frappe.get_all("Goods Received Note Item", filters={
-				"parent": grn_name,
-			}, fields=["item_variant", "quantity"])
-
-			for gi in grn_items:
-				attr_details = get_variant_attr_details(gi.item_variant)
-				size = attr_details.get(primary_attr)
-				if size:
-					size_qty.setdefault(size, 0)
-					size_qty[size] += gi.quantity
-
-		if not any(size_qty.values()):
+		packing = _get_packing_grn_report_values(grn_names, ipd_doc)
+		if not any(packing.size_pieces.values()):
 			continue
-
-		total_boxes = sum(size_qty.values())
-		total_pieces = total_boxes * pieces_per_box if pieces_per_box else 0
 
 		result.append({
 			"lot": lot,
 			"item": lot_item,
-			"sizes": sizes,
-			"size_qty": size_qty,
-			"pieces_per_box": pieces_per_box,
-			"total_boxes": total_boxes,
-			"total_pieces": total_pieces,
+			"sizes": packing.sizes,
+			"size_qty": packing.size_pieces,
+			"pieces_per_box": packing.pieces_per_box,
+			"dynamic_ratio_packing": packing.dynamic_ratio_packing,
+			"total_boxes": packing.total_boxes,
+			"total_pieces": packing.total_pieces,
 		})
 
 	all_sizes = []
@@ -3329,35 +3646,17 @@ def get_finishing_dispatch_report(from_date, to_date, lot_list=None, item_list=N
 			continue
 
 		ipd_doc = frappe.get_cached_doc("Item Production Detail", ipd)
-		primary_attr = ipd_doc.primary_item_attribute
-		pieces_per_box = ipd_doc.packing_combo or 0
-		sizes = get_ipd_primary_values(ipd)
-
-		size_qty = {size: 0 for size in sizes}
-
-		for grn_name in grn_names:
-			grn_items = frappe.get_all("Goods Received Note Item", filters={
-				"parent": grn_name,
-			}, fields=["item_variant", "quantity"])
-
-			for gi in grn_items:
-				attr_details = get_variant_attr_details(gi.item_variant)
-				size = attr_details.get(primary_attr)
-				if size:
-					size_qty.setdefault(size, 0)
-					size_qty[size] += gi.quantity
-
-		total_boxes = sum(size_qty.values())
-		total_pieces = total_boxes * pieces_per_box if pieces_per_box else 0
+		packing = _get_packing_grn_report_values(grn_names, ipd_doc)
 
 		packed_result.append({
 			"lot": lot,
 			"item": lot_item,
-			"sizes": sizes,
-			"size_qty": size_qty,
-			"pieces_per_box": pieces_per_box,
-			"total_boxes": total_boxes,
-			"total_pieces": total_pieces,
+			"sizes": packing.sizes,
+			"size_qty": packing.size_pieces,
+			"pieces_per_box": packing.pieces_per_box,
+			"dynamic_ratio_packing": packing.dynamic_ratio_packing,
+			"total_boxes": packing.total_boxes,
+			"total_pieces": packing.total_pieces,
 		})
 
 	# --- Dispatched (Stock Entry Material Issue) ---
@@ -3366,25 +3665,53 @@ def get_finishing_dispatch_report(from_date, to_date, lot_list=None, item_list=N
 		"purpose": "Material Issue",
 		"docstatus": 1,
 		"posting_date": ["between", [from_date, to_date]],
-	}, fields=["name"])
+	}, fields=["name", "packing_batch_dispatch_json"])
 
 	lot_dispatched = {}
 	for se in stock_entries:
+		batch_dispatches = update_if_string_instance(se.packing_batch_dispatch_json) or []
+		dynamic_boxes_by_lot = {}
+		for batch in batch_dispatches:
+			batch_lot = None
+			if batch.get("finishing_plan"):
+				batch_lot = frappe.get_cached_value(
+					"Finishing Plan", batch.get("finishing_plan"), "lot"
+				)
+			if not batch_lot and batch.get("grn"):
+				batch_lot = frappe.get_cached_value(
+					"Goods Received Note", batch.get("grn"), "lot"
+				)
+			if batch_lot:
+				dynamic_boxes_by_lot[batch_lot] = (
+					dynamic_boxes_by_lot.get(batch_lot, 0)
+					+ flt(batch.get("box_quantity"))
+				)
 		se_items = frappe.get_all("Stock Entry Detail", filters={
 			"parent": se.name,
 		}, fields=["item", "qty", "lot"])
 
+		entry_lots = {item.lot for item in se_items if item.lot}
+		for entry_lot in entry_lots:
+			bucket = lot_dispatched.setdefault(entry_lot, {
+				"items": [], "dynamic_boxes": 0, "has_dynamic": False,
+			})
+			if entry_lot in dynamic_boxes_by_lot:
+				bucket["dynamic_boxes"] += dynamic_boxes_by_lot[entry_lot]
+				bucket["has_dynamic"] = True
 		for si in se_items:
 			if not si.lot:
 				continue
-			lot_dispatched.setdefault(si.lot, []).append(si)
+			lot_dispatched[si.lot]["items"].append({
+				"row": si,
+				"dynamic_dispatch": si.lot in dynamic_boxes_by_lot,
+			})
 
 	# Filter by lot_list
 	if lot_list:
 		lot_dispatched = {k: v for k, v in lot_dispatched.items() if k in lot_list}
 
 	dispatched_result = []
-	for lot, items in lot_dispatched.items():
+	for lot, dispatch_data in lot_dispatched.items():
 		lot_item = frappe.get_value("Lot", lot, "item")
 		# Filter by item_list
 		if item_list and lot_item not in item_list:
@@ -3395,27 +3722,33 @@ def get_finishing_dispatch_report(from_date, to_date, lot_list=None, item_list=N
 
 		ipd_doc = frappe.get_cached_doc("Item Production Detail", ipd)
 		primary_attr = ipd_doc.primary_item_attribute
-		pieces_per_box = ipd_doc.packing_combo or 0
+		pieces_per_box = flt(ipd_doc.packing_combo)
 		sizes = get_ipd_primary_values(ipd)
 
 		size_qty = {size: 0 for size in sizes}
+		total_boxes = flt(dispatch_data["dynamic_boxes"])
+		total_pieces = 0
 
-		for si in items:
+		for item_data in dispatch_data["items"]:
+			si = item_data["row"]
 			attr_details = get_variant_attr_details(si.item)
 			size = attr_details.get(primary_attr)
 			if size:
+				pieces = flt(si.qty)
+				if not item_data["dynamic_dispatch"]:
+					total_boxes += flt(si.qty)
+					pieces *= pieces_per_box
 				size_qty.setdefault(size, 0)
-				size_qty[size] += si.qty
-
-		total_boxes = sum(size_qty.values())
-		total_pieces = total_boxes * pieces_per_box if pieces_per_box else 0
+				size_qty[size] += pieces
+				total_pieces += pieces
 
 		dispatched_result.append({
 			"lot": lot,
 			"item": lot_item,
 			"sizes": sizes,
 			"size_qty": size_qty,
-			"pieces_per_box": pieces_per_box,
+			"pieces_per_box": "Mixed" if dispatch_data["has_dynamic"] else pieces_per_box,
+			"dynamic_ratio_packing": dispatch_data["has_dynamic"],
 			"total_boxes": total_boxes,
 			"total_pieces": total_pieces,
 		})
@@ -3441,6 +3774,8 @@ def get_finishing_dispatch_report(from_date, to_date, lot_list=None, item_list=N
 			lot_data[row["lot"]]["dispatched_qty"] = row["size_qty"]
 			lot_data[row["lot"]]["dispatched_total_boxes"] = row["total_boxes"]
 			lot_data[row["lot"]]["dispatched_total_pieces"] = row["total_pieces"]
+			if row.get("dynamic_ratio_packing"):
+				lot_data[row["lot"]]["pieces_per_box"] = "Mixed"
 			# Merge sizes
 			existing_sizes = lot_data[row["lot"]]["sizes"]
 			for s in row["sizes"]:
@@ -3524,6 +3859,44 @@ def get_finishing_plan_total_cutting(finishing_doc):
 	)[0][0])
 
 
+def get_finishing_packing_summary(finishing_doc):
+	"""Return exact persisted packing totals for new ratio-based GRNs.
+
+	Legacy Finishing Plans deliberately return ``dynamic_ratio_packing=False`` so
+	callers can retain their historical fixed-combo calculations unchanged.
+	"""
+	if isinstance(finishing_doc, str):
+		finishing_doc = frappe.get_doc("Finishing Plan", finishing_doc)
+
+	dynamic_grns = []
+	if finishing_doc.work_order:
+		dynamic_grns = frappe.get_all(
+			"Goods Received Note",
+			filters={
+				"against": "Work Order",
+				"against_id": finishing_doc.work_order,
+				"lot": finishing_doc.lot,
+				"docstatus": 1,
+				"is_return": 0,
+				"packing_calculation_version": [">=", DYNAMIC_PACKING_VERSION],
+			},
+			pluck="name",
+		)
+
+	if dynamic_grns:
+		return frappe._dict(finishing_doc.get_dynamic_packed_qty(dynamic_grns))
+
+	return frappe._dict({
+		"dynamic_ratio_packing": False,
+		"sizes": {},
+		"packing_batches": [],
+		"total_packed": 0,
+		"total_dispatched": 0,
+		"total_packed_boxes": 0,
+		"total_dispatched_boxes": 0,
+	})
+
+
 def get_finishing_dispatch_totals(finishing_doc):
 	if isinstance(finishing_doc, str):
 		finishing_doc = frappe.get_doc("Finishing Plan", finishing_doc)
@@ -3531,8 +3904,12 @@ def get_finishing_dispatch_totals(finishing_doc):
 	total_dispatched_pieces = 0.0
 	total_cutting = get_finishing_plan_total_cutting(finishing_doc)
 
+	packing_summary = get_finishing_packing_summary(finishing_doc)
+	dynamic_packing = packing_summary.dynamic_ratio_packing
 	pieces_per_box = flt(finishing_doc.pieces_per_box) or 0
-	if pieces_per_box:
+	if dynamic_packing:
+		total_dispatched_pieces = flt(packing_summary.total_dispatched)
+	elif pieces_per_box:
 		set_item_parts_count = get_set_item_parts_count(finishing_doc)
 		for row in finishing_doc.finishing_plan_grn_details:
 			total_dispatched_pieces += (
@@ -3550,7 +3927,10 @@ def get_finishing_dispatch_totals(finishing_doc):
 	})
 
 
-def record_finishing_dispatch_log(finishing_doc, stock_entry, dispatch_boxes, source_doctype=None, source_name=None):
+def record_finishing_dispatch_log(
+	finishing_doc, stock_entry, dispatch_boxes, source_doctype=None, source_name=None,
+	dispatch_pieces=None,
+):
 	if not frappe.get_meta("Finishing Plan").has_field("finishing_plan_dispatch_logs"):
 		return
 	if flt(dispatch_boxes) <= 0:
@@ -3559,7 +3939,9 @@ def record_finishing_dispatch_log(finishing_doc, stock_entry, dispatch_boxes, so
 	source_doctype = source_doctype or stock_entry.against
 	source_name = source_name or stock_entry.against_id
 	set_item_parts_count = get_set_item_parts_count(finishing_doc)
-	dispatch_pieces = flt(dispatch_boxes) * flt(finishing_doc.pieces_per_box) * set_item_parts_count
+	dispatch_pieces = flt(dispatch_pieces) if dispatch_pieces is not None else (
+		flt(dispatch_boxes) * flt(finishing_doc.pieces_per_box) * set_item_parts_count
+	)
 	totals = get_finishing_dispatch_totals(finishing_doc)
 	previous_dispatched = max(flt(totals.total_dispatched_pieces) - dispatch_pieces, 0)
 	previous_percentage = 0.0
