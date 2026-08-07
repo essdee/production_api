@@ -54,12 +54,15 @@ def get_ppo_production_snapshot(
 		filters["inward_start_date"],
 		filters["inward_end_date"],
 	)
-	if filters["lot"]:
-		seed_lots = [name for name in seed_lots if name == filters["lot"]]
-	lot_rows = _fetch_lot_rows(ppo_names, seed_lots)
+	selected_lots = [filters["lot"]] if filters["lot"] else None
+	lot_rows = _fetch_lot_rows(ppo_names, selected_lots)
 	lot_names = list(
 		dict.fromkeys(row.lot for row in lot_rows if row.get("lot"))
 	)
+	seed_lot_names = set(seed_lots)
+	inward_lot_names = [
+		lot_name for lot_name in lot_names if lot_name in seed_lot_names
+	]
 	stage_rows = _fetch_lot_stage_rows(lot_names)
 	transferred_source_lots = list(
 		dict.fromkeys(
@@ -71,7 +74,7 @@ def get_ppo_production_snapshot(
 	transferred_lot_rows = _fetch_transferred_lot_rows(
 		transferred_source_lots
 	)
-	inward_rows = _fetch_inward_rows(lot_names)
+	inward_rows = _fetch_inward_rows(inward_lot_names)
 
 	item_variants = list(
 		dict.fromkeys(
@@ -408,6 +411,20 @@ def build_production_snapshot(
 		ppo["lot_count"] = sum(
 			1 for lot in lots if lot.get("production_order") == ppo["name"]
 		)
+		linked_lots = [
+			lot for lot in lots if lot.get("production_order") == ppo["name"]
+		]
+		ppo["lot_link_status"] = "Linked" if linked_lots else "Not Linked"
+		ppo["status"] = "Started" if linked_lots else "Not Started"
+		ppo["linked_lots"] = [
+			{
+				"name": lot["name"],
+				"lot_status": lot.get("status"),
+				"production_stage": lot.get("production_stage"),
+				"stage_details": lot.get("stage_details") or {},
+			}
+			for lot in linked_lots
+		]
 
 	ppo_inward_by_size = defaultdict(lambda: defaultdict(float))
 	ppo_lot_planned_by_size = defaultdict(lambda: defaultdict(float))
@@ -450,11 +467,6 @@ def build_production_snapshot(
 		net_wip = ppo["quantity"] - ppo["inward_quantity"]
 		ppo["wip_quantity"] = max(net_wip, 0.0)
 		ppo["over_inward_quantity"] = max(-net_wip, 0.0)
-		ppo["production_stage"] = _aggregate_production_stage(
-			lot.get("production_stage")
-			for lot in lots
-			if lot.get("production_order") == ppo["name"]
-		)
 
 	stock_rows = {}
 	for item_variant, row in (stock or {}).items():
@@ -594,8 +606,10 @@ def _fetch_ppo_rows(item, ppo=None):
 	).run(as_dict=True)
 
 
-def _fetch_lot_rows(ppo_names, selected_lots):
-	if not ppo_names or not selected_lots:
+def _fetch_lot_rows(ppo_names, selected_lots=None):
+	if not ppo_names:
+		return []
+	if selected_lots is not None and not selected_lots:
 		return []
 
 	lot = frappe.qb.DocType("Lot")
@@ -622,12 +636,13 @@ def _fetch_lot_rows(ppo_names, selected_lots):
 			item_variant.item,
 		)
 		.where(lot.production_order.isin(ppo_names))
-		.where(lot.name.isin(selected_lots))
 		.where(lot.is_transferred == 0)
 		.orderby(lot.production_order)
 		.orderby(lot.name)
 		.orderby(lot_item.idx)
 	)
+	if selected_lots is not None:
+		query = query.where(lot.name.isin(selected_lots))
 	return query.run(as_dict=True)
 
 
@@ -877,14 +892,6 @@ def _production_stage_from_work_orders(stitching_dcs, stitching_grns):
 	if stitching_dcs:
 		return "Stitching"
 	return "Cutting"
-
-
-def _aggregate_production_stage(stages):
-	stage_rank = {"Cutting": 0, "Stitching": 1, "Packing": 2}
-	stages = [stage for stage in stages if stage in stage_rank]
-	if not stages:
-		return None
-	return min(stages, key=stage_rank.get)
 
 
 def _validate_filters(
