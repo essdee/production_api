@@ -1868,7 +1868,7 @@ def save_consumption_data(supplier, lot, sections, cloth_acc_data=None):
 						"weight_in_ipd": weight_in_ipd,
 						"consumption_weight": consumption_weight,
 					})
-		sp_n.save()
+		sp_n.save(ignore_permissions=True)
 
 	return {
 		"status": "success",
