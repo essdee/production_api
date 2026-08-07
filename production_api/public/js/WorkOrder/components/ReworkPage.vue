@@ -5,12 +5,18 @@
             <div class="lot-input col-md-2"></div>
             <div class="item-input col-md-2"></div>
             <div class="colour-input col-md-2"></div>
+            <div class="received-type-input col-md-2"></div>
             <div class="show-reworked-input col-md-2"></div>
             <div class="btn-wrapper">
                 <button class="btn btn-primary" @click="get_rework_items()">Get Rework Items</button>
             </div>
             <div class="btn-wrapper">
                 <button class="btn btn-primary" @click="download()">Download XL</button>
+            </div>
+            <div class="btn-wrapper">
+                <button class="btn btn-success" @click="copy_report()" :disabled="copying">
+                    {{ copying ? 'Copying...' : 'Copy' }}
+                </button>
             </div>
         </div>
         <div v-if="items && Object.keys(items).length > 0" class="table-wrapper">
@@ -119,6 +125,7 @@
 
 <script setup>
 import { ref, onMounted } from 'vue';
+import { copyElementAsImage } from '../../copyElementAsImage';
 
 let lot = null;
 let root = ref(null);
@@ -127,8 +134,10 @@ let items = ref({});
 let expandedRowKey = ref(null);
 let item = null
 let colour = null
+let received_type = null
 let show_reworked = null
 let show_reworked_value = ref(false)
+let copying = ref(false)
 
 onMounted(() => {
     let el = root.value;
@@ -168,6 +177,18 @@ onMounted(() => {
         doc: sample_doc.value,
         render_input: true,
     });
+    $(el).find(".received-type-input").html("");
+    received_type = frappe.ui.form.make_control({
+        parent: $(el).find(".received-type-input"),
+        df: {
+            fieldname: "received_type",
+            fieldtype: "Link",
+            options: "GRN Item Type",
+            label: "Received Type",
+        },
+        doc: sample_doc.value,
+        render_input: true,
+    });
     $(el).find(".show-reworked-input").html("");
     show_reworked = frappe.ui.form.make_control({
         parent: $(el).find(".show-reworked-input"),
@@ -193,6 +214,7 @@ function get_rework_items() {
             lot: lot.get_value(),
             item: item.get_value(),
             colour: colour.get_value(),
+            received_type: received_type.get_value(),
             show_reworked: show_reworked.get_value() ? 1 : 0,
         },
         callback: function (r) {
@@ -325,6 +347,21 @@ function map_to_grn(grn){
     window.open(url, '_blank');
 }
 
+async function copy_report(){
+    if (copying.value) return
+    copying.value = true
+    try {
+        await copyElementAsImage(root.value)
+        frappe.show_alert({ message: 'Copied to clipboard', indicator: 'green' })
+    }
+    catch (error) {
+        frappe.show_alert({ message: 'Copy failed', indicator: 'red' })
+    }
+    finally {
+        copying.value = false
+    }
+}
+
 function download(){
     var xhr = new XMLHttpRequest();
     xhr.open('POST', '/api/method/production_api.production_api.doctype.grn_rework_item.grn_rework_item.download_xl', true);
@@ -393,6 +430,7 @@ function download(){
 
 .input-row {
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
     gap: 10px;
 }

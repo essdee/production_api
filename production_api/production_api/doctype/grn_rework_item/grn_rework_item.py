@@ -144,9 +144,12 @@ def revert_reworked_item(docname):
 	make_sl_entries(sl_entries)
 
 @frappe.whitelist()
-def get_rework_items(lot, item, colour, grn_number=None, show_reworked=0):
+def get_rework_items(lot, item, colour, grn_number=None, show_reworked=0, received_type=None):
 	conditions = " AND t1.completed = 1" if cint(show_reworked) else " AND t1.completed = 0"
 	con = {}
+	if received_type:
+		conditions += " AND t2.received_type = %(received_type)s"
+		con['received_type'] = received_type
 	if grn_number:
 		conditions += " AND t1.grn_number = %(grn_number)s"
 		con['grn_number'] = grn_number
@@ -207,6 +210,8 @@ def get_rework_items(lot, item, colour, grn_number=None, show_reworked=0):
 			else:
 				if row.completed == 1:
 					continue
+			if received_type and row.received_type != received_type:
+				continue
 			data['total_detail'].setdefault(row.received_type, 0)
 			data['total_rejection_detail'].setdefault(row.received_type, 0)
 			attr_details = get_variant_attr_details(row.item_variant)

@@ -12,7 +12,9 @@
                 <button class="btn btn-primary" @click="get_report()">Get Report</button>
             </div>
             <div style="padding-top: 27px;padding-left:10px;">
-                <button class="btn btn-success" @click="take_screenshot()">Take Screenshot</button>
+                <button class="btn btn-success" @click="copy_report()" :disabled="copying">
+                    {{ copying ? 'Copying...' : 'Copy' }}
+                </button>
             </div>
             <div style="padding-top: 30px;padding-left:15px;">
                 <label style="cursor:pointer;font-weight:normal;display:flex;align-items:center;gap:6px;">
@@ -191,6 +193,7 @@
 
 <script setup>
 import { ref, onMounted } from 'vue';
+import { copyElementAsImage } from '../../copyElementAsImage';
 
 const root = ref(null);
 const sample_doc = ref({})
@@ -201,6 +204,7 @@ let report = ref(true)
 let bundle_generated = ref(0)
 let label_printed = ref(0)
 let created = ref(0)
+let copying = ref(false)
 
 // Summary mode refs
 let isSummaryMode = ref(false)
@@ -311,22 +315,19 @@ function onSummaryToggle() {
     }
 }
 
-async function take_screenshot(){
-    frappe.require("https://cdn.jsdelivr.net/npm/html2canvas-pro@1.5.8/dist/html2canvas-pro.min.js", async () => {
-        let sourceDiv = document.getElementById("page-daily-production-rep");
-        html2canvas(sourceDiv, {
-            scale: 1,
-            useCORS: true,
-            backgroundColor: null,
-            logging: false,
-            removeContainer: true
-        }).then((canvas) => {
-            let link = document.createElement("a");
-            link.href = canvas.toDataURL("image/png");
-            link.download = "screenshot.png";
-            link.click();
-        });
-    });
+async function copy_report(){
+    if (copying.value) return
+    copying.value = true
+    try {
+        await copyElementAsImage(root.value)
+        frappe.show_alert({ message: 'Copied to clipboard', indicator: 'green' })
+    }
+    catch (error) {
+        frappe.show_alert({ message: 'Copy failed', indicator: 'red' })
+    }
+    finally {
+        copying.value = false
+    }
 }
 
 
