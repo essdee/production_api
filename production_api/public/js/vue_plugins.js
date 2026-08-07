@@ -124,13 +124,17 @@ import {
 
 import LayPlanResult from "./CuttingLaysheetPlan/LayPlanResult.vue";
 import EventBus from "./bus.js";
+import { copyElementAsImage } from "./copyElementAsImage";
 
 import { EditBOMAttributeMappingWrapper, BOMAttributeMappingWrapper } from "./ItemBOM";
 
 import { createApp } from 'vue';
 
 frappe.provide("frappe.production.ui");
+frappe.provide("frappe.production.utils");
 frappe.provide("frappe.production.product_development.ui");
+
+frappe.production.utils.copyElementAsImage = copyElementAsImage;
 
 function installNumberInputWheelGuard() {
     if (window.__production_api_number_input_wheel_guard_installed) {

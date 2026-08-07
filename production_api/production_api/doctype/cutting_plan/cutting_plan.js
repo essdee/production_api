@@ -13,7 +13,6 @@ frappe.ui.form.on("Cutting Plan", {
         })
     },
     refresh(frm) {
-        frappe.require("https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js")
         frm.cut_plan_items = new frappe.production.ui.CutPlanItems(frm.fields_dict['items_html'].wrapper)
         if (frm.is_new()) {
             ["items_html", "completed_items_html", "incompleted_items_html", "accessory_html", "cloths_html"]
@@ -99,31 +98,15 @@ frappe.ui.form.on("Cutting Plan", {
                         { fieldname: "pop_up_html", fieldtype: "HTML" },
                         { fieldname: "output_html", fieldtype: "HTML" },
                     ],
-                    primary_action_label: "Copy to Clipboard",
-                    secondary_action_label: "Take Screenshot",
+                    primary_action_label: "Copy",
                     async primary_action() {
-                        let sourceDiv = d.fields_dict.pop_up_html.wrapper;
-                        let canvas = await html2canvas(sourceDiv, { scale: 1, useCORS: true });
-                        canvas.toBlob(async (blob) => {
-                            await navigator.clipboard.write([
-                                new ClipboardItem({ "image/png": blob }),
-                            ]);
-                            frappe.show_alert("Image Copied to Clipboard");
-                        });
+                        try {
+                            await frappe.production.utils.copyElementAsImage(d.fields_dict.pop_up_html.wrapper);
+                            frappe.show_alert({ message: "Copied to clipboard", indicator: "green" });
+                        } catch (error) {
+                            frappe.show_alert({ message: "Copy failed", indicator: "red" });
+                        }
                     },
-                    secondary_action() {
-                        let sourceDiv = d.fields_dict.pop_up_html.wrapper;
-                        html2canvas(sourceDiv, { scale: 1, useCORS: true }).then((canvas) => {
-                            let link = document.createElement("a");
-                            link.href = canvas.toDataURL("image/png");
-                            link.download = "screenshot.png";
-                            link.click();
-                        });
-                    },
-                });
-                d.$wrapper.find(".btn-modal-secondary").css({
-                    "background-color": "cadetblue",
-                    color: "white",
                 });
                 frm.completed_popup = new frappe.production.ui.CuttingCompletionDetail(d.fields_dict.pop_up_html.wrapper);
                 frm.completed_popup.load_data(frm.doc.completed_items_json, 3);

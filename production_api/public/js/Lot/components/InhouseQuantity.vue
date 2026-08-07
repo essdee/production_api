@@ -8,7 +8,9 @@
                 <button class="btn btn-primary" @click="get_inhouse_qty_report()">Show Report</button>
             </div>
             <div style="padding-top: 27px;padding-left:10px;">
-                <button class="btn btn-success" @click="take_screenshot()">Take Screenshot</button>
+                <button class="btn btn-success" @click="copy_report()" :disabled="copying">
+                    {{ copying ? 'Copying...' : 'Copy' }}
+                </button>
             </div>
         </div>
         <div v-if="items && Object.keys(items).length > 0">
@@ -144,6 +146,7 @@
 <script setup>
 
 import {ref, onMounted} from 'vue';
+import { copyElementAsImage } from '../../copyElementAsImage';
 
 let lot = null
 let process = null
@@ -151,6 +154,7 @@ let root = ref(null)
 let sample_doc = ref({})
 let items = ref({})
 let item_name = ref(null)
+let copying = ref(false)
 
 onMounted(()=> {
     let el = root.value
@@ -259,22 +263,19 @@ function date_diff_days(end_date, start_date){
     return frappe.datetime.get_day_diff(end_date, start_date)
 }
 
-async function take_screenshot(){
-    frappe.require("https://cdn.jsdelivr.net/npm/html2canvas-pro@1.5.8/dist/html2canvas-pro.min.js", async () => {
-        let sourceDiv = document.getElementById("page-inhouse-quantity-rep");
-        html2canvas(sourceDiv, { 
-            scale: 1, 
-            useCORS: true, 
-            backgroundColor: null, 
-            logging: false, // turn off debug logs
-            removeContainer: true // cleans up temp nodes faster
-        }).then((canvas) => {
-            let link = document.createElement("a");
-            link.href = canvas.toDataURL("image/png");
-            link.download = "screenshot.png";
-            link.click();
-        });
-    });
+async function copy_report(){
+    if (copying.value) return
+    copying.value = true
+    try {
+        await copyElementAsImage(root.value)
+        frappe.show_alert({ message: 'Copied to clipboard', indicator: 'green' })
+    }
+    catch (error) {
+        frappe.show_alert({ message: 'Copy failed', indicator: 'red' })
+    }
+    finally {
+        copying.value = false
+    }
 }
 
 function get_style(val1, val2){

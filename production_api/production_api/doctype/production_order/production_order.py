@@ -1793,7 +1793,7 @@ def apply_alternative_plan_ppo_transfer(
 ):
 	"""Convert finishing pieces to each Lot's box UOM and persist paired PPO movements."""
 	piece_transfers = _normalise_alternative_transfers(transfers)
-	source_box_transfers = _piece_transfers_to_boxes(
+	requested_source_box_transfers = _piece_transfers_to_boxes(
 		piece_transfers, _get_lot_packing_combo(source_lot)
 	)
 	target_box_transfers = _piece_transfers_to_boxes(
@@ -1806,21 +1806,20 @@ def apply_alternative_plan_ppo_transfer(
 
 	source_rows = get_rows_by_size(source)
 	target_rows = get_rows_by_size(target)
+	source_box_transfers = {}
 	changes = []
 	for size, piece_quantity in piece_transfers.items():
-		source_quantity = source_box_transfers[size]
+		requested_source_quantity = requested_source_box_transfers[size]
 		target_quantity = target_box_transfers[size]
 		source_row = source_rows.get(size)
 		if not source_row:
 			frappe.throw(f"Size {size} is not present in source Production Order {source.name}")
 		source_before = flt(source_row.quantity)
-		if source_quantity > source_before:
-			frappe.throw(
-				f"Cannot move {format_comment_qty(piece_quantity)} pieces "
-				f"({format_comment_qty(source_quantity)} boxes) for size {size}; "
-				f"Production Order {source.name} has only "
-				f"{format_comment_qty(source_before)} boxes"
-			)
+		# The PPO contains the original planned boxes. Actual finishing output can exceed
+		# that plan, so reduce only the boxes still present and clamp the source at zero.
+		# The target PPO continues to receive the full piece conversion using its own combo.
+		source_quantity = min(requested_source_quantity, max(source_before, 0))
+		source_box_transfers[size] = source_quantity
 		target_row = target_rows.get(size)
 		if not target_row:
 			target_row = _append_alternative_target_size_row(target, source_row, size)
@@ -1831,6 +1830,7 @@ def apply_alternative_plan_ppo_transfer(
 			"qty": target_quantity,
 			"piece_qty": piece_quantity,
 			"source_qty": source_quantity,
+			"source_requested_qty": requested_source_quantity,
 			"target_qty": target_quantity,
 			"old_qty": target_before,
 			"new_qty": target_before + target_quantity,
@@ -1854,6 +1854,7 @@ def apply_alternative_plan_ppo_transfer(
 		"transfers": target_box_transfers,
 		"piece_transfers": piece_transfers,
 		"source_box_transfers": source_box_transfers,
+		"requested_source_box_transfers": requested_source_box_transfers,
 		"target_box_transfers": target_box_transfers,
 		"requested_user": frappe.session.user,
 		"requested_on": str(approved_on),
@@ -1872,6 +1873,7 @@ def apply_alternative_plan_ppo_transfer(
 		"target_production_order": target.name,
 		"transferred": piece_transfers,
 		"source_boxes": source_box_transfers,
+		"requested_source_boxes": requested_source_box_transfers,
 		"target_boxes": target_box_transfers,
 	}
 
