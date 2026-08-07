@@ -4,6 +4,7 @@ from unittest import TestCase
 from production_api.api.ppo_report import (
 	_empty_snapshot,
 	_production_stage_from_work_orders,
+	_resolve_lot_production_stage,
 	_validate_filters,
 	build_production_snapshot,
 )
@@ -63,6 +64,20 @@ class TestPPOReportSnapshot(TestCase):
 		self.assertEqual(
 			_production_stage_from_work_orders(["DC-1"], ["GRN-1"]),
 			"Packing",
+		)
+
+	def test_marks_packed_lot_complete_only_after_full_inward(self):
+		self.assertEqual(
+			_resolve_lot_production_stage("Packing", 300, 299),
+			"Packing",
+		)
+		self.assertEqual(
+			_resolve_lot_production_stage("Packing", 300, 300),
+			"Completed",
+		)
+		self.assertEqual(
+			_resolve_lot_production_stage("Stitching", 300, 300),
+			"Stitching",
 		)
 	def test_handles_multiple_lots_and_mismatched_inward_items(self):
 		result = build_production_snapshot(

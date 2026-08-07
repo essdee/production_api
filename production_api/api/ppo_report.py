@@ -374,7 +374,11 @@ def build_production_snapshot(
 			row["inward_quantity"] for row in lot["size_rows"]
 		)
 		stage = stage_by_lot.get(lot["name"], {})
-		lot["production_stage"] = stage.get("production_stage") or "Cutting"
+		lot["production_stage"] = _resolve_lot_production_stage(
+			stage.get("production_stage"),
+			lot["planned_quantity"],
+			lot["inward_quantity"],
+		)
 		lot["stage_details"] = {
 			"cutting_work_orders": list(stage.get("cutting_work_orders") or []),
 			"stitching_work_orders": list(stage.get("stitching_work_orders") or []),
@@ -892,6 +896,22 @@ def _production_stage_from_work_orders(stitching_dcs, stitching_grns):
 	if stitching_dcs:
 		return "Stitching"
 	return "Cutting"
+
+
+def _resolve_lot_production_stage(
+	work_order_stage,
+	planned_quantity,
+	inward_quantity,
+):
+	"""Mark a packed lot complete only after its full planned qty is inwarded."""
+	stage = work_order_stage or "Cutting"
+	if (
+		stage == "Packing"
+		and flt(planned_quantity) > 0
+		and flt(inward_quantity) >= flt(planned_quantity)
+	):
+		return "Completed"
+	return stage
 
 
 def _validate_filters(
