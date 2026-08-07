@@ -23,8 +23,28 @@
             </tbody>
         </table>
 
-        <!-- Size Ratio: enter boxes per colour to dispatch -->
-        <table v-if="mode === 'Size Ratio Packing'" class="table table-sm table-sm-bordered bordered-table">
+        <!-- Dynamic ratios: dispatch only boxes that exist in a submitted GRN batch. -->
+        <table v-if="props.dynamic_ratio_packing" class="table table-sm table-sm-bordered bordered-table">
+            <thead class="dark-border">
+                <tr><th>GRN</th><th>Colour</th><th>Ratio</th><th>Received</th><th>Already Dispatched</th><th>Available</th><th>Dispatch Boxes</th><th>Dispatch Pieces</th></tr>
+            </thead>
+            <tbody class="dark-border">
+                <tr v-for="batch in available_batches" :key="batch.batch_row">
+                    <td>{{ batch.grn }}</td>
+                    <td>{{ batch.colour }}</td>
+                    <td>{{ ratio_text(batch.ratio) }}</td>
+                    <td>{{ batch.box_quantity }}</td>
+                    <td>{{ batch.dispatched_boxes }}</td>
+                    <td>{{ batch.available_boxes }}</td>
+                    <td><input type="number" min="0" step="1" :max="batch.available_boxes" v-model.number="batch_dispatch_boxes[batch.batch_row]" class="form-control" /></td>
+                    <td>{{ (Number(batch_dispatch_boxes[batch.batch_row]) || 0) * Number(batch.pieces_per_box || 0) }}</td>
+                </tr>
+                <tr><td colspan="6"><b>Total</b></td><td><b>{{ total_boxes }}</b></td><td><b>{{ dispatch_grand_total }}</b></td></tr>
+            </tbody>
+        </table>
+
+        <!-- Legacy Size Ratio: enter boxes per colour to dispatch -->
+        <table v-else-if="mode === 'Size Ratio Packing'" class="table table-sm table-sm-bordered bordered-table">
             <thead class="dark-border">
                 <tr>
                     <th>Colour</th>
@@ -105,7 +125,7 @@ import { ref, reactive, watch, computed } from 'vue';
 const root = ref(null);
 const primary_values = ref([])
 let packed_qty = ref({})
-const props = defineProps(['packed_qty', 'primary_values', 'packed', 'dispatched', 'packing_config'])
+const props = defineProps(['packed_qty', 'primary_values', 'packed', 'dispatched', 'packing_config', 'packing_batches', 'dynamic_ratio_packing'])
 
 function round3(x) { return Math.round((Number(x) || 0) * 1000) / 1000 }
 
@@ -124,6 +144,12 @@ const ratio = computed(() => {
 
 const colour_boxes = reactive({})        // Size Ratio: { colour: boxes }
 const colour_size = reactive({})         // Size Wise:  { colour: { size: boxes } }
+const batch_dispatch_boxes = reactive({})
+const available_batches = computed(() => (props.packing_batches || []).filter(batch => Number(batch.available_boxes) > 0))
+
+function ratio_text(ratio) {
+    return Object.entries(ratio || {}).filter(([, qty]) => Number(qty)).map(([size, qty]) => `${size}:${qty}`).join(', ')
+}
 
 function ensure_colour_state() {
     colours.value.forEach(colour => {
@@ -159,7 +185,14 @@ function over(size) {
 const dispatch_by_size = computed(() => {
     const out = {}
     primary_values.value.forEach(size => { out[size] = 0 })
-    if (mode.value === 'Size Ratio Packing') {
+    if (props.dynamic_ratio_packing) {
+        available_batches.value.forEach(batch => {
+            const boxes = Number(batch_dispatch_boxes[batch.batch_row]) || 0
+            primary_values.value.forEach(size => {
+                out[size] += boxes * (Number((batch.ratio || {})[size]) || 0)
+            })
+        })
+    } else if (mode.value === 'Size Ratio Packing') {
         const c = combo.value
         colours.value.forEach(colour => {
             const boxes = Number(colour_boxes[colour]) || 0
@@ -178,7 +211,7 @@ const dispatch_by_size = computed(() => {
 // Push the rolled-up per-size dispatch into packed_qty.cur_dispatch so create_stock_entry (unchanged)
 // reads the right size-only numbers. Only for the colour modes; legacy writes cur_dispatch directly.
 watch(dispatch_by_size, (val) => {
-    if (!mode.value) return
+    if (!mode.value && !props.dynamic_ratio_packing) return
     primary_values.value.forEach(size => {
         if (!packed_qty.value[size]) packed_qty.value[size] = { packed: 0, dispatched: 0, cur_dispatch: 0 }
         packed_qty.value[size].cur_dispatch = val[size] || 0
@@ -188,7 +221,17 @@ watch(dispatch_by_size, (val) => {
 // Colour x size grid (print-only metadata): { colour: { size: boxes } }, non-zero entries only.
 const colour_details = computed(() => {
     const out = {}
-    if (mode.value === 'Size Ratio Packing') {
+    if (props.dynamic_ratio_packing) {
+        available_batches.value.forEach(batch => {
+            const boxes = Number(batch_dispatch_boxes[batch.batch_row]) || 0
+            if (!boxes) return
+            if (!out[batch.colour]) out[batch.colour] = {}
+            primary_values.value.forEach(size => {
+                const pieces = boxes * (Number((batch.ratio || {})[size]) || 0)
+                if (pieces) out[batch.colour][size] = (out[batch.colour][size] || 0) + pieces
+            })
+        })
+    } else if (mode.value === 'Size Ratio Packing') {
         const c = combo.value
         colours.value.forEach(colour => {
             const boxes = Number(colour_boxes[colour]) || 0
@@ -211,7 +254,17 @@ const colour_details = computed(() => {
 })
 
 const total_boxes = computed(() =>
-    colours.value.reduce((sum, colour) => sum + (Number(colour_boxes[colour]) || 0), 0))
+    props.dynamic_ratio_packing
+        ? available_batches.value.reduce((sum, batch) => sum + (Number(batch_dispatch_boxes[batch.batch_row]) || 0), 0)
+        : colours.value.reduce((sum, colour) => sum + (Number(colour_boxes[colour]) || 0), 0))
+
+const batch_dispatches = computed(() => available_batches.value
+    .map(batch => ({
+        batch_row: batch.batch_row,
+        grn: batch.grn,
+        box_quantity: Number(batch_dispatch_boxes[batch.batch_row]) || 0,
+    }))
+    .filter(row => row.box_quantity > 0))
 
 function colour_total(colour) {
     return primary_values.value.reduce(
@@ -224,6 +277,7 @@ const dispatch_grand_total = computed(() =>
 defineExpose({
     packed_qty,
     colour_details,
+    batch_dispatches,
 })
 
 </script>

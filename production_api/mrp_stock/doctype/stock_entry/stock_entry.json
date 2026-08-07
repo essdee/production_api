@@ -34,6 +34,7 @@
   "section_break_ncqk",
   "comments",
   "dispatch_colour_details",
+  "packing_batch_dispatch_json",
   "section_break_zvib",
   "amended_from",
   "additional_amount",
@@ -230,6 +231,13 @@
    "hidden": 1,
    "label": "Dispatch Colour Details",
    "no_copy": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "packing_batch_dispatch_json",
+   "fieldtype": "JSON",
+   "hidden": 1,
+   "label": "Packing Batch Dispatch JSON",
    "read_only": 1
   },
   {

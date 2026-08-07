@@ -469,20 +469,70 @@ class StockEntry(Document):
 
 		if self.against == "Finishing Plan Dispatch":
 			fp_doc = frappe.get_doc("Finishing Plan Dispatch", self.against_id)
+			batch_dispatches = update_if_string_instance(self.packing_batch_dispatch_json) or []
+			dynamic_plans = {batch.get("finishing_plan") for batch in batch_dispatches}
 			finishing_plan_parents = set()
 			finishing_plan_dispatch_boxes = {}
+			finishing_plan_dispatch_pieces = {}
+			if batch_dispatches:
+				multiplier = -1 if self.docstatus == 2 else 1
+				for batch in batch_dispatches:
+					batch_row = batch.get("batch_row")
+					boxes = flt(batch.get("box_quantity"))
+					current = flt(frappe.db.get_value(
+						"GRN Packing Batch", batch_row, "dispatched_boxes"
+					))
+					updated = current + (boxes * multiplier)
+					if updated < 0:
+						frappe.throw(f"Packing batch dispatch balance cannot be negative for {batch_row}")
+					frappe.db.set_value("GRN Packing Batch", batch_row, "dispatched_boxes", updated)
+					fp_name = batch.get("finishing_plan")
+					finishing_plan_dispatch_boxes[fp_name] = (
+						finishing_plan_dispatch_boxes.get(fp_name, 0) + boxes
+					)
+					pieces = sum(
+						flt(qty) for qty in (batch.get("size_pieces") or {}).values()
+					)
+				finishing_plan_dispatch_pieces[fp_name] = (
+					finishing_plan_dispatch_pieces.get(fp_name, 0) + pieces
+				)
 			for row in fp_doc.finishing_plan_dispatch_items:
-				qty = frappe.db.get_value("Finishing Plan GRN Detail", row.against_id_detail, "dispatched")
-				if self.docstatus == 2:
-					qty -= row.quantity
-				else:
-					qty += row.quantity
+				# Packing GRNs rebuild the Finishing Plan summary rows after each update.
+				# Resolve a replaced child row by its stable plan + variant identity so a
+				# dispatch can still be cancelled after later GRNs were created.
+				detail = frappe.db.get_value(
+					"Finishing Plan GRN Detail",
+					row.against_id_detail,
+					["name", "parent", "dispatched"],
+					as_dict=True,
+				)
+				if not detail:
+					detail = frappe.db.get_value(
+						"Finishing Plan GRN Detail",
+						{
+							"parent": row.against_id,
+							"item_variant": row.item_variant,
+						},
+						["name", "parent", "dispatched"],
+						as_dict=True,
+					)
+				if not detail:
+					frappe.throw(
+						f"Cannot update dispatched quantity for {row.item_variant} "
+						f"in Finishing Plan {row.against_id}"
+					)
 
-				frappe.db.set_value("Finishing Plan GRN Detail", row.against_id_detail, "dispatched", qty)
-				fp_parent = frappe.db.get_value("Finishing Plan GRN Detail", row.against_id_detail, "parent")
+				qty = flt(detail.dispatched)
+				if self.docstatus == 2:
+					qty -= flt(row.quantity)
+				else:
+					qty += flt(row.quantity)
+
+				frappe.db.set_value("Finishing Plan GRN Detail", detail.name, "dispatched", qty)
+				fp_parent = detail.parent
 				if fp_parent:
 					finishing_plan_parents.add(fp_parent)
-					if self.docstatus == 1:
+					if self.docstatus == 1 and fp_parent not in dynamic_plans:
 						finishing_plan_dispatch_boxes.setdefault(fp_parent, 0)
 						finishing_plan_dispatch_boxes[fp_parent] += row.quantity
 
@@ -504,6 +554,10 @@ class StockEntry(Document):
 						finishing_plan_dispatch_boxes.get(fp_name, 0),
 						source_doctype="Finishing Plan Dispatch",
 						source_name=fp_doc.name,
+						dispatch_pieces=(
+							finishing_plan_dispatch_pieces.get(fp_name)
+							if fp_name in dynamic_plans else None
+						),
 					)
 				apply_auto_fp_status(finishing_plan_doc)
 				finishing_plan_doc.save(ignore_permissions=True)
@@ -511,8 +565,11 @@ class StockEntry(Document):
 		if self.against == "Finishing Plan":
 			if self.purpose == 'Material Issue':
 				finishing_doc = frappe.get_doc("Finishing Plan", self.against_id)
+				batch_dispatches = update_if_string_instance(self.packing_batch_dispatch_json) or []
+				dynamic_dispatch = bool(batch_dispatches)
 				d = {}
 				dispatch_boxes = 0
+				dispatch_pieces = 0
 				for row in finishing_doc.finishing_plan_grn_details:
 					d[row.item_variant] = {
 						"quantity": row.quantity,
@@ -523,9 +580,24 @@ class StockEntry(Document):
 					qty = row.qty
 					if self.docstatus == 2:
 						qty = qty * -1
-					else:
+					elif not dynamic_dispatch:
 						dispatch_boxes += qty
+					if row.item not in d:
+						d[row.item] = {"quantity": 0, "dispatched": 0}
 					d[row.item]['dispatched'] += qty
+
+				if dynamic_dispatch:
+					multiplier = -1 if self.docstatus == 2 else 1
+					for batch in batch_dispatches:
+						boxes = flt(batch.get("box_quantity"))
+						batch_row = batch.get("batch_row")
+						current = flt(frappe.db.get_value("GRN Packing Batch", batch_row, "dispatched_boxes"))
+						updated = current + (boxes * multiplier)
+						if updated < 0:
+							frappe.throw(f"Packing batch dispatch balance cannot be negative for {batch_row}")
+						frappe.db.set_value("GRN Packing Batch", batch_row, "dispatched_boxes", updated)
+						dispatch_boxes += boxes
+						dispatch_pieces += sum(flt(qty) for qty in (batch.get("size_pieces") or {}).values())
 
 				finishing_grn_list = []
 				for key in d:
@@ -547,6 +619,7 @@ class StockEntry(Document):
 						dispatch_boxes,
 						source_doctype="Finishing Plan",
 						source_name=finishing_doc.name,
+						dispatch_pieces=dispatch_pieces if dynamic_dispatch else None,
 					)
 				finishing_doc.stock_entry_list = frappe.json.dumps(stock_entry_list)
 				apply_auto_fp_status(finishing_doc)

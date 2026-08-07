@@ -1879,19 +1879,10 @@ def get_receivables(items, lot, uom, conversion_details=None, out_uom=None):
 
 
 def get_size_wise_packing_receivables(item_list, ipd_doc, lot, uom):
-    """Packing-process receivable when the IPD uses size-wise packing (Phase 2).
+    """Create size-only, piece-UOM packing receivables.
 
-    Boxes hold the size ratio; colour is entry-only so stock stays size-only. Loose pieces arrive
-    per colour+size (in item_list); we keep only the pieces that fit into COMPLETE boxes (ratio
-    limited by the scarcest size, per colour), roll up to size totals (colour dropped), and emit one
-    size-only receivable per size at the PACK-OUT stage (Stage=Pack) in packing-uom pieces — i.e. the
-    box-fitted "expected packed pieces", which is the ratio-aware replacement for the legacy per-size
-    ceil(pieces/packing_combo) box count. Total pieces / packing_combo = the complete-box count.
-
-    Size Ratio Packing: per colour, complete boxes = min over the ratio sizes of
-        floor(avail / ratio); consumed[size] = boxes * ratio[size]; pieces that don't fill a box
-        are left unpacked (warned, not blocked).
-    Size Wise Packing: packing_combo = 1, so every available piece is its own box -> all pieces pass.
+    Only an IPD based on other-attribute mapping exposes every loose piece so its ratio can be
+    selected at GRN time. All other IPDs retain the previous fixed-ratio box-fit calculation.
     """
     primary_attr = ipd_doc.primary_item_attribute
     pack_stage = ipd_doc.pack_out_stage
@@ -1908,13 +1899,21 @@ def get_size_wise_packing_receivables(item_list, ipd_doc, lot, uom):
             avail.setdefault(colour, {}).setdefault(size, 0)
             avail[colour][size] += flt(variant['qty'])
 
-    # consumed[size] = pieces that fit complete boxes, rolled up across colours (colour dropped)
     consumed = {}
     leftover = {}
-    if ipd_doc.packing_mode == "Size Ratio Packing":
+    dynamic_ratio_packing = bool(
+        ipd_doc.based_on_other_attribute_mapping
+        and ipd_doc.packing_mode == "Size Ratio Packing"
+    )
+    if dynamic_ratio_packing:
+        # Every piece remains available; the transaction-level ratio consumes the exact mix.
+        for sizes in avail.values():
+            for size, qty in sizes.items():
+                consumed[size] = consumed.get(size, 0) + flt(qty)
+    elif ipd_doc.packing_mode == "Size Ratio Packing":
+        # Legacy fixed ratio: expose only pieces that fit complete boxes per colour.
         ratio = {row.attribute_value: row.quantity for row in ipd_doc.packing_size_details}
         for sizes in avail.values():
-            # complete boxes this colour can build = limited by the scarcest ratio size
             boxes = None
             for size, per_box in ratio.items():
                 if per_box <= 0:
@@ -1929,7 +1928,7 @@ def get_size_wise_packing_receivables(item_list, ipd_doc, lot, uom):
                 if extra > 0:
                     leftover[size] = leftover.get(size, 0) + extra
     else:
-        # Size Wise (carton, packing_combo = 1): every available piece passes through 1:1.
+        # Legacy Size Wise packing remains one piece to one carton unit.
         for sizes in avail.values():
             for size, qty in sizes.items():
                 consumed[size] = consumed.get(size, 0) + flt(qty)
@@ -1956,7 +1955,7 @@ def get_size_wise_packing_receivables(item_list, ipd_doc, lot, uom):
         index += 1
 
     if leftover:
-        parts = ", ".join(f"{s}: {int(q)}" for s, q in leftover.items() if q > 0)
+        parts = ", ".join(f"{size}: {int(qty)}" for size, qty in leftover.items() if qty > 0)
         if parts:
             frappe.msgprint(f"Some loose pieces don't fill a complete box and stay unpacked — {parts}")
 

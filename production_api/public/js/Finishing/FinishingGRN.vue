@@ -62,14 +62,14 @@
             </thead>
             <tbody class="dark-border">
                 <tr>
-                    <td>Packed</td>
+                    <td>{{ dynamic_ratio_packing ? 'Packed Pieces' : 'Packed' }}</td>
                     <td v-for="(value, index) in primary_values" :key="index">
                         {{ packed_qty[value]['packed']}}
                     </td>
                     <td>{{ total_packed }}</td>
                 </tr>
                 <tr>
-                    <td>Dispatched</td>
+                    <td>{{ dynamic_ratio_packing ? 'Dispatched Pieces' : 'Dispatched' }}</td>
                     <td v-for="(value, index) in primary_values" :key="index">
                         {{ packed_qty[value]['dispatched']}}
                     </td>
@@ -81,6 +81,21 @@
                         {{ packed_qty[value]['packed'] - packed_qty[value]['dispatched']}}
                     </td>
                     <td>{{ total_packed - total_dispatched }}</td>
+                </tr>
+            </tbody>
+        </table>
+        <table v-if="dynamic_ratio_packing && packing_batches.length" class="table table-sm table-sm-bordered bordered-table">
+            <thead class="dark-border">
+                <tr><th>GRN</th><th>Colour</th><th>Ratio</th><th>Received Boxes</th><th>Dispatched</th><th>Balance</th></tr>
+            </thead>
+            <tbody class="dark-border">
+                <tr v-for="batch in packing_batches" :key="batch.batch_row">
+                    <td>{{ batch.grn }}</td>
+                    <td>{{ batch.colour }}</td>
+                    <td>{{ ratio_text(batch.ratio) }}</td>
+                    <td>{{ batch.box_quantity }}</td>
+                    <td>{{ batch.dispatched_boxes }}</td>
+                    <td>{{ batch.available_boxes }}</td>
                 </tr>
             </tbody>
         </table>
@@ -102,6 +117,8 @@ let se_list = JSON.parse(cur_frm.doc.stock_entry_list || "{}")
 let total_packed = ref(0)
 let total_dispatched = ref(0)
 let packing_config = ref({})
+let dynamic_ratio_packing = ref(false)
+let packing_batches = ref([])
 
 onMounted(()=> {
     frappe.call({
@@ -151,6 +168,7 @@ function cancel_doc(doctype, docname){
                 freeze_message: `Cancelling ${doctype}`,
                 callback: function(){
                     frappe.show_alert("Cancelled Successfully")
+					cur_frm.reload_doc()
                 }
             })
         },
@@ -172,9 +190,16 @@ function load_data(data){
     });
     total_packed.value = items['total_packed']
     total_dispatched.value = items['total_dispatched']
+    dynamic_ratio_packing.value = Boolean(items.dynamic_ratio_packing)
+    packing_batches.value = items.packing_batches || []
+}
+
+function ratio_text(ratio) {
+    return Object.entries(ratio || {}).filter(([, qty]) => Number(qty)).map(([size, qty]) => `${size}:${qty}`).join(', ')
 }
 
 function make_grn(){
+	let popupComponent = null
     let d = new frappe.ui.Dialog({
         title: 'Create Goods Received Note',
         fields: [
@@ -202,6 +227,22 @@ function make_grn(){
         size: "extra-large",
         primary_action_label: 'Create GRN',
         primary_action(values) {
+			if (
+				packing_config.value.dynamic_ratio_packing
+				&& !popupComponent.colours_valid
+			) {
+				frappe.msgprint('Select a valid colour in every packing ratio.')
+				return
+			}
+			if (
+				packing_config.value.dynamic_ratio_packing
+				&& !popupComponent.ratios_valid
+			) {
+				frappe.msgprint(
+					`Every packing ratio must total ${popupComponent.expected_pieces_per_box} pieces per box.`
+				)
+				return
+			}
             d.hide();
             frappe.call({
                 method: "production_api.production_api.doctype.finishing_plan.finishing_plan.create_grn",
@@ -209,7 +250,8 @@ function make_grn(){
                     work_order: cur_frm.doc.work_order,
                     lot: cur_frm.doc.lot,
                     item_name: cur_frm.doc.item,
-                    data: i.box_qty,
+					data: popupComponent.box_qty,
+					packing_batches: popupComponent.packing_batches,
                     delivery_location: values.delivery_location,
                     actual_date: values.actual_date,
                 },
@@ -217,6 +259,7 @@ function make_grn(){
                 freeze_message: "Creating Goods Received Note...",
                 callback: function() {
                     frappe.msgprint("GRN Created Successfully");
+                    cur_frm.reload_doc();
                 }
             })
         }
@@ -229,11 +272,12 @@ function make_grn(){
         packing_config: packing_config.value,
     };
     const vueApp = createApp(FPPopUpGRN, props);
-    i = vueApp.mount(el);
+	popupComponent = vueApp.mount(el);
     d.show()
 }
 
 function make_dispatch(){
+	let dispatchComponent = null
     let d = new frappe.ui.Dialog({
         title: "Dispatch Box",
         fields: [
@@ -279,17 +323,19 @@ function make_dispatch(){
                     doc_name: cur_frm.doc.name,
                     lot: cur_frm.doc.lot,
                     item_name: cur_frm.doc.item,
-                    data: i.packed_qty,
+					data: dispatchComponent.packed_qty,
                     from_location: values.from_location,
                     to_location: values.to_location,
                     goods_value: values.goods_value,
                     vehicle_no: values.vehicle_no,
-                    colour_details: i.colour_details,
+					colour_details: dispatchComponent.colour_details,
+					packing_batch_dispatches: dispatchComponent.batch_dispatches,
                 },
                 freeze: true,
                 freeze_message: "Dispatching Items...",
                 callback: function(response) {
                     frappe.msgprint("Stock Dispatched Successfully...")
+					cur_frm.reload_doc()
                 } 
             })
         }
@@ -302,9 +348,11 @@ function make_dispatch(){
         packed: total_packed.value,
         dispatched: total_dispatched.value,
         packing_config: packing_config.value,
+        packing_batches: packing_batches.value,
+        dynamic_ratio_packing: dynamic_ratio_packing.value,
     };
     const vueApp = createApp(FPDispatch, props);
-    i = vueApp.mount(el);
+	dispatchComponent = vueApp.mount(el);
     d.show()
 }
 

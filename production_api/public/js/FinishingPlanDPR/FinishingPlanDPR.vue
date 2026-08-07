@@ -78,7 +78,7 @@
                             <td class="colour-cell">{{ row.lot }}</td>
                             <td class="colour-cell">{{ row.item}}</td>
                             <td v-for="size in row.sizes" :key="size" class="size-cell">
-                                {{ row.size_qty[size] * row.pieces_per_box || '' }}
+                                {{ row.size_qty[size] || '' }}
                             </td>
                             <td class="total-cell">
                                 <span class="total-val">{{ row.total_pieces }}</span>

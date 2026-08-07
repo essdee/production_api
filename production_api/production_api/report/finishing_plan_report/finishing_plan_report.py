@@ -2,6 +2,11 @@
 # For license information, please see license.txt
 
 import frappe
+from frappe.utils import flt
+
+from production_api.production_api.doctype.finishing_plan.finishing_plan import (
+	get_finishing_packing_summary,
+)
 from production_api.utils import get_variant_attr_details
 
 def execute(filters=None):
@@ -30,7 +35,7 @@ def get_columns():
 		},
 		{
 			"fieldname": "pieces_per_box",
-			"fieldtype": "Int",
+			"fieldtype": "Data",
 			"label": "Pieces Per Box"
 		},
 		{
@@ -162,10 +167,20 @@ def get_data(filters):
 	fp_list = frappe.get_all("Finishing Plan",filters=fil, pluck="name")
 	for fp_name in fp_list:
 		fp_doc = frappe.get_doc("Finishing Plan", fp_name)
+		packing_summary = get_finishing_packing_summary(fp_doc)
+		report_pieces_per_box = fp_doc.pieces_per_box
+		if packing_summary.dynamic_ratio_packing:
+			batch_combos = {
+				flt(batch.get("pieces_per_box"))
+				for batch in packing_summary.packing_batches
+			}
+			report_pieces_per_box = (
+				batch_combos.pop() if len(batch_combos) == 1 else "Mixed"
+			)
 		d = {
 			"item": fp_doc.item,
 			"lot": fp_doc.lot,
-			"pieces_per_box": fp_doc.pieces_per_box,
+			"pieces_per_box": report_pieces_per_box,
 		}
 		if fp_doc.is_set_item:
 			set_dict = {}
@@ -176,7 +191,7 @@ def get_data(filters):
 				set_dict.setdefault(set_attr_value, {
 					"item": fp_doc.item,
 					"lot": fp_doc.lot,
-					"pieces_per_box": fp_doc.pieces_per_box,
+					"pieces_per_box": report_pieces_per_box,
 					"description": set_attr_value,
 					"cut_qty" : 0,
 					"sewing_received" : 0,
@@ -210,10 +225,21 @@ def get_data(filters):
 				set_dict[set_attr_value]['rejection'] += row.rejected_qty
 				set_dict[set_attr_value]['rework'] += ( row.quantity - (row.reworked_quantity + row.rejected_qty) )
 
-			for row in fp_doc.finishing_plan_grn_details:
+			if packing_summary.dynamic_ratio_packing:
 				for set_key in set_dict:
-					set_dict[set_key]['dispatch_box_qty'] += row.dispatched
-					set_dict[set_key]['dispatch_piece_qty'] +=  (row.dispatched * fp_doc.pieces_per_box)
+					set_dict[set_key]['dispatch_box_qty'] = flt(
+						packing_summary.total_dispatched_boxes
+					)
+					set_dict[set_key]['dispatch_piece_qty'] = flt(
+						packing_summary.total_dispatched
+					)
+			else:
+				for row in fp_doc.finishing_plan_grn_details:
+					for set_key in set_dict:
+						set_dict[set_key]['dispatch_box_qty'] += row.dispatched
+						set_dict[set_key]['dispatch_piece_qty'] += (
+							row.dispatched * fp_doc.pieces_per_box
+						)
 
 			for set_key in set_dict:
 				set_dict[set_key]['sewing_diff'] = set_dict[set_key]['sewing_received'] - set_dict[set_key]['cut_qty']
@@ -265,16 +291,25 @@ def get_data(filters):
 			d['loose_piece'] = fp_detail_data[0]['loose_piece']
 			d['cut_to_finishing_diff'] = fp_detail_data[0]['dc_qty'] - fp_detail_data[0]['cut_qty']
 			d['transferred'] = fp_detail_data[0]['transferred']
-			dispatch_detail = frappe.db.sql(
-				f"""
-					SELECT sum(dispatched) as dispatched_box FROM `tabFinishing Plan GRN Detail`
-					WHERE parent = {frappe.db.escape(fp_name)} 
-				""", as_dict=True
+			if packing_summary.dynamic_ratio_packing:
+				d['dispatch_box_qty'] = flt(packing_summary.total_dispatched_boxes)
+				d['dispatch_piece_qty'] = flt(packing_summary.total_dispatched)
+			else:
+				dispatch_detail = frappe.db.sql(
+					f"""
+						SELECT sum(dispatched) as dispatched_box FROM `tabFinishing Plan GRN Detail`
+						WHERE parent = {frappe.db.escape(fp_name)}
+					""", as_dict=True
+				)
+				d['dispatch_box_qty'] = flt(dispatch_detail[0]['dispatched_box'])
+				d['dispatch_piece_qty'] = d['dispatch_box_qty'] * flt(fp_doc.pieces_per_box)
+			d['cut_to_dispatch_diff'] = (
+				d['dispatch_piece_qty'] + fp_detail_data[0]['transferred']
+				- fp_detail_data[0]['cut_qty']
 			)
-			d['dispatch_box_qty'] = dispatch_detail[0]['dispatched_box']
-			d['dispatch_piece_qty'] = dispatch_detail[0]['dispatched_box'] * fp_doc.pieces_per_box
-			d['cut_to_dispatch_diff'] = (dispatch_detail[0]['dispatched_box'] * fp_doc.pieces_per_box) + fp_detail_data[0]['transferred'] - fp_detail_data[0]['cut_qty']  
-			d['finishing_inward_to_dispatch_diff'] = (dispatch_detail[0]['dispatched_box'] * fp_doc.pieces_per_box) - fp_detail_data[0]['dc_qty']
+			d['finishing_inward_to_dispatch_diff'] = (
+				d['dispatch_piece_qty'] - fp_detail_data[0]['dc_qty']
+			)
 			rework_detail = frappe.db.sql(
 				f"""
 					SELECT SUM(quantity) as rework_quantity, SUM(reworked_quantity) as reworked,
@@ -313,4 +348,3 @@ def get_data(filters):
 
 			data.append(d)
 	return data				
-

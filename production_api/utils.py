@@ -1907,14 +1907,29 @@ def get_work_in_progress_report(category, status, lot_list_val, item_list, proce
 		includes_packing_wos = set(frappe.get_all("Work Order", filters={
 			"name": ["in", stich_wo_list], "includes_packing": 1
 		}, pluck="name"))
+		dynamic_packing_wos = set(frappe.get_all(
+			"Goods Received Note",
+			filters={
+				"against": "Work Order",
+				"against_id": ["in", list(includes_packing_wos)],
+				"docstatus": 1,
+				"is_return": 0,
+				"packing_calculation_version": [">=", 2],
+			},
+			pluck="against_id",
+		)) if includes_packing_wos else set()
 		for wo in stich_wo_list:
 			stich_detail = get_wo_total_delivered_received(wo)
 			if stich_detail:
 				sent = flt(stich_detail[0]['sent'])
 				received = flt(stich_detail[0]['received'])
 				if wo in includes_packing_wos:
-					# includes_packing WOs receive boxes; the report counts pieces
-					received = received * packing_combo * part_qty
+					# New ratio GRNs receive exact packed pieces; historical GRNs
+					# receive boxes and still require their fixed IPD combo.
+					if wo in dynamic_packing_wos:
+						received = received * part_qty
+					else:
+						received = received * packing_combo * part_qty
 				lot_dict['total_data']['sewing_details']['sewing_sent'] += sent
 				lot_dict['total_data']['sewing_details']['sewing_received'] += received
 				lot_dict['total_data']['sewing_details']['finishing_inward'] += received
@@ -1965,7 +1980,19 @@ def get_work_in_progress_report(category, status, lot_list_val, item_list, proce
 			packing_process
 		)
 		for finishing_plan in finishing_plan_list:
-			pcs_per_box = frappe.get_value("Finishing Plan", finishing_plan, "pieces_per_box")
+			pcs_per_box, packing_work_order = frappe.get_value(
+				"Finishing Plan", finishing_plan, ["pieces_per_box", "work_order"]
+			)
+			dynamic_packing = bool(packing_work_order and frappe.db.exists(
+				"Goods Received Note",
+				{
+					"against": "Work Order",
+					"against_id": packing_work_order,
+					"docstatus": 1,
+					"is_return": 0,
+					"packing_calculation_version": [">=", 2],
+				},
+			))
 			finishing_detail = frappe.db.sql(
 				"""
 					SELECT sum(dispatched) as dispatch_qty FROM `tabFinishing Plan GRN Detail` WHERE
@@ -1975,7 +2002,10 @@ def get_work_in_progress_report(category, status, lot_list_val, item_list, proce
 				}, as_dict=True
 			)
 			if finishing_detail:
-				dispatch=(finishing_detail[0]['dispatch_qty'] * pcs_per_box * part_qty)
+				dispatched = flt(finishing_detail[0]['dispatch_qty'])
+				dispatch = dispatched * part_qty
+				if not dynamic_packing:
+					dispatch *= flt(pcs_per_box)
 				lot_dict['total_data']['finishing_details']['dispatch'] += dispatch
 				lot_dict['lot_data'][lot]['finishing_details']['dispatch'] += dispatch
 				lot_dict['lot_data'][lot]['sewing_details']['ready_for_packing']-=dispatch
@@ -2026,7 +2056,14 @@ def get_work_in_progress_report(category, status, lot_list_val, item_list, proce
 				dispatch_res = frappe.db.sql(
 					"""
 						SELECT
-							COALESCE(SUM(gi.quantity), 0) AS qty,
+							COALESCE(SUM(
+								CASE WHEN COALESCE(grn.packing_calculation_version, 0) >= 2
+									THEN gi.quantity ELSE 0 END
+							), 0) AS dynamic_pieces,
+							COALESCE(SUM(
+								CASE WHEN COALESCE(grn.packing_calculation_version, 0) < 2
+									THEN gi.quantity ELSE 0 END
+							), 0) AS legacy_boxes,
 							COALESCE(SUM(gi.stock_qty), 0) AS stock_qty
 						FROM `tabGoods Received Note Item` gi
 						JOIN `tabGoods Received Note` grn ON gi.parent = grn.name
@@ -2034,9 +2071,12 @@ def get_work_in_progress_report(category, status, lot_list_val, item_list, proce
 						  AND grn.against_id IN %(wos)s AND grn.is_return = 0
 					""", {"wos": tuple(packing_wos)}, as_dict=True
 				)
-				grn_qty = flt(dispatch_res[0]['qty']) if dispatch_res else 0
+				dynamic_pieces = flt(dispatch_res[0]['dynamic_pieces']) if dispatch_res else 0
+				legacy_boxes = flt(dispatch_res[0]['legacy_boxes']) if dispatch_res else 0
 				grn_stock_qty = flt(dispatch_res[0]['stock_qty']) if dispatch_res else 0
-				dispatch_qty = grn_qty * pcs_per_box * part_qty
+				dispatch_qty = (
+					dynamic_pieces + (legacy_boxes * flt(pcs_per_box))
+				) * part_qty
 
 				delta = grn_stock_qty - flt(lot_dict['lot_data'][lot]['sewing_details']['finishing_inward'])
 				lot_dict['total_data']['sewing_details']['finishing_inward'] += delta
@@ -2567,12 +2607,24 @@ def get_size_wise_stock_report(open_status, lot_list, item_list, category, proce
 
 		for finishing_plan in finishing_plan_list:
 			fp_doc = frappe.get_doc("Finishing Plan", finishing_plan)
+			dynamic_packing = bool(fp_doc.work_order and frappe.db.exists(
+				"Goods Received Note",
+				{
+					"against": "Work Order",
+					"against_id": fp_doc.work_order,
+					"docstatus": 1,
+					"is_return": 0,
+					"packing_calculation_version": [">=", 2],
+				},
+			))
+			dispatch_multiplier = 1 if dynamic_packing else flt(fp_doc.pieces_per_box)
 			for row in fp_doc.finishing_plan_grn_details:
 				attr_details = get_variant_attr_details(row.item_variant)
 				size = attr_details[primary]
-				lot_dict['lot_data'][lot]['finishing_details']['dispatch'][size] += (row.dispatched * fp_doc.pieces_per_box)
+				dispatch_pieces = flt(row.dispatched) * dispatch_multiplier
+				lot_dict['lot_data'][lot]['finishing_details']['dispatch'][size] += dispatch_pieces
 				lot_dict['lot_data'][lot]['total_details'].setdefault("dispatch_total", 0)
-				lot_dict['lot_data'][lot]['total_details']["dispatch_total"] += (row.dispatched * fp_doc.pieces_per_box)
+				lot_dict['lot_data'][lot]['total_details']["dispatch_total"] += dispatch_pieces
 			for row in fp_doc.finishing_plan_details: 
 				attr_details = get_variant_attr_details(row.item_variant)
 				size = attr_details[primary]
@@ -4122,15 +4174,17 @@ def get_work_order_pending_report(
 				SUM(COALESCE(t2.delivered_quantity, 0)) AS delivered_qty,
 				CASE
 					WHEN COALESCE(t1.includes_packing, 0) = 1
-						THEN COALESCE(packing_grn.received_qty, 0)
-							* COALESCE(NULLIF(ipd.packing_combo, 0), 1)
+						THEN COALESCE(packing_grn.dynamic_received_qty, 0)
+							+ COALESCE(packing_grn.legacy_received_qty, 0)
+								* COALESCE(NULLIF(ipd.packing_combo, 0), 1)
 					ELSE SUM(COALESCE(t2.received_qty, 0))
 				END AS received_qty,
 				SUM(COALESCE(t2.delivered_quantity, 0))
 					- CASE
 						WHEN COALESCE(t1.includes_packing, 0) = 1
-							THEN COALESCE(packing_grn.received_qty, 0)
-								* COALESCE(NULLIF(ipd.packing_combo, 0), 1)
+							THEN COALESCE(packing_grn.dynamic_received_qty, 0)
+								+ COALESCE(packing_grn.legacy_received_qty, 0)
+									* COALESCE(NULLIF(ipd.packing_combo, 0), 1)
 						ELSE SUM(COALESCE(t2.received_qty, 0))
 					END AS pending_quantity
 			FROM `tabWork Order` t1
@@ -4140,7 +4194,14 @@ def get_work_order_pending_report(
 			LEFT JOIN (
 				SELECT
 					grn.against_id AS work_order,
-					SUM(COALESCE(grn_item.quantity, 0)) AS received_qty
+					SUM(
+						CASE WHEN COALESCE(grn.packing_calculation_version, 0) >= 2
+							THEN COALESCE(grn_item.quantity, 0) ELSE 0 END
+					) AS dynamic_received_qty,
+					SUM(
+						CASE WHEN COALESCE(grn.packing_calculation_version, 0) < 2
+							THEN COALESCE(grn_item.quantity, 0) ELSE 0 END
+					) AS legacy_received_qty
 				FROM `tabGoods Received Note` grn
 				JOIN `tabGoods Received Note Item` grn_item
 					ON grn_item.parent = grn.name
@@ -4174,7 +4235,8 @@ def get_work_order_pending_report(
 				END,
 				t1.includes_packing,
 				ipd.packing_combo,
-				packing_grn.received_qty
+				packing_grn.dynamic_received_qty,
+				packing_grn.legacy_received_qty
 			ORDER BY
 				l.production_order,
 				t1.lot,
