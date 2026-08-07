@@ -109,14 +109,20 @@ class TestProductionOrder(TestCase):
 		):
 			production_order.require_ppo_action_role()
 
-	def test_merch_approver_role_takes_precedence_over_sales_action_role(self):
+	def test_configured_action_role_is_allowed_with_merch_approver_role(self):
 		with (
 			patch.object(production_order, "get_ppo_action_roles", return_value={"Sales User", "Sales Manager"}),
-			patch.object(production_order, "get_ppo_approver_roles", return_value={"Merch User", "Merch Manager"}),
 			patch.object(production_order.frappe, "get_roles", return_value=["Merch Manager", "Sales Manager"]),
-			self.assertRaisesRegex(frappe.ValidationError, "configured Production Order Action Role"),
 		):
 			production_order.require_ppo_action_role()
+
+	def test_system_manager_is_allowed_without_configured_action_roles(self):
+		with (
+			patch.object(production_order, "get_ppo_action_roles", return_value=set()),
+			patch.object(production_order.frappe, "get_roles", return_value=["System Manager"]),
+		):
+			production_order.require_ppo_action_role()
+			self.assertTrue(production_order.user_can_manage_production_order())
 
 	def test_ppo_request_requires_a_submitted_production_term(self):
 		doc = _dict(

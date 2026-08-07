@@ -707,6 +707,7 @@ QUANTITY_REQUEST_FIELD = "quantity_ratio_request"
 STATUS_REQUEST_FIELD = "status_change_request"
 STATUS_APPROVAL_REQUIRED_STATUSES = ["Item Changed", "Not Processed"]
 STATUS_CHANGE_LOCKED_STATUSES = ["Item Changed", "Not Processed"]
+SYSTEM_MANAGER_ROLE = "System Manager"
 
 
 def get_quantity_approver_role():
@@ -732,16 +733,15 @@ def get_ppo_action_roles():
 
 def user_can_manage_production_order():
 	user_roles = set(frappe.get_roles())
-	return bool(user_roles & get_ppo_action_roles()) and not bool(
-		user_roles & get_ppo_approver_roles()
-	)
+	return SYSTEM_MANAGER_ROLE in user_roles or bool(user_roles & get_ppo_action_roles())
 
 
 def require_ppo_action_role():
 	allowed_roles = get_ppo_action_roles()
-	if not allowed_roles:
+	user_roles = set(frappe.get_roles())
+	if not allowed_roles and SYSTEM_MANAGER_ROLE not in user_roles:
 		frappe.throw("Configure Production Order Action Roles in MRP Settings")
-	if not user_can_manage_production_order():
+	if SYSTEM_MANAGER_ROLE not in user_roles and not bool(user_roles & allowed_roles):
 		frappe.throw("You do not have a configured Production Order Action Role")
 
 
