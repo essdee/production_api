@@ -2,9 +2,9 @@ from types import SimpleNamespace
 from unittest import TestCase
 
 from production_api.api.ppo_report import (
-	_aggregate_production_stage,
 	_empty_snapshot,
 	_production_stage_from_work_orders,
+	_resolve_lot_production_stage,
 	_validate_filters,
 	build_production_snapshot,
 )
@@ -65,11 +65,20 @@ class TestPPOReportSnapshot(TestCase):
 			_production_stage_from_work_orders(["DC-1"], ["GRN-1"]),
 			"Packing",
 		)
-		self.assertEqual(
-			_aggregate_production_stage(["Packing", "Cutting", "Stitching"]),
-			"Cutting",
-		)
 
+	def test_marks_packed_lot_complete_only_after_full_inward(self):
+		self.assertEqual(
+			_resolve_lot_production_stage("Packing", 300, 299),
+			"Packing",
+		)
+		self.assertEqual(
+			_resolve_lot_production_stage("Packing", 300, 300),
+			"Completed",
+		)
+		self.assertEqual(
+			_resolve_lot_production_stage("Stitching", 300, 300),
+			"Stitching",
+		)
 	def test_handles_multiple_lots_and_mismatched_inward_items(self):
 		result = build_production_snapshot(
 			filters={
@@ -452,7 +461,46 @@ class TestPPOReportSnapshot(TestCase):
 		)
 		self.assertEqual(ppo["inward_quantity"], 40)
 		self.assertEqual(ppo["wip_quantity"], 60)
-		self.assertEqual(ppo["production_stage"], "Packing")
+		self.assertEqual(ppo["status"], "Started")
+		self.assertEqual(ppo["lot_link_status"], "Linked")
+		self.assertEqual(ppo["lot_count"], 1)
+		self.assertEqual(
+			ppo["linked_lots"],
+			[
+				{
+					"name": "LOT-1",
+					"lot_status": "Open",
+					"production_stage": "Packing",
+					"stage_details": lot["stage_details"],
+				}
+			],
+		)
+
+	def test_marks_ppo_without_a_linked_lot_as_not_started(self):
+		result = build_production_snapshot(
+			filters={"item": "GYM VEST"},
+			ppo_rows=[
+				row(
+					name="PPO-1",
+					item="GYM VEST",
+					delivery_date="2026-07-15",
+					item_variant="GYM VEST-S",
+					quantity=100,
+				)
+			],
+			lot_rows=[],
+			inward_rows=[],
+			stock={},
+			warehouses=[],
+			variant_attributes={"GYM VEST-S": "S"},
+			column_order=["S"],
+		)
+
+		ppo = result["ppos"][0]
+		self.assertEqual(ppo["status"], "Not Started")
+		self.assertEqual(ppo["lot_link_status"], "Not Linked")
+		self.assertEqual(ppo["lot_count"], 0)
+		self.assertEqual(ppo["linked_lots"], [])
 
 	def test_subtracts_transferred_lot_quantities_by_size(self):
 		result = build_production_snapshot(
