@@ -789,6 +789,74 @@ class TestProductionOrder(TestCase):
 			{"75 cm": 60.0, "80 cm": 160.0},
 		)
 
+	def test_alternative_plan_excess_pieces_clamp_source_ppo_at_zero(self):
+		source_row = _dict(quantity=10, ratio=1)
+		target_row = _dict(quantity=0, ratio=1)
+		source = _dict(
+			name="PPO-SOURCE",
+			item="SOURCE-ITEM",
+			docstatus=1,
+			status="Open",
+			flags=_dict(),
+		)
+		target = _dict(
+			name="PPO-TARGET",
+			item="TARGET-ITEM",
+			docstatus=1,
+			status="Open",
+			flags=_dict(),
+		)
+		source.save = MagicMock()
+		target.save = MagicMock()
+
+		def get_lot_ppo(_doctype, lot, _fieldname):
+			return {
+				"LOT-SOURCE": "PPO-SOURCE",
+				"LOT-TARGET": "PPO-TARGET",
+			}[lot]
+
+		with (
+			patch.object(production_order, "lock_production_orders"),
+			patch.object(
+				production_order,
+				"_get_lot_packing_combo",
+				side_effect=[10, 5],
+			),
+			patch.object(production_order.frappe, "get_doc", side_effect=[source, target]),
+			patch.object(production_order.frappe.db, "get_value", side_effect=get_lot_ppo),
+			patch.object(production_order, "get_alternative_items", return_value=["TARGET-ITEM"]),
+			patch.object(
+				production_order,
+				"get_rows_by_size",
+				side_effect=lambda doc: {"S": source_row} if doc.name == source.name else {"S": target_row},
+			),
+			patch.object(production_order, "now_datetime", return_value="2026-08-07 14:00:00"),
+			patch.object(production_order.frappe, "generate_hash", return_value="EXCESS-TRANSFER"),
+			patch.object(production_order.frappe, "session", _dict(user="planner@example.com")),
+			patch.object(production_order, "append_quantity_transfer_history") as append_history,
+		):
+			result = production_order.apply_alternative_plan_ppo_transfer(
+				"PPO-SOURCE",
+				"PPO-TARGET",
+				"LOT-SOURCE",
+				"LOT-TARGET",
+				{"S": 120},
+				"Alternative conversion with cutting excess",
+			)
+
+		self.assertEqual(source_row.quantity, 0)
+		self.assertEqual(target_row.quantity, 24)
+		changes = append_history.call_args.args[2]
+		self.assertEqual(changes[0]["piece_qty"], 120)
+		self.assertEqual(changes[0]["source_requested_qty"], 12)
+		self.assertEqual(changes[0]["source_qty"], 10)
+		self.assertEqual(changes[0]["target_qty"], 24)
+		self.assertEqual(changes[0]["source_new_qty"], 0)
+		self.assertEqual(result["transferred"], {"S": 120.0})
+		self.assertEqual(result["requested_source_boxes"], {"S": 12.0})
+		self.assertEqual(result["source_boxes"], {"S": 10.0})
+		self.assertEqual(result["target_boxes"], {"S": 24.0})
+
 	def test_transfer_history_uses_actual_reduced_source_values(self):
 		source = _dict(name="PPO-SOURCE")
 		target = _dict(name="PPO-TARGET")

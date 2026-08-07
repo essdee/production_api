@@ -84,7 +84,7 @@ class TestFinishingPlan(FrappeTestCase):
 		self.assertEqual(lot.total_quantity, 5.4)
 		lot.save.assert_called_once_with(ignore_permissions=True)
 
-	def test_source_lot_is_not_partially_changed_when_any_cell_is_insufficient(self):
+	def test_source_lot_planned_quantity_clamps_at_zero_for_excess_cutting(self):
 		lot = self._source_lot()
 		with (
 			patch.object(finishing_plan.frappe.db, "sql"),
@@ -100,20 +100,91 @@ class TestFinishingPlan(FrappeTestCase):
 				side_effect=self._variant_attributes,
 			),
 		):
-			with self.assertRaisesRegex(
-				frappe.ValidationError,
-				"only 10 available",
-			):
-				finishing_plan._reduce_source_lot_quantity(
-					"LOT-SOURCE",
-					[
-						{"colour": "Red", "size": "S", "qty": 1},
-						{"colour": "Navy", "size": "S", "qty": 11},
-					],
-				)
+			finishing_plan._reduce_source_lot_quantity(
+				"LOT-SOURCE",
+				[{"colour": "Navy", "size": "S", "qty": 12}],
+			)
 
 		self.assertEqual(
 			[row.quantity for row in lot.lot_order_details],
-			[10, 5, 20],
+			[0, 5, 20],
 		)
-		lot.save.assert_not_called()
+		self.assertEqual(
+			[row.cut_qty for row in lot.lot_order_details],
+			[12, 5, 20],
+		)
+		self.assertEqual([row.qty for row in lot.items], [1, 4])
+		self.assertEqual(lot.total_order_quantity, 25)
+		self.assertEqual(lot.total_quantity, 5)
+		lot.save.assert_called_once_with(ignore_permissions=True)
+
+	def test_excess_transfer_uses_full_quantity_and_stops_when_stock_issue_fails(self):
+		source_fp = frappe._dict(
+			item="SOURCE-ITEM",
+			lot="LOT-SOURCE",
+			finishing_plan_details=[],
+		)
+		source_fp.set = MagicMock()
+		source_fp.save = MagicMock()
+		wo_doc = frappe._dict(
+			item="TARGET-ITEM",
+			lot="LOT-TARGET",
+			supplier="SUPPLIER-1",
+		)
+		fp_key = (
+			"SOURCE-VARIANT-S",
+			(("major_colour", "Navy"),),
+		)
+		fp_dict = {fp_key: {"transferred_qty": 0}}
+
+		def get_value(doctype, name, fieldname):
+			if doctype == "Item":
+				return "Pieces"
+			if doctype == "Item Variant":
+				return "TARGET-ITEM"
+			raise AssertionError((doctype, name, fieldname))
+
+		stock_error = frappe.ValidationError("Insufficient source stock")
+		with (
+			patch.object(
+				finishing_plan.frappe.db,
+				"get_single_value",
+				return_value="Accepted",
+			),
+			patch.object(finishing_plan.frappe, "get_value", side_effect=get_value),
+			patch.object(finishing_plan, "get_finishing_plan_dict", return_value=fp_dict),
+			patch.object(
+				finishing_plan,
+				"get_variant_attr_details",
+				return_value={"Colour": "Navy", "Size": "S"},
+			),
+			patch.object(
+				finishing_plan,
+				"get_or_create_variant",
+				return_value="SOURCE-VARIANT-S",
+			),
+			patch(
+				"production_api.mrp_stock.doctype.stock_summary.stock_summary.create_bulk_stock_entry",
+				side_effect=stock_error,
+			) as create_stock,
+		):
+			with self.assertRaisesRegex(
+				frappe.ValidationError,
+				"Insufficient source stock",
+			):
+				finishing_plan._apply_transfer_delta(
+					source_fp,
+					wo_doc,
+					[{
+						"item_variant": "TARGET-VARIANT-S",
+						"set_combination": {"major_colour": "Navy"},
+						"qty": 120,
+					}],
+				)
+
+		issue_items = create_stock.call_args.args[1]
+		self.assertEqual(issue_items[0]["bal_qty"], 120)
+		self.assertEqual(create_stock.call_args.args[2], "Material Issue")
+		self.assertEqual(fp_dict[fp_key]["transferred_qty"], 120)
+		source_fp.set.assert_not_called()
+		source_fp.save.assert_not_called()

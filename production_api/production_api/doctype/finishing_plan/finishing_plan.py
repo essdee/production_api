@@ -2713,21 +2713,13 @@ def _reduce_source_lot_quantity(source_lot, conversions):
 			_source_lot_row_key(row, primary_attr, packing_attr), []
 		).append(row)
 
-	# Validate every requested cell before changing any row. This gives all-or-nothing
-	# behaviour even before the request transaction is rolled back on an exception.
-	for (colour, size), requested in requested_by_key.items():
-		available = sum(
-			max(flt(row.quantity), 0) for row in rows_by_key.get((colour, size), [])
-		)
-		if requested > available:
-			frappe.throw(
-				f"Cannot move {requested:g} for {colour} / {size} from Lot {source_lot}: "
-				f"only {available:g} available."
-			)
-
 	for key, requested in requested_by_key.items():
 		remaining = requested
-		for row in rows_by_key[key]:
+		# The Lot table stores the original planned quantity, while the Finishing Plan
+		# can legitimately contain excess pieces produced above that plan. Reduce only
+		# the planned balance that exists and clamp it at zero; the target Lot and stock
+		# movement still receive the complete requested quantity.
+		for row in rows_by_key.get(key, []):
 			available = max(flt(row.quantity), 0)
 			deduction = min(available, remaining)
 			row.quantity = available - deduction
