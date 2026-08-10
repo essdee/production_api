@@ -114,6 +114,9 @@ def print_comparison(results: List[dict], failed: List[dict] = None):
             if f.get("deduplicated"):
                 same_as = f.get("same_as", "?")
                 print(f"  {idx:>2} {f['strategy']:<18}   = same plan as {same_as}")
+            elif f.get("dominated"):
+                dominated_by = f.get("dominated_by", "a stronger plan")
+                print(f"  {idx:>2} {f['strategy']:<18}   ↓ dominated by {dominated_by}")
             else:
                 reason = f.get("error", "No feasible plan")
                 print(f"  {idx:>2} {f['strategy']:<18}   ❌ {reason}")

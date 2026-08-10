@@ -71,14 +71,38 @@ def solve(
     # ---------------------------------------------------------------
     # Step 2: Build MILP
     # ---------------------------------------------------------------
-    # Variables: x_0 ... x_{J-1}, all binary
-    # Objective: minimize Σ x_j (number of lays)
-    c = np.ones(J)
+    # Variables:
+    #   x_j: integer multiplicity of complete lay configuration j
+    #   over_s / under_s: per-size deviation used for lexicographic tie-breaking
+    active_sizes = [s for s in sizes if order[s] > 0]
+    dev_offset = J
+    over_idx = {s: dev_offset + i for i, s in enumerate(active_sizes)}
+    under_idx = {s: dev_offset + len(active_sizes) + i for i, s in enumerate(active_sizes)}
+    variable_count = J + 2 * len(active_sizes)
 
-    # Bounds: x_j ∈ {0, 1}
-    lb = np.zeros(J)
-    ub = np.ones(J)
-    integrality = np.ones(J)  # all binary
+    max_secondary = 0
+    for s in active_sizes:
+        lo = math.ceil(order[s] * (1 - tol))
+        hi = math.floor(order[s] * (1 + tol))
+        max_secondary += max(0, hi - order[s]) + 3 * max(0, order[s] - lo)
+    lay_weight = max_secondary + 1
+
+    c = np.zeros(variable_count)
+    c[:J] = lay_weight
+    for s in active_sizes:
+        c[over_idx[s]] = 1.0
+        c[under_idx[s]] = 3.0
+
+    lb = np.zeros(variable_count)
+    ub = np.full(variable_count, np.inf)
+    ub[:J] = max_active
+    integrality = np.zeros(variable_count)
+    integrality[:J] = 1
+    for s in active_sizes:
+        lo = math.ceil(order[s] * (1 - tol))
+        hi = math.floor(order[s] * (1 + tol))
+        ub[over_idx[s]] = max(0, hi - order[s])
+        ub[under_idx[s]] = max(0, order[s] - lo)
 
     # Constraints
     A_rows = []
@@ -88,24 +112,34 @@ def solve(
     upper_bounds = []
     row = 0
 
-    # (A) Per-size coverage: order[s]*(1-tol) ≤ Σ_j x_j * coverage_j[s] ≤ order[s]*(1+tol)
-    for i, s in enumerate(sizes):
-        if order[s] == 0:
-            continue
+    # (A) Exact balance with bounded deviation:
+    #     coverage - over + under = order
+    for s in active_sizes:
         for j, (ratio, plies) in enumerate(columns):
             cov = ratio.get(s, 0) * plies
             if cov > 0:
                 A_rows.append(row)
                 A_cols.append(j)
                 A_data.append(float(cov))
-        # Use floor for upper bound to match check_tolerance's strict comparison:
-        # abs(cut - order) / order <= tol  →  cut <= order * (1 + tol)
-        # For integer cuts: largest valid cut = floor(order * (1 + tol))
-        # Similarly smallest valid cut = ceil(order * (1 - tol))
-        lo = math.ceil(order[s] * (1 - tol))
-        hi = math.floor(order[s] * (1 + tol))
-        lower_bounds.append(float(lo))
-        upper_bounds.append(float(hi))
+        A_rows.extend([row, row])
+        A_cols.extend([over_idx[s], under_idx[s]])
+        A_data.extend([-1.0, 1.0])
+        lower_bounds.append(float(order[s]))
+        upper_bounds.append(float(order[s]))
+        row += 1
+
+    # Zero-demand sizes must remain zero.
+    for s in sizes:
+        if order[s] != 0:
+            continue
+        for j, (ratio, plies) in enumerate(columns):
+            cov = ratio.get(s, 0) * plies
+            if cov:
+                A_rows.append(row)
+                A_cols.append(j)
+                A_data.append(float(cov))
+        lower_bounds.append(0.0)
+        upper_bounds.append(0.0)
         row += 1
 
     # (B) Maximum lays: Σ x_j ≤ max_active
@@ -117,7 +151,7 @@ def solve(
     upper_bounds.append(float(max_active))
     row += 1
 
-    A = csc_array((A_data, (A_rows, A_cols)), shape=(row, J))
+    A = csc_array((A_data, (A_rows, A_cols)), shape=(row, variable_count))
     constraints = LinearConstraint(A, lower_bounds, upper_bounds)
     bounds = Bounds(lb, ub)
 
@@ -143,7 +177,8 @@ def solve(
     x = result.x
     plan = []
     for j in range(J):
-        if round(x[j]) > 0:
+        copies = int(round(x[j]))
+        for _ in range(copies):
             ratio, plies = columns[j]
             plan.append((dict(ratio), plies))
 

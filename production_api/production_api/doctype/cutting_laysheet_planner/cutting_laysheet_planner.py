@@ -2,185 +2,333 @@
 # For license information, please see license.txt
 
 import json
+
 import frappe
 from frappe.model.document import Document
+from frappe.utils import now_datetime
+
+
+DOCTYPE = "Cutting Laysheet Planner"
+ACTIVE_OPTIMIZATION_STATUSES = {"Queued", "Running"}
+OPTIMIZATION_METHOD = (
+    "production_api.production_api.doctype.cutting_laysheet_planner."
+    "cutting_laysheet_planner.run_optimization"
+)
+
 
 class CuttingLaysheetPlanner(Document):
-	pass
+    def validate(self):
+        values = _get_optimizer_inputs(self)
+        _validate_optimizer_inputs(values)
+
+        previous = self.get_doc_before_save()
+        if not previous:
+            if not self.optimization_status:
+                self.optimization_status = "Not Started"
+            return
+
+        inputs_changed = _input_fingerprint(values) != _input_fingerprint(
+            _get_optimizer_inputs(previous)
+        )
+        if not inputs_changed:
+            return
+
+        if previous.optimization_status in ACTIVE_OPTIMIZATION_STATUSES:
+            frappe.throw(
+                "Inputs cannot be changed while lay optimization is queued or running."
+            )
+
+        _clear_results(self)
+        self.optimization_status = "Not Started"
+        self.optimization_started_on = None
+        self.optimization_completed_on = None
+        self.optimization_error = None
+        self.optimization_input_json = None
+
 
 @frappe.whitelist()
 def optimize(doc_name):
-	from production_api.production_api.utils.lay_optimizer import optimize_all_strategies
+    """Validate saved inputs and queue the complete strategy portfolio."""
+    doc = frappe.get_doc(DOCTYPE, doc_name)
+    doc.check_permission("write")
 
-	doc = frappe.get_doc("Cutting Laysheet Planner", doc_name)
+    if doc.optimization_status in ACTIVE_OPTIMIZATION_STATUSES:
+        frappe.throw(f"Optimization is already {doc.optimization_status.lower()}.")
 
-	if not doc.order_details or len(doc.order_details) == 0:
-		frappe.throw("Please add order details (size and quantity) before optimizing.")
+    values = _get_optimizer_inputs(doc)
+    _validate_optimizer_inputs(values)
+    input_json = json.dumps(values, separators=(",", ":"), ensure_ascii=False)
 
-	if not doc.max_plies or not doc.max_pieces:
-		frappe.throw("Please set Maximum Plies and Maximum Pieces Per Marker.")
+    _clear_results(doc)
+    doc.optimization_status = "Queued"
+    doc.optimization_started_on = None
+    doc.optimization_completed_on = None
+    doc.optimization_error = None
+    doc.optimization_input_json = input_json
+    doc.save()
 
-	order = {}
-	for row in doc.order_details:
-		order[row.size] = row.qty
+    frappe.enqueue(
+        OPTIMIZATION_METHOD,
+        queue="long",
+        timeout=900,
+        enqueue_after_commit=True,
+        job_id=f"cutting-laysheet-optimizer-{doc.name}",
+        deduplicate=True,
+        doc_name=doc.name,
+        input_json=input_json,
+    )
 
-	tolerance = doc.tolerance_pct or 3.0
+    return {"doc_name": doc.name, "status": "Queued"}
 
-	results, failed = optimize_all_strategies(
-		order=order,
-		max_plies=doc.max_plies,
-		max_pieces=doc.max_pieces,
-		tolerance_pct=tolerance,
-		max_lays=doc.max_lays or 8,
-		tubular=bool(doc.tubular),
-	)
 
-	if not results:
-		frappe.throw("No feasible plan found for any strategy. Try adjusting tolerance or max lays.")
+def run_optimization(doc_name, input_json):
+    """Run v4.1 in a long-queue worker and persist validated portfolio results."""
+    doc = frappe.get_doc(DOCTYPE, doc_name)
+    if (
+        doc.optimization_status != "Queued"
+        or doc.optimization_input_json != input_json
+    ):
+        return
 
-	# Clear existing lay details
-	doc.lay_details = []
+    doc.db_set(
+        {
+            "optimization_status": "Running",
+            "optimization_started_on": now_datetime(),
+            "optimization_completed_on": None,
+            "optimization_error": None,
+        },
+        notify=True,
+        commit=True,
+    )
 
-	# Populate lay details for ALL strategies
-	for result in results:
-		strategy = result["strategy"]
-		for lay in result["lays"]:
-			doc.append("lay_details", {
-				"strategy": strategy,
-				"lay_no": lay["lay_no"],
-				"plies": lay["plies"],
-				"ratio": json.dumps(lay["ratio"]),
-				"pieces_per_ply": lay["pieces_per_ply"],
-				"total_pieces": lay["total_pieces"],
-				"cut_per_size": json.dumps(lay["cut_per_size"]),
-			})
+    try:
+        from production_api.production_api.utils.lay_optimizer import (
+            optimize_all_strategies,
+        )
 
-	# Use the first (best) strategy for the document summary
-	best = results[0]
-	summary = best["summary"]
-	doc.total_lays = summary["total_lays"]
-	doc.total_cut = summary["total_cut"]
-	doc.total_order = summary["total_order"]
-	doc.overcut = summary["overcut"]
-	doc.overcut_pct = summary["overcut_pct"]
-	doc.undercut = summary["undercut"]
-	doc.undercut_pct = summary["undercut_pct"]
+        values = json.loads(input_json)
+        results, outcomes = optimize_all_strategies(**values)
+        payload = {
+            "results": results,
+            "failed": outcomes,
+            "input": values,
+            "optimizer_version": "4.1.0",
+        }
 
-	# Build per-size HTML for the selected strategy
-	doc.per_size_html = _build_per_size_html(best["per_size"])
+        if not results:
+            _mark_optimization_failed(
+                doc_name,
+                input_json,
+                "No feasible lay plan was found. Review the strategy outcomes and constraints.",
+                payload,
+            )
+            return
 
-	# Build all-strategies comparison HTML
-	doc.all_strategies_html = _build_comparison_html(results, failed)
+        doc = frappe.get_doc(DOCTYPE, doc_name)
+        if doc.optimization_input_json != input_json:
+            return
 
-	# Store full results JSON
-	doc.result_json = json.dumps({"results": results, "failed": failed})
+        _apply_results(doc, results, outcomes, values)
+        doc.optimization_status = "Completed"
+        doc.optimization_completed_on = now_datetime()
+        doc.optimization_error = None
+        doc.flags.ignore_permissions = True
+        doc.save()
+        doc.notify_update()
+    except Exception:
+        frappe.db.rollback()
+        frappe.log_error(
+            title=f"Lay optimization failed: {doc_name}",
+            message=frappe.get_traceback(with_context=True),
+        )
+        _mark_optimization_failed(
+            doc_name,
+            input_json,
+            "Lay optimization failed unexpectedly. Please review the Error Log or contact an administrator.",
+        )
+        raise
 
-	doc.save()
-	frappe.msgprint(
-		f"Optimization complete: {len(results)} strategies found. Best: {best['strategy']} ({summary['total_lays']} lays)",
-		indicator="green", alert=True
-	)
-	return doc.name
+
+@frappe.whitelist()
+def get_optimization_status(doc_name):
+    """Return only lightweight state; the form reloads once work is complete."""
+    doc = frappe.get_doc(DOCTYPE, doc_name)
+    doc.check_permission("read")
+    return {
+        "status": doc.optimization_status or "Not Started",
+        "error_message": doc.optimization_error,
+        "started_on": doc.optimization_started_on,
+        "completed_on": doc.optimization_completed_on,
+        "modified": doc.modified,
+    }
 
 
 @frappe.whitelist()
 def select_strategy(doc_name, strategy):
-	doc = frappe.get_doc("Cutting Laysheet Planner", doc_name)
+    doc = frappe.get_doc(DOCTYPE, doc_name)
+    doc.check_permission("write")
 
-	if not doc.result_json:
-		frappe.throw("No optimization results found. Please run Optimize first.")
+    if not doc.result_json:
+        frappe.throw("No optimization results found. Please run Optimize first.")
 
-	stored = json.loads(doc.result_json)
-	results = stored.get("results", [])
-	failed = stored.get("failed", [])
-	
-	selected = None
-	# First check in results
-	for r in results:
-		if r["strategy"] == strategy:
-			selected = r
-			break
-	
-	# If not found, check if it's a deduplicated strategy in 'failed'
-	if not selected:
-		for f in failed:
-			if f["strategy"] == strategy and f.get("deduplicated"):
-				# Resolve to the original plan
-				same_as = f.get("same_as")
-				selected = next((r for r in results if r["strategy"] == same_as), None)
-				break
+    stored = json.loads(doc.result_json)
+    results = stored.get("results", [])
+    outcomes = stored.get("failed", [])
 
-	if not selected:
-		frappe.throw(f"Strategy '{strategy}' not found in results.")
+    selected = next(
+        (result for result in results if result.get("strategy") == strategy),
+        None,
+    )
+    if not selected:
+        outcome = next(
+            (
+                item
+                for item in outcomes
+                if item.get("strategy") == strategy and item.get("success")
+            ),
+            None,
+        )
+        if outcome and outcome.get("deduplicated"):
+            selected = next(
+                (
+                    result
+                    for result in results
+                    if result.get("strategy") == outcome.get("same_as")
+                ),
+                None,
+            )
+        elif outcome:
+            selected = outcome
 
-	doc.selected_strategy = strategy
-	summary = selected["summary"]
-	doc.total_lays = summary["total_lays"]
-	doc.total_cut = summary["total_cut"]
-	doc.total_order = summary["total_order"]
-	doc.overcut = summary["overcut"]
-	doc.overcut_pct = summary["overcut_pct"]
-	doc.undercut = summary["undercut"]
-	doc.undercut_pct = summary["undercut_pct"]
-	doc.per_size_html = _build_per_size_html(selected["per_size"])
+    if not selected:
+        frappe.throw(f"Strategy '{strategy}' is not available for selection.")
 
-	doc.save()
-	return doc.name
-
-
-def _build_per_size_html(per_size):
-	html = '<table class="table table-bordered table-condensed" style="max-width:600px">'
-	html += '<thead><tr><th>Size</th><th>Order</th><th>Cut</th><th>Diff</th><th>Deviation %</th></tr></thead>'
-	html += '<tbody>'
-	for size, data in per_size.items():
-		diff = data["diff"]
-		color = "red" if diff < 0 else ("green" if diff > 0 else "")
-		style = f' style="color:{color}"' if color else ""
-		html += f'<tr><td>{size}</td><td>{data["order"]}</td><td>{data["cut"]}</td>'
-		html += f'<td{style}>{diff:+d}</td><td>{data["pct"]}%</td></tr>'
-	html += '</tbody></table>'
-	return html
+    doc.selected_strategy = strategy
+    _apply_summary(doc, selected["summary"])
+    doc.save()
+    return {"doc_name": doc.name, "selected_strategy": strategy}
 
 
-def _build_comparison_html(results, failed=None):
-	html = '<table class="table table-bordered table-condensed">'
-	html += '<thead><tr>'
-	html += '<th>Strategy</th><th>Description</th><th>Lays</th><th>Markers</th>'
-	html += '<th>Avg Density</th><th>Overcut</th><th>Undercut</th><th>Action</th>'
-	html += '</tr></thead><tbody>'
-	for r in results:
-		s = r["summary"]
-		strategy = r["strategy"]
-		desc = r.get("strategy_description", "")
-		html += f'<tr>'
-		html += f'<td><strong>{strategy}</strong></td>'
-		html += f'<td>{desc}</td>'
-		html += f'<td>{s["total_lays"]}</td>'
-		html += f'<td>{s["unique_markers"]}</td>'
-		html += f'<td>{s["avg_pieces_per_ply"]}/ply</td>'
-		html += f'<td>{s["overcut"]} ({s["overcut_pct"]}%)</td>'
-		html += f'<td>{s["undercut"]} ({s["undercut_pct"]}%)</td>'
-		html += f'<td><button class="btn btn-xs btn-default select-strategy-btn" data-strategy="{strategy}">Select</button></td>'
-		html += f'</tr>'
-	if failed:
-		for f in failed:
-			strategy = f["strategy"]
-			desc = f.get("strategy_description", "")
-			if f.get("deduplicated"):
-				same_as = f.get("same_as", "?")
-				html += f'<tr class="text-muted">'
-				html += f'<td>{strategy}</td>'
-				html += f'<td>{desc}</td>'
-				html += f'<td colspan="5"><em>Same plan as {same_as}</em></td>'
-				html += f'<td></td>'
-				html += f'</tr>'
-			else:
-				error = f.get("error", "No feasible plan")
-				html += f'<tr class="text-muted">'
-				html += f'<td>{strategy}</td>'
-				html += f'<td>{desc}</td>'
-				html += f'<td colspan="5"><em>{error}</em></td>'
-				html += f'<td></td>'
-				html += f'</tr>'
-	html += '</tbody></table>'
-	return html
+def _get_optimizer_inputs(doc):
+    order = {}
+    seen_sizes = set()
+
+    if not doc.order_details:
+        frappe.throw("Please add at least one size and quantity before optimizing.")
+
+    for row in doc.order_details:
+        size = (row.size or "").strip()
+        if not size:
+            frappe.throw(f"Size is required in order row {row.idx}.")
+        if size in seen_sizes:
+            frappe.throw(f"Duplicate size '{size}' is not allowed.")
+        seen_sizes.add(size)
+        order[size] = row.qty
+
+    return {
+        "order": order,
+        "max_plies": doc.max_plies,
+        "max_pieces": doc.max_pieces,
+        "tolerance_pct": (
+            doc.tolerance_pct if doc.tolerance_pct is not None else 3.0
+        ),
+        "max_lays": doc.max_lays if doc.max_lays is not None else 8,
+        "tubular": bool(doc.tubular),
+    }
+
+
+def _validate_optimizer_inputs(values):
+    from production_api.production_api.utils.lay_optimizer.common import (
+        validate_inputs,
+    )
+
+    try:
+        validate_inputs(
+            values["order"],
+            values["max_plies"],
+            values["max_pieces"],
+            values["tolerance_pct"],
+            values["max_lays"],
+        )
+    except (TypeError, ValueError) as exc:
+        frappe.throw(str(exc))
+
+
+def _input_fingerprint(values):
+    return json.dumps(values, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+
+
+def _clear_results(doc):
+    doc.set("lay_details", [])
+    doc.total_lays = 0
+    doc.total_order = 0
+    doc.total_cut = 0
+    doc.overcut = 0
+    doc.overcut_pct = 0
+    doc.undercut = 0
+    doc.undercut_pct = 0
+    doc.selected_strategy = None
+    doc.result_json = None
+
+
+def _apply_results(doc, results, outcomes, values):
+    doc.set("lay_details", [])
+    for result in results:
+        for lay in result["lays"]:
+            doc.append(
+                "lay_details",
+                {
+                    "strategy": result["strategy"],
+                    "lay_no": lay["lay_no"],
+                    "plies": lay["plies"],
+                    "ratio": json.dumps(lay["ratio"], ensure_ascii=False),
+                    "pieces_per_ply": lay["pieces_per_ply"],
+                    "total_pieces": lay["total_pieces"],
+                    "cut_per_size": json.dumps(
+                        lay["cut_per_size"], ensure_ascii=False
+                    ),
+                },
+            )
+
+    best = results[0]
+    doc.selected_strategy = best["strategy"]
+    _apply_summary(doc, best["summary"])
+    doc.result_json = json.dumps(
+        {
+            "results": results,
+            "failed": outcomes,
+            "input": values,
+            "optimizer_version": "4.1.0",
+        },
+        ensure_ascii=False,
+    )
+
+
+def _apply_summary(doc, summary):
+    doc.total_lays = summary["total_lays"]
+    doc.total_cut = summary["total_cut"]
+    doc.total_order = summary["total_order"]
+    doc.overcut = summary["overcut"]
+    doc.overcut_pct = summary["overcut_pct"]
+    doc.undercut = summary["undercut"]
+    doc.undercut_pct = summary["undercut_pct"]
+
+
+def _mark_optimization_failed(doc_name, input_json, message, payload=None):
+    values = {
+        "optimization_status": "Failed",
+        "optimization_completed_on": now_datetime(),
+        "optimization_error": message,
+    }
+    if payload is not None:
+        values["result_json"] = json.dumps(payload, ensure_ascii=False)
+
+    current_snapshot = frappe.db.get_value(
+        DOCTYPE, doc_name, "optimization_input_json"
+    )
+    if current_snapshot != input_json:
+        return
+
+    frappe.db.set_value(DOCTYPE, doc_name, values, update_modified=True)
+    frappe.db.commit()
+    frappe.get_doc(DOCTYPE, doc_name).notify_update()

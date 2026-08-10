@@ -9,7 +9,10 @@ Contains:
 """
 
 import math
-import threading
+import importlib
+import multiprocessing as mp
+import queue
+import traceback
 from typing import Dict, List, Optional, Tuple
 
 
@@ -23,51 +26,141 @@ class _SolverTimeout(Exception):
 
 
 class _SolverTimer:
-    """
-    Context manager that fires _SolverTimeout if the budget (seconds) is exceeded.
-    Uses a background thread — safe for pure-Python solvers (no C extensions).
+    """Compatibility no-op for older strategies that manage their own deadline."""
 
-    Usage:
-        with _SolverTimer(5.0):
-            ... heavy search ...
-    """
     def __init__(self, budget_secs: float):
         self._budget = budget_secs
-        self._fired = False
-        self._timer: Optional[threading.Timer] = None
-        self._main_thread = threading.current_thread()
-
-    def _fire(self):
-        self._fired = True
-        import ctypes
-        ctypes.pythonapi.PyThreadState_SetAsyncExc(
-            ctypes.c_ulong(self._main_thread.ident),
-            ctypes.py_object(_SolverTimeout),
-        )
 
     def __enter__(self):
-        self._timer = threading.Timer(self._budget, self._fire)
-        self._timer.daemon = True
-        self._timer.start()
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        self._timer.cancel()
-        if exc_type is _SolverTimeout:
-            return True  # swallow
-        return False
+        return exc_type is _SolverTimeout
+
+
+def _solver_process_entry(module_name, result_queue, args, kwargs):
+    """Import and execute one solver inside an isolated child process."""
+    try:
+        module = importlib.import_module(module_name)
+        result_queue.put({"status": "ok", "plan": module.solve(*args, **kwargs)})
+    except BaseException as exc:  # child failures must be reported to the parent
+        result_queue.put({
+            "status": "error",
+            "error": f"{type(exc).__name__}: {exc}",
+            "traceback": traceback.format_exc(),
+        })
+
+
+def run_solver_process(module_name, budget_secs: float, *args, **kwargs):
+    """Run a strategy in a killable process and return (plan, status, error)."""
+    ctx = mp.get_context("spawn")
+    result_queue = ctx.Queue(maxsize=1)
+    process = ctx.Process(
+        target=_solver_process_entry,
+        args=(module_name, result_queue, args, kwargs),
+        daemon=True,
+    )
+    process.start()
+    process.join(max(0.1, float(budget_secs)))
+
+    if process.is_alive():
+        process.terminate()
+        process.join(2.0)
+        result_queue.cancel_join_thread()
+        result_queue.close()
+        process.close()
+        return None, "timeout", f"Timed out after {budget_secs:.1f}s"
+
+    try:
+        payload = result_queue.get(timeout=1.0)
+    except queue.Empty:
+        return None, "error", f"Strategy process exited with code {process.exitcode} without a result"
+    finally:
+        result_queue.close()
+        result_queue.join_thread()
+        process.close()
+
+    if payload.get("status") == "ok":
+        return payload.get("plan"), "ok", None
+    return None, "error", payload.get("error", "Unknown strategy error")
 
 
 def with_timeout(fn, budget_secs: float, *args, **kwargs):
-    """
-    Run fn(*args, **kwargs) with a wall-clock budget.
-    Returns fn's result or None if timeout fires.
-    """
-    try:
-        with _SolverTimer(budget_secs):
-            return fn(*args, **kwargs)
-    except _SolverTimeout:
-        return None
+    """Backward-compatible wrapper using safe process isolation."""
+    plan, status, _ = run_solver_process(fn.__module__, budget_secs, *args, **kwargs)
+    return plan if status == "ok" else None
+
+
+def validate_inputs(order, max_plies, max_pieces, tolerance_pct, max_lays):
+    """Raise ValueError for malformed or physically meaningless inputs."""
+    if not isinstance(order, dict) or not order:
+        raise ValueError("Order must contain at least one size")
+    if any(not str(size).strip() for size in order):
+        raise ValueError("Every size must have a non-empty name")
+    if any(isinstance(qty, bool) or int(qty) != qty or int(qty) < 0 for qty in order.values()):
+        raise ValueError("Order quantities must be non-negative integers")
+    if sum(int(qty) for qty in order.values()) <= 0:
+        raise ValueError("At least one order quantity must be greater than zero")
+    if isinstance(max_plies, bool) or int(max_plies) != max_plies or int(max_plies) <= 0:
+        raise ValueError("Maximum plies must be a positive integer")
+    if isinstance(max_pieces, bool) or int(max_pieces) != max_pieces or int(max_pieces) <= 0:
+        raise ValueError("Maximum pieces per marker must be a positive integer")
+    if isinstance(max_lays, bool) or int(max_lays) != max_lays or int(max_lays) <= 0:
+        raise ValueError("Maximum lays must be a positive integer")
+    if not 0 <= float(tolerance_pct) <= 100:
+        raise ValueError("Tolerance must be between 0 and 100 percent")
+
+
+def validate_plan(plan, order, max_plies, max_pieces, tolerance_pct, max_lays, tubular=False):
+    """Return a list of every hard-constraint violation in a proposed plan."""
+    errors = []
+    sizes = list(order.keys())
+    if not isinstance(plan, list) or not plan:
+        return ["plan is empty"]
+    if len(plan) > max_lays:
+        errors.append(f"uses {len(plan)} lays; maximum is {max_lays}")
+
+    totals = {s: 0 for s in sizes}
+    for lay_no, lay in enumerate(plan, 1):
+        if not isinstance(lay, (tuple, list)) or len(lay) != 2:
+            errors.append(f"lay {lay_no} is not a (ratio, plies) pair")
+            continue
+        ratio, plies = lay
+        if isinstance(plies, bool) or not isinstance(plies, int):
+            errors.append(f"lay {lay_no} plies must be an integer")
+            continue
+        if not 1 <= plies <= max_plies:
+            errors.append(f"lay {lay_no} has {plies} plies; allowed range is 1..{max_plies}")
+        if tubular and plies % 2:
+            errors.append(f"lay {lay_no} has odd plies ({plies}) for tubular fabric")
+        if not isinstance(ratio, dict):
+            errors.append(f"lay {lay_no} ratio must be a mapping")
+            continue
+        unknown = set(ratio) - set(sizes)
+        if unknown:
+            errors.append(f"lay {lay_no} contains unknown sizes: {', '.join(sorted(unknown))}")
+        marker_total = 0
+        for s in sizes:
+            value = ratio.get(s, 0)
+            if isinstance(value, bool) or not isinstance(value, int) or value < 0:
+                errors.append(f"lay {lay_no} ratio for {s} must be a non-negative integer")
+                continue
+            marker_total += value
+            totals[s] += value * plies
+        if not 1 <= marker_total <= max_pieces:
+            errors.append(
+                f"lay {lay_no} has {marker_total} pieces per marker; allowed range is 1..{max_pieces}"
+            )
+
+    tol = float(tolerance_pct) / 100.0
+    for s, target in order.items():
+        if target == 0:
+            if totals[s] != 0:
+                errors.append(f"size {s} has zero demand but cuts {totals[s]}")
+        elif abs(totals[s] - target) / target > tol + 1e-12:
+            pct = abs(totals[s] - target) / target * 100
+            errors.append(f"size {s} deviation is {pct:.2f}%; tolerance is {tolerance_pct}%")
+    return errors
 
 
 # ---------------------------------------------------------------------------

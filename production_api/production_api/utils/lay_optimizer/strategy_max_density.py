@@ -11,8 +11,8 @@ Algorithm:
 4. Prefer plans with fewer unique markers and higher avg density
 
 Goal: Every marker should be as close to max_pieces as possible.
-This minimizes the number of unique markers the CAD team needs to draft
-and maximizes fabric utilization within each marker.
+This targets configured marker piece capacity. It does not estimate true fabric
+utilization because marker length and piece area are not part of the input.
 """
 
 import math

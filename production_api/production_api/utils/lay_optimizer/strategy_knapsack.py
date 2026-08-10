@@ -1,14 +1,14 @@
 """
-Knapsack Transformation Strategy for Cutting Order Planning (COP)
-=================================================================
+Randomized Set-Cover Strategy for Cutting Order Planning (COP)
+===============================================================
 
 Based on Filipič, Fister & Mernik (2006): "Optimization of markers in
 clothing industry" — transforms COP into a bounded knapsack problem.
 
 APPROACH
 --------
-The COP is framed as: select a set of (marker_ratio, ply_count) items
-from a knapsack, where:
+The COP is framed as selecting (marker_ratio, ply_count) items from a static
+configuration pool, where:
   - Each item = one lay configuration
   - "Capacity" = demand per size (with ±tol% band)
   - Objective = minimize number of items (lays)
@@ -28,6 +28,7 @@ from .common import (
     check_tolerance,
     total_deviation,
     generate_candidate_ratios,
+    validate_plan,
 )
 from . import strategy_greedy as _greedy
 
@@ -258,7 +259,10 @@ def _improve(
     order: Dict[str, int],
     sizes: List[str],
     max_plies: int,
+    max_pieces: int,
     tol: float,
+    max_lays: int,
+    tubular: bool,
 ) -> List[Tuple[Dict[str, int], int]]:
     """
     Try to reduce lay count or deviation:
@@ -331,6 +335,8 @@ def _improve(
             r, p = best[i]
             for delta in [-2, -1, 1, 2]:
                 p_new = max(1, min(max_plies, p + delta))
+                if tubular and p_new % 2:
+                    continue
                 if p_new == p:
                     continue
                 trial = list(best)
@@ -381,7 +387,9 @@ def solve(
         nonlocal best_plan, best_lays, best_dev
         if plan is None:
             return
-        if not check_tolerance(plan, order, sizes, tol):
+        if validate_plan(
+            plan, order, max_plies, max_pieces, tolerance_pct, max_lays, tubular,
+        ):
             return
         n = len(plan)
         dev = total_deviation(plan, order, sizes)
@@ -402,7 +410,9 @@ def solve(
         rand = 0.0 if restart == 0 else min(0.6, 0.1 + restart * 0.04)
         plan = _greedy_cover(pool, order, sizes, tol, max_lays, rand)
         if plan:
-            plan = _improve(plan, pool, order, sizes, max_plies, tol)
+            plan = _improve(
+                plan, pool, order, sizes, max_plies, max_pieces, tol, max_lays, tubular,
+            )
             _update(plan)
 
     if best_plan is None:

@@ -7,15 +7,21 @@ Provides:
 - _build_result(): Standardize output format
 
 Production strategies (registered — run by default):
-  milp, colgen, proportional_decomp, ilp, order_match, balanced, single_ratio
+  direct_integer_search, cp_sat, milp, column_generation, proportional, two_lay_dp,
+  minimum_deviation, balanced, single_marker, iterated_greedy
 
-Experimental strategies (files kept, not registered — available via --strategy flag):
-  knapsack, pso_ga, iterated_greedy, greedy_subtraction, max_density
+Experimental strategies (available explicitly via --strategy):
+  operator_greedy, marker_capacity, genetic_search, randomized_set_cover
 """
 
+import time
 from typing import Dict, List, Optional, Tuple
 
-from .common import with_timeout
+from .common import (
+    run_solver_process,
+    validate_inputs,
+    validate_plan,
+)
 from . import (
     strategy_ilp,
     strategy_order_match,
@@ -24,15 +30,35 @@ from . import (
     strategy_colgen,
     strategy_milp,
     strategy_proportional_decomp,
+    strategy_iterated_greedy,
+    strategy_direct_integer_search,
 )
+
+try:
+    from . import strategy_cp_sat
+    _CP_SAT_IMPORT_ERROR = None
+except ImportError as exc:  # deployment can continue while OR-Tools is installed
+    strategy_cp_sat = None
+    _CP_SAT_IMPORT_ERROR = str(exc)
 
 # Experimental strategies — imported on demand only (not registered)
 _EXPERIMENTAL_MODULES = {
-    "greedy_subtraction": ".strategy_greedy",
-    "max_density": ".strategy_max_density",
-    "iterated_greedy": ".strategy_iterated_greedy",
-    "pso_ga": ".strategy_pso_ga",
-    "knapsack": ".strategy_knapsack",
+    "operator_greedy": ".strategy_greedy",
+    "marker_capacity": ".strategy_max_density",
+    "genetic_search": ".strategy_pso_ga",
+    "randomized_set_cover": ".strategy_knapsack",
+}
+
+STRATEGY_ALIASES = {
+    "colgen": "column_generation",
+    "proportional_decomp": "proportional",
+    "ilp": "two_lay_dp",
+    "order_match": "minimum_deviation",
+    "single_ratio": "single_marker",
+    "greedy_subtraction": "operator_greedy",
+    "max_density": "marker_capacity",
+    "pso_ga": "genetic_search",
+    "knapsack": "randomized_set_cover",
 }
 
 
@@ -46,29 +72,39 @@ def _load_experimental(name: str):
 
 # ── Production strategy registry: name → (module, description, timeout_budget) ──
 STRATEGIES = {
+    "direct_integer_search": (
+        strategy_direct_integer_search,
+        "Direct integer search — minimum lays, then weighted deviation",
+        22.0,
+    ),
+    "cp_sat": (
+        strategy_cp_sat,
+        "CP-SAT — direct exact model, minimum lays then deviation",
+        30.0,
+    ),
     "milp": (
         strategy_milp,
-        "MILP — full Mixed Integer Linear Program (HiGHS solver)",
-        20.0,
+        "Restricted-column MILP — minimum lays then weighted deviation",
+        25.0,
     ),
-    "colgen": (
+    "column_generation": (
         strategy_colgen,
-        "Column Generation (Gilmore-Gomory) — LP relaxation + knapsack pricing",
+        "Column-generation heuristic — LP pricing plus feasible integer repair",
         15.0,
     ),
-    "proportional_decomp": (
+    "proportional": (
         strategy_proportional_decomp,
-        "Proportional Decomposition — factor order into ratio × plies layers",
+        "Operator proportional plan — primary marker plus residual cleanup",
         20.0,
     ),
-    "ilp": (
+    "two_lay_dp": (
         strategy_ilp,
-        "ILP — minimum lays via set cover with bounded enumeration",
+        "Bounded DP — specialized one/two-lay search with greedy extension",
         10.0,
     ),
-    "order_match": (
+    "minimum_deviation": (
         strategy_order_match,
-        "Order Match — cut exactly what was ordered, zero waste",
+        "Minimum deviation — prefer exact fulfillment, then closest feasible cut",
         20.0,
     ),
     "balanced": (
@@ -76,46 +112,67 @@ STRATEGIES = {
         "Balanced — fewest lays with densest markers",
         10.0,
     ),
-    "single_ratio": (
+    "single_marker": (
         strategy_single_ratio,
-        "Single Ratio — one marker for all lays, simplest for CAD",
+        "Single marker — one ratio reused across every physical lay",
         3.0,
     ),
+    "iterated_greedy": (
+        strategy_iterated_greedy,
+        "Iterated greedy — deterministic construct, destroy, repair and tune",
+        15.0,
+    ),
+}
+
+STRATEGY_PRIORITIES = {
+    "direct_integer_search": "Minimum lays via deterministic ply-tuple search and ratio DP",
+    "cp_sat": "Minimum lays with an exact direct model; weighted deviation breaks ties",
+    "milp": "Minimum lays over a generated configuration pool; weighted deviation breaks ties",
+    "column_generation": "Discover productive marker patterns quickly on large orders",
+    "proportional": "Keep the main marker proportional to the order and minimize cleanup work",
+    "two_lay_dp": "Find particularly strong one- and two-lay plans for small orders",
+    "minimum_deviation": "Minimize total size-wise cut deviation, accepting more lays",
+    "balanced": "Minimize lays, then favor fuller markers and lower deviation",
+    "single_marker": "Minimize CAD work by reusing one marker ratio",
+    "iterated_greedy": "Find a robust feasible plan quickly and improve it locally",
+    "operator_greedy": "Mirror the manual peel-off planning workflow",
+    "marker_capacity": "Maximize pieces used from the configured marker capacity",
+    "genetic_search": "Explore diverse lay structures with genetic search",
+    "randomized_set_cover": "Cover the order from a static pool with randomized restarts",
 }
 
 # ── Experimental strategies (not run by default, available via --strategy) ──
 _EXPERIMENTAL_STRATEGIES = {
-    "greedy_subtraction": (
-        "Greedy Subtraction — iterative peel-off with variable plies (operator method)",
+    "operator_greedy": (
+        "Operator Greedy — iterative peel-off with variable plies",
         5.0,
     ),
-    "max_density": (
-        "Max Density — pack markers close to max pieces/ply",
+    "marker_capacity": (
+        "Marker Capacity — pack ratios close to the pieces-per-marker limit",
         5.0,
     ),
-    "iterated_greedy": (
-        "Iterated Greedy — construct + destroy-repair improvement loop",
-        15.0,
-    ),
-    "pso_ga": (
-        "PSO/GA Hybrid — population-based metaheuristic",
+    "genetic_search": (
+        "Genetic Search — population crossover, mutation and local search",
         20.0,
     ),
-    "knapsack": (
-        "Knapsack — beam search + DP on item selection",
+    "randomized_set_cover": (
+        "Randomized Set Cover — static configuration pool plus improvement",
         20.0,
     ),
 }
 
 # Run order for optimize_all_strategies — production strategies only
 STRATEGY_ORDER = [
+    "direct_integer_search",
+    "cp_sat",
     "milp",
-    "colgen",
-    "proportional_decomp",
-    "ilp",
-    "order_match",
+    "column_generation",
+    "proportional",
+    "two_lay_dp",
+    "minimum_deviation",
     "balanced",
-    "single_ratio",
+    "single_marker",
+    "iterated_greedy",
 ]
 
 
@@ -126,6 +183,9 @@ def _build_result(
     strategy: str,
     strategy_desc: str,
     params: dict,
+    error: Optional[str] = None,
+    status: str = "ok",
+    duration_s: float = 0.0,
 ) -> dict:
     """Build standardized result dict from a plan."""
     if plan is None:
@@ -133,7 +193,10 @@ def _build_result(
             "success": False,
             "strategy": strategy,
             "strategy_description": strategy_desc,
-            "error": f"No feasible plan found within ±{params['tolerance_pct']}% tolerance",
+            "priority": STRATEGY_PRIORITIES.get(strategy, ""),
+            "error": error or f"No feasible plan found within ±{params['tolerance_pct']}% tolerance",
+            "status": status,
+            "duration_s": round(duration_s, 3),
             "lays": [],
             "summary": {},
             "per_size": {},
@@ -179,6 +242,9 @@ def _build_result(
         "success": True,
         "strategy": strategy,
         "strategy_description": strategy_desc,
+        "priority": STRATEGY_PRIORITIES.get(strategy, ""),
+        "status": status,
+        "duration_s": round(duration_s, 3),
         "lays": lays_out,
         "summary": {
             "total_lays": len(lays_out),
@@ -221,14 +287,18 @@ def optimize_lay_plan(
 
     Returns: dict with 'lays', 'summary', 'per_size', 'strategy' keys
     """
-    order = {str(k): int(v) for k, v in order.items()}
+    order = {str(k).strip(): int(v) for k, v in order.items()}
+    validate_inputs(order, max_plies, max_pieces, tolerance_pct, max_lays)
     sizes = list(order.keys())
     params = {
         "max_plies": max_plies,
         "max_pieces": max_pieces,
         "tolerance_pct": tolerance_pct,
+        "max_lays": max_lays,
         "tubular": tubular,
     }
+
+    strategy = STRATEGY_ALIASES.get(strategy, strategy)
 
     if strategy in STRATEGIES:
         module, desc, budget = STRATEGIES[strategy]
@@ -241,12 +311,68 @@ def optimize_lay_plan(
         all_names = list(STRATEGIES.keys()) + list(_EXPERIMENTAL_STRATEGIES.keys())
         raise ValueError(f"Unknown strategy: {strategy}. Available: {all_names}")
 
-    plan = with_timeout(
-        module.solve, budget,
+    if module is None:
+        return _build_result(
+            None, order, sizes, strategy, desc, params,
+            error=f"Strategy dependency unavailable: {_CP_SAT_IMPORT_ERROR}",
+            status="unavailable",
+        )
+
+    started = time.monotonic()
+    plan, run_status, run_error = run_solver_process(
+        module.__name__, budget,
         order, max_plies, max_pieces, tolerance_pct, max_lays, tubular=tubular,
     )
+    duration = time.monotonic() - started
 
-    return _build_result(plan, order, sizes, strategy, desc, params)
+    if run_status != "ok":
+        return _build_result(
+            None, order, sizes, strategy, desc, params,
+            error=run_error, status=run_status, duration_s=duration,
+        )
+    if plan is None:
+        return _build_result(
+            None, order, sizes, strategy, desc, params,
+            status="infeasible", duration_s=duration,
+        )
+
+    violations = validate_plan(
+        plan, order, max_plies, max_pieces, tolerance_pct, max_lays, tubular,
+    )
+    if violations:
+        return _build_result(
+            None, order, sizes, strategy, desc, params,
+            error="Invalid strategy result: " + "; ".join(violations),
+            status="invalid", duration_s=duration,
+        )
+    return _build_result(
+        plan, order, sizes, strategy, desc, params,
+        status="success", duration_s=duration,
+    )
+
+
+def _plan_key(result):
+    """Canonical unordered lay key used for reliable deduplication."""
+    return tuple(sorted(
+        (tuple(sorted(lay["ratio"].items())), lay["plies"])
+        for lay in result["lays"]
+    ))
+
+
+def _dominates(left, right):
+    """Whether left is no worse on every operator-facing metric and better on one."""
+    ls, rs = left["summary"], right["summary"]
+    left_metrics = (
+        ls["total_lays"], ls["unique_markers"], ls["undercut"], ls["overcut"],
+        -ls["avg_pieces_per_ply"],
+    )
+    right_metrics = (
+        rs["total_lays"], rs["unique_markers"], rs["undercut"], rs["overcut"],
+        -rs["avg_pieces_per_ply"],
+    )
+    return all(a <= b for a, b in zip(left_metrics, right_metrics)) and any(
+        a < b for a, b in zip(left_metrics, right_metrics)
+    )
 
 
 def optimize_all_strategies(
@@ -271,10 +397,7 @@ def optimize_all_strategies(
             order, max_plies, max_pieces, tolerance_pct, max_lays, strategy_name, tubular=tubular,
         )
         if result["success"]:
-            plan_key = tuple(
-                (tuple(sorted(lay["ratio"].items())), lay["plies"])
-                for lay in result["lays"]
-            )
+            plan_key = _plan_key(result)
             if plan_key not in seen_plans:
                 seen_plans[plan_key] = result["strategy"]
                 results.append(result)
@@ -285,4 +408,21 @@ def optimize_all_strategies(
         else:
             failed.append(result)
 
-    return results, failed
+    pareto_results = []
+    for result in results:
+        dominators = [other for other in results if other is not result and _dominates(other, result)]
+        if dominators:
+            result["dominated"] = True
+            result["dominated_by"] = dominators[0]["strategy"]
+            failed.append(result)
+        else:
+            result["pareto_optimal"] = True
+            pareto_results.append(result)
+
+    pareto_results.sort(key=lambda r: (
+        r["summary"]["total_lays"],
+        r["summary"]["undercut"],
+        r["summary"]["overcut"],
+        r["summary"]["unique_markers"],
+    ))
+    return pareto_results, failed

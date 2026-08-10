@@ -17,6 +17,8 @@ Recommended as default — most intuitive, matches operator workflow.
 import math
 from typing import Dict, List, Optional, Tuple
 
+from .common import validate_plan
+
 
 def _thresh_ratio(remaining: int, plies: int) -> int:
     """Threshold-based ratio matching operator heuristic (2.25x breakpoints)."""
@@ -138,7 +140,7 @@ def _solve_greedy_subtraction_inner(
             if tubular:
                 cands_sorted = [c for c in cands_sorted if c % 2 == 0]
             if not cands_sorted:
-                cands_sorted = [min(remaining[s] for s in active)]
+                break
 
             best_ratio = None
             best_plies = 0
@@ -219,7 +221,7 @@ def _solve_greedy_subtraction_inner(
 
     # Final residual
     if any(remaining.get(s, 0) > 0 for s in sizes):
-        for p in range(1, max(remaining.get(s, 1) for s in sizes) + 2):
+        for p in range(1, max_plies + 1):
             if tubular and p % 2 != 0:
                 continue
             ratio = {s: math.ceil(remaining[s] / p) if remaining[s] > 0 else 0 for s in sizes}
@@ -280,6 +282,10 @@ def solve(
             close_threshold, overcut_per_size, max_total_overcut, lay2_mode=mode,
         )
         if plan is None:
+            continue
+        if validate_plan(
+            plan, order, max_plies, max_pieces, tolerance_pct, max_lays, tubular,
+        ):
             continue
         totals = {s: 0 for s in sizes}
         for ratio, plies in plan:
