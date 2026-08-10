@@ -9,6 +9,7 @@ frappe.ui.form.on("Essdee Quality Inspection", {
 		})
     },
     refresh(frm) {
+		render_debit_details(frm);
         if (frm.colour_and_size && frm.colour_and_size.unmount) {
             frm.colour_and_size.unmount();
         }
@@ -201,6 +202,7 @@ function open_inspection_debit_dialog(frm) {
                         reason: values.reason,
                         debit_document: values.debit_document,
                         inspection: 1,
+                        quality_inspection: frm.doc.name,
                         docstatus: 1,
                     },
                 },
@@ -211,12 +213,96 @@ function open_inspection_debit_dialog(frm) {
                             indicator: "green",
                         });
                         d.hide();
+						frm.reload_doc();
                     }
                 },
             });
         },
     });
     d.show();
+}
+
+function render_debit_details(frm) {
+	const debits = (frm.doc.__onload && frm.doc.__onload.debit_details) || [];
+	const has_debits = debits.length > 0;
+	frm.toggle_display(["debit_details_tab", "debit_details_html"], has_debits);
+	const debit_tab = (frm.layout.tabs || []).find(
+		(tab) => tab.df.fieldname === "debit_details_tab"
+	);
+	if (debit_tab) {
+		debit_tab.toggle(has_debits);
+	}
+	if (!has_debits || !frm.fields_dict.debit_details_html) {
+		return;
+	}
+
+	const escape = (value) => frappe.utils.escape_html(String(value ?? ""));
+	const currency = (value) => format_currency(Number(value || 0));
+	const total = debits.reduce(
+		(sum, debit) => sum + Number(debit.debit_value || 0),
+		0
+	);
+	const rows = debits.map((debit) => {
+		const debit_url = `/app/essdee-debit/${encodeURIComponent(debit.name)}`;
+		const document = debit.debit_document
+			? `<a href="${escape(debit.debit_document)}" target="_blank" rel="noopener noreferrer">${__("View Document")}</a>`
+			: "—";
+		const status_colour = debit.status === "Approved" ? "green" : "orange";
+		const created_on = debit.creation
+			? frappe.datetime.str_to_user(debit.creation)
+			: "—";
+		return `
+			<tr>
+				<td><a href="${debit_url}" target="_blank" rel="noopener noreferrer">${escape(debit.name)}</a></td>
+				<td>${escape(debit.debit_type || "—")}</td>
+				<td class="text-right"><strong>${currency(debit.debit_value)}</strong></td>
+				<td style="white-space: pre-line;">${escape(debit.reason || "—")}</td>
+				<td>${document}</td>
+				<td><span class="indicator-pill ${status_colour}">${escape(debit.status || "—")}</span></td>
+				<td>${escape(debit.approved_by || "—")}</td>
+				<td>${escape(created_on)}</td>
+			</tr>
+		`;
+	}).join("");
+
+	$(frm.fields_dict.debit_details_html.wrapper).html(`
+		<div style="padding-top: 12px;">
+			<div class="row" style="margin-bottom: 14px;">
+				<div class="col-sm-6">
+					<div class="text-muted small">${__("Number of Debits")}</div>
+					<div style="font-size: 18px; font-weight: 600;">${debits.length}</div>
+				</div>
+				<div class="col-sm-6 text-right">
+					<div class="text-muted small">${__("Total Debit Value")}</div>
+					<div style="font-size: 18px; font-weight: 600;">${currency(total)}</div>
+				</div>
+			</div>
+			<div class="table-responsive">
+				<table class="table table-bordered table-hover">
+					<thead>
+						<tr>
+							<th>${__("Debit")}</th>
+							<th>${__("Type")}</th>
+							<th class="text-right">${__("Debit Value")}</th>
+							<th>${__("Reason")}</th>
+							<th>${__("Document")}</th>
+							<th>${__("Status")}</th>
+							<th>${__("Approved By")}</th>
+							<th>${__("Created On")}</th>
+						</tr>
+					</thead>
+					<tbody>${rows}</tbody>
+					<tfoot>
+						<tr>
+							<th colspan="2" class="text-right">${__("Total")}</th>
+							<th class="text-right">${currency(total)}</th>
+							<th colspan="5"></th>
+						</tr>
+					</tfoot>
+				</table>
+			</div>
+		</div>
+	`);
 }
 
 function refresh_fields(frm){

@@ -59,6 +59,8 @@
   "bom_summary",
   "bom_additional_items",
   "bom_summary_json",
+  "cloth_program_tab",
+  "cloth_program_html",
   "time_and_action_tab",
   "lot_time_and_action_details",
   "time_and_action_html",
@@ -307,6 +309,16 @@
    "fieldtype": "JSON",
    "hidden": 1,
    "label": "BOM Summary JSON"
+  },
+  {
+   "fieldname": "cloth_program_tab",
+   "fieldtype": "Tab Break",
+   "label": "Cloth Program"
+  },
+  {
+   "fieldname": "cloth_program_html",
+   "fieldtype": "HTML",
+   "label": "Cloth Program"
   },
   {
    "fieldname": "time_and_action_tab",

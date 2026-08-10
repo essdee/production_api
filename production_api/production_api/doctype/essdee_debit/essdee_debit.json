@@ -7,6 +7,7 @@
  "field_order": [
   "against",
   "against_id",
+  "quality_inspection",
   "status",
   "approved_by",
   "debit_type",
@@ -35,6 +36,15 @@
    "label": "Against ID",
    "options": "against",
    "reqd": 1
+  },
+  {
+   "depends_on": "eval:doc.inspection",
+   "fieldname": "quality_inspection",
+   "fieldtype": "Link",
+   "label": "Quality Inspection",
+   "no_copy": 1,
+   "options": "Essdee Quality Inspection",
+   "read_only": 1
   },
   {
    "allow_on_submit": 1,
