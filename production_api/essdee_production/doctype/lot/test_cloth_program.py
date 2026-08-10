@@ -30,6 +30,20 @@ class TestClothProgramPreview(FrappeTestCase):
 		self.assertEqual(field["fieldtype"], "Percent")
 		self.assertEqual(field["default"], "0")
 
+		cloth_program_tab = next(
+			row
+			for row in meta["fields"]
+			if row.get("fieldname") == "cloth_program_tab"
+		)
+		cloth_program_html = next(
+			row
+			for row in meta["fields"]
+			if row.get("fieldname") == "cloth_program_html"
+		)
+		self.assertEqual(cloth_program_tab["label"], "Cloth Program")
+		self.assertEqual(cloth_program_tab["fieldtype"], "Tab Break")
+		self.assertEqual(cloth_program_html["fieldtype"], "HTML")
+
 	def test_accessories_share_cloth_item_table_with_fabric_type_column(self):
 		source = Path(
 			frappe.get_app_path(
@@ -63,6 +77,13 @@ class TestClothProgramPreview(FrappeTestCase):
 		self.assertIn('__("Total {0}", [fabric_group.fabric_type])', source)
 		self.assertIn('secondary_action_label: __("Print")', source)
 		self.assertIn('encodeURIComponent("Lot Cloth Program")', source)
+		self.assertIn("load_saved_cloth_program(frm);", source)
+		self.assertIn("extra_percentage <= 0", source)
+		self.assertIn("render_saved_cloth_program(frm, r.message || {});", source)
+		self.assertIn(
+			"production_api.essdee_production.doctype.lot.cloth_program.get_cloth_program_preview",
+			source,
+		)
 
 	def test_print_format_is_named_lot_cloth_program(self):
 		print_format = frappe.get_file_json(

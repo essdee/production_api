@@ -51,7 +51,9 @@
   "calculated_result",
   "amended_from",
   "inspector",
-  "inspector_name"
+  "inspector_name",
+  "debit_details_tab",
+  "debit_details_html"
  ],
  "fields": [
   {
@@ -334,6 +336,16 @@
    "fieldtype": "Data",
    "label": "Third Party Supplier Name",
    "read_only": 1
+  },
+  {
+   "fieldname": "debit_details_tab",
+   "fieldtype": "Tab Break",
+   "label": "Debit Details"
+  },
+  {
+   "fieldname": "debit_details_html",
+   "fieldtype": "HTML",
+   "label": "Debit Details"
   }
  ],
  "grid_page_length": 50,

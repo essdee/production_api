@@ -23,6 +23,8 @@ class EssdeeQualityInspection(Document):
 				"selected": True if row.selected else False
 			})	
 		self.set_onload("colour_size_data", d)
+		debit_details = [] if self.is_new() else get_debit_details(self.name)
+		self.set_onload("debit_details", debit_details)
 
 	def before_submit(self):
 		if self.result not in ['Pass', "Fail", "Hold"]:
@@ -89,6 +91,28 @@ class EssdeeQualityInspection(Document):
 					order_qty += row.delivered_quantity
 
 		self.order_qty = order_qty			
+
+
+def get_debit_details(quality_inspection):
+	return frappe.get_all(
+		"Essdee Debit",
+		filters={
+			"quality_inspection": quality_inspection,
+			"docstatus": ["!=", 2],
+		},
+		fields=[
+			"name",
+			"debit_type",
+			"debit_no",
+			"debit_value",
+			"reason",
+			"debit_document",
+			"status",
+			"approved_by",
+			"creation",
+		],
+		order_by="creation desc",
+	)
 
 @frappe.whitelist()
 def get_max_minor_defect_allowed(level, offer_qty: int, major_aql_level, minor_aql_level):

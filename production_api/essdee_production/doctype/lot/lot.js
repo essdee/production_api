@@ -174,6 +174,7 @@ frappe.ui.form.on("Lot", {
 				open_cloth_program_preview(frm);
 			});
 		}
+		load_saved_cloth_program(frm);
 		$(frm.fields_dict['items_html'].wrapper).html("")
 		frm.item = new frappe.production.ui.LotOrder(frm.fields_dict['items_html'].wrapper)
 		if (frm.doc.__onload && frm.doc.__onload.item_details) {
@@ -593,7 +594,11 @@ function open_cloth_program_preview(frm) {
 						frm.doc.modified = r.message.lot_modified;
 					}
 					frm.refresh_field("cloth_excess_percentage");
-					render_cloth_program_preview(dialog, r.message || {});
+					render_cloth_program_preview(
+						dialog.fields_dict.cloth_program_result.wrapper,
+						r.message || {}
+					);
+					render_saved_cloth_program(frm, r.message || {});
 				},
 			});
 		},
@@ -614,16 +619,65 @@ function open_cloth_program_preview(frm) {
 		},
 	});
 	dialog.show();
-	render_cloth_program_preview(dialog, {});
+	render_cloth_program_preview(dialog.fields_dict.cloth_program_result.wrapper, {});
 }
 
-function render_cloth_program_preview(dialog, preview) {
+function load_saved_cloth_program(frm) {
+	const result_field = frm.fields_dict.cloth_program_html;
+	if (!result_field) {
+		return;
+	}
+
+	const extra_percentage = Number(frm.doc.cloth_excess_percentage || 0);
+	if (frm.is_new() || !frm.doc.production_detail || extra_percentage <= 0) {
+		render_saved_cloth_program(frm, {});
+		return;
+	}
+
+	$(result_field.wrapper).html(`
+		<div class="text-muted" style="padding: 18px 0;">
+			${__("Loading cloth program...")}
+		</div>
+	`);
+	frappe.call({
+		method: "production_api.essdee_production.doctype.lot.cloth_program.get_cloth_program_preview",
+		args: {
+			lot: frm.doc.name,
+			extra_percentage,
+		},
+		callback(r) {
+			render_saved_cloth_program(frm, r.message || {});
+		},
+		error() {
+			$(result_field.wrapper).html(`
+				<div class="text-muted" style="padding: 18px 0;">
+					${__("The cloth program could not be loaded.")}
+				</div>
+			`);
+		},
+	});
+}
+
+function render_saved_cloth_program(frm, preview) {
+	const result_field = frm.fields_dict.cloth_program_html;
+	if (!result_field) {
+		return;
+	}
+	const has_saved_percentage = Number(frm.doc.cloth_excess_percentage || 0) > 0;
+	render_cloth_program_preview(
+		result_field.wrapper,
+		has_saved_percentage ? preview : {},
+		__("Build the Cloth Program with an excess percentage to view its details here."),
+		true
+	);
+}
+
+function render_cloth_program_preview(wrapper, preview, empty_message, is_saved_view = false) {
 	const rows = preview.rows || [];
-	const result_field = dialog.fields_dict.cloth_program_result;
 	if (!rows.length) {
-		$(result_field.wrapper).html(`
+		$(wrapper).html(`
 			<div class="text-muted" style="padding: 18px 0;">
-				${__("Enter the Cloth Excess Percentage and click Calculate.")}
+				${empty_message || __("Enter the Cloth Excess Percentage and click Calculate.")}
 			</div>
 		`);
 		return;
@@ -785,10 +839,13 @@ function render_cloth_program_preview(dialog, preview) {
 		return result;
 	}, { required_weight: 0, extra_weight: 0, program_weight: 0 });
 
-	$(result_field.wrapper).html(`
+	const storage_message = is_saved_view
+		? __("Calculated using the Cloth Excess Percentage saved on this Lot.")
+		: __("The Cloth Excess Percentage is saved on this Lot; the cloth-program preview is not saved.");
+	$(wrapper).html(`
 		<div style="margin-top: 18px;">
 			<div class="text-muted small" style="margin-bottom: 10px;">
-				${__("The Cloth Excess Percentage is saved on this Lot; the cloth-program preview is not saved.")}
+				${storage_message}
 				${__("Cloth Kg per 1 Kg Yarn")}: <strong>${format_number(preview.cloth_per_kg_yarn)}</strong>
 				· ${__("Extra")}: <strong>${format_number(preview.extra_percentage)}%</strong>
 			</div>
