@@ -1458,12 +1458,15 @@ frappe.production.ui.FinishingPlanIroningReport = class {
 
 // Cutting Laysheet Planner
 frappe.production.ui.LayPlanResult = class {
-    constructor(wrapper) {
+    constructor(wrapper, on_select = null) {
         this.$wrapper = $(wrapper)
+        this.on_select = on_select
         this.make_app()
     }
     make_app() {
-        this.app = createApp(LayPlanResult)
+        this.app = createApp(LayPlanResult, {
+            onSelect: this.on_select,
+        })
         SetVueGlobals(this.app)
         this.vue = this.app.mount(this.$wrapper.get(0))
     }

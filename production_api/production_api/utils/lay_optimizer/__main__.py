@@ -23,25 +23,27 @@ ALL_STRATEGY_NAMES = list(STRATEGIES.keys()) + list(_EXPERIMENTAL_STRATEGIES.key
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Lay Planning Optimizer v3.0 — Essdee MRP",
+        description="Lay Planning Optimizer v4.1 — Essdee MRP",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Production strategies (run by default with --strategy all):
-  milp              MILP — full Mixed Integer Linear Program (HiGHS solver)
-  colgen            Column Generation — LP relaxation + knapsack pricing
-  proportional_decomp  Proportional Decomposition — ratio × plies factorization
-  ilp               ILP — minimum lays via set cover with bounded enumeration
-  order_match       Order Match — zero waste, cut exactly what was ordered
-  balanced          Balanced — fewest lays with densest markers
-  single_ratio      Single Ratio — one marker for all lays, simplest for CAD
-  all               Run all 7 production strategies and compare (default)
+  direct_integer_search  Deterministic ply-tuple search plus ratio DP
+  cp_sat            Direct exact CP-SAT model
+  milp              Restricted-column MILP with deviation tie-break
+  column_generation LP pricing plus feasible repair
+  proportional      Operator-style main ratio plus cleanup
+  two_lay_dp        Specialized bounded one/two-lay search
+  minimum_deviation Prefer exact or lowest-deviation fulfillment
+  balanced          Fewest lays, then fullest markers
+  single_marker     Reuse one marker ratio across all lays
+  iterated_greedy   Deterministic construct/destroy/repair search
+  all               Run the production portfolio and show Pareto plans
 
 Experimental strategies (available via --strategy, not run by default):
-  greedy_subtraction  Greedy peel-off (operator baseline method)
-  max_density         Pack markers close to max pieces/ply
-  iterated_greedy     Construct + destroy-repair improvement loop
-  pso_ga              PSO/GA population-based metaheuristic
-  knapsack            Beam search + DP on item selection
+  operator_greedy      Greedy peel-off baseline
+  marker_capacity      Pack ratios close to max pieces/marker
+  genetic_search       Seeded population crossover and mutation
+  randomized_set_cover Static pool with randomized restarts
 
 Test mode:
   --test            Run all 5 test cases
@@ -65,7 +67,7 @@ Examples:
     parser.add_argument(
         "--strategy", default="all",
         choices=ALL_STRATEGY_NAMES + ["all"],
-        help="Strategy to use (default: all = run 7 production strategies)",
+        help="Strategy to use (default: all = run the production portfolio)",
     )
     parser.add_argument("--tubular", action="store_true", help="Tubular fabric — force even ply counts")
     parser.add_argument("--json", action="store_true", help="Output as JSON")

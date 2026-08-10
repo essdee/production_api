@@ -561,10 +561,10 @@ function open_cloth_program_preview(frm) {
 		size: "extra-large",
 		fields: [
 			{
-				label: __("Extra Percentage"),
+				label: __("Cloth Excess Percentage"),
 				fieldname: "extra_percentage",
 				fieldtype: "Float",
-				default: 0,
+				default: frm.doc.cloth_excess_percentage || 0,
 				description: __("Adds this percentage to every calculated cloth Colour and Dia."),
 			},
 			{
@@ -576,7 +576,7 @@ function open_cloth_program_preview(frm) {
 		primary_action(values) {
 			const extra_percentage = Number(values.extra_percentage || 0);
 			if (extra_percentage < 0) {
-				frappe.msgprint(__("Extra Percentage cannot be negative."));
+				frappe.msgprint(__("Cloth Excess Percentage cannot be negative."));
 				return;
 			}
 			frappe.call({
@@ -588,9 +588,29 @@ function open_cloth_program_preview(frm) {
 				freeze: true,
 				freeze_message: __("Calculating cloth program..."),
 				callback(r) {
+					frm.doc.cloth_excess_percentage = extra_percentage;
+					if (r.message && r.message.lot_modified) {
+						frm.doc.modified = r.message.lot_modified;
+					}
+					frm.refresh_field("cloth_excess_percentage");
 					render_cloth_program_preview(dialog, r.message || {});
 				},
 			});
+		},
+		secondary_action_label: __("Print"),
+		secondary_action() {
+			const print_window = window.open(
+				frappe.urllib.get_full_url(
+					"/printview?doctype=" + encodeURIComponent(frm.doc.doctype)
+					+ "&name=" + encodeURIComponent(frm.doc.name)
+					+ "&format=" + encodeURIComponent("Lot Cloth Program")
+					+ "&trigger_print=1"
+				),
+				"_blank"
+			);
+			if (!print_window) {
+				frappe.msgprint(__("Please enable pop-ups"));
+			}
 		},
 	});
 	dialog.show();
@@ -603,15 +623,22 @@ function render_cloth_program_preview(dialog, preview) {
 	if (!rows.length) {
 		$(result_field.wrapper).html(`
 			<div class="text-muted" style="padding: 18px 0;">
-				${__("Enter the extra percentage and click Calculate. No data will be saved.")}
+				${__("Enter the Cloth Excess Percentage and click Calculate.")}
 			</div>
 		`);
 		return;
 	}
 
 	const escape = (value) => frappe.utils.escape_html(String(value ?? ""));
-	const ceil_weight = (value) => Math.ceil(Number(value || 0));
-	const format_weight = (value) => ceil_weight(value).toLocaleString();
+	const round_weight = (value) => {
+		const number = Number(value || 0);
+		const floor = Math.floor(number);
+		return number - floor > 0.5 ? Math.ceil(number) : floor;
+	};
+	const format_weight = (value) => round_weight(value).toLocaleString();
+	const format_number = (value) => Number(value || 0).toLocaleString(
+		undefined, { maximumFractionDigits: 3 }
+	);
 	const accessory_block_label = (value) => {
 		const label = String(value || __("Accessory"))
 			.trim()
@@ -625,53 +652,93 @@ function render_cloth_program_preview(dialog, preview) {
 		const cloth_item = row.cloth_item || __("Unspecified Cloth");
 		const requirement_type = row.requirement_type === "accessory" ? "accessory" : "cloth";
 		const accessory_name = row.accessory_name || __("Accessory");
-		const table_key = [cloth_item, requirement_type, accessory_name].join("\u0000");
+		const table_key = cloth_item;
 		const colour = row.colour || __("No Colour");
 		const dia = row.compacting_dia
 			? `${row.input_dia || __("No Dia")} → ${row.compacting_dia || __("No Dia")}`
 			: (row.dia || __("No Dia"));
+		const route_key = [requirement_type, accessory_name, dia].join("\u0000");
 		if (!table_groups[table_key]) {
 			table_groups[table_key] = {
 				cloth_item,
-				requirement_type,
-				accessory_name,
 				colours: new Set(),
-				dias: new Set(),
+				routes: {},
 				weights: {},
 			};
 		}
 		table_groups[table_key].colours.add(colour);
-		table_groups[table_key].dias.add(dia);
-		table_groups[table_key].weights[`${dia}\u0000${colour}`] = ceil_weight(row.program_weight);
+		table_groups[table_key].routes[route_key] = {
+			route_key,
+			requirement_type,
+			accessory_name,
+			fabric_type: requirement_type === "accessory"
+				? accessory_block_label(accessory_name)
+				: __("Main Fabric"),
+			dia,
+		};
+		const weight_key = `${route_key}\u0000${colour}`;
+		table_groups[table_key].weights[weight_key] =
+			(table_groups[table_key].weights[weight_key] || 0) + round_weight(row.program_weight);
 	});
 
-	const tables = Object.values(table_groups).sort((left, right) => {
-		const clothCompare = left.cloth_item.localeCompare(right.cloth_item);
-		if (clothCompare) return clothCompare;
-		if (left.requirement_type !== right.requirement_type) {
-			return left.requirement_type === "cloth" ? -1 : 1;
-		}
-		return left.accessory_name.localeCompare(right.accessory_name);
-	}).map((item) => {
-		const accessory_label = accessory_block_label(item.accessory_name);
+	const tables = Object.values(table_groups).sort(
+		(left, right) => left.cloth_item.localeCompare(right.cloth_item)
+	).map((item) => {
 		const colours = Array.from(item.colours).sort();
-		const dias = Array.from(item.dias).sort();
+		const routes = Object.values(item.routes).sort((left, right) => {
+			if (left.requirement_type !== right.requirement_type) {
+				return left.requirement_type === "cloth" ? -1 : 1;
+			}
+			const fabricCompare = left.fabric_type.localeCompare(right.fabric_type);
+			return fabricCompare || left.dia.localeCompare(right.dia);
+		});
 		const colour_totals = Object.fromEntries(colours.map((colour) => [colour, 0]));
 		let cloth_total = 0;
-		const body = dias.map((dia) => {
-			let dia_total = 0;
-			const cells = colours.map((colour) => {
-				const weight = item.weights[`${dia}\u0000${colour}`] || 0;
-				dia_total += weight;
-				colour_totals[colour] += weight;
-				return `<td class="text-right">${weight ? format_weight(weight) : "—"}</td>`;
+		const fabric_groups = [];
+		const fabric_groups_by_type = new Map();
+		routes.forEach((route) => {
+			if (!fabric_groups_by_type.has(route.fabric_type)) {
+				const fabric_group = { fabric_type: route.fabric_type, routes: [] };
+				fabric_groups_by_type.set(route.fabric_type, fabric_group);
+				fabric_groups.push(fabric_group);
+			}
+			fabric_groups_by_type.get(route.fabric_type).routes.push(route);
+		});
+		const body = fabric_groups.map((fabric_group) => {
+			const fabric_colour_totals = Object.fromEntries(
+				colours.map((colour) => [colour, 0])
+			);
+			let fabric_total = 0;
+			const route_rows = fabric_group.routes.map((route) => {
+				let dia_total = 0;
+				const cells = colours.map((colour) => {
+					const weight = item.weights[`${route.route_key}\u0000${colour}`] || 0;
+					dia_total += weight;
+					fabric_colour_totals[colour] += weight;
+					colour_totals[colour] += weight;
+					return `<td class="text-right">${weight ? format_weight(weight) : "—"}</td>`;
+				}).join("");
+				fabric_total += dia_total;
+				cloth_total += dia_total;
+				return `
+					<tr>
+						<td>${escape(route.fabric_type)}</td>
+						<td>${escape(route.dia)}</td>
+						${cells}
+						<td class="text-right"><strong>${format_weight(dia_total)}</strong></td>
+					</tr>
+				`;
 			}).join("");
-			cloth_total += dia_total;
+			const fabric_colour_total_cells = colours.map(
+				(colour) => `<th class="text-right">${format_weight(fabric_colour_totals[colour])}</th>`
+			).join("");
 			return `
-				<tr>
-					<td>${escape(dia)}</td>
-					${cells}
-					<td class="text-right"><strong>${format_weight(dia_total)}</strong></td>
+				${route_rows}
+				<tr class="active">
+					<th>${escape(__("Total {0}", [fabric_group.fabric_type]))}</th>
+					<th></th>
+					${fabric_colour_total_cells}
+					<th class="text-right">${format_weight(fabric_total)}</th>
 				</tr>
 			`;
 		}).join("");
@@ -682,21 +749,14 @@ function render_cloth_program_preview(dialog, preview) {
 		return `
 			<div style="margin-bottom: 24px;">
 				<h5 style="margin-bottom: 4px;">${escape(item.cloth_item)}</h5>
-				${item.requirement_type === "accessory" ? `
-					<div style="display: block; margin: 8px 0; padding: 8px 10px;
-						border-left: 3px solid var(--primary); background: var(--subtle-fg);
-						font-weight: 700;">
-						${escape(accessory_label)}
-					</div>
-				` : `
-					<div class="text-muted small" style="margin-bottom: 8px;">
-						${__("Main Fabric")} · ${__("Knitting Program Kg")}
-					</div>
-				`}
+				<div class="text-muted small" style="margin-bottom: 8px;">
+					${__("Knitting Program Kg")}
+				</div>
 				<div class="table-responsive">
 					<table class="table table-bordered table-hover">
 						<thead>
 							<tr>
+								<th>${__("Fabric Type")}</th>
 								<th>${uses_compacting_details ? __("Input Dia → Compacting Dia") : __("Dia")}</th>
 								${colours.map((colour) => `<th class="text-right">${escape(colour)}</th>`).join("")}
 								<th class="text-right">${__("Total")}</th>
@@ -706,6 +766,7 @@ function render_cloth_program_preview(dialog, preview) {
 						<tfoot>
 							<tr>
 								<th>${__("Total")}</th>
+								<th></th>
 								${colour_total_cells}
 								<th class="text-right">${format_weight(cloth_total)}</th>
 							</tr>
@@ -716,8 +777,8 @@ function render_cloth_program_preview(dialog, preview) {
 		`;
 	}).join("");
 	const totals = rows.reduce((result, row) => {
-		const required = ceil_weight(row.required_weight);
-		const program = ceil_weight(row.program_weight);
+		const required = round_weight(row.required_weight);
+		const program = round_weight(row.program_weight);
 		result.required_weight += required;
 		result.extra_weight += Math.max(program - required, 0);
 		result.program_weight += program;
@@ -727,9 +788,9 @@ function render_cloth_program_preview(dialog, preview) {
 	$(result_field.wrapper).html(`
 		<div style="margin-top: 18px;">
 			<div class="text-muted small" style="margin-bottom: 10px;">
-				${__("Preview only — no IPD or Lot data is saved.")}
-				${__("Cloth Kg per 1 Kg Yarn")}: <strong>${format_weight(preview.cloth_per_kg_yarn)}</strong>
-				· ${__("Extra")}: <strong>${format_weight(preview.extra_percentage)}%</strong>
+				${__("The Cloth Excess Percentage is saved on this Lot; the cloth-program preview is not saved.")}
+				${__("Cloth Kg per 1 Kg Yarn")}: <strong>${format_number(preview.cloth_per_kg_yarn)}</strong>
+				· ${__("Extra")}: <strong>${format_number(preview.extra_percentage)}%</strong>
 			</div>
 			${tables}
 			<div class="text-right" style="margin-top: -8px;">

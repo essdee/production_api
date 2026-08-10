@@ -155,7 +155,10 @@ def _generate_cleanup_ratios(residual, max_pieces):
 # Core: find best cleanup for a given main ratio + total plies
 # ---------------------------------------------------------------------------
 
-def _find_cleanup(residual, n, max_plies, max_pieces, tol_fracs, deadline, max_cleanup_lays=3):
+def _find_cleanup(
+    residual, n, max_plies, max_pieces, tol_fracs, deadline,
+    max_cleanup_lays=3, tubular=False,
+):
     """
     Given a residual vector, find cleanup lays that bring it within tolerance.
     Minimizes number of cleanup lays first, then deviation.
@@ -209,6 +212,8 @@ def _find_cleanup(residual, n, max_plies, max_pieces, tol_fracs, deadline, max_c
         for plies in ply_candidates:
             if plies <= 0 or plies > upper:
                 continue
+            if tubular and plies % 2:
+                continue
             new_res = [residual[i] - ratio[i] * plies for i in range(n)]
 
             if all(abs(new_res[i]) <= tol_fracs[i] for i in range(n)):
@@ -222,7 +227,7 @@ def _find_cleanup(residual, n, max_plies, max_pieces, tol_fracs, deadline, max_c
                 # Only recurse if we could beat current best lay count
                 sub_plan, sub_dev = _find_cleanup(
                     new_res, n, max_plies, max_pieces, tol_fracs, deadline,
-                    min(max_cleanup_lays - 1, best_n_lays - 2)  # prune deeper than needed
+                    min(max_cleanup_lays - 1, best_n_lays - 2), tubular
                 )
                 if sub_plan is not None:
                     final_res = list(new_res)
@@ -256,7 +261,10 @@ def _is_better(new_lays, new_dev, old_lays, old_dev):
 # Main solver: multiples → cleanup → feedback adjustment
 # ---------------------------------------------------------------------------
 
-def _solve_with_feedback(order_vals, sizes, max_plies, max_pieces, tol_pct, max_lays, deadline):
+def _solve_with_feedback(
+    order_vals, sizes, max_plies, max_pieces, tol_pct, max_lays, deadline,
+    tubular=False,
+):
     """
     Method:
     1. Pick main ratio R₁ from order multiples
@@ -337,6 +345,8 @@ def _solve_with_feedback(order_vals, sizes, max_plies, max_pieces, tol_pct, max_
                 ply_range.add(p)
 
         for total_plies in sorted(ply_range):
+            if tubular and total_plies % 2:
+                continue
             if time.time() > deadline:
                 break
 
@@ -361,7 +371,7 @@ def _solve_with_feedback(order_vals, sizes, max_plies, max_pieces, tol_pct, max_
                     plies_left = total_plies
                     ratio_dict = {sizes[i]: main_ratio[i] for i in range(n)}
                     # Smart split
-                    splits = _smart_split(total_plies, max_plies, main_ratio, order_vals, n)
+                    splits = _smart_split(total_plies, max_plies, main_ratio, order_vals, n, tubular)
                     for sp in splits:
                         plan.append((dict(ratio_dict), sp))
                     best_plan = plan
@@ -375,7 +385,7 @@ def _solve_with_feedback(order_vals, sizes, max_plies, max_pieces, tol_pct, max_
 
             cleanup, cleanup_dev = _find_cleanup(
                 residual, n, max_plies, max_pieces, tol_fracs, deadline,
-                min(max_cleanup, 3)
+                min(max_cleanup, 3), tubular
             )
 
             if cleanup is None:
@@ -388,7 +398,7 @@ def _solve_with_feedback(order_vals, sizes, max_plies, max_pieces, tol_pct, max_
             # Build full plan
             plan = []
             ratio_dict = {sizes[i]: main_ratio[i] for i in range(n)}
-            splits = _smart_split(total_plies, max_plies, main_ratio, order_vals, n)
+            splits = _smart_split(total_plies, max_plies, main_ratio, order_vals, n, tubular)
             for sp in splits:
                 plan.append((dict(ratio_dict), sp))
             for cr, cp in cleanup:
@@ -442,6 +452,8 @@ def _solve_with_feedback(order_vals, sizes, max_plies, max_pieces, tol_pct, max_
                     adj_ply_candidates.add(max(1, round(adj_avg + d2)))
 
                 for tp in adj_ply_candidates:
+                    if tubular and tp % 2:
+                        continue
                     tp = tp  # already computed
                     # Cap
                     for j in range(n):
@@ -461,7 +473,7 @@ def _solve_with_feedback(order_vals, sizes, max_plies, max_pieces, tol_pct, max_
                         if _is_better(adj_main_lays, dev, best_total_lays, best_total_dev):
                             plan = []
                             ratio_dict = {sizes[j]: adj_tuple[j] for j in range(n)}
-                            splits = _smart_split(tp, max_plies, adj_tuple, order_vals, n)
+                            splits = _smart_split(tp, max_plies, adj_tuple, order_vals, n, tubular)
                             for sp in splits:
                                 plan.append((dict(ratio_dict), sp))
                             best_plan = plan
@@ -475,7 +487,7 @@ def _solve_with_feedback(order_vals, sizes, max_plies, max_pieces, tol_pct, max_
 
                     cleanup, cleanup_dev = _find_cleanup(
                         residual, n, max_plies, max_pieces, tol_fracs, deadline,
-                        min(max_cleanup, 2)
+                        min(max_cleanup, 2), tubular
                     )
                     if cleanup is None:
                         continue
@@ -484,7 +496,7 @@ def _solve_with_feedback(order_vals, sizes, max_plies, max_pieces, tol_pct, max_
                     if _is_better(total_here, cleanup_dev, best_total_lays, best_total_dev):
                         plan = []
                         ratio_dict = {sizes[j]: adj_tuple[j] for j in range(n)}
-                        splits = _smart_split(tp, max_plies, adj_tuple, order_vals, n)
+                        splits = _smart_split(tp, max_plies, adj_tuple, order_vals, n, tubular)
                         for sp in splits:
                             plan.append((dict(ratio_dict), sp))
                         for cr, cp in cleanup:
@@ -497,12 +509,21 @@ def _solve_with_feedback(order_vals, sizes, max_plies, max_pieces, tol_pct, max_
     return best_plan
 
 
-def _smart_split(total_plies, max_plies, ratio, order_vals, n):
+def _smart_split(total_plies, max_plies, ratio, order_vals, n, tubular=False):
     """
     Split total_plies into individual lays of ≤ max_plies.
     Try to find splits where one lay hits an exact size count.
     Falls back to even split.
     """
+    if tubular:
+        if total_plies % 2 or max_plies < 2:
+            return []
+        pair_total = total_plies // 2
+        pair_limit = max_plies // 2
+        count = math.ceil(pair_total / pair_limit)
+        base_pairs, remainder_pairs = divmod(pair_total, count)
+        return [2 * (base_pairs + (1 if i < remainder_pairs else 0)) for i in range(count)]
+
     if total_plies <= max_plies:
         return [total_plies]
 
@@ -575,21 +596,16 @@ def solve(
     deadline = time.time() + 18.0
 
     try:
-        plan = _solve_with_feedback(order_vals, sizes, max_plies, max_pieces, tolerance_pct, max_lays, deadline)
+        effective_max_plies = max_plies - (max_plies % 2) if tubular else max_plies
+        plan = _solve_with_feedback(
+            order_vals, sizes, effective_max_plies, max_pieces,
+            tolerance_pct, max_lays, deadline, tubular,
+        )
     except _SolverTimeout:
         plan = None
 
     if plan is None:
         return None
-
-    # Tubular: force even plies
-    if tubular:
-        adjusted = []
-        for ratio_dict, plies in plan:
-            if plies % 2 != 0:
-                plies = plies + 1 if plies + 1 <= max_plies else max(plies - 1, 2)
-            adjusted.append((ratio_dict, plies))
-        plan = adjusted
 
     # Final tolerance check
     totals = {s: 0 for s in sizes}

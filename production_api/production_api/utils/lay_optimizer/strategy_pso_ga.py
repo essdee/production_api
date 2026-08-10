@@ -1,8 +1,8 @@
 """
-PSO/GA Hybrid Strategy — Population-based metaheuristic optimization.
+Genetic Search Strategy — Population-based metaheuristic optimization.
 
-Combines Particle Swarm Optimization (ply tuning) with Genetic Algorithm
-operators (crossover, mutation on marker ratios and lay structure).
+Uses genetic operators (crossover and mutation on marker ratios and lay
+structure) plus local ply-count tuning.
 
 Multi-objective fitness:
   1. Minimize number of lays (primary)
@@ -221,6 +221,7 @@ def _random_individual(
     tol: float,
     ratio_pool: List[Dict[str, int]],
     tubular: bool,
+    max_lays: int,
 ) -> Individual:
     """
     Generate a random individual via greedy construction with randomization.
@@ -228,7 +229,7 @@ def _random_individual(
     """
     remaining = dict(order)
     lays = []
-    max_tries = 10  # max lays before giving up
+    max_tries = max_lays
 
     for _ in range(max_tries):
         active = [s for s in sizes if remaining[s] > 0]
@@ -349,6 +350,7 @@ def _mutate(
     max_pieces: int,
     ratio_pool: List[Dict[str, int]],
     tubular: bool,
+    max_lays: int,
 ):
     """
     Apply one random mutation:
@@ -385,7 +387,7 @@ def _mutate(
         new_ratio = random.choice(ratio_pool)
         ind.lays[idx] = (dict(new_ratio), plies)
 
-    elif op == 'add_lay' and len(ind.lays) < 12:
+    elif op == 'add_lay' and len(ind.lays) < max_lays:
         ratio = random.choice(ratio_pool) if ratio_pool else {s: 1 for s in sizes}
         p = random.randint(1, max(1, max_plies // 3))
         if tubular and p % 2 != 0:
@@ -520,7 +522,7 @@ def solve(
     tubular: bool = False,
 ) -> Optional[List[Tuple[Dict[str, int], int]]]:
     """
-    PSO/GA hybrid solver for lay planning.
+    Deterministic-seeded genetic solver for lay planning.
 
     Returns list of (ratio_dict, plies) tuples, or None if no feasible solution found.
     """
@@ -529,6 +531,8 @@ def solve(
     n = len(sizes)
     if n == 0:
         return None
+
+    random.seed(0)
 
     # Build ratio pool
     ratio_pool = _build_ratio_pool(order, sizes, max_plies, max_pieces)
@@ -577,7 +581,7 @@ def solve(
         # Fill rest with smart random construction
         while len(population) < POP_SIZE:
             ind = _random_individual(order, sizes, max_plies, max_pieces, tol,
-                                     ratio_pool, tubular)
+                                     ratio_pool, tubular, max_lays)
             _evaluate(ind, order, sizes, tol)
             population.append(ind)
 
@@ -606,14 +610,14 @@ def solve(
                 for child in [c1, c2]:
                     if random.random() < MUTATION_RATE:
                         _mutate(child, order, sizes, max_plies, max_pieces,
-                                ratio_pool, tubular)
+                                ratio_pool, tubular, max_lays)
 
                     # Remove empty lays
                     child.lays = [(r, p) for r, p in child.lays
-                                  if p > 0 and sum(r.values()) > 0]
+                                  if p > 0 and sum(r.values()) > 0][:max_lays]
                     if not child.lays:
                         child = _random_individual(order, sizes, max_plies, max_pieces,
-                                                    tol, ratio_pool, tubular)
+                                                    tol, ratio_pool, tubular, max_lays)
 
                     _evaluate(child, order, sizes, tol)
                     new_pop.append(child)

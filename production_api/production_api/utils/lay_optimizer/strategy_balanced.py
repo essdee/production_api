@@ -10,12 +10,8 @@ For k = 1, 2, 3...:
   k=2: DP search across (plies1, plies2) pairs, density-aware scoring
   k=3+: greedy peel — pick densest feasible lay first, recurse
   
-Within each k, keep the plan with highest avg density.
-Stop at first k producing avg density ≥ 60% of max_pieces.
-
-Key difference from ILP: ILP accepts ANY 2-lay solution.
-BALANCED rejects poor-density 2-lay solutions and tries 3 lays
-with denser markers instead — only if the density gain justifies it.
+Within the minimum feasible lay count, prefer higher average marker capacity,
+then lower weighted deviation. Lay count is a strict primary objective.
 """
 
 import math
@@ -38,7 +34,6 @@ def solve(
     n = len(sizes)
     total_order = sum(order.values())
     tol = tolerance_pct / 100.0
-    density_floor = max_pieces * 0.6
 
     if tubular and max_plies % 2 != 0:
         max_plies -= 1
@@ -233,9 +228,7 @@ def solve(
                             best_plan = plan
 
     if best_plan is not None:
-        _, _, avg_d, _ = _plan_stats(best_plan)
-        if avg_d >= density_floor:
-            return best_plan
+        return best_plan
 
     # ===== TRY k=3+: Greedy peel with density preference =====
     _k3_start = _time.monotonic()
@@ -253,9 +246,7 @@ def solve(
             if best_score is None or score < best_score:
                 best_score = score
                 best_plan = found_at_k
-            _, _, avg_d, _ = _plan_stats(found_at_k)
-            if avg_d >= density_floor:
-                break
+            break
 
     return best_plan
 

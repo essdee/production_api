@@ -2,7 +2,7 @@
 Order Match Strategy
 =====================
 
-Minimize total deviation from order — cut exactly what was ordered.
+Minimize total deviation from order, preferring an exact cut when feasible.
 
 Algorithm:
 1. Generate smart candidate ply counts from order quantities (divisors, GCD multiples)
@@ -19,6 +19,7 @@ ORDER_MATCH minimizes deviation, accepts more lays if it means less waste.
 """
 
 import math
+import time
 from typing import Dict, List, Optional, Tuple
 
 
@@ -29,12 +30,18 @@ def solve(
     tolerance_pct: float = 3.0,
     max_lays: int = 8,
     tubular: bool = False,
+    timeout: float = 18.0,
 ) -> Optional[List[Tuple[Dict[str, int], int]]]:
-    """Order match strategy — minimize total deviation from order."""
+    """Minimum-deviation heuristic — return the closest feasible plan found."""
+    deadline = time.monotonic() + max(0.1, timeout)
     sizes = list(order.keys())
     n = len(sizes)
     tol = tolerance_pct / 100.0
     total_order = sum(order.values())
+    # This heuristic branches over cleanup ply choices. Keep its search tree
+    # bounded even when the physical maximum is very large; other strategies
+    # remain free to use the full configured lay allowance.
+    search_depth_limit = min(max_lays, 8)
 
     if tubular and max_plies % 2 != 0:
         max_plies -= 1
@@ -94,7 +101,9 @@ def solve(
 
     def _solve_remainder_greedy(remaining, depth, max_p):
         """Greedily solve remainder: pick ply that zeros the most sizes."""
-        if depth >= max_lays:
+        if time.monotonic() >= deadline:
+            return None
+        if depth >= search_depth_limit:
             return None
 
         max_rem = max(remaining.values())
@@ -126,6 +135,8 @@ def solve(
         best_sub_dev = float("inf")
 
         for p in sorted(cleanup_candidates, reverse=True):
+            if time.monotonic() >= deadline:
+                break
             if p <= 0 or p > max_p:
                 continue
 
@@ -171,6 +182,8 @@ def solve(
 
     # === Phase 1: Floor decomposition with smart ply candidates ===
     for base_plies in candidates:
+        if time.monotonic() >= deadline:
+            break
         ratio = [min(order[s] // base_plies, max_pieces) for s in sizes]
         total_ratio = sum(ratio)
 
@@ -212,6 +225,8 @@ def solve(
 
     # === Phase 2: Ceil-based single-lay ===
     for base_plies in candidates:
+        if time.monotonic() >= deadline:
+            break
         ratio_ceil = [min(math.ceil(order[s] / base_plies), max_pieces) for s in sizes]
         total_ratio = sum(ratio_ceil)
         if total_ratio == 0 or total_ratio > max_pieces:
@@ -251,6 +266,8 @@ def solve(
                 cleanup_candidates = {p for p in cleanup_candidates if p % 2 == 0 and p >= 2}
 
             for cp in sorted(cleanup_candidates):
+                if time.monotonic() >= deadline:
+                    break
                 if cp <= 0 or cp > max_plies:
                     continue
                 cleanup_ratio = {}

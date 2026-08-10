@@ -1,8 +1,9 @@
 """
-ILP (Integer Linear Programming) Strategy
-==========================================
+Bounded Dynamic-Programming Strategy
+====================================
 
-Finds the absolute minimum number of lays via set cover with bounded enumeration.
+Specialized search for strong one- and two-lay solutions, with a greedy
+extension when more lays are needed. This is a heuristic, not an ILP solver.
 
 Algorithm:
 - k=1: single lay with one ratio × one ply count. Simple scan.
@@ -115,7 +116,7 @@ def solve(
     tubular: bool = False,
 ) -> Optional[List[Tuple[Dict[str, int], int]]]:
     """
-    Find the absolute minimum number of lays by searching variable ply counts.
+    Search bounded candidate ply counts, prioritizing one- and two-lay plans.
     """
     sizes = list(order.keys())
     n = len(sizes)

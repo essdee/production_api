@@ -14,9 +14,13 @@
   "tubular",
   "order_section",
   "order_details",
+  "optimization_section",
+  "optimization_status",
+  "optimization_started_on",
+  "optimization_column_break",
+  "optimization_completed_on",
+  "optimization_error",
   "result_section",
-  "lay_plan_html",
-  "details_section",
   "total_lays",
   "total_order",
   "total_cut",
@@ -26,9 +30,14 @@
   "undercut",
   "undercut_pct",
   "selected_strategy",
+  "all_strategies_section",
+  "all_strategies_html",
   "lay_details_section",
   "lay_details",
-  "result_json"
+  "per_size_section",
+  "per_size_html",
+  "result_json",
+  "optimization_input_json"
  ],
  "fields": [
   {
@@ -59,14 +68,16 @@
    "fieldname": "tolerance_pct",
    "fieldtype": "Float",
    "label": "Tolerance %",
-   "non_negative": 1
+   "non_negative": 1,
+   "reqd": 1
   },
   {
    "fieldname": "max_lays",
    "fieldtype": "Int",
    "label": "Maximum Lays",
    "default": "8",
-   "non_negative": 1
+   "non_negative": 1,
+   "reqd": 1
   },
   {
    "fieldname": "tubular",
@@ -79,7 +90,7 @@
    "fieldname": "selected_strategy",
    "fieldtype": "Select",
    "label": "Selected Strategy",
-   "options": "\nmilp\ncolgen\nproportional_decomp\nilp\norder_match\nbalanced\nsingle_ratio",
+   "options": "\ndirect_integer_search\ncp_sat\nmilp\ncolumn_generation\nproportional\ntwo_lay_dp\nminimum_deviation\nbalanced\nsingle_marker\niterated_greedy\ncolgen\nproportional_decomp\nilp\norder_match\nsingle_ratio",
    "read_only": 1,
    "in_list_view": 1
   },
@@ -96,10 +107,47 @@
    "reqd": 1
   },
   {
+   "fieldname": "optimization_section",
+   "fieldtype": "Section Break",
+   "label": "Optimization Status"
+  },
+  {
+   "default": "Not Started",
+   "fieldname": "optimization_status",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Status",
+   "options": "Not Started\nQueued\nRunning\nCompleted\nFailed",
+   "read_only": 1
+  },
+  {
+   "fieldname": "optimization_started_on",
+   "fieldtype": "Datetime",
+   "label": "Started On",
+   "read_only": 1
+  },
+  {
+   "fieldname": "optimization_column_break",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "optimization_completed_on",
+   "fieldtype": "Datetime",
+   "label": "Completed On",
+   "read_only": 1
+  },
+  {
+   "depends_on": "eval:doc.optimization_status=='Failed'",
+   "fieldname": "optimization_error",
+   "fieldtype": "Small Text",
+   "label": "Error",
+   "read_only": 1
+  },
+  {
    "fieldname": "result_section",
    "fieldtype": "Section Break",
    "label": "Optimization Summary",
-   "depends_on": "eval:doc.total_lays"
+   "depends_on": "eval:doc.optimization_status=='Completed' && doc.total_lays"
   },
   {
    "fieldname": "total_lays",
@@ -176,8 +224,7 @@
   {
    "fieldname": "all_strategies_section",
    "fieldtype": "Section Break",
-   "label": "All Strategies Comparison",
-   "depends_on": "eval:doc.total_lays"
+   "label": "All Strategies Comparison"
   },
   {
    "fieldname": "all_strategies_html",
@@ -188,7 +235,15 @@
    "fieldname": "result_json",
    "fieldtype": "JSON",
    "hidden": 1,
-   "label": "Result JSON"
+   "label": "Result JSON",
+   "read_only": 1
+  },
+  {
+   "fieldname": "optimization_input_json",
+   "fieldtype": "JSON",
+   "hidden": 1,
+   "label": "Optimization Input JSON",
+   "read_only": 1
   }
  ],
  "index_web_pages_for_search": 1,

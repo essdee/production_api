@@ -1,5 +1,9 @@
 <template>
     <div v-if="hasData" class="lay-plan-container">
+        <div v-if="optimizationStatus === 'Failed'" class="status-banner status-banner-error">
+            <i class="fa fa-exclamation-circle"></i>
+            <span>{{ errorMessage || 'Lay optimization did not produce a selectable plan.' }}</span>
+        </div>
         <!-- Dashboard Header -->
         <div class="dashboard-header">
             <div class="header-main">
@@ -43,12 +47,16 @@
                             <div class="strategy-title">
                                 {{ formatStrategyName(r.strategy) }}
                                 <span v-if="r.deduplicated" class="badge-duplicate">Same Plan</span>
+                                <span v-else-if="r.dominated" class="badge-dominated">Dominated</span>
+                                <span v-else-if="r.pareto_optimal" class="badge-pareto">Pareto</span>
                             </div>
                             <div v-if="r.success" class="strategy-meta">
-                                {{ r.summary.total_lays }} Lays | {{ r.summary.overcut_pct }}% Dev
+                                {{ r.summary.total_lays }} Lays |
+                                OC {{ r.summary.overcut_pct }}% |
+                                UC {{ r.summary.undercut_pct }}%
                             </div>
                             <div v-else class="strategy-meta text-danger">
-                                {{ r.error || 'No feasible plan' }}
+                                {{ formatOutcome(r) }}
                             </div>
                         </div>
                         <div v-if="r.strategy === selectedStrategy" class="active-indicator"></div>
@@ -63,6 +71,10 @@
                         {{ formatStrategyName(selectedResult.strategy) }}
                     </div>
                     <p class="strategy-description">{{ selectedResult.strategy_description }}</p>
+                    <p v-if="selectedResult.priority" class="strategy-priority">
+                        {{ selectedResult.priority }}
+                        <span v-if="selectedResult.duration_s !== undefined"> · {{ selectedResult.duration_s }}s</span>
+                    </p>
                 </div>
 
                 <!-- Key Metrics Grid -->
@@ -163,7 +175,7 @@
                                     <span class="dev-percentage">{{ selectedResult.per_size[s].pct }}%</span>
                                 </div>
                                 <div class="dev-progress-bg">
-                                    <div class="dev-progress-bar" :style="{ width: Math.min(100, (selectedResult.per_size[s].cut / selectedResult.per_size[s].order) * 100) + '%' }"></div>
+                                    <div class="dev-progress-bar" :style="{ width: progressWidth(selectedResult.per_size[s]) }"></div>
                                 </div>
                                 <div class="dev-bottom">
                                     <span>{{ selectedResult.per_size[s].cut }} / {{ selectedResult.per_size[s].order }}</span>
@@ -176,6 +188,20 @@
             </div>
         </div>
     </div>
+    <div v-else-if="isProcessing" class="empty-state processing-state">
+        <div class="empty-content">
+            <div class="empty-icon"><i class="fa fa-spinner fa-spin"></i></div>
+            <h2>Optimization {{ optimizationStatus }}</h2>
+            <p>The strategy portfolio is running on the long worker. This form will refresh automatically.</p>
+        </div>
+    </div>
+    <div v-else-if="optimizationStatus === 'Failed'" class="empty-state failed-state">
+        <div class="empty-content">
+            <div class="empty-icon"><i class="fa fa-exclamation-triangle"></i></div>
+            <h2>Optimization Failed</h2>
+            <p>{{ errorMessage || 'No feasible lay plan was found.' }}</p>
+        </div>
+    </div>
     <div v-else class="empty-state">
         <div class="empty-content">
             <div class="empty-icon"><i class="fa fa-magic"></i></div>
@@ -186,14 +212,25 @@
 </template>
 
 <script setup>
-import { ref, computed, defineExpose } from 'vue'
+import { ref, computed } from 'vue'
+
+const props = defineProps({
+    onSelect: {
+        type: Function,
+        default: null,
+    },
+})
 
 const results = ref([])
 const failed = ref([])
 const selectedStrategy = ref('')
 const params = ref({})
+const optimizationStatus = ref('Not Started')
+const errorMessage = ref('')
+const selectingStrategy = ref('')
 
 const hasData = computed(() => results.value.length > 0 || failed.value.length > 0)
+const isProcessing = computed(() => ['Queued', 'Running'].includes(optimizationStatus.value))
 
 const allResults = computed(() => {
     // Merge results and deduplicated ones, keep true failures at end
@@ -201,12 +238,19 @@ const allResults = computed(() => {
     const deduplicated = failed.value.filter(f => f.deduplicated)
     const infeasible = failed.value.filter(f => !f.deduplicated)
     
-    // Sort logically (usually how they come from Python)
     const all = [...successful, ...deduplicated, ...infeasible]
-    
-    // Re-order by standard strategy names
-    const order = ['min_lays', 'min_overcut', 'balanced', 'max_density', 'single_ratio']
-    return all.sort((a, b) => order.indexOf(a.strategy) - order.indexOf(b.strategy))
+
+    const order = [
+        'direct_integer_search', 'cp_sat', 'milp', 'column_generation',
+        'proportional', 'two_lay_dp', 'minimum_deviation', 'balanced',
+        'single_marker', 'iterated_greedy',
+        'colgen', 'proportional_decomp', 'ilp', 'order_match', 'single_ratio',
+    ]
+    const rank = strategy => {
+        const index = order.indexOf(strategy)
+        return index === -1 ? order.length : index
+    }
+    return all.sort((a, b) => rank(a.strategy) - rank(b.strategy))
 })
 
 const sizes = computed(() => {
@@ -229,6 +273,11 @@ const selectedResult = computed(() => {
     if (dup && dup.same_as) {
         return results.value.find(r => r.strategy === dup.same_as) || null
     }
+
+    const alternative = failed.value.find(
+        f => f.strategy === selectedStrategy.value && f.success
+    )
+    if (alternative) return alternative
     
     return null
 })
@@ -246,8 +295,19 @@ function load_data(data) {
         results.value = data.results || []
         failed.value = data.failed || []
     }
+    optimizationStatus.value = data.optimization_status || 'Not Started'
+    errorMessage.value = data.error_message || ''
     if (results.value.length > 0) {
         params.value = results.value[0].params || {}
+        const available = [...results.value, ...failed.value].some(
+            item => item.success && item.strategy === selectedStrategy.value
+        )
+        if (!available) {
+            selectedStrategy.value = results.value[0].strategy
+        }
+    } else {
+        params.value = {}
+        selectedStrategy.value = ''
     }
 }
 
@@ -264,8 +324,17 @@ function getStrategyIcon(strategy) {
     const icons = {
         'min_lays': 'fa fa-compress-arrows-alt',
         'min_overcut': 'fa fa-bullseye',
+        'direct_integer_search': 'fa fa-search',
+        'cp_sat': 'fa fa-sitemap',
+        'milp': 'fa fa-calculator',
+        'column_generation': 'fa fa-columns',
+        'proportional': 'fa fa-percent',
+        'two_lay_dp': 'fa fa-clone',
+        'minimum_deviation': 'fa fa-bullseye',
         'balanced': 'fa fa-balance-scale',
         'max_density': 'fa fa-layer-group',
+        'single_marker': 'fa fa-th',
+        'iterated_greedy': 'fa fa-refresh',
         'single_ratio': 'fa fa-th',
     }
     return icons[strategy] || 'fa fa-cog'
@@ -286,16 +355,35 @@ function diffClass(val) {
 }
 
 function deviationCardClass(ps) {
-    if (ps.pct > 3) return 'status-danger'
+    if (ps.pct > (params.value.tolerance_pct ?? 3)) return 'status-danger'
     if (ps.diff > 0) return 'status-warning'
     if (ps.diff < 0) return 'status-info'
     return 'status-success'
 }
 
-function selectStrategy(strategy) {
-    if (strategy === selectedStrategy.value) return
-    selectedStrategy.value = strategy
-    // We no longer emit to parent via frappe call as per request
+function progressWidth(perSize) {
+    if (!perSize.order) return '0%'
+    return `${Math.min(100, (perSize.cut / perSize.order) * 100)}%`
+}
+
+function formatOutcome(result) {
+    if (result.status === 'timeout') return `Timed out (${result.duration_s || 0}s)`
+    if (result.status === 'invalid') return result.error || 'Rejected: invalid plan'
+    if (result.status === 'error') return result.error || 'Strategy error'
+    return result.error || 'No feasible plan'
+}
+
+async function selectStrategy(strategy) {
+    if (strategy === selectedStrategy.value || selectingStrategy.value) return
+    selectingStrategy.value = strategy
+    try {
+        if (props.onSelect) {
+            await props.onSelect(strategy)
+        }
+        selectedStrategy.value = strategy
+    } finally {
+        selectingStrategy.value = ''
+    }
 }
 
 defineExpose({
@@ -304,6 +392,7 @@ defineExpose({
     results,
     failed,
     selectedStrategy,
+    optimizationStatus,
 })
 </script>
 
@@ -314,6 +403,22 @@ defineExpose({
     font-family: 'Outfit', 'Inter', -apple-system, sans-serif;
     color: #2c3e50;
     min-height: 400px;
+}
+
+.status-banner {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 16px;
+    border-radius: 8px;
+    margin-bottom: 16px;
+    font-weight: 600;
+}
+
+.status-banner-error {
+    color: #9b2c2c;
+    background: #fff5f5;
+    border: 1px solid #feb2b2;
 }
 
 /* Header */
@@ -457,12 +562,22 @@ defineExpose({
     justify-content: center;
     font-size: 16px;
     color: white;
+    background: linear-gradient(135deg, #64748b, #475569);
 }
 
 .strategy-icon.min_lays { background: linear-gradient(135deg, #4299e1, #3182ce); }
 .strategy-icon.min_overcut { background: linear-gradient(135deg, #48bb78, #38a169); }
+.strategy-icon.direct_integer_search { background: linear-gradient(135deg, #2563eb, #1d4ed8); }
+.strategy-icon.cp_sat { background: linear-gradient(135deg, #7c3aed, #6d28d9); }
+.strategy-icon.milp { background: linear-gradient(135deg, #0891b2, #0e7490); }
+.strategy-icon.column_generation { background: linear-gradient(135deg, #0d9488, #0f766e); }
+.strategy-icon.proportional { background: linear-gradient(135deg, #ea580c, #c2410c); }
+.strategy-icon.two_lay_dp { background: linear-gradient(135deg, #4f46e5, #4338ca); }
+.strategy-icon.minimum_deviation { background: linear-gradient(135deg, #16a34a, #15803d); }
 .strategy-icon.balanced { background: linear-gradient(135deg, #ed8936, #dd6b20); }
 .strategy-icon.max_density { background: linear-gradient(135deg, #9f7aea, #805ad5); }
+.strategy-icon.single_marker { background: linear-gradient(135deg, #64748b, #475569); }
+.strategy-icon.iterated_greedy { background: linear-gradient(135deg, #db2777, #be185d); }
 .strategy-icon.single_ratio { background: linear-gradient(135deg, #718096, #4a5568); }
 .strategy-icon.gray { background: #cbd5e0; }
 
@@ -486,6 +601,24 @@ defineExpose({
     padding: 1px 6px;
     border-radius: 4px;
     text-transform: uppercase;
+}
+
+.badge-dominated,
+.badge-pareto {
+    font-size: 9px;
+    padding: 1px 6px;
+    border-radius: 4px;
+    text-transform: uppercase;
+}
+
+.badge-dominated {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+.badge-pareto {
+    background: #dcfce7;
+    color: #166534;
 }
 
 .strategy-meta {
@@ -532,8 +665,17 @@ defineExpose({
 
 .strategy-badge.min_lays { background: #3182ce; }
 .strategy-badge.min_overcut { background: #38a169; }
+.strategy-badge.direct_integer_search { background: #1d4ed8; }
+.strategy-badge.cp_sat { background: #6d28d9; }
+.strategy-badge.milp { background: #0e7490; }
+.strategy-badge.column_generation { background: #0f766e; }
+.strategy-badge.proportional { background: #c2410c; }
+.strategy-badge.two_lay_dp { background: #4338ca; }
+.strategy-badge.minimum_deviation { background: #15803d; }
 .strategy-badge.balanced { background: #dd6b20; }
 .strategy-badge.max_density { background: #805ad5; }
+.strategy-badge.single_marker { background: #475569; }
+.strategy-badge.iterated_greedy { background: #be185d; }
 .strategy-badge.single_ratio { background: #4a5568; }
 
 .strategy-description {
@@ -541,6 +683,12 @@ defineExpose({
     font-weight: 500;
     color: #4a5568;
     margin: 0;
+}
+
+.strategy-priority {
+    margin: 6px 0 0;
+    color: #64748b;
+    font-size: 12px;
 }
 
 /* Metrics Grid */
@@ -763,5 +911,9 @@ defineExpose({
 
 .empty-content h2 { color: #4a5568; margin-bottom: 10px; }
 .empty-content p { color: #718096; max-width: 400px; }
+
+.processing-state .empty-icon { color: #3182ce; animation: none; }
+.failed-state { border-color: #feb2b2; background: #fff5f5; }
+.failed-state .empty-icon { color: #e53e3e; animation: none; }
 
 </style>

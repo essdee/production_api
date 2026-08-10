@@ -12,7 +12,7 @@ Each test case is a dict with:
   - known_best: Known best results from v2.0 baseline (for comparison)
 
 Usage:
-    from lay_optimizer.test_cases import TEST_CASES, get_test_case, run_all_tests
+    from .test_cases import TEST_CASES, get_test_case, run_all_tests
 
     # Get a specific test case
     tc = get_test_case("power_bermuda")
