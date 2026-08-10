@@ -19,6 +19,7 @@
   "column_break_tvkgg",
   "lot_template",
   "production_detail",
+  "cloth_excess_percentage",
   "assigned_person_name",
   "status",
   "uom",
@@ -170,6 +171,14 @@
    "fieldtype": "Link",
    "label": "Item Production Detail",
    "options": "Item Production Detail"
+  },
+  {
+   "default": "0",
+   "fieldname": "cloth_excess_percentage",
+   "fieldtype": "Percent",
+   "label": "Cloth Excess Percentage",
+   "non_negative": 1,
+   "read_only": 1
   },
   {
    "fieldname": "pack_out_stage",
@@ -436,7 +445,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-06-20 09:37:29.602379",
+ "modified": "2026-08-10 11:57:48.151889",
  "modified_by": "Administrator",
  "module": "Essdee Production",
  "name": "Lot",
