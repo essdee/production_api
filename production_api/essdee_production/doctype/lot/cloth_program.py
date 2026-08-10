@@ -1,13 +1,17 @@
 # Copyright (c) 2026, Essdee and contributors
 # For license information, please see license.txt
 
-"""Read-only knitting-program preview for a Lot.
+"""Knitting-program preview for a Lot.
 
-The preview deliberately uses only the Lot's garment IPD and order quantities.
-It does not create cloth IPDs, Item Variants, process matrices, or Lot child
-rows. The yarn-to-cloth yield is fixed at 1.0 until a persisted cloth-production
-workflow is introduced on this bench.
+The calculation deliberately uses only the Lot's garment IPD and order
+quantities. It stores the selected Cloth Excess Percentage on the Lot, but does
+not create cloth IPDs, Item Variants, process matrices, or Lot child rows. The
+yarn-to-cloth yield is fixed at 1.0 until a persisted cloth-production workflow
+is introduced on this bench.
 """
+
+import math
+import re
 
 import frappe
 from frappe import _
@@ -225,9 +229,146 @@ def _calculate_cloth_program(lot_doc, ipd_doc, extra_percentage=0):
 	}
 
 
-@frappe.whitelist()
-def get_cloth_program_preview(lot, extra_percentage=0):
-	"""Return the calculated knitting program; never persist the preview."""
+def _round_display_weight(value):
+	"""Match the whole-kilogram rounding used by the cloth-program dialog."""
+	value = flt(value)
+	floor = math.floor(value)
+	return math.ceil(value) if value - floor > 0.5 else floor
+
+
+def _accessory_fabric_label(value):
+	label = re.sub(
+		r"\b\w",
+		lambda match: match.group(0).upper(),
+		" ".join(str(value or _("Accessory")).split()),
+	)
+	return label if re.search(r"\bFabric$", label, re.IGNORECASE) else f"{label} Fabric"
+
+
+def build_cloth_program_display_data(preview):
+	"""Shape calculated rows into the matrix shared by preview and print output."""
+	table_groups = {}
+	rows = preview.get("rows") or []
+
+	for row in rows:
+		cloth_item = row.get("cloth_item") or _("Unspecified Cloth")
+		requirement_type = (
+			"accessory"
+			if row.get("requirement_type") == "accessory"
+			else "cloth"
+		)
+		accessory_name = row.get("accessory_name") or _("Accessory")
+		colour = row.get("colour") or _("No Colour")
+		if row.get("compacting_dia"):
+			dia = _("{0} → {1}").format(
+				row.get("input_dia") or _("No Dia"),
+				row.get("compacting_dia") or _("No Dia"),
+			)
+		else:
+			dia = row.get("dia") or _("No Dia")
+
+		route_key = (requirement_type, accessory_name, dia)
+		group = table_groups.setdefault(
+			cloth_item,
+			{
+				"cloth_item": cloth_item,
+				"colours": set(),
+				"routes": {},
+				"weights": {},
+			},
+		)
+		group["colours"].add(colour)
+		group["routes"][route_key] = {
+			"requirement_type": requirement_type,
+			"accessory_name": accessory_name,
+			"fabric_type": (
+				_accessory_fabric_label(accessory_name)
+				if requirement_type == "accessory"
+				else _("Main Fabric")
+			),
+			"dia": dia,
+		}
+		weight_key = (*route_key, colour)
+		group["weights"][weight_key] = group["weights"].get(
+			weight_key, 0
+		) + _round_display_weight(row.get("program_weight"))
+
+	tables = []
+	for group in sorted(table_groups.values(), key=lambda value: value["cloth_item"]):
+		colours = sorted(group["colours"])
+		colour_totals = {colour: 0 for colour in colours}
+		table_total = 0
+		routes = []
+		fabric_groups = []
+		fabric_groups_by_type = {}
+		ordered_routes = sorted(
+			group["routes"].items(),
+			key=lambda item: (
+				item[1]["requirement_type"] != "cloth",
+				item[1]["fabric_type"],
+				item[1]["dia"],
+			),
+		)
+		for route_key, route in ordered_routes:
+			fabric_type = route["fabric_type"]
+			if fabric_type not in fabric_groups_by_type:
+				fabric_group = {
+					"fabric_type": fabric_type,
+					"routes": [],
+					"colour_totals": {colour: 0 for colour in colours},
+					"total": 0,
+				}
+				fabric_groups_by_type[fabric_type] = fabric_group
+				fabric_groups.append(fabric_group)
+			fabric_group = fabric_groups_by_type[fabric_type]
+			weights = {}
+			route_total = 0
+			for colour in colours:
+				weight = group["weights"].get((*route_key, colour), 0)
+				weights[colour] = weight
+				route_total += weight
+				fabric_group["colour_totals"][colour] += weight
+				colour_totals[colour] += weight
+			table_total += route_total
+			fabric_group["total"] += route_total
+			route_data = {**route, "weights": weights, "total": route_total}
+			routes.append(route_data)
+			fabric_group["routes"].append(route_data)
+
+		tables.append(
+			{
+				"cloth_item": group["cloth_item"],
+				"colours": colours,
+				"routes": routes,
+				"fabric_groups": fabric_groups,
+				"colour_totals": colour_totals,
+				"total": table_total,
+			}
+		)
+
+	display_totals = {
+		"required_weight": 0,
+		"extra_weight": 0,
+		"program_weight": 0,
+	}
+	for row in rows:
+		required_weight = _round_display_weight(row.get("required_weight"))
+		program_weight = _round_display_weight(row.get("program_weight"))
+		display_totals["required_weight"] += required_weight
+		display_totals["extra_weight"] += max(
+			program_weight - required_weight, 0
+		)
+		display_totals["program_weight"] += program_weight
+
+	return {
+		**preview,
+		"tables": tables,
+		"display_totals": display_totals,
+	}
+
+
+def get_cloth_program_print_data(lot):
+	"""Calculate print-ready data using the excess percentage saved on the Lot."""
 	lot_doc = frappe.get_doc("Lot", lot)
 	lot_doc.check_permission("read")
 	if not lot_doc.get("production_detail"):
@@ -236,4 +377,33 @@ def get_cloth_program_preview(lot, extra_percentage=0):
 	ipd_doc = frappe.get_cached_doc(
 		"Item Production Detail", lot_doc.production_detail
 	)
-	return _calculate_cloth_program(lot_doc, ipd_doc, extra_percentage)
+	preview = _calculate_cloth_program(
+		lot_doc,
+		ipd_doc,
+		lot_doc.get("cloth_excess_percentage") or 0,
+	)
+	return {
+		**build_cloth_program_display_data(preview),
+		"item": lot_doc.get("item"),
+		"production_detail": lot_doc.get("production_detail"),
+	}
+
+
+@frappe.whitelist()
+def get_cloth_program_preview(lot, extra_percentage=0):
+	"""Return the preview and store its selected excess percentage on the Lot."""
+	lot_doc = frappe.get_doc("Lot", lot)
+	lot_doc.check_permission("write")
+	if not lot_doc.get("production_detail"):
+		frappe.throw(_("Select a garment Item Production Detail on the Lot first."))
+
+	ipd_doc = frappe.get_cached_doc(
+		"Item Production Detail", lot_doc.production_detail
+	)
+	preview = _calculate_cloth_program(lot_doc, ipd_doc, extra_percentage)
+	if flt(lot_doc.get("cloth_excess_percentage")) != preview["extra_percentage"]:
+		lot_doc.db_set(
+			"cloth_excess_percentage", preview["extra_percentage"]
+		)
+	preview["lot_modified"] = lot_doc.modified
+	return preview

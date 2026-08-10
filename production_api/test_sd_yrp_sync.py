@@ -3,10 +3,24 @@ from unittest.mock import patch
 import frappe
 from frappe.tests.utils import FrappeTestCase
 
-from production_api.sd_yrp_sync import publish_sd_yrp_event
+from production_api.sd_yrp_sync import (
+	prepare_sd_yrp_doc_for_publish,
+	publish_sd_yrp_event,
+)
 
 
 class TestSDYRPSyncPrerequisites(FrappeTestCase):
+	def test_lot_payload_preserves_cloth_excess_percentage(self):
+		payload = prepare_sd_yrp_doc_for_publish(frappe._dict(
+			doctype="Lot",
+			name="TEST-LOT-CLOTH-EXCESS",
+			cloth_excess_percentage=7.5,
+			time_and_action_details=[{"activity": "Do not sync"}],
+		))
+
+		self.assertEqual(payload["cloth_excess_percentage"], 7.5)
+		self.assertNotIn("time_and_action_details", payload)
+
 	def test_ipd_compacting_publishes_linked_ipd_before_itself(self):
 		compacting = frappe._dict(
 			doctype="IPD Compacting",
