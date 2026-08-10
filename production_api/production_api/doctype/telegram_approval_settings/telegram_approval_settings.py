@@ -4,6 +4,24 @@
 import frappe
 from frappe import _
 from frappe.model.document import Document
+from frappe.utils.jinja import get_jenv
+from jinja2 import TemplateSyntaxError
+
+
+def validate_message_template(template: str | None, reference_doctype: str | None = None):
+	if not template:
+		return
+
+	try:
+		get_jenv().parse(template)
+	except TemplateSyntaxError as exc:
+		frappe.throw(
+			_("Invalid Telegram message template for {0} on line {1}: {2}").format(
+				reference_doctype or _("approval route"),
+				exc.lineno or _("unknown"),
+				exc.message,
+			)
+		)
 
 
 class TelegramApprovalSettings(Document):
@@ -13,6 +31,7 @@ class TelegramApprovalSettings(Document):
 
 		seen_routes = set()
 		for route in self.routes:
+			validate_message_template(route.message_template, route.reference_doctype)
 			if not route.enabled:
 				continue
 

@@ -132,10 +132,9 @@ def create_and_send_approval(doctype: str, docname: str, route_row: str):
 		}
 	).insert(ignore_permissions=True)
 
-	message_text = render_approval_message(doc, route_snapshot)
-	reply_markup = build_approval_keyboard(request_doc.name, route_snapshot, doc)
-
 	try:
+		message_text = render_approval_message(doc, route_snapshot)
+		reply_markup = build_approval_keyboard(request_doc.name, route_snapshot, doc)
 		result = get_client(settings).send_message(
 			route.group_chat_id,
 			message_text,
@@ -149,7 +148,7 @@ def create_and_send_approval(doctype: str, docname: str, route_row: str):
 				"error": None,
 			}
 		)
-	except TelegramAPIError as exc:
+	except (frappe.ValidationError, TelegramAPIError) as exc:
 		request_doc.db_set({"status": "Error", "error": str(exc)[:500]})
 		frappe.log_error(
 			title=f"Telegram approval send failed: {doctype} {docname}",

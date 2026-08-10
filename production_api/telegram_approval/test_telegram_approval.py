@@ -8,7 +8,16 @@ from production_api.telegram_approval.adapters import _parse_roles
 from production_api.telegram_approval.api import _clean_error
 from production_api.telegram_approval.client import TelegramAPIError, TelegramClient
 from production_api.telegram_approval.renderers import render_message
-from production_api.telegram_approval.service import build_approval_keyboard
+from production_api.telegram_approval.service import (
+	build_approval_keyboard,
+	create_and_send_approval,
+)
+from production_api.production_api.doctype.telegram_approval_settings.telegram_approval_settings import (
+	validate_message_template,
+)
+from production_api.patches.v1_0.fix_process_cost_telegram_template import (
+	fix_requested_by_expression,
+)
 
 
 PROCESS_COST_TEMPLATE = """\
@@ -53,6 +62,84 @@ Total Amount: {{ format_currency(summary.total_amount) }}"""
 
 
 class TestTelegramApprovalHelpers(TestCase):
+	def test_valid_message_template_is_accepted(self):
+		validate_message_template(
+			'Requested By: {{ doc.modified_by or "-" }}',
+			"Process Cost",
+		)
+
+	def test_invalid_message_template_is_rejected(self):
+		with self.assertRaisesRegex(
+			frappe.ValidationError,
+			"Invalid Telegram message template for Process Cost.*unknown tag 'doc'",
+		):
+			validate_message_template(
+				"Requested By: {% doc.modified_by %}",
+				"Process Cost",
+			)
+
+	def test_process_cost_template_patch_repairs_requested_by_tag(self):
+		self.assertEqual(
+			fix_requested_by_expression("Requested By: {% doc.modified_by %}"),
+			'Requested By: {{ doc.modified_by or "-" }}',
+		)
+
+	@patch("production_api.telegram_approval.service.frappe.log_error")
+	@patch("production_api.telegram_approval.service.render_approval_message")
+	@patch("production_api.telegram_approval.service.frappe.db.exists", return_value=None)
+	@patch("production_api.telegram_approval.service.frappe.get_doc")
+	@patch("production_api.telegram_approval.service.get_settings")
+	def test_template_render_failure_marks_request_as_error(
+		self,
+		get_settings,
+		get_doc,
+		_exists,
+		render_approval_message,
+		log_error,
+	):
+		route = frappe._dict(
+			{
+				"name": "ROUTE-1",
+				"enabled": 1,
+				"reference_doctype": "Process Cost",
+				"process_type": "Workflow",
+				"trigger_field": "workflow_state",
+				"trigger_value": "Approval Pending",
+				"group_chat_id": "-1001",
+				"message_template": "{% doc.modified_by %}",
+				"approve_action": "Approve",
+				"reject_action": "Reject",
+			}
+		)
+		get_settings.return_value = frappe._dict(enabled=1, routes=[route])
+		source_doc = frappe._dict(
+			{
+				"doctype": "Process Cost",
+				"name": "PC-TEST",
+				"workflow_state": "Approval Pending",
+			}
+		)
+		request_doc = Mock()
+		request_doc.name = "REQUEST-1"
+		request_builder = Mock()
+		request_builder.insert.return_value = request_doc
+		get_doc.side_effect = [source_doc, request_builder]
+		render_approval_message.side_effect = frappe.ValidationError(
+			"Invalid Telegram message template"
+		)
+
+		self.assertEqual(
+			create_and_send_approval("Process Cost", "PC-TEST", "ROUTE-1"),
+			"REQUEST-1",
+		)
+		request_doc.db_set.assert_called_once_with(
+			{
+				"status": "Error",
+				"error": "Invalid Telegram message template",
+			}
+		)
+		log_error.assert_called_once()
+
 	def test_role_parser_accepts_commas_and_newlines(self):
 		self.assertEqual(
 			_parse_roles("Merch Manager, Accounts Manager\nSystem Manager"),
