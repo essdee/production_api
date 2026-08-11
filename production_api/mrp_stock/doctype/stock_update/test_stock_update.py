@@ -1,11 +1,43 @@
 # Copyright (c) 2026, Essdee and Contributors
 # See license.txt
 
+from unittest.mock import patch
+
 import frappe
 from frappe.tests.utils import FrappeTestCase
 
+from production_api.mrp_stock.doctype.stock_update.stock_update import StockUpdate
+
 
 class TestStockUpdate(FrappeTestCase):
+	def test_submit_updates_ledger_and_creates_repost_action(self):
+		doc = frappe.new_doc("Stock Update")
+
+		with (
+			patch.object(StockUpdate, "update_stock_ledger") as update_stock_ledger,
+			patch.object(StockUpdate, "make_repost_action") as make_repost_action,
+		):
+			doc.on_submit()
+
+		update_stock_ledger.assert_called_once_with()
+		make_repost_action.assert_called_once_with()
+
+	def test_cancel_updates_ledger_and_creates_repost_action(self):
+		doc = frappe.new_doc("Stock Update")
+
+		with (
+			patch.object(StockUpdate, "update_stock_ledger") as update_stock_ledger,
+			patch.object(StockUpdate, "make_repost_action") as make_repost_action,
+		):
+			doc.on_cancel()
+
+		update_stock_ledger.assert_called_once_with()
+		make_repost_action.assert_called_once_with()
+		self.assertEqual(
+			doc.ignore_linked_doctypes,
+			("Stock Ledger Entry", "Repost Item Valuation"),
+		)
+
 	def test_stock_update_ledger_qty_uses_stock_uom_qty_for_reduce(self):
 		doc = frappe.new_doc("Stock Update")
 		doc.update_type = "Reduce"

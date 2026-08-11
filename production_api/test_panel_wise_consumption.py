@@ -7,6 +7,7 @@ from unittest.mock import Mock, patch
 
 import frappe
 from frappe.tests.utils import FrappeTestCase
+from frappe.utils import flt
 
 from production_api.essdee_production.doctype.item_production_detail.item_production_detail import (
 	ItemProductionDetail,
@@ -23,6 +24,7 @@ from production_api.panel_wise_consumption import (
 	_blank_matrix,
 	_merge_cutting_rows,
 	expand_panel_wise_matrix,
+	get_matrix_context,
 )
 from production_api.sd_yrp_sync import clean_doc_for_publish, enqueue_sd_yrp_publish
 
@@ -34,6 +36,7 @@ def _context():
 		"packing_attribute": "Colour",
 		"primary_values": ["75 cm", "80 cm"],
 		"panel_values": ["Back", "Front"],
+		"panel_quantities": {"Back": 1, "Front": 1},
 		"packing_values": ["Black", "Maroon"],
 		"source_packing_values": ["Black", "Maroon"],
 		"panel_packing_values": {
@@ -54,6 +57,7 @@ def _centre_panel_context():
 		"packing_attribute": "Colour",
 		"primary_values": ["75 cm"],
 		"panel_values": ["Center Panel"],
+		"panel_quantities": {"Center Panel": 1},
 		"packing_values": ["Red", "A Mel", "G Mel", "Black"],
 		"source_packing_values": ["Black", "Maroon", "Navy", "A Mel", "G Mel"],
 		"panel_packing_values": {
@@ -72,6 +76,33 @@ def _centre_panel_context():
 
 
 class TestPanelWiseConsumption(FrappeTestCase):
+	def test_matrix_context_includes_physical_panel_quantities(self):
+		doc = frappe._dict(
+			primary_item_attribute="Size",
+			stiching_attribute="Panel",
+			packing_attribute="Colour",
+			is_set_item=0,
+			item_attributes=[],
+			packing_attribute_details=[frappe._dict(attribute_value="Black")],
+			stiching_item_details=[
+				frappe._dict(stiching_attribute_value="Front", quantity=1),
+				frappe._dict(stiching_attribute_value="Back", quantity=1),
+				frappe._dict(stiching_attribute_value="Sleeve", quantity=2),
+			],
+			stiching_item_combination_details=[],
+		)
+
+		with patch(
+			"production_api.panel_wise_consumption._mapping_values",
+			return_value=["75 cm"],
+		):
+			context = get_matrix_context(doc)
+
+		self.assertEqual(
+			context["panel_quantities"],
+			{"Front": 1, "Back": 1, "Sleeve": 2},
+		)
+
 	def test_panel_copy_resynchronizes_the_dia_link_control(self):
 		source = Path(
 			frappe.get_app_path(
@@ -368,6 +399,47 @@ class TestPanelWiseConsumption(FrappeTestCase):
 		)
 		self.assertEqual(
 			[row["Weight"] for row in expanded["items"]], [0.05, 0.05]
+		)
+
+	def test_group_total_is_normalized_by_physical_panel_quantities(self):
+		context = _context()
+		context["panel_values"] = ["Front", "Back", "Sleeve"]
+		context["panel_quantities"] = {"Front": 1, "Back": 1, "Sleeve": 2}
+		context["panel_packing_values"] = {
+			panel: ["Black", "Maroon"] for panel in context["panel_values"]
+		}
+		context["panel_colour_map"] = {
+			panel: {"Black": "Black", "Maroon": "Maroon"}
+			for panel in context["panel_values"]
+		}
+		matrix = _blank_matrix(
+			context, panel_groups=[["Front", "Back", "Sleeve"]]
+		)
+		cell = matrix["panels"][0]["rows"][0]["values"]["Black"]
+		cell.update({"dia": "26 Dia", "weight": 0.1})
+
+		expanded = expand_panel_wise_matrix(
+			matrix, context, require_complete=False
+		)
+
+		self.assertEqual(cell["weight"], 0.1)
+		self.assertEqual(
+			[row["Panel"] for row in expanded["items"]],
+			["Front", "Back", "Sleeve"],
+		)
+		self.assertEqual(
+			[row["Weight"] for row in expanded["items"]],
+			[0.033333, 0.033333, 0.016667],
+		)
+		self.assertEqual(
+			flt(
+				sum(
+					row["Weight"] * context["panel_quantities"][row["Panel"]]
+					for row in expanded["items"]
+				),
+				6,
+			),
+			0.1,
 		)
 
 	def test_partial_matrix_can_expand_without_inventing_blank_rows(self):
