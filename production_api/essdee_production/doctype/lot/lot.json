@@ -20,6 +20,7 @@
   "lot_template",
   "production_detail",
   "cloth_excess_percentage",
+  "cloth_program_additions",
   "assigned_person_name",
   "status",
   "uom",
@@ -180,6 +181,13 @@
    "fieldtype": "Percent",
    "label": "Cloth Excess Percentage",
    "non_negative": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "cloth_program_additions",
+   "fieldtype": "JSON",
+   "hidden": 1,
+   "label": "Cloth Program Additions",
    "read_only": 1
   },
   {
@@ -457,7 +465,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-08-10 11:57:48.151889",
+ "modified": "2026-08-11 18:00:00.000000",
  "modified_by": "Administrator",
  "module": "Essdee Production",
  "name": "Lot",

@@ -29,6 +29,13 @@ class TestClothProgramPreview(FrappeTestCase):
 		self.assertEqual(field["label"], "Cloth Excess Percentage")
 		self.assertEqual(field["fieldtype"], "Percent")
 		self.assertEqual(field["default"], "0")
+		addition_field = next(
+			row
+			for row in meta["fields"]
+			if row.get("fieldname") == "cloth_program_additions"
+		)
+		self.assertEqual(addition_field["fieldtype"], "JSON")
+		self.assertTrue(addition_field["hidden"])
 
 		cloth_program_tab = next(
 			row
@@ -77,9 +84,18 @@ class TestClothProgramPreview(FrappeTestCase):
 		self.assertIn('__("Total {0}", [fabric_group.fabric_type])', source)
 		self.assertIn('secondary_action_label: __("Print")', source)
 		self.assertIn('encodeURIComponent("Lot Cloth Program")', source)
+		self.assertIn("open_cloth_program_print(frm);", source)
+		self.assertIn('data-action="print-cloth-program"', source)
+		self.assertIn(
+			'.on("click", () => open_cloth_program_print(frm));',
+			source,
+		)
 		self.assertIn("load_saved_cloth_program(frm);", source)
-		self.assertIn("extra_percentage <= 0", source)
+		self.assertIn("!has_saved_cloth_program(frm)", source)
 		self.assertIn("render_saved_cloth_program(frm, r.message || {});", source)
+		self.assertIn("data-cloth-program-addition", source)
+		self.assertIn("collect_cloth_program_additions(result_wrapper)", source)
+		self.assertIn('__("Enter Kg and click Calculate again")', source)
 		self.assertIn(
 			"production_api.essdee_production.doctype.lot.cloth_program.get_cloth_program_preview",
 			source,
@@ -108,6 +124,13 @@ class TestClothProgramPreview(FrappeTestCase):
 		self.assertIn("cloth.fabric_groups", print_format["html"])
 		self.assertIn("Total {{ fabric.fabric_type }}", print_format["html"])
 		self.assertIn('class="subtotal-label" colspan="2"', print_format["html"])
+		self.assertIn("Added Weight (included in total)", print_format["html"])
+		self.assertIn("fabric.additions.get(colour, 0)", print_format["html"])
+		self.assertIn("Percentage Excess Kg", print_format["html"])
+		self.assertIn(
+			"program.display_totals.manual_additional_weight",
+			print_format["html"],
+		)
 		self.assertIn("Total Knitting Program Kg", print_format["html"])
 
 	def test_display_data_matches_preview_matrix_and_rounding(self):
@@ -178,7 +201,56 @@ class TestClothProgramPreview(FrappeTestCase):
 		self.assertEqual(table["total"], 21)
 		self.assertEqual(
 			result["display_totals"],
-			{"required_weight": 19, "extra_weight": 2, "program_weight": 21},
+			{
+				"required_weight": 19,
+				"extra_weight": 2,
+				"manual_additional_weight": 0,
+				"program_weight": 21,
+			},
+		)
+
+	def test_display_data_includes_added_weight_in_print_totals(self):
+		result = cloth_program.build_cloth_program_display_data(
+			{
+				"uses_compacting_details": False,
+				"additions": [
+					{
+						"cloth_item": "CLOTH-1",
+						"requirement_type": "cloth",
+						"accessory_name": None,
+						"colour": "Black",
+						"additional_weight": 20,
+					}
+				],
+				"rows": [
+					{
+						"cloth_item": "CLOTH-1",
+						"requirement_type": "cloth",
+						"accessory_name": None,
+						"colour": "Black",
+						"dia": "26 Dia",
+						"required_weight": 80,
+						"program_weight": 104,
+						"manual_additional_weight": 20,
+					}
+				],
+			}
+		)
+
+		fabric = result["tables"][0]["fabric_groups"][0]
+		self.assertEqual(fabric["additions"], {"Black": 20})
+		self.assertEqual(fabric["additional_total"], 20)
+		self.assertEqual(fabric["colour_totals"], {"Black": 104})
+		self.assertEqual(fabric["total"], 104)
+		self.assertEqual(result["tables"][0]["total"], 104)
+		self.assertEqual(
+			result["display_totals"],
+			{
+				"required_weight": 80,
+				"extra_weight": 4,
+				"manual_additional_weight": 20,
+				"program_weight": 104,
+			},
 		)
 
 	@patch.object(cloth_program, "build_cloth_program_display_data")
@@ -194,9 +266,11 @@ class TestClothProgramPreview(FrappeTestCase):
 	):
 		lot_doc = MagicMock()
 		lot_doc.production_detail = "GARMENT-IPD-1"
+		saved_additions = {"version": 1, "totals": [], "routes": []}
 		lot_doc.get.side_effect = lambda fieldname: {
 			"production_detail": "GARMENT-IPD-1",
 			"cloth_excess_percentage": 7,
+			"cloth_program_additions": saved_additions,
 			"item": "GARMENT-1",
 		}.get(fieldname)
 		get_doc.return_value = lot_doc
@@ -209,7 +283,7 @@ class TestClothProgramPreview(FrappeTestCase):
 		result = cloth_program.get_cloth_program_print_data("LOT-1")
 
 		lot_doc.check_permission.assert_called_once_with("read")
-		calculate.assert_called_once_with(lot_doc, ipd_doc, 7)
+		calculate.assert_called_once_with(lot_doc, ipd_doc, 7, saved_additions)
 		build_display.assert_called_once_with(preview)
 		self.assertEqual(result["item"], "GARMENT-1")
 		self.assertEqual(result["production_detail"], "GARMENT-IPD-1")
@@ -225,23 +299,49 @@ class TestClothProgramPreview(FrappeTestCase):
 	):
 		lot_doc = MagicMock()
 		lot_doc.production_detail = "GARMENT-IPD-1"
+		saved_additions = {"version": 1, "totals": [], "routes": []}
 		lot_doc.get.side_effect = lambda fieldname: {
 			"production_detail": "GARMENT-IPD-1",
 			"cloth_excess_percentage": 2,
+			"cloth_program_additions": saved_additions,
 		}.get(fieldname)
 		lot_doc.modified = "2026-08-10 12:00:00.000000"
 		get_doc.return_value = lot_doc
 		ipd_doc = MagicMock()
 		get_cached_doc.return_value = ipd_doc
-		calculate.return_value = {"extra_percentage": 5.0, "rows": []}
+		totals = [{
+			"cloth_item": "CLOTH-1",
+			"requirement_type": "cloth",
+			"accessory_name": None,
+			"colour": "Red",
+			"additional_weight": 20,
+		}]
+		routes = [{**totals[0], "dia": "20 Dia"}]
+		calculate.return_value = {
+			"extra_percentage": 5.0,
+			"rows": [],
+			"additions": totals,
+			"addition_routes": routes,
+		}
 
-		result = cloth_program.get_cloth_program_preview("LOT-1", 5)
+		with patch(
+			"production_api.sd_yrp_sync.enqueue_sd_yrp_publish"
+		) as enqueue:
+			result = cloth_program.get_cloth_program_preview(
+				"LOT-1", 5, additions=totals
+			)
 
 		self.assertEqual(result["extra_percentage"], 5.0)
 		self.assertEqual(result["lot_modified"], lot_doc.modified)
 		lot_doc.check_permission.assert_called_once_with("write")
-		calculate.assert_called_once_with(lot_doc, ipd_doc, 5)
-		lot_doc.db_set.assert_called_once_with("cloth_excess_percentage", 5.0)
+		calculate.assert_called_once_with(lot_doc, ipd_doc, 5, totals)
+		updates = lot_doc.db_set.call_args.args[0]
+		self.assertEqual(updates["cloth_excess_percentage"], 5.0)
+		self.assertEqual(
+			frappe.parse_json(updates["cloth_program_additions"]),
+			{"version": 1, "totals": totals, "routes": routes},
+		)
+		enqueue.assert_called_once_with(lot_doc, "on_update")
 
 	def setUp(self):
 		self.lot = frappe._dict(
@@ -301,10 +401,81 @@ class TestClothProgramPreview(FrappeTestCase):
 					"required_weight": 3.0,
 					"extra_weight": 0.15,
 					"program_weight": 3.15,
+					"manual_additional_weight": 0,
 				}
 			],
 		)
 		self.assertEqual(result["totals"]["program_weight"], 3.15)
+
+	def test_added_weight_is_proportional_and_skips_zero_dias(self):
+		rows = [
+			{
+				"cloth_item": "CLOTH-1",
+				"requirement_type": "cloth",
+				"accessory_name": None,
+				"colour": "Black",
+				"dia": "24 Dia",
+				"required_weight": 80,
+				"extra_weight": 0,
+				"program_weight": 80,
+			},
+			{
+				"cloth_item": "CLOTH-1",
+				"requirement_type": "cloth",
+				"accessory_name": None,
+				"colour": "Black",
+				"dia": "26 Dia",
+				"required_weight": 20,
+				"extra_weight": 0,
+				"program_weight": 20,
+			},
+			{
+				"cloth_item": "CLOTH-1",
+				"requirement_type": "cloth",
+				"accessory_name": None,
+				"colour": "Black",
+				"dia": "28 Dia",
+				"required_weight": 0.4,
+				"extra_weight": 0,
+				"program_weight": 0.4,
+			},
+		]
+		additions = [{
+			"cloth_item": "CLOTH-1",
+			"requirement_type": "cloth",
+			"colour": "Black",
+			"additional_weight": 20,
+		}]
+
+		totals, routes = cloth_program._apply_cloth_program_additions(
+			rows, additions
+		)
+
+		self.assertEqual(
+			[row["manual_additional_weight"] for row in rows],
+			[16, 4, 0],
+		)
+		self.assertEqual([row["program_weight"] for row in rows], [96, 24, 0.4])
+		self.assertEqual(totals[0]["additional_weight"], 20)
+		self.assertEqual(sum(row["additional_weight"] for row in routes), 20)
+		self.assertEqual({row["dia"] for row in routes}, {"24 Dia", "26 Dia"})
+
+	def test_negative_added_weight_is_rejected(self):
+		rows = [{
+			"cloth_item": "CLOTH-1",
+			"requirement_type": "cloth",
+			"colour": "Black",
+			"dia": "24 Dia",
+			"extra_weight": 0,
+			"program_weight": 10,
+		}]
+		with self.assertRaisesRegex(frappe.ValidationError, "cannot be negative"):
+			cloth_program._apply_cloth_program_additions(rows, [{
+				"cloth_item": "CLOTH-1",
+				"requirement_type": "cloth",
+				"colour": "Black",
+				"additional_weight": -1,
+			}])
 
 	@patch.object(cloth_program, "get_cloth_combination", return_value={})
 	@patch.object(cloth_program, "get_stitching_combination", return_value={})
