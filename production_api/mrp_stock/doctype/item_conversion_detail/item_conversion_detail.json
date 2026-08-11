@@ -121,12 +121,14 @@
    "fieldname": "rate",
    "fieldtype": "Currency",
    "in_list_view": 1,
-   "label": "Rate"
+   "label": "Rate",
+   "precision": "9"
   },
   {
    "fieldname": "stock_uom_rate",
    "fieldtype": "Currency",
-   "label": "Stock UOM Rate"
+   "label": "Stock UOM Rate",
+   "precision": "9"
   },
   {
    "fieldname": "amount",

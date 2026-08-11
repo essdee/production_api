@@ -23,6 +23,9 @@ from production_api.production_api.doctype.purchase_order.purchase_order import 
 from production_api.utils import update_if_string_instance
 
 
+VALUATION_RATE_PRECISION = 9
+
+
 class ItemConversion(Document):
 	def onload(self):
 		from_item_details = fetch_item_conversion_items(self.get("from_items"))
@@ -53,6 +56,7 @@ class ItemConversion(Document):
 			frappe.throw(_("From Item is mandatory"))
 		if not self.to_item:
 			frappe.throw(_("To Item is mandatory"))
+		self.validate_single_item_rows()
 
 		self.validate_items(
 			"from_items",
@@ -60,8 +64,28 @@ class ItemConversion(Document):
 			self.from_item,
 			rate_source="stock_valuation",
 		)
+		self.set_single_target_rate()
 		self.validate_items("to_items", _("To Items"), self.to_item, rate_source="user")
 		self.calculate_totals()
+
+	def validate_single_item_rows(self):
+		if len(self.get("from_items")) != 1:
+			frappe.throw(_("Item Conversion requires exactly one From Item row."))
+		if len(self.get("to_items")) != 1:
+			frappe.throw(_("Item Conversion requires exactly one To Item row."))
+
+	def set_single_target_rate(self):
+		target_rows = [row for row in self.get("to_items") if flt(row.qty) > 0]
+		if len(target_rows) != 1:
+			return
+
+		from_value = sum(flt(row.amount) for row in self.get("from_items"))
+		if from_value <= 0:
+			return
+
+		target_rows[0].rate = flt(
+			from_value / flt(target_rows[0].qty), VALUATION_RATE_PRECISION
+		)
 
 	def before_submit(self):
 		self.validate_valuation_match()
@@ -120,9 +144,9 @@ class ItemConversion(Document):
 			if row.qty and row.rate in ["", None, 0] and rate_source == "user":
 				validation_messages.append(_get_msg(row.idx, _("Rate is mandatory")))
 
-			# every rate is money entering the ledger — keep it in paise so both
-			# tables compute their amounts from identically rounded rates
-			row.rate = flt(row.rate, 2)
+			# Valuation rates require more precision than their final currency
+			# amounts when a small value is spread over a large target quantity.
+			row.rate = flt(row.rate, VALUATION_RATE_PRECISION)
 
 			item_details = get_uom_details(row.item, row.uom, row.qty)
 			row.set("stock_uom", item_details.get("stock_uom"))
@@ -131,7 +155,7 @@ class ItemConversion(Document):
 				flt(row.qty) * flt(row.conversion_factor), self.precision("stock_qty", row)
 			)
 			row.stock_uom_rate = flt(
-				flt(row.rate) / flt(row.conversion_factor), self.precision("stock_uom_rate", row)
+				flt(row.rate) / flt(row.conversion_factor), VALUATION_RATE_PRECISION
 			)
 			row.amount = flt(flt(row.rate) * flt(row.qty), self.precision("amount", row))
 
@@ -285,7 +309,11 @@ def get_item_conversion_valuation_rate(
 		uom=uom,
 	)
 
-	return {"item_variant": variant_name, "qty": flt(qty), "rate": flt(rate, 2)}
+	return {
+		"item_variant": variant_name,
+		"qty": flt(qty),
+		"rate": flt(rate, VALUATION_RATE_PRECISION),
+	}
 
 
 @frappe.whitelist()
