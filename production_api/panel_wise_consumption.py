@@ -137,6 +137,11 @@ def get_matrix_context(doc):
 	panel_values = _unique(
 		row.stiching_attribute_value for row in doc.get("stiching_item_details") or []
 	)
+	panel_quantities = {
+		row.stiching_attribute_value: max(flt(row.get("quantity")), 1)
+		for row in doc.get("stiching_item_details") or []
+		if row.stiching_attribute_value
+	}
 	if not panel_values:
 		panel_values = _mapping_values(doc, panel_attribute)
 
@@ -169,6 +174,7 @@ def get_matrix_context(doc):
 		"packing_attribute": packing_attribute,
 		"primary_values": primary_values,
 		"panel_values": panel_values,
+		"panel_quantities": panel_quantities,
 		"packing_values": packing_values,
 		"source_packing_values": source_packing_values,
 		"panel_packing_values": panel_packing_values,
@@ -530,9 +536,18 @@ def expand_panel_wise_matrix(matrix, context, require_complete=True):
 						).format(panel_label, primary_value, packing_value)
 					)
 				share = flt(weight / len(panel_values), 6)
-				shares = [share] * len(panel_values)
-				shares[-1] = flt(weight - sum(shares[:-1]), 6)
-				for panel_value, panel_weight in zip(panel_values, shares):
+				panel_totals = [share] * len(panel_values)
+				panel_totals[-1] = flt(weight - sum(panel_totals[:-1]), 6)
+				for panel_value, panel_total in zip(panel_values, panel_totals):
+					panel_weight = panel_total
+					if len(panel_values) > 1:
+						# A grouped cell stores the displayed group total, while a
+						# Cutting row stores consumption for one physical panel.
+						panel_quantity = max(
+							flt((context.get("panel_quantities") or {}).get(panel_value)),
+							1,
+						)
+						panel_weight = flt(panel_total / panel_quantity, 6)
 					items.append(
 						{
 							context["primary_attribute"]: primary_value,
