@@ -4,10 +4,10 @@
 """Knitting-program preview for a Lot.
 
 The calculation deliberately uses only the Lot's garment IPD and order
-quantities. It stores the selected Cloth Excess Percentage on the Lot, but does
-not create cloth IPDs, Item Variants, process matrices, or Lot child rows. The
-yarn-to-cloth yield is fixed at 1.0 until a persisted cloth-production workflow
-is introduced on this bench.
+quantities. It stores the selected Cloth Excess Percentage and manual program
+weight additions on the Lot, but does not create cloth IPDs, Item Variants,
+process matrices, or Lot child rows. The yarn-to-cloth yield is fixed at 1.0
+until a persisted cloth-production workflow is introduced on this bench.
 """
 
 import math
@@ -30,6 +30,7 @@ from production_api.essdee_production.doctype.ipd_compacting.ipd_compacting impo
 
 CLOTH_PER_KG_YARN = 1.0
 WEIGHT_PRECISION = 3
+CLOTH_PROGRAM_ADDITION_VERSION = 1
 
 
 def _validate_extra_percentage(extra_percentage):
@@ -91,7 +92,7 @@ def _apply_compacting_details(ipd_doc, rows):
 	return uses_compacting_details
 
 
-def _calculate_cloth_program(lot_doc, ipd_doc, extra_percentage=0):
+def _calculate_cloth_program(lot_doc, ipd_doc, extra_percentage=0, additions=None):
 	"""Calculate preview rows without mutating either supplied document."""
 	extra_percentage = _validate_extra_percentage(extra_percentage)
 	if not lot_doc.get("lot_order_details"):
@@ -171,11 +172,6 @@ def _calculate_cloth_program(lot_doc, ipd_doc, extra_percentage=0):
 
 	multiplier = 1 + (extra_percentage / 100.0)
 	rows = []
-	totals = {
-		"required_weight": 0.0,
-		"extra_weight": 0.0,
-		"program_weight": 0.0,
-	}
 	ordered_weights = sorted(
 		weights.items(),
 		key=lambda item: (
@@ -211,13 +207,21 @@ def _calculate_cloth_program(lot_doc, ipd_doc, extra_percentage=0):
 				"program_weight": program_weight,
 			}
 		)
-		totals["required_weight"] += required_weight
-		totals["extra_weight"] += extra_weight
-		totals["program_weight"] += program_weight
 
+	uses_compacting_details = _apply_compacting_details(ipd_doc, rows)
+	normalized_additions, route_additions = _apply_cloth_program_additions(
+		rows, additions
+	)
+	totals = {
+		"required_weight": sum(flt(row.get("required_weight")) for row in rows),
+		"extra_weight": sum(flt(row.get("extra_weight")) for row in rows),
+		"manual_additional_weight": sum(
+			flt(row.get("manual_additional_weight")) for row in rows
+		),
+		"program_weight": sum(flt(row.get("program_weight")) for row in rows),
+	}
 	for key in totals:
 		totals[key] = flt(totals[key], WEIGHT_PRECISION)
-	uses_compacting_details = _apply_compacting_details(ipd_doc, rows)
 
 	return {
 		"lot": lot_doc.name,
@@ -226,6 +230,8 @@ def _calculate_cloth_program(lot_doc, ipd_doc, extra_percentage=0):
 		"uses_compacting_details": uses_compacting_details,
 		"rows": rows,
 		"totals": totals,
+		"additions": normalized_additions,
+		"addition_routes": route_additions,
 	}
 
 
@@ -234,6 +240,141 @@ def _round_display_weight(value):
 	value = flt(value)
 	floor = math.floor(value)
 	return math.ceil(value) if value - floor > 0.5 else floor
+
+
+def _parse_cloth_program_additions(value):
+	"""Return the user-entered fabric/colour total additions from stored JSON."""
+	if not value:
+		return []
+	if isinstance(value, str):
+		try:
+			value = frappe.parse_json(value)
+		except (TypeError, ValueError):
+			frappe.throw(_("Saved Cloth Program Additions are not valid JSON."))
+	if isinstance(value, dict):
+		value = value.get("totals") or []
+	if not isinstance(value, list):
+		frappe.throw(_("Cloth Program Additions must be a list of rows."))
+	return value
+
+
+def _addition_group_key(row):
+	requirement_type = (
+		"accessory" if row.get("requirement_type") == "accessory" else "cloth"
+	)
+	return (
+		row.get("cloth_item") or "",
+		requirement_type,
+		(row.get("accessory_name") or "") if requirement_type == "accessory" else "",
+		row.get("colour") or "",
+	)
+
+
+def _allocate_added_weight(total_weight, eligible_rows):
+	"""Proportionally allocate whole kg while preserving the exact entered total."""
+	total_weight = int(total_weight)
+	base_total = sum(base_weight for _index, base_weight in eligible_rows)
+	if total_weight <= 0 or base_total <= 0:
+		return {}
+
+	shares = []
+	allocated = {}
+	for position, (row_index, base_weight) in enumerate(eligible_rows):
+		exact_share = total_weight * base_weight / base_total
+		whole_share = math.floor(exact_share)
+		allocated[row_index] = whole_share
+		shares.append((exact_share - whole_share, base_weight, -position, row_index))
+
+	remainder = total_weight - sum(allocated.values())
+	for _fraction, _base_weight, _position, row_index in sorted(
+		shares, reverse=True
+	)[:remainder]:
+		allocated[row_index] += 1
+	return allocated
+
+
+def _apply_cloth_program_additions(rows, additions):
+	"""Apply fabric/colour total additions only to their non-zero Dia rows.
+
+	The popup works in whole kilograms. Each entered total is split in proportion
+	to the already-calculated visible weights; largest remainders receive the
+	leftover kilograms so the distributed route values add back to the exact input.
+	"""
+	eligible_by_group = {}
+	for row_index, row in enumerate(rows):
+		row["manual_additional_weight"] = 0
+		base_weight = _round_display_weight(row.get("program_weight"))
+		if base_weight > 0:
+			eligible_by_group.setdefault(_addition_group_key(row), []).append(
+				(row_index, base_weight)
+			)
+
+	requested = {}
+	for index, addition in enumerate(_parse_cloth_program_additions(additions), 1):
+		weight = flt(addition.get("additional_weight"))
+		if weight < 0:
+			frappe.throw(
+				_("Cloth Program Additions row {0}: Added Weight cannot be negative.").format(
+					index
+				)
+			)
+		key = _addition_group_key(addition)
+		if not key[0]:
+			continue
+		requested[key] = requested.get(key, 0) + weight
+
+	normalized_totals = []
+	route_additions = []
+	for key in sorted(requested):
+		eligible_rows = eligible_by_group.get(key) or []
+		added_weight = _round_display_weight(requested[key])
+		if added_weight <= 0 or not eligible_rows:
+			continue
+		allocation = _allocate_added_weight(added_weight, eligible_rows)
+		cloth_item, requirement_type, accessory_name, colour = key
+		normalized_totals.append(
+			{
+				"cloth_item": cloth_item,
+				"requirement_type": requirement_type,
+				"accessory_name": accessory_name or None,
+				"colour": colour or None,
+				"additional_weight": added_weight,
+			}
+		)
+		for row_index, route_weight in allocation.items():
+			if route_weight <= 0:
+				continue
+			row = rows[row_index]
+			row["manual_additional_weight"] += route_weight
+			row["extra_weight"] = flt(
+				flt(row.get("extra_weight")) + route_weight,
+				WEIGHT_PRECISION,
+			)
+			row["program_weight"] = flt(
+				flt(row.get("program_weight")) + route_weight,
+				WEIGHT_PRECISION,
+			)
+			route_additions.append(
+				{
+					"cloth_item": cloth_item,
+					"requirement_type": requirement_type,
+					"accessory_name": accessory_name or None,
+					"colour": colour or None,
+					"dia": row.get("dia") or None,
+					"additional_weight": route_weight,
+				}
+			)
+	return normalized_totals, route_additions
+
+
+def _serialize_cloth_program_additions(totals, routes):
+	return frappe.as_json(
+		{
+			"version": CLOTH_PROGRAM_ADDITION_VERSION,
+			"totals": totals,
+			"routes": routes,
+		}
+	)
 
 
 def _accessory_fabric_label(value):
@@ -249,6 +390,14 @@ def build_cloth_program_display_data(preview):
 	"""Shape calculated rows into the matrix shared by preview and print output."""
 	table_groups = {}
 	rows = preview.get("rows") or []
+	addition_by_group = {}
+	for addition in preview.get("additions") or []:
+		cloth_item, requirement_type, accessory_name, colour = _addition_group_key(
+			addition
+		)
+		addition_by_group[
+			(cloth_item, requirement_type, accessory_name, colour or _("No Colour"))
+		] = flt(addition.get("additional_weight"))
 
 	for row in rows:
 		cloth_item = row.get("cloth_item") or _("Unspecified Cloth")
@@ -314,10 +463,32 @@ def build_cloth_program_display_data(preview):
 			if fabric_type not in fabric_groups_by_type:
 				fabric_group = {
 					"fabric_type": fabric_type,
+					"requirement_type": route["requirement_type"],
+					"accessory_name": route["accessory_name"],
 					"routes": [],
 					"colour_totals": {colour: 0 for colour in colours},
+					"additions": {
+						colour: addition_by_group.get(
+							(
+								group["cloth_item"],
+								route["requirement_type"],
+								(
+									route["accessory_name"]
+									if route["requirement_type"] == "accessory"
+									else ""
+								),
+								colour,
+							),
+							0,
+						)
+						for colour in colours
+					},
+					"additional_total": 0,
 					"total": 0,
 				}
+				fabric_group["additional_total"] = sum(
+					fabric_group["additions"].values()
+				)
 				fabric_groups_by_type[fabric_type] = fabric_group
 				fabric_groups.append(fabric_group)
 			fabric_group = fabric_groups_by_type[fabric_type]
@@ -349,6 +520,7 @@ def build_cloth_program_display_data(preview):
 	display_totals = {
 		"required_weight": 0,
 		"extra_weight": 0,
+		"manual_additional_weight": 0,
 		"program_weight": 0,
 	}
 	for row in rows:
@@ -357,6 +529,9 @@ def build_cloth_program_display_data(preview):
 		display_totals["required_weight"] += required_weight
 		display_totals["extra_weight"] += max(
 			program_weight - required_weight, 0
+		)
+		display_totals["manual_additional_weight"] += flt(
+			row.get("manual_additional_weight")
 		)
 		display_totals["program_weight"] += program_weight
 
@@ -368,7 +543,7 @@ def build_cloth_program_display_data(preview):
 
 
 def get_cloth_program_print_data(lot):
-	"""Calculate print-ready data using the excess percentage saved on the Lot."""
+	"""Calculate print-ready data using the saved percentage and additions."""
 	lot_doc = frappe.get_doc("Lot", lot)
 	lot_doc.check_permission("read")
 	if not lot_doc.get("production_detail"):
@@ -381,6 +556,7 @@ def get_cloth_program_print_data(lot):
 		lot_doc,
 		ipd_doc,
 		lot_doc.get("cloth_excess_percentage") or 0,
+		lot_doc.get("cloth_program_additions"),
 	)
 	return {
 		**build_cloth_program_display_data(preview),
@@ -390,8 +566,8 @@ def get_cloth_program_print_data(lot):
 
 
 @frappe.whitelist()
-def get_cloth_program_preview(lot, extra_percentage=0):
-	"""Return the preview and store its selected excess percentage on the Lot."""
+def get_cloth_program_preview(lot, extra_percentage=0, additions=None):
+	"""Return the preview and store its percentage/manual weight additions."""
 	lot_doc = frappe.get_doc("Lot", lot)
 	lot_doc.check_permission("write")
 	if not lot_doc.get("production_detail"):
@@ -400,10 +576,34 @@ def get_cloth_program_preview(lot, extra_percentage=0):
 	ipd_doc = frappe.get_cached_doc(
 		"Item Production Detail", lot_doc.production_detail
 	)
-	preview = _calculate_cloth_program(lot_doc, ipd_doc, extra_percentage)
+	selected_additions = (
+		lot_doc.get("cloth_program_additions") if additions is None else additions
+	)
+	preview = _calculate_cloth_program(
+		lot_doc, ipd_doc, extra_percentage, selected_additions
+	)
+	stored_additions = _serialize_cloth_program_additions(
+		preview["additions"], preview["addition_routes"]
+	)
+	stored_payload = frappe.parse_json(stored_additions)
+	current_value = lot_doc.get("cloth_program_additions")
+	current_payload = (
+		frappe.parse_json(current_value)
+		if isinstance(current_value, str) and current_value
+		else (current_value or {})
+	)
+	updates = {}
 	if flt(lot_doc.get("cloth_excess_percentage")) != preview["extra_percentage"]:
-		lot_doc.db_set(
-			"cloth_excess_percentage", preview["extra_percentage"]
-		)
+		updates["cloth_excess_percentage"] = preview["extra_percentage"]
+	if current_payload != stored_payload:
+		updates["cloth_program_additions"] = stored_additions
+	if updates:
+		lot_doc.db_set(updates)
+		# db_set deliberately avoids a full Lot save, so publish this authoritative
+		# calculation update explicitly for the SD -> YRP replica.
+		from production_api.sd_yrp_sync import enqueue_sd_yrp_publish
+
+		enqueue_sd_yrp_publish(lot_doc, "on_update")
+	preview["cloth_program_additions"] = stored_additions
 	preview["lot_modified"] = lot_doc.modified
 	return preview

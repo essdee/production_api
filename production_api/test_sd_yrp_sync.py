@@ -15,10 +15,18 @@ class TestSDYRPSyncPrerequisites(FrappeTestCase):
 			doctype="Lot",
 			name="TEST-LOT-CLOTH-EXCESS",
 			cloth_excess_percentage=7.5,
+			cloth_program_additions={
+				"version": 1,
+				"totals": [{"cloth_item": "CLOTH-1", "additional_weight": 20}],
+			},
 			time_and_action_details=[{"activity": "Do not sync"}],
 		))
 
 		self.assertEqual(payload["cloth_excess_percentage"], 7.5)
+		self.assertEqual(
+			payload["cloth_program_additions"]["totals"][0]["additional_weight"],
+			20,
+		)
 		self.assertNotIn("time_and_action_details", payload)
 
 	def test_ipd_compacting_publishes_linked_ipd_before_itself(self):

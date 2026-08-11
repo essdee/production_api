@@ -580,22 +580,31 @@ function open_cloth_program_preview(frm) {
 				frappe.msgprint(__("Cloth Excess Percentage cannot be negative."));
 				return;
 			}
+			const result_wrapper = dialog.fields_dict.cloth_program_result.wrapper;
+			const selected_additions = collect_cloth_program_additions(result_wrapper);
+			const args = {
+				lot: frm.doc.name,
+				extra_percentage: extra_percentage,
+			};
+			if (selected_additions !== null) {
+				args.additions = JSON.stringify(selected_additions);
+			}
 			frappe.call({
 				method: "production_api.essdee_production.doctype.lot.cloth_program.get_cloth_program_preview",
-				args: {
-					lot: frm.doc.name,
-					extra_percentage: extra_percentage,
-				},
+				args,
 				freeze: true,
 				freeze_message: __("Calculating cloth program..."),
 				callback(r) {
 					frm.doc.cloth_excess_percentage = extra_percentage;
+					if (r.message && r.message.cloth_program_additions !== undefined) {
+						frm.doc.cloth_program_additions = r.message.cloth_program_additions;
+					}
 					if (r.message && r.message.lot_modified) {
 						frm.doc.modified = r.message.lot_modified;
 					}
 					frm.refresh_field("cloth_excess_percentage");
 					render_cloth_program_preview(
-						dialog.fields_dict.cloth_program_result.wrapper,
+						result_wrapper,
 						r.message || {}
 					);
 					render_saved_cloth_program(frm, r.message || {});
@@ -618,7 +627,7 @@ function load_saved_cloth_program(frm) {
 	}
 
 	const extra_percentage = Number(frm.doc.cloth_excess_percentage || 0);
-	if (frm.is_new() || !frm.doc.production_detail || extra_percentage <= 0) {
+	if (frm.is_new() || !frm.doc.production_detail || !has_saved_cloth_program(frm)) {
 		render_saved_cloth_program(frm, {});
 		return;
 	}
@@ -652,11 +661,10 @@ function render_saved_cloth_program(frm, preview) {
 	if (!result_field) {
 		return;
 	}
-	const has_saved_percentage = Number(frm.doc.cloth_excess_percentage || 0) > 0;
 	render_cloth_program_preview(
 		result_field.wrapper,
-		has_saved_percentage ? preview : {},
-		__("Build the Cloth Program with an excess percentage to view its details here."),
+		has_saved_cloth_program(frm) ? preview : {},
+		__("Build the Cloth Program to view its saved details here."),
 		true
 	);
 	$(result_field.wrapper)
@@ -677,6 +685,44 @@ function open_cloth_program_print(frm) {
 	if (!print_window) {
 		frappe.msgprint(__("Please enable pop-ups"));
 	}
+}
+
+function parse_cloth_program_additions(value) {
+	if (!value) return [];
+	let parsed = value;
+	if (typeof parsed === "string") {
+		try {
+			parsed = JSON.parse(parsed);
+		} catch (_error) {
+			return [];
+		}
+	}
+	if (Array.isArray(parsed)) return parsed;
+	return Array.isArray(parsed.totals) ? parsed.totals : [];
+}
+
+function has_saved_cloth_program(frm) {
+	return Number(frm.doc.cloth_excess_percentage || 0) > 0
+		|| parse_cloth_program_additions(frm.doc.cloth_program_additions)
+			.some((row) => Number(row.additional_weight || 0) > 0);
+}
+
+function collect_cloth_program_additions(wrapper) {
+	const inputs = $(wrapper).find("[data-cloth-program-addition]");
+	if (!inputs.length) return null;
+	const additions = [];
+	inputs.each((_index, element) => {
+		const additional_weight = Number(element.value || 0);
+		if (additional_weight <= 0) return;
+		additions.push({
+			cloth_item: element.dataset.clothItem || "",
+			requirement_type: element.dataset.requirementType || "cloth",
+			accessory_name: element.dataset.accessoryName || null,
+			colour: element.dataset.colour || null,
+			additional_weight,
+		});
+	});
+	return additions;
 }
 
 function render_cloth_program_preview(wrapper, preview, empty_message, is_saved_view = false) {
@@ -708,13 +754,29 @@ function render_cloth_program_preview(wrapper, preview, empty_message, is_saved_
 		return /\bFabric$/i.test(label) ? label : `${label} Fabric`;
 	};
 	const uses_compacting_details = Boolean(preview.uses_compacting_details);
+	const addition_key = (cloth_item, requirement_type, accessory_name, colour) => [
+		cloth_item || "",
+		requirement_type === "accessory" ? "accessory" : "cloth",
+		requirement_type === "accessory" ? (accessory_name || "") : "",
+		colour || "",
+	].join("\u0000");
+	const addition_map = {};
+	(preview.additions || []).forEach((row) => {
+		addition_map[addition_key(
+			row.cloth_item,
+			row.requirement_type,
+			row.accessory_name,
+			row.colour
+		)] = Number(row.additional_weight || 0);
+	});
 	const table_groups = {};
 	rows.forEach((row) => {
 		const cloth_item = row.cloth_item || __("Unspecified Cloth");
 		const requirement_type = row.requirement_type === "accessory" ? "accessory" : "cloth";
-		const accessory_name = row.accessory_name || __("Accessory");
+		const accessory_name = row.accessory_name || "";
 		const table_key = cloth_item;
-		const colour = row.colour || __("No Colour");
+		const colour_value = row.colour || "";
+		const colour = colour_value || __("No Colour");
 		const dia = row.compacting_dia
 			? `${row.input_dia || __("No Dia")} → ${row.compacting_dia || __("No Dia")}`
 			: (row.dia || __("No Dia"));
@@ -723,11 +785,13 @@ function render_cloth_program_preview(wrapper, preview, empty_message, is_saved_
 			table_groups[table_key] = {
 				cloth_item,
 				colours: new Set(),
+				colour_values: {},
 				routes: {},
 				weights: {},
 			};
 		}
 		table_groups[table_key].colours.add(colour);
+		table_groups[table_key].colour_values[colour] = colour_value;
 		table_groups[table_key].routes[route_key] = {
 			route_key,
 			requirement_type,
@@ -756,14 +820,23 @@ function render_cloth_program_preview(wrapper, preview, empty_message, is_saved_
 		const colour_totals = Object.fromEntries(colours.map((colour) => [colour, 0]));
 		let cloth_total = 0;
 		const fabric_groups = [];
-		const fabric_groups_by_type = new Map();
+		const fabric_groups_by_key = new Map();
 		routes.forEach((route) => {
-			if (!fabric_groups_by_type.has(route.fabric_type)) {
-				const fabric_group = { fabric_type: route.fabric_type, routes: [] };
-				fabric_groups_by_type.set(route.fabric_type, fabric_group);
+			const fabric_key = [
+				route.requirement_type,
+				route.requirement_type === "accessory" ? route.accessory_name : "",
+			].join("\u0000");
+			if (!fabric_groups_by_key.has(fabric_key)) {
+				const fabric_group = {
+					fabric_type: route.fabric_type,
+					requirement_type: route.requirement_type,
+					accessory_name: route.accessory_name,
+					routes: [],
+				};
+				fabric_groups_by_key.set(fabric_key, fabric_group);
 				fabric_groups.push(fabric_group);
 			}
-			fabric_groups_by_type.get(route.fabric_type).routes.push(route);
+			fabric_groups_by_key.get(fabric_key).routes.push(route);
 		});
 		const body = fabric_groups.map((fabric_group) => {
 			const fabric_colour_totals = Object.fromEntries(
@@ -793,14 +866,61 @@ function render_cloth_program_preview(wrapper, preview, empty_message, is_saved_
 			const fabric_colour_total_cells = colours.map(
 				(colour) => `<th class="text-right">${format_weight(fabric_colour_totals[colour])}</th>`
 			).join("");
+			const fabric_additions = Object.fromEntries(colours.map((colour) => [
+				colour,
+				addition_map[addition_key(
+					item.cloth_item,
+					fabric_group.requirement_type,
+					fabric_group.accessory_name,
+					item.colour_values[colour]
+				)] || 0,
+			]));
+			const addition_total = Object.values(fabric_additions).reduce(
+				(sum, weight) => sum + weight, 0
+			);
+			const addition_cells = colours.map((colour) => {
+				const added_weight = fabric_additions[colour];
+				if (is_saved_view) {
+					return `<th class="text-right">${added_weight ? `+${format_weight(added_weight)}` : "—"}</th>`;
+				}
+				return `
+					<th style="padding: 5px;">
+						<input
+							type="number"
+							class="form-control input-sm text-right"
+							style="min-width: 82px;"
+							min="0"
+							step="1"
+							value="${added_weight || ""}"
+							data-cloth-program-addition
+							data-cloth-item="${escape(item.cloth_item)}"
+							data-requirement-type="${escape(fabric_group.requirement_type)}"
+							data-accessory-name="${escape(fabric_group.accessory_name)}"
+							data-colour="${escape(item.colour_values[colour])}"
+							aria-label="${escape(__("Add Weight for {0} / {1}", [fabric_group.fabric_type, colour]))}"
+						>
+					</th>
+				`;
+			}).join("");
+			const addition_row = (is_saved_view && !addition_total) ? "" : `
+				<tr class="text-primary">
+					<th>${is_saved_view ? __("Added Weight") : __("Add Weight")}</th>
+					<th class="small text-muted">
+						${is_saved_view ? __("Split across non-zero Dia rows") : __("Enter Kg and click Calculate again")}
+					</th>
+					${addition_cells}
+					<th class="text-right">${addition_total ? `+${format_weight(addition_total)}` : "—"}</th>
+				</tr>
+			`;
 			return `
 				${route_rows}
-				<tr class="active">
-					<th>${escape(__("Total {0}", [fabric_group.fabric_type]))}</th>
-					<th></th>
+					<tr class="active">
+						<th>${escape(__("Total {0}", [fabric_group.fabric_type]))}</th>
+						<th></th>
 					${fabric_colour_total_cells}
 					<th class="text-right">${format_weight(fabric_total)}</th>
 				</tr>
+				${addition_row}
 			`;
 		}).join("");
 		const colour_total_cells = colours.map(
@@ -842,13 +962,14 @@ function render_cloth_program_preview(wrapper, preview, empty_message, is_saved_
 		const program = round_weight(row.program_weight);
 		result.required_weight += required;
 		result.extra_weight += Math.max(program - required, 0);
+		result.manual_additional_weight += Number(row.manual_additional_weight || 0);
 		result.program_weight += program;
 		return result;
-	}, { required_weight: 0, extra_weight: 0, program_weight: 0 });
+	}, { required_weight: 0, extra_weight: 0, manual_additional_weight: 0, program_weight: 0 });
 
 	const storage_message = is_saved_view
-		? __("Calculated using the Cloth Excess Percentage saved on this Lot.")
-		: __("The Cloth Excess Percentage is saved on this Lot; the cloth-program preview is not saved.");
+		? __("Calculated using the percentage and added weights saved on this Lot.")
+		: __("The percentage and added weights are saved on this Lot; click Calculate again after editing Add Weight.");
 	const print_button = is_saved_view
 		? `<button type="button" class="btn btn-default btn-sm" data-action="print-cloth-program">
 			${frappe.utils.icon("printer", "sm")} ${__("Print")}
@@ -869,9 +990,12 @@ function render_cloth_program_preview(wrapper, preview, empty_message, is_saved_
 				<span style="margin-left: 18px;">
 					${__("Required Kg")}: <strong>${format_weight(totals.required_weight)}</strong>
 				</span>
-				<span style="margin-left: 18px;">
-					${__("Extra Kg")}: <strong>${format_weight(totals.extra_weight)}</strong>
-				</span>
+					<span style="margin-left: 18px;">
+						${__("Extra Kg")}: <strong>${format_weight(totals.extra_weight)}</strong>
+					</span>
+					<span style="margin-left: 18px;">
+						${__("Added Kg")}: <strong>${format_weight(totals.manual_additional_weight)}</strong>
+					</span>
 				<span style="margin-left: 18px;">
 					${__("Total Knitting Program Kg")}: <strong>${format_weight(totals.program_weight)}</strong>
 				</span>
