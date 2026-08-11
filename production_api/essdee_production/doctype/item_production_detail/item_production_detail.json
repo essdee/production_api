@@ -72,6 +72,7 @@
   "update_cloth_items",
   "section_break_eorj",
   "enable_panel_wise_consumption_matrix",
+  "regenerate_panel_wise_consumption_matrix",
   "panel_wise_consumption_matrix_html",
   "panel_wise_consumption_matrix_json",
   "panel_wise_cloth_mapping_json",
@@ -439,6 +440,12 @@
    "fieldtype": "Check",
    "label": "Enable Panel-wise Consumption Matrix",
    "read_only_depends_on": "eval:doc.approval_status == 'Approved'"
+  },
+  {
+   "depends_on": "eval:doc.enable_panel_wise_consumption_matrix && doc.approval_status != 'Approved'",
+   "fieldname": "regenerate_panel_wise_consumption_matrix",
+   "fieldtype": "Button",
+   "label": "Regenerate Matrix"
   },
   {
    "depends_on": "eval:doc.enable_panel_wise_consumption_matrix",

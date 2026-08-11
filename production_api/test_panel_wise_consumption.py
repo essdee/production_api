@@ -1,6 +1,7 @@
 # Copyright (c) 2026, Essdee and contributors
 # For license information, please see license.txt
 
+import json
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import Mock, patch
@@ -76,6 +77,37 @@ def _centre_panel_context():
 
 
 class TestPanelWiseConsumption(FrappeTestCase):
+	def test_ipd_has_confirmed_matrix_regeneration_action(self):
+		doctype_path = Path(
+			frappe.get_app_path(
+				"production_api",
+				"essdee_production",
+				"doctype",
+				"item_production_detail",
+				"item_production_detail.json",
+			)
+		)
+		doctype = json.loads(doctype_path.read_text())
+		fields = {field["fieldname"]: field for field in doctype["fields"]}
+		button = fields["regenerate_panel_wise_consumption_matrix"]
+		self.assertEqual(button["fieldtype"], "Button")
+		self.assertIn("approval_status != 'Approved'", button["depends_on"])
+
+		source = Path(
+			frappe.get_app_path(
+				"production_api",
+				"essdee_production",
+				"doctype",
+				"item_production_detail",
+				"item_production_detail.js",
+			)
+		).read_text()
+		self.assertIn("regenerate_panel_wise_consumption_matrix(frm)", source)
+		self.assertIn("frappe.confirm(", source)
+		self.assertIn("frm.doc.panel_wise_consumption_matrix_json = {}", source)
+		self.assertIn("frm.doc.cutting_items_json = {}", source)
+		self.assertIn('frm.trigger("render_panel_wise_consumption_matrix")', source)
+
 	def test_matrix_context_includes_physical_panel_quantities(self):
 		doc = frappe._dict(
 			primary_item_attribute="Size",
