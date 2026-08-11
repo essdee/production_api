@@ -124,6 +124,13 @@ class TestClothProgramPreview(FrappeTestCase):
 		self.assertIn("cloth.fabric_groups", print_format["html"])
 		self.assertIn("Total {{ fabric.fabric_type }}", print_format["html"])
 		self.assertIn('class="subtotal-label" colspan="2"', print_format["html"])
+		self.assertIn("Added Weight (included in total)", print_format["html"])
+		self.assertIn("fabric.additions.get(colour, 0)", print_format["html"])
+		self.assertIn("Percentage Excess Kg", print_format["html"])
+		self.assertIn(
+			"program.display_totals.manual_additional_weight",
+			print_format["html"],
+		)
 		self.assertIn("Total Knitting Program Kg", print_format["html"])
 
 	def test_display_data_matches_preview_matrix_and_rounding(self):
@@ -199,6 +206,50 @@ class TestClothProgramPreview(FrappeTestCase):
 				"extra_weight": 2,
 				"manual_additional_weight": 0,
 				"program_weight": 21,
+			},
+		)
+
+	def test_display_data_includes_added_weight_in_print_totals(self):
+		result = cloth_program.build_cloth_program_display_data(
+			{
+				"uses_compacting_details": False,
+				"additions": [
+					{
+						"cloth_item": "CLOTH-1",
+						"requirement_type": "cloth",
+						"accessory_name": None,
+						"colour": "Black",
+						"additional_weight": 20,
+					}
+				],
+				"rows": [
+					{
+						"cloth_item": "CLOTH-1",
+						"requirement_type": "cloth",
+						"accessory_name": None,
+						"colour": "Black",
+						"dia": "26 Dia",
+						"required_weight": 80,
+						"program_weight": 104,
+						"manual_additional_weight": 20,
+					}
+				],
+			}
+		)
+
+		fabric = result["tables"][0]["fabric_groups"][0]
+		self.assertEqual(fabric["additions"], {"Black": 20})
+		self.assertEqual(fabric["additional_total"], 20)
+		self.assertEqual(fabric["colour_totals"], {"Black": 104})
+		self.assertEqual(fabric["total"], 104)
+		self.assertEqual(result["tables"][0]["total"], 104)
+		self.assertEqual(
+			result["display_totals"],
+			{
+				"required_weight": 80,
+				"extra_weight": 4,
+				"manual_additional_weight": 20,
+				"program_weight": 104,
 			},
 		)
 

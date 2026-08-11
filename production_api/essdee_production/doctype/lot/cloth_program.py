@@ -397,7 +397,7 @@ def build_cloth_program_display_data(preview):
 		)
 		addition_by_group[
 			(cloth_item, requirement_type, accessory_name, colour or _("No Colour"))
-		] = flt(addition.get("additional_weight"))
+		] = _round_display_weight(addition.get("additional_weight"))
 
 	for row in rows:
 		cloth_item = row.get("cloth_item") or _("Unspecified Cloth")
@@ -526,13 +526,15 @@ def build_cloth_program_display_data(preview):
 	for row in rows:
 		required_weight = _round_display_weight(row.get("required_weight"))
 		program_weight = _round_display_weight(row.get("program_weight"))
-		display_totals["required_weight"] += required_weight
-		display_totals["extra_weight"] += max(
-			program_weight - required_weight, 0
-		)
-		display_totals["manual_additional_weight"] += flt(
+		manual_additional_weight = _round_display_weight(
 			row.get("manual_additional_weight")
 		)
+		display_totals["required_weight"] += required_weight
+		display_totals["extra_weight"] += max(
+			program_weight - required_weight - manual_additional_weight,
+			0,
+		)
+		display_totals["manual_additional_weight"] += manual_additional_weight
 		display_totals["program_weight"] += program_weight
 
 	return {
