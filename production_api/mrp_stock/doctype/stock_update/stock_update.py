@@ -28,10 +28,12 @@ class StockUpdate(Document):
 
 	def on_submit(self):
 		self.update_stock_ledger()
+		self.make_repost_action()
 
 	def on_cancel(self):
 		self.ignore_linked_doctypes = ('Stock Ledger Entry', 'Repost Item Valuation')
 		self.update_stock_ledger()
+		self.make_repost_action()
 
 	def onload(self):
 		item_details = fetch_stock_entry_items(self.get('stock_update_details'))
@@ -72,6 +74,11 @@ class StockUpdate(Document):
 		if self.docstatus == 2:
 			sl_entries.reverse()
 		make_sl_entries(sl_entries)
+
+	def make_repost_action(self):
+		from production_api.mrp_stock.stock_ledger import repost_future_stock_ledger_entry
+
+		repost_future_stock_ledger_entry(self)
 
 	def get_sl_entries(self):
 		items = []
