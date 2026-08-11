@@ -371,6 +371,7 @@ frappe.ui.form.on("Item Production Detail", {
 			let buttons = [
 				"get_packing_attribute_values", "get_set_item_combination",
 				"get_stiching_item_combination", "get_cutting_combination",
+				"regenerate_panel_wise_consumption_matrix",
 				"update_cloth_items", "get_cloth_combination",
 				"get_stiching_attribute_values", "get_accessory_combination",
 				"get_stiching_accessory_combination"
@@ -975,6 +976,24 @@ frappe.ui.form.on("Item Production Detail", {
 			make_select_attributes(frm,'select_attributes_html','select_attributes_wrapper','select_attrs_multicheck','cutting_attributes','cutting_items_json','get_cutting_combination')
 			await frm.trigger("make_cutting_combination")
 		}
+	},
+	regenerate_panel_wise_consumption_matrix(frm){
+		frappe.confirm(
+			__(
+				"This will clear every entered Dia and consumption value and rebuild the matrix from the current panels and attributes. Continue?"
+			),
+			async () => {
+				frm.doc.panel_wise_consumption_matrix_json = {}
+				frm.doc.cutting_items_json = {}
+				frm.dirty()
+				await frm.trigger("render_panel_wise_consumption_matrix")
+				await frm.trigger("render_panel_wise_cloth_mapping")
+				frappe.show_alert({
+					message: __("Panel-wise consumption matrix regenerated."),
+					indicator: "green",
+				})
+			}
+		)
 	},
 	async render_panel_wise_consumption_matrix(frm){
 		const enabled = Boolean(frm.doc.enable_panel_wise_consumption_matrix)

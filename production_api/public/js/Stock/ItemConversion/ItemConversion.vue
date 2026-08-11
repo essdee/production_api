@@ -26,12 +26,16 @@
             :args="from_args"
             :edit="docstatus == 0"
             :validate-qty="true"
+            :validate="validate_single_selection"
             @itemadded="from_updated"
             @itemupdated="from_updated"
-            @itemremoved="updated">
+            @itemremoved="from_updated">
         </item-lot-fetcher>
 
-        <h5 class="mt-4">To Item</h5>
+        <h5 class="mt-4 mb-1">To Item</h5>
+        <p v-if="docstatus == 0" class="small text-muted">
+            Rate is calculated automatically when there is one target row.
+        </p>
         <item-lot-fetcher
             :items="to_items"
             :other-inputs="other_inputs"
@@ -41,9 +45,10 @@
             :args="to_args"
             :edit="docstatus == 0"
             :validate-qty="true"
-            @itemadded="updated"
-            @itemupdated="updated"
-            @itemremoved="updated">
+            :validate="validate_single_selection"
+            @itemadded="to_updated"
+            @itemupdated="to_updated"
+            @itemremoved="to_updated">
         </item-lot-fetcher>
     </div>
 </template>
@@ -99,7 +104,7 @@ const from_table_fields = ref([
 const to_table_fields = ref([
     {
         name: "rate",
-        label: "Rate",
+        label: "Calculated Rate",
         uses_primary_attribute: 1,
     },
     {
@@ -113,7 +118,7 @@ const to_table_fields = ref([
 ]);
 
 const from_qty_fields = ref([]);
-const to_qty_fields = ref(["rate"]);
+const to_qty_fields = ref([]);
 
 const from_args = ref({
     docstatus: cur_frm.doc.docstatus,
@@ -121,7 +126,7 @@ const from_args = ref({
         return true;
     },
     can_create: function() {
-        return true;
+        return get_quantity_values(from_items.value).length < 1;
     },
     can_remove: function() {
         return true;
@@ -141,7 +146,7 @@ const to_args = ref({
         return true;
     },
     can_create: function() {
-        return true;
+        return get_quantity_values(to_items.value).length < 1;
     },
     can_remove: function() {
         return true;
@@ -172,8 +177,43 @@ function round_currency(value) {
     return Math.round(to_number(value) * 1000) / 1000;
 }
 
-function round_paise(value) {
-    return Math.round(to_number(value) * 100) / 100;
+function round_rate(value) {
+    return Number(to_number(value).toFixed(9));
+}
+
+function get_quantity_values(groups) {
+    const values = [];
+    (groups || []).forEach((group) => {
+        (group.items || []).forEach((item) => {
+            Object.values(item.values || {}).forEach((value) => {
+                if (to_number(value.qty) > 0) values.push(value);
+            });
+        });
+    });
+    return values;
+}
+
+function auto_balance_single_to_rate() {
+    const target_values = get_quantity_values(to_items.value);
+    if (target_values.length !== 1 || from_total.value <= 0) return false;
+
+    target_values[0].rate = round_rate(
+        from_total.value / to_number(target_values[0].qty)
+    );
+    return true;
+}
+
+function validate_single_selection(item) {
+    const selected = Object.values(item.values || {}).filter(
+        (value) => to_number(value.qty) > 0
+    );
+    if (selected.length === 1) return true;
+
+    frappe.show_alert({
+        message: __("Enter quantity for exactly one item row."),
+        indicator: "red",
+    });
+    return false;
 }
 
 function get_items_total(groups) {
@@ -181,8 +221,9 @@ function get_items_total(groups) {
     (groups || []).forEach((group) => {
         (group.items || []).forEach((item) => {
             Object.values(item.values || {}).forEach((value) => {
-                // rates are rounded to paise, mirroring server validate_items
-                total += to_number(value.qty) * round_paise(value.rate);
+                // Preserve valuation-rate precision; only the final amount is
+                // rounded to currency precision.
+                total += to_number(value.qty) * to_number(value.rate);
             });
         });
     });
@@ -226,6 +267,7 @@ function load_data(data) {
     if (cur_frm.doc.docstatus != 0) return;
     nextTick(async () => {
         await apply_from_valuation_rates();
+        auto_balance_single_to_rate();
         sync_totals();
     });
 }
@@ -248,6 +290,12 @@ function updated() {
 
 async function from_updated() {
     await apply_from_valuation_rates();
+    auto_balance_single_to_rate();
+    updated();
+}
+
+function to_updated() {
+    auto_balance_single_to_rate();
     updated();
 }
 
@@ -305,6 +353,7 @@ async function apply_from_valuation_rates() {
 
 async function refresh_from_rates() {
     await apply_from_valuation_rates();
+    auto_balance_single_to_rate();
     sync_totals();
 }
 
