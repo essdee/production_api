@@ -77,6 +77,12 @@ class TestClothProgramPreview(FrappeTestCase):
 		self.assertIn('__("Total {0}", [fabric_group.fabric_type])', source)
 		self.assertIn('secondary_action_label: __("Print")', source)
 		self.assertIn('encodeURIComponent("Lot Cloth Program")', source)
+		self.assertIn("open_cloth_program_print(frm);", source)
+		self.assertIn('data-action="print-cloth-program"', source)
+		self.assertIn(
+			'.on("click", () => open_cloth_program_print(frm));',
+			source,
+		)
 		self.assertIn("load_saved_cloth_program(frm);", source)
 		self.assertIn("extra_percentage <= 0", source)
 		self.assertIn("render_saved_cloth_program(frm, r.message || {});", source)

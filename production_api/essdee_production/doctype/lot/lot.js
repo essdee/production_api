@@ -604,18 +604,7 @@ function open_cloth_program_preview(frm) {
 		},
 		secondary_action_label: __("Print"),
 		secondary_action() {
-			const print_window = window.open(
-				frappe.urllib.get_full_url(
-					"/printview?doctype=" + encodeURIComponent(frm.doc.doctype)
-					+ "&name=" + encodeURIComponent(frm.doc.name)
-					+ "&format=" + encodeURIComponent("Lot Cloth Program")
-					+ "&trigger_print=1"
-				),
-				"_blank"
-			);
-			if (!print_window) {
-				frappe.msgprint(__("Please enable pop-ups"));
-			}
+			open_cloth_program_print(frm);
 		},
 	});
 	dialog.show();
@@ -670,6 +659,24 @@ function render_saved_cloth_program(frm, preview) {
 		__("Build the Cloth Program with an excess percentage to view its details here."),
 		true
 	);
+	$(result_field.wrapper)
+		.find('[data-action="print-cloth-program"]')
+		.on("click", () => open_cloth_program_print(frm));
+}
+
+function open_cloth_program_print(frm) {
+	const print_window = window.open(
+		frappe.urllib.get_full_url(
+			"/printview?doctype=" + encodeURIComponent(frm.doc.doctype)
+			+ "&name=" + encodeURIComponent(frm.doc.name)
+			+ "&format=" + encodeURIComponent("Lot Cloth Program")
+			+ "&trigger_print=1"
+		),
+		"_blank"
+	);
+	if (!print_window) {
+		frappe.msgprint(__("Please enable pop-ups"));
+	}
 }
 
 function render_cloth_program_preview(wrapper, preview, empty_message, is_saved_view = false) {
@@ -842,12 +849,20 @@ function render_cloth_program_preview(wrapper, preview, empty_message, is_saved_
 	const storage_message = is_saved_view
 		? __("Calculated using the Cloth Excess Percentage saved on this Lot.")
 		: __("The Cloth Excess Percentage is saved on this Lot; the cloth-program preview is not saved.");
+	const print_button = is_saved_view
+		? `<button type="button" class="btn btn-default btn-sm" data-action="print-cloth-program">
+			${frappe.utils.icon("printer", "sm")} ${__("Print")}
+		</button>`
+		: "";
 	$(wrapper).html(`
 		<div style="margin-top: 18px;">
-			<div class="text-muted small" style="margin-bottom: 10px;">
-				${storage_message}
-				${__("Cloth Kg per 1 Kg Yarn")}: <strong>${format_number(preview.cloth_per_kg_yarn)}</strong>
-				· ${__("Extra")}: <strong>${format_number(preview.extra_percentage)}%</strong>
+			<div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin-bottom: 10px;">
+				<div class="text-muted small">
+					${storage_message}
+					${__("Cloth Kg per 1 Kg Yarn")}: <strong>${format_number(preview.cloth_per_kg_yarn)}</strong>
+					· ${__("Extra")}: <strong>${format_number(preview.extra_percentage)}%</strong>
+				</div>
+				${print_button}
 			</div>
 			${tables}
 			<div class="text-right" style="margin-top: -8px;">
