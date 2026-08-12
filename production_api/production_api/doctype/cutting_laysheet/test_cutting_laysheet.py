@@ -4,6 +4,10 @@
 import frappe
 import json
 from frappe.tests.utils import FrappeTestCase
+from frappe.utils import getdate
+from unittest.mock import MagicMock, patch
+
+from production_api.production_api.doctype.cutting_laysheet import cutting_laysheet
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -157,6 +161,54 @@ def create_laysheet(cutting_order=None, cutting_plan=None, cutting_marker=None,
 # ---------------------------------------------------------------------------
 # Tests
 # ---------------------------------------------------------------------------
+
+class TestBundleGenerationDate(FrappeTestCase):
+	def test_bundle_generation_requires_selected_date(self):
+		with self.assertRaisesRegex(frappe.ValidationError, "Bundle Generated Date is required"):
+			cutting_laysheet.get_cut_sheet_data(None, None, None, None, None, 0, 0, None)
+
+	@patch.object(cutting_laysheet, "update_cutting_order_dates")
+	@patch.object(cutting_laysheet, "update_cutting_plan")
+	@patch.object(cutting_laysheet, "has_cloth_tracking", return_value=False)
+	@patch.object(cutting_laysheet, "get_parent_ref", return_value=("Cutting Order", "TEST-CO"))
+	@patch.object(cutting_laysheet.frappe, "get_doc")
+	def test_bundle_generation_stores_selected_date(
+		self,
+		get_doc,
+		_get_parent_ref,
+		_has_cloth_tracking,
+		_update_cutting_plan,
+		update_cutting_order_dates,
+	):
+		marker = frappe._dict({
+			"is_manual_entry": True,
+			"version": None,
+			"cutting_marker_groups": [],
+			"cutting_marker_ratios": [],
+		})
+		laysheet = MagicMock(cutting_plan=None, cutting_order="TEST-CO")
+		get_doc.side_effect = [marker, laysheet]
+
+		cutting_laysheet.get_cut_sheet_data(
+			"TEST-CLS",
+			"TEST-MARKER",
+			[],
+			[],
+			[],
+			0,
+			0,
+			"2026-08-01",
+		)
+
+		self.assertEqual(laysheet.bundle_generated_date, getdate("2026-08-01"))
+		laysheet.save.assert_called_once_with()
+		update_cutting_order_dates.assert_called_once_with("TEST-CO")
+
+	def test_bundle_generated_date_field_configuration(self):
+		field = frappe.get_meta("Cutting LaySheet").get_field("bundle_generated_date")
+		self.assertEqual(field.fieldtype, "Date")
+		self.assertEqual(field.label, "Bundle Generated Date")
+
 
 class TestCuttingLaySheet(FrappeTestCase):
 
