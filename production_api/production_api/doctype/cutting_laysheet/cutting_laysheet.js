@@ -97,6 +97,13 @@ frappe.ui.form.on("Cutting LaySheet", {
                                 let data = r.message
                                 let fields = [
                                     {
+                                        fieldname:"bundle_generated_date",
+                                        fieldtype:"Date",
+                                        label:"Bundle Generated Date",
+                                        default:frappe.datetime.nowdate(),
+                                        reqd:true,
+                                    },
+                                    {
                                         fieldname:"parts_table",
                                         fieldtype:"Table",
                                         fields:[
@@ -139,7 +146,8 @@ frappe.ui.form.on("Cutting LaySheet", {
                                                 manual_item_details: frm.doc.cutting_laysheet_manual_items,
                                                 items:values.parts_table,
                                                 max_plys:values.maximum_no_of_plys || 0,
-                                                maximum_allow : values.maximum_allow_percentage || 0
+                                                maximum_allow : values.maximum_allow_percentage || 0,
+                                                bundle_generated_date:values.bundle_generated_date,
                                             },
                                             freeze:true,
                                             freeze_message:"Generating Bundles",

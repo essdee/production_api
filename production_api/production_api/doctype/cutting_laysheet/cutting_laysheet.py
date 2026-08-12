@@ -529,7 +529,20 @@ def get_parts(cutting_marker):
 	return panel_list
 
 @frappe.whitelist()
-def get_cut_sheet_data(doc_name,cutting_marker,laysheet_details, manual_item_details,items, max_plys:int,maximum_allow:int):
+def get_cut_sheet_data(
+	doc_name,
+	cutting_marker,
+	laysheet_details,
+	manual_item_details,
+	items,
+	max_plys: int,
+	maximum_allow: int,
+	bundle_generated_date,
+):
+	if not bundle_generated_date:
+		frappe.throw("Bundle Generated Date is required")
+	bundle_generated_date = getdate(bundle_generated_date)
+
 	items = update_if_string_instance(items)
 	items_combined = {}
 	for item in items:
@@ -717,7 +730,7 @@ def get_cut_sheet_data(doc_name,cutting_marker,laysheet_details, manual_item_det
 	doc.maximum_allow_percentage = maximum_allow 
 	doc.status = "Bundles Generated"
 	doc.set("cutting_laysheet_bundles", cut_sheet_data)
-	doc.bundle_generated_date = frappe.utils.nowdate()
+	doc.bundle_generated_date = bundle_generated_date
 	doc.save()
 
 	parent_dt, parent_name = get_parent_ref(doc)
