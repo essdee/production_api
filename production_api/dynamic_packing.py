@@ -10,6 +10,7 @@ from frappe.utils import cint, flt
 from production_api.utils import update_if_string_instance
 
 
+LEGACY_BATCH_TRACKING_VERSION = 1
 DYNAMIC_PACKING_VERSION = 2
 
 
@@ -116,3 +117,14 @@ def packing_batch_label(batch):
 def is_dynamic_packing_grn(grn):
 	version = grn.get("packing_calculation_version") if hasattr(grn, "get") else 0
 	return cint(version) >= DYNAMIC_PACKING_VERSION
+
+
+def is_batch_tracked_packing_grn(grn):
+	"""Return whether a GRN has auditable packing batches.
+
+	Version 1 is a migrated fixed-ratio GRN: its stock rows remain in the historical
+	box unit, but a reconstructed packing batch makes its boxes dispatchable alongside
+	new transaction-ratio GRNs. Version 2 stores exact piece rows natively.
+	"""
+	version = grn.get("packing_calculation_version") if hasattr(grn, "get") else 0
+	return cint(version) >= LEGACY_BATCH_TRACKING_VERSION

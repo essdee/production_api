@@ -12,6 +12,7 @@ from production_api.production_api.doctype.purchase_order.purchase_order import 
 from production_api.utils import update_if_string_instance, get_finishing_plan_dict, get_finishing_plan_list, get_variant_attr_details, get_tuple_attributes, get_process_wo_list
 from production_api.dynamic_packing import (
 	DYNAMIC_PACKING_VERSION,
+	LEGACY_BATCH_TRACKING_VERSION,
 	aggregate_batch_pieces,
 	normalize_packing_batches,
 )
@@ -180,7 +181,9 @@ class FinishingPlan(Document):
 				"lot": self.lot,
 				"docstatus": 1,
 				"is_return": 0,
-				"packing_calculation_version": [">=", DYNAMIC_PACKING_VERSION],
+				"includes_packing": 1,
+				"from_finishing": 1,
+				"packing_calculation_version": [">=", LEGACY_BATCH_TRACKING_VERSION],
 			},
 			pluck="name",
 		)
@@ -231,6 +234,7 @@ class FinishingPlan(Document):
 			}
 		for grn_name in grn_names:
 			grn = frappe.get_doc("Goods Received Note", grn_name)
+			version = cint(grn.packing_calculation_version)
 			for batch in grn.packing_batches:
 				ratio = update_if_string_instance(batch.ratio_json) or {}
 				boxes = flt(batch.box_quantity)
@@ -259,6 +263,7 @@ class FinishingPlan(Document):
 					"pieces_per_box": flt(batch.pieces_per_box),
 					"total_pieces": flt(batch.total_pieces),
 					"ratio": ratio,
+					"packing_calculation_version": version,
 				})
 				data["total_packed_boxes"] += boxes
 				data["total_dispatched_boxes"] += dispatched_boxes
@@ -1513,35 +1518,33 @@ def _validate_dynamic_packing_availability(work_order, ipd_doc, batches):
 def _validate_dynamic_packing_transition(work_order, lot):
 	"""Do not mix legacy box quantities with exact-piece batches on one plan.
 
-	Once the first version-2 GRN exists, every later GRN follows the same exact-piece
-	model. A plan that already has historical fixed-ratio GRNs must stay on its legacy
-	unit model; otherwise its cumulative child-table and report values would mix boxes
-	and pieces.
+	Version-1 GRNs have been backfilled with auditable fixed-ratio batches and their
+	Finishing Plan summary has already been converted to pieces. Only untracked
+	version-0 GRNs are unsafe to mix with exact-piece version-2 GRNs.
 	"""
-	if frappe.db.exists("Goods Received Note", {
-		"against": "Work Order",
-		"against_id": work_order,
-		"lot": lot,
-		"docstatus": 1,
-		"is_return": 0,
-		"packing_calculation_version": [">=", DYNAMIC_PACKING_VERSION],
-	}):
-		return
-
-	legacy_grn = frappe.db.exists("Goods Received Note", {
-		"against": "Work Order",
-		"against_id": work_order,
-		"lot": lot,
-		"docstatus": 1,
-		"is_return": 0,
-		"packing_calculation_version": ["<", DYNAMIC_PACKING_VERSION],
-	})
+	legacy_grn = frappe.db.sql(
+		"""
+			SELECT name
+			FROM `tabGoods Received Note`
+			WHERE
+				against = 'Work Order'
+				AND against_id = %s
+				AND lot = %s
+				AND docstatus = 1
+				AND COALESCE(is_return, 0) = 0
+				AND COALESCE(includes_packing, 0) = 1
+				AND COALESCE(from_finishing, 0) = 1
+				AND COALESCE(packing_calculation_version, 0) < %s
+			LIMIT 1
+		""",
+		(work_order, lot, LEGACY_BATCH_TRACKING_VERSION),
+	)
 	if not legacy_grn:
 		return
 
 	frappe.throw(
-		"This Finishing Plan already has GRNs created with the previous fixed ratio. "
-		"Transaction-wise packing ratios can start only on a Finishing Plan without legacy packing GRNs."
+		"This Finishing Plan has fixed-ratio GRNs that have not been migrated to packing batches. "
+		"Run the legacy packing GRN migration before creating transaction-wise ratios."
 	)
 
 
@@ -1735,12 +1738,13 @@ def _prepare_dynamic_batch_dispatch(finishing_doc, dispatches):
 			frappe.throw(f"Packing batch {batch_row} does not exist")
 		batch = locked[0]
 		grn = frappe.get_cached_doc("Goods Received Note", batch.parent)
+		version = cint(grn.packing_calculation_version)
 		if (
 			grn.docstatus != 1
 			or grn.against != "Work Order"
 			or grn.against_id != finishing_doc.work_order
 			or grn.lot != finishing_doc.lot
-			or cint(grn.packing_calculation_version) < DYNAMIC_PACKING_VERSION
+			or cint(grn.packing_calculation_version) < LEGACY_BATCH_TRACKING_VERSION
 		):
 			frappe.throw(f"Packing batch {batch_row} does not belong to this Finishing Plan")
 
@@ -1750,6 +1754,19 @@ def _prepare_dynamic_batch_dispatch(finishing_doc, dispatches):
 				f"Only {available:g} boxes are available in {grn.name} / {batch.batch_id or batch_row}"
 			)
 		ratio = update_if_string_instance(batch.ratio_json) or {}
+		size_pieces = {size: int(boxes) * flt(per_box) for size, per_box in ratio.items()}
+		box_uom, piece_uom = frappe.get_cached_value("Lot", finishing_doc.lot, ["uom", "packing_uom"])
+		if version == LEGACY_BATCH_TRACKING_VERSION:
+			pieces_per_box = flt(batch.pieces_per_box)
+			if not pieces_per_box:
+				frappe.throw(f"Packing batch {batch_row} has no pieces-per-box value")
+			stock_quantities = {
+				size: pieces / pieces_per_box for size, pieces in size_pieces.items()
+			}
+			stock_uom = box_uom
+		else:
+			stock_quantities = dict(size_pieces)
+			stock_uom = piece_uom
 		normalized.append({
 			"batch_row": batch_row,
 			"grn": grn.name,
@@ -1758,7 +1775,10 @@ def _prepare_dynamic_batch_dispatch(finishing_doc, dispatches):
 			"box_quantity": int(boxes),
 			"pieces_per_box": flt(batch.pieces_per_box),
 			"ratio": ratio,
-			"size_pieces": {size: int(boxes) * flt(per_box) for size, per_box in ratio.items()},
+			"size_pieces": size_pieces,
+			"stock_quantities": stock_quantities,
+			"stock_uom": stock_uom,
+			"packing_calculation_version": version,
 		})
 	return normalized
 
@@ -1783,29 +1803,42 @@ def create_stock_entry(
 	dynamic_dispatches = []
 	if requested_batches:
 		dynamic_dispatches = _prepare_dynamic_batch_dispatch(finishing_doc, requested_batches)
-		size_pieces, _boxes, _pieces = aggregate_batch_pieces(
-			[{**batch, "box_quantity": batch["box_quantity"]} for batch in dynamic_dispatches]
-		)
-		data = {
-			size: {"cur_dispatch": qty}
-			for size, qty in size_pieces.items()
-		}
-	uom = piece_uom if dynamic_dispatches else box_uom
 	item_list = []
-	for size in data:
-		variant = get_or_create_variant(item_name, build_variant_attributes({
-			primary_attr: size,
-		}, pack_out, ipd))
-		item_list.append({
-			"item": variant,
-			"qty": data[size]['cur_dispatch'],
-			"lot": lot,
-			"received_type": default_type,
-			"uom": uom,
-			'table_index': 0,
-			'row_index': 0,
-			'set_combination': {},
-		})
+	if dynamic_dispatches:
+		grouped_stock = {}
+		for batch in dynamic_dispatches:
+			for size, qty in batch["stock_quantities"].items():
+				key = (size, batch["stock_uom"])
+				grouped_stock[key] = grouped_stock.get(key, 0) + flt(qty)
+		for (size, uom), qty in grouped_stock.items():
+			variant = get_or_create_variant(item_name, build_variant_attributes({
+				primary_attr: size,
+			}, pack_out, ipd))
+			item_list.append({
+				"item": variant,
+				"qty": qty,
+				"lot": lot,
+				"received_type": default_type,
+				"uom": uom,
+				'table_index': 0,
+				'row_index': 0,
+				'set_combination': {},
+			})
+	else:
+		for size in data:
+			variant = get_or_create_variant(item_name, build_variant_attributes({
+				primary_attr: size,
+			}, pack_out, ipd))
+			item_list.append({
+				"item": variant,
+				"qty": data[size]['cur_dispatch'],
+				"lot": lot,
+				"received_type": default_type,
+				"uom": box_uom,
+				'table_index': 0,
+				'row_index': 0,
+				'set_combination': {},
+			})
 	doc = frappe.new_doc("Stock Entry")	
 	doc.purpose = "Material Issue"
 	doc.against = "Finishing Plan"
@@ -3860,10 +3893,11 @@ def get_finishing_plan_total_cutting(finishing_doc):
 
 
 def get_finishing_packing_summary(finishing_doc):
-	"""Return exact persisted packing totals for new ratio-based GRNs.
+	"""Return exact physical packing totals for batch-tracked GRNs.
 
-	Legacy Finishing Plans deliberately return ``dynamic_ratio_packing=False`` so
-	callers can retain their historical fixed-combo calculations unchanged.
+	Migrated version-1 fixed-ratio GRNs and version-2 transaction-wise ratio GRNs
+	both have auditable batches. Unmigrated version-0 plans deliberately return
+	``dynamic_ratio_packing=False`` so their historical calculations remain intact.
 	"""
 	if isinstance(finishing_doc, str):
 		finishing_doc = frappe.get_doc("Finishing Plan", finishing_doc)
@@ -3878,7 +3912,9 @@ def get_finishing_packing_summary(finishing_doc):
 				"lot": finishing_doc.lot,
 				"docstatus": 1,
 				"is_return": 0,
-				"packing_calculation_version": [">=", DYNAMIC_PACKING_VERSION],
+				"includes_packing": 1,
+				"from_finishing": 1,
+				"packing_calculation_version": [">=", LEGACY_BATCH_TRACKING_VERSION],
 			},
 			pluck="name",
 		)
@@ -3895,6 +3931,110 @@ def get_finishing_packing_summary(finishing_doc):
 		"total_packed_boxes": 0,
 		"total_dispatched_boxes": 0,
 	})
+
+
+def rebuild_finishing_packing_quantities(finishing_doc):
+	"""Rebuild packed quantities from submitted GRNs instead of applying deltas.
+
+	Legacy cancellation used to subtract the exact GRN quantity from an already-rounded
+	Finishing Plan row, which could leave values such as ``-0.333333333``. Rebuilding is
+	idempotent and also keeps migrated version-1 boxes compatible with version-2 pieces.
+	"""
+	if isinstance(finishing_doc, str):
+		finishing_doc = frappe.get_doc("Finishing Plan", finishing_doc)
+
+	grns = frappe.get_all(
+		"Goods Received Note",
+		filters={
+			"against": "Work Order",
+			"against_id": finishing_doc.work_order,
+			"lot": finishing_doc.lot,
+			"docstatus": 1,
+			"is_return": 0,
+			"includes_packing": 1,
+			"from_finishing": 1,
+		},
+		fields=[
+			"name",
+			"packing_calculation_version",
+			"total_packing_boxes",
+			"total_packing_pieces",
+		],
+	)
+	batch_tracked = any(
+		cint(grn.packing_calculation_version) >= LEGACY_BATCH_TRACKING_VERSION
+		for grn in grns
+	)
+	if batch_tracked:
+		untracked = [
+			grn.name for grn in grns
+			if cint(grn.packing_calculation_version) < LEGACY_BATCH_TRACKING_VERSION
+		]
+		if untracked:
+			frappe.throw(
+				"Cannot rebuild Finishing Plan packing quantities while untracked legacy "
+				f"GRNs remain: {', '.join(untracked)}"
+			)
+
+	quantities = {}
+	tracked_dispatched = {}
+	primary = frappe.get_cached_value(
+		"Item Production Detail",
+		finishing_doc.production_detail,
+		"primary_item_attribute",
+	)
+	for grn in grns:
+		multiplier = 1
+		version = cint(grn.packing_calculation_version)
+		if version == LEGACY_BATCH_TRACKING_VERSION:
+			boxes = flt(grn.total_packing_boxes)
+			pieces = flt(grn.total_packing_pieces)
+			if not boxes or not pieces:
+				frappe.throw(f"Migrated packing totals are missing in GRN {grn.name}")
+			multiplier = pieces / boxes
+
+		variant_by_size = {}
+		for item in frappe.get_all(
+			"Goods Received Note Item",
+			filters={"parent": grn.name, "docstatus": 1},
+			fields=["item_variant", "quantity"],
+		):
+			quantities[item.item_variant] = (
+				quantities.get(item.item_variant, 0) + flt(item.quantity) * multiplier
+			)
+			attrs = get_variant_attr_details(item.item_variant)
+			if attrs.get(primary):
+				variant_by_size[attrs[primary]] = item.item_variant
+
+		if version >= LEGACY_BATCH_TRACKING_VERSION:
+			for batch in frappe.get_all(
+				"GRN Packing Batch",
+				filters={"parent": grn.name},
+				fields=["dispatched_boxes", "ratio_json"],
+			):
+				ratio = update_if_string_instance(batch.ratio_json) or {}
+				for size, per_box in ratio.items():
+					item_variant = variant_by_size.get(size)
+					if item_variant:
+						tracked_dispatched[item_variant] = (
+							tracked_dispatched.get(item_variant, 0)
+							+ flt(batch.dispatched_boxes) * flt(per_box)
+						)
+
+	rows = []
+	existing = {row.item_variant: row for row in finishing_doc.finishing_plan_grn_details}
+	for item_variant in dict.fromkeys([*existing, *quantities]):
+		rows.append({
+			"item_variant": item_variant,
+			"quantity": flt(quantities.get(item_variant), 9),
+			"dispatched": flt(tracked_dispatched.get(item_variant), 9)
+			if batch_tracked else (
+				flt(existing.get(item_variant).dispatched, 9)
+				if item_variant in existing else 0
+			),
+		})
+	finishing_doc.set("finishing_plan_grn_details", rows)
+	return finishing_doc
 
 
 def get_finishing_dispatch_totals(finishing_doc):

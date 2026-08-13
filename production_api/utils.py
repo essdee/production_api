@@ -1983,14 +1983,14 @@ def get_work_in_progress_report(category, status, lot_list_val, item_list, proce
 			pcs_per_box, packing_work_order = frappe.get_value(
 				"Finishing Plan", finishing_plan, ["pieces_per_box", "work_order"]
 			)
-			dynamic_packing = bool(packing_work_order and frappe.db.exists(
+			batch_tracked_packing = bool(packing_work_order and frappe.db.exists(
 				"Goods Received Note",
 				{
 					"against": "Work Order",
 					"against_id": packing_work_order,
 					"docstatus": 1,
 					"is_return": 0,
-					"packing_calculation_version": [">=", 2],
+					"packing_calculation_version": [">=", 1],
 				},
 			))
 			finishing_detail = frappe.db.sql(
@@ -2004,7 +2004,7 @@ def get_work_in_progress_report(category, status, lot_list_val, item_list, proce
 			if finishing_detail:
 				dispatched = flt(finishing_detail[0]['dispatch_qty'])
 				dispatch = dispatched * part_qty
-				if not dynamic_packing:
+				if not batch_tracked_packing:
 					dispatch *= flt(pcs_per_box)
 				lot_dict['total_data']['finishing_details']['dispatch'] += dispatch
 				lot_dict['lot_data'][lot]['finishing_details']['dispatch'] += dispatch
@@ -2607,17 +2607,17 @@ def get_size_wise_stock_report(open_status, lot_list, item_list, category, proce
 
 		for finishing_plan in finishing_plan_list:
 			fp_doc = frappe.get_doc("Finishing Plan", finishing_plan)
-			dynamic_packing = bool(fp_doc.work_order and frappe.db.exists(
+			batch_tracked_packing = bool(fp_doc.work_order and frappe.db.exists(
 				"Goods Received Note",
 				{
 					"against": "Work Order",
 					"against_id": fp_doc.work_order,
 					"docstatus": 1,
 					"is_return": 0,
-					"packing_calculation_version": [">=", 2],
+					"packing_calculation_version": [">=", 1],
 				},
 			))
-			dispatch_multiplier = 1 if dynamic_packing else flt(fp_doc.pieces_per_box)
+			dispatch_multiplier = 1 if batch_tracked_packing else flt(fp_doc.pieces_per_box)
 			for row in fp_doc.finishing_plan_grn_details:
 				attr_details = get_variant_attr_details(row.item_variant)
 				size = attr_details[primary]

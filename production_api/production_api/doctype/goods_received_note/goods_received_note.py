@@ -16,7 +16,10 @@ from production_api.production_api.logger import get_module_logger
 from production_api.mrp_stock.doctype.stock_entry.stock_entry import get_uom_details
 from production_api.production_api.doctype.item.item import get_attribute_details, get_or_create_variant, build_variant_attributes
 from production_api.production_api.doctype.work_order.work_order import get_bom_structure, get_work_order_items
-from production_api.production_api.doctype.finishing_plan.finishing_plan import apply_auto_fp_status
+from production_api.production_api.doctype.finishing_plan.finishing_plan import (
+    apply_auto_fp_status,
+    rebuild_finishing_packing_quantities,
+)
 from production_api.production_api.doctype.purchase_order.purchase_order import (
     get_item_attribute_details, get_item_group_index)
 from production_api.production_api.doctype.mrp_settings.mrp_settings import post_yrp_request
@@ -30,13 +33,14 @@ from production_api.production_api.doctype.cut_bundle_movement_ledger.cut_bundle
 from production_api.dynamic_packing import (
     DYNAMIC_PACKING_VERSION,
     aggregate_batch_pieces,
+    is_batch_tracked_packing_grn,
     is_dynamic_packing_grn,
 )
 
 
 class GoodsReceivedNote(Document):
     def before_cancel(self):
-        if is_dynamic_packing_grn(self):
+        if is_batch_tracked_packing_grn(self):
             dispatched = [
                 batch for batch in self.packing_batches if flt(batch.dispatched_boxes) > 0
             ]
@@ -3759,34 +3763,11 @@ def update_finishing_item_doc(doc_name, finishing_doc_name, update_finishing: bo
 
     if update_finishing and not self.is_return:
         finishing_doc = frappe.get_doc("Finishing Plan", finishing_doc_name)
-        finishing_items = {}
-        for row in finishing_doc.finishing_plan_grn_details:
-            finishing_items.setdefault(row.item_variant, {
-                "quantity": 0,
-                "dispatched": 0,
-            })
-            finishing_items[row.item_variant]['quantity'] += row.quantity
-            finishing_items[row.item_variant]['dispatched'] += row.dispatched
-
-        for row in self.items:
-            if row.item_variant in finishing_items:
-                qty = row.quantity
-                if docstatus == 2:
-                    qty = qty * -1
-                finishing_items[row.item_variant]['quantity'] += qty
-
-        finshing_items_list = []
-        for variant in finishing_items:
-            finshing_items_list.append({
-                "item_variant": variant,
-                "quantity": finishing_items[variant]['quantity'],
-                "dispatched": finishing_items[variant]['dispatched'],
-            })
-        finishing_doc.set("finishing_plan_grn_details", finshing_items_list)
+        rebuild_finishing_packing_quantities(finishing_doc)
         if self.from_finishing:
             grn_list = update_if_string_instance(finishing_doc.grn_list)
             if docstatus == 2:
-                del grn_list[doc_name]
+                grn_list.pop(doc_name, None)
             else:
                 grn_list[doc_name] = frappe.utils.now_datetime().strftime(
                     "%d-%m-%Y %H:%M:%S")

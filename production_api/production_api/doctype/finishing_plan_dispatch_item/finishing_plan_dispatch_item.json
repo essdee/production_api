@@ -15,7 +15,9 @@
   "against_id",
   "against_id_detail",
   "total_dispatched",
-  "dispatch_pct"
+  "dispatch_pct",
+  "packing_source",
+  "packing_piece_quantity"
  ],
  "fields": [
   {
@@ -82,6 +84,20 @@
    "fieldtype": "Float",
    "hidden": 1,
    "label": "Dispatch Pct"
+  },
+  {
+   "fieldname": "packing_source",
+   "fieldtype": "Data",
+   "hidden": 1,
+   "label": "Packing Source",
+   "read_only": 1
+  },
+  {
+   "fieldname": "packing_piece_quantity",
+   "fieldtype": "Float",
+   "hidden": 1,
+   "label": "Packing Piece Quantity",
+   "read_only": 1
   }
  ],
  "grid_page_length": 50,

@@ -5,6 +5,7 @@ import frappe
 from itertools import groupby
 from operator import itemgetter
 from frappe.model.document import Document
+from frappe.utils import flt
 from production_api.production_api.doctype.item.item import get_or_create_variant, get_attribute_details, build_variant_attributes
 from production_api.dynamic_packing import aggregate_batch_pieces
 from production_api.production_api.doctype.finishing_plan.finishing_plan import (
@@ -21,6 +22,17 @@ class FinishingPlanDispatch(Document):
 			stock_entry.cancel()
 
 	def onload(self):
+		if self.docstatus == 0:
+			if self.finishing_items:
+				saved_items = update_if_string_instance(self.finishing_items) or []
+				self.set_onload(
+					"items",
+					merge_saved_finishing_items(fetch_fp_items(), saved_items),
+				)
+				return
+			if not self.finishing_plan_dispatch_items:
+				return
+
 		saved_batch_dispatches = update_if_string_instance(
 			self.packing_batch_dispatch_json
 		) or []
@@ -54,17 +66,27 @@ class FinishingPlanDispatch(Document):
 			fp_doc = frappe.get_doc("Finishing Plan", item1['doc_name'])
 			packing_summary = get_finishing_packing_summary(fp_doc)
 			item1['dynamic_ratio_packing'] = packing_summary.dynamic_ratio_packing
+			if packing_summary.dynamic_ratio_packing:
+				item1['uom'] = frappe.get_value("Lot", lot, "packing_uom") or item1['uom']
 			item1['packing_batches'] = packing_summary.packing_batches
 			item1['batch_dispatches'] = saved_by_plan.get(item1['doc_name'], [])
 			for variant in variants_list:
 				attr_details = get_variant_attr_details(variant['item_variant'])
-				item1['values'][attr_details[primary]] = {
-					"qty": variant['balance_qty'],
+				size = attr_details[primary]
+				item1['values'].setdefault(size, {
+					"qty": 0,
 					"row_detail": variant['against_id_detail'],
-					"dispatch_qty": variant['quantity'],
-				}
-				item1['total']['total_qty'] += variant['balance_qty']
-				item1['total']['total_dispatch'] += variant['quantity']
+					"dispatch_qty": 0,
+				})
+				piece_qty = flt(variant.get('packing_piece_quantity')) or flt(variant['quantity'])
+				item1['values'][size]['qty'] = max(
+					flt(item1['values'][size]['qty']), flt(variant['balance_qty'])
+				)
+				item1['values'][size]['dispatch_qty'] += piece_qty
+				item1['total']['total_dispatch'] += piece_qty
+			item1['total']['total_qty'] = sum(
+				flt(value['qty']) for value in item1['values'].values()
+			)
 
 			item_detail.append(item1)
 
@@ -94,7 +116,10 @@ class FinishingPlanDispatch(Document):
 					for value in row['values'].values():
 						value['dispatch_qty'] = 0
 					if not requested_batches:
-						frappe.throw(f"Select packing batches for Finishing Plan {fp_doc.name}")
+						# The form fetches every Finishing Plan with a pending balance. An
+						# untouched plan is not part of this dispatch, just as a legacy plan
+						# with zero per-size quantities is ignored below.
+						continue
 					normalized = _prepare_dynamic_batch_dispatch(fp_doc, requested_batches)
 					size_pieces, _boxes, _pieces = aggregate_batch_pieces(normalized)
 					for size, qty in size_pieces.items():
@@ -114,6 +139,38 @@ class FinishingPlanDispatch(Document):
 								grid[batch['colour']].get(size, 0) + qty
 							)
 					row['colour_grid'] = grid
+
+					stock_groups = {}
+					for batch in normalized:
+						stock_quantities = batch.get("stock_quantities") or batch["size_pieces"]
+						stock_uom = batch.get("stock_uom") or row["uom"]
+						for size, stock_qty in stock_quantities.items():
+							key = (size, stock_uom)
+							group = stock_groups.setdefault(key, {
+								"stock_qty": 0,
+								"piece_qty": 0,
+							})
+							group["stock_qty"] += flt(stock_qty)
+							group["piece_qty"] += flt(batch["size_pieces"].get(size))
+
+					for (size, stock_uom), quantities in stock_groups.items():
+						if size not in row['values']:
+							frappe.throw(f"Size {size} is not available in Finishing Plan {fp_doc.name}")
+						attrs = build_variant_attributes(
+							{row['primary_attribute']: size}, row['stage'], row['item']
+						)
+						items.append({
+							"item_variant": get_or_create_variant(row['item'], attrs),
+							"lot": row['lot'],
+							"balance_qty": row['values'][size]['qty'],
+							"quantity": quantities["stock_qty"],
+							"uom": stock_uom,
+							"item": row['item'],
+							"against_id": row['doc_name'],
+							"against_id_detail": row['values'][size]['row_detail'],
+							"packing_source": "batch",
+							"packing_piece_quantity": quantities["piece_qty"],
+						})
 				elif requested_batches:
 					frappe.throw(
 						f"Packing batches are not valid for legacy Finishing Plan {fp_doc.name}"
@@ -122,6 +179,20 @@ class FinishingPlanDispatch(Document):
 					# Dynamic batches can omit sizes that exist on the Finishing Plan.
 					# Do not persist zero-quantity dispatch rows for those sizes.
 					if dynamic_ratio_packing and not row['values'][val]['dispatch_qty']:
+						continue
+					if dynamic_ratio_packing:
+						continue
+					dispatch_qty = flt(row['values'][val]['dispatch_qty'])
+					if dispatch_qty < 0:
+						frappe.throw(
+							f"Dispatch quantity cannot be negative for {row['doc_name']} / {val}"
+						)
+					if dispatch_qty > flt(row['values'][val]['qty']):
+						frappe.throw(
+							f"Dispatch quantity for {row['doc_name']} / {val} exceeds "
+							f"the available balance of {flt(row['values'][val]['qty']):g}"
+						)
+					if not dispatch_qty:
 						continue
 					my_attributes = {
 						row['primary_attribute']: val,
@@ -132,11 +203,13 @@ class FinishingPlanDispatch(Document):
 						"item_variant": variant,
 						"lot": row['lot'],
 						"balance_qty": row['values'][val]['qty'],
-						"quantity": row['values'][val]['dispatch_qty'],
+						"quantity": dispatch_qty,
 						"uom": row['uom'],
 						"item": row['item'],
 						"against_id": row['doc_name'],
-						"against_id_detail": row['values'][val]['row_detail']
+						"against_id_detail": row['values'][val]['row_detail'],
+						"packing_source": "legacy",
+						"packing_piece_quantity": 0,
 					})
 				# Colour grid is print-only metadata (the per-size dispatch above is unchanged).
 				grid = row.get('colour_grid')
@@ -166,16 +239,33 @@ class FinishingPlanDispatch(Document):
 				"uom": row.uom,
 				"item": row.item,
 				"against_id": row.against_id,
-				"against_id_detail": row.against_id_detail
+				"against_id_detail": row.against_id_detail,
+				"packing_source": row.packing_source,
+				"packing_piece_quantity": row.packing_piece_quantity,
 			})
 		items = []
 		for grp in group:
 			if group[grp]['check']:
 				items = items + group[grp]['items']
+		if not items:
+			frappe.throw("Select at least one Finishing Plan quantity or packing batch to dispatch")
 		self.set("finishing_plan_dispatch_items", items)
 
 		# Freeze dispatch snapshot data for print format
 		fp_cache = {}
+		batch_dispatch_by_size = {}
+		for row in self.finishing_plan_dispatch_items:
+			if row.packing_source != "batch":
+				continue
+			fp_doc = frappe.get_doc("Finishing Plan", row.against_id)
+			ipd = frappe.get_value("Lot", fp_doc.lot, "production_detail")
+			primary = frappe.get_value("Item Production Detail", ipd, "primary_item_attribute")
+			size = get_variant_attr_details(row.item_variant).get(primary, "")
+			key = (row.against_id, size)
+			batch_dispatch_by_size[key] = (
+				batch_dispatch_by_size.get(key, 0) + flt(row.packing_piece_quantity)
+			)
+		batch_snapshot_seen = set()
 		for row in self.finishing_plan_dispatch_items:
 			fp_name = row.against_id
 			if fp_name not in fp_cache:
@@ -184,9 +274,8 @@ class FinishingPlanDispatch(Document):
 				ipd_fields = frappe.get_value("Item Production Detail", ipd, ["primary_item_attribute", "is_set_item", "set_item_attribute"], as_dict=True)
 				primary = ipd_fields.primary_item_attribute
 				pieces_per_box = fp_doc.pieces_per_box or 1
-				dynamic_ratio_packing = get_finishing_packing_summary(
-					fp_doc
-				).dynamic_ratio_packing
+				packing_summary = get_finishing_packing_summary(fp_doc)
+				dynamic_ratio_packing = packing_summary.dynamic_ratio_packing
 				set_attr = ipd_fields.set_item_attribute if ipd_fields.is_set_item else None
 				cutting_by_size = {}
 				components_by_size = {}
@@ -201,27 +290,51 @@ class FinishingPlanDispatch(Document):
 					"cutting_by_size": cutting_by_size,
 					"pieces_per_box": pieces_per_box,
 					"components_by_size": components_by_size,
-					"dynamic_ratio_packing": dynamic_ratio_packing,
-				}
+						"dynamic_ratio_packing": dynamic_ratio_packing,
+						"packing_summary": packing_summary,
+					}
 
 			cache = fp_cache[fp_name]
-			grn_dispatched = frappe.get_value("Finishing Plan GRN Detail", row.against_id_detail, "dispatched") or 0
 			va = get_variant_attr_details(row.item_variant)
 			size = va.get(cache["primary"], "")
 			num_components = len(cache["components_by_size"].get(size, ())) or 1
-			denominator = num_components
-			if not cache["dynamic_ratio_packing"]:
-				denominator *= cache["pieces_per_box"]
-			cutting_qty = cache["cutting_by_size"].get(size, 0) / denominator
-
-			row.total_dispatched = grn_dispatched + row.quantity
+			if row.packing_source == "batch":
+				key = (fp_name, size)
+				prior_dispatched = flt(
+					(cache["packing_summary"].get("sizes") or {}).get(size, {}).get("dispatched")
+				)
+				current_dispatch = batch_dispatch_by_size.get(key, 0)
+				row.total_dispatched = prior_dispatched + current_dispatch
+				if key in batch_snapshot_seen:
+					row.total_dispatched = 0
+				batch_snapshot_seen.add(key)
+				cutting_qty = cache["cutting_by_size"].get(size, 0) / num_components
+			else:
+				grn_dispatched = frappe.get_value(
+					"Finishing Plan GRN Detail", row.against_id_detail, "dispatched"
+				) or 0
+				denominator = num_components * cache["pieces_per_box"]
+				cutting_qty = cache["cutting_by_size"].get(size, 0) / denominator
+				row.total_dispatched = grn_dispatched + row.quantity
 			row.dispatch_pct = round((row.total_dispatched / cutting_qty * 100), 2) if cutting_qty > 0 else 0
 
 		self.fp_total_dispatched = sum(row.total_dispatched for row in self.finishing_plan_dispatch_items)
 
 @frappe.whitelist()
 def fetch_fp_items():
-	fp_list = frappe.get_all("Finishing Plan", pluck="name")
+	# Loading every historical Finishing Plan caused hundreds of document and
+	# attribute queries even though only a small set had anything dispatchable.
+	fp_list = frappe.db.sql(
+		"""
+			SELECT DISTINCT fp.name
+			FROM `tabFinishing Plan` fp
+			INNER JOIN `tabFinishing Plan GRN Detail` detail
+				ON detail.parent = fp.name
+			WHERE COALESCE(detail.quantity, 0) - COALESCE(detail.dispatched, 0) > 0
+			ORDER BY fp.modified DESC
+		""",
+		pluck=True,
+	)
 	item_detail = []	
 	for fp in fp_list:
 		fp_doc = frappe.get_doc("Finishing Plan", fp)
@@ -262,6 +375,38 @@ def fetch_fp_items():
 			item_detail.append(item)
 
 	return item_detail
+
+
+def merge_saved_finishing_items(fresh_items, saved_items):
+	"""Refresh live balances/batches while retaining a draft's user inputs."""
+	saved_by_plan = {
+		row.get("doc_name"): row
+		for row in (saved_items or [])
+		if row.get("doc_name")
+	}
+	for fresh in fresh_items:
+		saved = saved_by_plan.get(fresh.get("doc_name")) or {}
+		fresh["colour_grid"] = saved.get("colour_grid") or {}
+		if fresh.get("dynamic_ratio_packing"):
+			valid_batches = {
+				batch.get("batch_row") for batch in fresh.get("packing_batches") or []
+			}
+			fresh["batch_dispatches"] = [
+				{
+					"batch_row": batch.get("batch_row"),
+					"box_quantity": batch.get("box_quantity"),
+				}
+				for batch in (saved.get("batch_dispatches") or [])
+				if batch.get("batch_row") in valid_batches
+			]
+			continue
+
+		saved_values = saved.get("values") or {}
+		for size, value in fresh.get("values", {}).items():
+			value["dispatch_qty"] = flt(
+				(saved_values.get(size) or {}).get("dispatch_qty")
+			)
+	return fresh_items
 
 @frappe.whitelist()
 def create_stock_dispatch(doc_name, from_location, to_location, vehicle_no, goods_value):
@@ -336,6 +481,8 @@ def get_fpd_print_data(doc_name):
 		variants_list = list(variants)
 		against_id = variants_list[0]['against_id']
 		uom = variants_list[0]['uom']
+		if any(v.get('packing_source') == "batch" for v in variants_list):
+			uom = frappe.get_value("Lot", lot, "packing_uom") or uom
 
 		# Get primary attribute and ordered sizes from the Item
 		attr_details = get_attribute_details(item_name)
@@ -352,12 +499,20 @@ def get_fpd_print_data(doc_name):
 		for v in variants_list:
 			va = get_variant_attr_details(v['item_variant'])
 			size = va.get(primary, "")
-			dispatch_by_size[size] = v['quantity']
+			dispatch_by_size[size] = dispatch_by_size.get(size, 0) + (
+				flt(v.get('packing_piece_quantity')) or flt(v['quantity'])
+			)
 			if is_submitted:
-				frozen_by_size[size] = {
-					"total_dispatched": v.get('total_dispatched', 0),
-					"dispatch_pct": v.get('dispatch_pct', 0),
-				}
+				frozen = frozen_by_size.setdefault(size, {
+					"total_dispatched": 0,
+					"dispatch_pct": 0,
+				})
+				frozen["total_dispatched"] = max(
+					flt(frozen["total_dispatched"]), flt(v.get('total_dispatched'))
+				)
+				frozen["dispatch_pct"] = max(
+					flt(frozen["dispatch_pct"]), flt(v.get('dispatch_pct'))
+				)
 
 		if is_submitted:
 			# Use frozen snapshot data from child table

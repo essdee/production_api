@@ -11,6 +11,73 @@ from production_api.production_api.doctype.finishing_plan import finishing_plan
 
 
 class TestFinishingPlan(FrappeTestCase):
+	def test_packing_quantities_are_rebuilt_after_fractional_grn_cancellation(self):
+		doc = frappe.get_doc({
+			"doctype": "Finishing Plan",
+			"work_order": "WO-TEST",
+			"lot": "LOT-TEST",
+			"production_detail": "IPD-TEST",
+			"finishing_plan_grn_details": [
+				{"item_variant": "VARIANT-2T", "quantity": -0.333333333, "dispatched": 0},
+				{"item_variant": "VARIANT-3T", "quantity": -0.333333333, "dispatched": 0},
+			],
+		})
+
+		with patch.object(finishing_plan.frappe, "get_all", return_value=[]):
+			finishing_plan.rebuild_finishing_packing_quantities(doc)
+
+		self.assertEqual(
+			[row.quantity for row in doc.finishing_plan_grn_details],
+			[0, 0],
+		)
+
+	def test_migrated_legacy_boxes_and_dynamic_grn_rebuild_as_pieces(self):
+		doc = frappe.get_doc({
+			"doctype": "Finishing Plan",
+			"work_order": "WO-TEST",
+			"lot": "LOT-TEST",
+			"production_detail": "IPD-TEST",
+			"finishing_plan_grn_details": [
+				{"item_variant": "VARIANT-S", "quantity": 15, "dispatched": 0},
+			],
+		})
+		grns = [
+			frappe._dict(
+				name="GRN-LEGACY",
+				packing_calculation_version=1,
+				total_packing_boxes=60,
+				total_packing_pieces=720,
+			),
+			frappe._dict(
+				name="GRN-DYNAMIC",
+				packing_calculation_version=2,
+				total_packing_boxes=2,
+				total_packing_pieces=10,
+			),
+		]
+		items = {
+			"GRN-LEGACY": [frappe._dict(item_variant="VARIANT-S", quantity=15)],
+			"GRN-DYNAMIC": [frappe._dict(item_variant="VARIANT-S", quantity=10)],
+		}
+
+		def get_all(doctype, filters=None, **_kwargs):
+			if doctype == "Goods Received Note":
+				return grns
+			if doctype == "Goods Received Note Item":
+				return items[filters["parent"]]
+			if doctype == "GRN Packing Batch":
+				return []
+			raise AssertionError(doctype)
+
+		with (
+			patch.object(finishing_plan.frappe, "get_all", side_effect=get_all),
+			patch.object(finishing_plan.frappe, "get_cached_value", return_value="Size"),
+			patch.object(finishing_plan, "get_variant_attr_details", return_value={"Size": "S"}),
+		):
+			finishing_plan.rebuild_finishing_packing_quantities(doc)
+
+		self.assertEqual(doc.finishing_plan_grn_details[0].quantity, 190)
+
 	def _source_lot(self):
 		lot = SimpleNamespace(
 			name="LOT-SOURCE",
