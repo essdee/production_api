@@ -264,7 +264,6 @@ class DeliveryChallan(Document):
                                                              "dependent_attribute", "stiching_out_stage", "packing_attribute"])
         for row in self.items:
             if res.get(row.item_variant) and row.delivered_quantity > 0:
-                items.append(row.as_dict())
                 received_type = default_received_type
                 if row.item_type:
                     received_type = row.item_type
@@ -275,6 +274,10 @@ class DeliveryChallan(Document):
                         f"Required quantity is {row.delivered_quantity} but stock quantity is {quantity} for {row.item_variant}")
                 row.rate = rate
                 row.valuation_rate = rate
+                # Keep the exact source valuation on the submitted DC row. This
+                # snapshot is useful for audit/printing; cancellation itself uses
+                # the original SLE value movement (see get_sle_data below).
+                items.append(row.as_dict())
                 total_delivered += row.delivered_quantity
                 reduce_sl_entries.append(self.get_sle_data(
                     row, self.from_location, -1, {}, received_type))
@@ -350,8 +353,6 @@ class DeliveryChallan(Document):
                         frappe.throw(
                             f"Item {dc_item.item_variant} not in Cutting Plan")
             cp_doc.save(ignore_permissions=True)
-        print(add_sl_entries)
-        print(reduce_sl_entries)
         logger.debug(
             f"{self.name} Work Order deliverables updated {datetime.now()}")
         make_sl_entries(reduce_sl_entries)
@@ -432,9 +433,15 @@ class DeliveryChallan(Document):
         variant = row.item_variant
         if new_variant:
             variant = new_variant
-        rate = get_stock_balance(
-            variant, None, received_type, posting_date=self.posting_date, posting_time=self.posting_time, with_valuation_rate=True, uom=row.uom,
-        )[1]
+        # before_submit resolves row.rate from the exact source warehouse + lot.
+        # Both sides of a submitted transfer must carry that same source value. A
+        # global latest-SLE lookup here can select another warehouse/lot and copy
+        # an unrelated (including negative) valuation to the destination.
+        #
+        # On cancellation leave rate at zero. make_sl_entries then restores the
+        # rate/outgoing_rate from this voucher's original SLE value movement,
+        # instead of using a possibly changed current stock rate.
+        rate = 0 if self.docstatus == 2 else flt(row.rate)
         sl_dict = frappe._dict({
             "doctype": "Stock Ledger Entry",
             "item": variant,

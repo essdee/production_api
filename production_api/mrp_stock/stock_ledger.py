@@ -1049,8 +1049,6 @@ class update_entries_after(object):
 
 		stock_queue = FIFOValuation(self.wh_data.stock_queue)
 
-		_prev_qty, prev_stock_value = stock_queue.get_total_stock_and_value()
-
 		if qty > 0:
 			stock_queue.add_stock(qty=qty, rate=incoming_rate)
 		else:
@@ -1070,10 +1068,14 @@ class update_entries_after(object):
 
 		_qty, stock_value = stock_queue.get_total_stock_and_value()
 
-		stock_value_difference = stock_value - prev_stock_value
-
 		self.wh_data.stock_queue = stock_queue.state
-		self.wh_data.stock_value = round_off_if_near_zero(self.wh_data.stock_value + stock_value_difference)
+		# The FIFO queue is the source of truth for both quantity and value. Adding
+		# an unrounded queue delta to the previously currency-rounded stock value
+		# leaves residues such as -0.01 when the remaining queue contains only
+		# zero-valued stock. Dividing that residue by a small remaining quantity
+		# produces a negative valuation rate. Rebuild the value directly from the
+		# queue so repeated reposts are stable and cannot accumulate the residue.
+		self.wh_data.stock_value = round_off_if_near_zero(stock_value)
 
 		if not self.wh_data.stock_queue:
 			self.wh_data.stock_queue.append(
@@ -1610,4 +1612,3 @@ def get_future_sle_below_reserved_qty(args, reserved_stock):
 		query_args,
 		as_dict=1,
 	)
-

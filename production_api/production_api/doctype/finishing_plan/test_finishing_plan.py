@@ -11,6 +11,99 @@ from production_api.production_api.doctype.finishing_plan import finishing_plan
 
 
 class TestFinishingPlan(FrappeTestCase):
+	def _get_ocr_test_doc(self):
+		return frappe._dict(
+			lot="LOT-TEST",
+			pieces_per_box=5,
+			finishing_plan_details=[
+				frappe._dict(
+					item_variant="VARIANT-S",
+					set_combination={"major_colour": "Blue"},
+					cutting_qty=10,
+					dc_qty=10,
+					transferred_qty=0,
+					ironing_excess=0,
+					lot_transferred=0,
+					delivered_quantity=10,
+					return_qty=0,
+					pack_return_qty=0,
+					rejected_qty=0,
+				),
+			],
+			finishing_plan_grn_details=[
+				frappe._dict(item_variant="VARIANT-S", quantity=2, dispatched=1),
+			],
+			finishing_plan_reworked_details=[],
+			finishing_old_lot_given_items=[],
+			finishing_old_lot_received_items=[],
+		)
+
+	def _get_ocr_value(self, doctype, name, fields):
+		if doctype == "Lot":
+			return "IPD-TEST"
+		if doctype == "Item Production Detail":
+			return (0, "Colour", "Size", None)
+		raise AssertionError((doctype, name, fields))
+
+	def test_legacy_ocr_totals_include_packed_and_dispatched_boxes(self):
+		doc = self._get_ocr_test_doc()
+		packing_summary = frappe._dict(dynamic_ratio_packing=False, sizes={})
+		with (
+			patch.object(finishing_plan.frappe, "get_value", side_effect=self._get_ocr_value),
+			patch.object(
+				finishing_plan, "get_variant_attr_details",
+				return_value={"Colour": "Blue", "Size": "S"},
+			),
+			patch.object(
+				finishing_plan, "get_finishing_packing_summary",
+				return_value=packing_summary,
+			),
+			patch.object(
+				finishing_plan.frappe, "get_cached_doc",
+				return_value=frappe._dict(lot_order_details=[]),
+			),
+		):
+			ocr = finishing_plan.get_ocr_details(doc)["Item"]
+
+		packed_by_size = sum(row["packed_box"] for row in ocr["total"].values())
+		dispatched_by_size = sum(
+			row["dispatched_box"] for row in ocr["total"].values()
+		)
+		self.assertEqual(packed_by_size, 2)
+		self.assertEqual(dispatched_by_size, 1)
+		self.assertEqual(ocr["packed_box"], packed_by_size)
+		self.assertEqual(ocr["dispatched_box"], dispatched_by_size)
+
+	def test_dynamic_ocr_totals_use_physical_batch_box_totals(self):
+		doc = self._get_ocr_test_doc()
+		packing_summary = frappe._dict(
+			dynamic_ratio_packing=True,
+			total_packed_boxes=3,
+			total_dispatched_boxes=2,
+			sizes={"S": {"packed": 10, "dispatched": 5, "packed_boxes": 5, "dispatched_boxes": 4}},
+		)
+		with (
+			patch.object(finishing_plan.frappe, "get_value", side_effect=self._get_ocr_value),
+			patch.object(
+				finishing_plan, "get_variant_attr_details",
+				return_value={"Colour": "Blue", "Size": "S"},
+			),
+			patch.object(
+				finishing_plan, "get_finishing_packing_summary",
+				return_value=packing_summary,
+			),
+			patch.object(
+				finishing_plan.frappe, "get_cached_doc",
+				return_value=frappe._dict(lot_order_details=[]),
+			),
+		):
+			ocr = finishing_plan.get_ocr_details(doc)["Item"]
+
+		self.assertEqual(ocr["packed_box"], packing_summary.total_packed_boxes)
+		self.assertEqual(
+			ocr["dispatched_box"], packing_summary.total_dispatched_boxes
+		)
+
 	def test_packing_quantities_are_rebuilt_after_fractional_grn_cancellation(self):
 		doc = frappe.get_doc({
 			"doctype": "Finishing Plan",

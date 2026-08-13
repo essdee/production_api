@@ -77,8 +77,16 @@ class StockEntry(Document):
 		# for these purposes from Stock Settings.transit_warehouse.
 		rate_purposes = {"Receive at Warehouse", "DC Completion", "GRN Completion"}
 		derivation_warehouse = None
+		use_row_lot_for_rate = False
 		if self.purpose in rate_purposes:
 			derivation_warehouse = frappe.get_single("Stock Settings").transit_warehouse
+			use_row_lot_for_rate = True
+		elif self.purpose == "Material Receipt":
+			# Finishing Plan Ironing Excess is a Material Receipt. Resolve its
+			# valuation from the exact destination + lot instead of the latest SLE
+			# for the variant across every warehouse and lot.
+			derivation_warehouse = self.to_warehouse
+			use_row_lot_for_rate = True
 
 		for row in self.items:
 			# find duplicates
@@ -103,19 +111,20 @@ class StockEntry(Document):
 			if flt(row.qty) < 0:
 				self.validation_messages.append(_get_msg(row.table_index, row.row_index, _("Negative Quantity is not allowed")))
 
-			# do not allow negative valuation
-			if flt(row.rate) < 0:
-				self.validation_messages.append(_get_msg(row.table_index, row.row_index, _("Negative Valuation Rate is not allowed")))
 			if row.qty and row.rate in ["", None, 0]:
 				row.rate = get_stock_balance(
 					row.item, derivation_warehouse, row.received_type, self.posting_date, self.posting_time,
-					with_valuation_rate=True, lot=(row.lot if self.purpose in rate_purposes else None), uom=row.uom,
+					with_valuation_rate=True, lot=(row.lot if use_row_lot_for_rate else None), uom=row.uom,
 				)[1]
 				if not row.rate:
 					# try if there is a buying price list in default currency
 					buying_rate = get_item_variant_price(row.item, variant_uom=row.uom)
 					if buying_rate:
 						row.rate = buying_rate
+			if flt(row.rate) < 0:
+				self.validation_messages.append(
+					_get_msg(row.table_index, row.row_index, _("Negative Valuation Rate is not allowed"))
+				)
 
 			# if not row.rate:
 			# 	self.validation_messages.append(_get_msg(row.table_index, row.row_index, _("Could not find valuation rate.")))

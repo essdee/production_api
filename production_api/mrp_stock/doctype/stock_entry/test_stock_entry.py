@@ -88,6 +88,54 @@ class TestDynamicFinishingDispatch(FrappeTestCase):
 
 
 class TestStockEntry(FrappeTestCase):
+	def test_material_receipt_rate_is_scoped_to_destination_and_lot(self):
+		class Row(SimpleNamespace):
+			def set(self, fieldname, value):
+				setattr(self, fieldname, value)
+
+		row = Row(
+			item="VARIANT-1",
+			qty=2,
+			rate=0,
+			received_type="Accepted",
+			lot="LOT-1",
+			uom="Nos",
+			table_index=0,
+			row_index=0,
+		)
+		doc = SimpleNamespace(
+			purpose="Material Receipt",
+			to_warehouse="S-0171",
+			posting_date="2026-08-13",
+			posting_time="10:00:00",
+			items=[row],
+			validate_item=MagicMock(),
+			precision=lambda _field, _row: 9,
+		)
+
+		with (
+			patch.object(stock_entry, "get_stock_balance", return_value=(10, 55.25)) as get_balance,
+			patch.object(
+				stock_entry,
+				"get_uom_details",
+				return_value={"stock_uom": "Nos", "conversion_factor": 1},
+			),
+			patch.object(stock_entry, "get_item_variant_price", return_value=None),
+		):
+			stock_entry.StockEntry.validate_data(doc)
+
+		get_balance.assert_called_once_with(
+			"VARIANT-1",
+			"S-0171",
+			"Accepted",
+			"2026-08-13",
+			"10:00:00",
+			with_valuation_rate=True,
+			lot="LOT-1",
+			uom="Nos",
+		)
+		self.assertEqual(row.rate, 55.25)
+
 	def _existing_submitted_stock_entry(self):
 		name = frappe.db.get_value("Stock Entry", {"docstatus": 1}, "name")
 		if not name:

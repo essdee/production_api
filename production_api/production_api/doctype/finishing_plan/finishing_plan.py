@@ -815,9 +815,11 @@ def get_ocr_details(doc):
 				packed_pieces = packed_boxes * flt(doc.pieces_per_box)
 				dispatched_pieces = dispatched_boxes * flt(doc.pieces_per_box)
 			ocr_data[par]['packed_box_qty'] += packed_pieces
+			ocr_data[par]['packed_box'] += packed_boxes
 			ocr_data[par]['total'][size]['packed_box'] += packed_boxes
 			ocr_data[par]['total'][size]['packed_box_qty'] += packed_pieces
 			ocr_data[par]['dispatched_piece'] += dispatched_pieces
+			ocr_data[par]['dispatched_box'] += dispatched_boxes
 			ocr_data[par]['total'][size]['dispatched_box'] += dispatched_boxes
 			ocr_data[par]['total'][size]['dispatched_piece'] += dispatched_pieces
 
