@@ -31,6 +31,30 @@ from production_api.utils import (
 from production_api.essdee_production.doctype.item_production_detail.item_production_detail import get_calculated_bom, calculate_accessory, get_cloth_combination, get_stitching_combination
 
 
+def build_box_sticker_details(production_order_sizes, quantity_by_size, price_by_size):
+    """Build Work Order sticker rows using the resolved PPO/Lot price map."""
+    sizes = []
+    for size in production_order_sizes:
+        if size not in sizes:
+            sizes.append(size)
+    for size in quantity_by_size:
+        if size not in sizes:
+            sizes.append(size)
+
+    details = []
+    for size in sizes:
+        quantity = flt(quantity_by_size.get(size, 0))
+        if quantity > 0 or size in production_order_sizes:
+            details.append({
+                "size": size,
+                "quantity": quantity,
+                "mrp": flt(price_by_size.get(size, 0)),
+                "allow_excess_quantity": 1 if quantity <= 0 else 0,
+                "allow_excess_percentage": 5,
+            })
+    return details
+
+
 class WorkOrder(Document):
     def on_update_after_submit(self):
         if self.is_rework:
@@ -247,6 +271,11 @@ class WorkOrder(Document):
         if frappe.db.get_value("Production Order", production_order, "skip_box_sticker_print"):
             return
 
+        # Keep the pricing read and automatic sticker creation in one serialized
+        # Work Order flow. Box Sticker Print itself must not re-fetch the price.
+        from production_api.production_api.doctype.production_order.production_order import lock_production_orders
+        lock_production_orders(production_order)
+
         primary = frappe.get_value("Item", self.item, "primary_attribute")
         if not primary:
             return
@@ -260,7 +289,9 @@ class WorkOrder(Document):
             if size:
                 po_sizes.append(size)
         from production_api.lot_pricing import get_effective_lot_price_map
-        price_map = get_effective_lot_price_map(self.lot, production_order)
+        price_map = get_effective_lot_price_map(
+            self.lot, production_order, for_update=True
+        )
 
         # Work Order cut quantity per size, keyed by primary attribute.
         qty_map = {}
@@ -302,27 +333,10 @@ class WorkOrder(Document):
             is_set_item = frappe.db.get_value("Item Production Detail", production_detail, "is_set_item") or 0
             pcs_per_box = frappe.db.get_value("Item Production Detail", production_detail, "packing_combo") or 0
 
-        sizes = []
-        for size in po_sizes:
-            if size not in sizes:
-                sizes.append(size)
-        for size in qty_map:
-            if size not in sizes:
-                sizes.append(size)
-
-        # Build BSP detail rows for Production Order sizes. Sizes without cut qty
-        # are kept printable by marking the detail row as excess-allowed.
-        bsp_details = []
-        for size in sizes:
-            qty = flt(qty_map.get(size, 0))
-            if qty > 0 or size in po_sizes:
-                bsp_details.append({
-                    "size": size,
-                    "quantity": qty,
-                    "mrp": flt(price_map.get(size, 0)),
-                    "allow_excess_quantity": 1 if qty <= 0 else 0,
-                    "allow_excess_percentage": 5,
-                })
+        # Work Order creation is the only place that assigns PPO/Lot pricing to
+        # Box Sticker Print rows. The Box Sticker Print controller does not
+        # re-fetch or overwrite MRP during save.
+        bsp_details = build_box_sticker_details(po_sizes, qty_map, price_map)
 
         if not bsp_details:
             return
