@@ -44,6 +44,7 @@ def get_lot_print_state(lot, for_update=False):
 		FROM `tabBox Sticker Print` bsp
 		INNER JOIN `tabBox Sticker Print Detail` detail ON detail.parent = bsp.name
 		WHERE bsp.lot = %s AND bsp.docstatus = 1
+			AND bsp.against = 'Work Order' AND COALESCE(bsp.against_id, '') != ''
 		ORDER BY bsp.modified DESC, bsp.creation DESC, detail.idx ASC
 		""" + lock_clause,
 		(lot,),
