@@ -105,12 +105,12 @@ frappe.ui.form.on("Box Sticker Print", {
             frm.set_value('box_sticker_print_details',[])
         }
         else if(frm.doc.fg_item){
-            load_lot_prices(frm)
+            load_fg_details(frm)
         }
     },
     fg_item(frm){
         if(frm.doc.fg_item){
-            load_lot_prices(frm)
+            load_fg_details(frm)
         }
         else{
             frm.set_value('box_sticker_print_details',[])
@@ -118,12 +118,11 @@ frappe.ui.form.on("Box Sticker Print", {
     }
 });
 
-function load_lot_prices(frm){
+function load_fg_details(frm){
     frappe.call({
         method:'production_api.essdee_production.doctype.box_sticker_print.box_sticker_print.get_fg_details',
         args: {
             fg_item: frm.doc.fg_item,
-            lot: frm.doc.lot,
         },
         callback: function(r){
             frm.set_value("box_sticker_print_details", r.message)

@@ -28,6 +28,17 @@ class TestLotPricing(TestCase):
 		self.assertFalse(pricing["prices"]["S"]["has_override"])
 		self.assertTrue(pricing["prices"]["M"]["has_override"])
 
+	def test_print_state_only_uses_work_order_generated_stickers(self):
+		frappe_mock = MagicMock()
+		frappe_mock.db.sql.return_value = []
+
+		with patch.object(lot_pricing, "frappe", frappe_mock):
+			lot_pricing.get_lot_print_state("LOT-1")
+
+		query = frappe_mock.db.sql.call_args.args[0]
+		self.assertIn("bsp.against = 'Work Order'", query)
+		self.assertIn("COALESCE(bsp.against_id, '') != ''", query)
+
 	def test_printed_lot_keeps_box_sticker_snapshot_after_default_changes(self):
 		ppo = self.get_ppo()
 		frappe_mock = MagicMock()
