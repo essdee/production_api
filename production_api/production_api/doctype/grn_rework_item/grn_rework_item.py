@@ -253,6 +253,16 @@ def get_rework_items(lot, item, colour, grn_number=None, show_reworked=0, receiv
 				"received_type": row.received_type,
 				"uom": row.uom,
 			})
+
+	# The parent query can match a GRN Rework Item even when all of its child rows
+	# are excluded by the completed/received-type filters above. Do not send an
+	# empty rework_detail to the page: its colour label is derived from the first
+	# detail key, which does not exist for an empty row.
+	data["report_detail"] = {
+		name: detail
+		for name, detail in data["report_detail"].items()
+		if detail.get("rework_detail")
+	}
 	
 	if grn_number:
 		return data, rework_items[0]['name']

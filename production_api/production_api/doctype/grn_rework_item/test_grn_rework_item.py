@@ -102,3 +102,38 @@ class TestGRNReworkItem(FrappeTestCase):
 			("Series No", "Date", "GRN Number", "Lot", "Item", "Colour", "Rejected"),
 		)
 		self.assertEqual(rows[1][-1], 3)
+
+	@patch("frappe.get_cached_value")
+	@patch("frappe.get_doc")
+	@patch("frappe.db.sql")
+	def test_get_rework_items_omits_parent_when_every_child_is_filtered_out(
+		self, mock_sql, mock_get_doc, mock_get_cached_value
+	):
+		mock_sql.return_value = [{"name": "REWORK-EMPTY"}]
+		mock_get_cached_value.side_effect = [
+			"IPD-0001",
+			("Colour", "Size", 0, None),
+		]
+		mock_get_doc.return_value = frappe._dict({
+			"grn_number": "GRN-EMPTY",
+			"creation": "2026-08-13 10:00:00.000000",
+			"lot": "LOT-0001",
+			"item": "Test Item",
+			"grn_rework_item_details": [
+				frappe._dict({
+					"completed": 1,
+					"received_type": "Accepted",
+					"quantity": 5,
+					"reworked": 5,
+					"rejection": 0,
+					"item_variant": "Test Item-Blue-M",
+					"set_combination": "{}",
+					"name": "ROW-COMPLETED",
+					"uom": "Nos",
+				}),
+			],
+		})
+
+		data = get_rework_items(lot=None, item=None, colour=None, show_reworked=0)
+
+		self.assertEqual(data["report_detail"], {})

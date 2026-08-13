@@ -50,7 +50,7 @@
                         </td>
                         <td>{{ value['lot'] }}</td>
                         <td>{{ value['item'] }}</td>
-                        <td>{{ Object.keys(value['rework_detail'])[0].split("-").slice(1).join("-") }}</td>
+                        <td>{{ get_colour_label(value['rework_detail']) }}</td>
                         <td v-for="ty in items['types']">
                             <span v-if="ty in value['types']">
                                 {{value['types'][ty] - value['rejection_detail'][ty]}}
@@ -71,7 +71,7 @@
                                         </th>
                                     </tr>
                                     <tr>
-                                        <td>Total {{ colour_mistake.split("-")[0] }}</td>
+                                        <td>Total {{ get_mistake_label(colour_mistake) }}</td>
                                         <td v-for="size in colour_data['items']">
                                             {{ size['rework_qty'] }}
                                         </td>
@@ -218,9 +218,18 @@ function get_rework_items() {
             show_reworked: show_reworked.get_value() ? 1 : 0,
         },
         callback: function (r) {
-            items.value = r.message;
+            items.value = r.message || {};
         },
     });
+}
+
+function get_colour_label(rework_detail) {
+    const first_key = Object.keys(rework_detail || {})[0] || "";
+    return first_key.split("-").slice(1).join("-");
+}
+
+function get_mistake_label(colour_mistake) {
+    return String(colour_mistake || "").split("-")[0];
 }
 
 function redirect_to_print(grn_number){
