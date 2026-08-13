@@ -16,6 +16,7 @@ from production_api.utils import update_if_string_instance, get_lpiece_variant, 
 from production_api.production_api.doctype.finishing_plan.finishing_plan import (
 	apply_auto_fp_status,
 	cancel_finishing_dispatch_log,
+	rebuild_finishing_packing_quantities,
 	record_finishing_dispatch_log,
 )
 from production_api.production_api.doctype.cut_bundle_movement_ledger.cut_bundle_movement_ledger import make_cut_bundle_ledger, cancel_cut_bundle_ledger
@@ -493,10 +494,14 @@ class StockEntry(Document):
 					pieces = sum(
 						flt(qty) for qty in (batch.get("size_pieces") or {}).values()
 					)
-				finishing_plan_dispatch_pieces[fp_name] = (
-					finishing_plan_dispatch_pieces.get(fp_name, 0) + pieces
-				)
+					finishing_plan_dispatch_pieces[fp_name] = (
+						finishing_plan_dispatch_pieces.get(fp_name, 0) + pieces
+					)
 			for row in fp_doc.finishing_plan_dispatch_items:
+				if getattr(row, "packing_source", None) == "batch":
+					if row.against_id:
+						finishing_plan_parents.add(row.against_id)
+					continue
 				# Packing GRNs rebuild the Finishing Plan summary rows after each update.
 				# Resolve a replaced child row by its stable plan + variant identity so a
 				# dispatch can still be cancelled after later GRNs were created.
@@ -545,6 +550,8 @@ class StockEntry(Document):
 
 			for fp_name in finishing_plan_parents:
 				finishing_plan_doc = frappe.get_doc("Finishing Plan", fp_name)
+				if fp_name in dynamic_plans:
+					rebuild_finishing_packing_quantities(finishing_plan_doc)
 				if self.docstatus == 2:
 					cancel_finishing_dispatch_log(finishing_plan_doc, self.name)
 				else:
@@ -582,9 +589,10 @@ class StockEntry(Document):
 						qty = qty * -1
 					elif not dynamic_dispatch:
 						dispatch_boxes += qty
-					if row.item not in d:
-						d[row.item] = {"quantity": 0, "dispatched": 0}
-					d[row.item]['dispatched'] += qty
+					if not dynamic_dispatch:
+						if row.item not in d:
+							d[row.item] = {"quantity": 0, "dispatched": 0}
+						d[row.item]['dispatched'] += qty
 
 				if dynamic_dispatch:
 					multiplier = -1 if self.docstatus == 2 else 1
@@ -599,14 +607,17 @@ class StockEntry(Document):
 						dispatch_boxes += boxes
 						dispatch_pieces += sum(flt(qty) for qty in (batch.get("size_pieces") or {}).values())
 
-				finishing_grn_list = []
-				for key in d:
-					finishing_grn_list.append({
-						"item_variant": key,
-						"quantity": d[key]['quantity'],
-						"dispatched": d[key]['dispatched'],
-					})
-				finishing_doc.set("finishing_plan_grn_details", finishing_grn_list)
+				if dynamic_dispatch:
+					rebuild_finishing_packing_quantities(finishing_doc)
+				else:
+					finishing_grn_list = []
+					for key in d:
+						finishing_grn_list.append({
+							"item_variant": key,
+							"quantity": d[key]['quantity'],
+							"dispatched": d[key]['dispatched'],
+						})
+					finishing_doc.set("finishing_plan_grn_details", finishing_grn_list)
 				stock_entry_list = update_if_string_instance(finishing_doc.stock_entry_list)
 				if self.docstatus == 2:
 					stock_entry_list.pop(self.name, None)

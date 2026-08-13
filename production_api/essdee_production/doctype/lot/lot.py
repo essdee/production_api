@@ -922,17 +922,17 @@ def get_ocr_details(lot):
 	for finishing_plan in finishing_plan_list:
 		lot_dict['finishing_plan_list'].append(finishing_plan)
 		fp_doc = frappe.get_doc("Finishing Plan", finishing_plan)
-		dynamic_packing = bool(fp_doc.work_order and frappe.db.exists(
+		batch_tracked_packing = bool(fp_doc.work_order and frappe.db.exists(
 			"Goods Received Note",
 			{
 				"against": "Work Order",
 				"against_id": fp_doc.work_order,
 				"docstatus": 1,
 				"is_return": 0,
-				"packing_calculation_version": [">=", 2],
+				"packing_calculation_version": [">=", 1],
 			},
 		))
-		dispatch_multiplier = 1 if dynamic_packing else fp_doc.pieces_per_box
+		dispatch_multiplier = 1 if batch_tracked_packing else fp_doc.pieces_per_box
 		for row in fp_doc.finishing_plan_grn_details:
 			attr_details = get_variant_attr_details(row.item_variant)
 			size = attr_details[primary]
