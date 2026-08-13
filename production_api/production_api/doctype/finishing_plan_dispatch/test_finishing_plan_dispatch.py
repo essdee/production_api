@@ -88,6 +88,106 @@ class TestFinishingPlanDispatch(FrappeTestCase):
 		self.assertEqual(normalized[0]["stock_quantities"], {"S": 0.6, "M": 0.4})
 		self.assertEqual(normalized[0]["stock_uom"], "Box")
 
+	def test_draft_reload_refreshes_live_data_and_keeps_batch_selection(self):
+		fresh = self._dynamic_row(
+			"FP-SELECTED",
+			batch_dispatches=[],
+		)
+		fresh["dynamic_ratio_packing"] = True
+		fresh["packing_batches"] = [
+			{"batch_row": "BATCH-CURRENT", "available_boxes": 3},
+		]
+		saved = self._dynamic_row(
+			"FP-SELECTED",
+			batch_dispatches=[
+				{"batch_row": "BATCH-CURRENT", "box_quantity": 2},
+				{"batch_row": "BATCH-REMOVED", "box_quantity": 1},
+			],
+		)
+		doc = frappe.get_doc({
+			"doctype": "Finishing Plan Dispatch",
+			"docstatus": 0,
+			"finishing_items": frappe.as_json([saved]),
+		})
+
+		with patch.object(
+			finishing_plan_dispatch,
+			"fetch_fp_items",
+			return_value=[fresh],
+		):
+			doc.onload()
+
+		reloaded = doc.get_onload("items")
+		self.assertEqual(len(reloaded), 1)
+		self.assertEqual(reloaded[0]["doc_name"], "FP-SELECTED")
+		self.assertEqual(
+			reloaded[0]["batch_dispatches"],
+			[{"batch_row": "BATCH-CURRENT", "box_quantity": 2}],
+		)
+
+	def test_zero_quantity_legacy_rows_are_not_saved(self):
+		row = self._dynamic_row("FP-LEGACY")
+		row["dynamic_ratio_packing"] = False
+		doc = frappe.get_doc({
+			"doctype": "Finishing Plan Dispatch",
+			"finishing_items": frappe.as_json([row]),
+		})
+
+		with (
+			patch.object(
+				finishing_plan_dispatch.frappe,
+				"get_doc",
+				return_value=SimpleNamespace(name="FP-LEGACY"),
+			),
+			patch.object(
+				finishing_plan_dispatch,
+				"get_finishing_packing_summary",
+				return_value=frappe._dict(dynamic_ratio_packing=False),
+			),
+			patch.object(finishing_plan_dispatch, "get_or_create_variant") as create_variant,
+		):
+			doc.before_validate()
+
+		self.assertEqual(len(doc.finishing_plan_dispatch_items), 0)
+		create_variant.assert_not_called()
+
+	def test_empty_dispatch_cannot_be_submitted(self):
+		doc = frappe.get_doc({"doctype": "Finishing Plan Dispatch"})
+		with self.assertRaisesRegex(
+			frappe.ValidationError,
+			"Select at least one Finishing Plan",
+		):
+			doc.before_submit()
+
+	def test_existing_draft_keeps_fp_76_visible_after_save_and_reload(self):
+		fpd_name = "FPD-2627-00154"
+		fp_name = "FP-2627-00076"
+		if not frappe.db.exists(
+			"Finishing Plan Dispatch", {"name": fpd_name, "docstatus": 0}
+		):
+			self.skipTest("The reported draft FPD fixture is not available on this site")
+
+		doc = frappe.get_doc("Finishing Plan Dispatch", fpd_name)
+		doc.onload()
+		items = doc.get_onload("items")
+		target = next(row for row in items if row["doc_name"] == fp_name)
+		self.assertTrue(target["dynamic_ratio_packing"])
+		self.assertEqual(
+			{batch["packing_calculation_version"] for batch in target["packing_batches"]},
+			{1, 2},
+		)
+
+		# Mirror the browser's validation payload, save the untouched draft, and
+		# prove a subsequent reload still includes the unselected Finishing Plan.
+		doc.finishing_items = frappe.as_json(items)
+		doc.save(ignore_permissions=True)
+		self.assertEqual(len(doc.finishing_plan_dispatch_items), 0)
+
+		doc.reload()
+		doc.onload()
+		reloaded_names = {row["doc_name"] for row in doc.get_onload("items")}
+		self.assertIn(fp_name, reloaded_names)
+
 	def test_unselected_dynamic_plan_does_not_block_selected_plan(self):
 		selected = self._dynamic_row(
 			"FP-SELECTED",

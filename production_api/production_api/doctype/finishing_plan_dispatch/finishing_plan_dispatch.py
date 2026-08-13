@@ -22,6 +22,17 @@ class FinishingPlanDispatch(Document):
 			stock_entry.cancel()
 
 	def onload(self):
+		if self.docstatus == 0:
+			if self.finishing_items:
+				saved_items = update_if_string_instance(self.finishing_items) or []
+				self.set_onload(
+					"items",
+					merge_saved_finishing_items(fetch_fp_items(), saved_items),
+				)
+				return
+			if not self.finishing_plan_dispatch_items:
+				return
+
 		saved_batch_dispatches = update_if_string_instance(
 			self.packing_batch_dispatch_json
 		) or []
@@ -171,6 +182,18 @@ class FinishingPlanDispatch(Document):
 						continue
 					if dynamic_ratio_packing:
 						continue
+					dispatch_qty = flt(row['values'][val]['dispatch_qty'])
+					if dispatch_qty < 0:
+						frappe.throw(
+							f"Dispatch quantity cannot be negative for {row['doc_name']} / {val}"
+						)
+					if dispatch_qty > flt(row['values'][val]['qty']):
+						frappe.throw(
+							f"Dispatch quantity for {row['doc_name']} / {val} exceeds "
+							f"the available balance of {flt(row['values'][val]['qty']):g}"
+						)
+					if not dispatch_qty:
+						continue
 					my_attributes = {
 						row['primary_attribute']: val,
 					}
@@ -180,7 +203,7 @@ class FinishingPlanDispatch(Document):
 						"item_variant": variant,
 						"lot": row['lot'],
 						"balance_qty": row['values'][val]['qty'],
-						"quantity": row['values'][val]['dispatch_qty'],
+						"quantity": dispatch_qty,
 						"uom": row['uom'],
 						"item": row['item'],
 						"against_id": row['doc_name'],
@@ -224,6 +247,8 @@ class FinishingPlanDispatch(Document):
 		for grp in group:
 			if group[grp]['check']:
 				items = items + group[grp]['items']
+		if not items:
+			frappe.throw("Select at least one Finishing Plan quantity or packing batch to dispatch")
 		self.set("finishing_plan_dispatch_items", items)
 
 		# Freeze dispatch snapshot data for print format
@@ -297,7 +322,19 @@ class FinishingPlanDispatch(Document):
 
 @frappe.whitelist()
 def fetch_fp_items():
-	fp_list = frappe.get_all("Finishing Plan", pluck="name")
+	# Loading every historical Finishing Plan caused hundreds of document and
+	# attribute queries even though only a small set had anything dispatchable.
+	fp_list = frappe.db.sql(
+		"""
+			SELECT DISTINCT fp.name
+			FROM `tabFinishing Plan` fp
+			INNER JOIN `tabFinishing Plan GRN Detail` detail
+				ON detail.parent = fp.name
+			WHERE COALESCE(detail.quantity, 0) - COALESCE(detail.dispatched, 0) > 0
+			ORDER BY fp.modified DESC
+		""",
+		pluck=True,
+	)
 	item_detail = []	
 	for fp in fp_list:
 		fp_doc = frappe.get_doc("Finishing Plan", fp)
@@ -338,6 +375,38 @@ def fetch_fp_items():
 			item_detail.append(item)
 
 	return item_detail
+
+
+def merge_saved_finishing_items(fresh_items, saved_items):
+	"""Refresh live balances/batches while retaining a draft's user inputs."""
+	saved_by_plan = {
+		row.get("doc_name"): row
+		for row in (saved_items or [])
+		if row.get("doc_name")
+	}
+	for fresh in fresh_items:
+		saved = saved_by_plan.get(fresh.get("doc_name")) or {}
+		fresh["colour_grid"] = saved.get("colour_grid") or {}
+		if fresh.get("dynamic_ratio_packing"):
+			valid_batches = {
+				batch.get("batch_row") for batch in fresh.get("packing_batches") or []
+			}
+			fresh["batch_dispatches"] = [
+				{
+					"batch_row": batch.get("batch_row"),
+					"box_quantity": batch.get("box_quantity"),
+				}
+				for batch in (saved.get("batch_dispatches") or [])
+				if batch.get("batch_row") in valid_batches
+			]
+			continue
+
+		saved_values = saved.get("values") or {}
+		for size, value in fresh.get("values", {}).items():
+			value["dispatch_qty"] = flt(
+				(saved_values.get(size) or {}).get("dispatch_qty")
+			)
+	return fresh_items
 
 @frappe.whitelist()
 def create_stock_dispatch(doc_name, from_location, to_location, vehicle_no, goods_value):

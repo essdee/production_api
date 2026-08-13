@@ -5,11 +5,14 @@ frappe.ui.form.on("Finishing Plan Dispatch", {
 	refresh(frm) {
         $(frm.fields_dict['finishing_plan_dispatch_html'].wrapper).html("")
         frm.finishing = new frappe.production.ui.FinishingPlanDispatch(frm.fields_dict['finishing_plan_dispatch_html'].wrapper)
-        if(frm.doc.__onload && frm.doc.__onload.items){
+		const has_loaded_items = Boolean(
+			frm.doc.__onload && Array.isArray(frm.doc.__onload.items)
+		)
+        if(has_loaded_items){
             frm.doc['finishing_items'] = JSON.stringify(frm.doc.__onload.items)
             frm.finishing.load_data(frm.doc.__onload.items)
         }
-        if(frm.doc.finishing_plan_dispatch_items.length == 0){
+        if(frm.doc.docstatus == 0 && !has_loaded_items){
             fetch_finishing_items(frm)
         }
         if(frm.doc.docstatus == 1){
@@ -98,11 +101,19 @@ frappe.ui.form.on("Finishing Plan Dispatch", {
 
 
 function fetch_finishing_items(frm){
-    frm.dirty()
     frappe.call({
         method: "production_api.production_api.doctype.finishing_plan_dispatch.finishing_plan_dispatch.fetch_fp_items",
+		freeze: true,
+		freeze_message: __("Fetching Finishing Plans..."),
         callback: function(r){
-            frm.finishing.load_data(r.message)
+			const items = r.message || []
+			frm.finishing.load_data(items)
+			frm.doc['finishing_items'] = JSON.stringify(items)
+			frm.dirty()
+			frappe.show_alert({
+				message: __("{0} Finishing Plan(s) fetched", [items.length]),
+				indicator: items.length ? "green" : "orange",
+			})
         }
     })
 }

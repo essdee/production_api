@@ -15,11 +15,24 @@ from production_api.production_api.doctype.work_order import work_order
 class TestDynamicPacking(FrappeTestCase):
 	def test_existing_legacy_plan_can_migrate_and_create_dynamic_grn(self):
 		candidate = "FP-2627-00065"
-		if candidate not in migrate_legacy_ratio_packing_grns.get_candidate_plans():
-			self.skipTest("No safe legacy ratio-packing fixture is available on this site")
-
-		negative_plans = migrate_legacy_ratio_packing_grns.get_negative_packing_plans()
-		migrate_legacy_ratio_packing_grns.execute()
+		candidate_plans = migrate_legacy_ratio_packing_grns.get_candidate_plans()
+		if candidate in candidate_plans:
+			negative_plans = migrate_legacy_ratio_packing_grns.get_negative_packing_plans()
+			migrate_legacy_ratio_packing_grns.execute()
+		else:
+			negative_plans = []
+			migrated_grn = frappe.db.exists(
+				"Goods Received Note",
+				{
+					"against_id": frappe.db.get_value("Finishing Plan", candidate, "work_order"),
+					"docstatus": 1,
+					"packing_calculation_version": 1,
+				},
+			)
+			if not migrated_grn or not frappe.db.exists(
+				"GRN Packing Batch", {"parent": migrated_grn}
+			):
+				self.skipTest("No safe legacy ratio-packing fixture is available on this site")
 		for name in negative_plans:
 			repaired = frappe.get_doc("Finishing Plan", name)
 			self.assertTrue(
@@ -68,10 +81,21 @@ class TestDynamicPacking(FrappeTestCase):
 			batch for batch in selected["packing_batches"]
 			if batch.get("packing_calculation_version") == 1
 		)
-		selected["batch_dispatches"] = [{
-			"batch_row": legacy_batch["batch_row"],
-			"box_quantity": 1,
-		}]
+		dynamic_batch = next(
+			batch for batch in selected["packing_batches"]
+			if batch.get("packing_calculation_version") == 2
+			and batch.get("grn") == grn.name
+		)
+		selected["batch_dispatches"] = [
+			{
+				"batch_row": legacy_batch["batch_row"],
+				"box_quantity": 1,
+			},
+			{
+				"batch_row": dynamic_batch["batch_row"],
+				"box_quantity": 1,
+			},
+		]
 		untouched = next(
 			row for row in rows
 			if row["doc_name"] != candidate and row.get("dynamic_ratio_packing")
@@ -82,6 +106,23 @@ class TestDynamicPacking(FrappeTestCase):
 			"finishing_items": frappe.as_json([selected, untouched]),
 		})
 		fpd.insert(ignore_permissions=True)
+		self.assertFalse(any(row.quantity == 0 for row in fpd.finishing_plan_dispatch_items))
+
+		fpd.reload()
+		fpd.onload()
+		reloaded_items = fpd.get_onload("items")
+		reloaded_selected = next(
+			row for row in reloaded_items if row["doc_name"] == candidate
+		)
+		self.assertEqual(
+			reloaded_selected["batch_dispatches"],
+			selected["batch_dispatches"],
+		)
+		self.assertIn(
+			untouched["doc_name"],
+			{row["doc_name"] for row in reloaded_items},
+		)
+		fpd.finishing_items = frappe.as_json(reloaded_items)
 		fpd.submit()
 		self.assertEqual(fpd.docstatus, 1)
 		self.assertTrue(fpd.finishing_plan_dispatch_items)
@@ -91,11 +132,11 @@ class TestDynamicPacking(FrappeTestCase):
 		)
 		self.assertAlmostEqual(
 			sum(row.quantity for row in fpd.finishing_plan_dispatch_items),
-			1,
+			13,
 		)
 		self.assertEqual(
 			sum(row.packing_piece_quantity for row in fpd.finishing_plan_dispatch_items),
-			12,
+			24,
 		)
 
 		with patch.object(
@@ -118,10 +159,14 @@ class TestDynamicPacking(FrappeTestCase):
 			frappe.db.get_value("GRN Packing Batch", legacy_batch["batch_row"], "dispatched_boxes"),
 			1,
 		)
+		self.assertEqual(
+			frappe.db.get_value("GRN Packing Batch", dynamic_batch["batch_row"], "dispatched_boxes"),
+			1,
+		)
 		fp.reload()
 		self.assertEqual(
 			finishing_plan.get_finishing_packing_summary(fp).total_dispatched,
-			12,
+			24,
 		)
 
 		stock_entry = fpd.stock_entry
@@ -130,6 +175,10 @@ class TestDynamicPacking(FrappeTestCase):
 		self.assertEqual(frappe.db.get_value("Stock Entry", stock_entry, "docstatus"), 2)
 		self.assertEqual(
 			frappe.db.get_value("GRN Packing Batch", legacy_batch["batch_row"], "dispatched_boxes"),
+			0,
+		)
+		self.assertEqual(
+			frappe.db.get_value("GRN Packing Batch", dynamic_batch["batch_row"], "dispatched_boxes"),
 			0,
 		)
 		fp.reload()
