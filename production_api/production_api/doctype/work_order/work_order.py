@@ -10,7 +10,7 @@ from six import string_types
 from itertools import groupby
 from datetime import datetime
 from frappe.model.document import Document
-from frappe.utils import flt, nowdate, nowtime, getdate
+from frappe.utils import cstr, flt, nowdate, nowtime, getdate
 from production_api.mrp_stock.stock_ledger import make_sl_entries
 from production_api.production_api.logger import get_module_logger
 from production_api.production_api.doctype.purchase_order.purchase_order import get_item_group_index
@@ -2240,6 +2240,9 @@ def update_stock(work_order, close_reason=None, close_other_reason=None, close_r
     from production_api.mrp_stock.utils import get_stock_balance
     logger = get_module_logger("work_order")
     doc = frappe.get_doc("Work Order", work_order)
+    close_reason = cstr(close_reason).strip() or "NA"
+    close_other_reason = cstr(close_other_reason).strip() or "NA"
+    close_remarks = cstr(close_remarks).strip() or "NA"
 
     # Role-based close: check if user has the merchandising manager role
     merch_manager_role = frappe.db.get_single_value("MRP Settings", "merchandising_manager_role")
@@ -2248,14 +2251,14 @@ def update_stock(work_order, close_reason=None, close_other_reason=None, close_r
     if not is_merch_manager:
         # Non-merch-manager: set Close Request, no stock updates
         doc.open_status = "Close Request"
-        if close_reason:
-            doc.close_reason = close_reason
-        if close_other_reason:
-            doc.close_other_reason = close_other_reason
-        if close_remarks:
-            doc.close_remarks = close_remarks
+        doc.close_reason = close_reason
+        doc.close_other_reason = close_other_reason
+        doc.close_remarks = close_remarks
         doc.save()
-        frappe.msgprint(_("Close Request has been submitted for approval."), alert=True)
+        if not frappe.flags.get("suppress_work_order_close_alert"):
+            frappe.msgprint(
+                _("Close Request has been submitted for approval."), alert=True
+            )
         return {"open_status": doc.open_status}
 
     # Merch manager: proceed with stock updates and close
@@ -2327,12 +2330,9 @@ def update_stock(work_order, close_reason=None, close_other_reason=None, close_r
     logger.debug(f"{work_order} SLE Updated {datetime.now()}")
     doc.open_status = "Close"
     doc.closed_by = frappe.session.user
-    if close_reason:
-        doc.close_reason = close_reason
-    if close_other_reason:
-        doc.close_other_reason = close_other_reason
-    if close_remarks:
-        doc.close_remarks = close_remarks
+    doc.close_reason = close_reason
+    doc.close_other_reason = close_other_reason
+    doc.close_remarks = close_remarks
     doc.is_delivered = True
     doc.total_quantity = 0
     doc.save()

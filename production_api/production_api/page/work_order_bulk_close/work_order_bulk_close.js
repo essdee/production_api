@@ -20,6 +20,8 @@ class WorkOrderBulkClose {
     this.page = page;
     this.request_id = 0;
     this.work_orders = [];
+    this.selected_work_orders = new Set();
+    this.wo_date_sort = "desc";
 
     this.setup_filters();
     this.setup_body();
@@ -41,16 +43,18 @@ class WorkOrderBulkClose {
     this.lot_field = this.page.add_field({
       fieldname: "lot",
       label: __("Lot"),
-      fieldtype: "Link",
+      fieldtype: "MultiSelectList",
       options: "Lot",
+      get_data: (txt) => frappe.db.get_link_options("Lot", txt),
       change: () => this.load_work_orders(),
     });
 
     this.item_field = this.page.add_field({
       fieldname: "item",
       label: __("Item"),
-      fieldtype: "Link",
+      fieldtype: "MultiSelectList",
       options: "Item",
+      get_data: (txt) => frappe.db.get_link_options("Item", txt),
       change: () => this.load_work_orders(),
     });
 
@@ -94,6 +98,11 @@ class WorkOrderBulkClose {
             color: var(--text-muted);
             font-size: var(--text-sm);
           }
+          .work-order-bulk-close-page .wo-bulk-header-actions {
+            align-items: center;
+            display: flex;
+            gap: 12px;
+          }
           .work-order-bulk-close-page .wo-bulk-table-wrap {
             overflow-x: auto;
           }
@@ -106,6 +115,21 @@ class WorkOrderBulkClose {
             position: sticky;
             top: 0;
             white-space: nowrap;
+          }
+          .work-order-bulk-close-page .wo-select-column {
+            text-align: center;
+            width: 42px;
+          }
+          .work-order-bulk-close-page .wo-sort-button {
+            align-items: center;
+            background: transparent;
+            border: 0;
+            color: inherit;
+            display: inline-flex;
+            font: inherit;
+            font-weight: inherit;
+            gap: 5px;
+            padding: 0;
           }
           .work-order-bulk-close-page td {
             vertical-align: middle;
@@ -129,7 +153,12 @@ class WorkOrderBulkClose {
         <div class="wo-bulk-card">
           <div class="wo-bulk-card-header">
             <strong>${__("Open Work Orders")}</strong>
-            <span class="wo-bulk-count"></span>
+            <div class="wo-bulk-header-actions">
+              <span class="wo-bulk-count"></span>
+              <button class="btn btn-sm btn-danger wo-close-selected" type="button" disabled>
+                ${__("Close Selected")}
+              </button>
+            </div>
           </div>
           <div class="wo-bulk-content"></div>
         </div>
@@ -138,12 +167,18 @@ class WorkOrderBulkClose {
 
     this.content = this.body.find(".wo-bulk-content");
     this.count = this.body.find(".wo-bulk-count");
+    this.close_selected_button = this.body.find(".wo-close-selected");
+    this.close_selected_button.on("click", () =>
+      this.show_bulk_close_dialog(this.get_selected_work_orders())
+    );
   }
 
   async load_work_orders() {
     const filters = this.get_filters();
     const filters_key = JSON.stringify(filters);
     const request_id = ++this.request_id;
+    this.selected_work_orders.clear();
+    this.update_selection_ui();
 
     if (!filters.supplier) {
       this.work_orders = [];
@@ -180,8 +215,8 @@ class WorkOrderBulkClose {
   get_filters() {
     return {
       supplier: this.supplier_field.get_value() || "",
-      lot: this.lot_field.get_value() || "",
-      item: this.item_field.get_value() || "",
+      lot: this.lot_field.get_value() || [],
+      item: this.item_field.get_value() || [],
       wo_from_date: this.wo_from_date_field.get_value() || "",
       wo_to_date: this.wo_to_date_field.get_value() || "",
     };
@@ -205,12 +240,6 @@ class WorkOrderBulkClose {
   }
 
   render_table() {
-    const count_label = __(
-      this.work_orders.length === 1 ? "{0} Work Order" : "{0} Work Orders",
-      [this.work_orders.length]
-    );
-    this.count.text(count_label);
-
     if (!this.work_orders.length) {
       this.render_empty_state(
         __("No open Work Orders found for this supplier.")
@@ -218,11 +247,25 @@ class WorkOrderBulkClose {
       return;
     }
 
-    const rows = this.work_orders
+    const displayed_work_orders = this.get_sorted_work_orders();
+    const sort_indicator = this.wo_date_sort === "asc" ? "↑" : "↓";
+    const rows = displayed_work_orders
       .map(
         (work_order) => `<tr data-work-order="${this.escape_html(
           work_order.name
         )}">
+          <td class="wo-select-column">
+            <input
+              class="wo-row-select"
+              type="checkbox"
+              aria-label="${this.escape_html(
+                __("Select Work Order {0}", [work_order.name])
+              )}"
+              ${
+                this.selected_work_orders.has(work_order.name) ? "checked" : ""
+              }
+            >
+          </td>
           <td>
             <a href="/app/work-order/${encodeURIComponent(
               work_order.name
@@ -260,8 +303,19 @@ class WorkOrderBulkClose {
         <table class="table table-bordered table-hover">
           <thead>
             <tr>
+              <th class="wo-select-column">
+                <input class="wo-select-all" type="checkbox" aria-label="${this.escape_html(
+                  __("Select all Work Orders")
+                )}">
+              </th>
               <th>${__("Work Order ID")}</th>
-              <th>${__("WO Date")}</th>
+              <th>
+                <button class="wo-sort-button wo-date-sort" type="button" title="${this.escape_html(
+                  __("Sort by WO Date")
+                )}">
+                  ${__("WO Date")} <span>${sort_indicator}</span>
+                </button>
+              </th>
               <th>${__("Item")}</th>
               <th>${__("Lot")}</th>
               <th>${__("Process")}</th>
@@ -276,12 +330,41 @@ class WorkOrderBulkClose {
       </div>`
     );
 
-    this.bind_row_actions();
+    this.bind_row_actions(displayed_work_orders);
+    this.update_selection_ui();
   }
 
-  bind_row_actions() {
+  bind_row_actions(displayed_work_orders) {
+    this.content.find(".wo-date-sort").on("click", () => {
+      this.wo_date_sort = this.wo_date_sort === "asc" ? "desc" : "asc";
+      this.render_table();
+    });
+
+    this.content.find(".wo-select-all").on("change", (event) => {
+      const selected = event.currentTarget.checked;
+      for (const work_order of displayed_work_orders) {
+        if (selected) {
+          this.selected_work_orders.add(work_order.name);
+        } else {
+          this.selected_work_orders.delete(work_order.name);
+        }
+      }
+      this.content.find(".wo-row-select").prop("checked", selected);
+      this.update_selection_ui();
+    });
+
     this.content.find("tbody tr").each((index, element) => {
-      const work_order = this.work_orders[index];
+      const work_order = displayed_work_orders[index];
+      $(element)
+        .find(".wo-row-select")
+        .on("change", (event) => {
+          if (event.currentTarget.checked) {
+            this.selected_work_orders.add(work_order.name);
+          } else {
+            this.selected_work_orders.delete(work_order.name);
+          }
+          this.update_selection_ui();
+        });
       $(element)
         .find(".wo-view")
         .on("click", () => this.show_work_order_details(work_order));
@@ -289,6 +372,54 @@ class WorkOrderBulkClose {
         .find(".wo-close")
         .on("click", () => this.show_close_dialog(work_order));
     });
+  }
+
+  get_sorted_work_orders() {
+    const direction = this.wo_date_sort === "asc" ? 1 : -1;
+    return [...this.work_orders].sort((left, right) => {
+      const date_comparison = String(left.wo_date || "").localeCompare(
+        String(right.wo_date || "")
+      );
+      if (date_comparison) {
+        return date_comparison * direction;
+      }
+      return String(left.name).localeCompare(String(right.name)) * direction;
+    });
+  }
+
+  get_selected_work_orders() {
+    return this.get_sorted_work_orders().filter((work_order) =>
+      this.selected_work_orders.has(work_order.name)
+    );
+  }
+
+  update_selection_ui() {
+    const selected_count = this.get_selected_work_orders().length;
+    const count_label = __(
+      this.work_orders.length === 1 ? "{0} Work Order" : "{0} Work Orders",
+      [this.work_orders.length]
+    );
+    this.count.text(
+      selected_count
+        ? __("{0} · {1} selected", [count_label, selected_count])
+        : count_label
+    );
+    this.close_selected_button
+      .prop("disabled", selected_count === 0)
+      .text(
+        selected_count
+          ? __("Close Selected ({0})", [selected_count])
+          : __("Close Selected")
+      );
+
+    const select_all = this.content.find(".wo-select-all").get(0);
+    if (select_all) {
+      select_all.checked =
+        this.work_orders.length > 0 &&
+        selected_count === this.work_orders.length;
+      select_all.indeterminate =
+        selected_count > 0 && selected_count < this.work_orders.length;
+    }
   }
 
   async show_work_order_details(work_order) {
@@ -649,23 +780,58 @@ class WorkOrderBulkClose {
   }
 
   show_close_dialog(work_order) {
+    this.show_bulk_close_dialog([work_order]);
+  }
+
+  show_bulk_close_dialog(work_orders) {
+    if (!work_orders.length) {
+      frappe.msgprint(__("Select at least one Work Order to close."));
+      return;
+    }
+
+    const is_bulk = work_orders.length > 1;
+    const selected_rows = work_orders
+      .map(
+        (work_order) => `<tr>
+          <td>${this.escape_html(work_order.name)}</td>
+          <td>${this.format_date(work_order.wo_date)}</td>
+          <td>${this.escape_html(work_order.item)}</td>
+          <td>${this.escape_html(work_order.lot)}</td>
+        </tr>`
+      )
+      .join("");
     const dialog = new frappe.ui.Dialog({
-      title: __("Close Work Order {0}", [work_order.name]),
+      title: is_bulk
+        ? __("Close {0} Work Orders", [work_orders.length])
+        : __("Close Work Order {0}", [work_orders[0].name]),
       fields: [
+        {
+          fieldtype: "HTML",
+          fieldname: "selected_work_orders",
+          options: `<div class="table-responsive" style="max-height: 220px; overflow-y: auto;">
+            <table class="table table-sm table-bordered">
+              <thead><tr>
+                <th>${__("Work Order")}</th>
+                <th>${__("WO Date")}</th>
+                <th>${__("Item")}</th>
+                <th>${__("Lot")}</th>
+              </tr></thead>
+              <tbody>${selected_rows}</tbody>
+            </table>
+          </div>`,
+        },
         {
           fieldtype: "Select",
           fieldname: "close_reason",
           label: __("Close Reason"),
           options:
             "\nCutting Shortage\nPrinting Shortage\nSewing Shortage\nSewing Missing\nOthers",
-          reqd: 1,
         },
         {
           fieldtype: "Data",
           fieldname: "close_other_reason",
           label: __("Other Reason"),
           depends_on: "eval: doc.close_reason == 'Others'",
-          mandatory_depends_on: "eval: doc.close_reason == 'Others'",
         },
         {
           fieldtype: "Small Text",
@@ -673,29 +839,34 @@ class WorkOrderBulkClose {
           label: __("Close Remarks"),
         },
       ],
-      primary_action_label: __("Close Work Order"),
+      primary_action_label: is_bulk
+        ? __("Close Selected Work Orders")
+        : __("Close Work Order"),
       primary_action: (values) =>
-        this.close_work_order(work_order, values, dialog),
+        this.close_work_orders(work_orders, values, dialog),
     });
 
     dialog.show();
   }
 
-  close_work_order(work_order, values, dialog) {
+  close_work_orders(work_orders, values, dialog) {
     const primary_button = dialog.get_primary_btn();
     primary_button.prop("disabled", true);
 
     frappe.call({
       method:
-        "production_api.production_api.doctype.work_order.work_order.update_stock",
+        "production_api.production_api.page.work_order_bulk_close.work_order_bulk_close.close_work_orders",
       args: {
-        work_order: work_order.name,
-        close_reason: values.close_reason,
+        work_orders: work_orders.map((work_order) => work_order.name),
+        close_reason: values.close_reason || "",
         close_other_reason: values.close_other_reason || "",
         close_remarks: values.close_remarks || "",
       },
       freeze: true,
-      freeze_message: __("Closing Work Order {0}...", [work_order.name]),
+      freeze_message:
+        work_orders.length === 1
+          ? __("Closing Work Order {0}...", [work_orders[0].name])
+          : __("Closing {0} Work Orders...", [work_orders.length]),
       callback: (response) => {
         if (response.exc) {
           primary_button.prop("disabled", false);
@@ -703,14 +874,29 @@ class WorkOrderBulkClose {
         }
 
         dialog.hide();
-        const open_status = response.message?.open_status;
+        const results = response.message?.results || [];
+        const closed_count = results.filter(
+          (result) => result.open_status === "Close"
+        ).length;
+        const request_count = results.filter(
+          (result) => result.open_status === "Close Request"
+        ).length;
+        let message;
+        if (work_orders.length === 1) {
+          message = request_count
+            ? __("Close Request submitted for {0}.", [work_orders[0].name])
+            : __("Work Order {0} closed successfully.", [work_orders[0].name]);
+        } else {
+          message = __("{0} Work Orders closed; {1} close requests submitted.", [
+            closed_count,
+            request_count,
+          ]);
+        }
         frappe.show_alert({
-          message:
-            open_status === "Close Request"
-              ? __("Close Request submitted for {0}.", [work_order.name])
-              : __("Work Order {0} closed successfully.", [work_order.name]),
-          indicator: open_status === "Close Request" ? "orange" : "green",
+          message,
+          indicator: request_count ? "orange" : "green",
         });
+        this.selected_work_orders.clear();
         this.load_work_orders();
       },
       error: () => primary_button.prop("disabled", false),

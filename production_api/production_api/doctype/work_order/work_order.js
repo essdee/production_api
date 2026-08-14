@@ -307,14 +307,12 @@ frappe.ui.form.on("Work Order", {
                         fieldname: "close_reason",
                         label: "Close Reason",
                         options: "\nCutting Shortage\nPrinting Shortage\nSewing Shortage\nSewing Missing\nOthers",
-                        reqd: 1,
                       },
                       {
                         fieldtype: "Data",
                         fieldname: "close_other_reason",
                         label: "Other Reason",
                         depends_on: "eval: doc.close_reason == 'Others'",
-                        mandatory_depends_on: "eval: doc.close_reason == 'Others'",
                       },
                       {
                         fieldtype: "Small Text",
@@ -634,7 +632,6 @@ frappe.ui.form.on("Work Order", {
                         fieldname: "close_reason",
                         label: "Close Reason",
                         options: "\nCutting Shortage\nPrinting Shortage\nSewing Shortage\nSewing Missing\nOthers",
-                        reqd: 1,
                         default: frm.doc.close_reason || "",
                       },
                       {
@@ -642,7 +639,6 @@ frappe.ui.form.on("Work Order", {
                         fieldname: "close_other_reason",
                         label: "Other Reason",
                         depends_on: "eval: doc.close_reason == 'Others'",
-                        mandatory_depends_on: "eval: doc.close_reason == 'Others'",
                         default: frm.doc.close_other_reason || "",
                       },
                       {

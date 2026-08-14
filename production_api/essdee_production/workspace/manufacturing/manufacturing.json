@@ -195,7 +195,7 @@
    "hidden": 0,
    "is_query_report": 0,
    "label": "Reports",
-   "link_count": 11,
+   "link_count": 12,
    "link_type": "DocType",
    "onboard": 0,
    "type": "Card Break"
@@ -309,9 +309,19 @@
    "link_type": "Report",
    "onboard": 0,
    "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Work Order Bulk Close",
+   "link_count": 0,
+   "link_to": "work-order-bulk-close",
+   "link_type": "Page",
+   "onboard": 0,
+   "type": "Link"
   }
  ],
- "modified": "2026-08-05 15:34:46.774172",
+ "modified": "2026-08-14 12:59:23.949175",
  "modified_by": "Administrator",
  "module": "Essdee Production",
  "name": "Manufacturing",

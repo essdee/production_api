@@ -5,6 +5,7 @@ import frappe
 from frappe.utils import getdate
 
 from production_api.production_api.page.work_order_bulk_close.work_order_bulk_close import (
+    close_work_orders,
     get_open_work_orders,
     get_work_order_close_details,
 )
@@ -71,15 +72,19 @@ class TestWorkOrderBulkClose(TestCase):
     ):
         get_open_work_orders(
             "SUPPLIER-TEST",
-            lot="LOT-TEST-0001",
-            item="ITEM-TEST-0001",
+            lot=["LOT-TEST-0001", "LOT-TEST-0002"],
+            item='["ITEM-TEST-0001", "ITEM-TEST-0002"]',
             wo_from_date="2026-08-01",
             wo_to_date="2026-08-14",
         )
 
         filters = get_list.call_args.kwargs["filters"]
-        self.assertEqual(filters["lot"], "LOT-TEST-0001")
-        self.assertEqual(filters["item"], "ITEM-TEST-0001")
+        self.assertEqual(
+            filters["lot"], ["in", ["LOT-TEST-0001", "LOT-TEST-0002"]]
+        )
+        self.assertEqual(
+            filters["item"], ["in", ["ITEM-TEST-0001", "ITEM-TEST-0002"]]
+        )
         self.assertEqual(
             filters["wo_date"],
             [
@@ -195,3 +200,67 @@ class TestWorkOrderBulkClose(TestCase):
         self.assertEqual(result, {"open_status": "Close Request"})
         self.assertEqual(work_order.open_status, "Close Request")
         work_order.save.assert_called_once_with()
+
+    def test_update_stock_stores_na_for_empty_close_details(self):
+        work_order = self.make_mock_work_order()
+
+        with (
+            patch.object(work_order_module.frappe, "get_doc", return_value=work_order),
+            patch.object(
+                work_order_module.frappe.db,
+                "get_single_value",
+                return_value="Merchandising Manager",
+            ),
+            patch.object(work_order_module.frappe, "get_roles", return_value=[]),
+            patch.object(work_order_module.frappe, "msgprint"),
+        ):
+            work_order_module.update_stock(work_order.name)
+
+        self.assertEqual(work_order.close_reason, "NA")
+        self.assertEqual(work_order.close_other_reason, "NA")
+        self.assertEqual(work_order.close_remarks, "NA")
+
+    @patch.object(work_order_module, "update_stock")
+    @patch("frappe.get_doc")
+    def test_bulk_close_validates_all_then_closes_with_shared_details(
+        self, get_doc, update_stock
+    ):
+        first = MagicMock(docstatus=1, open_status="Open")
+        second = MagicMock(docstatus=1, open_status="Open")
+        get_doc.side_effect = [first, second]
+        update_stock.side_effect = [
+            {"open_status": "Close"},
+            {"open_status": "Close"},
+        ]
+
+        result = close_work_orders(
+            ["WO-TEST-0001", "WO-TEST-0002"],
+            close_reason="Sewing Shortage",
+            close_remarks="Shared remark",
+        )
+
+        first.check_permission.assert_called_once_with("write")
+        second.check_permission.assert_called_once_with("write")
+        self.assertEqual(len(result["results"]), 2)
+        self.assertEqual(update_stock.call_count, 2)
+        update_stock.assert_any_call(
+            "WO-TEST-0001",
+            close_reason="Sewing Shortage",
+            close_other_reason=None,
+            close_remarks="Shared remark",
+        )
+
+    @patch.object(work_order_module, "update_stock")
+    @patch("frappe.get_doc")
+    def test_bulk_close_does_not_update_any_work_order_if_validation_fails(
+        self, get_doc, update_stock
+    ):
+        get_doc.side_effect = [
+            MagicMock(docstatus=1, open_status="Open"),
+            MagicMock(docstatus=1, open_status="Close"),
+        ]
+
+        with self.assertRaises(frappe.ValidationError):
+            close_work_orders(["WO-TEST-0001", "WO-TEST-0002"])
+
+        update_stock.assert_not_called()
