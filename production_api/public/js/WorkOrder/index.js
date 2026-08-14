@@ -174,6 +174,12 @@ export class WorkOrderItemViewWrapper {
     create_input_attributes() {
         this.vue.create_input_classes()
     }
+    destroy() {
+        if (this.app) {
+            this.app.unmount()
+        }
+        this.$wrapper.empty()
+    }
 }
 
 export class WOSummaryWrapper {
