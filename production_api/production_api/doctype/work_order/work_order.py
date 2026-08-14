@@ -2256,7 +2256,7 @@ def update_stock(work_order, close_reason=None, close_other_reason=None, close_r
             doc.close_remarks = close_remarks
         doc.save()
         frappe.msgprint(_("Close Request has been submitted for approval."), alert=True)
-        return
+        return {"open_status": doc.open_status}
 
     # Merch manager: proceed with stock updates and close
     logger.debug(f"{work_order} data construction {datetime.now()}")
@@ -2336,6 +2336,7 @@ def update_stock(work_order, close_reason=None, close_other_reason=None, close_r
     doc.is_delivered = True
     doc.total_quantity = 0
     doc.save()
+    return {"open_status": doc.open_status}
 
 
 @frappe.whitelist()

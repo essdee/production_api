@@ -267,7 +267,7 @@
 <script setup>
 import EventBus from "../../bus";
 
-import { ref, onMounted, computed, watch } from "vue";
+import { ref, onMounted, onUnmounted, computed, watch } from "vue";
 const root = ref(null);
 let loop_index = 0
 let i = 0;
@@ -308,6 +308,12 @@ let edit_type = ref(null)
 let edit_item_uom = ref(null)
 let delivered_edited = ref(false)
 
+function mark_form_dirty() {
+	if (typeof cur_frm !== "undefined" && cur_frm && cur_frm.dirty) {
+		cur_frm.dirty()
+	}
+}
+
 function get_input(value, idx1, idx2, type, attr){
 	if(value.length == 0){
 		value = 0
@@ -315,7 +321,7 @@ function get_input(value, idx1, idx2, type, attr){
 	else{
 		value = parseFloat(value)
 	}
-	cur_frm.dirty()
+	mark_form_dirty()
 	is_edited.value = true
 	let x = items.value[idx1]['items'][idx2]['values'][attr]['types']
 	if(typeof(x) == 'string'){
@@ -337,7 +343,7 @@ function get_secondary_input(value, idx1, idx2, type, attr){
 	else{
 		value = parseFloat(value)
 	}
-	cur_frm.dirty()
+	mark_form_dirty()
 	is_edited.value = true
 	if(attr){
 		let secondary_json = items.value[idx1]['items'][idx2]['values'][attr]['secondary_qty_json']
@@ -436,7 +442,7 @@ async function edit_delivered_item(index, index1, type) {
 }
 
 function delete_delivered_item(index, index1, type){
-	cur_frm.dirty()
+	mark_form_dirty()
 	is_edited.value = true
 	edit_index.value = index
 	edit_index1.value = index1 
@@ -661,7 +667,7 @@ async function add_item() {
 	if(i == -1){
 		items.value[edit_index.value].items[edit_index1.value]['types'].push(type_selected)
 	}
-	cur_frm.dirty();
+	mark_form_dirty();
 	let data = getControlValues(controlRefs.value.quantities);
 	let x = 0;
 	controlRefs.value.quantities = [];
@@ -787,12 +793,18 @@ function make_clean() {
 	}
 }
 
+const updateDetails = (data) => {
+	load_data(data)
+}
+
 onMounted(() => {
 	console.log("new-grn-work-item mounted");
-	EventBus.$on("update_grn_work_details", (data) => {
-		load_data(data);
-	});
+	EventBus.$on("update_grn_work_details", updateDetails);
 });
+
+onUnmounted(() => {
+	EventBus.$off("update_grn_work_details", updateDetails);
+})
 
 function load_data(data, skip_watch = false) {
 	if (data) {
@@ -828,7 +840,9 @@ function load_data(data, skip_watch = false) {
 }
 
 function update_status() {
-  	docstatus.value = cur_frm.doc.docstatus;
+	if (typeof cur_frm !== "undefined" && cur_frm && cur_frm.doc) {
+		docstatus.value = cur_frm.doc.docstatus;
+	}
 }
 
 function get_work_order_items() {

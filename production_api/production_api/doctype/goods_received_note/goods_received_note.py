@@ -39,6 +39,9 @@ from production_api.dynamic_packing import (
 
 
 class GoodsReceivedNote(Document):
+    def is_closed_wo_sewing_details_grn(self):
+        return bool(self.get("from_closed_wo_sewing_details"))
+
     def before_cancel(self):
         if is_batch_tracked_packing_grn(self):
             dispatched = [
@@ -106,7 +109,10 @@ class GoodsReceivedNote(Document):
             self.calculate_amount()
         elif not self.is_return and self.against == "Work Order":
             self.dump_items()
-        if self.includes_packing:
+        if self.is_closed_wo_sewing_details_grn():
+            self.set("grn_deliverables", [])
+            self.set("grn_excess_usage_items", [])
+        elif self.includes_packing:
             deliverables, excess_list = get_packing_process_deliverables(self)
             self.set("grn_deliverables", deliverables)
             self.set("grn_excess_usage_items", excess_list)
@@ -215,7 +221,9 @@ class GoodsReceivedNote(Document):
                 make_sl_entries(add_stock_list)
 
             else:
-                if not self.is_manual_entry and not self.flags.from_cls and not self.is_rework and not self.additional_grn and not self.includes_packing:
+                if self.is_closed_wo_sewing_details_grn():
+                    self.set("grn_deliverables", [])
+                elif not self.is_manual_entry and not self.flags.from_cls and not self.is_rework and not self.additional_grn and not self.includes_packing:
                     self.calculate_grn_deliverables()
                 elif self.includes_packing:
                     self.update_pack_variant_items()
@@ -485,7 +493,15 @@ class GoodsReceivedNote(Document):
             self.update_wo_stock_ledger(res)
             logger.debug(
                 f"{self.name} Items Added to Delivery Location {datetime.now()}")
-            if self.is_rework:
+            if self.is_closed_wo_sewing_details_grn():
+                logger.debug(
+                    f"{self.name} Deliverable stock reduction skipped for closed WO Sewing Details GRN")
+                if self.supplier_address == self.delivery_address and self.is_internal_unit:
+                    self.db_set("ste_transferred_percent", 100)
+                    self.db_set("ste_transferred", self.total_delivered_qty)
+                    self.db_set("transfer_complete", 1)
+                make_piece_calculation = True
+            elif self.is_rework:
                 self.reduce_rework_stock()
             else:
                 self.reduce_uncalculated_stock(res)
@@ -1217,7 +1233,10 @@ class GoodsReceivedNote(Document):
                 res = get_variant_stock_details()
                 self.reupdate_stock_ledger(res)
                 logger.debug(f"{self.name} Stock Updated {datetime.now()}")
-                if self.is_rework:
+                if self.is_closed_wo_sewing_details_grn():
+                    logger.debug(
+                        f"{self.name} Deliverable stock restoration skipped for closed WO Sewing Details GRN")
+                elif self.is_rework:
                     self.reupdate_rework_stock()
                 else:
                     self.reupdate_wo_deliverables(res)
@@ -1494,6 +1513,8 @@ class GoodsReceivedNote(Document):
 
         if self.delivery_date > self.posting_date:
             frappe.throw("Delivery Date is Higher than Posting Date")
+        if self.is_closed_wo_sewing_details_grn():
+            self.set("grn_deliverables", [])
         if self.against == 'Purchase Order':
             if (self.get('item_details')):
                 has_lots = _po_has_linked_lots(self.against_id)
@@ -1542,7 +1563,9 @@ class GoodsReceivedNote(Document):
                         wo_deliverables = {}
                         for row in doc.deliverables:
                             wo_deliverables[row.item_variant] = row.valuation_rate
-                        if not self.is_manual_entry and not self.flags.from_cls and not self.is_rework and not self.additional_grn:
+                        if self.is_closed_wo_sewing_details_grn():
+                            self.set("grn_deliverables", [])
+                        elif not self.is_manual_entry and not self.flags.from_cls and not self.is_rework and not self.additional_grn:
                             deliverables = calculate_deliverables(self)
                             items = []
                             if deliverables:
@@ -1592,7 +1615,21 @@ class GoodsReceivedNote(Document):
         if self.against == 'Work Order':
             status = frappe.get_value(
                 'Work Order', self.against_id, 'open_status')
-            if status == 'Close':
+            special_route = self.is_closed_wo_sewing_details_grn()
+            # The database field is an audit marker, not an authorization token.
+            # Only the server page API sets this short-lived flag on the same
+            # Document instance that it inserts and submits.
+            trusted_route = bool(
+                self.flags.get("allow_closed_wo_sewing_details_grn"))
+            if special_route and not trusted_route and self.is_new():
+                frappe.throw(
+                    'Closed Work Order GRNs can only be created from the Sewing Details page.',
+                    title='GRN')
+            if special_route and status != 'Close':
+                frappe.throw(
+                    'The Sewing Details closed Work Order route can only be used for a closed Work Order.',
+                    title='GRN')
+            if status == 'Close' and not (special_route and trusted_route):
                 frappe.throw('Work Order is closed.', title='GRN')
 
         self.validate_data()

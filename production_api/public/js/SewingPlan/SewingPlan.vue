@@ -94,8 +94,13 @@
                             :selected_supplier="selected_supplier"
                             :refresh_counter="refresh_counter"
                         />
-						 <Consumption
+                        <Consumption
                             v-show="current_tab === 'consumption'"
+                            :selected_supplier="selected_supplier"
+                            :refresh_counter="refresh_counter"
+                        />
+                        <ClosedWorkOrderGRNTab
+                            v-show="current_tab === 'closed_wo_grn'"
                             :selected_supplier="selected_supplier"
                             :refresh_counter="refresh_counter"
                         />
@@ -125,6 +130,7 @@ import FIUpdatesTab from './components/FIUpdatesTab.vue'
 import MonthlySummaryTab from './components/MonthlySummaryTab.vue'
 import ItemSummaryTab from './components/ItemSummaryTab.vue'
 import Consumption from './components/Consumption.vue'
+import ClosedWorkOrderGRNTab from './components/ClosedWorkOrderGRNTab.vue'
 
 const IconOverview = () => h('svg', { fill: 'none', stroke: 'currentColor', viewBox: '0 0 24 24', class: 'w-full h-full text-current' }, [h('path', { 'stroke-linecap': 'round', 'stroke-linejoin': 'round', 'stroke-width': '2.5', d: 'M4 5a1 1 0 011-1h3a1 1 0 011 1v3a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM15 5a1 1 0 011-1h3a1 1 0 011 1v3a1 1 0 01-1 1h-3a1 1 0 01-1-1V5zM4 15a1 1 0 011-1h3a1 1 0 011 1v3a1 1 0 01-1 1H5a1 1 0 01-1-1v-3zM15 15a1 1 0 011-1h3a1 1 0 011 1v3a1 1 0 01-1 1h-3a1 1 0 01-1-1v-3z' })])
 const IconLinePlan = () => h('svg', { fill: 'none', stroke: 'currentColor', viewBox: '0 0 24 24', class: 'w-full h-full text-current' }, [h('path', { 'stroke-linecap': 'round', 'stroke-linejoin': 'round', 'stroke-width': '2.5', d: 'M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2' })])
@@ -150,7 +156,8 @@ const tabs = computed(() => {
         { id: 'line', label: 'Entries', icon: IconLinePlan },
         { id: 'monthly_summary', label: 'Monthly Summary', icon: IconMonthlySummary },
         { id: 'item_summary', label: 'Item Summary', icon: IconItemSummary },
-		{id:'consumption', label:'Consumption', icon: IconItemSummary}
+		{id:'consumption', label:'Consumption', icon: IconItemSummary},
+        { id: 'closed_wo_grn', label: 'Closed WO GRN', icon: IconItemSummary }
     ]
     if (hasProductionPlannerRole.value) {
         baseTabs.push({ id: 'fi_updates', label: 'FI Updates', icon: IconFI })
