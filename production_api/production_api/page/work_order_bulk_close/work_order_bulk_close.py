@@ -1,6 +1,27 @@
+import json
+
 import frappe
 from frappe import _
-from frappe.utils import flt, getdate
+from frappe.utils import cstr, flt, getdate
+
+
+def _as_list(value):
+    if not value:
+        return []
+    if isinstance(value, str):
+        try:
+            value = json.loads(value)
+        except (TypeError, ValueError):
+            value = [value]
+    if not isinstance(value, (list, tuple, set)):
+        value = [value]
+
+    result = []
+    for entry in value:
+        entry = cstr(entry).strip()
+        if entry and entry not in result:
+            result.append(entry)
+    return result
 
 
 @frappe.whitelist()
@@ -20,10 +41,12 @@ def get_open_work_orders(
         "open_status": "Open",
     }
 
-    if lot:
-        filters["lot"] = lot
-    if item:
-        filters["item"] = item
+    lots = _as_list(lot)
+    items = _as_list(item)
+    if lots:
+        filters["lot"] = ["in", lots]
+    if items:
+        filters["item"] = ["in", items]
 
     from_date = getdate(wo_from_date) if wo_from_date else None
     to_date = getdate(wo_to_date) if wo_to_date else None
@@ -62,6 +85,53 @@ def get_open_work_orders(
         )
 
     return work_orders
+
+
+@frappe.whitelist()
+def close_work_orders(
+    work_orders, close_reason=None, close_other_reason=None, close_remarks=None
+):
+    from production_api.production_api.doctype.work_order.work_order import (
+        update_stock,
+    )
+
+    work_order_names = _as_list(work_orders)
+    if not work_order_names:
+        frappe.throw(_("Select at least one Work Order to close."))
+
+    # Validate and lock every target before updating the first one. The request
+    # remains atomic, so a later close failure rolls back every earlier close.
+    for work_order in work_order_names:
+        doc = frappe.get_doc("Work Order", work_order, for_update=True)
+        doc.check_permission("write")
+        if doc.docstatus != 1 or doc.open_status != "Open":
+            frappe.throw(
+                _("Work Order {0} is no longer open.").format(
+                    frappe.bold(work_order)
+                )
+            )
+
+    results = []
+    previous_alert_setting = frappe.flags.get("suppress_work_order_close_alert")
+    frappe.flags.suppress_work_order_close_alert = True
+    try:
+        for work_order in work_order_names:
+            result = update_stock(
+                work_order,
+                close_reason=close_reason,
+                close_other_reason=close_other_reason,
+                close_remarks=close_remarks,
+            )
+            results.append(
+                {
+                    "work_order": work_order,
+                    "open_status": result.get("open_status"),
+                }
+            )
+    finally:
+        frappe.flags.suppress_work_order_close_alert = previous_alert_setting
+
+    return {"results": results}
 
 
 @frappe.whitelist()

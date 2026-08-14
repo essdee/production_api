@@ -337,7 +337,7 @@
    "fieldname": "close_reason",
    "fieldtype": "Select",
    "label": "Close Reason",
-   "options": "\nCutting Shortage\nPrinting Shortage\nSewing Shortage\nSewing Missing\nOthers",
+   "options": "\nNA\nCutting Shortage\nPrinting Shortage\nSewing Shortage\nSewing Missing\nOthers",
    "read_only": 1
   },
   {
