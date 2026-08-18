@@ -3539,6 +3539,32 @@ def check_is_alternative_item(item):
 	return items
 
 
+def _get_configured_set_item_parts(ipd_doc):
+	if not ipd_doc.is_set_item:
+		return set()
+
+	return {
+		row.set_item_attribute_value
+		for row in ipd_doc.set_item_combination_details
+		if row.set_item_attribute_value
+	}
+
+
+def _apply_set_item_multiplier_to_packing_report(packing, ipd_doc):
+	"""Show component-piece equivalents for set items without changing pcs/box."""
+	parts_count = len(_get_configured_set_item_parts(ipd_doc)) or 1
+	if parts_count == 1:
+		return packing
+
+	packing.size_pieces = {
+		size: flt(qty * parts_count, 3)
+		for size, qty in packing.size_pieces.items()
+	}
+	packing.total_pieces = flt(packing.total_pieces * parts_count, 3)
+	packing.total_boxes = flt(packing.total_boxes * parts_count, 3)
+	return packing
+
+
 def _get_packing_grn_report_values(grn_names, ipd_doc):
 	"""Aggregate packing GRNs as exact pieces by size plus physical boxes."""
 	sizes = get_ipd_primary_values(ipd_doc.name)
@@ -3619,6 +3645,7 @@ def get_finishing_packed_details(date, lot_list=None, item_list=None):
 
 		ipd_doc = frappe.get_cached_doc("Item Production Detail", ipd)
 		packing = _get_packing_grn_report_values(grn_names, ipd_doc)
+		packing = _apply_set_item_multiplier_to_packing_report(packing, ipd_doc)
 		if not any(packing.size_pieces.values()):
 			continue
 
@@ -3857,11 +3884,7 @@ def get_set_item_parts_count(finishing_doc):
 	if not ipd_doc.is_set_item:
 		return 1
 
-	parts = {
-		row.set_item_attribute_value
-		for row in ipd_doc.set_item_combination_details
-		if row.set_item_attribute_value
-	}
+	parts = _get_configured_set_item_parts(ipd_doc)
 	if parts:
 		return len(parts)
 

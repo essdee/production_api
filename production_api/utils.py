@@ -4334,13 +4334,20 @@ def dc_dpr_report(date=None, lot=None, item=None, dc_name=None):
 
 	ipd_set = frappe.get_single("IPD Settings")
 	colour_attr = ipd_set.default_packing_attribute
-	part_attr = ipd_set.default_set_item_attribute
+	default_part_attr = ipd_set.default_set_item_attribute
 	lot_map = {}
 	for r in dc_rows:
 		dc_data = frappe.get_doc("Delivery Challan", r.name)		
 		details = fetch_item_details(dc_data.items, dc_data.production_detail, dc_data.lot)
 		lot_set_i=frappe.get_doc("Lot",dc_data.lot)
-		ipd_set_i=frappe.get_value("Item Production Detail",lot_set_i.production_detail,"is_set_item")
+		ipd_details = frappe.get_value(
+			"Item Production Detail",
+			lot_set_i.production_detail,
+			["is_set_item", "set_item_attribute"],
+			as_dict=True,
+		) or frappe._dict()
+		is_set_item = ipd_details.get("is_set_item")
+		part_attr = ipd_details.get("set_item_attribute") or default_part_attr
 		lot_bucket=lot_map.setdefault(dc_data.get("lot"), {
 				"lot":dc_data.lot,
 				"item":dc_data.item,
@@ -4348,7 +4355,7 @@ def dc_dpr_report(date=None, lot=None, item=None, dc_name=None):
 				"primary_attributes":[],
 				"rows":{}
 			})
-		lot_bucket["attributes"] = [colour_attr, part_attr] if ipd_set_i else [colour_attr]
+		lot_bucket["attributes"] = [colour_attr, part_attr] if is_set_item else [colour_attr]
 		for d in details:
 			size_col=d.get("primary_attribute_values",[])
 			if size_col:
@@ -4356,19 +4363,19 @@ def dc_dpr_report(date=None, lot=None, item=None, dc_name=None):
 			for i in d.get("items",[]):
 				attrs=i.get("attributes",{})
 				colour=attrs.get(colour_attr,"")
-				part=attrs.get(part_attr,"") if ipd_set_i else None
+				part=attrs.get(part_attr,"") if is_set_item else None
 				if not colour and not part:
 					continue
-				c_match=colour
-				if c_match not in lot_bucket["rows"]:
+				row_key = (part, colour) if is_set_item else colour
+				if row_key not in lot_bucket["rows"]:
 					
-					lot_bucket["rows"][c_match]={
+					lot_bucket["rows"][row_key]={
 						"colour":colour,
-						"part":attrs.get(part_attr) if ipd_set_i else None,
+						"part":part,
 						"total_qty":0
 					}
 
-				tar=lot_bucket["rows"][c_match]
+				tar=lot_bucket["rows"][row_key]
 				val=i.get("values",{})
 				for s in size_col:
 					delivery_qty=val.get(s,{}).get("delivered_quantity",0)

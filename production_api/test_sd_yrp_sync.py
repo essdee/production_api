@@ -10,7 +10,7 @@ from production_api.sd_yrp_sync import (
 
 
 class TestSDYRPSyncPrerequisites(FrappeTestCase):
-	def test_lot_payload_preserves_cloth_excess_percentage(self):
+	def test_lot_payload_preserves_all_business_fields(self):
 		payload = prepare_sd_yrp_doc_for_publish(frappe._dict(
 			doctype="Lot",
 			name="TEST-LOT-CLOTH-EXCESS",
@@ -19,7 +19,11 @@ class TestSDYRPSyncPrerequisites(FrappeTestCase):
 				"version": 1,
 				"totals": [{"cloth_item": "CLOTH-1", "additional_weight": 20}],
 			},
-			time_and_action_details=[{"activity": "Do not sync"}],
+			lot_time_and_action_details=[{
+				"colour": "Black",
+				"master": "Master-00001",
+				"time_and_action": "TNA-00001",
+			}],
 		))
 
 		self.assertEqual(payload["cloth_excess_percentage"], 7.5)
@@ -27,7 +31,10 @@ class TestSDYRPSyncPrerequisites(FrappeTestCase):
 			payload["cloth_program_additions"]["totals"][0]["additional_weight"],
 			20,
 		)
-		self.assertNotIn("time_and_action_details", payload)
+		self.assertEqual(
+			payload["lot_time_and_action_details"][0]["time_and_action"],
+			"TNA-00001",
+		)
 
 	def test_ipd_compacting_publishes_linked_ipd_before_itself(self):
 		compacting = frappe._dict(
