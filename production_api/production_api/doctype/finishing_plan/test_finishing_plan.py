@@ -8,9 +8,137 @@ import frappe
 from frappe.tests.utils import FrappeTestCase
 
 from production_api.production_api.doctype.finishing_plan import finishing_plan
+from production_api import utils as production_utils
 
 
 class TestFinishingPlan(FrappeTestCase):
+	def test_packing_dpr_multiplies_set_quantities_but_not_pieces_per_box(self):
+		ipd_doc = frappe._dict(
+			name="IPD-SET",
+			is_set_item=1,
+			set_item_combination_details=[
+				frappe._dict(set_item_attribute_value="Top"),
+				frappe._dict(set_item_attribute_value="Bottom"),
+				frappe._dict(set_item_attribute_value="Top"),
+			],
+		)
+		packing = frappe._dict(
+			sizes=["S"],
+			size_pieces={"S": 100},
+			pieces_per_box=5,
+			dynamic_ratio_packing=False,
+			total_boxes=20,
+			total_pieces=100,
+		)
+
+		with (
+			patch.object(
+				finishing_plan.frappe,
+				"get_all",
+				return_value=[frappe._dict(name="GRN-SET", lot="LOT-SET")],
+			),
+			patch.object(
+				finishing_plan.frappe,
+				"get_value",
+				side_effect=["SET-ITEM", "IPD-SET"],
+			),
+			patch.object(
+				finishing_plan.frappe,
+				"get_cached_doc",
+				return_value=ipd_doc,
+			),
+			patch.object(
+				finishing_plan,
+				"_get_packing_grn_report_values",
+				return_value=packing,
+			),
+		):
+			result = finishing_plan.get_finishing_packed_details("2026-08-10")
+
+		row = result["data"][0]
+		self.assertEqual(row["size_qty"], {"S": 200})
+		self.assertEqual(row["total_pieces"], 200)
+		self.assertEqual(row["pieces_per_box"], 5)
+		self.assertEqual(row["total_boxes"], 40)
+
+	def test_ironing_dpr_keeps_set_parts_with_same_colour_separate(self):
+		dc_docs = {}
+		for name, part in (("DC-TOP", "Top"), ("DC-BOTTOM", "Bottom")):
+			doc = MagicMock()
+			doc.name = name
+			doc.lot = "LOT-SET"
+			doc.item = "SET-ITEM"
+			doc.production_detail = "IPD-SET"
+			doc.items = part
+			doc.get.side_effect = lambda fieldname, current_doc=doc: getattr(
+				current_doc, fieldname
+			)
+			dc_docs[name] = doc
+
+		def get_doc(doctype, name):
+			if doctype == "Delivery Challan":
+				return dc_docs[name]
+			if doctype == "Lot":
+				return SimpleNamespace(production_detail="IPD-SET")
+			raise AssertionError((doctype, name))
+
+		def fetch_item_details(items, _ipd, _lot):
+			qty = 10 if items == "Top" else 8
+			return [{
+				"primary_attribute_values": ["S"],
+				"items": [{
+					"attributes": {"Colour": "Navy", "Part": items},
+					"values": {"S": {"delivered_quantity": qty}},
+				}],
+			}]
+
+		with (
+			patch.object(
+				production_utils.frappe.db,
+				"get_single_value",
+				return_value="Ironing",
+			),
+			patch.object(
+				production_utils.frappe.db,
+				"sql",
+				side_effect=[
+					[],
+					[frappe._dict(name="DC-TOP"), frappe._dict(name="DC-BOTTOM")],
+				],
+			),
+			patch.object(
+				production_utils.frappe,
+				"get_single",
+				return_value=frappe._dict(
+					default_packing_attribute="Colour",
+					default_set_item_attribute="Wrong Global Part Attribute",
+				),
+			),
+			patch.object(production_utils.frappe, "get_doc", side_effect=get_doc),
+			patch.object(
+				production_utils.frappe,
+				"get_value",
+				return_value=frappe._dict(
+					is_set_item=1,
+					set_item_attribute="Part",
+				),
+			),
+			patch(
+				"production_api.production_api.doctype.delivery_challan.delivery_challan.fetch_item_details",
+				side_effect=fetch_item_details,
+			),
+		):
+			result = production_utils.dc_dpr_report(date="2026-08-10")
+
+		self.assertEqual(len(result), 1)
+		self.assertEqual(result[0]["attributes"], ["Colour", "Part"])
+		rows_by_part = {row["part"]: row for row in result[0]["rows"]}
+		self.assertEqual(set(rows_by_part), {"Top", "Bottom"})
+		self.assertEqual(rows_by_part["Top"]["S"], 10)
+		self.assertEqual(rows_by_part["Top"]["total_qty"], 10)
+		self.assertEqual(rows_by_part["Bottom"]["S"], 8)
+		self.assertEqual(rows_by_part["Bottom"]["total_qty"], 8)
+
 	def _get_ocr_test_doc(self):
 		return frappe._dict(
 			lot="LOT-TEST",
