@@ -3551,7 +3551,7 @@ def _get_configured_set_item_parts(ipd_doc):
 
 
 def _apply_set_item_multiplier_to_packing_report(packing, ipd_doc):
-	"""Show component-piece equivalents for set items without changing pcs/box."""
+	"""Show component-piece equivalents without changing physical box counts."""
 	parts_count = len(_get_configured_set_item_parts(ipd_doc)) or 1
 	if parts_count == 1:
 		return packing
@@ -3561,7 +3561,6 @@ def _apply_set_item_multiplier_to_packing_report(packing, ipd_doc):
 		for size, qty in packing.size_pieces.items()
 	}
 	packing.total_pieces = flt(packing.total_pieces * parts_count, 3)
-	packing.total_boxes = flt(packing.total_boxes * parts_count, 3)
 	return packing
 
 
