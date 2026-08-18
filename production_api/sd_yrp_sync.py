@@ -91,8 +91,6 @@ SD_YRP_INITIAL_SYNC_ORDER = (
 	"Lot",
 )
 
-LOT_TIME_AND_ACTION_KEY_PARTS = ("time_and_action",)
-
 
 def handle_existing_spine_and_sd_yrp(doc, event, *args):
 	"""Preserve existing ERP Spine publishing and also publish isolated SD YRP events."""
@@ -376,10 +374,7 @@ def publish_ipd_compacting_prerequisite(doc):
 
 
 def prepare_sd_yrp_doc_for_publish(doc, event=None):
-	data = clean_doc_for_publish(doc)
-	if data.get("doctype") == "Lot":
-		return strip_lot_time_and_action_fields(data)
-	return data
+	return clean_doc_for_publish(doc)
 
 
 def clean_doc_for_publish(doc):
@@ -391,19 +386,6 @@ def clean_doc_for_publish(doc):
 	for key in ("__onload", "_doc_before_save"):
 		data.pop(key, None)
 	return data
-
-
-def strip_lot_time_and_action_fields(data):
-	data = copy.deepcopy(data)
-	for key in list(data):
-		if is_lot_time_and_action_key(key):
-			data.pop(key, None)
-	return data
-
-
-def is_lot_time_and_action_key(key):
-	key = (key or "").lower()
-	return any(part in key for part in LOT_TIME_AND_ACTION_KEY_PARTS)
 
 
 def _ordered_initial_docnames(doctype, filters=None):
