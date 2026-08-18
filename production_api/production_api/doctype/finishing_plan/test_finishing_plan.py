@@ -12,7 +12,7 @@ from production_api import utils as production_utils
 
 
 class TestFinishingPlan(FrappeTestCase):
-	def test_packing_dpr_multiplies_set_quantities_but_not_pieces_per_box(self):
+	def test_packing_dpr_multiplies_set_pieces_but_not_box_values(self):
 		ipd_doc = frappe._dict(
 			name="IPD-SET",
 			is_set_item=1,
@@ -59,7 +59,7 @@ class TestFinishingPlan(FrappeTestCase):
 		self.assertEqual(row["size_qty"], {"S": 200})
 		self.assertEqual(row["total_pieces"], 200)
 		self.assertEqual(row["pieces_per_box"], 5)
-		self.assertEqual(row["total_boxes"], 40)
+		self.assertEqual(row["total_boxes"], 20)
 
 	def test_ironing_dpr_keeps_set_parts_with_same_colour_separate(self):
 		dc_docs = {}
