@@ -881,6 +881,64 @@ def fetch_received_cloth(docname):
 
 	cp_doc.save()
 
+
+def get_balance_lot_transfer_items(cp_doc, warehouse, received_type):
+	items = []
+	for row in cp_doc.cutting_plan_cloth_details:
+		balance_weight = flt(row.balance_weight, 3)
+		if balance_weight <= 0 or not row.cloth_item_variant:
+			continue
+
+		item = frappe.get_cached_value("Item Variant", row.cloth_item_variant, "item")
+		uom = frappe.get_cached_value("Item", item, "default_unit_of_measure")
+		if not uom:
+			frappe.throw(f"Default UOM is not configured for Item {item}")
+
+		row_index = len(items)
+		items.append({
+			"item": row.cloth_item_variant,
+			"qty": balance_weight,
+			"uom": uom,
+			"from_lot": cp_doc.lot,
+			"warehouse": warehouse,
+			"received_type": received_type,
+			"table_index": row_index,
+			"row_index": row_index,
+		})
+	return items
+
+
+@frappe.whitelist()
+def create_balance_lot_transfer(cutting_plan, to_lot):
+	cp_doc = frappe.get_doc("Cutting Plan", cutting_plan)
+	if cp_doc.docstatus != 1:
+		frappe.throw("Submit the Cutting Plan before creating a Lot Transfer")
+	if not to_lot or not frappe.db.exists("Lot", to_lot):
+		frappe.throw("Select a valid target Lot")
+	if cp_doc.lot == to_lot:
+		frappe.throw("The target Lot must be different from the current Lot")
+	if not cp_doc.work_order:
+		frappe.throw("Work Order is required in the Cutting Plan")
+
+	warehouse = frappe.get_cached_value("Work Order", cp_doc.work_order, "supplier")
+	if not warehouse:
+		frappe.throw(f"Supplier is not configured in Work Order {cp_doc.work_order}")
+
+	received_type = frappe.db.get_single_value("Stock Settings", "default_received_type")
+	items = get_balance_lot_transfer_items(cp_doc, warehouse, received_type)
+	if not items:
+		frappe.throw("There is no balance cloth weight to transfer")
+
+	for item in items:
+		item["to_lot"] = to_lot
+
+	lot_transfer = frappe.new_doc("Lot Transfer")
+	lot_transfer.flags.allow_from_cutting_plan = True
+	lot_transfer.comments = f"Balance cloth from Cutting Plan {cp_doc.name}"
+	lot_transfer.set("items", items)
+	lot_transfer.save()
+	return lot_transfer.name
+
 @frappe.whitelist()
 def create_recut_print_panel(cutting_plan, type, item_details):
 	item_details = update_if_string_instance(item_details)

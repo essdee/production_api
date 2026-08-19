@@ -591,7 +591,10 @@ def fetch_rework_dc_item_details(items, ipd, lot):
 
 def fetch_item_details(items, ipd, lot, is_new=False, is_rework=False):
     if not is_rework:
-        items = [item.as_dict() for item in items]
+        items = [
+            item.as_dict() if callable(getattr(item, "as_dict", None)) else item
+            for item in items
+        ]
     items = update_if_string_instance(items)
     items = sorted(items, key=lambda i: i['row_index'])
     ipd_doc = frappe.get_cached_doc("Item Production Detail", ipd)

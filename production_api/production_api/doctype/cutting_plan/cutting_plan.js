@@ -223,6 +223,7 @@ frappe.ui.form.on("Cutting Plan", {
                 })
             }
         }
+        add_lot_transfer_button(frm)
         add_change_approval_grammage_button(frm)
         frm.print_panel_summary = new frappe.production.ui.RecutPrintPanelView(frm.fields_dict['print_panel_html'].wrapper)
         frm.print_panel_summary.load_data('Print Panel')
@@ -265,6 +266,52 @@ frappe.ui.form.on("Cutting Plan", {
         })
     }
 });
+
+function add_lot_transfer_button(frm) {
+    if (frm.is_new() || frm.doc.docstatus !== 1) {
+        return;
+    }
+
+    frm.add_custom_button(__("Lot Transfer"), () => {
+        let dialog = new frappe.ui.Dialog({
+            title: __("Select Target Lot"),
+            fields: [
+                {
+                    fieldname: "to_lot",
+                    fieldtype: "Link",
+                    options: "Lot",
+                    label: __("Target Lot"),
+                    reqd: 1,
+                    get_query: () => ({
+                        filters: {
+                            name: ["!=", frm.doc.lot],
+                        },
+                    }),
+                },
+            ],
+            primary_action_label: __("Create Lot Transfer"),
+            primary_action(values) {
+                frappe.call({
+                    method: "production_api.production_api.doctype.cutting_plan.cutting_plan.create_balance_lot_transfer",
+                    args: {
+                        cutting_plan: frm.doc.name,
+                        to_lot: values.to_lot,
+                    },
+                    freeze: true,
+                    freeze_message: __("Creating Lot Transfer..."),
+                    callback(r) {
+                        if (!r.message) {
+                            return;
+                        }
+                        dialog.hide();
+                        frappe.set_route("Form", "Lot Transfer", r.message);
+                    },
+                });
+            },
+        });
+        dialog.show();
+    });
+}
 
 function add_change_approval_grammage_button(frm) {
     if (frm.is_new()) {

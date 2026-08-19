@@ -1,6 +1,11 @@
 // Copyright (c) 2024, Essdee and contributors
 // For license information, please see license.txt
 
+function has_prefilled_delivery_challan() {
+	return sessionStorage.getItem("cut_panel_dc")
+		|| sessionStorage.getItem("prefilled_delivery_challan");
+}
+
 frappe.ui.form.on("Delivery Challan", {
     setup(frm){
         frm.set_query('from_address', function(doc) {
@@ -220,7 +225,7 @@ frappe.ui.form.on("Delivery Challan", {
             return;
         }
         else{
-			if(frm.is_new() && sessionStorage.getItem("cut_panel_dc")){
+			if(frm.is_new() && has_prefilled_delivery_challan()){
 				frm.deliverable_items = new frappe.production.ui.Delivery_Challan(frm.fields_dict['deliverable_items'].wrapper)
 				frm.deliverable_items.load_data(JSON.parse(sessionStorage.getItem("delivery_challan_onload_data")))
 			}
@@ -268,8 +273,9 @@ frappe.ui.form.on("Delivery Challan", {
 		else{
 			frm.doc['deliverable_item_details'] = null
 		}
-		if(sessionStorage.getItem("cut_panel_dc")){
+		if(has_prefilled_delivery_challan()){
 			sessionStorage.removeItem("cut_panel_dc")
+			sessionStorage.removeItem("prefilled_delivery_challan")
 			sessionStorage.removeItem("delivery_challan_onload_data")
 		}
     },
