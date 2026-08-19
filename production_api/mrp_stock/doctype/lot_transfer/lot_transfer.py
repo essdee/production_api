@@ -25,7 +25,9 @@ class LotTransfer(Document):
 		if(self.get('item_details')) and self._action != "submit":
 			items = save_lot_transfer_items(self.item_details)
 			self.set('items', items)
-		elif self.is_new() or not self.get('items'):
+		elif not self.get('items') or (
+			self.is_new() and not self.flags.allow_from_cutting_plan
+		):
 			frappe.throw('Add items to Stock Entry.', title='Stock Entry')
 		
 	def validate(self):
@@ -227,6 +229,139 @@ class LotTransfer(Document):
 		sl_dict.update(args)
 
 		return sl_dict
+
+
+def get_lot_transfer_target_lot(items):
+	target_lots = {
+		row.to_lot for row in items
+		if flt(row.qty) > 0 and row.to_lot
+	}
+	if len(target_lots) != 1:
+		frappe.throw("Make DC requires all Lot Transfer items to have one target Lot")
+	return target_lots.pop()
+
+
+def get_lot_transfer_delivery_items(transfer_items, work_order_items, target_lot):
+	transfer_qty = {}
+	transfer_uom = {}
+	for row in transfer_items:
+		if flt(row.qty) <= 0:
+			continue
+		transfer_qty.setdefault(row.item, 0)
+		transfer_qty[row.item] += flt(row.qty)
+		transfer_uom.setdefault(row.item, row.uom)
+		if transfer_uom[row.item] != row.uom:
+			frappe.throw(f"Item {row.item} has multiple UOMs in the Lot Transfer")
+
+	delivery_items = []
+	first_matching_row = {}
+	for row in work_order_items:
+		as_dict = getattr(row, "as_dict", None)
+		item = frappe._dict(as_dict() if callable(as_dict) else dict(row))
+		item.lot = target_lot
+		item.ref_doctype = "Work Order Deliverables"
+		item.ref_docname = item.name
+		item.comments = None
+		item.delivered_quantity = 0
+		available_qty = max(flt(item.pending_quantity), 0)
+		item.qty = available_qty
+
+		remaining_qty = flt(transfer_qty.get(item.item_variant))
+		if remaining_qty > 0:
+			first_matching_row.setdefault(item.item_variant, len(delivery_items))
+			if transfer_uom[item.item_variant] != item.uom:
+				frappe.throw(
+					f"UOM mismatch for Item {item.item_variant}: "
+					f"Lot Transfer uses {transfer_uom[item.item_variant]}, "
+					f"but Work Order uses {item.uom}"
+				)
+			delivered_qty = min(remaining_qty, available_qty)
+			item.delivered_quantity = delivered_qty
+			transfer_qty[item.item_variant] = remaining_qty - delivered_qty
+
+		delivery_items.append(item)
+
+	items_not_in_work_order = []
+	for item_variant, qty in transfer_qty.items():
+		excess_qty = flt(qty, 3)
+		if excess_qty <= 0:
+			continue
+
+		if item_variant in first_matching_row:
+			item = delivery_items[first_matching_row[item_variant]]
+			item.delivered_quantity = flt(item.delivered_quantity + excess_qty, 3)
+			item.qty = max(flt(item.qty), item.delivered_quantity)
+			continue
+
+		items_not_in_work_order.append(item_variant)
+
+	if items_not_in_work_order:
+		frappe.throw(
+			"The following Lot Transfer items are not in the selected Work Order "
+			f"deliverables: {', '.join(sorted(items_not_in_work_order))}"
+		)
+
+	return delivery_items
+
+
+@frappe.whitelist()
+def get_delivery_challan_details(doc_name, work_order, from_location):
+	lot_transfer = frappe.get_doc("Lot Transfer", doc_name)
+	if lot_transfer.docstatus != 1:
+		frappe.throw("Submit the Lot Transfer before making a Delivery Challan")
+	if not from_location or not frappe.db.exists("Supplier", from_location):
+		frappe.throw("Select a valid From Location")
+
+	work_order_doc = frappe.get_cached_doc("Work Order", work_order)
+	if (
+		work_order_doc.docstatus != 1
+		or work_order_doc.open_status != "Open"
+		or work_order_doc.is_delivered
+	):
+		frappe.throw("Select an open, submitted Work Order")
+
+	target_lot = get_lot_transfer_target_lot(lot_transfer.items)
+	if work_order_doc.lot != target_lot:
+		frappe.throw(
+			f"Work Order {work_order} must belong to target Lot {target_lot}"
+		)
+
+	delivery_items = get_lot_transfer_delivery_items(
+		lot_transfer.items, work_order_doc.deliverables, target_lot
+	)
+	from production_api.production_api.doctype.delivery_challan.delivery_challan import fetch_item_details
+	from production_api.production_api.doctype.purchase_order.purchase_order import get_address_display
+	from production_api.production_api.doctype.supplier.supplier import get_primary_address
+
+	from_address = get_primary_address(from_location)
+	if not from_address:
+		frappe.throw(f"Primary Address is not configured for From Location {from_location}")
+
+	supplier_address = work_order_doc.supplier_address or get_primary_address(work_order_doc.supplier)
+	if not supplier_address:
+		frappe.throw(f"Primary Address is not configured for Supplier {work_order_doc.supplier}")
+
+	return {
+		"item_details": fetch_item_details(
+			delivery_items,
+			work_order_doc.production_detail,
+			target_lot,
+		),
+		"work_order": work_order_doc.name,
+		"lot": target_lot,
+		"item": work_order_doc.item,
+		"production_detail": work_order_doc.production_detail,
+		"process_name": work_order_doc.process_name,
+		"includes_packing": work_order_doc.includes_packing,
+		"is_internal_unit": work_order_doc.is_internal_unit,
+		"from_location": from_location,
+		"from_address": from_address,
+		"from_address_details": get_address_display(from_address),
+		"supplier": work_order_doc.supplier,
+		"supplier_name": work_order_doc.supplier_name,
+		"supplier_address": supplier_address,
+		"supplier_address_details": work_order_doc.supplier_address_details,
+	}
 
 @frappe.whitelist()
 def fetch_lot_transfer_items(items):
