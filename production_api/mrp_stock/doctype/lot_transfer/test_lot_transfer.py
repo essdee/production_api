@@ -36,6 +36,7 @@ class TestLotTransfer(FrappeTestCase):
 				uom="Kg",
 				pending_quantity=5,
 				lot="LOT-NEW",
+				comments="Do not copy this comment",
 			),
 			frappe._dict(
 				item_variant="FABRIC-RED",
@@ -58,6 +59,7 @@ class TestLotTransfer(FrappeTestCase):
 		self.assertEqual([item.delivered_quantity for item in items], [5, 2.5, 0])
 		self.assertEqual([item.qty for item in items], [5, 4, 2])
 		self.assertTrue(all(item.lot == "LOT-NEW" for item in items))
+		self.assertTrue(all(item.comments is None for item in items))
 
 	def test_make_dc_allows_quantity_above_work_order_pending_quantity(self):
 		transfer_items = [

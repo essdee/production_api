@@ -261,6 +261,7 @@ def get_lot_transfer_delivery_items(transfer_items, work_order_items, target_lot
 		item.lot = target_lot
 		item.ref_doctype = "Work Order Deliverables"
 		item.ref_docname = item.name
+		item.comments = None
 		item.delivered_quantity = 0
 		available_qty = max(flt(item.pending_quantity), 0)
 		item.qty = available_qty
