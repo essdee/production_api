@@ -16,6 +16,14 @@ from production_api.production_api.doctype.item_price.item_price import get_item
 from production_api.production_api.doctype.purchase_order.purchase_order import get_item_attribute_details, get_item_group_index
 
 class LotTransfer(Document):
+	def refresh_cutting_bulk_lay_sheet(self):
+		if self.get("cutting_bulk_lay_sheet"):
+			from production_api.production_api.doctype.cutting_bulk_lay_sheets.cutting_bulk_lay_sheets import (
+				refresh_bulk_status,
+			)
+
+			refresh_bulk_status(self.get("cutting_bulk_lay_sheet"))
+
 	def onload(self):
 		item_details = fetch_lot_transfer_items(self.get('items'))
 		self.set('print_item_details', json.dumps(item_details))
@@ -124,6 +132,7 @@ class LotTransfer(Document):
 		if self.finishing_plan:
 			self.update_finishing_plan()
 		self.make_repost_action()
+		self.refresh_cutting_bulk_lay_sheet()
 	
 	def update_finishing_plan(self):
 		doc = frappe.get_doc("Finishing Plan", self.finishing_plan)
@@ -156,6 +165,7 @@ class LotTransfer(Document):
 		if self.finishing_plan:
 			self.update_finishing_plan()
 		self.make_repost_action()
+		self.refresh_cutting_bulk_lay_sheet()
 
 	def make_repost_action(self):
 		from production_api.mrp_stock.stock_ledger import repost_future_stock_ledger_entry
