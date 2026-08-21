@@ -12,6 +12,67 @@ from production_api.production_api.doctype.cutting_bulk_lay_sheets import (
 
 
 class TestCuttingBulkLaySheets(FrappeTestCase):
+	def test_create_delivery_challan_saves_draft_for_bulk_row(self):
+		bulk = frappe._dict(name="CBLS-TEST-1", posting_date="2026-08-21")
+		entry = frappe._dict(
+			name="CBLS-ROW-1", lot="LOT-SPLIT-1", work_order="WO-1",
+			delivery_challan=None,
+		)
+		data = {
+			"work_order": entry.work_order,
+			"lot": entry.lot,
+			"from_location": "LOCATION-1",
+			"cutting_bulk_lay_sheet": bulk.name,
+			"cutting_bulk_lay_sheet_detail": entry.name,
+			"item_details": [{"items": [{"delivered_quantity": 5}]}],
+		}
+		dc = MagicMock()
+		dc.name = "DC-TEST-1"
+
+		with (
+			patch.object(bulk_laysheets, "get_bulk_doc", return_value=bulk),
+			patch.object(bulk_laysheets, "get_entry", return_value=entry),
+			patch.object(bulk_laysheets, "prepare_delivery_challan", return_value=data),
+			patch.object(bulk_laysheets, "nowtime", return_value="12:00:00"),
+			patch.object(bulk_laysheets.frappe, "new_doc", return_value=dc),
+			patch.object(bulk_laysheets, "refresh_bulk_status") as refresh_status,
+		):
+			result = bulk_laysheets.create_delivery_challan(
+				bulk.name, entry.name, "TN 01 AB 1234"
+			)
+
+		self.assertEqual(result, dc.name)
+		self.assertEqual(dc.vehicle_no, "TN 01 AB 1234")
+		self.assertIn("delivered_quantity", dc.deliverable_item_details)
+		dc.save.assert_called_once_with()
+		refresh_status.assert_called_once_with(bulk.name)
+
+	def test_submit_delivery_challan_stays_scoped_to_bulk_row(self):
+		bulk = frappe._dict(name="CBLS-TEST-1")
+		entry = frappe._dict(
+			name="CBLS-ROW-1", lot="LOT-SPLIT-1", work_order="WO-1",
+			delivery_challan="DC-TEST-1",
+		)
+		dc = MagicMock()
+		dc.name = entry.delivery_challan
+		dc.docstatus = 0
+		dc.cutting_bulk_lay_sheet = bulk.name
+		dc.cutting_bulk_lay_sheet_detail = entry.name
+		dc.work_order = entry.work_order
+		dc.lot = entry.lot
+
+		with (
+			patch.object(bulk_laysheets, "get_bulk_doc", return_value=bulk),
+			patch.object(bulk_laysheets, "get_entry", return_value=entry),
+			patch.object(bulk_laysheets.frappe, "get_doc", return_value=dc),
+			patch.object(bulk_laysheets, "refresh_bulk_status") as refresh_status,
+		):
+			result = bulk_laysheets.submit_delivery_challan(bulk.name, entry.name)
+
+		self.assertEqual(result, dc.name)
+		dc.submit.assert_called_once_with()
+		refresh_status.assert_called_once_with(bulk.name)
+
 	def test_create_bulk_lot_transfer_links_one_transfer_to_every_row(self):
 		rows = [
 			frappe._dict(

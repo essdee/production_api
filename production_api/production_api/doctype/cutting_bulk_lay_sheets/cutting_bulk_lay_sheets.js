@@ -297,7 +297,10 @@ function add_bulk_actions(frm) {
         frm.add_custom_button(__("Generate Bundles"), () => generate_bulk_bundles(frm, row), __("Active Lot"));
     }
     if (row.status === "Make Delivery Challan" || row.status === "Delivery Challan Cancelled") {
-        frm.add_custom_button(__("Make Delivery Challan"), () => make_bulk_dc(frm, row), __("Active Lot"));
+        frm.add_custom_button(__("Make Delivery Challan"), () => create_bulk_dc(frm, row), __("Active Lot"));
+    }
+    if (row.status === "Submit Delivery Challan") {
+        frm.add_custom_button(__("Submit Delivery Challan"), () => submit_bulk_dc(frm, row), __("Active Lot"));
     }
     if (row.delivery_challan) {
         frm.add_custom_button(__("Open Delivery Challan"), () => {
@@ -456,34 +459,60 @@ function submit_bulk_transfer(frm, transferName) {
     );
 }
 
-async function make_bulk_dc(frm, row) {
-    const response = await frappe.call({
-        method: `${bulk_method}.prepare_delivery_challan`,
-        args: { doc_name: frm.doc.name, detail_name: row.name },
-        freeze: true,
-        freeze_message: __("Preparing Delivery Challan..."),
+function create_bulk_dc(frm, row) {
+    const dialog = new frappe.ui.Dialog({
+        title: __("Create Delivery Challan for {0}", [row.lot]),
+        fields: [
+            {
+                fieldname: "vehicle_no",
+                fieldtype: "Data",
+                label: __("Vehicle No"),
+                reqd: 1,
+            },
+        ],
+        primary_action_label: __("Create Delivery Challan"),
+        primary_action: async values => {
+            dialog.hide();
+            const response = await frappe.call({
+                method: `${bulk_method}.create_delivery_challan`,
+                args: {
+                    doc_name: frm.doc.name,
+                    detail_name: row.name,
+                    vehicle_no: values.vehicle_no,
+                },
+                freeze: true,
+                freeze_message: __("Creating Delivery Challan..."),
+            });
+            frappe.show_alert({
+                message: __("Delivery Challan {0} created", [response.message]),
+                indicator: "green",
+            });
+            await frm.reload_doc();
+        },
     });
-    const data = response.message;
-    if (data.existing_delivery_challan) {
-        frappe.set_route("Form", "Delivery Challan", data.existing_delivery_challan);
-        return;
-    }
+    dialog.show();
+}
 
-    sessionStorage.setItem("prefilled_delivery_challan", "1");
-    sessionStorage.setItem("delivery_challan_onload_data", JSON.stringify(data.item_details));
-    const dc = frappe.model.get_new_doc("Delivery Challan");
-    dc.naming_series = "DC-";
-    dc.posting_date = frappe.datetime.nowdate();
-    dc.posting_time = new Date().toTimeString().split(" ")[0];
-    dc.actual_date = frappe.datetime.nowdate();
-    [
-        "work_order", "lot", "item", "production_detail", "process_name",
-        "includes_packing", "is_internal_unit", "from_location", "from_address",
-        "from_address_details", "supplier", "supplier_name", "supplier_address",
-        "supplier_address_details", "cutting_bulk_lay_sheet",
-        "cutting_bulk_lay_sheet_detail", "comments",
-    ].forEach(field => dc[field] = data[field]);
-    frappe.set_route("Form", dc.doctype, dc.name);
+function submit_bulk_dc(frm, row) {
+    frappe.confirm(
+        __("Submit Delivery Challan {0} for split Lot {1}?", [
+            row.delivery_challan,
+            row.lot,
+        ]),
+        async () => {
+            const response = await frappe.call({
+                method: `${bulk_method}.submit_delivery_challan`,
+                args: { doc_name: frm.doc.name, detail_name: row.name },
+                freeze: true,
+                freeze_message: __("Submitting Delivery Challan..."),
+            });
+            frappe.show_alert({
+                message: __("Delivery Challan {0} submitted", [response.message]),
+                indicator: "green",
+            });
+            await frm.reload_doc();
+        }
+    );
 }
 
 async function approve_bulk_grammage(frm, row) {

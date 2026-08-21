@@ -611,6 +611,63 @@ def prepare_delivery_challan(doc_name, detail_name):
 	return data
 
 
+@frappe.whitelist()
+def create_delivery_challan(doc_name, detail_name, vehicle_no):
+	doc = get_bulk_doc(doc_name)
+	row = get_entry(doc, detail_name)
+	if row.delivery_challan and get_docstatus("Delivery Challan", row.delivery_challan) != 2:
+		return row.delivery_challan
+	vehicle_no = (vehicle_no or "").strip()
+	if not vehicle_no:
+		frappe.throw(_("Vehicle No is required."))
+
+	data = prepare_delivery_challan(doc.name, row.name)
+	if data.get("existing_delivery_challan"):
+		return data["existing_delivery_challan"]
+	dc = frappe.new_doc("Delivery Challan")
+	dc.naming_series = "DC-"
+	dc.posting_date = doc.posting_date
+	dc.posting_time = nowtime()
+	dc.actual_date = doc.posting_date
+	dc.vehicle_no = vehicle_no
+	for fieldname in (
+		"work_order", "lot", "item", "production_detail", "process_name",
+		"includes_packing", "is_internal_unit", "from_location", "from_address",
+		"from_address_details", "supplier", "supplier_name", "supplier_address",
+		"supplier_address_details", "cutting_bulk_lay_sheet",
+		"cutting_bulk_lay_sheet_detail", "comments",
+	):
+		dc.set(fieldname, data.get(fieldname))
+	dc.deliverable_item_details = frappe.as_json(data["item_details"])
+	dc.save()
+	refresh_bulk_status(doc.name)
+	return dc.name
+
+
+@frappe.whitelist()
+def submit_delivery_challan(doc_name, detail_name):
+	doc = get_bulk_doc(doc_name)
+	row = get_entry(doc, detail_name)
+	if not row.delivery_challan:
+		frappe.throw(_("Create the Delivery Challan first."))
+	dc = frappe.get_doc("Delivery Challan", row.delivery_challan)
+	if (
+		dc.cutting_bulk_lay_sheet != doc.name
+		or dc.cutting_bulk_lay_sheet_detail != row.name
+		or dc.work_order != row.work_order
+		or dc.lot != row.lot
+	):
+		frappe.throw(_("Delivery Challan {0} is not linked to this split-lot row.").format(dc.name))
+	if dc.docstatus == 1:
+		return dc.name
+	if dc.docstatus == 2:
+		frappe.throw(_("Delivery Challan {0} is cancelled. Create a new challan.").format(dc.name))
+
+	dc.submit()
+	refresh_bulk_status(doc.name)
+	return dc.name
+
+
 def record_delivery_challan(doc):
 	if not doc.cutting_bulk_lay_sheet or not doc.cutting_bulk_lay_sheet_detail:
 		return
