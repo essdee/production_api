@@ -1,7 +1,7 @@
 # Copyright (c) 2026, Essdee and Contributors
 # See license.txt
 
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import frappe
 from frappe.tests.utils import FrappeTestCase
@@ -12,6 +12,89 @@ from production_api.production_api.doctype.cutting_bulk_lay_sheets import (
 
 
 class TestCuttingBulkLaySheets(FrappeTestCase):
+	def test_create_bulk_lot_transfer_links_one_transfer_to_every_row(self):
+		rows = [
+			frappe._dict(
+				name="CBLS-ROW-1", lot="LOT-SPLIT-1", cutting_laysheet="CLS-1",
+				lot_transfer=None, delivery_challan=None,
+			),
+			frappe._dict(
+				name="CBLS-ROW-2", lot="LOT-SPLIT-2", cutting_laysheet="CLS-2",
+				lot_transfer=None, delivery_challan=None,
+			),
+		]
+		bulk = frappe._dict(
+			name="CBLS-TEST-1", main_lot="LOT-MAIN", from_location="LOCATION-1",
+			posting_date="2026-08-21", lot_details=rows,
+		)
+		bulk._validate_lot_rows = MagicMock()
+		laysheets = {
+			"CLS-1": frappe._dict(cutting_laysheet_bundles=[1], status="Bundles Generated"),
+			"CLS-2": frappe._dict(cutting_laysheet_bundles=[1], status="Bundles Generated"),
+		}
+		transfer = MagicMock()
+		transfer.name = "LT-BULK-1"
+		transfer.flags = frappe._dict()
+
+		def build_items(laysheet, main_lot, target_lot, warehouse, received_type):
+			return [{
+				"item": f"FABRIC-{target_lot}", "qty": 5, "uom": "Kg",
+				"from_lot": main_lot, "to_lot": target_lot,
+				"warehouse": warehouse, "received_type": received_type,
+			}]
+
+		with (
+			patch.object(bulk_laysheets, "get_bulk_doc", return_value=bulk),
+			patch.object(bulk_laysheets, "get_shared_bulk_transfer_name", return_value=None),
+			patch.object(bulk_laysheets.frappe.db, "get_single_value", return_value="Accepted"),
+			patch.object(
+				bulk_laysheets.frappe, "get_doc",
+				side_effect=lambda doctype, name: laysheets[name],
+			),
+			patch.object(bulk_laysheets, "build_lot_transfer_items", side_effect=build_items),
+			patch.object(bulk_laysheets, "nowtime", return_value="12:00:00"),
+			patch.object(bulk_laysheets.frappe, "get_all", return_value=[]),
+			patch.object(bulk_laysheets, "validate_source_stock") as validate_stock,
+			patch.object(bulk_laysheets.frappe, "new_doc", return_value=transfer),
+			patch.object(bulk_laysheets.frappe.db, "set_value") as set_value,
+			patch.object(bulk_laysheets, "refresh_bulk_status") as refresh_status,
+		):
+			result = bulk_laysheets.create_bulk_lot_transfer(bulk.name)
+
+		self.assertEqual(result, transfer.name)
+		self.assertIsNone(transfer.cutting_bulk_lay_sheet_detail)
+		self.assertEqual(transfer.set.call_args.args[0], "items")
+		self.assertEqual(len(transfer.set.call_args.args[1]), 2)
+		self.assertEqual(set_value.call_count, 2)
+		validate_stock.assert_called_once()
+		transfer.save.assert_called_once_with()
+		refresh_status.assert_called_once_with(bulk.name)
+
+	def test_submit_bulk_lot_transfer_uses_one_transfer_for_all_rows(self):
+		bulk = frappe._dict(
+			name="CBLS-TEST-1",
+			lot_details=[
+				frappe._dict(name="CBLS-ROW-1", lot_transfer="LT-BULK-1"),
+				frappe._dict(name="CBLS-ROW-2", lot_transfer="LT-BULK-1"),
+			],
+		)
+		transfer = MagicMock()
+		transfer.name = "LT-BULK-1"
+		transfer.docstatus = 0
+		transfer.cutting_bulk_lay_sheet = bulk.name
+
+		with (
+			patch.object(bulk_laysheets, "get_bulk_doc", return_value=bulk),
+			patch.object(bulk_laysheets, "get_docstatus", return_value=0),
+			patch.object(bulk_laysheets.frappe, "get_doc", return_value=transfer),
+			patch.object(bulk_laysheets, "refresh_bulk_status") as refresh_status,
+		):
+			result = bulk_laysheets.submit_bulk_lot_transfer(bulk.name)
+
+		transfer.submit.assert_called_once_with()
+		refresh_status.assert_called_once_with(bulk.name)
+		self.assertEqual(result, transfer.name)
+
 	def test_laysheet_editor_data_includes_generated_bundles(self):
 		class ChildRow:
 			def __init__(self, values):
@@ -113,6 +196,32 @@ class TestCuttingBulkLaySheets(FrappeTestCase):
 				"LOT-MAIN",
 				reserved={"FABRIC-BEIGE-72": 60},
 			)
+
+	def test_source_stock_check_combines_all_split_lot_quantities(self):
+		items = [
+			{
+				"item": "FABRIC-BEIGE-72",
+				"qty": 60,
+				"uom": "Kg",
+				"warehouse": "CUTTING-LOCATION",
+				"received_type": "Accepted",
+			},
+			{
+				"item": "FABRIC-BEIGE-72",
+				"qty": 50,
+				"uom": "Kg",
+				"warehouse": "CUTTING-LOCATION",
+				"received_type": "Accepted",
+			},
+		]
+		with (
+			patch(
+				"production_api.mrp_stock.utils.get_stock_balance",
+				return_value=100,
+			),
+			self.assertRaisesRegex(frappe.ValidationError, "required 110"),
+		):
+			bulk_laysheets.validate_source_stock(items, "LOT-MAIN")
 
 	def test_cutting_plan_stock_is_checked_after_dc(self):
 		laysheet = frappe._dict(

@@ -285,6 +285,7 @@ function add_bulk_actions(frm) {
             frm.reload_doc();
         }).addClass("btn-primary");
     }
+    add_bulk_transfer_actions(frm, rows);
 
     const row = get_active_bulk_row(frm);
     if (!row) return;
@@ -294,14 +295,6 @@ function add_bulk_actions(frm) {
 
     if (["Ready to Generate", "Create Lot Transfer"].includes(row.status) && !row.lot_transfer) {
         frm.add_custom_button(__("Generate Bundles"), () => generate_bulk_bundles(frm, row), __("Active Lot"));
-    }
-    if (row.status === "Create Lot Transfer" || row.status === "Lot Transfer Cancelled") {
-        frm.add_custom_button(__("Create Lot Transfer"), () => create_bulk_transfer(frm, row), __("Active Lot"));
-    }
-    if (row.lot_transfer) {
-        frm.add_custom_button(__("Open Lot Transfer"), () => {
-            frappe.set_route("Form", "Lot Transfer", row.lot_transfer);
-        }, __("Active Lot"));
     }
     if (row.status === "Make Delivery Challan" || row.status === "Delivery Challan Cancelled") {
         frm.add_custom_button(__("Make Delivery Challan"), () => make_bulk_dc(frm, row), __("Active Lot"));
@@ -316,6 +309,40 @@ function add_bulk_actions(frm) {
     }
     if (row.status === "Ready to Print") {
         frm.add_custom_button(__("Print Labels"), () => start_bulk_label_print(frm, row), __("Active Lot"));
+    }
+}
+
+function add_bulk_transfer_actions(frm, rows) {
+    if (!rows.length) return;
+    const transferNames = [...new Set(rows.map(row => row.lot_transfer).filter(Boolean))];
+    const sharedTransfer = transferNames.length === 1
+        && rows.every(row => row.lot_transfer === transferNames[0]);
+    const canCreate = rows.every(row =>
+        ["Create Lot Transfer", "Lot Transfer Cancelled"].includes(row.status)
+    );
+    const canSubmit = sharedTransfer
+        && rows.every(row => row.status === "Submit Lot Transfer");
+
+    if (canCreate) {
+        frm.add_custom_button(
+            __("Create Bulk Lot Transfer"),
+            () => create_bulk_transfer(frm),
+            __("Bulk Lot Transfer")
+        );
+    }
+    if (canSubmit) {
+        frm.add_custom_button(
+            __("Submit Bulk Lot Transfer"),
+            () => submit_bulk_transfer(frm, transferNames[0]),
+            __("Bulk Lot Transfer")
+        );
+    }
+    if (sharedTransfer) {
+        frm.add_custom_button(
+            __("Open Bulk Lot Transfer"),
+            () => frappe.set_route("Form", "Lot Transfer", transferNames[0]),
+            __("Bulk Lot Transfer")
+        );
     }
 }
 
@@ -392,15 +419,41 @@ async function generate_bulk_bundles(frm, row) {
     dialog.show();
 }
 
-async function create_bulk_transfer(frm, row) {
+async function create_bulk_transfer(frm) {
     await save_bulk_editor(frm);
     const response = await frappe.call({
-        method: `${bulk_method}.create_lot_transfer`,
-        args: { doc_name: frm.doc.name, detail_name: row.name },
+        method: `${bulk_method}.create_bulk_lot_transfer`,
+        args: { doc_name: frm.doc.name },
         freeze: true,
-        freeze_message: __("Preparing main-lot stock transfer..."),
+        freeze_message: __("Preparing one Lot Transfer for all split lots..."),
     });
-    frappe.set_route("Form", "Lot Transfer", response.message);
+    frappe.show_alert({
+        message: __("Bulk Lot Transfer {0} created", [response.message]),
+        indicator: "green",
+    });
+    await frm.reload_doc();
+}
+
+function submit_bulk_transfer(frm, transferName) {
+    frappe.confirm(
+        __("Submit Lot Transfer {0}? This will move stock from {1} to all split lots.", [
+            transferName,
+            frm.doc.main_lot,
+        ]),
+        async () => {
+            const response = await frappe.call({
+                method: `${bulk_method}.submit_bulk_lot_transfer`,
+                args: { doc_name: frm.doc.name },
+                freeze: true,
+                freeze_message: __("Submitting Bulk Lot Transfer..."),
+            });
+            frappe.show_alert({
+                message: __("Bulk Lot Transfer {0} submitted", [response.message]),
+                indicator: "green",
+            });
+            await frm.reload_doc();
+        }
+    );
 }
 
 async function make_bulk_dc(frm, row) {

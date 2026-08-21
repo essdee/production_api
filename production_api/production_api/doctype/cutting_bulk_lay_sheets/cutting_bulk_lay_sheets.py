@@ -397,8 +397,16 @@ def validate_source_stock(items, main_lot, reserved=None):
 	from production_api.mrp_stock.utils import get_stock_balance
 
 	reserved = reserved or {}
-	shortages = []
+	required_by_item = defaultdict(float)
+	item_rows = {}
 	for row in items:
+		key = (row["item"], row["warehouse"], row["received_type"], row["uom"])
+		required_by_item[key] += flt(row["qty"], 3)
+		item_rows[key] = row
+
+	shortages = []
+	for key, item_qty in required_by_item.items():
+		row = item_rows[key]
 		available = get_stock_balance(
 			row["item"],
 			row["warehouse"],
@@ -406,7 +414,7 @@ def validate_source_stock(items, main_lot, reserved=None):
 			lot=main_lot,
 			uom=row["uom"],
 		)
-		required = flt(row["qty"], 3) + flt(reserved.get(row["item"]), 3)
+		required = flt(item_qty, 3) + flt(reserved.get(row["item"]), 3)
 		if flt(available, 3) < required:
 			shortages.append(
 				_("{0}: required {1} {2}, available {3} {2}").format(
@@ -478,6 +486,109 @@ def create_lot_transfer(doc_name, detail_name):
 	return transfer.name
 
 
+def get_shared_bulk_transfer_name(doc):
+	active_transfers = {
+		row.lot_transfer
+		for row in doc.lot_details
+		if row.lot_transfer and get_docstatus("Lot Transfer", row.lot_transfer) != 2
+	}
+	if not active_transfers:
+		return None
+	if len(active_transfers) != 1:
+		frappe.throw(_("Split lots are linked to different Lot Transfers."))
+	transfer_name = active_transfers.pop()
+	if any(row.lot_transfer != transfer_name for row in doc.lot_details):
+		frappe.throw(
+			_("Some split lots already have a Lot Transfer. Complete or cancel it before creating a bulk transfer.")
+		)
+	return transfer_name
+
+
+@frappe.whitelist()
+def create_bulk_lot_transfer(doc_name):
+	doc = get_bulk_doc(doc_name)
+	doc._validate_lot_rows()
+	existing_transfer = get_shared_bulk_transfer_name(doc)
+	if existing_transfer:
+		return existing_transfer
+
+	received_type = frappe.db.get_single_value("Stock Settings", "default_received_type")
+	items = []
+	for row in doc.lot_details:
+		if not row.cutting_laysheet:
+			frappe.throw(_("Create the Lay Sheet for split Lot {0} first.").format(row.lot))
+		if row.delivery_challan and get_docstatus("Delivery Challan", row.delivery_challan) != 2:
+			frappe.throw(_("Split Lot {0} already has a Delivery Challan.").format(row.lot))
+		laysheet = frappe.get_doc("Cutting LaySheet", row.cutting_laysheet)
+		if not laysheet.cutting_laysheet_bundles or laysheet.status not in (
+			"Bundles Generated", "Approval Pending"
+		):
+			frappe.throw(_("Generate bundles for split Lot {0} first.").format(row.lot))
+		items.extend(
+			build_lot_transfer_items(
+				laysheet, doc.main_lot, row.lot, doc.from_location, received_type
+			)
+		)
+
+	for idx, item in enumerate(items):
+		item["table_index"] = idx
+		item["row_index"] = idx
+
+	draft_transfers = frappe.get_all(
+		"Lot Transfer",
+		filters={"cutting_bulk_lay_sheet": doc.name, "docstatus": 0},
+		pluck="name",
+	)
+	reserved = defaultdict(float)
+	if draft_transfers:
+		for transfer_row in frappe.get_all(
+			"Lot Transfer Item",
+			filters={"parent": ["in", draft_transfers], "from_lot": doc.main_lot},
+			fields=["item", "qty"],
+		):
+			reserved[transfer_row.item] += flt(transfer_row.qty)
+	validate_source_stock(items, doc.main_lot, reserved)
+
+	transfer = frappe.new_doc("Lot Transfer")
+	transfer.flags.allow_from_cutting_plan = True
+	transfer.posting_date = doc.posting_date
+	transfer.posting_time = nowtime()
+	transfer.cutting_bulk_lay_sheet = doc.name
+	transfer.cutting_bulk_lay_sheet_detail = None
+	transfer.comments = _("Bulk cloth transfer for all split lots from {0}").format(doc.name)
+	transfer.set("items", items)
+	transfer.save()
+	for row in doc.lot_details:
+		frappe.db.set_value(
+			"Cutting Bulk Lay Sheet Detail",
+			row.name,
+			"lot_transfer",
+			transfer.name,
+			update_modified=False,
+		)
+	refresh_bulk_status(doc.name)
+	return transfer.name
+
+
+@frappe.whitelist()
+def submit_bulk_lot_transfer(doc_name):
+	doc = get_bulk_doc(doc_name)
+	transfer_name = get_shared_bulk_transfer_name(doc)
+	if not transfer_name:
+		frappe.throw(_("Create the Bulk Lot Transfer first."))
+	transfer = frappe.get_doc("Lot Transfer", transfer_name)
+	if transfer.cutting_bulk_lay_sheet != doc.name:
+		frappe.throw(_("Lot Transfer {0} is not linked to this Bulk Lay Sheet.").format(transfer.name))
+	if transfer.docstatus == 1:
+		return transfer.name
+	if transfer.docstatus == 2:
+		frappe.throw(_("Lot Transfer {0} is cancelled. Create a new transfer.").format(transfer.name))
+
+	transfer.submit()
+	refresh_bulk_status(doc.name)
+	return transfer.name
+
+
 @frappe.whitelist()
 def prepare_delivery_challan(doc_name, detail_name):
 	doc = get_bulk_doc(doc_name)
@@ -492,7 +603,7 @@ def prepare_delivery_challan(doc_name, detail_name):
 	)
 
 	data = get_delivery_challan_details(
-		row.lot_transfer, row.work_order, doc.from_location
+		row.lot_transfer, row.work_order, doc.from_location, target_lot=row.lot
 	)
 	data["cutting_bulk_lay_sheet"] = doc.name
 	data["cutting_bulk_lay_sheet_detail"] = row.name
@@ -534,7 +645,10 @@ def validate_bulk_print_prerequisites(laysheet_name):
 	transfer = frappe.get_doc("Lot Transfer", entry.lot_transfer)
 	if (
 		transfer.cutting_bulk_lay_sheet != bulk.name
-		or transfer.cutting_bulk_lay_sheet_detail != entry.name
+		or (
+			transfer.cutting_bulk_lay_sheet_detail
+			and transfer.cutting_bulk_lay_sheet_detail != entry.name
+		)
 	):
 		frappe.throw(_("The linked Lot Transfer does not match this bulk Lay Sheet."))
 	received_type = frappe.db.get_single_value("Stock Settings", "default_received_type")
@@ -550,6 +664,8 @@ def validate_bulk_print_prerequisites(laysheet_name):
 	}
 	actual = defaultdict(float)
 	for row in transfer.items:
+		if row.to_lot != entry.lot:
+			continue
 		key = (
 			row.item, row.from_lot, row.to_lot, row.warehouse, row.received_type,
 			row.uom,
