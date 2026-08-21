@@ -12,6 +12,42 @@ from production_api.production_api.doctype.cutting_bulk_lay_sheets import (
 
 
 class TestCuttingBulkLaySheets(FrappeTestCase):
+	def test_laysheet_editor_data_includes_generated_bundles(self):
+		class ChildRow:
+			def __init__(self, values):
+				self.values = values
+
+			def as_dict(self):
+				return self.values
+
+		entry = frappe._dict(lot_transfer=None)
+		laysheet = frappe._dict(
+			name="CLS-TEST-1",
+			cutting_plan="CP-TEST-1",
+			cutting_order=None,
+			cutting_marker="CM-TEST-1",
+			is_manual_entry=0,
+			is_set_item=0,
+			status="Bundles Generated",
+			docstatus=0,
+			cutting_laysheet_details=[],
+			cutting_laysheet_accessory_details=[],
+			cutting_laysheet_manual_items=[],
+			cutting_laysheet_bundles=[
+				ChildRow({"bundle_no": 1, "part": "Front", "quantity": 12})
+			],
+		)
+		with (
+			patch.object(bulk_laysheets, "get_entry_for_laysheet", return_value=entry),
+			patch.object(bulk_laysheets.frappe, "get_doc", return_value=laysheet),
+		):
+			data = bulk_laysheets.get_laysheet_editor_data("CBLS-TEST-1", laysheet.name)
+
+		self.assertEqual(
+			data["bundles"],
+			[{"bundle_no": 1, "part": "Front", "quantity": 12}],
+		)
+
 	def test_transfer_items_consolidate_cloth_and_accessory_by_variant(self):
 		laysheet = frappe._dict(
 			cutting_laysheet_details=[

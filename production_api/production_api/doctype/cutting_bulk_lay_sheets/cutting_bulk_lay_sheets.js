@@ -36,12 +36,14 @@ frappe.ui.form.on("Cutting Bulk Lay Sheets", {
         $(frm.fields_dict.cloths_html.wrapper).siblings(".bulk-editor-note").remove();
         $(frm.fields_dict.cloths_html.wrapper).empty();
         $(frm.fields_dict.accessory_html.wrapper).empty();
+        $(frm.fields_dict.bundles_html.wrapper).empty();
         const setup_locked = (frm.doc.lot_details || []).some(row => row.cutting_laysheet);
         ["main_lot", "from_location", "posting_date", "cutting_spreader", "cutter"].forEach(
             fieldname => frm.set_df_property(fieldname, "read_only", setup_locked)
         );
         render_bulk_workflow(frm);
         mount_bulk_editor(frm);
+        render_active_bundles(frm);
         add_bulk_actions(frm);
     },
 
@@ -188,6 +190,75 @@ function get_active_bulk_row(frm) {
     return (frm.doc.lot_details || []).find(
         row => row.cutting_laysheet === frm.doc.active_cutting_laysheet
     );
+}
+
+function render_active_bundles(frm) {
+    const wrapper = $(frm.fields_dict.bundles_html.wrapper);
+    const data = frm.doc.__onload && frm.doc.__onload.active_laysheet;
+    if (!data) return;
+
+    const bundles = data.bundles || [];
+    const row = get_active_bulk_row(frm);
+    const lot = row ? row.lot : "";
+    const laysheet = data.context.name || "";
+    if (!bundles.length) {
+        wrapper.html(`
+            <div class="bulk-bundle-empty text-muted">
+                ${escape_bulk(__("No bundles have been generated for {0} yet.", [lot || laysheet]))}
+            </div>
+        `);
+        return;
+    }
+
+    const totalPieces = bundles.reduce(
+        (total, bundle) => total + Number(bundle.quantity || 0),
+        0
+    );
+    const bundleRows = bundles.map((bundle, index) => `
+        <tr>
+            <td>${index + 1}</td>
+            <td>${escape_bulk(bundle.bundle_no)}</td>
+            <td>${escape_bulk(bundle.size)}</td>
+            <td>${escape_bulk(bundle.colour)}</td>
+            <td>${escape_bulk(bundle.shade)}</td>
+            <td>${escape_bulk(bundle.part)}</td>
+            <td class="text-right">${escape_bulk(bundle.quantity)}</td>
+            <td>${bundle.is_moved ? escape_bulk(__("Yes")) : escape_bulk(__("No"))}</td>
+        </tr>
+    `).join("");
+
+    wrapper.html(`
+        <style>
+            .bulk-bundle-summary { display:flex; flex-wrap:wrap; align-items:center; gap:8px 18px; margin-bottom:10px; }
+            .bulk-bundle-summary .text-muted { font-size:12px; }
+            .bulk-bundle-table-wrap { max-height:420px; overflow:auto; border:1px solid var(--border-color); border-radius:8px; }
+            .bulk-bundle-table { margin:0; white-space:nowrap; }
+            .bulk-bundle-table thead th { position:sticky; top:0; z-index:1; background:var(--card-bg); }
+            .bulk-bundle-empty { padding:20px; text-align:center; border:1px dashed var(--border-color); border-radius:8px; }
+        </style>
+        <div class="bulk-bundle-summary">
+            <strong>${escape_bulk(lot)} · ${escape_bulk(laysheet)}</strong>
+            <span class="text-muted">${escape_bulk(__("Bundles"))}: ${bundles.length}</span>
+            <span class="text-muted">${escape_bulk(__("Total Pieces"))}: ${escape_bulk(totalPieces)}</span>
+        </div>
+        <div class="bulk-bundle-table-wrap">
+            <table class="table table-sm table-bordered bulk-bundle-table">
+                <thead>
+                    <tr>
+                        <th>${escape_bulk(__("S.No"))}</th>
+                        <th>${escape_bulk(__("Bundle No"))}</th>
+                        <th>${escape_bulk(__("Size"))}</th>
+                        <th>${escape_bulk(__("Colour"))}</th>
+                        <th>${escape_bulk(__("Shade"))}</th>
+                        <th>${escape_bulk(__("Part"))}</th>
+                        <th class="text-right">${escape_bulk(__("Quantity"))}</th>
+                        <th>${escape_bulk(__("Moved"))}</th>
+                    </tr>
+                </thead>
+                <tbody>${bundleRows}</tbody>
+            </table>
+        </div>
+    `);
 }
 
 async function save_bulk_editor(frm) {

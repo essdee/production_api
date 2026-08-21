@@ -250,6 +250,7 @@ def get_laysheet_editor_data(bulk_name, laysheet_name):
 		"item_accessories": [
 			row.as_dict() for row in laysheet.cutting_laysheet_accessory_details
 		],
+		"bundles": [row.as_dict() for row in laysheet.cutting_laysheet_bundles],
 	}
 
 

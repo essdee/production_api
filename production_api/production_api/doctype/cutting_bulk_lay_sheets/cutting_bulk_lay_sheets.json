@@ -19,7 +19,9 @@
   "editor_section",
   "active_cutting_laysheet",
   "cloths_html",
-  "accessory_html"
+  "accessory_html",
+  "bundles_section",
+  "bundles_html"
  ],
  "fields": [
   {
@@ -118,6 +120,17 @@
    "fieldname": "accessory_html",
    "fieldtype": "HTML",
    "label": "Accessory Details"
+  },
+  {
+   "depends_on": "eval:doc.active_cutting_laysheet",
+   "fieldname": "bundles_section",
+   "fieldtype": "Section Break",
+   "label": "Generated Bundle Details"
+  },
+  {
+   "fieldname": "bundles_html",
+   "fieldtype": "HTML",
+   "label": "Generated Bundle Details"
   }
  ],
  "grid_page_length": 50,
