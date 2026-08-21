@@ -12,6 +12,15 @@ from production_api.production_api.doctype.cutting_bulk_lay_sheets import (
 
 
 class TestCuttingBulkLaySheets(FrappeTestCase):
+	def test_cbls_uses_naming_series_like_cutting_laysheet(self):
+		meta = frappe.get_meta("Cutting Bulk Lay Sheets")
+		doc = frappe.get_doc({"doctype": "Cutting Bulk Lay Sheets"})
+		doc.autoname()
+
+		self.assertEqual(meta.autoname, "naming_series:")
+		self.assertIsNotNone(meta.get_field("naming_series"))
+		self.assertEqual(doc.naming_series, "CBLS-.YY..MM.-.{#####}.")
+
 	def test_create_delivery_challan_submits_for_bulk_row(self):
 		bulk = frappe._dict(name="CBLS-TEST-1", posting_date="2026-08-21")
 		entry = frappe._dict(

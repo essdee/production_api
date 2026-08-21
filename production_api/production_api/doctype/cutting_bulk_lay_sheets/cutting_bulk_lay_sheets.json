@@ -1,6 +1,7 @@
 {
  "actions": [],
  "allow_rename": 1,
+ "autoname": "naming_series:",
  "creation": "2026-08-21 00:00:00.000000",
  "doctype": "DocType",
  "engine": "InnoDB",
@@ -8,6 +9,7 @@
   "main_lot",
   "from_location",
   "posting_date",
+  "naming_series",
   "column_break_setup",
   "cutting_spreader",
   "cutter",
@@ -47,6 +49,11 @@
    "fieldtype": "Date",
    "label": "Posting Date",
    "reqd": 1
+  },
+  {
+   "fieldname": "naming_series",
+   "fieldtype": "Data",
+   "label": "Naming Series"
   },
   {
    "fieldname": "column_break_setup",
