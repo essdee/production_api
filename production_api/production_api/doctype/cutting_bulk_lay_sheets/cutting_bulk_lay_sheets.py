@@ -6,7 +6,7 @@ from collections import defaultdict
 import frappe
 from frappe import _
 from frappe.model.document import Document
-from frappe.utils import flt, now_datetime, nowtime
+from frappe.utils import flt, getdate, now_datetime, nowtime
 
 
 class CuttingBulkLaySheets(Document):
@@ -59,7 +59,12 @@ class CuttingBulkLaySheets(Document):
 					("cutting_spreader", "Cutting Spreader"),
 					("cutter", "Cutter"),
 				):
-					if old_setup and self.get(fieldname) != old_setup.get(fieldname):
+					current_value = self.get(fieldname)
+					stored_value = old_setup.get(fieldname) if old_setup else None
+					if fieldname == "posting_date":
+						current_value = getdate(current_value) if current_value else None
+						stored_value = getdate(stored_value) if stored_value else None
+					if old_setup and current_value != stored_value:
 						frappe.throw(
 							_("{0} cannot change after Lay Sheets are created.").format(label)
 						)
