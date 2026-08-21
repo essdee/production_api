@@ -16,6 +16,14 @@ from production_api.production_api.doctype.item_price.item_price import get_item
 from production_api.production_api.doctype.purchase_order.purchase_order import get_item_attribute_details, get_item_group_index
 
 class LotTransfer(Document):
+	def refresh_cutting_bulk_lay_sheet(self):
+		if self.get("cutting_bulk_lay_sheet"):
+			from production_api.production_api.doctype.cutting_bulk_lay_sheets.cutting_bulk_lay_sheets import (
+				refresh_bulk_status,
+			)
+
+			refresh_bulk_status(self.get("cutting_bulk_lay_sheet"))
+
 	def onload(self):
 		item_details = fetch_lot_transfer_items(self.get('items'))
 		self.set('print_item_details', json.dumps(item_details))
@@ -124,6 +132,7 @@ class LotTransfer(Document):
 		if self.finishing_plan:
 			self.update_finishing_plan()
 		self.make_repost_action()
+		self.refresh_cutting_bulk_lay_sheet()
 	
 	def update_finishing_plan(self):
 		doc = frappe.get_doc("Finishing Plan", self.finishing_plan)
@@ -156,6 +165,7 @@ class LotTransfer(Document):
 		if self.finishing_plan:
 			self.update_finishing_plan()
 		self.make_repost_action()
+		self.refresh_cutting_bulk_lay_sheet()
 
 	def make_repost_action(self):
 		from production_api.mrp_stock.stock_ledger import repost_future_stock_ledger_entry
@@ -241,6 +251,16 @@ def get_lot_transfer_target_lot(items):
 	return target_lots.pop()
 
 
+def get_lot_transfer_items_for_target_lot(items, target_lot):
+	target_items = [
+		row for row in items
+		if row.to_lot == target_lot and flt(row.qty) > 0
+	]
+	if not target_items:
+		frappe.throw(f"Lot Transfer has no items for target Lot {target_lot}")
+	return target_items
+
+
 def get_lot_transfer_delivery_items(transfer_items, work_order_items, target_lot):
 	transfer_qty = {}
 	transfer_uom = {}
@@ -305,7 +325,7 @@ def get_lot_transfer_delivery_items(transfer_items, work_order_items, target_lot
 
 
 @frappe.whitelist()
-def get_delivery_challan_details(doc_name, work_order, from_location):
+def get_delivery_challan_details(doc_name, work_order, from_location, target_lot=None):
 	lot_transfer = frappe.get_doc("Lot Transfer", doc_name)
 	if lot_transfer.docstatus != 1:
 		frappe.throw("Submit the Lot Transfer before making a Delivery Challan")
@@ -320,14 +340,18 @@ def get_delivery_challan_details(doc_name, work_order, from_location):
 	):
 		frappe.throw("Select an open, submitted Work Order")
 
-	target_lot = get_lot_transfer_target_lot(lot_transfer.items)
+	transfer_items = lot_transfer.items
+	if target_lot:
+		transfer_items = get_lot_transfer_items_for_target_lot(transfer_items, target_lot)
+	else:
+		target_lot = get_lot_transfer_target_lot(transfer_items)
 	if work_order_doc.lot != target_lot:
 		frappe.throw(
 			f"Work Order {work_order} must belong to target Lot {target_lot}"
 		)
 
 	delivery_items = get_lot_transfer_delivery_items(
-		lot_transfer.items, work_order_doc.deliverables, target_lot
+		transfer_items, work_order_doc.deliverables, target_lot
 	)
 	from production_api.production_api.doctype.delivery_challan.delivery_challan import fetch_item_details
 	from production_api.production_api.doctype.purchase_order.purchase_order import get_address_display

@@ -1,0 +1,197 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "naming_series:",
+ "creation": "2026-08-21 00:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "main_lot",
+  "from_location",
+  "posting_date",
+  "naming_series",
+  "column_break_setup",
+  "cutting_spreader",
+  "cutter",
+  "status",
+  "lots_section",
+  "lot_details",
+  "workflow_section",
+  "workflow_html",
+  "editor_section",
+  "active_cutting_laysheet",
+  "cloths_html",
+  "accessory_html",
+  "bundles_section",
+  "bundles_html"
+ ],
+ "fields": [
+  {
+   "fieldname": "main_lot",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Main Stock Lot",
+   "options": "Lot",
+   "reqd": 1
+  },
+  {
+   "description": "Location where the main-lot cloth stock is currently held.",
+   "fieldname": "from_location",
+   "fieldtype": "Link",
+   "label": "Stock Location",
+   "options": "Supplier",
+   "reqd": 1
+  },
+  {
+   "default": "Today",
+   "fieldname": "posting_date",
+   "fieldtype": "Date",
+   "label": "Posting Date",
+   "reqd": 1
+  },
+  {
+   "default": "CBLS-.YY..MM.-.{#####}.",
+   "fieldname": "naming_series",
+   "fieldtype": "Data",
+   "label": "Naming Series",
+   "reqd": 1
+  },
+  {
+   "fieldname": "column_break_setup",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "cutting_spreader",
+   "fieldtype": "Link",
+   "label": "Cutting Spreader",
+   "options": "Cutting Spreader",
+   "reqd": 1
+  },
+  {
+   "fieldname": "cutter",
+   "fieldtype": "Link",
+   "label": "Cutter",
+   "options": "Cutter",
+   "reqd": 1
+  },
+  {
+   "default": "Setup",
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Status",
+   "options": "Setup\nLay Sheets Created\nIn Progress\nReady to Print\nCompleted",
+   "read_only": 1
+  },
+  {
+   "fieldname": "lots_section",
+   "fieldtype": "Section Break",
+   "label": "Split Lots"
+  },
+  {
+   "fieldname": "lot_details",
+   "fieldtype": "Table",
+   "label": "Lots",
+   "options": "Cutting Bulk Lay Sheet Detail",
+   "reqd": 1
+  },
+  {
+   "fieldname": "workflow_section",
+   "fieldtype": "Section Break",
+   "label": "Lot Workflow"
+  },
+  {
+   "fieldname": "workflow_html",
+   "fieldtype": "HTML",
+   "label": "Lot Workflow"
+  },
+  {
+   "depends_on": "eval:doc.active_cutting_laysheet",
+   "fieldname": "editor_section",
+   "fieldtype": "Section Break",
+   "label": "Active Lay Sheet Editor"
+  },
+  {
+   "fieldname": "active_cutting_laysheet",
+   "fieldtype": "Link",
+   "label": "Editing Lay Sheet",
+   "options": "Cutting LaySheet",
+   "read_only": 1
+  },
+  {
+   "fieldname": "cloths_html",
+   "fieldtype": "HTML",
+   "label": "Cloth Details"
+  },
+  {
+   "fieldname": "accessory_html",
+   "fieldtype": "HTML",
+   "label": "Accessory Details"
+  },
+  {
+   "depends_on": "eval:doc.active_cutting_laysheet",
+   "fieldname": "bundles_section",
+   "fieldtype": "Section Break",
+   "label": "Generated Bundle Details"
+  },
+  {
+   "fieldname": "bundles_html",
+   "fieldtype": "HTML",
+   "label": "Generated Bundle Details"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-08-21 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Production Api",
+ "name": "Cutting Bulk Lay Sheets",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Cutting User",
+   "select": 1,
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "CAD User",
+   "select": 1,
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "title_field": "main_lot",
+ "track_changes": 1
+}

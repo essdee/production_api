@@ -32,7 +32,7 @@ def validate_parent_status(parent_dt, parent_name):
 		if docstatus == 0:
 			frappe.throw("Cutting Plan was not Submitted")
 		if status == 'Planned':
-			frappe.throw("Cloths Not Received in Cutting Plan")
+			frappe.msgprint("Cloths Not Received in Cutting Plan")
 	else:
 		docstatus = frappe.get_value("Cutting Order", parent_name, "docstatus")
 		if docstatus != 1:

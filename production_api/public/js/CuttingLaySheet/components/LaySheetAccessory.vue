@@ -25,7 +25,7 @@
                     <td>{{item.weight}}</td>
                     <td>{{item.no_of_rolls}}</td>
                     <td>{{item.actual_dia}}</td>
-                    <td v-if="status != 'Label Printed' && status != 'Cancelled'">
+                    <td v-if="status != 'Label Printed' && status != 'Cancelled' && !read_only">
                         <div class="pull-right cursor-pointer" @click="add_cloth_item(idx)"
                             v-html="frappe.utils.icon('edit', 'md', 'mr-1')"></div>
                         <div class="pull-right cursor-pointer" @click="delete_item(idx)"
@@ -34,7 +34,7 @@
                 </tr>
             </table>
         </div>
-        <div class="row pt-3" v-if="status != 'Label Printed' && status != 'Cancelled' && show_button1 && docstatus != null && had_accessory">
+        <div class="row pt-3" v-if="status != 'Label Printed' && status != 'Cancelled' && !read_only && show_button1 && docstatus != null && had_accessory">
             <button class="btn btn-success pull-left" @click="add_cloth_item(null)">Add Accessory</button>
         </div>
         <div class="html-container col mt-1">
@@ -67,6 +67,21 @@
 </template>
 <script setup>
 import {ref, onMounted, computed, watch} from 'vue';
+const props = defineProps({
+    context: { type: Object, default: null },
+})
+const current_doc = props.context || cur_frm.doc
+const is_new_document = props.context ? Boolean(props.context.is_new) : cur_frm.is_new()
+const read_only = Boolean(current_doc.read_only)
+
+function mark_form_dirty(){
+    if(props.context && typeof props.context.mark_dirty === "function"){
+        props.context.mark_dirty()
+    } else {
+        cur_frm.dirty()
+    }
+}
+
 let had_accessory = ref(true)
 let show_button1 = ref(true)
 let show_button2 = ref(false)
@@ -89,7 +104,7 @@ let actual_dia = null
 let edit_index = null
 let cloth_accessories = []
 let docstatus = ref(null)
-let status = ref(cur_frm.doc.status)
+let status = ref(current_doc.status)
 
 function set_status(new_status){
     status.value = new_status
@@ -186,7 +201,7 @@ async function set_attr_values(variables,keys, index){
 
 function add_item(){
     check_values()
-    cur_frm.dirty()
+    mark_form_dirty()
     items.value.push({
         "accessory":accessory.get_value(),
         "cloth_type":cloth_type.get_value(),
@@ -201,7 +216,7 @@ function add_item(){
 }
 
 function delete_item(index){
-    cur_frm.dirty()
+    mark_form_dirty()
     let new_arr = null
     if (index ==  0){
         new_arr = items.value.slice(1,items.value.length)
@@ -220,7 +235,7 @@ function delete_item(index){
 
 function update_item(){
     check_values()
-    cur_frm.dirty()
+    mark_form_dirty()
     items.value[edit_index] = {
         "accessory":accessory.get_value(),
         "cloth_type":cloth_type.get_value(),
@@ -294,17 +309,17 @@ function make_clean(){
 }
 
 onMounted(()=> {
-    if(cur_frm.is_new()){
+    if(is_new_document){
         docstatus.value = null
     }
     else{
-        docstatus.value = cur_frm.doc.docstatus
+        docstatus.value = current_doc.docstatus
     }
-    if(cur_frm.doc.cutting_plan){
+    if(current_doc.cutting_plan){
         frappe.call({
             method:"production_api.production_api.doctype.cutting_laysheet.cutting_laysheet.get_select_attributes",
             args: {
-                cutting_plan:cur_frm.doc.cutting_plan,
+                cutting_plan:current_doc.cutting_plan,
             },
             callback:function(r){
                 select_attributes = r.message
@@ -314,7 +329,7 @@ onMounted(()=> {
         frappe.call({
             method:"production_api.production_api.doctype.cutting_laysheet.cutting_laysheet.get_cloth_accessories",
             args: {
-                cutting_plan:cur_frm.doc.cutting_plan,
+                cutting_plan:current_doc.cutting_plan,
             },
             callback:function(r){
                 cloth_accessories = r.message
@@ -323,11 +338,11 @@ onMounted(()=> {
                 }
             }
         })
-    } else if(cur_frm.doc.cutting_order){
+    } else if(current_doc.cutting_order){
         frappe.call({
             method:"production_api.production_api.doctype.cutting_laysheet.cutting_laysheet.get_select_attributes",
             args: {
-                cutting_order:cur_frm.doc.cutting_order,
+                cutting_order:current_doc.cutting_order,
             },
             callback:function(r){
                 select_attributes = r.message
@@ -337,7 +352,7 @@ onMounted(()=> {
         frappe.call({
             method:"production_api.production_api.doctype.cutting_laysheet.cutting_laysheet.get_cloth_accessories",
             args: {
-                cutting_order:cur_frm.doc.cutting_order,
+                cutting_order:current_doc.cutting_order,
             },
             callback:function(r){
                 cloth_accessories = r.message
@@ -368,4 +383,3 @@ defineExpose({
     margin: 0 !important;
 }
 </style>
-

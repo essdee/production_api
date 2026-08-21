@@ -9,6 +9,8 @@
   "is_manual_entry",
   "cutting_plan",
   "cutting_order",
+  "cutting_bulk_lay_sheet",
+  "cutting_bulk_lay_sheet_detail",
   "lot",
   "length",
   "width",
@@ -78,6 +80,21 @@
    "in_standard_filter": 1,
    "label": "Cutting Order",
    "options": "Cutting Order"
+  },
+  {
+   "fieldname": "cutting_bulk_lay_sheet",
+   "fieldtype": "Link",
+   "hidden": 1,
+   "label": "Cutting Bulk Lay Sheets",
+   "options": "Cutting Bulk Lay Sheets",
+   "read_only": 1
+  },
+  {
+   "fieldname": "cutting_bulk_lay_sheet_detail",
+   "fieldtype": "Data",
+   "hidden": 1,
+   "label": "Cutting Bulk Lay Sheet Detail",
+   "read_only": 1
   },
   {
    "fetch_from": "cutting_marker.length",

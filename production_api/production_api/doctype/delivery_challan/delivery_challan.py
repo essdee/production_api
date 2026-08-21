@@ -30,6 +30,14 @@ from production_api.production_api.doctype.cut_bundle_movement_ledger.cut_bundle
 
 
 class DeliveryChallan(Document):
+    def after_insert(self):
+        if self.get("cutting_bulk_lay_sheet"):
+            from production_api.production_api.doctype.cutting_bulk_lay_sheets.cutting_bulk_lay_sheets import (
+                record_delivery_challan,
+            )
+
+            record_delivery_challan(self)
+
     def before_cancel(self):
         self.ignore_linked_doctypes = (
             'Stock Ledger Entry', 'Repost Item Valuation', "Cut Bundle Movement Ledger", "Cut Panel Movement")
@@ -134,6 +142,12 @@ class DeliveryChallan(Document):
                        doc_name=self.name, enqueue_after_commit=True)
         self.update_finishing_doc()
         self.make_repost_action()
+        if self.get("cutting_bulk_lay_sheet"):
+            from production_api.production_api.doctype.cutting_bulk_lay_sheets.cutting_bulk_lay_sheets import (
+                refresh_bulk_status,
+            )
+
+            refresh_bulk_status(self.get("cutting_bulk_lay_sheet"))
 
     def on_submit(self):
         if self.from_address == self.supplier_address and self.is_internal_unit:
@@ -172,6 +186,12 @@ class DeliveryChallan(Document):
                        doc_name=self.name, enqueue_after_commit=True)
         self.update_finishing_doc()
         self.make_repost_action()
+        if self.get("cutting_bulk_lay_sheet"):
+            from production_api.production_api.doctype.cutting_bulk_lay_sheets.cutting_bulk_lay_sheets import (
+                refresh_bulk_status,
+            )
+
+            refresh_bulk_status(self.get("cutting_bulk_lay_sheet"))
 
     def update_finishing_doc(self):
         if self.includes_packing:

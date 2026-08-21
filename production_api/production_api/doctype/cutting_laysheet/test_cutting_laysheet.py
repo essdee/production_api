@@ -110,6 +110,7 @@ def create_and_submit_co(cod, colours, sizes):
 	co = frappe.get_doc({
 		"doctype": "Cutting Order",
 		"cutting_order_detail": cod.name,
+		"maximum_no_of_plys": 100,
 		"items_json": json.dumps({"items": items}),
 	})
 	co.insert(ignore_permissions=True)

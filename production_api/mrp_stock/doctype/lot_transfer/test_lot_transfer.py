@@ -6,10 +6,22 @@ from frappe.tests.utils import FrappeTestCase
 
 from production_api.mrp_stock.doctype.lot_transfer.lot_transfer import (
 	get_lot_transfer_delivery_items,
+	get_lot_transfer_items_for_target_lot,
 )
 
 
 class TestLotTransfer(FrappeTestCase):
+	def test_bulk_transfer_items_can_be_filtered_for_one_target_lot(self):
+		items = [
+			frappe._dict(item="FABRIC-RED", qty=5, to_lot="LOT-ONE"),
+			frappe._dict(item="FABRIC-BLUE", qty=7, to_lot="LOT-TWO"),
+		]
+
+		filtered = get_lot_transfer_items_for_target_lot(items, "LOT-TWO")
+
+		self.assertEqual(len(filtered), 1)
+		self.assertEqual(filtered[0].item, "FABRIC-BLUE")
+
 	def test_cutting_plan_flag_allows_direct_items_on_new_transfer(self):
 		doc = frappe.new_doc("Lot Transfer")
 		doc.append("items", {"item": "FABRIC-RED", "qty": 5})
