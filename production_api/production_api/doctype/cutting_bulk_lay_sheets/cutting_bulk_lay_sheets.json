@@ -51,9 +51,11 @@
    "reqd": 1
   },
   {
+   "default": "CBLS-.YY..MM.-.{#####}.",
    "fieldname": "naming_series",
    "fieldtype": "Data",
-   "label": "Naming Series"
+   "label": "Naming Series",
+   "reqd": 1
   },
   {
    "fieldname": "column_break_setup",
