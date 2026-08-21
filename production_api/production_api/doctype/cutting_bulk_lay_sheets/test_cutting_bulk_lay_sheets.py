@@ -1,6 +1,7 @@
 # Copyright (c) 2026, Essdee and Contributors
 # See license.txt
 
+from datetime import date
 from unittest.mock import MagicMock, patch
 
 import frappe
@@ -12,6 +13,71 @@ from production_api.production_api.doctype.cutting_bulk_lay_sheets import (
 
 
 class TestCuttingBulkLaySheets(FrappeTestCase):
+	def test_posting_date_guard_normalizes_database_date_value(self):
+		doc = frappe.get_doc(
+			{
+				"doctype": "Cutting Bulk Lay Sheets",
+				"name": "CBLS-TEST-1",
+				"__islocal": 0,
+				"main_lot": "LOT-MAIN",
+				"from_location": "LOCATION-1",
+				"posting_date": "2026-08-21",
+				"cutting_spreader": "SPREADER-1",
+				"cutter": "CUTTER-1",
+				"lot_details": [
+					{
+						"doctype": "Cutting Bulk Lay Sheet Detail",
+						"name": "CBLS-ROW-1",
+						"lot": "LOT-SPLIT-1",
+						"cutting_plan": "CP-1",
+						"cutting_marker": "CM-1",
+						"cutting_laysheet": "CLS-1",
+					}
+				],
+			}
+		)
+		old_setup = frappe._dict(
+			main_lot=doc.main_lot,
+			from_location=doc.from_location,
+			posting_date=date(2026, 8, 21),
+			cutting_spreader=doc.cutting_spreader,
+			cutter=doc.cutter,
+		)
+		existing_rows = [
+			frappe._dict(
+				name="CBLS-ROW-1",
+				lot="LOT-SPLIT-1",
+				cutting_plan="CP-1",
+				cutting_marker="CM-1",
+				cutting_laysheet="CLS-1",
+				lot_transfer=None,
+				delivery_challan=None,
+			)
+		]
+
+		def get_value(doctype, name, fields, as_dict=False):
+			if doctype == "Cutting Bulk Lay Sheets":
+				return old_setup
+			if doctype == "Cutting Plan":
+				return frappe._dict(
+					lot="LOT-SPLIT-1", work_order="WO-1", docstatus=1, cp_status="In Progress"
+				)
+			if doctype == "Cutting Marker":
+				return frappe._dict(cutting_plan="CP-1", docstatus=1)
+			raise AssertionError((doctype, name, fields, as_dict))
+
+		with (
+			patch.object(bulk_laysheets.frappe.db, "get_value", side_effect=get_value),
+			patch.object(bulk_laysheets.frappe, "get_all", return_value=existing_rows),
+		):
+			doc._validate_lot_rows()
+			doc.posting_date = "2026-08-22"
+			with self.assertRaisesRegex(
+				frappe.ValidationError,
+				"Posting Date cannot change after Lay Sheets are created",
+			):
+				doc._validate_lot_rows()
+
 	def test_cbls_uses_naming_series_like_cutting_laysheet(self):
 		meta = frappe.get_meta("Cutting Bulk Lay Sheets")
 		series_field = meta.get_field("naming_series")
