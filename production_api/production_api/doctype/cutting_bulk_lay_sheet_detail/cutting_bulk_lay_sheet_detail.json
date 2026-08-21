@@ -1,0 +1,103 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2026-08-21 00:00:00.000000",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "lot",
+  "cutting_plan",
+  "cutting_marker",
+  "work_order",
+  "cutting_laysheet",
+  "lot_transfer",
+  "delivery_challan",
+  "status"
+ ],
+ "fields": [
+  {
+   "columns": 1,
+   "fieldname": "lot",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Split Lot",
+   "options": "Lot",
+   "reqd": 1
+  },
+  {
+   "columns": 2,
+   "fieldname": "cutting_plan",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Cutting Plan",
+   "options": "Cutting Plan",
+   "reqd": 1
+  },
+  {
+   "columns": 2,
+   "fieldname": "cutting_marker",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Cutting Marker",
+   "options": "Cutting Marker",
+   "reqd": 1
+  },
+  {
+   "fieldname": "work_order",
+   "fieldtype": "Link",
+   "label": "Work Order",
+   "options": "Work Order",
+   "read_only": 1
+  },
+  {
+   "columns": 2,
+   "fieldname": "cutting_laysheet",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Lay Sheet",
+   "options": "Cutting LaySheet",
+   "read_only": 1
+  },
+  {
+   "columns": 2,
+   "fieldname": "lot_transfer",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Lot Transfer",
+   "options": "Lot Transfer",
+   "read_only": 1
+  },
+  {
+   "columns": 2,
+   "fieldname": "delivery_challan",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Delivery Challan",
+   "options": "Delivery Challan",
+   "read_only": 1
+  },
+  {
+   "columns": 1,
+   "fieldname": "status",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Status",
+   "read_only": 1
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2026-08-21 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Production Api",
+ "name": "Cutting Bulk Lay Sheet Detail",
+ "owner": "Administrator",
+ "permissions": [],
+ "row_format": "Dynamic",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

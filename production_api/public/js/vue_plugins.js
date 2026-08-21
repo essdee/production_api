@@ -991,12 +991,13 @@ frappe.production.ui.CutPlanClothItems = class {
 }
 
 frappe.production.ui.LaySheetCloths = class {
-    constructor(wrapper) {
+    constructor(wrapper, context = null) {
         this.$wrapper = $(wrapper)
+        this.context = context
         this.make_app()
     }
     make_app() {
-        this.app = createApp(LaySheetCloths)
+        this.app = createApp(LaySheetCloths, { context: this.context })
         SetVueGlobals(this.app)
         this.vue = this.app.mount(this.$wrapper.get(0))
     }
@@ -1011,12 +1012,13 @@ frappe.production.ui.LaySheetCloths = class {
 }
 
 frappe.production.ui.LaySheetAccessory = class {
-    constructor(wrapper) {
+    constructor(wrapper, context = null) {
         this.$wrapper = $(wrapper)
+        this.context = context
         this.make_app()
     }
     make_app() {
-        this.app = createApp(LaySheetAccessory)
+        this.app = createApp(LaySheetAccessory, { context: this.context })
         SetVueGlobals(this.app)
         this.vue = this.app.mount(this.$wrapper.get(0))
     }

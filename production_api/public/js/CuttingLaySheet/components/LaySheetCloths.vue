@@ -85,7 +85,7 @@
                         <td>{{item.fabric_type}}</td>
                         <td>{{item.actual_dia}}</td>
                         <td v-if="!is_manual_entry">{{item.comments}}</td>
-                        <td v-if="status != 'Label Printed' && status != 'Cancelled'">
+                        <td v-if="status != 'Label Printed' && status != 'Cancelled' && !disabled">
                             <div class="pull-right cursor-pointer" @click="add_cloth_item(idx)"
                                 v-html="frappe.utils.icon('edit', 'md', 'mr-1')"></div>
                             <div class="pull-right cursor-pointer" @click="delete_item(idx)"
@@ -94,7 +94,7 @@
                     </tr>
                 </table>
             </div>
-            <div class="row pt-3" v-if="status != 'Label Printed' && status != 'Cancelled' && show_button1 && docstatus != null">
+            <div class="row pt-3" v-if="status != 'Label Printed' && status != 'Cancelled' && !disabled && show_button1 && docstatus != null">
                 <button class="btn btn-success pull-left" @click="add_cloth_item(null)">Add Cloth Items</button>
             </div>
             <div class="html-container col mt-1">
@@ -145,6 +145,20 @@
 </template>
 <script setup>
 import {ref, onMounted, computed, watch, nextTick} from 'vue';
+const props = defineProps({
+    context: { type: Object, default: null },
+})
+const current_doc = props.context || cur_frm.doc
+const is_new_document = props.context ? Boolean(props.context.is_new) : cur_frm.is_new()
+
+function mark_form_dirty(){
+    if(props.context && typeof props.context.mark_dirty === "function"){
+        props.context.mark_dirty()
+    } else if(!cur_frm.is_dirty()){
+        cur_frm.dirty()
+    }
+}
+
 let show_button1 = ref(true)
 let show_button2 = ref(false)
 let show_button3 = ref(false)
@@ -159,7 +173,7 @@ let select_attributes = ref({
     "colour": []
 })
 let cloth_type_dia_map = ref({})
-let is_manual_entry = cur_frm.doc.is_manual_entry
+let is_manual_entry = current_doc.is_manual_entry
 let primary_values = ref([])
 let cloth_type = null
 let cloth_colour = null
@@ -176,7 +190,7 @@ let balance_weight = null
 let actual_dia = null
 let items_json =  null
 let docstatus = ref(null)
-let status = cur_frm.doc.status
+let status = current_doc.status
 let set_parameters = []
 let fieldnames = []
 let part_set_colours = null
@@ -185,7 +199,7 @@ let setColourRefs = ref({})
 let multiplierRefs = ref({})
 let primaryValueRefs = ref({})
 let disabled = ref(false)
-let is_set_item = cur_frm.doc.is_set_item
+let is_set_item = current_doc.is_set_item
 
 function delete_group_item(item){
     let idx = item['manual_index']
@@ -243,7 +257,7 @@ function onchange_event(){
         frappe.call({
             method:"production_api.production_api.doctype.cutting_laysheet.cutting_laysheet.get_input_fields",
             args: {
-                cutting_marker:cur_frm.doc.cutting_marker,
+                cutting_marker:current_doc.cutting_marker,
                 colour: val,
                 select_attributes: select_attributes.value
             },
@@ -310,7 +324,7 @@ async function add_cloth_item(index){
     cloth_rolls = get_input_field(".cloth-rolls", "Int", "cloth_rolls", "No of Rolls", no_options, reqd)
     actual_dia = get_input_field(".actual-dia", "Select", "actual_dia", "Actual Dia", select_attributes.value['dia'], reqd)
     balance_weight = get_input_field(".cloth-balance", "Float", "balance_weight", "Balance Weight", no_options, reqd)
-    if(!cur_frm.doc.is_manual_entry){
+    if(!current_doc.is_manual_entry){
         cloth_comment = get_input_field(".cloth-comment", "Small Text", "cloth_comment",'Comment', no_options, not_reqd)
         cloth_bits = get_input_field(".cloth-bits", "Int", "cloth_bits", "No of Bits", no_options, reqd)
         cloth_end_bit = get_input_field(".cloth-end-bit", "Float", "cloth_end_bit", "End Bit Weight", no_options, reqd)
@@ -325,7 +339,7 @@ async function add_cloth_item(index){
     if(index != null){
         let arr1 = [cloth_type,cloth_colour,cloth_dia,cloth_weight,cloth_shade,cloth_rolls,cloth_bits,cloth_end_bit,cloth_comment,balance_weight, items_json, fabric_type]
         let arr2 = ["cloth_type","colour","dia","weight","shade","no_of_rolls","no_of_bits","end_bit_weight","comments","balance_weight","items_json", "fabric_type"]
-        if(cur_frm.doc.is_manual_entry){
+        if(current_doc.is_manual_entry){
             arr1 = [cloth_type, cloth_colour, cloth_dia, cloth_weight, cloth_shade, cloth_rolls, fabric_type, balance_weight]
             arr2 = ["cloth_type", "colour", "dia", "weight", "shade", "no_of_rolls", "fabric_type", "balance_weight"]
         }
@@ -346,7 +360,7 @@ async function add_cloth_item(index){
             actual_dia.set_value(items.value[index]['actual_dia'])
             actual_dia.refresh()
         }
-        if(!cur_frm.doc.is_manual_entry){
+        if(!current_doc.is_manual_entry){
             let json = JSON.parse(items.value[index]['items_json'])
             if(typeof(json) == "string"){
                 json = JSON.parse(json)
@@ -577,9 +591,7 @@ function set_calculated_value(input_fields, calculated_value){
 }
 
 function make_dirty(){
-    if(!cur_frm.is_dirty()){
-        cur_frm.dirty()
-    }
+    mark_form_dirty()
 }
 
 function delete_item(index){
@@ -742,28 +754,28 @@ function make_clean(){
 }
 
 onMounted(()=> {
-    if(cur_frm.is_new()){
+    if(is_new_document){
         docstatus.value = null
     }
     else{
-        docstatus.value = cur_frm.doc.docstatus
+        docstatus.value = current_doc.docstatus
     }
-    if(cur_frm.doc.cutting_plan){
+    if(current_doc.cutting_plan){
         frappe.call({
             method:"production_api.production_api.doctype.cutting_laysheet.cutting_laysheet.get_select_attributes",
             args: {
-                cutting_plan:cur_frm.doc.cutting_plan,
+                cutting_plan:current_doc.cutting_plan,
             },
             callback:function(r){
                 select_attributes.value = r.message
                 cloth_type_dia_map.value = r.message.cloth_type_dia_map || {}
             }
         })
-    } else if(cur_frm.doc.cutting_order){
+    } else if(current_doc.cutting_order){
         frappe.call({
             method:"production_api.production_api.doctype.cutting_laysheet.cutting_laysheet.get_select_attributes",
             args: {
-                cutting_order:cur_frm.doc.cutting_order,
+                cutting_order:current_doc.cutting_order,
             },
             callback:function(r){
                 select_attributes.value = r.message
@@ -771,18 +783,18 @@ onMounted(()=> {
             }
         })
     }
-    if(cur_frm.doc.is_manual_entry){
+    if(current_doc.is_manual_entry){
         frappe.call({
             method: "production_api.production_api.doctype.cutting_laysheet.cutting_laysheet.get_primary_values",
             args: {
-                cutting_laysheet: cur_frm.doc.name,
+                cutting_laysheet: current_doc.name,
             },
             callback: function(r){
                 primary_values.value = r.message
             }
         })
     }
-    if(status == "Label Printed" || status == "Cancelled"){
+    if(current_doc.read_only || status == "Label Printed" || status == "Cancelled"){
         disabled.value = true
     }
 })
@@ -825,7 +837,7 @@ function get_set_colour(item, colour){
         frappe.call({
             method:"production_api.production_api.doctype.cutting_laysheet.cutting_laysheet.get_input_fields",
             args: {
-                cutting_marker:cur_frm.doc.cutting_marker,
+                cutting_marker:current_doc.cutting_marker,
                 colour: val,
                 select_attributes: select_attributes.value
             },
@@ -842,7 +854,7 @@ function get_set_colour(item, colour){
 }
 
 function get_items(){
-    if(cur_frm.doc.is_manual_entry){
+    if(current_doc.is_manual_entry){
         Object.keys(manual_items.value).forEach(index => {
             if(!manual_items.value[index]['colour']){
                 frappe.throw("Enter Colour")

@@ -74,9 +74,14 @@ class CuttingLaySheet(Document):
 	def before_validate(self):
 		if not self.cutting_plan and not self.cutting_order:
 			frappe.throw("Either Cutting Plan or Cutting Order is required")
+		self._validate_bulk_editor_lock()
 
 		parent_dt, parent_name = get_parent_ref(self)
-		validate_parent_status(parent_dt, parent_name)
+		if self.get("cutting_bulk_lay_sheet") and parent_dt == "Cutting Plan":
+			if frappe.db.get_value("Cutting Plan", parent_name, "docstatus") != 1:
+				frappe.throw("Cutting Plan was not Submitted")
+		else:
+			validate_parent_status(parent_dt, parent_name)
 
 		if frappe.flags.in_patch:
 			return
@@ -217,6 +222,27 @@ class CuttingLaySheet(Document):
 			if self.total_no_of_pieces:
 				self.piece_weight = used_weight / self.total_no_of_pieces
 		self.set("cutting_laysheet_details",items)
+
+	def _validate_bulk_editor_lock(self):
+		if (
+			not self.get("cutting_bulk_lay_sheet")
+			or self.is_new()
+			or self.status == "Label Printed"
+			or not (self.get("item_details") or self.get("item_accessory_details"))
+		):
+			return
+		lot_transfer = frappe.db.get_value(
+			"Cutting Bulk Lay Sheet Detail",
+			{
+				"parent": self.get("cutting_bulk_lay_sheet"),
+				"cutting_laysheet": self.name,
+			},
+			"lot_transfer",
+		)
+		if lot_transfer and frappe.db.get_value("Lot Transfer", lot_transfer, "docstatus") != 2:
+			frappe.throw(
+				f"Lay Sheet {self.name} cannot be edited after Lot Transfer {lot_transfer} is created"
+			)
 
 	def _validate_cloth_type_dia(self):
 		cloth_type_dia_map = self._get_cloth_type_dia_map()
@@ -734,7 +760,10 @@ def get_cut_sheet_data(
 	doc.save()
 
 	parent_dt, parent_name = get_parent_ref(doc)
-	if has_cloth_tracking(parent_dt):
+	# Bulk laysheets are intentionally generated before their main-lot stock is
+	# transferred and delivered to the target Cutting Plan. Configuration is
+	# still validated below; the balance check is deferred until label printing.
+	if has_cloth_tracking(parent_dt) and not doc.get("cutting_bulk_lay_sheet"):
 		cloth = {}
 		for item in doc.cutting_laysheet_details:
 			key = (item.colour, item.cloth_type, item.actual_dia)
@@ -829,6 +858,14 @@ def print_labels(print_items, lay_no, doc_name, print_order, cutting_plan=None, 
 
 	# Validate grammage approval if weight difference exceeds tolerance
 	cls = frappe.get_doc("Cutting LaySheet", doc_name)
+	if cls.get("cutting_bulk_lay_sheet"):
+		from production_api.production_api.doctype.cutting_bulk_lay_sheets.cutting_bulk_lay_sheets import (
+			validate_bulk_print_prerequisites,
+			validate_cutting_plan_stock,
+		)
+
+		validate_bulk_print_prerequisites(cls.name)
+		validate_cutting_plan_stock(cls)
 	tolerance = get_laysheet_piece_weight_tolerance(cls)
 	diff = abs((cls.piece_weight or 0) - (cls.required_pcs_weight or 0))
 	if diff > tolerance and not cls.approved_by:
