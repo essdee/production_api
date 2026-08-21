@@ -64,6 +64,56 @@ class TestCuttingBulkLaySheets(FrappeTestCase):
 		self.assertEqual(settings["options"], ["DC-", "DC-2627-"])
 		self.assertEqual(settings["default"], "DC-2627-")
 
+	def test_create_bulk_delivery_challans_creates_every_pending_row(self):
+		rows = [
+			frappe._dict(
+				name="CBLS-ROW-1", lot="LOT-SPLIT-1", lot_transfer="LT-BULK-1",
+				delivery_challan=None,
+			),
+			frappe._dict(
+				name="CBLS-ROW-2", lot="LOT-SPLIT-2", lot_transfer="LT-BULK-1",
+				delivery_challan="DC-CANCELLED-1",
+			),
+		]
+		bulk = frappe._dict(name="CBLS-TEST-1", lot_details=rows)
+
+		def get_status(doctype, name):
+			if doctype == "Lot Transfer":
+				return 1
+			if name == "DC-CANCELLED-1":
+				return 2
+			return None
+
+		with (
+			patch.object(bulk_laysheets, "get_bulk_doc", return_value=bulk),
+			patch.object(
+				bulk_laysheets, "_validate_delivery_challan_naming_series",
+				return_value="DC-2627-",
+			),
+			patch.object(bulk_laysheets, "get_docstatus", side_effect=get_status),
+			patch.object(
+				bulk_laysheets, "create_delivery_challan",
+				side_effect=["DC-2627-001", "DC-2627-002"],
+			) as create_dc,
+			patch.object(bulk_laysheets, "refresh_bulk_status") as refresh_status,
+		):
+			result = bulk_laysheets.create_bulk_delivery_challans(
+				bulk.name, "DC-2627-", "TN 01 AB 1234"
+			)
+
+		self.assertEqual(result["count"], 2)
+		self.assertEqual(
+			result["delivery_challans"], ["DC-2627-001", "DC-2627-002"]
+		)
+		self.assertEqual(create_dc.call_count, 2)
+		create_dc.assert_any_call(
+			bulk.name, rows[0].name, "DC-2627-", "TN 01 AB 1234"
+		)
+		create_dc.assert_any_call(
+			bulk.name, rows[1].name, "DC-2627-", "TN 01 AB 1234"
+		)
+		refresh_status.assert_called_once_with(bulk.name)
+
 	def test_submit_delivery_challan_stays_scoped_to_bulk_row(self):
 		bulk = frappe._dict(name="CBLS-TEST-1")
 		entry = frappe._dict(

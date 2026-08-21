@@ -286,6 +286,7 @@ function add_bulk_actions(frm) {
         }).addClass("btn-primary");
     }
     add_bulk_transfer_actions(frm, rows);
+    add_bulk_delivery_challan_actions(frm, rows);
 
     const row = get_active_bulk_row(frm);
     if (!row) return;
@@ -345,6 +346,28 @@ function add_bulk_transfer_actions(frm, rows) {
             __("Open Bulk Lot Transfer"),
             () => frappe.set_route("Form", "Lot Transfer", transferNames[0]),
             __("Bulk Lot Transfer")
+        );
+    }
+}
+
+function add_bulk_delivery_challan_actions(frm, rows) {
+    if (!rows.length) return;
+    const createStatuses = [
+        "Make Delivery Challan",
+        "Delivery Challan Cancelled",
+        "Delivery Challan Missing",
+    ];
+    const completedStatuses = ["Ready to Print", "Approval Pending", "Completed"];
+    const rowsToCreate = rows.filter(row => createStatuses.includes(row.status));
+    const allRowsReady = rows.every(row =>
+        [...createStatuses, ...completedStatuses].includes(row.status)
+    );
+
+    if (rowsToCreate.length && allRowsReady) {
+        frm.add_custom_button(
+            __("Create Bulk Delivery Challans"),
+            () => create_bulk_delivery_challans(frm, rowsToCreate.length),
+            __("Bulk Delivery Challan")
         );
     }
 }
@@ -501,6 +524,60 @@ async function create_bulk_dc(frm, row) {
             dialog.hide();
             frappe.show_alert({
                 message: __("Delivery Challan {0} submitted", [response.message]),
+                indicator: "green",
+            });
+            await frm.reload_doc();
+        },
+    });
+    dialog.show();
+}
+
+async function create_bulk_delivery_challans(frm, count) {
+    const settingsResponse = await frappe.call({
+        method: `${bulk_method}.get_delivery_challan_naming_series`,
+        args: { doc_name: frm.doc.name },
+        freeze: true,
+        freeze_message: __("Loading Delivery Challan naming series..."),
+    });
+    const settings = settingsResponse.message || {};
+    const dialog = new frappe.ui.Dialog({
+        title: __("Create & Submit Bulk Delivery Challans"),
+        fields: [
+            {
+                fieldname: "summary",
+                fieldtype: "HTML",
+                options: `<p>${__("This will create and submit {0} Delivery Challan(s), one for each pending split Lot.", [count])}</p>`,
+            },
+            {
+                fieldname: "naming_series",
+                fieldtype: "Select",
+                label: __("Naming Series"),
+                options: (settings.options || []).join("\n"),
+                default: settings.default,
+                reqd: 1,
+            },
+            {
+                fieldname: "vehicle_no",
+                fieldtype: "Data",
+                label: __("Vehicle No"),
+                reqd: 1,
+            },
+        ],
+        primary_action_label: __("Create & Submit All"),
+        primary_action: async values => {
+            const response = await frappe.call({
+                method: `${bulk_method}.create_bulk_delivery_challans`,
+                args: {
+                    doc_name: frm.doc.name,
+                    naming_series: values.naming_series,
+                    vehicle_no: values.vehicle_no,
+                },
+                freeze: true,
+                freeze_message: __("Creating and submitting Delivery Challans..."),
+            });
+            dialog.hide();
+            frappe.show_alert({
+                message: __("{0} Delivery Challans submitted", [response.message.count]),
                 indicator: "green",
             });
             await frm.reload_doc();

@@ -678,6 +678,47 @@ def create_delivery_challan(doc_name, detail_name, naming_series, vehicle_no):
 
 
 @frappe.whitelist()
+def create_bulk_delivery_challans(doc_name, naming_series, vehicle_no):
+	doc = get_bulk_doc(doc_name)
+	naming_series = _validate_delivery_challan_naming_series(naming_series)
+	vehicle_no = (vehicle_no or "").strip()
+	if not vehicle_no:
+		frappe.throw(_("Vehicle No is required."))
+
+	rows_to_create = []
+	for row in doc.lot_details:
+		dc_status = get_docstatus("Delivery Challan", row.delivery_challan)
+		if dc_status == 1:
+			continue
+		if dc_status == 0:
+			frappe.throw(
+				_("Split Lot {0} already has draft Delivery Challan {1}. Submit it first.").format(
+					row.lot, row.delivery_challan
+				)
+			)
+		if not row.lot_transfer or get_docstatus("Lot Transfer", row.lot_transfer) != 1:
+			frappe.throw(
+				_("Submit the Lot Transfer for split Lot {0} before making Delivery Challans.").format(
+					row.lot
+				)
+			)
+		rows_to_create.append(row)
+
+	if not rows_to_create:
+		frappe.throw(_("All split Lots already have submitted Delivery Challans."))
+
+	delivery_challans = [
+		create_delivery_challan(doc.name, row.name, naming_series, vehicle_no)
+		for row in rows_to_create
+	]
+	refresh_bulk_status(doc.name)
+	return {
+		"count": len(delivery_challans),
+		"delivery_challans": delivery_challans,
+	}
+
+
+@frappe.whitelist()
 def submit_delivery_challan(doc_name, detail_name):
 	doc = get_bulk_doc(doc_name)
 	row = get_entry(doc, detail_name)
