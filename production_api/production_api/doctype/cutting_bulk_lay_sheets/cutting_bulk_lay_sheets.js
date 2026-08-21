@@ -459,10 +459,25 @@ function submit_bulk_transfer(frm, transferName) {
     );
 }
 
-function create_bulk_dc(frm, row) {
+async function create_bulk_dc(frm, row) {
+    const settingsResponse = await frappe.call({
+        method: `${bulk_method}.get_delivery_challan_naming_series`,
+        args: { doc_name: frm.doc.name },
+        freeze: true,
+        freeze_message: __("Loading Delivery Challan naming series..."),
+    });
+    const settings = settingsResponse.message || {};
     const dialog = new frappe.ui.Dialog({
-        title: __("Create Delivery Challan for {0}", [row.lot]),
+        title: __("Create & Submit Delivery Challan for {0}", [row.lot]),
         fields: [
+            {
+                fieldname: "naming_series",
+                fieldtype: "Select",
+                label: __("Naming Series"),
+                options: (settings.options || []).join("\n"),
+                default: settings.default,
+                reqd: 1,
+            },
             {
                 fieldname: "vehicle_no",
                 fieldtype: "Data",
@@ -470,21 +485,22 @@ function create_bulk_dc(frm, row) {
                 reqd: 1,
             },
         ],
-        primary_action_label: __("Create Delivery Challan"),
+        primary_action_label: __("Create & Submit"),
         primary_action: async values => {
-            dialog.hide();
             const response = await frappe.call({
                 method: `${bulk_method}.create_delivery_challan`,
                 args: {
                     doc_name: frm.doc.name,
                     detail_name: row.name,
+                    naming_series: values.naming_series,
                     vehicle_no: values.vehicle_no,
                 },
                 freeze: true,
-                freeze_message: __("Creating Delivery Challan..."),
+                freeze_message: __("Creating and submitting Delivery Challan..."),
             });
+            dialog.hide();
             frappe.show_alert({
-                message: __("Delivery Challan {0} created", [response.message]),
+                message: __("Delivery Challan {0} submitted", [response.message]),
                 indicator: "green",
             });
             await frm.reload_doc();

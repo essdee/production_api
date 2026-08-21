@@ -12,7 +12,7 @@ from production_api.production_api.doctype.cutting_bulk_lay_sheets import (
 
 
 class TestCuttingBulkLaySheets(FrappeTestCase):
-	def test_create_delivery_challan_saves_draft_for_bulk_row(self):
+	def test_create_delivery_challan_submits_for_bulk_row(self):
 		bulk = frappe._dict(name="CBLS-TEST-1", posting_date="2026-08-21")
 		entry = frappe._dict(
 			name="CBLS-ROW-1", lot="LOT-SPLIT-1", work_order="WO-1",
@@ -32,20 +32,37 @@ class TestCuttingBulkLaySheets(FrappeTestCase):
 		with (
 			patch.object(bulk_laysheets, "get_bulk_doc", return_value=bulk),
 			patch.object(bulk_laysheets, "get_entry", return_value=entry),
+			patch.object(
+				bulk_laysheets, "_validate_delivery_challan_naming_series",
+				return_value="DC-2627-",
+			),
 			patch.object(bulk_laysheets, "prepare_delivery_challan", return_value=data),
 			patch.object(bulk_laysheets, "nowtime", return_value="12:00:00"),
 			patch.object(bulk_laysheets.frappe, "new_doc", return_value=dc),
 			patch.object(bulk_laysheets, "refresh_bulk_status") as refresh_status,
 		):
 			result = bulk_laysheets.create_delivery_challan(
-				bulk.name, entry.name, "TN 01 AB 1234"
+				bulk.name, entry.name, "DC-2627-", "TN 01 AB 1234"
 			)
 
 		self.assertEqual(result, dc.name)
+		self.assertEqual(dc.naming_series, "DC-2627-")
 		self.assertEqual(dc.vehicle_no, "TN 01 AB 1234")
 		self.assertIn("delivered_quantity", dc.deliverable_item_details)
 		dc.save.assert_called_once_with()
+		dc.submit.assert_called_once_with()
 		refresh_status.assert_called_once_with(bulk.name)
+
+	def test_delivery_challan_naming_series_uses_live_meta(self):
+		field = frappe._dict(options="DC-\nDC-2627-\nDC-2627-", default="DC-2627-")
+		meta = MagicMock()
+		meta.get_field.return_value = field
+
+		with patch.object(bulk_laysheets.frappe, "get_meta", return_value=meta):
+			settings = bulk_laysheets._get_delivery_challan_naming_series_settings()
+
+		self.assertEqual(settings["options"], ["DC-", "DC-2627-"])
+		self.assertEqual(settings["default"], "DC-2627-")
 
 	def test_submit_delivery_challan_stays_scoped_to_bulk_row(self):
 		bulk = frappe._dict(name="CBLS-TEST-1")

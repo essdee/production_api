@@ -612,11 +612,43 @@ def prepare_delivery_challan(doc_name, detail_name):
 
 
 @frappe.whitelist()
-def create_delivery_challan(doc_name, detail_name, vehicle_no):
+def get_delivery_challan_naming_series(doc_name):
+	get_bulk_doc(doc_name)
+	return _get_delivery_challan_naming_series_settings()
+
+
+def _get_delivery_challan_naming_series_settings():
+	field = frappe.get_meta("Delivery Challan").get_field("naming_series")
+	options = list(dict.fromkeys(
+		series.strip()
+		for series in ((field.options if field else "") or "").splitlines()
+		if series.strip()
+	))
+	if not options:
+		frappe.throw(_("Configure a Naming Series for Delivery Challan first."))
+
+	default = ((field.default if field else "") or "").strip()
+	return {
+		"options": options,
+		"default": default if default in options else options[0],
+	}
+
+
+def _validate_delivery_challan_naming_series(naming_series):
+	settings = _get_delivery_challan_naming_series_settings()
+	naming_series = (naming_series or "").strip()
+	if naming_series not in settings["options"]:
+		frappe.throw(_("Select a valid Delivery Challan Naming Series."))
+	return naming_series
+
+
+@frappe.whitelist()
+def create_delivery_challan(doc_name, detail_name, naming_series, vehicle_no):
 	doc = get_bulk_doc(doc_name)
 	row = get_entry(doc, detail_name)
 	if row.delivery_challan and get_docstatus("Delivery Challan", row.delivery_challan) != 2:
 		return row.delivery_challan
+	naming_series = _validate_delivery_challan_naming_series(naming_series)
 	vehicle_no = (vehicle_no or "").strip()
 	if not vehicle_no:
 		frappe.throw(_("Vehicle No is required."))
@@ -625,7 +657,7 @@ def create_delivery_challan(doc_name, detail_name, vehicle_no):
 	if data.get("existing_delivery_challan"):
 		return data["existing_delivery_challan"]
 	dc = frappe.new_doc("Delivery Challan")
-	dc.naming_series = "DC-"
+	dc.naming_series = naming_series
 	dc.posting_date = doc.posting_date
 	dc.posting_time = nowtime()
 	dc.actual_date = doc.posting_date
@@ -640,6 +672,7 @@ def create_delivery_challan(doc_name, detail_name, vehicle_no):
 		dc.set(fieldname, data.get(fieldname))
 	dc.deliverable_item_details = frappe.as_json(data["item_details"])
 	dc.save()
+	dc.submit()
 	refresh_bulk_status(doc.name)
 	return dc.name
 
