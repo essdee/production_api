@@ -8,6 +8,8 @@ non-dominated plans for review and selection.
 
 ## Inputs
 
+- Description: mandatory planning context shown in the list view.
+- Item and Lot: optional links shown in the list view.
 - Maximum Plies: positive integer.
 - Maximum Pieces Per Marker: positive integer.
 - Tolerance %: 0–100; zero is preserved as exact tolerance.
@@ -80,7 +82,8 @@ A strategy result is rejected unless:
 - Summary fields and `selected_strategy`: derived from the selected result.
 
 The first ranked Pareto plan is selected automatically. Selecting another
-successful strategy is persisted through the server method.
+successful strategy changes only the current result view; it does not save the
+selection or reload the document.
 
 ## Runtime dependencies
 
