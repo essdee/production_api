@@ -5,6 +5,11 @@
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
+  "details_section",
+  "description",
+  "details_column_break",
+  "item",
+  "lot",
   "input_section",
   "max_plies",
   "max_pieces",
@@ -40,6 +45,36 @@
   "optimization_input_json"
  ],
  "fields": [
+  {
+   "fieldname": "details_section",
+   "fieldtype": "Section Break",
+   "label": "Details"
+  },
+  {
+   "fieldname": "description",
+   "fieldtype": "Text",
+   "in_list_view": 1,
+   "label": "Description",
+   "reqd": 1
+  },
+  {
+   "fieldname": "details_column_break",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "item",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Item",
+   "options": "Item"
+  },
+  {
+   "fieldname": "lot",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Lot",
+   "options": "Lot"
+  },
   {
    "fieldname": "input_section",
    "fieldtype": "Section Break",
@@ -91,8 +126,7 @@
    "fieldtype": "Select",
    "label": "Selected Strategy",
    "options": "\ndirect_integer_search\ncp_sat\nmilp\ncolumn_generation\nproportional\ntwo_lay_dp\nminimum_deviation\nbalanced\nsingle_marker\niterated_greedy\ncolgen\nproportional_decomp\nilp\norder_match\nsingle_ratio",
-   "read_only": 1,
-   "in_list_view": 1
+   "read_only": 1
   },
   {
    "fieldname": "order_section",

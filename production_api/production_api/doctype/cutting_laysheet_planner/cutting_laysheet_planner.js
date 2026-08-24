@@ -8,6 +8,7 @@ frappe.ui.form.on("Cutting Laysheet Planner", {
 	refresh(frm) {
 		initialize_lay_plan_result(frm);
 		render_lay_plan_result(frm);
+		frm.__lay_optimization_intro_key = null;
 		render_optimization_status(frm);
 
 		const is_active = ACTIVE_OPTIMIZATION_STATUSES.includes(frm.doc.optimization_status);
@@ -69,10 +70,7 @@ function initialize_lay_plan_result(frm) {
 	}
 
 	$(wrapper).empty();
-	frm.lay_plan_result = new frappe.production.ui.LayPlanResult(
-		wrapper,
-		(strategy) => persist_selected_strategy(frm, strategy),
-	);
+	frm.lay_plan_result = new frappe.production.ui.LayPlanResult(wrapper);
 }
 
 
@@ -113,29 +111,18 @@ function render_optimization_status(frm) {
 		"Completed": [__("Lay optimization completed successfully."), "green"],
 		"Failed": [frm.doc.optimization_error || __("Lay optimization failed."), "red"],
 	};
+	const intro = messages[status];
+	const intro_key = intro ? `${status}:${intro[0]}` : status;
 
-	if (messages[status]) {
-		frm.set_intro(messages[status][0], messages[status][1]);
-	} else {
-		frm.set_intro("");
+	if (frm.__lay_optimization_intro_key === intro_key) {
+		return;
 	}
-}
 
-
-async function persist_selected_strategy(frm, strategy) {
-	await frappe.call({
-		method: "production_api.production_api.doctype.cutting_laysheet_planner.cutting_laysheet_planner.select_strategy",
-		args: {
-			doc_name: frm.doc.name,
-			strategy,
-		},
-		freeze: true,
-		freeze_message: __("Saving selected strategy..."),
-	});
-
-	frm.doc.selected_strategy = strategy;
-	frm.lay_plan_result?.set_selected(strategy);
-	await frm.reload_doc();
+	frm.set_intro("");
+	if (intro) {
+		frm.set_intro(intro[0], intro[1]);
+	}
+	frm.__lay_optimization_intro_key = intro_key;
 }
 
 
