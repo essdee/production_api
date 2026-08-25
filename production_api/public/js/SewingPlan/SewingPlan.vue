@@ -26,7 +26,7 @@
                             <span class="tab-label">{{ tab.label }}</span>
                         </button>
                     </div>
-                    <div class="supplier-section">
+                    <div v-show="current_tab !== 'strength_report'" class="supplier-section">
                         <div class="refresh-wrap">
                             <button 
                                 @click="refresh_counter++"
@@ -54,7 +54,8 @@
             <!-- Tab Content Area -->
             <div class="content-card">
                 <div class="card-inner">
-                    <div v-if="selected_supplier">
+                    <StrengthReportTab v-show="current_tab === 'strength_report'" />
+                    <div v-if="selected_supplier" v-show="current_tab !== 'strength_report'">
                         <DashboardTab
                             v-show="current_tab === 'dashboard'"
                             :selected_supplier="selected_supplier"
@@ -105,7 +106,7 @@
                             :refresh_counter="refresh_counter"
                         />
                     </div>
-                    <div v-else class="global-empty-state">
+                    <div v-else-if="current_tab !== 'strength_report'" class="global-empty-state">
                         <div class="empty-state-visual">
                             <img src="/assets/frappe/images/ui-states/list-empty-state.svg" alt="Empty State" class="empty-state-img">
                         </div>
@@ -131,6 +132,7 @@ import MonthlySummaryTab from './components/MonthlySummaryTab.vue'
 import ItemSummaryTab from './components/ItemSummaryTab.vue'
 import Consumption from './components/Consumption.vue'
 import ClosedWorkOrderGRNTab from './components/ClosedWorkOrderGRNTab.vue'
+import StrengthReportTab from './components/StrengthReportTab.vue'
 
 const IconOverview = () => h('svg', { fill: 'none', stroke: 'currentColor', viewBox: '0 0 24 24', class: 'w-full h-full text-current' }, [h('path', { 'stroke-linecap': 'round', 'stroke-linejoin': 'round', 'stroke-width': '2.5', d: 'M4 5a1 1 0 011-1h3a1 1 0 011 1v3a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM15 5a1 1 0 011-1h3a1 1 0 011 1v3a1 1 0 01-1 1h-3a1 1 0 01-1-1V5zM4 15a1 1 0 011-1h3a1 1 0 011 1v3a1 1 0 01-1 1H5a1 1 0 01-1-1v-3zM15 15a1 1 0 011-1h3a1 1 0 011 1v3a1 1 0 01-1 1h-3a1 1 0 01-1-1v-3z' })])
 const IconLinePlan = () => h('svg', { fill: 'none', stroke: 'currentColor', viewBox: '0 0 24 24', class: 'w-full h-full text-current' }, [h('path', { 'stroke-linecap': 'round', 'stroke-linejoin': 'round', 'stroke-width': '2.5', d: 'M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2' })])
@@ -157,6 +159,7 @@ const tabs = computed(() => {
         { id: 'monthly_summary', label: 'Monthly Summary', icon: IconMonthlySummary },
         { id: 'item_summary', label: 'Item Summary', icon: IconItemSummary },
 		{id:'consumption', label:'Consumption', icon: IconItemSummary},
+        { id: 'strength_report', label: 'Strength Report', icon: IconManpower },
         { id: 'closed_wo_grn', label: 'Closed WO GRN', icon: IconItemSummary }
     ]
     if (hasProductionPlannerRole.value) {
