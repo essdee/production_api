@@ -16,6 +16,7 @@
     "@vuepic/vue-datepicker": "^11.0.2",
     "frappe-gantt": "^0.6.1",
     "html-to-image": "^1.11.13",
-    "vuedraggable": "^4.1.0"
+    "vuedraggable": "^4.1.0",
+    "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz"
   }
 }

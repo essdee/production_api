@@ -23,6 +23,11 @@
   "yrp_site_url",
   "yrp_api_key",
   "yrp_api_secret",
+  "hr_details_section",
+  "hr_site_url",
+  "hr_api_key",
+  "hr_api_secret",
+  "hr_shifts",
   "url_shortner_settings_section",
   "shortned_url_domain",
   "auto_send_notifications",
@@ -253,6 +258,35 @@
    "fieldname": "yrp_api_secret",
    "fieldtype": "Password",
    "label": "YRP API Secret"
+  },
+  {
+   "collapsible": 1,
+   "fieldname": "hr_details_section",
+   "fieldtype": "Section Break",
+   "label": "HR Details"
+  },
+  {
+   "default": "https://hr.essdee.fit",
+   "fieldname": "hr_site_url",
+   "fieldtype": "Data",
+   "label": "HR Site URL"
+  },
+  {
+   "fieldname": "hr_api_key",
+   "fieldtype": "Data",
+   "label": "HR API Key"
+  },
+  {
+   "fieldname": "hr_api_secret",
+   "fieldtype": "Password",
+   "label": "HR API Secret Key"
+  },
+  {
+   "description": "Shift Type names sent to the HR Workers Strength Report filter.",
+   "fieldname": "hr_shifts",
+   "fieldtype": "Table",
+   "label": "Shifts to Fetch",
+   "options": "MRP HR Shift"
   },
   {
    "fieldname": "finishing_inward_process",

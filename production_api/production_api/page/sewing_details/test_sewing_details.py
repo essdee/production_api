@@ -1,9 +1,71 @@
+from pathlib import Path
 from unittest import TestCase
 from unittest.mock import MagicMock, patch
 
 import frappe
 
 from production_api.production_api.page.sewing_details import sewing_details
+
+
+class TestStrengthReportPage(TestCase):
+    def test_strength_report_is_rendered_on_sewing_details_page(self):
+        root_source = Path(
+            frappe.get_app_path(
+                "production_api", "public", "js", "SewingPlan", "SewingPlan.vue"
+            )
+        ).read_text()
+        component_source = Path(
+            frappe.get_app_path(
+                "production_api",
+                "public",
+                "js",
+                "SewingPlan",
+                "components",
+                "StrengthReportTab.vue",
+            )
+        ).read_text()
+
+        self.assertIn("id: 'strength_report', label: 'Strength Report'", root_source)
+        self.assertIn("import StrengthReportTab", root_source)
+        self.assertIn("<StrengthReportTab", root_source)
+        self.assertIn("grid-template-columns: minmax(0, 2fr) minmax(0, 3fr)", component_source)
+        self.assertIn("fieldname: 'strength_report_date'", component_source)
+        self.assertIn("fieldname: 'strength_report_from_time'", component_source)
+        self.assertIn("fieldname: 'strength_report_to_time'", component_source)
+        self.assertIn("employee.first_punch || '-'", component_source)
+        self.assertIn("Fetching Workers Strength Report from HR...", component_source)
+        self.assertIn("Report fetched successfully.", component_source)
+        self.assertIn("Unable to load the Workers Strength Report.", component_source)
+        self.assertIn("import * as XLSX from 'xlsx'", component_source)
+        self.assertIn("Employee_First_Punch_${reportDate.value}.xlsx", component_source)
+        self.assertIn("Workers_Strength_Summary_${reportDate.value}.xlsx", component_source)
+        self.assertIn("filteredEmployeePunches", component_source)
+        self.assertIn("filteredSummaryRows", component_source)
+        self.assertIn("scheduleEmployeeFilters", component_source)
+        self.assertIn("scheduleSummaryFilters", component_source)
+        self.assertIn("employeeDepartmentFilterInput", component_source)
+        self.assertIn("employeeDesignationFilterInput", component_source)
+        self.assertIn("<th>Department</th>", component_source)
+        self.assertIn("<th>Designation</th>", component_source)
+        self.assertIn("['absent_employees', 'leave_employees']", component_source)
+        self.assertIn("max-width: 130px", component_source)
+        self.assertIn("}, 1000)", component_source)
+        self.assertNotIn("Applies 2 seconds after typing", component_source)
+        self.assertEqual(component_source.count("frappe.call({"), 1)
+
+    def test_strength_report_fields_are_not_on_sewing_plan_doctype(self):
+        meta_source = Path(
+            frappe.get_app_path(
+                "production_api",
+                "production_api",
+                "doctype",
+                "sewing_plan",
+                "sewing_plan.json",
+            )
+        ).read_text()
+
+        self.assertNotIn('"strength_report_tab"', meta_source)
+        self.assertNotIn('"fetch_strength_report"', meta_source)
 
 
 class FakeGRN:
