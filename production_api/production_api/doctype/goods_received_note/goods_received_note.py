@@ -240,6 +240,16 @@ class GoodsReceivedNote(Document):
             return
         if not frappe.db.exists("Sewing Plan", {"work_order": self.against_id}):
             return
+        if self.supplier and frappe.db.exists(
+            "GRN Quantity Validation Exempt Supplier",
+            {
+                "parent": "MRP Settings",
+                "parenttype": "MRP Settings",
+                "parentfield": "grn_quantity_validation_exempt_suppliers",
+                "supplier": self.supplier,
+            },
+        ):
+            return
 
         # The input type that represents checking output is configured in MRP Settings.
         checking_type = frappe.db.get_single_value("MRP Settings", "type_wise_diff_summary")
