@@ -1,0 +1,33 @@
+{
+ "actions": [],
+ "creation": "2026-08-25 00:00:00",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "shift_type"
+ ],
+ "fields": [
+  {
+   "columns": 12,
+   "fieldname": "shift_type",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Shift Type",
+   "reqd": 1
+  }
+ ],
+ "grid_page_length": 50,
+ "istable": 1,
+ "links": [],
+ "modified": "2026-08-25 10:39:45.586829",
+ "modified_by": "Administrator",
+ "module": "Production Api",
+ "name": "MRP HR Shift",
+ "owner": "Administrator",
+ "permissions": [],
+ "row_format": "Dynamic",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}
