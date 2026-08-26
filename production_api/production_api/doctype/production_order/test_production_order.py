@@ -60,6 +60,19 @@ class TestProductionOrder(TestCase):
 		self.assertIn('doc.docstatus === 0 && doc.status === "PPO Request"', list_source)
 		self.assertIn('return [__("PPO Request"), "orange"', list_source)
 
+	def test_ppo_request_form_stays_editable(self):
+		form_source = Path(
+			frappe.get_app_path(
+				"production_api",
+				"production_api",
+				"doctype",
+				"production_order",
+				"production_order.js",
+			)
+		).read_text()
+		self.assertNotIn('frm.doc.status !== "PPO Request"', form_source)
+		self.assertNotIn("frm.disable_save()", form_source)
+
 	def test_sales_user_can_request_ppo_approval(self):
 		doc = _dict(
 			name="PPO-TEST",
@@ -257,7 +270,7 @@ class TestProductionOrder(TestCase):
 		):
 			production_order.ProductionOrder.validate_ppo_submission(doc)
 
-	def test_ppo_request_status_cannot_be_spoofed_or_edited(self):
+	def test_ppo_request_status_cannot_be_spoofed(self):
 		doc = _dict(
 			docstatus=0,
 			status=PPO_REQUEST_STATUS,
@@ -269,9 +282,27 @@ class TestProductionOrder(TestCase):
 		with self.assertRaisesRegex(frappe.ValidationError, "Use the Request PPO Approval button"):
 			production_order.ProductionOrder.validate_ppo_approval_state(doc)
 
-		doc.get_doc_before_save.return_value = _dict(status=PPO_REQUEST_STATUS)
-		with self.assertRaisesRegex(frappe.ValidationError, "cannot be edited while PPO approval is pending"):
-			production_order.ProductionOrder.validate_ppo_approval_state(doc)
+	def test_ppo_request_can_be_edited_while_approval_is_pending(self):
+		doc = _dict(
+			docstatus=0,
+			status=PPO_REQUEST_STATUS,
+			flags=_dict(),
+			production_term="Updated Term",
+			delivery_date="2026-09-15",
+			comments="Updated while awaiting approval",
+		)
+		doc.get_doc_before_save = MagicMock(
+			return_value=_dict(
+				status=PPO_REQUEST_STATUS,
+				production_term="Original Term",
+				delivery_date="2026-09-10",
+				comments="Original comment",
+			)
+		)
+
+		production_order.ProductionOrder.validate_ppo_approval_state(doc)
+
+		self.assertEqual(doc.status, PPO_REQUEST_STATUS)
 
 	def test_quantity_ratio_change_details_keep_rows_unchanged(self):
 		rows = {

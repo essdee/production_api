@@ -142,8 +142,6 @@ class ProductionOrder(Document):
 		previous_status = previous.status or PPO_DRAFT_STATUS
 		if self.status != previous_status and not self.flags.get("allow_ppo_request"):
 			frappe.throw("Use the Request PPO Approval button to request approval")
-		if previous_status == PPO_REQUEST_STATUS and not self.flags.get("allow_ppo_approval"):
-			frappe.throw("Production Order cannot be edited while PPO approval is pending")
 
 	def validate_ppo_submission(self):
 		if getattr(self, "flags", None) and self.flags.get(SYSTEM_GENERATED_ALTERNATIVE_PPO_FLAG):
