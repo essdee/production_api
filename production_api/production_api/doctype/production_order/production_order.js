@@ -17,6 +17,10 @@ frappe.ui.form.on("Production Order", {
     frm.set_df_property("delivery_date", "read_only", is_submitted);
     frm.set_df_property("dont_deliver_after", "read_only", is_submitted);
     setup_ppo_approval_actions(frm);
+    if (is_submitted && frm.doc.status === "Closed") {
+      frm.clear_custom_buttons();
+      return;
+    }
     const can_manage_production_order = Boolean(
       (frm.doc.__onload || {}).can_manage_production_order
     );
@@ -43,6 +47,13 @@ frappe.ui.form.on("Production Order", {
       const has_linked_lot = Boolean(
         ((frm.doc.__onload || {}).linked_lots || []).length
       );
+
+      if ((frm.doc.__onload || {}).can_close_production_order) {
+        frm.add_custom_button(__("Close"), () => {
+          show_close_production_order_dialog(frm);
+        });
+        frm.change_custom_button_type(__("Close"), null, "danger");
+      }
 
       if (can_manage_production_order) {
         frm.add_custom_button("Update Price", () => {
@@ -423,6 +434,44 @@ frappe.ui.form.on("Production Order", {
     }
   },
 });
+
+function show_close_production_order_dialog(frm) {
+  const dialog = new frappe.ui.Dialog({
+    title: __("Close Production Order"),
+    fields: [
+      {
+        fieldname: "comments",
+        fieldtype: "Small Text",
+        label: __("Comments"),
+        reqd: 1,
+      },
+    ],
+    primary_action_label: __("Close"),
+    primary_action(values) {
+      if (!values) return;
+
+      frappe.call({
+        method:
+          "production_api.production_api.doctype.production_order.production_order.close_production_order",
+        args: {
+          production_order: frm.doc.name,
+          comments: values.comments,
+        },
+        freeze: true,
+        freeze_message: __("Closing Production Order..."),
+        callback() {
+          dialog.hide();
+          frm.reload_doc();
+          frappe.show_alert({
+            message: __("Production Order closed"),
+            indicator: "green",
+          });
+        },
+      });
+    },
+  });
+  dialog.show();
+}
 
 function setup_ppo_approval_actions(frm) {
   if (frm.doc.docstatus !== 0 || frm.is_new()) return;
