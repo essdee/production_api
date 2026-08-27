@@ -97,7 +97,7 @@
       "in_standard_filter": 1,
       "label": "Status",
       "no_copy": 1,
-      "options": "\nDraft\nPPO Request\nOpen\nPending Request\nItem Changed\nNot Processed\nClosed",
+      "options": "\nDraft\nPPO Request\nOpen\nPending Request\nItem Changed\nNot Processed\nClose Request\nClosed",
       "read_only": 1
     },
     {

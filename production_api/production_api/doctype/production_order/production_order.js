@@ -21,6 +21,16 @@ frappe.ui.form.on("Production Order", {
       frm.clear_custom_buttons();
       return;
     }
+    if (is_submitted && frm.doc.status === "Close Request") {
+      frm.clear_custom_buttons();
+      if ((frm.doc.__onload || {}).can_approve_production_order_close) {
+        frm.add_custom_button(__("Approve Close"), () => {
+          approve_production_order_close(frm);
+        });
+        frm.change_custom_button_type(__("Approve Close"), null, "primary");
+      }
+      return;
+    }
     const can_manage_production_order = Boolean(
       (frm.doc.__onload || {}).can_manage_production_order
     );
@@ -437,7 +447,7 @@ frappe.ui.form.on("Production Order", {
 
 function show_close_production_order_dialog(frm) {
   const dialog = new frappe.ui.Dialog({
-    title: __("Close Production Order"),
+    title: __("Request Production Order Closure"),
     fields: [
       {
         fieldname: "comments",
@@ -446,7 +456,7 @@ function show_close_production_order_dialog(frm) {
         reqd: 1,
       },
     ],
-    primary_action_label: __("Close"),
+    primary_action_label: __("Request Close"),
     primary_action(values) {
       if (!values) return;
 
@@ -458,19 +468,38 @@ function show_close_production_order_dialog(frm) {
           comments: values.comments,
         },
         freeze: true,
-        freeze_message: __("Closing Production Order..."),
+        freeze_message: __("Submitting Close Request..."),
         callback() {
           dialog.hide();
           frm.reload_doc();
           frappe.show_alert({
-            message: __("Production Order closed"),
-            indicator: "green",
+            message: __("Production Order Close Request submitted"),
+            indicator: "orange",
           });
         },
       });
     },
   });
   dialog.show();
+}
+
+function approve_production_order_close(frm) {
+  frappe.confirm(__("Approve this Production Order Close Request?"), () => {
+    frappe.call({
+      method:
+        "production_api.production_api.doctype.production_order.production_order.approve_production_order_close",
+      args: { production_order: frm.doc.name },
+      freeze: true,
+      freeze_message: __("Approving Production Order closure..."),
+      callback() {
+        frm.reload_doc();
+        frappe.show_alert({
+          message: __("Production Order closed"),
+          indicator: "green",
+        });
+      },
+    });
+  });
 }
 
 function setup_ppo_approval_actions(frm) {
