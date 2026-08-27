@@ -73,6 +73,23 @@ class TestProductionOrder(TestCase):
 		self.assertNotIn('frm.doc.status !== "PPO Request"', form_source)
 		self.assertNotIn("frm.disable_save()", form_source)
 
+	def test_closed_form_hides_actions_and_has_role_gated_close_dialog(self):
+		form_source = Path(
+			frappe.get_app_path(
+				"production_api",
+				"production_api",
+				"doctype",
+				"production_order",
+				"production_order.js",
+			)
+		).read_text()
+
+		self.assertIn('frm.doc.status === "Closed"', form_source)
+		self.assertIn("frm.clear_custom_buttons()", form_source)
+		self.assertIn("can_close_production_order", form_source)
+		self.assertIn('fieldname: "comments"', form_source)
+		self.assertIn("production_order.close_production_order", form_source)
+
 	def test_sales_user_can_request_ppo_approval(self):
 		doc = _dict(
 			name="PPO-TEST",
@@ -503,6 +520,122 @@ class TestProductionOrder(TestCase):
 				"Item Changed",
 				"Customer selected another item",
 			)
+
+	def test_quantity_approver_can_close_linked_production_order(self):
+		doc = _dict(
+			name="PPO-TEST",
+			docstatus=1,
+			status="Open",
+			comment_log="Existing audit entry",
+			quantity_ratio_request=None,
+			status_change_request=None,
+			incoming_quantity_transfer_request=None,
+			flags=_dict(),
+		)
+		doc.check_permission = MagicMock()
+		doc.db_set = MagicMock(
+			side_effect=lambda fieldname, value: doc.update({fieldname: value})
+		)
+		doc.save = MagicMock()
+
+		with (
+			patch.object(production_order, "get_quantity_approver_role", return_value="Production Manager"),
+			patch.object(production_order.frappe, "get_roles", return_value=["Production Manager"]),
+			patch.object(production_order, "lock_production_orders"),
+			patch.object(production_order.frappe, "get_doc", return_value=doc),
+			patch.object(production_order, "get_linked_lots", return_value=["LOT-TEST"]),
+			patch.object(production_order.frappe, "session", _dict(user="approver@example.com")),
+			patch.object(production_order.frappe.utils, "nowdate", return_value="2026-08-27"),
+		):
+			result = production_order.close_production_order(
+				"PPO-TEST",
+				"All production activity is complete",
+			)
+
+		self.assertEqual(doc.status, "Closed")
+		self.assertTrue(doc.flags.allow_production_order_close)
+		doc.check_permission.assert_called_once_with("read")
+		doc.save.assert_called_once_with(ignore_permissions=True)
+		self.assertIn("Production Order Closed - approver@example.com", doc.comment_log)
+		self.assertIn("Status: Open -> Closed", doc.comment_log)
+		self.assertIn("Comments: All production activity is complete", doc.comment_log)
+		self.assertEqual(result["linked_lots"], ["LOT-TEST"])
+
+	def test_close_requires_a_linked_lot(self):
+		doc = _dict(
+			name="PPO-TEST",
+			docstatus=1,
+			status="Open",
+			quantity_ratio_request=None,
+			status_change_request=None,
+			incoming_quantity_transfer_request=None,
+		)
+		doc.check_permission = MagicMock()
+
+		with (
+			patch.object(production_order, "get_quantity_approver_role", return_value="Production Manager"),
+			patch.object(production_order.frappe, "get_roles", return_value=["Production Manager"]),
+			patch.object(production_order, "lock_production_orders"),
+			patch.object(production_order.frappe, "get_doc", return_value=doc),
+			patch.object(production_order, "get_linked_lots", return_value=[]),
+			self.assertRaisesRegex(frappe.ValidationError, "linked to at least one Lot"),
+		):
+			production_order.close_production_order("PPO-TEST", "Complete")
+
+	def test_close_requires_quantity_approver_role(self):
+		with (
+			patch.object(production_order, "get_quantity_approver_role", return_value="Production Manager"),
+			patch.object(production_order.frappe, "get_roles", return_value=["Sales Manager"]),
+			self.assertRaisesRegex(frappe.ValidationError, "Only users with the Production Manager role"),
+		):
+			production_order.close_production_order("PPO-TEST", "Complete")
+
+	def test_close_requires_comments(self):
+		with (
+			patch.object(production_order, "get_quantity_approver_role", return_value="Production Manager"),
+			patch.object(production_order.frappe, "get_roles", return_value=["Production Manager"]),
+			self.assertRaisesRegex(frappe.ValidationError, "Comments are required"),
+		):
+			production_order.close_production_order("PPO-TEST", "  ")
+
+	def test_close_is_blocked_while_request_is_pending(self):
+		doc = _dict(
+			name="PPO-TEST",
+			docstatus=1,
+			status="Pending Request",
+			quantity_ratio_request="{}",
+			status_change_request=None,
+			incoming_quantity_transfer_request=None,
+		)
+		doc.check_permission = MagicMock()
+
+		with (
+			patch.object(production_order, "get_quantity_approver_role", return_value="Production Manager"),
+			patch.object(production_order.frappe, "get_roles", return_value=["Production Manager"]),
+			patch.object(production_order, "lock_production_orders"),
+			patch.object(production_order.frappe, "get_doc", return_value=doc),
+			self.assertRaisesRegex(frappe.ValidationError, "Complete the pending"),
+		):
+			production_order.close_production_order("PPO-TEST", "Complete")
+
+	def test_closed_status_requires_close_action_and_cannot_be_reopened(self):
+		doc = _dict(
+			docstatus=1,
+			status="Closed",
+			flags=_dict(),
+		)
+		doc.get_doc_before_save = MagicMock(return_value=_dict(status="Open"))
+
+		with self.assertRaisesRegex(frappe.ValidationError, "Use the Close button"):
+			production_order.ProductionOrder.validate_closed_status_transition(doc)
+
+		doc.flags.allow_production_order_close = True
+		production_order.ProductionOrder.validate_closed_status_transition(doc)
+
+		doc.status = "Open"
+		doc.get_doc_before_save = MagicMock(return_value=_dict(status="Closed"))
+		with self.assertRaisesRegex(frappe.ValidationError, "cannot be reopened"):
+			production_order.ProductionOrder.validate_closed_status_transition(doc)
 
 	def test_status_approval_applies_requested_status(self):
 		request = {

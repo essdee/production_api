@@ -16,6 +16,7 @@ TRACKED_DATE_LABELS = {label: fieldname for fieldname, label in TRACKED_DATE_FIE
 
 PPO_DRAFT_STATUS = "Draft"
 PPO_REQUEST_STATUS = "PPO Request"
+CLOSED_PO_STATUS = "Closed"
 PPO_APPROVER_ROLE_FIELDS = ("merch_user_role", "merchandising_manager_role")
 SYSTEM_GENERATED_ALTERNATIVE_PPO_FLAG = "allow_system_generated_alternative_ppo"
 
@@ -31,6 +32,7 @@ class ProductionOrder(Document):
 		self.validate_ppo_approval_state()
 		self.validate_production_dates()
 		self.validate_tracked_date_update()
+		self.validate_closed_status_transition()
 		self.validate_quantity_workflow_lock()
 		from production_api.lot_pricing import validate_lot_price_overrides
 		validate_lot_price_overrides(self)
@@ -74,6 +76,10 @@ class ProductionOrder(Document):
 						"items": order_qty, "ordered": ordered_detail})
 		if self.docstatus == 1:
 			self.set_onload("linked_lots", get_linked_lots(self.name))
+			self.set_onload(
+				"can_close_production_order",
+				user_can_close_production_order(),
+			)
 			# Only the two transferable statuses pay for this lookup, and the list doubles as
 			# the target filter for the Transfer Quantity dialog, so the button costs no call.
 			if self.status in TRANSFERABLE_PO_STATUSES and not self.get(TRANSFER_MARKER_FIELD):
@@ -187,6 +193,23 @@ class ProductionOrder(Document):
 				)
 				)
 
+	def validate_closed_status_transition(self):
+		if self.docstatus != 1:
+			return
+
+		previous = self.get_doc_before_save()
+		if not previous:
+			return
+
+		if previous.status == CLOSED_PO_STATUS and self.status != CLOSED_PO_STATUS:
+			frappe.throw("A closed Production Order cannot be reopened")
+		if (
+			self.status == CLOSED_PO_STATUS
+			and previous.status != CLOSED_PO_STATUS
+			and not self.flags.get("allow_production_order_close")
+		):
+			frappe.throw("Use the Close button to close the Production Order")
+
 	def validate_quantity_workflow_lock(self):
 		if self.docstatus != 1:
 			return
@@ -197,7 +220,10 @@ class ProductionOrder(Document):
 
 		quantity_ratio_changed = get_quantity_ratio_snapshot(self) != get_quantity_ratio_snapshot(previous)
 		if previous.get(TRANSFER_MARKER_FIELD):
-			if self.status != previous.status:
+			if (
+				self.status != previous.status
+				and not self.flags.get("allow_production_order_close")
+			):
 				frappe.throw("Status cannot be changed after quantity has been transferred")
 			if quantity_ratio_changed:
 				frappe.throw("Quantity or Ratio cannot be changed after quantity has been transferred")
@@ -481,6 +507,7 @@ def update_price(production_order, item_details):
 	lock_production_orders(production_order)
 	doc = frappe.get_doc("Production Order", production_order)
 	doc.check_permission("write")
+	validate_production_order_is_not_closed(doc, "Updating price")
 	if doc.docstatus != 1:
 		frappe.throw("Price can be changed only after Production Order is submitted")
 	payload = update_if_string_instance(item_details) or {}
@@ -642,6 +669,7 @@ def update_production_order_date(production_order, date_field, new_date, reason)
 	fieldname = get_tracked_date_fieldname(date_field)
 	doc = frappe.get_doc("Production Order", production_order)
 	doc.check_permission("write")
+	validate_production_order_is_not_closed(doc, "Changing dates")
 
 	if doc.docstatus != 1:
 		frappe.throw("Dates can be changed only after Production Order is submitted")
@@ -710,6 +738,24 @@ SYSTEM_MANAGER_ROLE = "System Manager"
 
 def get_quantity_approver_role():
 	return (frappe.db.get_single_value("MRP Settings", "production_order_quantity_approver_role") or "").strip()
+
+
+def user_can_close_production_order():
+	approver_role = get_quantity_approver_role()
+	return bool(approver_role and approver_role in frappe.get_roles())
+
+
+def require_quantity_approver_to_close():
+	approver_role = get_quantity_approver_role()
+	if not approver_role:
+		frappe.throw("Production Order Quantity Approver Role is not configured in MRP Settings")
+	if approver_role not in frappe.get_roles():
+		frappe.throw(f"Only users with the {approver_role} role can close a Production Order")
+
+
+def validate_production_order_is_not_closed(doc, action):
+	if doc.status == CLOSED_PO_STATUS:
+		frappe.throw(f"{action} is not allowed after the Production Order is closed")
 
 
 def get_ppo_approver_roles():
@@ -1218,6 +1264,7 @@ def create_lot(production_order, lot_name):
 	if frappe.db.exists("Lot", lot_name):
 		frappe.throw(frappe._("Lot Name {0} already exists").format(lot_name))
 	po_doc = frappe.get_doc("Production Order", production_order)
+	validate_production_order_is_not_closed(po_doc, "Creating a Lot")
 	lot = frappe.new_doc("Lot")
 	lot.lot_name = lot_name
 	lot.production_order = production_order
@@ -1232,6 +1279,7 @@ def link_lot(production_order, lot_name):
 	require_ppo_action_role()
 	lot = frappe.get_doc("Lot", lot_name)
 	po_doc = frappe.get_doc("Production Order", production_order)
+	validate_production_order_is_not_closed(po_doc, "Linking a Lot")
 	if lot.item and lot.item != po_doc.item:
 		frappe.throw("This Lot is linked with a different Item")
 	if lot.production_order and lot.production_order != production_order:
@@ -1245,8 +1293,8 @@ def link_lot(production_order, lot_name):
 	return lot.name
 
 
-# "Closed" exists in the field options but is reserved for Finishing Plan
-# automation - it cannot be set manually through change_status.
+# "Closed" is terminal and can be set only through close_production_order.
+# Keep it out of the generic status-change workflow.
 CHANGEABLE_PO_STATUSES = ["Open", "Item Changed", "Not Processed"]
 
 
@@ -1257,6 +1305,52 @@ def get_linked_lots(production_order):
 		pluck="name",
 		order_by="name asc",
 	)
+
+
+@frappe.whitelist()
+def close_production_order(production_order, comments):
+	require_quantity_approver_to_close()
+	comments = str(comments or "").strip()
+	if not comments:
+		frappe.throw("Comments are required to close the Production Order")
+
+	lock_production_orders(production_order)
+	doc = frappe.get_doc("Production Order", production_order)
+	doc.check_permission("read")
+
+	if doc.docstatus != 1:
+		frappe.throw("Only a submitted Production Order can be closed")
+	if doc.status == CLOSED_PO_STATUS:
+		frappe.throw("Production Order is already closed")
+	if (
+		doc.status == QUANTITY_REQUEST_STATUS
+		or doc.get(QUANTITY_REQUEST_FIELD)
+		or doc.get(STATUS_REQUEST_FIELD)
+		or doc.get(INCOMING_TRANSFER_REQUEST_FIELD)
+	):
+		frappe.throw("Complete the pending Production Order request before closing")
+
+	linked_lots = get_linked_lots(production_order)
+	if not linked_lots:
+		frappe.throw("Production Order must be linked to at least one Lot before it can be closed")
+
+	old_status = doc.status or ""
+	log_date = frappe.utils.formatdate(frappe.utils.nowdate(), "dd-mm-yyyy")
+	append_comment_log_block(doc, "\n".join([
+		f"[{log_date}] Production Order Closed - {frappe.session.user}",
+		f"Status: {old_status or 'None'} -> {CLOSED_PO_STATUS}",
+		f"Comments: {comments}",
+	]))
+
+	doc.status = CLOSED_PO_STATUS
+	doc.flags.allow_production_order_close = True
+	doc.save(ignore_permissions=True)
+
+	return {
+		"old_status": old_status,
+		"new_status": CLOSED_PO_STATUS,
+		"linked_lots": linked_lots,
+	}
 
 
 def validate_status_change_has_no_linked_lot(production_order, action="changed"):
@@ -1274,6 +1368,7 @@ def change_status(production_order, new_status, reason):
 	lock_production_orders(production_order)
 	doc = frappe.get_doc("Production Order", production_order)
 	doc.check_permission("write")
+	validate_production_order_is_not_closed(doc, "Changing status")
 
 	if doc.docstatus != 1:
 		frappe.throw("Status can be changed only after Production Order is submitted")
@@ -1407,7 +1502,7 @@ def append_status_change_approved_to_comment_log(doc, request, approved_by):
 
 
 # A PPO can push its quantity out only from these statuses. "Open" is still live and
-# "Closed" is Finishing Plan automation, so neither may be re-routed.
+# "Closed" is terminal, so neither may be re-routed.
 TRANSFERABLE_PO_STATUSES = ["Item Changed", "Not Processed"]
 TRANSFER_TARGET_STATUSES = ["Open", "Item Changed", "Not Processed"]
 
