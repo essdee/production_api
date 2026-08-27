@@ -136,13 +136,7 @@
                 <td>{{ formatDate(order.dont_deliver_after) }}</td>
                 <td>{{ order.lead_time }}</td>
                 <td>
-                  <span
-                    :class="
-                      order.status === 'Draft'
-                        ? 'status-draft'
-                        : 'status-submitted'
-                    "
-                  >
+                  <span :class="statusClass(order.status)">
                     {{ order.status }}
                   </span>
                 </td>
@@ -385,6 +379,26 @@ const max_cols = ref(0);
 const size_groups = ref([]);
 const fetched = ref(false);
 const summaryState = ref({});
+const production_order_statuses = [
+  "Draft",
+  "PPO Request",
+  "Open",
+  "Pending Request",
+  "Item Changed",
+  "Not Processed",
+  "Close Request",
+  "Closed",
+];
+const status_classes = {
+  Draft: "status-draft",
+  "PPO Request": "status-pending",
+  Open: "status-open",
+  "Pending Request": "status-pending",
+  "Item Changed": "status-warning",
+  "Not Processed": "status-danger",
+  "Close Request": "status-pending",
+  Closed: "status-closed",
+};
 
 // Toggle-able columns (all hidden by default). Data is always fetched;
 // these are pure client-side v-if toggles.
@@ -427,7 +441,7 @@ onMounted(() => {
     df: {
       fieldname: "status",
       fieldtype: "Select",
-      options: "\nDraft\nSubmitted",
+      options: ["", ...production_order_statuses].join("\n"),
       label: "Status",
     },
     doc: sample_doc.value,
@@ -517,6 +531,10 @@ function get_report() {
       summarized.value = false;
     },
   });
+}
+
+function statusClass(status) {
+  return ["ppo-status", status_classes[status] || "status-default"];
 }
 
 const overall_total = computed(() => {
@@ -1058,8 +1076,7 @@ defineExpose({ load_data });
   white-space: nowrap;
 }
 
-.status-draft,
-.status-submitted {
+.ppo-status {
   display: inline-flex;
   align-items: center;
   min-height: 22px;
@@ -1071,16 +1088,36 @@ defineExpose({ load_data });
   line-height: 1;
 }
 
-.status-draft {
+.status-draft,
+.status-pending,
+.status-warning {
   color: #b45309;
   background: #fff7ed;
   border-color: #fed7aa;
 }
 
-.status-submitted {
+.status-open {
+  color: #1d4ed8;
+  background: #eff6ff;
+  border-color: #bfdbfe;
+}
+
+.status-danger {
+  color: #b91c1c;
+  background: #fef2f2;
+  border-color: #fecaca;
+}
+
+.status-closed {
   color: #047857;
   background: #ecfdf5;
   border-color: #a7f3d0;
+}
+
+.status-default {
+  color: #475569;
+  background: #f8fafc;
+  border-color: #cbd5e1;
 }
 
 .btn-summarize {
