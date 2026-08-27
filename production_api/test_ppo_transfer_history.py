@@ -1,11 +1,48 @@
+import json
+from pathlib import Path
 from unittest import TestCase
 
 from frappe import _dict
 
-from production_api.utils import _group_ppo_transfer_movements
+from production_api.utils import (
+	_get_ppo_report_filters,
+	_get_ppo_report_status,
+	_group_ppo_transfer_movements,
+)
 
 
 class TestPPOTransferHistory(TestCase):
+	def test_ppo_report_filters_by_production_order_status(self):
+		self.assertEqual(
+			_get_ppo_report_filters("Close Request"),
+			{"docstatus": ["!=", 2], "status": "Close Request"},
+		)
+		self.assertEqual(_get_ppo_report_filters(), {"docstatus": ["!=", 2]})
+
+	def test_ppo_report_returns_stored_production_order_status(self):
+		order = _dict(docstatus=1, status="Item Changed")
+
+		self.assertEqual(_get_ppo_report_status(order), "Item Changed")
+
+	def test_ppo_report_filter_offers_all_production_order_statuses(self):
+		package_path = Path(__file__).resolve().parent
+		meta = json.loads(
+			(package_path / "production_api/doctype/production_order/production_order.json").read_text()
+		)
+		status_options = next(
+			field["options"].splitlines()
+			for field in meta["fields"]
+			if field.get("fieldname") == "status"
+		)
+		component = (
+			package_path / "public/js/PPOReport/components/PPOReport.vue"
+		).read_text()
+
+		for status in filter(None, status_options):
+			with self.subTest(status=status):
+				self.assertIn(f'"{status}"', component)
+		self.assertNotIn('options: "\\nDraft\\nSubmitted"', component)
+
 	def test_groups_source_rows_as_negative_reduction(self):
 		rows = [
 			_dict(

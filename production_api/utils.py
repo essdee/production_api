@@ -3566,17 +3566,23 @@ def _group_ppo_transfer_movements(rows):
 		result.append(entry)
 	return result
 
+
+def _get_ppo_report_filters(status=None):
+	filters = {"docstatus": ["!=", 2]}
+	if status:
+		filters["status"] = status
+	return filters
+
+
+def _get_ppo_report_status(order):
+	return (order.get("status") or "").strip()
+
+
 @frappe.whitelist()
 def get_ppo_report_data(from_date=None, to_date=None, product_category=None, status=None, item=None):
 	from production_api.production_api.doctype.item.item import get_attribute_details
 
-	status_map = {"Draft": 0, "Submitted": 1}
-	filters = {}
-	if status:
-		docstatus = status_map.get(status, 1)
-		filters = {"docstatus": docstatus}
-	else:
-		filters = {"docstatus": ["!=", 2]}	
+	filters = _get_ppo_report_filters(status)
 
 	if from_date and to_date:
 		filters["delivery_date"] = ["between", [from_date, to_date]]
@@ -3607,7 +3613,7 @@ def get_ppo_report_data(from_date=None, to_date=None, product_category=None, sta
 	orders = frappe.get_all(
 		"Production Order",
 		filters=filters,
-		fields=["name", "item", "fabric", "dia", "gsm", "delivery_date", "posting_date", "dont_deliver_after", "lead_time_given", "docstatus", "comments", "comment_log"],
+		fields=["name", "item", "fabric", "dia", "gsm", "delivery_date", "posting_date", "dont_deliver_after", "lead_time_given", "docstatus", "status", "comments", "comment_log"],
 		order_by="delivery_date asc, name asc",
 	)
 	transfer_history_by_ppo = {}
@@ -3695,7 +3701,7 @@ def get_ppo_report_data(from_date=None, to_date=None, product_category=None, sta
 			"delivery_date": str(order["delivery_date"]) if order["delivery_date"] else "",
 			"posting_date": str(order["posting_date"]) if order["posting_date"] else "",
 			"dont_deliver_after": str(order["dont_deliver_after"]) if order["dont_deliver_after"] else "",
-			"status": "Draft" if order.get("docstatus") == 0 else "Submitted",
+			"status": _get_ppo_report_status(order),
 			"lead_time": order.get("lead_time_given") or 0,
 			"comments": "\n".join([p for p in [(order.get("comments") or "").strip(), (order.get("comment_log") or "").strip()] if p]),
 			"transfer_movements": transfer_movements,
