@@ -14,6 +14,7 @@ frappe.listview_settings["Production Order"] = {
 				"Pending Request": "orange",
 				"Item Changed": "yellow",
 				"Not Processed": "red",
+				"Close Request": "orange",
 				"Closed": "green",
 			};
 			return [__(doc.status), status_colors[doc.status] || "blue", "status,=," + doc.status];
