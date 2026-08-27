@@ -1,7 +1,9 @@
 # Copyright (c) 2021, Essdee and Contributors
 # See license.txt
 
+import json
 import unittest
+from pathlib import Path
 from unittest.mock import patch
 
 import frappe
@@ -11,6 +13,17 @@ from production_api.production_api.doctype.item.item import (
 )
 
 class TestItem(unittest.TestCase):
+	def test_description_is_small_text_below_is_sales_item(self):
+		item_json = Path(__file__).with_name("item.json")
+		metadata = json.loads(item_json.read_text())
+		fields = {field["fieldname"]: field for field in metadata["fields"]}
+
+		self.assertEqual(fields["description"]["fieldtype"], "Small Text")
+		self.assertEqual(
+			metadata["field_order"].index("description"),
+			metadata["field_order"].index("is_sales_item") + 1,
+		)
+
 	def _cloth(self, rows):
 		return frappe._dict(
 			name="_Test Cloth",
