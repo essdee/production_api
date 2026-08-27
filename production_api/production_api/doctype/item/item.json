@@ -19,6 +19,7 @@
   "is_stock_item",
   "is_purchase_item",
   "is_sales_item",
+  "description",
   "uom_section",
   "default_unit_of_measure",
   "uom_conversion_details",
@@ -206,6 +207,12 @@
    "fieldname": "is_sales_item",
    "fieldtype": "Check",
    "label": "Is Sales Item",
+   "permlevel": 1
+  },
+  {
+   "fieldname": "description",
+   "fieldtype": "Small Text",
+   "label": "Description",
    "permlevel": 1
   },
   {
