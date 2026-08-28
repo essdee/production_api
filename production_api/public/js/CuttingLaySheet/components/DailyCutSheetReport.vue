@@ -19,6 +19,7 @@
                                     <tr>
                                         <th>S.No.</th>
                                         <th v-for="(j, idx) in i.attributes" :key="idx">{{ j }}</th>
+                                        <th>Cutter</th>
                                         <th v-for="(j, idx) in i.primary_attribute_values" :key="idx">
                                             {{ j }}
                                         </th>
@@ -31,6 +32,7 @@
                                             <span v-if="k == 'Colour' && j.is_set_item && j.attributes[j.set_attr] != j.major_attr_value && j.attributes[k]">({{ j.item_keys['major_colour'] }})</span>
                                             <span v-else-if="k == 'Colour' && !j.is_set_item && j.attributes[k] != j.item_keys['major_colour'] && j.attributes[k]">({{ j.item_keys['major_colour'] }})</span>
                                         </td>
+                                        <td>{{ j.cutter || '--' }}</td>
                                         <td v-for="(k, idx) in i.primary_attribute_values" :key="idx">
                                             <div v-for="(panel,idx2) in (j.values[k] ? Object.keys(j.values[k]) : [])" :key='idx2'>
                                                 <span v-if="j.values[k][panel] > 0">

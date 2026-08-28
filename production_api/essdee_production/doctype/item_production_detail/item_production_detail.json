@@ -7,6 +7,7 @@
  "field_order": [
   "item_details_tab",
   "item",
+  "description",
   "tech_pack_version",
   "pattern_version",
   "version",
@@ -126,6 +127,12 @@
    "label": "Item",
    "options": "Item",
    "reqd": 1
+  },
+  {
+   "fieldname": "description",
+   "fieldtype": "Small Text",
+   "in_list_view": 1,
+   "label": "Description"
   },
   {
    "fieldname": "section_break_yqii",
