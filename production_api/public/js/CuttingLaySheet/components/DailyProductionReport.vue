@@ -41,6 +41,7 @@
                                     <tr>
                                         <th>S.No.</th>
                                         <th v-for="(j, idx) in i.attributes" :key="idx">{{ j }}</th>
+                                        <th>Cutter</th>
                                         <th v-for="(j, idx) in i.primary_attribute_values" :key="idx">
                                             {{ j }}
                                         </th>
@@ -58,6 +59,7 @@
                                                 <span v-else-if="k == 'Colour' && !j.is_set_item && j.attributes[k] != j.item_keys['major_colour'] && j.attributes[k]">({{ j.item_keys['major_colour'] }})</span>
                                             </span>
                                         </td>
+                                        <td>{{ j.cutter || '--' }}</td>
                                         <td v-for="(k, idx) in i.primary_attribute_values" :key="idx">
                                             <div v-if="j.values[k] > 0">
                                                 {{ j.values[k] }}
@@ -79,6 +81,7 @@
                                     <tr>
                                         <th>Total</th>
                                         <td v-for="(j, idx) in i.attributes" :key="idx"></td>
+                                        <td></td>
                                         <th v-for="(k, idx) in i.primary_attribute_values" :key="idx">{{ i.total_qty[k] ? i.total_qty[k] : 0 }}</th>
                                         <th>{{ i['total_sum'] }}</th>
                                         <th>{{ i['total_planned_sum'] }}</th>
@@ -125,6 +128,7 @@
                                         <tr>
                                             <th>S.No.</th>
                                             <th v-for="(j, idx) in i.attributes" :key="idx">{{ j }}</th>
+                                            <th>Cutter</th>
                                             <th v-for="(j, idx) in i.primary_attribute_values" :key="idx">
                                                 {{ j }}
                                             </th>
@@ -142,6 +146,7 @@
                                                     <span v-else-if="k == 'Colour' && !j.is_set_item && j.attributes[k] != j.item_keys['major_colour'] && j.attributes[k]">({{ j.item_keys['major_colour'] }})</span>
                                                 </span>
                                             </td>
+                                            <td>{{ j.cutter || '--' }}</td>
                                             <td v-for="(k, idx) in i.primary_attribute_values" :key="idx">
                                                 <div v-if="j.values[k] > 0">
                                                     {{ j.values[k] }}
@@ -163,6 +168,7 @@
                                         <tr>
                                             <th>Total</th>
                                             <td v-for="(j, idx) in i.attributes" :key="idx"></td>
+                                            <td></td>
                                             <th v-for="(k, idx) in i.primary_attribute_values" :key="idx">{{ i.total_qty[k] ? i.total_qty[k] : 0 }}</th>
                                             <th>{{ i['total_sum'] }}</th>
                                             <th>{{ i['total_planned_sum'] }}</th>

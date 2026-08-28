@@ -1,4 +1,5 @@
 import base64
+import copy
 import frappe, json, sys
 from six import string_types
 from itertools import zip_longest
@@ -614,9 +615,11 @@ def get_daily_production_report(date, location, items=None, lots=None, only_labe
 	bundles_by_parent = {}
 	if all_cls_names:
 		bundles = frappe.db.sql("""
-			SELECT parent, part, size, quantity, set_combination
-			FROM `tabCutting LaySheet Bundle`
-			WHERE parent IN %(names)s
+			SELECT bundle.parent, bundle.part, bundle.size, bundle.quantity,
+				bundle.colour, bundle.set_combination, laysheet.cutter
+			FROM `tabCutting LaySheet Bundle` bundle
+			JOIN `tabCutting LaySheet` laysheet ON laysheet.name = bundle.parent
+			WHERE bundle.parent IN %(names)s
 		""", {"names": all_cls_names}, as_dict=True)
 		for b in bundles:
 			bundles_by_parent.setdefault(b['parent'], []).append(b)
@@ -698,7 +701,7 @@ def get_daily_production_report(date, location, items=None, lots=None, only_labe
 		created += stats['created_count']
 
 		cls_name_list = [{'name': n} for n in stats['names'].split(',')]
-		completed_items, incomplete_items = calculate_completed(cls_name_list, detail_doc, completed_items, incomplete_items, bundles_by_parent)
+		bundles_by_cutter = get_bundles_by_cutter(cls_name_list, bundles_by_parent)
 
 		major_panel = {}
 		panel_qty = {}
@@ -719,63 +722,82 @@ def get_daily_production_report(date, location, items=None, lots=None, only_labe
 				if 'panel' not in major_panel and detail_doc.stiching_item_details:
 					major_panel['panel'] = detail_doc.stiching_item_details[0].stiching_attribute_value
 
-		for row1, row2 in zip_longest(completed_items['items'], incomplete_items['items']):
-			row1['values1'] = {}
-			if detail_doc.is_set_item:
-				part = row1['attributes'][row1['set_attr']]
-				panel = major_panel[part]
-				for size in row1['values']:
-					if row2['values'][size][panel] > 0:
-						row1['values'][size] += row2['values'][size][panel]
-						x = get_less_qty_panels(row2['values'][size], panel, panel_qty)
-						row1['values1'][size] = x
-			else:
-				for size in row1['values']:
-					if row2['values'][size][major_panel['panel']] > 0:
-						row1['values'][size] += row2['values'][size][major_panel['panel']]
-						x = get_less_qty_panels(row2['values'][size], major_panel['panel'], panel_qty)
-						row1['values1'][size] = x
-
 		items_list = []
 		total = 0
 		total_planned_qty = 0
 		total_received_qty = 0
+		planned_rows_counted = set()
+		report_items = copy.deepcopy(completed_items)
 
-		for row in completed_items['items']:
-			total_qty = 0
-			total_planned = 0
-			total_received = 0
-			for val in row['values']:
-				if row['values'][val] > 0:
-					total_qty += row['values'][val]
-					if planned_dict:
-						attrs = row['attributes']
-						attrs[row['primary_attribute']] = val
-						variant = cached_get_variant(parent_item, attrs)
-						if variant in planned_dict:
-							total_planned += planned_dict[variant]['planned']
-							total_received += planned_dict[variant]['cumulative']
+		for cutter, cutter_bundles in sorted(bundles_by_cutter.items()):
+			cutter_completed, cutter_incomplete = calculate_completed(
+				cls_name_list,
+				detail_doc,
+				copy.deepcopy(completed_items),
+				copy.deepcopy(incomplete_items),
+				cutter_bundles,
+			)
 
-			if total_qty > 0:
-				row['total_qty'] = total_qty
-				row['planned'] = total_planned
-				row['cumulative'] = total_received
-				items_list.append(row)
-				total += total_qty
-				total_planned_qty += total_planned
-				total_received_qty += total_received
+			for row1, row2 in zip_longest(cutter_completed['items'], cutter_incomplete['items']):
+				row1['values1'] = {}
+				if detail_doc.is_set_item:
+					part = row1['attributes'][row1['set_attr']]
+					panel = major_panel[part]
+					for size in row1['values']:
+						if row2['values'][size][panel] > 0:
+							row1['values'][size] += row2['values'][size][panel]
+							x = get_less_qty_panels(row2['values'][size], panel, panel_qty)
+							row1['values1'][size] = x
+				else:
+					for size in row1['values']:
+						if row2['values'][size][major_panel['panel']] > 0:
+							row1['values'][size] += row2['values'][size][major_panel['panel']]
+							x = get_less_qty_panels(row2['values'][size], major_panel['panel'], panel_qty)
+							row1['values1'][size] = x
+
+			for row in cutter_completed['items']:
+				total_qty = 0
+				total_planned = 0
+				total_received = 0
+				planned_row_key = json.dumps(
+					[row.get('attributes', {}), row.get('item_keys', {})],
+					sort_keys=True,
+					default=str,
+				)
+				row['cutter'] = cutter
+				for val in row['values']:
+					if row['values'][val] > 0:
+						total_qty += row['values'][val]
+						if planned_dict:
+							attrs = row['attributes'].copy()
+							attrs[row['primary_attribute']] = val
+							variant = cached_get_variant(parent_item, attrs)
+							if variant in planned_dict:
+								total_planned += planned_dict[variant]['planned']
+								total_received += planned_dict[variant]['cumulative']
+
+				if total_qty > 0:
+					row['total_qty'] = total_qty
+					row['planned'] = total_planned
+					row['cumulative'] = total_received
+					items_list.append(row)
+					total += total_qty
+					if planned_row_key not in planned_rows_counted:
+						total_planned_qty += total_planned
+						total_received_qty += total_received
+						planned_rows_counted.add(planned_row_key)
 
 		if len(items_list) == 0:
 			continue
 		else:
-			completed_items['items'] = items_list
-		completed_items['total_sum'] = total
-		completed_items['total_planned_sum'] = total_planned_qty
-		completed_items['total_received_sum'] = total_received_qty
-		completed_items['style_no'] = parent_item
-		completed_items['lot_no'] = parent_lot
-		completed_items['location'] = parent_location
-		report.append(completed_items)
+			report_items['items'] = items_list
+			report_items['total_sum'] = total
+			report_items['total_planned_sum'] = total_planned_qty
+			report_items['total_received_sum'] = total_received_qty
+			report_items['style_no'] = parent_item
+			report_items['lot_no'] = parent_lot
+			report_items['location'] = parent_location
+			report.append(report_items)
 
 	return {
 		"report_data": report,
@@ -1023,6 +1045,17 @@ def get_less_qty_panels(values, major_panel, panel_qty):
 
 	return result
 
+
+def get_bundles_by_cutter(cls_list, bundles_by_parent):
+	"""Group a parent's laysheet bundles by cutter while preserving their parent."""
+	bundles_by_cutter = {}
+	for cls in cls_list:
+		for bundle in bundles_by_parent.get(cls['name'], []):
+			cutter = bundle.get('cutter') or ""
+			bundles_by_cutter.setdefault(cutter, {}).setdefault(cls['name'], []).append(bundle)
+
+	return bundles_by_cutter
+
 def calculate_completed(cls_list, ipd_doc, completed_items, incomplete_items, bundles_by_parent=None):
 	for cls in cls_list:
 		# Use pre-fetched bundle data if available, otherwise fall back to get_doc
@@ -1189,96 +1222,88 @@ def get_cut_sheet_report(date, location):
 			WHERE bundle_generated_date = %(date)s AND {parent_field} = %(parent_name)s
 		""", {"date": report_date, "parent_name": parent_name}, as_dict=True)
 
-		alter_incomplete_items = {}
-		if not detail_doc.is_set_item:
-			for item in incomplete_items['items']:
-				colour = item['attributes'][detail_doc.packing_attribute]
-				alter_incomplete_items[colour] = item['values']
-		else:
-			for item in incomplete_items['items']:
-				set_combination = update_if_string_instance(item['item_keys'])
-				colour = set_combination['major_colour']
-				part = item['attributes'][detail_doc.set_item_attribute]
-				if alter_incomplete_items.get(colour):
-					alter_incomplete_items[colour][part] = item['values']
-				else:
-					alter_incomplete_items[colour] = {}
-					alter_incomplete_items[colour][part] = item['values']
-
+		cls_docs_by_cutter = {}
 		for cls in cls_list:
 			cls_doc = frappe.get_doc("Cutting LaySheet", cls['name'])
+			cls_docs_by_cutter.setdefault(cls_doc.cutter or "", []).append(cls_doc)
+
+		items_list = []
+		for cutter, cls_docs in sorted(cls_docs_by_cutter.items()):
+			cutter_items = copy.deepcopy(incomplete_items)
+			alter_incomplete_items = {}
 			if not detail_doc.is_set_item:
-				for item in cls_doc.cutting_laysheet_bundles:
-					parts = item.part.split(",")
-					set_combination = update_if_string_instance(item.set_combination)
-					set_colour = set_combination['major_colour']
-					qty = item.quantity
-					for part in parts:
-						alter_incomplete_items[set_colour][item.size][part] += qty
-				for item in incomplete_items['items']:
+				for item in cutter_items['items']:
+					colour = item['attributes'][detail_doc.packing_attribute]
+					alter_incomplete_items[colour] = item['values']
+			else:
+				for item in cutter_items['items']:
+					set_combination = update_if_string_instance(item['item_keys'])
+					colour = set_combination['major_colour']
+					part = item['attributes'][detail_doc.set_item_attribute]
+					if alter_incomplete_items.get(colour):
+						alter_incomplete_items[colour][part] = item['values']
+					else:
+						alter_incomplete_items[colour] = {part: item['values']}
+
+			for cls_doc in cls_docs:
+				if not detail_doc.is_set_item:
+					for item in cls_doc.cutting_laysheet_bundles:
+						parts = item.part.split(",")
+						set_combination = update_if_string_instance(item.set_combination)
+						set_colour = set_combination['major_colour']
+						for part in parts:
+							alter_incomplete_items[set_colour][item.size][part] += item.quantity
+				else:
+					stich_details = get_stich_details(detail_doc)
+					for item in cls_doc.cutting_laysheet_bundles:
+						parts = item.part.split(",")
+						set_combination = update_if_string_instance(item.set_combination)
+						major_part = set_combination['major_part']
+						major_colour = set_combination['major_colour']
+						if set_combination.get('set_part'):
+							major_part = set_combination['set_part']
+							major_colour = set_combination['set_colour']
+
+						for part in parts:
+							try:
+								alter_incomplete_items[major_colour][major_part][item.size][part] += item.quantity
+							except KeyError:
+								secondary_part = stich_details[part]
+								alter_incomplete_items[major_colour][secondary_part][item.size][part] += item.quantity
+
+			if not detail_doc.is_set_item:
+				for item in cutter_items['items']:
 					colour = item['attributes'][detail_doc.packing_attribute]
 					item['values'] = alter_incomplete_items[colour]
-
 			else:
-				stich_details = get_stich_details(detail_doc)
-				for item in cls_doc.cutting_laysheet_bundles:
-					parts = item.part.split(",")
-					set_combination = update_if_string_instance(item.set_combination)
-					major_part = set_combination['major_part']
-					major_colour = set_combination['major_colour']
-					d = {
-						"major_colour": major_colour,
-					}
-					if set_combination.get('set_part'):
-						major_part = set_combination['set_part']
-						major_colour = set_combination['set_colour']
-					d['major_part'] = major_part
-
-					qty = item.quantity
-					for part in parts:
-						try:
-							alter_incomplete_items[d['major_colour']][d['major_part']][item.size][part] += qty
-						except:
-							secondary_part = stich_details[part]
-							alter_incomplete_items[d['major_colour']][secondary_part][item.size][part] += qty
-
-				for item in incomplete_items['items']:
+				for item in cutter_items['items']:
 					set_combination = update_if_string_instance(item['item_keys'])
 					colour = set_combination['major_colour']
 					part = item['attributes'][detail_doc.set_item_attribute]
 					item['values'] = alter_incomplete_items[colour][part]
 
-		items_list = []
-		for item in incomplete_items['items']:
-			add_item = False
-			for size in item['values']:
-				check = False
-				for panel in item['values'][size]:
-					if item['values'][size][panel] > 0:
-						check = True
-						break
-				if check:
-					add_item = True
-					break
-			if add_item:
-				items_list.append(item)
+			for item in cutter_items['items']:
+				item['cutter'] = cutter
+				item['total_panel_qty'] = {}
+				add_item = False
+				for size in item['values']:
+					for panel in item['values'][size]:
+						if item['values'][size][panel] > 0:
+							add_item = True
+							item['total_panel_qty'].setdefault(panel, 0)
+							item['total_panel_qty'][panel] += item['values'][size][panel]
+				if add_item:
+					items_list.append(item)
 
 		if len(items_list) == 0:
 			continue
 
-		incomplete_items['items'] = items_list
-
-		for item in incomplete_items['items']:
-			item['total_panel_qty'] = {}
-			for size in item['values']:
-				for panel in item['values'][size]:
-					if item['values'][size][panel] > 0:
-						item['total_panel_qty'].setdefault(panel, 0)
-						item['total_panel_qty'][panel] += item['values'][size][panel]
-		incomplete_items['style_no'] = parent_item
-		incomplete_items['lot_no'] = parent_lot
-		incomplete_items['location'] = parent_location
-		report.append(incomplete_items)
+		report_items = copy.deepcopy(incomplete_items)
+		report_items['items'] = items_list
+		report_items['style_no'] = parent_item
+		report_items['lot_no'] = parent_lot
+		report_items['location'] = parent_location
+		report.append(report_items)
 
 	return report
 
