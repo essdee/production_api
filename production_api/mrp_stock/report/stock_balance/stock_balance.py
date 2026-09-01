@@ -794,7 +794,7 @@ def build_horizontal_stock_balance_data(data, filters=None):
 
 	tables = []
 	for parent_item, table_data in table_sources.items():
-		primary_attribute = primary_attributes.get(parent_item)
+		primary_attribute = primary_attributes.get(parent_item) or None
 		common_attributes = [
 			attribute
 			for attribute in item_attributes.get(parent_item, [])

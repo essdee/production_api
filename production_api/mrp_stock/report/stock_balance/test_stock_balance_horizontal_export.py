@@ -8,6 +8,72 @@ from production_api.mrp_stock.report.stock_balance import stock_balance
 
 
 class TestStockBalanceHorizontalExport(TestCase):
+	def test_horizontal_details_are_retained_when_primary_attribute_is_empty(self):
+		parent_item = "Fulldull Fabric With Wicking New"
+		data = [
+			frappe._dict(
+				item="Fulldull Fabric With Wicking New-60 Dia-Sky Blue",
+				item_name=parent_item,
+				item_group="Fabric",
+				lot="C0826-54",
+				warehouse="Stores - E",
+				warehouse_name="Stores",
+				received_type="Purchase",
+				stock_uom="Kg",
+				bal_qty=31.7,
+				val_rate=29.458,
+				currency="INR",
+				inward_split="25-08-2026: 31.7",
+			),
+			frappe._dict(
+				item="Fulldull Fabric With Wicking New-60 Dia-Wine",
+				item_name=parent_item,
+				item_group="Fabric",
+				lot="C0826-54",
+				warehouse="Stores - E",
+				warehouse_name="Stores",
+				received_type="Purchase",
+				stock_uom="Kg",
+				bal_qty=31,
+				val_rate=31.167,
+				currency="INR",
+				inward_split="25-08-2026: 31",
+			),
+		]
+		metadata = (
+			{
+				data[0].item: {"Dia": "60 Dia", "Colour": "Sky Blue"},
+				data[1].item: {"Dia": "60 Dia", "Colour": "Wine"},
+			},
+			{parent_item: ""},
+			{parent_item: ["Dia", "Colour"]},
+			{},
+		)
+
+		with (
+			patch.object(
+				stock_balance,
+				"_get_horizontal_attribute_metadata",
+				return_value=metadata,
+			),
+			patch.object(
+				stock_balance.frappe.db,
+				"get_default",
+				side_effect=lambda field: 3 if field == "float_precision" else 2,
+			),
+		):
+			export_data = stock_balance.build_horizontal_stock_balance_data(
+				data, frappe._dict(show_inward_date_split=1)
+			)
+
+		table = export_data["tables"][0]
+		self.assertEqual(table["primary_headers"], ["Details"])
+		self.assertEqual(len(table["rows"]), 2)
+		self.assertIn(data[0].item, table["rows"][0][-1])
+		self.assertIn("Balance Qty: 31.7", table["rows"][0][-1])
+		self.assertIn(data[1].item, table["rows"][1][-1])
+		self.assertIn("Balance Qty: 31", table["rows"][1][-1])
+
 	def test_horizontal_detail_contains_only_requested_stock_values(self):
 		row = frappe._dict(
 			item="Yarn 25s OE-Black",
