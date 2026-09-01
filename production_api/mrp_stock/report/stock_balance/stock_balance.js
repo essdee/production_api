@@ -92,13 +92,96 @@ frappe.query_reports["Stock Balance"] = {
 	],
 
 	"onload": function (report) {
-		report.page.add_inner_button(__("Download as Horizontal"), () => {
-			open_url_post(
-				"/api/method/production_api.mrp_stock.report.stock_balance.stock_balance.download_horizontal",
-				{
-					filters: JSON.stringify(report.get_filter_values()),
-				}
-			);
+		const export_event = "stock_balance_horizontal_export_ready";
+		const queue_method =
+			"production_api.mrp_stock.report.stock_balance.stock_balance.queue_horizontal_download";
+		const status_method =
+			"production_api.mrp_stock.report.stock_balance.stock_balance.get_horizontal_download_status";
+		let download_button;
+
+		const clear_export_state = () => {
+			if (report._horizontal_export_poll) {
+				clearInterval(report._horizontal_export_poll);
+				report._horizontal_export_poll = null;
+			}
+			report._horizontal_export_request_id = null;
+			download_button && download_button.prop("disabled", false);
+		};
+
+		const trigger_download = (file_url, file_name) => {
+			const link = document.createElement("a");
+			link.href = file_url;
+			link.download = file_name || "Stock_Balance_Horizontal.xlsx";
+			document.body.appendChild(link);
+			link.click();
+			link.remove();
+		};
+
+		const handle_export_status = (data) => {
+			if (
+				!data ||
+				!report._horizontal_export_request_id ||
+				data.request_id !== report._horizontal_export_request_id
+			) {
+				return;
+			}
+
+			if (data.status === "ready") {
+				clear_export_state();
+				frappe.show_alert({
+					message: __("Horizontal Stock Balance is ready"),
+					indicator: "green",
+				});
+				trigger_download(data.file_url, data.file_name);
+			} else if (["failed", "expired"].includes(data.status)) {
+				clear_export_state();
+				frappe.msgprint({
+					title: __("Horizontal Export Failed"),
+					message: data.error || __("The export expired. Please try again."),
+					indicator: "red",
+				});
+			}
+		};
+
+		const poll_export_status = () => {
+			if (!report._horizontal_export_request_id) return;
+			frappe.call({
+				method: status_method,
+				args: { request_id: report._horizontal_export_request_id },
+				callback: (response) => handle_export_status(response.message),
+			});
+		};
+
+		if (report._horizontal_export_poll) {
+			clearInterval(report._horizontal_export_poll);
+		}
+		frappe.realtime.off(export_event);
+		frappe.realtime.on(export_event, handle_export_status);
+
+		download_button = report.page.add_inner_button(__("Download as Horizontal"), () => {
+			if (report._horizontal_export_request_id) {
+				frappe.show_alert(__("The horizontal export is already being prepared."));
+				return;
+			}
+
+			download_button.prop("disabled", true);
+			frappe.call({
+				method: queue_method,
+				args: { filters: JSON.stringify(report.get_filter_values()) },
+				callback: (response) => {
+					if (!response.message || !response.message.request_id) {
+						clear_export_state();
+						return;
+					}
+					report._horizontal_export_request_id = response.message.request_id;
+					report._horizontal_export_poll = setInterval(poll_export_status, 5000);
+					frappe.show_alert({
+						message: __("Preparing Horizontal Stock Balance in the background..."),
+						indicator: "blue",
+					}, 8);
+				},
+				error: clear_export_state,
+			});
 		});
 	},
 
