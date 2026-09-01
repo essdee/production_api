@@ -682,18 +682,6 @@ def get_variant_values_for(items):
 	return attribute_map
 
 
-HORIZONTAL_DETAIL_FIELDS = (
-	("bal_qty", "Balance Qty", "quantity"),
-	("bal_val", "Balance Value", "currency"),
-	("opening_qty", "Opening Qty", "quantity"),
-	("opening_val", "Opening Value", "currency"),
-	("in_qty", "In Qty", "quantity"),
-	("in_val", "In Value", "currency"),
-	("out_qty", "Out Qty", "quantity"),
-	("out_val", "Out Value", "currency"),
-	("val_rate", "Valuation Rate", "currency"),
-)
-
 HORIZONTAL_EXPORT_EVENT = "stock_balance_horizontal_export_ready"
 HORIZONTAL_EXPORT_JOB = (
 	"production_api.mrp_stock.report.stock_balance.stock_balance."
@@ -712,29 +700,15 @@ def _format_horizontal_detail(row, filters):
 	float_precision = cint(frappe.db.get_default("float_precision")) or 3
 	currency_precision = cint(frappe.db.get_default("currency_precision")) or 2
 	currency = row.get("currency") or "INR"
-	lines = [f"Item Variant: {row.get('item') or ''}"]
-
-	for fieldname, label, value_type in HORIZONTAL_DETAIL_FIELDS:
-		precision = currency_precision if value_type == "currency" else float_precision
-		value = _format_horizontal_number(row.get(fieldname), precision)
-		if value_type == "currency":
-			value = f"{currency} {value}"
-		lines.append(f"{label}: {value}")
-
-		if fieldname == "bal_val" and cint(filters.get("show_inward_date_split")):
-			lines.append("Inward Date Split:")
-			inward_lines = (row.get("inward_split") or "").splitlines()
-			lines.extend([f"  {line}" for line in inward_lines] or ["  --"])
-
-	if cint(filters.get("show_stock_ageing_data")):
-		for fieldname, label in (
-			("average_age", "Average Age"),
-			("earliest_age", "Earliest Age"),
-			("latest_age", "Latest Age"),
-		):
-			lines.append(
-				f"{label}: {_format_horizontal_number(row.get(fieldname), float_precision)} days"
-			)
+	lines = [
+		row.get("item") or "",
+		f"Balance Qty: {_format_horizontal_number(row.get('bal_qty'), float_precision)}",
+		"Inward Date Split:",
+	]
+	inward_lines = (row.get("inward_split") or "").splitlines()
+	lines.extend([f"  {line}" for line in inward_lines] or ["  --"])
+	valuation_rate = _format_horizontal_number(row.get("val_rate"), currency_precision)
+	lines.append(f"Valuation Rate: {currency} {valuation_rate}")
 
 	return "\n".join(lines)
 

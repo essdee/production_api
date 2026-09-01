@@ -8,6 +8,58 @@ from production_api.mrp_stock.report.stock_balance import stock_balance
 
 
 class TestStockBalanceHorizontalExport(TestCase):
+	def test_horizontal_detail_contains_only_requested_stock_values(self):
+		row = frappe._dict(
+			item="Yarn 25s OE-Black",
+			bal_qty=12.5,
+			bal_val=525,
+			opening_qty=20,
+			opening_val=800,
+			in_qty=4,
+			in_val=160,
+			out_qty=11.5,
+			out_val=435,
+			val_rate=42.75,
+			currency="INR",
+			inward_split="01-08-2026: 7\n15-08-2026: 5.5",
+			average_age=15,
+			earliest_age=30,
+			latest_age=2,
+		)
+		with patch.object(
+			stock_balance.frappe.db,
+			"get_default",
+			side_effect=lambda field: 3 if field == "float_precision" else 2,
+		):
+			detail = stock_balance._format_horizontal_detail(
+				row,
+				frappe._dict(show_inward_date_split=1, show_stock_ageing_data=1),
+			)
+
+		self.assertEqual(
+			detail,
+			"Yarn 25s OE-Black\n"
+			"Balance Qty: 12.5\n"
+			"Inward Date Split:\n"
+			"  01-08-2026: 7\n"
+			"  15-08-2026: 5.5\n"
+			"Valuation Rate: INR 42.75",
+		)
+		for excluded_label in (
+			"Item Variant:",
+			"Balance Value:",
+			"Opening Qty:",
+			"Opening Value:",
+			"In Qty:",
+			"In Value:",
+			"Out Qty:",
+			"Out Value:",
+			"Average Age:",
+			"Earliest Age:",
+			"Latest Age:",
+		):
+			self.assertNotIn(excluded_label, detail)
+
 	def test_queue_uses_long_worker_and_returns_immediately(self):
 		job = SimpleNamespace(id="queued-job")
 		with (
