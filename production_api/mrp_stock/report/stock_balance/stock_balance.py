@@ -694,6 +694,14 @@ HORIZONTAL_DETAIL_FIELDS = (
 	("val_rate", "Valuation Rate", "currency"),
 )
 
+HORIZONTAL_EXPORT_EVENT = "stock_balance_horizontal_export_ready"
+HORIZONTAL_EXPORT_JOB = (
+	"production_api.mrp_stock.report.stock_balance.stock_balance."
+	"generate_horizontal_stock_balance_export"
+)
+HORIZONTAL_EXPORT_TIMEOUT = 1500
+HORIZONTAL_EXPORT_STATUS_TTL = 60 * 60
+
 
 def _format_horizontal_number(value, precision):
 	value = flt(value, precision)
@@ -973,23 +981,128 @@ def make_horizontal_stock_balance_workbook(export_data, filters=None):
 	return workbook
 
 
-@frappe.whitelist()
-def download_horizontal(filters=None):
-	frappe.has_permission("Stock Ledger Entry", "read", throw=True)
+def _parse_horizontal_export_filters(filters=None):
 	if isinstance(filters, string_types):
 		filters = json.loads(filters)
-	filters = frappe._dict(filters or {})
+	return frappe._dict(filters or {})
 
+
+def _get_horizontal_export_filename(filters):
+	from_date = filters.get("from_date") or "start"
+	to_date = filters.get("to_date") or "end"
+	return f"Stock_Balance_Horizontal_{from_date}_to_{to_date}.xlsx"
+
+
+def _build_horizontal_workbook_content(filters):
 	_columns, data = execute(filters)
 	export_data = build_horizontal_stock_balance_data(data, filters)
 	workbook = make_horizontal_stock_balance_workbook(export_data, filters)
 	xlsx_file = BytesIO()
 	workbook.save(xlsx_file)
+	return xlsx_file.getvalue()
 
-	from_date = filters.get("from_date") or "start"
-	to_date = filters.get("to_date") or "end"
-	frappe.local.response.filename = f"Stock_Balance_Horizontal_{from_date}_to_{to_date}.xlsx"
-	frappe.local.response.filecontent = xlsx_file.getvalue()
+
+def _horizontal_export_cache_key(request_id):
+	return f"stock_balance_horizontal_export:{request_id}"
+
+
+def _set_horizontal_export_status(request_id, user, status, **values):
+	payload = {"request_id": request_id, "status": status, **values}
+	frappe.cache.set_value(
+		_horizontal_export_cache_key(request_id),
+		payload,
+		user=user,
+		expires_in_sec=HORIZONTAL_EXPORT_STATUS_TTL,
+	)
+	return payload
+
+
+@frappe.whitelist()
+def queue_horizontal_download(filters=None):
+	"""Queue the expensive report/XLSX work so the web request returns immediately."""
+	frappe.has_permission("Stock Ledger Entry", "read", throw=True)
+	filters = _parse_horizontal_export_filters(filters)
+	request_id = frappe.generate_hash(length=16)
+	user = frappe.session.user
+	_set_horizontal_export_status(request_id, user, "queued")
+
+	try:
+		frappe.enqueue(
+			HORIZONTAL_EXPORT_JOB,
+			queue="long",
+			timeout=HORIZONTAL_EXPORT_TIMEOUT,
+			job_id=f"stock-balance-horizontal-{request_id}",
+			filters=dict(filters),
+			request_id=request_id,
+			export_user=user,
+		)
+	except Exception as error:
+		_set_horizontal_export_status(request_id, user, "failed", error=str(error))
+		raise
+
+	return {"request_id": request_id, "status": "queued"}
+
+
+@frappe.whitelist()
+def get_horizontal_download_status(request_id):
+	"""Return only the current user's queued export status."""
+	if not request_id:
+		frappe.throw(_("Export request ID is required"))
+
+	status = frappe.cache.get_value(
+		_horizontal_export_cache_key(request_id),
+		user=frappe.session.user,
+		expires=True,
+	)
+	return status or {"request_id": request_id, "status": "expired"}
+
+
+def generate_horizontal_stock_balance_export(filters, request_id, export_user):
+	"""Background worker: build a private XLSX and notify the requesting user."""
+	_set_horizontal_export_status(request_id, export_user, "running")
+	try:
+		filters = _parse_horizontal_export_filters(filters)
+		file_name = _get_horizontal_export_filename(filters)
+		xlsx_content = _build_horizontal_workbook_content(filters)
+		file_doc = frappe.get_doc(
+			{
+				"doctype": "File",
+				"file_name": file_name,
+				"content": xlsx_content,
+				"is_private": 1,
+			}
+		)
+		file_doc.save(ignore_permissions=True)
+		# The browser can request the file as soon as the ready event arrives.
+		frappe.db.commit()
+
+		result = _set_horizontal_export_status(
+			request_id,
+			export_user,
+			"ready",
+			file_url=file_doc.file_url,
+			file_name=file_doc.file_name,
+		)
+		frappe.publish_realtime(HORIZONTAL_EXPORT_EVENT, result, user=export_user)
+		return result
+	except Exception as error:
+		frappe.db.rollback()
+		result = _set_horizontal_export_status(
+			request_id,
+			export_user,
+			"failed",
+			error=str(error) or _("Horizontal export failed"),
+		)
+		frappe.publish_realtime(HORIZONTAL_EXPORT_EVENT, result, user=export_user)
+		raise
+
+
+@frappe.whitelist()
+def download_horizontal(filters=None):
+	frappe.has_permission("Stock Ledger Entry", "read", throw=True)
+	filters = _parse_horizontal_export_filters(filters)
+	frappe.local.response.filename = _get_horizontal_export_filename(filters)
+	frappe.local.response.filecontent = _build_horizontal_workbook_content(filters)
 	frappe.local.response.type = "binary"
 
 
