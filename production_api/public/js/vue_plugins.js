@@ -109,6 +109,7 @@ import ProcessPending from "./components/ProcessPending.vue"
 import FinishingPlanDPR from "./FinishingPlanDPR/FinishingPlanDPR.vue"
 import FinishingPlanDispa from "./FinishingPlanDispa/FinishingPlanDispa.vue"
 import FinishingPlanReport from "./FinishingPlanReport/FinishingPlanReport.vue"
+import DPR from "./DPR/DPR.vue"
 
 // Product Development
 import {
@@ -1459,6 +1460,18 @@ frappe.production.ui.FinishingPlanIroningReport = class {
     }
     make_app() {
         this.app = createApp(FinishingPlanIroningReport)
+        SetVueGlobals(this.app)
+        this.vue = this.app.mount(this.$wrapper.get(0))
+    }
+}
+
+frappe.production.ui.DPR = class {
+    constructor(wrapper) {
+        this.$wrapper = $(wrapper)
+        this.make_app()
+    }
+    make_app() {
+        this.app = createApp(DPR)
         SetVueGlobals(this.app)
         this.vue = this.app.mount(this.$wrapper.get(0))
     }
