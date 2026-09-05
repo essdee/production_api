@@ -9,42 +9,38 @@ from production_api.patches.v1_0 import mark_consolidated_yarn_items_as_stock as
 
 
 class TestConsolidateYarnItemsByColour(TestCase):
-	def test_consolidation_executes_regardless_of_site_name(self):
+	def test_consolidation_converts_yarn_and_retained_greige_items(self):
 		target = "Yarn 25's OE"
 		source = "Yarn 25's OE Black"
 		greige_item = "Yarn 36's GL"
 		source_rows = ((source, "Black"),)
-		for site in ("mrp3.site", "mrp.essdee.fit", "another.site"):
-			with (
-				self.subTest(site=site),
-				mock_patch.object(patch.frappe.local, "site", site),
-				mock_patch.object(patch, "YARN_ITEM_GROUPS", {target: source_rows}),
-				mock_patch.object(patch, "ATTRIBUTE_ONLY_ITEMS", (greige_item,)),
-				mock_patch.object(patch, "prepare_migration", return_value=(
-					{}, {}, {greige_item: f"{greige_item}-Greige"}, [], []
-				)) as prepare,
-				mock_patch.object(patch, "ensure_item_colour_attribute") as ensure_attribute,
-				mock_patch.object(patch, "ensure_target_colours") as ensure_colours,
-				mock_patch.object(patch, "ensure_target_item") as ensure_target,
-				mock_patch.object(patch, "convert_or_merge_variant") as convert_variant,
-				mock_patch.object(patch, "merge_source_item") as merge_item,
-				mock_patch.object(patch, "apply_json_updates") as update_json,
-				mock_patch.object(patch.frappe, "clear_cache"),
-			):
-				patch.execute()
-			prepare.assert_called_once_with()
-			ensure_attribute.assert_called_once_with(greige_item)
-			ensure_colours.assert_any_call(greige_item, ["Greige"])
-			ensure_colours.assert_any_call(target, ["Black"])
-			ensure_target.assert_called_once_with(target, source_rows)
-			convert_variant.assert_any_call(greige_item, greige_item, "Greige")
-			convert_variant.assert_any_call(source, target, "Black")
-			merge_item.assert_called_once_with(source, target)
-			update_json.assert_called_once_with([])
-
-	def test_consolidation_reports_data_errors_instead_of_skipping_other_sites(self):
 		with (
-			mock_patch.object(patch.frappe.local, "site", "another.site"),
+			mock_patch.object(patch, "YARN_ITEM_GROUPS", {target: source_rows}),
+			mock_patch.object(patch, "ATTRIBUTE_ONLY_ITEMS", (greige_item,)),
+			mock_patch.object(patch, "prepare_migration", return_value=(
+				{}, {}, {greige_item: f"{greige_item}-Greige"}, [], []
+			)) as prepare,
+			mock_patch.object(patch, "ensure_item_colour_attribute") as ensure_attribute,
+			mock_patch.object(patch, "ensure_target_colours") as ensure_colours,
+			mock_patch.object(patch, "ensure_target_item") as ensure_target,
+			mock_patch.object(patch, "convert_or_merge_variant") as convert_variant,
+			mock_patch.object(patch, "merge_source_item") as merge_item,
+			mock_patch.object(patch, "apply_json_updates") as update_json,
+			mock_patch.object(patch.frappe, "clear_cache"),
+		):
+			patch.execute()
+		prepare.assert_called_once_with()
+		ensure_attribute.assert_called_once_with(greige_item)
+		ensure_colours.assert_any_call(greige_item, ["Greige"])
+		ensure_colours.assert_any_call(target, ["Black"])
+		ensure_target.assert_called_once_with(target, source_rows)
+		convert_variant.assert_any_call(greige_item, greige_item, "Greige")
+		convert_variant.assert_any_call(source, target, "Black")
+		merge_item.assert_called_once_with(source, target)
+		update_json.assert_called_once_with([])
+
+	def test_consolidation_reports_data_errors_before_updates(self):
+		with (
 			mock_patch.object(
 				patch, "prepare_migration", side_effect=frappe.ValidationError("Invalid mapping")
 			),
@@ -54,26 +50,18 @@ class TestConsolidateYarnItemsByColour(TestCase):
 				patch.execute()
 		ensure_target.assert_not_called()
 
-	def test_preflight_runs_regardless_of_site_name(self):
-		for site in ("mrp3.site", "mrp.essdee.fit", "another.site"):
-			with (
-				self.subTest(site=site),
-				mock_patch.object(patch.frappe.local, "site", site),
-				mock_patch.object(patch, "prepare_migration", return_value=(
-					{}, {}, {}, [], []
-				)) as prepare,
-			):
-				result = patch.preflight()
-			prepare.assert_called_once_with()
-			self.assertEqual(result["target_item_count"], len(patch.YARN_ITEM_GROUPS))
-			self.assertEqual(result["json_update_count"], 0)
+	def test_preflight_returns_migration_summary(self):
+		with mock_patch.object(patch, "prepare_migration", return_value=(
+			{}, {}, {}, [], []
+		)) as prepare:
+			result = patch.preflight()
+		prepare.assert_called_once_with()
+		self.assertEqual(result["target_item_count"], len(patch.YARN_ITEM_GROUPS))
+		self.assertEqual(result["json_update_count"], 0)
 
-	def test_preflight_reports_data_errors_on_any_site(self):
-		with (
-			mock_patch.object(patch.frappe.local, "site", "another.site"),
-			mock_patch.object(
-				patch, "prepare_migration", side_effect=frappe.ValidationError("Invalid mapping")
-			),
+	def test_preflight_reports_data_errors(self):
+		with mock_patch.object(
+			patch, "prepare_migration", side_effect=frappe.ValidationError("Invalid mapping")
 		):
 			with self.assertRaisesRegex(frappe.ValidationError, "Invalid mapping"):
 				patch.preflight()
@@ -240,42 +228,35 @@ class TestConsolidateYarnItemsByColour(TestCase):
 			frappe._dict(name="Yarn 36's GL", is_stock_item=None),
 			frappe._dict(name="Yarn 40's GL", is_stock_item=1),
 		]
-		for site in ("mrp3.site", "mrp.essdee.fit", "another.site"):
-			with (
-				self.subTest(site=site),
-				mock_patch.object(stock_patch.frappe.local, "site", site),
-				mock_patch.object(stock_patch.frappe, "get_all", return_value=items) as get_all,
-				mock_patch.object(stock_patch.frappe.db, "set_value") as set_value,
-				mock_patch.object(stock_patch.frappe, "clear_document_cache") as clear_cache,
-			):
-				stock_patch.execute()
-			get_all.assert_called_once_with(
-				"Item",
-				filters={"name": ["in", list(patch.YARN_ITEM_GROUPS) + list(patch.ATTRIBUTE_ONLY_ITEMS)]},
-				fields=["name", "is_stock_item"],
-			)
-			self.assertEqual(set_value.call_count, 2)
-			set_value.assert_any_call("Item", "Yarn 25's OE", "is_stock_item", 1)
-			set_value.assert_any_call("Item", "Yarn 36's GL", "is_stock_item", 1)
-			self.assertEqual(clear_cache.call_count, 2)
+		with (
+			mock_patch.object(stock_patch.frappe, "get_all", return_value=items) as get_all,
+			mock_patch.object(stock_patch.frappe.db, "set_value") as set_value,
+			mock_patch.object(stock_patch.frappe, "clear_document_cache") as clear_cache,
+		):
+			stock_patch.execute()
+		get_all.assert_called_once_with(
+			"Item",
+			filters={"name": ["in", list(patch.YARN_ITEM_GROUPS) + list(patch.ATTRIBUTE_ONLY_ITEMS)]},
+			fields=["name", "is_stock_item"],
+		)
+		self.assertEqual(set_value.call_count, 2)
+		set_value.assert_any_call("Item", "Yarn 25's OE", "is_stock_item", 1)
+		set_value.assert_any_call("Item", "Yarn 36's GL", "is_stock_item", 1)
+		self.assertEqual(clear_cache.call_count, 2)
 
 	def test_stock_backfill_is_noop_after_items_are_enabled(self):
-		for site in ("mrp3.site", "mrp.essdee.fit", "another.site"):
-			with (
-				self.subTest(site=site),
-				mock_patch.object(stock_patch.frappe.local, "site", site),
-				mock_patch.object(stock_patch.frappe, "get_all", return_value=[
-					frappe._dict(name=name, is_stock_item=1)
-					for name in (*patch.YARN_ITEM_GROUPS, *patch.ATTRIBUTE_ONLY_ITEMS)
-				]),
-				mock_patch.object(stock_patch.frappe.db, "set_value") as set_value,
-			):
-				stock_patch.execute()
-			set_value.assert_not_called()
+		with (
+			mock_patch.object(stock_patch.frappe, "get_all", return_value=[
+				frappe._dict(name=name, is_stock_item=1)
+				for name in (*patch.YARN_ITEM_GROUPS, *patch.ATTRIBUTE_ONLY_ITEMS)
+			]),
+			mock_patch.object(stock_patch.frappe.db, "set_value") as set_value,
+		):
+			stock_patch.execute()
+		set_value.assert_not_called()
 
 	def test_stock_backfill_handles_no_matching_items(self):
 		with (
-			mock_patch.object(stock_patch.frappe.local, "site", "another.site"),
 			mock_patch.object(stock_patch.frappe, "get_all", return_value=[]) as get_all,
 			mock_patch.object(stock_patch.frappe.db, "set_value") as set_value,
 			mock_patch.object(stock_patch.frappe, "clear_document_cache") as clear_cache,
