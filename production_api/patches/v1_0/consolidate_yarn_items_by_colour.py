@@ -10,6 +10,8 @@ machinery, converts each legacy default Item Variant in place, and then removes
 the obsolete parent Item by merging it into the new parent.
 All converted yarn Items are marked as stock items, including the Items
 retained under their existing names with a Greige variant.
+Only mapping rows with an existing source Item or converted target variant
+are processed; databases can contain any subset of the original yarn list.
 """
 
 import json
@@ -230,12 +232,18 @@ class JsonKeyCollisionError(ValueError):
 
 def execute():
 	(
-		_item_name_map,
+		item_name_map,
 		_variant_name_map,
 		attribute_only_variant_map,
 		json_updates,
 		missing_attribute_items,
 	) = prepare_migration()
+	if not item_name_map and not attribute_only_variant_map:
+		print("No mapped yarn Items or variants found; nothing to consolidate.")
+		return
+	skipped_count = sum(len(rows) for rows in YARN_ITEM_GROUPS.values()) - len(item_name_map)
+	if skipped_count:
+		print(f"Skipping {skipped_count} absent legacy yarn mapping(s).")
 
 	for item_name in ATTRIBUTE_ONLY_ITEMS:
 		if item_name not in attribute_only_variant_map:
@@ -254,6 +262,12 @@ def execute():
 		)
 
 	for target_item, source_rows in YARN_ITEM_GROUPS.items():
+		source_rows = tuple(
+			(source, colour) for source, colour in source_rows
+			if source in item_name_map
+		)
+		if not source_rows:
+			continue
 		ensure_target_item(target_item, source_rows)
 		ensure_target_colours(target_item, [colour for _source, colour in source_rows])
 
@@ -270,11 +284,16 @@ def execute():
 
 def prepare_migration():
 	item_name_map, variant_name_map = build_name_maps()
-	validate_mapping_state(item_name_map, variant_name_map)
+	item_name_map, variant_name_map = select_existing_name_maps(
+		item_name_map, variant_name_map
+	)
 	missing_attribute_items = validate_attribute_only_items()
 	attribute_only_variant_map = build_attribute_only_variant_map(
 		missing_attribute_items
 	)
+	if not item_name_map and not attribute_only_variant_map:
+		return ({}, {}, {}, [], missing_attribute_items)
+	validate_mapping_state(item_name_map, variant_name_map)
 	validate_attribute_only_variants(attribute_only_variant_map)
 	all_variant_name_map = {**variant_name_map, **attribute_only_variant_map}
 	validate_duplicate_variant_merges(all_variant_name_map)
@@ -297,10 +316,12 @@ def preflight():
 		json_updates,
 		missing_attribute_items,
 	) = prepare_migration()
+	all_item_names, _ = build_name_maps()
 	return {
-		"target_item_count": len(YARN_ITEM_GROUPS),
+		"target_item_count": len(set(item_name_map.values())),
 		"source_item_count": len(item_name_map),
 		"target_variant_count": len(set(variant_name_map.values())),
+		"skipped_source_items": [name for name in all_item_names if name not in item_name_map],
 		"attribute_only_item_count": len(ATTRIBUTE_ONLY_ITEMS),
 		"attribute_only_target_variant_count": len(attribute_only_variant_map),
 		"missing_attribute_only_items": missing_attribute_items,
@@ -315,7 +336,28 @@ def build_name_maps():
 		for source_item, colour in source_rows:
 			item_name_map[source_item] = target_item
 			variant_name_map[source_item] = get_target_variant_name(target_item, colour)
+	if len(item_name_map) != sum(len(rows) for rows in YARN_ITEM_GROUPS.values()):
+		frappe.throw("The yarn mapping contains a duplicate legacy Item name")
 	return item_name_map, variant_name_map
+
+
+def select_existing_name_maps(item_name_map, variant_name_map):
+	"""Do not create yarns or rewrite JSON links for absent mapping rows.
+
+	An existing converted variant keeps the row active on reruns. A legacy
+	variant without its parent Item is inconsistent data, not an absent yarn.
+	"""
+	existing_items = {}
+	existing_variants = {}
+	for source_item, target_item in item_name_map.items():
+		source_exists = frappe.db.exists("Item", source_item)
+		if not source_exists and frappe.db.exists("Item Variant", source_item):
+			frappe.throw(f"Legacy Item Variant {source_item} exists without its parent Item")
+		target_variant = variant_name_map[source_item]
+		if source_exists or frappe.db.exists("Item Variant", target_variant):
+			existing_items[source_item] = target_item
+			existing_variants[source_item] = target_variant
+	return existing_items, existing_variants
 
 
 def get_target_variant_name(target_item, colour):
@@ -338,12 +380,16 @@ def validate_mapping_state(item_name_map, variant_name_map):
 	if not frappe.db.exists("Item Attribute", COLOUR_ATTRIBUTE):
 		frappe.throw(f"Item Attribute {COLOUR_ATTRIBUTE} does not exist")
 
-	if len(item_name_map) != sum(len(rows) for rows in YARN_ITEM_GROUPS.values()):
-		frappe.throw("The yarn mapping contains a duplicate legacy Item name")
 	if len(variant_name_map) != len(item_name_map):
 		frappe.throw("The Item and Item Variant mappings are inconsistent")
 
 	for target_item, source_rows in YARN_ITEM_GROUPS.items():
+		source_rows = tuple(
+			(source, colour) for source, colour in source_rows
+			if source in item_name_map
+		)
+		if not source_rows:
+			continue
 		validate_target_item(target_item)
 		if not frappe.db.exists("Item", target_item):
 			source_item = next(
@@ -378,6 +424,8 @@ def validate_mapping_state(item_name_map, variant_name_map):
 			source_exists = frappe.db.exists("Item", source_item)
 			target_exists = frappe.db.exists("Item", target_item)
 			target_variant_exists = frappe.db.exists("Item Variant", target_variant)
+			if target_variant_exists:
+				validate_target_variant(target_variant, target_item, colour)
 
 			if not source_exists:
 				if not (target_exists and target_variant_exists):
