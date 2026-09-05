@@ -95,3 +95,4 @@ production_api.patches.v1_0.backfill_cutting_laysheet_planner_optimization_statu
 production_api.patches.v1_0.migrate_legacy_ratio_packing_grns
 production_api.patches.v1_0.repair_negative_stock_valuations
 production_api.patches.v1_0.consolidate_yarn_items_by_colour
+production_api.patches.v1_0.mark_consolidated_yarn_items_as_stock

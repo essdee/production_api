@@ -9,6 +9,8 @@ This patch is deliberately restricted to mrp3.site. It updates normal and
 custom Link fields through Frappe's rename/merge machinery, converts each
 legacy default Item Variant in place, and then removes the obsolete parent
 Item by merging it into the new parent.
+All converted yarn Items are marked as stock items, including the Items
+retained under their existing names with a Greige variant.
 """
 
 import json
@@ -526,6 +528,7 @@ def ensure_target_item(target_item, source_rows):
 
 	doc = frappe.copy_doc(frappe.get_doc("Item", source_item))
 	doc.name1 = target_item
+	doc.is_stock_item = 1
 	doc.item_hash_value = None
 	doc.primary_attribute = None
 	doc.dependent_attribute = None
@@ -541,7 +544,7 @@ def ensure_target_item(target_item, source_rows):
 
 
 def ensure_item_colour_attribute(item_name):
-	"""Ensure a Colour mapping exists without retaining Colour as Primary Attribute."""
+	"""Enable stock and Colour mapping without making Colour the primary attribute."""
 	if not frappe.db.exists("Item", item_name):
 		return False
 
@@ -565,6 +568,10 @@ def ensure_item_colour_attribute(item_name):
 
 	if doc.primary_attribute == COLOUR_ATTRIBUTE:
 		doc.primary_attribute = None
+		needs_save = True
+
+	if not doc.is_stock_item:
+		doc.is_stock_item = 1
 		needs_save = True
 
 	if needs_save:
