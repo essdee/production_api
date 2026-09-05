@@ -424,6 +424,17 @@ def get_items(lot):
 @frappe.whitelist()
 def get_cloth1(cutting_plan):
 	cutting_plan_doc = frappe.get_doc("Cutting Plan", cutting_plan)
+	lot_doc = frappe.get_doc("Lot", cutting_plan_doc.lot)
+	item_details = fetch_order_item_details(
+		lot_doc.lot_order_details, cutting_plan_doc.production_detail
+	)
+	if not item_details:
+		frappe.throw(f"No order item quantities found in Lot {cutting_plan_doc.lot}")
+
+	# Generate is the explicit refresh point for a Cutting Plan. Rebuild the
+	# hidden item rows from the Lot so quantity changes made after submission
+	# are reflected before cloth and JSON calculations run.
+	cutting_plan_doc.set("items", save_item_details(item_details))
 	ipd_doc = frappe.get_cached_doc("Item Production Detail", cutting_plan_doc.production_detail)
 	item_attributes = get_attribute_details(cutting_plan_doc.item)
 	cloth_combination = get_cloth_combination(ipd_doc)
@@ -483,6 +494,11 @@ def get_cloth1(cutting_plan):
 		})	
 	cutting_plan_doc.set("cutting_plan_accessory_details", required_accessory_details)
 	cutting_plan_doc.set("cutting_plan_cloth_details", required_cloth_details)
+	completed, incomplete = get_complete_incomplete_structure(
+		cutting_plan_doc.production_detail, item_details
+	)
+	cutting_plan_doc.completed_items_json = completed
+	cutting_plan_doc.incomplete_items_json = incomplete
 	text = f"Cloth Generated on {datetime.now()} by {frappe.session.user}"
 	cutting_plan_doc.add_comment('Comment',text=text)
 	cutting_plan_doc.save()

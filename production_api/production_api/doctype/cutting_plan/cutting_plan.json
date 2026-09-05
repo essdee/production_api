@@ -92,6 +92,7 @@
    "fieldtype": "Section Break"
   },
   {
+   "allow_on_submit": 1,
    "fieldname": "items",
    "fieldtype": "Table",
    "hidden": 1,
@@ -336,7 +337,7 @@
    "link_fieldname": "cutting_plan"
   }
  ],
- "modified": "2026-03-13 10:14:45.796757",
+ "modified": "2026-09-05 17:30:00.000000",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Cutting Plan",
