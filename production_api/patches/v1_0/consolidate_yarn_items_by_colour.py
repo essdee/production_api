@@ -5,10 +5,9 @@ both a target Item and a Colour value are consolidation rows. Rows having a
 target Item and ``Attribute = Colour`` but no Colour value keep their existing
 Item and convert their default Item Variant to the Greige colour variant.
 
-This patch is restricted to mrp3.site and production mrp.essdee.fit. It updates
-normal and custom Link fields through Frappe's rename/merge machinery, converts each
-legacy default Item Variant in place, and then removes the obsolete parent
-Item by merging it into the new parent.
+It updates normal and custom Link fields through Frappe's rename/merge
+machinery, converts each legacy default Item Variant in place, and then removes
+the obsolete parent Item by merging it into the new parent.
 All converted yarn Items are marked as stock items, including the Items
 retained under their existing names with a Greige variant.
 """
@@ -22,7 +21,6 @@ from frappe.model.rename_doc import rename_doc
 from production_api.production_api.doctype.item.item import create_variant
 
 
-TARGET_SITES = ("mrp3.site", "mrp.essdee.fit")
 COLOUR_ATTRIBUTE = "Colour"
 DEFAULT_ATTRIBUTE_ONLY_COLOUR = "Greige"
 
@@ -231,10 +229,6 @@ class JsonKeyCollisionError(ValueError):
 
 
 def execute():
-	if frappe.local.site not in TARGET_SITES:
-		print(f"Skipping yarn colour consolidation on {frappe.local.site}: not a target site.")
-		return
-
 	(
 		_item_name_map,
 		_variant_name_map,
@@ -296,9 +290,6 @@ def prepare_migration():
 
 def preflight():
 	"""Run every read-only validation without applying the migration."""
-	if frappe.local.site not in TARGET_SITES:
-		return {"skipped": True, "site": frappe.local.site}
-
 	(
 		item_name_map,
 		variant_name_map,
@@ -307,8 +298,6 @@ def preflight():
 		missing_attribute_items,
 	) = prepare_migration()
 	return {
-		"skipped": False,
-		"site": frappe.local.site,
 		"target_item_count": len(YARN_ITEM_GROUPS),
 		"source_item_count": len(item_name_map),
 		"target_variant_count": len(set(variant_name_map.values())),

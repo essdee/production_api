@@ -4,16 +4,11 @@ import frappe
 
 from production_api.patches.v1_0.consolidate_yarn_items_by_colour import (
 	ATTRIBUTE_ONLY_ITEMS,
-	TARGET_SITES,
 	YARN_ITEM_GROUPS,
 )
 
 
 def execute():
-	if frappe.local.site not in TARGET_SITES:
-		print(f"Skipping yarn stock-item update on {frappe.local.site}: not a target site.")
-		return
-
 	item_names = list(YARN_ITEM_GROUPS) + list(ATTRIBUTE_ONLY_ITEMS)
 	for item in frappe.get_all(
 		"Item",
