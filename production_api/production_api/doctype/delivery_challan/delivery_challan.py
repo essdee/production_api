@@ -63,11 +63,16 @@ class DeliveryChallan(Document):
                         break
             cp_doc.save(ignore_permissions=True)
 
+    def reset_internal_transfer_status(self):
+        if self.is_internal_unit:
+            self.db_set({
+                "transfer_complete": 0,
+                "ste_transferred": 0,
+                "ste_transferred_percent": 0,
+            })
+
     def on_cancel(self):
-        if self.from_address == self.supplier_address and self.is_internal_unit:
-            self.db_set("ste_transferred_percent", 0)
-            self.db_set("ste_transferred", 0)
-            self.db_set("transfer_complete", 0)
+        self.reset_internal_transfer_status()
 
         logger = get_module_logger("delivery_challan")
         logger.debug(f"On Cancel {datetime.now()}")
