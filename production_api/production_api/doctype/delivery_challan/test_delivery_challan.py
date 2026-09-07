@@ -3,6 +3,7 @@
 
 from types import SimpleNamespace
 from unittest import TestCase
+from unittest.mock import MagicMock
 
 from production_api.production_api.doctype.delivery_challan.delivery_challan import (
 	DeliveryChallan,
@@ -11,6 +12,22 @@ from production_api.production_api.doctype.delivery_challan.delivery_challan imp
 
 
 class TestDeliveryChallan(TestCase):
+	def test_cancel_resets_internal_transfer_status_for_different_addresses(self):
+		doc = SimpleNamespace(
+			is_internal_unit=1,
+			from_address="SOURCE-ADDRESS",
+			supplier_address="TARGET-ADDRESS",
+			db_set=MagicMock(),
+		)
+
+		DeliveryChallan.reset_internal_transfer_status(doc)
+
+		doc.db_set.assert_called_once_with({
+			"transfer_complete": 0,
+			"ste_transferred": 0,
+			"ste_transferred_percent": 0,
+		})
+
 	def test_completed_garment_qty_uses_required_panel_quantity(self):
 		self.assertEqual(get_completed_garment_qty(580, 2), 290)
 		self.assertEqual(get_completed_garment_qty(464, 2), 232)

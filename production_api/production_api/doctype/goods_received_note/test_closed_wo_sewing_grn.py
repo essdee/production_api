@@ -1,3 +1,4 @@
+from types import SimpleNamespace
 from unittest import TestCase
 from unittest.mock import MagicMock, patch
 
@@ -9,6 +10,22 @@ from production_api.production_api.doctype.goods_received_note.goods_received_no
 
 
 class TestClosedWorkOrderSewingGRN(TestCase):
+    def test_cancel_resets_internal_transfer_status_for_different_addresses(self):
+        grn = SimpleNamespace(
+            is_internal_unit=1,
+            supplier_address="SOURCE-ADDRESS",
+            delivery_address="TARGET-ADDRESS",
+            db_set=MagicMock(),
+        )
+
+        GoodsReceivedNote.reset_internal_transfer_status(grn)
+
+        grn.db_set.assert_called_once_with({
+            "transfer_complete": 0,
+            "ste_transferred": 0,
+            "ste_transferred_percent": 0,
+        })
+
     def make_grn(self, special=False, trusted=False):
         grn = GoodsReceivedNote(
             {

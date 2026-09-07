@@ -1146,7 +1146,16 @@ class GoodsReceivedNote(Document):
         sl_dict.update(args)
         return sl_dict
 
+    def reset_internal_transfer_status(self):
+        if self.is_internal_unit:
+            self.db_set({
+                "transfer_complete": 0,
+                "ste_transferred": 0,
+                "ste_transferred_percent": 0,
+            })
+
     def on_cancel(self):
+        self.reset_internal_transfer_status()
         logger = get_module_logger("goods_received_note")
         self.ignore_linked_doctypes = (
             "Stock Ledger Entry", "Repost Item Valuation", "Cut Panel Movement",
@@ -1243,10 +1252,6 @@ class GoodsReceivedNote(Document):
                     logger.debug(
                         f"{self.name} Deliverables Updated {datetime.now()}")
 
-                if self.supplier_address == self.delivery_address and self.is_internal_unit:
-                    self.db_set("ste_transferred_percent", 0)
-                    self.db_set("ste_transferred", 0)
-                    self.db_set("transfer_complete", 0)
                 make_piece_calculation = True
 
         cancelled_str = frappe.db.get_single_value(
