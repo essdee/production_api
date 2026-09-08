@@ -1,0 +1,21 @@
+{
+ "add_total_row": 0,
+ "columns": [],
+ "disabled": 0,
+ "docstatus": 0,
+ "doctype": "Report",
+ "filters": [],
+ "is_standard": "Yes",
+ "module": "MRP Stock",
+ "name": "FG Inward Temp",
+ "owner": "Administrator",
+ "prepared_report": 1,
+ "ref_doctype": "FG Stock Entry",
+ "report_name": "FG Inward Temp",
+ "report_type": "Script Report",
+ "roles": [
+  {"role": "System Manager"},
+  {"role": "Accounts User"},
+  {"role": "Accounts Manager"}
+ ]
+}
