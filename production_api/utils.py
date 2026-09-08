@@ -4046,6 +4046,42 @@ def get_sewing_progress_report(process=None, status=None, category=None, lot_lis
 		""", con, as_dict=True
 	)
 
+	last_dc_dates_by_lot = {}
+	if finishing_inward_process and lots:
+		dc_date_rows = frappe.db.sql(
+			"""
+				SELECT
+					dc.lot,
+					CASE
+						WHEN wo.is_internal_unit = 1
+							THEN COALESCE(s.supplier_name, wo.supplier, 'Others')
+						ELSE 'Others'
+					END AS supplier_bucket,
+					MAX(dc.posting_date) AS last_dc_date
+				FROM `tabDelivery Challan` dc
+				JOIN `tabWork Order` wo ON wo.name = dc.work_order
+				LEFT JOIN `tabSupplier` s ON s.name = wo.supplier
+				WHERE dc.docstatus = 1
+					AND dc.lot IN %(lots)s
+					AND (
+						wo.process_name = %(process)s
+						OR wo.process_name IN (
+							SELECT parent
+							FROM `tabProcess Details`
+							WHERE process_name = %(process)s OR parent = %(process)s
+						)
+					)
+				GROUP BY dc.lot, supplier_bucket
+			""",
+			{
+				"lots": tuple(lot.name for lot in lots),
+				"process": finishing_inward_process,
+			},
+			as_dict=True,
+		)
+		for row in dc_date_rows:
+			last_dc_dates_by_lot.setdefault(row.lot, {})[row.supplier_bucket] = row.last_dc_date
+
 	all_company_suppliers = set()
 	result = []
 	for lot in lots:
@@ -4101,11 +4137,21 @@ def get_sewing_progress_report(process=None, status=None, category=None, lot_lis
 					else:
 						supplier_qty["Others"] = flt(supplier_qty.get("Others")) + pending
 
+		supplier_last_dc_dates = last_dc_dates_by_lot.get(lot.name, {})
 		result.append({
 			"item": lot.item,
 			"lot": lot.name,
 			"cutting_received_qty": cutting_received_qty,
 			"cutting_completion_date": str(cutting_completion_date) if cutting_completion_date else None,
+			"supplier_last_dc_dates": {
+				supplier: str(supplier_last_dc_dates[supplier])
+				if supplier_last_dc_dates.get(supplier) else None
+				for supplier in supplier_qty
+			},
+			"supplier_pending_days": {
+				supplier: calculate_pending_days(supplier_last_dc_dates.get(supplier))
+				for supplier in supplier_qty
+			},
 			"total_qty": total_qty,
 			"supplier_qty": supplier_qty,
 		})
@@ -4113,6 +4159,13 @@ def get_sewing_progress_report(process=None, status=None, category=None, lot_lis
 		"suppliers": sorted(all_company_suppliers),
 		"rows": result,
 	}
+
+
+def calculate_pending_days(last_dc_date, current_date=None):
+	if not last_dc_date:
+		return None
+	current_date = getdate(current_date or frappe.utils.nowdate())
+	return max((current_date - getdate(last_dc_date)).days, 0)
 
 @frappe.whitelist()
 def get_work_order_pending_report(
