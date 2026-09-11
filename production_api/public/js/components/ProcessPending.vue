@@ -46,34 +46,63 @@
                     <span class="summary-label">Not Delivered</span>
                     <span class="summary-value summary-value--red">{{ notDelivered.toLocaleString() }}</span>
                 </div>
+                <div class="summary-divider"></div>
+                <div class="summary-item summary-item--lots">
+                    <span class="summary-label">Not Delivered Lots ({{ notDeliveredLots.length }})</span>
+                    <div class="summary-lot-list">
+                        <a
+                            v-for="row in notDeliveredLots"
+                            :key="row.lot"
+                            :href="'/app/lot/' + row.lot"
+                            class="summary-lot-link"
+                        >{{ row.lot }}</a>
+                        <span v-if="notDeliveredLots.length === 0" class="summary-lot-empty">None</span>
+                    </div>
+                </div>
             </div>
 
             <div class="table-wrap">
                 <table class="sp-table">
                     <thead>
                         <tr>
-                            <th>#</th>
-                            <th class="text-left">Item</th>
-                            <th class="text-left">Lot</th>
-                            <th>Cutting Qty</th>
-                            <th>Cutting Completion</th>
+                            <th class="cell-index">#</th>
+                            <th class="text-left cell-item">Item</th>
+                            <th class="text-left cell-lot">Lot</th>
+                            <th class="cell-cutting-qty">Cutting Qty</th>
+                            <th class="cell-cutting-completion">Cutting Completion</th>
                             <th v-for="s in suppliers" :key="s" class="cell-supplier">{{ s }}</th>
-                            <th v-if="hasOthers" class="cell-supplier">Others</th>
-                            <th>Total Received Qty</th>
+                            <th v-if="hasOthers" class="cell-supplier cell-others">Others</th>
+                            <th class="cell-not-delivered">Not Delivered</th>
+                            <th class="cell-total-received">Total Received Qty</th>
                         </tr>
                     </thead>
                     <tbody>
                         <tr v-for="(row, idx) in rows" :key="row.lot">
-                            <td class="cell-dim">{{ idx + 1 }}</td>
-                            <td class="text-left">{{ row.item }}</td>
-                            <td class="text-left">
+                            <td class="cell-dim cell-index">{{ idx + 1 }}</td>
+                            <td class="text-left cell-item">{{ row.item }}</td>
+                            <td class="text-left cell-lot">
                                 <a :href="'/app/lot/' + row.lot" class="sp-link">{{ row.lot }}</a>
                             </td>
-                            <td>{{ (row.cutting_received_qty || 0).toLocaleString() }}</td>
-                            <td>{{ formatDate(row.cutting_completion_date) }}</td>
-                            <td v-for="s in suppliers" :key="s">{{ supplierVal(row, s) }}</td>
-                            <td v-if="hasOthers">{{ supplierVal(row, 'Others') }}</td>
-                            <td class="cell-total">{{ (row.total_qty || 0).toLocaleString() }}</td>
+                            <td class="cell-cutting-qty">{{ (row.cutting_received_qty || 0).toLocaleString() }}</td>
+                            <td class="cell-cutting-completion">{{ formatDate(row.cutting_completion_date) }}</td>
+                            <td v-for="s in suppliers" :key="s" class="cell-supplier">
+                                <div>{{ supplierVal(row, s) }}</div>
+                                <div
+                                    v-if="hasSupplierPending(row, s)"
+                                    class="pending-days"
+                                    :title="supplierPendingTitle(row, s)"
+                                >{{ pendingDaysLabel(supplierPendingDays(row, s)) }}</div>
+                            </td>
+                            <td v-if="hasOthers" class="cell-supplier cell-others">
+                                <div>{{ supplierVal(row, 'Others') }}</div>
+                                <div
+                                    v-if="hasSupplierPending(row, 'Others')"
+                                    class="pending-days"
+                                    :title="supplierPendingTitle(row, 'Others')"
+                                >{{ pendingDaysLabel(supplierPendingDays(row, 'Others')) }}</div>
+                            </td>
+                            <td class="cell-not-delivered">{{ rowNotDelivered(row).toLocaleString() }}</td>
+                            <td class="cell-total cell-total-received">{{ (row.total_qty || 0).toLocaleString() }}</td>
                         </tr>
                     </tbody>
                     <tfoot>
@@ -81,9 +110,10 @@
                             <td colspan="3" class="foot-label">Total</td>
                             <td class="foot-num">{{ totalCuttingReceived.toLocaleString() }}</td>
                             <td></td>
-                            <td v-for="s in suppliers" :key="s" class="foot-num">{{ supplierTotal(s).toLocaleString() }}</td>
-                            <td v-if="hasOthers" class="foot-num">{{ supplierTotal('Others').toLocaleString() }}</td>
-                            <td class="foot-grand">{{ totalFinishingQty.toLocaleString() }}</td>
+                            <td v-for="s in suppliers" :key="s" class="foot-num cell-supplier">{{ supplierTotal(s).toLocaleString() }}</td>
+                            <td v-if="hasOthers" class="foot-num cell-supplier cell-others">{{ supplierTotal('Others').toLocaleString() }}</td>
+                            <td class="cell-not-delivered">{{ notDelivered.toLocaleString() }}</td>
+                            <td class="foot-grand cell-total-received">{{ totalFinishingQty.toLocaleString() }}</td>
                         </tr>
                     </tfoot>
                 </table>
@@ -252,15 +282,12 @@ const totalFinishingQty = computed(() => {
     return rows.value.reduce((sum, r) => sum + (r.total_qty || 0), 0)
 })
 
-const totalSupplierQty = computed(() => {
-    return rows.value.reduce((sum, r) => {
-        if (!r.supplier_qty) return sum
-        return sum + Object.values(r.supplier_qty).reduce((s, v) => s + (v || 0), 0)
-    }, 0)
+const notDelivered = computed(() => {
+    return rows.value.reduce((sum, row) => sum + rowNotDelivered(row), 0)
 })
 
-const notDelivered = computed(() => {
-    return totalCuttingReceived.value - (totalSupplierQty.value + totalFinishingQty.value)
+const notDeliveredLots = computed(() => {
+    return rows.value.filter(row => rowNotDelivered(row) > 0)
 })
 
 const hasOthers = computed(() => {
@@ -276,6 +303,31 @@ function supplierTotal(supplier) {
     return rows.value.reduce((sum, r) => {
         return sum + ((r.supplier_qty && r.supplier_qty[supplier]) || 0)
     }, 0)
+}
+
+function hasSupplierPending(row, supplier) {
+    return ((row.supplier_qty && row.supplier_qty[supplier]) || 0) !== 0
+}
+
+function supplierPendingDays(row, supplier) {
+    return row.supplier_pending_days ? row.supplier_pending_days[supplier] : null
+}
+
+function supplierPendingTitle(row, supplier) {
+    const date = row.supplier_last_dc_dates && row.supplier_last_dc_dates[supplier]
+    return date ? `Last DC: ${formatDate(date)}` : 'No submitted DC found'
+}
+
+function rowNotDelivered(row) {
+    const supplierQty = Object.values(row.supplier_qty || {}).reduce((sum, qty) => {
+        return sum + (qty || 0)
+    }, 0)
+    return (row.cutting_received_qty || 0) - supplierQty - (row.total_qty || 0)
+}
+
+function pendingDaysLabel(days) {
+    if (days === null || days === undefined) return 'No DC'
+    return `${days} ${days === 1 ? 'day' : 'days'} pending`
 }
 
 function formatDate(dateStr) {
@@ -380,6 +432,10 @@ function formatDate(dateStr) {
     flex-direction: column;
     gap: 2px;
 }
+.summary-item--lots {
+    flex: 1;
+    min-width: 280px;
+}
 .summary-label {
     font-size: 12.5px;
     font-weight: 600;
@@ -403,6 +459,32 @@ function formatDate(dateStr) {
 }
 .summary-value--red {
     color: #dc2626;
+}
+.summary-lot-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 6px;
+    margin-top: 4px;
+}
+.summary-lot-link {
+    padding: 2px 7px;
+    border-radius: 10px;
+    background: #fef2f2;
+    color: #dc2626;
+    font-size: 12px;
+    font-weight: 600;
+    line-height: 1.4;
+    text-decoration: none;
+    white-space: nowrap;
+}
+.summary-lot-link:hover {
+    background: #fee2e2;
+    color: #b91c1c;
+    text-decoration: none;
+}
+.summary-lot-empty {
+    color: #9ca3af;
+    font-size: 13px;
 }
 .summary-divider {
     width: 1px;
@@ -461,16 +543,75 @@ function formatDate(dateStr) {
     background: #f3f4f6;
 }
 .cell-dim { color: #9ca3af; }
+.cell-index {
+    width: 40px;
+    min-width: 40px;
+    max-width: 40px;
+    padding-left: 6px !important;
+    padding-right: 6px !important;
+}
 .cell-total {
     font-weight: 700;
     color: #1f2937;
     background: #f9fafb;
 }
+.cell-item {
+    width: 250px;
+    max-width: 250px;
+}
+.sp-table tbody td.cell-item {
+    line-height: 1.3;
+    white-space: normal;
+}
+.cell-lot {
+    width: 115px;
+    max-width: 115px;
+}
+.cell-cutting-qty {
+    width: 95px;
+    max-width: 95px;
+}
+.cell-cutting-completion {
+    width: 100px;
+    max-width: 100px;
+}
+.sp-table thead th.cell-cutting-qty,
+.sp-table thead th.cell-cutting-completion {
+    white-space: normal;
+}
 .cell-supplier {
     color: #4b5563;
+    min-width: 125px;
+}
+.cell-others {
+    min-width: 75px;
+    width: 75px;
+    max-width: 75px;
+}
+.cell-not-delivered {
+    color: #dc2626;
+    font-weight: 700;
+    background: #fef2f2;
+    width: 90px;
+    max-width: 90px;
+}
+.pending-days {
+    margin-top: 2px;
+    color: #b45309;
+    font-size: 10px;
+    font-weight: 600;
+    line-height: 1.2;
+    white-space: nowrap;
+}
+.cell-total-received {
+    width: 90px;
+    max-width: 90px;
+}
+.sp-table thead th.cell-not-delivered,
+.sp-table thead th.cell-total-received {
+    white-space: normal;
 }
 .sp-table thead th.cell-supplier {
-    max-width: 80px;
     font-size: 12px;
     word-break: break-word;
     white-space: normal;
@@ -512,6 +653,10 @@ function formatDate(dateStr) {
     font-weight: 800;
     color: #1f2937;
     background: #eef2ff;
+}
+.sp-table tfoot td.cell-not-delivered {
+    color: #dc2626;
+    background: #fef2f2;
 }
 
 .sp-empty {

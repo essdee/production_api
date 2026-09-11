@@ -4046,6 +4046,42 @@ def get_sewing_progress_report(process=None, status=None, category=None, lot_lis
 		""", con, as_dict=True
 	)
 
+	last_dc_dates_by_lot = {}
+	if finishing_inward_process and lots:
+		dc_date_rows = frappe.db.sql(
+			"""
+				SELECT
+					dc.lot,
+					CASE
+						WHEN wo.is_internal_unit = 1
+							THEN COALESCE(s.supplier_name, wo.supplier, 'Others')
+						ELSE 'Others'
+					END AS supplier_bucket,
+					MAX(dc.posting_date) AS last_dc_date
+				FROM `tabDelivery Challan` dc
+				JOIN `tabWork Order` wo ON wo.name = dc.work_order
+				LEFT JOIN `tabSupplier` s ON s.name = wo.supplier
+				WHERE dc.docstatus = 1
+					AND dc.lot IN %(lots)s
+					AND (
+						wo.process_name = %(process)s
+						OR wo.process_name IN (
+							SELECT parent
+							FROM `tabProcess Details`
+							WHERE process_name = %(process)s OR parent = %(process)s
+						)
+					)
+				GROUP BY dc.lot, supplier_bucket
+			""",
+			{
+				"lots": tuple(lot.name for lot in lots),
+				"process": finishing_inward_process,
+			},
+			as_dict=True,
+		)
+		for row in dc_date_rows:
+			last_dc_dates_by_lot.setdefault(row.lot, {})[row.supplier_bucket] = row.last_dc_date
+
 	all_company_suppliers = set()
 	result = []
 	for lot in lots:
@@ -4101,11 +4137,21 @@ def get_sewing_progress_report(process=None, status=None, category=None, lot_lis
 					else:
 						supplier_qty["Others"] = flt(supplier_qty.get("Others")) + pending
 
+		supplier_last_dc_dates = last_dc_dates_by_lot.get(lot.name, {})
 		result.append({
 			"item": lot.item,
 			"lot": lot.name,
 			"cutting_received_qty": cutting_received_qty,
 			"cutting_completion_date": str(cutting_completion_date) if cutting_completion_date else None,
+			"supplier_last_dc_dates": {
+				supplier: str(supplier_last_dc_dates[supplier])
+				if supplier_last_dc_dates.get(supplier) else None
+				for supplier in supplier_qty
+			},
+			"supplier_pending_days": {
+				supplier: calculate_pending_days(supplier_last_dc_dates.get(supplier))
+				for supplier in supplier_qty
+			},
 			"total_qty": total_qty,
 			"supplier_qty": supplier_qty,
 		})
@@ -4113,6 +4159,13 @@ def get_sewing_progress_report(process=None, status=None, category=None, lot_lis
 		"suppliers": sorted(all_company_suppliers),
 		"rows": result,
 	}
+
+
+def calculate_pending_days(last_dc_date, current_date=None):
+	if not last_dc_date:
+		return None
+	current_date = getdate(current_date or frappe.utils.nowdate())
+	return max((current_date - getdate(last_dc_date)).days, 0)
 
 @frappe.whitelist()
 def get_work_order_pending_report(
@@ -4314,13 +4367,32 @@ def get_the_data_of_each_row(item,process,supplier,lot):
 	return filtered_wo
 
 @frappe.whitelist()
-def dc_dpr_report(date=None, lot=None, item=None, dc_name=None):
+def dc_dpr_report(
+	date=None,
+	lot=None,
+	item=None,
+	dc_name=None,
+	from_date=None,
+	to_date=None,
+	summary=0,
+):
 	conditions = ""
 	con = {}
 
-	if date:
+	summary = sbool(summary)
+	if summary:
+		if not from_date or not to_date:
+			frappe.throw("From Date and To Date are required for Summary")
+		if getdate(from_date) > getdate(to_date):
+			frappe.throw("From Date cannot be after To Date")
+		conditions += " AND t1.actual_date BETWEEN %(from_date)s AND %(to_date)s"
+		con["from_date"] = from_date
+		con["to_date"] = to_date
+	elif date:
 		conditions += " AND t1.actual_date = %(date)s"
 		con["date"] = date
+	elif not dc_name:
+		frappe.throw("Date is required")
 
 	if dc_name:
 		conditions += " AND t1.name = %(dc_name)s"
@@ -4353,10 +4425,10 @@ def dc_dpr_report(date=None, lot=None, item=None, dc_name=None):
 
 	dc_rows = frappe.db.sql(
 		"""
-		SELECT t1.name
+		SELECT t1.name, t1.actual_date
 		FROM `tabDelivery Challan` t1
 		WHERE 1=1 {conditions}
-		ORDER BY t1.lot, t1.name
+		ORDER BY t1.actual_date, t1.lot, t1.name
 		""".format(conditions=conditions),
 		con,
 		as_dict=True
@@ -4379,7 +4451,9 @@ def dc_dpr_report(date=None, lot=None, item=None, dc_name=None):
 		) or frappe._dict()
 		is_set_item = ipd_details.get("is_set_item")
 		part_attr = ipd_details.get("set_item_attribute") or default_part_attr
-		lot_bucket=lot_map.setdefault(dc_data.get("lot"), {
+		report_date = str(r.get("actual_date") or date)
+		lot_bucket=lot_map.setdefault((report_date, dc_data.get("lot")), {
+				"date": report_date,
 				"lot":dc_data.lot,
 				"item":dc_data.item,
 				"attributes":[],
@@ -4421,6 +4495,7 @@ def dc_dpr_report(date=None, lot=None, item=None, dc_name=None):
 		for idx,row in enumerate(rows,1):
 			row["s_no"]=idx
 		result.append({
+				"date": lot["date"],
 				"lot": lot["lot"],
 				"item": lot["item"],
 				"attributes": lot["attributes"],

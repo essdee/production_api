@@ -61,6 +61,55 @@ class TestFinishingPlan(FrappeTestCase):
 		self.assertEqual(row["pieces_per_box"], 5)
 		self.assertEqual(row["total_boxes"], 20)
 
+	def test_packing_dpr_summary_splits_the_same_lot_by_actual_date(self):
+		grns = [
+			frappe._dict(name="GRN-DAY-1", lot="LOT-1", actual_date="2026-09-01"),
+			frappe._dict(name="GRN-DAY-2", lot="LOT-1", actual_date="2026-09-02"),
+		]
+		packing_rows = [
+			frappe._dict(
+				sizes=["S"], size_pieces={"S": 10}, pieces_per_box=5,
+				dynamic_ratio_packing=False, total_boxes=2, total_pieces=10,
+			),
+			frappe._dict(
+				sizes=["S"], size_pieces={"S": 15}, pieces_per_box=5,
+				dynamic_ratio_packing=False, total_boxes=3, total_pieces=15,
+			),
+		]
+		ipd_doc = frappe._dict(is_set_item=0)
+
+		with (
+			patch.object(finishing_plan.frappe, "get_all", return_value=grns) as get_all,
+			patch.object(
+				finishing_plan.frappe,
+				"get_value",
+				side_effect=["ITEM-1", "IPD-1", "ITEM-1", "IPD-1"],
+			),
+			patch.object(finishing_plan.frappe, "get_cached_doc", return_value=ipd_doc),
+			patch.object(
+				finishing_plan,
+				"_get_packing_grn_report_values",
+				side_effect=packing_rows,
+			),
+		):
+			result = finishing_plan.get_finishing_packed_details(
+				from_date="2026-09-01",
+				to_date="2026-09-02",
+				lot_list=["LOT-1"],
+				item_list=["ITEM-1"],
+				summary=1,
+			)
+
+		self.assertEqual([row["date"] for row in result["data"]], [
+			"2026-09-01", "2026-09-02",
+		])
+		self.assertEqual([row["total_pieces"] for row in result["data"]], [10, 15])
+		filters = get_all.call_args.kwargs["filters"]
+		self.assertEqual(
+			filters["actual_date"],
+			["between", ["2026-09-01", "2026-09-02"]],
+		)
+
 	def test_ironing_dpr_keeps_set_parts_with_same_colour_separate(self):
 		dc_docs = {}
 		for name, part in (("DC-TOP", "Top"), ("DC-BOTTOM", "Bottom")):
@@ -138,6 +187,89 @@ class TestFinishingPlan(FrappeTestCase):
 		self.assertEqual(rows_by_part["Top"]["total_qty"], 10)
 		self.assertEqual(rows_by_part["Bottom"]["S"], 8)
 		self.assertEqual(rows_by_part["Bottom"]["total_qty"], 8)
+
+	def test_ironing_dpr_summary_splits_the_same_lot_by_actual_date(self):
+		dc_docs = {}
+		for name, qty in (("DC-DAY-1", 10), ("DC-DAY-2", 15)):
+			doc = MagicMock()
+			doc.name = name
+			doc.lot = "LOT-1"
+			doc.item = "ITEM-1"
+			doc.production_detail = "IPD-1"
+			doc.items = qty
+			doc.get.side_effect = lambda fieldname, current_doc=doc: getattr(
+				current_doc, fieldname, None
+			)
+			dc_docs[name] = doc
+
+		def get_doc(doctype, name):
+			if doctype == "Delivery Challan":
+				return dc_docs[name]
+			if doctype == "Lot":
+				return SimpleNamespace(production_detail="IPD-1")
+			raise AssertionError((doctype, name))
+
+		def fetch_item_details(qty, _ipd, _lot):
+			return [{
+				"primary_attribute_values": ["S"],
+				"items": [{
+					"attributes": {"Colour": "Navy"},
+					"values": {"S": {"delivered_quantity": qty}},
+				}],
+			}]
+
+		with (
+			patch.object(
+				production_utils.frappe.db,
+				"get_single_value",
+				return_value="Ironing",
+			),
+			patch.object(
+				production_utils.frappe.db,
+				"sql",
+				side_effect=[
+					[],
+					[
+						frappe._dict(name="DC-DAY-1", actual_date="2026-09-01"),
+						frappe._dict(name="DC-DAY-2", actual_date="2026-09-02"),
+					],
+				],
+			) as sql,
+			patch.object(
+				production_utils.frappe,
+				"get_single",
+				return_value=frappe._dict(
+					default_packing_attribute="Colour",
+					default_set_item_attribute="Part",
+				),
+			),
+			patch.object(production_utils.frappe, "get_doc", side_effect=get_doc),
+			patch.object(
+				production_utils.frappe,
+				"get_value",
+				return_value=frappe._dict(is_set_item=0, set_item_attribute=None),
+			),
+			patch(
+				"production_api.production_api.doctype.delivery_challan.delivery_challan.fetch_item_details",
+				side_effect=fetch_item_details,
+			),
+		):
+			result = production_utils.dc_dpr_report(
+				from_date="2026-09-01",
+				to_date="2026-09-02",
+				lot=["LOT-1"],
+				item=["ITEM-1"],
+				summary=1,
+			)
+
+		self.assertEqual([row["date"] for row in result], ["2026-09-01", "2026-09-02"])
+		self.assertEqual([row["rows"][0]["total_qty"] for row in result], [10, 15])
+		query, values = sql.call_args_list[1].args[:2]
+		self.assertIn("t1.actual_date BETWEEN %(from_date)s AND %(to_date)s", query)
+		self.assertEqual(values["from_date"], "2026-09-01")
+		self.assertEqual(values["to_date"], "2026-09-02")
+		self.assertEqual(values["lot"], ("LOT-1",))
+		self.assertEqual(values["item"], ("ITEM-1",))
 
 	def _get_ocr_test_doc(self):
 		return frappe._dict(

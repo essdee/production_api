@@ -228,6 +228,74 @@ def get_dashboard_data(supplier):
 	)
 	return data
 
+
+@frappe.whitelist()
+def get_io_input_pending_data(supplier):
+	"""Return configured sewing input and output totals by line and lot."""
+	settings = frappe.get_single("MRP Settings")
+	input_type = settings.sewing_input_qty_type
+	output_type = settings.sewing_line_output_type
+
+	if not input_type or not output_type:
+		frappe.throw(
+			"Configure Sewing Input Qty Type and Sewing Line Output Type in MRP Settings"
+		)
+
+	rows = frappe.db.sql(
+		"""
+			SELECT
+				COALESCE(NULLIF(sped.work_station, ''), 'Not Specified') AS sewing_line,
+				sp.lot,
+				sp.item,
+				SUM(
+					CASE WHEN sped.input_type = %(input_type)s
+						THEN spd.quantity ELSE 0 END
+				) AS input_qty,
+				SUM(
+					CASE WHEN sped.input_type = %(output_type)s
+						THEN spd.quantity ELSE 0 END
+				) AS line_output_qty
+			FROM `tabSewing Plan` sp
+			INNER JOIN `tabWork Order` wo ON wo.name = sp.work_order
+			INNER JOIN `tabSewing Plan Entry Detail` sped
+				ON sped.sewing_plan = sp.name
+			INNER JOIN `tabSewing Plan Detail` spd ON spd.parent = sped.name
+			WHERE sp.supplier = %(supplier)s
+				AND wo.docstatus = 1
+				AND wo.open_status = 'Open'
+				AND sped.input_type IN (%(input_type)s, %(output_type)s)
+			GROUP BY sped.work_station, sp.lot, sp.item
+			ORDER BY sewing_line, sp.lot, sp.item
+		""",
+		{
+			"supplier": supplier,
+			"input_type": input_type,
+			"output_type": output_type,
+		},
+		as_dict=True,
+	)
+
+	totals = {
+		"input_qty": 0,
+		"line_output_qty": 0,
+		"input_pending": 0,
+	}
+	for row in rows:
+		row.input_qty = flt(row.input_qty)
+		row.line_output_qty = flt(row.line_output_qty)
+		row.input_pending = row.input_qty - row.line_output_qty
+		totals["input_qty"] += row.input_qty
+		totals["line_output_qty"] += row.line_output_qty
+		totals["input_pending"] += row.input_pending
+
+	return {
+		"rows": rows,
+		"totals": totals,
+		"input_type": input_type,
+		"output_type": output_type,
+	}
+
+
 @frappe.whitelist()
 def get_sp_status_summary(supplier):
 	ipd_settings = frappe.get_single("IPD Settings")
