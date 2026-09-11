@@ -4,12 +4,33 @@ import frappe
 from frappe.tests.utils import FrappeTestCase
 
 from production_api.sd_yrp_sync import (
+	SD_YRP_INITIAL_SYNC_ORDER,
+	SD_YRP_SYNC_DOCTYPES,
 	prepare_sd_yrp_doc_for_publish,
 	publish_sd_yrp_event,
 )
 
 
 class TestSDYRPSyncPrerequisites(FrappeTestCase):
+	def test_grn_item_type_is_enabled_for_initial_and_live_sync(self):
+		self.assertIn("GRN Item Type", SD_YRP_SYNC_DOCTYPES)
+		self.assertIn("GRN Item Type", SD_YRP_INITIAL_SYNC_ORDER)
+
+		grn_item_type = frappe._dict(
+			doctype="GRN Item Type",
+			name="Accepted",
+			grn_type="Accepted",
+			type="Accepted",
+		)
+		with patch.dict(frappe.local.conf, {"kafka": {"enabled": True}}), patch(
+			"production_api.sd_yrp_sync.publish_doc_event",
+		) as publish:
+			publish_sd_yrp_event(grn_item_type, "on_update")
+
+		publish.assert_called_once()
+		self.assertEqual(publish.call_args.kwargs["doctype"], "GRN Item Type")
+		self.assertEqual(publish.call_args.kwargs["target_topic"], "sd_yrp_master")
+
 	def test_lot_payload_preserves_all_business_fields(self):
 		payload = prepare_sd_yrp_doc_for_publish(frappe._dict(
 			doctype="Lot",

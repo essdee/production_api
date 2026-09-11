@@ -173,7 +173,18 @@ class TestEssdeeYrpTransferCreate(FrappeTestCase):
         self.assertEqual(payload["supplier"], grn.delivery_location)
         self.assertTrue(payload["items"])
         self.assertTrue(all(row.get("lot") for row in payload["items"]))
-        self.assertTrue(all(row["received_type"] == "Accepted" for row in payload["items"]))
+        default_received_type = frappe.db.get_single_value(
+            "Stock Settings", "default_received_type"
+        )
+        expected_received_types = [
+            row.received_type or default_received_type
+            for row in grn.items
+            if flt(row.quantity) > 0
+        ]
+        self.assertEqual(
+            [row["received_type"] for row in payload["items"]],
+            expected_received_types,
+        )
         self.assertEqual(grn.essdee_yrp_stock_entry_created, 1)
         self.assertEqual(grn.essdee_yrp_stock_entry, "STE-YRP-9")
         self.assertEqual(frappe.get_doc("Stock Entry", grn.mrp_material_issue_ref).docstatus, 1)

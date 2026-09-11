@@ -128,6 +128,7 @@ doc_events = {
         "User",
         "Country",
         "UOM",
+        "GRN Item Type",
         "Brand",
         "Product Category",
         "Item Category",

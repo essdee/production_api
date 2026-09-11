@@ -4213,7 +4213,7 @@ def create_essdee_yrp_stock_entry(grn_name):
     """Atomic cross-bench transfer (PO-GRNs only). The mrp Material Issue (at
     delivery_location) is created+submitted first but stays uncommitted until the yrp
     receipt succeeds; any yrp/HTTP/network failure rolls it back. Warehouse is resolved
-    on the yrp side from the supplier (= delivery_location); received_type = 'Accepted'."""
+    on the yrp side from the supplier (= delivery_location)."""
     doc = frappe.get_doc("Goods Received Note", grn_name)
 
     # Authorization gate: this transfer creates+submits a Stock Entry with
@@ -4233,6 +4233,19 @@ def create_essdee_yrp_stock_entry(grn_name):
     if not src:
         frappe.throw(_("No GRN items with positive quantity to transfer."))
 
+    default_received_type = frappe.db.get_single_value(
+        "Stock Settings", "default_received_type"
+    )
+    transfer_rows = [
+        (row, row.received_type or default_received_type)
+        for row in src
+    ]
+    if any(not received_type for _row, received_type in transfer_rows):
+        frappe.throw(_(
+            "Received Type is missing on the GRN and Stock Settings has no "
+            "Default Received Type. Nothing was transferred."
+        ))
+
     # 1) mrp reduction: Material Issue at delivery_location (uncommitted)
     mi = frappe.new_doc("Stock Entry")                 # mrp_stock Stock Entry
     mi.purpose = "Material Issue"
@@ -4251,16 +4264,18 @@ def create_essdee_yrp_stock_entry(grn_name):
     # since same-item different-lot rows must not share a row_index (the grouping reads lot from
     # the group's first row only).
     mi.set("items", [{"item": r.item_variant, "lot": r.lot, "qty": r.quantity, "uom": r.uom,
-                      "received_type": r.received_type, "remarks": "essdee_yrp transfer",
-                      "row_index": idx, "table_index": 0} for idx, r in enumerate(src)])
+                      "received_type": received_type, "remarks": "essdee_yrp transfer",
+                      "row_index": idx, "table_index": 0}
+                     for idx, (r, received_type) in enumerate(transfer_rows)])
     mi.flags.allow_from_grn = True
     mi.insert(ignore_permissions=True)
     mi.submit()                                        # -SLE, NOT yet committed
 
-    # 2) POST to essdee_yrp (supplier = delivery_location; lot per row; received_type Accepted)
+    # 2) POST to essdee_yrp (supplier = delivery_location; lot/type preserved per row)
     payload = {"source_grn": grn_name, "supplier": doc.delivery_location,
                "items": [{"item_variant": r.item_variant, "qty": r.quantity, "uom": r.uom,
-                          "rate": r.rate, "lot": r.lot, "received_type": "Accepted"} for r in src]}
+                          "rate": r.rate, "lot": r.lot, "received_type": received_type}
+                         for r, received_type in transfer_rows]}
     # The HTTP call, the status-code check AND resp.json() parsing all live INSIDE this
     # guard: a malformed/non-JSON/500/unexpected response must also roll back the mrp
     # Material Issue (never leave it committed) and surface a clear error.
