@@ -90,6 +90,11 @@
                             :selected_supplier="selected_supplier"
                             :refresh_counter="refresh_counter"
                         />
+                        <IOInputPendingTab
+                            v-show="current_tab === 'io_input_pending'"
+                            :selected_supplier="selected_supplier"
+                            :refresh_counter="refresh_counter"
+                        />
                         <FIUpdatesTab
                             v-show="current_tab === 'fi_updates'"
                             :selected_supplier="selected_supplier"
@@ -130,6 +135,7 @@ import LineTab from './components/LineTab.vue'
 import FIUpdatesTab from './components/FIUpdatesTab.vue'
 import MonthlySummaryTab from './components/MonthlySummaryTab.vue'
 import ItemSummaryTab from './components/ItemSummaryTab.vue'
+import IOInputPendingTab from './components/IOInputPendingTab.vue'
 import Consumption from './components/Consumption.vue'
 import ClosedWorkOrderGRNTab from './components/ClosedWorkOrderGRNTab.vue'
 import StrengthReportTab from './components/StrengthReportTab.vue'
@@ -158,6 +164,7 @@ const tabs = computed(() => {
         { id: 'line', label: 'Entries', icon: IconLinePlan },
         { id: 'monthly_summary', label: 'Monthly Summary', icon: IconMonthlySummary },
         { id: 'item_summary', label: 'Item Summary', icon: IconItemSummary },
+        { id: 'io_input_pending', label: 'I/O Input Pending', icon: IconLinePlan },
 		{id:'consumption', label:'Consumption', icon: IconItemSummary},
         { id: 'strength_report', label: 'Strength Report', icon: IconManpower },
         { id: 'closed_wo_grn', label: 'Closed WO GRN', icon: IconItemSummary }

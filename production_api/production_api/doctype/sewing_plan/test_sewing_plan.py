@@ -242,6 +242,80 @@ class TestSewingPlan(FrappeTestCase):
 		self.assertIn("fieldtype: 'Date'", status_source)
 		self.assertIn("normalizeInputDate(row['Input Date'])", status_source)
 
+	def test_io_input_pending_uses_configured_types_and_calculates_difference(self):
+		settings = frappe._dict(
+			sewing_input_qty_type="Configured Input",
+			sewing_line_output_type="Configured Output",
+		)
+		query_rows = [
+			frappe._dict(
+				sewing_line="Sewing Line 1",
+				lot="LOT-1",
+				item="ITEM-1",
+				input_qty=125,
+				line_output_qty=100,
+			),
+			frappe._dict(
+				sewing_line="Sewing Line 2",
+				lot="LOT-2",
+				item="ITEM-2",
+				input_qty=40,
+				line_output_qty=50,
+			),
+		]
+
+		with (
+			patch.object(sewing_plan.frappe, "get_single", return_value=settings),
+			patch.object(
+				sewing_plan.frappe.db, "sql", return_value=query_rows
+			) as sql,
+		):
+			result = sewing_plan.get_io_input_pending_data("UNIT-1")
+
+		self.assertEqual(result["rows"][0].input_pending, 25)
+		self.assertEqual(result["rows"][1].input_pending, -10)
+		self.assertEqual(result["totals"]["input_qty"], 165)
+		self.assertEqual(result["totals"]["line_output_qty"], 150)
+		self.assertEqual(result["totals"]["input_pending"], 15)
+		self.assertEqual(result["input_type"], "Configured Input")
+		self.assertEqual(result["output_type"], "Configured Output")
+
+		query, values = sql.call_args.args[:2]
+		self.assertIn("GROUP BY sped.work_station, sp.lot, sp.item", query)
+		self.assertIn("wo.open_status = 'Open'", query)
+		self.assertEqual(values["supplier"], "UNIT-1")
+		self.assertEqual(values["input_type"], "Configured Input")
+		self.assertEqual(values["output_type"], "Configured Output")
+
+	def test_io_input_pending_ui_is_available_on_sewing_details(self):
+		root_source = Path(
+			frappe.get_app_path(
+				"production_api", "public", "js", "SewingPlan", "SewingPlan.vue"
+			)
+		).read_text()
+		component_source = Path(
+			frappe.get_app_path(
+				"production_api",
+				"public",
+				"js",
+				"SewingPlan",
+				"components",
+				"IOInputPendingTab.vue",
+			)
+		).read_text()
+
+		self.assertIn("label: 'I/O Input Pending'", root_source)
+		self.assertIn("import IOInputPendingTab", root_source)
+		self.assertIn("<IOInputPendingTab", root_source)
+		self.assertIn("Input Qty", component_source)
+		self.assertIn("Line Output Qty", component_source)
+		self.assertIn("Input Pending", component_source)
+		self.assertIn("row.input_pending", component_source)
+		self.assertIn("All Work Stations", component_source)
+		self.assertIn("selectedWorkStation", component_source)
+		self.assertIn("row.sewing_line !== selectedWorkStation.value", component_source)
+		self.assertIn("displayTotals", component_source)
+
 	def test_unmapped_bom_item_loads_saved_consumption_by_item(self):
 		saved_row = frappe._dict(
 			item_name="Jobwork-Mobilon Tape",
