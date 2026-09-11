@@ -13,6 +13,7 @@ SD_YRP_EXACT_MATCH_DOCTYPES = (
 	"MRP Settings",
 	"Country",
 	"UOM",
+	"GRN Item Type",
 	"Item Group",
 	"Brand",
 	"Department",
@@ -60,6 +61,7 @@ SD_YRP_SYNC_DOCTYPES = SD_YRP_EXACT_MATCH_DOCTYPES + SD_YRP_CUSTOM_MAPPER_DOCTYP
 SD_YRP_INITIAL_SYNC_ORDER = (
 	"Country",
 	"UOM",
+	"GRN Item Type",
 	"Brand",
 	"Terms and Condition",
 	"Product Season",
