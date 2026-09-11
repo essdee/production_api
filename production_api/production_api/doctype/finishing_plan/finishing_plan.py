@@ -3,7 +3,7 @@
 
 import frappe
 from itertools import groupby
-from frappe.utils import cint, flt
+from frappe.utils import cint, flt, getdate
 from frappe.model.document import Document
 from production_api.production_api.doctype.supplier.supplier import get_primary_address
 from production_api.production_api.doctype.item.item import get_or_create_variant, get_attribute_details, build_variant_attributes
@@ -3609,31 +3609,55 @@ def _get_packing_grn_report_values(grn_names, ipd_doc):
 
 
 @frappe.whitelist()
-def get_finishing_packed_details(date, lot_list=None, item_list=None):
-	"""Get exact size pieces and physical box totals from packing GRNs."""
+def get_finishing_packed_details(
+	date=None,
+	lot_list=None,
+	item_list=None,
+	from_date=None,
+	to_date=None,
+	summary=0,
+):
+	"""Get date-wise size pieces and physical box totals from packing GRNs."""
 	import json
 	if isinstance(lot_list, str):
 		lot_list = json.loads(lot_list)
 	if isinstance(item_list, str):
 		item_list = json.loads(item_list)
 
+	summary = cint(summary)
+	if summary:
+		if not from_date or not to_date:
+			frappe.throw("From Date and To Date are required for Summary")
+		if getdate(from_date) > getdate(to_date):
+			frappe.throw("From Date cannot be after To Date")
+		actual_date_filter = ["between", [from_date, to_date]]
+	else:
+		if not date:
+			frappe.throw("Date is required")
+		actual_date_filter = date
+
 	grns = frappe.get_all("Goods Received Note", filters={
 		"against": "Work Order",
 		"includes_packing": 1,
 		"docstatus": 1,
-		"actual_date": date,
-	}, fields=["name", "lot"])
+		"actual_date": actual_date_filter,
+	}, fields=["name", "lot", "actual_date"])
 
-	lot_grns = {}
+	date_lot_grns = {}
 	for grn in grns:
-		lot_grns.setdefault(grn.lot, []).append(grn.name)
+		report_date = str(grn.actual_date or date)
+		date_lot_grns.setdefault((report_date, grn.lot), []).append(grn.name)
 
 	# Filter by lot_list
 	if lot_list:
-		lot_grns = {k: v for k, v in lot_grns.items() if k in lot_list}
+		date_lot_grns = {
+			key: value
+			for key, value in date_lot_grns.items()
+			if key[1] in lot_list
+		}
 
 	result = []
-	for lot, grn_names in lot_grns.items():
+	for (report_date, lot), grn_names in sorted(date_lot_grns.items()):
 		lot_item = frappe.get_value("Lot", lot, "item")
 		# Filter by item_list
 		if item_list and lot_item not in item_list:
@@ -3649,6 +3673,7 @@ def get_finishing_packed_details(date, lot_list=None, item_list=None):
 			continue
 
 		result.append({
+			"date": report_date,
 			"lot": lot,
 			"item": lot_item,
 			"sizes": packing.sizes,

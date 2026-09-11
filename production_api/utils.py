@@ -4367,13 +4367,32 @@ def get_the_data_of_each_row(item,process,supplier,lot):
 	return filtered_wo
 
 @frappe.whitelist()
-def dc_dpr_report(date=None, lot=None, item=None, dc_name=None):
+def dc_dpr_report(
+	date=None,
+	lot=None,
+	item=None,
+	dc_name=None,
+	from_date=None,
+	to_date=None,
+	summary=0,
+):
 	conditions = ""
 	con = {}
 
-	if date:
+	summary = sbool(summary)
+	if summary:
+		if not from_date or not to_date:
+			frappe.throw("From Date and To Date are required for Summary")
+		if getdate(from_date) > getdate(to_date):
+			frappe.throw("From Date cannot be after To Date")
+		conditions += " AND t1.actual_date BETWEEN %(from_date)s AND %(to_date)s"
+		con["from_date"] = from_date
+		con["to_date"] = to_date
+	elif date:
 		conditions += " AND t1.actual_date = %(date)s"
 		con["date"] = date
+	elif not dc_name:
+		frappe.throw("Date is required")
 
 	if dc_name:
 		conditions += " AND t1.name = %(dc_name)s"
@@ -4406,10 +4425,10 @@ def dc_dpr_report(date=None, lot=None, item=None, dc_name=None):
 
 	dc_rows = frappe.db.sql(
 		"""
-		SELECT t1.name
+		SELECT t1.name, t1.actual_date
 		FROM `tabDelivery Challan` t1
 		WHERE 1=1 {conditions}
-		ORDER BY t1.lot, t1.name
+		ORDER BY t1.actual_date, t1.lot, t1.name
 		""".format(conditions=conditions),
 		con,
 		as_dict=True
@@ -4432,7 +4451,9 @@ def dc_dpr_report(date=None, lot=None, item=None, dc_name=None):
 		) or frappe._dict()
 		is_set_item = ipd_details.get("is_set_item")
 		part_attr = ipd_details.get("set_item_attribute") or default_part_attr
-		lot_bucket=lot_map.setdefault(dc_data.get("lot"), {
+		report_date = str(r.get("actual_date") or date)
+		lot_bucket=lot_map.setdefault((report_date, dc_data.get("lot")), {
+				"date": report_date,
 				"lot":dc_data.lot,
 				"item":dc_data.item,
 				"attributes":[],
@@ -4474,6 +4495,7 @@ def dc_dpr_report(date=None, lot=None, item=None, dc_name=None):
 		for idx,row in enumerate(rows,1):
 			row["s_no"]=idx
 		result.append({
+				"date": lot["date"],
 				"lot": lot["lot"],
 				"item": lot["item"],
 				"attributes": lot["attributes"],

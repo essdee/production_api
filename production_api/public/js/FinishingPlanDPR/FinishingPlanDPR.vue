@@ -2,24 +2,34 @@
     <div class="dpr-tab">
         <div class="page-title-bar">Finishing Plan DPR</div>
         <div class="sp-filter-section">
-            <div class="filter-card">
+            <div class="filter-card dpr-filter-row">
                 <div class="filter-title-group">
                     <svg class="filter-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"></path>
                     </svg>
                     <span class="filter-label">Filter by Date</span>
                 </div>
-                <div class="filter-control">
+                <div v-show="!summary" class="filter-control">
                     <div ref="date_filter_wrapper"></div>
                 </div>
-                <div class="filter-control">
-                    <div ref="lot_filter_wrapper"></div>
-                </div>
-                <div class="filter-control">
+                <div v-show="summary" class="filter-control">
                     <div ref="item_filter_wrapper"></div>
                 </div>
-                <div>
-                    <button class="btn btn-primary" @click="fetchData()" style="border-radius: 12px; font-weight: 700;">
+                <div v-show="summary" class="filter-control">
+                    <div ref="lot_filter_wrapper"></div>
+                </div>
+                <div v-show="summary" class="filter-control">
+                    <div ref="from_date_filter_wrapper"></div>
+                </div>
+                <div v-show="summary" class="filter-control">
+                    <div ref="to_date_filter_wrapper"></div>
+                </div>
+                <label class="summary-toggle">
+                    <input v-model="summary" type="checkbox" @change="onSummaryChange">
+                    <span>Summary</span>
+                </label>
+                <div class="dpr-filter-actions">
+                    <button class="btn btn-primary" @click="fetchData()">
                         Get Report
                     </button>
                 </div>
@@ -31,7 +41,7 @@
                 <div class="section-title-block">
                     <span class="section-title">Finishing Packed Details</span>
                     <span class="section-divider">|</span>
-                    <span class="section-title">{{ frappe.datetime.str_to_user(selected_date) }}</span>
+                    <span class="section-title">{{ displayPeriod }}</span>
                 </div>
                 <div class="section-actions">
                     <button class="copy-btn" @click="copyToClipboard()" :disabled="copying">
@@ -59,46 +69,53 @@
                 </div>
             </div>
 
-            <div v-for="(row, idx) in rows" :key="row.lot" class="table-wrapper no-scrollbar" style="margin-bottom: 24px;">
-                <table class="data-table">
-                    <thead>
-                        <tr class="header-row">
-                            <th class="index-col">#</th>
-                            <th>Lot</th>
-                            <th>Item</th>
-                            <th v-for="size in row.sizes" :key="size" class="size-col">{{ size }}</th>
-                            <th class="total-col">Total Pieces</th>
-                            <th>Pcs/Box</th>
-                            <th class="total-col">Total Boxes</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr class="data-row">
-                            <td class="index-cell">{{ idx + 1 }}</td>
-                            <td class="colour-cell">{{ row.lot }}</td>
-                            <td class="colour-cell">{{ row.item}}</td>
-                            <td v-for="size in row.sizes" :key="size" class="size-cell">
-                                {{ row.size_qty[size] || '' }}
-                            </td>
-                            <td class="total-cell">
-                                <span class="total-val">{{ row.total_pieces }}</span>
-                            </td>
-                            <td class="size-cell">{{ row.pieces_per_box }}</td>
-							 <td class="total-cell">
-                                <span class="total-val">{{ row.total_boxes }}</span>
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
+            <section v-for="group in reportsByDate" :key="group.date" class="report-date-section">
+                <div v-if="summary" class="report-date-heading">
+                    <strong>{{ formatDate(group.date) }}</strong>
+                    <span>{{ fmt(groupTotalPieces(group.rows)) }} pieces · {{ fmt(groupTotalBoxes(group.rows)) }} boxes</span>
+                </div>
+
+                <div v-for="(row, idx) in group.rows" :key="`${group.date}-${row.lot}`" class="table-wrapper no-scrollbar" style="margin-bottom: 24px;">
+                    <table class="data-table">
+                        <thead>
+                            <tr class="header-row">
+                                <th class="index-col">#</th>
+                                <th>Lot</th>
+                                <th>Item</th>
+                                <th v-for="size in row.sizes" :key="size" class="size-col">{{ size }}</th>
+                                <th class="total-col">Total Pieces</th>
+                                <th>Pcs/Box</th>
+                                <th class="total-col">Total Boxes</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr class="data-row">
+                                <td class="index-cell">{{ idx + 1 }}</td>
+                                <td class="colour-cell">{{ row.lot }}</td>
+                                <td class="colour-cell">{{ row.item }}</td>
+                                <td v-for="size in row.sizes" :key="size" class="size-cell">
+                                    {{ row.size_qty[size] || '' }}
+                                </td>
+                                <td class="total-cell">
+                                    <span class="total-val">{{ row.total_pieces }}</span>
+                                </td>
+                                <td class="size-cell">{{ row.pieces_per_box }}</td>
+                                <td class="total-cell">
+                                    <span class="total-val">{{ row.total_boxes }}</span>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
         </div>
 
         <div v-else-if="fetched" class="empty-state">
-            <p>No Packed Details for this date</p>
+            <p>No Packed Details for the selected {{ summary ? 'filters' : 'date' }}</p>
         </div>
 
         <div v-else class="empty-state">
-            <p>Select a date and click "Get Report" to view packing details</p>
+            <p>{{ summary ? 'Select a date range' : 'Select a date' }} and click "Get Report" to view packing details</p>
         </div>
     </div>
 </template>
@@ -110,11 +127,18 @@ import * as htmlToImage from 'html-to-image'
 const date_filter_wrapper = ref(null)
 const lot_filter_wrapper = ref(null)
 const item_filter_wrapper = ref(null)
+const from_date_filter_wrapper = ref(null)
+const to_date_filter_wrapper = ref(null)
 const report_section = ref(null)
 let date_filter_control = null
 let lot_control = null
 let item_control = null
+let from_date_control = null
+let to_date_control = null
 const selected_date = ref(null)
+const selected_from_date = ref(null)
+const selected_to_date = ref(null)
+const summary = ref(false)
 const rows = ref([])
 const all_sizes = ref([])
 const copying = ref(false)
@@ -147,6 +171,7 @@ const initFilter = () => {
                 fieldtype: 'MultiSelectList',
                 fieldname: 'lot',
                 label: 'Lot',
+                placeholder: 'Lot',
                 options: 'Lot',
                 get_data: function(txt) {
                     return frappe.db.get_link_options('Lot', txt)
@@ -164,6 +189,7 @@ const initFilter = () => {
                 fieldtype: 'MultiSelectList',
                 fieldname: 'item',
                 label: 'Item',
+                placeholder: 'Item',
                 options: 'Item',
                 get_data: function(txt) {
                     return frappe.db.get_link_options('Item', txt)
@@ -172,46 +198,109 @@ const initFilter = () => {
             render_input: true,
         })
     }
+
+    if (from_date_filter_wrapper.value) {
+        $(from_date_filter_wrapper.value).empty()
+        from_date_control = frappe.ui.form.make_control({
+            parent: $(from_date_filter_wrapper.value),
+            df: {
+                fieldtype: 'Date',
+                fieldname: 'from_date',
+                label: 'From Date',
+                placeholder: 'From Date',
+                change: () => {
+                    selected_from_date.value = from_date_control.get_value()
+                },
+            },
+            render_input: true,
+        })
+    }
+
+    if (to_date_filter_wrapper.value) {
+        $(to_date_filter_wrapper.value).empty()
+        to_date_control = frappe.ui.form.make_control({
+            parent: $(to_date_filter_wrapper.value),
+            df: {
+                fieldtype: 'Date',
+                fieldname: 'to_date',
+                label: 'To Date',
+                placeholder: 'To Date',
+                change: () => {
+                    selected_to_date.value = to_date_control.get_value()
+                },
+            },
+            render_input: true,
+        })
+    }
+}
+
+const onSummaryChange = () => {
+    rows.value = []
+    fetched.value = false
 }
 
 const fetchData = () => {
-    if (!selected_date.value) {
+    if (!summary.value && !selected_date.value) {
         frappe.show_alert({ message: 'Please select a date', indicator: 'orange' })
         return
     }
+    if (summary.value && (!selected_from_date.value || !selected_to_date.value)) {
+        frappe.show_alert({ message: 'Please select From Date and To Date', indicator: 'orange' })
+        return
+    }
+    if (summary.value && selected_from_date.value > selected_to_date.value) {
+        frappe.show_alert({ message: 'From Date cannot be after To Date', indicator: 'orange' })
+        return
+    }
+
     frappe.call({
         method: 'production_api.production_api.doctype.finishing_plan.finishing_plan.get_finishing_packed_details',
         args: {
-            date: selected_date.value,
-            lot_list: lot_control ? lot_control.get_value() : [],
-            item_list: item_control ? item_control.get_value() : [],
+            date: summary.value ? null : selected_date.value,
+            from_date: summary.value ? selected_from_date.value : null,
+            to_date: summary.value ? selected_to_date.value : null,
+            summary: summary.value ? 1 : 0,
+            lot_list: summary.value && lot_control ? lot_control.get_value() : [],
+            item_list: summary.value && item_control ? item_control.get_value() : [],
         },
         freeze: true,
         freeze_message: 'Fetching report...',
         callback: (r) => {
             fetched.value = true
-            if (r.message) {
-                rows.value = r.message.data
-                all_sizes.value = r.message.sizes
-            }
+            rows.value = r.message?.data || []
+            all_sizes.value = r.message?.sizes || []
         }
     })
 }
 
-const getSizeTotal = (size) => {
-    let total = 0
+const reportsByDate = computed(() => {
+    const groups = new Map()
     for (const row of rows.value) {
-        total += row.size_qty[size] || 0
+        const reportDate = row.date || selected_date.value
+        if (!groups.has(reportDate)) groups.set(reportDate, [])
+        groups.get(reportDate).push(row)
     }
-    return total
-}
+    return [...groups.entries()].map(([date, dateRows]) => ({ date, rows: dateRows }))
+})
+
+const displayPeriod = computed(() => {
+    if (summary.value) {
+        return `${formatDate(selected_from_date.value)} - ${formatDate(selected_to_date.value)}`
+    }
+    return formatDate(selected_date.value)
+})
+
+const formatDate = (date) => date ? frappe.datetime.str_to_user(date) : ''
+const fmt = (value) => Number(value || 0).toLocaleString('en-IN', { maximumFractionDigits: 3 })
+const groupTotalPieces = (dateRows) => dateRows.reduce((sum, row) => sum + Number(row.total_pieces || 0), 0)
+const groupTotalBoxes = (dateRows) => dateRows.reduce((sum, row) => sum + Number(row.total_boxes || 0), 0)
 
 const grandTotalBoxes = computed(() => {
-    return rows.value.reduce((sum, row) => sum + (row.total_boxes || 0), 0)
+    return fmt(groupTotalBoxes(rows.value))
 })
 
 const grandTotalPieces = computed(() => {
-    return rows.value.reduce((sum, row) => sum + (row.total_pieces || 0), 0)
+    return fmt(groupTotalPieces(rows.value))
 })
 
 const copyToClipboard = async () => {
@@ -251,6 +340,65 @@ onMounted(() => {
 
 .dpr-tab {
     padding: 1rem;
+}
+
+.dpr-filter-row {
+    flex-wrap: wrap;
+    gap: 1rem 1.5rem;
+    max-width: 100%;
+}
+
+.dpr-filter-actions {
+    display: flex;
+    align-items: center;
+    min-height: 38px;
+}
+
+.dpr-filter-actions .btn {
+    border-radius: 9px;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.summary-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0;
+    color: #334155;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.summary-toggle input {
+    width: 16px;
+    height: 16px;
+    margin: 0;
+    accent-color: #1f2937;
+}
+
+.report-date-section + .report-date-section {
+    margin-top: 1.5rem;
+}
+
+.report-date-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.7rem 1rem;
+    margin-bottom: 0.75rem;
+    border-left: 4px solid #1a73e8;
+    border-radius: 0.5rem;
+    background: #eff6ff;
+    color: #1e3a5f;
+}
+
+.report-date-heading span {
+    color: #64748b;
+    font-size: 0.8rem;
+    font-weight: 600;
 }
 
 .section-header {
@@ -349,5 +497,17 @@ onMounted(() => {
 @keyframes spin {
     from { transform: rotate(0deg); }
     to { transform: rotate(360deg); }
+}
+
+@media (max-width: 768px) {
+    .dpr-filter-row {
+        width: 100%;
+        min-width: 0;
+        align-items: stretch;
+    }
+
+    .dpr-filter-row .filter-control {
+        flex-basis: 100%;
+    }
 }
 </style>
