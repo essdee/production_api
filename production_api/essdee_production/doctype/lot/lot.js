@@ -43,7 +43,10 @@ frappe.ui.form.on("Lot", {
 				frm.refresh_field("production_order")
 			}
 		})
-
+		if(frm.doc.production_detail){
+			frm.set_df_property("production_order", "read_only", true)
+			frm.refresh_field("production_order")
+		}
 		if (!frm.is_new()) {
 			frm.add_custom_button(__('Purchase Summary'), function () {
 				frappe.set_route("query-report", "Lot Purchase Summary", {
