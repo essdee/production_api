@@ -508,17 +508,15 @@ def get_ordered_details(items):
 def get_production_order_details(production_order, pieces_per_box=None):
 	doc = frappe.get_doc("Production Order", production_order)
 	order_qty = get_order_qty(doc.production_order_details)
-	is_piece_print = cint(frappe.form_dict.get("piece_print"))
-	if pieces_per_box is None and is_piece_print:
+	if pieces_per_box is None:
 		pieces_per_box = frappe.form_dict.get("pieces_per_box")
-	if pieces_per_box is not None or is_piece_print:
-		pieces_per_box = validate_piece_print_multiplier(pieces_per_box)
-		for details in order_qty.values():
-			details["qty"] = flt(details.get("qty")) * pieces_per_box
+	pieces_per_box = validate_pieces_per_box(pieces_per_box)
+	for details in order_qty.values():
+		details["piece_qty"] = flt(details.get("qty")) * pieces_per_box
 	return order_qty
 
 
-def validate_piece_print_multiplier(pieces_per_box):
+def validate_pieces_per_box(pieces_per_box):
 	piece_value = flt(pieces_per_box)
 	pieces_per_box = cint(piece_value)
 	if piece_value <= 0 or piece_value != pieces_per_box:
@@ -527,7 +525,7 @@ def validate_piece_print_multiplier(pieces_per_box):
 
 
 @frappe.whitelist()
-def get_piece_print_settings(production_order):
+def get_production_order_print_settings(production_order):
 	doc = frappe.get_doc("Production Order", production_order)
 	doc.check_permission("read")
 

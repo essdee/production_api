@@ -380,10 +380,7 @@ frappe.ui.form.on("Production Order", {
         frm.refresh_field("comments");
       }
       frm.add_custom_button(__("Print"), () => {
-        open_production_order_print(frm);
-      });
-      frm.add_custom_button(__("Piece Print"), () => {
-        prepare_piece_print(frm);
+        prepare_production_order_print(frm);
       });
       if (can_manage_production_order) {
         frm.add_custom_button(
@@ -447,18 +444,15 @@ function open_production_order_print(frm, pieces_per_box) {
     "&format=Production Order" +
     "&trigger_print=1";
 
-  if (pieces_per_box) {
-    print_url +=
-      "&piece_print=1&pieces_per_box=" + encodeURIComponent(pieces_per_box);
-  }
+  print_url += "&pieces_per_box=" + encodeURIComponent(pieces_per_box);
 
   window.open(frappe.urllib.get_full_url(print_url), "_blank");
 }
 
-function prepare_piece_print(frm) {
+function prepare_production_order_print(frm) {
   frappe.call({
     method:
-      "production_api.production_api.doctype.production_order.production_order.get_piece_print_settings",
+      "production_api.production_api.doctype.production_order.production_order.get_production_order_print_settings",
     args: { production_order: frm.doc.name },
     freeze: true,
     callback(r) {
@@ -470,14 +464,14 @@ function prepare_piece_print(frm) {
         return;
       }
 
-      show_piece_print_dialog(frm, settings.fg_item_exists);
+      show_production_order_print_dialog(frm, settings.fg_item_exists);
     },
   });
 }
 
-function show_piece_print_dialog(frm, fg_item_exists) {
+function show_production_order_print_dialog(frm, fg_item_exists) {
   const dialog = new frappe.ui.Dialog({
-    title: __("Piece Print"),
+    title: __("Print Production Order"),
     fields: [
       {
         fieldname: "pieces_per_box",

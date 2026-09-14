@@ -22,7 +22,7 @@ from production_api.production_api.doctype.production_order.production_order imp
 
 
 class TestProductionOrder(TestCase):
-	def test_piece_print_multiplies_only_quantities(self):
+	def test_print_keeps_box_quantity_and_adds_piece_quantity(self):
 		doc = _dict(production_order_details=[])
 		order_details = {
 			"S": {"qty": 10, "ratio": 1, "mrp": 100},
@@ -34,7 +34,7 @@ class TestProductionOrder(TestCase):
 			patch.object(
 				production_order.frappe.local,
 				"form_dict",
-				_dict(piece_print="1", pieces_per_box="5"),
+				_dict(pieces_per_box="5"),
 			),
 			patch.object(
 				production_order,
@@ -44,10 +44,16 @@ class TestProductionOrder(TestCase):
 		):
 			result = production_order.get_production_order_details("PPO-TEST")
 
-		self.assertEqual(result["S"], {"qty": 50, "ratio": 1, "mrp": 100})
-		self.assertEqual(result["M"], {"qty": 100, "ratio": 2, "mrp": 120})
+		self.assertEqual(
+			result["S"],
+			{"qty": 10, "piece_qty": 50, "ratio": 1, "mrp": 100},
+		)
+		self.assertEqual(
+			result["M"],
+			{"qty": 20, "piece_qty": 100, "ratio": 2, "mrp": 120},
+		)
 
-	def test_piece_print_uses_fg_item_master_pieces_per_box(self):
+	def test_print_uses_fg_item_master_pieces_per_box(self):
 		doc = _dict(item="FG-ITEM")
 		doc.check_permission = MagicMock()
 
@@ -64,7 +70,7 @@ class TestProductionOrder(TestCase):
 				return_value=10,
 			) as get_value,
 		):
-			result = production_order.get_piece_print_settings("PPO-TEST")
+			result = production_order.get_production_order_print_settings("PPO-TEST")
 
 		self.assertEqual(result, {
 			"fg_item_exists": True,
@@ -77,7 +83,7 @@ class TestProductionOrder(TestCase):
 			"pcs_per_box",
 		)
 
-	def test_piece_print_reports_item_missing_from_fg_item_master(self):
+	def test_print_reports_item_missing_from_fg_item_master(self):
 		doc = _dict(item="NON-FG-ITEM")
 		doc.check_permission = MagicMock()
 
@@ -94,14 +100,14 @@ class TestProductionOrder(TestCase):
 				return_value=None,
 			),
 		):
-			result = production_order.get_piece_print_settings("PPO-TEST")
+			result = production_order.get_production_order_print_settings("PPO-TEST")
 
 		self.assertEqual(result, {
 			"fg_item_exists": False,
 			"pieces_per_box": None,
 		})
 
-	def test_piece_print_heading_identifies_quantities_as_pieces(self):
+	def test_print_includes_box_and_piece_quantity_rows(self):
 		print_format_path = Path(
 			frappe.get_app_path(
 				"production_api",
@@ -115,10 +121,26 @@ class TestProductionOrder(TestCase):
 		format_fields = json.loads(print_format["format_data"])
 		html = format_fields[-1]["options"]
 
-		self.assertIn(
-			'Production Order Details{% if frappe.form_dict.get("piece_print") %} (Pieces){% endif %}',
-			html,
-		)
+		self.assertIn("Production Order Details</p>", html)
+		self.assertIn("<td>Qty (Box)</td>", html)
+		self.assertIn("<td>Qty (Piece)</td>", html)
+		self.assertIn("po_details[size]['piece_qty']", html)
+		self.assertNotIn("piece_print", html)
+
+	def test_print_button_prepares_box_and_piece_quantities(self):
+		form_source = Path(
+			frappe.get_app_path(
+				"production_api",
+				"production_api",
+				"doctype",
+				"production_order",
+				"production_order.js",
+			)
+		).read_text()
+
+		self.assertNotIn('frm.add_custom_button(__("Piece Print")', form_source)
+		self.assertIn("prepare_production_order_print(frm);", form_source)
+		self.assertIn('"&pieces_per_box="', form_source)
 
 	def test_transfer_comment_cleanup_preserves_other_audit_blocks(self):
 		from production_api.patches.v1_0.remove_ppo_quantity_transfer_comment_logs import (
