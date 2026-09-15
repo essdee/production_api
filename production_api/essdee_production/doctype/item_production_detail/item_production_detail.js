@@ -334,6 +334,7 @@ frappe.ui.form.on("Item Production Detail", {
 			frm.set_df_property('get_cutting_combination','hidden',false);
 		}
 		await frm.trigger("render_panel_wise_consumption_matrix")
+		await frm.trigger("render_panel_wise_cloth_mapping")
 		await frm.trigger("render_compacting_details")
 
 		// Lock form when Approved
@@ -1086,6 +1087,21 @@ frappe.ui.form.on("Item Production Detail", {
 		if(frm.is_dirty()){
 			$(field.wrapper).html(
 				'<div class="text-muted" style="padding:18px 0;">Save the Item Production Detail to load Compacting Details.</div>'
+			)
+			return
+		}
+
+		let cuttingCloths = frm.doc.cutting_cloths_json || {}
+		if(typeof cuttingCloths === "string"){
+			try {
+				cuttingCloths = JSON.parse(cuttingCloths)
+			} catch (_error) {
+				cuttingCloths = {}
+			}
+		}
+		if(!(cuttingCloths.items || []).length){
+			$(field.wrapper).html(
+				'<div class="text-muted" style="padding:18px 0;">Complete Cloth Mapping Details and save to load Compacting Details.</div>'
 			)
 			return
 		}
