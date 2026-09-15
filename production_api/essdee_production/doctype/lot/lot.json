@@ -374,8 +374,7 @@
   },
   {
    "fieldname": "column_break_njmh",
-   "fieldtype": "Column Break",
-   "hidden": 1
+   "fieldtype": "Column Break"
   },
   {
    "fieldname": "assigned_person",
