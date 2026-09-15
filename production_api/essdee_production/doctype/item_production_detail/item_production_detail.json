@@ -542,8 +542,7 @@
   },
   {
    "fieldname": "column_break_gwca",
-   "fieldtype": "Column Break",
-   "hidden": 1
+   "fieldtype": "Column Break"
   },
   {
    "fieldname": "cloth_attributes",
