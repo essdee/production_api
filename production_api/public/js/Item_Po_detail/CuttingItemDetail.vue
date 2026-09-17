@@ -99,12 +99,15 @@ function createInput(attr, index, value, is_header){
         df['precision'] = 4
     }
     if (fieldtype == 'Link' && attr != 'Dia'){
+        const attribute_mapping = cur_frm.doc.item_attributes
+            ?.find(row => row.attribute === attr)
+            ?.mapping
         df['options'] = 'Item Attribute Value'
         df['get_query'] = function(){
             return {
                 query:'production_api.essdee_production.doctype.item_production_detail.item_production_detail.get_attribute_detail_values',
                 filters: {
-                    'mapping': cur_frm.set_packing_attr_map_value,
+                    'mapping': attribute_mapping,
                 }
             }
         }
