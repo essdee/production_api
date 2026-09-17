@@ -189,15 +189,6 @@ def validate_cloth_yarn_ratio(doc):
 					row.idx, yarn_item
 				)
 			)
-		if frappe.db.exists(
-			"Item Item Attribute",
-			{"parent": yarn_item, "parenttype": "Item"},
-		):
-			frappe.throw(
-				_("Row {0}: Yarn Item {1} must not have variant attributes.").format(
-					row.idx, yarn_item
-				)
-			)
 		seen.add(yarn_item)
 		total += ratio
 
