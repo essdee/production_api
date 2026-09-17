@@ -211,6 +211,21 @@ class TestIPDCompacting(FrappeTestCase):
 		self.assertNotIn("compacting_dia", rows[1])
 
 	def test_ipd_form_loads_the_compacting_editor(self):
+		doctype_path = Path(
+			frappe.get_app_path(
+				"production_api",
+				"essdee_production",
+				"doctype",
+				"item_production_detail",
+				"item_production_detail.json",
+			)
+		)
+		fields = {
+			field["fieldname"]: field
+			for field in frappe.parse_json(doctype_path.read_text())["fields"]
+		}
+		self.assertFalse(fields["column_break_gwca"].get("hidden", 0))
+
 		source = Path(
 			frappe.get_app_path(
 				"production_api",
@@ -222,6 +237,13 @@ class TestIPDCompacting(FrappeTestCase):
 		).read_text()
 		self.assertIn('frm.trigger("render_compacting_details")', source)
 		self.assertIn("IPDCompactingDetails", source)
+		self.assertIn(
+			'await frm.trigger("render_panel_wise_consumption_matrix")\n'
+			'\t\tawait frm.trigger("render_panel_wise_cloth_mapping")\n'
+			'\t\tawait frm.trigger("render_compacting_details")',
+			source,
+		)
+		self.assertIn("if(!(cuttingCloths.items || []).length)", source)
 
 		component_source = Path(
 			frappe.get_app_path(
