@@ -44,6 +44,19 @@ class TestItem(unittest.TestCase):
 			])
 		)
 
+	@patch.object(
+		frappe.db,
+		"exists",
+		side_effect=AssertionError("Yarn variant attributes must not be restricted"),
+	)
+	@patch.object(frappe.db, "get_value", return_value=0)
+	def test_cloth_yarn_ratio_accepts_yarn_with_variant_attributes(
+		self, _get_value, _exists
+	):
+		validate_cloth_yarn_ratio(
+			self._cloth([{"yarn_item": "YARN-VARIANT-TEMPLATE", "ratio": 100}])
+		)
+
 	@patch.object(frappe.db, "exists", return_value=False)
 	@patch.object(frappe.db, "get_value", return_value=0)
 	def test_cloth_yarn_ratio_rejects_wrong_total(self, _get_value, _exists):
