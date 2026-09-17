@@ -156,6 +156,7 @@
    "read_only": 1
   },
   {
+   "allow_on_submit": 1,
    "fieldname": "cutting_location",
    "fieldtype": "Select",
    "label": "Cutting Location",
@@ -337,7 +338,7 @@
    "link_fieldname": "cutting_plan"
   }
  ],
- "modified": "2026-09-05 17:30:00.000000",
+ "modified": "2026-09-17 12:33:37.569330",
  "modified_by": "Administrator",
  "module": "Production Api",
  "name": "Cutting Plan",
