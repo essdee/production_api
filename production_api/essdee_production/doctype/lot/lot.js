@@ -176,6 +176,15 @@ frappe.ui.form.on("Lot", {
 				}
 				open_cloth_program_preview(frm);
 			});
+			if (frm.has_perm("write")) {
+				frm.add_custom_button(__("Update Colour"), () => {
+					if (frm.is_dirty()) {
+						frappe.msgprint(__("Save the Lot before updating colours."));
+						return;
+					}
+					open_colour_update_dialog(frm);
+				}, __("Actions"));
+			}
 		}
 		load_saved_cloth_program(frm);
 		$(frm.fields_dict['items_html'].wrapper).html("")
@@ -1159,3 +1168,694 @@ function render_cloth_program_preview(wrapper, preview, empty_message, is_saved_
 // 	frm.doc.total_final_qty = total_final_qty;
 // 	frm.doc.total_cutting_qty = total_cut_qty;
 // }
+
+// ---------------------------------------------------------------------------
+// Update Colour (Split/Convert, Remove, Add) — see
+// docs/lot-colour-update-implementation-plan.md
+// ---------------------------------------------------------------------------
+
+function open_colour_update_dialog(frm) {
+	frappe.call({
+		method: "production_api.essdee_production.doctype.lot.colour_update.get_colour_update_context",
+		args: { lot: frm.doc.name },
+		freeze: true,
+		freeze_message: __("Loading colour configuration..."),
+		callback(r) {
+			if (!r.message) return;
+			const ctx = r.message;
+			if (ctx.blockers && (ctx.blockers.submitted_work_orders || ctx.blockers.laysheets)) {
+				show_colour_update_blockers(ctx.blockers);
+			}
+			build_colour_update_dialog(frm, ctx);
+		},
+	});
+}
+
+function show_colour_update_blockers(blockers) {
+	const parts = [];
+	if (blockers.submitted_work_orders && blockers.submitted_work_orders.length) {
+		parts.push(
+			__("Submitted Work Orders") + ":<br>" +
+			blockers.submitted_work_orders
+				.map(name => `<a href="/app/work-order/${encodeURIComponent(name)}">${frappe.utils.escape_html(name)}</a>`)
+				.join("<br>")
+		);
+	}
+	if (blockers.laysheets && blockers.laysheets.length) {
+		parts.push(
+			__("Non-cancelled LaySheets containing the source colour") + ":<br>" +
+			blockers.laysheets
+				.map(name => `<a href="/app/cutting-laysheet/${encodeURIComponent(name)}">${frappe.utils.escape_html(name)}</a>`)
+				.join("<br>")
+		);
+	}
+	if (parts.length) {
+		frappe.msgprint({
+			title: __("Colour Update Blockers"),
+			message: parts.join("<br><br>"),
+			indicator: "red",
+		});
+	}
+}
+
+function colour_update_esc(value) {
+	return frappe.utils.escape_html(value == null ? "" : String(value));
+}
+
+function colour_update_options(options, selected) {
+	return ["<option value=''></option>"]
+		.concat(
+			(options || []).map(
+				option =>
+					`<option value="${colour_update_esc(option)}" ${option === selected ? "selected" : ""}>${colour_update_esc(option)}</option>`
+			)
+		)
+		.join("");
+}
+
+function build_colour_update_dialog(frm, ctx) {
+	const state = {
+		operation: "split_convert",
+		source_colour: null,
+		targets: [],
+		reference_colour: null,
+		process_cost_values: {},
+		manual_packing_rows: null,
+	};
+
+	const colours = ctx.colours.map(c => c.colour);
+	const configured = new Set(colours);
+	const available = (ctx.available_colours || []).filter(c => !configured.has(c));
+	const packing = ctx.requirements.packing;
+	const setReq = ctx.requirements.set_item;
+	const stitchReq = ctx.requirements.stitching;
+	const cuttingReq = ctx.requirements.cutting;
+	const clothReq = ctx.requirements.cloth;
+	const needsReference =
+		ctx.requirements.has_colour_dependent_accessory_mappings
+		|| ctx.requirements.has_colour_dependent_bom_mappings
+		|| (ctx.process_costs || []).length > 0;
+
+	function source_colour_obj() {
+		return ctx.colours.find(c => c.colour === state.source_colour) || null;
+	}
+
+	function default_target() {
+		return {
+			colour: "",
+			size_quantities: {},
+			packing_quantity: 0,
+			set_or_stitching_mapping: { set: {}, stitch: {} },
+			cutting_rows: [],
+			cloth_rows: [],
+		};
+	}
+
+	function target_colour_options(target) {
+		// Split/Convert may merge into another colour already configured in the
+		// IPD, and the source may appear once to retain part of its quantity.
+		// Add remains limited to colours not configured in the IPD.
+		const options =
+			state.operation === "add"
+				? available.slice()
+				: (ctx.available_colours || []).slice();
+		const selectedElsewhere = new Set(
+			state.targets.filter(t => t !== target).map(t => t.colour).filter(Boolean)
+		);
+		return options.filter(option => !selectedElsewhere.has(option));
+	}
+
+	function alloc_summary() {
+		const source = source_colour_obj();
+		if (!source) return [];
+		return ctx.sizes.map(size => {
+			const allocated = state.targets.reduce(
+				(sum, target) => sum + flt((target.size_quantities || {})[size]),
+				0
+			);
+			const current = flt((source.size_quantities || {})[size]);
+			return { size, allocated, current };
+		});
+	}
+
+	function render_quantity_matrix() {
+		const wrapper = $(dialog.fields_dict.qty_matrix.wrapper);
+		if (state.operation === "remove") {
+			const source = source_colour_obj();
+			if (!source) { wrapper.html(`<p class="text-muted">${__("Select a source colour.")}</p>`); return; }
+			const rows = ctx.sizes.map(size => `
+				<tr><td>${colour_update_esc(size)}</td><td class="text-right">${colour_update_esc(source.size_quantities[size] || 0)}</td></tr>
+			`).join("");
+			wrapper.html(`
+				<h5>${__("Quantities removed")} — ${colour_update_esc(source.colour)}</h5>
+				<table class="table table-bordered">
+					<thead><tr><th>${__("Size")}</th><th class="text-right">${__("Quantity")}</th></tr></thead>
+					<tbody>${rows}
+					<tr class="info"><td><strong>${__("New total")}</strong></td>
+					<td class="text-right"><strong>${colour_update_esc(flt(ctx.total_order_quantity) - flt(source.total))}</strong></td></tr></tbody>
+				</table>
+			`);
+			return;
+		}
+		if (!state.targets.length) {
+			wrapper.html(`<p class="text-muted">${__("Add at least one target colour.")}</p>`);
+			return;
+		}
+		const source = source_colour_obj();
+		const header = ctx.sizes.map(size => `<th class="text-right">${colour_update_esc(size)}</th>`).join("");
+		const rows = state.targets
+			.map((target, index) => {
+				const cells = ctx.sizes
+					.map(size => {
+						const value = (target.size_quantities || {})[size] || "";
+						return `<td><input type="number" min="0" step="any" class="form-control input-xs cu-qty"
+							data-target="${index}" data-size="${colour_update_esc(size)}" value="${value}"></td>`;
+					})
+					.join("");
+				const removeBtn =
+					state.operation === "split_convert" && state.targets.length > 1
+						? `<button class="btn btn-xs btn-default cu-remove-target" data-target="${index}">${__("Remove")}</button>`
+						: "";
+				const colourInput =
+					state.operation === "add"
+						? `<select class="form-control input-xs cu-target-colour" data-target="0">${colour_update_options(
+								target_colour_options(target), target.colour
+						  )}</select>`
+						: `<select class="form-control input-xs cu-target-colour" data-target="${index}">${colour_update_options(
+								target_colour_options(target), target.colour
+						  )}</select>`;
+				return `<tr>
+					<td style="min-width:160px">${colourInput}</td>
+					${cells}
+					<td>${removeBtn}</td>
+				</tr>`;
+			})
+			.join("");
+		let footer = "";
+		if (state.operation === "split_convert" && source) {
+			const summary = alloc_summary();
+			footer = `<tr class="warning">
+				<td><strong>${__("Source current")}</strong></td>
+				${summary.map(s => `<td class="text-right">${colour_update_esc(s.current)}</td>`).join("")}
+				<td></td></tr>
+			<tr class="cu-allocated-row">
+				<td><strong>${__("Requested target total")}</strong></td>
+				${summary.map(s => `<td class="text-right">${colour_update_esc(roundNumber(s.allocated, 3))}</td>`).join("")}
+				<td></td></tr>`;
+		}
+		$(dialog.fields_dict.qty_matrix.wrapper).html(`
+			<h5>${state.operation === "add" ? __("Size-wise quantities for the new colour") : __("Size-wise target quantities")}</h5>
+			<table class="table table-bordered cu-matrix">
+				<thead><tr><th>${__("Colour")}</th>${header}<th></th></tr></thead>
+				<tbody>${rows}${footer}</tbody>
+			</table>
+			${state.operation === "split_convert" ? `<button class="btn btn-xs btn-default cu-add-target">${__("Add Target Colour")}</button>` : ""}
+		`);
+	}
+
+	function render_packing_section() {
+		const wrapper = $(dialog.fields_dict.packing_section.wrapper);
+		if (packing.auto_calculate || packing.based_on_other_attribute_mapping) {
+			wrapper.html(
+				`<p class="text-muted">${__("Packing ratios are calculated automatically for this IPD.")}</p>`
+			);
+			return;
+		}
+		if (state.operation === "remove") {
+			wrapper.html("");
+			return;
+		}
+		const finalColours = colours
+			.filter(c => state.operation !== "split_convert" || c !== state.source_colour)
+			.concat(
+				state.targets
+					.filter(target =>
+						target.colour !== state.source_colour ||
+						Object.values(target.size_quantities || {}).some(quantity => flt(quantity) > 0)
+					)
+					.map(target => target.colour)
+					.filter(Boolean)
+			)
+			.filter((colour, index, list) => list.indexOf(colour) === index);
+		const currentRows = state.manual_packing_rows || [];
+		state.manual_packing_rows = finalColours.map(colour => {
+			const current = currentRows.find(row => row.attribute_value === colour);
+			const existing = (packing.current_rows || []).find(row => row.attribute_value === colour);
+			return {
+				attribute_value: colour,
+				quantity: current ? current.quantity : existing ? existing.quantity : 0,
+			};
+		});
+		const total = state.manual_packing_rows.reduce((sum, row) => sum + flt(row.quantity), 0);
+		const balanced = Math.abs(total - flt(packing.packing_combo)) < 1e-6;
+		wrapper.html(`
+			<h5>${__("Rebalanced Packing Ratios")} (${__("must sum to")} ${colour_update_esc(packing.packing_combo)})</h5>
+			<table class="table table-bordered">
+				<thead><tr><th>${__("Colour")}</th><th class="text-right">${__("Quantity")}</th></tr></thead>
+				<tbody>
+					${state.manual_packing_rows
+						.map(
+							(row, index) => {
+								const editable =
+									state.operation === "add" ||
+									row.attribute_value === state.source_colour ||
+									state.targets.some(target => target.colour === row.attribute_value);
+								return `<tr><td>${colour_update_esc(row.attribute_value)}</td>
+							<td><input type="number" min="0" step="any" class="form-control input-xs cu-packing-qty"
+								data-row="${index}" value="${row.quantity}" ${editable ? "" : "readonly"}></td></tr>`;
+							}
+						)
+						.join("")}
+					<tr class="${balanced ? "success" : "danger"}">
+						<td><strong>${__("Total")}</strong></td>
+						<td class="text-right"><strong>${colour_update_esc(roundNumber(total, 3))}</strong></td>
+					</tr>
+				</tbody>
+			</table>
+		`);
+	}
+
+	function render_stitching_section() {
+		const wrapper = $(dialog.fields_dict.stitching_section.wrapper);
+		if (state.operation !== "add") { wrapper.html(""); return; }
+		const parts = [];
+		const target = state.targets[0] || default_target();
+		target.set_or_stitching_mapping = target.set_or_stitching_mapping || { set: {}, stitch: {} };
+		target.set_or_stitching_mapping.set = target.set_or_stitching_mapping.set || {};
+		target.set_or_stitching_mapping.stitch = target.set_or_stitching_mapping.stitch || {};
+		const mapping = target.set_or_stitching_mapping;
+		if (setReq) {
+			parts.push(`<h6>${__("Set part colours")} (${colour_update_esc(setReq.set_item_attribute)})</h6>`);
+			parts.push(
+				(setReq.parts || [])
+					.map(part => `
+						<div class="col-md-4" style="padding:4px">
+							<label class="control-label">${colour_update_esc(part)}</label>
+							<select class="form-control input-xs cu-set-mapping" data-part="${colour_update_esc(part)}">
+								${colour_update_options(available.concat(colours), mapping.set[part])}
+							</select>
+						</div>`).join("")
+			);
+		}
+		if (stitchReq.is_same_packing_attribute) {
+			parts.push(
+				`<p class="text-muted" style="clear:both">${__("Stitching colour follows the new packing colour automatically (same attribute).")}</p>`
+			);
+			wrapper.html(`<div class="row">${parts.join("")}</div><div style="clear:both"></div>`);
+			return;
+		}
+		parts.push(`<h6 style="clear:both">${__("Stitching colour mapping")} (${__("Major Colour")} → ${__("Stitching Colour")})</h6>`);
+		parts.push(
+			(stitchReq.stitching_parts || [])
+				.map(part => `
+					<div class="col-md-4" style="padding:4px">
+						<label class="control-label">${colour_update_esc(part)}</label>
+						<select class="form-control input-xs cu-stitch-mapping" data-part="${colour_update_esc(part)}">
+							${colour_update_options(available.concat(colours), mapping.stitch[part])}
+						</select>
+					</div>`).join("")
+		);
+		wrapper.html(`<div class="row">${parts.join("")}</div><div style="clear:both"></div>`);
+	}
+
+	function combination_label(combination) {
+		const label = Object.keys(combination || {})
+			.map(key => `${key}: ${combination[key] == null ? "" : combination[key]}`)
+			.join(" / ");
+		return label || __("Default");
+	}
+
+	function render_cutting_section() {
+		const wrapper = $(dialog.fields_dict.cutting_section.wrapper);
+		if (state.operation !== "add" || !cuttingReq.uses_colour) { wrapper.html(""); return; }
+		const target = state.targets[0] || default_target();
+		const rows = target.cutting_rows || [];
+		const html = (cuttingReq.combinations || [])
+			.map((combination, index) => {
+				let existing = rows.find(
+					row => row.__combination === index
+				);
+				if (!existing) {
+					existing = Object.assign({}, combination, { Dia: "", Weight: "" });
+					rows.push(Object.assign(existing, { __combination: index }));
+				}
+				return `<tr>
+					<td>${colour_update_esc(combination_label(combination))}</td>
+					<td style="min-width:140px"><select class="form-control input-xs cu-cutting-dia" data-row="${index}">
+						${colour_update_options(cuttingReq.dia_options, existing.Dia)}</select></td>
+					<td><input type="number" min="0" step="any" class="form-control input-xs cu-cutting-weight" data-row="${index}" value="${existing.Weight}"></td>
+				</tr>`;
+			})
+			.join("");
+		wrapper.html(`
+			<h5>${__("Cutting configuration for the new colour")}</h5>
+			<table class="table table-bordered">
+				<thead><tr><th>${__("Combination")}</th><th>${__("Dia")}</th><th>${__("Weight")}</th></tr></thead>
+				<tbody>${html || `<tr><td colspan="3" class="text-muted">${__("No cutting inputs required.")}</td></tr>`}</tbody>
+			</table>
+		`);
+	}
+
+	function render_cloth_section() {
+		const wrapper = $(dialog.fields_dict.cloth_section.wrapper);
+		if (state.operation !== "add" || !clothReq.uses_colour) { wrapper.html(""); return; }
+		const target = state.targets[0] || default_target();
+		const rows = target.cloth_rows || [];
+		const clothOptions = (clothReq.select_lists && clothReq.select_lists.Cloth) || [];
+		const html = (clothReq.combinations || [])
+			.map((combination, index) => {
+				let existing = rows.find(row => row.__combination === index);
+				if (!existing) {
+					existing = Object.assign({}, combination, { Cloth: "" });
+					rows.push(Object.assign(existing, { __combination: index }));
+				}
+				return `<tr>
+					<td>${colour_update_esc(combination_label(combination))}</td>
+					<td style="min-width:180px"><select class="form-control input-xs cu-cloth-select" data-row="${index}">
+						${colour_update_options(clothOptions, existing.Cloth)}</select></td>
+				</tr>`;
+			})
+			.join("");
+		wrapper.html(`
+			<h5>${__("Cloth mapping for the new colour")}</h5>
+			<table class="table table-bordered">
+				<thead><tr><th>${__("Combination")}</th><th>${__("Cloth")}</th></tr></thead>
+				<tbody>${html || `<tr><td colspan="2" class="text-muted">${__("No cloth inputs required.")}</td></tr>`}</tbody>
+			</table>
+		`);
+	}
+
+	function render_process_cost_section() {
+		const wrapper = $(dialog.fields_dict.process_cost_section.wrapper);
+		if (state.operation !== "add" || !(ctx.process_costs || []).length) { wrapper.html(""); return; }
+		const reference = state.reference_colour;
+		const target = (state.targets[0] || {}).colour;
+		const rows = ctx.process_costs
+			.map(pc => {
+				const refValue = (pc.values || []).find(v => v.attribute_value === reference);
+				const adjusted = (state.process_cost_values[pc.name] || {});
+				const price = adjusted.price != null ? adjusted.price : refValue ? refValue.price : "";
+				const minOrderQty = adjusted.min_order_qty != null ? adjusted.min_order_qty : refValue ? refValue.min_order_qty : "";
+				return `<tr>
+					<td>${colour_update_esc(pc.process_name)} ${pc.docstatus === 1 ? `<span class="text-muted">(${__("Submitted — a draft replacement will be created")})</span>` : ""}</td>
+					<td><input type="number" min="0" step="any" class="form-control input-xs cu-pc-price" data-pc="${colour_update_esc(pc.name)}" value="${price}"></td>
+					<td><input type="number" min="0" step="any" class="form-control input-xs cu-pc-min-qty" data-pc="${colour_update_esc(pc.name)}" value="${minOrderQty}"></td>
+				</tr>`;
+			})
+			.join("");
+		wrapper.html(`
+			<h5>${__("Process Cost values for the new colour")}</h5>
+			<table class="table table-bordered">
+				<thead><tr><th>${__("Process")}</th><th>${__("Price")}</th><th>${__("Min Order Qty")}</th></tr></thead>
+				<tbody>${rows}</tbody>
+			</table>
+		`);
+	}
+
+	function render_shared_section() {
+		const wrapper = $(dialog.fields_dict.shared_section.wrapper);
+		if (!ctx.shared_ipd.is_shared) { wrapper.html(""); return; }
+		wrapper.html(`
+			<div class="alert alert-warning">
+				<strong>${__("This IPD is shared by other Lots")}:</strong>
+				${ctx.shared_ipd.linked_lots.map(l => colour_update_esc(l)).join(", ")}<br>
+				${__("Confirming will create a private duplicate for this Lot; the other Lots will keep the original IPD unchanged.")}
+			</div>
+		`);
+	}
+
+	function render_sections() {
+		render_quantity_matrix();
+		render_packing_section();
+		render_stitching_section();
+		render_cutting_section();
+		render_cloth_section();
+		render_process_cost_section();
+		render_shared_section();
+	}
+
+	function clean_rows(rows) {
+		return (rows || []).map(row => {
+			const copy = Object.assign({}, row);
+			delete copy.__combination;
+			return copy;
+		});
+	}
+
+	function cutting_rows_for_payload(target) {
+		const rows = clean_rows(target.cutting_rows).map(row =>
+			Object.assign({}, row, { [ctx.packing_attribute]: target.colour })
+		);
+		if (!ctx.requirements.panel_wise || !cuttingReq.panel_mode) return rows;
+		// Panel mode: the server expects matrix cells cloned from the popup
+		// matrix ({panel, row, cell}) rather than flat combination rows.
+		return rows
+			.map(row => ({
+				panel: row[cuttingReq.panel_attribute],
+				row: { primary_value: row[cuttingReq.primary_attribute] },
+				cell: { dia: row.Dia, weight: row.Weight },
+			}))
+			.filter(cell => cell.panel);
+	}
+
+	function cloth_rows_for_payload(target) {
+		const rows = clean_rows(target.cloth_rows).map(row =>
+			Object.assign({}, row, { [ctx.packing_attribute]: target.colour })
+		);
+		if (!ctx.requirements.panel_wise || !clothReq.panel_mode) return rows;
+		return rows
+			.map(row => {
+				const attributeValues = {};
+				(clothReq.other_attributes || []).forEach(attribute => {
+					attributeValues[attribute] = row[attribute];
+				});
+				return {
+					panel: row[clothReq.panel_attribute],
+					row: { attribute_values: attributeValues },
+					cell: { cloth: row.Cloth },
+				};
+			})
+			.filter(cell => cell.panel);
+	}
+
+	function build_payload() {
+		const payload_targets =
+			state.operation === "remove" ? [] : state.targets.map(target => ({
+			colour: target.colour,
+			size_quantities: Object.assign({}, target.size_quantities),
+			packing_quantity: flt(target.packing_quantity),
+			set_or_stitching_mapping: Object.assign({}, target.set_or_stitching_mapping),
+			cutting_rows: cutting_rows_for_payload(target),
+			cloth_rows: cloth_rows_for_payload(target),
+		}));
+		return {
+			operation: state.operation,
+			source_colour: state.operation === "add" ? null : state.source_colour,
+			targets: payload_targets,
+			reference_colour: state.reference_colour,
+			process_cost_values: state.process_cost_values,
+			manual_packing_rows: state.manual_packing_rows || [],
+		};
+	}
+
+	function apply() {
+		if (ctx.shared_ipd.is_shared && !dialog.get_value("confirm_shared_ipd")) {
+			frappe.msgprint(__("Confirm the shared IPD duplication before applying."));
+			return;
+		}
+		const payload = build_payload();
+		frappe.call({
+			method: "production_api.essdee_production.doctype.lot.colour_update.apply_colour_update",
+			args: {
+				lot: frm.doc.name,
+				payload: JSON.stringify(payload),
+				expected_lot_modified: ctx.lot_modified,
+				expected_ipd_modified: ctx.ipd_modified,
+				confirmed_shared_ipd: ctx.shared_ipd.is_shared ? dialog.get_value("confirm_shared_ipd") : false,
+			},
+			freeze: true,
+			freeze_message: __("Applying colour update..."),
+			callback(r) {
+				dialog.hide();
+				const message = r.message || {};
+				frappe.show_alert({
+					message: message.message || __("Colour update applied."),
+					indicator: "green",
+				});
+				frappe.set_route("Form", "Lot", frm.doc.name);
+			},
+		});
+	}
+
+	const dialog = new frappe.ui.Dialog({
+		title: __("Update Colour"),
+		size: "extra-large",
+		fields: [
+			{
+				fieldname: "operation",
+				label: __("Operation"),
+				fieldtype: "Select",
+				options: [
+					{ label: __("Split / Convert Colour"), value: "split_convert" },
+					{ label: __("Remove Colour"), value: "remove" },
+					{ label: __("Add New Colour"), value: "add" },
+				],
+				default: "split_convert",
+				onchange() {
+					state.operation = dialog.get_value("operation");
+					state.targets = [default_target()];
+					state.manual_packing_rows = null;
+					dialog.set_value("source_colour", null);
+					if (state.operation === "add" && needsReference && !state.reference_colour) {
+						state.reference_colour = colours[0] || null;
+						dialog.set_value("reference_row", state.reference_colour);
+					}
+					$(dialog.fields_dict.source_colour.wrapper).toggle(state.operation !== "add");
+					$(dialog.fields_dict.reference_row.wrapper).toggle(
+						state.operation === "add" && needsReference
+					);
+					dialog.set_df_property(
+						"reference_row",
+						"reqd",
+						state.operation === "add" && needsReference ? 1 : 0
+					);
+					render_sections();
+				},
+			},
+			{
+				fieldname: "source_colour",
+				label: __("Source Colour"),
+				fieldtype: "Select",
+				// Frappe Select fields take an ARRAY of values — never the
+				// HTML <option> string used by the custom matrix selects.
+				options: [""].concat(colours),
+				onchange() {
+					state.source_colour = dialog.get_value("source_colour");
+					state.manual_packing_rows = null;
+					render_sections();
+				},
+			},
+			{ fieldname: "matrix_break", fieldtype: "Column Break" },
+			{
+				fieldname: "reference_row",
+				label: __("Reference Colour (for Accessory / BOM / Process Cost defaults)"),
+				fieldtype: "Select",
+				options: [""].concat(colours),
+				onchange() {
+					state.reference_colour = dialog.get_value("reference_row") || null;
+					render_sections();
+				},
+			},
+			{ fieldname: "sections_break", fieldtype: "Section Break", label: __("Quantities & Configuration") },
+			{ fieldname: "qty_matrix", fieldtype: "HTML" },
+			{ fieldname: "packing_section", fieldtype: "HTML" },
+			{ fieldname: "stitching_section", fieldtype: "HTML" },
+			{ fieldname: "cutting_section", fieldtype: "HTML" },
+			{ fieldname: "cloth_section", fieldtype: "HTML" },
+			{ fieldname: "process_cost_section", fieldtype: "HTML" },
+			{ fieldname: "shared_section", fieldtype: "HTML" },
+			{
+				fieldname: "confirm_shared_ipd",
+				label: __("I understand a private duplicate will be created for this Lot"),
+				fieldtype: "Check",
+				depends_on: `eval: ${ctx.shared_ipd.is_shared ? "true" : "false"}`,
+			},
+		],
+		primary_action_label: __("Apply"),
+		primary_action: apply,
+	});
+
+	dialog.wrapper.on("click", ".cu-add-target", () => {
+		state.targets.push(default_target());
+		state.manual_packing_rows = null;
+		render_sections();
+	});
+	dialog.wrapper.on("click", ".cu-remove-target", event => {
+		const index = $(event.currentTarget).data("target");
+		state.targets.splice(index, 1);
+		state.manual_packing_rows = null;
+		render_sections();
+	});
+	dialog.wrapper.on("change", ".cu-target-colour", event => {
+		const index = $(event.currentTarget).data("target");
+		state.targets[index].colour = $(event.currentTarget).val();
+		state.manual_packing_rows = null;
+		render_sections();
+	});
+	dialog.wrapper.on("input", ".cu-qty", event => {
+		const element = $(event.currentTarget);
+		const target = state.targets[element.data("target")];
+		if (target) {
+			target.size_quantities[element.data("size")] = flt(element.val());
+			if (!packing.auto_calculate && !packing.based_on_other_attribute_mapping) {
+				render_packing_section();
+			}
+			const summary = alloc_summary();
+			if (summary.length) {
+				// Refresh the allocated row without a full re-render so typing is
+				// not interrupted.
+				const allocatedCells = dialog.wrapper.find(".cu-allocated-row td");
+				allocatedCells.each((cellIndex, cell) => {
+					if (cellIndex === 0 || cellIndex === summary.length + 1) return;
+					const entry = summary[cellIndex - 1];
+					$(cell).text(roundNumber(entry.allocated, 3));
+				});
+			}
+		}
+	});
+	dialog.wrapper.on("input", ".cu-packing-qty", event => {
+		const element = $(event.currentTarget);
+		const row = state.manual_packing_rows[element.data("row")];
+		if (row) {
+			row.quantity = flt(element.val());
+			render_packing_section();
+		}
+	});
+	dialog.wrapper.on("change", ".cu-set-mapping, .cu-stitch-mapping", event => {
+		const element = $(event.currentTarget);
+		const part = element.data("part");
+		const target = state.targets[0];
+		if (target) {
+			const bucket = element.hasClass("cu-set-mapping") ? "set" : "stitch";
+			target.set_or_stitching_mapping[bucket][part] = element.val() || null;
+		}
+	});
+	dialog.wrapper.on("change", ".cu-cutting-dia", event => {
+		const element = $(event.currentTarget);
+		const row = state.targets[0].cutting_rows[element.data("row")];
+		if (row) {
+			row.Dia = element.val() || null;
+		}
+	});
+	dialog.wrapper.on("input", ".cu-cutting-weight", event => {
+		const element = $(event.currentTarget);
+		const row = state.targets[0].cutting_rows[element.data("row")];
+		if (row) {
+			row.Weight = element.val() === "" ? "" : flt(element.val());
+		}
+	});
+	dialog.wrapper.on("change", ".cu-cloth-select", event => {
+		const element = $(event.currentTarget);
+		const row = state.targets[0].cloth_rows[element.data("row")];
+		if (row) {
+			row.Cloth = element.val() || null;
+		}
+	});
+	dialog.wrapper.on("input", ".cu-pc-price", event => {
+		const name = $(event.currentTarget).data("pc");
+		if (!name) return;
+		state.process_cost_values[name] = state.process_cost_values[name] || {};
+		state.process_cost_values[name].price = flt($(event.currentTarget).val());
+	});
+	dialog.wrapper.on("input", ".cu-pc-min-qty", event => {
+		const name = $(event.currentTarget).data("pc");
+		if (!name) return;
+		state.process_cost_values[name] = state.process_cost_values[name] || {};
+		state.process_cost_values[name].min_order_qty = flt($(event.currentTarget).val());
+	});
+
+	state.targets = [default_target()];
+	$(dialog.fields_dict.reference_row.wrapper).toggle(false);
+	dialog.show();
+	render_sections();
+}
