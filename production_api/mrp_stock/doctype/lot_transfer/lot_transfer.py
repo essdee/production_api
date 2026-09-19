@@ -34,9 +34,11 @@ class LotTransfer(Document):
 			items = save_lot_transfer_items(self.item_details)
 			self.set('items', items)
 		elif not self.get('items') or (
-			self.is_new() and not self.flags.allow_from_cutting_plan
+			self.is_new()
+			and not self.flags.allow_from_cutting_plan
+			and not self.flags.allow_from_duplicate
 		):
-			frappe.throw('Add items to Stock Entry.', title='Stock Entry')
+			frappe.throw('Add items to Lot Transfer.', title='Lot Transfer')
 		
 	def validate(self):
 		self.validate_data()
@@ -498,3 +500,161 @@ def save_lot_transfer_items(item_details):
 					items.append(item1)
 			row_index += 1
 	return items
+
+
+@frappe.whitelist()
+def get_lot_transfer_duplicate_items(lot_transfer):
+	"""Return one editable duplicate-dialog row per positive transfer row."""
+	doc = frappe.get_doc("Lot Transfer", lot_transfer)
+	doc.check_permission("read")
+	if doc.docstatus != 1:
+		frappe.throw(_("Submit the Lot Transfer before duplicating it."))
+	return build_lot_transfer_duplicate_rows(doc.items)
+
+
+def build_lot_transfer_duplicate_rows(items):
+	"""Flatten saved Lot Transfer children without losing variant attributes."""
+	rows = []
+	attribute_cache = {}
+	for row in items:
+		if flt(row.qty) <= 0:
+			continue
+		variant = frappe.get_cached_doc("Item Variant", row.item)
+		if variant.item not in attribute_cache:
+			attribute_cache[variant.item] = get_attribute_details(variant.item)
+		attribute_details = attribute_cache[variant.item]
+		attributes = {
+			attribute.attribute: attribute.attribute_value
+			for attribute in variant.attributes
+		}
+		rows.append({
+			"item": variant.item,
+			"from_lot": row.from_lot or "",
+			"to_lot": row.to_lot or "",
+			"warehouse": row.warehouse or "",
+			"attributes": attributes,
+			# The primary attribute remains in attributes but is not separately
+			# editable, matching the Purchase Order duplicate dialog.
+			"_attribute_names": list(attribute_details.get("attributes") or []),
+			"qty": row.qty or 0,
+			"rate": row.rate or 0,
+			"uom": row.uom or attribute_details.get("default_uom") or "",
+			"received_type": row.received_type or "",
+			"set_combination": update_if_string_instance(row.set_combination) or {},
+		})
+	return rows
+
+
+@frappe.whitelist()
+def duplicate_lot_transfer(lot_transfer, items_data=None):
+	"""Create an independent draft Lot Transfer from edited dialog rows."""
+	doc = frappe.get_doc("Lot Transfer", lot_transfer)
+	doc.check_permission("read")
+	if doc.docstatus != 1:
+		frappe.throw(_("Only a submitted Lot Transfer can be duplicated."))
+	if not frappe.has_permission("Lot Transfer", ptype="create"):
+		frappe.throw(_("You need create permission for Lot Transfer."), frappe.PermissionError)
+
+	if isinstance(items_data, string_types):
+		items_data = json.loads(items_data)
+	if not isinstance(items_data, list) or not items_data:
+		frappe.throw(_("No items to duplicate."))
+
+	new_doc = frappe.copy_doc(doc)
+	from frappe.model.naming import get_default_naming_series
+
+	default_series = get_default_naming_series("Lot Transfer")
+	if default_series:
+		new_doc.naming_series = default_series
+	new_doc.docstatus = 0
+	new_doc.posting_date = frappe.utils.nowdate()
+	new_doc.posting_time = frappe.utils.nowtime()
+	new_doc.amended_from = None
+
+	# These fields tie the submitted transfer to upstream production flows.
+	# A duplicate must be an independent manual draft and must not update the
+	# source Finishing Plan or Bulk Lay Sheet if it is later submitted.
+	new_doc.finishing_plan = None
+	new_doc.cutting_bulk_lay_sheet = None
+	new_doc.cutting_bulk_lay_sheet_detail = None
+
+	primary_attribute_cache = {}
+	group_indexes = {}
+
+	def get_primary_attribute(item_name):
+		if item_name not in primary_attribute_cache:
+			primary_attribute_cache[item_name] = (
+				get_attribute_details(item_name) or {}
+			).get("primary_attribute")
+		return primary_attribute_cache[item_name]
+
+	def get_group_index(row, attributes, set_combination):
+		primary_attribute = get_primary_attribute(row.get("item"))
+		non_primary_attributes = tuple(sorted(
+			(key, value)
+			for key, value in attributes.items()
+			if key != primary_attribute
+		))
+		key = (
+			row.get("item") or "",
+			row.get("from_lot") or "",
+			row.get("to_lot") or "",
+			row.get("warehouse") or "",
+			row.get("uom") or "",
+			row.get("received_type") or "",
+			round(flt(row.get("rate")), 6),
+			json.dumps(set_combination, sort_keys=True, default=str, separators=(",", ":")),
+			non_primary_attributes,
+		)
+		if key not in group_indexes:
+			group_indexes[key] = len(group_indexes)
+		return group_indexes[key]
+
+	rebuilt_items = []
+	for ordinal, row in enumerate(items_data, start=1):
+		if not isinstance(row, dict):
+			frappe.throw(_("Row {0}: Invalid item data.").format(ordinal))
+		item_name = row.get("item")
+		if not item_name:
+			frappe.throw(_("Row {0}: Item is required.").format(ordinal))
+		attributes = dict(row.get("attributes") or {})
+		variant_name = get_variant(item_name, attributes)
+		if not variant_name:
+			variant = create_variant(item_name, attributes)
+			variant.insert()
+			variant_name = variant.name
+
+		qty = flt(row.get("qty"))
+		if qty <= 0:
+			frappe.throw(
+				_("Row {0} ({1}): Qty must be greater than zero.").format(
+					ordinal, variant_name
+				)
+			)
+		rate = flt(row.get("rate"))
+		if rate < 0:
+			frappe.throw(
+				_("Row {0} ({1}): Rate cannot be negative.").format(
+					ordinal, variant_name
+				)
+			)
+
+		set_combination = update_if_string_instance(row.get("set_combination")) or {}
+		rebuilt_items.append({
+			"item": variant_name,
+			"from_lot": row.get("from_lot") or None,
+			"to_lot": row.get("to_lot") or None,
+			"warehouse": row.get("warehouse") or None,
+			"qty": qty,
+			"rate": rate,
+			"uom": row.get("uom") or None,
+			"received_type": row.get("received_type") or None,
+			"set_combination": frappe.as_json(set_combination),
+			"table_index": 0,
+			"row_index": get_group_index(row, attributes, set_combination),
+		})
+
+	new_doc.set("items", rebuilt_items)
+	new_doc.flags.allow_from_duplicate = True
+	new_doc.save()
+	return new_doc.name

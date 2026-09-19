@@ -1125,6 +1125,14 @@ const STOCK_RECONCILIATION_DUPLICATE_COLUMNS = [
     { key: 'make_qty_zero', label: 'Make Qty Zero', type: 'check' },
 ];
 
+const LOT_TRANSFER_DUPLICATE_COLUMNS = [
+    { key: 'qty', label: 'Qty', type: 'number' },
+    { key: 'rate', label: 'Rate', type: 'number' },
+    { key: 'to_lot', label: 'To Lot', type: 'link', options: 'Lot' },
+    { key: 'warehouse', label: 'Warehouse', type: 'link', options: 'Supplier' },
+    { key: 'received_type', label: 'Received Type', type: 'link', options: 'GRN Item Type' },
+];
+
 frappe.production.ui.DuplicateStockEntryItemTable = class {
     constructor(wrapper) {
         this.$wrapper = $(wrapper);
@@ -1133,6 +1141,33 @@ frappe.production.ui.DuplicateStockEntryItemTable = class {
     }
     make_body() {
         this.app = createApp(DuplicateItemTable, { columns: this.columns });
+        SetVueGlobals(this.app);
+        this.vue = this.app.mount(this.$wrapper.get(0));
+    }
+    load_data(rows) {
+        this.vue.load_data(JSON.parse(JSON.stringify(rows || [])));
+    }
+    get_items() {
+        return JSON.parse(JSON.stringify(this.vue.rows));
+    }
+    destroy() {
+        if (this.app && this.app.unmount) {
+            try { this.app.unmount(); } catch (e) {}
+        }
+    }
+};
+
+frappe.production.ui.DuplicateLotTransferItemTable = class {
+    constructor(wrapper) {
+        this.$wrapper = $(wrapper);
+        this.make_body();
+    }
+    make_body() {
+        this.app = createApp(DuplicateItemTable, {
+            columns: LOT_TRANSFER_DUPLICATE_COLUMNS,
+            lotKey: 'from_lot',
+            lotLabel: 'From Lot',
+        });
         SetVueGlobals(this.app);
         this.vue = this.app.mount(this.$wrapper.get(0));
     }
