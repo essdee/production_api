@@ -1,16 +1,15 @@
 import frappe
 import json
 
-ITEM_NAME = "Hamic - May Capri Set RNS(Cord)"
+ITEM_NAME = "EE-34325 full sleeve T- shirt"
 SIZE_MAPPING = {
-	"45 cm": "40 cm",
-	"50 cm": "45 cm",
-	"55 cm": "50 cm",
 	"60 cm": "55 cm",
 	"65 cm": "60 cm",
 	"70 cm": "65 cm",
 	"75 cm": "70 cm",
 	"80 cm": "75 cm",
+	"85 cm": "80 cm",
+	"90 cm": "85 cm",
 }
 
 def execute():
