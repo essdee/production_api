@@ -5,7 +5,7 @@
                 <tr>
                     <th style="width: 40px;">S.No.</th>
                     <th>Item</th>
-                    <th>Lot</th>
+                    <th>{{ props.lotLabel }}</th>
                     <th v-for="attr in attribute_columns" :key="attr">{{ attr }}</th>
                     <th v-for="col in columns" :key="col.key">{{ col.label }}</th>
                     <th style="width: 90px;">Actions</th>
@@ -18,7 +18,7 @@
                     <td v-if="!row._editing">{{ row.item }}</td>
                     <td v-else><div class="cell-control" :ref="(el) => bind_cell(el, row, 'item')"></div></td>
 
-                    <td v-if="!row._editing">{{ row.lot }}</td>
+                    <td v-if="!row._editing">{{ row[props.lotKey] }}</td>
                     <td v-else><div class="cell-control" :ref="(el) => bind_cell(el, row, 'lot')"></div></td>
 
                     <td v-for="attr in attribute_columns" :key="attr">
@@ -81,6 +81,8 @@ import { ref, computed } from 'vue';
 // `options` is the target DocType.
 const props = defineProps({
     columns: { type: Array, default: () => [] },
+    lotKey: { type: String, default: 'lot' },
+    lotLabel: { type: String, default: 'Lot' },
 });
 
 const rows = ref([]);
@@ -114,6 +116,9 @@ function load_data(new_rows) {
         r._editing = false;
         r.attributes = r.attributes || {};
         r._attribute_names = r._attribute_names || Object.keys(r.attributes);
+        if (!(props.lotKey in r) || r[props.lotKey] === null || r[props.lotKey] === undefined) {
+            r[props.lotKey] = '';
+        }
         for (const col of props.columns) {
             if (!(col.key in r) || r[col.key] === null || r[col.key] === undefined) {
                 r[col.key] = default_for(col);
@@ -160,11 +165,11 @@ function bind_cell(el, row, field) {
                 fieldtype: 'Link',
                 options: 'Lot',
                 label: '',
-                fieldname: 'lot',
+                fieldname: props.lotKey,
             },
             render_input: true,
         });
-        ctrl.set_value(row.lot || '');
+        ctrl.set_value(row[props.lotKey] || '');
     } else if (field.startsWith('attr:')) {
         const attr_name = field.slice(5);
         ctrl = frappe.ui.form.make_control({
@@ -233,7 +238,7 @@ function refetch_attributes(row) {
 function enter_edit(row) {
     const backup = {
         item: row.item,
-        lot: row.lot,
+        [props.lotKey]: row[props.lotKey],
         attributes: JSON.parse(JSON.stringify(row.attributes || {})),
         _attribute_names: (row._attribute_names || []).slice(),
         uom: row.uom,
@@ -248,7 +253,7 @@ function save_edit(row) {
     const uid = row._uid;
     const ctrls = _controls[uid] || {};
     if (ctrls.item) row.item = ctrls.item.get_value() || '';
-    if (ctrls.lot) row.lot = ctrls.lot.get_value() || '';
+    if (ctrls.lot) row[props.lotKey] = ctrls.lot.get_value() || '';
     row.attributes = row.attributes || {};
     for (const k of Object.keys(ctrls)) {
         if (k.startsWith('attr:')) {
@@ -268,7 +273,7 @@ function save_edit(row) {
 function cancel_edit(row) {
     if (row._backup) {
         row.item = row._backup.item;
-        row.lot = row._backup.lot;
+        row[props.lotKey] = row._backup[props.lotKey];
         row.attributes = row._backup.attributes;
         row._attribute_names = row._backup._attribute_names;
         row.uom = row._backup.uom;

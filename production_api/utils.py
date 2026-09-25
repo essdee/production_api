@@ -556,6 +556,36 @@ def update_wo_checkpoint(datas):
 					tracking_log.user =	frappe.session.user	
 				wo_doc.save(ignore_permissions=True)			
 
+
+def group_laysheet_stats_by_parent(cls_rows, report_date):
+	"""Group lay sheets without treating NULL and empty secondary parents differently."""
+	report_date = getdate(report_date)
+	stats_by_parent = {}
+
+	for row in cls_rows:
+		if row.get("cutting_plan"):
+			key = ("Cutting Plan", row["cutting_plan"])
+		elif row.get("cutting_order"):
+			key = ("Cutting Order", row["cutting_order"])
+		else:
+			continue
+
+		stats = stats_by_parent.setdefault(key, {
+			"names": [],
+			"bundle_count": 0,
+			"label_count": 0,
+			"created_count": 0,
+		})
+		stats["names"].append(row["name"])
+		stats["bundle_count"] += 1
+		stats["label_count"] += int(row.get("status") == "Label Printed")
+		stats["created_count"] += int(
+			bool(row.get("posting_date"))
+			and getdate(row["posting_date"]) == report_date
+		)
+
+	return stats_by_parent
+
 @frappe.whitelist()
 def get_daily_production_report(date, location, items=None, lots=None, only_label_printed=False):
 	from production_api.essdee_production.doctype.lot.lot import fetch_order_item_details
@@ -565,7 +595,9 @@ def get_daily_production_report(date, location, items=None, lots=None, only_labe
 	report_date = getdate(date)
 	only_label_printed = sbool(only_label_printed)
 
-	# Step 1: Single query to get CLS stats grouped by parent (CP or CO)
+	# Step 1: Fetch each CLS and group by its actual parent in Python. Cutting
+	# Plan rows can contain either NULL or an empty string in cutting_order;
+	# grouping both database columns would split one plan into multiple rows.
 	filter_sql = ""
 	filter_values = {"date": report_date}
 	status_sql = " AND cls.status = 'Label Printed'" if only_label_printed else ""
@@ -581,36 +613,23 @@ def get_daily_production_report(date, location, items=None, lots=None, only_labe
 		if filter_parts:
 			filter_sql = f" AND ({' OR '.join(filter_parts)})"
 
-	cls_stats_rows = frappe.db.sql(f"""
-		SELECT cls.cutting_plan, cls.cutting_order,
-			GROUP_CONCAT(cls.name) as names,
-			COUNT(*) as bundle_count,
-			SUM(CASE WHEN cls.status = 'Label Printed' THEN 1 ELSE 0 END) as label_count,
-			SUM(CASE WHEN cls.posting_date = %(date)s THEN 1 ELSE 0 END) as created_count
+	cls_rows = frappe.db.sql(f"""
+		SELECT cls.name, cls.cutting_plan, cls.cutting_order,
+			cls.status, cls.posting_date
 		FROM `tabCutting LaySheet` cls
 		WHERE cls.bundle_generated_date = %(date)s{filter_sql}{status_sql}
 		AND cls.status != 'Cancelled'
-		GROUP BY cls.cutting_plan, cls.cutting_order
 	""", filter_values, as_dict=True)
 
-	if not cls_stats_rows:
+	if not cls_rows:
 		return {"report_data": [], "bundle_generated": 0, "label_printed": 0, "created": 0}
 
-	# Map by (parent_dt, parent_name)
-	cls_stats_map = {}
-	for row in cls_stats_rows:
-		if row['cutting_plan']:
-			key = ("Cutting Plan", row['cutting_plan'])
-		elif row['cutting_order']:
-			key = ("Cutting Order", row['cutting_order'])
-		else:
-			continue
-		cls_stats_map[key] = row
+	cls_stats_map = group_laysheet_stats_by_parent(cls_rows, report_date)
 
 	# Step 2: Bulk-fetch all CLS bundle data
 	all_cls_names = []
 	for stat in cls_stats_map.values():
-		all_cls_names.extend(stat['names'].split(','))
+		all_cls_names.extend(stat['names'])
 
 	bundles_by_parent = {}
 	if all_cls_names:
@@ -700,7 +719,7 @@ def get_daily_production_report(date, location, items=None, lots=None, only_labe
 		label_printed += stats['label_count']
 		created += stats['created_count']
 
-		cls_name_list = [{'name': n} for n in stats['names'].split(',')]
+		cls_name_list = [{'name': n} for n in stats['names']]
 		bundles_by_cutter = get_bundles_by_cutter(cls_name_list, bundles_by_parent)
 
 		major_panel = {}

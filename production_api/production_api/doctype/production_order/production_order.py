@@ -505,10 +505,42 @@ def get_ordered_details(items):
 
 
 @frappe.whitelist()
-def get_production_order_details(production_order):
+def get_production_order_details(production_order, pieces_per_box=None):
 	doc = frappe.get_doc("Production Order", production_order)
 	order_qty = get_order_qty(doc.production_order_details)
+	if pieces_per_box is None:
+		pieces_per_box = frappe.form_dict.get("pieces_per_box")
+	pieces_per_box = validate_pieces_per_box(pieces_per_box)
+	for details in order_qty.values():
+		details["piece_qty"] = flt(details.get("qty")) * pieces_per_box
 	return order_qty
+
+
+def validate_pieces_per_box(pieces_per_box):
+	piece_value = flt(pieces_per_box)
+	pieces_per_box = cint(piece_value)
+	if piece_value <= 0 or piece_value != pieces_per_box:
+		frappe.throw("Pieces per Box must be a whole number greater than zero")
+	return pieces_per_box
+
+
+@frappe.whitelist()
+def get_production_order_print_settings(production_order):
+	doc = frappe.get_doc("Production Order", production_order)
+	doc.check_permission("read")
+
+	fg_item = frappe.db.exists("FG Item Master", doc.item)
+	if not fg_item:
+		fg_item = frappe.db.get_value("FG Item Master", {"item": doc.item}, "name")
+	if not fg_item:
+		return {"fg_item_exists": False, "pieces_per_box": None}
+
+	return {
+		"fg_item_exists": True,
+		"pieces_per_box": cint(
+			frappe.db.get_value("FG Item Master", fg_item, "pcs_per_box")
+		),
+	}
 
 
 def has_submitted_box_sticker_for_item(item):

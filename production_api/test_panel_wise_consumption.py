@@ -225,6 +225,21 @@ class TestPanelWiseConsumption(FrappeTestCase):
 		self.assertIn("Number(parsed.toFixed(4))", matrix_source)
 		self.assertIn("Number(value).toFixed(4)", matrix_source)
 
+	def test_cutting_combination_uses_the_mapping_for_each_attribute(self):
+		source = Path(
+			frappe.get_app_path(
+				"production_api",
+				"public",
+				"js",
+				"Item_Po_detail",
+				"CuttingItemDetail.vue",
+			)
+		).read_text()
+
+		self.assertIn("find(row => row.attribute === attr)", source)
+		self.assertIn("'mapping': attribute_mapping", source)
+		self.assertNotIn("'mapping': cur_frm.set_packing_attr_map_value", source)
+
 	def test_stitching_attribute_rows_receive_entry_defaults(self):
 		source = Path(
 			frappe.get_app_path(
