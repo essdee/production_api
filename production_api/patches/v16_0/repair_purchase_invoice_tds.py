@@ -25,6 +25,8 @@ def execute(manifest_file, apply=False, report_file=None, approved_sha256=None):
     manifest_bytes = Path(manifest_file).read_bytes()
     manifest_hash = hashlib.sha256(manifest_bytes).hexdigest()
     manifest = json.loads(manifest_bytes)
+    if manifest.get("simulation_only") or any(row.get("error") for row in manifest.get("invoices", [])):
+        frappe.throw("Generate a fresh ERP manifest after resolving withholding history errors; simulations cannot be applied")
     if manifest.get("schema_version") != 2:
         frappe.throw("Generate a new ERP manifest with stored before/after comparisons")
     approved_rows = {}

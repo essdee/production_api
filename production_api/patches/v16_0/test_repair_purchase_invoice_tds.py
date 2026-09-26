@@ -6,6 +6,40 @@ from production_api.patches.v16_0 import repair_purchase_invoice_tds as repair
 
 
 class TestMRPTDSRepair(TestCase):
+    def test_incomplete_history_manifest_never_calls_erp(self):
+        import json
+        import tempfile
+        from pathlib import Path
+        with tempfile.TemporaryDirectory() as directory, patch.object(frappe, "only_for"), \
+                patch.object(frappe, "throw", side_effect=ValueError), \
+                patch.object(repair, "post_erp_request") as request:
+            manifest = Path(directory) / "manifest.json"
+            for content in ({"simulation_only": True}, {"invoices": [{"error": "Incomplete TDS history"}]}):
+                manifest.write_text(json.dumps({"schema_version": 2, **content}))
+                with self.assertRaises(ValueError):
+                    repair.execute(str(manifest))
+            request.assert_not_called()
+
+    def test_second_repair_uses_current_amendment_and_updates_vendor(self):
+        inv = self.invoice()
+        inv.erp_inv_name = "PI-1-1"
+        inv.vendor_bill_tracking = "VB-1"
+        vendor = Mock(docstatus=1, mrp_purchase_invoice="MRP-1", purchase_invoice="PI-1-1", form_status="Closed")
+        row = {**self.row(), "erp_invoice": "PI-1-1", "vendor_bill_tracking": "VB-1"}
+        result = {"old_name": "PI-1-1", "name": "PI-1-2", "mrp_invoice": "MRP-1", "docstatus": 1,
+                  "vendor_bill_tracking": "VB-1", "tds": 100, "withholding_tracked": True,
+                  "amount": 900, "due_date": "2026-09-30"}
+        with patch.object(frappe, "db", Mock()) as db, \
+                patch.object(frappe, "get_doc", side_effect=[inv, vendor, inv, vendor]), \
+                patch.object(repair, "post_erp_request") as request:
+            db.exists.return_value = False
+            request.return_value.json.return_value = {"message": result}
+            approved = repair.repair_one(row, False)
+            self.assertEqual(repair.repair_one(row, True, approved)["name"], "PI-1-2")
+            vendor.close_vendor_bill.assert_called_once_with("PI-1-2", "TDS repair of PI-1-1")
+            self.assertEqual(request.call_args.args[1]["erp_invoice"], "PI-1-1")
+            inv.submit.assert_not_called()
+
     def invoice(self):
         doc = Mock(docstatus=1, erp_inv_name="PI-1", vendor_bill_tracking=None, doctype="Purchase Invoice")
         doc.name = "MRP-1"
