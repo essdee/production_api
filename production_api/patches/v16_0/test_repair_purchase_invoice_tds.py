@@ -132,3 +132,20 @@ class TestMRPTDSRepair(TestCase):
             self.assertEqual(repair.repair_one(self.row(), True, approved)["status"], "skipped")
             inv.save.assert_not_called()
             inv.update.assert_not_called()
+
+    def test_http_error_preserves_erp_permission_message(self):
+        from requests.exceptions import HTTPError
+        inv = self.invoice()
+        with (
+            patch.object(frappe, "db", new=Mock()) as db,
+            patch.object(frappe, "get_doc", return_value=inv),
+            patch.object(repair, "post_erp_request") as request,
+        ):
+            db.exists.return_value = False
+            request.return_value.status_code = 403
+            request.return_value.raise_for_status.side_effect = HTTPError("Forbidden")
+            request.return_value.json.return_value = {"exception": "PermissionError: Cancel not permitted"}
+            approved = repair.repair_one(self.row(), False)
+            with self.assertRaisesRegex(RuntimeError, "403.*Cancel not permitted"):
+                repair.repair_one(self.row(), True, approved)
+            inv.save.assert_not_called()
