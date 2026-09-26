@@ -12,6 +12,7 @@ import time
 from pathlib import Path
 
 import frappe
+from requests.exceptions import HTTPError
 from frappe.utils import cint, getdate
 from production_api.production_api.doctype.mrp_settings.mrp_settings import post_erp_request
 
@@ -126,7 +127,15 @@ def repair_one(row, apply, approved=None):
         "erp_invoice": row["erp_invoice"], "mrp_invoice": inv.name, "modified": row["modified"],
         "reviewed": row["comparison"],
     }, timeout=1800)
-    res.raise_for_status()
+    try:
+        res.raise_for_status()
+    except HTTPError as exc:
+        try:
+            error = res.json()
+            detail = error.get("exception") or error.get("_server_messages") or error.get("exc_type")
+        except (ValueError, AttributeError):
+            detail = None
+        raise RuntimeError(f"ERP repair HTTP {res.status_code}: {detail or 'Request rejected'}") from exc
     result = res.json()["message"]
     if result.get("status") == "skipped":
         if result.get("old_name") != row["erp_invoice"] or result.get("mrp_invoice") != inv.name:
