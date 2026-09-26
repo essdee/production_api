@@ -45,7 +45,8 @@ def execute(manifest_file, apply=False, report_file=None, approved_sha256=None):
     rows = manifest["invoices"]
     if any(getdate(row["creation"]) < getdate("2026-09-13") for row in rows):
         frappe.throw("Manifest includes invoices created before the v16 migration on 2026-09-13")
-    if len({r["erp_invoice"] for r in rows}) != len(rows) or len({r["mrp_invoice"] for r in rows}) != len(rows):
+    mrp_names = [r["mrp_invoice"] for r in rows if r.get("mrp_invoice")]
+    if len({r["erp_invoice"] for r in rows}) != len(rows) or len(set(mrp_names)) != len(mrp_names):
         frappe.throw("Manifest contains duplicate ERP or MRP invoices")
     results = []
     for row in sorted(rows, key=lambda r: (r["posting_date"], r["creation"], r["erp_invoice"])):
@@ -85,6 +86,8 @@ def execute(manifest_file, apply=False, report_file=None, approved_sha256=None):
 
 
 def repair_one(row, apply, approved=None):
+    if not row.get("mrp_invoice"):
+        return repair_erp_only(row, apply)
     if apply:
         frappe.db.get_value("Purchase Invoice", row["mrp_invoice"], "name", for_update=True)
     inv = frappe.get_doc("Purchase Invoice", row["mrp_invoice"])
@@ -128,6 +131,7 @@ def repair_one(row, apply, approved=None):
     res = post_erp_request(ENDPOINT, {
         "erp_invoice": row["erp_invoice"], "mrp_invoice": inv.name, "modified": row["modified"],
         "reviewed": row["comparison"],
+        "include_existing": row.get("include_existing", False),
     }, timeout=1800)
     try:
         res.raise_for_status()
@@ -160,3 +164,27 @@ def repair_one(row, apply, approved=None):
         vendor.save()
     inv.add_comment("Info", marker)
     return {**result, "status": "repaired"}
+
+
+def repair_erp_only(row, apply):
+    """Desk invoices have no local synchronization; ERP still validates the snapshot."""
+    if row.get("vendor_bill_tracking"):
+        frappe.throw("Vendor Bill Tracking without an MRP invoice requires manual review")
+    if not apply:
+        return {"old_name": row["erp_invoice"], "status": "local_preflight_passed",
+                "route": "erp", "local_state": None}
+    res = post_erp_request(ENDPOINT, {
+        "erp_invoice": row["erp_invoice"], "mrp_invoice": None,
+        "modified": row["modified"], "reviewed": row["comparison"],
+        "include_existing": row.get("include_existing", False),
+    }, timeout=1800)
+    res.raise_for_status()
+    result = res.json()["message"]
+    if result.get("old_name") != row["erp_invoice"] or result.get("mrp_invoice"):
+        frappe.throw("Unexpected ERP-only repair response")
+    if result.get("status") == "skipped":
+        return result
+    if (result.get("docstatus") != 1 or not result.get("name")
+            or not result.get("withholding_tracked") or result.get("vendor_bill_tracking")):
+        frappe.throw("Unexpected ERP-only amendment; stop and review")
+    return {**result, "status": "repaired", "route": "erp"}
