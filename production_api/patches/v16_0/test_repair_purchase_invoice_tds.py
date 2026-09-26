@@ -205,8 +205,38 @@ class TestMRPTDSRepair(TestCase):
             self.assertEqual(request.call_args.args[1]["reviewed"], row["comparison"])
             get_doc.assert_not_called()
 
-    def test_erp_only_vendor_link_needs_manual_review(self):
-        with patch.object(frappe, "throw", side_effect=ValueError), patch.object(repair, "post_erp_request") as request:
-            with self.assertRaises(ValueError):
-                repair.repair_one({"erp_invoice": "PI-DESK", "vendor_bill_tracking": "VBT-1"}, False)
+    def test_erp_only_vendor_link_is_updated_without_mrp(self):
+        vendor = Mock(docstatus=1, mrp_purchase_invoice=None, purchase_invoice="PI-1", form_status="Closed")
+        vendor.name = "VB-1"
+        vendor.get.side_effect = lambda field: getattr(vendor, field, None)
+        row = {**self.row(), "mrp_invoice": None, "vendor_bill_tracking": "VB-1"}
+        response = {"old_name": "PI-1", "name": "PI-1-1", "mrp_invoice": None,
+                    "vendor_bill_tracking": "VB-1", "docstatus": 1, "withholding_tracked": True}
+        with patch.object(frappe, "db", Mock()) as db, patch.object(frappe, "get_doc", return_value=vendor) as get_doc, \
+                patch.object(repair, "post_erp_request") as request:
+            db.exists.return_value = False
+            approved = repair.repair_one(row, False)
             request.assert_not_called()
+            vendor.save.assert_not_called()
+            request.return_value.json.return_value = {"message": response}
+            result = repair.repair_one(row, True, approved)
+            self.assertEqual(result["status"], "repaired")
+            vendor.close_vendor_bill.assert_called_once_with("PI-1-1", "TDS repair of PI-1")
+            vendor.save.assert_called_once_with()
+            self.assertTrue(all(c.args[0] == "Vendor Bill Tracking" for c in get_doc.call_args_list))
+            # A retry verifies the remote amendment, but does not reopen VBT again.
+            db.exists.return_value = True
+            vendor.purchase_invoice = "PI-1-1"
+            self.assertEqual(repair.repair_one(row, True, approved)["status"], "already_synced")
+            vendor.save.assert_called_once_with()
+
+    def test_erp_only_stale_vendor_review_stops_before_remote_cancel(self):
+        vendor = Mock(docstatus=1, mrp_purchase_invoice=None, purchase_invoice="PI-1", form_status="Closed")
+        row = {**self.row(), "mrp_invoice": None, "vendor_bill_tracking": "VB-1"}
+        with patch.object(frappe, "db", Mock()) as db, patch.object(frappe, "get_doc", return_value=vendor), \
+                patch.object(frappe, "throw", side_effect=ValueError), patch.object(repair, "post_erp_request") as request:
+            db.exists.return_value = False
+            with self.assertRaises(ValueError):
+                repair.repair_one(row, True, {"local_state": {}})
+            request.assert_not_called()
+            vendor.save.assert_not_called()

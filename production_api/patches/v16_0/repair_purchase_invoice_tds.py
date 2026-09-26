@@ -87,7 +87,7 @@ def execute(manifest_file, apply=False, report_file=None, approved_sha256=None):
 
 def repair_one(row, apply, approved=None):
     if not row.get("mrp_invoice"):
-        return repair_erp_only(row, apply)
+        return repair_erp_only(row, apply, approved)
     if apply:
         frappe.db.get_value("Purchase Invoice", row["mrp_invoice"], "name", for_update=True)
     inv = frappe.get_doc("Purchase Invoice", row["mrp_invoice"])
@@ -166,13 +166,33 @@ def repair_one(row, apply, approved=None):
     return {**result, "status": "repaired"}
 
 
-def repair_erp_only(row, apply):
-    """Desk invoices have no local synchronization; ERP still validates the snapshot."""
+def repair_erp_only(row, apply, approved=None):
+    """ERP-created invoices still synchronize VBT; an MRP invoice is optional."""
+    vendor = None
+    marker = f"TDS repair synchronized from {row['erp_invoice']}"
+    already_synced = False
     if row.get("vendor_bill_tracking"):
-        frappe.throw("Vendor Bill Tracking without an MRP invoice requires manual review")
+        if apply:
+            frappe.db.get_value("Vendor Bill Tracking", row["vendor_bill_tracking"], "name", for_update=True)
+        vendor = frappe.get_doc("Vendor Bill Tracking", row["vendor_bill_tracking"])
+        vendor.check_permission("write")
+        already_synced = bool(frappe.db.exists("Comment", {
+            "reference_doctype": "Vendor Bill Tracking", "reference_name": vendor.name,
+            "comment_type": "Info", "content": marker,
+        }))
+        if vendor.docstatus != 1 or vendor.mrp_purchase_invoice or vendor.form_status != "Closed":
+            frappe.throw("Vendor Bill Tracking links/status require review")
+        if vendor.purchase_invoice != row["erp_invoice"] and not already_synced:
+            frappe.throw("Vendor Bill Tracking ERP link changed; refusing to overwrite")
+    local_state = {"mrp": None, "vendor": {field: vendor.get(field) for field in (
+        "name", "modified", "docstatus", "purchase_invoice", "mrp_purchase_invoice", "form_status",
+    )} if vendor else None}
+    local_state = json.loads(json.dumps(local_state, default=str))
+    if apply and vendor and not already_synced and (not approved or approved.get("local_state") != local_state):
+        frappe.throw("Vendor data differs from the approved dry run; review again")
     if not apply:
-        return {"old_name": row["erp_invoice"], "status": "local_preflight_passed",
-                "route": "erp", "local_state": None}
+        return {"old_name": row["erp_invoice"], "status": "already_synced" if already_synced else "local_preflight_passed",
+                "route": "erp", "local_state": local_state}
     res = post_erp_request(ENDPOINT, {
         "erp_invoice": row["erp_invoice"], "mrp_invoice": None,
         "modified": row["modified"], "reviewed": row["comparison"],
@@ -184,7 +204,16 @@ def repair_erp_only(row, apply):
         frappe.throw("Unexpected ERP-only repair response")
     if result.get("status") == "skipped":
         return result
-    if (result.get("docstatus") != 1 or not result.get("name")
-            or not result.get("withholding_tracked") or result.get("vendor_bill_tracking")):
+    if (result.get("docstatus") != 1 or not result.get("name") or not result.get("withholding_tracked")
+            or (result.get("vendor_bill_tracking") or None) != (row.get("vendor_bill_tracking") or None)):
         frappe.throw("Unexpected ERP-only amendment; stop and review")
+    if already_synced:
+        if vendor.purchase_invoice != result["name"]:
+            frappe.throw("Previously synchronized VBT amendment does not match ERP")
+        return {**result, "status": "already_synced", "route": "erp"}
+    if vendor:
+        vendor.reopen_vendor_bill(f"TDS repair: replacing {row['erp_invoice']}")
+        vendor.close_vendor_bill(result["name"], f"TDS repair of {row['erp_invoice']}")
+        vendor.save()
+        vendor.add_comment("Info", marker)
     return {**result, "status": "repaired", "route": "erp"}
