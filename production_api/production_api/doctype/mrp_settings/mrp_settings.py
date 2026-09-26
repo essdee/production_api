@@ -16,7 +16,7 @@ class MRPSettings(Document):
 		if len(roles) != len(set(roles)):
 			frappe.throw("Production Order Action Roles cannot contain duplicate roles")
 
-def post_erp_request(endpoint: str, data: dict) -> Response:
+def post_erp_request(endpoint: str, data: dict, timeout=None) -> Response:
 	config = frappe.get_single('MRP Settings')
 	if not config.erp_site_url or not config.erp_api_key or not config.get_password("erp_api_secret"):
 		frappe.throw("Please Configure ERP properly")
@@ -26,7 +26,7 @@ def post_erp_request(endpoint: str, data: dict) -> Response:
 		'Accept': 'application/json',
 		'Authorization': authorization
 	}
-	response = requests.post(url, headers=headers, json=data)
+	response = requests.post(url, headers=headers, json=data, timeout=timeout)
 	return response
 
 def post_yrp_request(endpoint: str, data: dict) -> Response:
