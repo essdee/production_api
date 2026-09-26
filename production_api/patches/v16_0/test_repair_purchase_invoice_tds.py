@@ -183,3 +183,30 @@ class TestMRPTDSRepair(TestCase):
             with self.assertRaisesRegex(RuntimeError, "403.*Cancel not permitted"):
                 repair.repair_one(self.row(), True, approved)
             inv.save.assert_not_called()
+
+
+    def test_erp_only_dry_run_does_not_load_mrp_or_call_erp(self):
+        with patch.object(frappe, "get_doc") as get_doc, patch.object(repair, "post_erp_request") as request:
+            result = repair.repair_one({"erp_invoice": "PI-DESK", "mrp_invoice": None}, False)
+            self.assertEqual(result["route"], "erp")
+            get_doc.assert_not_called()
+            request.assert_not_called()
+
+    def test_erp_only_apply_uses_review_and_never_saves_local_docs(self):
+        row = {"erp_invoice": "PI-DESK", "mrp_invoice": None, "modified": "version",
+               "comparison": {"before": {}, "after": {}}, "include_existing": True}
+        with patch.object(frappe, "get_doc") as get_doc, patch.object(repair, "post_erp_request") as request:
+            request.return_value.json.return_value = {"message": {
+                "old_name": "PI-DESK", "name": "PI-DESK-1", "docstatus": 1,
+                "mrp_invoice": None, "withholding_tracked": True}}
+            result = repair.repair_one(row, True)
+            self.assertEqual(result["status"], "repaired")
+            self.assertTrue(request.call_args.args[1]["include_existing"])
+            self.assertEqual(request.call_args.args[1]["reviewed"], row["comparison"])
+            get_doc.assert_not_called()
+
+    def test_erp_only_vendor_link_needs_manual_review(self):
+        with patch.object(frappe, "throw", side_effect=ValueError), patch.object(repair, "post_erp_request") as request:
+            with self.assertRaises(ValueError):
+                repair.repair_one({"erp_invoice": "PI-DESK", "vendor_bill_tracking": "VBT-1"}, False)
+            request.assert_not_called()
