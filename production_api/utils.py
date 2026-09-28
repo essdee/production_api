@@ -3535,7 +3535,9 @@ def get_item_data(lot_data):
 				"completed_json": lot_details[lot]['completed_json'],
 				"total_qty": lot_details[lot]['total_qty'],
 				"cloth_details": lot_details[lot]['cloth_details'],
-				"cloth_total": lot_details[lot]['cloth_total'], 
+				"cloth_total": lot_details[lot]['cloth_total'],
+				"piece_weight_by_colour": {},
+				"required_weight_by_colour": {},
 			}
 		else:
 			item_data[item_name]['total_qty'] += lot_details[lot]['total_qty']
@@ -3585,6 +3587,38 @@ def get_item_data(lot_data):
 				old_json['total_qty'][size] += new_json['total_qty'][size]
 
 			item_data[item_name]['completed_json'] = [old_json]		
+
+		for group in lot_details[lot].get("panel_groups") or []:
+			for row in group.get("rows") or []:
+				colour = row.get("colour")
+				if not colour:
+					continue
+				colour_totals = item_data[item_name]["piece_weight_by_colour"].setdefault(
+					colour, {"used_weight": 0, "total_pieces": 0}
+				)
+				colour_totals["used_weight"] += flt(row.get("used_weight"))
+				colour_totals["total_pieces"] += flt(row.get("total_pieces"))
+
+				required_weight = flt(row.get("required_weight"))
+				total_pieces = flt(row.get("total_pieces"))
+				if required_weight and total_pieces:
+					required_totals = item_data[item_name]["required_weight_by_colour"].setdefault(
+						colour, {"weighted_weight": 0, "total_pieces": 0}
+					)
+					required_totals["weighted_weight"] += required_weight * total_pieces
+					required_totals["total_pieces"] += total_pieces
+
+	for item in item_data.values():
+		item["average_piece_weight_by_colour"] = {
+			colour: totals["used_weight"] / totals["total_pieces"]
+			for colour, totals in item.pop("piece_weight_by_colour").items()
+			if totals["total_pieces"]
+		}
+		item["average_required_weight_by_colour"] = {
+			colour: totals["weighted_weight"] / totals["total_pieces"]
+			for colour, totals in item.pop("required_weight_by_colour").items()
+			if totals["total_pieces"]
+		}
 
 	return item_data
 
