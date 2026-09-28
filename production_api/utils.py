@@ -3535,7 +3535,9 @@ def get_item_data(lot_data):
 				"completed_json": lot_details[lot]['completed_json'],
 				"total_qty": lot_details[lot]['total_qty'],
 				"cloth_details": lot_details[lot]['cloth_details'],
-				"cloth_total": lot_details[lot]['cloth_total'], 
+				"cloth_total": lot_details[lot]['cloth_total'],
+				"piece_weight_used": 0,
+				"piece_weight_pieces": 0,
 			}
 		else:
 			item_data[item_name]['total_qty'] += lot_details[lot]['total_qty']
@@ -3585,6 +3587,18 @@ def get_item_data(lot_data):
 				old_json['total_qty'][size] += new_json['total_qty'][size]
 
 			item_data[item_name]['completed_json'] = [old_json]		
+
+		for group in lot_details[lot].get("panel_groups") or []:
+			totals = group.get("totals") or {}
+			item_data[item_name]["piece_weight_used"] += flt(totals.get("used_weight"))
+			item_data[item_name]["piece_weight_pieces"] += flt(totals.get("total_pieces"))
+
+	for item in item_data.values():
+		total_pieces = item.pop("piece_weight_pieces")
+		used_weight = item.pop("piece_weight_used")
+		item["average_piece_weight"] = (
+			used_weight / total_pieces if total_pieces else None
+		)
 
 	return item_data
 
