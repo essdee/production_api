@@ -36,12 +36,7 @@
         <div v-if="item_data && Object.keys(item_data).length > 0">
             <h3>Style Wise Summary</h3>
             <div v-for="item_name in Object.keys(item_data)">
-                <h3>
-                    {{ item_name }}
-                    <small v-if="item_data[item_name]['average_piece_weight'] != null" class="average-piece-weight">
-                        Average Piece Weight: {{ get_round(item_data[item_name]['average_piece_weight'], 4) }}
-                    </small>
-                </h3>
+                <h3>{{ item_name }}</h3>
                 <table class="table table-sm table-bordered">
                     <tr v-for="(i, item_index) in item_data[item_name]['completed_json']" :key="item_index">
                         <template v-if="!i.is_set_item">
@@ -63,6 +58,7 @@
                                         {{ j }}
                                     </th>
                                     <th>Total</th>
+                                    <th>Average Piece Weight</th>
                                     <th v-if="i.is_set_item">Panels</th>
                                 </tr>
                                 <tr v-for="(j, item1_index) in i.items" :key="item1_index">
@@ -77,6 +73,7 @@
                                         <div v-else>--</div>
                                     </td>
                                     <th>{{ j.total_qty }}</th>
+                                    <th>{{ get_colour_piece_weight(item_name, j) }}</th>
                                     <th v-if='i.is_set_item'>
                                         <div v-for="panel in i[i.stiching_attr][j.attributes[i.set_item_attr]]" :key="panel">
                                             {{panel}}
@@ -88,6 +85,8 @@
                                     <th v-for="(j, idx) in i.attributes" :key="idx"></th>
                                     <th v-for="(k, idx) in i.primary_attribute_values" :key="idx">{{ i.total_qty[k] ? i.total_qty[k] : 0 }}</th>
                                     <th>{{ item_data[item_name]['total_qty'] }}</th>
+                                    <th></th>
+                                    <th v-if="i.is_set_item"></th>
                                 </tr>
                             </table>
                         </td>
@@ -420,6 +419,12 @@ function get_quantity(value){
     return Number.isInteger(number) ? number : number.toFixed(2)
 }
 
+function get_colour_piece_weight(item_name, row){
+    let colour = row.attributes?.Colour || row.item_keys?.major_colour
+    let value = item_data.value[item_name]?.average_piece_weight_by_colour?.[colour]
+    return value == null ? "--" : get_round(value, 4)
+}
+
 function get_list_items(){
     let d = new frappe.ui.Dialog({
         fields: [
@@ -500,11 +505,5 @@ function get_multiccr(){
 
 .panel-group {
     margin-bottom: 20px;
-}
-
-.average-piece-weight {
-    margin-left: 12px;
-    font-size: 14px;
-    font-weight: 600;
 }
 </style>
