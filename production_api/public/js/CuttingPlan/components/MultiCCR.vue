@@ -36,7 +36,12 @@
         <div v-if="item_data && Object.keys(item_data).length > 0">
             <h3>Style Wise Summary</h3>
             <div v-for="item_name in Object.keys(item_data)">
-                <h3>{{ item_name }}</h3>
+                <h3>
+                    {{ item_name }}
+                    <small v-if="item_data[item_name]['average_piece_weight'] != null" class="average-piece-weight">
+                        Average Piece Weight: {{ get_round(item_data[item_name]['average_piece_weight'], 4) }}
+                    </small>
+                </h3>
                 <table class="table table-sm table-bordered">
                     <tr v-for="(i, item_index) in item_data[item_name]['completed_json']" :key="item_index">
                         <template v-if="!i.is_set_item">
@@ -495,5 +500,11 @@ function get_multiccr(){
 
 .panel-group {
     margin-bottom: 20px;
+}
+
+.average-piece-weight {
+    margin-left: 12px;
+    font-size: 14px;
+    font-weight: 600;
 }
 </style>
