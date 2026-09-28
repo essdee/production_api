@@ -59,6 +59,7 @@
                                     </th>
                                     <th>Total</th>
                                     <th>Average Piece Weight</th>
+                                    <th>Average Reqd Weight</th>
                                     <th v-if="i.is_set_item">Panels</th>
                                 </tr>
                                 <tr v-for="(j, item1_index) in i.items" :key="item1_index">
@@ -74,6 +75,7 @@
                                     </td>
                                     <th>{{ j.total_qty }}</th>
                                     <th>{{ get_colour_piece_weight(item_name, j) }}</th>
+                                    <th>{{ get_colour_required_weight(item_name, j) }}</th>
                                     <th v-if='i.is_set_item'>
                                         <div v-for="panel in i[i.stiching_attr][j.attributes[i.set_item_attr]]" :key="panel">
                                             {{panel}}
@@ -85,6 +87,7 @@
                                     <th v-for="(j, idx) in i.attributes" :key="idx"></th>
                                     <th v-for="(k, idx) in i.primary_attribute_values" :key="idx">{{ i.total_qty[k] ? i.total_qty[k] : 0 }}</th>
                                     <th>{{ item_data[item_name]['total_qty'] }}</th>
+                                    <th></th>
                                     <th></th>
                                     <th v-if="i.is_set_item"></th>
                                 </tr>
@@ -422,6 +425,12 @@ function get_quantity(value){
 function get_colour_piece_weight(item_name, row){
     let colour = row.attributes?.Colour || row.item_keys?.major_colour
     let value = item_data.value[item_name]?.average_piece_weight_by_colour?.[colour]
+    return value == null ? "--" : get_round(value, 4)
+}
+
+function get_colour_required_weight(item_name, row){
+    let colour = row.attributes?.Colour || row.item_keys?.major_colour
+    let value = item_data.value[item_name]?.average_required_weight_by_colour?.[colour]
     return value == null ? "--" : get_round(value, 4)
 }
 
