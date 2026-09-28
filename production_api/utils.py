@@ -3335,6 +3335,11 @@ def get_multiccr(open_status, lot_list, item_list, category):
 	lot_data = {}
 	output_lots = []
 	output_items = []
+	from production_api.production_api.doctype.cutting_plan.cutting_plan import (
+		get_ccr,
+		get_recut_print_panel_details,
+	)
+
 	for lot in lot_list:
 		lot = lot['name']
 		cp_list = frappe.get_all("Cutting Plan", filters={
@@ -3342,6 +3347,8 @@ def get_multiccr(open_status, lot_list, item_list, category):
 			"docstatus": 1,
 		}, pluck="name")
 		total_qty = 0
+		panel_groups = []
+		recut_rows = {}
 		for cp in cp_list:
 			if lot not in output_lots:
 				output_lots.append(lot)
@@ -3398,6 +3405,17 @@ def get_multiccr(open_status, lot_list, item_list, category):
 						version, 
 						total_qty
 					)
+			ccr_data = get_ccr(cp)
+			panel_groups.extend(serialize_multiccr_panel_groups(cp, ccr_data))
+			recut_details = (
+				ccr_data.get("recut_details")
+				if ccr_data else get_recut_print_panel_details(cp, "Recut")
+			)
+			merge_multiccr_recut_rows(recut_rows, recut_details)
+
+		if lot in lot_data:
+			lot_data[lot]["panel_groups"] = panel_groups
+			lot_data[lot]["recut_summary"] = serialize_multiccr_recut_summary(recut_rows)
 
 	item_data = get_item_data(lot_data)		
 			
@@ -3408,6 +3426,103 @@ def get_multiccr(open_status, lot_list, item_list, category):
 		"item_data": item_data,
 	}			
 	return d
+
+
+def serialize_multiccr_panel_groups(cutting_plan, ccr_data):
+	"""Convert Cutting Plan CCR marker data into JSON-safe table rows."""
+	if not ccr_data or not ccr_data.get("marker_data"):
+		return []
+
+	sizes = ccr_data.get("sizes") or []
+	panel_groups = []
+	for panels, marker_rows in ccr_data["marker_data"].items():
+		rows = []
+		totals = {
+			"received_weight": 0,
+			"used_weight": 0,
+			"balance_weight": 0,
+			"total_pieces": 0,
+			"required_weight": 0,
+			"sizes": {size: 0 for size in sizes},
+		}
+
+		for (colour, cloth_type), marker_row in marker_rows.items():
+			total_pieces = flt(marker_row.get("total_pieces"))
+			used_weight = flt(marker_row.get("used_weight"))
+			required_weight = flt(marker_row.get("reqd_weight"))
+			size_values = {
+				size: flt((marker_row.get(size) or {}).get("bits"))
+				for size in sizes
+			}
+			rows.append({
+				"colour": colour,
+				"cloth_type": cloth_type,
+				"received_weight": flt(marker_row.get("received_weight")),
+				"used_weight": used_weight,
+				"balance_weight": flt(marker_row.get("balance_weight")),
+				"sizes": size_values,
+				"total_pieces": total_pieces,
+				"piece_weight": used_weight / total_pieces if total_pieces else 0,
+				"required_weight": required_weight,
+			})
+
+			totals["received_weight"] += flt(marker_row.get("received_weight"))
+			totals["used_weight"] += used_weight
+			totals["balance_weight"] += flt(marker_row.get("balance_weight"))
+			totals["total_pieces"] += total_pieces
+			totals["required_weight"] += required_weight
+			for size in sizes:
+				totals["sizes"][size] += size_values[size]
+
+		if not rows:
+			continue
+
+		totals["piece_weight"] = (
+			totals["used_weight"] / totals["total_pieces"]
+			if totals["total_pieces"] else 0
+		)
+		totals["required_weight"] /= len(rows)
+		panel_groups.append({
+			"cutting_plan": cutting_plan,
+			"panels": panels,
+			"sizes": sizes,
+			"rows": rows,
+			"totals": totals,
+		})
+
+	return panel_groups
+
+
+def merge_multiccr_recut_rows(target, recut_details):
+	"""Combine Cutting Plan recut rows into one lot-wise summary."""
+	for row in (recut_details or {}).values():
+		key = (
+			row.get("cloth_type"),
+			row.get("colour"),
+			row.get("dia"),
+			row.get("shade"),
+		)
+		target.setdefault(key, {
+			"cloth_type": row.get("cloth_type"),
+			"colour": row.get("colour"),
+			"dia": row.get("dia"),
+			"shade": row.get("shade"),
+			"weight": 0,
+			"no_of_rolls": 0,
+		})
+		target[key]["weight"] += flt(row.get("weight"))
+		target[key]["no_of_rolls"] += flt(row.get("no_of_rolls"))
+
+
+def serialize_multiccr_recut_summary(recut_rows):
+	rows = list(recut_rows.values())
+	return {
+		"rows": rows,
+		"totals": {
+			"weight": sum(row["weight"] for row in rows),
+			"no_of_rolls": sum(row["no_of_rolls"] for row in rows),
+		},
+	}
 
 def get_item_data(lot_data):
 	item_data = {}
