@@ -166,6 +166,10 @@ class LotTransfer(Document):
 	def on_cancel(self):	
 		if self.finishing_plan:
 			self.update_finishing_plan()
+			from production_api.production_api.doctype.finishing_plan.finishing_plan import (
+				remove_old_lot_transfer_tracking,
+			)
+			remove_old_lot_transfer_tracking(self.name)
 		self.make_repost_action()
 		self.refresh_cutting_bulk_lay_sheet()
 

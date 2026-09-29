@@ -1,6 +1,7 @@
 # Copyright (c) 2024, Essdee and Contributors
 # See license.txt
 
+from unittest import TestCase
 from unittest.mock import patch, MagicMock
 
 import frappe
@@ -8,6 +9,73 @@ from frappe.tests.utils import FrappeTestCase
 
 from production_api.production_api.doctype.work_order import work_order as work_order_module
 from production_api.production_api.doctype.work_order.work_order import create_finishing_detail
+
+
+class TestWorkOrderPricing(TestCase):
+	def test_packing_requires_explicit_price_for_each_used_lot_size(self):
+		work_order = MagicMock()
+		work_order.lot = "LOT-TEST"
+		work_order.item = "ITEM-TEST"
+		work_order.work_order_calculated_items = [
+			frappe._dict(item_variant="ITEM-S", quantity=10),
+			frappe._dict(item_variant="ITEM-M", quantity=12),
+		]
+
+		def get_value(doctype, name, fieldname):
+			if doctype == "Lot":
+				return "PPO-TEST"
+			if doctype == "Production Order":
+				return 0
+			if doctype == "Item":
+				return "Size"
+			return None
+		frappe_mock = MagicMock()
+		frappe_mock.db.get_value.side_effect = get_value
+		frappe_mock.get_value.side_effect = get_value
+
+		with (
+			patch.object(work_order_module, "frappe", frappe_mock),
+			patch.object(
+				work_order_module,
+				"get_variant_attr_details",
+				side_effect=lambda item: {"Size": item.removeprefix("ITEM-")},
+			),
+			patch(
+				"production_api.lot_pricing.get_explicit_lot_price_map",
+				return_value={"M": 125},
+			),
+		):
+			missing = work_order_module.WorkOrder.get_missing_box_sticker_prices(work_order)
+
+		self.assertEqual(missing, ["S"])
+
+	def test_packing_price_validation_locks_ppo_and_blocks_missing_prices(self):
+		work_order = MagicMock()
+		work_order.includes_packing = 1
+		work_order.lot = "LOT-TEST"
+		work_order.get_missing_box_sticker_prices.return_value = ["S", "M"]
+
+		def get_value(doctype, name, fieldname):
+			if doctype == "Lot":
+				return "PPO-TEST"
+			if doctype == "Production Order":
+				return 0
+			return None
+		frappe_mock = MagicMock()
+		frappe_mock.db.get_value.side_effect = get_value
+		frappe_mock.throw.side_effect = frappe.ValidationError
+
+		with (
+			patch.object(work_order_module, "frappe", frappe_mock),
+			patch(
+				"production_api.production_api.doctype.production_order.production_order.lock_production_orders"
+			) as lock_production_orders,
+			self.assertRaises(frappe.ValidationError),
+		):
+			work_order_module.WorkOrder.validate_packing_lot_prices(work_order)
+
+		lock_production_orders.assert_called_once_with("PPO-TEST")
+		work_order.get_missing_box_sticker_prices.assert_called_once_with(for_update=True)
 
 
 class TestWorkOrder(FrappeTestCase):

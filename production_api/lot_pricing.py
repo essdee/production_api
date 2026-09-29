@@ -132,6 +132,31 @@ def get_effective_lot_price_map(lot, production_order=None, for_update=False):
 	return {size: row.get("effective_mrp") for size, row in pricing["prices"].items()}
 
 
+def get_explicit_lot_price_map(lot, production_order=None, for_update=False):
+	"""Return only prices that have been fixed for this Lot.
+
+	Editable Lots are priced only when an override was deliberately saved for the
+	Lot. A Production Order default remains a useful source value, but inheriting it
+	does not count as completing the Lot-wise price selection. Printed Lots are
+	already immutable, so their Box Sticker snapshot is the fixed price.
+	"""
+	pricing = get_lot_pricing(lot, production_order, for_update=for_update)
+	if not pricing:
+		return {}
+
+	if pricing["locked"]:
+		return {
+			size: row.get("effective_mrp")
+			for size, row in pricing["prices"].items()
+		}
+
+	return {
+		size: row.get("override_mrp")
+		for size, row in pricing["prices"].items()
+		if row.get("has_override")
+	}
+
+
 def validate_lot_price_overrides(doc):
 	if doc.doctype != "Production Order":
 		return

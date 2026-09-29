@@ -59,6 +59,7 @@
   "received_type_list",
   "finishing_inward_process",
   "additional_grn_submit_role",
+  "accounts_user_role",
   "finishing_plan_ironing_process",
   "cutting_plan_section",
   "cloth_allowance_percentage",
@@ -212,6 +213,14 @@
    "fieldname": "additional_grn_submit_role",
    "fieldtype": "Link",
    "label": "Additional GRN Submit Role",
+   "options": "Role"
+  },
+  {
+   "default": "Accounts User",
+   "description": "Users with this role can mark a Finishing Plan audit as completed.",
+   "fieldname": "accounts_user_role",
+   "fieldtype": "Link",
+   "label": "Accounts User Role",
    "options": "Role"
   },
   {

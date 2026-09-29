@@ -210,6 +210,9 @@ scheduler_events = {
 		"production_api.mrp_stock.doctype.repost_item_valuation.repost_item_valuation.repost_entries"
 	],
 	"cron": {
+		"0 0 * * *": [
+			"production_api.production_api.doctype.finishing_plan.finishing_plan.auto_complete_ocr_after_30_days"
+		],
 		"0 1 * * *": [
 			"production_api.tasks.daily"
 		]

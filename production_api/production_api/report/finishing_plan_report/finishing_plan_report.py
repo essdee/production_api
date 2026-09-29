@@ -5,6 +5,7 @@ import frappe
 from frappe.utils import flt
 
 from production_api.production_api.doctype.finishing_plan.finishing_plan import (
+	_active_old_lot_transfer_rows,
 	get_finishing_packing_summary,
 )
 from production_api.utils import get_variant_attr_details
@@ -88,6 +89,11 @@ def get_columns():
 			"fieldname": "transferred",
 			"fieldtype": "Int",
 			"label": "Transferred Qty"
+		},
+		{
+			"fieldname": "transferred_as_loose_piece",
+			"fieldtype": "Int",
+			"label": "Transferred as Loose Piece",
 		},
 		{
 			"fieldname": "unaccountable",
@@ -210,6 +216,7 @@ def get_data(filters):
 					"unaccountable": 0,
 					"cut_to_dispatch_diff_percent": 0,
 					"transferred": 0,
+					"transferred_as_loose_piece": 0,
 				})
 				set_dict[set_attr_value]['cut_qty'] += row.cutting_qty
 				set_dict[set_attr_value]['sewing_received'] += row.delivered_quantity
@@ -218,6 +225,17 @@ def get_data(filters):
 				set_dict[set_attr_value]['loose_piece'] += (row.return_qty + row.pack_return_qty)
 				set_dict[set_attr_value]['finishing_inward'] += row.dc_qty
 				set_dict[set_attr_value]['transferred'] += row.transferred_qty
+
+			for row in _active_old_lot_transfer_rows(
+				fp_doc.get("finishing_old_lot_given_items")
+			):
+				attrs = get_variant_attr_details(row.item_variant)
+				set_attr_value = attrs[set_attr]
+				if set_attr_value not in set_dict:
+					continue
+				quantity = flt(row.loose_piece_given) + flt(row.loose_piece_set_given)
+				set_dict[set_attr_value]['loose_piece'] -= quantity
+				set_dict[set_attr_value]['transferred_as_loose_piece'] += quantity
 
 			for row in fp_doc.finishing_plan_reworked_details:
 				attrs = get_variant_attr_details(row.item_variant)
@@ -244,9 +262,9 @@ def get_data(filters):
 			for set_key in set_dict:
 				set_dict[set_key]['sewing_diff'] = set_dict[set_key]['sewing_received'] - set_dict[set_key]['cut_qty']
 				set_dict[set_key]['cut_to_finishing_diff'] = set_dict[set_key]['finishing_inward'] - set_dict[set_key]['cut_qty']
-				set_dict[set_key]['cut_to_dispatch_diff'] = set_dict[set_key]['dispatch_piece_qty'] + set_dict[set_key]['transferred'] - set_dict[set_key]['cut_qty'] 
+				set_dict[set_key]['cut_to_dispatch_diff'] = set_dict[set_key]['dispatch_piece_qty'] + set_dict[set_key]['transferred'] + set_dict[set_key]['transferred_as_loose_piece'] - set_dict[set_key]['cut_qty']
 				set_dict[set_key]['finishing_inward_to_dispatch_diff'] = set_dict[set_key]['dispatch_piece_qty'] - set_dict[set_key]['finishing_inward']
-				sum1 = set_dict[set_key]['dispatch_piece_qty'] + set_dict[set_key]['rejection'] +set_dict[set_key]['loose_piece'] + set_dict[set_key]['rework'] + set_dict[set_key]['transferred']
+				sum1 = set_dict[set_key]['dispatch_piece_qty'] + set_dict[set_key]['rejection'] +set_dict[set_key]['loose_piece'] + set_dict[set_key]['rework'] + set_dict[set_key]['transferred'] + set_dict[set_key]['transferred_as_loose_piece']
 				sum2 = set_dict[set_key]['sewing_received'] + set_dict[set_key]['old_lot'] + set_dict[set_key]['ironing_excess']
 				set_dict[set_key]['unaccountable'] = sum1 - sum2
 				val1 = set_dict[set_key]['cut_qty'] + set_dict[set_key]['old_lot'] + set_dict[set_key]['ironing_excess']
@@ -258,7 +276,7 @@ def get_data(filters):
 				else:
 					set_dict[set_key]['unaccountable_percentage'] = 100
 
-				sum1 = set_dict[set_key]['cut_qty'] + set_dict[set_key]['old_lot'] + set_dict[set_key]['ironing_excess'] - set_dict[set_key]['transferred']
+				sum1 = set_dict[set_key]['cut_qty'] + set_dict[set_key]['old_lot'] + set_dict[set_key]['ironing_excess'] - set_dict[set_key]['transferred'] - set_dict[set_key]['transferred_as_loose_piece']
 				if sum1 != 0:
 					set_dict[set_key]['cut_to_dispatch_diff_percent'] = 100 - (round(set_dict[set_key]['dispatch_piece_qty'] / sum1, 2) * 100)
 				else:
@@ -288,7 +306,13 @@ def get_data(filters):
 			d['old_lot'] = fp_detail_data[0]['old_lot']
 			d['ironing_excess'] = fp_detail_data[0]['ironing_excess']
 			d['finishing_inward'] = fp_detail_data[0]['dc_qty']
-			d['loose_piece'] = fp_detail_data[0]['loose_piece']
+			d['transferred_as_loose_piece'] = sum(
+				flt(row.loose_piece_given) + flt(row.loose_piece_set_given)
+				for row in _active_old_lot_transfer_rows(
+					fp_doc.get("finishing_old_lot_given_items")
+				)
+			)
+			d['loose_piece'] = fp_detail_data[0]['loose_piece'] - d['transferred_as_loose_piece']
 			d['cut_to_finishing_diff'] = fp_detail_data[0]['dc_qty'] - fp_detail_data[0]['cut_qty']
 			d['transferred'] = fp_detail_data[0]['transferred']
 			if packing_summary.dynamic_ratio_packing:
@@ -305,6 +329,7 @@ def get_data(filters):
 				d['dispatch_piece_qty'] = d['dispatch_box_qty'] * flt(fp_doc.pieces_per_box)
 			d['cut_to_dispatch_diff'] = (
 				d['dispatch_piece_qty'] + fp_detail_data[0]['transferred']
+				+ d['transferred_as_loose_piece']
 				- fp_detail_data[0]['cut_qty']
 			)
 			d['finishing_inward_to_dispatch_diff'] = (
@@ -323,7 +348,7 @@ def get_data(filters):
 				- (rework_detail[0].get('reworked') or 0)
 				- (rework_detail[0].get('rejected') or 0)
 			)
-			sum1 = d['dispatch_piece_qty'] + d['rejection'] + d['loose_piece'] +d['rework'] + d['transferred']
+			sum1 = d['dispatch_piece_qty'] + d['rejection'] + d['loose_piece'] +d['rework'] + d['transferred'] + d['transferred_as_loose_piece']
 			sum2 = d['sewing_received'] + d['old_lot'] + d['ironing_excess']
 			d['unaccountable'] = sum1 - sum2
 			val1 = d['cut_qty'] + d['old_lot'] + d['ironing_excess']
@@ -334,7 +359,7 @@ def get_data(filters):
 				d['unaccountable_percentage'] = round(x/ val1, 2) * 100
 			else:
 				d['unaccountable_percentage'] = 100	
-			sum1 = d['cut_qty'] + d['old_lot'] + d['ironing_excess'] - d['transferred']
+			sum1 = d['cut_qty'] + d['old_lot'] + d['ironing_excess'] - d['transferred'] - d['transferred_as_loose_piece']
 			if sum1!= 0:
 				d['cut_to_dispatch_diff_percent'] = 100 - (round(d['dispatch_piece_qty'] / sum1, 2) * 100)
 			else:

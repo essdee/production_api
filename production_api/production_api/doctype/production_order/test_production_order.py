@@ -686,6 +686,120 @@ class TestProductionOrder(TestCase):
 		self.assertEqual(result["new_status"], "Close Request")
 		self.assertEqual(result["linked_lots"], ["LOT-TEST"])
 
+	def test_finishing_audit_closes_production_order_when_every_lot_is_complete(self):
+		doc = _dict(
+			name="PPO-TEST",
+			docstatus=1,
+			status="Open",
+			comment_log="",
+			flags=_dict(),
+		)
+		doc.db_set = MagicMock(
+			side_effect=lambda fieldname, value: doc.update({fieldname: value})
+		)
+		doc.save = MagicMock()
+		finishing_plans = [
+			_dict(lot="LOT-1", fp_status="Audit Completed"),
+			_dict(lot="LOT-2", fp_status="OCR Completed"),
+		]
+
+		with (
+			patch.object(production_order, "lock_production_orders") as lock,
+			patch.object(production_order.frappe, "get_doc", return_value=doc),
+			patch.object(
+				production_order,
+				"get_linked_lots",
+				return_value=["LOT-1", "LOT-2"],
+			),
+			patch.object(
+				production_order.frappe,
+				"get_all",
+				return_value=finishing_plans,
+			),
+			patch.object(
+				production_order.frappe.utils,
+				"nowdate",
+				return_value="2026-09-28",
+			),
+		):
+			closed = production_order.close_production_order_if_all_lots_audited(
+				"PPO-TEST"
+			)
+
+		self.assertTrue(closed)
+		lock.assert_called_once_with("PPO-TEST")
+		self.assertEqual(doc.status, "Closed")
+		self.assertTrue(doc.flags.allow_auto_audit_close)
+		doc.save.assert_called_once_with(ignore_permissions=True)
+		self.assertIn("Auto Closed after Finishing Audit", doc.comment_log)
+
+	def test_finishing_audit_keeps_order_open_when_any_lot_is_incomplete(self):
+		doc = _dict(
+			name="PPO-TEST",
+			docstatus=1,
+			status="Open",
+			flags=_dict(),
+		)
+		doc.save = MagicMock()
+
+		with (
+			patch.object(production_order, "lock_production_orders"),
+			patch.object(production_order.frappe, "get_doc", return_value=doc),
+			patch.object(
+				production_order,
+				"get_linked_lots",
+				return_value=["LOT-1", "LOT-2"],
+			),
+			patch.object(
+				production_order.frappe,
+				"get_all",
+				return_value=[
+					_dict(lot="LOT-1", fp_status="Audit Completed"),
+					_dict(lot="LOT-2", fp_status="Ready for Audit"),
+				],
+			),
+		):
+			closed = production_order.close_production_order_if_all_lots_audited(
+				"PPO-TEST"
+			)
+
+		self.assertFalse(closed)
+		self.assertEqual(doc.status, "Open")
+		doc.save.assert_not_called()
+
+	def test_finishing_audit_keeps_order_open_when_a_lot_has_no_finishing_plan(self):
+		doc = _dict(
+			name="PPO-TEST",
+			docstatus=1,
+			status="Open",
+			flags=_dict(),
+		)
+		doc.save = MagicMock()
+
+		with (
+			patch.object(production_order, "lock_production_orders"),
+			patch.object(production_order.frappe, "get_doc", return_value=doc),
+			patch.object(
+				production_order,
+				"get_linked_lots",
+				return_value=["LOT-WITH-FP", "LOT-WITHOUT-FP"],
+			),
+			patch.object(
+				production_order.frappe,
+				"get_all",
+				return_value=[
+					_dict(lot="LOT-WITH-FP", fp_status="OCR Completed"),
+				],
+			),
+		):
+			closed = production_order.close_production_order_if_all_lots_audited(
+				"PPO-TEST"
+			)
+
+		self.assertFalse(closed)
+		self.assertEqual(doc.status, "Open")
+		doc.save.assert_not_called()
+
 	def test_action_role_user_can_approve_production_order_closure(self):
 		doc = _dict(
 			name="PPO-TEST",
@@ -718,6 +832,61 @@ class TestProductionOrder(TestCase):
 		self.assertIn("Production Order Close Approved - sales@example.com", doc.comment_log)
 		self.assertIn("Status: Close Request -> Closed", doc.comment_log)
 		self.assertEqual(result["new_status"], "Closed")
+
+	def test_system_manager_can_reopen_closed_production_order(self):
+		doc = _dict(
+			name="PPO-TEST",
+			docstatus=1,
+			status="Closed",
+			comment_log="Existing audit entry",
+			flags=_dict(),
+		)
+		doc.db_set = MagicMock(
+			side_effect=lambda fieldname, value: doc.update({fieldname: value})
+		)
+		doc.save = MagicMock()
+
+		with (
+			patch.object(
+				production_order.frappe,
+				"get_roles",
+				return_value=["System Manager"],
+			),
+			patch.object(production_order, "lock_production_orders") as lock,
+			patch.object(production_order.frappe, "get_doc", return_value=doc),
+			patch.object(
+				production_order.frappe,
+				"session",
+				_dict(user="administrator@example.com"),
+			),
+			patch.object(
+				production_order.frappe.utils,
+				"nowdate",
+				return_value="2026-09-28",
+			),
+		):
+			result = production_order.reopen_production_order("PPO-TEST")
+
+		lock.assert_called_once_with("PPO-TEST")
+		self.assertEqual(doc.status, "Open")
+		self.assertTrue(doc.flags.allow_production_order_reopen)
+		doc.save.assert_called_once_with(ignore_permissions=True)
+		self.assertIn(
+			"Production Order Reopened - administrator@example.com",
+			doc.comment_log,
+		)
+		self.assertEqual(result, {"old_status": "Closed", "new_status": "Open"})
+
+	def test_non_system_manager_cannot_reopen_production_order(self):
+		with (
+			patch.object(
+				production_order.frappe,
+				"get_roles",
+				return_value=["Production Manager"],
+			),
+			self.assertRaisesRegex(frappe.ValidationError, "Only System Manager"),
+		):
+			production_order.reopen_production_order("PPO-TEST")
 
 	def test_close_approval_requires_configured_action_role(self):
 		with (
@@ -784,7 +953,7 @@ class TestProductionOrder(TestCase):
 		):
 			production_order.close_production_order("PPO-TEST", "Complete")
 
-	def test_close_statuses_require_their_workflow_actions_and_cannot_be_reopened(self):
+	def test_close_and_reopen_statuses_require_their_workflow_actions(self):
 		doc = _dict(
 			docstatus=1,
 			status="Close Request",
@@ -810,6 +979,9 @@ class TestProductionOrder(TestCase):
 		doc.get_doc_before_save = MagicMock(return_value=_dict(status="Closed"))
 		with self.assertRaisesRegex(frappe.ValidationError, "cannot be reopened"):
 			production_order.ProductionOrder.validate_close_status_transition(doc)
+
+		doc.flags.allow_production_order_reopen = True
+		production_order.ProductionOrder.validate_close_status_transition(doc)
 
 	def test_status_approval_applies_requested_status(self):
 		request = {
