@@ -9,9 +9,205 @@ from frappe.tests.utils import FrappeTestCase
 
 from production_api.production_api.doctype.finishing_plan import finishing_plan
 from production_api import utils as production_utils
+from production_api.patches.v1_0 import (
+	migrate_ocr_requested_to_ready_for_audit as audit_workflow_patch,
+)
 
 
 class TestFinishingPlan(FrappeTestCase):
+	def test_daily_job_completes_only_audits_older_than_30_days(self):
+		with (
+			patch.object(finishing_plan, "today", return_value="2026-09-28"),
+			patch.object(
+				finishing_plan.frappe,
+				"get_all",
+				return_value=["FP-OLD-1", "FP-OLD-2"],
+			) as get_all,
+			patch.object(finishing_plan.frappe.db, "set_value") as set_value,
+			patch.object(
+				finishing_plan,
+				"close_linked_production_order_if_all_lots_audited",
+			) as close_production_order,
+		):
+			completed = finishing_plan.auto_complete_ocr_after_30_days()
+
+		get_all.assert_called_once_with(
+			"Finishing Plan",
+			filters={
+				"fp_status": "Audit Completed",
+				"audit_completed_date": ("<", "2026-08-29"),
+			},
+			pluck="name",
+		)
+		self.assertEqual(set_value.call_count, 2)
+		set_value.assert_any_call(
+			"Finishing Plan", "FP-OLD-1", "fp_status", "OCR Completed"
+		)
+		set_value.assert_any_call(
+			"Finishing Plan", "FP-OLD-2", "fp_status", "OCR Completed"
+		)
+		close_production_order.assert_not_called()
+		self.assertEqual(completed, 2)
+
+	def test_audit_request_moves_dispatched_plan_to_ready_for_audit(self):
+		doc = MagicMock(fp_status="Dispatched")
+		with (
+			patch.object(finishing_plan.frappe, "get_doc", return_value=doc) as get_doc,
+			patch.object(finishing_plan, "today", return_value="2026-09-28"),
+		):
+			result = finishing_plan.request_audit("FP-1")
+
+		get_doc.assert_called_once_with("Finishing Plan", "FP-1", for_update=True)
+		self.assertEqual(doc.fp_status, "Ready for Audit")
+		self.assertEqual(doc.audit_requested_date, "2026-09-28")
+		self.assertIsNone(doc.audit_completed_date)
+		doc.save.assert_called_once_with(ignore_permissions=True)
+		self.assertEqual(result["fp_status"], "Ready for Audit")
+
+	def test_accounts_role_can_complete_audit(self):
+		doc = MagicMock(fp_status="Ready for Audit", lot="LOT-1")
+		with (
+			patch.object(finishing_plan, "require_accounts_user_role") as require_role,
+			patch.object(finishing_plan.frappe, "get_doc", return_value=doc),
+			patch.object(finishing_plan, "today", return_value="2026-09-28"),
+			patch.object(
+				finishing_plan,
+				"close_linked_production_order_if_all_lots_audited",
+			) as close_production_order,
+		):
+			result = finishing_plan.complete_audit("FP-1")
+
+		require_role.assert_called_once_with()
+		self.assertEqual(doc.fp_status, "Audit Completed")
+		self.assertEqual(doc.audit_completed_date, "2026-09-28")
+		doc.save.assert_called_once_with(ignore_permissions=True)
+		close_production_order.assert_called_once_with("LOT-1")
+		self.assertEqual(result["fp_status"], "Audit Completed")
+
+	def test_audit_completion_rejects_user_without_configured_accounts_role(self):
+		with (
+			patch.object(
+				finishing_plan.frappe.db,
+				"get_single_value",
+				return_value="Accounts User",
+			),
+			patch.object(finishing_plan.frappe, "get_roles", return_value=["Stock User"]),
+		):
+			with self.assertRaisesRegex(frappe.ValidationError, "Accounts User"):
+				finishing_plan.require_accounts_user_role()
+
+	def test_system_manager_completes_ocr_only_after_audit(self):
+		doc = MagicMock(fp_status="Audit Completed", lot="LOT-1")
+		with (
+			patch.object(finishing_plan.frappe, "get_roles", return_value=["System Manager"]),
+			patch.object(finishing_plan.frappe, "get_doc", return_value=doc),
+			patch.object(
+				finishing_plan,
+				"close_linked_production_order_if_all_lots_audited",
+			) as close_production_order,
+		):
+			result = finishing_plan.complete_ocr("FP-1")
+
+		self.assertEqual(doc.fp_status, "OCR Completed")
+		doc.save.assert_called_once_with(ignore_permissions=True)
+		close_production_order.assert_called_once_with("LOT-1")
+		self.assertEqual(result["fp_status"], "OCR Completed")
+
+	def test_non_system_manager_cannot_complete_ocr(self):
+		with patch.object(
+			finishing_plan.frappe,
+			"get_roles",
+			return_value=["Accounts User"],
+		):
+			with self.assertRaisesRegex(frappe.ValidationError, "System Manager"):
+				finishing_plan.complete_ocr("FP-1")
+
+	def test_legacy_ocr_request_patch_uses_modified_date_as_request_date(self):
+		legacy_row = frappe._dict(
+			name="FP-OLD",
+			lot="LOT-1",
+			modified="2026-09-27 14:30:00",
+			audit_requested_date=None,
+		)
+		with (
+			patch.object(
+				audit_workflow_patch.frappe.db,
+				"get_single_value",
+				return_value=None,
+			),
+			patch.object(
+				audit_workflow_patch.frappe.db,
+				"exists",
+				return_value=True,
+			),
+			patch.object(
+				audit_workflow_patch.frappe.db,
+				"set_single_value",
+			) as set_single_value,
+			patch.object(
+				audit_workflow_patch.frappe,
+				"get_all",
+				side_effect=[
+					[legacy_row],
+					[frappe._dict(production_order="PPO-1")],
+				],
+			),
+			patch.object(
+				audit_workflow_patch,
+				"today",
+				return_value="2026-09-28",
+			),
+			patch.object(
+				audit_workflow_patch,
+				"close_production_order_if_all_lots_audited",
+			) as close_production_order,
+			patch.object(audit_workflow_patch.frappe.db, "set_value") as set_value,
+			patch.object(audit_workflow_patch.frappe.db, "commit"),
+		):
+			audit_workflow_patch.execute()
+
+		values = set_value.call_args.args[2]
+		set_single_value.assert_called_once_with(
+			"MRP Settings", "accounts_user_role", "Accounts User"
+		)
+		self.assertEqual(values["fp_status"], "Ready for Audit")
+		self.assertEqual(str(values["audit_requested_date"]), "2026-09-27")
+		self.assertFalse(set_value.call_args.kwargs["update_modified"])
+		close_production_order.assert_called_once_with("PPO-1")
+
+	def test_legacy_audit_request_older_than_30_days_is_ocr_completed(self):
+		legacy_row = frappe._dict(
+			name="FP-OLD",
+			lot=None,
+			modified="2026-09-01 14:30:00",
+			audit_requested_date="2026-08-28",
+		)
+		with (
+			patch.object(
+				audit_workflow_patch.frappe.db,
+				"get_single_value",
+				return_value="Accounts User",
+			),
+			patch.object(
+				audit_workflow_patch.frappe,
+				"get_all",
+				return_value=[legacy_row],
+			),
+			patch.object(
+				audit_workflow_patch,
+				"today",
+				return_value="2026-09-28",
+			),
+			patch.object(audit_workflow_patch.frappe.db, "set_value") as set_value,
+			patch.object(audit_workflow_patch.frappe.db, "commit"),
+		):
+			audit_workflow_patch.execute()
+
+		values = set_value.call_args.args[2]
+		self.assertEqual(values["fp_status"], "OCR Completed")
+		self.assertEqual(str(values["audit_requested_date"]), "2026-08-28")
+		self.assertEqual(values["audit_completed_date"], "2026-09-28")
+
 	def test_packing_dpr_multiplies_set_pieces_but_not_box_values(self):
 		ipd_doc = frappe._dict(
 			name="IPD-SET",
@@ -363,6 +559,331 @@ class TestFinishingPlan(FrappeTestCase):
 		self.assertEqual(
 			ocr["dispatched_box"], packing_summary.total_dispatched_boxes
 		)
+
+	def test_old_lot_given_is_counted_as_transferred_loose_piece(self):
+		doc = self._get_ocr_test_doc()
+		doc.finishing_plan_grn_details = []
+		doc.finishing_plan_details[0].return_qty = 4
+		doc.finishing_plan_details[0].pack_return_qty = 6
+		doc.finishing_old_lot_given_items = [frappe._dict(
+			item_variant="VARIANT-S",
+			set_combination={"major_colour": "Blue"},
+			loose_piece_given=1,
+			loose_piece_set_given=2,
+			lot_transfer=None,
+		)]
+		packing_summary = frappe._dict(dynamic_ratio_packing=False, sizes={})
+
+		with (
+			patch.object(finishing_plan.frappe, "get_value", side_effect=self._get_ocr_value),
+			patch.object(
+				finishing_plan, "get_variant_attr_details",
+				return_value={"Colour": "Blue", "Size": "S"},
+			),
+			patch.object(
+				finishing_plan, "get_finishing_packing_summary",
+				return_value=packing_summary,
+			),
+			patch.object(
+				finishing_plan.frappe, "get_cached_doc",
+				return_value=frappe._dict(lot_order_details=[]),
+			),
+		):
+			ocr = finishing_plan.get_ocr_details(doc)["Item"]
+			unaccountable = finishing_plan._total_unaccountable(doc)
+
+		self.assertEqual(ocr["loose_piece"], 3)
+		self.assertEqual(ocr["loose_piece_set"], 4)
+		self.assertEqual(ocr["transferred_as_loose_piece"], 3)
+		self.assertEqual(ocr["total"]["S"]["transferred_as_loose_piece"], 3)
+		self.assertEqual(unaccountable, 0)
+
+	def test_fetch_old_lot_does_not_filter_sources_by_ocr_status(self):
+		destination = MagicMock()
+		destination.name = "FP-DEST"
+		destination.item = "ITEM-1"
+		destination.lot = "LOT-DEST"
+		destination.fp_status = "Planned"
+		destination.finishing_plan_details = []
+		destination.finishing_old_lot_items = []
+		destination.set.side_effect = lambda fieldname, value: setattr(
+			destination, fieldname, value
+		)
+		ipd = frappe._dict(
+			name="IPD-1",
+			packing_attribute="Colour",
+			primary_item_attribute="Size",
+			set_item_attribute=None,
+			is_set_item=0,
+			packing_attribute_details=[],
+		)
+
+		def get_doc(doctype, name):
+			return destination if doctype == "Finishing Plan" else ipd
+
+		with (
+			patch.object(finishing_plan.frappe, "get_doc", side_effect=get_doc),
+			patch.object(finishing_plan.frappe, "get_value", return_value="IPD-1"),
+			patch.object(finishing_plan.frappe, "get_all", return_value=[]) as get_all,
+			patch.object(finishing_plan, "get_ipd_primary_values", return_value=[]),
+		):
+			finishing_plan.fetch_from_old_lot("FP-DEST")
+
+		filters = get_all.call_args.kwargs["filters"]
+		self.assertNotIn("fp_status", filters)
+		self.assertEqual(filters["item"], "ITEM-1")
+
+	def test_fetch_old_lot_can_refresh_the_remaining_balance_repeatedly(self):
+		destination = MagicMock()
+		destination.name = "FP-DEST"
+		destination.item = "ITEM-1"
+		destination.lot = "LOT-DEST"
+		destination.fp_status = "Planned"
+		destination.finishing_plan_details = [
+			frappe._dict(item_variant="VARIANT-S")
+		]
+		destination.finishing_old_lot_items = [
+			frappe._dict(item_variant="STALE-VARIANT")
+		]
+		source = frappe._dict(
+			lot="LOT-SOURCE",
+			delivery_location="WH-1",
+			finishing_plan_details=[
+				frappe._dict(
+					item_variant="VARIANT-S",
+					return_qty=10,
+					pack_return_qty=4,
+				),
+			],
+			finishing_old_lot_given_items=[
+				frappe._dict(
+					item_variant="VARIANT-S",
+					loose_piece_given=2,
+					loose_piece_set_given=1,
+					lot_transfer=None,
+				),
+			],
+		)
+		ipd = frappe._dict(
+			name="IPD-1",
+			packing_attribute="Colour",
+			primary_item_attribute="Size",
+			set_item_attribute=None,
+			is_set_item=0,
+			major_attribute_value=None,
+			packing_attribute_details=[frappe._dict(attribute_value="Blue")],
+		)
+
+		def get_doc(doctype, name):
+			if doctype == "Finishing Plan":
+				return destination if name == "FP-DEST" else source
+			if doctype == "Item Production Detail":
+				return ipd
+			raise AssertionError((doctype, name))
+
+		with (
+			patch.object(finishing_plan.frappe, "get_doc", side_effect=get_doc),
+			patch.object(finishing_plan.frappe, "get_value", return_value="IPD-1"),
+			patch.object(finishing_plan.frappe, "get_all", return_value=["FP-SOURCE"]),
+			patch.object(finishing_plan.frappe.db, "get_value", return_value="Warehouse 1"),
+			patch.object(
+				finishing_plan,
+				"get_variant_attr_details",
+				return_value={"Colour": "Blue", "Size": "S"},
+			),
+			patch.object(finishing_plan, "get_ipd_primary_values", return_value=["S"]),
+		):
+			first_result = finishing_plan.fetch_from_old_lot("FP-DEST")
+			first_cell = first_result["data"][0]["old_lot_inward"]["data"]["Blue"]["values"]["S"]
+			self.assertEqual(first_cell["balance_loose_piece"], 8)
+			self.assertEqual(first_cell["balance_loose_piece_set"], 3)
+
+			source.finishing_old_lot_given_items.append(frappe._dict(
+				item_variant="VARIANT-S",
+				loose_piece_given=3,
+				loose_piece_set_given=1,
+				lot_transfer=None,
+			))
+			second_result = finishing_plan.fetch_from_old_lot("FP-DEST")
+
+		second_cell = second_result["data"][0]["old_lot_inward"]["data"]["Blue"]["values"]["S"]
+		self.assertEqual(second_cell["balance_loose_piece"], 5)
+		self.assertEqual(second_cell["balance_loose_piece_set"], 2)
+		# Fetching is display-only and does not replace or save child rows.
+		self.assertEqual(len(destination.finishing_old_lot_items), 1)
+		self.assertEqual(destination.finishing_old_lot_items[0].item_variant, "STALE-VARIANT")
+		destination.save.assert_not_called()
+
+	def test_cancelled_lot_transfer_tracking_is_removed_from_both_plans(self):
+		source = MagicMock()
+		source_rows = [
+			frappe._dict(lot_transfer="LT-CANCEL"),
+			frappe._dict(lot_transfer="LT-KEEP"),
+		]
+		source.get.return_value = source_rows
+		source.set.side_effect = lambda fieldname, value: setattr(source, fieldname, value)
+		destination = MagicMock()
+		destination_rows = [frappe._dict(lot_transfer="LT-CANCEL")]
+		destination.get.return_value = destination_rows
+		destination.set.side_effect = lambda fieldname, value: setattr(
+			destination, fieldname, value
+		)
+
+		with (
+			patch.object(
+				finishing_plan.frappe,
+				"get_all",
+				side_effect=[["FP-SOURCE"], ["FP-DEST"]],
+			),
+			patch.object(
+				finishing_plan.frappe,
+				"get_doc",
+				side_effect=[source, destination],
+			),
+		):
+			finishing_plan.remove_old_lot_transfer_tracking("LT-CANCEL")
+
+		self.assertEqual(
+			[row.lot_transfer for row in source.finishing_old_lot_given_items],
+			["LT-KEEP"],
+		)
+		self.assertEqual(destination.finishing_old_lot_received_items, [])
+		source.save.assert_called_once_with(ignore_permissions=True)
+		destination.save.assert_called_once_with(ignore_permissions=True)
+
+	def test_old_lot_source_balance_subtracts_quantities_already_given(self):
+		source = frappe._dict(
+			finishing_plan_details=[
+				frappe._dict(
+					item_variant="VARIANT-S",
+					return_qty=5,
+					pack_return_qty=4,
+				),
+			],
+			finishing_old_lot_given_items=[
+				frappe._dict(
+					item_variant="VARIANT-S",
+					loose_piece_given=2,
+					loose_piece_set_given=1,
+					lot_transfer=None,
+				),
+			],
+		)
+
+		balance = finishing_plan._get_old_lot_source_balance(source, "VARIANT-S")
+
+		self.assertEqual(balance, (3, 3))
+
+	def test_destination_receipts_are_derived_from_source_side_history(self):
+		destination = frappe._dict(
+			name="FP-DEST",
+			finishing_old_lot_received_items=[],
+		)
+		given_row = frappe._dict(
+			source_fp="FP-SOURCE",
+			item_variant="VARIANT-S",
+			colour="Blue",
+			part=None,
+			set_combination='{"major_colour": "Blue"}',
+			size="S",
+			loose_piece_given=2,
+			loose_piece_set_given=1,
+			lot_transfer=None,
+		)
+
+		with patch.object(
+			finishing_plan.frappe,
+			"get_all",
+			side_effect=[
+				[given_row],
+				[frappe._dict(name="FP-SOURCE", lot="LOT-SOURCE")],
+			],
+		):
+			received = finishing_plan._get_old_lot_received_rows(destination)
+
+		self.assertEqual(len(received), 1)
+		self.assertEqual(received[0].source_fp, "FP-SOURCE")
+		self.assertEqual(received[0].source_lot, "LOT-SOURCE")
+		self.assertEqual(received[0].loose_piece_taken, 2)
+		self.assertEqual(received[0].loose_piece_set_taken, 1)
+
+	def test_old_lot_transfer_stores_only_source_side_history(self):
+		source = MagicMock()
+		lot_transfer = MagicMock(name="LT-TEST")
+		lot_transfer.name = "LT-TEST"
+		variant = frappe._dict(
+			item="ITEM-1",
+			attributes=[frappe._dict(attribute="Size", attribute_value="S")],
+		)
+
+		def get_doc(doctype, name):
+			if doctype == "Finishing Plan" and name == "FP-SOURCE":
+				return source
+			if doctype == "Item Variant":
+				return variant
+			raise AssertionError((doctype, name))
+
+		data = [{
+			"source_fp": "FP-SOURCE",
+			"lot": "LOT-SOURCE",
+			"warehouse": "WH-1",
+			"old_lot_inward": {
+				"data": {
+					"Blue": {
+						"part": None,
+						"set_combination": "Blue",
+						"values": {
+							"S": {
+								"transfer_loose_piece": 1,
+								"transfer_loose_piece_set": 0,
+							},
+						},
+					},
+				},
+			},
+		}]
+
+		with (
+			patch.object(
+				finishing_plan.frappe,
+				"get_value",
+				side_effect=[
+					("Size", "Colour", 0, None, None, None),
+					"Nos",
+				],
+			),
+			patch.object(finishing_plan.frappe.db, "get_single_value", return_value="Purchase"),
+			patch.object(finishing_plan.frappe, "get_doc", side_effect=get_doc),
+			patch.object(finishing_plan.frappe, "new_doc", return_value=lot_transfer),
+			patch.object(finishing_plan.frappe.db, "commit"),
+			patch.object(finishing_plan, "build_variant_attributes", return_value={}),
+			patch.object(finishing_plan, "get_or_create_variant", return_value="VARIANT-S"),
+			patch.object(
+				finishing_plan,
+				"get_attribute_details",
+				return_value={
+					"attributes": [],
+					"primary_attribute": "Size",
+					"primary_attribute_values": ["S"],
+					"default_uom": "Nos",
+					"secondary_uom": None,
+				},
+			),
+			patch.object(finishing_plan, "get_item_attribute_details", return_value={}),
+			patch.object(finishing_plan, "get_item_group_index", return_value=-1),
+			patch.object(finishing_plan, "_validate_old_lot_transfer_balances"),
+		):
+			finishing_plan.create_lot_transfer(
+				data, "ITEM-1", "IPD-1", "LOT-DEST", "FP-DEST"
+			)
+
+		lot_transfer.submit.assert_called_once_with()
+		source.append.assert_called_once()
+		fieldname, row = source.append.call_args.args
+		self.assertEqual(fieldname, "finishing_old_lot_given_items")
+		self.assertEqual(row["destination_fp"], "FP-DEST")
+		self.assertEqual(row["loose_piece_given"], 1)
+		source.save.assert_called_once_with(ignore_permissions=True)
 
 	def test_packing_quantities_are_rebuilt_after_fractional_grn_cancellation(self):
 		doc = frappe.get_doc({

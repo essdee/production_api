@@ -124,6 +124,7 @@
             <tr>
               <th>Lot</th>
               <th>Status</th>
+              <th>Price Source</th>
               <th v-for="size in primary_values" :key="size">{{ size }}</th>
             </tr>
           </thead>
@@ -132,10 +133,38 @@
               <td class="lot-name">{{ lot.lot }}</td>
               <td>
                 <span
-                  :class="['status-pill', lot.locked ? 'locked' : 'editable']"
+                  :class="['status-pill', lotStatusClass(lot)]"
                 >
-                  {{ lot.locked ? "Printed · Locked" : "Editable" }}
+                  {{ lotStatusLabel(lot) }}
                 </span>
+              </td>
+              <td class="lot-source-cell">
+                <span v-if="lot.locked" class="locked-source">
+                  Sticker snapshot
+                </span>
+                <div v-else class="lot-source-options">
+                  <label
+                    v-for="source in lotSourceOptions"
+                    :key="source.value"
+                    :class="[
+                      'lot-source-option',
+                      { disabled: !lotSourceAvailable(source.value) },
+                    ]"
+                  >
+                    <input
+                      type="radio"
+                      :name="`lot-source-${lot.lot}`"
+                      :value="source.value"
+                      v-model="lot.selected_source"
+                      :disabled="!lotSourceAvailable(source.value)"
+                      @change="applyLotSource(lot, source.value)"
+                    />
+                    <span>{{ source.label }}</span>
+                  </label>
+                  <span v-if="lot.selected_source === 'manual'" class="custom-source">
+                    Custom
+                  </span>
+                </div>
               </td>
               <td
                 v-for="size in primary_values"
@@ -155,6 +184,7 @@
                     v-model="lotPrice(lot, size).override_mrp"
                     :placeholder="String(selectedPpoMrp(size) || '')"
                     class="styled-input"
+                    @input="markLotManual(lot)"
                   />
                 </template>
               </td>
@@ -175,6 +205,10 @@ let box_qty = ref({});
 let total_qty = ref(0);
 let selected_source = ref("production_order_mrp");
 let lots = ref([]);
+const lotSourceOptions = [
+  { value: "sales_mrp", label: "Sales Item" },
+  { value: "box_sticker_mrp", label: "Box Sticker" },
+];
 let sourceAvailability = ref({
   sales_mrp: false,
   box_sticker_mrp: false,
@@ -265,11 +299,15 @@ function load_data(data) {
       selected_source: row.selected_source || "production_order_mrp",
     };
     total_qty.value += Number(row.qty || 0);
-    sourceAvailability.value.sales_mrp =
-      sourceAvailability.value.sales_mrp || Boolean(row.has_sales_mrp);
-    sourceAvailability.value.box_sticker_mrp =
-      sourceAvailability.value.box_sticker_mrp ||
-      Boolean(row.has_box_sticker_mrp);
+  });
+
+  sourceAvailability.value.sales_mrp = primary_values.value.every((size) => {
+    const row = box_qty.value[size] || {};
+    return row.has_sales_mrp && Number(row.sales_mrp) > 0;
+  });
+  sourceAvailability.value.box_sticker_mrp = primary_values.value.every((size) => {
+    const row = box_qty.value[size] || {};
+    return row.has_box_sticker_mrp && Number(row.box_sticker_mrp) > 0;
   });
 
   selected_source.value = getSelectedSourceFromRows() || "production_order_mrp";
@@ -285,7 +323,9 @@ function load_data(data) {
             : Number(price.override_mrp),
       };
     });
-    return { ...lot, prices };
+    const normalizedLot = { ...lot, prices, selected_source: null };
+    normalizedLot.selected_source = inferLotSource(normalizedLot);
+    return normalizedLot;
   });
 }
 
@@ -322,6 +362,72 @@ function selectedPpoMrp(size) {
     return row.box_sticker_mrp;
   }
   return row.production_order_mrp;
+}
+
+function lotSourceValue(source, size) {
+  const row = box_qty.value[size] || {};
+  if (source === "sales_mrp") return row.sales_mrp;
+  if (source === "box_sticker_mrp") return row.box_sticker_mrp;
+  return null;
+}
+
+function lotSourceAvailable(source) {
+  if (!primary_values.value.length) return false;
+  return primary_values.value.every(
+    (size) => Number(lotSourceValue(source, size)) > 0
+  );
+}
+
+function applyLotSource(lot, source) {
+  if (lot.locked || !lotSourceAvailable(source)) return;
+  primary_values.value.forEach((size) => {
+    const price = lotPrice(lot, size);
+    price.override_mrp = Number(lotSourceValue(source, size));
+    price.has_override = true;
+  });
+}
+
+function markLotManual(lot) {
+  lot.selected_source = "manual";
+}
+
+function lotHasCompletePrice(lot) {
+  return primary_values.value.every(
+    (size) => Number(lotPrice(lot, size).override_mrp) > 0
+  );
+}
+
+function samePrice(left, right) {
+  return Math.abs(Number(left) - Number(right)) < 0.000001;
+}
+
+function inferLotSource(lot) {
+  if (lot.locked) return "locked";
+  if (!lotHasCompletePrice(lot)) return null;
+  for (const source of lotSourceOptions) {
+    if (
+      lotSourceAvailable(source.value) &&
+      primary_values.value.every((size) =>
+        samePrice(
+          lotPrice(lot, size).override_mrp,
+          lotSourceValue(source.value, size)
+        )
+      )
+    ) {
+      return source.value;
+    }
+  }
+  return "manual";
+}
+
+function lotStatusLabel(lot) {
+  if (lot.locked) return "Printed · Locked";
+  return lotHasCompletePrice(lot) ? "Price Set" : "Price Required";
+}
+
+function lotStatusClass(lot) {
+  if (lot.locked) return "locked";
+  return lotHasCompletePrice(lot) ? "set" : "required";
 }
 
 defineExpose({
@@ -379,6 +485,11 @@ defineExpose({
   min-width: 104px;
 }
 
+.lot-table th:nth-child(3),
+.lot-table td:nth-child(3) {
+  min-width: 132px;
+}
+
 .lot-name {
   white-space: nowrap;
   font-weight: 600;
@@ -408,9 +519,47 @@ defineExpose({
   color: #991b1b;
 }
 
-.status-pill.editable {
+.status-pill.set {
   background: #dcfce7;
   color: #166534;
+}
+
+.status-pill.required {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.lot-source-cell {
+  text-align: left !important;
+}
+
+.lot-source-options {
+  display: grid;
+  gap: 3px;
+}
+
+.lot-source-option {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin: 0;
+  white-space: nowrap;
+  font-size: 11px;
+  font-weight: 500;
+  color: #334155;
+  cursor: pointer;
+}
+
+.lot-source-option.disabled {
+  color: #94a3b8;
+  cursor: not-allowed;
+}
+
+.locked-source,
+.custom-source {
+  white-space: nowrap;
+  font-size: 11px;
+  color: #64748b;
 }
 
 .effective-price {

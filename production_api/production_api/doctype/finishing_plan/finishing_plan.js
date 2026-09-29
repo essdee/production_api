@@ -100,18 +100,18 @@ frappe.ui.form.on("Finishing Plan", {
             $(frm.wrapper).removeClass("fp-locked");
         }
 
-        if (frm.doc.fp_status === "OCR Requested" && frappe.user.has_role("System Manager")) {
-            frm.add_custom_button("Approve Request", () => {
+        if (frm.doc.fp_status === "Ready for Audit" && frm.doc.__onload?.can_complete_audit) {
+            frm.add_custom_button("Audit Completed", () => {
                 frappe.confirm(
-                    "Approve the OCR request and mark this Finishing Plan as OCR Completed?",
+                    "Confirm that Accounts has completed the audit for this Finishing Plan?",
                     () => {
                         frappe.call({
-                            method: "production_api.production_api.doctype.finishing_plan.finishing_plan.approve_ocr_request",
+                            method: "production_api.production_api.doctype.finishing_plan.finishing_plan.complete_audit",
                             args: { doc_name: frm.doc.name },
                             freeze: true,
-                            freeze_message: "Approving...",
+                            freeze_message: "Completing audit...",
                             callback: () => {
-                                frappe.show_alert({ message: "Status set to <b>OCR Completed</b>.", indicator: "green" });
+                                frappe.show_alert({ message: "Status set to <b>Audit Completed</b>.", indicator: "green" });
                                 frm.reload_doc();
                             },
                         });
@@ -120,31 +120,42 @@ frappe.ui.form.on("Finishing Plan", {
             });
         }
         if (["Dispatched", "Fully Dispatched"].includes(frm.doc.fp_status)) {
-        frm.add_custom_button("Complete OCR", () => {
+        frm.add_custom_button("Audit Request", () => {
             frappe.confirm(
-                "Complete OCR for this Finishing Plan? Status will be set based on unaccountable pieces.",
+                "Send this Finishing Plan to Accounts for audit?",
                 () => {
                     frappe.call({
-                        method: "production_api.production_api.doctype.finishing_plan.finishing_plan.complete_ocr",
+                        method: "production_api.production_api.doctype.finishing_plan.finishing_plan.request_audit",
                         args: { doc_name: frm.doc.name },
                         freeze: true,
-                        freeze_message: "Checking unaccountable pieces...",
-                        callback: (r) => {
-                            if (r.message) {
-                                const msg = r.message.fp_status === "OCR Completed"
-                                    ? `Unaccountable = 0. Status set to <b>OCR Completed</b>.`
-                                    : `Unaccountable = ${r.message.unaccountable}. Status set to <b>OCR Requested</b>.`;
-                                frappe.show_alert({
-                                    message: msg,
-                                    indicator: r.message.fp_status === "OCR Completed" ? "green" : "orange",
-                                });
-                            }
+                        freeze_message: "Requesting audit...",
+                        callback: () => {
+                            frappe.show_alert({ message: "Status set to <b>Ready for Audit</b>.", indicator: "orange" });
                             frm.reload_doc();
                         },
                     });
                 }
             );
         });
+        }
+        if (frm.doc.fp_status === "Audit Completed" && frappe.user.has_role("System Manager")) {
+            frm.add_custom_button("Complete OCR", () => {
+                frappe.confirm(
+                    "Complete OCR for this audited Finishing Plan?",
+                    () => {
+                        frappe.call({
+                            method: "production_api.production_api.doctype.finishing_plan.finishing_plan.complete_ocr",
+                            args: { doc_name: frm.doc.name },
+                            freeze: true,
+                            freeze_message: "Completing OCR...",
+                            callback: () => {
+                                frappe.show_alert({ message: "Status set to <b>OCR Completed</b>.", indicator: "green" });
+                                frm.reload_doc();
+                            },
+                        });
+                    }
+                );
+            });
         }
         frm.add_custom_button("Fetch Rejected Quantity", () => {
             frappe.call({

@@ -96,3 +96,5 @@ production_api.patches.v1_0.migrate_legacy_ratio_packing_grns
 production_api.patches.v1_0.repair_negative_stock_valuations
 production_api.patches.v1_0.consolidate_yarn_items_by_colour #3
 production_api.patches.v1_0.mark_consolidated_yarn_items_as_stock #3
+production_api.patches.v1_0.migrate_ocr_requested_to_ready_for_audit
+production_api.patches.v1_0.migrate_ocr_requested_to_ready_for_audit #1

@@ -8,6 +8,8 @@ frappe.listview_settings["Finishing Plan"] = {
       "Partially Dispatched": "orange",
       "Dispatched": "purple",
       "Fully Dispatched": "green",
+      "Ready for Audit": "orange",
+      "Audit Completed": "blue",
       "OCR Requested": "red",
       "OCR Completed": "green",
       "P&L Submitted": "black",

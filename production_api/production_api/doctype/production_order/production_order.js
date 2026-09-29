@@ -19,6 +19,16 @@ frappe.ui.form.on("Production Order", {
     setup_ppo_approval_actions(frm);
     if (is_submitted && frm.doc.status === "Closed") {
       frm.clear_custom_buttons();
+      if (frappe.user.has_role("System Manager")) {
+        frm.add_custom_button(__("Reopen Production Order"), () => {
+          reopen_production_order(frm);
+        });
+        frm.change_custom_button_type(
+          __("Reopen Production Order"),
+          null,
+          "primary"
+        );
+      }
       return;
     }
     if (is_submitted && frm.doc.status === "Close Request") {
@@ -551,6 +561,27 @@ function approve_production_order_close(frm) {
         frm.reload_doc();
         frappe.show_alert({
           message: __("Production Order closed"),
+          indicator: "green",
+        });
+      },
+    });
+  });
+}
+
+function reopen_production_order(frm) {
+  frappe.confirm(__("Reopen this Production Order?"), () => {
+    frappe.call({
+      method:
+        "production_api.production_api.doctype.production_order.production_order.reopen_production_order",
+      args: {
+        production_order: frm.doc.name,
+      },
+      freeze: true,
+      freeze_message: __("Reopening Production Order..."),
+      callback: function () {
+        frm.reload_doc();
+        frappe.show_alert({
+          message: __("Production Order reopened"),
           indicator: "green",
         });
       },

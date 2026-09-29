@@ -160,6 +160,8 @@ class WorkOrder(Document):
             frappe.throw("Already Work Order was Created for Packing")
             return
 
+        self.validate_packing_lot_prices()
+
         if not self.is_rework and self.rework_type != "No Cost":
             if not self.process_cost:
                 frappe.throw(
@@ -238,8 +240,28 @@ class WorkOrder(Document):
             self.auto_create_box_sticker_print()
         self.create_sewing_plan()
 
-    def get_missing_box_sticker_prices(self):
-        """Sizes that have Work Order qty but no MRP in the linked Production Order.
+    def validate_packing_lot_prices(self):
+        """Require a deliberate Lot-wise price before a packing Work Order submits."""
+        if not self.includes_packing:
+            return
+
+        production_order = frappe.db.get_value("Lot", self.lot, "production_order")
+        if not production_order:
+            return
+        if frappe.db.get_value("Production Order", production_order, "skip_box_sticker_print"):
+            return
+
+        from production_api.production_api.doctype.production_order.production_order import lock_production_orders
+        lock_production_orders(production_order)
+        missing_prices = self.get_missing_box_sticker_prices(for_update=True)
+        if missing_prices:
+            frappe.throw(
+                f"Lot-wise price is not set for Lot {self.lot} in sizes: {', '.join(missing_prices)}. "
+                "Set the price for this Lot in the Production Order before submitting."
+            )
+
+    def get_missing_box_sticker_prices(self, for_update=False):
+        """Sizes that have Work Order qty but no explicit Lot-wise MRP.
 
         Returns [] when the check doesn't apply (no Production Order, box-sticker-print skipped, or
         the item has no primary attribute). Shared by auto_create_box_sticker_print (hard block on
@@ -253,8 +275,10 @@ class WorkOrder(Document):
         primary = frappe.get_value("Item", self.item, "primary_attribute")
         if not primary:
             return []
-        from production_api.lot_pricing import get_effective_lot_price_map
-        price_map = get_effective_lot_price_map(self.lot, production_order)
+        from production_api.lot_pricing import get_explicit_lot_price_map
+        price_map = get_explicit_lot_price_map(
+            self.lot, production_order, for_update=for_update
+        )
         qty_map = {}
         for row in self.work_order_calculated_items:
             size = get_variant_attr_details(row.item_variant).get(primary)
@@ -302,11 +326,11 @@ class WorkOrder(Document):
                 qty_map[size] += row.quantity
 
         # Validate sizes with qty have an MRP — shared with the Calculate-time combined warning.
-        missing_prices = self.get_missing_box_sticker_prices()
+        missing_prices = self.get_missing_box_sticker_prices(for_update=True)
         if missing_prices:
             frappe.throw(
-                f"MRP is missing for Lot {self.lot} in sizes: {', '.join(missing_prices)}. "
-                "Please update the Production Order or Lot price before submitting."
+                f"Lot-wise price is not set for Lot {self.lot} in sizes: {', '.join(missing_prices)}. "
+                "Set the price for this Lot in the Production Order before submitting."
             )
 
         # Check if FG Item Master exists for this item
@@ -1109,8 +1133,8 @@ def get_deliverable_receivable(items, doc_name, deliverable=False, receivable=Fa
         missing_prices = wo_doc.get_missing_box_sticker_prices()
         if missing_prices:
             warnings.append(
-                f"MRP is missing in Production Order for sizes: {', '.join(missing_prices)}. "
-                "Update the price in Production Order before submitting."
+                f"Lot-wise price is not set for Lot {wo_doc.lot} in sizes: {', '.join(missing_prices)}. "
+                "Set the price for this Lot in the Production Order before submitting."
             )
     ipd = frappe.get_value("Lot", wo_doc.lot, "production_detail")  # cache the IPD for faster subsequent calls
     ipd_status = frappe.get_value("Item Production Detail", ipd, "approval_status")

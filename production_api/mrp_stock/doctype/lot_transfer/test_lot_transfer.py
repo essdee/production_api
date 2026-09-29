@@ -17,6 +17,25 @@ from production_api.mrp_stock.doctype.lot_transfer.lot_transfer import (
 
 
 class TestLotTransfer(FrappeTestCase):
+	def test_cancel_removes_old_lot_tracking_for_finishing_plan_transfer(self):
+		doc = SimpleNamespace(
+			name="LT-OLD-LOT",
+			finishing_plan="FP-DEST",
+			update_finishing_plan=MagicMock(),
+			make_repost_action=MagicMock(),
+			refresh_cutting_bulk_lay_sheet=MagicMock(),
+		)
+
+		with patch(
+			"production_api.production_api.doctype.finishing_plan.finishing_plan.remove_old_lot_transfer_tracking"
+		) as remove_tracking:
+			lot_transfer.LotTransfer.on_cancel(doc)
+
+		doc.update_finishing_plan.assert_called_once_with()
+		remove_tracking.assert_called_once_with("LT-OLD-LOT")
+		doc.make_repost_action.assert_called_once_with()
+		doc.refresh_cutting_bulk_lay_sheet.assert_called_once_with()
+
 	def test_bulk_transfer_items_can_be_filtered_for_one_target_lot(self):
 		items = [
 			frappe._dict(item="FABRIC-RED", qty=5, to_lot="LOT-ONE"),

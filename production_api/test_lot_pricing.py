@@ -28,6 +28,32 @@ class TestLotPricing(TestCase):
 		self.assertFalse(pricing["prices"]["S"]["has_override"])
 		self.assertTrue(pricing["prices"]["M"]["has_override"])
 
+	def test_explicit_price_map_does_not_treat_ppo_default_as_lot_price(self):
+		pricing = {
+			"locked": False,
+			"prices": {
+				"S": {"has_override": False, "override_mrp": None, "effective_mrp": 100},
+				"M": {"has_override": True, "override_mrp": 125, "effective_mrp": 125},
+			},
+		}
+		with patch.object(lot_pricing, "get_lot_pricing", return_value=pricing):
+			price_map = lot_pricing.get_explicit_lot_price_map("LOT-1", "PPO-TEST")
+
+		self.assertNotIn("S", price_map)
+		self.assertEqual(price_map["M"], 125)
+
+	def test_explicit_price_map_accepts_printed_lot_snapshot(self):
+		pricing = {
+			"locked": True,
+			"prices": {
+				"S": {"has_override": False, "override_mrp": None, "effective_mrp": 100},
+			},
+		}
+		with patch.object(lot_pricing, "get_lot_pricing", return_value=pricing):
+			price_map = lot_pricing.get_explicit_lot_price_map("LOT-1", "PPO-TEST")
+
+		self.assertEqual(price_map, {"S": 100})
+
 	def test_print_state_only_uses_work_order_generated_stickers(self):
 		frappe_mock = MagicMock()
 		frappe_mock.db.sql.return_value = []

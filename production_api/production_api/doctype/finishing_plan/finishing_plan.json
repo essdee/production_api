@@ -16,6 +16,8 @@
   "work_order",
   "pieces_per_box",
   "finishing_end_date",
+  "audit_requested_date",
+  "audit_completed_date",
   "naming_series",
   "finishing_process",
   "fp_status",
@@ -93,7 +95,7 @@
    "in_list_view": 1,
    "in_standard_filter": 1,
    "label": "FP Status",
-   "options": "Planned\nPartially Received\nReady to Pack\nPartially Dispatched\nDispatched\nFully Dispatched\nOCR Requested\nOCR Completed\nP&L Submitted",
+   "options": "Planned\nPartially Received\nReady to Pack\nPartially Dispatched\nDispatched\nFully Dispatched\nReady for Audit\nAudit Completed\nOCR Completed\nP&L Submitted",
    "read_only": 1
   },
   {
@@ -226,6 +228,20 @@
    "fieldname": "finishing_end_date",
    "fieldtype": "Date",
    "label": "Finishing End Date",
+   "read_only": 1
+  },
+  {
+   "description": "Date on which the Finishing Plan was submitted for audit",
+   "fieldname": "audit_requested_date",
+   "fieldtype": "Date",
+   "label": "Audit Requested Date",
+   "read_only": 1
+  },
+  {
+   "description": "Date on which Accounts completed the audit",
+   "fieldname": "audit_completed_date",
+   "fieldtype": "Date",
+   "label": "Audit Completed Date",
    "read_only": 1
   },
   {
