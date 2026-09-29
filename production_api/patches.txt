@@ -98,3 +98,4 @@ production_api.patches.v1_0.consolidate_yarn_items_by_colour #3
 production_api.patches.v1_0.mark_consolidated_yarn_items_as_stock #3
 production_api.patches.v1_0.migrate_ocr_requested_to_ready_for_audit
 production_api.patches.v1_0.migrate_ocr_requested_to_ready_for_audit #1
+production_api.patches.v1_0.close_production_orders_for_existing_ocr_completed_plans
