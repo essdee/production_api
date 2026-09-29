@@ -1,7 +1,7 @@
 # Copyright (c) 2025, Essdee and Contributors
 # See license.txt
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, call, patch
 from types import SimpleNamespace
 
 import frappe
@@ -10,6 +10,7 @@ from frappe.tests.utils import FrappeTestCase
 from production_api.production_api.doctype.finishing_plan import finishing_plan
 from production_api import utils as production_utils
 from production_api.patches.v1_0 import (
+	close_production_orders_for_existing_ocr_completed_plans as close_existing_orders_patch,
 	migrate_ocr_requested_to_ready_for_audit as audit_workflow_patch,
 )
 
@@ -207,6 +208,51 @@ class TestFinishingPlan(FrappeTestCase):
 		self.assertEqual(values["fp_status"], "OCR Completed")
 		self.assertEqual(str(values["audit_requested_date"]), "2026-08-28")
 		self.assertEqual(values["audit_completed_date"], "2026-09-28")
+
+	def test_existing_ocr_completed_patch_checks_each_related_production_order(self):
+		with (
+			patch.object(
+				close_existing_orders_patch.frappe,
+				"get_all",
+				side_effect=[
+					["LOT-2", "LOT-1", "LOT-1"],
+					["PPO-2", "PPO-1", "PPO-1"],
+				],
+			) as get_all,
+			patch.object(
+				close_existing_orders_patch,
+				"close_production_order_if_all_lots_audited",
+			) as close_production_order,
+			patch.object(close_existing_orders_patch.frappe.db, "commit") as commit,
+		):
+			close_existing_orders_patch.execute()
+
+		self.assertEqual(
+			get_all.call_args_list,
+			[
+				call(
+					"Finishing Plan",
+					filters={
+						"fp_status": "OCR Completed",
+						"lot": ("is", "set"),
+					},
+					pluck="lot",
+				),
+				call(
+					"Lot",
+					filters={
+						"name": ("in", ["LOT-1", "LOT-2"]),
+						"production_order": ("is", "set"),
+					},
+					pluck="production_order",
+				),
+			],
+		)
+		self.assertEqual(
+			close_production_order.call_args_list,
+			[call("PPO-1"), call("PPO-2")],
+		)
+		commit.assert_called_once_with()
 
 	def test_packing_dpr_multiplies_set_pieces_but_not_box_values(self):
 		ipd_doc = frappe._dict(
