@@ -22,6 +22,32 @@ from production_api.production_api.doctype.production_order.production_order imp
 
 
 class TestProductionOrder(TestCase):
+	def test_quantity_ratio_details_do_not_require_pieces_per_box(self):
+		doc = _dict(production_order_details=[])
+		order_details = {
+			"S": {"qty": 10, "ratio": 1, "mrp": 100},
+			"M": {"qty": 20, "ratio": 2, "mrp": 120},
+		}
+
+		with (
+			patch.object(production_order.frappe, "get_doc", return_value=doc),
+			patch.object(
+				production_order.frappe.local,
+				"form_dict",
+				_dict(),
+			),
+			patch.object(
+				production_order,
+				"get_order_qty",
+				return_value=order_details,
+			),
+		):
+			result = production_order.get_production_order_details("PPO-TEST")
+
+		self.assertEqual(result, order_details)
+		self.assertNotIn("piece_qty", result["S"])
+		self.assertNotIn("piece_qty", result["M"])
+
 	def test_print_keeps_box_quantity_and_adds_piece_quantity(self):
 		doc = _dict(production_order_details=[])
 		order_details = {

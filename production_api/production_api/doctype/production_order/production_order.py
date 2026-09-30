@@ -524,9 +524,10 @@ def get_production_order_details(production_order, pieces_per_box=None):
 	order_qty = get_order_qty(doc.production_order_details)
 	if pieces_per_box is None:
 		pieces_per_box = frappe.form_dict.get("pieces_per_box")
-	pieces_per_box = validate_pieces_per_box(pieces_per_box)
-	for details in order_qty.values():
-		details["piece_qty"] = flt(details.get("qty")) * pieces_per_box
+	if pieces_per_box is not None:
+		pieces_per_box = validate_pieces_per_box(pieces_per_box)
+		for details in order_qty.values():
+			details["piece_qty"] = flt(details.get("qty")) * pieces_per_box
 	return order_qty
 
 
