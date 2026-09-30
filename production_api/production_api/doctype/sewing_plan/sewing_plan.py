@@ -340,7 +340,7 @@ def get_sp_status_summary(supplier):
 
 	# Query 4: Work Order Calculated Items
 	wo_calc_rows = frappe.db.sql("""
-		SELECT parent, item_variant, set_combination, received_qty
+		SELECT parent, item_variant, set_combination, delivered_quantity, received_qty
 		FROM `tabWork Order Calculated Item`
 		WHERE parent IN %(wos)s
 	""", {"wos": tuple(wo_names)}, as_dict=True)
@@ -426,7 +426,7 @@ def get_sp_status_summary(supplier):
 		primary_attr = ipd.get("primary_item_attribute")
 		set_attr = ipd.get("set_item_attribute")
 
-		# WO calculated items → GRN Qty
+		# WO calculated items → Delivered Qty and GRN Qty
 		for row in wo_calc_by_wo.get(sp.work_order, []):
 			key = get_sp_key_cached(row, item, lot, primary_attr)
 			attr_details = variant_attr_cache.get(row.item_variant, {})
@@ -452,6 +452,12 @@ def get_sp_status_summary(supplier):
 				"input_dates": [],
 				"output_dates": [],
 			})
+			input_key = "Delivered Qty"
+			data[key].setdefault(input_key, 0)
+			data[key][input_key] += flt(row.delivered_quantity)
+			total.setdefault(input_key, 0)
+			total[input_key] += flt(row.delivered_quantity)
+
 			input_key = "GRN Qty"
 			data[key].setdefault(input_key, 0)
 			data[key][input_key] += row.received_qty
@@ -578,7 +584,7 @@ def get_sp_status_summary(supplier):
 		"Last Sewing Output",
 		"Total Running Days",
 	]
-	header2 = ["Order Qty"]
+	header2 = ["Order Qty", "Delivered Qty"]
 	for row in mrp_doc.sewing_plan_status_summary:
 		if row.input_type == type_wise_diff_input:
 			if received_type != row.received_type:
