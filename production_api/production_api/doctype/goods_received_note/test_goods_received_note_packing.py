@@ -146,3 +146,128 @@ class TestPackingMajorDeliverables(TestCase):
         self.assertEqual(deliverables[0]["quantity"], 10)
         self.assertEqual(excess, [])
         grn.get_packing_piece_values.assert_not_called()
+
+
+class TestPackingReceivableUomConversion(TestCase):
+    @staticmethod
+    def _uom_details(_item_variant, uom, quantity):
+        factor = {"Pieces": 1, "Box": 5}[uom]
+        return {
+            "stock_uom": "Pieces",
+            "conversion_factor": factor,
+            "stock_qty": quantity * factor,
+        }
+
+    def test_converts_legacy_box_receivable_to_dynamic_pieces(self):
+        with patch.object(
+            goods_received_note,
+            "get_uom_details",
+            side_effect=self._uom_details,
+        ):
+            available = goods_received_note.convert_quantity_between_uoms(
+                "PACK-8-10", 514, "Box", "Pieces"
+            )
+            received = goods_received_note.convert_quantity_between_uoms(
+                "PACK-8-10", 1812, "Pieces", "Box"
+            )
+
+        self.assertEqual(available, 2570)
+        self.assertEqual(received, 362.4)
+
+    def test_dynamic_packing_accepts_pieces_against_legacy_box_receivable(self):
+        receivable = _dict(
+            name="WO-RECEIVABLE-1",
+            item_variant="PACK-8-10",
+            pending_quantity=514,
+            uom="Box",
+        )
+        work_order = _dict(receivables=[receivable])
+
+        def get_value(doctype, name, fieldname):
+            if doctype == "Lot":
+                return ("PRODUCT", "IPD-TEST", "Box", "Pieces", "Pack")
+            if doctype == "Item Production Detail":
+                return "Size"
+            raise AssertionError((doctype, name, fieldname))
+
+        def get_single_value(doctype, fieldname):
+            return {
+                ("IPD Settings", "default_loose_piece_stage"): "Loose Piece",
+                ("Stock Settings", "default_received_type"): "Accepted",
+            }[(doctype, fieldname)]
+
+        with (
+            patch.object(goods_received_note.frappe, "get_value", side_effect=get_value),
+            patch.object(
+                goods_received_note.frappe.db,
+                "get_single_value",
+                side_effect=get_single_value,
+            ),
+            patch.object(
+                goods_received_note.frappe,
+                "get_cached_doc",
+                return_value=work_order,
+            ),
+            patch.object(goods_received_note, "is_dynamic_packing_grn", return_value=True),
+            patch.object(goods_received_note, "build_variant_attributes", return_value={}),
+            patch.object(
+                goods_received_note,
+                "get_or_create_variant",
+                side_effect=["LOOSE-8-10", "PACK-8-10"],
+            ),
+            patch.object(
+                goods_received_note,
+                "get_uom_details",
+                side_effect=self._uom_details,
+            ),
+        ):
+            items, total_qty = goods_received_note.save_grn_packing_item_details(
+                {"8-10": 1812},
+                "LOT-TEST",
+                _dict(against_id="WO-TEST"),
+            )
+
+        self.assertEqual(total_qty, 1812)
+        self.assertEqual(items[0]["quantity"], 1812)
+        self.assertEqual(items[0]["uom"], "Pieces")
+        self.assertEqual(items[0]["ref_docname"], "WO-RECEIVABLE-1")
+
+    def test_submit_reduces_legacy_receivable_in_its_own_uom(self):
+        receivable = MagicMock()
+        receivable.name = "WO-RECEIVABLE-1"
+        receivable.item_variant = "PACK-8-10"
+        receivable.pending_quantity = 514
+        receivable.uom = "Box"
+        receivable.set.side_effect = lambda field, value: setattr(
+            receivable, field, value
+        )
+
+        work_order = MagicMock()
+        work_order.receivables = [receivable]
+        work_order.work_order_excess_usage_items = []
+
+        grn = SimpleNamespace(
+            docstatus=1,
+            against="Work Order",
+            against_id="WO-TEST",
+            items=[_dict(
+                item_variant="PACK-8-10",
+                quantity=1812,
+                uom="Pieces",
+                ref_docname="WO-RECEIVABLE-1",
+            )],
+            grn_excess_usage_items=[],
+        )
+
+        with (
+            patch.object(goods_received_note.frappe, "get_doc", return_value=work_order),
+            patch.object(
+                goods_received_note,
+                "get_uom_details",
+                side_effect=self._uom_details,
+            ),
+        ):
+            goods_received_note.GoodsReceivedNote.update_work_order_receivables(grn)
+
+        self.assertAlmostEqual(receivable.pending_quantity, 151.6)
+        work_order.save.assert_called_once_with(ignore_permissions=True)

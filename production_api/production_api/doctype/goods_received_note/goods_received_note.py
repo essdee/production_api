@@ -834,7 +834,13 @@ class GoodsReceivedNote(Document):
                 continue
             for i in wo.receivables:
                 if i.name == item.ref_docname:
-                    qty = i.pending_quantity - item.quantity
+                    received_qty = convert_quantity_between_uoms(
+                        i.item_variant,
+                        item.quantity,
+                        item.uom,
+                        i.uom,
+                    )
+                    qty = i.pending_quantity - received_qty
                     i.set('pending_quantity', qty)
                     break
         d = {}
@@ -1243,7 +1249,13 @@ class GoodsReceivedNote(Document):
                 for item in self.items:
                     for receivable in wo_doc.receivables:
                         if item.ref_docname == receivable.name and flt(item.quantity) > flt(0):
-                            receivable.pending_quantity += item.quantity
+                            received_qty = convert_quantity_between_uoms(
+                                receivable.item_variant,
+                                item.quantity,
+                                item.uom,
+                                receivable.uom,
+                            )
+                            receivable.pending_quantity += received_qty
                             break
                 wo_doc.save(ignore_permissions=True)
                 logger.debug(
@@ -2140,6 +2152,20 @@ def save_grn_item_details(item_details, process_name):
     return items, total_rate, total_qty
 
 
+def convert_quantity_between_uoms(item_variant, quantity, from_uom, to_uom):
+    """Convert a quantity through the item's stock-UOM conversion factors."""
+    if not from_uom or not to_uom or from_uom == to_uom:
+        return flt(quantity)
+
+    from_factor = flt(
+        get_uom_details(item_variant, from_uom, 1).get("conversion_factor")
+    ) or 1
+    to_factor = flt(
+        get_uom_details(item_variant, to_uom, 1).get("conversion_factor")
+    ) or 1
+    return flt(quantity) * from_factor / to_factor
+
+
 def save_grn_packing_item_details(item_details, lot, grn_doc=None):
     item_details = update_if_string_instance(item_details)
     items = []
@@ -2170,11 +2196,25 @@ def save_grn_packing_item_details(item_details, lot, grn_doc=None):
             if not matches:
                 frappe.throw(f"No Work Order packing receivable found for size {item}")
             requested = flt(item_details[item])
-            match = next((row for row in matches if flt(row.pending_quantity) >= requested), matches[0])
-            if requested > flt(match.pending_quantity):
+            match = next((
+                row for row in matches
+                if convert_quantity_between_uoms(
+                    row.item_variant,
+                    row.pending_quantity,
+                    row.uom,
+                    uom,
+                ) >= requested
+            ), matches[0])
+            available = convert_quantity_between_uoms(
+                match.item_variant,
+                match.pending_quantity,
+                match.uom,
+                uom,
+            )
+            if requested > available:
                 frappe.throw(
                     f"Packing quantity for {item} is {requested}, but only "
-                    f"{flt(match.pending_quantity)} pieces are pending in the Work Order"
+                    f"{flt(available)} {uom} are pending in the Work Order"
                 )
             ref_docname = match.name
         item1 = {}
