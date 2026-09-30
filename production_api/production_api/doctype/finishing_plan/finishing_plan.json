@@ -95,7 +95,7 @@
    "in_list_view": 1,
    "in_standard_filter": 1,
    "label": "FP Status",
-   "options": "Planned\nPartially Received\nReady to Pack\nPartially Dispatched\nDispatched\nFully Dispatched\nReady for Audit\nAudit Completed\nOCR Completed\nP&L Submitted",
+   "options": "Planned\nPartially Received\nReady to Pack\nPartially Dispatched\nDispatched\nFully Dispatched\nReady for Audit\nAudit Completed\nAuto Closed\nOCR Completed\nP&L Submitted",
    "read_only": 1
   },
   {

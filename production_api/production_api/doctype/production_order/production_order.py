@@ -20,7 +20,11 @@ CLOSE_REQUEST_STATUS = "Close Request"
 CLOSED_PO_STATUS = "Closed"
 AUTO_AUDIT_CLOSE_FLAG = "allow_auto_audit_close"
 REOPEN_PRODUCTION_ORDER_FLAG = "allow_production_order_reopen"
-AUDIT_COMPLETE_FINISHING_PLAN_STATUSES = {"Audit Completed", "OCR Completed"}
+AUDIT_COMPLETE_FINISHING_PLAN_STATUSES = {
+	"Audit Completed",
+	"Auto Closed",
+	"OCR Completed",
+}
 PPO_APPROVER_ROLE_FIELDS = ("merch_user_role", "merchandising_manager_role")
 SYSTEM_GENERATED_ALTERNATIVE_PPO_FLAG = "allow_system_generated_alternative_ppo"
 

@@ -16,7 +16,7 @@ from production_api.patches.v1_0 import (
 
 
 class TestFinishingPlan(FrappeTestCase):
-	def test_daily_job_completes_only_audits_older_than_30_days(self):
+	def test_daily_job_auto_closes_only_audits_older_than_30_days(self):
 		with (
 			patch.object(finishing_plan, "today", return_value="2026-09-28"),
 			patch.object(
@@ -30,7 +30,9 @@ class TestFinishingPlan(FrappeTestCase):
 				"close_linked_production_order_if_all_lots_audited",
 			) as close_production_order,
 		):
-			completed = finishing_plan.auto_complete_ocr_after_30_days()
+			auto_closed = (
+				finishing_plan.auto_close_audited_finishing_plans_after_30_days()
+			)
 
 		get_all.assert_called_once_with(
 			"Finishing Plan",
@@ -42,13 +44,13 @@ class TestFinishingPlan(FrappeTestCase):
 		)
 		self.assertEqual(set_value.call_count, 2)
 		set_value.assert_any_call(
-			"Finishing Plan", "FP-OLD-1", "fp_status", "OCR Completed"
+			"Finishing Plan", "FP-OLD-1", "fp_status", "Auto Closed"
 		)
 		set_value.assert_any_call(
-			"Finishing Plan", "FP-OLD-2", "fp_status", "OCR Completed"
+			"Finishing Plan", "FP-OLD-2", "fp_status", "Auto Closed"
 		)
 		close_production_order.assert_not_called()
-		self.assertEqual(completed, 2)
+		self.assertEqual(auto_closed, 2)
 
 	def test_audit_request_moves_dispatched_plan_to_ready_for_audit(self):
 		doc = MagicMock(fp_status="Dispatched")
@@ -99,6 +101,23 @@ class TestFinishingPlan(FrappeTestCase):
 
 	def test_system_manager_completes_ocr_only_after_audit(self):
 		doc = MagicMock(fp_status="Audit Completed", lot="LOT-1")
+		with (
+			patch.object(finishing_plan.frappe, "get_roles", return_value=["System Manager"]),
+			patch.object(finishing_plan.frappe, "get_doc", return_value=doc),
+			patch.object(
+				finishing_plan,
+				"close_linked_production_order_if_all_lots_audited",
+			) as close_production_order,
+		):
+			result = finishing_plan.complete_ocr("FP-1")
+
+		self.assertEqual(doc.fp_status, "OCR Completed")
+		doc.save.assert_called_once_with(ignore_permissions=True)
+		close_production_order.assert_called_once_with("LOT-1")
+		self.assertEqual(result["fp_status"], "OCR Completed")
+
+	def test_system_manager_completes_ocr_from_auto_closed(self):
+		doc = MagicMock(fp_status="Auto Closed", lot="LOT-1")
 		with (
 			patch.object(finishing_plan.frappe, "get_roles", return_value=["System Manager"]),
 			patch.object(finishing_plan.frappe, "get_doc", return_value=doc),
