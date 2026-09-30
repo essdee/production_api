@@ -153,7 +153,7 @@ const MatrixTable = {
 // Keep Fetch Items available so the user can refresh the remaining source balance
 // after every Lot Transfer. Completed plans remain read-only.
 const show_fetch_button = computed(() => {
-    if (cur_frm.doc.fp_status === "OCR Completed") return false
+    if (["Auto Closed", "OCR Completed"].includes(cur_frm.doc.fp_status)) return false
     return true
 })
 
@@ -189,8 +189,8 @@ function fetch_items(freeze = true, show_empty_message = true){
 
 // Rebuild the transient list whenever the form loads or reloads. This keeps the
 // current balance visible without storing fetched rows on the Finishing Plan.
-if (cur_frm.doc.fp_status !== "OCR Completed") {
-	fetch_items(false, false)
+if (!["Auto Closed", "OCR Completed"].includes(cur_frm.doc.fp_status)) {
+    fetch_items(false, false)
 }
 
 function cancel_doc(doctype, docname){

@@ -1998,8 +1998,10 @@ def fetch_from_old_lot(doc_name):
 	persistent source of truth, so every fetch recalculates the live balance.
 	"""
 	doc = frappe.get_doc("Finishing Plan", doc_name)
-	if doc.fp_status == "OCR Completed":
-		frappe.throw("Fetch Items is disabled for Finishing Plans in OCR Completed status.")
+	if doc.fp_status in ("Auto Closed", "OCR Completed"):
+		frappe.throw(
+			f"Fetch Items is disabled for Finishing Plans in {doc.fp_status} status."
+		)
 
 	ipd = frappe.get_value("Lot", doc.lot, "production_detail")
 	ipd_doc = frappe.get_doc("Item Production Detail", ipd)
@@ -4445,8 +4447,8 @@ def close_linked_production_order_if_all_lots_audited(lot):
 	return close_production_order_if_all_lots_audited(production_order)
 
 
-def auto_complete_ocr_after_30_days():
-	"""Complete OCR after an Audit Completed plan has remained open for 30 days."""
+def auto_close_audited_finishing_plans_after_30_days():
+	"""Auto-close an Audit Completed plan after it has remained open for 30 days."""
 	cutoff_date = add_days(today(), -30)
 	finishing_plans = frappe.get_all(
 		"Finishing Plan",
@@ -4461,9 +4463,14 @@ def auto_complete_ocr_after_30_days():
 			"Finishing Plan",
 			finishing_plan,
 			"fp_status",
-			"OCR Completed",
+			"Auto Closed",
 		)
 	return len(finishing_plans)
+
+
+def auto_complete_ocr_after_30_days():
+	"""Compatibility alias for the previous scheduler method name."""
+	return auto_close_audited_finishing_plans_after_30_days()
 
 
 @frappe.whitelist()
@@ -4509,9 +4516,9 @@ def complete_ocr(doc_name):
 	if "System Manager" not in frappe.get_roles():
 		frappe.throw("Only System Manager can complete OCR.")
 	doc = frappe.get_doc("Finishing Plan", doc_name, for_update=True)
-	if doc.fp_status != "Audit Completed":
+	if doc.fp_status not in ("Audit Completed", "Auto Closed"):
 		frappe.throw(
-			"OCR can be completed only after the audit is completed "
+			"OCR can be completed only after audit completion or automatic closure "
 			f"(current: {doc.fp_status})."
 		)
 	doc.fp_status = "OCR Completed"

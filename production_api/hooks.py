@@ -211,7 +211,7 @@ scheduler_events = {
 	],
 	"cron": {
 		"0 0 * * *": [
-			"production_api.production_api.doctype.finishing_plan.finishing_plan.auto_complete_ocr_after_30_days"
+			"production_api.production_api.doctype.finishing_plan.finishing_plan.auto_close_audited_finishing_plans_after_30_days"
 		],
 		"0 1 * * *": [
 			"production_api.tasks.daily"
