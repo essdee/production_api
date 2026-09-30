@@ -222,6 +222,94 @@ class TestSewingPlan(FrappeTestCase):
 		self.assertEqual(values["Delivered - Input"], 4)
 		self.assertEqual(colours, ["Navy"])
 
+	def test_status_summary_shows_delivered_quantity_before_input_quantity(self):
+		ipd_settings = frappe._dict(
+			default_packing_attribute="Colour",
+			default_set_item_attribute="Part",
+		)
+		mrp_settings = frappe._dict(
+			type_wise_diff_summary="Checking Output",
+			sewing_input_qty_type="Input Qty",
+			sewing_line_output_type="Line Output",
+			sewing_plan_inspection_type="AQL Output",
+			sewing_plan_status_summary=[
+				frappe._dict(input_type="Input Qty", received_type="Accepted"),
+			],
+		)
+		query_results = [
+			[
+				frappe._dict(
+					name="SP-1",
+					work_order="WO-1",
+					lot="LOT-1",
+					item="ITEM-1",
+				)
+			],
+			[frappe._dict(name="LOT-1", production_detail="IPD-1")],
+			[
+				frappe._dict(
+					name="IPD-1",
+					is_set_item=0,
+					packing_attribute="Colour",
+					primary_item_attribute="Size",
+					set_item_attribute=None,
+				)
+			],
+			[
+				frappe._dict(
+					parent="WO-1",
+					item_variant="VARIANT-1",
+					set_combination={"major_colour": "Navy"},
+					delivered_quantity=120,
+					received_qty=50,
+				)
+			],
+			[
+				frappe._dict(
+					parent="SP-1",
+					item_variant="VARIANT-1",
+					set_combination={"major_colour": "Navy"},
+					quantity=150,
+					pre_final=0,
+					final_inspection=0,
+					fi_date=None,
+				)
+			],
+			[],
+			[
+				frappe._dict(
+					parent="VARIANT-1", attribute="Size", attribute_value="S"
+				),
+				frappe._dict(
+					parent="VARIANT-1", attribute="Colour", attribute_value="Navy"
+				),
+			],
+		]
+
+		with (
+			patch.object(
+				sewing_plan.frappe,
+				"get_single",
+				side_effect=[ipd_settings, mrp_settings],
+			),
+			patch.object(
+				sewing_plan.frappe.db,
+				"get_single_value",
+				return_value="Accepted",
+			),
+			patch.object(
+				sewing_plan.frappe.db,
+				"sql",
+				side_effect=query_results,
+			) as sql,
+		):
+			result = sewing_plan.get_sp_status_summary("UNIT-1")
+
+		self.assertEqual(result["header2"][:3], ["Order Qty", "Delivered Qty", "Input Qty"])
+		self.assertEqual(result["data"][0]["Delivered Qty"], 120)
+		self.assertEqual(result["data"][1]["Delivered Qty"], 120)
+		self.assertIn("delivered_quantity", sql.call_args_list[3].args[0])
+
 	def test_sewing_detail_ui_has_scr_and_input_date_range_controls(self):
 		scr_source = Path(
 			frappe.get_app_path(
