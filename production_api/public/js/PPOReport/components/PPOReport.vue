@@ -88,14 +88,95 @@
             >
               <template v-if="sgIdx === 0">
                 <th :rowspan="size_groups.length">#</th>
-                <th :rowspan="size_groups.length">PPO</th>
+                <th
+                  :rowspan="size_groups.length"
+                  :aria-sort="sortAria('name')"
+                >
+                  <button
+                    type="button"
+                    class="sort-button"
+                    :title="sortTitle('name', 'PPO')"
+                    @click="toggleSort('name')"
+                  >
+                    <span>PPO</span>
+                    <span
+                      :class="['sort-icon', { active: sort_key === 'name' }]"
+                      aria-hidden="true"
+                    >
+                      {{ sortIcon("name") }}
+                    </span>
+                  </button>
+                </th>
                 <th :rowspan="size_groups.length">Item</th>
                 <th v-if="show_fabric" :rowspan="size_groups.length">Fabric</th>
                 <th v-if="show_dia" :rowspan="size_groups.length">Dia</th>
                 <th v-if="show_gsm" :rowspan="size_groups.length">GSM</th>
-                <th :rowspan="size_groups.length">Posting Date</th>
-                <th :rowspan="size_groups.length">Delivery Date</th>
-                <th :rowspan="size_groups.length">Don't Deliver After</th>
+                <th
+                  :rowspan="size_groups.length"
+                  :aria-sort="sortAria('posting_date')"
+                >
+                  <button
+                    type="button"
+                    class="sort-button"
+                    :title="sortTitle('posting_date', 'Posting Date')"
+                    @click="toggleSort('posting_date')"
+                  >
+                    <span>Posting Date</span>
+                    <span
+                      :class="[
+                        'sort-icon',
+                        { active: sort_key === 'posting_date' },
+                      ]"
+                      aria-hidden="true"
+                    >
+                      {{ sortIcon("posting_date") }}
+                    </span>
+                  </button>
+                </th>
+                <th
+                  :rowspan="size_groups.length"
+                  :aria-sort="sortAria('delivery_date')"
+                >
+                  <button
+                    type="button"
+                    class="sort-button"
+                    :title="sortTitle('delivery_date', 'Delivery Date')"
+                    @click="toggleSort('delivery_date')"
+                  >
+                    <span>Delivery Date</span>
+                    <span
+                      :class="[
+                        'sort-icon',
+                        { active: sort_key === 'delivery_date' },
+                      ]"
+                      aria-hidden="true"
+                    >
+                      {{ sortIcon("delivery_date") }}
+                    </span>
+                  </button>
+                </th>
+                <th
+                  :rowspan="size_groups.length"
+                  :aria-sort="sortAria('dont_deliver_after')"
+                >
+                  <button
+                    type="button"
+                    class="sort-button"
+                    :title="sortTitle('dont_deliver_after', `Don't Deliver After`)"
+                    @click="toggleSort('dont_deliver_after')"
+                  >
+                    <span>Don't Deliver After</span>
+                    <span
+                      :class="[
+                        'sort-icon',
+                        { active: sort_key === 'dont_deliver_after' },
+                      ]"
+                      aria-hidden="true"
+                    >
+                      {{ sortIcon("dont_deliver_after") }}
+                    </span>
+                  </button>
+                </th>
                 <th :rowspan="size_groups.length">Lead Time</th>
                 <th :rowspan="size_groups.length">Status</th>
                 <th :rowspan="size_groups.length">Action</th>
@@ -116,7 +197,7 @@
             </tr>
           </thead>
           <tbody>
-            <template v-for="(order, idx) in flat_orders" :key="order.name">
+            <template v-for="(order, idx) in sorted_orders" :key="order.name">
               <tr>
                 <td class="cell-dim">{{ idx + 1 }}</td>
                 <td>
@@ -379,6 +460,8 @@ const max_cols = ref(0);
 const size_groups = ref([]);
 const fetched = ref(false);
 const summaryState = ref({});
+const sort_key = ref(null);
+const sort_direction = ref("asc");
 const production_order_statuses = [
   "Draft",
   "PPO Request",
@@ -409,6 +492,32 @@ const show_gsm = ref(false);
 // "Summarized" — expands the dispatch drill-down for EVERY loaded order at once
 // via a single batched API call (get_ppo_dispatch_summary_bulk).
 const summarized = ref(false);
+
+const sorted_orders = computed(() => {
+  if (!sort_key.value) return flat_orders.value;
+
+  const key = sort_key.value;
+  const direction = sort_direction.value;
+  return flat_orders.value
+    .map((order, index) => ({ order, index }))
+    .sort((left, right) => {
+      const leftValue = normalizeSortValue(left.order[key]);
+      const rightValue = normalizeSortValue(right.order[key]);
+
+      // Keep missing dates at the bottom in both directions.
+      if (!leftValue && !rightValue) return left.index - right.index;
+      if (!leftValue) return 1;
+      if (!rightValue) return -1;
+
+      const comparison = leftValue.localeCompare(rightValue, undefined, {
+        numeric: key === "name",
+        sensitivity: "base",
+      });
+      if (!comparison) return left.index - right.index;
+      return direction === "asc" ? comparison : -comparison;
+    })
+    .map(({ order }) => order);
+});
 
 // Fixed (non-size) column count drives the colspans of the Total row and the
 // Summarize drill-down labels so they stay aligned when columns are toggled.
@@ -535,6 +644,38 @@ function get_report() {
 
 function statusClass(status) {
   return ["ppo-status", status_classes[status] || "status-default"];
+}
+
+function normalizeSortValue(value) {
+  if (value === null || value === undefined) return "";
+  return String(value).trim();
+}
+
+function toggleSort(key) {
+  if (sort_key.value === key) {
+    sort_direction.value = sort_direction.value === "asc" ? "desc" : "asc";
+    return;
+  }
+  sort_key.value = key;
+  sort_direction.value = "asc";
+}
+
+function sortIcon(key) {
+  if (sort_key.value !== key) return "↕";
+  return sort_direction.value === "asc" ? "↑" : "↓";
+}
+
+function sortAria(key) {
+  if (sort_key.value !== key) return "none";
+  return sort_direction.value === "asc" ? "ascending" : "descending";
+}
+
+function sortTitle(key, label) {
+  const direction =
+    sort_key.value === key && sort_direction.value === "asc"
+      ? "descending"
+      : "ascending";
+  return `Sort ${label} ${direction}`;
 }
 
 const overall_total = computed(() => {
@@ -1002,6 +1143,42 @@ defineExpose({ load_data });
 .ppo-table tbody td:last-child,
 .ppo-table tfoot td:last-child {
   border-right: 0;
+}
+
+.sort-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 0;
+  color: inherit;
+  background: transparent;
+  border: 0;
+  font: inherit;
+  letter-spacing: inherit;
+  line-height: inherit;
+  text-transform: inherit;
+  cursor: pointer;
+}
+
+.sort-button:hover,
+.sort-button:focus-visible {
+  color: var(--ppo-blue);
+  outline: none;
+}
+
+.sort-icon {
+  display: inline-flex;
+  width: 12px;
+  align-items: center;
+  justify-content: center;
+  color: var(--ppo-faint);
+  font-size: 13px;
+  line-height: 1;
+}
+
+.sort-icon.active {
+  color: var(--ppo-blue);
 }
 
 .group-header-cell {

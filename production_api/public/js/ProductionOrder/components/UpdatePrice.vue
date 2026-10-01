@@ -115,8 +115,41 @@
     </div>
 
     <div v-if="lots.length" class="section lot-section">
-      <div class="section-heading">
+      <div class="section-heading lot-section-heading">
         <strong>Lot-wise MRP</strong>
+        <div class="lot-bulk-controls">
+          <span class="bulk-label">Update all:</span>
+          <label
+            v-for="source in lotSourceOptions"
+            :key="`bulk-${source.value}`"
+            :class="[
+              'lot-source-option',
+              { disabled: !lotSourceAvailable(source.value) },
+            ]"
+          >
+            <input
+              type="radio"
+              name="lot-source-all"
+              :value="source.value"
+              v-model="bulk_lot_source"
+              :disabled="!lotSourceAvailable(source.value)"
+            />
+            <span>{{ source.label }}</span>
+          </label>
+          <button
+            type="button"
+            class="btn btn-primary btn-xs"
+            :disabled="
+              !bulk_lot_source ||
+              !lotSourceAvailable(bulk_lot_source) ||
+              !hasUnlockedLots()
+            "
+            @click="applyLotSourceToAll"
+          >
+            Update All
+          </button>
+          <span class="bulk-hint">Unprinted lots only</span>
+        </div>
       </div>
       <div class="table-scroll">
         <table class="styled-table lot-table">
@@ -205,6 +238,7 @@ let box_qty = ref({});
 let total_qty = ref(0);
 let selected_source = ref("production_order_mrp");
 let lots = ref([]);
+let bulk_lot_source = ref(null);
 const lotSourceOptions = [
   { value: "sales_mrp", label: "Sales Item" },
   { value: "box_sticker_mrp", label: "Box Sticker" },
@@ -311,6 +345,7 @@ function load_data(data) {
   });
 
   selected_source.value = getSelectedSourceFromRows() || "production_order_mrp";
+  bulk_lot_source.value = null;
   lots.value = (payload.lots || []).map((lot) => {
     const prices = {};
     primary_values.value.forEach((size) => {
@@ -380,10 +415,23 @@ function lotSourceAvailable(source) {
 
 function applyLotSource(lot, source) {
   if (lot.locked || !lotSourceAvailable(source)) return;
+  lot.selected_source = source;
   primary_values.value.forEach((size) => {
     const price = lotPrice(lot, size);
     price.override_mrp = Number(lotSourceValue(source, size));
     price.has_override = true;
+  });
+}
+
+function hasUnlockedLots() {
+  return lots.value.some((lot) => !lot.locked);
+}
+
+function applyLotSourceToAll() {
+  const source = bulk_lot_source.value;
+  if (!source || !lotSourceAvailable(source)) return;
+  lots.value.forEach((lot) => {
+    if (!lot.locked) applyLotSource(lot, source);
   });
 }
 
@@ -456,6 +504,32 @@ defineExpose({
 .section-heading {
   padding: 7px 10px;
   border-bottom: 1px solid #d1d8dd;
+}
+
+.lot-section-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+}
+
+.lot-bulk-controls {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+}
+
+.bulk-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #475569;
+}
+
+.bulk-hint {
+  font-size: 11px;
+  color: #64748b;
 }
 
 .table-scroll {
