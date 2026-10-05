@@ -59,6 +59,72 @@ function flatten_item_details_for_duplicate(item_details) {
 	return rows;
 }
 
+function setup_purchase_order_approval_actions(frm) {
+	if (
+		frm.doc.docstatus !== 0 ||
+		frm.doc.status !== "Pending Approval" ||
+		frm.is_new()
+	) {
+		return;
+	}
+
+	const is_system_manager = frappe.user.has_role("System Manager");
+	if (!is_system_manager) {
+		frm.page.btn_primary.hide();
+	}
+
+	frappe.call({
+		method: "production_api.purchase_order_approval.get_purchase_order_approval_state",
+		args: { name: frm.doc.name },
+		callback: function(response) {
+			const state = response.message || {};
+			if (
+				frappe.perm.has_perm("Purchase Order", 0, "create") &&
+				!state.live_request
+			) {
+				frm.add_custom_button(__("Send Request"), function() {
+					frappe.call({
+						method: "production_api.purchase_order_approval.send_purchase_order_request",
+						args: { name: frm.doc.name },
+						freeze: true,
+						callback: function(send_response) {
+							const result = send_response.message || {};
+							if (result.status === "Error") {
+								frappe.msgprint(result.error || __("Unable to send the Telegram request."));
+							}
+							frm.reload_doc();
+						},
+					});
+				});
+			}
+
+			if (!is_system_manager) {
+				return;
+			}
+			frm.add_custom_button(__("Approve PO"), function() {
+				frappe.confirm(__("Approve and submit this Purchase Order?"), function() {
+					frappe.call({
+						method: "production_api.purchase_order_approval.approve_purchase_order",
+						args: { name: frm.doc.name },
+						freeze: true,
+						callback: function() { frm.reload_doc(); },
+					});
+				});
+			});
+			frm.add_custom_button(__("Reject PO"), function() {
+				frappe.confirm(__("Reject this Purchase Order request?"), function() {
+					frappe.call({
+						method: "production_api.purchase_order_approval.reject_purchase_order",
+						args: { name: frm.doc.name },
+						freeze: true,
+						callback: function() { frm.reload_doc(); },
+					});
+				});
+			});
+		},
+	});
+}
+
 frappe.ui.form.on('Purchase Order', {
 	setup: function(frm) {
 		frm.set_query('default_delivery_location', function(doc) {
@@ -131,6 +197,7 @@ frappe.ui.form.on('Purchase Order', {
 	},
 	refresh: function(frm) {
 		$(frm.fields_dict['item_html'].wrapper).html("");
+		setup_purchase_order_approval_actions(frm);
 		// sd_lot: inline-editable while Draft; locked after submit (link via button below)
 		frm.set_df_property('sd_lot', 'read_only', frm.doc.docstatus === 1 ? 1 : 0);
 		// NOTE: Lot is NOT submittable (is_submittable:0, verified in lot.json) — it has no

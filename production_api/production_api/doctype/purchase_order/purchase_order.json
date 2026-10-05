@@ -269,7 +269,7 @@
    "fieldtype": "Select",
    "hidden": 1,
    "label": "Status",
-   "options": "Draft\nOrdered\nPartially Delivered\nDelivered\nCancelled\nPartially Cancelled\nOverdue\nClosed",
+   "options": "Draft\nPending Approval\nOrdered\nPartially Delivered\nDelivered\nCancelled\nPartially Cancelled\nOverdue\nClosed",
    "read_only": 1
   },
   {

@@ -63,11 +63,13 @@ doctype_js = {"Spine Producer Config": "public/js/spine_producer_config.js"}
 after_install = [
     "production_api.setup.role_setup.ensure_required_roles",
     "production_api.setup.doctype_reader_permissions.setup_doctype_reader_permissions",
+	"production_api.purchase_order_approval.ensure_purchase_order_approval_route",
 ]
 
 after_migrate = [
     "production_api.setup.role_setup.ensure_required_roles",
     "production_api.setup.doctype_reader_permissions.setup_doctype_reader_permissions",
+	"production_api.purchase_order_approval.ensure_purchase_order_approval_route",
 ]
 
 # Desk Notifications
@@ -103,6 +105,11 @@ doc_events = {
 	},
 	"Communication": {
 		"validate": "production_api.production_api.util.validate_communication",
+	},
+	"Purchase Order": {
+		"before_save": "production_api.purchase_order_approval.apply_draft_approval_status",
+		"before_submit": "production_api.purchase_order_approval.validate_approval_submit",
+		"on_submit": "production_api.purchase_order_approval.finalize_purchase_order_submission",
 	},
     "Item": {
         "after_insert": "production_api.sd_yrp_sync.handle_item_event",

@@ -7,6 +7,37 @@ import frappe.utils
 from six import string_types
 from production_api.production_api.doctype.department.department import get_user_departments
 
+CANCEL_REQUEST_ROLE = "HR User"
+CANCEL_APPROVER_ROLE = "HR Manager"
+CANCEL_PENDING_STATUS = "Pending Approval"
+CANCEL_APPROVED_STATUS = "Cancel Request Approved"
+CANCEL_REQUESTABLE_STATUSES = frozenset({"Open", "Assigned", "Reopen", "Amended"})
+
+
+def _require_role(role):
+	if role not in frappe.get_roles():
+		frappe.throw(f"Only users with the {role} role can perform this action", frappe.PermissionError)
+
+
+def _get_locked_vendor_bill(name):
+	frappe.db.get_value("Vendor Bill Tracking", name, "name", for_update=True)
+	return frappe.get_doc("Vendor Bill Tracking", name)
+
+
+def _validate_submitted_without_purchase_invoice(doc):
+	if doc.docstatus != 1:
+		frappe.throw("Vendor Bill Tracking must be submitted")
+	if doc.purchase_invoice or doc.mrp_purchase_invoice:
+		frappe.throw("Vendor Bill Tracking with a Purchase Invoice cannot be cancelled")
+
+
+def _validate_cancel_approved_without_purchase_invoice(doc):
+	if doc.form_status != CANCEL_APPROVED_STATUS:
+		frappe.throw("Cancellation must be approved before cancelling Vendor Bill Tracking")
+	if doc.purchase_invoice or doc.mrp_purchase_invoice:
+		frappe.throw("Vendor Bill Tracking with a Purchase Invoice cannot be cancelled")
+
+
 class VendorBillTracking(Document):
 	
 	def before_submit(self):
@@ -14,6 +45,8 @@ class VendorBillTracking(Document):
 			self.set_first_history()
 
 	def before_cancel(self):
+		_require_role(CANCEL_REQUEST_ROLE)
+		_validate_cancel_approved_without_purchase_invoice(self)
 		self.set_cancelled_log()
 
 	def before_insert(self):
@@ -94,6 +127,28 @@ class VendorBillTracking(Document):
 		self.set('form_status', 'Assigned')
 		self.set('assigned_to', user)
 
+
+@frappe.whitelist()
+def request_vendor_bill_cancellation(name):
+	_require_role(CANCEL_REQUEST_ROLE)
+	doc = _get_locked_vendor_bill(name)
+	_validate_submitted_without_purchase_invoice(doc)
+	if doc.form_status not in CANCEL_REQUESTABLE_STATUSES:
+		frappe.throw(f"Cannot request cancellation while status is {doc.form_status}")
+	doc.set("form_status", CANCEL_PENDING_STATUS)
+	doc.save(ignore_permissions=True)
+
+
+@frappe.whitelist()
+def approve_vendor_bill_cancellation(name):
+	_require_role(CANCEL_APPROVER_ROLE)
+	doc = _get_locked_vendor_bill(name)
+	_validate_submitted_without_purchase_invoice(doc)
+	if doc.form_status != CANCEL_PENDING_STATUS:
+		frappe.throw(f"Cannot approve cancellation while status is {doc.form_status}")
+	doc.set("form_status", CANCEL_APPROVED_STATUS)
+	doc.save(ignore_permissions=True)
+
 @frappe.whitelist()
 def assign_vendor_bill(name, assigned_to, remarks = None):
 	from production_api.production_api.doctype.supplier.supplier import update_supplier_department_on_vbt
@@ -161,7 +216,10 @@ def revert_purchase_invoice_link(name, pi_field, expected_pi_name, origin=None):
 
 @frappe.whitelist()
 def cancel_vendor_bill(name, cancel_reason):
-	doc = frappe.get_doc("Vendor Bill Tracking", name)
+	_require_role(CANCEL_REQUEST_ROLE)
+	doc = _get_locked_vendor_bill(name)
+	_validate_submitted_without_purchase_invoice(doc)
+	_validate_cancel_approved_without_purchase_invoice(doc)
 	doc.cancel_reason = cancel_reason
 	doc.flags.ignore_permissions = True
 	doc.cancel()

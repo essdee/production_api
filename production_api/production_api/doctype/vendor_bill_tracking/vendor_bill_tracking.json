@@ -121,7 +121,7 @@
    "in_list_view": 1,
    "in_standard_filter": 1,
    "label": "Form Status",
-   "options": "Open\nAssigned\nClosed\nReopen\nCancelled\nAmended"
+   "options": "Open\nAssigned\nClosed\nReopen\nCancelled\nAmended\nPending Approval\nCancel Request Approved"
   },
   {
    "fieldname": "received_via",

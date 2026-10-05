@@ -149,6 +149,43 @@ def _apply_purchase_invoice_action(
 	return doc
 
 
+def _apply_purchase_order_action(
+	doc,
+	route,
+	action_key: str,
+	action_name: str,
+	target_field: str,
+	target_value: str,
+):
+	expected = {
+		"a": ("Approve PO", "Ordered"),
+		"r": ("Reject PO", "Draft"),
+	}.get(action_key)
+	if target_field != "status" or not expected or (action_name, target_value) != expected:
+		raise TelegramApprovalStateError(
+			_("Invalid Purchase Order Telegram approval action configuration.")
+		)
+
+	from production_api.purchase_order_approval import (
+		approve_purchase_order,
+		reject_purchase_order,
+	)
+
+	if action_key == "a":
+		approve_purchase_order(doc.name)
+	else:
+		reject_purchase_order(doc.name)
+
+	updated_doc = frappe.get_doc("Purchase Order", doc.name)
+	updated_doc.add_comment(
+		"Comment",
+		_("Telegram action {0} performed by {1}.").format(
+			action_name, frappe.session.user
+		),
+	)
+	return updated_doc
+
+
 def _validate_purchase_invoice_work_orders(doc):
 	if doc.against != "Work Order":
 		return
@@ -179,4 +216,5 @@ def _parse_roles(value: str | None) -> set[str]:
 
 FIELD_STATE_ACTION_HANDLERS = {
 	"Purchase Invoice": _apply_purchase_invoice_action,
+	"Purchase Order": _apply_purchase_order_action,
 }
