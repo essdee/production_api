@@ -1,4 +1,5 @@
 import os
+import unittest
 from unittest.mock import patch
 
 import frappe
@@ -6,7 +7,13 @@ from frappe.tests.utils import FrappeTestCase
 from frappe.utils import get_datetime
 
 from production_api import hooks
-from production_api.setup.role_setup import ensure_role
+from production_api.setup.role_setup import REQUIRED_ROLES, ensure_role
+
+
+class TestRequiredRoles(unittest.TestCase):
+    def test_cancel_approval_roles_have_desk_access(self):
+        self.assertEqual(REQUIRED_ROLES["HR User"]["desk_access"], 1)
+        self.assertEqual(REQUIRED_ROLES["HR Manager"]["desk_access"], 1)
 
 
 class TestRoleSetup(FrappeTestCase):

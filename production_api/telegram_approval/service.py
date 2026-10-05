@@ -65,6 +65,13 @@ def handle_document_event(doc, method=None):
 	]
 	if not routes:
 		return
+	if doc.doctype == "Purchase Order":
+		if (doc.get("flags") or {}).get("purchase_order_approval_rejection"):
+			return
+		if doc.get("docstatus") == 1:
+			return
+		_expire_stale_requests(doc)
+		return
 
 	previous_doc = doc.get_doc_before_save()
 	for route in routes:

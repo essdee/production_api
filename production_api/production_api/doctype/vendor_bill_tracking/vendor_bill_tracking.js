@@ -1,6 +1,10 @@
 // Copyright (c) 2025, Aerele Technologies Pvt Ltd and contributors
 // For license information, please see license.txt
 
+const CANCEL_PENDING_STATUS = "Pending Approval";
+const CANCEL_APPROVED_STATUS = "Cancel Request Approved";
+const CANCEL_REQUESTABLE_STATUSES = ["Open", "Assigned", "Reopen", "Amended"];
+
 frappe.ui.form.on("Vendor Bill Tracking", {
   async refresh(frm) {
 		frm.set_query("supplier", () => ({ filters: { disabled: 0 } }));
@@ -18,19 +22,16 @@ frappe.ui.form.on("Vendor Bill Tracking", {
 		}
 
 		if (!frm.is_new() && frm.doc.docstatus == 1) {
-			if (!['Closed', 'Cancelled'].includes(frm.doc.form_status)) {
+			const cancellation_in_progress = is_cancellation_status(frm.doc.form_status);
+			if (!['Closed', 'Cancelled'].includes(frm.doc.form_status) && !cancellation_in_progress) {
 				frm.add_custom_button(__("Assign"), () => {
 					show_and_get_assignment(frm);
 				});
 			}
 			frm.page.btn_secondary.hide();
 			if (!frm.doc.purchase_invoice && !frm.doc.mrp_purchase_invoice) {
-				if (frappe.user.has_role("HR User") || frappe.user.has_role("System Manager")) {
-					frm.add_custom_button(__("Cancel"), () => {
-						get_remarks_and_cancel(frm);
-					});
-				}
-				if (frappe.user.has_role("Accounts Manager") || frappe.user.has_role("Accounts User")) {
+				add_cancellation_action(frm);
+				if (!cancellation_in_progress && (frappe.user.has_role("Accounts Manager") || frappe.user.has_role("Accounts User"))) {
 					frm.add_custom_button(__("Create MRP PI"), () => {
 						let x = frappe.model.get_new_doc("Purchase Invoice");
 						x.supplier = frm.doc.supplier;
@@ -82,7 +83,7 @@ frappe.ui.form.on("Vendor Bill Tracking", {
 					frappe.set_route("Form", "Purchase Invoice", frm.doc.mrp_purchase_invoice)
 				})
 			}
-			let show_receive = await show_bill_received(frm);
+			let show_receive = cancellation_in_progress ? false : await show_bill_received(frm);
 			if (show_receive && frm.doc.form_status != "Closed") {
 				frm.add_custom_button(__("Bill Recieved"), () => {
 					frappe.call({
@@ -107,6 +108,51 @@ frappe.ui.form.on("Vendor Bill Tracking", {
 		}
 	},
 });
+
+function is_cancellation_status(status) {
+	return [CANCEL_PENDING_STATUS, CANCEL_APPROVED_STATUS].includes(status);
+}
+
+function add_cancellation_action(frm) {
+	if (CANCEL_REQUESTABLE_STATUSES.includes(frm.doc.form_status) && frappe.user.has_role("HR User")) {
+		frm.add_custom_button(__("Request for Cancel"), () => {
+			call_cancel_transition(
+				frm,
+				"request_vendor_bill_cancellation",
+				__("Request cancellation approval for this Vendor Bill Tracking?")
+			);
+		});
+		return;
+	}
+
+	if (frm.doc.form_status === CANCEL_PENDING_STATUS && frappe.user.has_role("HR Manager")) {
+		frm.add_custom_button(__("Approve Cancel Request"), () => {
+			call_cancel_transition(
+				frm,
+				"approve_vendor_bill_cancellation",
+				__("Approve the cancellation request for this Vendor Bill Tracking?")
+			);
+		});
+		return;
+	}
+
+	if (frm.doc.form_status === CANCEL_APPROVED_STATUS && frappe.user.has_role("HR User")) {
+		frm.add_custom_button(__("Cancel"), () => {
+			get_remarks_and_cancel(frm);
+		});
+	}
+}
+
+function call_cancel_transition(frm, method, confirmation) {
+	frappe.confirm(confirmation, () => {
+		frappe.call({
+			method: `production_api.production_api.doctype.vendor_bill_tracking.vendor_bill_tracking.${method}`,
+			freeze: true,
+			args: { name: frm.doc.name },
+			callback: () => frm.reload_doc(),
+		});
+	});
+}
 
 function remove_existing_fields(frm){
 	frm.set_value('purchase_invoice', null);
@@ -147,24 +193,24 @@ function get_remarks_and_cancel(frm) {
 		],
 		primary_action_label: "Cancel",
 		primary_action: (values) => {
-			make_cancel_action(values["cancel_reason"]);
+			make_cancel_action(frm, values["cancel_reason"]);
 			dialog.hide();
 		},
 	});
 	dialog.show();
 }
 
-function make_cancel_action(reason) {
+function make_cancel_action(frm, reason) {
 	frappe.call({
 		method:"production_api.production_api.doctype.vendor_bill_tracking.vendor_bill_tracking.cancel_vendor_bill",
 		freeze: true,
 		freeze_msg: "Cancelling Document",
 		args: {
-			name: cur_frm.doc.name,
+			name: frm.doc.name,
 			cancel_reason: reason,
 		},
 		callback: (response) => {
-			cur_frm.reload_doc();
+			frm.reload_doc();
 		},
 	});
 }

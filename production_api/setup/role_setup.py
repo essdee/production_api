@@ -10,6 +10,8 @@ REQUIRED_ROLES = {
     "Finishing User": {"desk_access": 1},
     "Factory Manager": {"desk_access": 1},
     "DocType Reader": {"desk_access": 1},
+    "HR User": {"desk_access": 1},
+    "HR Manager": {"desk_access": 1},
 }
 
 COMMON_ROLE_VALUES = {

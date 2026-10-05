@@ -58,6 +58,22 @@ def get_purchase_invoice_context(doc) -> dict:
 	}
 
 
+def get_purchase_order_context(doc) -> dict:
+	return {
+		"purchase_order_items": [
+			frappe._dict(
+				{
+					"item": row.get("item_variant") or row.get("item") or "-",
+					"qty": flt(row.get("qty")),
+					"lot": row.get("lot"),
+					"rate": flt(row.get("rate")),
+				}
+			)
+			for row in (doc.get("items") or [])
+		]
+	}
+
+
 def render_generic(doc, route: frappe._dict) -> str:
 	return "\n".join(
 		[
@@ -111,4 +127,5 @@ def _truncate_message(message: str) -> str:
 
 MESSAGE_CONTEXT_PROVIDERS: dict[str, MessageContextProvider] = {
 	"Purchase Invoice": get_purchase_invoice_context,
+	"Purchase Order": get_purchase_order_context,
 }
