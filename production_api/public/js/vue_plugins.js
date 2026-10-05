@@ -109,6 +109,7 @@ import ProcessPending from "./components/ProcessPending.vue"
 import FinishingPlanDPR from "./FinishingPlanDPR/FinishingPlanDPR.vue"
 import FinishingPlanDispa from "./FinishingPlanDispa/FinishingPlanDispa.vue"
 import FinishingPlanReport from "./FinishingPlanReport/FinishingPlanReport.vue"
+import AuditPendingFinishingPlans from "./AuditPendingFinishingPlans/AuditPendingFinishingPlans.vue"
 import DPR from "./DPR/DPR.vue"
 
 // Product Development
@@ -1470,6 +1471,16 @@ frappe.production.ui.FinishingPlanReport = class {
     }
     make_app() {
         this.app = createApp(FinishingPlanReport)
+        SetVueGlobals(this.app)
+        this.vue = this.app.mount(this.$wrapper.get(0))
+    }
+}
+
+// Audit Pending Finishing Plans
+frappe.production.ui.AuditPendingFinishingPlans = class {
+    constructor(wrapper) {
+        this.$wrapper = $(wrapper)
+        this.app = createApp(AuditPendingFinishingPlans)
         SetVueGlobals(this.app)
         this.vue = this.app.mount(this.$wrapper.get(0))
     }

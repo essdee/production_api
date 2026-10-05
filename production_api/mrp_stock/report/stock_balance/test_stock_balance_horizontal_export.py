@@ -8,6 +8,66 @@ from production_api.mrp_stock.report.stock_balance import stock_balance
 
 
 class TestStockBalanceHorizontalExport(TestCase):
+	def test_horizontal_export_appends_balance_quantity_total_to_each_row(self):
+		parent_item = "Dyed Fabric"
+		data = [
+			frappe._dict(
+				item="Dyed Fabric-26 Dia-Navy",
+				item_name=parent_item,
+				item_group="Fabric",
+				lot="LOT-001",
+				warehouse="Stores - E",
+				warehouse_name="Stores",
+				received_type="Accepted",
+				stock_uom="Kg",
+				bal_qty=12.25,
+			),
+			frappe._dict(
+				item="Dyed Fabric-28 Dia-Navy",
+				item_name=parent_item,
+				item_group="Fabric",
+				lot="LOT-001",
+				warehouse="Stores - E",
+				warehouse_name="Stores",
+				received_type="Accepted",
+				stock_uom="Kg",
+				bal_qty=30.25,
+			),
+		]
+		metadata = (
+			{
+				data[0].item: {"Dia": "26 Dia", "Colour": "Navy"},
+				data[1].item: {"Dia": "28 Dia", "Colour": "Navy"},
+			},
+			{parent_item: "Dia"},
+			{parent_item: ["Dia", "Colour"]},
+			{parent_item: ["26 Dia", "28 Dia"]},
+		)
+
+		with (
+			patch.object(
+				stock_balance,
+				"_get_horizontal_attribute_metadata",
+				return_value=metadata,
+			),
+			patch.object(
+				stock_balance.frappe.db,
+				"get_default",
+				side_effect=lambda field: 3 if field == "float_precision" else 2,
+			),
+		):
+			export_data = stock_balance.build_horizontal_stock_balance_data(data)
+
+		table = export_data["tables"][0]
+		self.assertEqual(table["total_header"], "Total")
+		self.assertEqual(table["rows"][0][-1], 42.5)
+
+		workbook = stock_balance.make_horizontal_stock_balance_workbook(export_data)
+		worksheet = workbook.active
+		total_column = len(table["fixed_headers"]) + len(table["primary_headers"]) + 1
+		self.assertEqual(worksheet.cell(1, total_column).value, "Total")
+		self.assertEqual(worksheet.cell(2, total_column).value, 42.5)
+
 	def test_horizontal_details_are_retained_when_primary_attribute_is_empty(self):
 		parent_item = "Fulldull Fabric With Wicking New"
 		data = [
@@ -69,10 +129,12 @@ class TestStockBalanceHorizontalExport(TestCase):
 		table = export_data["tables"][0]
 		self.assertEqual(table["primary_headers"], ["Details"])
 		self.assertEqual(len(table["rows"]), 2)
-		self.assertIn(data[0].item, table["rows"][0][-1])
-		self.assertIn("Balance Qty: 31.7", table["rows"][0][-1])
-		self.assertIn(data[1].item, table["rows"][1][-1])
-		self.assertIn("Balance Qty: 31", table["rows"][1][-1])
+		self.assertIn(data[0].item, table["rows"][0][-2])
+		self.assertIn("Balance Qty: 31.7", table["rows"][0][-2])
+		self.assertEqual(table["rows"][0][-1], 31.7)
+		self.assertIn(data[1].item, table["rows"][1][-2])
+		self.assertIn("Balance Qty: 31", table["rows"][1][-2])
+		self.assertEqual(table["rows"][1][-1], 31.0)
 
 	def test_horizontal_detail_contains_only_requested_stock_values(self):
 		row = frappe._dict(
