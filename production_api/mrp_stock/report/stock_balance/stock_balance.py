@@ -781,6 +781,7 @@ def build_horizontal_stock_balance_data(data, filters=None):
 	"""
 	filters = frappe._dict(filters or {})
 	data = data or []
+	float_precision = cint(frappe.db.get_default("float_precision")) or 3
 	(
 		variant_attributes,
 		primary_attributes,
@@ -847,6 +848,7 @@ def build_horizontal_stock_balance_data(data, filters=None):
 						*common_values,
 					],
 					"values": {},
+					"balance_quantities": {},
 				},
 			)
 			primary_value = (
@@ -857,6 +859,9 @@ def build_horizontal_stock_balance_data(data, filters=None):
 			row_group["values"][(primary_attribute, primary_value)] = _format_horizontal_detail(
 				row, filters
 			)
+			row_group["balance_quantities"][(primary_attribute, primary_value)] = flt(
+				row.get("bal_qty"), float_precision
+			)
 
 		rows = []
 		for row_number, row_group in enumerate(row_groups.values(), 1):
@@ -865,6 +870,15 @@ def build_horizontal_stock_balance_data(data, filters=None):
 				+ [
 					row_group["values"].get(primary_column, "")
 					for primary_column in primary_columns
+				]
+				+ [
+					flt(
+						sum(
+							row_group["balance_quantities"].get(primary_column, 0)
+							for primary_column in primary_columns
+						),
+						float_precision,
+					)
 				]
 			)
 		tables.append(
@@ -881,6 +895,7 @@ def build_horizontal_stock_balance_data(data, filters=None):
 					*common_attributes,
 				],
 				"primary_headers": primary_headers,
+				"total_header": "Total",
 				"rows": rows,
 			}
 		)
@@ -912,7 +927,12 @@ def make_horizontal_stock_balance_workbook(export_data, filters=None):
 		worksheet.cell(current_row, 1, "No Stock Balance data found for the selected filters.")
 
 	for table_index, table in enumerate(tables):
-		headers = table["fixed_headers"] + table["primary_headers"]
+		headers = (
+			table["fixed_headers"]
+			+ table["primary_headers"]
+			+ [table["total_header"]]
+		)
+		total_column = len(headers)
 		if table_index:
 			current_row += 1
 
@@ -927,6 +947,8 @@ def make_horizontal_stock_balance_workbook(export_data, filters=None):
 				width = 8
 			if column_index > len(table["fixed_headers"]):
 				width = 34
+			if column_index == total_column:
+				width = 17
 			column_letter = get_column_letter(column_index)
 			worksheet.column_dimensions[column_letter].width = max(
 				worksheet.column_dimensions[column_letter].width or 0, width
@@ -943,6 +965,8 @@ def make_horizontal_stock_balance_workbook(export_data, filters=None):
 				cell.border = thin_border
 				if table_row_index % 2:
 					cell.fill = PatternFill("solid", fgColor="F3F6FA")
+				if column_index == total_column:
+					cell.font = Font(bold=True, color="1F272E")
 				if column_index >= first_detail_column:
 					max_lines = max(max_lines, str(value or "").count("\n") + 1)
 			worksheet.row_dimensions[current_row].height = min(max(48, max_lines * 14), 300)

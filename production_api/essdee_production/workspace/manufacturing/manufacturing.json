@@ -205,7 +205,7 @@
    "hidden": 0,
    "is_query_report": 0,
    "label": "Reports",
-   "link_count": 12,
+   "link_count": 13,
    "link_type": "DocType",
    "onboard": 0,
    "type": "Card Break"
@@ -272,6 +272,16 @@
   },
   {
    "hidden": 0,
+   "is_query_report": 0,
+   "label": "Audit Pending Finishing Plans",
+   "link_count": 0,
+   "link_to": "audit-pending-finishing-plans",
+   "link_type": "Page",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
    "is_query_report": 1,
    "label": "Finishing Plan Report",
    "link_count": 0,
@@ -331,7 +341,7 @@
    "type": "Link"
   }
  ],
- "modified": "2026-09-05 18:55:00.000000",
+ "modified": "2026-10-05 18:32:00.000000",
  "modified_by": "Administrator",
  "module": "Essdee Production",
  "name": "Manufacturing",
