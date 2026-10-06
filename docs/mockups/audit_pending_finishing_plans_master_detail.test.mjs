@@ -135,15 +135,28 @@ try {
       .filter((text) => text === 'Lot' || text === 'Item')
     const item = [...firstRow.querySelectorAll('td:first-child span')]
       .find((element) => element.textContent.trim() === "Men's Classic Polo")
+    const lot = [...firstRow.querySelectorAll('td:first-child span')]
+      .find((element) => element.textContent.trim() === 'LOT-2609-118')
     const detailLabels = [...document.querySelectorAll('#detail-148 > div:first-child span')]
       .map((element) => element.textContent.trim())
       .filter((text) => text === 'Lot' || text === 'Item')
+    const detailPlan = document.querySelector('#detail-148 h2')
+    const detailLot = [...document.querySelectorAll('#detail-148 > div:first-child span')]
+      .find((element) => element.textContent.trim() === 'LOT-2609-118')
+    const detailItem = [...document.querySelectorAll('#detail-148 > div:first-child span')]
+      .find((element) => element.textContent.trim() === "Men's Classic Polo")
     return {
       header: document.querySelector('.header-row th:first-child').textContent.trim(),
       identityLabels,
       detailLabels,
       itemWhiteSpace: getComputedStyle(item).whiteSpace,
       truncatedItems: firstRow.querySelectorAll('.truncate').length,
+      masterPlanSize: getComputedStyle(firstRow.querySelector('td:first-child > div')).fontSize,
+      masterLotSize: getComputedStyle(lot).fontSize,
+      masterItemSize: getComputedStyle(item).fontSize,
+      detailPlanSize: getComputedStyle(detailPlan).fontSize,
+      detailLotSize: getComputedStyle(detailLot).fontSize,
+      detailItemSize: getComputedStyle(detailItem).fontSize,
     }
   })()`)
 
@@ -152,6 +165,14 @@ try {
   assert.deepEqual(identityState.detailLabels, ['Lot', 'Item'])
   assert.equal(identityState.itemWhiteSpace, 'normal')
   assert.equal(identityState.truncatedItems, 0)
+  assert.deepEqual(
+    [identityState.masterPlanSize, identityState.masterLotSize, identityState.masterItemSize],
+    ['12px', '12.5px', '12.5px'],
+  )
+  assert.deepEqual(
+    [identityState.detailPlanSize, identityState.detailLotSize, identityState.detailItemSize],
+    ['14px', '13px', '13px'],
+  )
 
   console.log('PASS: matrices, filters, and clear Lot/Item identity hierarchy')
 } finally {

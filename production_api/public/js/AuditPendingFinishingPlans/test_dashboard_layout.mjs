@@ -90,6 +90,48 @@ test('allows long item names to wrap instead of truncating them', { skip: !exist
 })
 
 
+test('reduces plan ID type while enlarging Lot and Item values', { skip: !existsSync(chrome) }, () => {
+    const css = componentSource.match(/<style scoped>([\s\S]*?)<\/style>/)?.[1]
+    assert.ok(css, 'component CSS should be available')
+
+    const workdir = mkdtempSync(join(tmpdir(), 'audit-dashboard-type-'))
+    const htmlPath = join(workdir, 'type.html')
+    try {
+        writeFileSync(htmlPath, `<!doctype html>
+            <html><head><style>${css}</style></head>
+            <body>
+                <button class="plan-link master-plan-link">FP-2627-00042</button>
+                <dl class="plan-identity"><div><dt>Lot</dt><dd class="identity-value">C1125-92</dd></div><div><dt>Item</dt><dd class="identity-value identity-value--item">Casual Designer Vest - 7</dd></div></dl>
+                <button class="plan-link detail-plan-link">FP-2627-00042</button>
+                <dl class="detail-identity"><div><dt>Lot</dt><dd class="identity-value">C1125-92</dd></div><div><dt>Item</dt><dd class="identity-value identity-value--item">Casual Designer Vest - 7</dd></div></dl>
+                <script>
+                    const size = selector => getComputedStyle(document.querySelector(selector)).fontSize
+                    document.body.dataset.masterPlan = size('.master-plan-link')
+                    document.body.dataset.masterLot = size('.plan-identity .identity-value')
+                    document.body.dataset.masterItem = size('.plan-identity .identity-value--item')
+                    document.body.dataset.detailPlan = size('.detail-plan-link')
+                    document.body.dataset.detailLot = size('.detail-identity .identity-value')
+                    document.body.dataset.detailItem = size('.detail-identity .identity-value--item')
+                </script>
+            </body></html>`)
+
+        const rendered = execFileSync(chrome, [
+            '--headless',
+            '--disable-gpu',
+            '--no-sandbox',
+            '--dump-dom',
+            '--window-size=800,600',
+            `file://${htmlPath}`,
+        ], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] })
+        const body = rendered.match(/<body[^>]*data-master-plan="([^"]+)"[^>]*data-master-lot="([^"]+)"[^>]*data-master-item="([^"]+)"[^>]*data-detail-plan="([^"]+)"[^>]*data-detail-lot="([^"]+)"[^>]*data-detail-item="([^"]+)"/)
+        assert.ok(body, 'browser should report the rendered identity type sizes')
+        assert.deepEqual(body.slice(1), ['12px', '12.5px', '12.5px', '14px', '13px', '13px'])
+    } finally {
+        rmSync(workdir, { recursive: true, force: true })
+    }
+})
+
+
 test('uses the desktop viewport with only a 16px horizontal gutter', { skip: !existsSync(chrome) }, () => {
     const css = componentSource.match(/<style scoped>([\s\S]*?)<\/style>/)?.[1]
     assert.ok(css, 'component CSS should be available')
