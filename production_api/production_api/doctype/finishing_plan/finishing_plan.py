@@ -912,15 +912,12 @@ def get_ocr_details(doc):
 			ocr_data[par]['packed_box'] = packing_summary.total_packed_boxes
 			ocr_data[par]['dispatched_box'] = packing_summary.total_dispatched_boxes
 	
-	major_part = frappe.db.get_value("Item Production Detail", ipd, "major_attribute_value") if is_set_item else None
-
 	def _colour_key(attr_details, set_combination_str, part):
 		colour = attr_details.get(pack_attr)
-		if is_set_item and part != major_part:
+		if is_set_item:
 			set_comb = update_if_string_instance(set_combination_str) or {}
 			major_col = set_comb.get("major_colour") if isinstance(set_comb, dict) else None
-			if major_col:
-				colour = f"{colour} ({major_col})"
+			colour = f"{colour} ({major_col}) @ {part}"
 		return colour
 
 	def _bump_loose(part_key, colour, size, lp_delta, lps_delta):

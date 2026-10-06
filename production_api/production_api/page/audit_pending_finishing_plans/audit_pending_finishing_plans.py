@@ -8,6 +8,7 @@ from frappe.utils import flt, get_datetime, getdate, now_datetime
 from production_api.production_api.doctype.finishing_plan.finishing_plan import (
     get_finishing_packing_summary,
     get_finishing_plan_total_cutting,
+    get_fp_ocr_details,
     get_set_item_parts_count,
 )
 
@@ -15,6 +16,12 @@ from production_api.production_api.doctype.finishing_plan.finishing_plan import 
 QUALIFYING_STATUSES = ("Dispatched", "Fully Dispatched")
 OVERDUE_AFTER_DAYS = 7
 ALLOWED_ROLES = {"Accounts User", "Accounts Manager", "System Manager"}
+PENDING_CATEGORIES = (
+    ("loose_piece", "Loose Piece"),
+    ("loose_piece_set", "Loose Piece Set"),
+    ("rejected", "Rejected Pieces"),
+    ("pending", "Rework Pending"),
+)
 
 
 def _ensure_access():
@@ -185,6 +192,65 @@ def _get_plan_metrics(plan_name):
         set_item_parts_count=get_set_item_parts_count(finishing_plan),
         total_cutting=get_finishing_plan_total_cutting(finishing_plan),
     )
+
+
+def _build_pending_breakdown(ocr_data, primary_values):
+    parts = []
+    for part_name, part_data in (ocr_data or {}).items():
+        colour_data = part_data.get("data") or {}
+        sizes = list(primary_values or [])
+        categories = []
+
+        for key, label in PENDING_CATEGORIES:
+            rows = []
+            size_totals = [0.0 for _size in sizes]
+            for colour_key, colour_detail in colour_data.items():
+                cells = colour_detail.get("values") or {}
+                values = [flt((cells.get(size) or {}).get(key)) for size in sizes]
+                if not any(values):
+                    continue
+
+                rows.append(
+                    {
+                        "colour": (colour_key.split("@", 1)[0].strip() or "—"),
+                        "values": values,
+                        "total": sum(values),
+                    }
+                )
+                size_totals = [
+                    current + value
+                    for current, value in zip(size_totals, values)
+                ]
+
+            categories.append(
+                {
+                    "key": key,
+                    "label": label,
+                    "rows": rows,
+                    "size_totals": size_totals,
+                    "total": sum(size_totals),
+                }
+            )
+
+        parts.append(
+            {
+                "name": part_name or "Item",
+                "sizes": sizes,
+                "categories": categories,
+            }
+        )
+
+    return {"parts": parts}
+
+
+@frappe.whitelist()
+def get_pending_breakdown(finishing_plan):
+    _ensure_access()
+    ocr_data, _totals, primary_values = get_fp_ocr_details(finishing_plan)
+    return {
+        "finishing_plan": finishing_plan,
+        **_build_pending_breakdown(ocr_data, primary_values),
+    }
 
 
 def _get_dispatch_histories(plan_names):

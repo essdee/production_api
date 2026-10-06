@@ -663,6 +663,210 @@ class TestFinishingPlan(FrappeTestCase):
 		self.assertEqual(ocr["total"]["S"]["transferred_as_loose_piece"], 3)
 		self.assertEqual(unaccountable, 0)
 
+	def test_old_lot_given_reduces_each_set_part_loose_matrix(self):
+		doc = self._get_ocr_test_doc()
+		doc.finishing_plan_grn_details = []
+		doc.finishing_plan_details = [
+			frappe._dict(
+				item_variant="TOP-S",
+				set_combination={"major_colour": "Blue"},
+				cutting_qty=10,
+				dc_qty=10,
+				transferred_qty=0,
+				ironing_excess=0,
+				lot_transferred=0,
+				delivered_quantity=10,
+				return_qty=4,
+				pack_return_qty=5,
+				rejected_qty=0,
+			),
+			frappe._dict(
+				item_variant="BOTTOM-S",
+				set_combination={"major_colour": "Blue"},
+				cutting_qty=10,
+				dc_qty=10,
+				transferred_qty=0,
+				ironing_excess=0,
+				lot_transferred=0,
+				delivered_quantity=10,
+				return_qty=6,
+				pack_return_qty=7,
+				rejected_qty=0,
+			),
+		]
+		doc.finishing_old_lot_given_items = [
+			frappe._dict(
+				item_variant="TOP-S",
+				set_combination={"major_colour": "Blue"},
+				loose_piece_given=1,
+				loose_piece_set_given=2,
+				lot_transfer=None,
+			),
+			frappe._dict(
+				item_variant="BOTTOM-S",
+				set_combination={"major_colour": "Blue"},
+				loose_piece_given=3,
+				loose_piece_set_given=4,
+				lot_transfer=None,
+			),
+		]
+
+		def get_value(doctype, _name, _fields):
+			if doctype == "Lot":
+				return "IPD-TEST"
+			if doctype == "Item Production Detail":
+				return (1, "Colour", "Size", "Part")
+			raise AssertionError(doctype)
+
+		def get_variant(item_variant):
+			return {
+				"TOP-S": {"Colour": "Blue", "Size": "S", "Part": "Top"},
+				"BOTTOM-S": {"Colour": "Navy", "Size": "S", "Part": "Bottom"},
+			}[item_variant]
+
+		with (
+			patch.object(finishing_plan.frappe, "get_value", side_effect=get_value),
+			patch.object(finishing_plan.frappe.db, "get_value", return_value="Top"),
+			patch.object(
+				finishing_plan, "get_variant_attr_details", side_effect=get_variant,
+			),
+			patch.object(finishing_plan, "get_part_value", return_value=["Top", "Bottom"]),
+			patch.object(
+				finishing_plan,
+				"get_finishing_packing_summary",
+				return_value=frappe._dict(dynamic_ratio_packing=False, sizes={}),
+			),
+			patch.object(
+				finishing_plan.frappe,
+				"get_cached_doc",
+				return_value=frappe._dict(lot_order_details=[]),
+			),
+		):
+			ocr = finishing_plan.get_ocr_details(doc)
+
+		self.assertEqual(
+			ocr["Top"]["data"]["Blue (Blue) @ Top"]["values"]["S"]
+			["loose_piece"],
+			3,
+		)
+		self.assertEqual(
+			ocr["Top"]["data"]["Blue (Blue) @ Top"]["values"]["S"]
+			["loose_piece_set"],
+			3,
+		)
+		self.assertEqual(
+			ocr["Bottom"]["data"]["Navy (Blue) @ Bottom"]["values"]["S"]
+			["loose_piece"],
+			3,
+		)
+		self.assertEqual(
+			ocr["Bottom"]["data"]["Navy (Blue) @ Bottom"]["values"]["S"]
+			["loose_piece_set"],
+			3,
+		)
+
+	def test_old_lot_received_increases_each_set_part_loose_matrix(self):
+		doc = self._get_ocr_test_doc()
+		doc.finishing_plan_grn_details = []
+		doc.finishing_plan_details = [
+			frappe._dict(
+				item_variant="TOP-S",
+				set_combination={"major_colour": "Blue"},
+				cutting_qty=10,
+				dc_qty=10,
+				transferred_qty=0,
+				ironing_excess=0,
+				lot_transferred=0,
+				delivered_quantity=10,
+				return_qty=4,
+				pack_return_qty=5,
+				rejected_qty=0,
+			),
+			frappe._dict(
+				item_variant="BOTTOM-S",
+				set_combination={"major_colour": "Blue"},
+				cutting_qty=10,
+				dc_qty=10,
+				transferred_qty=0,
+				ironing_excess=0,
+				lot_transferred=0,
+				delivered_quantity=10,
+				return_qty=6,
+				pack_return_qty=7,
+				rejected_qty=0,
+			),
+		]
+		doc.finishing_old_lot_received_items = [
+			frappe._dict(
+				item_variant="TOP-S",
+				set_combination={"major_colour": "Blue"},
+				loose_piece_taken=1,
+				loose_piece_set_taken=2,
+				lot_transfer=None,
+			),
+			frappe._dict(
+				item_variant="BOTTOM-S",
+				set_combination={"major_colour": "Blue"},
+				loose_piece_taken=3,
+				loose_piece_set_taken=4,
+				lot_transfer=None,
+			),
+		]
+
+		def get_value(doctype, _name, _fields):
+			if doctype == "Lot":
+				return "IPD-TEST"
+			if doctype == "Item Production Detail":
+				return (1, "Colour", "Size", "Part")
+			raise AssertionError(doctype)
+
+		def get_variant(item_variant):
+			return {
+				"TOP-S": {"Colour": "Blue", "Size": "S", "Part": "Top"},
+				"BOTTOM-S": {"Colour": "Navy", "Size": "S", "Part": "Bottom"},
+			}[item_variant]
+
+		with (
+			patch.object(finishing_plan.frappe, "get_value", side_effect=get_value),
+			patch.object(finishing_plan.frappe.db, "get_value", return_value="Top"),
+			patch.object(
+				finishing_plan, "get_variant_attr_details", side_effect=get_variant,
+			),
+			patch.object(finishing_plan, "get_part_value", return_value=["Top", "Bottom"]),
+			patch.object(
+				finishing_plan,
+				"get_finishing_packing_summary",
+				return_value=frappe._dict(dynamic_ratio_packing=False, sizes={}),
+			),
+			patch.object(
+				finishing_plan.frappe,
+				"get_cached_doc",
+				return_value=frappe._dict(lot_order_details=[]),
+			),
+		):
+			ocr = finishing_plan.get_ocr_details(doc)
+
+		self.assertEqual(
+			ocr["Top"]["data"]["Blue (Blue) @ Top"]["values"]["S"]
+			["loose_piece"],
+			5,
+		)
+		self.assertEqual(
+			ocr["Top"]["data"]["Blue (Blue) @ Top"]["values"]["S"]
+			["loose_piece_set"],
+			7,
+		)
+		self.assertEqual(
+			ocr["Bottom"]["data"]["Navy (Blue) @ Bottom"]["values"]["S"]
+			["loose_piece"],
+			9,
+		)
+		self.assertEqual(
+			ocr["Bottom"]["data"]["Navy (Blue) @ Bottom"]["values"]["S"]
+			["loose_piece_set"],
+			11,
+		)
+
 	def test_fetch_old_lot_does_not_filter_sources_by_ocr_status(self):
 		destination = MagicMock()
 		destination.name = "FP-DEST"
