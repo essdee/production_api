@@ -75,7 +75,7 @@
                     <table class="master-table">
                         <thead>
                             <tr>
-                                <th class="plan-column">Finishing Plan / Lot / Item</th>
+                                <th class="plan-column">Item / Lot / Finishing Plan</th>
                                 <th>Status / Age</th>
                                 <th class="numeric">Total Cut</th>
                                 <th class="numeric">Sewing Rx</th>
@@ -94,10 +94,10 @@
                                 @keydown.enter="selectPlan(plan.name)"
                             >
                                 <td>
-                                    <button type="button" class="plan-link master-plan-link" @click.stop="openDocument('Finishing Plan', plan.name)">{{ plan.name }}</button>
                                     <dl class="plan-identity">
-                                        <div><dt>Lot</dt><dd class="identity-value">{{ plan.lot || '—' }}</dd></div>
                                         <div><dt>Item</dt><dd class="identity-value identity-value--item">{{ plan.item || '—' }}</dd></div>
+                                        <div><dt>Lot</dt><dd class="identity-value identity-value--lot">{{ plan.lot || '—' }}</dd></div>
+                                        <div><dt>Plan</dt><dd class="identity-plan"><button type="button" class="plan-link master-plan-link" @click.stop="openDocument('Finishing Plan', plan.name)">{{ plan.name }}</button></dd></div>
                                     </dl>
                                 </td>
                                 <td>
@@ -131,10 +131,10 @@
                     <header class="detail-header">
                         <div class="detail-title-row">
                             <div class="detail-title-main">
-                                <button type="button" class="plan-link detail-plan-link" @click="openDocument('Finishing Plan', selectedPlan.name)">{{ selectedPlan.name }}</button>
                                 <dl class="detail-identity">
-                                    <div><dt>Lot</dt><dd class="identity-value">{{ selectedPlan.lot || '—' }}</dd></div>
                                     <div><dt>Item</dt><dd class="identity-value identity-value--item">{{ selectedPlan.item || '—' }}</dd></div>
+                                    <div><dt>Lot</dt><dd class="identity-value identity-value--lot">{{ selectedPlan.lot || '—' }}</dd></div>
+                                    <div><dt>Plan</dt><dd class="identity-plan"><button type="button" class="plan-link detail-plan-link" @click="openDocument('Finishing Plan', selectedPlan.name)">{{ selectedPlan.name }}</button></dd></div>
                                 </dl>
                             </div>
                             <div class="detail-status">
@@ -549,15 +549,16 @@ onBeforeUnmount(() => window.removeEventListener('keydown', handleKeydown))
 .plan-row.selected td { border-bottom-color: #bfdbfe; }
 .plan-link, .document-link { display: inline; padding: 0; border: 0; background: none; color: var(--blue); font: inherit; font-weight: 700; cursor: pointer; }
 .plan-link { display: block; color: var(--primary); }
-.master-plan-link { font-size: 12px; line-height: 1.2; }
+.master-plan-link { color: var(--muted); font-size: 10px; font-weight: 500; line-height: 1.3; }
 .document-link:hover, .plan-link:hover { color: #1557b0; text-decoration: underline; }
 .identity-secondary { display: block; margin-top: 2px; }
 .identity-secondary { color: var(--secondary); font-size: 11px; }
-.plan-identity, .detail-identity { display: grid; gap: 2px; margin: 4px 0 0; }
+.plan-identity, .detail-identity { display: grid; gap: 2px; margin: 0; }
 .plan-identity > div, .detail-identity > div { display: grid; grid-template-columns: 34px minmax(0, 1fr); align-items: start; gap: 6px; }
 .plan-identity dt, .detail-identity dt { margin: 1px 0 0; color: var(--muted); font-size: 9px; font-weight: 800; letter-spacing: .05em; line-height: 1.3; text-transform: uppercase; }
 .identity-value { min-width: 0; margin: 0; color: var(--secondary); font-size: 12.5px; font-weight: 700; line-height: 1.3; overflow-wrap: anywhere; }
-.identity-value--item { overflow: visible; color: var(--body); font-weight: 500; text-overflow: clip; white-space: normal; }
+.identity-value--item { overflow: visible; color: var(--primary); font-size: 13px; font-weight: 700; text-overflow: clip; white-space: normal; }
+.identity-plan { min-width: 0; margin: 0; }
 .status-age { flex-wrap: wrap; gap: 6px; }
 .status-pill, .age-badge { display: inline-flex; align-items: center; justify-content: center; border-radius: 7px; font-size: 11px; font-weight: 700; white-space: nowrap; }
 .status-pill { padding: 4px 8px; border: 1px solid transparent; }
@@ -576,11 +577,11 @@ onBeforeUnmount(() => window.removeEventListener('keydown', handleKeydown))
 .detail-header { flex: none; padding: 14px 16px; border-bottom: 1px solid var(--border); background: var(--soft); }
 .detail-title-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
 .detail-title-main { min-width: 0; flex: 1; }
-.detail-plan-link { font-size: 14px; }
-.detail-identity { gap: 4px; margin-top: 7px; }
+.detail-plan-link { color: var(--muted); font-size: 10px; font-weight: 500; line-height: 1.3; }
+.detail-identity { gap: 4px; }
 .detail-identity > div { grid-template-columns: 38px minmax(0, 1fr); }
-.detail-identity .identity-value { color: var(--primary); font-size: 13px; }
-.detail-identity .identity-value--item { color: var(--body); font-weight: 600; }
+.detail-identity .identity-value { color: var(--secondary); font-size: 13px; }
+.detail-identity .identity-value--item { color: var(--primary); font-size: 15px; font-weight: 700; }
 .detail-status { display: flex; align-items: flex-end; flex-direction: column; gap: 5px; }
 .detail-scroll { padding: 14px 16px 18px; }
 .detail-empty { flex: 1; border: 0; }

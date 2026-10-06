@@ -132,15 +132,16 @@ try {
     const firstRow = document.getElementById('row-148')
     const identityLabels = [...firstRow.querySelectorAll('td:first-child span')]
       .map((element) => element.textContent.trim())
-      .filter((text) => text === 'Lot' || text === 'Item')
+      .filter((text) => text === 'Item' || text === 'Lot' || text === 'Plan')
     const item = [...firstRow.querySelectorAll('td:first-child span')]
       .find((element) => element.textContent.trim() === "Men's Classic Polo")
     const lot = [...firstRow.querySelectorAll('td:first-child span')]
       .find((element) => element.textContent.trim() === 'LOT-2609-118')
     const detailLabels = [...document.querySelectorAll('#detail-148 > div:first-child span')]
       .map((element) => element.textContent.trim())
-      .filter((text) => text === 'Lot' || text === 'Item')
-    const detailPlan = document.querySelector('#detail-148 h2')
+      .filter((text) => text === 'Item' || text === 'Lot' || text === 'Plan')
+    const masterPlan = firstRow.querySelector('td:first-child button')
+    const detailPlan = document.querySelector('#detail-148 > div:first-child button')
     const detailLot = [...document.querySelectorAll('#detail-148 > div:first-child span')]
       .find((element) => element.textContent.trim() === 'LOT-2609-118')
     const detailItem = [...document.querySelectorAll('#detail-148 > div:first-child span')]
@@ -151,7 +152,7 @@ try {
       detailLabels,
       itemWhiteSpace: getComputedStyle(item).whiteSpace,
       truncatedItems: firstRow.querySelectorAll('.truncate').length,
-      masterPlanSize: getComputedStyle(firstRow.querySelector('td:first-child > div')).fontSize,
+      masterPlanSize: getComputedStyle(masterPlan).fontSize,
       masterLotSize: getComputedStyle(lot).fontSize,
       masterItemSize: getComputedStyle(item).fontSize,
       detailPlanSize: getComputedStyle(detailPlan).fontSize,
@@ -160,18 +161,18 @@ try {
     }
   })()`)
 
-  assert.equal(identityState.header, 'Finishing Plan / Lot / Item')
-  assert.deepEqual(identityState.identityLabels, ['Lot', 'Item'])
-  assert.deepEqual(identityState.detailLabels, ['Lot', 'Item'])
+  assert.equal(identityState.header, 'Item / Lot / Finishing Plan')
+  assert.deepEqual(identityState.identityLabels, ['Item', 'Lot', 'Plan'])
+  assert.deepEqual(identityState.detailLabels, ['Item', 'Lot', 'Plan'])
   assert.equal(identityState.itemWhiteSpace, 'normal')
   assert.equal(identityState.truncatedItems, 0)
   assert.deepEqual(
     [identityState.masterPlanSize, identityState.masterLotSize, identityState.masterItemSize],
-    ['12px', '12.5px', '12.5px'],
+    ['10px', '12.5px', '13px'],
   )
   assert.deepEqual(
     [identityState.detailPlanSize, identityState.detailLotSize, identityState.detailItemSize],
-    ['14px', '13px', '13px'],
+    ['10px', '13px', '15px'],
   )
 
   console.log('PASS: matrices, filters, and clear Lot/Item identity hierarchy')

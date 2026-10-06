@@ -27,6 +27,24 @@ function collectTemplateDetails(node, details = { classes: [], text: [] }) {
     return details
 }
 
+function findElementByClass(node, className) {
+    if (node.type === 1) {
+        const classAttribute = node.props.find(prop => prop.type === 6 && prop.name === 'class')
+        if (classAttribute?.value?.content.split(/\s+/).includes(className)) return node
+    }
+    for (const child of node.children || []) {
+        const match = findElementByClass(child, className)
+        if (match) return match
+    }
+    return null
+}
+
+function identityLabels(className) {
+    const identity = findElementByClass(templateAst, className)
+    assert.ok(identity, `${className} should be present`)
+    return identity.children.map(child => collectTemplateDetails(child, { classes: [], text: [] }).text[0])
+}
+
 const templateDetails = collectTemplateDetails(templateAst)
 
 
@@ -46,11 +64,14 @@ test('omits the helper sentence below Pending Quantity', () => {
 
 
 test('labels plan, lot, and item identity in the master and detail panels', () => {
-    assert.ok(templateDetails.text.includes('Finishing Plan / Lot / Item'))
+    assert.ok(templateDetails.text.includes('Item / Lot / Finishing Plan'))
     assert.equal(templateDetails.text.filter(text => text === 'Lot').length, 2)
     assert.equal(templateDetails.text.filter(text => text === 'Item').length, 2)
+    assert.equal(templateDetails.text.filter(text => text === 'Plan').length, 2)
     assert.ok(templateDetails.classes.includes('plan-identity'))
     assert.ok(templateDetails.classes.includes('detail-identity'))
+    assert.deepEqual(identityLabels('plan-identity'), ['Item', 'Lot', 'Plan'])
+    assert.deepEqual(identityLabels('detail-identity'), ['Item', 'Lot', 'Plan'])
 })
 
 
@@ -100,17 +121,15 @@ test('reduces plan ID type while enlarging Lot and Item values', { skip: !exists
         writeFileSync(htmlPath, `<!doctype html>
             <html><head><style>${css}</style></head>
             <body>
-                <button class="plan-link master-plan-link">FP-2627-00042</button>
-                <dl class="plan-identity"><div><dt>Lot</dt><dd class="identity-value">C1125-92</dd></div><div><dt>Item</dt><dd class="identity-value identity-value--item">Casual Designer Vest - 7</dd></div></dl>
-                <button class="plan-link detail-plan-link">FP-2627-00042</button>
-                <dl class="detail-identity"><div><dt>Lot</dt><dd class="identity-value">C1125-92</dd></div><div><dt>Item</dt><dd class="identity-value identity-value--item">Casual Designer Vest - 7</dd></div></dl>
+                <dl class="plan-identity"><div><dt>Item</dt><dd class="identity-value identity-value--item">Casual Designer Vest - 7</dd></div><div><dt>Lot</dt><dd class="identity-value identity-value--lot">C1125-92</dd></div><div><dt>Plan</dt><dd><button class="plan-link master-plan-link">FP-2627-00042</button></dd></div></dl>
+                <dl class="detail-identity"><div><dt>Item</dt><dd class="identity-value identity-value--item">Casual Designer Vest - 7</dd></div><div><dt>Lot</dt><dd class="identity-value identity-value--lot">C1125-92</dd></div><div><dt>Plan</dt><dd><button class="plan-link detail-plan-link">FP-2627-00042</button></dd></div></dl>
                 <script>
                     const size = selector => getComputedStyle(document.querySelector(selector)).fontSize
                     document.body.dataset.masterPlan = size('.master-plan-link')
-                    document.body.dataset.masterLot = size('.plan-identity .identity-value')
+                    document.body.dataset.masterLot = size('.plan-identity .identity-value--lot')
                     document.body.dataset.masterItem = size('.plan-identity .identity-value--item')
                     document.body.dataset.detailPlan = size('.detail-plan-link')
-                    document.body.dataset.detailLot = size('.detail-identity .identity-value')
+                    document.body.dataset.detailLot = size('.detail-identity .identity-value--lot')
                     document.body.dataset.detailItem = size('.detail-identity .identity-value--item')
                 </script>
             </body></html>`)
@@ -125,7 +144,7 @@ test('reduces plan ID type while enlarging Lot and Item values', { skip: !exists
         ], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] })
         const body = rendered.match(/<body[^>]*data-master-plan="([^"]+)"[^>]*data-master-lot="([^"]+)"[^>]*data-master-item="([^"]+)"[^>]*data-detail-plan="([^"]+)"[^>]*data-detail-lot="([^"]+)"[^>]*data-detail-item="([^"]+)"/)
         assert.ok(body, 'browser should report the rendered identity type sizes')
-        assert.deepEqual(body.slice(1), ['12px', '12.5px', '12.5px', '14px', '13px', '13px'])
+        assert.deepEqual(body.slice(1), ['10px', '12.5px', '13px', '10px', '13px', '15px'])
     } finally {
         rmSync(workdir, { recursive: true, force: true })
     }

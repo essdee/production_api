@@ -14,18 +14,18 @@
       ],
       "fingerprints": {
         ".superdesign/design-system.md": "ffd31d84b11fed7311c2a41a52b6db6480ca0a16a9713b8ab54edbf06af3d8bb",
-        "production_api/public/js/AuditPendingFinishingPlans/AuditPendingFinishingPlans.vue": "030c67505d69a0594689da70eef7864bdd2c820cbd54e903b606ff36cf524088",
+        "production_api/public/js/AuditPendingFinishingPlans/AuditPendingFinishingPlans.vue": "bdff3a4ed57f261abb8fab57083860eea1f8649609f8efb6397385d777ced345",
         ".superdesign/init/theme.md": "dc1dadec497e05e6520a993f560bb341014399fc30472ea0b553760096c3ce7a"
       },
       "components": [],
       "drafts": {
         "951682a3-81c2-4f30-a6d2-1f266e62a548": {
           "title": "Audit Pending Finishing Plans - Master-Detail Redesign",
-          "visualDirection": "Full-width desktop 60/40 master-detail audit dashboard with slim 16px page gutters, de-emphasized Finishing Plan IDs, larger labelled Lot and Item values in both panels, wrapping item names, colour-by-size pending matrices, non-zero categories, separate Plan/Lot/Item filters, and clickable three-column dispatch history; duplicate selected-plan KPIs and helper copy are omitted",
-          "currentVersion": 19
+          "visualDirection": "Full-width desktop 60/40 master-detail audit dashboard with slim 16px page gutters; Item is the primary identity, Lot is secondary, and the clickable Finishing Plan ID is a small muted tertiary reference in both panels; item names wrap; pending matrices show non-zero categories; Plan/Lot/Item filters and clickable three-column dispatch history remain",
+          "currentVersion": 20
         }
       },
-      "updatedAt": "2026-10-06T15:17:05+05:30"
+      "updatedAt": "2026-10-06T15:37:23+05:30"
     }
   }
 }
