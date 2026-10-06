@@ -128,7 +128,32 @@ try {
   assert.deepEqual(filterState.afterReset, ['row-148', 'row-156', 'row-161', 'row-168'])
   assert.deepEqual(filterState.values, ['', '', ''])
 
-  console.log('PASS: matrix presentation and separate Plan/Lot/Item filters')
+  const identityState = await evaluate(`(() => {
+    const firstRow = document.getElementById('row-148')
+    const identityLabels = [...firstRow.querySelectorAll('td:first-child span')]
+      .map((element) => element.textContent.trim())
+      .filter((text) => text === 'Lot' || text === 'Item')
+    const item = [...firstRow.querySelectorAll('td:first-child span')]
+      .find((element) => element.textContent.trim() === "Men's Classic Polo")
+    const detailLabels = [...document.querySelectorAll('#detail-148 > div:first-child span')]
+      .map((element) => element.textContent.trim())
+      .filter((text) => text === 'Lot' || text === 'Item')
+    return {
+      header: document.querySelector('.header-row th:first-child').textContent.trim(),
+      identityLabels,
+      detailLabels,
+      itemWhiteSpace: getComputedStyle(item).whiteSpace,
+      truncatedItems: firstRow.querySelectorAll('.truncate').length,
+    }
+  })()`)
+
+  assert.equal(identityState.header, 'Finishing Plan / Lot / Item')
+  assert.deepEqual(identityState.identityLabels, ['Lot', 'Item'])
+  assert.deepEqual(identityState.detailLabels, ['Lot', 'Item'])
+  assert.equal(identityState.itemWhiteSpace, 'normal')
+  assert.equal(identityState.truncatedItems, 0)
+
+  console.log('PASS: matrices, filters, and clear Lot/Item identity hierarchy')
 } finally {
   socket.close()
   chrome.kill('SIGTERM')

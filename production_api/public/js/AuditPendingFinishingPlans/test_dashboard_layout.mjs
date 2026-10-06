@@ -45,6 +45,51 @@ test('omits the helper sentence below Pending Quantity', () => {
 })
 
 
+test('labels plan, lot, and item identity in the master and detail panels', () => {
+    assert.ok(templateDetails.text.includes('Finishing Plan / Lot / Item'))
+    assert.equal(templateDetails.text.filter(text => text === 'Lot').length, 2)
+    assert.equal(templateDetails.text.filter(text => text === 'Item').length, 2)
+    assert.ok(templateDetails.classes.includes('plan-identity'))
+    assert.ok(templateDetails.classes.includes('detail-identity'))
+})
+
+
+test('allows long item names to wrap instead of truncating them', { skip: !existsSync(chrome) }, () => {
+    const css = componentSource.match(/<style scoped>([\s\S]*?)<\/style>/)?.[1]
+    assert.ok(css, 'component CSS should be available')
+
+    const workdir = mkdtempSync(join(tmpdir(), 'audit-dashboard-identity-'))
+    const htmlPath = join(workdir, 'identity.html')
+    try {
+        writeFileSync(htmlPath, `<!doctype html>
+            <html><head><style>${css}</style></head>
+            <body><div style="width: 90px"><span class="identity-value identity-value--item">Extra Long Item Name That Must Remain Visible</span></div><script>
+                const item = document.querySelector('.identity-value--item')
+                const style = getComputedStyle(item)
+                document.body.dataset.whiteSpace = style.whiteSpace
+                document.body.dataset.textOverflow = style.textOverflow
+                document.body.dataset.overflowWrap = style.overflowWrap
+            </script></body></html>`)
+
+        const rendered = execFileSync(chrome, [
+            '--headless',
+            '--disable-gpu',
+            '--no-sandbox',
+            '--dump-dom',
+            '--window-size=800,600',
+            `file://${htmlPath}`,
+        ], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] })
+        const body = rendered.match(/<body[^>]*data-white-space="([^"]+)"[^>]*data-text-overflow="([^"]+)"[^>]*data-overflow-wrap="([^"]+)"/)
+        assert.ok(body, 'browser should report the rendered item-name styles')
+        assert.equal(body[1], 'normal')
+        assert.equal(body[2], 'clip')
+        assert.equal(body[3], 'anywhere')
+    } finally {
+        rmSync(workdir, { recursive: true, force: true })
+    }
+})
+
+
 test('uses the desktop viewport with only a 16px horizontal gutter', { skip: !existsSync(chrome) }, () => {
     const css = componentSource.match(/<style scoped>([\s\S]*?)<\/style>/)?.[1]
     assert.ok(css, 'component CSS should be available')
