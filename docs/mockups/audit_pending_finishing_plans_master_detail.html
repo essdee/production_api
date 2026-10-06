@@ -1,0 +1,682 @@
+<!DOCTYPE html><html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Audit Pending Finishing Plans</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://code.iconify.design/iconify-icon/1.0.7/iconify-icon.min.js"></script>
+  <style>
+    /* Inherit Frappe system font setup approximations */
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background-color: #f8fafc;
+      color: #334155;
+    }
+
+    /* Core Design System Tokens */
+    .text-page-title { font-size: 24px; font-weight: 800; color: #1e293b; }
+    .text-primary { color: #1e293b; }
+    .text-body { color: #334155; }
+    .text-secondary { color: #64748b; }
+    .text-muted { color: #94a3b8; }
+
+    .bg-surface { background-color: #ffffff; }
+    .bg-soft { background-color: #f8fafc; }
+    .border-subtle { border-color: #e2e8f0; }
+
+    .color-blue { color: #1a73e8; }
+    .bg-blue-light { background-color: #eff6ff; }
+    .hover-blue:hover { background-color: #1557b0; }
+
+    .color-success { color: #059669; }
+    .bg-success-light { background-color: #d1fae5; }
+
+    .color-warning { color: #d97706; }
+    .bg-warning-light { background-color: #fef3c7; }
+
+    .color-danger { color: #dc2626; }
+    .bg-danger-light { background-color: #fee2e2; }
+
+    .radius-card { border-radius: 16px; }
+    .radius-control { border-radius: 12px; }
+    .radius-badge { border-radius: 8px; }
+
+    .shadow-restrained { box-shadow: 0 4px 12px rgba(0,0,0,.02); }
+
+    /* Scrollbar hiding for clean UI */
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+    /* Custom Utilities */
+    .tabular-nums { font-variant-numeric: tabular-nums; }
+
+    /* Component Styles from Source */
+    .sp-filter-section { margin-bottom: 1.5rem; position: relative; z-index: 50; text-align: left; }
+    .filter-card { background: white; padding: 0.75rem 1rem; border-radius: 1rem; border: 1px solid #f1f5f9; box-shadow: 0 4px 12px rgba(0,0,0,.02); display: flex; align-items: center; gap: 0.75rem; width: fit-content; flex-wrap: wrap; }
+    .filter-title-group { display: flex; align-items: center; gap: .75rem; color: #64748b; }
+    .filter-icon { width: 1.1rem; height: 1.1rem; }
+    .filter-label { font-size: .875rem; font-weight: 600; letter-spacing: .01em; white-space: nowrap; }
+    .filter-control { flex: 1; min-width: 0; }
+    .input-with-feedback { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: .75rem; height: 38px; font-weight: 500; width: 100%; padding: 0 12px; font-size: 0.875rem; color: #334155; }
+    .input-with-feedback:focus { outline: none; border-color: #1a73e8; }
+
+    .table-wrapper { border-radius: .75rem; border: 1px solid #e2e8f0; background: #ffffff; }
+    .data-table { width: 100%; border-collapse: collapse; font-size: .875rem; }
+    .header-row th { background: #f8fafc; padding: 10px 12px; text-align: left; font-size: .75rem; font-weight: 700; color: #475569; border-bottom: 1px solid #e2e8f0; text-transform: uppercase; position: sticky; top: 0; z-index: 10; }
+    .header-row th.text-right { text-align: right; }
+    .header-row th.text-center { text-align: center; }
+    .data-row { transition: background-color .15s ease; border-bottom: 1px solid #e2e8f0; }
+    .data-row:hover { background-color: #f8fafc; cursor: pointer; }
+    .data-row.active { background-color: #eff6ff; }
+    .data-row.active td { border-bottom-color: #bfdbfe; }
+    .data-row:last-child { border-bottom: none; }
+    .data-cell { padding: 12px; color: #334155; font-weight: 500; vertical-align: middle; }
+
+    .record-btn { display: flex; align-items: center; justify-content: center; gap: .6rem; padding: .6rem 1.25rem; background: #1a73e8; color: white; border: none; border-radius: .75rem; font-size: .875rem; font-weight: 600; cursor: pointer; transition: all .2s ease; box-shadow: 0 4px 12px rgba(26,115,232,.2); }
+    .record-btn:hover { background: #1557b0; transform: translateY(-1px); box-shadow: 0 6px 15px rgba(26,115,232,.3); }
+    .record-btn-secondary { background: #f8fafc; color: #475569; border: 1px solid #e2e8f0; box-shadow: none; }
+    .record-btn-secondary:hover { background: #e2e8f0; transform: none; box-shadow: none; color: #1e293b; }
+
+    .status-pill { display: inline-flex; align-items: center; padding: 0.25rem 0.6rem; border-radius: 0.5rem; font-size: 0.75rem; font-weight: 600; border: 1px solid transparent; }
+    .status-dispatched { color: #d97706; background: #fef3c7; border-color: #fde68a; }
+    .status-fully { color: #059669; background: #d1fae5; border-color: #a7f3d0; }
+
+    .age-badge { display: inline-flex; align-items: center; justify-content: center; padding: 0.15rem 0.5rem; border-radius: 0.5rem; font-size: 0.75rem; font-weight: 700; }
+    .age-warning { color: #d97706; background: #fef3c7; }
+    .age-danger { color: #dc2626; background: #fee2e2; }
+    .age-critical { color: #ffffff; background: #dc2626; }
+
+    .filtered-out { display: none !important; }
+
+    .history-table { width: 100%; border-collapse: separate; border-spacing: 0; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 0.5rem; overflow: hidden; }
+    .history-table th { background: #f1f5f9; padding: 8px 10px; text-align: left; font-size: 0.7rem; font-weight: 600; color: #64748b; text-transform: uppercase; border-bottom: 1px solid #e2e8f0; }
+    .history-table td { padding: 8px 10px; font-size: 0.8rem; color: #334155; border-bottom: 1px solid #f1f5f9; }
+    .history-table tr.clickable:hover { background-color: #f8fafc; cursor: pointer; }
+    .history-table tr.clickable:hover td { color: #1a73e8; }
+    .history-table tr:last-child td { border-bottom: none; }
+
+    .dispatch-modal-backdrop { position: fixed; inset: 0; z-index: 1000; display: flex; align-items: center; justify-content: center; padding: 24px; background: rgba(15, 23, 42, .38); backdrop-filter: blur(2px); }
+    .dispatch-modal-backdrop.hidden { display: none; }
+    .dispatch-modal { width: min(760px, 100%); max-height: calc(100vh - 48px); overflow: auto; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 16px; box-shadow: 0 24px 60px rgba(15, 23, 42, .2); }
+    .dispatch-modal-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; padding: 20px 24px; border-bottom: 1px solid #e2e8f0; }
+    .dispatch-modal-close { width: 34px; height: 34px; display: inline-flex; align-items: center; justify-content: center; border: 1px solid #e2e8f0; border-radius: 10px; background: #ffffff; color: #64748b; cursor: pointer; }
+    .dispatch-modal-close:hover { background: #f8fafc; color: #1e293b; }
+    .dispatch-meta-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; padding: 18px 24px; background: #f8fafc; border-bottom: 1px solid #e2e8f0; }
+    .dispatch-meta-label { display: block; margin-bottom: 3px; color: #64748b; font-size: 11px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; }
+    .dispatch-meta-value { color: #1e293b; font-size: 13px; font-weight: 600; }
+    .dispatch-size-wrap { padding: 20px 24px 24px; }
+    .dispatch-size-table { width: 100%; border-collapse: separate; border-spacing: 0; overflow: hidden; border: 1px solid #e2e8f0; border-radius: 10px; }
+    .dispatch-size-table th { padding: 9px 12px; background: #f8fafc; border-bottom: 1px solid #e2e8f0; color: #64748b; font-size: 11px; font-weight: 700; letter-spacing: .04em; text-align: left; text-transform: uppercase; }
+    .dispatch-size-table td { padding: 10px 12px; border-bottom: 1px solid #f1f5f9; color: #334155; font-size: 13px; }
+    .dispatch-size-table th.numeric, .dispatch-size-table td.numeric { text-align: center; }
+    .dispatch-size-table tfoot td { background: #f8fafc; border-bottom: 0; color: #1e293b; font-weight: 700; }
+
+    /* Detail View Styles */
+    .tab-btn { border-bottom: 2px solid transparent; transition: all 0.2s; }
+    .tab-btn.active { border-bottom-color: #1a73e8; color: #1a73e8; }
+
+    .pending-table-shell { width: 100%; overflow-x: auto; }
+    .pending-matrix { width: 100%; min-width: 590px; border-collapse: collapse; font-size: 11px; }
+    .pending-matrix th { padding: 7px 6px; border-bottom: 1px solid #e2e8f0; background: #ffffff; color: #475569; font-size: 10px; font-weight: 700; text-align: center; text-transform: uppercase; white-space: nowrap; }
+    .pending-matrix td { padding: 7px 6px; border-bottom: 1px solid #f1f5f9; color: #334155; font-size: 11px; font-weight: 500; text-align: center; }
+    .pending-matrix th:first-child, .pending-matrix td:first-child { min-width: 118px; text-align: left; }
+    .pending-matrix th:last-child, .pending-matrix td:last-child { color: #1e293b; font-weight: 800; text-align: right; }
+    .pending-matrix tbody tr:last-child td { border-bottom: 0; }
+    .pending-matrix tfoot td { border-top: 1px solid #e2e8f0; border-bottom: 0; background: #f8fafc; color: #1e293b; font-weight: 800; }
+  </style>
+</head>
+<body>
+  <div class="h-screen w-full overflow-hidden bg-soft p-4 flex flex-col items-center">
+
+    <!-- Page Header & Summary (Static height area) -->
+    <div class="w-full flex-none">
+      <!-- Page Header -->
+      <div class="flex flex-col md:flex-row justify-between items-start md:items-end mb-4 gap-4">
+        <div>
+          <h1 class="text-page-title flex items-center gap-3">
+            Audit Pending Finishing Plans
+            <span class="text-sm font-normal text-secondary bg-slate-100 px-2 py-1 rounded-md border border-slate-200 mt-1">As of 05 Oct 2026</span>
+          </h1>
+        </div>
+        <button id="refresh-button" class="record-btn-secondary p-2 radius-control flex items-center gap-2 text-sm font-medium">
+          <iconify-icon id="refresh-icon" icon="lucide:refresh-cw" class="text-base"></iconify-icon>
+          <span id="refresh-label">Refresh</span>
+        </button>
+      </div>
+
+      <!-- Summary Strip -->
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+        <div class="bg-surface p-3 radius-card border-subtle border shadow-restrained flex flex-col">
+          <span class="text-[11px] font-semibold text-secondary uppercase tracking-wider mb-1">Overdue Plans</span>
+          <span id="metric-overdue" class="text-xl font-bold text-primary tabular-nums">4</span>
+        </div>
+        <div class="bg-surface p-3 radius-card border-subtle border shadow-restrained flex flex-col">
+          <span class="text-[11px] font-semibold text-secondary uppercase tracking-wider mb-1">Dispatched</span>
+          <span id="metric-dispatched" class="text-xl font-bold color-warning tabular-nums">2</span>
+        </div>
+        <div class="bg-surface p-3 radius-card border-subtle border shadow-restrained flex flex-col">
+          <span class="text-[11px] font-semibold text-secondary uppercase tracking-wider mb-1">Fully Dispatched</span>
+          <span id="metric-fully" class="text-xl font-bold color-success tabular-nums">2</span>
+        </div>
+        <div class="bg-surface p-3 radius-card border-subtle border shadow-restrained flex flex-col">
+          <span class="text-[11px] font-semibold text-secondary uppercase tracking-wider mb-1">Oldest Pending</span>
+          <div class="flex items-baseline gap-1">
+            <span id="metric-oldest" class="text-xl font-bold color-danger tabular-nums">19</span>
+            <span class="text-xs font-medium text-secondary">days</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Filter Row -->
+      <div class="sp-filter-section w-full">
+        <div class="filter-card w-full">
+          <div class="filter-title-group mr-4">
+            <iconify-icon icon="lucide:filter" class="filter-icon"></iconify-icon>
+            <span class="filter-label">Filters</span>
+          </div>
+          <div class="filter-control w-44 flex-none">
+            <input id="plan-filter" type="search" class="input-with-feedback" placeholder="Finishing Plan" aria-label="Filter by Finishing Plan">
+          </div>
+          <div class="filter-control w-44 flex-none">
+            <input id="lot-filter" type="search" class="input-with-feedback" placeholder="Lot" aria-label="Filter by Lot">
+          </div>
+          <div class="filter-control flex-1 min-w-[220px]">
+            <input id="item-filter" type="search" class="input-with-feedback" placeholder="Item" aria-label="Filter by Item">
+          </div>
+          <div class="filter-control w-40 flex-none">
+            <select id="status-filter" class="input-with-feedback appearance-none" aria-label="Filter by status">
+              <option value="">All Statuses</option>
+              <option value="dispatched">Dispatched</option>
+              <option value="fully">Fully Dispatched</option>
+            </select>
+          </div>
+          <div class="filter-control w-32 flex-none">
+            <select id="age-filter" class="input-with-feedback appearance-none" aria-label="Filter by pending age">
+              <option value="">All Ages</option>
+              <option value="7-14">8-14 Days</option>
+              <option value="15+">15+ Days</option>
+            </select>
+          </div>
+          <div class="flex gap-2 ml-auto">
+            <button id="reset-filters" class="record-btn-secondary px-3 py-1.5 radius-control text-sm font-medium">Reset</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Split Layout Area (Scrollable remaining height) -->
+    <div class="w-full flex-1 min-h-0 flex flex-col lg:flex-row gap-5 pb-2">
+
+      <!-- LEFT PANEL: Master Table (60%) -->
+      <div class="w-full lg:w-3/5 flex flex-col table-wrapper shadow-restrained overflow-hidden">
+        <div class="flex-1 overflow-y-auto no-scrollbar">
+          <table class="data-table">
+            <thead>
+              <tr class="header-row">
+                <th class="w-[30%]">Finishing Plan</th>
+                <th>Status / Age</th>
+                <th class="text-right">Total Cut</th>
+                <th class="text-right">Sewing Rx</th>
+                <th class="text-right">Packed</th>
+                <th class="text-right">Boxes Dispatched</th>
+              </tr>
+            </thead>
+            <tbody id="table-body">
+              <!-- Row 1 -->
+              <tr id="row-148" class="data-row active" data-status="dispatched" data-age="8" data-plan="fp-2026-0148" data-lot="lot-2609-118" data-item="men's classic polo" onclick="selectPlan('148')">
+                <td class="data-cell">
+                  <div class="font-bold text-primary">FP-2026-0148</div>
+                  <div class="text-xs text-secondary mt-0.5">LOT-2609-118</div>
+                  <div class="text-xs text-muted mt-0.5 truncate max-w-[180px]" title="Men's Classic Polo">Men's Classic Polo</div>
+                </td>
+                <td class="data-cell">
+                  <div class="flex items-center gap-2">
+                    <span class="status-pill status-dispatched">Dispatched</span>
+                    <span class="age-badge age-warning">8d</span>
+                  </div>
+                  <div class="text-[11px] text-muted mt-1">Since 27 Sep 2026</div>
+                </td>
+                <td class="data-cell text-right tabular-nums">1,250</td>
+                <td class="data-cell text-right tabular-nums">1,200</td>
+                <td class="data-cell text-right tabular-nums">1,150</td>
+                <td class="data-cell text-right tabular-nums font-semibold color-blue">16</td>
+              </tr>
+
+              <!-- Row 2 -->
+              <tr id="row-156" class="data-row" data-status="fully" data-age="12" data-plan="fp-2026-0156" data-lot="lot-2609-126" data-item="women's rib tank" onclick="selectPlan('156')">
+                <td class="data-cell">
+                  <div class="font-bold text-primary">FP-2026-0156</div>
+                  <div class="text-xs text-secondary mt-0.5">LOT-2609-126</div>
+                  <div class="text-xs text-muted mt-0.5 truncate max-w-[180px]" title="Women's Rib Tank">Women's Rib Tank</div>
+                </td>
+                <td class="data-cell">
+                  <div class="flex items-center gap-2">
+                    <span class="status-pill status-fully">Fully Disp.</span>
+                    <span class="age-badge age-danger">12d</span>
+                  </div>
+                  <div class="text-[11px] text-muted mt-1">Since 23 Sep 2026</div>
+                </td>
+                <td class="data-cell text-right tabular-nums">850</td>
+                <td class="data-cell text-right tabular-nums">840</td>
+                <td class="data-cell text-right tabular-nums">840</td>
+                <td class="data-cell text-right tabular-nums font-semibold color-blue">14</td>
+              </tr>
+
+              <!-- Row 3 -->
+              <tr id="row-161" class="data-row" data-status="dispatched" data-age="15" data-plan="fp-2026-0161" data-lot="lot-2610-004" data-item="kids crew neck tee" onclick="selectPlan('161')">
+                <td class="data-cell">
+                  <div class="font-bold text-primary">FP-2026-0161</div>
+                  <div class="text-xs text-secondary mt-0.5">LOT-2610-004</div>
+                  <div class="text-xs text-muted mt-0.5 truncate max-w-[180px]" title="Kids Crew Neck Tee">Kids Crew Neck Tee</div>
+                </td>
+                <td class="data-cell">
+                  <div class="flex items-center gap-2">
+                    <span class="status-pill status-dispatched">Dispatched</span>
+                    <span class="age-badge age-danger">15d</span>
+                  </div>
+                  <div class="text-[11px] text-muted mt-1">Since 20 Sep 2026</div>
+                </td>
+                <td class="data-cell text-right tabular-nums">2,500</td>
+                <td class="data-cell text-right tabular-nums">2,450</td>
+                <td class="data-cell text-right tabular-nums">2,000</td>
+                <td class="data-cell text-right tabular-nums font-semibold color-blue">30</td>
+              </tr>
+
+              <!-- Row 4 -->
+              <tr id="row-168" class="data-row" data-status="fully" data-age="19" data-plan="fp-2026-0168" data-lot="lot-2610-011" data-item="performance track pant" onclick="selectPlan('168')">
+                <td class="data-cell">
+                  <div class="font-bold text-primary">FP-2026-0168</div>
+                  <div class="text-xs text-secondary mt-0.5">LOT-2610-011</div>
+                  <div class="text-xs text-muted mt-0.5 truncate max-w-[180px]" title="Performance Track Pant">Performance Track Pant</div>
+                </td>
+                <td class="data-cell">
+                  <div class="flex items-center gap-2">
+                    <span class="status-pill status-fully">Fully Disp.</span>
+                    <span class="age-badge age-critical">19d</span>
+                  </div>
+                  <div class="text-[11px] text-muted mt-1">Since 16 Sep 2026</div>
+                </td>
+                <td class="data-cell text-right tabular-nums">600</td>
+                <td class="data-cell text-right tabular-nums">595</td>
+                <td class="data-cell text-right tabular-nums">595</td>
+                <td class="data-cell text-right tabular-nums font-semibold color-blue">12</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <div id="empty-state" class="hidden py-12 px-6 text-center">
+            <iconify-icon icon="lucide:search-x" class="text-3xl text-muted"></iconify-icon>
+            <p class="font-semibold text-primary mt-3">No overdue plans match these filters</p>
+            <p class="text-sm text-secondary mt-1">Clear or change the filters to see other pending plans.</p>
+          </div>
+        </div>
+        <div class="p-2 border-t border-subtle bg-soft text-xs text-secondary flex justify-between">
+          <span id="result-count">Showing 4 of 4 plans</span>
+          <span id="last-updated" class="tabular-nums">Last updated: Just now</span>
+        </div>
+      </div>
+
+      <!-- RIGHT PANEL: Audit Snapshot (40%) -->
+      <div class="w-full lg:w-2/5 flex flex-col bg-surface border border-subtle radius-card shadow-restrained overflow-hidden">
+
+        <!-- Content for 148 -->
+        <div id="detail-148" class="detail-view flex flex-col h-full">
+          <!-- Fixed Header -->
+          <div class="p-4 border-b border-subtle bg-soft flex-none">
+            <div class="flex justify-between items-start mb-2">
+              <div>
+                <h2 class="text-lg font-bold text-primary leading-tight">FP-2026-0148</h2>
+                <p class="text-xs text-secondary mt-0.5">LOT-2609-118 • Men's Classic Polo</p>
+              </div>
+              <div class="flex flex-col items-end gap-1.5">
+                <span class="status-pill status-dispatched text-[10px] px-2 py-0.5">Dispatched</span>
+                <span class="age-badge age-warning text-[10px] px-2 py-0.5">8 days</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Scrollable Body -->
+          <div class="flex-1 overflow-y-auto no-scrollbar p-4">
+
+            <!-- Tabs -->
+            <div class="flex gap-4 border-b border-subtle mb-4">
+              <button id="tab-148-top" class="tab-btn active pb-2 text-sm font-bold" onclick="switchTab('148', 'top')">Top</button>
+              <button id="tab-148-bottom" class="tab-btn pb-2 text-sm font-semibold text-secondary hover:text-primary" onclick="switchTab('148', 'bottom')">Bottom</button>
+            </div>
+
+            <!-- Tab Content: Top -->
+            <div id="content-148-top" class="tab-content">
+              <div class="mb-3">
+                <h3 class="text-xs font-bold text-primary flex items-center gap-1.5 mb-1">
+                  <iconify-icon icon="lucide:layout-grid" class="text-secondary"></iconify-icon>
+                  Pending Quantity
+                </h3>
+              </div>
+
+              <!-- Compact Categories -->
+              <div class="space-y-3 mb-6">
+                <!-- Loose Piece -->
+                <div class="border border-subtle rounded-lg overflow-hidden">
+                  <div class="bg-soft border-b border-subtle px-3 py-1.5 flex justify-between items-center">
+                    <span class="text-[11px] font-bold text-primary">Loose Piece</span>
+                    <span class="bg-slate-200 text-slate-700 px-2 py-0.5 rounded text-[10px] font-bold tabular-nums">8 pcs</span>
+                  </div>
+                  <div class="pending-table-shell">
+                    <table class="pending-matrix">
+                      <thead>
+                        <tr><th>Colour</th><th>45 CM</th><th>50 CM</th><th>55 CM</th><th>60 CM</th><th>65 CM</th><th>70 CM</th><th>75 CM</th><th>80 CM</th><th>Total</th></tr>
+                      </thead>
+                      <tbody>
+                        <tr><td>Navy</td><td>2</td><td>3</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>5</td></tr>
+                        <tr><td>White</td><td>1</td><td>2</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>3</td></tr>
+                      </tbody>
+                      <tfoot>
+                        <tr><td>Total</td><td>3</td><td>5</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>8</td></tr>
+                      </tfoot>
+                    </table>
+                  </div>
+                </div>
+
+                <!-- Rejected Pieces -->
+                <div class="border border-red-100 rounded-lg overflow-hidden">
+                  <div class="bg-red-50 border-b border-red-100 px-3 py-1.5 flex justify-between items-center">
+                    <span class="text-[11px] font-bold text-red-700">Rejected Pieces</span>
+                    <span class="bg-red-100 text-red-700 px-2 py-0.5 rounded text-[10px] font-bold tabular-nums">6 pcs</span>
+                  </div>
+                  <div class="pending-table-shell">
+                    <table class="pending-matrix">
+                      <thead>
+                        <tr><th>Colour</th><th>45 CM</th><th>50 CM</th><th>55 CM</th><th>60 CM</th><th>65 CM</th><th>70 CM</th><th>75 CM</th><th>80 CM</th><th>Total</th></tr>
+                      </thead>
+                      <tbody>
+                        <tr><td>Navy</td><td>2</td><td>—</td><td>—</td><td>3</td><td>—</td><td>—</td><td>—</td><td>1</td><td>6</td></tr>
+                      </tbody>
+                      <tfoot>
+                        <tr><td>Total</td><td>2</td><td>—</td><td>—</td><td>3</td><td>—</td><td>—</td><td>—</td><td>1</td><td>6</td></tr>
+                      </tfoot>
+                    </table>
+                  </div>
+                </div>
+
+              </div>
+            </div>
+
+            <!-- Tab Content: Bottom (Hidden by default) -->
+            <div id="content-148-bottom" class="tab-content hidden">
+              <div class="mb-3">
+                <h3 class="text-xs font-bold text-primary flex items-center gap-1.5 mb-1">
+                  <iconify-icon icon="lucide:layout-grid" class="text-secondary"></iconify-icon>
+                  Pending Quantity
+                </h3>
+                <p class="text-[10px] text-secondary leading-tight">Only categories and sizes with a pending balance are shown.</p>
+              </div>
+              <div class="space-y-3 mb-6">
+                <div class="border border-red-100 rounded-lg overflow-hidden">
+                  <div class="bg-red-50 border-b border-red-100 px-3 py-1.5 flex justify-between items-center">
+                    <span class="text-[11px] font-bold text-red-700">Rejected Pieces</span>
+                    <span class="bg-red-100 text-red-700 px-2 py-0.5 rounded text-[10px] font-bold tabular-nums">7 pcs</span>
+                  </div>
+                  <div class="pending-table-shell">
+                    <table class="pending-matrix">
+                      <thead>
+                        <tr><th>Colour</th><th>45 CM</th><th>50 CM</th><th>55 CM</th><th>60 CM</th><th>65 CM</th><th>70 CM</th><th>75 CM</th><th>80 CM</th><th>Total</th></tr>
+                      </thead>
+                      <tbody>
+                        <tr><td>Black (Airforce Navy)</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>3</td><td>—</td><td>—</td><td>3</td></tr>
+                        <tr><td>Maroon (Black)</td><td>1</td><td>—</td><td>—</td><td>2</td><td>—</td><td>1</td><td>—</td><td>—</td><td>4</td></tr>
+                      </tbody>
+                      <tfoot>
+                        <tr><td>Total</td><td>1</td><td>—</td><td>—</td><td>2</td><td>—</td><td>4</td><td>—</td><td>—</td><td>7</td></tr>
+                      </tfoot>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Dispatch History (Common below tabs in this mock) -->
+            <div class="mt-6">
+              <h3 class="text-xs font-bold text-primary flex items-center gap-1.5 mb-2">
+                <iconify-icon icon="lucide:truck" class="text-secondary"></iconify-icon>
+                Dispatch History
+              </h3>
+              <table class="history-table">
+                <thead>
+                  <tr>
+                    <th>Posting Date</th>
+                    <th class="text-right">Boxes</th>
+                    <th class="text-right">Pieces</th>
+                    <th class="w-6"></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr class="clickable" onclick="openDispatchDetails('DISP-26-0892')">
+                    <td class="tabular-nums">27 Sep 2026</td>
+                    <td class="text-right tabular-nums">7</td>
+                    <td class="text-right tabular-nums font-semibold">350</td>
+                    <td class="text-center text-secondary"><iconify-icon icon="lucide:chevron-right"></iconify-icon></td>
+                  </tr>
+                  <tr class="clickable" onclick="openDispatchDetails('DISP-26-0841')">
+                    <td class="tabular-nums">24 Sep 2026</td>
+                    <td class="text-right tabular-nums">5</td>
+                    <td class="text-right tabular-nums font-semibold">250</td>
+                    <td class="text-center text-secondary"><iconify-icon icon="lucide:chevron-right"></iconify-icon></td>
+                  </tr>
+                  <tr class="clickable" onclick="openDispatchDetails('DISP-26-0805')">
+                    <td class="tabular-nums">22 Sep 2026</td>
+                    <td class="text-right tabular-nums">4</td>
+                    <td class="text-right tabular-nums font-semibold">200</td>
+                    <td class="text-center text-secondary"><iconify-icon icon="lucide:chevron-right"></iconify-icon></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- Content for 156 (Placeholder for other row clicks) -->
+        <div id="detail-156" class="detail-view hidden flex flex-col h-full">
+          <div class="p-4 border-b border-subtle bg-soft flex-none">
+            <div class="flex justify-between items-start">
+              <div>
+                <h2 class="text-lg font-bold text-primary leading-tight">FP-2026-0156</h2>
+                <p class="text-xs text-secondary mt-0.5">LOT-2609-126 • Women's Rib Tank</p>
+              </div>
+              <span class="status-pill status-fully text-[10px] px-2 py-0.5">Fully Dispatched</span>
+            </div>
+          </div>
+          <div class="flex-1 flex flex-col items-center justify-center p-8 text-center">
+            <iconify-icon icon="lucide:check-circle-2" class="text-4xl text-green-500 mb-3"></iconify-icon>
+            <p class="text-sm font-semibold text-primary">Fully Dispatched</p>
+            <p class="text-xs text-secondary mt-1 max-w-[200px]">All quantities have been cleared. No pending balances remaining.</p>
+          </div>
+        </div>
+
+        <div id="detail-161" class="detail-view hidden flex flex-col h-full items-center justify-center p-8 text-secondary text-sm">
+           Data for FP-2026-0161...
+        </div>
+        <div id="detail-168" class="detail-view hidden flex flex-col h-full items-center justify-center p-8 text-secondary text-sm">
+           Data for FP-2026-0168...
+        </div>
+
+      </div>
+    </div>
+
+  <!-- Dispatch Detail Modal -->
+  <div id="dispatch-modal-backdrop" class="dispatch-modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="dispatch-modal-title" onclick="closeDispatchDetailsOnBackdrop(event)">
+    <section class="dispatch-modal">
+      <header class="dispatch-modal-header">
+        <div>
+          <div class="text-xs font-semibold text-secondary uppercase tracking-wider">Dispatch document</div>
+          <h2 id="dispatch-modal-title" class="text-xl font-bold text-primary mt-1">Size-wise Dispatch Detail</h2>
+          <div id="dispatch-modal-document" class="color-blue font-semibold text-sm mt-1"></div>
+        </div>
+        <button id="dispatch-modal-close" type="button" class="dispatch-modal-close" aria-label="Close size-wise detail" onclick="closeDispatchDetails()">
+          <iconify-icon icon="lucide:x" class="text-lg"></iconify-icon>
+        </button>
+      </header>
+      <div class="dispatch-meta-grid">
+        <div><span class="dispatch-meta-label">Finishing Plan</span><span id="dispatch-meta-plan" class="dispatch-meta-value"></span></div>
+        <div><span class="dispatch-meta-label">Posting Date</span><span id="dispatch-meta-date" class="dispatch-meta-value"></span></div>
+        <div><span class="dispatch-meta-label">Destination</span><span id="dispatch-meta-destination" class="dispatch-meta-value"></span></div>
+        <div><span class="dispatch-meta-label">Item Detail</span><span id="dispatch-meta-item" class="dispatch-meta-value"></span></div>
+        <div><span class="dispatch-meta-label">Operator</span><span id="dispatch-meta-operator" class="dispatch-meta-value"></span></div>
+        <div><span class="dispatch-meta-label">Total Dispatched</span><span id="dispatch-meta-total" class="dispatch-meta-value tabular-nums"></span></div>
+      </div>
+      <div class="dispatch-size-wrap">
+        <div class="flex items-center justify-between gap-4 mb-3">
+          <h3 class="text-sm font-bold text-primary">Size-wise detail</h3>
+          <span class="text-xs text-secondary">Submitted quantities</span>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="dispatch-size-table">
+            <thead><tr><th>Size</th><th>Colour / Detail</th><th class="numeric">Pieces / Box</th><th class="numeric">Boxes</th><th class="numeric">Pieces</th></tr></thead>
+            <tbody id="dispatch-size-body"></tbody>
+            <tfoot><tr><td colspan="2">Total</td><td class="numeric text-secondary">—</td><td id="dispatch-total-boxes" class="numeric tabular-nums"></td><td id="dispatch-total-pieces" class="numeric tabular-nums"></td></tr></tfoot>
+          </table>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    // Data for modal
+    const dispatchDetails = {
+      'DISP-26-0892': { plan: 'FP-2026-0148', date: '27 Sep 2026', destination: 'WH-Main / Retail Hub', item: 'Navy / M, L, XL', operator: 'J. Smith', piecesPerBox: 50, sizes: [['M', 'Navy', 2, 100], ['L', 'Navy', 3, 150], ['XL', 'Navy', 2, 100]] },
+      'DISP-26-0841': { plan: 'FP-2026-0148', date: '24 Sep 2026', destination: 'WH-East / Direct', item: 'White / S, M', operator: 'A. Patel', piecesPerBox: 50, sizes: [['S', 'White', 2, 100], ['M', 'White', 3, 150]] },
+      'DISP-26-0805': { plan: 'FP-2026-0148', date: '22 Sep 2026', destination: 'WH-Main / Retail Hub', item: 'Mixed / All Sizes', operator: 'J. Smith', piecesPerBox: 50, sizes: [['S', 'Mixed', 1, 50], ['M', 'Mixed', 1, 50], ['L', 'Mixed', 1, 50], ['XL', 'Mixed', 1, 50]] }
+    };
+
+    // Master-Detail Row Selection
+    function selectPlan(planId) {
+      // Update table row highlighting
+      document.querySelectorAll('.data-row').forEach(row => row.classList.remove('active'));
+      const targetRow = document.getElementById('row-' + planId);
+      if (targetRow) targetRow.classList.add('active');
+
+      // Show corresponding right panel
+      document.querySelectorAll('.detail-view').forEach(view => view.classList.add('hidden'));
+      const targetView = document.getElementById('detail-' + planId);
+      if (targetView) targetView.classList.remove('hidden');
+    }
+
+    // Details Tab Switching
+    function switchTab(planId, tabName) {
+      // Update buttons
+      document.getElementById('tab-' + planId + '-top').classList.remove('active', 'text-blue-600', 'border-blue-600');
+      document.getElementById('tab-' + planId + '-top').classList.add('text-secondary');
+      document.getElementById('tab-' + planId + '-bottom').classList.remove('active', 'text-blue-600', 'border-blue-600');
+      document.getElementById('tab-' + planId + '-bottom').classList.add('text-secondary');
+
+      const activeBtn = document.getElementById('tab-' + planId + '-' + tabName);
+      activeBtn.classList.add('active', 'text-blue-600', 'border-blue-600');
+      activeBtn.classList.remove('text-secondary');
+
+      // Show content
+      document.getElementById('content-' + planId + '-top').classList.add('hidden');
+      document.getElementById('content-' + planId + '-bottom').classList.add('hidden');
+      document.getElementById('content-' + planId + '-' + tabName).classList.remove('hidden');
+    }
+
+    // Modal Logic
+    function openDispatchDetails(documentId) {
+      const detail = dispatchDetails[documentId];
+      if (!detail) return;
+      const totals = detail.sizes.reduce((result, row) => ({ boxes: result.boxes + row[2], pieces: result.pieces + row[3] }), { boxes: 0, pieces: 0 });
+      document.getElementById('dispatch-modal-document').textContent = documentId;
+      document.getElementById('dispatch-meta-plan').textContent = detail.plan;
+      document.getElementById('dispatch-meta-date').textContent = detail.date;
+      document.getElementById('dispatch-meta-destination').textContent = detail.destination;
+      document.getElementById('dispatch-meta-item').textContent = detail.item;
+      document.getElementById('dispatch-meta-operator').textContent = detail.operator;
+      document.getElementById('dispatch-meta-total').textContent = `${totals.pieces.toLocaleString()} pcs`;
+      document.getElementById('dispatch-total-boxes').textContent = totals.boxes.toLocaleString();
+      document.getElementById('dispatch-total-pieces').textContent = totals.pieces.toLocaleString();
+      document.getElementById('dispatch-size-body').innerHTML = detail.sizes.map(([size, colour, boxes, pieces]) => `<tr><td class="font-semibold text-primary">${size}</td><td>${colour}</td><td class="numeric tabular-nums">${detail.piecesPerBox.toLocaleString()}</td><td class="numeric tabular-nums">${boxes.toLocaleString()}</td><td class="numeric tabular-nums font-semibold">${pieces.toLocaleString()}</td></tr>`).join('');
+      document.getElementById('dispatch-modal-backdrop').classList.remove('hidden');
+      document.getElementById('dispatch-modal-close').focus();
+    }
+
+    function closeDispatchDetails() {
+      document.getElementById('dispatch-modal-backdrop').classList.add('hidden');
+    }
+
+    function closeDispatchDetailsOnBackdrop(event) {
+      if (event.target === event.currentTarget) closeDispatchDetails();
+    }
+
+    document.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape') closeDispatchDetails();
+    });
+
+    // Filter Logic
+    const planFilter = document.getElementById('plan-filter');
+    const lotFilter = document.getElementById('lot-filter');
+    const itemFilter = document.getElementById('item-filter');
+    const statusFilter = document.getElementById('status-filter');
+    const ageFilter = document.getElementById('age-filter');
+    const resetButton = document.getElementById('reset-filters');
+
+    function applyFilters() {
+      const plan = planFilter.value.trim().toLowerCase();
+      const lot = lotFilter.value.trim().toLowerCase();
+      const item = itemFilter.value.trim().toLowerCase();
+      const status = statusFilter.value;
+      const age = ageFilter.value;
+      let visible = 0;
+
+      document.querySelectorAll('.data-row').forEach((row) => {
+        const rowAge = Number(row.dataset.age);
+        let ageMatch = true;
+        if (age === '7-14') ageMatch = (rowAge >= 8 && rowAge <= 14);
+        if (age === '15+') ageMatch = (rowAge >= 15);
+
+        const matches = (!plan || row.dataset.plan.includes(plan))
+          && (!lot || row.dataset.lot.includes(lot))
+          && (!item || row.dataset.item.includes(item))
+          && (!status || row.dataset.status === status)
+          && ageMatch;
+
+        row.classList.toggle('filtered-out', !matches);
+        if (matches) visible += 1;
+      });
+
+      document.getElementById('result-count').textContent = `Showing ${visible} of 4 plans`;
+      document.querySelector('.data-table').parentElement.classList.toggle('hidden', visible === 0);
+      document.getElementById('empty-state').classList.toggle('hidden', visible !== 0);
+    }
+
+    planFilter.addEventListener('input', applyFilters);
+    lotFilter.addEventListener('input', applyFilters);
+    itemFilter.addEventListener('input', applyFilters);
+    statusFilter.addEventListener('change', applyFilters);
+    ageFilter.addEventListener('change', applyFilters);
+    resetButton.addEventListener('click', () => {
+      planFilter.value = '';
+      lotFilter.value = '';
+      itemFilter.value = '';
+      statusFilter.value = '';
+      ageFilter.value = '';
+      applyFilters();
+    });
+
+    // Refresh fake action
+    document.getElementById('refresh-button').addEventListener('click', function() {
+      const icon = document.getElementById('refresh-icon');
+      const label = document.getElementById('refresh-label');
+      icon.classList.add('animate-spin');
+      label.textContent = 'Refreshing';
+      this.disabled = true;
+      setTimeout(() => {
+        icon.classList.remove('animate-spin');
+        label.textContent = 'Updated';
+        this.disabled = false;
+        document.getElementById('last-updated').textContent = 'Last updated: Just now';
+        setTimeout(() => { label.textContent = 'Refresh'; }, 900);
+      }, 550);
+    });
+  </script>
+  </div>
+</body>
+</html>

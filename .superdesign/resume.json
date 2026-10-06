@@ -1,0 +1,31 @@
+{
+  "schemaVersion": 1,
+  "targets": {
+    "/app/audit-pending-finishing-plans": {
+      "targetKind": "existing-ui",
+      "projectId": "7d4538ea-6a79-49c4-8414-1390f8a62e14",
+      "baselineDraftId": "951682a3-81c2-4f30-a6d2-1f266e62a548",
+      "activeDraftId": "951682a3-81c2-4f30-a6d2-1f266e62a548",
+      "designSystemPath": ".superdesign/design-system.md",
+      "contextFiles": [
+        ".superdesign/design-system.md",
+        "production_api/public/js/AuditPendingFinishingPlans/AuditPendingFinishingPlans.vue",
+        ".superdesign/init/theme.md"
+      ],
+      "fingerprints": {
+        ".superdesign/design-system.md": "ffd31d84b11fed7311c2a41a52b6db6480ca0a16a9713b8ab54edbf06af3d8bb",
+        "production_api/public/js/AuditPendingFinishingPlans/AuditPendingFinishingPlans.vue": "28ae92e7984cbabc38a3712761b4d5c2f8361daf205de0d68dc023a59d06d93c",
+        ".superdesign/init/theme.md": "dc1dadec497e05e6520a993f560bb341014399fc30472ea0b553760096c3ce7a"
+      },
+      "components": [],
+      "drafts": {
+        "951682a3-81c2-4f30-a6d2-1f266e62a548": {
+          "title": "Audit Pending Finishing Plans - Master-Detail Redesign",
+          "visualDirection": "Full-width desktop 60/40 master-detail audit dashboard with slim 16px page gutters, compact selected-plan identity, colour-by-size pending matrices, non-zero categories, separate Plan/Lot/Item filters, and clickable three-column dispatch history; duplicate selected-plan KPIs and helper copy are omitted",
+          "currentVersion": 17
+        }
+      },
+      "updatedAt": "2026-10-06T12:45:17+05:30"
+    }
+  }
+}

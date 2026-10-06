@@ -232,6 +232,93 @@ class TestAuditPendingFinishingPlans(TestCase):
             ],
         )
 
+    def test_pending_breakdown_keeps_set_parts_and_categories_separate(self):
+        ocr_data = {
+            "Top": {
+                "data": {
+                    "Navy (Royal) @ Top": {
+                        "values": {
+                            "S": {
+                                "loose_piece": 4,
+                                "loose_piece_set": 2,
+                                "rejected": 1,
+                                "pending": 3,
+                            },
+                            "M": {
+                                "loose_piece": 0,
+                                "loose_piece_set": 0,
+                                "rejected": 0,
+                                "pending": 0,
+                            },
+                        }
+                    },
+                    "White (Royal) @ Top": {
+                        "values": {
+                            "S": {
+                                "loose_piece": 0,
+                                "loose_piece_set": 0,
+                                "rejected": 0,
+                                "pending": 0,
+                            },
+                            "M": {
+                                "loose_piece": 5,
+                                "loose_piece_set": 0,
+                                "rejected": 2,
+                                "pending": 0,
+                            },
+                        }
+                    },
+                }
+            },
+            "Bottom": {
+                "data": {
+                    "Black (Royal) @ Bottom": {
+                        "values": {
+                            "S": {
+                                "loose_piece": 1,
+                                "loose_piece_set": 1,
+                                "rejected": 0,
+                                "pending": 4,
+                            },
+                            "M": {
+                                "loose_piece": 0,
+                                "loose_piece_set": 0,
+                                "rejected": 0,
+                                "pending": 0,
+                            },
+                        }
+                    }
+                }
+            },
+        }
+
+        result = dashboard._build_pending_breakdown(ocr_data, ["S", "M"])
+
+        self.assertEqual([part["name"] for part in result["parts"]], ["Top", "Bottom"])
+        top = result["parts"][0]
+        self.assertEqual(top["sizes"], ["S", "M"])
+        self.assertEqual(
+            [category["key"] for category in top["categories"]],
+            ["loose_piece", "loose_piece_set", "rejected", "pending"],
+        )
+        self.assertEqual(
+            top["categories"][0],
+            {
+                "key": "loose_piece",
+                "label": "Loose Piece",
+                "rows": [
+                    {"colour": "Navy (Royal)", "values": [4.0, 0.0], "total": 4.0},
+                    {"colour": "White (Royal)", "values": [0.0, 5.0], "total": 5.0},
+                ],
+                "size_totals": [4.0, 5.0],
+                "total": 9.0,
+            },
+        )
+        self.assertEqual(top["categories"][1]["total"], 2.0)
+        self.assertEqual(top["categories"][2]["total"], 3.0)
+        self.assertEqual(top["categories"][3]["total"], 3.0)
+        self.assertEqual(result["parts"][1]["categories"][3]["total"], 4.0)
+
     @patch.object(dashboard.frappe, "get_roles", return_value=["Accounts User"])
     @patch.object(dashboard.frappe.db, "exists", return_value=False)
     def test_dispatch_detail_rejects_a_document_outside_the_plan(self, _exists, _roles):

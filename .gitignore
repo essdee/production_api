@@ -8,3 +8,4 @@ production_api/docs/current
 node_modules
 yarn.lock
 package-lock.json
+.superdesign/tmp/
