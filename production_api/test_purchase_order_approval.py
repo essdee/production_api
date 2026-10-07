@@ -269,7 +269,27 @@ class TestPurchaseOrderApprovalTransitions(TestCase):
 
 class TestPurchaseOrderApprovalRoute(TestCase):
 	@patch("production_api.purchase_order_approval.frappe.get_cached_doc")
-	def test_route_setup_reuses_process_cost_group_and_is_idempotent(self, get_cached_doc):
+	def test_existing_purchase_order_route_does_not_require_process_cost_route(self, get_cached_doc):
+		from production_api.purchase_order_approval import ensure_purchase_order_approval_route
+
+		settings = Mock()
+		settings.routes = [
+			frappe._dict(
+				{
+					"name": "PO-ROUTE",
+					"enabled": 1,
+					"reference_doctype": "Purchase Order",
+					"group_chat_id": "-100456",
+				}
+			)
+		]
+		get_cached_doc.return_value = settings
+
+		self.assertEqual(ensure_purchase_order_approval_route(), "PO-ROUTE")
+		settings.save.assert_not_called()
+
+	@patch("production_api.purchase_order_approval.frappe.get_cached_doc")
+	def test_process_cost_route_is_ignored(self, get_cached_doc):
 		from production_api.purchase_order_approval import ensure_purchase_order_approval_route
 
 		settings = Mock()
@@ -283,33 +303,28 @@ class TestPurchaseOrderApprovalRoute(TestCase):
 				}
 			)
 		]
-
-		def append(fieldname, values):
-			row = frappe._dict({"name": "PO-ROUTE", **values})
-			settings.routes.append(row)
-			return row
-
-		settings.append.side_effect = append
 		get_cached_doc.return_value = settings
 
-		self.assertEqual(ensure_purchase_order_approval_route(), "PO-ROUTE")
-		self.assertEqual(ensure_purchase_order_approval_route(), "PO-ROUTE")
-		settings.append.assert_called_once()
-		created = settings.routes[-1]
-		self.assertEqual(created.reference_doctype, "Purchase Order")
-		self.assertEqual(created.group_chat_id, "-100123")
-		self.assertEqual(created.trigger_field, "status")
-		self.assertEqual(created.trigger_value, "Pending Approval")
-		self.assertEqual(created.approve_action, "Approve PO")
-		self.assertEqual(created.reject_action, "Reject PO")
-		self.assertEqual(created.approve_roles, "System Manager")
-		self.assertEqual(created.reject_roles, "System Manager")
+		self.assertIsNone(ensure_purchase_order_approval_route())
+		settings.append.assert_not_called()
+		settings.save.assert_not_called()
 
 	@patch("production_api.purchase_order_approval.frappe.get_cached_doc")
-	def test_route_setup_is_noop_without_process_cost_route(self, get_cached_doc):
+	def test_disabled_purchase_order_route_is_not_selected(self, get_cached_doc):
 		from production_api.purchase_order_approval import ensure_purchase_order_approval_route
 
-		settings = Mock(routes=[])
+		settings = Mock(
+			routes=[
+				frappe._dict(
+					{
+						"name": "PO-ROUTE",
+						"enabled": 0,
+						"reference_doctype": "Purchase Order",
+						"group_chat_id": "-100456",
+					}
+				)
+			]
+		)
 		get_cached_doc.return_value = settings
 		self.assertIsNone(ensure_purchase_order_approval_route())
 		settings.append.assert_not_called()
@@ -395,7 +410,7 @@ class TestPurchaseOrderRequestLifecycle(TestCase):
 
 		throw.side_effect = self._raise
 		prepare.return_value = self._doc()
-		with self.assertRaisesRegex(RuntimeError, "Process Cost"):
+		with self.assertRaisesRegex(RuntimeError, "Purchase Order"):
 			self._call(send_purchase_order_request, "PO-0012")
 
 	@patch("production_api.purchase_order_approval.frappe.throw")
