@@ -80,7 +80,7 @@ function render(options = {}, status = "Pending Approval") {
 
 {
 	const { frm, calls } = render({ roles: ["Purchase User"], canCreate: true });
-	assert.equal(frm.primaryHidden, 1);
+	assert.equal(frm.primaryHidden, 0);
 	assert.deepEqual([...frm.buttons.keys()], ["Send Request"]);
 	assert.equal(calls[0].method, "production_api.purchase_order_approval.get_purchase_order_approval_state");
 	frm.buttons.get("Send Request")();

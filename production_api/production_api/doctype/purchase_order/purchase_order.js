@@ -69,15 +69,15 @@ function setup_purchase_order_approval_actions(frm) {
 	}
 
 	const is_system_manager = frappe.user.has_role("System Manager");
-	if (!is_system_manager) {
-		frm.page.btn_primary.hide();
-	}
 
 	frappe.call({
 		method: "production_api.purchase_order_approval.get_purchase_order_approval_state",
 		args: { name: frm.doc.name },
 		callback: function(response) {
 			const state = response.message || {};
+			if (!is_system_manager && state.live_request) {
+				frm.page.btn_primary.hide();
+			}
 			if (
 				frappe.perm.has_perm("Purchase Order", 0, "create") &&
 				!state.live_request
