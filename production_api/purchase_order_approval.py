@@ -12,39 +12,6 @@ PENDING_APPROVAL_STATUS = "Pending Approval"
 SYSTEM_MANAGER_ROLE = "System Manager"
 REJECTION_FLAG = "purchase_order_approval_rejection"
 ACTION_FLAG = "purchase_order_approval_action"
-PURCHASE_ORDER_MESSAGE_TEMPLATE = """\
-PURCHASE ORDER APPROVAL
-───────────────────────
-PO: {{ doc.name }}
-Supplier: {{ doc.supplier_name or doc.supplier or "-" }}
-PO Date: {% if doc.po_date %}{{ format_date(doc.po_date) }}{% else %}-{% endif %}
-
-ITEMS ({{ purchase_order_items | length }})
-───────────────────────
-{% for row in purchase_order_items %}
-{{ loop.index }}. {{ row.item }}
-   Quantity: {{ format_qty(row.qty) }}
-   Lot: {{ row.lot or "-" }}
-   Rate: {{ format_currency(row.rate) }}
-{% endfor %}
-
-Grand Total: {{ format_currency(doc.grand_total) }}"""
-
-PURCHASE_ORDER_ROUTE_VALUES = {
-	"enabled": 1,
-	"reference_doctype": "Purchase Order",
-	"process_type": "Field State",
-	"trigger_field": "status",
-	"trigger_value": PENDING_APPROVAL_STATUS,
-	"message_template": PURCHASE_ORDER_MESSAGE_TEMPLATE,
-	"approve_action": "Approve PO",
-	"reject_action": "Reject PO",
-	"target_field": "status",
-	"approve_value": "Ordered",
-	"reject_value": "Draft",
-	"approve_roles": SYSTEM_MANAGER_ROLE,
-	"reject_roles": SYSTEM_MANAGER_ROLE,
-}
 
 
 def requires_yarn_approval(doc):
@@ -227,46 +194,23 @@ def get_purchase_order_approval_state(name):
 
 
 def ensure_purchase_order_approval_route():
-	"""Create or reconcile the manual PO route using the Process Cost group."""
+	"""Return the enabled Purchase Order approval route."""
 	try:
 		settings = frappe.get_cached_doc("Telegram Approval Settings")
 	except frappe.DoesNotExistError:
 		return None
 
-	process_route = next(
+	po_route = next(
 		(
 			route
 			for route in (settings.routes or [])
 			if route.get("enabled")
-			and route.get("reference_doctype") == "Process Cost"
+			and route.get("reference_doctype") == "Purchase Order"
 			and route.get("group_chat_id")
 		),
 		None,
 	)
-	if not process_route:
-		return None
-
-	po_route = next(
-		(route for route in (settings.routes or []) if route.get("reference_doctype") == "Purchase Order"),
-		None,
-	)
-	created = po_route is None
-	if created:
-		po_route = settings.append("routes", {})
-
-	desired = {**PURCHASE_ORDER_ROUTE_VALUES, "group_chat_id": process_route.group_chat_id}
-	changed = created
-	for fieldname, value in desired.items():
-		if po_route.get(fieldname) != value:
-			if isinstance(po_route, dict):
-				po_route[fieldname] = value
-			else:
-				po_route.set(fieldname, value)
-			changed = True
-
-	if changed:
-		settings.save(ignore_permissions=True)
-	return po_route.name
+	return po_route.name if po_route else None
 
 
 @frappe.whitelist()
@@ -282,7 +226,7 @@ def send_purchase_order_request(name):
 
 	route_name = ensure_purchase_order_approval_route()
 	if not route_name:
-		frappe.throw("Configure an enabled Process Cost Telegram approval route first")
+		frappe.throw("Configure an enabled Purchase Order Telegram approval route first")
 
 	settings = frappe.get_cached_doc("Telegram Approval Settings")
 	if not settings.enabled:
