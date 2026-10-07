@@ -549,6 +549,18 @@ def get_attribute_values(item_production_detail, attributes = None):
 				attribute_values[attribute.attribute] = [d.attribute_value for d in doc.values]
 	return attribute_values
 
+
+def _get_bom_group_key(bom_item, process_name=None):
+	"""Keep whole-lot BOM quantities separate by process without changing process-filtered output."""
+	if process_name:
+		return bom_item.item
+	return (bom_item.item, bom_item.process_name)
+
+
+def _get_bom_template_item(group_key):
+	return group_key[0] if isinstance(group_key, tuple) else group_key
+
+
 @frappe.whitelist()
 def get_calculated_bom(item_production_detail, items, lot_name, process_name = None, doctype=None, deliverable=False):
 	item_detail = frappe.get_cached_doc("Item Production Detail", item_production_detail)
@@ -580,8 +592,9 @@ def get_calculated_bom(item_production_detail, items, lot_name, process_name = N
 		if process_name and bom_item.process_name != process_name:
 			continue
 		if not bom_item.based_on_attribute_mapping:
+			bom_key = _get_bom_group_key(bom_item, process_name)
 			get_or_create_variant(bom_item.item, {})
-			bom[bom_item.item] = {}
+			bom.setdefault(bom_key, {})
 			qty_of_product = bom_item.qty_of_product
 			qty_of_bom = bom_item.qty_of_bom_item
 			temp_qty = total_quantity
@@ -596,10 +609,10 @@ def get_calculated_bom(item_production_detail, items, lot_name, process_name = N
 			qty_of_product = qty_of_product/qty_of_bom
 			uom = frappe.get_value("Item", bom_item.item, "default_unit_of_measure")
 			quantity = temp_qty / qty_of_product
-			if not bom[bom_item.item].get(bom_item.item, False):
-				bom[bom_item.item][bom_item.item] = [quantity,bom_item.process_name, uom]
+			if not bom[bom_key].get(bom_item.item, False):
+				bom[bom_key][bom_item.item] = [quantity,bom_item.process_name, uom]
 			else:
-				bom[bom_item.item][bom_item.item][0] += quantity
+				bom[bom_key][bom_item.item][0] += quantity
 			if not bom_summary.get(bom_item.item,False):
 				dept_attr = bom_item.dependent_attribute_value
 				attr_details = get_dependent_attribute_details(item_detail.dependent_attribute_mapping)
@@ -624,10 +637,11 @@ def get_calculated_bom(item_production_detail, items, lot_name, process_name = N
 			if process_name and bom_item.process_name != process_name:
 				continue
 			if bom_item.based_on_attribute_mapping:
+				bom_key = _get_bom_group_key(bom_item, process_name)
 				uom = frappe.get_value("Item", bom_item.item, "default_unit_of_measure")
 
-				if not mapping_bom.get(bom_item.item,False):
-					mapping_bom[bom_item.item] = {}
+				if not mapping_bom.get(bom_key,False):
+					mapping_bom[bom_key] = {}
 				
 				idx = 0
 				if bom_item.item in idx_dict:
@@ -641,8 +655,8 @@ def get_calculated_bom(item_production_detail, items, lot_name, process_name = N
 					if attr_values.get(x):
 						xattr_values[x] = attr_values[x]
 				
-				if not bom.get(bom_item.item, False):
-					bom[bom_item.item] = {}
+				if not bom.get(bom_key, False):
+					bom[bom_key] = {}
 
 				qty_of_product = bom_item.qty_of_product
 				if bom_item.dependent_attribute_value and not bom_item.dependent_attribute_value == lot_doc.pack_in_stage:
@@ -670,10 +684,10 @@ def get_calculated_bom(item_production_detail, items, lot_name, process_name = N
 						qty_of_product = qty_of_product/qty_of_bom_item
 						quantity = qty / qty_of_product
 						key = tuple(sorted(attr.items()))
-						if not mapping_bom[bom_item.item].get(key, False):
-							mapping_bom[bom_item.item][key] = [quantity,bom_item.process_name, uom]
+						if not mapping_bom[bom_key].get(key, False):
+							mapping_bom[bom_key][key] = [quantity,bom_item.process_name, uom]
 						else:
-							mapping_bom[bom_item.item][key][0] += quantity
+							mapping_bom[bom_key][key][0] += quantity
 
 		if item_detail.dependent_attribute and attr_values.get(item_detail.dependent_attribute):
 			del attr_values[item_detail.dependent_attribute]
@@ -699,10 +713,11 @@ def get_calculated_bom(item_production_detail, items, lot_name, process_name = N
 	
 	from production_api.utils import get_tuple_attributes
 	for key,value in mapping_bom.items():
+		bom_item = _get_bom_template_item(key)
 		for k,val in value.items():
 			k = get_tuple_attributes(k)
 			k = update_if_string_instance(k)
-			variant = get_or_create_variant(key, k)
+			variant = get_or_create_variant(bom_item, k)
 			if not bom.get(key,False):
 				bom[key] = {variant:val}
 			else:	
@@ -710,9 +725,10 @@ def get_calculated_bom(item_production_detail, items, lot_name, process_name = N
 	if process_name:
 		return bom
 	for key, val in bom.items():
+		bom_item = _get_bom_template_item(key)
 		for k,v in val.items():
-			if key in bom_summary:
-				bom_summary[key][5]+=v[0]
+			if bom_item in bom_summary:
+				bom_summary[bom_item][5]+=v[0]
 			bom_items.append({'item_name': k,'uom':v[2],'process_name':v[1],'required_qty':v[0]})	
 	lot_doc.set('bom_summary_json',bom_summary)
 	lot_doc.set('bom_summary', bom_items)
