@@ -1,4 +1,6 @@
+import json
 import unittest
+from pathlib import Path
 from unittest.mock import patch
 
 import frappe
@@ -7,6 +9,27 @@ from production_api.production_api.page.supplier_pending_report import supplier_
 
 
 class TestSupplierPendingReport(unittest.TestCase):
+	def test_page_and_workspace_metadata_register_supplier_pending_report(self):
+		page_directory = Path(__file__).resolve().parent
+		page = json.loads((page_directory / "supplier_pending_report.json").read_text())
+		workspace_path = page_directory.parents[2] / "essdee_production" / "workspace" / "manufacturing" / "manufacturing.json"
+		workspace = json.loads(workspace_path.read_text())
+
+		self.assertEqual(page["name"], "supplier-pending-report")
+		self.assertEqual(page["page_name"], "supplier-pending-report")
+		self.assertEqual(page["title"], "Supplier Pending Report")
+		self.assertEqual(page["module"], "Production Api")
+		self.assertEqual(page["standard"], "Yes")
+		matching_links = [
+			entry
+			for entry in workspace["links"]
+			if entry.get("label") == "Supplier Pending Report"
+		]
+		self.assertEqual(len(matching_links), 1)
+		self.assertEqual(matching_links[0]["type"], "Link")
+		self.assertEqual(matching_links[0]["link_type"], "Page")
+		self.assertEqual(matching_links[0]["link_to"], "supplier-pending-report")
+
 	def test_endpoint_requires_supplier(self):
 		with (
 			patch.object(report, "_", side_effect=lambda message: message),
