@@ -28,17 +28,7 @@
                     <p class="report-kicker">Supplier Pending Report</p>
                     <h2>{{ report.supplier_name || report.supplier }}</h2>
                 </div>
-                <div class="report-meta">
-                    <span>Supplier <strong>{{ report.supplier }}</strong></span>
-                    <span>Process <strong>{{ report.process }}</strong></span>
-                </div>
             </header>
-
-            <div class="quality-legend" aria-label="Quality status legend">
-                <span><i class="quality-swatch quality-pass"></i>Pass</span>
-                <span><i class="quality-swatch quality-fail"></i>Fail</span>
-                <span><i class="quality-swatch quality-hold"></i>Hold</span>
-            </div>
 
             <section v-for="item in report.items" :key="item.item" class="item-section">
                 <h3 class="item-title"><span>Item</span>{{ item.item }}</h3>
@@ -69,7 +59,7 @@
                                 <template v-for="(row, rowIndex) in lot.rows" :key="`${row.colour}-${row.part || ''}`">
                                     <tr>
                                         <td rowspan="3" class="row-identity">{{ rowIndex + 1 }}</td>
-                                        <td rowspan="3" class="row-identity align-left">{{ row.colour }}</td>
+                                        <td rowspan="3" class="row-identity">{{ row.colour }}</td>
                                         <td v-if="lot.is_set_item" rowspan="3" class="row-identity">{{ row.part || '-' }}</td>
                                         <td class="type-cell">Delivered</td>
                                         <td v-for="size in lot.primary_values" :key="size">{{ quantity(row.values[size]?.delivered) }}</td>
@@ -80,11 +70,7 @@
                                     </tr>
                                     <tr>
                                         <td class="type-cell">Received</td>
-                                        <td
-                                            v-for="size in lot.primary_values"
-                                            :key="size"
-                                            :class="qualityClass(row.values[size]?.quality)"
-                                        >
+                                        <td v-for="size in lot.primary_values" :key="size">
                                             {{ quantity(row.values[size]?.received) }}
                                         </td>
                                         <td class="total-cell">{{ quantity(row.totals.received) }}</td>
@@ -254,13 +240,6 @@ function quantity(value) {
     return numericValue.toLocaleString(undefined, { maximumFractionDigits: 2 })
 }
 
-function qualityClass(status) {
-    if (status === 'Pass') return 'quality-pass'
-    if (status === 'Fail') return 'quality-fail'
-    if (status === 'Hold') return 'quality-hold'
-    return ''
-}
-
 function differenceClass(received, delivered) {
     return `difference-${differenceTone(received, delivered)}`
 }
@@ -274,9 +253,10 @@ function differenceClass(received, delivered) {
 
 .report-toolbar {
     display: grid;
-    grid-template-columns: minmax(220px, 1fr) minmax(220px, 1fr) auto auto;
+    grid-template-columns: minmax(220px, 360px) minmax(220px, 360px) auto auto;
     gap: 12px;
     align-items: end;
+    justify-content: start;
     margin-bottom: 18px;
     padding: 14px;
     background: var(--card-bg);
@@ -344,44 +324,6 @@ function differenceClass(received, delivered) {
 .report-header h2 {
     margin: 2px 0 0;
     font-size: 20px;
-}
-
-.report-meta {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: flex-end;
-    gap: 8px;
-}
-
-.report-meta span {
-    padding: 5px 8px;
-    background: var(--subtle-fg);
-    border-radius: 5px;
-    font-size: 12px;
-}
-
-.quality-legend {
-    display: flex;
-    gap: 20px;
-    align-items: center;
-    margin: 14px 0;
-    padding: 9px 10px;
-    background: var(--subtle-fg);
-    border-radius: 6px;
-}
-
-.quality-legend span {
-    display: inline-flex;
-    gap: 7px;
-    align-items: center;
-    font-size: 12px;
-    font-weight: 500;
-}
-
-.quality-swatch {
-    width: 25px;
-    height: 16px;
-    border: 1px solid rgba(0, 0, 0, 0.12);
 }
 
 .item-section + .item-section {
@@ -479,10 +421,6 @@ function differenceClass(received, delivered) {
     font-weight: 600;
 }
 
-.align-left {
-    text-align: left !important;
-}
-
 .difference-row td {
     border-bottom-width: 2px;
 }
@@ -491,17 +429,14 @@ function differenceClass(received, delivered) {
     background: #fff4d6;
 }
 
-.quality-pass,
 .difference-positive {
     background: #ccffda !important;
 }
 
-.quality-fail,
 .difference-negative {
     background: #ffa1a7 !important;
 }
 
-.quality-hold,
 .difference-zero {
     background: #ffe7a6 !important;
 }
@@ -516,8 +451,15 @@ function differenceClass(received, delivered) {
         flex-direction: column;
     }
 
-    .report-meta {
-        justify-content: flex-start;
+}
+
+@media (max-width: 600px) {
+    .report-toolbar {
+        grid-template-columns: 1fr;
+    }
+
+    .action-button {
+        width: 100%;
     }
 }
 </style>

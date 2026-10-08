@@ -6,10 +6,16 @@
                     <svg class="filter-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"></path>
                     </svg>
-                    <span class="filter-label">Filter by Date</span>
+                    <span class="filter-label">{{ summary_mode ? 'Filter by Date Range' : 'Filter by Date' }}</span>
                 </div>
-                <div class="filter-control">
+                <div v-show="!summary_mode" class="filter-control">
                     <div ref="date_filter_wrapper"></div>
+                </div>
+                <div v-show="summary_mode" class="filter-control">
+                    <div ref="from_date_filter_wrapper"></div>
+                </div>
+                <div v-show="summary_mode" class="filter-control">
+                    <div ref="to_date_filter_wrapper"></div>
                 </div>
                 <div class="filter-control">
                      <div ref="ws_filter_wrapper"></div>
@@ -17,47 +23,63 @@
                 <div class="filter-control">
                       <div ref="input_type_filter_wrapper"></div>
                 </div>
-                <div>
-                     <button class="btn btn-primary" @click="fetchDPRData()" style="border-radius: 12px; font-weight: 700;">
-                        Fetch
+                <div class="filter-actions">
+                    <button
+                        type="button"
+                        class="btn btn-primary fetch-button"
+                        :disabled="loading"
+                        :aria-busy="loading"
+                        @click="fetchDPRData(true)"
+                    >
+                        <span
+                            v-if="loading"
+                            class="spinner-border spinner-border-sm"
+                            aria-hidden="true"
+                        ></span>
+                        {{ loading ? 'Loading...' : 'Fetch' }}
                     </button>
+                    <label class="summary-toggle">
+                        <input type="checkbox" v-model="summary_mode" />
+                        <span>Summary</span>
+                    </label>
                 </div>
             </div>
         </div>
-        <div v-if="headers && headers.length > 0">
-            <div v-for="header in headers" :key="header">
-                <div v-if="data.hasOwnProperty(header)" :ref="el => setSectionRef(el, header)">
-                    <div class="section-header">
-                        <div class="section-title-block">
-                            <span class="section-title">Daily Production Report</span>
-                            <span class="section-divider">|</span>
-                            <span class="section-title">{{ frappe.datetime.str_to_user(selected_date) }}</span>
-                            <span class="section-divider">|</span>
-                            <span class="section-title">{{ header }}</span>
-                        </div>
-                        <div class="section-actions">
-                            <button class="copy-btn" @click="copyToClipboard(header)" :disabled="copyingHeader === header" title="Copy to Clipboard">
-                                <template v-if="copyingHeader === header">
-                                    <svg class="copy-icon spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
-                                    </svg>
-                                    Copying...
-                                </template>
-                                <template v-else>
-                                    <svg class="copy-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
-                                    </svg>
-                                    Copy
-                                </template>
-                            </button>
-                            <div class="section-total-block">
-                                <span class="total-label">Total Qty</span>
-                                <span class="total-value">{{ getHeaderTotal(header) }}</span>
+        <div v-if="reports.length > 0">
+            <section v-for="report in reports" :key="report.date" class="report-date-section">
+                <div v-for="header in report.headers" :key="`${report.date}-${header}`">
+                    <div v-if="report.dpr_data.hasOwnProperty(header)" :ref="el => setSectionRef(el, report.date, header)">
+                        <div class="section-header">
+                            <div class="section-title-block">
+                                <span class="section-title">Daily Production Report</span>
+                                <span class="section-divider">|</span>
+                                <span class="section-title">{{ frappe.datetime.str_to_user(report.date) }}</span>
+                                <span class="section-divider">|</span>
+                                <span class="section-title">{{ header }}</span>
+                            </div>
+                            <div class="section-actions">
+                                <button class="copy-btn" @click="copyToClipboard(report.date, header)" :disabled="copyingHeader === sectionKey(report.date, header)" title="Copy to Clipboard">
+                                    <template v-if="copyingHeader === sectionKey(report.date, header)">
+                                        <svg class="copy-icon spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                                        </svg>
+                                        Copying...
+                                    </template>
+                                    <template v-else>
+                                        <svg class="copy-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
+                                        </svg>
+                                        Copy
+                                    </template>
+                                </button>
+                                <div class="section-total-block">
+                                    <span class="total-label">Total Qty</span>
+                                    <span class="total-value">{{ getHeaderTotal(report.dpr_data, header) }}</span>
+                                </div>
                             </div>
                         </div>
-                    </div>
-                    <div class="table-wrapper no-scrollbar">
-                        <table class="data-table table-with-gap" v-for="lot in Object.keys(data[header])">
+                        <div class="table-wrapper no-scrollbar">
+                            <table class="data-table table-with-gap" v-for="lot in Object.keys(report.dpr_data[header])" :key="lot">
                             <thead>
                                 <tr class="header-row">
                                     <th class="index-col">#</th>
@@ -66,10 +88,10 @@
                                     <th class="colourname-col">Colour</th>
                                     <th class="line-col">Line</th>
                                     <th class="type-col">Type</th>
-                                    <th v-if="data[header][lot]['is_set_item']" class="part-col">
-                                        {{ data[header][lot]['set_attr'] }}
+                                    <th v-if="report.dpr_data[header][lot]['is_set_item']" class="part-col">
+                                        {{ report.dpr_data[header][lot]['set_attr'] }}
                                     </th>
-                                    <th v-for="size in data[header][lot]['primary_values']" :key="size"
+                                    <th v-for="size in report.dpr_data[header][lot]['primary_values']" :key="size"
                                         class="size-col">
                                         {{ size }}
                                     </th>
@@ -78,14 +100,14 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                <template v-for="(ws, idx) in Object.keys(data[header][lot]['details'])"
+                                <template v-for="(ws, idx) in Object.keys(report.dpr_data[header][lot]['details'])"
                                     :key="ws">
-                                    <template v-for="(received_type, idx) in Object.keys(data[header][lot]['details'][ws])"
+                                    <template v-for="(received_type, idx) in Object.keys(report.dpr_data[header][lot]['details'][ws])"
                                         :key="received_type">
-                                        <tr v-for="colour in Object.keys(data[header][lot]['details'][ws][received_type])" class="data-row">
+                                        <tr v-for="colour in Object.keys(report.dpr_data[header][lot]['details'][ws][received_type])" :key="colour" class="data-row">
                                             <td class="index-cell">{{ idx + 1 }}</td>
                                             <td class="lot-cell">{{ lot }}</td>
-                                            <td class="item-cell">{{ data[header][lot]['item'] }}</td>
+                                            <td class="item-cell">{{ report.dpr_data[header][lot]['item'] }}</td>
                                             <td class="colour-cell">
                                                 <span class="colour-badge">{{ colour.split("@")[0] }}</span>
                                             </td>
@@ -93,40 +115,41 @@
                                             <td class="colour-cell">
                                                 <span class="colour-badge">{{ received_type }}</span>
                                             </td>
-                                            <td v-if="data[header][lot]['is_set_item']" class="part-cell">
+                                            <td v-if="report.dpr_data[header][lot]['is_set_item']" class="part-cell">
                                                 <span class="part-pill">
-                                                    {{ data[header][lot]['details'][ws][received_type][colour]['part']}}
+                                                    {{ report.dpr_data[header][lot]['details'][ws][received_type][colour]['part']}}
                                                 </span>
                                             </td>
-                                            <td v-for="size in data[header][lot]['primary_values']" :key="size"
+                                            <td v-for="size in report.dpr_data[header][lot]['primary_values']" :key="size"
                                                 class="size-cell">
-                                                {{ data[header][lot]['details'][ws][received_type][colour]['values'][size] }}
+                                                {{ report.dpr_data[header][lot]['details'][ws][received_type][colour]['values'][size] }}
                                             </td>
                                             <td class="remarks-cell">
                                                 <input
                                                     type="text"
                                                     class="remarks-input"
-                                                    :value="remarks[rowKey(header, lot, ws, received_type, colour)] || ''"
-                                                    @input="remarks[rowKey(header, lot, ws, received_type, colour)] = $event.target.value"
+                                                    :value="remarks[rowKey(report.date, header, lot, ws, received_type, colour)] || ''"
+                                                    @input="remarks[rowKey(report.date, header, lot, ws, received_type, colour)] = $event.target.value"
                                                     placeholder="Remarks"
                                                 />
                                             </td>
                                             <td class="total-cell">
                                                 <span class="total-val">
-                                                    {{ data[header][lot]['details'][ws][received_type][colour]['total'] }}
+                                                    {{ report.dpr_data[header][lot]['details'][ws][received_type][colour]['total'] }}
                                                 </span>
                                             </td>
                                         </tr>
                                     </template>        
                                 </template>
                             </tbody>
-                        </table>
+                            </table>
+                        </div>
                     </div>
                 </div>
-            </div>
+            </section>
         </div>
         <div v-else class="empty-state">
-            <p>Select a Date to view the report</p>
+            <p>{{ summary_mode ? 'Select a date range to view the report' : 'Select a Date to view the report' }}</p>
         </div>
     </div>
 </template>
@@ -134,6 +157,8 @@
 <script setup>
 import { ref, onMounted, watch, nextTick } from 'vue'
 import * as htmlToImage from 'html-to-image'
+import { buildDPRRequest, normalizeDPRReports } from './dpr_summary_utils.mjs'
+import { createReportLoadingTracker } from './dpr_loading_state.mjs'
 
 const props = defineProps({
     selected_supplier: {
@@ -147,27 +172,38 @@ const props = defineProps({
 })
 
 const date_filter_wrapper = ref(null)
+const from_date_filter_wrapper = ref(null)
+const to_date_filter_wrapper = ref(null)
 const ws_filter_wrapper = ref(null)
 const input_type_filter_wrapper = ref(null)
 let date_filter_control = null
+let from_date_filter_control = null
+let to_date_filter_control = null
 let ws_value = null
 let input_type_control = null
 const copyingHeader = ref(null)
+const loading = ref(false)
+const loadingTracker = createReportLoadingTracker((value) => {
+    loading.value = value
+})
 
+const summary_mode = ref(false)
 const selected_date = ref(null)
+const from_date = ref(null)
+const to_date = ref(null)
 const selected_ws = ref(null)
 const selected_input_type = ref(null)
-const headers = ref([])
-const data = ref({})
+const reports = ref([])
 const sectionRefs = ref({})
 const remarks = ref({})
 
-const rowKey = (header, lot, ws, received_type, colour) =>
-    `${header}|${lot}|${ws}|${received_type}|${colour}`
+const sectionKey = (date, header) => `${date}|${header}`
+const rowKey = (date, header, lot, ws, received_type, colour) =>
+    `${date}|${header}|${lot}|${ws}|${received_type}|${colour}`
 
-const setSectionRef = (el, header) => {
+const setSectionRef = (el, date, header) => {
     if (el) {
-        sectionRefs.value[header] = el
+        sectionRefs.value[sectionKey(date, header)] = el
     }
 }
 
@@ -190,6 +226,39 @@ const initFilter = () => {
         },
         render_input: true
     })
+
+    $(from_date_filter_wrapper.value).empty()
+    from_date_filter_control = frappe.ui.form.make_control({
+        parent: $(from_date_filter_wrapper.value),
+        df: {
+            fieldtype: 'Date',
+            fieldname: 'from_date',
+            label: 'From Date',
+            default: from_date.value,
+            placeholder: 'From Date',
+            change: () => {
+                from_date.value = from_date_filter_control.get_value()
+            }
+        },
+        render_input: true
+    })
+
+    $(to_date_filter_wrapper.value).empty()
+    to_date_filter_control = frappe.ui.form.make_control({
+        parent: $(to_date_filter_wrapper.value),
+        df: {
+            fieldtype: 'Date',
+            fieldname: 'to_date',
+            label: 'To Date',
+            default: to_date.value,
+            placeholder: 'To Date',
+            change: () => {
+                to_date.value = to_date_filter_control.get_value()
+            }
+        },
+        render_input: true
+    })
+
     if (!ws_filter_wrapper.value) return
 
     $(ws_filter_wrapper.value).empty()
@@ -236,41 +305,61 @@ const initFilter = () => {
     })
 }
 
-const fetchDPRData = () => {
-    if (!props.selected_supplier || !selected_date.value) return
-    frappe.call({
-        method: 'production_api.production_api.doctype.sewing_plan.sewing_plan.get_sewing_plan_dpr_data',
-        args: {
-            supplier: props.selected_supplier,
-            dpr_date: selected_date.value,
-            work_station: selected_ws.value ,
-            input_type: selected_input_type.value
-        },
-        callback: (r) => {
-            remarks.value = {}
-            headers.value = r.message.headers
-            data.value = r.message.dpr_data
-            const pending = r.message.pending_fi || []
-            if (pending.length > 0) {
-                const byLot = {}
-                pending.forEach(p => {
-                    if (!byLot[p.lot]) byLot[p.lot] = []
-                    const label = p.part ? `${p.colour} — ${p.part}` : p.colour
-                    byLot[p.lot].push(label)
-                })
-                const pillStyle = 'display:inline-block;padding:4px 10px;margin:3px 4px 3px 0;background:#fff7ed;border:1px solid #fdba74;color:#9a3412;border-radius:9999px;font-size:12px;font-weight:600;white-space:nowrap;'
-                const lotStyle = 'font-weight:700;color:#111827;margin-right:10px;min-width:110px;display:inline-block;'
-                const rowStyle = 'display:flex;align-items:flex-start;flex-wrap:wrap;padding:8px 0;border-bottom:1px solid #f1f5f9;'
-                const body = Object.keys(byLot).map(lot => {
-                    const pills = byLot[lot].map(l => `<span style="${pillStyle}">${frappe.utils.escape_html(l)}</span>`).join('')
-                    return `<div style="${rowStyle}"><span style="${lotStyle}">${frappe.utils.escape_html(lot)}</span><div style="flex:1;">${pills}</div></div>`
-                }).join('')
-                const html = `
-                    <p>The following Lot / Colour combinations are hidden from the DPR because their FI date is not yet updated. Please update them in the <b>FI Updates</b> tab.</p>
-                    <div style="margin-top:8px;">${body}</div>`
-                frappe.msgprint({ title: __('FI date not updated'), message: html, indicator: 'orange' })
-            }
+const showPendingFI = (pending) => {
+    if (pending.length === 0) return
+    const byLot = {}
+    pending.forEach(p => {
+        if (!byLot[p.lot]) byLot[p.lot] = []
+        const label = p.part ? `${p.colour} — ${p.part}` : p.colour
+        byLot[p.lot].push(label)
+    })
+    const pillStyle = 'display:inline-block;padding:4px 10px;margin:3px 4px 3px 0;background:#fff7ed;border:1px solid #fdba74;color:#9a3412;border-radius:9999px;font-size:12px;font-weight:600;white-space:nowrap;'
+    const lotStyle = 'font-weight:700;color:#111827;margin-right:10px;min-width:110px;display:inline-block;'
+    const rowStyle = 'display:flex;align-items:flex-start;flex-wrap:wrap;padding:8px 0;border-bottom:1px solid #f1f5f9;'
+    const body = Object.keys(byLot).map(lot => {
+        const pills = byLot[lot].map(l => `<span style="${pillStyle}">${frappe.utils.escape_html(l)}</span>`).join('')
+        return `<div style="${rowStyle}"><span style="${lotStyle}">${frappe.utils.escape_html(lot)}</span><div style="flex:1;">${pills}</div></div>`
+    }).join('')
+    const html = `
+        <p>The following Lot / Colour combinations are hidden from the DPR because their FI date is not yet updated. Please update them in the <b>FI Updates</b> tab.</p>
+        <div style="margin-top:8px;">${body}</div>`
+    frappe.msgprint({ title: __('FI date not updated'), message: html, indicator: 'orange' })
+}
+
+const fetchDPRData = (showValidation = false) => {
+    const request = buildDPRRequest({
+        summaryMode: summary_mode.value,
+        supplier: props.selected_supplier,
+        selectedDate: selected_date.value,
+        fromDate: from_date.value,
+        toDate: to_date.value,
+        workStation: selected_ws.value,
+        inputType: selected_input_type.value,
+    })
+    if (request.error) {
+        if (showValidation) {
+            frappe.msgprint(__(request.error))
         }
+        return
+    }
+    loadingTracker.start()
+    frappe.call({
+        method: request.method,
+        args: request.args,
+        callback: (r) => {
+            const response = r.message || {}
+            remarks.value = {}
+            sectionRefs.value = {}
+            reports.value = normalizeDPRReports({
+                summaryMode: summary_mode.value,
+                selectedDate: selected_date.value,
+                response,
+            })
+            showPendingFI(response.pending_fi || [])
+        },
+        always: () => {
+            loadingTracker.finish()
+        },
     })
 }
 
@@ -278,13 +367,31 @@ onMounted(() => {
     initFilter()
 })
 
-watch(() => [props.selected_supplier, selected_date.value, selected_ws.value, selected_input_type.value, props.refresh_counter], fetchDPRData)
+watch(summary_mode, () => {
+    reports.value = []
+    remarks.value = {}
+    sectionRefs.value = {}
+})
 
-const getHeaderTotal = (header) => {
-    if (!data.value[header]) return 0
+watch(
+    () => [
+        props.selected_supplier,
+        summary_mode.value,
+        selected_date.value,
+        from_date.value,
+        to_date.value,
+        selected_ws.value,
+        selected_input_type.value,
+        props.refresh_counter,
+    ],
+    () => fetchDPRData(false),
+)
+
+const getHeaderTotal = (reportData, header) => {
+    if (!reportData[header]) return 0
     let total = 0
-    for (const lot of Object.keys(data.value[header])) {
-        const lotData = data.value[header][lot]
+    for (const lot of Object.keys(reportData[header])) {
+        const lotData = reportData[header][lot]
         if (lotData.details) {
             for (const ws of Object.keys(lotData.details)) {
                 for (const receivedType of Object.keys(lotData.details[ws])) {
@@ -298,11 +405,13 @@ const getHeaderTotal = (header) => {
     return total
 }
 
-const copyToClipboard = async (header) => {
-    const sectionEl = sectionRefs.value[header]
-    copyingHeader.value = header
+const copyToClipboard = async (date, header) => {
+    const key = sectionKey(date, header)
+    const sectionEl = sectionRefs.value[key]
+    copyingHeader.value = key
     if (!sectionEl) {
         console.log(`No element found for header: ${header}`)
+        copyingHeader.value = null
         return
     }
 
@@ -321,7 +430,7 @@ const copyToClipboard = async (header) => {
             new ClipboardItem({ 'image/png': blob })
         ])
         copyingHeader.value = null
-        frappe.show_alert({ message: `${header} copied`, indicator: 'green' })
+        frappe.show_alert({ message: `${frappe.datetime.str_to_user(date)} - ${header} copied`, indicator: 'green' })
     } catch (err) {
         copyingHeader.value = null
         frappe.show_alert({ message: 'Copy failed', indicator: 'red' })
@@ -335,6 +444,55 @@ const copyToClipboard = async (header) => {
 
 .dpr-tab {
     padding: 1rem;
+}
+
+.filter-card {
+    max-width: 100%;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.filter-actions,
+.summary-toggle {
+    display: flex;
+    align-items: center;
+}
+
+.filter-actions {
+    gap: 0.85rem;
+}
+
+.fetch-button {
+    min-width: 104px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+    border-radius: 12px;
+    font-weight: 700;
+}
+
+.summary-toggle {
+    gap: 0.45rem;
+    margin: 0;
+    color: #475569;
+    font-size: 0.875rem;
+    font-weight: 600;
+    white-space: nowrap;
+    cursor: pointer;
+}
+
+.summary-toggle input {
+    width: 16px;
+    height: 16px;
+    margin: 0;
+    accent-color: #1a73e8;
+}
+
+.report-date-section + .report-date-section {
+    margin-top: 2rem;
+    padding-top: 2rem;
+    border-top: 1px solid #e2e8f0;
 }
 
 .plan-card {

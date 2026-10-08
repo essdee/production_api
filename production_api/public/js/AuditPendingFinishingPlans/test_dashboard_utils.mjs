@@ -4,6 +4,7 @@ import * as dashboardUtils from './dashboard_utils.mjs'
 
 import {
     ageTone,
+    buildDashboardRequest,
     filterPlans,
     isCurrentPendingGeneration,
     needsPendingBreakdown,
@@ -20,6 +21,18 @@ const plans = [
     { name: 'FP-1', lot: 'LOT-A', item: 'Classic Polo', fp_status: 'Fully Dispatched', age_days: 19 },
     { name: 'FP-3', lot: 'LOT-C', item: 'Kids Tee', fp_status: 'Dispatched', age_days: 15 },
 ]
+
+
+test('builds dashboard requests for the selected report mode', () => {
+    assert.deepEqual(buildDashboardRequest(false), {
+        method: 'production_api.production_api.page.audit_pending_finishing_plans.audit_pending_finishing_plans.get_dashboard_data',
+        args: { show_partially_dispatched: 0 },
+    })
+    assert.deepEqual(buildDashboardRequest(true), {
+        method: 'production_api.production_api.page.audit_pending_finishing_plans.audit_pending_finishing_plans.get_dashboard_data',
+        args: { show_partially_dispatched: 1 },
+    })
+})
 
 
 test('filters plans independently by case-insensitive plan, lot, and item values', () => {

@@ -4241,7 +4241,10 @@ def get_finishing_dispatch_totals(finishing_doc):
 	dynamic_packing = packing_summary.dynamic_ratio_packing
 	pieces_per_box = flt(finishing_doc.pieces_per_box) or 0
 	if dynamic_packing:
-		total_dispatched_pieces = flt(packing_summary.total_dispatched)
+		total_dispatched_pieces = (
+			flt(packing_summary.total_dispatched)
+			* get_set_item_parts_count(finishing_doc)
+		)
 	elif pieces_per_box:
 		set_item_parts_count = get_set_item_parts_count(finishing_doc)
 		for row in finishing_doc.finishing_plan_grn_details:

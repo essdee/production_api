@@ -16,6 +16,70 @@ from production_api.patches.v1_0 import (
 
 
 class TestFinishingPlan(FrappeTestCase):
+	def test_dynamic_ratio_set_status_counts_every_configured_part(self):
+		doc = SimpleNamespace(
+			finishing_plan_details=[
+				SimpleNamespace(delivered_quantity=200, dc_qty=200),
+			],
+			pieces_per_box=10,
+		)
+
+		with (
+			patch.object(
+				finishing_plan,
+				"get_finishing_plan_total_cutting",
+				return_value=200,
+			),
+			patch.object(
+				finishing_plan,
+				"get_finishing_packing_summary",
+				return_value=frappe._dict(
+					dynamic_ratio_packing=True,
+					total_dispatched=80,
+				),
+			),
+			patch.object(
+				finishing_plan,
+				"get_set_item_parts_count",
+				return_value=2,
+			),
+			patch.object(
+				finishing_plan.frappe,
+				"get_cached_doc",
+				return_value=frappe._dict(partially_dispatched_percentage=50),
+			),
+		):
+			status = finishing_plan.compute_received_status(doc)
+
+		self.assertEqual(status, "Dispatched")
+
+	def test_dynamic_ratio_non_set_dispatch_total_is_not_multiplied(self):
+		doc = SimpleNamespace(pieces_per_box=10)
+		with (
+			patch.object(
+				finishing_plan,
+				"get_finishing_plan_total_cutting",
+				return_value=100,
+			),
+			patch.object(
+				finishing_plan,
+				"get_finishing_packing_summary",
+				return_value=frappe._dict(
+					dynamic_ratio_packing=True,
+					total_dispatched=80,
+				),
+			),
+			patch.object(
+				finishing_plan,
+				"get_set_item_parts_count",
+				return_value=1,
+			),
+		):
+			totals = finishing_plan.get_finishing_dispatch_totals(doc)
+
+		self.assertEqual(totals.total_dispatched_pieces, 80)
+		self.assertEqual(totals.dispatch_percentage, 80)
+
 	def test_daily_job_auto_closes_only_audits_older_than_30_days(self):
 		with (
 			patch.object(finishing_plan, "today", return_value="2026-09-28"),

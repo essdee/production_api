@@ -7,7 +7,7 @@
                     <span v-if="asOf" class="as-of">As of {{ formatDate(asOf) }}</span>
                 </div>
             </div>
-            <button type="button" class="secondary-button refresh-button" :disabled="loading" @click="loadDashboard">
+            <button type="button" class="secondary-button refresh-button" :disabled="loading" @click="refreshDashboard">
                 <svg :class="{ spinning: loading }" viewBox="0 0 24 24" aria-hidden="true">
                     <path d="M20 11a8.1 8.1 0 0 0-15.5-3M4 4v4h4M4 13a8.1 8.1 0 0 0 15.5 3M20 20v-4h-4" />
                 </svg>
@@ -15,16 +15,16 @@
             </button>
         </header>
 
-        <section class="summary-grid" aria-label="Audit pending summary">
+        <section class="summary-grid" :class="{ 'summary-grid--partial': activePartialMode }" aria-label="Audit pending summary">
             <article class="summary-card">
                 <span>Overdue Plans</span>
                 <strong>{{ summary.overdue || 0 }}</strong>
             </article>
             <article class="summary-card">
-                <span>Dispatched</span>
-                <strong class="warning-text">{{ summary.dispatched || 0 }}</strong>
+                <span>{{ activePartialMode ? 'Partially Dispatched' : 'Dispatched' }}</span>
+                <strong class="warning-text">{{ activePartialMode ? (summary.partially_dispatched || 0) : (summary.dispatched || 0) }}</strong>
             </article>
-            <article class="summary-card">
+            <article v-if="!activePartialMode" class="summary-card">
                 <span>Fully Dispatched</span>
                 <strong class="success-text">{{ summary.fully_dispatched || 0 }}</strong>
             </article>
@@ -47,6 +47,7 @@
             <input v-model="filters.item" class="filter-input filter-item" type="search" placeholder="Item" aria-label="Filter by Item" />
             <select v-model="filters.status" aria-label="Filter by status">
                 <option value="">All Statuses</option>
+                <option value="Partially Dispatched">Partially Dispatched</option>
                 <option value="Dispatched">Dispatched</option>
                 <option value="Fully Dispatched">Fully Dispatched</option>
             </select>
@@ -55,13 +56,21 @@
                 <option value="8-14">8-14 Days</option>
                 <option value="15+">15+ Days</option>
             </select>
+            <label class="partial-dispatched-toggle">
+                <input v-model="showPartiallyDispatched" type="checkbox" />
+                <span>Show Partially Dispatched</span>
+            </label>
+            <button type="button" class="generate-button" :disabled="loading" @click="generateDashboard">
+                <span v-if="loading" class="loader generate-loader" aria-hidden="true"></span>
+                Generate
+            </button>
             <button type="button" class="secondary-button" @click="resetFilters">Reset</button>
         </section>
 
         <div v-if="errorMessage" class="state-card error-state">
             <strong>Could not load the dashboard</strong>
             <span>{{ errorMessage }}</span>
-            <button type="button" class="secondary-button" @click="loadDashboard">Try again</button>
+            <button type="button" class="secondary-button" @click="refreshDashboard">Try again</button>
         </div>
 
         <div v-else-if="loading && !plans.length" class="state-card loading-state">
@@ -296,6 +305,7 @@
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import {
     ageTone,
+    buildDashboardRequest,
     filterPlans,
     isCurrentPendingGeneration,
     needsPendingBreakdown,
@@ -307,7 +317,6 @@ import {
     visiblePendingParts,
 } from './dashboard_utils.mjs'
 
-const DASHBOARD_METHOD = 'production_api.production_api.page.audit_pending_finishing_plans.audit_pending_finishing_plans.get_dashboard_data'
 const DETAIL_METHOD = 'production_api.production_api.page.audit_pending_finishing_plans.audit_pending_finishing_plans.get_dispatch_detail'
 const PENDING_METHOD = 'production_api.production_api.page.audit_pending_finishing_plans.audit_pending_finishing_plans.get_pending_breakdown'
 
@@ -319,6 +328,8 @@ const plans = ref([])
 const selectedPlanName = ref('')
 const activePartName = ref('')
 const lastUpdated = ref('Never')
+const showPartiallyDispatched = ref(false)
+const activePartialMode = ref(false)
 const filters = reactive({ plan: '', lot: '', item: '', status: '', age: '' })
 const detailModal = reactive({ open: false, loading: false, data: {}, history: null })
 const pendingBreakdowns = reactive({})
@@ -344,7 +355,11 @@ const formatMatrixNumber = value => {
     return quantity === '—' ? quantity : formatNumber(quantity)
 }
 const formatDate = value => value ? frappe.datetime.str_to_user(value) : '—'
-const statusClass = status => status === 'Fully Dispatched' ? 'status-fully' : 'status-dispatched'
+const statusClass = status => {
+    if (status === 'Fully Dispatched') return 'status-fully'
+    if (status === 'Partially Dispatched') return 'status-partial'
+    return 'status-dispatched'
+}
 const isPendingLoading = name => pendingLoading.value.has(name)
 
 function selectPlan(name) {
@@ -403,17 +418,30 @@ function openDocument(doctype, name) {
     frappe.set_route('Form', doctype, name)
 }
 
-function loadDashboard() {
+function generateDashboard() {
+    filters.status = ''
+    loadDashboard(showPartiallyDispatched.value)
+}
+
+function refreshDashboard() {
+    loadDashboard(activePartialMode.value)
+}
+
+function loadDashboard(partialMode = false) {
+    const requestedPartialMode = Boolean(partialMode)
+    const request = buildDashboardRequest(requestedPartialMode)
     loading.value = true
     errorMessage.value = ''
     clearPendingBreakdowns()
     frappe.call({
-        method: DASHBOARD_METHOD,
+        method: request.method,
+        args: request.args,
         callback: (response) => {
             const data = response.message || {}
             asOf.value = data.as_of || ''
             summary.value = data.summary || {}
             plans.value = data.plans || []
+            activePartialMode.value = requestedPartialMode
             selectedPlanName.value = resolveSelectedPlanName(plans.value, selectedPlanName.value)
             activePartName.value = ''
             loadPendingBreakdown(selectedPlanName.value)
@@ -479,7 +507,7 @@ function handleKeydown(event) {
 
 onMounted(() => {
     window.addEventListener('keydown', handleKeydown)
-    loadDashboard()
+    loadDashboard(false)
 })
 onBeforeUnmount(() => window.removeEventListener('keydown', handleKeydown))
 </script>
@@ -515,6 +543,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', handleKeydown))
 @keyframes spin { to { transform: rotate(360deg); } }
 
 .summary-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; margin-bottom: 16px; }
+.summary-grid--partial { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .summary-card { padding: 12px 14px; border: 1px solid var(--border); border-radius: 14px; background: var(--surface); box-shadow: 0 4px 12px rgba(15, 23, 42, .03); }
 .summary-card > span { display: block; margin-bottom: 4px; color: var(--secondary); font-size: 11px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; }
 .summary-card strong { color: var(--primary); font-size: 21px; font-variant-numeric: tabular-nums; }
@@ -527,11 +556,17 @@ onBeforeUnmount(() => window.removeEventListener('keydown', handleKeydown))
 .filter-card { gap: 10px; margin-bottom: 18px; padding: 11px 14px; border: 1px solid #edf1f5; border-radius: 14px; background: var(--surface); box-shadow: 0 4px 12px rgba(15, 23, 42, .025); }
 .filter-label { flex: none; gap: 8px; color: var(--secondary); font-size: 14px; font-weight: 700; }
 .filter-label svg { width: 16px; }
-.filter-card input, .filter-card select { height: 38px; min-width: 0; padding: 0 11px; border: 1px solid var(--border); border-radius: 10px; outline: none; background: var(--soft); color: var(--body); font-size: 14px; }
-.filter-card input { flex: 1; }
+.filter-card input[type="search"], .filter-card select { height: 38px; min-width: 0; padding: 0 11px; border: 1px solid var(--border); border-radius: 10px; outline: none; background: var(--soft); color: var(--body); font-size: 14px; }
+.filter-card input[type="search"] { flex: 1; }
 .filter-card .filter-item { flex: 1.7; }
 .filter-card select { width: 150px; flex: none; }
-.filter-card input:focus, .filter-card select:focus { border-color: var(--blue); box-shadow: 0 0 0 2px rgba(26, 115, 232, .1); }
+.filter-card input[type="search"]:focus, .filter-card select:focus { border-color: var(--blue); box-shadow: 0 0 0 2px rgba(26, 115, 232, .1); }
+.partial-dispatched-toggle { display: inline-flex; flex: none; align-items: center; gap: 7px; height: 38px; margin: 0; color: #475569; font-size: 12px; font-weight: 700; white-space: nowrap; cursor: pointer; }
+.partial-dispatched-toggle input { width: 15px; height: 15px; margin: 0; accent-color: var(--blue); }
+.generate-button { display: inline-flex; min-height: 36px; align-items: center; justify-content: center; gap: 7px; padding: 7px 15px; border: 1px solid var(--blue); border-radius: 10px; background: var(--blue); color: #fff; font-size: 14px; font-weight: 700; cursor: pointer; }
+.generate-button:hover { background: #1557b0; }
+.generate-button:disabled { cursor: wait; opacity: .65; }
+.generate-loader { width: 14px !important; height: 14px !important; border-width: 2px !important; }
 
 .master-detail-layout { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: 18px; height: clamp(540px, calc(100vh - 330px), 760px); min-height: 0; }
 .master-panel, .detail-panel { min-width: 0; min-height: 0; overflow: hidden; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); box-shadow: 0 4px 12px rgba(15, 23, 42, .025); }
@@ -563,6 +598,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', handleKeydown))
 .status-pill, .age-badge { display: inline-flex; align-items: center; justify-content: center; border-radius: 7px; font-size: 11px; font-weight: 700; white-space: nowrap; }
 .status-pill { padding: 4px 8px; border: 1px solid transparent; }
 .status-dispatched { border-color: #fde68a; background: #fef3c7; color: #d97706; }
+.status-partial { border-color: #fed7aa; background: #fff7ed; color: #c2410c; }
 .status-fully { border-color: #a7f3d0; background: #d1fae5; color: #059669; }
 .age-badge { padding: 3px 7px; }
 .age-warning { background: #fef3c7; color: #d97706; }
@@ -666,7 +702,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', handleKeydown))
 
 @media (max-width: 1100px) {
     .filter-card { flex-wrap: wrap; }
-    .filter-card input { min-width: 170px; }
+    .filter-card input[type="search"] { min-width: 170px; }
     .master-detail-layout { grid-template-columns: 1fr; height: auto; }
     .master-panel { height: 520px; }
     .detail-panel { height: 720px; }
@@ -684,7 +720,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', handleKeydown))
     .summary-grid { gap: 9px; }
     .summary-card { padding: 11px; }
     .filter-card > * { width: 100%; }
-    .filter-card input, .filter-card select { width: 100%; min-width: 100%; }
+    .filter-card input[type="search"], .filter-card select { width: 100%; min-width: 100%; }
     .master-panel { height: 500px; }
     .detail-panel { height: auto; min-height: 620px; }
     .detail-title-row { flex-direction: column; }

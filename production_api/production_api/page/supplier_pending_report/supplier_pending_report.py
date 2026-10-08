@@ -8,7 +8,6 @@ from production_api.essdee_production.doctype.item_production_detail.item_produc
 	get_ipd_primary_values,
 )
 from production_api.utils import (
-	get_eqi_status,
 	get_variant_attr_details,
 	max_date,
 	min_date,
@@ -53,13 +52,11 @@ def get_supplier_pending_report(supplier, process):
 	)
 	lot_contexts = _load_lot_contexts(lot_names)
 	variant_attributes = _load_variant_attributes(variant_names)
-	quality_statuses = get_eqi_status(list(work_order_names))
 	response["items"] = _build_supplier_pending_items(
 		work_orders,
 		calculated_items,
 		lot_contexts,
 		variant_attributes,
-		quality_statuses,
 	)
 	return response
 
@@ -157,7 +154,6 @@ def _build_supplier_pending_items(
 	calculated_items,
 	lot_contexts,
 	variant_attributes,
-	quality_statuses,
 ):
 	work_order_by_name = {row["name"]: row for row in work_orders}
 	item_groups = {}
@@ -225,21 +221,13 @@ def _build_supplier_pending_items(
 		)
 		value = row["values"].setdefault(
 			size,
-			{"delivered": 0.0, "received": 0.0, "difference": 0.0, "quality": None},
+			{"delivered": 0.0, "received": 0.0, "difference": 0.0},
 		)
 		delivered = flt(calculated_item.get("delivered_quantity"))
 		received = flt(calculated_item.get("received_qty"))
 		value["delivered"] += delivered
 		value["received"] += received
 		value["difference"] = value["received"] - value["delivered"]
-
-		quality = (
-			quality_statuses.get(work_order.get("supplier_name"), {})
-			.get(colour, {})
-			.get(size)
-		)
-		if quality is not None:
-			value["quality"] = quality
 
 		row["dates"]["first_dc_date"] = min_date(row["dates"]["first_dc_date"], work_order.get("first_dc_date"))
 		row["dates"]["last_dc_date"] = max_date(row["dates"]["last_dc_date"], work_order.get("last_dc_date"))
@@ -261,7 +249,7 @@ def _finalize_item_groups(item_groups):
 				for size in lot_group["primary_values"]:
 					row["values"].setdefault(
 						size,
-						{"delivered": 0.0, "received": 0.0, "difference": 0.0, "quality": None},
+						{"delivered": 0.0, "received": 0.0, "difference": 0.0},
 					)
 				delivered = sum(value["delivered"] for value in row["values"].values())
 				received = sum(value["received"] for value in row["values"].values())

@@ -6,7 +6,7 @@ import re
 import requests
 import frappe
 from frappe.model.document import Document
-from frappe.utils import flt
+from frappe.utils import flt, getdate
 from production_api.production_api.doctype.item.item import get_or_create_variant, build_variant_attributes
 from production_api.utils import get_variant_attr_details, update_if_string_instance
 from production_api.mrp_stock.doctype.stock_summary.stock_summary import get_variant_attr_values
@@ -1185,6 +1185,84 @@ def get_sewing_plan_dpr_data(supplier, dpr_date, work_station=None, input_type=N
 		"dpr_data": dpr_data,
 		"pending_fi": [],
 	}
+
+
+def get_sewing_plan_dpr_dates(
+	supplier,
+	from_date,
+	to_date,
+	work_station=None,
+	input_type=None,
+):
+	sewing_plans = frappe.get_all(
+		"Sewing Plan",
+		filters={"supplier": supplier},
+		pluck="name",
+	)
+	if not sewing_plans:
+		return []
+
+	filters = {
+		"sewing_plan": ["in", sewing_plans],
+		"entry_date": ["between", [from_date, to_date]],
+	}
+	if work_station:
+		filters["work_station"] = work_station
+	if input_type:
+		filters["input_type"] = input_type
+	entry_dates = frappe.get_all(
+		"Sewing Plan Entry Detail",
+		filters=filters,
+		pluck="entry_date",
+	)
+	return sorted(set(entry_dates))
+
+
+@frappe.whitelist()
+def get_sewing_plan_dpr_summary(
+	supplier,
+	from_date,
+	to_date,
+	work_station=None,
+	input_type=None,
+):
+	if not from_date or not to_date:
+		frappe.throw("From Date and To Date are mandatory")
+	if getdate(from_date) > getdate(to_date):
+		frappe.throw("From Date cannot be after To Date")
+
+	reports = []
+	pending_fi = []
+	pending_fi_keys = set()
+	entry_dates = get_sewing_plan_dpr_dates(
+		supplier,
+		from_date,
+		to_date,
+		work_station=work_station,
+		input_type=input_type,
+	)
+	for entry_date in entry_dates:
+		daily = get_sewing_plan_dpr_data(
+			supplier,
+			entry_date,
+			work_station=work_station,
+			input_type=input_type,
+		)
+		for row in daily.get("pending_fi") or []:
+			key = (row.get("lot"), row.get("colour"), row.get("part"))
+			if key not in pending_fi_keys:
+				pending_fi_keys.add(key)
+				pending_fi.append(row)
+		if daily.get("dpr_data"):
+			reports.append(
+				{
+					"date": str(entry_date),
+					"headers": daily.get("headers") or [],
+					"dpr_data": daily["dpr_data"],
+				}
+			)
+
+	return {"reports": reports, "pending_fi": pending_fi}
 
 @frappe.whitelist()
 def get_sewing_plan_entries(supplier, input_type=None, work_station=None, lot_name=None):

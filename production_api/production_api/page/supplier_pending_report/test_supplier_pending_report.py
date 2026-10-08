@@ -104,13 +104,12 @@ class TestSupplierPendingReport(unittest.TestCase):
 			{"supplier": "SUP-001", "supplier_name": "Supplier A", "process": "Cutting", "items": []},
 		)
 
-	def test_endpoint_passes_bulk_loaded_inputs_to_builder(self):
+	def test_endpoint_does_not_load_quality_inspection_data(self):
 		work_orders = [self._work_order("WO-1", "ITEM-A", "LOT-1")]
 		work_orders[0]["supplier"] = "SUP-001"
 		calculated_items = [self._calculated_item("WO-1", "BLACK-S", 10, 4, "Black")]
 		lot_contexts = {"LOT-1": self._lot_context(False, ["S"])}
 		variant_attributes = {"BLACK-S": {"Colour": "Black", "Size": "S"}}
-		quality_statuses = {"Supplier A": {"Black": {"S": "Hold"}}}
 		built_items = [{"item": "ITEM-A", "lots": []}]
 
 		with (
@@ -118,7 +117,12 @@ class TestSupplierPendingReport(unittest.TestCase):
 			patch.object(report, "_get_supplier_work_orders", return_value=work_orders),
 			patch.object(report, "_load_lot_contexts", return_value=lot_contexts) as load_lots,
 			patch.object(report, "_load_variant_attributes", return_value=variant_attributes) as load_variants,
-			patch.object(report, "get_eqi_status", return_value=quality_statuses) as load_quality,
+			patch.object(
+				report,
+				"get_eqi_status",
+				create=True,
+				side_effect=AssertionError("Quality Inspection must not be queried"),
+			),
 			patch.object(report, "_build_supplier_pending_items", return_value=built_items) as builder,
 			patch.object(report, "frappe") as frappe_mock,
 		):
@@ -132,8 +136,7 @@ class TestSupplierPendingReport(unittest.TestCase):
 		self.assertEqual(frappe_mock.get_all.call_args.kwargs["filters"], {"parent": ["in", ("WO-1",)]})
 		load_lots.assert_called_once_with(("LOT-1",))
 		load_variants.assert_called_once_with(("BLACK-S",))
-		load_quality.assert_called_once_with(["WO-1"])
-		builder.assert_called_once_with(work_orders, calculated_items, lot_contexts, variant_attributes, quality_statuses)
+		builder.assert_called_once_with(work_orders, calculated_items, lot_contexts, variant_attributes)
 
 	def test_endpoint_uses_supplier_document_name_for_filter_and_returns_supplier_name(self):
 		with (
@@ -193,7 +196,6 @@ class TestSupplierPendingReport(unittest.TestCase):
 				"NAVY-S": {"Colour": "Navy", "Size": "S", "Part": "Top"},
 				"NAVY-M": {"Colour": "Navy", "Size": "M", "Part": "Top"},
 			},
-			{"Supplier A": {"Navy": {"S": "Pass", "M": "Fail"}}},
 		)
 
 		self.assertEqual([item["item"] for item in items], ["ITEM-A"])
@@ -205,8 +207,8 @@ class TestSupplierPendingReport(unittest.TestCase):
 		self.assertEqual(len(lot["rows"]), 1)
 		row = lot["rows"][0]
 		self.assertEqual((row["colour"], row["part"]), ("Navy", "Top"))
-		self.assertEqual(row["values"]["S"], {"delivered": 150.0, "received": 60.0, "difference": -90.0, "quality": "Pass"})
-		self.assertEqual(row["values"]["M"], {"delivered": 100.0, "received": 20.0, "difference": -80.0, "quality": "Fail"})
+		self.assertEqual(row["values"]["S"], {"delivered": 150.0, "received": 60.0, "difference": -90.0})
+		self.assertEqual(row["values"]["M"], {"delivered": 100.0, "received": 20.0, "difference": -80.0})
 		self.assertEqual(row["totals"], {"delivered": 250.0, "received": 80.0, "difference": -170.0})
 		self.assertEqual(
 			row["dates"],
@@ -249,7 +251,7 @@ class TestSupplierPendingReport(unittest.TestCase):
 			)
 		}
 
-		items = report._build_supplier_pending_items(work_orders, calculated_items, lot_contexts, variant_attributes, {})
+		items = report._build_supplier_pending_items(work_orders, calculated_items, lot_contexts, variant_attributes)
 
 		self.assertEqual(len(items), 1)
 		self.assertEqual(items[0]["item"], "ITEM-KEEP")
@@ -262,7 +264,6 @@ class TestSupplierPendingReport(unittest.TestCase):
 			[self._calculated_item("WO-1", "BLACK-S", 10, 4, "Black")],
 			{"LOT-1": self._lot_context(is_set_item=False, primary_values=["S"])},
 			{"BLACK-S": {"Colour": "Black", "Size": "S"}},
-			{},
 		)
 
 		lot = items[0]["lots"][0]
@@ -284,7 +285,6 @@ class TestSupplierPendingReport(unittest.TestCase):
 			],
 			{"LOT-1": self._lot_context(is_set_item=False, primary_values=["S"])},
 			{"BLACK-S": {"Colour": "Black", "Size": "S"}},
-			{},
 		)
 
 		rows = items[0]["lots"][0]["rows"]
@@ -304,7 +304,6 @@ class TestSupplierPendingReport(unittest.TestCase):
 				"BLACK-XL": {"Colour": "Black", "Size": "XL"},
 				"BLACK-L": {"Colour": "Black", "Size": "L"},
 			},
-			{},
 		)
 
 		self.assertEqual(items[0]["lots"][0]["primary_values"], ["S", "M", "L", "XL"])

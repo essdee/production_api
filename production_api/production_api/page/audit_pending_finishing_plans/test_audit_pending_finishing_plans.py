@@ -12,6 +12,33 @@ from production_api.production_api.page.audit_pending_finishing_plans import (
 
 
 class TestAuditPendingFinishingPlans(TestCase):
+    def test_dashboard_data_queries_only_partially_dispatched_when_requested(self):
+        with (
+            patch.object(dashboard, "_ensure_access"),
+            patch.object(dashboard.frappe, "get_all", return_value=[]) as get_all,
+        ):
+            result = dashboard.get_dashboard_data.__wrapped__(
+                show_partially_dispatched="1"
+            )
+
+        self.assertEqual(
+            get_all.call_args.kwargs["filters"],
+            {"fp_status": ["in", ("Partially Dispatched",)]},
+        )
+        self.assertEqual(result["plans"], [])
+
+    def test_dashboard_data_keeps_dispatched_defaults_when_partial_mode_is_off(self):
+        with (
+            patch.object(dashboard, "_ensure_access"),
+            patch.object(dashboard.frappe, "get_all", return_value=[]) as get_all,
+        ):
+            dashboard.get_dashboard_data.__wrapped__(show_partially_dispatched="0")
+
+        self.assertEqual(
+            get_all.call_args.kwargs["filters"],
+            {"fp_status": ["in", ("Dispatched", "Fully Dispatched")]},
+        )
+
     def test_status_since_uses_latest_transition_into_the_current_status(self):
         plans = [
             frappe._dict(name="FP-1", fp_status="Fully Dispatched"),
@@ -122,6 +149,7 @@ class TestAuditPendingFinishingPlans(TestCase):
 
     def test_summary_counts_each_status_and_oldest_age(self):
         rows = [
+            {"fp_status": "Partially Dispatched", "age_days": 21},
             {"fp_status": "Fully Dispatched", "age_days": 19},
             {"fp_status": "Dispatched", "age_days": 15},
             {"fp_status": "Dispatched", "age_days": 8},
@@ -129,7 +157,13 @@ class TestAuditPendingFinishingPlans(TestCase):
 
         self.assertEqual(
             dashboard._summarize(rows),
-            {"overdue": 3, "dispatched": 2, "fully_dispatched": 1, "oldest_days": 19},
+            {
+                "overdue": 4,
+                "partially_dispatched": 1,
+                "dispatched": 2,
+                "fully_dispatched": 1,
+                "oldest_days": 21,
+            },
         )
 
     def test_plan_metrics_support_dynamic_and_legacy_packing(self):
@@ -166,7 +200,7 @@ class TestAuditPendingFinishingPlans(TestCase):
         )
         self.assertEqual(
             dynamic,
-            {"total_cut": 100.0, "sewing_received": 92.0, "packed": 97.0, "dispatched": 91.0},
+            {"total_cut": 100.0, "sewing_received": 92.0, "packed": 194.0, "dispatched": 182.0},
         )
 
     def test_dynamic_dispatch_rows_keep_batch_boxes_and_size_pieces(self):

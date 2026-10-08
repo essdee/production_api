@@ -298,6 +298,7 @@ jinja = {
         "production_api.production_api.doctype.finishing_plan.finishing_plan.get_ocr_percentage",
         "production_api.production_api.doctype.finishing_plan.finishing_plan.get_ocr_style",
         "production_api.production_api.doctype.finishing_plan_dispatch.finishing_plan_dispatch.get_fpd_print_data",
+        "production_api.mrp_stock.doctype.stock_entry.stock_entry.get_ratio_dispatch_print_data",
     ]
 }
 
