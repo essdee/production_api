@@ -348,7 +348,8 @@ class TestWorkOrderBulkClose(TestCase):
             {
                 "results": [
                     {"work_order": work_order.name, "open_status": "Close"}
-                ]
+                ],
+                "failed": [],
             },
         )
         self.assertEqual(work_order.open_status, "Close")
@@ -360,6 +361,75 @@ class TestWorkOrderBulkClose(TestCase):
         self.assertEqual(stock_ledger_entries[0]["warehouse"], "SUPPLIER-TEST")
         self.assertEqual(stock_ledger_entries[0]["lot"], "LOT-TEST")
         self.assertEqual(stock_ledger_entries[0]["qty"], -5)
+
+    def test_approve_close_requests_continues_after_one_work_order_fails(self):
+        work_orders = {}
+        for name in ("WO-SUCCESS-1", "WO-FAIL", "WO-SUCCESS-2"):
+            doc = self.make_mock_work_order()
+            doc.name = name
+            doc.docstatus = 1
+            doc.open_status = "Close Request"
+            doc.close_reason = "Sewing Shortage"
+            doc.close_other_reason = "NA"
+            doc.close_remarks = "Bulk approval"
+            work_orders[name] = doc
+
+        attempted = []
+
+        def update_stock(work_order, **_kwargs):
+            attempted.append(work_order)
+            if work_order == "WO-FAIL":
+                raise frappe.ValidationError("GRN GRN-FAIL is not completed")
+            return {"open_status": "Close"}
+
+        with (
+            patch.object(
+                work_order_module.frappe,
+                "get_doc",
+                side_effect=lambda _doctype, name, **_kwargs: work_orders[name],
+            ),
+            patch.object(
+                work_order_module.frappe.db,
+                "get_single_value",
+                return_value="Merch Manager",
+            ),
+            patch.object(
+                work_order_module.frappe,
+                "get_roles",
+                return_value=["Merch Manager"],
+            ),
+            patch.object(work_order_module.frappe, "get_all", return_value=[]),
+            patch.object(work_order_module, "update_stock", side_effect=update_stock),
+            patch.object(work_order_module.frappe.db, "savepoint"),
+            patch.object(work_order_module.frappe.db, "rollback") as rollback,
+        ):
+            try:
+                result = bulk_close_module.approve_close_requests(
+                    list(work_orders)
+                )
+            except Exception as exc:
+                self.fail(f"Bulk approval stopped at the first error: {exc}")
+
+        self.assertEqual(
+            attempted,
+            ["WO-SUCCESS-1", "WO-FAIL", "WO-SUCCESS-2"],
+        )
+        self.assertEqual(
+            result,
+            {
+                "results": [
+                    {"work_order": "WO-SUCCESS-1", "open_status": "Close"},
+                    {"work_order": "WO-SUCCESS-2", "open_status": "Close"},
+                ],
+                "failed": [
+                    {
+                        "work_order": "WO-FAIL",
+                        "error": "GRN GRN-FAIL is not completed",
+                    }
+                ],
+            },
+        )
+        rollback.assert_called_once_with(save_point="work_order_close_2")
 
     def test_approve_close_requests_rejects_non_manager(self):
         work_order = self.make_mock_work_order()
@@ -406,10 +476,22 @@ class TestWorkOrderBulkClose(TestCase):
                 work_order_module, "get_module_logger", return_value=MagicMock()
             ),
         ):
-            with self.assertRaises(frappe.ValidationError):
-                bulk_close_module.approve_close_requests([work_order.name])
+            result = bulk_close_module.approve_close_requests([work_order.name])
 
         self.assertEqual(work_order.open_status, "Open")
+        self.assertEqual(result["results"], [])
+        self.assertEqual(
+            result["failed"],
+            [
+                {
+                    "work_order": work_order.name,
+                    "error": (
+                        f"Work Order {work_order.name} does not have a pending "
+                        "Close Request."
+                    ),
+                }
+            ],
+        )
 
     def test_approve_close_requests_rejects_unapproved_debit(self):
         work_order = self.make_mock_work_order()
@@ -451,10 +533,19 @@ class TestWorkOrderBulkClose(TestCase):
                 work_order_module, "get_module_logger", return_value=MagicMock()
             ),
         ):
-            with self.assertRaises(frappe.ValidationError):
-                bulk_close_module.approve_close_requests([work_order.name])
+            result = bulk_close_module.approve_close_requests([work_order.name])
 
         self.assertEqual(work_order.open_status, "Close Request")
+        self.assertEqual(result["results"], [])
+        self.assertEqual(
+            result["failed"],
+            [
+                {
+                    "work_order": work_order.name,
+                    "error": "Approve Essdee Debit ED-TEST-00001 before closing.",
+                }
+            ],
+        )
 
     def test_update_stock_stores_na_for_empty_close_details(self):
         work_order = self.make_mock_work_order()

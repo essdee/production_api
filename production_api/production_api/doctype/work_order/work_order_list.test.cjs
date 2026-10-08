@@ -4,8 +4,9 @@ const path = require("node:path");
 const test = require("node:test");
 const vm = require("node:vm");
 
-function loadWorkOrderList(selectedItems = []) {
+function loadWorkOrderList(selectedItems = [], responseMessage = null) {
   const actions = new Map();
+  const messages = [];
   let request;
   let refreshCount = 0;
 
@@ -42,21 +43,32 @@ function loadWorkOrderList(selectedItems = []) {
         },
       },
     },
-    __: (message) => message,
+    __: (message, values = []) =>
+      values.reduce(
+        (formatted, value, index) =>
+          formatted.replace(`{${index}}`, String(value)),
+        message,
+      ),
     frappe: {
       listview_settings: {},
       confirm: (_message, onConfirm) => onConfirm(),
-      msgprint: () => {},
+      msgprint: (message) => messages.push(message),
       show_alert: () => {},
+      utils: {
+        escape_html: (value) => String(value),
+      },
       call: (options) => {
         request = options;
         options.callback({
-          message: {
-            results: selectedItems.map((item) => ({
-              work_order: item.name,
-              open_status: "Close",
-            })),
-          },
+          message:
+            responseMessage ||
+            {
+              results: selectedItems.map((item) => ({
+                work_order: item.name,
+                open_status: "Close",
+              })),
+              failed: [],
+            },
         });
       },
     },
@@ -71,6 +83,7 @@ function loadWorkOrderList(selectedItems = []) {
 
   return {
     actions,
+    getMessages: () => messages,
     getRequest: () => request,
     getRefreshCount: () => refreshCount,
   };
@@ -96,5 +109,40 @@ test("Approve Close list action submits all selected Work Orders and refreshes",
     JSON.stringify(request.args.work_orders),
     JSON.stringify(["WO-TEST-0001", "WO-TEST-0002"]),
   );
+  assert.equal(harness.getRefreshCount(), 1);
+});
+
+test("Approve Close result lists every failed Work Order and its reason", () => {
+  const harness = loadWorkOrderList(
+    [
+      { name: "WO-SUCCESS" },
+      { name: "WO-GRN-FAIL" },
+      { name: "WO-STOCK-FAIL" },
+    ],
+    {
+      results: [{ work_order: "WO-SUCCESS", open_status: "Close" }],
+      failed: [
+        {
+          work_order: "WO-GRN-FAIL",
+          error: "GRN GRN-0001 is not completed",
+        },
+        {
+          work_order: "WO-STOCK-FAIL",
+          error: "Insufficient stock balance",
+        },
+      ],
+    },
+  );
+
+  harness.actions.get("Approve Close")();
+
+  const resultMessage = harness.getMessages()[0];
+  assert.equal(typeof resultMessage, "object");
+  assert.equal(resultMessage.title, "Bulk Approve Close Result");
+  assert.match(resultMessage.message, /1 Work Order closed successfully/);
+  assert.match(resultMessage.message, /WO-GRN-FAIL/);
+  assert.match(resultMessage.message, /GRN GRN-0001 is not completed/);
+  assert.match(resultMessage.message, /WO-STOCK-FAIL/);
+  assert.match(resultMessage.message, /Insufficient stock balance/);
   assert.equal(harness.getRefreshCount(), 1);
 });

@@ -49,12 +49,42 @@ frappe.listview_settings["Work Order"] = {
             freeze_message: __("Approving selected Work Orders..."),
             callback: (response) => {
               const results = response.message?.results || [];
-              frappe.show_alert({
-                message: __("{0} Work Orders closed successfully.", [
-                  results.length,
-                ]),
-                indicator: "green",
-              });
+              const failed = response.message?.failed || [];
+              if (failed.length) {
+                const closed_message =
+                  results.length === 1
+                    ? __("1 Work Order closed successfully.")
+                    : __("{0} Work Orders closed successfully.", [
+                        results.length,
+                      ]);
+                const failed_message =
+                  failed.length === 1
+                    ? __("1 Work Order failed:")
+                    : __("{0} Work Orders failed:", [failed.length]);
+                const failures = failed
+                  .map(
+                    (failure) =>
+                      `<li><strong>${frappe.utils.escape_html(
+                        failure.work_order,
+                      )}</strong> — ${frappe.utils.escape_html(
+                        failure.error,
+                      )}</li>`,
+                  )
+                  .join("");
+                frappe.msgprint({
+                  title: __("Bulk Approve Close Result"),
+                  indicator: results.length ? "orange" : "red",
+                  message: `<p>${closed_message}</p><p>${failed_message}</p><ul>${failures}</ul>`,
+                  wide: true,
+                });
+              } else {
+                frappe.show_alert({
+                  message: __("{0} Work Orders closed successfully.", [
+                    results.length,
+                  ]),
+                  indicator: "green",
+                });
+              }
               listview.refresh();
             },
           });
