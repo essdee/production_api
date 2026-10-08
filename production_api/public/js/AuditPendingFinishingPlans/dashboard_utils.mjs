@@ -1,3 +1,14 @@
+const DASHBOARD_METHOD = 'production_api.production_api.page.audit_pending_finishing_plans.audit_pending_finishing_plans.get_dashboard_data'
+
+
+export function buildDashboardRequest(showPartiallyDispatched) {
+    return {
+        method: DASHBOARD_METHOD,
+        args: { show_partially_dispatched: showPartiallyDispatched ? 1 : 0 },
+    }
+}
+
+
 export function sortPlansByAge(plans) {
     return [...(plans || [])].sort((left, right) => {
         const ageDifference = Number(right.age_days || 0) - Number(left.age_days || 0)

@@ -1,6 +1,8 @@
 # Copyright (c) 2023, Essdee and Contributors
 # See license.txt
 
+import json
+from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
@@ -11,6 +13,188 @@ from production_api.mrp_stock.doctype.stock_entry import stock_entry
 
 
 class TestDynamicFinishingDispatch(FrappeTestCase):
+	def test_ratio_dispatch_print_renders_only_colour_box_totals(self):
+		print_format_path = (
+			Path(__file__).parents[2]
+			/ "print_format"
+			/ "ratio_dispatch_colour_slip"
+			/ "ratio_dispatch_colour_slip.json"
+		)
+		self.assertTrue(
+			print_format_path.exists(),
+			"Ratio Dispatch Colour Slip print format is missing",
+		)
+		print_format = json.loads(print_format_path.read_text())
+		doc = SimpleNamespace(
+			name="STE-PRINT",
+			docstatus=1,
+			posting_date="2026-10-08",
+			from_warehouse=None,
+			to_warehouse=None,
+			transfer_supplier=None,
+			vehicle_no=None,
+			terms_and_condition=None,
+			comments=None,
+			get_formatted=lambda fieldname: "08-10-2026"
+			if fieldname == "posting_date"
+			else "",
+		)
+		html = frappe.render_template(print_format["html"], {
+			"doc": doc,
+			"letter_head": None,
+			"no_letterhead": True,
+			"footer": None,
+			"get_supplier_address_display": lambda _supplier: "",
+			"get_ratio_dispatch_print_data": lambda _name: [{
+				"finishing_plan": "FP-1",
+				"lot": "LOT-1",
+				"item": "ITEM-1",
+				"colours": [
+					{"colour": "Navy", "boxes": 5},
+					{"colour": "White", "boxes": 1},
+				],
+				"total_boxes": 6,
+			}],
+		})
+
+		self.assertIn("Colour", html)
+		self.assertIn("Boxes", html)
+		self.assertIn("Navy", html)
+		self.assertIn("White", html)
+		self.assertIn("LOT-1", html)
+		self.assertIn("ITEM-1", html)
+		self.assertNotIn("Size", html)
+		self.assertNotIn("Pieces", html)
+
+	def get_ratio_print_data(self, stock_entry_name):
+		self.assertTrue(
+			hasattr(stock_entry, "get_ratio_dispatch_print_data"),
+			"Ratio dispatch print-data helper is missing",
+		)
+		return stock_entry.get_ratio_dispatch_print_data(stock_entry_name)
+
+	def test_ratio_print_groups_direct_finishing_plan_batches_by_colour(self):
+		dispatch = SimpleNamespace(
+			name="STE-DIRECT",
+			against="Finishing Plan",
+			against_id="FP-1",
+			packing_batch_dispatch_json=frappe.as_json([
+				{"colour": "Navy", "box_quantity": 2},
+				{"colour": "White", "box_quantity": 1},
+				{"colour": "Navy", "box_quantity": 3},
+			]),
+		)
+
+		with (
+			patch.object(stock_entry.frappe, "get_doc", return_value=dispatch),
+			patch.object(
+				stock_entry.frappe,
+				"get_cached_value",
+				side_effect=self.ratio_print_cached_value,
+			),
+		):
+			result = self.get_ratio_print_data(dispatch.name)
+
+		self.assertEqual(result, [{
+			"finishing_plan": "FP-1",
+			"lot": "LOT-1",
+			"item": "ITEM-1",
+			"colours": [
+				{"colour": "Navy", "boxes": 5},
+				{"colour": "White", "boxes": 1},
+			],
+			"total_boxes": 6,
+		}])
+
+	def test_ratio_print_keeps_finishing_plan_dispatch_items_separate(self):
+		dispatch = SimpleNamespace(
+			name="STE-FPD",
+			against="Finishing Plan Dispatch",
+			against_id="FPD-1",
+			packing_batch_dispatch_json=frappe.as_json([
+				{"finishing_plan": "FP-1", "colour": "Navy", "box_quantity": 4},
+				{"finishing_plan": "FP-2", "colour": "Black", "box_quantity": 2},
+				{"finishing_plan": "FP-2", "colour": "Black", "box_quantity": 3},
+			]),
+		)
+
+		with (
+			patch.object(stock_entry.frappe, "get_doc", return_value=dispatch),
+			patch.object(
+				stock_entry.frappe,
+				"get_cached_value",
+				side_effect=self.ratio_print_cached_value,
+			),
+		):
+			result = self.get_ratio_print_data(dispatch.name)
+
+		self.assertEqual(result, [
+			{
+				"finishing_plan": "FP-1",
+				"lot": "LOT-1",
+				"item": "ITEM-1",
+				"colours": [{"colour": "Navy", "boxes": 4}],
+				"total_boxes": 4,
+			},
+			{
+				"finishing_plan": "FP-2",
+				"lot": "LOT-2",
+				"item": "ITEM-2",
+				"colours": [{"colour": "Black", "boxes": 5}],
+				"total_boxes": 5,
+			},
+		])
+
+	def test_ratio_print_excludes_non_attribute_mapped_ipd(self):
+		dispatch = SimpleNamespace(
+			name="STE-NON-RATIO",
+			against="Finishing Plan",
+			against_id="FP-1",
+			packing_batch_dispatch_json=frappe.as_json([
+				{"colour": "Navy", "box_quantity": 4},
+			]),
+		)
+
+		def cached_value(doctype, name, _fields, as_dict=False):
+			if doctype == "Finishing Plan":
+				return frappe._dict(
+					lot="LOT-1", item="ITEM-1", production_detail="IPD-1"
+				)
+			if doctype == "Item Production Detail":
+				return frappe._dict(
+					packing_mode="Size Ratio Packing",
+					based_on_other_attribute_mapping=0,
+				)
+			raise AssertionError((doctype, name, as_dict))
+
+		with (
+			patch.object(stock_entry.frappe, "get_doc", return_value=dispatch),
+			patch.object(
+				stock_entry.frappe,
+				"get_cached_value",
+				side_effect=cached_value,
+			),
+		):
+			result = self.get_ratio_print_data(dispatch.name)
+
+		self.assertEqual(result, [])
+
+	@staticmethod
+	def ratio_print_cached_value(doctype, name, _fields, as_dict=False):
+		if doctype == "Finishing Plan":
+			index = name.removeprefix("FP-")
+			return frappe._dict(
+				lot=f"LOT-{index}",
+				item=f"ITEM-{index}",
+				production_detail=f"IPD-{index}",
+			)
+		if doctype == "Item Production Detail":
+			return frappe._dict(
+				packing_mode="Size Ratio Packing",
+				based_on_other_attribute_mapping=1,
+			)
+		raise AssertionError((doctype, name, as_dict))
+
 	def test_dynamic_finishing_dispatch_accumulates_pieces_from_every_batch(self):
 		fp_dispatch = SimpleNamespace(
 			name="FPD-TEST",

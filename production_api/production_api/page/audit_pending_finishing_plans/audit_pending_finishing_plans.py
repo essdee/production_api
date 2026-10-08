@@ -3,7 +3,7 @@ from collections import defaultdict
 
 import frappe
 from frappe import _
-from frappe.utils import flt, get_datetime, getdate, now_datetime
+from frappe.utils import cint, flt, get_datetime, getdate, now_datetime
 
 from production_api.production_api.doctype.finishing_plan.finishing_plan import (
     get_finishing_packing_summary,
@@ -79,13 +79,12 @@ def _build_plan_metrics(
         flt(row.delivered_quantity) for row in finishing_plan.finishing_plan_details
     )
 
+    part_multiplier = max(flt(set_item_parts_count), 1)
     if packing_summary.dynamic_ratio_packing:
-        packed = flt(packing_summary.total_packed)
-        dispatched = flt(packing_summary.total_dispatched)
+        packed = flt(packing_summary.total_packed) * part_multiplier
+        dispatched = flt(packing_summary.total_dispatched) * part_multiplier
     else:
-        multiplier = flt(finishing_plan.pieces_per_box) * max(
-            flt(set_item_parts_count), 1
-        )
+        multiplier = flt(finishing_plan.pieces_per_box) * part_multiplier
         packed = sum(
             flt(row.quantity) for row in finishing_plan.finishing_plan_grn_details
         ) * multiplier
@@ -176,6 +175,9 @@ def _build_overdue_rows(plans, status_since, metrics, histories, as_of):
 def _summarize(rows):
     return {
         "overdue": len(rows),
+        "partially_dispatched": sum(
+            row["fp_status"] == "Partially Dispatched" for row in rows
+        ),
         "dispatched": sum(row["fp_status"] == "Dispatched" for row in rows),
         "fully_dispatched": sum(
             row["fp_status"] == "Fully Dispatched" for row in rows
@@ -317,13 +319,21 @@ def _get_dispatch_histories(plan_names):
     return histories
 
 
+def _qualifying_statuses(show_partially_dispatched=False):
+    if cint(show_partially_dispatched):
+        return ("Partially Dispatched",)
+    return QUALIFYING_STATUSES
+
+
 @frappe.whitelist()
-def get_dashboard_data():
+def get_dashboard_data(show_partially_dispatched=False):
     _ensure_access()
     as_of = now_datetime()
     plans = frappe.get_all(
         "Finishing Plan",
-        filters={"fp_status": ["in", QUALIFYING_STATUSES]},
+        filters={
+            "fp_status": ["in", _qualifying_statuses(show_partially_dispatched)]
+        },
         fields=["name", "lot", "item", "fp_status"],
         limit_page_length=0,
     )

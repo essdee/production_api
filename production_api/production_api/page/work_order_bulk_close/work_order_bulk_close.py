@@ -113,7 +113,9 @@ def close_work_orders(
 
     results = []
     previous_alert_setting = frappe.flags.get("suppress_work_order_close_alert")
+    previous_bulk_close_setting = frappe.flags.get("work_order_bulk_close")
     frappe.flags.suppress_work_order_close_alert = True
+    frappe.flags.work_order_bulk_close = True
     try:
         for work_order in work_order_names:
             result = update_stock(
@@ -130,6 +132,81 @@ def close_work_orders(
             )
     finally:
         frappe.flags.suppress_work_order_close_alert = previous_alert_setting
+        frappe.flags.work_order_bulk_close = previous_bulk_close_setting
+
+    return {"results": results}
+
+
+@frappe.whitelist()
+def approve_close_requests(work_orders):
+    from production_api.production_api.doctype.work_order.work_order import (
+        update_stock,
+    )
+
+    work_order_names = _as_list(work_orders)
+    if not work_order_names:
+        frappe.throw(_("Select at least one Work Order to approve."))
+
+    merch_manager_role = frappe.db.get_single_value(
+        "MRP Settings", "merchandising_manager_role"
+    )
+    is_merch_manager = (
+        merch_manager_role
+        and frappe.session.user != "Guest"
+        and merch_manager_role in frappe.get_roles(frappe.session.user)
+    )
+    if not is_merch_manager:
+        frappe.throw(
+            _("Only a Merchandising Manager can approve Work Order closure."),
+            frappe.PermissionError,
+        )
+
+    documents = {}
+    for work_order in work_order_names:
+        doc = frappe.get_doc("Work Order", work_order, for_update=True)
+        doc.check_permission("write")
+        if doc.docstatus != 1 or doc.open_status != "Close Request":
+            frappe.throw(
+                _("Work Order {0} does not have a pending Close Request.").format(
+                    frappe.bold(work_order)
+                )
+            )
+        documents[work_order] = doc
+
+    unapproved_debits = frappe.get_all(
+        "Essdee Debit",
+        filters={
+            "against": "Work Order",
+            "against_id": ["in", work_order_names],
+            "docstatus": 1,
+            "status": ["!=", "Approved"],
+        },
+        fields=["name", "against_id"],
+        limit_page_length=1,
+    )
+    if unapproved_debits:
+        debit = unapproved_debits[0]
+        frappe.throw(
+            _("Approve Essdee Debit {0} before closing Work Order {1}.").format(
+                frappe.bold(debit.name), frappe.bold(debit.against_id)
+            )
+        )
+
+    results = []
+    for work_order in work_order_names:
+        doc = documents[work_order]
+        result = update_stock(
+            work_order,
+            close_reason=doc.close_reason,
+            close_other_reason=doc.close_other_reason,
+            close_remarks=doc.close_remarks,
+        )
+        results.append(
+            {
+                "work_order": work_order,
+                "open_status": result.get("open_status"),
+            }
+        )
 
     return {"results": results}
 

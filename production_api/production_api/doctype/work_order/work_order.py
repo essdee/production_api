@@ -2291,8 +2291,12 @@ def update_stock(work_order, close_reason=None, close_other_reason=None, close_r
     # Role-based close: check if user has the merchandising manager role
     merch_manager_role = frappe.db.get_single_value("MRP Settings", "merchandising_manager_role")
     is_merch_manager = merch_manager_role and frappe.session.user != "Guest" and merch_manager_role in frappe.get_roles(frappe.session.user)
+    is_company_location_bulk_close = (
+        frappe.flags.get("work_order_bulk_close")
+        and flt(doc.is_internal_unit)
+    )
 
-    if not is_merch_manager:
+    if not is_merch_manager and not is_company_location_bulk_close:
         # Non-merch-manager: set Close Request, no stock updates
         doc.open_status = "Close Request"
         doc.close_reason = close_reason

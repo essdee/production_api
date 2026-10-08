@@ -9,6 +9,9 @@ from production_api.production_api.page.work_order_bulk_close.work_order_bulk_cl
     get_open_work_orders,
     get_work_order_close_details,
 )
+from production_api.production_api.page.work_order_bulk_close import (
+    work_order_bulk_close as bulk_close_module,
+)
 from production_api.production_api.doctype.work_order import (
     work_order as work_order_module,
 )
@@ -21,6 +24,7 @@ class TestWorkOrderBulkClose(TestCase):
         work_order.doctype = "Work Order"
         work_order.name = "WO-TEST-CLOSE"
         work_order.open_status = "Open"
+        work_order.is_internal_unit = 1
         work_order.no_receivables = True
         work_order.deliverables = []
         return work_order
@@ -200,6 +204,257 @@ class TestWorkOrderBulkClose(TestCase):
         self.assertEqual(result, {"open_status": "Close Request"})
         self.assertEqual(work_order.open_status, "Close Request")
         work_order.save.assert_called_once_with()
+
+    def test_bulk_close_non_manager_closes_company_location_work_order(self):
+        work_order = self.make_mock_work_order()
+        work_order.docstatus = 1
+
+        def get_single_value(doctype, _fieldname):
+            if doctype == "MRP Settings":
+                return "Merch Manager"
+            if doctype == "Stock Settings":
+                return "Received"
+            return None
+
+        with (
+            patch.object(work_order_module.frappe, "get_doc", return_value=work_order),
+            patch.object(
+                work_order_module.frappe.db,
+                "get_single_value",
+                side_effect=get_single_value,
+            ),
+            patch.object(work_order_module.frappe, "get_roles", return_value=[]),
+            patch.object(work_order_module.frappe, "get_all", return_value=[]),
+            patch.object(
+                work_order_module, "get_variant_stock_details", return_value={}
+            ),
+            patch.object(work_order_module, "make_sl_entries"),
+            patch.object(
+                work_order_module, "get_module_logger", return_value=MagicMock()
+            ),
+        ):
+            result = close_work_orders([work_order.name])
+
+        self.assertEqual(
+            result,
+            {
+                "results": [
+                    {"work_order": work_order.name, "open_status": "Close"}
+                ]
+            },
+        )
+        self.assertEqual(work_order.open_status, "Close")
+
+    def test_bulk_close_non_manager_keeps_external_supplier_approval_flow(self):
+        work_order = self.make_mock_work_order()
+        work_order.docstatus = 1
+        work_order.is_internal_unit = 0
+
+        with (
+            patch.object(work_order_module.frappe, "get_doc", return_value=work_order),
+            patch.object(
+                work_order_module.frappe.db,
+                "get_single_value",
+                return_value="Merch Manager",
+            ),
+            patch.object(work_order_module.frappe, "get_roles", return_value=[]),
+            patch.object(work_order_module.frappe, "msgprint"),
+        ):
+            result = close_work_orders([work_order.name])
+
+        self.assertEqual(
+            result,
+            {
+                "results": [
+                    {
+                        "work_order": work_order.name,
+                        "open_status": "Close Request",
+                    }
+                ]
+            },
+        )
+        self.assertEqual(work_order.open_status, "Close Request")
+
+    def test_approve_close_requests_closes_selected_request_for_manager(self):
+        approve_close_requests = getattr(
+            bulk_close_module, "approve_close_requests", None
+        )
+        if not approve_close_requests:
+            self.fail("Bulk close-request approval endpoint is missing")
+
+        work_order = self.make_mock_work_order()
+        work_order.docstatus = 1
+        work_order.open_status = "Close Request"
+        work_order.close_reason = "Sewing Shortage"
+        work_order.close_other_reason = "NA"
+        work_order.close_remarks = "Approved from list"
+        work_order.supplier = "SUPPLIER-TEST"
+        work_order.lot = "LOT-TEST"
+        work_order.deliverables = [
+            frappe._dict(
+                name="WO-DELIVERABLE-TEST",
+                item_variant="ITEM-VARIANT-TEST",
+                qty=10,
+                pending_quantity=2,
+                stock_update=3,
+                uom="Nos",
+                rate=12,
+                docstatus=1,
+            )
+        ]
+
+        def get_single_value(doctype, _fieldname):
+            if doctype == "MRP Settings":
+                return "Merch Manager"
+            if doctype == "Stock Settings":
+                return "Received"
+            return None
+
+        with (
+            patch.object(work_order_module.frappe, "get_doc", return_value=work_order),
+            patch.object(
+                work_order_module.frappe.db,
+                "get_single_value",
+                side_effect=get_single_value,
+            ),
+            patch.object(
+                work_order_module.frappe,
+                "get_roles",
+                return_value=["Merch Manager"],
+            ),
+            patch.object(work_order_module.frappe, "get_all", return_value=[]),
+            patch.object(
+                work_order_module,
+                "get_variant_stock_details",
+                return_value={"ITEM-VARIANT-TEST": True},
+            ),
+            patch(
+                "production_api.mrp_stock.utils.get_stock_balance",
+                return_value=20,
+            ),
+            patch.object(
+                work_order_module, "make_sl_entries"
+            ) as make_sl_entries,
+            patch.object(
+                work_order_module, "get_module_logger", return_value=MagicMock()
+            ),
+            patch.object(work_order_module, "nowdate", return_value="2026-10-08"),
+            patch.object(work_order_module, "nowtime", return_value="12:00:00"),
+        ):
+            result = approve_close_requests([work_order.name])
+
+        self.assertEqual(
+            result,
+            {
+                "results": [
+                    {"work_order": work_order.name, "open_status": "Close"}
+                ]
+            },
+        )
+        self.assertEqual(work_order.open_status, "Close")
+        self.assertEqual(work_order.close_reason, "Sewing Shortage")
+        self.assertEqual(work_order.close_remarks, "Approved from list")
+        stock_ledger_entries = make_sl_entries.call_args.args[0]
+        self.assertEqual(len(stock_ledger_entries), 1)
+        self.assertEqual(stock_ledger_entries[0]["item"], "ITEM-VARIANT-TEST")
+        self.assertEqual(stock_ledger_entries[0]["warehouse"], "SUPPLIER-TEST")
+        self.assertEqual(stock_ledger_entries[0]["lot"], "LOT-TEST")
+        self.assertEqual(stock_ledger_entries[0]["qty"], -5)
+
+    def test_approve_close_requests_rejects_non_manager(self):
+        work_order = self.make_mock_work_order()
+        work_order.docstatus = 1
+        work_order.open_status = "Close Request"
+
+        with (
+            patch.object(work_order_module.frappe, "get_doc", return_value=work_order),
+            patch.object(
+                work_order_module.frappe.db,
+                "get_single_value",
+                return_value="Merch Manager",
+            ),
+            patch.object(work_order_module.frappe, "get_roles", return_value=[]),
+        ):
+            with self.assertRaises(frappe.PermissionError):
+                bulk_close_module.approve_close_requests([work_order.name])
+
+        self.assertEqual(work_order.open_status, "Close Request")
+
+    def test_approve_close_requests_rejects_work_order_without_pending_request(self):
+        work_order = self.make_mock_work_order()
+        work_order.docstatus = 1
+        work_order.open_status = "Open"
+
+        with (
+            patch.object(work_order_module.frappe, "get_doc", return_value=work_order),
+            patch.object(
+                work_order_module.frappe.db,
+                "get_single_value",
+                return_value="Merch Manager",
+            ),
+            patch.object(
+                work_order_module.frappe,
+                "get_roles",
+                return_value=["Merch Manager"],
+            ),
+            patch.object(work_order_module.frappe, "get_all", return_value=[]),
+            patch.object(
+                work_order_module, "get_variant_stock_details", return_value={}
+            ),
+            patch.object(work_order_module, "make_sl_entries"),
+            patch.object(
+                work_order_module, "get_module_logger", return_value=MagicMock()
+            ),
+        ):
+            with self.assertRaises(frappe.ValidationError):
+                bulk_close_module.approve_close_requests([work_order.name])
+
+        self.assertEqual(work_order.open_status, "Open")
+
+    def test_approve_close_requests_rejects_unapproved_debit(self):
+        work_order = self.make_mock_work_order()
+        work_order.docstatus = 1
+        work_order.open_status = "Close Request"
+
+        def get_all(doctype, *args, **kwargs):
+            if doctype == "Essdee Debit":
+                return [
+                    frappe._dict(
+                        name="ED-TEST-00001",
+                        against_id=work_order.name,
+                    )
+                ]
+            return []
+
+        with (
+            patch.object(work_order_module.frappe, "get_doc", return_value=work_order),
+            patch.object(
+                work_order_module.frappe.db,
+                "get_single_value",
+                return_value="Merch Manager",
+            ),
+            patch.object(
+                work_order_module.frappe,
+                "get_roles",
+                return_value=["Merch Manager"],
+            ),
+            patch.object(
+                work_order_module.frappe,
+                "get_all",
+                side_effect=get_all,
+            ),
+            patch.object(
+                work_order_module, "get_variant_stock_details", return_value={}
+            ),
+            patch.object(work_order_module, "make_sl_entries"),
+            patch.object(
+                work_order_module, "get_module_logger", return_value=MagicMock()
+            ),
+        ):
+            with self.assertRaises(frappe.ValidationError):
+                bulk_close_module.approve_close_requests([work_order.name])
+
+        self.assertEqual(work_order.open_status, "Close Request")
 
     def test_update_stock_stores_na_for_empty_close_details(self):
         work_order = self.make_mock_work_order()

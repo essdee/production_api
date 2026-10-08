@@ -20,6 +20,7 @@ import {
     WorkStationWrapper,
     InwardQuantityReportWrapper,
     InhouseQuantityWrapper,
+    SupplierPendingReportWrapper,
     // CadDetailWrapper,
 } from "./Lot";
 import TimeActionPreview from "./TimeAndAction/TimeActionPreview.vue"
@@ -1377,6 +1378,7 @@ frappe.production.ui.OCRDetail = OCRDetailWrapper
 frappe.production.ui.WorkStation = WorkStationWrapper
 frappe.production.ui.InwardQuantityReport = InwardQuantityReportWrapper
 frappe.production.ui.InhouseQuantity = InhouseQuantityWrapper
+frappe.production.ui.SupplierPendingReport = SupplierPendingReportWrapper
 // frappe.production.ui.CadDetail = CadDetailWrapper;
 
 // WorkOrder components

@@ -26,6 +26,41 @@ frappe.listview_settings["Work Order"] = {
         standard_filters_wrapper,
       );
     });
+
+    listview.page.add_action_item(__("Approve Close"), function () {
+      const selected_items = listview.get_checked_items();
+      if (!selected_items.length) {
+        frappe.msgprint(__("Select at least one Work Order to approve."));
+        return;
+      }
+
+      frappe.confirm(
+        __("Approve close for {0} selected Work Orders?", [
+          selected_items.length,
+        ]),
+        () => {
+          frappe.call({
+            method:
+              "production_api.production_api.page.work_order_bulk_close.work_order_bulk_close.approve_close_requests",
+            args: {
+              work_orders: selected_items.map((item) => item.name),
+            },
+            freeze: true,
+            freeze_message: __("Approving selected Work Orders..."),
+            callback: (response) => {
+              const results = response.message?.results || [];
+              frappe.show_alert({
+                message: __("{0} Work Orders closed successfully.", [
+                  results.length,
+                ]),
+                indicator: "green",
+              });
+              listview.refresh();
+            },
+          });
+        },
+      );
+    });
   },
   get_indicator: function (doc) {
     const status_colors = {

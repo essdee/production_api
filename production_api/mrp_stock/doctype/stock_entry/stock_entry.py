@@ -5,7 +5,7 @@ import frappe, json
 from six import string_types
 from itertools import groupby
 from frappe import _, msgprint
-from frappe.utils import cstr, flt
+from frappe.utils import cint, cstr, flt
 from frappe.model.document import Document
 from frappe.model.mapper import get_mapped_doc
 from production_api.mrp_stock.utils import get_conversion_factor, get_stock_balance
@@ -834,6 +834,79 @@ class StockEntry(Document):
 				total_transferred += item.transferred_qty
 			target_doc.set("per_transferred", total_transferred/total_qty*100)
 			target_doc.save()
+
+
+def get_ratio_dispatch_print_data(stock_entry):
+	"""Return actual colour-wise box totals for dynamic ratio dispatch printing."""
+	if isinstance(stock_entry, string_types):
+		stock_entry = frappe.get_doc("Stock Entry", stock_entry)
+	if stock_entry.against not in ("Finishing Plan", "Finishing Plan Dispatch"):
+		return []
+
+	batches = update_if_string_instance(stock_entry.packing_batch_dispatch_json) or []
+	if not isinstance(batches, list):
+		return []
+
+	plan_contexts = {}
+	groups = {}
+	for batch in batches:
+		finishing_plan = batch.get("finishing_plan")
+		if not finishing_plan and stock_entry.against == "Finishing Plan":
+			finishing_plan = stock_entry.against_id
+		if not finishing_plan:
+			continue
+
+		if finishing_plan not in plan_contexts:
+			plan = frappe.get_cached_value(
+				"Finishing Plan",
+				finishing_plan,
+				["lot", "item", "production_detail"],
+				as_dict=True,
+			)
+			ipd = None
+			if plan and plan.production_detail:
+				ipd = frappe.get_cached_value(
+					"Item Production Detail",
+					plan.production_detail,
+					["packing_mode", "based_on_other_attribute_mapping"],
+					as_dict=True,
+				)
+			if not (
+				ipd
+				and ipd.packing_mode == "Size Ratio Packing"
+				and cint(ipd.based_on_other_attribute_mapping)
+			):
+				plan = None
+			plan_contexts[finishing_plan] = plan
+
+		plan = plan_contexts[finishing_plan]
+		boxes = flt(batch.get("box_quantity"))
+		if not plan or boxes <= 0:
+			continue
+
+		group = groups.setdefault(finishing_plan, {
+			"finishing_plan": finishing_plan,
+			"lot": plan.lot,
+			"item": plan.item,
+			"colour_boxes": {},
+		})
+		colour = cstr(batch.get("colour")).strip() or "Unspecified"
+		group["colour_boxes"][colour] = (
+			group["colour_boxes"].get(colour, 0) + boxes
+		)
+
+	result = []
+	for group in groups.values():
+		colours = [
+			{"colour": colour, "boxes": boxes}
+			for colour, boxes in group.pop("colour_boxes").items()
+		]
+		result.append({
+			**group,
+			"colours": colours,
+			"total_boxes": sum(row["boxes"] for row in colours),
+		})
+	return result
 
 @frappe.whitelist()
 def fetch_stock_entry_items(items, ipd=None):

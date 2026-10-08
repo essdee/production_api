@@ -3,6 +3,7 @@ import LotOrder from "./components/LotOrder.vue"
 import WorkStation from "./components/WorkStation.vue"
 import InwardQuantityReport from "./components/InwardQuantityReport.vue";
 import InhouseQuantity from "./components/InhouseQuantity.vue";
+import SupplierPendingReport from "./components/SupplierPendingReport.vue";
 import OCRDetail from './components/OCRDetail.vue';
 // import CadDetail from "./components/CadDetail.vue";
 
@@ -82,6 +83,18 @@ export class InhouseQuantityWrapper {
     }
     make_app() {
         this.app = createApp(InhouseQuantity)
+        SetVueGlobals(this.app)
+        this.vue = this.app.mount(this.$wrapper.get(0))
+    }
+}
+
+export class SupplierPendingReportWrapper {
+    constructor(wrapper) {
+        this.$wrapper = $(wrapper)
+        this.make_app()
+    }
+    make_app() {
+        this.app = createApp(SupplierPendingReport)
         SetVueGlobals(this.app)
         this.vue = this.app.mount(this.$wrapper.get(0))
     }

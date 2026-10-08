@@ -48,6 +48,12 @@ function identityLabels(className) {
 const templateDetails = collectTemplateDetails(templateAst)
 
 
+test('offers a generated partially dispatched report mode', () => {
+    assert.ok(templateDetails.text.includes('Show Partially Dispatched'))
+    assert.ok(templateDetails.text.includes('Generate'))
+})
+
+
 test('omits the explanatory subtitle below the page title', () => {
     assert.ok(!templateDetails.text.some(text => text.includes('Plans sitting in Dispatched or Fully Dispatched for over')))
 })

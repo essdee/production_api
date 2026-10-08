@@ -205,7 +205,7 @@
    "hidden": 0,
    "is_query_report": 0,
    "label": "Reports",
-   "link_count": 13,
+   "link_count": 14,
    "link_type": "DocType",
    "onboard": 0,
    "type": "Card Break"
@@ -306,6 +306,16 @@
    "label": "Inhouse Quantity Report",
    "link_count": 0,
    "link_to": "inhouse-quantity-rep",
+   "link_type": "Page",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Supplier Pending Report",
+   "link_count": 0,
+   "link_to": "supplier-pending-report",
    "link_type": "Page",
    "onboard": 0,
    "type": "Link"
