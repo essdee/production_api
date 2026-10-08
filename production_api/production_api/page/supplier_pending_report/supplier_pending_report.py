@@ -1,8 +1,150 @@
 """Supplier Pending Report backend."""
 
+import frappe
+from frappe import _
 from frappe.utils import date_diff, flt
 
-from production_api.utils import max_date, min_date, update_if_string_instance
+from production_api.essdee_production.doctype.item_production_detail.item_production_detail import (
+	get_ipd_primary_values,
+)
+from production_api.utils import (
+	get_eqi_status,
+	get_variant_attr_details,
+	max_date,
+	min_date,
+	update_if_string_instance,
+)
+
+
+@frappe.whitelist()
+def get_supplier_pending_report(supplier, process):
+	if not supplier:
+		frappe.throw(_("Select a Supplier"))
+	if not process:
+		frappe.throw(_("Select a Process"))
+
+	supplier_name = frappe.get_cached_value("Supplier", supplier, "supplier_name") or supplier
+	process_names = _resolve_process_names(process)
+	work_orders = _get_supplier_work_orders(supplier, process_names)
+	response = {
+		"supplier": supplier,
+		"supplier_name": supplier_name,
+		"process": process,
+		"items": [],
+	}
+	if not work_orders:
+		return response
+
+	work_order_names = tuple(row["name"] for row in work_orders)
+	calculated_items = frappe.get_all(
+		"Work Order Calculated Item",
+		filters={"parent": ["in", work_order_names]},
+		fields=[
+			"parent",
+			"item_variant",
+			"set_combination",
+			"delivered_quantity",
+			"received_qty",
+		],
+	)
+	lot_names = tuple(sorted({row.get("lot") for row in work_orders if row.get("lot")}))
+	variant_names = tuple(
+		sorted({row.get("item_variant") for row in calculated_items if row.get("item_variant")})
+	)
+	lot_contexts = _load_lot_contexts(lot_names)
+	variant_attributes = _load_variant_attributes(variant_names)
+	quality_statuses = get_eqi_status(list(work_order_names))
+	response["items"] = _build_supplier_pending_items(
+		work_orders,
+		calculated_items,
+		lot_contexts,
+		variant_attributes,
+		quality_statuses,
+	)
+	return response
+
+
+def _resolve_process_names(process):
+	processes = frappe.db.sql(
+		"""
+			SELECT parent
+			FROM `tabProcess Details`
+			WHERE process_name = %(process)s OR parent = %(process)s
+		""",
+		{"process": process},
+		as_dict=True,
+	)
+	return tuple(sorted({process, *(row["parent"] for row in processes)}))
+
+
+def _get_supplier_work_orders(supplier, process_names):
+	return frappe.get_all(
+		"Work Order",
+		filters={
+			"supplier": supplier,
+			"docstatus": 1,
+			"is_rework": 0,
+			"process_name": ["in", process_names],
+		},
+		fields=[
+			"name",
+			"supplier",
+			"supplier_name",
+			"item",
+			"lot",
+			"process_name",
+			"first_dc_date",
+			"last_dc_date",
+			"first_grn_date",
+			"last_grn_date",
+		],
+	)
+
+
+def _load_lot_contexts(lot_names):
+	if not lot_names:
+		return {}
+
+	lots = frappe.get_all(
+		"Lot",
+		filters={"name": ["in", lot_names]},
+		fields=["name", "production_detail"],
+	)
+	ipd_names = tuple(sorted({row.get("production_detail") for row in lots if row.get("production_detail")}))
+	if not ipd_names:
+		return {}
+	ipd_rows = frappe.get_all(
+		"Item Production Detail",
+		filters={"name": ["in", ipd_names]},
+		fields=[
+			"name",
+			"is_set_item",
+			"packing_attribute",
+			"primary_item_attribute",
+			"set_item_attribute",
+			"major_attribute_value",
+		],
+	)
+	ipd_by_name = {row["name"]: row for row in ipd_rows}
+	contexts = {}
+	for lot in lots:
+		ipd_name = lot.get("production_detail")
+		ipd = ipd_by_name.get(ipd_name)
+		if not ipd:
+			continue
+		contexts[lot["name"]] = {
+			"is_set_item": ipd.get("is_set_item"),
+			"packing_attribute": ipd.get("packing_attribute"),
+			"primary_item_attribute": ipd.get("primary_item_attribute"),
+			"set_item_attribute": ipd.get("set_item_attribute"),
+			"major_attribute_value": ipd.get("major_attribute_value"),
+			"primary_values": get_ipd_primary_values(ipd_name),
+		}
+	return contexts
+
+
+def _load_variant_attributes(variant_names):
+	return {variant: get_variant_attr_details(variant) for variant in variant_names}
 
 
 def _row_is_pending(delivered, received):

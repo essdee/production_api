@@ -1,9 +1,131 @@
 import unittest
+from unittest.mock import patch
+
+import frappe
 
 from production_api.production_api.page.supplier_pending_report import supplier_pending_report as report
 
 
 class TestSupplierPendingReport(unittest.TestCase):
+	def test_endpoint_requires_supplier(self):
+		with (
+			patch.object(report, "_", side_effect=lambda message: message),
+			patch.object(report.frappe, "throw", side_effect=self._throw_validation),
+			self.assertRaisesRegex(frappe.ValidationError, "Select a Supplier"),
+		):
+			report.get_supplier_pending_report.__wrapped__(None, "Cutting")
+
+	def test_endpoint_requires_process(self):
+		with (
+			patch.object(report, "_", side_effect=lambda message: message),
+			patch.object(report.frappe, "throw", side_effect=self._throw_validation),
+			self.assertRaisesRegex(frappe.ValidationError, "Select a Process"),
+		):
+			report.get_supplier_pending_report.__wrapped__("SUP-001", None)
+
+	def test_process_resolution_matches_existing_parent_group_semantics(self):
+		with patch.object(report, "frappe") as frappe_mock:
+			frappe_mock.db.sql.return_value = [
+				{"parent": "Panel Cutting"},
+				{"parent": "Cutting"},
+				{"parent": "Cutting"},
+			]
+			process_names = report._resolve_process_names("Cutting")
+
+		self.assertEqual(process_names, ("Cutting", "Panel Cutting"))
+		self.assertEqual(frappe_mock.db.sql.call_args.kwargs["as_dict"], True)
+		self.assertEqual(frappe_mock.db.sql.call_args.args[1], {"process": "Cutting"})
+
+	def test_work_order_loader_filters_supplier_submitted_non_rework_and_processes(self):
+		with patch.object(report, "frappe") as frappe_mock:
+			frappe_mock.get_all.return_value = [{"name": "WO-1"}]
+			rows = report._get_supplier_work_orders("SUP-001", ("Cutting", "Panel Cutting"))
+
+		self.assertEqual(rows, [{"name": "WO-1"}])
+		self.assertEqual(
+			frappe_mock.get_all.call_args.kwargs["filters"],
+			{
+				"supplier": "SUP-001",
+				"docstatus": 1,
+				"is_rework": 0,
+				"process_name": ["in", ("Cutting", "Panel Cutting")],
+			},
+		)
+		self.assertEqual(
+			frappe_mock.get_all.call_args.kwargs["fields"],
+			[
+				"name",
+				"supplier",
+				"supplier_name",
+				"item",
+				"lot",
+				"process_name",
+				"first_dc_date",
+				"last_dc_date",
+				"first_grn_date",
+				"last_grn_date",
+			],
+		)
+
+	def test_endpoint_returns_stable_empty_response_without_work_orders(self):
+		with (
+			patch.object(report, "_resolve_process_names", return_value=("Cutting",)),
+			patch.object(report, "_get_supplier_work_orders", return_value=[]),
+			patch.object(report, "frappe") as frappe_mock,
+		):
+			frappe_mock.get_cached_value.return_value = "Supplier A"
+			result = report.get_supplier_pending_report.__wrapped__("SUP-001", "Cutting")
+
+		self.assertEqual(
+			result,
+			{"supplier": "SUP-001", "supplier_name": "Supplier A", "process": "Cutting", "items": []},
+		)
+
+	def test_endpoint_passes_bulk_loaded_inputs_to_builder(self):
+		work_orders = [self._work_order("WO-1", "ITEM-A", "LOT-1")]
+		work_orders[0]["supplier"] = "SUP-001"
+		calculated_items = [self._calculated_item("WO-1", "BLACK-S", 10, 4, "Black")]
+		lot_contexts = {"LOT-1": self._lot_context(False, ["S"])}
+		variant_attributes = {"BLACK-S": {"Colour": "Black", "Size": "S"}}
+		quality_statuses = {"Supplier A": {"Black": {"S": "Hold"}}}
+		built_items = [{"item": "ITEM-A", "lots": []}]
+
+		with (
+			patch.object(report, "_resolve_process_names", return_value=("Cutting",)),
+			patch.object(report, "_get_supplier_work_orders", return_value=work_orders),
+			patch.object(report, "_load_lot_contexts", return_value=lot_contexts) as load_lots,
+			patch.object(report, "_load_variant_attributes", return_value=variant_attributes) as load_variants,
+			patch.object(report, "get_eqi_status", return_value=quality_statuses) as load_quality,
+			patch.object(report, "_build_supplier_pending_items", return_value=built_items) as builder,
+			patch.object(report, "frappe") as frappe_mock,
+		):
+			frappe_mock.get_cached_value.return_value = "Supplier A"
+			frappe_mock.get_all.return_value = calculated_items
+			result = report.get_supplier_pending_report.__wrapped__("SUP-001", "Cutting")
+
+		self.assertEqual(result["items"], built_items)
+		self.assertEqual(frappe_mock.get_all.call_count, 1)
+		self.assertEqual(frappe_mock.get_all.call_args.args[0], "Work Order Calculated Item")
+		self.assertEqual(frappe_mock.get_all.call_args.kwargs["filters"], {"parent": ["in", ("WO-1",)]})
+		load_lots.assert_called_once_with(("LOT-1",))
+		load_variants.assert_called_once_with(("BLACK-S",))
+		load_quality.assert_called_once_with(["WO-1"])
+		builder.assert_called_once_with(work_orders, calculated_items, lot_contexts, variant_attributes, quality_statuses)
+
+	def test_endpoint_uses_supplier_document_name_for_filter_and_returns_supplier_name(self):
+		with (
+			patch.object(report, "_resolve_process_names", return_value=("Cutting",)),
+			patch.object(report, "_get_supplier_work_orders", return_value=[]) as load_work_orders,
+			patch.object(report, "frappe") as frappe_mock,
+		):
+			frappe_mock.get_cached_value.return_value = "King of Garments"
+			result = report.get_supplier_pending_report.__wrapped__("SUP-001", "Cutting")
+
+		load_work_orders.assert_called_once_with("SUP-001", ("Cutting",))
+		frappe_mock.get_cached_value.assert_called_once_with("Supplier", "SUP-001", "supplier_name")
+		self.assertEqual(result["supplier"], "SUP-001")
+		self.assertEqual(result["supplier_name"], "King of Garments")
+
 	def test_pending_boundary_is_strict_and_requires_delivered_quantity(self):
 		self.assertTrue(report._row_is_pending(100, 90))
 		self.assertFalse(report._row_is_pending(100, 90.01))
@@ -180,3 +302,7 @@ class TestSupplierPendingReport(unittest.TestCase):
 			"delivered_quantity": delivered,
 			"received_qty": received,
 		}
+
+	@staticmethod
+	def _throw_validation(message):
+		raise frappe.ValidationError(message)
