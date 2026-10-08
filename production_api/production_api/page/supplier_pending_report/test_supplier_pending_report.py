@@ -292,6 +292,23 @@ class TestSupplierPendingReport(unittest.TestCase):
 		self.assertEqual(rows[0]["values"]["S"]["delivered"], 30.0)
 		self.assertEqual(rows[0]["values"]["S"]["received"], 5.0)
 
+	def test_builder_sorts_unconfigured_sizes_after_ipd_order(self):
+		items = report._build_supplier_pending_items(
+			[self._work_order("WO-1", "ITEM-A", "LOT-1")],
+			[
+				self._calculated_item("WO-1", "BLACK-XL", 10, 1, "Black"),
+				self._calculated_item("WO-1", "BLACK-L", 10, 1, "Black"),
+			],
+			{"LOT-1": self._lot_context(is_set_item=False, primary_values=["S", "M"])},
+			{
+				"BLACK-XL": {"Colour": "Black", "Size": "XL"},
+				"BLACK-L": {"Colour": "Black", "Size": "L"},
+			},
+			{},
+		)
+
+		self.assertEqual(items[0]["lots"][0]["primary_values"], ["S", "M", "L", "XL"])
+
 	@staticmethod
 	def _lot_context(is_set_item, primary_values):
 		return {

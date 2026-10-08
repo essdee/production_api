@@ -204,7 +204,9 @@ def _build_supplier_pending_items(
 			},
 		)
 		if size not in lot_group["primary_values"]:
-			lot_group["primary_values"].append(size)
+			configured_sizes = list(context.get("primary_values") or [])
+			extra_sizes = sorted({*lot_group["primary_values"], size} - set(configured_sizes))
+			lot_group["primary_values"] = configured_sizes + extra_sizes
 
 		row_key = (colour, part or "")
 		row = lot_group["rows"].setdefault(
