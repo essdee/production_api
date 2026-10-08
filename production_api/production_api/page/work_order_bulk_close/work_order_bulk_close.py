@@ -2,7 +2,7 @@ import json
 
 import frappe
 from frappe import _
-from frappe.utils import cstr, flt, getdate
+from frappe.utils import cstr, flt, getdate, strip_html_tags
 
 
 def _as_list(value):
@@ -161,54 +161,60 @@ def approve_close_requests(work_orders):
             frappe.PermissionError,
         )
 
-    documents = {}
-    for work_order in work_order_names:
-        doc = frappe.get_doc("Work Order", work_order, for_update=True)
-        doc.check_permission("write")
-        if doc.docstatus != 1 or doc.open_status != "Close Request":
-            frappe.throw(
-                _("Work Order {0} does not have a pending Close Request.").format(
-                    frappe.bold(work_order)
-                )
-            )
-        documents[work_order] = doc
-
-    unapproved_debits = frappe.get_all(
-        "Essdee Debit",
-        filters={
-            "against": "Work Order",
-            "against_id": ["in", work_order_names],
-            "docstatus": 1,
-            "status": ["!=", "Approved"],
-        },
-        fields=["name", "against_id"],
-        limit_page_length=1,
-    )
-    if unapproved_debits:
-        debit = unapproved_debits[0]
-        frappe.throw(
-            _("Approve Essdee Debit {0} before closing Work Order {1}.").format(
-                frappe.bold(debit.name), frappe.bold(debit.against_id)
-            )
-        )
-
     results = []
-    for work_order in work_order_names:
-        doc = documents[work_order]
-        result = update_stock(
-            work_order,
-            close_reason=doc.close_reason,
-            close_other_reason=doc.close_other_reason,
-            close_remarks=doc.close_remarks,
-        )
-        results.append(
-            {
-                "work_order": work_order,
-                "open_status": result.get("open_status"),
-            }
-        )
+    failed = []
+    for index, work_order in enumerate(work_order_names, start=1):
+        savepoint = f"work_order_close_{index}"
+        frappe.db.savepoint(savepoint)
+        try:
+            doc = frappe.get_doc("Work Order", work_order, for_update=True)
+            doc.check_permission("write")
+            if doc.docstatus != 1 or doc.open_status != "Close Request":
+                raise frappe.ValidationError(
+                    _("Work Order {0} does not have a pending Close Request.").format(
+                        frappe.bold(work_order)
+                    )
+                )
 
-    return {"results": results}
+            unapproved_debits = frappe.get_all(
+                "Essdee Debit",
+                filters={
+                    "against": "Work Order",
+                    "against_id": work_order,
+                    "docstatus": 1,
+                    "status": ["!=", "Approved"],
+                },
+                fields=["name"],
+                limit_page_length=1,
+            )
+            if unapproved_debits:
+                raise frappe.ValidationError(
+                    _("Approve Essdee Debit {0} before closing.").format(
+                        frappe.bold(unapproved_debits[0].name)
+                    )
+                )
+
+            result = update_stock(
+                work_order,
+                close_reason=doc.close_reason,
+                close_other_reason=doc.close_other_reason,
+                close_remarks=doc.close_remarks,
+            )
+            results.append(
+                {
+                    "work_order": work_order,
+                    "open_status": result.get("open_status"),
+                }
+            )
+        except Exception as exc:
+            frappe.db.rollback(save_point=savepoint)
+            frappe.clear_messages()
+            error = strip_html_tags(cstr(exc)).strip() or _(
+                "The Work Order could not be closed."
+            )
+            failed.append({"work_order": work_order, "error": error})
+
+    return {"results": results, "failed": failed}
 
 
 @frappe.whitelist()
