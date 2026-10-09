@@ -215,7 +215,7 @@
 <script setup>
 import EventBus from "../../bus";
 
-import { ref, onMounted, computed, watch } from "vue";
+import { ref, onMounted, onBeforeUnmount, computed, watch } from "vue";
 const root = ref(null);
 let i = 0;
 const docstatus = ref(0);
@@ -228,11 +228,17 @@ const attribute_values = ref([]);
 const po_lots = ref([]);
 const has_lots = computed(() => po_lots.value.length > 0);   // multi-lot mode gate
 
+const handle_grn_details_update = (data) => {
+	load_data(data);
+};
+
 onMounted(() => {
 	console.log("new-grn-item mounted");
-	EventBus.$on("update_grn_details", (data) => {
-		load_data(data);
-	});
+	EventBus.$on("update_grn_details", handle_grn_details_update);
+});
+
+onBeforeUnmount(() => {
+	EventBus.$off("update_grn_details", handle_grn_details_update);
 });
 
 function load_data(data, skip_watch = false) {
@@ -346,15 +352,16 @@ function remove_lot_row(cell, idx) {
 
 function mark_dirty() {
 	if (typeof cur_frm !== "undefined" && cur_frm) cur_frm.dirty();
-	EventBus.$emit("grn_updated", true);
 }
 
 function get_items() {
-  // Parse the received values to 0 if it is empty or null; normalize lot_rows.
-	for (let i in items.value) {
-		for (let j in items.value[i].items) {
-			for (let k in items.value[i].items[j].values) {
-				const cell = items.value[i].items[j].values[k];
+	// Serialize a detached snapshot. Mutating the watched editor state here would
+	// retrigger grn_updated and recursively call this method on saved drafts.
+	const serialized_items = JSON.parse(JSON.stringify(items.value || []));
+	for (let i in serialized_items) {
+		for (let j in serialized_items[i].items) {
+			for (let k in serialized_items[i].items[j].values) {
+				const cell = serialized_items[i].items[j].values[k];
 				if (cell && cell.lot_rows) {
 					// multi-lot mode: drop empty lot rows, coerce blanks to 0
 					cell.lot_rows = cell.lot_rows.filter(lr => lr.lot && (lr.received || lr.secondary_received));
@@ -373,7 +380,7 @@ function get_items() {
 			}
 		}
 	}
-	return items.value;
+	return serialized_items;
 }
 
 function update_received_qty(item, key) {

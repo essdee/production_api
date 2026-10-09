@@ -842,6 +842,12 @@ frappe.production.ui.GRNPurchaseOrder = class {
     update_status() {
         this.grn.update_status();
     }
+    destroy() {
+        if (this.app) {
+            this.app.unmount();
+        }
+        this.$wrapper.empty();
+    }
 }
 
 frappe.production.ui.GRNWorkOrder = class {
