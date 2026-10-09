@@ -838,6 +838,18 @@ def update_po_lot_links(doc_name, add_lots=None, remove_lots=None, comment=None)
 
 
 @frappe.whitelist()
+def add_po_lot_links(doc_name, lots=None, comment=None):
+	"""Append lots from the Purchase Order's Manage Linked Lots dialog.
+
+	This entry point is intentionally add-only. Existing links are preserved
+	even when the dialog submission contains only the newly selected lots.
+	Explicit unlinking remains available from the Lot form, where the GRN
+	reference guard in ``update_po_lot_links`` is applied.
+	"""
+	return update_po_lot_links(doc_name, add_lots=lots, comment=comment)
+
+
+@frappe.whitelist()
 def update_lot_po_links(lot, add_pos=None, remove_pos=None, comment=None):
 	"""Lot-side entry point: link/unlink ONE lot across many Purchase Orders.
 

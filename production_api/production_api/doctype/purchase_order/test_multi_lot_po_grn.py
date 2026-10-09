@@ -32,6 +32,29 @@ class TestMultiLotPOGRN(FrappeTestCase):
 		update_po_lot_links(po, remove_lots=[lot], comment="t")   # unlink absent -> no-op
 		frappe.db.rollback()
 
+	def test_add_po_lot_links_preserves_existing_lots(self):
+		from production_api.production_api.doctype.purchase_order.purchase_order import (
+			add_po_lot_links,
+			update_po_lot_links,
+		)
+
+		po = frappe.get_all("Purchase Order", filters={"docstatus": 1}, limit=1, pluck="name")
+		lots = frappe.get_all("Lot", limit=2, pluck="name")
+		if not po or len(lots) < 2:
+			self.skipTest("Need a submitted PO and two Lots")
+
+		po = po[0]
+		existing_lot, additional_lot = lots
+		update_po_lot_links(po, add_lots=[existing_lot], comment="initial link")
+
+		result = add_po_lot_links(po, lots=[additional_lot], comment="add another lot")
+
+		self.assertIn(existing_lot, result)
+		self.assertEqual(result.count(existing_lot), 1)
+		self.assertIn(additional_lot, result)
+		self.assertEqual(result.count(additional_lot), 1)
+		frappe.db.rollback()
+
 	def test_unlink_blocked_when_lot_referenced_by_grn(self):
 		import production_api.production_api.doctype.purchase_order.purchase_order as po_mod
 		po = frappe.get_all("Purchase Order", filters={"docstatus": 1}, limit=1, pluck="name")
