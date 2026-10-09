@@ -348,15 +348,12 @@ frappe.ui.form.on('Purchase Order', {
 								primary_action: function(values) {
 									const desired = (values.lots || []).map(row => row.lot);
 									const add_lots = desired.filter(l => !current.includes(l));
-									const remove_lots = current.filter(l => !desired.includes(l));
-									if (!add_lots.length && !remove_lots.length) { d.hide(); return; }
+									if (!add_lots.length) { d.hide(); return; }
 									frappe.call({
-										method: 'production_api.production_api.doctype.purchase_order.purchase_order.update_po_lot_links',
-										args: { doc_name: frm.doc.name, add_lots: add_lots, remove_lots: remove_lots, comment: values.comment },
+										method: 'production_api.production_api.doctype.purchase_order.purchase_order.add_po_lot_links',
+										args: { doc_name: frm.doc.name, lots: add_lots, comment: values.comment },
 										freeze: true,
 										callback: function() { d.hide(); frm.reload_doc(); },
-										// on the unlink-guard throw, the standard error dialog shows the message
-										// and the manage dialog stays open so the user can re-add the lot.
 									});
 								},
 							});
