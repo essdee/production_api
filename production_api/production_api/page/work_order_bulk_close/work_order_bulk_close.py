@@ -99,42 +99,50 @@ def close_work_orders(
     if not work_order_names:
         frappe.throw(_("Select at least one Work Order to close."))
 
-    # Validate and lock every target before updating the first one. The request
-    # remains atomic, so a later close failure rolls back every earlier close.
-    for work_order in work_order_names:
-        doc = frappe.get_doc("Work Order", work_order, for_update=True)
-        doc.check_permission("write")
-        if doc.docstatus != 1 or doc.open_status != "Open":
-            frappe.throw(
-                _("Work Order {0} is no longer open.").format(
-                    frappe.bold(work_order)
-                )
-            )
-
     results = []
+    failed = []
     previous_alert_setting = frappe.flags.get("suppress_work_order_close_alert")
     previous_bulk_close_setting = frappe.flags.get("work_order_bulk_close")
     frappe.flags.suppress_work_order_close_alert = True
     frappe.flags.work_order_bulk_close = True
     try:
-        for work_order in work_order_names:
-            result = update_stock(
-                work_order,
-                close_reason=close_reason,
-                close_other_reason=close_other_reason,
-                close_remarks=close_remarks,
-            )
-            results.append(
-                {
-                    "work_order": work_order,
-                    "open_status": result.get("open_status"),
-                }
-            )
+        for index, work_order in enumerate(work_order_names, start=1):
+            savepoint = f"work_order_bulk_close_{index}"
+            frappe.db.savepoint(savepoint)
+            try:
+                doc = frappe.get_doc("Work Order", work_order, for_update=True)
+                doc.check_permission("write")
+                if doc.docstatus != 1 or doc.open_status != "Open":
+                    raise frappe.ValidationError(
+                        _("Work Order {0} is no longer open.").format(
+                            frappe.bold(work_order)
+                        )
+                    )
+
+                result = update_stock(
+                    work_order,
+                    close_reason=close_reason,
+                    close_other_reason=close_other_reason,
+                    close_remarks=close_remarks,
+                )
+                results.append(
+                    {
+                        "work_order": work_order,
+                        "open_status": result.get("open_status"),
+                    }
+                )
+            except Exception as exc:
+                frappe.db.rollback(save_point=savepoint)
+                frappe.clear_messages()
+                error = strip_html_tags(cstr(exc)).strip() or _(
+                    "The Work Order could not be closed."
+                )
+                failed.append({"work_order": work_order, "error": error})
     finally:
         frappe.flags.suppress_work_order_close_alert = previous_alert_setting
         frappe.flags.work_order_bulk_close = previous_bulk_close_setting
 
-    return {"results": results}
+    return {"results": results, "failed": failed}
 
 
 @frappe.whitelist()

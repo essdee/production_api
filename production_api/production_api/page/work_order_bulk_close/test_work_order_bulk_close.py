@@ -240,7 +240,8 @@ class TestWorkOrderBulkClose(TestCase):
             {
                 "results": [
                     {"work_order": work_order.name, "open_status": "Close"}
-                ]
+                ],
+                "failed": [],
             },
         )
         self.assertEqual(work_order.open_status, "Close")
@@ -270,7 +271,8 @@ class TestWorkOrderBulkClose(TestCase):
                         "work_order": work_order.name,
                         "open_status": "Close Request",
                     }
-                ]
+                ],
+                "failed": [],
             },
         )
         self.assertEqual(work_order.open_status, "Close Request")
@@ -568,7 +570,7 @@ class TestWorkOrderBulkClose(TestCase):
 
     @patch.object(work_order_module, "update_stock")
     @patch("frappe.get_doc")
-    def test_bulk_close_validates_all_then_closes_with_shared_details(
+    def test_bulk_close_closes_selected_work_orders_with_shared_details(
         self, get_doc, update_stock
     ):
         first = MagicMock(docstatus=1, open_status="Open")
@@ -598,15 +600,55 @@ class TestWorkOrderBulkClose(TestCase):
 
     @patch.object(work_order_module, "update_stock")
     @patch("frappe.get_doc")
-    def test_bulk_close_does_not_update_any_work_order_if_validation_fails(
+    def test_bulk_close_continues_after_one_work_order_fails(
         self, get_doc, update_stock
     ):
-        get_doc.side_effect = [
-            MagicMock(docstatus=1, open_status="Open"),
-            MagicMock(docstatus=1, open_status="Close"),
-        ]
+        work_orders = {}
+        for name in ("WO-SUCCESS-1", "WO-FAIL", "WO-SUCCESS-2"):
+            work_orders[name] = MagicMock(docstatus=1, open_status="Open")
 
-        with self.assertRaises(frappe.ValidationError):
-            close_work_orders(["WO-TEST-0001", "WO-TEST-0002"])
+        get_doc.side_effect = (
+            lambda _doctype, name, **_kwargs: work_orders[name]
+        )
 
-        update_stock.assert_not_called()
+        attempted = []
+
+        def close_work_order(work_order, **_kwargs):
+            attempted.append(work_order)
+            if work_order == "WO-FAIL":
+                raise frappe.ValidationError("GRN GRN-FAIL is not completed")
+            return {"open_status": "Close"}
+
+        update_stock.side_effect = close_work_order
+
+        database = MagicMock()
+        with patch.object(bulk_close_module.frappe, "db", database):
+            try:
+                result = close_work_orders(
+                    ["WO-SUCCESS-1", "WO-FAIL", "WO-SUCCESS-2"]
+                )
+            except Exception as exc:
+                self.fail(f"Bulk close stopped at the first error: {exc}")
+
+        self.assertEqual(
+            attempted,
+            ["WO-SUCCESS-1", "WO-FAIL", "WO-SUCCESS-2"],
+        )
+        self.assertEqual(
+            result,
+            {
+                "results": [
+                    {"work_order": "WO-SUCCESS-1", "open_status": "Close"},
+                    {"work_order": "WO-SUCCESS-2", "open_status": "Close"},
+                ],
+                "failed": [
+                    {
+                        "work_order": "WO-FAIL",
+                        "error": "GRN GRN-FAIL is not completed",
+                    }
+                ],
+            },
+        )
+        database.rollback.assert_called_once_with(
+            save_point="work_order_bulk_close_2"
+        )

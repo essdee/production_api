@@ -83,6 +83,7 @@ frappe.ui.form.on('Goods Received Note', {
 		)
 	},
 	refresh: function(frm) {
+		cleanup_grn_editor(frm);
 		frm.set_query("delivery_location", () => ({ filters: { disabled: 0 } }));
 		frm.set_query("supplier", () => ({ filters: { disabled: 0 } }));
 		$(".layout-side-section").css("display", "None");
@@ -150,10 +151,14 @@ frappe.ui.form.on('Goods Received Note', {
 		}
 		if(!frm.doc.is_return && !frm.is_new() && !frm.doc.includes_packing){
 			frm.itemEditor.update_status();
-			frappe.production.ui.eventBus.$on("grn_updated", e => {
+			frm._grn_updated_handler = () => {
 				frm.dirty();
 				frm.events.save_item_details(frm);
-			})
+			};
+			frappe.production.ui.eventBus.$on(
+				"grn_updated",
+				frm._grn_updated_handler
+			);
 		}
 		if (frm.doc.docstatus == 0) {
 			var print_menu = $(".dropdown-menu > li:contains('Print')");
@@ -488,6 +493,20 @@ frappe.ui.form.on('Goods Received Note', {
 		}
 	},
 });
+
+function cleanup_grn_editor(frm) {
+	if (frm._grn_updated_handler) {
+		frappe.production.ui.eventBus.$off(
+			"grn_updated",
+			frm._grn_updated_handler
+		);
+		frm._grn_updated_handler = null;
+	}
+	if (frm.itemEditor && frm.itemEditor.destroy) {
+		frm.itemEditor.destroy();
+		frm.itemEditor = null;
+	}
+}
 
 function calculate_receivables(frm, received_type){
 	let items = frm.calculate_receivables.get_work_order_items()
