@@ -13,6 +13,7 @@ frappe.ui.form.on("Production Order", {
   },
   refresh(frm) {
     render_production_order_editor(frm);
+    render_price_requests(frm);
     const is_submitted = frm.doc.docstatus == 1;
     frm.set_df_property("delivery_date", "read_only", is_submitted);
     frm.set_df_property("dont_deliver_after", "read_only", is_submitted);
@@ -701,6 +702,70 @@ function can_edit_ppo_ui(frm) {
     frm.doc.docstatus === 0 &&
     Boolean((frm.doc.__onload || {}).can_manage_production_order)
   );
+}
+
+function render_price_requests(frm) {
+  const field = frm.fields_dict.ppo_price_request_html;
+  if (!field) return;
+
+  const $wrapper = field.$wrapper;
+  const requests = (frm.doc.__onload || {}).price_requests || [];
+  const escape_html = (value) => frappe.utils.escape_html(String(value ?? ""));
+  $wrapper.html("");
+  if (!requests.length) {
+    $wrapper.html(
+      '<div class="text-muted" style="padding:15px;">No price change requests</div>'
+    );
+    return;
+  }
+
+  let html = '<div style="padding:10px 0;">';
+  html += '<table class="table table-bordered table-sm">';
+  html += "<thead><tr>";
+  html +=
+    "<th>Request</th><th>Status</th><th>Requested By</th><th>Requested At</th>";
+  html += "<th>Approved/Rejected By</th><th>Approved/Rejected At</th>";
+  html += "</tr></thead><tbody>";
+
+  requests.forEach((request) => {
+    const status_color =
+      request.status === "Approved"
+        ? "green"
+        : request.status === "Rejected"
+        ? "red"
+        : "orange";
+    const requested_at = request.requested_at
+      ? frappe.datetime.str_to_user(request.requested_at)
+      : "";
+    const approved_at = request.approved_at
+      ? frappe.datetime.str_to_user(request.approved_at)
+      : "";
+    const request_url = `/app/ppo-price-request/${encodeURIComponent(
+      String(request.name ?? "")
+    )}`;
+    const requested_by = request.requested_by
+      ? frappe.user.full_name(request.requested_by)
+      : "";
+    const approved_by = request.approved_by
+      ? frappe.user.full_name(request.approved_by)
+      : "";
+
+    html += "<tr>";
+    html += `<td><a href="${request_url}">${escape_html(
+      request.name
+    )}</a></td>`;
+    html += `<td><span class="indicator-pill ${status_color}">${escape_html(
+      request.status
+    )}</span></td>`;
+    html += `<td>${escape_html(requested_by)}</td>`;
+    html += `<td>${escape_html(requested_at)}</td>`;
+    html += `<td>${escape_html(approved_by)}</td>`;
+    html += `<td>${escape_html(approved_at)}</td>`;
+    html += "</tr>";
+  });
+
+  html += "</tbody></table></div>";
+  $wrapper.html(html);
 }
 
 // Render a horizontal size grid into a dialog HTML field wrapper: sizes across
