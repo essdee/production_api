@@ -329,14 +329,14 @@ class GoodsReceivedNote(Document):
     def validate_eqi_entered(self):
         # EQIs are entered per colour and size. A sewing Work Order (one with a
         # Sewing Plan) may only receive item variants whose (colour, size) combination
-        # is covered by a *submitted* Essdee Quality Inspection against the Work Order.
+        # is covered by a *submitted, passed* Essdee Quality Inspection against the Work Order.
         # Returns are exempt — the goods already came in.
         if self.against != "Work Order" or self.is_return:
             return
         if not frappe.db.exists("Sewing Plan", {"work_order": self.against_id}):
             return
 
-        # Inspected combos = selected colours × selected sizes of each submitted EQI,
+        # Inspected combos = selected colours × selected sizes of each submitted Pass EQI,
         # the same pairing utils.get_eqi_status builds its status matrix from.
         combo_rows = frappe.db.sql(
             """
@@ -347,6 +347,7 @@ class GoodsReceivedNote(Document):
             WHERE e.against = 'Work Order'
               AND e.against_id = %(wo)s
               AND e.docstatus = 1
+              AND e.result = 'Pass'
               AND c.selected = 1
               AND s.selected = 1
             """,
@@ -386,10 +387,10 @@ class GoodsReceivedNote(Document):
         if missing:
             combos = "<br>".join(f"{colour} / {size}" for colour, size in missing)
             frappe.throw(
-                f"Quality inspection has not been done for these colour/size combinations"
+                f"A passed quality inspection has not been submitted for these colour/size combinations"
                 f" of Work Order {self.against_id} (Lot {self.lot}):<br>{combos}<br>"
-                "A quality inspection must be submitted for each combination before receiving.",
-                title="Quality Inspection Missing",
+                "A quality inspection with result Pass must be submitted for each combination before receiving.",
+                title="Passed Quality Inspection Missing",
             )
 
     def check_for_unique_supplier_document_no(self):
