@@ -191,10 +191,15 @@ def delete_sewing_plan(work_order):
 		else:
 			frappe.delete_doc("Sewing Plan", sp_list[0], ignore_permissions=True)	
 
-def get_sp_entry_details(supplier, dpr_date=None, work_station=None, input_type=None):
-	sp_list = frappe.get_all("Sewing Plan", filters={
-		"supplier": supplier
-	}, pluck="name")
+def get_sp_entry_details(supplier, dpr_date=None, work_station=None, input_type=None, lot=None, item=None):
+	sp_filters = {"supplier": supplier}
+	if lot:
+		sp_filters["lot"] = lot
+	if item:
+		sp_filters["item"] = item
+	sp_list = frappe.get_all("Sewing Plan", filters=sp_filters, pluck="name")
+	if not sp_list:
+		return []
 	
 	filters = {
 		"sewing_plan": ["in", sp_list]
@@ -1105,8 +1110,15 @@ def get_colour_size_data(set_combination, item_variant, is_set_item, pack_attr, 
 	return size, part, colour, real_colour	
 
 @frappe.whitelist()
-def get_sewing_plan_dpr_data(supplier, dpr_date, work_station=None, input_type=None):
-	sp_entry_list = get_sp_entry_details(supplier, dpr_date=dpr_date, work_station=work_station, input_type=input_type)
+def get_sewing_plan_dpr_data(supplier, dpr_date, work_station=None, input_type=None, lot=None, item=None):
+	sp_entry_list = get_sp_entry_details(
+		supplier,
+		dpr_date=dpr_date,
+		work_station=work_station,
+		input_type=input_type,
+		lot=lot,
+		item=item,
+	)
 	dpr_data = {}
 	lots_in_dpr = set()
 	for sp_entry in sp_entry_list:
@@ -1189,23 +1201,29 @@ def get_sewing_plan_dpr_data(supplier, dpr_date, work_station=None, input_type=N
 
 def get_sewing_plan_dpr_dates(
 	supplier,
-	from_date,
-	to_date,
+	from_date=None,
+	to_date=None,
 	work_station=None,
 	input_type=None,
+	lot=None,
+	item=None,
 ):
+	sp_filters = {"supplier": supplier}
+	if lot:
+		sp_filters["lot"] = lot
+	if item:
+		sp_filters["item"] = item
 	sewing_plans = frappe.get_all(
 		"Sewing Plan",
-		filters={"supplier": supplier},
+		filters=sp_filters,
 		pluck="name",
 	)
 	if not sewing_plans:
 		return []
 
-	filters = {
-		"sewing_plan": ["in", sewing_plans],
-		"entry_date": ["between", [from_date, to_date]],
-	}
+	filters = {"sewing_plan": ["in", sewing_plans]}
+	if from_date and to_date:
+		filters["entry_date"] = ["between", [from_date, to_date]]
 	if work_station:
 		filters["work_station"] = work_station
 	if input_type:
@@ -1221,32 +1239,37 @@ def get_sewing_plan_dpr_dates(
 @frappe.whitelist()
 def get_sewing_plan_dpr_summary(
 	supplier,
-	from_date,
-	to_date,
+	from_date=None,
+	to_date=None,
 	work_station=None,
 	input_type=None,
+	lot=None,
+	item=None,
 ):
-	if not from_date or not to_date:
-		frappe.throw("From Date and To Date are mandatory")
-	if getdate(from_date) > getdate(to_date):
+	if not from_date and not to_date and not lot and not item:
+		frappe.throw("Select a Date Range, Lot, or Item")
+	if bool(from_date) != bool(to_date):
+		frappe.throw("Both From Date and To Date are required")
+	if from_date and getdate(from_date) > getdate(to_date):
 		frappe.throw("From Date cannot be after To Date")
 
 	reports = []
 	pending_fi = []
 	pending_fi_keys = set()
-	entry_dates = get_sewing_plan_dpr_dates(
-		supplier,
-		from_date,
-		to_date,
-		work_station=work_station,
-		input_type=input_type,
-	)
+	filter_args = {
+		"work_station": work_station,
+		"input_type": input_type,
+	}
+	if lot:
+		filter_args["lot"] = lot
+	if item:
+		filter_args["item"] = item
+	entry_dates = get_sewing_plan_dpr_dates(supplier, from_date, to_date, **filter_args)
 	for entry_date in entry_dates:
 		daily = get_sewing_plan_dpr_data(
 			supplier,
 			entry_date,
-			work_station=work_station,
-			input_type=input_type,
+			**filter_args,
 		)
 		for row in daily.get("pending_fi") or []:
 			key = (row.get("lot"), row.get("colour"), row.get("part"))

@@ -56,6 +56,8 @@ assert.deepEqual(
             to_date: '2026-10-03',
             work_station: 'LINE-1',
             input_type: 'Line Output',
+            lot: null,
+            item: null,
         },
     })
 }
@@ -67,7 +69,33 @@ assert.deepEqual(
         fromDate: null,
         toDate: '2026-10-03',
     }),
-    { error: 'Select From Date and To Date' },
+    { error: 'Select both From Date and To Date' },
+)
+
+assert.deepEqual(
+    utils.buildDPRRequest({
+        summaryMode: true,
+        supplier: 'WAREHOUSE-1',
+        lot: 'LOT-001',
+        item: 'ITEM-001',
+    }),
+    {
+        method: 'production_api.production_api.doctype.sewing_plan.sewing_plan.get_sewing_plan_dpr_summary',
+        args: {
+            supplier: 'WAREHOUSE-1',
+            from_date: null,
+            to_date: null,
+            work_station: null,
+            input_type: null,
+            lot: 'LOT-001',
+            item: 'ITEM-001',
+        },
+    },
+)
+
+assert.deepEqual(
+    utils.buildDPRRequest({ summaryMode: true, supplier: 'WAREHOUSE-1' }),
+    { error: 'Select a Date Range, Lot, or Item' },
 )
 
 assert.deepEqual(
