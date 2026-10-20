@@ -147,3 +147,44 @@ class TestSewingPlanDPRSummary(TestCase):
 		throw.side_effect = self._raise_validation
 		with self.assertRaisesRegex(frappe.ValidationError, "cannot be after"):
 			self._call_summary("WAREHOUSE-1", "2026-10-04", "2026-10-03")
+
+	@patch.object(sewing_plan, "get_sewing_plan_dpr_data", return_value={"dpr_data": {}, "pending_fi": []})
+	@patch.object(sewing_plan, "get_sewing_plan_dpr_dates", return_value=[date(2026, 10, 3)])
+	def test_summary_allows_lot_without_dates(self, get_dates, get_daily):
+		result = self._call_summary("WAREHOUSE-1", lot="LOT-001")
+
+		self.assertEqual(result, {"reports": [], "pending_fi": []})
+		get_dates.assert_called_once_with(
+			"WAREHOUSE-1",
+			None,
+			None,
+			work_station=None,
+			input_type=None,
+			lot="LOT-001",
+		)
+		get_daily.assert_called_once_with(
+			"WAREHOUSE-1",
+			date(2026, 10, 3),
+			work_station=None,
+			input_type=None,
+			lot="LOT-001",
+		)
+
+	@patch.object(sewing_plan.frappe, "get_all")
+	def test_summary_dates_filter_sewing_plans_by_item_without_dates(self, get_all):
+		get_all.side_effect = [
+			["SP-001"],
+			[date(2026, 10, 3), date(2026, 10, 1)],
+		]
+
+		result = self._call_dates("WAREHOUSE-1", item="ITEM-001")
+
+		self.assertEqual(result, [date(2026, 10, 1), date(2026, 10, 3)])
+		self.assertEqual(
+			get_all.call_args_list[0].kwargs["filters"],
+			{"supplier": "WAREHOUSE-1", "item": "ITEM-001"},
+		)
+		self.assertEqual(
+			get_all.call_args_list[1].kwargs["filters"],
+			{"sewing_plan": ["in", ["SP-001"]]},
+		)

@@ -17,6 +17,12 @@
                 <div v-show="summary_mode" class="filter-control">
                     <div ref="to_date_filter_wrapper"></div>
                 </div>
+                <div v-show="summary_mode" class="filter-control">
+                    <div ref="lot_filter_wrapper"></div>
+                </div>
+                <div v-show="summary_mode" class="filter-control">
+                    <div ref="item_filter_wrapper"></div>
+                </div>
                 <div class="filter-control">
                      <div ref="ws_filter_wrapper"></div>
                 </div>
@@ -149,7 +155,7 @@
             </section>
         </div>
         <div v-else class="empty-state">
-            <p>{{ summary_mode ? 'Select a date range to view the report' : 'Select a Date to view the report' }}</p>
+            <p>{{ summary_mode ? 'Select a date range, Lot, or Item to view the report' : 'Select a Date to view the report' }}</p>
         </div>
     </div>
 </template>
@@ -174,11 +180,15 @@ const props = defineProps({
 const date_filter_wrapper = ref(null)
 const from_date_filter_wrapper = ref(null)
 const to_date_filter_wrapper = ref(null)
+const lot_filter_wrapper = ref(null)
+const item_filter_wrapper = ref(null)
 const ws_filter_wrapper = ref(null)
 const input_type_filter_wrapper = ref(null)
 let date_filter_control = null
 let from_date_filter_control = null
 let to_date_filter_control = null
+let lot_filter_control = null
+let item_filter_control = null
 let ws_value = null
 let input_type_control = null
 const copyingHeader = ref(null)
@@ -193,6 +203,10 @@ const from_date = ref(null)
 const to_date = ref(null)
 const selected_ws = ref(null)
 const selected_input_type = ref(null)
+const selected_lot = ref(null)
+const selected_item = ref(null)
+const lot_options = ref([])
+const item_options = ref([])
 const reports = ref([])
 const sectionRefs = ref({})
 const remarks = ref({})
@@ -259,6 +273,40 @@ const initFilter = () => {
         render_input: true
     })
 
+    $(lot_filter_wrapper.value).empty()
+    lot_filter_control = frappe.ui.form.make_control({
+        parent: $(lot_filter_wrapper.value),
+        df: {
+            fieldtype: 'Link',
+            fieldname: 'dpr_lot',
+            label: 'Lot',
+            options: 'Lot',
+            placeholder: 'Lot',
+            change: () => {
+                selected_lot.value = lot_filter_control.get_value()
+            },
+            get_query: () => ({ filters: { name: ['in', lot_options.value] } }),
+        },
+        render_input: true
+    })
+
+    $(item_filter_wrapper.value).empty()
+    item_filter_control = frappe.ui.form.make_control({
+        parent: $(item_filter_wrapper.value),
+        df: {
+            fieldtype: 'Link',
+            fieldname: 'dpr_item',
+            label: 'Item',
+            options: 'Item',
+            placeholder: 'Item',
+            change: () => {
+                selected_item.value = item_filter_control.get_value()
+            },
+            get_query: () => ({ filters: { name: ['in', item_options.value] } }),
+        },
+        render_input: true
+    })
+
     if (!ws_filter_wrapper.value) return
 
     $(ws_filter_wrapper.value).empty()
@@ -305,6 +353,20 @@ const initFilter = () => {
     })
 }
 
+const loadFilterOptions = () => {
+    lot_options.value = []
+    item_options.value = []
+    if (!props.selected_supplier) return
+    frappe.call({
+        method: 'production_api.production_api.doctype.sewing_plan.sewing_plan.get_item_summary_options',
+        args: { supplier: props.selected_supplier },
+        callback: (r) => {
+            lot_options.value = r.message?.lots || []
+            item_options.value = r.message?.items || []
+        },
+    })
+}
+
 const showPendingFI = (pending) => {
     if (pending.length === 0) return
     const byLot = {}
@@ -335,6 +397,8 @@ const fetchDPRData = (showValidation = false) => {
         toDate: to_date.value,
         workStation: selected_ws.value,
         inputType: selected_input_type.value,
+        lot: selected_lot.value,
+        item: selected_item.value,
     })
     if (request.error) {
         if (showValidation) {
@@ -365,6 +429,7 @@ const fetchDPRData = (showValidation = false) => {
 
 onMounted(() => {
     initFilter()
+    loadFilterOptions()
 })
 
 watch(summary_mode, () => {
@@ -382,10 +447,20 @@ watch(
         to_date.value,
         selected_ws.value,
         selected_input_type.value,
+        selected_lot.value,
+        selected_item.value,
         props.refresh_counter,
     ],
     () => fetchDPRData(false),
 )
+
+watch(() => props.selected_supplier, () => {
+    selected_lot.value = null
+    selected_item.value = null
+    if (lot_filter_control) lot_filter_control.set_value('')
+    if (item_filter_control) item_filter_control.set_value('')
+    loadFilterOptions()
+})
 
 const getHeaderTotal = (reportData, header) => {
     if (!reportData[header]) return 0

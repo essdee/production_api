@@ -9,6 +9,8 @@ export function buildDPRRequest({
     toDate = null,
     workStation = null,
     inputType = null,
+    lot = null,
+    item = null,
 }) {
     if (!supplier) {
         return { error: 'Select a Warehouse' }
@@ -27,8 +29,11 @@ export function buildDPRRequest({
             },
         }
     }
-    if (!fromDate || !toDate) {
-        return { error: 'Select From Date and To Date' }
+    if (!fromDate && !toDate && !lot && !item) {
+        return { error: 'Select a Date Range, Lot, or Item' }
+    }
+    if ((fromDate && !toDate) || (!fromDate && toDate)) {
+        return { error: 'Select both From Date and To Date' }
     }
     if (fromDate > toDate) {
         return { error: 'From Date cannot be after To Date' }
@@ -41,6 +46,8 @@ export function buildDPRRequest({
             to_date: toDate,
             work_station: workStation,
             input_type: inputType,
+            lot,
+            item,
         },
     }
 }
