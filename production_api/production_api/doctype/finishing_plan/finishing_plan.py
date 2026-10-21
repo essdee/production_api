@@ -3065,8 +3065,8 @@ def _topup_alternate_lot(lot_doc, conversions):
 	#   1) Lot Order Detail  -> per (colour, size) quantity
 	#   2) Lot Order Item    -> per size box quantity = round(cumulative_size_total / pcs_per_box)
 	ipd_fields = ["packing_combo", "primary_item_attribute",
-	              "packing_attribute", "pack_in_stage"]
-	pcs_per_box, primary_attr, packing_attr, pack_in_stage = frappe.get_value(
+	              "packing_attribute", "pack_in_stage", "pack_out_stage"]
+	pcs_per_box, primary_attr, packing_attr, pack_in_stage, pack_out_stage = frappe.get_value(
 		"Item Production Detail", lot_doc.production_detail, ipd_fields)
 
 	# Map existing Lot Order Detail rows by item_variant, and remember each colour's row_index.
@@ -3109,11 +3109,11 @@ def _topup_alternate_lot(lot_doc, conversions):
 			})
 			rows_by_variant[variant] = new_row
 
-	_rebuild_lot_order_items(lot_doc, pcs_per_box, primary_attr)
+	_rebuild_lot_order_items(lot_doc, pcs_per_box, primary_attr, pack_out_stage)
 	lot_doc.save(ignore_permissions=True)
 
 
-def _rebuild_lot_order_items(lot_doc, pcs_per_box, primary_attr):
+def _rebuild_lot_order_items(lot_doc, pcs_per_box, primary_attr, pack_out_stage):
 	# Recompute the per-size box quantity from the NEW cumulative size totals.
 	# Always divide the cumulative pieces, never sum separately converted deltas.
 	size_total = {}
@@ -3132,7 +3132,12 @@ def _rebuild_lot_order_items(lot_doc, pcs_per_box, primary_attr):
 		if size in items_by_size:
 			items_by_size[size].qty = box_qty
 		else:
-			variant = get_or_create_variant(lot_doc.item, {primary_attr: size})
+			attributes = build_variant_attributes(
+				{primary_attr: size},
+				pack_out_stage,
+				lot_doc.production_detail,
+			)
+			variant = get_or_create_variant(lot_doc.item, attributes)
 			lot_doc.append("items", {
 				"item_variant": variant, "qty": box_qty, "ratio": 1, "mrp": 0,
 				"table_index": 0, "row_index": next_row_index,
@@ -3162,10 +3167,10 @@ def _reduce_source_lot_quantity(source_lot, conversions):
 	if not lot_doc.production_detail:
 		frappe.throw(f"Source Lot {source_lot} has no Item Production Detail")
 
-	pcs_per_box, primary_attr, packing_attr = frappe.get_value(
+	pcs_per_box, primary_attr, packing_attr, pack_out_stage = frappe.get_value(
 		"Item Production Detail",
 		lot_doc.production_detail,
-		["packing_combo", "primary_item_attribute", "packing_attribute"],
+		["packing_combo", "primary_item_attribute", "packing_attribute", "pack_out_stage"],
 	)
 	pcs_per_box = flt(pcs_per_box)
 	if pcs_per_box <= 0 or not primary_attr or not packing_attr:
@@ -3200,7 +3205,7 @@ def _reduce_source_lot_quantity(source_lot, conversions):
 			if remaining <= 0:
 				break
 
-	_rebuild_lot_order_items(lot_doc, pcs_per_box, primary_attr)
+	_rebuild_lot_order_items(lot_doc, pcs_per_box, primary_attr, pack_out_stage)
 	lot_doc.total_order_quantity = sum(
 		flt(row.quantity) for row in lot_doc.lot_order_details
 	)

@@ -1321,6 +1321,56 @@ class TestFinishingPlan(FrappeTestCase):
 			"SIZE-M": {"Size": "M"},
 		}[variant]
 
+	def test_rebuild_lot_order_items_adds_pack_out_stage_for_new_size(self):
+		lot = SimpleNamespace(
+			production_detail="IPD-TARGET",
+			item="AISHWARYA PRINT",
+			lot_order_details=[
+				frappe._dict(item_variant="NAVY-L", quantity=12),
+			],
+			items=[],
+		)
+
+		def append(_fieldname, values):
+			row = frappe._dict(values)
+			lot.items.append(row)
+			return row
+
+		lot.append = MagicMock(side_effect=append)
+		attributes = {"Stage": "Pack Out", "Size": "L"}
+		with (
+			patch.object(
+				finishing_plan,
+				"get_variant_attr_details",
+				return_value={"Size": "L"},
+			),
+			patch.object(
+				finishing_plan,
+				"build_variant_attributes",
+				return_value=attributes,
+			) as build_attributes,
+			patch.object(
+				finishing_plan,
+				"get_or_create_variant",
+				return_value="AISHWARYA-PRINT-PACK-OUT-L",
+			) as get_variant,
+		):
+			finishing_plan._rebuild_lot_order_items(
+				lot,
+				pcs_per_box=5,
+				primary_attr="Size",
+				pack_out_stage="Pack Out",
+			)
+
+		build_attributes.assert_called_once_with(
+			{"Size": "L"},
+			"Pack Out",
+			"IPD-TARGET",
+		)
+		get_variant.assert_called_once_with("AISHWARYA PRINT", attributes)
+		self.assertEqual(lot.items[0].item_variant, "AISHWARYA-PRINT-PACK-OUT-L")
+		self.assertEqual(lot.items[0].qty, 2.4)
+
 	def test_alternative_conversion_reduces_source_lot_and_rebuilds_totals(self):
 		lot = self._source_lot()
 		with (
@@ -1329,7 +1379,7 @@ class TestFinishingPlan(FrappeTestCase):
 			patch.object(
 				finishing_plan.frappe,
 				"get_value",
-				return_value=(5, "Size", "Colour"),
+				return_value=(5, "Size", "Colour", "Pack Out"),
 			),
 			patch.object(
 				finishing_plan,
@@ -1366,7 +1416,7 @@ class TestFinishingPlan(FrappeTestCase):
 			patch.object(
 				finishing_plan.frappe,
 				"get_value",
-				return_value=(5, "Size", "Colour"),
+				return_value=(5, "Size", "Colour", "Pack Out"),
 			),
 			patch.object(
 				finishing_plan,
